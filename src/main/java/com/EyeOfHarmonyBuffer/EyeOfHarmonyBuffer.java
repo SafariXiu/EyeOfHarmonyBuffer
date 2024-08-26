@@ -1,7 +1,4 @@
-package com.myname.mymodid;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+package com.EyeOfHarmonyBuffer;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
@@ -10,13 +7,14 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
-@Mod(modid = MyMod.MODID, version = Tags.VERSION, name = "MyMod", acceptedMinecraftVersions = "[1.7.10]")
-public class MyMod {
+@Mod(modid = EyeOfHarmonyBuffer.MODID, name = "EyeOfHarmonyBuffer", acceptedMinecraftVersions = "[1.7.10]")
+public class EyeOfHarmonyBuffer {
 
-    public static final String MODID = "mymodid";
-    public static final Logger LOG = LogManager.getLogger(MODID);
+    public static final String MODID = "EyeOfHarmonyBuffer";
 
-    @SidedProxy(clientSide = "com.myname.mymodid.ClientProxy", serverSide = "com.myname.mymodid.CommonProxy")
+    @SidedProxy(
+        clientSide = "com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.ClientProxy",
+        serverSide = "com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.CommonProxy")
     public static CommonProxy proxy;
 
     @Mod.EventHandler

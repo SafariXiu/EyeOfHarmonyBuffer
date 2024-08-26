@@ -1,4 +1,4 @@
-package com.myname.mymodid;
+package com.EyeOfHarmonyBuffer;
 
 public class ClientProxy extends CommonProxy {
 

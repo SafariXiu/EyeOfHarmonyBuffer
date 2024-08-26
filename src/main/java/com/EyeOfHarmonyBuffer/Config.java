@@ -1,4 +1,4 @@
-package com.myname.mymodid;
+package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 

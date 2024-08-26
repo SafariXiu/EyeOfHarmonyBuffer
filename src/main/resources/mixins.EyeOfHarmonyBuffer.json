@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8.5-GTNH",
+  "package": "com.EyeOfHarmonyBuffer.Mixins",
+  "refmap": "mixins.EyeOfHarmonyBuffer.refmap.json",
+  "target": "@env(DEFAULT)",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "EyeOfHarmonyEU",
+    "EyeOfHarmonyEU",
+    "EyeOfHarmonyGas",
+    "EyeOfHarmonyMixin",
+    "EyeOfHarmonySpaceTime",
+    "MixinGT_MetaTileEntity_EM_EyeOfHarmony"
+  ],
+  "client": [],
+  "server": []
+}
