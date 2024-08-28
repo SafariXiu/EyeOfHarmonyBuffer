@@ -18,7 +18,7 @@ public class MixinGT_MetaTileEntity_EM_EyeOfHarmony {
 
     @Inject(method = "recipeYieldCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeYieldCalculator(CallbackInfoReturnable<Double> cir) {
-        double customYield = 1000;
+        double customYield = 100;
         cir.setReturnValue(customYield);
     }
 }
