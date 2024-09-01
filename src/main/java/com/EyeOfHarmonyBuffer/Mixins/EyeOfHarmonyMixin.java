@@ -13,6 +13,6 @@ public class EyeOfHarmonyMixin {
     @Inject(method = "recipeProcessTimeCalculator", at = @At("HEAD"), cancellable = true)
     private void recipeProcessTimeCalculator(long recipeTime, long recipeSpacetimeCasingRequired,
         CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue(64);
+        cir.setReturnValue(128);
     }
 }

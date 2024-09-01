@@ -12,9 +12,7 @@ public class EyeOfHarmonyBuffer {
 
     public static final String MODID = "EyeOfHarmonyBuffer";
 
-    @SidedProxy(
-        clientSide = "com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.ClientProxy",
-        serverSide = "com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.CommonProxy")
+    @SidedProxy(clientSide = "com.EyeOfHarmonyBuffer.ClientProxy", serverSide = "com.EyeOfHarmonyBuffer.CommonProxy")
     public static CommonProxy proxy;
 
     @Mod.EventHandler
