@@ -4,8 +4,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import com.EyeOfHarmonyBuffer.Config;
 
+import com.EyeOfHarmonyBuffer.Config;
 import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
 @Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)

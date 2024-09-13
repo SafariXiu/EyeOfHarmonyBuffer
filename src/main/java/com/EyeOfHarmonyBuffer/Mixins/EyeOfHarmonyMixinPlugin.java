@@ -1,18 +1,18 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
-import com.EyeOfHarmonyBuffer.Config;
+import java.util.List;
+import java.util.Set;
+
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-import java.util.List;
-import java.util.Set;
+import com.EyeOfHarmonyBuffer.Config;
 
 public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
 
     @Override
-    public void onLoad(String mixinPackae) {
-    }
+    public void onLoad(String mixinPackae) {}
 
     @Override
     public String getRefMapperConfig() {
@@ -28,8 +28,7 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
     }
 
     @Override
-    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
-    }
+    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
 
     @Override
     public List<String> getMixins() {
