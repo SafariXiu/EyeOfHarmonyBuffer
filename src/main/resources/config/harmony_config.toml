@@ -1,9 +1,0 @@
-# harmony_config.toml
-# Eye of Harmony 配置
-
-[eye_of_harmony]
-# 自定义配方几率 (默认值: 1.0)
-customChance = 1.0
-
-# 自定义配方产量，不建议修改，会导致tps暴跌! (默认值: 1.0)
-customYield = 1.0

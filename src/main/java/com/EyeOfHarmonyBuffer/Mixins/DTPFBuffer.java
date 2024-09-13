@@ -6,6 +6,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.EyeOfHarmonyBuffer.Config;
+
 import gregtech.common.tileentities.machines.multi.GT_MetaTileEntity_PlasmaForge;
 
 @Mixin(value = GT_MetaTileEntity_PlasmaForge.class, remap = false)
@@ -16,7 +18,7 @@ public abstract class DTPFBuffer {
 
     @Inject(method = "recalculateDiscount", at = @At("HEAD"), cancellable = true)
     private void LockDiscount(CallbackInfo ci) {
-        this.discount = 1.0;
+        this.discount = Config.discount;
 
         ci.cancel();
     }

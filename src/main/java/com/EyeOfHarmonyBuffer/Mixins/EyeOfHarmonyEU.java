@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.EyeOfHarmonyBuffer.Config;
 import com.github.technus.tectech.recipe.EyeOfHarmonyRecipe;
 import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
@@ -20,7 +21,7 @@ public class EyeOfHarmonyEU {
     private void modifyEnergyOutput(EyeOfHarmonyRecipe recipeObject, CallbackInfoReturnable<CheckRecipeResult> cir) {
 
         // 使用一个50位的大数值
-        BigInteger constantOutputEU = new BigInteger("12345678901234567890123456789012345678901234567890");
+        BigInteger constantOutputEU = Config.getConstantOutputEU();
 
         try {
             // 通过反射访问私有字段 outputEU_BigInt

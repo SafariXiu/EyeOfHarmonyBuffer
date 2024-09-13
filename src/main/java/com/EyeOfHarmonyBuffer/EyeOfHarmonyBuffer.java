@@ -1,5 +1,9 @@
 package com.EyeOfHarmonyBuffer;
 
+import java.io.File;
+
+import net.minecraftforge.common.config.Configuration;
+
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -15,10 +19,16 @@ public class EyeOfHarmonyBuffer {
     @SidedProxy(clientSide = "com.EyeOfHarmonyBuffer.ClientProxy", serverSide = "com.EyeOfHarmonyBuffer.CommonProxy")
     public static CommonProxy proxy;
 
+    public static Configuration config;
+
     @Mod.EventHandler
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
+        File configFile = new File(event.getModConfigurationDirectory(), MODID + ".cfg");
+        config = new Configuration(configFile);
+        Config.init(configFile);
+
         proxy.preInit(event);
     }
 
@@ -39,4 +49,5 @@ public class EyeOfHarmonyBuffer {
     public void serverStarting(FMLServerStartingEvent event) {
         proxy.serverStarting(event);
     }
+
 }

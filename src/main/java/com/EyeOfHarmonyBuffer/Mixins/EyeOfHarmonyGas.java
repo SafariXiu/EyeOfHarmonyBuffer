@@ -4,6 +4,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import com.EyeOfHarmonyBuffer.Config;
 import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
 @Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
@@ -24,7 +25,7 @@ public class EyeOfHarmonyGas {
             value = "INVOKE",
             target = "Lcom/github/technus/tectech/thing/metaTileEntity/multi/GT_MetaTileEntity_EM_EyeOfHarmony;getHydrogenStored()J"))
     private long redirectGetHydrogenStored(GT_MetaTileEntity_EM_EyeOfHarmony instance) {
-        return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
+            return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
     }
 
     @Redirect(
@@ -33,6 +34,6 @@ public class EyeOfHarmonyGas {
             value = "INVOKE",
             target = "Lcom/github/technus/tectech/thing/metaTileEntity/multi/GT_MetaTileEntity_EM_EyeOfHarmony;getHeliumStored()J"))
     private long redirectGetHeliumStored(GT_MetaTileEntity_EM_EyeOfHarmony instance) {
-        return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
+            return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
     }
 }

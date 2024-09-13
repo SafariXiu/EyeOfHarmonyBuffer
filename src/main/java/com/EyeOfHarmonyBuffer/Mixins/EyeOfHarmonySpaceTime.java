@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.EyeOfHarmonyBuffer.Config;
 import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
 import gregtech.api.enums.MaterialsUEVplus;
@@ -30,44 +31,48 @@ public class EyeOfHarmonySpaceTime {
 
         if (successfulParallelAmount > 0) {
             outputFluidToAENetwork(MaterialsUEVplus.SpaceTime.getMolten(1), FluidAmount);
-            outputFluidToAENetwork(MaterialsUEVplus.BlackDwarfMatter.getMolten(1), FluidAmount);
-            outputFluidToAENetwork(MaterialsUEVplus.WhiteDwarfMatter.getMolten(1), FluidAmount);
+            if (Config.FluidOutPut) {
+                outputFluidToAENetwork(MaterialsUEVplus.BlackDwarfMatter.getMolten(1), FluidAmount);
+                outputFluidToAENetwork(MaterialsUEVplus.WhiteDwarfMatter.getMolten(1), FluidAmount);
 
-            FluidStack FertileManureSlurry = new FluidStack(FluidRegistry.getFluid("fluid.fertile.manure.slurry"), 1);
+                FluidStack FertileManureSlurry = new FluidStack(
+                    FluidRegistry.getFluid("fluid.fertile.manure.slurry"),
+                    1);
 
-            outputFluidToAENetwork(FertileManureSlurry, FluidAmount);
+                outputFluidToAENetwork(FertileManureSlurry, FluidAmount);
 
-            FluidStack Infinity = new FluidStack(FluidRegistry.getFluidID("molten.infinity"), 1);
+                FluidStack Infinity = new FluidStack(FluidRegistry.getFluidID("molten.infinity"), 1);
 
-            outputFluidToAENetwork(Infinity, FluidAmount);
+                outputFluidToAENetwork(Infinity, FluidAmount);
 
-            FluidStack exciteddtsc = new FluidStack(FluidRegistry.getFluidID("exciteddtsc"), 1);
+                FluidStack exciteddtsc = new FluidStack(FluidRegistry.getFluidID("exciteddtsc"), 1);
 
-            outputFluidToAENetwork(exciteddtsc, FluidAmount);
+                outputFluidToAENetwork(exciteddtsc, FluidAmount);
 
-            FluidStack exciteddtec = new FluidStack(FluidRegistry.getFluidID("exciteddtec"), 1);
+                FluidStack exciteddtec = new FluidStack(FluidRegistry.getFluidID("exciteddtec"), 1);
 
-            outputFluidToAENetwork(exciteddtec, FluidAmount);
+                outputFluidToAENetwork(exciteddtec, FluidAmount);
 
-            FluidStack exciteddtrc = new FluidStack(FluidRegistry.getFluidID("exciteddtrc"), 1);
+                FluidStack exciteddtrc = new FluidStack(FluidRegistry.getFluidID("exciteddtrc"), 1);
 
-            outputFluidToAENetwork(exciteddtrc, FluidAmount);
+                outputFluidToAENetwork(exciteddtrc, FluidAmount);
 
-            FluidStack exciteddtpc = new FluidStack(FluidRegistry.getFluidID("exciteddtpc"), 1);
+                FluidStack exciteddtpc = new FluidStack(FluidRegistry.getFluidID("exciteddtpc"), 1);
 
-            outputFluidToAENetwork(exciteddtpc, FluidAmount);
+                outputFluidToAENetwork(exciteddtpc, FluidAmount);
 
-            FluidStack exciteddtcc = new FluidStack(FluidRegistry.getFluidID("exciteddtcc"), 1);
+                FluidStack exciteddtcc = new FluidStack(FluidRegistry.getFluidID("exciteddtcc"), 1);
 
-            outputFluidToAENetwork(exciteddtcc, FluidAmount);
+                outputFluidToAENetwork(exciteddtcc, FluidAmount);
 
-            FluidStack universium = new FluidStack(FluidRegistry.getFluidID("molten.universium"), 1);
+                FluidStack universium = new FluidStack(FluidRegistry.getFluidID("molten.universium"), 1);
 
-            outputFluidToAENetwork(universium, FluidAmount);
+                outputFluidToAENetwork(universium, FluidAmount);
 
-            FluidStack rawstarmatter = new FluidStack(FluidRegistry.getFluidID("rawstarmatter"), 1);
+                FluidStack rawstarmatter = new FluidStack(FluidRegistry.getFluidID("rawstarmatter"), 1);
 
-            outputFluidToAENetwork(rawstarmatter, FluidAmount);
+                outputFluidToAENetwork(rawstarmatter, FluidAmount);
+            }
 
         }
     }
