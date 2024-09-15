@@ -20,7 +20,6 @@ public class EyeOfHarmonyEU {
     @Inject(method = "processRecipe", at = @At("RETURN"), cancellable = true)
     private void modifyEnergyOutput(EyeOfHarmonyRecipe recipeObject, CallbackInfoReturnable<CheckRecipeResult> cir) {
 
-        // 使用一个50位的大数值
         BigInteger constantOutputEU = Config.getConstantOutputEU();
 
         try {

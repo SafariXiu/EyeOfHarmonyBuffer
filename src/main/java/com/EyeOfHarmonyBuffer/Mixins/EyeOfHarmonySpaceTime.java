@@ -27,7 +27,7 @@ public class EyeOfHarmonySpaceTime {
     private void injectCustomLogic(CallbackInfo ci) {
 
         long FluidAmount;
-        FluidAmount = 2000000000;
+        FluidAmount = Config.Fluid;
 
         if (successfulParallelAmount > 0) {
             outputFluidToAENetwork(MaterialsUEVplus.SpaceTime.getMolten(1), FluidAmount);
