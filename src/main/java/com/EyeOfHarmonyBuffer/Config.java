@@ -18,8 +18,8 @@ public class Config {
 
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
-
     public static boolean EOHLV = true;
+    public static int Fluid = 2000000000;
 
     private static Configuration config;
 
@@ -39,18 +39,20 @@ public class Config {
         discount = config.get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免")
             .getDouble(discount);
         constantOutputEUConfig = config
-            .get("鸿蒙之眼", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger，尽情填写你想要的数值吧XD")
+            .get("鸿蒙之眼功能", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger，尽情填写你想要的数值吧XD")
             .getString();
-        FluidOutPut = config.get("鸿蒙之眼", "鸿蒙之眼流体产出", FluidOutPut, "鸿蒙之眼额外流体产出，每次运行产出大量额外流体，默认开启")
+        FluidOutPut = config.get("鸿蒙之眼流体产出", "鸿蒙之眼流体产出", FluidOutPut, "鸿蒙之眼额外流体产出，每次运行产出额外流体，默认开启")
             .getBoolean(FluidOutPut);
-        GasInPut = config.get("鸿蒙之眼", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作，请与成功率控制与产出控制搭配使用!默认开启")
+        Fluid = config.get("鸿蒙之眼流体产出"," 鸿蒙之眼流体产出数量",Fluid,"鸿蒙之眼额外流体产出数量设定，范围为int(时空产出也受这个参数的控制)")
+            .getInt();
+        GasInPut = config.get("鸿蒙之眼功能", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作，请与成功率控制与产出控制搭配使用!默认开启")
             .getBoolean(GasInPut);
-        EOHtime = config.get("鸿蒙之眼", "鸿蒙之眼运行时间控制", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick，不建议修改，小于128tick会导致游戏延迟暴增!")
+        EOHtime = config.get("鸿蒙之眼功能", "鸿蒙之眼运行时间控制", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick，不建议修改，小于128tick会导致游戏延迟暴增!")
             .getInt(EOHtime);
-        RecipeChance = config.get("鸿蒙之眼", "鸿蒙之眼成功率", RecipeChance, "鸿蒙之眼运行成功率设置，默认为1，即为每次运行百分百产出")
+        RecipeChance = config.get("鸿蒙之眼功能", "鸿蒙之眼成功率", RecipeChance, "鸿蒙之眼运行成功率设置，默认为1，即为每次运行百分百产出，星阵并行模式下则为所有成功率都为设置的参数")
             .getDouble(RecipeChance);
         RecipeYield = config
-            .get("鸿蒙之眼", "鸿蒙之眼产出率", RecipeYield, "鸿蒙之眼产出率设置，默认为1，即为配方中所有物品全部产出完整的1份,不建议大于100，会导致机器卡死并且造成世界卡顿")
+            .get("鸿蒙之眼功能", "鸿蒙之眼产出率", RecipeYield, "鸿蒙之眼产出率设置，默认为1，即为配方中所有物品全部产出完整的1份,不建议大于100，会导致机器卡死并且造成世界卡顿")
             .getDouble(RecipeYield);
         EOHLV = config.get("鸿蒙之眼", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改，无视压缩场等级运行配方!默认开启")
             .getBoolean(EOHLV);
