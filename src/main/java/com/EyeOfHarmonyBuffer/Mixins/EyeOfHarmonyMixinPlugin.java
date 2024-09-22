@@ -21,10 +21,16 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.equals("com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyGas")) {
-            return Config.GasInPut;
+        switch (mixinClassName) {
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyGas":
+                return Config.GasInPut;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyLV":
+                return Config.EOHLV;
+
+            default:
+                return true;
         }
-        return true;
     }
 
     @Override

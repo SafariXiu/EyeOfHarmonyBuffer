@@ -10,7 +10,7 @@ public class Config {
     public static double discount = 1.0;
     public static String constantOutputEUConfig = "476205893017462093817462093817462093817462093817462093817462";
 
-    public static boolean FluidOutPut = true;
+    public static boolean FluidOutPut = false;
 
     public static boolean GasInPut = true;
 
@@ -18,6 +18,8 @@ public class Config {
 
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
+
+    public static boolean EOHLV = true;
 
     private static Configuration config;
 
@@ -50,6 +52,8 @@ public class Config {
         RecipeYield = config
             .get("鸿蒙之眼", "鸿蒙之眼产出率", RecipeYield, "鸿蒙之眼产出率设置，默认为1，即为配方中所有物品全部产出完整的1份,不建议大于100，会导致机器卡死并且造成世界卡顿")
             .getDouble(RecipeYield);
+        EOHLV = config.get("鸿蒙之眼", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改，无视压缩场等级运行配方!默认开启")
+            .getBoolean(EOHLV);
 
         if (config.hasChanged()) {
             config.save();
