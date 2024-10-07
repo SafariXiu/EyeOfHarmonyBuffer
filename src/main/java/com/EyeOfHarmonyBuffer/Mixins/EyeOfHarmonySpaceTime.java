@@ -104,6 +104,26 @@ public class EyeOfHarmonySpaceTime {
                 FluidStack grade1purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade1purifiedwater"), 1);
 
                 outputFluidToAENetwork(grade1purifiedwater, FluidAmount);
+
+                FluidStack flocculationwasteliquid = new FluidStack(FluidRegistry.getFluidID("flocculationwasteliquid"), 1);
+
+                outputFluidToAENetwork(flocculationwasteliquid, FluidAmount);
+
+                FluidStack stablebaryonicmatter = new FluidStack(FluidRegistry.getFluidID("stablebaryonicmatter"), 1);
+
+                outputFluidToAENetwork(stablebaryonicmatter, FluidAmount);
+
+                FluidStack sgcrystalslurry = new FluidStack(FluidRegistry.getFluidID("sgcrystalslurry"), 1);
+
+                outputFluidToAENetwork(sgcrystalslurry, FluidAmount);
+
+                FluidStack creonPlasma = new FluidStack(FluidRegistry.getFluidID("plasma.creon"), 1);
+
+                outputFluidToAENetwork(creonPlasma, FluidAmount);
+
+                FluidStack primordialmatter = new FluidStack(FluidRegistry.getFluidID("primordialmatter"), 1);
+
+                outputFluidToAENetwork(primordialmatter, FluidAmount);
             }
 
         }
