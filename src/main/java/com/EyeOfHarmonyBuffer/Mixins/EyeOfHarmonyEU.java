@@ -9,12 +9,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config;
-import com.github.technus.tectech.recipe.EyeOfHarmonyRecipe;
-import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
 import gregtech.api.recipe.check.CheckRecipeResult;
+import tectech.recipe.EyeOfHarmonyRecipe;
+import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
-@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
+@Mixin(value = MTEEyeOfHarmony.class, remap = false)
 public class EyeOfHarmonyEU {
 
     @Inject(method = "processRecipe", at = @At("RETURN"), cancellable = true)
@@ -24,7 +24,7 @@ public class EyeOfHarmonyEU {
 
         try {
             // 通过反射访问私有字段 outputEU_BigInt
-            Field outputEUField = GT_MetaTileEntity_EM_EyeOfHarmony.class.getDeclaredField("outputEU_BigInt");
+            Field outputEUField = MTEEyeOfHarmony.class.getDeclaredField("outputEU_BigInt");
             outputEUField.setAccessible(true);
             outputEUField.set(this, constantOutputEU);
 

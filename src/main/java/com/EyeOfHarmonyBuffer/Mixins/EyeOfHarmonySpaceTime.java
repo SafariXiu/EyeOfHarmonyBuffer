@@ -10,11 +10,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config;
-import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
 import gregtech.api.enums.MaterialsUEVplus;
+import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
-@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
+@Mixin(value = MTEEyeOfHarmony.class, remap = false)
 public class EyeOfHarmonySpaceTime {
 
     @Shadow
