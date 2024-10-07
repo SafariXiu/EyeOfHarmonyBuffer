@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config;
+
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)

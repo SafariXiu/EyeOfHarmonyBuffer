@@ -29,6 +29,11 @@ public class EyeOfHarmonySpaceTime {
         long FluidAmount;
         FluidAmount = Config.Fluid;
 
+        System.out.println("Inject Custom Logic Triggered");
+        System.out.println("Config.FluidOutPut: " + Config.FluidOutPut);
+        System.out.println("Successful Parallel Amount: " + successfulParallelAmount);
+        System.out.println("Fluid Amount: " + FluidAmount);
+
         if (successfulParallelAmount > 0) {
             outputFluidToAENetwork(MaterialsUEVplus.SpaceTime.getMolten(1), FluidAmount);
             if (Config.FluidOutPut) {
