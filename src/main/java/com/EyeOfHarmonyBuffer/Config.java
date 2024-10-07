@@ -8,11 +8,13 @@ import net.minecraftforge.common.config.Configuration;
 public class Config {
 
     public static double discount = 1.0;
-    public static String constantOutputEUConfig = "476205893017462093817462093817462093817462093817462093817462";
+    public static String constantOutputEUConfig = "1145141919810996996";
 
     public static boolean FluidOutPut = true;
 
     public static boolean GasInPut = true;
+
+    public static boolean EOHinputBusMe = true;
 
     public static int EOHtime = 128;
 
@@ -57,6 +59,8 @@ public class Config {
             .getDouble(RecipeYield);
         EOHLV = config.get("鸿蒙之眼", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改，无视压缩场等级运行配方!默认开启")
             .getBoolean(EOHLV);
+        EOHinputBusMe = config.get("鸿蒙之眼", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
+            .getBoolean(EOHinputBusMe);
 
         if (config.hasChanged()) {
             config.save();

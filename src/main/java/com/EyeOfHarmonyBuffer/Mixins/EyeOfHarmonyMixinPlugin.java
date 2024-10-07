@@ -28,6 +28,9 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyLV":
                 return Config.EOHLV;
 
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyBus":
+                return Config.EOHinputBusMe;
+
             default:
                 return true;
         }
