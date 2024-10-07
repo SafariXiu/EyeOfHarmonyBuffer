@@ -15,20 +15,20 @@ public class EyeOfHarmonyGas {
             value = "INVOKE",
             target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getStellarPlasmaStored()J"))
     private long redirectGetStellarPlasmaStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
+        return Long.MAX_VALUE;
     }
 
     @Redirect(
         method = "processRecipe",
         at = @At(value = "INVOKE", target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getHydrogenStored()J"))
     private long redirectGetHydrogenStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
+        return Long.MAX_VALUE;
     }
 
     @Redirect(
         method = "processRecipe",
         at = @At(value = "INVOKE", target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getHeliumStored()J"))
     private long redirectGetHeliumStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE; // 返回一个极大的值，确保总是通过检查
+        return Long.MAX_VALUE;
     }
 }

@@ -7,8 +7,8 @@ import net.minecraftforge.common.config.Configuration;
 
 public class Config {
 
-    public static double discount = 1.0;
-    public static String constantOutputEUConfig = "1145141919810996996";
+    public static double discount = 0.0;
+    public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
 
     public static boolean FluidOutPut = true;
 
@@ -16,7 +16,7 @@ public class Config {
 
     public static boolean EOHinputBusMe = true;
 
-    public static int EOHtime = 128;
+    public static int EOHtime = 256;
 
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
@@ -38,7 +38,8 @@ public class Config {
             return;
         }
 
-        discount = config.get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免")
+        discount = config.get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免(注:减免不代表你的机器不需要催化剂!他的作用仅仅是不让催化剂消耗，" +
+                "例如填0.0也就是完全不消耗催化剂，但是如果你的DTPF检测不到配方需要的足够催化剂，机器仍然不会工作，你需要在输入仓中放有1份材料配方所需要的催化剂机器才会开始工作，尽管他们并不会被消耗哪怕1点)")
             .getDouble(discount);
         constantOutputEUConfig = config
             .get("鸿蒙之眼功能", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger，尽情填写你想要的数值吧XD")
