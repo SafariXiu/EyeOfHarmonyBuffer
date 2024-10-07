@@ -29,11 +29,6 @@ public class EyeOfHarmonySpaceTime {
         long FluidAmount;
         FluidAmount = Config.Fluid;
 
-        System.out.println("Inject Custom Logic Triggered");
-        System.out.println("Config.FluidOutPut: " + Config.FluidOutPut);
-        System.out.println("Successful Parallel Amount: " + successfulParallelAmount);
-        System.out.println("Fluid Amount: " + FluidAmount);
-
         if (successfulParallelAmount > 0) {
             outputFluidToAENetwork(MaterialsUEVplus.SpaceTime.getMolten(1), FluidAmount);
             if (Config.FluidOutPut) {
@@ -77,6 +72,38 @@ public class EyeOfHarmonySpaceTime {
                 FluidStack rawstarmatter = new FluidStack(FluidRegistry.getFluidID("rawstarmatter"), 1);
 
                 outputFluidToAENetwork(rawstarmatter, FluidAmount);
+
+                FluidStack grade8purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade8purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade8purifiedwater, FluidAmount);
+
+                FluidStack grade7purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade7purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade7purifiedwater, FluidAmount);
+
+                FluidStack grade6purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade6purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade6purifiedwater, FluidAmount);
+
+                FluidStack grade5purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade5purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade5purifiedwater, FluidAmount);
+
+                FluidStack grade4purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade4purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade4purifiedwater, FluidAmount);
+
+                FluidStack grade3purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade3purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade3purifiedwater, FluidAmount);
+
+                FluidStack grade2purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade2purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade2purifiedwater, FluidAmount);
+
+                FluidStack grade1purifiedwater = new FluidStack(FluidRegistry.getFluidID("grade1purifiedwater"), 1);
+
+                outputFluidToAENetwork(grade1purifiedwater, FluidAmount);
             }
 
         }

@@ -16,7 +16,7 @@ public class Config {
 
     public static boolean EOHinputBusMe = true;
 
-    public static int EOHtime = 256;
+    public static int EOHtime = 128;
 
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
