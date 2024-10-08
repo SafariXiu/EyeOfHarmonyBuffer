@@ -60,7 +60,7 @@ public class Config {
                         "鸿蒙之眼",
                         "物品列表",
                         new String[] { "minecraft:diamond:2000000000:0", "miscutils:MU-metaitem.01:2000000000:32105",
-                            "dustSteeleaf:2000000000" },
+                            "oreDict:dustSteeleaf:2000000000" },
                         "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
                     .getStringList();
 
