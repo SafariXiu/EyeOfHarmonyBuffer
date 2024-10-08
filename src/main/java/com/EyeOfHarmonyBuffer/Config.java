@@ -67,6 +67,8 @@ public class Config {
             .getBoolean(EOHLV);
         EOHinputBusMe = config.get("鸿蒙之眼", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
             .getBoolean(EOHinputBusMe);
+        outputItem = config.get("鸿蒙之眼", "鸿蒙之眼物品产出", outputItem, "鸿蒙之眼额外物品产出，每次运行产出额外的物品，默认开启")
+            .getInt(outputItem);
 
         if (config.hasChanged()) {
             config.save();
@@ -87,4 +89,5 @@ public class Config {
     public static void synchronizeConfiguration(File configFile) {
         init(configFile);
     }
+
 }
