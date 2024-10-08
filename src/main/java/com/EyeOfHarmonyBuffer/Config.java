@@ -22,6 +22,7 @@ public class Config {
     public static double RecipeYield = 1;
     public static boolean EOHLV = true;
     public static int Fluid = 2000000000;
+    public static int outputItem = 2000000000;
 
     private static Configuration config;
 

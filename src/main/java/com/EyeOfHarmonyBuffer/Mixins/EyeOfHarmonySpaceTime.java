@@ -105,7 +105,9 @@ public class EyeOfHarmonySpaceTime {
 
                 outputFluidToAENetwork(grade1purifiedwater, FluidAmount);
 
-                FluidStack flocculationwasteliquid = new FluidStack(FluidRegistry.getFluidID("flocculationwasteliquid"), 1);
+                FluidStack flocculationwasteliquid = new FluidStack(
+                    FluidRegistry.getFluidID("flocculationwasteliquid"),
+                    1);
 
                 outputFluidToAENetwork(flocculationwasteliquid, FluidAmount);
 
