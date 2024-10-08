@@ -18,6 +18,8 @@ public class Config {
 
     public static boolean EOHinputBusMe = true;
 
+    public static boolean EOHItemInPut = true;
+
     public static int EOHtime = 128;
 
     public static double RecipeChance = 1;
@@ -44,46 +46,81 @@ public class Config {
             outputItems.clear();
             outputItems.add(new ItemInfo("minecraft", "diamond", 2000000000, 0));
             outputItems.add(new ItemInfo("miscutils", "MU-metaitem.01", 2000000000, 32105));
+            outputItems.add(new ItemInfo("dustSteeleaf", 2000000000));
+            EOHItemInPut = true;
         } else {
             // 非开发环境，正常加载配置文件
-            String[] itemsConfig = config.get(
-                "鸿蒙之眼",
-                "物品列表",
-                new String[] {
-                    "minecraft:diamond:2000000000:0", "miscutils:MU-metaitem.01:2000000000:32105" },
-                "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta")
-                .getStringList();
 
-            System.out.println("从配置中读取的项:");
-            for (String itemConfig : itemsConfig) {
-                System.out.println("- " + itemConfig);
-            }
+            EOHItemInPut = config.get("鸿蒙之眼", "额外产出", EOHItemInPut, "鸿蒙之眼额外物品产出是否启用")
+                .getBoolean(EOHItemInPut);
 
-            outputItems.clear();
+            if (EOHItemInPut) {
+                String[] itemsConfig = config
+                    .get(
+                        "鸿蒙之眼",
+                        "物品列表",
+                        new String[] { "minecraft:diamond:2000000000:0", "miscutils:MU-metaitem.01:2000000000:32105" },
+                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
+                    .getStringList();
 
-            for (String itemConfig : itemsConfig) {
-                String[] parts = itemConfig.trim()
-                    .split(":");
-                if (parts.length == 4) {
-                    String modid = parts[0];
-                    String itemName = parts[1];
-                    int quantity;
-                    int meta;
-                    try {
-                        quantity = Integer.parseInt(parts[2]);
-                        meta = Integer.parseInt(parts[3]);
-                    } catch (NumberFormatException e) {
-                        System.err.println("配置中的数量或元数据值无效：" + itemConfig);
-                        continue;
-                    }
-                    outputItems.add(new ItemInfo(modid, itemName, quantity, meta));
-                    System.out.println("添加了 ItemInfo: " + modid + ":" + itemName + ":" + quantity + ":" + meta);
-                } else {
-                    System.err.println("无效的物品配置格式：" + itemConfig);
+                System.out.println("从配置中读取的项:");
+                for (String itemConfig : itemsConfig) {
+                    System.out.println("- " + itemConfig);
                 }
-            }
 
-            System.out.println("总共加载了 " + outputItems.size() + " 个物品。");
+                outputItems.clear();
+
+                int defaultQuantity = 2000000000;
+
+                for (String itemConfig : itemsConfig) {
+                    itemConfig = itemConfig.trim();
+                    if (itemConfig.startsWith("oreDict:")) {
+                        String[] parts = itemConfig.split(":");
+                        if (parts.length >= 2) {
+                            String oreDictName = parts[1];
+                            Integer quantity = null;
+                            if (parts.length >= 3 && !parts[2].isEmpty()) {
+                                try {
+                                    quantity = Integer.parseInt(parts[2]);
+                                } catch (NumberFormatException e) {
+                                    System.err.println("配置中的数量值无效：" + itemConfig);
+                                    continue;
+                                }
+                            } else {
+                                quantity = defaultQuantity;
+                            }
+                            outputItems.add(new ItemInfo(oreDictName, quantity));
+                            System.out.println("添加了矿物词典 ItemInfo: oreDict:" + oreDictName + ":" + quantity);
+                        } else {
+                            System.err.println("无效的矿物词典物品配置格式：" + itemConfig);
+                        }
+                    } else {
+                        String[] parts = itemConfig.split(":");
+                        if (parts.length == 4) {
+                            String modid = parts[0];
+                            String itemName = parts[1];
+                            int quantity;
+                            int meta;
+                            try {
+                                quantity = Integer.parseInt(parts[2]);
+                                meta = Integer.parseInt(parts[3]);
+                            } catch (NumberFormatException e) {
+                                System.err.println("配置中的数量或元数据值无效：" + itemConfig);
+                                continue;
+                            }
+                            outputItems.add(new ItemInfo(modid, itemName, quantity, meta));
+                            System.out.println("添加了 ItemInfo: " + modid + ":" + itemName + ":" + quantity + ":" + meta);
+                        } else {
+                            System.err.println("无效的物品配置格式：" + itemConfig);
+                        }
+                    }
+                }
+
+                System.out.println("总共加载了 " + outputItems.size() + " 个物品。");
+            } else {
+                outputItems.clear();
+                System.out.println("额外产出已禁用");
+            }
 
             if (config.hasChanged()) {
                 config.save();
