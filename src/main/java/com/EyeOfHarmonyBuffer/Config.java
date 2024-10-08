@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.minecraftforge.common.config.Configuration;
 
@@ -26,6 +28,8 @@ public class Config {
 
     private static Configuration config;
 
+    public static List<ItemInfo> outputItems = new ArrayList<>();
+
     public static void init(File configFile) {
         if (config == null) {
             config = new Configuration(configFile);
@@ -35,8 +39,55 @@ public class Config {
 
     public static void loadConfig() {
         if (isDevelopmentEnvironment()) {
-            System.out.println("检测到开发环境，跳过配置文件加载");
-            return;
+            System.out.println("检测到开发环境，跳过配置文件加载，使用默认的 outputItems。");
+            // 在开发环境中，直接赋予默认的 outputItems 值
+            outputItems.clear();
+            outputItems.add(new ItemInfo("minecraft", "diamond", 2000000000, 0));
+            outputItems.add(new ItemInfo("miscutils", "MU-metaitem.01", 2000000000, 32105));
+        } else {
+            // 非开发环境，正常加载配置文件
+            String[] itemsConfig = config.get(
+                "鸿蒙之眼",
+                "物品列表",
+                new String[] {
+                    "minecraft:diamond:2000000000:0", "miscutils:MU-metaitem.01:2000000000:32105" },
+                "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta")
+                .getStringList();
+
+            System.out.println("从配置中读取的项:");
+            for (String itemConfig : itemsConfig) {
+                System.out.println("- " + itemConfig);
+            }
+
+            outputItems.clear();
+
+            for (String itemConfig : itemsConfig) {
+                String[] parts = itemConfig.trim()
+                    .split(":");
+                if (parts.length == 4) {
+                    String modid = parts[0];
+                    String itemName = parts[1];
+                    int quantity;
+                    int meta;
+                    try {
+                        quantity = Integer.parseInt(parts[2]);
+                        meta = Integer.parseInt(parts[3]);
+                    } catch (NumberFormatException e) {
+                        System.err.println("配置中的数量或元数据值无效：" + itemConfig);
+                        continue;
+                    }
+                    outputItems.add(new ItemInfo(modid, itemName, quantity, meta));
+                    System.out.println("添加了 ItemInfo: " + modid + ":" + itemName + ":" + quantity + ":" + meta);
+                } else {
+                    System.err.println("无效的物品配置格式：" + itemConfig);
+                }
+            }
+
+            System.out.println("总共加载了 " + outputItems.size() + " 个物品。");
+
+            if (config.hasChanged()) {
+                config.save();
+            }
         }
 
         discount = config.get(
