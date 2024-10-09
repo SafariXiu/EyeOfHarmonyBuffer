@@ -23,4 +23,5 @@ public class ItemInfo {
         this.meta = 0;
         this.oreDictName = oreDictName;
     }
+
 }
