@@ -8,9 +8,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config;
 
-import gregtech.common.tileentities.machines.multi.MTEPlasmaForge;
+import gregtech.common.tileentities.machines.multi.GT_MetaTileEntity_PlasmaForge;
 
-@Mixin(value = MTEPlasmaForge.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_PlasmaForge.class, remap = false)
 public abstract class DTPFBuffer {
 
     @Shadow

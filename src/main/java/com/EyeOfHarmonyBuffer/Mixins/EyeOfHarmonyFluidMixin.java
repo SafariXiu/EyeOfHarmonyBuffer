@@ -13,10 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config;
 import com.EyeOfHarmonyBuffer.FluidInfo;
+import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 
-import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
-
-@Mixin(value = MTEEyeOfHarmony.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
 public abstract class EyeOfHarmonyFluidMixin {
 
     @Inject(method = "outputAfterRecipe_EM", at = @At("TAIL"))
@@ -50,7 +49,7 @@ public abstract class EyeOfHarmonyFluidMixin {
                     FluidStack fluidStack = new FluidStack(fluid, amount);
 
                     // 使用反射调用私有方法 outputFluidToAENetwork
-                    Class<?> clazz = MTEEyeOfHarmony.class;
+                    Class<?> clazz = GT_MetaTileEntity_EM_EyeOfHarmony.class;
                     Method method = clazz.getDeclaredMethod("outputFluidToAENetwork", FluidStack.class, long.class);
                     method.setAccessible(true);
 

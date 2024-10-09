@@ -138,8 +138,7 @@ public class Config {
                         "鸿蒙之眼",
                         "流体列表",
                         new String[] { "rawstarmatter:2000000000", "spatialfluid:2000000000",
-                            "molten.spacetime:2000000000", "temporalfluid:2000000000",
-                            "molten.universium:2000000000"},
+                            "molten.spacetime:2000000000", "temporalfluid:2000000000", "molten.universium:2000000000" },
                         "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount来指定")
                     .getStringList();
 
