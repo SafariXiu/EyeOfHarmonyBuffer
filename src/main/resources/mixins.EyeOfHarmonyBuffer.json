@@ -10,11 +10,11 @@
     "DTPFBuffer",
     "EyeOfHarmonyBus",
     "EyeOfHarmonyEU",
+    "EyeOfHarmonyFluidMixin",
     "EyeOfHarmonyGas",
     "EyeOfHarmonyItem",
     "EyeOfHarmonyLV",
     "EyeOfHarmonyMixin",
-    "EyeOfHarmonySpaceTime",
     "MixinGT_MetaTileEntity_EM_EyeOfHarmony"
   ],
   "client": [],
