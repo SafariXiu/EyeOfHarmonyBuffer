@@ -51,7 +51,7 @@ public class Config {
             outputItems.add(new ItemInfo("dustSteeleaf", 2000000000));
             EOHItemInPut = true;
 
-            //流体默认值
+            // 流体默认值
             outputFluids.clear();
             outputFluids.add(new FluidInfo("molten.spacetime", 2000000000));
             outputFluids.add(new FluidInfo("rawstarmatter", 2000000000));
@@ -68,8 +68,7 @@ public class Config {
                     .get(
                         "鸿蒙之眼",
                         "物品列表",
-                        new String[]{"miscutils:MU-metaitem.01:2000000000:32105",
-                            "oreDict:dustSteeleaf:2000000000"},
+                        new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
                         "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
                     .getStringList();
 
@@ -133,17 +132,14 @@ public class Config {
             }
             String[] fluidsConfig = null;
             if (enableFluidOutPut) {
-                fluidsConfig = config.get(
-                    "鸿蒙之眼",
-                    "流体列表",
-                    new String[]{
-                        "rawstarmatter:2000000000",
-                        "spatialfluid:2000000000",
-                        "molten.spacetime:2000000000",
-                        "temporalfluid:2000000000",
-                    },
-                    "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount来指定"
-                ).getStringList();
+                fluidsConfig = config
+                    .get(
+                        "鸿蒙之眼",
+                        "流体列表",
+                        new String[] { "rawstarmatter:2000000000", "spatialfluid:2000000000",
+                            "molten.spacetime:2000000000", "temporalfluid:2000000000", },
+                        "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount来指定")
+                    .getStringList();
 
                 System.out.println("从配置中读取的流体项:");
                 for (String fluidConfig : fluidsConfig) {
