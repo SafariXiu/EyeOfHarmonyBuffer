@@ -12,13 +12,10 @@ public class Config {
     public static double discount = 0.0;
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
 
-    public static boolean FluidOutPut = true;
-
     public static boolean GasInPut = true;
 
     public static boolean EOHinputBusMe = true;
     public static boolean enableFluidOutPut = true;
-
     public static boolean EOHItemInPut = true;
 
     public static int EOHtime = 128;
@@ -26,8 +23,6 @@ public class Config {
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
     public static boolean EOHLV = true;
-    public static int Fluid = 2000000000;
-    public static int outputItem = 2000000000;
 
     private static Configuration config;
 
@@ -41,9 +36,17 @@ public class Config {
         }
     }
 
+    public static void reloadConfig() {
+        if (config != null) {
+            config.load();
+            loadConfig();
+        }
+    }
+
     public static void loadConfig() {
         if (isDevelopmentEnvironment()) {
             System.out.println("检测到开发环境，跳过配置文件加载");
+
             // 在开发环境中，直接赋予默认的 outputItems 值
             outputItems.clear();
             outputItems.add(new ItemInfo("minecraft", "diamond", 2000000000, 0));
@@ -61,13 +64,10 @@ public class Config {
         } else {
             // 非开发环境，正常加载配置文件
 
-            EOHItemInPut = config.get("鸿蒙之眼", "额外产出", EOHItemInPut, "鸿蒙之眼额外物品产出是否启用")
-                .getBoolean(EOHItemInPut);
-
             if (EOHItemInPut) {
                 String[] itemsConfig = config
                     .get(
-                        "鸿蒙之眼",
+                        "鸿蒙之眼功能",
                         "物品列表",
                         new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
                         "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
@@ -135,11 +135,18 @@ public class Config {
             if (enableFluidOutPut) {
                 fluidsConfig = config
                     .get(
-                        "鸿蒙之眼",
+                        "鸿蒙之眼功能",
                         "流体列表",
                         new String[] { "rawstarmatter:2000000000", "spatialfluid:2000000000",
-                            "molten.spacetime:2000000000", "temporalfluid:2000000000",
-                            "molten.universium:2000000000"},
+                            "molten.spacetime:2000000000", "temporalfluid:2000000000", "molten.universium:2000000000",
+                            "plasma.creon:2000000000", "primordialmatter:2000000000", "grade1purifiedwater:2000000000",
+                            "grade2purifiedwater:2000000000", "grade3purifiedwater:2000000000",
+                            "grade4purifiedwater:2000000000", "grade5purifiedwater:2000000000",
+                            "grade6purifiedwater:2000000000", "grade7purifiedwater:2000000000",
+                            "grade8purifiedwater:2000000000", "flocculationwasteliquid:2000000000",
+                            "stablebaryonicmatter:2000000000", "exciteddtsc:2000000000", "exciteddtec:2000000000",
+                            "exciteddtrc:2000000000", "exciteddtpc:2000000000", "exciteddtcc:2000000000",
+                            "sgcrystalslurry:2000000000" },
                         "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount来指定")
                     .getStringList();
 
@@ -185,15 +192,11 @@ public class Config {
             "催化剂减免",
             discount,
             "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免(注:减免不代表你的机器不需要催化剂!他的作用仅仅是不让催化剂消耗，"
-                + "例如填0.0也就是完全不消耗催化剂，但是如果你的DTPF检测不到配方需要的足够催化剂，机器仍然不会工作，你需要在输入仓中放有1份材料配方所需要的催化剂机器才会开始工作，尽管他们并不会被消耗哪怕1点)")
+                + "例如填0.0也就是完全不消耗催化剂，但是如果你的DTPF检测不到配方需要的足够催化剂，机器仍然不会工作，你需要在输入仓中放有1份材料配方所需要的催化剂机器才会开始工作，尽管他们并不会被消耗哪怕1点")
             .getDouble(discount);
         constantOutputEUConfig = config
             .get("鸿蒙之眼功能", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger，尽情填写你想要的数值吧XD")
             .getString();
-        FluidOutPut = config.get("鸿蒙之眼流体产出", "鸿蒙之眼流体产出", FluidOutPut, "鸿蒙之眼额外流体产出，每次运行产出额外流体，默认开启")
-            .getBoolean(FluidOutPut);
-        Fluid = config.get("鸿蒙之眼流体产出", " 鸿蒙之眼流体产出数量", Fluid, "鸿蒙之眼额外流体产出数量设定，范围为int(时空产出也受这个参数的控制)")
-            .getInt();
         GasInPut = config.get("鸿蒙之眼功能", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作，请与成功率控制与产出控制搭配使用!默认开启")
             .getBoolean(GasInPut);
         EOHtime = config.get("鸿蒙之眼功能", "鸿蒙之眼运行时间控制", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick，不建议修改，小于128tick会导致游戏延迟暴增!")
@@ -204,12 +207,14 @@ public class Config {
         RecipeYield = config
             .get("鸿蒙之眼功能", "鸿蒙之眼产出率", RecipeYield, "鸿蒙之眼产出率设置，默认为1，即为配方中所有物品全部产出完整的1份,不建议大于100，会导致机器卡死并且造成世界卡顿")
             .getDouble(RecipeYield);
-        EOHLV = config.get("鸿蒙之眼", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改，无视压缩场等级运行配方!默认开启")
+        EOHLV = config.get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改，无视压缩场等级运行配方!默认开启")
             .getBoolean(EOHLV);
-        EOHinputBusMe = config.get("鸿蒙之眼", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
+        EOHinputBusMe = config.get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
             .getBoolean(EOHinputBusMe);
-        outputItem = config.get("鸿蒙之眼", "鸿蒙之眼物品产出", outputItem, "鸿蒙之眼额外物品产出，每次运行产出额外的物品，默认开启")
-            .getInt(outputItem);
+        enableFluidOutPut = config.get("鸿蒙之眼功能", "鸿蒙之眼额外流体产出", enableFluidOutPut, "鸿蒙之眼额外物品产出是否启用")
+            .getBoolean(enableFluidOutPut);
+        EOHItemInPut = config.get("鸿蒙之眼功能", "额外产出", EOHItemInPut, "鸿蒙之眼额外物品产出是否启用")
+            .getBoolean(EOHItemInPut);
 
         if (config.hasChanged()) {
             config.save();
