@@ -22,11 +22,11 @@ public class EyeOfHarmonyBuffer {
     public static Configuration config;
 
     @Mod.EventHandler
-    // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
-    // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
+
         File configFile = new File(event.getModConfigurationDirectory(), MODID + ".cfg");
         config = new Configuration(configFile);
+
         Config.init(configFile);
 
         proxy.preInit(event);
@@ -47,7 +47,7 @@ public class EyeOfHarmonyBuffer {
     @Mod.EventHandler
     // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {
-        proxy.serverStarting(event);
+        event.registerServerCommand(new CommandReloadConfig());
     }
 
 }
