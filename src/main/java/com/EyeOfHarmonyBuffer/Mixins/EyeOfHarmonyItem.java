@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.Mixins;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import com.EyeOfHarmonyBuffer.OutputProcessing.CustomItemStackLong;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
@@ -13,7 +12,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config;
-import com.EyeOfHarmonyBuffer.ItemInfo;
+import com.EyeOfHarmonyBuffer.info.ItemInfo;
+import com.EyeOfHarmonyBuffer.OutputProcessing.CustomItemStackLong;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
@@ -53,16 +53,24 @@ public abstract class EyeOfHarmonyItem {
                             continue;
                         }
 
-                        ItemStack oreStack = ores.get(0).copy();
-                        customItemStack = new CustomItemStackLong(oreStack.getItem(), itemInfo.quantity, oreStack.getItemDamage());
+                        ItemStack oreStack = ores.get(0)
+                            .copy();
+                        customItemStack = new CustomItemStackLong(
+                            oreStack.getItem(),
+                            itemInfo.quantity,
+                            oreStack.getItemDamage());
                         System.out.println("通过矿物词典名称 " + itemInfo.oreDictName + " 获取到物品 " + oreStack.getDisplayName());
                     } else {
-                        ItemStack itemStack = GameRegistry.findItemStack(itemInfo.modid, itemInfo.itemName, (int) itemInfo.quantity);
+                        ItemStack itemStack = GameRegistry
+                            .findItemStack(itemInfo.modid, itemInfo.itemName, (int) itemInfo.quantity);
                         if (itemStack == null) {
                             System.err.println("未找到物品：" + itemIdentifier);
                             continue;
                         }
-                        customItemStack = new CustomItemStackLong(itemStack.getItem(), itemInfo.quantity, itemInfo.meta);
+                        customItemStack = new CustomItemStackLong(
+                            itemStack.getItem(),
+                            itemInfo.quantity,
+                            itemInfo.meta);
                     }
 
                     if (customItemStack != null) {
@@ -97,12 +105,20 @@ public abstract class EyeOfHarmonyItem {
             Method method = clazz.getDeclaredMethod("outputItemToAENetwork", ItemStack.class, long.class);
             method.setAccessible(true);
 
-            ItemStack itemStack = new ItemStack(customStack.getItem(), (int) Math.min(customStack.getQuantity(), Integer.MAX_VALUE), customStack.getItemMeta());
+            ItemStack itemStack = new ItemStack(
+                customStack.getItem(),
+                (int) Math.min(customStack.getQuantity(), Integer.MAX_VALUE),
+                customStack.getItemMeta());
 
             // 调用方法，传递物品堆栈和数量
             method.invoke(this, itemStack, customStack.getQuantity());
 
-            System.out.println("成功注入 " + customStack.getQuantity() + " 个 " + customStack.getItem().getUnlocalizedName() + " 到 AE 网络中。");
+            System.out.println(
+                "成功注入 " + customStack.getQuantity()
+                    + " 个 "
+                    + customStack.getItem()
+                        .getUnlocalizedName()
+                    + " 到 AE 网络中。");
         } catch (Exception e) {
             System.err.println("输出物品时发生异常：");
             e.printStackTrace();

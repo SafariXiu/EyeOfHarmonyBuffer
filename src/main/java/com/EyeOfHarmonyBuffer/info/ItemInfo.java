@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer;
+package com.EyeOfHarmonyBuffer.info;
 
 public class ItemInfo {
 
@@ -8,7 +8,7 @@ public class ItemInfo {
     public int meta; // 物品的元数据值
     public String oreDictName; // 矿物词典
 
-    public ItemInfo(String modid, String itemName,long quantity, int meta) {
+    public ItemInfo(String modid, String itemName, long quantity, int meta) {
         this.modid = modid;
         this.itemName = itemName;
         this.quantity = quantity;

@@ -16,7 +16,7 @@ public class CustomItemStackLong {
     /**
      * 构造函数
      *
-     * @param item 要包装的物品对象
+     * @param item     要包装的物品对象
      * @param quantity 物品数量，使用 long 类型
      * @param itemMeta 物品的元数据
      */

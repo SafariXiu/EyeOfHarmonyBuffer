@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config;
-import com.EyeOfHarmonyBuffer.FluidInfo;
+import com.EyeOfHarmonyBuffer.info.FluidInfo;
 
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 

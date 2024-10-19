@@ -5,6 +5,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.info.FluidInfo;
+import com.EyeOfHarmonyBuffer.info.ItemInfo;
 import net.minecraftforge.common.config.Configuration;
 
 public class Config {
