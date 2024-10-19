@@ -49,7 +49,7 @@ public class Config {
 
             // 在开发环境中，直接赋予默认的 outputItems 值
             outputItems.clear();
-            outputItems.add(new ItemInfo("minecraft", "diamond", 2000000000, 0));
+            outputItems.add(new ItemInfo("minecraft", "diamond", 20000000000000L, 0));
             outputItems.add(new ItemInfo("miscutils", "MU-metaitem.01", 2000000000, 32105));
             outputItems.add(new ItemInfo("dustSteeleaf", 2000000000));
             EOHItemInPut = true;
