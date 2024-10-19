@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer;
+package com.EyeOfHarmonyBuffer.info;
 
 public class FluidInfo {
 
