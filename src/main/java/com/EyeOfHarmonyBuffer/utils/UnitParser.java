@@ -42,7 +42,7 @@ public class UnitParser {
                 numberPart = input.substring(0, input.length() - 1);
                 break;
             case 'E':
-                multiplier = 1000000000000000000L; // 百万亿
+                multiplier = 1000000000000000000L; // 百亿亿
                 numberPart = input.substring(0, input.length() - 1);
                 break;
             default:

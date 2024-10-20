@@ -74,7 +74,8 @@ public class Config {
                         "鸿蒙之眼功能",
                         "物品列表",
                         new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
-                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
+                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定，支持long级别的物品输出，大于int数量的物品请使用字符来表示，例如100T，100G等方式" +
+                            "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
                     .getStringList();
 
                 System.out.println("从配置中读取的项:");
