@@ -5,9 +5,11 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.EyeOfHarmonyBuffer.info.FluidInfo;
-import com.EyeOfHarmonyBuffer.info.ItemInfo;
 import net.minecraftforge.common.config.Configuration;
+
+import com.EyeOfHarmonyBuffer.utils.FluidInfo;
+import com.EyeOfHarmonyBuffer.utils.ItemInfo;
+import com.EyeOfHarmonyBuffer.utils.UnitParser;
 
 public class Config {
 
@@ -72,7 +74,8 @@ public class Config {
                         "鸿蒙之眼功能",
                         "物品列表",
                         new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
-                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定")
+                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定，支持long级别的物品输出，大于int数量的物品请使用字符来表示，例如100T，100G等方式" +
+                            "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
                     .getStringList();
 
                 System.out.println("从配置中读取的项:");
@@ -82,7 +85,8 @@ public class Config {
 
                 outputItems.clear();
 
-                int defaultQuantity = 2000000000;
+                // 默认数量（如果未指定）
+                long defaultQuantity = 2000000000L;
 
                 for (String itemConfig : itemsConfig) {
                     itemConfig = itemConfig.trim();
@@ -90,17 +94,17 @@ public class Config {
                         String[] parts = itemConfig.split(":");
                         if (parts.length >= 2) {
                             String oreDictName = parts[1];
-                            Integer quantity = null;
+                            long quantity = defaultQuantity;
+
                             if (parts.length >= 3 && !parts[2].isEmpty()) {
                                 try {
-                                    quantity = Integer.parseInt(parts[2]);
+                                    quantity = UnitParser.parseQuantityWithUnits(parts[2]); // 使用单位解析数量
                                 } catch (NumberFormatException e) {
                                     System.err.println("配置中的数量值无效：" + itemConfig);
                                     continue;
                                 }
-                            } else {
-                                quantity = defaultQuantity;
                             }
+
                             outputItems.add(new ItemInfo(oreDictName, quantity));
                             System.out.println("添加了矿物词典 ItemInfo: oreDict:" + oreDictName + ":" + quantity);
                         } else {
@@ -111,15 +115,17 @@ public class Config {
                         if (parts.length == 4) {
                             String modid = parts[0];
                             String itemName = parts[1];
-                            int quantity;
+                            long quantity;
                             int meta;
+
                             try {
-                                quantity = Integer.parseInt(parts[2]);
+                                quantity = UnitParser.parseQuantityWithUnits(parts[2]); // 使用单位解析数量
                                 meta = Integer.parseInt(parts[3]);
                             } catch (NumberFormatException e) {
                                 System.err.println("配置中的数量或元数据值无效：" + itemConfig);
                                 continue;
                             }
+
                             outputItems.add(new ItemInfo(modid, itemName, quantity, meta));
                             System.out.println("添加了 ItemInfo: " + modid + ":" + itemName + ":" + quantity + ":" + meta);
                         } else {

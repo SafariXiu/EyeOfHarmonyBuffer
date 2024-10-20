@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.info;
+package com.EyeOfHarmonyBuffer.utils;
 
 public class ItemInfo {
 
