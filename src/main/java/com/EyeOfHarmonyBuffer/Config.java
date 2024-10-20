@@ -5,9 +5,11 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.EyeOfHarmonyBuffer.info.FluidInfo;
-import com.EyeOfHarmonyBuffer.info.ItemInfo;
 import net.minecraftforge.common.config.Configuration;
+
+import com.EyeOfHarmonyBuffer.utils.FluidInfo;
+import com.EyeOfHarmonyBuffer.utils.ItemInfo;
+import com.EyeOfHarmonyBuffer.utils.UnitParser;
 
 public class Config {
 
@@ -82,7 +84,8 @@ public class Config {
 
                 outputItems.clear();
 
-                int defaultQuantity = 2000000000;
+                // 默认数量（如果未指定）
+                long defaultQuantity = 2000000000L;
 
                 for (String itemConfig : itemsConfig) {
                     itemConfig = itemConfig.trim();
@@ -90,17 +93,17 @@ public class Config {
                         String[] parts = itemConfig.split(":");
                         if (parts.length >= 2) {
                             String oreDictName = parts[1];
-                            Integer quantity = null;
+                            long quantity = defaultQuantity;
+
                             if (parts.length >= 3 && !parts[2].isEmpty()) {
                                 try {
-                                    quantity = Integer.parseInt(parts[2]);
+                                    quantity = UnitParser.parseQuantityWithUnits(parts[2]); // 使用单位解析数量
                                 } catch (NumberFormatException e) {
                                     System.err.println("配置中的数量值无效：" + itemConfig);
                                     continue;
                                 }
-                            } else {
-                                quantity = defaultQuantity;
                             }
+
                             outputItems.add(new ItemInfo(oreDictName, quantity));
                             System.out.println("添加了矿物词典 ItemInfo: oreDict:" + oreDictName + ":" + quantity);
                         } else {
@@ -111,15 +114,17 @@ public class Config {
                         if (parts.length == 4) {
                             String modid = parts[0];
                             String itemName = parts[1];
-                            int quantity;
+                            long quantity;
                             int meta;
+
                             try {
-                                quantity = Integer.parseInt(parts[2]);
+                                quantity = UnitParser.parseQuantityWithUnits(parts[2]); // 使用单位解析数量
                                 meta = Integer.parseInt(parts[3]);
                             } catch (NumberFormatException e) {
                                 System.err.println("配置中的数量或元数据值无效：" + itemConfig);
                                 continue;
                             }
+
                             outputItems.add(new ItemInfo(modid, itemName, quantity, meta));
                             System.out.println("添加了 ItemInfo: " + modid + ":" + itemName + ":" + quantity + ":" + meta);
                         } else {
