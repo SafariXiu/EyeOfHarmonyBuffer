@@ -141,15 +141,14 @@ public class Config {
             String[] fluidsConfig = null;
             if (enableFluidOutPut) {
                 // 从配置文件中读取流体列表
-                fluidsConfig = config
-                    .get(
-                        "鸿蒙之眼功能",
-                        "流体列表",
-                        new String[] { "rawstarmatter:2B", "spatialfluid:2B", "molten.spacetime:2B", "temporalfluid:2B",
-                            "molten.universium:2B", "plasma.creon:2B", "primordialmatter:2B", "grade1purifiedwater:2B",
-                            "grade2purifiedwater:2B" },
-                        "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount 来指定支持long级别的物品输出，大于int数量的流体请使用字符来表示，例如100T，100G等方式"
-                            + "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
+                fluidsConfig = config.get(
+                    "鸿蒙之眼功能",
+                    "流体列表",
+                    new String[] { "rawstarmatter:2B", "spatialfluid:2B", "molten.spacetime:2B", "temporalfluid:2B",
+                        "molten.universium:2B", "plasma.creon:2B", "primordialmatter:2B", "grade1purifiedwater:2B",
+                        "grade2purifiedwater:2B" },
+                    "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount 来指定支持long级别的物品输出，大于int数量的流体请使用字符来表示，例如100T，100G等方式"
+                        + "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
                     .getStringList();
 
                 System.out.println("从配置中读取的流体项:");
