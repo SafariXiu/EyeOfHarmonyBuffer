@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.EyeOfHarmonyBuffer.Config;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import gregtech.common.tileentities.machines.multi.MTEPlasmaForge;
 
@@ -18,7 +18,7 @@ public abstract class DTPFBuffer {
 
     @Inject(method = "recalculateDiscount", at = @At("HEAD"), cancellable = true)
     private void LockDiscount(CallbackInfo ci) {
-        this.discount = Config.discount;
+        this.discount = MainConfig.discount;
 
         ci.cancel();
     }

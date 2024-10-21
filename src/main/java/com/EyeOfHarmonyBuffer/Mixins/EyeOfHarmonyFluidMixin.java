@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.EyeOfHarmonyBuffer.Config;
+import com.EyeOfHarmonyBuffer.Config.FluidConfig;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.FluidInfo;
 
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
@@ -24,19 +25,19 @@ public abstract class EyeOfHarmonyFluidMixin {
         System.out.println("injectFluidOutput 方法被调用。");
 
         try {
-            if (!Config.enableFluidOutPut) {
+            if (!MainConfig.enableFluidOutPut) {
                 System.out.println("流体注入功能已禁用，跳过流体注入逻辑。");
                 return;
             }
 
-            if (Config.outputFluids == null || Config.outputFluids.isEmpty()) {
+            if (FluidConfig.outputFluids == null || FluidConfig.outputFluids.isEmpty()) {
                 System.err.println("错误：Config.outputFluids 为空。");
                 return;
             }
 
-            System.out.println("要输出的流体数量：" + Config.outputFluids.size());
+            System.out.println("要输出的流体数量：" + FluidConfig.outputFluids.size());
 
-            for (FluidInfo fluidInfo : Config.outputFluids) {
+            for (FluidInfo fluidInfo : FluidConfig.outputFluids) {
                 try {
                     String fluidName = fluidInfo.fluidName;
                     long amount = fluidInfo.amount; // 保持 long 类型
