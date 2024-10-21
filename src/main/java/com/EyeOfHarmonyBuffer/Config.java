@@ -60,7 +60,7 @@ public class Config {
 
             // 流体默认值
             outputFluids.clear();
-            outputFluids.add(new FluidInfo("molten.spacetime", 2000000000));
+            outputFluids.add(new FluidInfo("molten.spacetime", 20000000000000L));
             outputFluids.add(new FluidInfo("rawstarmatter", 2000000000));
             outputFluids.add(new FluidInfo("spatialfluid", 2000000000));
             outputFluids.add(new FluidInfo("molten.universium", 2000000000));
@@ -69,13 +69,12 @@ public class Config {
             // 非开发环境，正常加载配置文件
 
             if (EOHItemInPut) {
-                String[] itemsConfig = config
-                    .get(
-                        "鸿蒙之眼功能",
-                        "物品列表",
-                        new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
-                        "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定，支持long级别的物品输出，大于int数量的物品请使用字符来表示，例如100T，100G等方式" +
-                            "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
+                String[] itemsConfig = config.get(
+                    "鸿蒙之眼功能",
+                    "物品列表",
+                    new String[] { "miscutils:MU-metaitem.01:2000000000:32105", "oreDict:dustSteeleaf:2000000000" },
+                    "要输出的物品列表，每个条目格式为 modid:itemname:quantity:meta 或者使用矿物词典 oreDict:quantity 来指定，支持long级别的物品输出，大于int数量的物品请使用字符来表示，例如100T，100G等方式"
+                        + "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
                     .getStringList();
 
                 System.out.println("从配置中读取的项:");
@@ -141,21 +140,15 @@ public class Config {
             }
             String[] fluidsConfig = null;
             if (enableFluidOutPut) {
-                fluidsConfig = config
-                    .get(
-                        "鸿蒙之眼功能",
-                        "流体列表",
-                        new String[] { "rawstarmatter:2000000000", "spatialfluid:2000000000",
-                            "molten.spacetime:2000000000", "temporalfluid:2000000000", "molten.universium:2000000000",
-                            "plasma.creon:2000000000", "primordialmatter:2000000000", "grade1purifiedwater:2000000000",
-                            "grade2purifiedwater:2000000000", "grade3purifiedwater:2000000000",
-                            "grade4purifiedwater:2000000000", "grade5purifiedwater:2000000000",
-                            "grade6purifiedwater:2000000000", "grade7purifiedwater:2000000000",
-                            "grade8purifiedwater:2000000000", "flocculationwasteliquid:2000000000",
-                            "stablebaryonicmatter:2000000000", "exciteddtsc:2000000000", "exciteddtec:2000000000",
-                            "exciteddtrc:2000000000", "exciteddtpc:2000000000", "exciteddtcc:2000000000",
-                            "sgcrystalslurry:2000000000" },
-                        "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount来指定")
+                // 从配置文件中读取流体列表
+                fluidsConfig = config.get(
+                    "鸿蒙之眼功能",
+                    "流体列表",
+                    new String[] { "rawstarmatter:2B", "spatialfluid:2B", "molten.spacetime:2B", "temporalfluid:2B",
+                        "molten.universium:2B", "plasma.creon:2B", "primordialmatter:2B", "grade1purifiedwater:2B",
+                        "grade2purifiedwater:2B" },
+                    "流体列表，每个格式条目为 fluidname:amount 或者 modid:fluidName:amount 来指定支持long级别的物品输出，大于int数量的流体请使用字符来表示，例如100T，100G等方式"
+                        + "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
                     .getStringList();
 
                 System.out.println("从配置中读取的流体项:");
@@ -165,20 +158,27 @@ public class Config {
 
                 outputFluids.clear();
 
+                // 解析每个流体配置项
                 for (String fluidConfig : fluidsConfig) {
                     fluidConfig = fluidConfig.trim();
                     String[] parts = fluidConfig.split(":");
+
+                    // 确保格式正确，至少有 fluidName 和 amount
                     if (parts.length >= 2) {
                         String fluidName = parts[0];
-                        int amount;
+                        String amountStr = parts[1];
+                        long amount;
                         try {
-                            amount = Integer.parseInt(parts[1]);
+                            // 使用 UnitParser 解析数量（支持带单位的数值）
+                            amount = UnitParser.parseQuantityWithUnits(amountStr);
                         } catch (NumberFormatException e) {
                             System.err.println("配置中的流体数量值无效：" + fluidConfig);
                             continue;
                         }
+
+                        // 将解析的流体信息添加到列表中
                         outputFluids.add(new FluidInfo(fluidName, amount));
-                        System.out.println("添加了 FluidInfo: " + fluidName + ":" + amount);
+                        System.out.println("添加了 FluidInfo: " + fluidName + " - " + amount + " mB");
                     } else {
                         System.err.println("无效的流体配置格式：" + fluidConfig);
                     }
