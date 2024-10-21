@@ -4,9 +4,9 @@ public class FluidInfo {
 
     public String modid;
     public String fluidName; // 流体注册名
-    public int amount; // 流体数量，单位为毫桶
+    public long amount; // 流体数量，单位为毫桶
 
-    public FluidInfo(String fluidName, int amount) {
+    public FluidInfo(String fluidName, long amount) {
         this.fluidName = fluidName;
         this.amount = amount;
     }

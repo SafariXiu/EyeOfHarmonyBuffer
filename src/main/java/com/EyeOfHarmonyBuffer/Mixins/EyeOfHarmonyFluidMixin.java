@@ -39,7 +39,7 @@ public abstract class EyeOfHarmonyFluidMixin {
             for (FluidInfo fluidInfo : Config.outputFluids) {
                 try {
                     String fluidName = fluidInfo.fluidName;
-                    int amount = fluidInfo.amount;
+                    long amount = fluidInfo.amount; // 保持 long 类型
 
                     Fluid fluid = FluidRegistry.getFluid(fluidName);
                     if (fluid == null) {
@@ -47,14 +47,16 @@ public abstract class EyeOfHarmonyFluidMixin {
                         continue;
                     }
 
-                    FluidStack fluidStack = new FluidStack(fluid, amount);
+                    // 创建初始的 FluidStack（注意：只在这里生成 FluidStack，不处理数量）
+                    FluidStack fluidStack = new FluidStack(fluid, 1); // 数量暂时设置为 1，稍后在 outputFluidToAENetwork 中处理
 
-                    // 使用反射调用私有方法 outputFluidToAENetwork
+                    // 使用反射调用私有方法 outputFluidToAENetwork，传递 long 类型的数量
                     Class<?> clazz = MTEEyeOfHarmony.class;
                     Method method = clazz.getDeclaredMethod("outputFluidToAENetwork", FluidStack.class, long.class);
                     method.setAccessible(true);
 
-                    method.invoke(this, fluidStack, (long) amount);
+                    // 传递 fluidStack 和 long 类型的 amount，交由 outputFluidToAENetwork 处理
+                    method.invoke(this, fluidStack, amount);
                     System.out.println("成功注入 " + amount + " mB 的 " + fluidName + " 到 AE 网络中。");
 
                 } catch (Exception e) {
