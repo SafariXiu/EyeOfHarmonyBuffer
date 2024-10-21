@@ -1,5 +1,9 @@
 package com.EyeOfHarmonyBuffer;
 
+import java.io.File;
+
+import com.EyeOfHarmonyBuffer.Config.Config;
+
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -10,8 +14,18 @@ public class CommonProxy {
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
-        Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
 
+        File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
+
+        if (!configDir.exists()) {
+            configDir.mkdirs();
+        }
+
+        File mainConfigFile = new File(configDir, "main.cfg");
+        File itemsConfigFile = new File(configDir, "items.cfg");
+        File fluidsConfigFile = new File(configDir, "fluids.cfg");
+
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile);
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)

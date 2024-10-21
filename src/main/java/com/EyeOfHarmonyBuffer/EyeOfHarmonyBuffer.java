@@ -4,6 +4,8 @@ import java.io.File;
 
 import net.minecraftforge.common.config.Configuration;
 
+import com.EyeOfHarmonyBuffer.Config.Config;
+
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -24,10 +26,17 @@ public class EyeOfHarmonyBuffer {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
 
-        File configFile = new File(event.getModConfigurationDirectory(), MODID + ".cfg");
-        config = new Configuration(configFile);
+        File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
 
-        Config.init(configFile);
+        if (!configDir.exists()) {
+            configDir.mkdirs();
+        }
+
+        File mainConfigFile = new File(configDir, "main.cfg");
+        File itemsConfigFile = new File(configDir, "items.cfg");
+        File fluidsConfigFile = new File(configDir, "fluids.cfg");
+
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile);
 
         proxy.preInit(event);
     }

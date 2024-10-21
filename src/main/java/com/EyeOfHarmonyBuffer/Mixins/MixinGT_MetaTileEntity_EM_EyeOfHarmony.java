@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.EyeOfHarmonyBuffer.Config;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
@@ -14,13 +14,13 @@ public class MixinGT_MetaTileEntity_EM_EyeOfHarmony {
 
     @Inject(method = "recipeChanceCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeChanceCalculator(CallbackInfoReturnable<Double> cir) {
-        double customChance = Config.RecipeChance;
+        double customChance = MainConfig.RecipeChance;
         cir.setReturnValue(customChance);
     }
 
     @Inject(method = "recipeYieldCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeYieldCalculator(CallbackInfoReturnable<Double> cir) {
-        double customYield = Config.RecipeYield;
+        double customYield = MainConfig.RecipeYield;
         cir.setReturnValue(customYield);
     }
 }

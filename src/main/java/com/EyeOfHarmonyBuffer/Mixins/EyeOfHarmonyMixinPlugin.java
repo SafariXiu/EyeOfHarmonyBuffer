@@ -7,7 +7,7 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-import com.EyeOfHarmonyBuffer.Config;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
 
@@ -23,13 +23,13 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         switch (mixinClassName) {
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyGas":
-                return Config.GasInPut;
+                return MainConfig.GasInPut;
 
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyLV":
-                return Config.EOHLV;
+                return MainConfig.EOHLV;
 
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyBus":
-                return Config.EOHinputBusMe;
+                return MainConfig.EOHinputBusMe;
 
             default:
                 return true;
