@@ -1,35 +1,28 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
-import java.lang.reflect.Field;
 import java.math.BigInteger;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
 
-import gregtech.api.recipe.check.CheckRecipeResult;
-import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
 public class EyeOfHarmonyEU {
 
-    @Inject(method = "processRecipe", at = @At("RETURN"), cancellable = true)
-    private void modifyEnergyOutput(EyeOfHarmonyRecipe recipeObject, CallbackInfoReturnable<CheckRecipeResult> cir) {
+    @ModifyArg(
+        method = "outputAfterRecipe_EM",
+        at = @At(
+            value = "INVOKE",
+            target = "Lgregtech/common/misc/WirelessNetworkManager;addEUToGlobalEnergyMap(Ljava/util/UUID;Ljava/math/BigInteger;)Z"),
+        index = 1)
+    private BigInteger modifyOutputEU(BigInteger originalOutputEU) {
 
         BigInteger constantOutputEU = Config.getConstantOutputEU();
 
-        try {
-            // 通过反射访问私有字段 outputEU_BigInt
-            Field outputEUField = MTEEyeOfHarmony.class.getDeclaredField("outputEU_BigInt");
-            outputEUField.setAccessible(true);
-            outputEUField.set(this, constantOutputEU);
-
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+        return constantOutputEU;
     }
 }
