@@ -2,33 +2,60 @@ package com.EyeOfHarmonyBuffer.Mixins;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
-
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
+
+import java.lang.reflect.Field;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
 public class EyeOfHarmonyGas {
 
-    @Redirect(
-        method = "processRecipe",
-        at = @At(
-            value = "INVOKE",
-            target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getStellarPlasmaStored()J"))
-    private long redirectGetStellarPlasmaStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE;
+    private EyeOfHarmonyRecipe getCurrentRecipe(MTEEyeOfHarmony instance) {
+        try {
+            Field recipeField = MTEEyeOfHarmony.class.getDeclaredField("currentRecipe");
+            recipeField.setAccessible(true);
+            return (EyeOfHarmonyRecipe) recipeField.get(instance);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
-    @Redirect(
-        method = "processRecipe",
-        at = @At(value = "INVOKE", target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getHydrogenStored()J"))
-    private long redirectGetHydrogenStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE;
+    @Inject(method = "getStellarPlasmaStored", at = @At("HEAD"), cancellable = true)
+    private void returnStellarPlasmaFromRecipe(CallbackInfoReturnable<Long> cir) {
+        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
+
+        if (recipe != null) {
+            long requiredStellarPlasma = (long) (recipe.getHeliumRequirement() * (12.4 / 1_000_000f));
+            System.out.println("返回配方需求的星际等离子体量：" + requiredStellarPlasma);
+            cir.setReturnValue(requiredStellarPlasma);
+        }
     }
 
-    @Redirect(
-        method = "processRecipe",
-        at = @At(value = "INVOKE", target = "Ltectech/thing/metaTileEntity/multi/MTEEyeOfHarmony;getHeliumStored()J"))
-    private long redirectGetHeliumStored(MTEEyeOfHarmony instance) {
-        return Long.MAX_VALUE;
+    @Inject(method = "getHydrogenStored", at = @At("HEAD"), cancellable = true)
+    private void returnHydrogenFromRecipe(CallbackInfoReturnable<Long> cir) {
+        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
+
+        if (recipe != null) {
+            long requiredHydrogen = recipe.getHydrogenRequirement();
+            System.out.println("返回配方需求的氢气量：" + requiredHydrogen);
+            cir.setReturnValue(requiredHydrogen);
+        }
+    }
+
+    @Inject(method = "getHeliumStored", at = @At("HEAD"), cancellable = true)
+    private void returnHeliumFromRecipe(CallbackInfoReturnable<Long> cir) {
+        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
+
+        if (recipe != null) {
+            long requiredHelium = recipe.getHeliumRequirement();
+            System.out.println("返回配方需求的氦气量：" + requiredHelium);
+            cir.setReturnValue(requiredHelium);
+        }
     }
 }
