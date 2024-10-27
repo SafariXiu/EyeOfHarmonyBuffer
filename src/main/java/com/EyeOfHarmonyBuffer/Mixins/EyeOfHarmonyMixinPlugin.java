@@ -34,7 +34,6 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
             case "com.com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyAstralArrayAmount":
                 return MainConfig.EOHAstralArrayAmount;
 
-
             default:
                 return true;
         }

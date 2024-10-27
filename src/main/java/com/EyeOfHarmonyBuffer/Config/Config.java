@@ -21,7 +21,7 @@ public class Config {
         try {
             return new BigInteger(MainConfig.constantOutputEUConfig);
         } catch (NumberFormatException e) {
-        System.err.println("无效的数值:" + MainConfig.constantOutputEUConfig);
+            System.err.println("无效的数值:" + MainConfig.constantOutputEUConfig);
             return BigInteger.ZERO;
         }
     }
