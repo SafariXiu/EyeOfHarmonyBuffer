@@ -11,7 +11,6 @@ public class EyeOfHarmonyAstralArrayAmount {
 
     @ModifyConstant(method = "processRecipe", constant = @Constant(longValue = 8637L))
     private long modifyAstralArrayLimit(long original) {
-        System.out.println("狠狠地注入");
         return 100000L;
     }
 }

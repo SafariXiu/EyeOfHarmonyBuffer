@@ -16,6 +16,7 @@
     "EyeOfHarmonyItem",
     "EyeOfHarmonyLV",
     "EyeOfHarmonyMixin",
+    "EyeOfHarmonyZeroPowerStart",
     "MixinGT_MetaTileEntity_EM_EyeOfHarmony"
   ],
   "client": [],
