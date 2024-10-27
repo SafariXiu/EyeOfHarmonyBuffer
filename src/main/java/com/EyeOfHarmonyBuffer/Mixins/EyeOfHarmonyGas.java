@@ -1,13 +1,14 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import java.lang.reflect.Field;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
 import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
-
-import java.lang.reflect.Field;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
 public class EyeOfHarmonyGas {
