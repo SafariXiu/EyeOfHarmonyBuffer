@@ -8,6 +8,7 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "DTPFBuffer",
+    "EyeOfHarmonyAstralArrayAmount",
     "EyeOfHarmonyBus",
     "EyeOfHarmonyEU",
     "EyeOfHarmonyFluidMixin",

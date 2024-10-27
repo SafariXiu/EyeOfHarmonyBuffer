@@ -16,6 +16,7 @@ public class MainConfig {
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
     public static boolean EOHLV = true;
+    public static boolean EOHAstralArrayAmount = true;
 
     private static Configuration config;
 
@@ -64,6 +65,9 @@ public class MainConfig {
 
         EOHItemInPut = config.get("鸿蒙之眼功能", "额外产出", EOHItemInPut, "鸿蒙之眼额外物品产出是否启用")
             .getBoolean(EOHItemInPut);
+
+        EOHAstralArrayAmount = config.get("鸿蒙之眼功能","鸿蒙之眼星阵上限",EOHAstralArrayAmount,"鸿蒙之眼星阵上限数量修改，最高上限支持到100万")
+            .getBoolean(EOHAstralArrayAmount);
 
         if (config.hasChanged()) {
             config.save();
