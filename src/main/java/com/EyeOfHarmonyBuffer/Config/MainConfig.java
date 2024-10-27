@@ -17,6 +17,7 @@ public class MainConfig {
     public static double RecipeYield = 1;
     public static boolean EOHLV = true;
     public static boolean EOHAstralArrayAmount = true;
+    public static boolean EOHZeroPowerStart = true;
 
     private static Configuration config;
 
@@ -68,6 +69,9 @@ public class MainConfig {
 
         EOHAstralArrayAmount = config.get("鸿蒙之眼功能", "鸿蒙之眼星阵上限", EOHAstralArrayAmount, "鸿蒙之眼星阵上限数量修改，最高上限支持到100万")
             .getBoolean(EOHAstralArrayAmount);
+
+        EOHZeroPowerStart = config.get("鸿蒙之眼功能", "鸿蒙之眼0电启动", EOHZeroPowerStart, "鸿蒙之眼0电量启动，现在它不耗电了!")
+            .getBoolean(EOHZeroPowerStart);
 
         if (config.hasChanged()) {
             config.save();
