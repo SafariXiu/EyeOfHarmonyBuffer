@@ -10,17 +10,12 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
-public class MixinGT_MetaTileEntity_EM_EyeOfHarmony {
-
-    @Inject(method = "recipeChanceCalculator", at = @At("HEAD"), cancellable = true)
-    private void onRecipeChanceCalculator(CallbackInfoReturnable<Double> cir) {
-        double customChance = MainConfig.RecipeChance;
-        cir.setReturnValue(customChance);
-    }
+public class EyeOfHarmonyOutputRateControl {
 
     @Inject(method = "recipeYieldCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeYieldCalculator(CallbackInfoReturnable<Double> cir) {
         double customYield = MainConfig.RecipeYield;
         cir.setReturnValue(customYield);
     }
+
 }

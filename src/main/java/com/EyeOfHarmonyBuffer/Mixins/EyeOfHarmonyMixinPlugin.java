@@ -36,6 +36,13 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
 
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyZeroPowerStart":
                 return MainConfig.EOHZeroPowerStart;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonySuccessRateControl":
+                return MainConfig.EOHSuccessRateControls;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyOutputRateControl":
+                return MainConfig.EOHOutputRateControl;
+
             default:
                 return true;
         }
