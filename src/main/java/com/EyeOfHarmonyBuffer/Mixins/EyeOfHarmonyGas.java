@@ -30,7 +30,6 @@ public class EyeOfHarmonyGas {
 
         if (recipe != null) {
             long requiredStellarPlasma = (long) (recipe.getHeliumRequirement() * (12.4 / 1_000_000f));
-            System.out.println("返回配方需求的星际等离子体量：" + requiredStellarPlasma);
             cir.setReturnValue(requiredStellarPlasma);
         }
     }
@@ -42,7 +41,6 @@ public class EyeOfHarmonyGas {
 
         if (recipe != null) {
             long requiredHydrogen = recipe.getHydrogenRequirement();
-            System.out.println("返回配方需求的氢气量：" + requiredHydrogen);
             cir.setReturnValue(requiredHydrogen);
         }
     }
@@ -54,7 +52,6 @@ public class EyeOfHarmonyGas {
 
         if (recipe != null) {
             long requiredHelium = recipe.getHeliumRequirement();
-            System.out.println("返回配方需求的氦气量：" + requiredHelium);
             cir.setReturnValue(requiredHelium);
         }
     }
