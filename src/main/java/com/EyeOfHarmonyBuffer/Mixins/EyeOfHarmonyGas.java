@@ -30,7 +30,9 @@ public class EyeOfHarmonyGas {
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
         if (recipe != null) {
-            long requiredStellarPlasma = (long) (recipe.getHeliumRequirement() * (12.4 / 1_000_000f));
+            EyeOfHarmonyAccessor accessor = (EyeOfHarmonyAccessor) instance;
+            long parallelAmount = accessor.getParallelAmount();
+            long requiredStellarPlasma = (long) (recipe.getHeliumRequirement() * (12.4 / 1_000_000f) * parallelAmount);
             cir.setReturnValue(requiredStellarPlasma);
         }
     }

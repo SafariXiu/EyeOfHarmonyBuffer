@@ -45,22 +45,22 @@ public class MainConfig {
             .get("鸿蒙之眼功能", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
             .getString();
 
-        GasInPut = config.get("鸿蒙之眼功能", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作")
+        GasInPut = config.get("鸿蒙之眼功能", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作，开启后鸿蒙不需要流体输入即可工作")
             .getBoolean(GasInPut);
 
         EOHtime = config.get("鸿蒙之眼功能", "鸿蒙之眼运行时间控制", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick")
             .getInt(EOHtime);
 
-        RecipeChance = config.get("鸿蒙之眼成功率控制", "鸿蒙之眼成功率设置", RecipeChance, "鸿蒙之眼运行成功率设置")
+        RecipeChance = config.get("鸿蒙之眼成功率", "鸿蒙之眼成功率设置", RecipeChance, "鸿蒙之眼运行成功率大小设置")
             .getDouble(RecipeChance);
 
-        EOHSuccessRateControls = config.get("鸿蒙之眼成功率控制", "鸿蒙之眼成功率控制", EOHSuccessRateControls, "鸿蒙之眼锁定成功率是否开启")
+        EOHSuccessRateControls = config.get("鸿蒙之眼成功率", "鸿蒙之眼成功率控制", EOHSuccessRateControls, "鸿蒙之眼锁定成功率是否开启")
             .getBoolean(EOHSuccessRateControls);
 
-        RecipeYield = config.get("鸿蒙之眼产出率控制", "鸿蒙之眼产出率设置", RecipeYield, "鸿蒙之眼产出率设置")
+        RecipeYield = config.get("鸿蒙之眼产出率", "鸿蒙之眼产出率设置", RecipeYield, "鸿蒙之眼产出率大小设置")
             .getDouble(RecipeYield);
 
-        EOHOutputRateControl = config.get("鸿蒙之眼产出率控制", "鸿蒙之眼产出率控制", EOHOutputRateControl, "鸿蒙之眼锁定产出率是否开启")
+        EOHOutputRateControl = config.get("鸿蒙之眼产出率", "鸿蒙之眼产出率控制", EOHOutputRateControl, "鸿蒙之眼锁定产出率是否开启")
             .getBoolean(EOHOutputRateControl);
 
         EOHLV = config.get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改")

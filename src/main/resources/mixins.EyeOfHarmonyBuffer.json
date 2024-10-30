@@ -8,6 +8,7 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "DTPFBuffer",
+    "EyeOfHarmonyAccessor",
     "EyeOfHarmonyAstralArrayAmount",
     "EyeOfHarmonyBus",
     "EyeOfHarmonyEU",
@@ -16,8 +17,9 @@
     "EyeOfHarmonyItem",
     "EyeOfHarmonyLV",
     "EyeOfHarmonyMixin",
-    "EyeOfHarmonyZeroPowerStart",
-    "EyeOfHarmonySuccessRateControl"
+    "EyeOfHarmonyOutputRateControl",
+    "EyeOfHarmonySuccessRateControl",
+    "EyeOfHarmonyZeroPowerStart"
   ],
   "client": [],
   "server": []

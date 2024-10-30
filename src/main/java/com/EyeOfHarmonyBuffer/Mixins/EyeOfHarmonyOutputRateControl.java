@@ -14,6 +14,7 @@ public class EyeOfHarmonyOutputRateControl {
 
     @Inject(method = "recipeYieldCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeYieldCalculator(CallbackInfoReturnable<Double> cir) {
+        System.out.println("产出率修改成功");
         double customYield = MainConfig.RecipeYield;
         cir.setReturnValue(customYield);
     }
