@@ -84,13 +84,13 @@ public class MainConfig {
         EOHZeroPowerStart = config.get("鸿蒙之眼功能", "鸿蒙之眼0电启动", EOHZeroPowerStart, "鸿蒙之眼0电量启动，现在它不耗电了!")
             .getBoolean(EOHZeroPowerStart);
 
-        EOHWorkTime = config.get("鸿蒙之眼运行时间","鸿蒙之眼运行时间控制",EOHWorkTime,"是否启用控制鸿蒙之眼运行时间为一个固定值")
+        EOHWorkTime = config.get("鸿蒙之眼运行时间", "鸿蒙之眼运行时间控制", EOHWorkTime, "是否启用控制鸿蒙之眼运行时间为一个固定值")
             .getBoolean(EOHWorkTime);
 
-        EOHOpenEuOutPut = config.get("鸿蒙之眼发电","鸿蒙之眼固定发电量设置",EOHOpenEuOutPut,"是否开启鸿蒙之眼额外EU产出")
+        EOHOpenEuOutPut = config.get("鸿蒙之眼发电", "鸿蒙之眼固定发电量设置", EOHOpenEuOutPut, "是否开启鸿蒙之眼额外EU产出")
             .getBoolean(EOHOpenEuOutPut);
 
-        DTPFOpen = config.get("超维度等离子锻炉","催化剂减免是否启用",DTPFOpen,"超维度锻炉锁定催化剂减免是否启用")
+        DTPFOpen = config.get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "超维度锻炉锁定催化剂减免是否启用")
             .getBoolean(DTPFOpen);
 
         if (config.hasChanged()) {
