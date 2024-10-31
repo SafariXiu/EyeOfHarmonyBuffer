@@ -10,7 +10,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
-public class EyeOfHarmonyMixin {
+public class EyeOfHarmonyWorkTime {
 
     @Inject(method = "recipeProcessTimeCalculator", at = @At("HEAD"), cancellable = true)
     private void recipeProcessTimeCalculator(long recipeTime, long recipeSpacetimeCasingRequired,

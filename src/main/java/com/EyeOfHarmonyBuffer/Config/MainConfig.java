@@ -20,6 +20,9 @@ public class MainConfig {
     public static boolean EOHZeroPowerStart = true;
     public static boolean EOHSuccessRateControls = true;
     public static boolean EOHOutputRateControl = true;
+    public static boolean EOHWorkTime = true;
+    public static boolean EOHOpenEuOutPut = true;
+    public static boolean DTPFOpen = true;
 
     private static Configuration config;
 
@@ -42,13 +45,13 @@ public class MainConfig {
             .getDouble(discount);
 
         constantOutputEUConfig = config
-            .get("鸿蒙之眼功能", "鸿蒙之眼发电量", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
+            .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
             .getString();
 
         GasInPut = config.get("鸿蒙之眼功能", "鸿蒙之眼流体输入", GasInPut, "鸿蒙之眼配方流体输入控制，控制是否需要输入流体才会工作，开启后鸿蒙不需要流体输入即可工作")
             .getBoolean(GasInPut);
 
-        EOHtime = config.get("鸿蒙之眼功能", "鸿蒙之眼运行时间控制", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick")
+        EOHtime = config.get("鸿蒙之眼运行时间", "鸿蒙之眼运行时间设置", EOHtime, "控制鸿蒙之眼运行时间为一个固定值，单位为tick")
             .getInt(EOHtime);
 
         RecipeChance = config.get("鸿蒙之眼成功率", "鸿蒙之眼成功率设置", RecipeChance, "鸿蒙之眼运行成功率大小设置")
@@ -63,7 +66,7 @@ public class MainConfig {
         EOHOutputRateControl = config.get("鸿蒙之眼产出率", "鸿蒙之眼产出率控制", EOHOutputRateControl, "鸿蒙之眼锁定产出率是否开启")
             .getBoolean(EOHOutputRateControl);
 
-        EOHLV = config.get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改")
+        EOHLV = config.get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改,开启后1级外壳就可以运行任何级别的配方了")
             .getBoolean(EOHLV);
 
         EOHinputBusMe = config.get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
@@ -80,6 +83,15 @@ public class MainConfig {
 
         EOHZeroPowerStart = config.get("鸿蒙之眼功能", "鸿蒙之眼0电启动", EOHZeroPowerStart, "鸿蒙之眼0电量启动，现在它不耗电了!")
             .getBoolean(EOHZeroPowerStart);
+
+        EOHWorkTime = config.get("鸿蒙之眼运行时间","鸿蒙之眼运行时间控制",EOHWorkTime,"是否启用控制鸿蒙之眼运行时间为一个固定值")
+            .getBoolean(EOHWorkTime);
+
+        EOHOpenEuOutPut = config.get("鸿蒙之眼发电","鸿蒙之眼固定发电量设置",EOHOpenEuOutPut,"是否开启鸿蒙之眼额外EU产出")
+            .getBoolean(EOHOpenEuOutPut);
+
+        DTPFOpen = config.get("超维度等离子锻炉","催化剂减免是否启用",DTPFOpen,"超维度锻炉锁定催化剂减免是否启用")
+            .getBoolean(DTPFOpen);
 
         if (config.hasChanged()) {
             config.save();

@@ -17,7 +17,7 @@ import com.EyeOfHarmonyBuffer.utils.ItemInfo;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
 
 @Mixin(value = MTEEyeOfHarmony.class, remap = false)
-public abstract class EyeOfHarmonyItem {
+public abstract class EyeOfHarmonyItemMixin {
 
     @Inject(method = "outputAfterRecipe_EM", at = @At("TAIL"))
     private void injectCustomOutput(CallbackInfo ci) {

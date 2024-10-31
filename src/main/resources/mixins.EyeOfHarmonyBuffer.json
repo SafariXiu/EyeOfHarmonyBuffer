@@ -14,9 +14,9 @@
     "EyeOfHarmonyEU",
     "EyeOfHarmonyFluidMixin",
     "EyeOfHarmonyGas",
-    "EyeOfHarmonyItem",
+    "EyeOfHarmonyItemMixin",
     "EyeOfHarmonyLV",
-    "EyeOfHarmonyMixin",
+    "EyeOfHarmonyWorkTime",
     "EyeOfHarmonyOutputRateControl",
     "EyeOfHarmonySuccessRateControl",
     "EyeOfHarmonyZeroPowerStart"

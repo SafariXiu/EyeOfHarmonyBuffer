@@ -43,6 +43,15 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
             case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyOutputRateControl":
                 return MainConfig.EOHOutputRateControl;
 
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyWorkTime":
+                return MainConfig.EOHWorkTime;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyEU":
+                return MainConfig.EOHOpenEuOutPut;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.DTPFBuffer":
+                return MainConfig.DTPFOpen;
+
             default:
                 return true;
         }
