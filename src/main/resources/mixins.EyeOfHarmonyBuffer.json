@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8.5-GTNH",
   "package": "com.EyeOfHarmonyBuffer.Mixins",
-  "plugin": "com.EyeOfHarmonyBuffer.Mixins.EyeOfHarmonyMixinPlugin",
+  "plugin": "com.EyeOfHarmonyBuffer.Mixins.MixinPlugin",
   "refmap": "mixins.EyeOfHarmonyBuffer.refmap.json",
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
@@ -16,10 +16,12 @@
     "EyeOfHarmonyGas",
     "EyeOfHarmonyItemMixin",
     "EyeOfHarmonyLV",
-    "EyeOfHarmonyWorkTime",
     "EyeOfHarmonyOutputRateControl",
     "EyeOfHarmonySuccessRateControl",
-    "EyeOfHarmonyZeroPowerStart"
+    "EyeOfHarmonyWorkTime",
+    "EyeOfHarmonyZeroPowerStart",
+    "FOGAccessor",
+    "FOGShardsAvailable"
   ],
   "client": [],
   "server": []

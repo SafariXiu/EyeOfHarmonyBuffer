@@ -23,6 +23,7 @@ public class MainConfig {
     public static boolean EOHWorkTime = true;
     public static boolean EOHOpenEuOutPut = true;
     public static boolean DTPFOpen = true;
+    public static boolean FOGUpDate = true;
 
     private static Configuration config;
 
@@ -92,6 +93,9 @@ public class MainConfig {
 
         DTPFOpen = config.get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "超维度锻炉锁定催化剂减免是否启用")
             .getBoolean(DTPFOpen);
+
+        FOGUpDate = config.get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
+            .getBoolean(FOGUpDate);
 
         if (config.hasChanged()) {
             config.save();
