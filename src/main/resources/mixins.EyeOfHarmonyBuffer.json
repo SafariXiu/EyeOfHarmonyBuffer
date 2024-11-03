@@ -16,10 +16,12 @@
     "EyeOfHarmonyGas",
     "EyeOfHarmonyItemMixin",
     "EyeOfHarmonyLV",
-    "EyeOfHarmonyWorkTime",
     "EyeOfHarmonyOutputRateControl",
     "EyeOfHarmonySuccessRateControl",
-    "EyeOfHarmonyZeroPowerStart"
+    "EyeOfHarmonyWorkTime",
+    "EyeOfHarmonyZeroPowerStart",
+    "FOGAccessor",
+    "FOGShardsAvailable"
   ],
   "client": [],
   "server": []
