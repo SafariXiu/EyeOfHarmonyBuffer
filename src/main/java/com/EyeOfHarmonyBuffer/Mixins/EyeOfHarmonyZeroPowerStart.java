@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -12,6 +13,9 @@ public class EyeOfHarmonyZeroPowerStart {
 
     @Inject(method = "getEUStartCost", at = @At("RETURN"), cancellable = true)
     private void modifyGetEUStartCost(CallbackInfoReturnable<Long> cir) {
-        cir.setReturnValue(0L);
+
+        if(MainConfig.EOHZeroPowerStart){
+            cir.setReturnValue(0L);
+        }
     }
 }

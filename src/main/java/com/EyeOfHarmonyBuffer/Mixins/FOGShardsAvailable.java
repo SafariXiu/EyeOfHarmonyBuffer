@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -13,13 +14,15 @@ public class FOGShardsAvailable {
     @Inject(method = "completeUpgrade", at = @At("HEAD"), cancellable = true)
     private void injectCompleteUpgrade(CallbackInfo ci) {
 
-        FOGAccessor accessor = (FOGAccessor) this;
+        if(MainConfig.FOGUpDate){
+            FOGAccessor accessor = (FOGAccessor) this;
 
-        boolean[] upgrades = accessor.getUpgrades();
-        int currentUpgradeID = accessor.getCurrentUpgradeID();
+            boolean[] upgrades = accessor.getUpgrades();
+            int currentUpgradeID = accessor.getCurrentUpgradeID();
 
-        upgrades[currentUpgradeID] = true;
+            upgrades[currentUpgradeID] = true;
 
-        ci.cancel();
+            ci.cancel();
+        }
     }
 }

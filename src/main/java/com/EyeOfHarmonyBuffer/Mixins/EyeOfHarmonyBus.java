@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins;
 
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,8 +17,10 @@ public class EyeOfHarmonyBus {
     private void injectModifyReturn(CallbackInfoReturnable<Boolean> cir) {
         List<?> mInputBusses = ((MTEEyeOfHarmony) (Object) this).mInputBusses;
 
-        if (mInputBusses != null && !mInputBusses.isEmpty()) {
-            cir.setReturnValue(true);
+        if(MainConfig.EOHinputBusMe){
+            if (mInputBusses != null && !mInputBusses.isEmpty()) {
+                cir.setReturnValue(true);
+            }
         }
     }
 }

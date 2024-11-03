@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
@@ -11,6 +12,10 @@ public class EyeOfHarmonyAstralArrayAmount {
 
     @ModifyConstant(method = "processRecipe", constant = @Constant(longValue = 8637L))
     private long modifyAstralArrayLimit(long original) {
-        return 100000L;
+        if(MainConfig.EOHAstralArrayAmount){
+            return 100000L;
+        }else {
+            return original;
+        }
     }
 }

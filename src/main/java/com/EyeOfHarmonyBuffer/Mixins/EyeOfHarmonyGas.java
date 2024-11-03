@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins;
 
 import java.lang.reflect.Field;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,6 +27,11 @@ public class EyeOfHarmonyGas {
 
     @Inject(method = "getStellarPlasmaStored", at = @At("HEAD"), cancellable = true)
     private void returnStellarPlasmaFromRecipe(CallbackInfoReturnable<Long> cir) {
+
+        if(!MainConfig.GasInPut){
+            return;
+        }
+
         MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
@@ -39,6 +45,11 @@ public class EyeOfHarmonyGas {
 
     @Inject(method = "getHydrogenStored", at = @At("HEAD"), cancellable = true)
     private void returnHydrogenFromRecipe(CallbackInfoReturnable<Long> cir) {
+
+        if(!MainConfig.GasInPut){
+            return;
+        }
+
         MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
@@ -50,6 +61,11 @@ public class EyeOfHarmonyGas {
 
     @Inject(method = "getHeliumStored", at = @At("HEAD"), cancellable = true)
     private void returnHeliumFromRecipe(CallbackInfoReturnable<Long> cir) {
+
+        if(!MainConfig.GasInPut){
+            return;
+        }
+
         MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
