@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
-public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
+public class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackae) {}
@@ -51,6 +51,9 @@ public class EyeOfHarmonyMixinPlugin implements IMixinConfigPlugin {
 
             case "com.EyeOfHarmonyBuffer.Mixins.DTPFBuffer":
                 return MainConfig.DTPFOpen;
+
+            case "com.EyeOfHarmonyBuffer.Mixins.FOGShardsAvailable":
+                return MainConfig.FOGUpDate;
 
             default:
                 return true;
