@@ -1,10 +1,11 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
-import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import tectech.thing.metaTileEntity.multi.MTEForgeOfGods;
 
@@ -14,7 +15,7 @@ public class FOGShardsAvailable {
     @Inject(method = "completeUpgrade", at = @At("HEAD"), cancellable = true)
     private void injectCompleteUpgrade(CallbackInfo ci) {
 
-        if(MainConfig.FOGUpDate){
+        if (MainConfig.FOGUpDate) {
             FOGAccessor accessor = (FOGAccessor) this;
 
             boolean[] upgrades = accessor.getUpgrades();

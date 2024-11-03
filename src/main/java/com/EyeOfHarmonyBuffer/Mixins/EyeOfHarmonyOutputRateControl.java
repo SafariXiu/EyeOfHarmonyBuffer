@@ -15,7 +15,7 @@ public class EyeOfHarmonyOutputRateControl {
     @Inject(method = "recipeYieldCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeYieldCalculator(CallbackInfoReturnable<Double> cir) {
 
-        if(!MainConfig.EOHOutputRateControl){
+        if (!MainConfig.EOHOutputRateControl) {
             return;
         }
 

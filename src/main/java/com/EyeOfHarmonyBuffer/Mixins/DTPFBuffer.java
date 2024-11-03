@@ -19,7 +19,7 @@ public abstract class DTPFBuffer {
     @Inject(method = "recalculateDiscount", at = @At("HEAD"), cancellable = true)
     private void LockDiscount(CallbackInfo ci) {
 
-        if(!MainConfig.DTPFOpen) {
+        if (!MainConfig.DTPFOpen) {
             this.discount = MainConfig.discount;
             ci.cancel();
         }

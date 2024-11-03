@@ -2,11 +2,12 @@ package com.EyeOfHarmonyBuffer.Mixins;
 
 import java.lang.reflect.Field;
 
-import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
@@ -28,7 +29,7 @@ public class EyeOfHarmonyGas {
     @Inject(method = "getStellarPlasmaStored", at = @At("HEAD"), cancellable = true)
     private void returnStellarPlasmaFromRecipe(CallbackInfoReturnable<Long> cir) {
 
-        if(!MainConfig.GasInPut){
+        if (!MainConfig.GasInPut) {
             return;
         }
 
@@ -46,7 +47,7 @@ public class EyeOfHarmonyGas {
     @Inject(method = "getHydrogenStored", at = @At("HEAD"), cancellable = true)
     private void returnHydrogenFromRecipe(CallbackInfoReturnable<Long> cir) {
 
-        if(!MainConfig.GasInPut){
+        if (!MainConfig.GasInPut) {
             return;
         }
 
@@ -62,7 +63,7 @@ public class EyeOfHarmonyGas {
     @Inject(method = "getHeliumStored", at = @At("HEAD"), cancellable = true)
     private void returnHeliumFromRecipe(CallbackInfoReturnable<Long> cir) {
 
-        if(!MainConfig.GasInPut){
+        if (!MainConfig.GasInPut) {
             return;
         }
 

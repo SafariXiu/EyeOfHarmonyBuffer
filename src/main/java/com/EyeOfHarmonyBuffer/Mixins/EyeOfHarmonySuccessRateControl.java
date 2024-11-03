@@ -15,7 +15,7 @@ public class EyeOfHarmonySuccessRateControl {
     @Inject(method = "recipeChanceCalculator", at = @At("HEAD"), cancellable = true)
     private void onRecipeChanceCalculator(CallbackInfoReturnable<Double> cir) {
 
-        if(!MainConfig.EOHSuccessRateControls){
+        if (!MainConfig.EOHSuccessRateControls) {
             return;
         }
 
