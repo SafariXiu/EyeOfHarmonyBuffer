@@ -27,6 +27,7 @@ public class MainConfig {
     public static boolean BioVatTrue = true;
     public static boolean DisTankTrue = true;
     public static boolean DigesterMixin = true;
+    public static boolean LargeFusionMixin = true;
 
     private static Configuration config;
 
@@ -108,6 +109,10 @@ public class MainConfig {
 
         DigesterMixin = config.get("其他机器", "煮解池", DigesterMixin, "开启后煮解池通过线圈等级获得BUFF，提高处理速度与减少时间，并且 不增加额外电力消耗")
             .getBoolean(DigesterMixin);
+
+        LargeFusionMixin = config
+            .get("其他机器", "压缩聚变", LargeFusionMixin, "开启后每个能源仓提供的功率等于每个能量舱口本身的功率，并且锁定最大能量存储为32个能量舱口的上限")
+            .getBoolean(LargeFusionMixin);
 
         if (config.hasChanged()) {
             config.save();

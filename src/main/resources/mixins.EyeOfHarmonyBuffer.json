@@ -24,7 +24,8 @@
     "EyeOfHarmonyWorkTime",
     "EyeOfHarmonyZeroPowerStart",
     "FOGAccessor",
-    "FOGShardsAvailable"
+    "FOGShardsAvailable",
+    "LargeFusionMixin"
   ],
   "client": [],
   "server": []
