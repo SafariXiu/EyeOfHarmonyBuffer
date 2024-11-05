@@ -24,6 +24,9 @@ public class MainConfig {
     public static boolean EOHOpenEuOutPut = true;
     public static boolean DTPFOpen = true;
     public static boolean FOGUpDate = true;
+    public static boolean BioVatTrue = true;
+    public static boolean DisTankTrue = true;
+    public static boolean DigesterMixin = true;
 
     private static Configuration config;
 
@@ -96,6 +99,15 @@ public class MainConfig {
 
         FOGUpDate = config.get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
             .getBoolean(FOGUpDate);
+
+        BioVatTrue = config.get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
+            .getBoolean(BioVatTrue);
+
+        DisTankTrue = config.get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
+            .getBoolean(DisTankTrue);
+
+        DigesterMixin = config.get("其他机器", "煮解池", DigesterMixin, "开启后煮解池通过线圈等级获得BUFF，提高处理速度与减少时间，并且 不增加额外电力消耗")
+            .getBoolean(DigesterMixin);
 
         if (config.hasChanged()) {
             config.save();

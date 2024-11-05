@@ -6,6 +6,10 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "BioVatMixin",
+    "DigesterAccessor",
+    "DigesterMixin",
+    "DissolutionTankMixin",
     "DTPFBuffer",
     "EyeOfHarmonyAccessor",
     "EyeOfHarmonyAstralArrayAmount",
