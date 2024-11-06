@@ -25,7 +25,8 @@
     "EyeOfHarmonyZeroPowerStart",
     "FOGAccessor",
     "FOGShardsAvailable",
-    "LargeFusionMixin"
+    "LargeFusionMixin",
+    "TTMultiblockBaseAccessor"
   ],
   "client": [],
   "server": []
