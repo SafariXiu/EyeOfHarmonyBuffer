@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Mixins;
+package com.EyeOfHarmonyBuffer.Mixins.LargeFusion;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;

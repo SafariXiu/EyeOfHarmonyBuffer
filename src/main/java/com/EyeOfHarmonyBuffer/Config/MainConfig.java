@@ -28,6 +28,8 @@ public class MainConfig {
     public static boolean DisTankTrue = true;
     public static boolean DigesterMixin = true;
     public static boolean LargeFusionMixin = true;
+    public static boolean LargeFusionParaMixin = true;
+    public static int LargeFusionPara = 256;
 
     private static Configuration config;
 
@@ -111,8 +113,14 @@ public class MainConfig {
             .getBoolean(DigesterMixin);
 
         LargeFusionMixin = config
-            .get("其他机器", "压缩聚变", LargeFusionMixin, "开启后每个能源仓提供的功率等于每个能量舱口本身的功率，并且锁定最大能量存储为32个能量舱口的上限")
+            .get("压缩聚变", "压缩聚变能源仓buff", LargeFusionMixin, "开启后提高每个能源仓提供的功率上限，并且锁定最大能量存储为10000000000000EU")
             .getBoolean(LargeFusionMixin);
+
+        LargeFusionParaMixin = config.get("压缩聚变", "开启压缩聚变并行基础值修改", LargeFusionMixin, "开启后支持修改压缩聚变并行基础值,支持1-5级压缩聚变")
+            .getBoolean(LargeFusionParaMixin);
+
+        LargeFusionPara = config.get("压缩聚变", "压缩聚变并行基础值修改", LargeFusionPara, "修改压缩聚变并行基础值,原版机器默认64")
+            .getInt(LargeFusionPara);
 
         if (config.hasChanged()) {
             config.save();

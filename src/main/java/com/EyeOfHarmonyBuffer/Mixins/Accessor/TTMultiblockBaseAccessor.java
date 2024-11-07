@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Mixins;
+package com.EyeOfHarmonyBuffer.Mixins.Accessor;
 
 import java.util.ArrayList;
 
