@@ -31,6 +31,7 @@ public class MainConfig {
     public static boolean LargeFusionParaMixin = true;
     public static int LargeFusionPara = 256;
     public static boolean UUMixin = true;
+    public static boolean BioLabMixin = true;
 
     private static Configuration config;
 
@@ -125,6 +126,9 @@ public class MainConfig {
 
         UUMixin = config.get("其他机器", "大UU", UUMixin, "开启后大UU启用不耗电+int并行")
             .getBoolean(UUMixin);
+
+        BioLabMixin = config.get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
+            .getBoolean(BioLabMixin);
 
         if (config.hasChanged()) {
             config.save();

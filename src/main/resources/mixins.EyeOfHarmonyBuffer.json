@@ -16,6 +16,8 @@
     "Accessor.EyeOfHarmonyAccessor",
     "Accessor.FOGAccessor",
     "Accessor.TTMultiblockBaseAccessor",
+    "BioLab.BioLabAdvancedMixin",
+    "BioLab.BioLabMixin",
     "EOH.EyeOfHarmonyAstralArrayAmount",
     "EOH.EyeOfHarmonyBus",
     "EOH.EyeOfHarmonyEU",
