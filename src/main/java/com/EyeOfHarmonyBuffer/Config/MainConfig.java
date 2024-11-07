@@ -30,6 +30,7 @@ public class MainConfig {
     public static boolean LargeFusionMixin = true;
     public static boolean LargeFusionParaMixin = true;
     public static int LargeFusionPara = 256;
+    public static boolean UUMixin = true;
 
     private static Configuration config;
 
@@ -121,6 +122,9 @@ public class MainConfig {
 
         LargeFusionPara = config.get("压缩聚变", "压缩聚变并行基础值修改", LargeFusionPara, "修改压缩聚变并行基础值,原版机器默认64")
             .getInt(LargeFusionPara);
+
+        UUMixin = config.get("其他机器", "大UU", UUMixin, "开启后大UU启用不耗电+int并行")
+            .getBoolean(UUMixin);
 
         if (config.hasChanged()) {
             config.save();

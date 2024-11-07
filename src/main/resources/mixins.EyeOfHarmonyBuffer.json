@@ -11,6 +11,7 @@
     "DissolutionTankMixin",
     "DTPFBuffer",
     "FOGShardsAvailable",
+    "UUMixin",
     "Accessor.DigesterAccessor",
     "Accessor.EyeOfHarmonyAccessor",
     "Accessor.FOGAccessor",
