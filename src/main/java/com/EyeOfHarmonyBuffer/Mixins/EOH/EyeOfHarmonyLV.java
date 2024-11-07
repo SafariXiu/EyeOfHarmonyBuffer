@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Mixins;
+package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
 import java.lang.reflect.Field;
 

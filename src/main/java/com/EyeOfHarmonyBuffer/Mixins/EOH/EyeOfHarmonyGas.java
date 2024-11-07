@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Mixins;
+package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
 import java.lang.reflect.Field;
 
@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.Mixins.Accessor.EyeOfHarmonyAccessor;
 
 import tectech.recipe.EyeOfHarmonyRecipe;
 import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;

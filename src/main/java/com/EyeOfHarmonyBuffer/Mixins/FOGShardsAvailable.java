@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.Mixins.Accessor.FOGAccessor;
 
 import tectech.thing.metaTileEntity.multi.MTEForgeOfGods;
 
