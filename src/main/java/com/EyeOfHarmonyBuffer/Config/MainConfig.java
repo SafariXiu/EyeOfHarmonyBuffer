@@ -32,6 +32,9 @@ public class MainConfig {
     public static int LargeFusionPara = 256;
     public static boolean UUMixin = true;
     public static boolean BioLabMixin = true;
+    public static boolean SpaceElevatorMiningPlasma = true;
+    public static boolean SpaceElevatorMiningParallelsTrue = true;
+    public static int SpaceElevatorMiningParallels = 10000;
 
     private static Configuration config;
 
@@ -129,6 +132,15 @@ public class MainConfig {
 
         BioLabMixin = config.get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
             .getBoolean(BioLabMixin);
+
+        SpaceElevatorMiningPlasma = config.get("太空电梯-采矿模块","采矿模块等离子体",SpaceElevatorMiningPlasma,"开启后采矿模块不再消耗等离子")
+            .getBoolean(SpaceElevatorMiningPlasma);
+
+        SpaceElevatorMiningParallels = config.get("太空电梯-采矿模块","采矿模块并行数",SpaceElevatorMiningParallels,"设置采矿模块并行数量")
+            .getInt(SpaceElevatorMiningParallels);
+
+        SpaceElevatorMiningParallelsTrue = config.get("太空电梯-采矿模块","采矿模块并行修改",SpaceElevatorMiningParallelsTrue,"开启后可自定义采矿模块并行数量")
+            .getBoolean(SpaceElevatorMiningParallelsTrue);
 
         if (config.hasChanged()) {
             config.save();

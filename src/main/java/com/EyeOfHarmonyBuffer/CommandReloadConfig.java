@@ -1,10 +1,12 @@
 package com.EyeOfHarmonyBuffer;
 
+import com.EyeOfHarmonyBuffer.Events.ConfigReloadedEvent;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
+import net.minecraftforge.common.MinecraftForge;
 
 public class CommandReloadConfig extends CommandBase {
 
@@ -22,6 +24,9 @@ public class CommandReloadConfig extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         try {
             Config.reloadConfig();
+
+            // 触发配置重载事件
+            MinecraftForge.EVENT_BUS.post(new ConfigReloadedEvent());
 
             sender.addChatMessage(new ChatComponentText("配置文件已成功重新加载！"));
         } catch (Exception e) {
