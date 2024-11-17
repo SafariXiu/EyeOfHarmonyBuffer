@@ -1,11 +1,9 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.Mixins.Accessor.SpaceElevatorAccessor;
-import com.gtnewhorizons.gtnhintergalactic.recipe.IG_Recipe;
-import com.gtnewhorizons.gtnhintergalactic.spaceprojects.ProjectAsteroidOutpost;
 import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 import gregtech.api.enums.Materials;
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
@@ -13,11 +11,21 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import tectech.thing.metaTileEntity.multi.base.Parameters;
 
 @Mixin(value = TileEntityModuleMiner.class, remap = false)
-public class SpaceElevatorMixin {
+public abstract class SpaceElevatorMixin extends MTEMultiBlockBase {
+
+    @Shadow
+    private Parameters.Group.ParameterIn modeSetting;
+
+    @Shadow
+    protected abstract int getParallels(FluidStack plasma, int plasmaUsage);
+
+    public SpaceElevatorMixin(int aID, String aName, String aNameRegional) {
+        super(aID, aName, aNameRegional);
+    }
 
     /**
      * 修改 getTierFromPlasma 方法，确保等离子体被识别，但不会消耗。
@@ -61,4 +69,12 @@ public class SpaceElevatorMixin {
         }
     }
 
+    /**
+     * 修改 getRecipeTime 方法的返回值，确保只影响当前类的计算
+     */
+    @Inject(method = "getRecipeTime", at = @At("HEAD"), cancellable = true)
+    protected void modifyGetRecipeTime(int unboostedTime, int plasmaTier, CallbackInfoReturnable<Integer> cir) {
+        int modifiedTime = 128;
+        cir.setReturnValue(modifiedTime);
+    }
 }

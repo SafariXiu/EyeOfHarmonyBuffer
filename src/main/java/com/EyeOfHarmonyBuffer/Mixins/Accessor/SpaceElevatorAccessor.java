@@ -17,5 +17,4 @@ public interface SpaceElevatorAccessor {
     @Accessor("parallelSetting")
     Parameters.Group.ParameterIn getParallelSetting();
 
-
 }
