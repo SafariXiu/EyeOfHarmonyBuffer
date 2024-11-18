@@ -1,12 +1,12 @@
 package com.EyeOfHarmonyBuffer;
 
-import com.EyeOfHarmonyBuffer.Events.ConfigReloadedEvent;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
+import net.minecraftforge.common.MinecraftForge;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
-import net.minecraftforge.common.MinecraftForge;
+import com.EyeOfHarmonyBuffer.Events.ConfigReloadedEvent;
 
 public class CommandReloadConfig extends CommandBase {
 

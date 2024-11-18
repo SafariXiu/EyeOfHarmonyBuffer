@@ -35,6 +35,11 @@ public class MainConfig {
     public static boolean SpaceElevatorMiningPlasma = true;
     public static boolean SpaceElevatorMiningParallelsTrue = true;
     public static int SpaceElevatorMiningParallels = 10000;
+    public static int SpaceElevatorMiningTicks = 128;
+    public static boolean SpaceElevatorMiningTicksTrue = true;
+    public static boolean SpaceElevatorAssemblerParallelsTrue = true;
+    public static int SpaceElevatorAssemblerParallels = 1024;
+    public static boolean SpaceElevatorAssemblerOverClock = true;
 
     private static Configuration config;
 
@@ -133,14 +138,34 @@ public class MainConfig {
         BioLabMixin = config.get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
             .getBoolean(BioLabMixin);
 
-        SpaceElevatorMiningPlasma = config.get("太空电梯-采矿模块","采矿模块等离子体",SpaceElevatorMiningPlasma,"开启后采矿模块不再消耗等离子")
+        SpaceElevatorMiningPlasma = config.get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasma, "开启后采矿模块不再消耗等离子")
             .getBoolean(SpaceElevatorMiningPlasma);
 
-        SpaceElevatorMiningParallels = config.get("太空电梯-采矿模块","采矿模块并行数",SpaceElevatorMiningParallels,"设置采矿模块并行数量")
+        SpaceElevatorMiningParallels = config.get("太空电梯-采矿模块", "采矿模块并行", SpaceElevatorMiningParallels, "设置采矿模块并行数量")
             .getInt(SpaceElevatorMiningParallels);
 
-        SpaceElevatorMiningParallelsTrue = config.get("太空电梯-采矿模块","采矿模块并行修改",SpaceElevatorMiningParallelsTrue,"开启后可自定义采矿模块并行数量")
+        SpaceElevatorMiningParallelsTrue = config
+            .get("太空电梯-采矿模块", "采矿模块并行修改", SpaceElevatorMiningParallelsTrue, "开启后可自定义采矿模块并行数量")
             .getBoolean(SpaceElevatorMiningParallelsTrue);
+
+        SpaceElevatorMiningTicks = config.get("太空电梯-采矿模块", "采矿模块运行时间", SpaceElevatorMiningTicks, "设置采矿模块工作时间")
+            .getInt(SpaceElevatorMiningTicks);
+
+        SpaceElevatorMiningTicksTrue = config
+            .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
+            .getBoolean(SpaceElevatorMiningTicksTrue);
+
+        SpaceElevatorAssemblerParallelsTrue = config
+            .get("太空电梯-组装机模块", "组装机模块并行修改", SpaceElevatorAssemblerParallelsTrue, "开启后可自定义组装机模块并行数量")
+            .getBoolean(SpaceElevatorAssemblerParallelsTrue);
+
+        SpaceElevatorAssemblerParallels = config
+            .get("太空电梯-组装机模块", "组装机模块并行数", SpaceElevatorAssemblerParallels, "设置组装机模块并行数量")
+            .getInt(SpaceElevatorAssemblerParallels);
+
+        SpaceElevatorAssemblerOverClock = config
+            .get("太空电梯-组装机模块", "组装机模块超频", SpaceElevatorAssemblerOverClock, "开启组装机模块超频")
+            .getBoolean(SpaceElevatorAssemblerOverClock);
 
         if (config.hasChanged()) {
             config.save();

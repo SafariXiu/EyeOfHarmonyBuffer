@@ -11,7 +11,6 @@
     "DissolutionTankMixin",
     "DTPFBuffer",
     "FOGShardsAvailable",
-    "SpaceElevatorMixin",
     "UUMixin",
     "Accessor.DigesterAccessor",
     "Accessor.EyeOfHarmonyAccessor",
@@ -32,7 +31,10 @@
     "EOH.EyeOfHarmonyWorkTime",
     "EOH.EyeOfHarmonyZeroPowerStart",
     "LargeFusion.LargeFusionMixin",
-    "LargeFusion.LargeFusionPara"
+    "LargeFusion.LargeFusionPara",
+    "SpaceElevator.ModuleAssemblerParallelsMixin",
+    "SpaceElevator.ModuleAssemblerTicksMixin",
+    "SpaceElevator.ModuleMinerMixin"
   ],
   "client": [],
   "server": []
