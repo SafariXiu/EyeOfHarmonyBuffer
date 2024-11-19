@@ -44,10 +44,7 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonyZeroPowerStart",
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
-            "SpaceElevator.ModuleAssemblerParallelsMixin",
-            "SpaceElevator.ModuleAssemblerTicksMixin",
             "SpaceElevator.ModuleMinerMixin",
-            "SpaceElevator.ModuleAssemblerTicksMixin"
-        );
+            "SpaceElevator.ModuleMinerParallelsMixin");
     }
 }
