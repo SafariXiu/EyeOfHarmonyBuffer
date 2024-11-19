@@ -36,6 +36,8 @@ public class MainConfig {
     public static int SpaceElevatorMiningParallels = 10000;
     public static int SpaceElevatorMiningTicks = 128;
     public static boolean SpaceElevatorMiningTicksTrue = true;
+    public static boolean NaquadahFuelRefineryMixinTrue = true;
+    public static int NaquadahFuelRefineryMagnification = 10000;
 
     private static Configuration config;
 
@@ -147,6 +149,14 @@ public class MainConfig {
         SpaceElevatorMiningTicksTrue = config
             .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
             .getBoolean(SpaceElevatorMiningTicksTrue);
+
+        NaquadahFuelRefineryMixinTrue = config
+            .get("硅岩燃料精炼厂", "开启燃料产出修改", NaquadahFuelRefineryMixinTrue, "开启可以后自定义配方倍率，可以在NEI中查看")
+            .getBoolean(NaquadahFuelRefineryMixinTrue);
+
+        NaquadahFuelRefineryMagnification = config
+            .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
+            .getInt(NaquadahFuelRefineryMagnification);
 
         if (config.hasChanged()) {
             config.save();
