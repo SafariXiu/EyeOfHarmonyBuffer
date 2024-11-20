@@ -40,9 +40,9 @@ public class NaquadahFuelRefineryMixin {
         ),
         index = 0)
     private int modifyFluidAmount(int amount){
-        if(MainConfig.NaquadahFuelOutPutTrue){
+        if(MainConfig.NaquadahFuelOutPutMagnificationTrue){
             if(amount == 1){
-                return amount * MainConfig.NaquadahFuelOutPut;
+                return amount * MainConfig.NaquadahFuelOutPutMagnification;
             }
         }
         return amount;
