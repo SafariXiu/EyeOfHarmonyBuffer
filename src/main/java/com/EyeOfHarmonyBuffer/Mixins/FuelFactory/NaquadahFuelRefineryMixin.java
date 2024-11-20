@@ -35,7 +35,8 @@ public class NaquadahFuelRefineryMixin {
         method = "RegisterFuel",
         at = @At(
             value = "INVOKE",
-            target = "Lgoodgenerator/materials/GGMaterial;getFluidOrGas(I)Lnet/minecraft/fluid/FluidStack;"
+            target = "Lbartworks/system/material/Werkstoff;getFluidOrGas(I)Lnet/minecraftforge/fluids/FluidStack;",
+            args = "ldc=1"
         ),
         index = 0
     )
