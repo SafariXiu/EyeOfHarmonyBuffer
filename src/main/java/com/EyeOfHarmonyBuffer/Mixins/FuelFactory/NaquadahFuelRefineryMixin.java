@@ -30,4 +30,19 @@ public class NaquadahFuelRefineryMixin {
         }
         return originalOutputs;
     }
+
+    @ModifyArg(
+        method = "RegisterFuel",
+        at = @At(
+            value = "INVOKE",
+            target = "Lgoodgenerator/materials/GGMaterial;getFluidOrGas(I)Lnet/minecraft/fluid/FluidStack;"
+        ),
+        index = 0
+    )
+    private int modifyFluidAmount(int amount){
+        if(MainConfig.NaquadahFuelOutPutTrue){
+            return amount * MainConfig.NaquadahFuelOutPut;
+        }
+        return amount;
+    }
 }

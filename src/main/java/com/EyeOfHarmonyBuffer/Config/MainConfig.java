@@ -39,6 +39,9 @@ public class MainConfig {
     public static boolean NaquadahFuelRefineryMixinTrue = true;
     public static int NaquadahFuelRefineryMagnification = 10000;
 
+    public static boolean NaquadahFuelOutPutTrue = true;
+    public static int NaquadahFuelOutPut = 10000;
+
     private static Configuration config;
 
     public static void init(File configFile) {
@@ -157,6 +160,12 @@ public class MainConfig {
         NaquadahFuelRefineryMagnification = config
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
+
+        NaquadahFuelOutPutTrue = config.get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutTrue,"开启后可以自定义枯竭燃料产出倍率")
+            .getBoolean(NaquadahFuelOutPutTrue);
+
+        NaquadahFuelOutPut = config.get("硅岩反应堆","枯竭燃料产出倍率",NaquadahFuelOutPut,"设置枯竭燃料产出倍率")
+            .getInt(NaquadahFuelOutPut);
 
         if (config.hasChanged()) {
             config.save();
