@@ -35,13 +35,15 @@ public class NaquadahFuelRefineryMixin {
         method = "RegisterFuel",
         at = @At(
             value = "INVOKE",
-            target = "Lgoodgenerator/materials/GGMaterial;getFluidOrGas(I)Lnet/minecraft/fluid/FluidStack;"
+            target = "Lbartworks/system/material/Werkstoff;getFluidOrGas(I)Lnet/minecraftforge/fluids/FluidStack;",
+            args = "ldc=1"
         ),
-        index = 0
-    )
+        index = 0)
     private int modifyFluidAmount(int amount){
         if(MainConfig.NaquadahFuelOutPutTrue){
-            return amount * MainConfig.NaquadahFuelOutPut;
+            if(amount == 1){
+                return amount * MainConfig.NaquadahFuelOutPut;
+            }
         }
         return amount;
     }
