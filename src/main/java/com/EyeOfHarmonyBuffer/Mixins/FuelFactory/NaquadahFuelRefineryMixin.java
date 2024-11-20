@@ -39,7 +39,7 @@ public class NaquadahFuelRefineryMixin {
             args = "ldc=1"
         ),
         index = 0)
-    private int modifyFluidAmount(int amount){
+    private static int modifyFluidAmount(int amount){
         if(MainConfig.NaquadahFuelOutPutMagnificationTrue){
             if(amount == 1){
                 return amount * MainConfig.NaquadahFuelOutPutMagnification;
