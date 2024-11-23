@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Mixins.Accessor.FOGAccessor;
 
-import tectech.thing.metaTileEntity.multi.MTEForgeOfGods;
+import tectech.thing.metaTileEntity.multi.godforge.MTEForgeOfGods;
 
 @Mixin(value = MTEForgeOfGods.class, remap = false)
 public class FOGShardsAvailable {
