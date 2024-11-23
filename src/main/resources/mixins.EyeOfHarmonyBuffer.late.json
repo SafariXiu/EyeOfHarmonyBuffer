@@ -32,6 +32,7 @@
     "EOH.EyeOfHarmonyZeroPowerStart",
     "LargeFusion.LargeFusionMixin",
     "LargeFusion.LargeFusionPara",
+    "FuelFactory.NaquadahFuelRefineryMixin",
     "SpaceElevator.ModuleMinerMixin",
     "SpaceElevator.ModuleMinerParallelsMixin"
   ],
