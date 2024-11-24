@@ -16,30 +16,11 @@ public class MainConfig {
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
     public static boolean EOHLV = true;
-    public static boolean EOHAstralArrayAmount = true;
     public static boolean EOHZeroPowerStart = true;
     public static boolean EOHSuccessRateControls = true;
     public static boolean EOHOutputRateControl = true;
     public static boolean EOHWorkTime = true;
     public static boolean EOHOpenEuOutPut = true;
-    public static boolean DTPFOpen = true;
-    public static boolean FOGUpDate = true;
-    public static boolean BioVatTrue = true;
-    public static boolean DisTankTrue = true;
-    public static boolean DigesterMixin = true;
-    public static boolean LargeFusionMixin = true;
-    public static boolean LargeFusionParaMixin = true;
-    public static int LargeFusionPara = 256;
-    public static boolean UUMixin = true;
-    public static boolean BioLabMixin = true;
-    public static boolean SpaceElevatorMiningPlasma = true;
-    public static int SpaceElevatorMiningParallels = 10000;
-    public static int SpaceElevatorMiningTicks = 128;
-    public static boolean SpaceElevatorMiningTicksTrue = true;
-    public static boolean NaquadahFuelRefineryMixinTrue = true;
-    public static int NaquadahFuelRefineryMagnification = 10000;
-    public static boolean NaquadahFuelOutPutMagnificationTrue = true;
-    public static int NaquadahFuelOutPutMagnification = 10000;
 
     private static Configuration config;
 
