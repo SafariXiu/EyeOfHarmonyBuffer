@@ -107,7 +107,7 @@ public class MainConfig {
             .getBoolean(EOHItemInPut);
 
         EOHAstralArrayAmount = config
-            .get("鸿蒙之眼功能", "鸿蒙之眼星阵上限", EOHAstralArrayAmount, "鸿蒙之眼星阵上限数量修改，最高上限支持到100万")
+            .get("鸿蒙之眼功能", "鸿蒙之眼星阵上限", EOHAstralArrayAmount, "鸿蒙之眼星阵上限数量修改，最高上限支持到10万")
             .getBoolean(EOHAstralArrayAmount);
 
         EOHZeroPowerStart = config
