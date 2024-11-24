@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
+import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -7,9 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
-import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
-
-@Mixin(value = MTEEyeOfHarmony.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
 public class EyeOfHarmonySuccessRateControl {
 
     @Inject(method = "recipeChanceCalculator", at = @At("HEAD"), cancellable = true)

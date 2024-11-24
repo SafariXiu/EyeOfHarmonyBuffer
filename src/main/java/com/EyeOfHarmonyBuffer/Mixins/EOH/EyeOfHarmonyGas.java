@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
 import java.lang.reflect.Field;
 
+import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -10,15 +11,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Mixins.Accessor.EyeOfHarmonyAccessor;
 
-import tectech.recipe.EyeOfHarmonyRecipe;
-import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
+import com.github.technus.tectech.recipe.EyeOfHarmonyRecipe;
 
-@Mixin(value = MTEEyeOfHarmony.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
 public class EyeOfHarmonyGas {
 
-    private EyeOfHarmonyRecipe getCurrentRecipe(MTEEyeOfHarmony instance) {
+    private EyeOfHarmonyRecipe getCurrentRecipe(GT_MetaTileEntity_EM_EyeOfHarmony instance) {
         try {
-            Field recipeField = MTEEyeOfHarmony.class.getDeclaredField("currentRecipe");
+            Field recipeField = GT_MetaTileEntity_EM_EyeOfHarmony.class.getDeclaredField("currentRecipe");
             recipeField.setAccessible(true);
             return (EyeOfHarmonyRecipe) recipeField.get(instance);
         } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -34,7 +34,7 @@ public class EyeOfHarmonyGas {
             return;
         }
 
-        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        GT_MetaTileEntity_EM_EyeOfHarmony instance = (GT_MetaTileEntity_EM_EyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
         if (recipe != null) {
@@ -52,7 +52,7 @@ public class EyeOfHarmonyGas {
             return;
         }
 
-        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        GT_MetaTileEntity_EM_EyeOfHarmony instance = (GT_MetaTileEntity_EM_EyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
         if (recipe != null) {
@@ -68,7 +68,7 @@ public class EyeOfHarmonyGas {
             return;
         }
 
-        MTEEyeOfHarmony instance = (MTEEyeOfHarmony) (Object) this;
+        GT_MetaTileEntity_EM_EyeOfHarmony instance = (GT_MetaTileEntity_EM_EyeOfHarmony) (Object) this;
         EyeOfHarmonyRecipe recipe = getCurrentRecipe(instance);
 
         if (recipe != null) {

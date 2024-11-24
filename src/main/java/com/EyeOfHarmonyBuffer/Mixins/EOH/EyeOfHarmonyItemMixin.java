@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
 import java.lang.reflect.Method;
 
+import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 import net.minecraft.item.ItemStack;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,9 +15,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.OutputProcessing.CustomItemStackLong;
 import com.EyeOfHarmonyBuffer.utils.ItemInfo;
 
-import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
-
-@Mixin(value = MTEEyeOfHarmony.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
 public abstract class EyeOfHarmonyItemMixin {
 
     @Inject(method = "outputAfterRecipe_EM", at = @At("TAIL"))
@@ -77,7 +76,7 @@ public abstract class EyeOfHarmonyItemMixin {
      */
     private void outputLongToAENetwork(CustomItemStackLong customStack) {
         try {
-            Class<?> clazz = MTEEyeOfHarmony.class;
+            Class<?> clazz = GT_MetaTileEntity_EM_EyeOfHarmony.class;
             // 假设 outputItemToAENetwork 方法可以处理 ItemStack 和 long 类型的数量
             Method method = clazz.getDeclaredMethod("outputItemToAENetwork", ItemStack.class, long.class);
             method.setAccessible(true);

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
 import java.lang.reflect.Method;
 
+import com.github.technus.tectech.thing.metaTileEntity.multi.GT_MetaTileEntity_EM_EyeOfHarmony;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
@@ -15,9 +16,7 @@ import com.EyeOfHarmonyBuffer.Config.FluidConfig;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.FluidInfo;
 
-import tectech.thing.metaTileEntity.multi.MTEEyeOfHarmony;
-
-@Mixin(value = MTEEyeOfHarmony.class, remap = false)
+@Mixin(value = GT_MetaTileEntity_EM_EyeOfHarmony.class, remap = false)
 public abstract class EyeOfHarmonyFluidMixin {
 
     @Inject(method = "outputAfterRecipe_EM", at = @At("TAIL"))
@@ -52,7 +51,7 @@ public abstract class EyeOfHarmonyFluidMixin {
                     FluidStack fluidStack = new FluidStack(fluid, 1); // 数量暂时设置为 1，稍后在 outputFluidToAENetwork 中处理
 
                     // 使用反射调用私有方法 outputFluidToAENetwork，传递 long 类型的数量
-                    Class<?> clazz = MTEEyeOfHarmony.class;
+                    Class<?> clazz = GT_MetaTileEntity_EM_EyeOfHarmony.class;
                     Method method = clazz.getDeclaredMethod("outputFluidToAENetwork", FluidStack.class, long.class);
                     method.setAccessible(true);
 

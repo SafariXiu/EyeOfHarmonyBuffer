@@ -18,20 +18,7 @@ public class LateMixins implements ILateMixinLoader {
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
         return Arrays.asList(
-            "BioVatMixin",
-            "DigesterMixin",
-            "DissolutionTankMixin",
-            "DTPFBuffer",
-            "FOGShardsAvailable",
-            "UUMixin",
-            "Accessor.DigesterAccessor",
             "Accessor.EyeOfHarmonyAccessor",
-            "Accessor.FOGAccessor",
-            "Accessor.SpaceElevatorAccessor",
-            "Accessor.TTMultiblockBaseAccessor",
-            "BioLab.BioLabAdvancedMixin",
-            "BioLab.BioLabMixin",
-            "EOH.EyeOfHarmonyAstralArrayAmount",
             "EOH.EyeOfHarmonyBus",
             "EOH.EyeOfHarmonyEU",
             "EOH.EyeOfHarmonyFluidMixin",
@@ -41,11 +28,6 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonyOutputRateControl",
             "EOH.EyeOfHarmonySuccessRateControl",
             "EOH.EyeOfHarmonyWorkTime",
-            "EOH.EyeOfHarmonyZeroPowerStart",
-            "LargeFusion.LargeFusionMixin",
-            "LargeFusion.LargeFusionPara",
-            "FuelFactory.NaquadahFuelRefineryMixin",
-            "SpaceElevator.ModuleMinerMixin",
-            "SpaceElevator.ModuleMinerParallelsMixin");
+            "EOH.EyeOfHarmonyZeroPowerStart");
     }
 }

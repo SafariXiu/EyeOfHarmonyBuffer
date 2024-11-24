@@ -58,10 +58,6 @@ public class MainConfig {
     }
 
     public static void loadConfig() {
-        discount = config
-            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免")
-            .getDouble(discount);
-
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
             .getString();
@@ -106,10 +102,6 @@ public class MainConfig {
             .get("鸿蒙之眼功能", "额外产出", EOHItemInPut, "鸿蒙之眼额外物品产出是否启用")
             .getBoolean(EOHItemInPut);
 
-        EOHAstralArrayAmount = config
-            .get("鸿蒙之眼功能", "鸿蒙之眼星阵上限", EOHAstralArrayAmount, "鸿蒙之眼星阵上限数量修改，最高上限支持到100万")
-            .getBoolean(EOHAstralArrayAmount);
-
         EOHZeroPowerStart = config
             .get("鸿蒙之眼功能", "鸿蒙之眼0电启动", EOHZeroPowerStart, "鸿蒙之眼0电量启动，现在它不耗电了!")
             .getBoolean(EOHZeroPowerStart);
@@ -121,78 +113,6 @@ public class MainConfig {
         EOHOpenEuOutPut = config
             .get("鸿蒙之眼发电", "鸿蒙之眼固定发电量设置", EOHOpenEuOutPut, "是否开启鸿蒙之眼额外EU产出")
             .getBoolean(EOHOpenEuOutPut);
-
-        DTPFOpen = config
-            .get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "超维度锻炉锁定催化剂减免是否启用")
-            .getBoolean(DTPFOpen);
-
-        FOGUpDate = config
-            .get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
-            .getBoolean(FOGUpDate);
-
-        BioVatTrue = config
-            .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
-            .getBoolean(BioVatTrue);
-
-        DisTankTrue = config
-            .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
-            .getBoolean(DisTankTrue);
-
-        DigesterMixin = config
-            .get("其他机器", "煮解池", DigesterMixin, "开启后煮解池通过线圈等级获得BUFF，提高处理速度与减少时间，并且 不增加额外电力消耗")
-            .getBoolean(DigesterMixin);
-
-        LargeFusionMixin = config
-            .get("压缩聚变", "压缩聚变能源仓buff", LargeFusionMixin, "开启后提高每个能源仓提供的功率上限，并且锁定最大能量存储为10000000000000EU")
-            .getBoolean(LargeFusionMixin);
-
-        LargeFusionParaMixin = config
-            .get("压缩聚变", "开启压缩聚变并行基础值修改", LargeFusionMixin, "开启后支持修改压缩聚变并行基础值,支持1-5级压缩聚变")
-            .getBoolean(LargeFusionParaMixin);
-
-        LargeFusionPara = config
-            .get("压缩聚变", "压缩聚变并行基础值修改", LargeFusionPara, "修改压缩聚变并行基础值,原版机器默认64")
-            .getInt(LargeFusionPara);
-
-        UUMixin = config
-            .get("其他机器", "大UU", UUMixin, "开启后大UU启用不耗电+int并行")
-            .getBoolean(UUMixin);
-
-        BioLabMixin = config
-            .get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
-            .getBoolean(BioLabMixin);
-
-        SpaceElevatorMiningPlasma = config
-            .get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasma, "开启后采矿模块不再消耗等离子")
-            .getBoolean(SpaceElevatorMiningPlasma);
-
-        SpaceElevatorMiningParallels = config
-            .get("太空电梯-采矿模块", "采矿模块并行修改", SpaceElevatorMiningParallels, "开启后采矿模块最高支持并行128")
-            .getInt(SpaceElevatorMiningParallels);
-
-        SpaceElevatorMiningTicks = config
-            .get("太空电梯-采矿模块", "采矿模块运行时间", SpaceElevatorMiningTicks, "设置采矿模块工作时间")
-            .getInt(SpaceElevatorMiningTicks);
-
-        SpaceElevatorMiningTicksTrue = config
-            .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
-            .getBoolean(SpaceElevatorMiningTicksTrue);
-
-        NaquadahFuelRefineryMixinTrue = config
-            .get("硅岩燃料精炼厂", "开启燃料产出修改", NaquadahFuelRefineryMixinTrue, "开启可以后自定义配方倍率，可以在NEI中查看")
-            .getBoolean(NaquadahFuelRefineryMixinTrue);
-
-        NaquadahFuelRefineryMagnification = config
-            .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
-            .getInt(NaquadahFuelRefineryMagnification);
-
-        NaquadahFuelOutPutMagnificationTrue = config
-            .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
-            .getBoolean(NaquadahFuelOutPutMagnificationTrue);
-
-        NaquadahFuelOutPutMagnification = config
-            .get("硅岩反应堆","枯竭燃料产出倍率",NaquadahFuelOutPutMagnification,"设置枯竭燃料产出倍率")
-            .getInt(NaquadahFuelOutPutMagnification);
 
         if (config.hasChanged()) {
             config.save();

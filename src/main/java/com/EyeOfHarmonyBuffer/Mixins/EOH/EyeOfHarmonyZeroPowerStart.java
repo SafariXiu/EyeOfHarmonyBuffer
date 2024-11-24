@@ -6,8 +6,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-
-import tectech.recipe.EyeOfHarmonyRecipe;
+import com.github.technus.tectech.recipe.EyeOfHarmonyRecipe;
 
 @Mixin(value = EyeOfHarmonyRecipe.class, remap = false)
 public class EyeOfHarmonyZeroPowerStart {
