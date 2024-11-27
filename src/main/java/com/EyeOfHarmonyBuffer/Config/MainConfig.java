@@ -40,6 +40,13 @@ public class MainConfig {
     public static int NaquadahFuelRefineryMagnification = 10000;
     public static boolean NaquadahFuelOutPutMagnificationTrue = true;
     public static int NaquadahFuelOutPutMagnification = 10000;
+    public static boolean BlackHoleCompressorStabilityLock = true;
+    public static boolean BlackHoleCompressorParallelModificationEnabled = true;
+    public static int BlackHoleCompressorParallelCountModification = 2000000000;
+    public static boolean BlackHoleCompressorPowerConsumptionModificationEnabled = true;
+    public static String BlackHoleCompressorPowerConsumptionModification = "0.0";
+    public static boolean BlackHoleCompressorTimeConsumptionModificationEnabled = true;
+    public static String BlackHoleCompressorTimeConsumptionModification = "0.0";
 
     private static Configuration config;
 
@@ -193,6 +200,30 @@ public class MainConfig {
         NaquadahFuelOutPutMagnification = config
             .get("硅岩反应堆","枯竭燃料产出倍率",NaquadahFuelOutPutMagnification,"设置枯竭燃料产出倍率")
             .getInt(NaquadahFuelOutPutMagnification);
+
+        BlackHoleCompressorStabilityLock = config
+            .get("黑洞压缩机","黑洞压缩机稳定性修改",BlackHoleCompressorStabilityLock,"锁定黑洞为稳定状态")
+            .getBoolean(BlackHoleCompressorStabilityLock);
+
+        BlackHoleCompressorParallelModificationEnabled = config
+            .get("黑洞压缩机","黑洞压缩机并行度修改开启",BlackHoleCompressorParallelModificationEnabled,"开启后可以自定义黑洞压缩机并行数量")
+            .getBoolean(BlackHoleCompressorParallelModificationEnabled);
+
+        BlackHoleCompressorParallelCountModification = config
+            .get("黑洞压缩机","黑洞压缩机并行度修改",BlackHoleCompressorParallelCountModification,"黑洞压缩机并行数量修改")
+            .getInt(BlackHoleCompressorParallelCountModification);
+
+        BlackHoleCompressorPowerConsumptionModificationEnabled = config
+            .get("黑洞压缩机","黑洞压缩机耗电修改开启",BlackHoleCompressorPowerConsumptionModificationEnabled,"开启黑洞发电机耗电修改")
+            .getBoolean(BlackHoleCompressorPowerConsumptionModificationEnabled);
+
+        BlackHoleCompressorPowerConsumptionModification = config
+            .get("黑洞压缩机","黑洞压缩机耗电系数修改",BlackHoleCompressorPowerConsumptionModification,"黑洞压缩机耗电系数修改,传入参数为float")
+            .getString();
+
+        BlackHoleCompressorTimeConsumptionModification = config
+            .get("黑洞压缩机","黑洞压缩机耗时系数修改",BlackHoleCompressorTimeConsumptionModification,"黑洞压缩机耗时系数修改,传入参数为float")
+            .getString();
 
         if (config.hasChanged()) {
             config.save();
