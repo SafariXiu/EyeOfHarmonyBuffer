@@ -47,6 +47,8 @@ public class MainConfig {
     public static String BlackHoleCompressorPowerConsumptionModification = "0.0";
     public static boolean BlackHoleCompressorTimeConsumptionModificationEnabled = true;
     public static String BlackHoleCompressorTimeConsumptionModification = "0.0";
+    public static boolean IndustrialLaserEngraverParallelEnabled = true;
+    public static boolean IndustrialLaserEngraverOverclockEnabled = false;
 
     private static Configuration config;
 
@@ -224,6 +226,14 @@ public class MainConfig {
         BlackHoleCompressorTimeConsumptionModification = config
             .get("黑洞压缩机","黑洞压缩机耗时系数修改",BlackHoleCompressorTimeConsumptionModification,"黑洞压缩机耗时系数修改,传入参数为float")
             .getString();
+
+        IndustrialLaserEngraverParallelEnabled = config
+            .get("大激光蚀刻机","大激光蚀刻机并行修改",IndustrialLaserEngraverParallelEnabled,"开启后大激光蚀刻机并行锁定为int")
+            .getBoolean(IndustrialLaserEngraverParallelEnabled);
+
+        IndustrialLaserEngraverOverclockEnabled = config
+            .get("大激光蚀刻机","大激光蚀刻机超频修改",IndustrialLaserEngraverOverclockEnabled,"开启后修改大激光蚀刻机超频机制")
+            .getBoolean(IndustrialLaserEngraverOverclockEnabled);
 
         if (config.hasChanged()) {
             config.save();
