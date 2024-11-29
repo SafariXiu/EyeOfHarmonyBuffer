@@ -1,7 +1,19 @@
 package com.EyeOfHarmonyBuffer.Mixins.LargeFusion;
 
+import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
+import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.interfaces.tileentity.IOverclockDescriptionProvider;
+import gregtech.api.objects.overclockdescriber.OverclockDescriber;
+import gregtech.api.util.MultiblockTooltipBuilder;
+import net.minecraft.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -10,9 +22,24 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import goodgenerator.blocks.tileEntity.base.MTELargeFusionComputer;
 import gregtech.api.enums.GTValues;
+import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 @Mixin(value = MTELargeFusionComputer.class, remap = false)
-public class LargeFusionMixin {
+public abstract class LargeFusionMixin extends MTETooltipMultiBlockBaseEM
+    implements IConstructable, ISurvivalConstructable, IOverclockDescriptionProvider {
+
+    @Shadow
+    public abstract int tier();
+
+    @Shadow
+    public abstract int getMaxPara();
+
+    @Shadow
+    public abstract int extraPara(int startEnergy);
+
+    protected LargeFusionMixin(int aID, String aName, String aNameRegional) {
+        super(aID, aName, aNameRegional);
+    }
 
     /**
      * 覆盖 getSingleHatchPower 方法
@@ -23,9 +50,12 @@ public class LargeFusionMixin {
      */
     @Overwrite
     protected long getSingleHatchPower() {
-        MTELargeFusionComputer fusionComputer = (MTELargeFusionComputer) (Object) this;
+        if(MainConfig.LargeFusionMixin){
+            MTELargeFusionComputer fusionComputer = (MTELargeFusionComputer) (Object) this;
+            return GTValues.V[fusionComputer.tier()] * fusionComputer.getMaxPara() * 32;
+        }
 
-        return GTValues.V[fusionComputer.tier()] * fusionComputer.getMaxPara() * 32;
+        return GTValues.V[tier()] * getMaxPara() * extraPara(100) / 32;
     }
 
     @Inject(method = "maxEUStore", at = @At("RETURN"), cancellable = true)
@@ -34,5 +64,31 @@ public class LargeFusionMixin {
             long maxEnergyStore = 10000000000000L;
             cir.setReturnValue(maxEnergyStore);
         }
+    }
+
+    @Override
+    public IStructureDefinition<? extends TTMultiblockBase> getStructure_EM() {
+        return null;
+    }
+
+    @Override
+    protected MultiblockTooltipBuilder createTooltip() {
+        return null;
+    }
+
+    @Override
+    public void construct(ItemStack stackSize, boolean hintsOnly) {
+
+    }
+
+    @Override
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public OverclockDescriber getOverclockDescriber() {
+        return null;
     }
 }
