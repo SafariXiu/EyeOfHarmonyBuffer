@@ -49,6 +49,7 @@ public class MainConfig {
     public static String BlackHoleCompressorTimeConsumptionModification = "0.0";
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
+    public static boolean MaskInfiniteDurability = true;
 
     private static Configuration config;
 
@@ -234,6 +235,10 @@ public class MainConfig {
         IndustrialLaserEngraverOverclockEnabled = config
             .get("大激光蚀刻机","大激光蚀刻机超频修改",IndustrialLaserEngraverOverclockEnabled,"开启后修改大激光蚀刻机超频机制")
             .getBoolean(IndustrialLaserEngraverOverclockEnabled);
+
+        MaskInfiniteDurability = config
+            .get("物品","晶圆模板(暂译)",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
+            .getBoolean(MaskInfiniteDurability);
 
         if (config.hasChanged()) {
             config.save();
