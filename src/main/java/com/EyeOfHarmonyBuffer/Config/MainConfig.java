@@ -237,7 +237,7 @@ public class MainConfig {
             .getBoolean(IndustrialLaserEngraverOverclockEnabled);
 
         MaskInfiniteDurability = config
-            .get("物品","晶圆模板(暂译)",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
+            .get("物品","掩膜板",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
             .getBoolean(MaskInfiniteDurability);
 
         if (config.hasChanged()) {
