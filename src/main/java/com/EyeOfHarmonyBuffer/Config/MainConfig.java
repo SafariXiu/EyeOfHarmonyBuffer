@@ -50,6 +50,8 @@ public class MainConfig {
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
     public static boolean MaskInfiniteDurability = true;
+    public static boolean SpaceElevatorAssemblerParallelEnable = true;
+    public static int SpaceElevatorAssemblerParallel = 128;
 
     private static Configuration config;
 
@@ -187,6 +189,14 @@ public class MainConfig {
         SpaceElevatorMiningTicksTrue = config
             .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
             .getBoolean(SpaceElevatorMiningTicksTrue);
+
+        SpaceElevatorAssemblerParallelEnable = config
+            .get("太空电梯-组装机模块","组装机模块并行修改开启",SpaceElevatorAssemblerParallelEnable,"开启后可自定义组装机模块并行数量")
+            .getBoolean(SpaceElevatorAssemblerParallelEnable);
+
+        SpaceElevatorAssemblerParallel = config
+            .get("太空电梯-组装机模块","组装机模块并行修改",SpaceElevatorAssemblerParallel,"组装机模块并行数修改")
+            .getInt(SpaceElevatorAssemblerParallel);
 
         NaquadahFuelRefineryMixinTrue = config
             .get("硅岩燃料精炼厂", "开启燃料产出修改", NaquadahFuelRefineryMixinTrue, "开启可以后自定义配方倍率，可以在NEI中查看")
