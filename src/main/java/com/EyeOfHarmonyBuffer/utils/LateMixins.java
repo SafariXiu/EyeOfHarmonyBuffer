@@ -51,7 +51,8 @@ public class LateMixins implements ILateMixinLoader {
             "IndustrialLaserEngraverMixin",
             "Accessor.BlackHoleCompressorAccessor",
             "MaskListMixin",
-            "SpaceElevator.ModuleAssemblerMixin"
+            "SpaceElevator.ModuleAssemblerMixin",
+            "SpaceElevator.ModuleEUMixin"
         );
     }
 }

@@ -32,8 +32,8 @@ public class MainConfig {
     public static int LargeFusionPara = 256;
     public static boolean UUMixin = true;
     public static boolean BioLabMixin = true;
-    public static boolean SpaceElevatorMiningPlasma = true;
-    public static int SpaceElevatorMiningParallels = 10000;
+    public static boolean SpaceElevatorMiningPlasmaEnable = true;
+    public static boolean SpaceElevatorMiningParallelsEnable = true;
     public static int SpaceElevatorMiningTicks = 128;
     public static boolean SpaceElevatorMiningTicksTrue = true;
     public static boolean NaquadahFuelRefineryMixinTrue = true;
@@ -52,6 +52,7 @@ public class MainConfig {
     public static boolean MaskInfiniteDurability = true;
     public static boolean SpaceElevatorAssemblerParallelEnable = true;
     public static int SpaceElevatorAssemblerParallel = 128;
+    public static int SpaceElevatorModuleMiningParallels = 128;
 
     private static Configuration config;
 
@@ -174,13 +175,17 @@ public class MainConfig {
             .get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
             .getBoolean(BioLabMixin);
 
-        SpaceElevatorMiningPlasma = config
-            .get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasma, "开启后采矿模块不再消耗等离子")
-            .getBoolean(SpaceElevatorMiningPlasma);
+        SpaceElevatorMiningPlasmaEnable = config
+            .get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasmaEnable, "开启后采矿模块不再消耗等离子")
+            .getBoolean(SpaceElevatorMiningPlasmaEnable);
 
-        SpaceElevatorMiningParallels = config
-            .get("太空电梯-采矿模块", "采矿模块并行修改", SpaceElevatorMiningParallels, "开启后采矿模块最高支持并行128")
-            .getInt(SpaceElevatorMiningParallels);
+        SpaceElevatorMiningParallelsEnable = config
+            .get("太空电梯-采矿模块", "采矿模块并行修改开启", SpaceElevatorMiningParallelsEnable, "开启后支持自定义采矿模块最高并行")
+            .getBoolean(SpaceElevatorMiningParallelsEnable);
+
+        SpaceElevatorModuleMiningParallels = config
+            .get("太空电梯-采矿模块","采矿模块并行修改",SpaceElevatorModuleMiningParallels,"设置采矿模块最高并行数量")
+            .getInt(SpaceElevatorModuleMiningParallels);
 
         SpaceElevatorMiningTicks = config
             .get("太空电梯-采矿模块", "采矿模块运行时间", SpaceElevatorMiningTicks, "设置采矿模块工作时间")
