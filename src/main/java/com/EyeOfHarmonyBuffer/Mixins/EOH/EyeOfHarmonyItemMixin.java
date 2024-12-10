@@ -21,43 +21,23 @@ public abstract class EyeOfHarmonyItemMixin {
 
     @Inject(method = "outputAfterRecipe_EM", at = @At("TAIL"))
     private void injectCustomOutput(CallbackInfo ci) {
-        System.out.println("injectCustomOutput 方法被调用。");
 
         try {
-            // 检查是否启用额外产出
             if (!MainConfig.EOHItemInPut) {
-                System.out.println("额外产出已禁用");
                 return;
             }
 
-            // 检查配置的输出物品列表是否为空
             if (ItemConfig.outputItems == null || ItemConfig.outputItems.isEmpty()) {
-                System.err.println("错误：Config.outputItems 为空。");
                 return;
             }
 
-            System.out.println("要输出的物品数量：" + ItemConfig.outputItems.size());
-
-            // 遍历配置中的每个物品
             for (ItemInfo itemInfo : ItemConfig.outputItems) {
                 try {
-                    // 处理物品，并使用 CustomItemStackLong 包装物品
                     CustomItemStackLong customItemStack = new CustomItemStackLong(itemInfo);
-
-                    String itemIdentifier = (itemInfo.oreDictName != null) ? "oreDict:" + itemInfo.oreDictName
-                        : itemInfo.modid + ":" + itemInfo.itemName;
-
-                    System.out.println("处理物品：" + itemIdentifier);
-
-                    // 如果成功创建了 CustomItemStackLong 对象，输出到 AE 网络
                     if (customItemStack != null) {
                         outputLongToAENetwork(customItemStack);
                     }
                 } catch (IllegalArgumentException e) {
-                    // 捕获异常并输出错误信息
-                    String itemIdentifier = (itemInfo.oreDictName != null) ? "oreDict:" + itemInfo.oreDictName
-                        : itemInfo.modid + ":" + itemInfo.itemName;
-                    System.err.println("处理物品时发生异常：" + itemIdentifier);
                     e.printStackTrace();
                 }
             }
@@ -66,7 +46,6 @@ public abstract class EyeOfHarmonyItemMixin {
             e.printStackTrace();
         }
 
-        System.out.println("injectCustomOutput 方法结束。");
     }
 
     /**
@@ -78,24 +57,13 @@ public abstract class EyeOfHarmonyItemMixin {
     private void outputLongToAENetwork(CustomItemStackLong customStack) {
         try {
             Class<?> clazz = MTEEyeOfHarmony.class;
-            // 假设 outputItemToAENetwork 方法可以处理 ItemStack 和 long 类型的数量
             Method method = clazz.getDeclaredMethod("outputItemToAENetwork", ItemStack.class, long.class);
             method.setAccessible(true);
 
-            // 将 CustomItemStackLong 转换为标准的 ItemStack
             ItemStack itemStack = customStack.toItemStack();
 
-            // 调用 outputItemToAENetwork 方法，传递物品堆栈和数量
             method.invoke(this, itemStack, customStack.getQuantity());
-
-            System.out.println(
-                "成功注入 " + customStack.getQuantity()
-                    + " 个 "
-                    + customStack.getItem()
-                        .getUnlocalizedName()
-                    + " 到 AE 网络中。");
         } catch (Exception e) {
-            System.err.println("输出物品时发生异常：");
             e.printStackTrace();
         }
     }
