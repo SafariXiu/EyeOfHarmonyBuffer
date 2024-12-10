@@ -10,6 +10,7 @@ public class MainConfig {
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
     public static boolean GasInPut = true;
     public static boolean EOHinputBusMe = true;
+    public static boolean EOHinputHatchEnable= true;
     public static boolean enableFluidOutPut = true;
     public static boolean EOHItemInPut = true;
     public static int EOHtime = 128;
@@ -107,6 +108,10 @@ public class MainConfig {
         EOHinputBusMe = config
             .get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
             .getBoolean(EOHinputBusMe);
+
+        EOHinputHatchEnable = config
+            .get("鸿蒙之眼功能","鸿蒙之眼输入仓",EOHinputHatchEnable,"开启后鸿蒙之眼不强制需求2个输入仓，可以为0,1,2个")
+            .getBoolean(EOHinputHatchEnable);
 
         enableFluidOutPut = config
             .get("鸿蒙之眼功能", "鸿蒙之眼额外流体产出", enableFluidOutPut, "鸿蒙之眼额外流体产出是否启用")
