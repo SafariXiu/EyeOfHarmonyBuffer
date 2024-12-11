@@ -51,6 +51,7 @@ public class MainConfig {
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
     public static boolean MaskInfiniteDurability = true;
+    public static boolean Grade8WaterPurificationEnabled = true;
 
     private static Configuration config;
 
@@ -244,6 +245,10 @@ public class MainConfig {
         MaskInfiniteDurability = config
             .get("物品","掩膜板",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
             .getBoolean(MaskInfiniteDurability);
+
+        Grade8WaterPurificationEnabled = config
+            .get("净化水产线机器","8级水",Grade8WaterPurificationEnabled,"开启后8级水机器不需要输入夸克与催化剂即可工作")
+            .getBoolean(Grade8WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();
