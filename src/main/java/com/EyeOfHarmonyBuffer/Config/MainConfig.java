@@ -52,6 +52,7 @@ public class MainConfig {
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
     public static boolean MaskInfiniteDurability = true;
     public static boolean Grade8WaterPurificationEnabled = true;
+    public static boolean Grade7WaterPurificationEnabled = false;
 
     private static Configuration config;
 
@@ -249,6 +250,10 @@ public class MainConfig {
         Grade8WaterPurificationEnabled = config
             .get("净化水产线机器","8级水",Grade8WaterPurificationEnabled,"开启后8级水机器不需要输入夸克与催化剂即可工作")
             .getBoolean(Grade8WaterPurificationEnabled);
+
+        Grade7WaterPurificationEnabled = config
+            .get("净化水产线机器","7级水",Grade7WaterPurificationEnabled,"开启后7级水机器输入6级水即可工作，不需要任何额外自动化")
+            .getBoolean(Grade7WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();

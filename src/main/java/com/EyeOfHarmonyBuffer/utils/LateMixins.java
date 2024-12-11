@@ -51,7 +51,8 @@ public class LateMixins implements ILateMixinLoader {
             "IndustrialLaserEngraverMixin",
             "Accessor.BlackHoleCompressorAccessor",
             "MaskListMixin",
-            "TreatedWater.Grade8WaterPurificationMixin"
+            "TreatedWater.Grade8WaterPurificationMixin",
+            "TreatedWater.Grade7WaterPurificationMixin"
         );
     }
 }
