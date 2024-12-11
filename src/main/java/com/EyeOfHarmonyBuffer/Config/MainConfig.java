@@ -54,6 +54,9 @@ public class MainConfig {
     public static boolean Grade8WaterPurificationEnabled = true;
     public static boolean Grade7WaterPurificationEnabled = true;
     public static boolean Grade6WaterPurificationEnabled = true;
+    public static boolean Grade5WaterPurificationEnabled = true;
+
+    public static boolean Water = true;
 
     private static Configuration config;
 
@@ -248,6 +251,10 @@ public class MainConfig {
             .get("物品","掩膜板",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
             .getBoolean(MaskInfiniteDurability);
 
+        Water = config
+            .get("净化水产线机器","提示",Water,"净化水机器修改仅改动了内部处理逻辑，机器多方块结构依然要保证正确！")
+            .getBoolean(Water);
+
         Grade8WaterPurificationEnabled = config
             .get("净化水产线机器","8级水",Grade8WaterPurificationEnabled,"开启后8级水机器输入6级水即可工作，不需要任何额外自动化")
             .getBoolean(Grade8WaterPurificationEnabled);
@@ -259,6 +266,10 @@ public class MainConfig {
         Grade6WaterPurificationEnabled = config
             .get("净化水产线机器","6级水",Grade6WaterPurificationEnabled,"开启后6级水机器输入5级水即可工作，不需要任何额外自动化")
             .getBoolean(Grade6WaterPurificationEnabled);
+
+        Grade5WaterPurificationEnabled = config
+            .get("净化水产线机器","5级水",Grade5WaterPurificationEnabled,"开启后6级水机器输入4级水即可工作，不需要任何额外自动化")
+            .getBoolean(Grade5WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();
