@@ -24,9 +24,6 @@ public abstract class Grade8WaterPurificationMixin extends MTEPurificationUnitBa
         super(aID, aName, aNameRegional);
     }
 
-    /**
-     * 跳过夸克序列检查
-     */
     @Inject(method = "checkSequence", at = @At("HEAD"), cancellable = true)
     private void skipSequenceCheck(CallbackInfoReturnable<Integer> cir) {
         if(MainConfig.Grade8WaterPurificationEnabled){

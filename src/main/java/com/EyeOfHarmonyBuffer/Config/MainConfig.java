@@ -58,6 +58,7 @@ public class MainConfig {
     public static boolean Grade4WaterPurificationEnabled = true;
     public static boolean Grade3WaterPurificationEnabled = true;
     public static boolean Grade2WaterPurificationEnabled = true;
+    public static boolean Grade1WaterPurificationEnabled = true;
 
     public static boolean Water = true;
 
@@ -285,6 +286,10 @@ public class MainConfig {
         Grade2WaterPurificationEnabled = config
             .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸")
             .getBoolean(Grade2WaterPurificationEnabled);
+
+        Grade1WaterPurificationEnabled = config
+            .get("净化水产线机器","1级水",Grade1WaterPurificationEnabled,"开启后1级水机器的过滤器永不损坏")
+            .getBoolean(Grade1WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();
