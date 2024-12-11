@@ -56,7 +56,8 @@ public class LateMixins implements ILateMixinLoader {
             "TreatedWater.Grade7WaterPurificationMixin",
             "TreatedWater.Grade6WaterPurificationMixin",
             "TreatedWater.Grade5WaterPurificationMixin",
-            "TreatedWater.Grade4WaterPurificationMixin"
+            "TreatedWater.Grade4WaterPurificationMixin",
+            "TreatedWater.Grade3WaterPurificationMixin"
         );
     }
 }
