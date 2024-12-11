@@ -51,6 +51,16 @@ public class MainConfig {
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
     public static boolean MaskInfiniteDurability = true;
+    public static boolean Grade8WaterPurificationEnabled = true;
+    public static boolean Grade7WaterPurificationEnabled = true;
+    public static boolean Grade6WaterPurificationEnabled = true;
+    public static boolean Grade5WaterPurificationEnabled = true;
+    public static boolean Grade4WaterPurificationEnabled = true;
+    public static boolean Grade3WaterPurificationEnabled = true;
+    public static boolean Grade2WaterPurificationEnabled = true;
+    public static boolean Grade1WaterPurificationEnabled = true;
+
+    public static boolean Water = true;
 
     private static Configuration config;
 
@@ -244,6 +254,42 @@ public class MainConfig {
         MaskInfiniteDurability = config
             .get("物品","掩膜板",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
             .getBoolean(MaskInfiniteDurability);
+
+        Water = config
+            .get("净化水产线机器","提示",Water,"净化水机器修改仅改动了内部处理逻辑，机器多方块结构依然要保证正确！")
+            .getBoolean(Water);
+
+        Grade8WaterPurificationEnabled = config
+            .get("净化水产线机器","8级水",Grade8WaterPurificationEnabled,"开启后8级水机器输入7级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade8WaterPurificationEnabled);
+
+        Grade7WaterPurificationEnabled = config
+            .get("净化水产线机器","7级水",Grade7WaterPurificationEnabled,"开启后7级水机器输入6级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade7WaterPurificationEnabled);
+
+        Grade6WaterPurificationEnabled = config
+            .get("净化水产线机器","6级水",Grade6WaterPurificationEnabled,"开启后6级水机器输入5级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade6WaterPurificationEnabled);
+
+        Grade5WaterPurificationEnabled = config
+            .get("净化水产线机器","5级水",Grade5WaterPurificationEnabled,"开启后5级水机器输入4级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade5WaterPurificationEnabled);
+
+        Grade4WaterPurificationEnabled = config
+            .get("净化水产线机器","4级水",Grade4WaterPurificationEnabled,"开启后4级水机器输入3级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade4WaterPurificationEnabled);
+
+        Grade3WaterPurificationEnabled = config
+            .get("净化水产线机器","3级水",Grade3WaterPurificationEnabled,"开启后3级水机器输入2级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade3WaterPurificationEnabled);
+
+        Grade2WaterPurificationEnabled = config
+            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸")
+            .getBoolean(Grade2WaterPurificationEnabled);
+
+        Grade1WaterPurificationEnabled = config
+            .get("净化水产线机器","1级水",Grade1WaterPurificationEnabled,"开启后1级水机器的过滤器永不损坏")
+            .getBoolean(Grade1WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();

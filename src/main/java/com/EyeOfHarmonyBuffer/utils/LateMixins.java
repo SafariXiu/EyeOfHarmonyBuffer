@@ -29,6 +29,7 @@ public class LateMixins implements ILateMixinLoader {
             "Accessor.FOGAccessor",
             "Accessor.SpaceElevatorAccessor",
             "Accessor.TTMultiblockBaseAccessor",
+            "Accessor.TreatedWater.Grade4WaterPurificationAccessor",
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
             "EOH.EyeOfHarmonyAstralArrayAmount",
@@ -50,7 +51,15 @@ public class LateMixins implements ILateMixinLoader {
             "BlackHoleCompressorMixin",
             "IndustrialLaserEngraverMixin",
             "Accessor.BlackHoleCompressorAccessor",
-            "MaskListMixin"
+            "MaskListMixin",
+            "TreatedWater.Grade8WaterPurificationMixin",
+            "TreatedWater.Grade7WaterPurificationMixin",
+            "TreatedWater.Grade6WaterPurificationMixin",
+            "TreatedWater.Grade5WaterPurificationMixin",
+            "TreatedWater.Grade4WaterPurificationMixin",
+            "TreatedWater.Grade3WaterPurificationMixin",
+            "TreatedWater.Grade2WaterPurificationMixin",
+            "TreatedWater.Grade1WaterPurificationMixin"
         );
     }
 }
