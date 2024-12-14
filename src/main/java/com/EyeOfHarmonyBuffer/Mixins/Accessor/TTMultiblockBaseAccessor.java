@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.Mixins.Accessor;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -13,5 +14,8 @@ public interface TTMultiblockBaseAccessor {
 
     @Accessor("eEnergyMulti")
     ArrayList<MTEHatchEnergyMulti> getEnergyMulti();
+
+    @Accessor("eDynamoMulti")
+    ArrayList<?> getEDynamoMulti();
 
 }
