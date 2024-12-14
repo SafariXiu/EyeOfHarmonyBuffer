@@ -19,7 +19,6 @@ public class LateMixins implements ILateMixinLoader {
     public List<String> getMixins(Set<String> loadedMods) {
         return Arrays.asList(
             "Accessor.EyeOfHarmonyAccessor",
-            "EOH.EyeOfHarmonyBus",
             "EOH.EyeOfHarmonyEU",
             "EOH.EyeOfHarmonyFluidMixin",
             "EOH.EyeOfHarmonyGas",
