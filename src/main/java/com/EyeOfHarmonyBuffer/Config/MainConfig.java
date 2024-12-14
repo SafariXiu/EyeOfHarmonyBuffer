@@ -9,7 +9,6 @@ public class MainConfig {
     public static double discount = 0.0;
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
     public static boolean GasInPut = true;
-    public static boolean EOHinputBusMe = true;
     public static boolean enableFluidOutPut = true;
     public static boolean EOHItemInPut = true;
     public static int EOHtime = 128;
@@ -70,10 +69,6 @@ public class MainConfig {
         EOHLV = config
             .get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改,开启后1级外壳就可以运行任何级别的配方了")
             .getBoolean(EOHLV);
-
-        EOHinputBusMe = config
-            .get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
-            .getBoolean(EOHinputBusMe);
 
         enableFluidOutPut = config
             .get("鸿蒙之眼功能", "鸿蒙之眼额外流体产出", enableFluidOutPut, "鸿蒙之眼额外流体产出是否启用")
