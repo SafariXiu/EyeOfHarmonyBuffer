@@ -41,5 +41,5 @@ dependencies {
     implementation ('org.apache.logging.log4j:log4j-core:2.17.0')
     implementation ('com.github.GTNewHorizons:GTNH-Intergalactic:1.4.27:dev')
     implementation ('com.github.GTNewHorizons:NewHorizonsCoreMod:2.6.85:dev')
-    implementation rfg.deobf(files("/lib/TwistSpaceTechnology-0.6.0-dev.jar"))
+    //implementation rfg.deobf(files("/lib/TwistSpaceTechnology-0.6.0-dev.jar"))
 }
