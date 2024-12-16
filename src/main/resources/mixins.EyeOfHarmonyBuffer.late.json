@@ -7,5 +7,6 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
   "client": [],
-  "server": []
+  "server": [],
+  "plugin": "com.EyeOfHarmonyBuffer.ExampleMixinPlugin"
 }
