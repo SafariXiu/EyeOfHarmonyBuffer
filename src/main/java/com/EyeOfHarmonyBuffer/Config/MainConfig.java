@@ -59,6 +59,8 @@ public class MainConfig {
     public static boolean Grade3WaterPurificationEnabled = true;
     public static boolean Grade2WaterPurificationEnabled = true;
     public static boolean Grade1WaterPurificationEnabled = true;
+    public static boolean DTPFMK2Enable = true;
+    public static double DTPFMK2FuelRelief = 0.0;
 
     public static boolean Water = true;
 
@@ -80,8 +82,16 @@ public class MainConfig {
 
     public static void loadConfig() {
         discount = config
-            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免")
+            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免，推荐0.0为没有任何减免，不需要通厕所")
             .getDouble(discount);
+
+        DTPFMK2Enable = config
+            .get("TST","超维度等离子锻炉MK2催化剂减免开启",DTPFMK2Enable,"开启超维度等离子锻炉MK2催化剂减免")
+            .getBoolean(DTPFMK2Enable);
+
+        DTPFMK2FuelRelief = config
+            .get("TST","超维度等离子锻炉MK2催化剂减免数值",DTPFMK2FuelRelief,"超维度锻炉MK2催化剂减免，数值为0.0-1.0,1.0为没有任何减免，推荐0.0为没有任何减免，不需要通厕所")
+            .getDouble(DTPFMK2FuelRelief);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
