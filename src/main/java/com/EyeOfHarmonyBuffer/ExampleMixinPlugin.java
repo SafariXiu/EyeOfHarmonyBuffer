@@ -20,7 +20,7 @@ public class ExampleMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.equals("com.example.mixin.IndistinctTentaclePrototypeMK2Mixin")) {
+        if (mixinClassName.equals("com.EyeOfHarmonyBuffer.Mixins.TST.IndistinctTentaclePrototypeMK2Mixin")) {
             try {
                 Class.forName("com.Nxer.TwistSpaceTechnology.common.modularizedMachine.MM_DimensionallyTranscendentMatterPlasmaForgePrototypeMK2", false, this.getClass().getClassLoader());
                 System.out.println("[ExampleMixinPlugin] Target class found, applying Mixin: " + mixinClassName);

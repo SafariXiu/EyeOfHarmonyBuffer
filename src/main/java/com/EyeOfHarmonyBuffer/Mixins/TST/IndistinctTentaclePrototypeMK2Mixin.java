@@ -1,11 +1,9 @@
 package com.EyeOfHarmonyBuffer.Mixins.TST;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.Mixins.Accessor.IndistinctTentaclePrototypeMK2Accessor;
 import com.Nxer.TwistSpaceTechnology.common.modularizedMachine.MM_DimensionallyTranscendentMatterPlasmaForgePrototypeMK2;
 import com.Nxer.TwistSpaceTechnology.common.modularizedMachine.ModularizedMachineLogic.MultiExecutionCoreMachineSupportAllModuleBase;
 import gregtech.api.util.GTRecipe;
-import net.minecraftforge.fluids.FluidStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -25,23 +23,10 @@ public abstract class IndistinctTentaclePrototypeMK2Mixin extends MultiExecution
         at = @At("HEAD"),
         cancellable = true
     )
-    private void lockFuelDiscount(@Nonnull GTRecipe recipe, CallbackInfoReturnable<GTRecipe> cir) {
-        if(MainConfig.DTPFMK2Enable){
+    protected void injectRecipeAfterDiscount(@Nonnull GTRecipe recipe, CallbackInfoReturnable<GTRecipe> cir) {
+        if (MainConfig.DTPFMK2Enable) {
             GTRecipe tRecipe = recipe.copy();
-            FluidStack[] validFuels = IndistinctTentaclePrototypeMK2Accessor.getValidFuels();
-            for (int i = 0; i < tRecipe.mFluidInputs.length; ++i) {
-                FluidStack inputFluid = tRecipe.mFluidInputs[i];
-                for (FluidStack fuel : validFuels) {
-                    if (inputFluid.isFluidEqual(fuel)) {
-                        double fixedFuelMultiplier = MainConfig.DTPFMK2FuelRelief;
-                        tRecipe.mFluidInputs[i] = inputFluid.copy();
-                        tRecipe.mFluidInputs[i].amount = (int) Math.round(inputFluid.amount * fixedFuelMultiplier);
-                        cir.setReturnValue(tRecipe);
-                        return;
-                    }
-                }
-            }
+            cir.setReturnValue(tRecipe);
         }
-        cir.setReturnValue(recipe);
     }
 }
