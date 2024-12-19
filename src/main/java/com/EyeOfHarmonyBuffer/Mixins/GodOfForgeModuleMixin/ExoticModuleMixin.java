@@ -1,9 +1,13 @@
 package com.EyeOfHarmonyBuffer.Mixins.GodOfForgeModuleMixin;
 
+import com.EyeOfHarmonyBuffer.Mixins.Invoke.ExoticModuleMixinInvoker;
 import com.EyeOfHarmonyBuffer.utils.PredeterminedValues;
+import gregtech.api.enums.MaterialsUEVplus;
+import gregtech.api.enums.TierEU;
 import gregtech.api.util.GTRecipe;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
+import org.apache.commons.lang3.ArrayUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -17,6 +21,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static gregtech.api.util.GTRecipeBuilder.SECONDS;
+import static tectech.loader.recipe.Godforge.*;
 
 @Mixin(value = MTEExoticModule.class,remap = false)
 public abstract class ExoticModuleMixin extends MTEBaseModule {
@@ -48,13 +55,17 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
         List<FluidStack> pickedFluids = new ArrayList<>();
         for (int i = 0; i < numberOfFluids; i++) {
+            if (pickedFluids.size() >= fluidEntryList.size()) {
+                break; // 避免死循环
+            }
+
             int predictableWeight = PredeterminedValues.getNextFluidWeight();
 
             for (int j = 0; j < cumulativeWeights.size(); j++) {
                 if (predictableWeight <= cumulativeWeights.get(j)) {
                     FluidStack pickedFluid = fluidEntryList.get(j).getKey();
                     if (pickedFluids.contains(pickedFluid)) {
-                        i--;
+                        i--; // 跳过重复选择
                         break;
                     }
                     pickedFluids.add(pickedFluid);
@@ -82,13 +93,17 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
         List<ItemStack> pickedItems = new ArrayList<>();
         for (int i = 0; i < numberOfItems; i++) {
+            if (pickedItems.size() >= itemEntryList.size()) {
+                break; // 避免死循环
+            }
+
             int predictableWeight = PredeterminedValues.getNextItemWeight();
 
             for (int j = 0; j < cumulativeWeights.size(); j++) {
                 if (predictableWeight <= cumulativeWeights.get(j)) {
                     ItemStack pickedItem = itemEntryList.get(j).getKey();
                     if (pickedItems.contains(pickedItem)) {
-                        i--;
+                        i--; // 跳过重复选择
                         break;
                     }
                     pickedItems.add(pickedItem);
@@ -101,19 +116,99 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
     @Inject(method = "generateQuarkGluonRecipe", at = @At("HEAD"), cancellable = true)
     private void onGenerateQuarkGluonRecipe(CallbackInfoReturnable<GTRecipe> cir) {
-        numberOfFluids = 3;
-        numberOfItems = 4;
+        // 固定流体和物品数量
+        numberOfFluids = 3; // 固定为 3 种流体
+        numberOfItems = 4; // 固定为 4 种物品
 
+        // 获取随机流体和物品
+        FluidStack[] fluids = getRandomFluidInputs(exoticModulePlasmaFluidMap, numberOfFluids);
+        ItemStack[] items = getRandomItemInputs(exoticModulePlasmaItemMap, numberOfItems);
+
+        if (fluids == null || fluids.length == 0) {
+            System.out.println("No fluids generated for Quark Gluon recipe!");
+            cir.cancel();
+            return;
+        }
+
+        if (items == null || items.length == 0) {
+            System.out.println("No items generated for Quark Gluon recipe!");
+            cir.cancel();
+            return;
+        }
+
+        // 调用私有方法 convertFluidToPlasma，通过访问器
+        FluidStack[] plasmaFluids = ((ExoticModuleMixinInvoker) this).invokeConvertFluidToPlasma(fluids, 1);
+
+        // 调用私有方法 convertItemToPlasma，通过访问器
+        FluidStack[] plasmaItems = ((ExoticModuleMixinInvoker) this).invokeConvertItemToPlasma(items, 1);
+
+        // 构建配方
+        GTRecipe customRecipe = new GTRecipe(
+            false,
+            null,
+            null,
+            null,
+            null,
+            ArrayUtils.addAll(plasmaItems, plasmaFluids), // 合并等离子物品和等离子流体
+            new FluidStack[]{ MaterialsUEVplus.QuarkGluonPlasma.getFluid(1000 * getMaxParallel()) }, // 输出配方
+            10 * SECONDS,
+            (int) TierEU.RECIPE_MAX,
+            0
+        );
+
+        // 设置返回值并取消原方法执行
+        cir.setReturnValue(customRecipe);
         cir.cancel();
     }
 
     @Inject(method = "generateMagmatterRecipe", at = @At("HEAD"), cancellable = true)
     private void onGenerateMagmatterRecipe(CallbackInfoReturnable<GTRecipe> cir) {
-        int timeAmount = 25;
-        int spaceAmount = 75;
+        try {
+            // 固定时间和空间量
+            int timeAmount = 25; // 固定时间量
+            int spaceAmount = 75; // 固定空间量
 
-        cir.cancel();
+            // 构建输入流体
+            FluidStack[] fluids = new FluidStack[] {
+                MaterialsUEVplus.Time.getMolten(timeAmount * 1000L),
+                MaterialsUEVplus.Space.getMolten(spaceAmount * 1000L)
+            };
+
+            // 获取随机物品输入
+            ItemStack[] items = getRandomItemInputs(exoticModuleMagmatterItemMap, 1);
+
+            if (items == null || items.length == 0) {
+                System.out.println("No items generated for Magmatter recipe!");
+                cir.cancel();
+                return;
+            }
+
+            // 调用私有方法 convertItemToPlasma，通过访问器
+            FluidStack[] plasmaItems = ((ExoticModuleMixinInvoker) this)
+                .invokeConvertItemToPlasma(items, spaceAmount - timeAmount);
+
+            // 构建配方
+            GTRecipe customRecipe = new GTRecipe(
+                false,
+                null,
+                null,
+                null,
+                null,
+                ArrayUtils.addAll(plasmaItems, fluids), // 合并等离子物品和输入流体
+                new FluidStack[] { MaterialsUEVplus.MagMatter.getMolten(576 * getMaxParallel()) }, // 输出配方
+                10 * SECONDS,
+                (int) TierEU.RECIPE_MAX,
+                0
+            );
+
+            // 设置返回值并取消原方法执行
+            cir.setReturnValue(customRecipe);
+            cir.cancel();
+        } catch (Exception e) {
+            // 捕获任何异常并记录日志
+            System.err.println("Error generating Magmatter recipe: " + e.getMessage());
+            e.printStackTrace();
+            cir.cancel();
+        }
     }
-
-
 }
