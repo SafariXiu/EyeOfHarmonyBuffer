@@ -47,6 +47,7 @@ public class LateMixins implements ILateMixinLoader {
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
             "FuelFactory.NaquadahFuelRefineryMixin",
+            "HIPCompressorMixin",
             "SpaceElevator.ModuleMinerMixin",
             "SpaceElevator.ModuleMinerParallelsMixin",
             "BlackHoleCompressorMixin",
