@@ -4,7 +4,8 @@ public class PredeterminedValues {
 
     // 简化为单一权重
     public static final int FLUID_WEIGHT = 3; // 固定的流体权重
-    public static final int ITEM_WEIGHT = 3; // 固定的物品权重
+    public static final int ITEM_WEIGHT = 3; // 固定的物品
+      // 权重
 
     // 获取流体权重
     public static int getNextFluidWeight() {
