@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Config;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.Mixins.HIPCompressorMixin;
 import net.minecraftforge.common.config.Configuration;
 
 public class MainConfig {
@@ -10,6 +11,7 @@ public class MainConfig {
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
     public static boolean GasInPut = true;
     public static boolean EOHinputBusMe = true;
+    public static boolean EOHinputHatchEnable= true;
     public static boolean enableFluidOutPut = true;
     public static boolean EOHItemInPut = true;
     public static int EOHtime = 128;
@@ -32,8 +34,8 @@ public class MainConfig {
     public static int LargeFusionPara = 256;
     public static boolean UUMixin = true;
     public static boolean BioLabMixin = true;
-    public static boolean SpaceElevatorMiningPlasmaEnable = true;
-    public static boolean SpaceElevatorMiningParallelsEnable = true;
+    public static boolean SpaceElevatorMiningPlasma = true;
+    public static int SpaceElevatorMiningParallels = 10000;
     public static int SpaceElevatorMiningTicks = 128;
     public static boolean SpaceElevatorMiningTicksTrue = true;
     public static boolean NaquadahFuelRefineryMixinTrue = true;
@@ -50,9 +52,19 @@ public class MainConfig {
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
     public static boolean IndustrialLaserEngraverOverclockEnabled = false;
     public static boolean MaskInfiniteDurability = true;
-    public static boolean SpaceElevatorAssemblerParallelEnable = true;
-    public static int SpaceElevatorAssemblerParallel = 128;
-    public static int SpaceElevatorModuleMiningParallels = 128;
+    public static boolean Grade8WaterPurificationEnabled = true;
+    public static boolean Grade7WaterPurificationEnabled = true;
+    public static boolean Grade6WaterPurificationEnabled = true;
+    public static boolean Grade5WaterPurificationEnabled = true;
+    public static boolean Grade4WaterPurificationEnabled = true;
+    public static boolean Grade3WaterPurificationEnabled = true;
+    public static boolean Grade2WaterPurificationEnabled = true;
+    public static boolean Grade1WaterPurificationEnabled = true;
+    public static boolean DTPFMK2Enable = true;
+    public static boolean HIPCompressorEnable = true;
+    public static boolean ExoticModuleEnable = true;
+
+    public static boolean Water = true;
 
     private static Configuration config;
 
@@ -72,8 +84,12 @@ public class MainConfig {
 
     public static void loadConfig() {
         discount = config
-            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免")
+            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免，推荐0.0为没有任何减免，不需要通厕所")
             .getDouble(discount);
+
+        DTPFMK2Enable = config
+            .get("TST","超维度等离子锻炉MK2催化剂减免开启",DTPFMK2Enable,"开启超维度等离子锻炉MK2催化剂减免")
+            .getBoolean(DTPFMK2Enable);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
@@ -111,6 +127,10 @@ public class MainConfig {
             .get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
             .getBoolean(EOHinputBusMe);
 
+        EOHinputHatchEnable = config
+            .get("鸿蒙之眼功能","鸿蒙之眼输入仓",EOHinputHatchEnable,"开启后鸿蒙之眼不强制需求2个输入仓，可以为0,1,2个")
+            .getBoolean(EOHinputHatchEnable);
+
         enableFluidOutPut = config
             .get("鸿蒙之眼功能", "鸿蒙之眼额外流体产出", enableFluidOutPut, "鸿蒙之眼额外流体产出是否启用")
             .getBoolean(enableFluidOutPut);
@@ -142,6 +162,10 @@ public class MainConfig {
         FOGUpDate = config
             .get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
             .getBoolean(FOGUpDate);
+
+        ExoticModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
+            .getBoolean(ExoticModuleEnable);
 
         BioVatTrue = config
             .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
@@ -175,17 +199,17 @@ public class MainConfig {
             .get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
             .getBoolean(BioLabMixin);
 
-        SpaceElevatorMiningPlasmaEnable = config
-            .get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasmaEnable, "开启后采矿模块不再消耗等离子")
-            .getBoolean(SpaceElevatorMiningPlasmaEnable);
+        HIPCompressorEnable = config
+            .get("其他机器","HIP压缩机", HIPCompressorEnable,"开启后关闭HIP热量系统")
+            .getBoolean(HIPCompressorEnable);
 
-        SpaceElevatorMiningParallelsEnable = config
-            .get("太空电梯-采矿模块", "采矿模块并行修改开启", SpaceElevatorMiningParallelsEnable, "开启后支持自定义采矿模块最高并行")
-            .getBoolean(SpaceElevatorMiningParallelsEnable);
+        SpaceElevatorMiningPlasma = config
+            .get("太空电梯-采矿模块", "采矿模块等离子体", SpaceElevatorMiningPlasma, "开启后采矿模块不再消耗等离子")
+            .getBoolean(SpaceElevatorMiningPlasma);
 
-        SpaceElevatorModuleMiningParallels = config
-            .get("太空电梯-采矿模块","采矿模块并行修改",SpaceElevatorModuleMiningParallels,"设置采矿模块最高并行数量")
-            .getInt(SpaceElevatorModuleMiningParallels);
+        SpaceElevatorMiningParallels = config
+            .get("太空电梯-采矿模块", "采矿模块并行修改", SpaceElevatorMiningParallels, "开启后采矿模块最高支持并行128")
+            .getInt(SpaceElevatorMiningParallels);
 
         SpaceElevatorMiningTicks = config
             .get("太空电梯-采矿模块", "采矿模块运行时间", SpaceElevatorMiningTicks, "设置采矿模块工作时间")
@@ -194,14 +218,6 @@ public class MainConfig {
         SpaceElevatorMiningTicksTrue = config
             .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
             .getBoolean(SpaceElevatorMiningTicksTrue);
-
-        SpaceElevatorAssemblerParallelEnable = config
-            .get("太空电梯-组装机模块","组装机模块并行修改开启",SpaceElevatorAssemblerParallelEnable,"开启后可自定义组装机模块并行数量")
-            .getBoolean(SpaceElevatorAssemblerParallelEnable);
-
-        SpaceElevatorAssemblerParallel = config
-            .get("太空电梯-组装机模块","组装机模块并行修改",SpaceElevatorAssemblerParallel,"组装机模块并行数修改")
-            .getInt(SpaceElevatorAssemblerParallel);
 
         NaquadahFuelRefineryMixinTrue = config
             .get("硅岩燃料精炼厂", "开启燃料产出修改", NaquadahFuelRefineryMixinTrue, "开启可以后自定义配方倍率，可以在NEI中查看")
@@ -254,6 +270,42 @@ public class MainConfig {
         MaskInfiniteDurability = config
             .get("物品","掩膜板",MaskInfiniteDurability,"开启后全部对应物品变为无限耐久")
             .getBoolean(MaskInfiniteDurability);
+
+        Water = config
+            .get("净化水产线机器","提示",Water,"净化水机器修改仅改动了内部处理逻辑，机器多方块结构依然要保证正确！")
+            .getBoolean(Water);
+
+        Grade8WaterPurificationEnabled = config
+            .get("净化水产线机器","8级水",Grade8WaterPurificationEnabled,"开启后8级水机器输入7级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade8WaterPurificationEnabled);
+
+        Grade7WaterPurificationEnabled = config
+            .get("净化水产线机器","7级水",Grade7WaterPurificationEnabled,"开启后7级水机器输入6级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade7WaterPurificationEnabled);
+
+        Grade6WaterPurificationEnabled = config
+            .get("净化水产线机器","6级水",Grade6WaterPurificationEnabled,"开启后6级水机器输入5级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade6WaterPurificationEnabled);
+
+        Grade5WaterPurificationEnabled = config
+            .get("净化水产线机器","5级水",Grade5WaterPurificationEnabled,"开启后5级水机器输入4级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade5WaterPurificationEnabled);
+
+        Grade4WaterPurificationEnabled = config
+            .get("净化水产线机器","4级水",Grade4WaterPurificationEnabled,"开启后4级水机器输入3级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade4WaterPurificationEnabled);
+
+        Grade3WaterPurificationEnabled = config
+            .get("净化水产线机器","3级水",Grade3WaterPurificationEnabled,"开启后3级水机器输入2级水即可工作并且百分百成功，不需要任何额外自动化")
+            .getBoolean(Grade3WaterPurificationEnabled);
+
+        Grade2WaterPurificationEnabled = config
+            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸")
+            .getBoolean(Grade2WaterPurificationEnabled);
+
+        Grade1WaterPurificationEnabled = config
+            .get("净化水产线机器","1级水",Grade1WaterPurificationEnabled,"开启后1级水机器的过滤器永不损坏")
+            .getBoolean(Grade1WaterPurificationEnabled);
 
         if (config.hasChanged()) {
             config.save();
