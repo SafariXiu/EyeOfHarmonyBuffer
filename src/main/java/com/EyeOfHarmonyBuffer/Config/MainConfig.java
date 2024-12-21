@@ -62,6 +62,7 @@ public class MainConfig {
     public static boolean Grade1WaterPurificationEnabled = true;
     public static boolean DTPFMK2Enable = true;
     public static boolean HIPCompressorEnable = true;
+    public static boolean ExoticModuleEnable = true;
 
     public static boolean Water = true;
 
@@ -161,6 +162,10 @@ public class MainConfig {
         FOGUpDate = config
             .get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
             .getBoolean(FOGUpDate);
+
+        ExoticModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
+            .getBoolean(ExoticModuleEnable);
 
         BioVatTrue = config
             .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
