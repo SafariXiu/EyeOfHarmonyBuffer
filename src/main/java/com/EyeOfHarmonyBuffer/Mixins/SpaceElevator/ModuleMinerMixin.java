@@ -27,7 +27,7 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
     @Inject(method = "getTierFromPlasma", at = @At("HEAD"), cancellable = true)
     private void modifyGetTierFromPlasma(FluidStack fluidStack, CallbackInfoReturnable<Integer> cir) {
 
-        if (!MainConfig.SpaceElevatorMiningPlasma) {
+        if (!MainConfig.SpaceElevatorMiningPlasmaEnable) {
             return;
         }
 
@@ -53,7 +53,7 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
 
     @Inject(method = "getPlasmaUsageFromTier", at = @At("HEAD"), cancellable = true)
     private void modifyGetPlasmaUsageFromTier(int plasmaTier, CallbackInfoReturnable<Integer> cir) {
-        if (MainConfig.SpaceElevatorMiningPlasma) {
+        if (MainConfig.SpaceElevatorMiningPlasmaEnable) {
             cir.setReturnValue(0);
         }
     }
