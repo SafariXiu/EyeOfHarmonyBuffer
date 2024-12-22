@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Mixins.Accessor.TTMultiblockBaseAccessor;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -28,20 +29,21 @@ public abstract class LargeEssentiaGeneratorMixin extends MTETooltipMultiBlockBa
         cancellable = true
     )
     private void modifyCheckMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack, CallbackInfoReturnable<Boolean> cir) {
-        MTELargeEssentiaGenerator self = (MTELargeEssentiaGenerator) (Object) this;
+        if(MainConfig.LargeEssentiaGeneratorEnable){
+            MTELargeEssentiaGenerator self = (MTELargeEssentiaGenerator) (Object) this;
 
-        TTMultiblockBaseAccessor accessor = (TTMultiblockBaseAccessor) self;
-        int dynamoHatchCount = self.mDynamoHatches.size() + accessor.getEDynamoMulti().size();
+            TTMultiblockBaseAccessor accessor = (TTMultiblockBaseAccessor) self;
+            int dynamoHatchCount = self.mDynamoHatches.size() + accessor.getEDynamoMulti().size();
 
-        boolean structureValid = self.structureCheck_EM(self.mName, 4, 0, 4);
-        boolean hatchTierValid = self.checkHatchTier();
-        boolean essentiaHatchStateValid = self.updateEssentiaHatchState();
+            boolean structureValid = self.structureCheck_EM(self.mName, 4, 0, 4);
+            boolean hatchTierValid = self.checkHatchTier();
+            boolean essentiaHatchStateValid = self.updateEssentiaHatchState();
 
-        if (structureValid && dynamoHatchCount >= 1 && hatchTierValid && essentiaHatchStateValid) {
-            cir.setReturnValue(true);
-        } else {
-            cir.setReturnValue(false);
+            if (structureValid && dynamoHatchCount >= 1 && hatchTierValid && essentiaHatchStateValid) {
+                cir.setReturnValue(true);
+            } else {
+                cir.setReturnValue(false);
+            }
         }
     }
-
 }

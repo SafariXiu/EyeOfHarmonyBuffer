@@ -67,6 +67,9 @@ public class MainConfig {
     public static int SpaceElevatorMiningTicks = 128;
     public static boolean Water = true;
     public static boolean SpaceElevatorMiningTicksTrue = true;
+    public static boolean LargeEssentiaGeneratorEnable = true;
+
+
     private static Configuration config;
 
     public static void init(File configFile) {
@@ -84,6 +87,10 @@ public class MainConfig {
     }
 
     public static void loadConfig() {
+        LargeEssentiaGeneratorEnable = config
+            .get("其他机器","大型源质发电机",LargeEssentiaGeneratorEnable,"让源神重新支持激光仓！Make 源神 Great Again")
+            .getBoolean(LargeEssentiaGeneratorEnable);
+
         SpaceElevatorAssemblerParallel = config
             .get("太空组装机-组装机模块","组装机模块并行数量设置",SpaceElevatorAssemblerParallel,"设置组装机模块并行数量")
             .getInt(SpaceElevatorAssemblerParallel);
