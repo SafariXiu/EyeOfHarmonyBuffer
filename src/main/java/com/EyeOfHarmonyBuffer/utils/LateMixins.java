@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -17,12 +18,14 @@ public class LateMixins implements ILateMixinLoader {
 
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
-        return Arrays.asList(
+        // 创建 Mixin 列表
+        List<String> mixins = new ArrayList<>(Arrays.asList(
             "BioVatMixin",
             "DigesterMixin",
             "DissolutionTankMixin",
             "DTPFBuffer",
             "FOGShardsAvailable",
+            "GodOfForgeModuleMixin.ExoticModuleMixin",
             "UUMixin",
             "Accessor.DigesterAccessor",
             "Accessor.EyeOfHarmonyAccessor",
@@ -30,10 +33,10 @@ public class LateMixins implements ILateMixinLoader {
             "Accessor.SpaceElevatorAccessor",
             "Accessor.TTMultiblockBaseAccessor",
             "Accessor.TreatedWater.Grade4WaterPurificationAccessor",
+            "Accessor.ExoticModuleAccessor",
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
             "EOH.EyeOfHarmonyAstralArrayAmount",
-            "EOH.EyeOfHarmonyBus",
             "EOH.EyeOfHarmonyEU",
             "EOH.EyeOfHarmonyFluidMixin",
             "EOH.EyeOfHarmonyGas",
@@ -46,6 +49,10 @@ public class LateMixins implements ILateMixinLoader {
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
             "FuelFactory.NaquadahFuelRefineryMixin",
+            "HIPCompressorMixin",
+            "LargeEssentiaGeneratorMixin",
+            "SpaceElevator.ModuleAssemblerMixin",
+            "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",
             "SpaceElevator.ModuleMinerParallelsMixin",
             "BlackHoleCompressorMixin",
@@ -59,8 +66,16 @@ public class LateMixins implements ILateMixinLoader {
             "TreatedWater.Grade4WaterPurificationMixin",
             "TreatedWater.Grade3WaterPurificationMixin",
             "TreatedWater.Grade2WaterPurificationMixin",
-            "TreatedWater.Grade1WaterPurificationMixin",
-            "LargeEssentiaGeneratorMixin"
-        );
+            "TreatedWater.Grade1WaterPurificationMixin"
+        ));
+
+        if (loadedMods.contains("TwistSpaceTechnology")) {
+            mixins.add("TST.IndistinctTentaclePrototypeMK2Mixin");
+            System.out.println("TwistSpaceTechnology mod detected! Loading TST.IndistinctTentaclePrototypeMK2Mixin.");
+        } else {
+            System.out.println("TwistSpaceTechnology mod not detected. Skipping TST.IndistinctTentaclePrototypeMK2Mixin.");
+        }
+
+        return mixins;
     }
 }
