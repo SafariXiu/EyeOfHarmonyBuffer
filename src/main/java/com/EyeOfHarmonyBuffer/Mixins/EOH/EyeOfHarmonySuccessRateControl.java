@@ -18,7 +18,6 @@ public class EyeOfHarmonySuccessRateControl {
         if (!MainConfig.EOHSuccessRateControls) {
             return;
         }
-
         double customChance = MainConfig.RecipeChance;
         cir.setReturnValue(customChance);
     }

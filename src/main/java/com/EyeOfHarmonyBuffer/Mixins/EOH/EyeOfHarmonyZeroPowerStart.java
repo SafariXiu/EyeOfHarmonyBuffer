@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins.EOH;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -18,11 +19,14 @@ public class EyeOfHarmonyZeroPowerStart {
         method = "processRecipe",
         at = @At(
             value = "INVOKE",
-            target = "Ljava/math/BigInteger;valueOf(J)Ljava/math/BigInteger;"
+            target = "Ljava/math/BigInteger;valueOf(J)Ljava/math/BigInteger;",
+            ordinal = 1
         )
     )
-    private BigInteger redirectBigIntegerValueOf(long value) {
-        System.out.println("Redirecting BigInteger.valueOf(" + value + ") to BigInteger.ZERO");
-        return BigInteger.ZERO; // 强制返回 0
+    private BigInteger redirectStartEUValueOf(long value) {
+        if (!MainConfig.EOHZeroPowerStart) {
+            return BigInteger.valueOf(value);
+        }
+        return BigInteger.ZERO;
     }
 }
