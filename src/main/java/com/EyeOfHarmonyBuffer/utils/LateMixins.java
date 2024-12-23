@@ -51,6 +51,8 @@ public class LateMixins implements ILateMixinLoader {
             "FuelFactory.NaquadahFuelRefineryMixin",
             "HIPCompressorMixin",
             "LargeEssentiaGeneratorMixin",
+            "OutPutME.HatchOutputBusMEMixin",
+            "OutPutME.HatchOutputMEMixin",
             "SpaceElevator.ModuleAssemblerMixin",
             "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",
