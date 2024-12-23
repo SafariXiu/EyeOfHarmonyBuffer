@@ -68,6 +68,8 @@ public class MainConfig {
     public static boolean Water = true;
     public static boolean SpaceElevatorMiningTicksTrue = true;
     public static boolean LargeEssentiaGeneratorEnable = true;
+    public static boolean OutPutHatchMEEnable = true;
+    public static boolean OutPutBusMEEnable = true;
 
 
     private static Configuration config;
@@ -87,6 +89,14 @@ public class MainConfig {
     }
 
     public static void loadConfig() {
+        OutPutBusMEEnable = config
+            .get("ME总线","ME输出总线",OutPutBusMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
+            .getBoolean(OutPutBusMEEnable);
+
+        OutPutHatchMEEnable = config
+            .get("ME总线","ME输出仓",OutPutHatchMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
+            .getBoolean(OutPutHatchMEEnable);
+
         LargeEssentiaGeneratorEnable = config
             .get("其他机器","大型源质发电机",LargeEssentiaGeneratorEnable,"让源神重新支持激光仓！Make 源神 Great Again")
             .getBoolean(LargeEssentiaGeneratorEnable);
