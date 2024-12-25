@@ -73,6 +73,7 @@ public class MainConfig {
     public static boolean TargetChamberEnable = true;
     public static boolean TargetChamberParallelEnable = true;
     public static int TargetChamberParallel = 256;
+    public static boolean TranscendentPlasmaMixerEnable = true;
 
 
     private static Configuration config;
@@ -103,6 +104,10 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万(并行数量实际上就是你输出乘以这个值，配方输出是256，并行是100实际输出就是25600！)")
             .getInt(TargetChamberParallel);
+
+        TranscendentPlasmaMixerEnable = config
+            .get("其他机器","超维度搅拌机",TranscendentPlasmaMixerEnable,"开启后超维度搅拌机不再耗电，并行提升至20万")
+            .getBoolean(TranscendentPlasmaMixerEnable);
 
         OutPutBusMEEnable = config
             .get("ME总线","ME输出总线",OutPutBusMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
