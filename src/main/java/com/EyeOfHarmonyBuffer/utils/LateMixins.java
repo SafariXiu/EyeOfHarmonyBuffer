@@ -28,7 +28,7 @@ public class LateMixins implements ILateMixinLoader {
             "Accessor.SpaceElevatorAccessor",
             "Accessor.TTMultiblockBaseAccessor",
             "Accessor.TreatedWater.Grade4WaterPurificationAccessor",
-            "AssemblyLineMixin",
+            "AssemblyLine.AssemblyLineMixin",
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
             "BioVatMixin",
