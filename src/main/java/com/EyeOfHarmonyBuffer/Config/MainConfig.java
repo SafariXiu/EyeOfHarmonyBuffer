@@ -70,6 +70,9 @@ public class MainConfig {
     public static boolean LargeEssentiaGeneratorEnable = true;
     public static boolean OutPutHatchMEEnable = true;
     public static boolean OutPutBusMEEnable = true;
+    public static boolean TargetChamberEnable = true;
+    public static boolean TargetChamberParallelEnable = true;
+    public static int TargetChamberParallel = 256;
 
 
     private static Configuration config;
@@ -89,6 +92,18 @@ public class MainConfig {
     }
 
     public static void loadConfig() {
+        TargetChamberEnable = config
+            .get("靶室","靶室运行设定",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，并且机器不再消耗电力，锁定运行时间为5s")
+            .getBoolean(TargetChamberEnable);
+
+        TargetChamberParallelEnable = config
+            .get("靶室","靶室并行数量修改开启",TargetChamberParallelEnable,"开启靶室并行数量修改(靶室运行设定必须为True！)")
+            .getBoolean(TargetChamberParallelEnable);
+
+        TargetChamberParallel = config
+            .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万(并行数量实际上就是你输出乘以这个值，配方输出是256，并行是100实际输出就是25600！)")
+            .getInt(TargetChamberParallel);
+
         OutPutBusMEEnable = config
             .get("ME总线","ME输出总线",OutPutBusMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
             .getBoolean(OutPutBusMEEnable);
