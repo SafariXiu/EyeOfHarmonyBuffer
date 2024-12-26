@@ -74,6 +74,8 @@ public class MainConfig {
     public static boolean TargetChamberParallelEnable = true;
     public static int TargetChamberParallel = 256;
     public static boolean TranscendentPlasmaMixerEnable = true;
+    public static boolean PlanetaryGasSiphonEnable = true;
+    public static int PlanetaryGasSiphonParallel = 10;
 
 
     private static Configuration config;
@@ -104,6 +106,14 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万(并行数量实际上就是你输出乘以这个值，配方输出是256，并行是100实际输出就是25600！)")
             .getInt(TargetChamberParallel);
+
+        PlanetaryGasSiphonEnable = config
+            .get("行星气体钻机","行星气体钻机产出倍率修改开启",PlanetaryGasSiphonEnable,"开启行星气体钻机产出修改")
+            .getBoolean(PlanetaryGasSiphonEnable);
+
+        PlanetaryGasSiphonParallel = config
+            .get("行星气体钻机","行星气体钻机产出倍率",PlanetaryGasSiphonParallel,"设置行星气体钻机产出倍率")
+            .getInt(PlanetaryGasSiphonParallel);
 
         TranscendentPlasmaMixerEnable = config
             .get("其他机器","超维度搅拌机",TranscendentPlasmaMixerEnable,"开启后超维度搅拌机不再耗电，并行提升至20万")
