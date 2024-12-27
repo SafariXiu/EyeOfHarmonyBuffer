@@ -20,7 +20,7 @@ public abstract class DTPFBuffer {
     private void LockDiscount(CallbackInfo ci) {
 
         if (!MainConfig.DTPFOpen) {
-            this.discount = MainConfig.discount;
+            this.discount = 1.0;
             ci.cancel();
         }
 
