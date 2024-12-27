@@ -7,7 +7,6 @@ import net.minecraftforge.common.config.Configuration;
 
 public class MainConfig {
 
-    public static double discount = 0.0;
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
     public static boolean GasInPut = true;
     public static boolean EOHinputBusMe = true;
@@ -132,23 +131,23 @@ public class MainConfig {
             .getBoolean(LargeEssentiaGeneratorEnable);
 
         SpaceElevatorAssemblerParallel = config
-            .get("太空组装机-组装机模块","组装机模块并行数量设置",SpaceElevatorAssemblerParallel,"设置组装机模块并行数量")
+            .get("太空电梯-组装机模块","组装机模块并行数量设置",SpaceElevatorAssemblerParallel,"设置组装机模块并行数量")
             .getInt(SpaceElevatorAssemblerParallel);
 
         SpaceElevatorAssemblerParallelEnable = config
-            .get("太空组装机-组装机模块","组装机模块并行数量修改开启",SpaceElevatorAssemblerParallelEnable,"开启组装机并行数量修改")
+            .get("太空电梯-组装机模块","组装机模块并行数量修改开启",SpaceElevatorAssemblerParallelEnable,"开启组装机并行数量修改")
             .getBoolean(SpaceElevatorAssemblerParallelEnable);
 
         SpaceElevatorMiningParallelsEnable = config
-            .get("太空组装机-采矿模块","采矿模块并行数量修改开启",SpaceElevatorMiningParallelsEnable,"开启采矿模块并行数量修改")
+            .get("太空电梯-采矿模块","采矿模块并行数量修改开启",SpaceElevatorMiningParallelsEnable,"开启采矿模块并行数量修改")
             .getBoolean(SpaceElevatorMiningParallelsEnable);
 
         SpaceElevatorModuleMiningParallels = config
-            .get("太空组装机-采矿模块","采矿模块并行数量设置",SpaceElevatorModuleMiningParallels,"设置采矿模块并行数量")
+            .get("太空电梯-采矿模块","采矿模块并行数量设置",SpaceElevatorModuleMiningParallels,"设置采矿模块并行数量")
             .getInt(SpaceElevatorModuleMiningParallels);
 
         SpaceElevatorMiningPlasmaEnable = config
-            .get("太空组装机-采矿模块","采矿模块等离子体不消耗",SpaceElevatorMiningPlasmaEnable,"开启后采矿模块等离子体不会消耗")
+            .get("太空电梯-采矿模块","采矿模块等离子体不消耗",SpaceElevatorMiningPlasmaEnable,"开启后采矿模块等离子体不会消耗")
             .getBoolean(SpaceElevatorMiningPlasmaEnable);
 
         SpaceElevatorMiningTicks = config
@@ -159,12 +158,12 @@ public class MainConfig {
             .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
             .getBoolean(SpaceElevatorMiningTicksTrue);
 
-        discount = config
-            .get("超维度等离子锻炉", "催化剂减免", discount, "超维度锻炉催化剂减免，数值为0.0-1.0,1.0为没有任何减免，推荐0.0为没有任何减免，不需要通厕所")
-            .getDouble(discount);
+        DTPFOpen = config
+            .get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，也就是不再有减免，避免通厕所")
+            .getBoolean(DTPFOpen);
 
         DTPFMK2Enable = config
-            .get("TST","超维度等离子锻炉MK2催化剂减免开启",DTPFMK2Enable,"开启超维度等离子锻炉MK2催化剂减免")
+            .get("TST","超维度等离子锻炉MK2锁定催化剂减免开启",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，也就是不再有减免，避免通厕所")
             .getBoolean(DTPFMK2Enable);
 
         constantOutputEUConfig = config
@@ -230,10 +229,6 @@ public class MainConfig {
         EOHOpenEuOutPut = config
             .get("鸿蒙之眼发电", "鸿蒙之眼固定发电量设置", EOHOpenEuOutPut, "是否开启鸿蒙之眼额外EU产出")
             .getBoolean(EOHOpenEuOutPut);
-
-        DTPFOpen = config
-            .get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "超维度锻炉锁定催化剂减免是否启用")
-            .getBoolean(DTPFOpen);
 
         FOGUpDate = config
             .get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
