@@ -75,6 +75,9 @@ public class MainConfig {
     public static boolean TranscendentPlasmaMixerEnable = true;
     public static boolean PlanetaryGasSiphonEnable = true;
     public static int PlanetaryGasSiphonParallel = 10;
+    public static boolean IndustrialDehydratorEnable = true;
+    public static boolean FrothFlotationCellEnable = true;
+    public static boolean IsaMillEnable = true;
 
 
     private static Configuration config;
@@ -105,6 +108,18 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万(并行数量实际上就是你输出乘以这个值，配方输出是256，并行是100实际输出就是25600！)")
             .getInt(TargetChamberParallel);
+
+        IndustrialDehydratorEnable = config
+            .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后增强真空干燥炉到50倍速，不耗电，200万并行")
+            .getBoolean(IndustrialDehydratorEnable);
+
+        FrothFlotationCellEnable = config
+            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后增强浮选机到50倍速，不耗电，200万并行")
+            .getBoolean(FrothFlotationCellEnable);
+
+        IsaMillEnable = config
+            .get("稀土线","艾萨研磨机",IsaMillEnable,"开启后增强艾萨研磨机到50倍速，不耗电，200万并行，研磨球不会损耗")
+            .getBoolean(IsaMillEnable);
 
         PlanetaryGasSiphonEnable = config
             .get("行星气体钻机","行星气体钻机产出倍率修改开启",PlanetaryGasSiphonEnable,"开启行星气体钻机产出修改")
