@@ -65,9 +65,10 @@ public abstract class FrothFlotationCellMixin extends GTPPMultiBlockBase<MTEFrot
                 }
             };
 
-            customLogic.setSpeedBonus(1F / 0.02F)
+            customLogic
+                .setSpeedBonus(1F / 0.02F)
                 .setEuModifier(0.0F)
-                .setMaxParallelSupplier(() -> 200000);
+                .setMaxParallelSupplier(() -> 2000000);
 
             cir.setReturnValue(customLogic);
         }

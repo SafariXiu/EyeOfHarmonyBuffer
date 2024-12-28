@@ -60,6 +60,7 @@ public class LateMixins implements ILateMixinLoader {
             "PlanetaryGasSiphonMixin",
             "RareEarth.IndustrialDehydratorMixin",
             "RareEarth.FrothFlotationCellMixin",
+            "RareEarth.IsaMillMixin",
             "SpaceElevator.ModuleAssemblerMixin",
             "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",
