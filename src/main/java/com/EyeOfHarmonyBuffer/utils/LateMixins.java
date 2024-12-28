@@ -58,6 +58,7 @@ public class LateMixins implements ILateMixinLoader {
             "OutPutME.HatchOutputBusMEMixin",
             "OutPutME.HatchOutputMEMixin",
             "PlanetaryGasSiphonMixin",
+            "RareEarth.IndustrialDehydratorMixin",
             "SpaceElevator.ModuleAssemblerMixin",
             "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",
