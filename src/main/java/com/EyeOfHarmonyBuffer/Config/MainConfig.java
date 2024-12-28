@@ -76,6 +76,7 @@ public class MainConfig {
     public static boolean PlanetaryGasSiphonEnable = true;
     public static int PlanetaryGasSiphonParallel = 10;
     public static boolean IndustrialDehydratorEnable = true;
+    public static boolean FrothFlotationCellEnable = true;
 
 
     private static Configuration config;
@@ -110,6 +111,10 @@ public class MainConfig {
         IndustrialDehydratorEnable = config
             .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后增强真空干燥炉到10倍速，不耗电，200万并行")
             .getBoolean(IndustrialDehydratorEnable);
+
+        FrothFlotationCellEnable = config
+            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后增强浮选机到50倍速，不耗电，20万并行")
+            .getBoolean(FrothFlotationCellEnable);
 
         PlanetaryGasSiphonEnable = config
             .get("行星气体钻机","行星气体钻机产出倍率修改开启",PlanetaryGasSiphonEnable,"开启行星气体钻机产出修改")
