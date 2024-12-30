@@ -98,7 +98,7 @@ public class MainConfig {
 
     public static void loadConfig() {
         TargetChamberEnable = config
-            .get("靶室","靶室运行设定",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，并且机器不再消耗电力，锁定运行时间为5s")
+            .get("靶室","靶室运行设定",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，并且机器不再消耗电力，耗时为原来的二十分之一")
             .getBoolean(TargetChamberEnable);
 
         TargetChamberParallelEnable = config
@@ -106,7 +106,7 @@ public class MainConfig {
             .getBoolean(TargetChamberParallelEnable);
 
         TargetChamberParallel = config
-            .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万(并行数量实际上就是你输出乘以这个值，配方输出是256，并行是100实际输出就是25600！)")
+            .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
 
         IndustrialDehydratorEnable = config
