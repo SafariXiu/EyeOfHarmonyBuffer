@@ -78,6 +78,7 @@ public class MainConfig {
     public static boolean IndustrialDehydratorEnable = true;
     public static boolean FrothFlotationCellEnable = true;
     public static boolean IsaMillEnable = true;
+    public static boolean FOGGravitonShardEnable = true;
 
 
     private static Configuration config;
@@ -248,6 +249,10 @@ public class MainConfig {
         FOGUpDate = config
             .get("诸神之锻炉", "诸神之锻炉升级模块", FOGUpDate, "诸神之锻炉升级模块随便点，无视材料，分支，引力子碎片")
             .getBoolean(FOGUpDate);
+
+        FOGGravitonShardEnable = config
+            .get("诸神之锻炉","诸神之锻炉引力子碎片输出",FOGGravitonShardEnable,"开启后诸神之锻炉引力子碎片输出不再减少机器内部引力子碎片数量")
+            .getBoolean(FOGGravitonShardEnable);
 
         ExoticModuleEnable = config
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
