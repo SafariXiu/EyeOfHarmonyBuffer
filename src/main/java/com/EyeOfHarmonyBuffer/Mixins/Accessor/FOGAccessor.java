@@ -12,4 +12,7 @@ public interface FOGAccessor {
     @Accessor("upgrades")
     UpgradeStorage getUpgrades();
 
+    @Accessor("gravitonShardsAvailable")
+    int getGravitonShardsAvailable();
+
 }
