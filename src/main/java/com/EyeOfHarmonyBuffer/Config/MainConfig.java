@@ -79,6 +79,8 @@ public class MainConfig {
     public static boolean FrothFlotationCellEnable = true;
     public static boolean IsaMillEnable = true;
     public static boolean FOGGravitonShardEnable = true;
+    public static boolean EOHGemEnable = true;
+    public static String EOHGem = "2T";
 
 
     private static Configuration config;
@@ -237,6 +239,15 @@ public class MainConfig {
         EOHZeroPowerStart = config
             .get("鸿蒙之眼功能", "鸿蒙之眼0电启动", EOHZeroPowerStart, "鸿蒙之眼0电量启动，现在它不耗电了!")
             .getBoolean(EOHZeroPowerStart);
+
+        EOHGemEnable = config
+            .get("鸿蒙之眼宝石产出","开启鸿蒙之眼宝石产出",EOHGemEnable,"开启后鸿蒙之眼可以输出所有矿物词典带有Gem的物品")
+            .getBoolean(EOHGemEnable);
+
+        EOHGem = config
+            .get("鸿蒙之眼宝石产出","鸿蒙之眼宝石产出数量设置",EOHGem,"支持long级别的物品输出，大于int数量的物品请使用字符来表示，例如100T，100G等方式" +
+                "目前支持K(千)，M(百万，B、G(10亿),T(万亿),P(千万亿),E(百亿亿))")
+            .getString();
 
         EOHWorkTime = config
             .get("鸿蒙之眼运行时间", "鸿蒙之眼运行时间控制", EOHWorkTime, "是否启用控制鸿蒙之眼运行时间为一个固定值")

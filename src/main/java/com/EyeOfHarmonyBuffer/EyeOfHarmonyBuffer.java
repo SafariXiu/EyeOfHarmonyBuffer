@@ -1,7 +1,10 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
+import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -19,6 +22,8 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
     dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
+
+    public final GemErgodic gemErgodic = new GemErgodic();
 
     public static final String MODID = "EyeOfHarmonyBuffer";
 
@@ -49,12 +54,17 @@ public class EyeOfHarmonyBuffer {
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
+
+        gemErgodic.init(event);
+        ItemConfig.setGemErgodic(gemErgodic);
+        ItemConfig.reloadConfig();
     }
 
     @Mod.EventHandler
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+
     }
 
     @Mod.EventHandler
