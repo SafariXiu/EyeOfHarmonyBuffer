@@ -34,6 +34,7 @@ public class LateMixins implements ILateMixinLoader {
             "BioLab.BioLabMixin",
             "BioVatMixin",
             "BlackHoleCompressorMixin",
+            "CircuitAssemblyLineMixin",
             "DigesterMixin",
             "DissolutionTankMixin",
             "DTPFBuffer",
