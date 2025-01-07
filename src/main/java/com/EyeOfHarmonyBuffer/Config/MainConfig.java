@@ -83,7 +83,7 @@ public class MainConfig {
     public static String EOHGem = "2T";
     public static boolean PCBFactoryParallelEnable = true;
     public static boolean PCBFactoryCoolantEnable = true;
-
+    public static boolean CircuitAssemblyLineEnable = true;
 
     private static Configuration config;
 
@@ -113,6 +113,10 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
+
+        CircuitAssemblyLineEnable = config
+            .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
+            .getBoolean(CircuitAssemblyLineEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
