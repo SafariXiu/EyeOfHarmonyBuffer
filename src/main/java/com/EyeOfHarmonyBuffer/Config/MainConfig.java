@@ -81,6 +81,8 @@ public class MainConfig {
     public static boolean FOGGravitonShardEnable = true;
     public static boolean EOHGemEnable = true;
     public static String EOHGem = "2T";
+    public static boolean PCBFactoryParallelEnable = true;
+    public static boolean PCBFactoryCoolantEnable = true;
 
 
     private static Configuration config;
@@ -111,6 +113,14 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
+
+        PCBFactoryParallelEnable = config
+            .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
+            .getBoolean(PCBFactoryParallelEnable);
+
+        PCBFactoryCoolantEnable = config
+            .get("PCB工厂","PCB工厂不消耗冷却液开启",PCBFactoryCoolantEnable,"开启后PCB工厂不再消耗冷却液，并行数量不再依赖冷却液数量")
+            .getBoolean(PCBFactoryCoolantEnable);
 
         IndustrialDehydratorEnable = config
             .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后增强真空干燥炉到50倍速，不耗电，200万并行")
