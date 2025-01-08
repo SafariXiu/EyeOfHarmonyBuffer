@@ -17,7 +17,7 @@ public class ModuleEUMixin {
     @Inject(method = "maxEUStore",at = @At("RETURN"),cancellable = true)
     public void MixinEU_BUFFER_BASE_SIZE(CallbackInfoReturnable<Long> cir) {
         if(MainConfig.SpaceElevatorMiningParallelsEnable || MainConfig.SpaceElevatorMiningTicksTrue || MainConfig.SpaceElevatorAssemblerParallelEnable){
-            cir.setReturnValue(1145149969961919810L);
+            cir.setReturnValue(Long.MAX_VALUE);
         }
     }
 }

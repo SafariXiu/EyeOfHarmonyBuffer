@@ -1,11 +1,13 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
+import com.EyeOfHarmonyBuffer.Mixins.Invoker.TTMultiblockBaseInvoker;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
@@ -32,7 +34,7 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
         }
 
         if (fluidStack == null) {
-            cir.setReturnValue(0);
+            cir.setReturnValue(3);
             return;
         }
 
@@ -41,13 +43,13 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
         }
 
         else if (fluidStack.isFluidEqual(Materials.Bismuth.getPlasma(1))) {
-            cir.setReturnValue(2);
+            cir.setReturnValue(3);
         }
 
         else if (fluidStack.isFluidEqual(Materials.Helium.getPlasma(1))) {
-            cir.setReturnValue(1);
+            cir.setReturnValue(3);
         } else {
-            cir.setReturnValue(0);
+            cir.setReturnValue(3);
         }
     }
 
@@ -65,5 +67,4 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
             cir.setReturnValue(modifiedTime);
         }
     }
-
 }
