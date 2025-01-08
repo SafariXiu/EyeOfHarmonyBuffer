@@ -32,7 +32,7 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
         }
 
         if (fluidStack == null) {
-            cir.setReturnValue(0);
+            cir.setReturnValue(3);
             return;
         }
 
@@ -41,13 +41,13 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
         }
 
         else if (fluidStack.isFluidEqual(Materials.Bismuth.getPlasma(1))) {
-            cir.setReturnValue(2);
+            cir.setReturnValue(3);
         }
 
         else if (fluidStack.isFluidEqual(Materials.Helium.getPlasma(1))) {
-            cir.setReturnValue(1);
+            cir.setReturnValue(3);
         } else {
-            cir.setReturnValue(0);
+            cir.setReturnValue(3);
         }
     }
 
@@ -65,5 +65,4 @@ public abstract class ModuleMinerMixin extends MTEMultiBlockBase {
             cir.setReturnValue(modifiedTime);
         }
     }
-
 }
