@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
+import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -64,7 +65,7 @@ public class EyeOfHarmonyBuffer {
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
-
+        RecipeLoader.loadRecipes();
     }
 
     @Mod.EventHandler
