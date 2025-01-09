@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.Reflect.DTPFReflect;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
@@ -24,6 +26,8 @@ public class CommandReloadConfig extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         try {
             Config.reloadConfig();
+
+            DTPFReflect.DTPFUpdateValidFuels(MainConfig.DTPFOpen);
 
             // 触发配置重载事件
             MinecraftForge.EVENT_BUS.post(new ConfigReloadedEvent());
