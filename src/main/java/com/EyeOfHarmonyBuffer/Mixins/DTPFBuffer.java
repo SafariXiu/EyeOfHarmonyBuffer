@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,7 +13,11 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.common.tileentities.machines.multi.MTEPlasmaForge;
 
 @Mixin(value = MTEPlasmaForge.class, remap = false)
-public abstract class DTPFBuffer {
+public abstract class DTPFBuffer extends MTEExtendedPowerMultiBlockBase<MTEPlasmaForge> implements ISurvivalConstructable {
+
+    protected DTPFBuffer(int aID, String aName, String aNameRegional) {
+        super(aID, aName, aNameRegional);
+    }
 
     @Shadow
     private double discount;
