@@ -195,7 +195,7 @@ public class MainConfig {
             .getBoolean(DTPFOpen);
 
         DTPFMK2Enable = config
-            .get("TST","超维度等离子锻炉MK2锁定催化剂减免开启",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，也就是不再有减免，避免通厕所")
+            .get("TST","开启超维度等离子锻炉MK2锁定催化剂减免",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFMK2Enable);
 
         constantOutputEUConfig = config
