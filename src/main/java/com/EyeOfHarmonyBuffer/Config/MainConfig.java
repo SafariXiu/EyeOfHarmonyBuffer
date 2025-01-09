@@ -191,7 +191,7 @@ public class MainConfig {
             .getBoolean(SpaceElevatorMiningTicksTrue);
 
         DTPFOpen = config
-            .get("超维度等离子锻炉", "催化剂减免是否启用", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，也就是不再有减免，避免通厕所")
+            .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFOpen);
 
         DTPFMK2Enable = config
