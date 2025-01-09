@@ -10,24 +10,23 @@ public class DTPFReflect {
     private static boolean isValidFuelsCleared = false;
     private static FluidStack[] originalValidFuels = null;
 
-    public static void updateValidFuels(boolean enable) {
+    public static void DTPFUpdateValidFuels(boolean enable) {
         try {
-            Field validFuelsField = MTEPlasmaForge.class.getDeclaredField("valid_fuels");
-            validFuelsField.setAccessible(true);
+            Field DTPFvalidFuelsField = MTEPlasmaForge.class.getDeclaredField("valid_fuels");
+            DTPFvalidFuelsField.setAccessible(true);
 
-            // 解锁 final 修饰符
             Field modifiersField = Field.class.getDeclaredField("modifiers");
             modifiersField.setAccessible(true);
-            modifiersField.setInt(validFuelsField, validFuelsField.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+            modifiersField.setInt(DTPFvalidFuelsField, DTPFvalidFuelsField.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
 
             if (enable && !isValidFuelsCleared) {
                 if (originalValidFuels == null) {
-                    originalValidFuels = (FluidStack[]) validFuelsField.get(null);
+                    originalValidFuels = (FluidStack[]) DTPFvalidFuelsField.get(null);
                 }
-                validFuelsField.set(null, new FluidStack[]{});
+                DTPFvalidFuelsField.set(null, new FluidStack[]{});
                 isValidFuelsCleared = true;
             } else if (!enable && isValidFuelsCleared) {
-                validFuelsField.set(null, originalValidFuels);
+                DTPFvalidFuelsField.set(null, originalValidFuels);
                 isValidFuelsCleared = false;
             }
         } catch (Exception e) {

@@ -27,7 +27,7 @@ public class CommandReloadConfig extends CommandBase {
         try {
             Config.reloadConfig();
 
-            DTPFReflect.updateValidFuels(MainConfig.DTPFOpen);
+            DTPFReflect.DTPFUpdateValidFuels(MainConfig.DTPFOpen);
 
             // 触发配置重载事件
             MinecraftForge.EVENT_BUS.post(new ConfigReloadedEvent());
