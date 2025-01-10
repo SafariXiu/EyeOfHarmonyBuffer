@@ -1,9 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
@@ -85,13 +82,35 @@ public class LateMixins implements ILateMixinLoader {
             "UUMixin"
         ));
 
-        if (loadedMods.contains("TwistSpaceTechnology")) {
-            mixins.add("TST.IndistinctTentaclePrototypeMK2Mixin");
-            System.out.println("TwistSpaceTechnology mod detected! Loading TST.IndistinctTentaclePrototypeMK2Mixin.");
-        } else {
-            System.out.println("TwistSpaceTechnology mod not detected. Skipping TST.IndistinctTentaclePrototypeMK2Mixin.");
-        }
+        // 定义每个 mod 对应的 mixin 列表
+        Map<String, List<String>> modMixins = new HashMap<>();
+        modMixins.put("TwistSpaceTechnology", Arrays.asList(
+            "TST.IndistinctTentaclePrototypeMK2Mixin",
+            "TST.LightningSpireMixin"
+        ));
+        // 如果有其他 mod 需要 mixin，可以在这里添加，比如：
+        // modMixins.put("AnotherMod", Arrays.asList("AnotherMod.SomeMixin1", "AnotherMod.SomeMixin2"));
+
+        loadModSpecificMixins(loadedMods, modMixins, mixins);
 
         return mixins;
+    }
+
+    private void loadModSpecificMixins(Set<String> loadedMods, Map<String, List<String>> modMixins, List<String> mixins) {
+        for (Map.Entry<String, List<String>> entry : modMixins.entrySet()) {
+            String modName = entry.getKey();
+            List<String> modMixinList = entry.getValue();
+
+            if (loadedMods.contains(modName)) {
+                for (String mixin : modMixinList) {
+                    mixins.add(mixin);
+                    System.out.println(modName + " mod detected! Loading " + mixin + ".");
+                }
+            } else {
+                for (String mixin : modMixinList) {
+                    System.out.println(modName + " mod not detected. Skipping " + mixin + ".");
+                }
+            }
+        }
     }
 }
