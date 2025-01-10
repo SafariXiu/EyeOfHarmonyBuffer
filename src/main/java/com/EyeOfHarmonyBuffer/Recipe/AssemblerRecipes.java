@@ -54,5 +54,31 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.gem, Materials.EnderPearl,1),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.EnderEye,4),
+                GTOreDictUnificator.get(OrePrefixes.gem, Materials.Fluix,4)
+            )
+            .itemOutputs(
+                GTOreDictUnificator.get(OrePrefixes.pearl, Materials.Fluix,4)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(20 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.gem, Materials.EnderPearl,1),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.EnderEye,4),
+                getModItem(AppliedEnergistics2.ID,"item.ItemMultiMaterial",4,12)
+            )
+            .itemOutputs(
+                GTOreDictUnificator.get(OrePrefixes.pearl, Materials.Fluix,4)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(20 * SECONDS)
+            .addTo(assemblerRecipes);
+
     }
 }
