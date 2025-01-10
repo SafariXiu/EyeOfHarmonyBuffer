@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins.TST;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.Nxer.TwistSpaceTechnology.common.machine.GTCM_LightningSpire;
 import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.TT_MultiMachineBase_EM;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
@@ -37,16 +38,18 @@ public abstract class LightningSpireMixin extends TT_MultiMachineBase_EM impleme
 
     @Inject(method = "checkProcessing_EM", at = @At("HEAD"), cancellable = true)
     private void modifyCheckProcessing(CallbackInfoReturnable<CheckRecipeResult> cir) {
-        if (tRods > 0) {
-            tStored = Math.min(tStored + tProduct, tMaxStored);
-            GTCM_LightningSpire instance = (GTCM_LightningSpire) (Object) this;
-            lightOnWorld();
-            instance.mMaxProgresstime = 256;
-            instance.updateSlots();
+        if(MainConfig.LightningSpireEnable){
+            if (tRods > 0) {
+                tStored = Math.min(tStored + tProduct, tMaxStored);
+                GTCM_LightningSpire instance = (GTCM_LightningSpire) (Object) this;
+                lightOnWorld();
+                instance.mMaxProgresstime = MainConfig.LightningSpireTime;
+                instance.updateSlots();
 
-            cir.setReturnValue(CheckRecipeResultRegistry.GENERATING);
-        } else {
-            cir.setReturnValue(NO_RECIPE);
+                cir.setReturnValue(CheckRecipeResultRegistry.GENERATING);
+            } else {
+                cir.setReturnValue(NO_RECIPE);
+            }
         }
     }
 }
