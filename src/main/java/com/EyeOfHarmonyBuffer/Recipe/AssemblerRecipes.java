@@ -3,9 +3,12 @@ package com.EyeOfHarmonyBuffer.Recipe;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.FluidStack;
 
-import static gregtech.api.enums.Mods.AppliedEnergistics2;
-import static gregtech.api.enums.Mods.NewHorizonsCoreMod;
+import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -100,5 +103,37 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
+        //标定框架
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.screw,Materials.Steel,4),
+                getModItem(Forestry.ID, "propolis",1,0),
+                getModItem(Forestry.ID, "propolis",1,3),
+                getModItem(Forestry.ID, "royalJelly",1,0),
+                getModItem(Forestry.ID, "frameImpregnated",1,0)
+            )
+            .fluidInputs(
+                FluidRegistry.getFluidStack("for.honey", 100)
+                )
+            .itemOutputs(
+                getModItem(Forestry.ID, "frameProven",1,0)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //红石灯
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                new ItemStack(Blocks.glowstone,1),
+                new ItemStack(Blocks.glass_pane,7),
+                GTOreDictUnificator.get(OrePrefixes.stick,Materials.RedAlloy,1)
+            )
+            .itemOutputs(
+                new ItemStack(Blocks.redstone_lamp,1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }
