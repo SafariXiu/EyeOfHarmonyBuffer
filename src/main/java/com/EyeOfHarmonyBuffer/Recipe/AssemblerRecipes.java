@@ -11,12 +11,12 @@ public final class AssemblerRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        GTValues.RA.stdBuilder()
+        /*GTValues.RA.stdBuilder()
             .itemInputs(
 
             )
             .itemOutputs()
             .eut(TierEU.RECIPE_EV)
-            .addTo(assemblerRecipes);
+            .addTo(assemblerRecipes);*/
     }
 }
