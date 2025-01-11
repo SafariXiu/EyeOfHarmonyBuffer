@@ -195,7 +195,7 @@ public class MainConfig {
             .getBoolean(LightningSpireEnable);
 
         LightningSpireTime = config
-            .get("TST","闪电尖塔",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
+            .get("TST","闪电尖塔工作时间设置",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireTime);
 
         constantOutputEUConfig = config
