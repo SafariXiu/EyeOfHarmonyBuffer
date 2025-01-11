@@ -52,7 +52,6 @@ public class LateMixins implements ILateMixinLoader {
             "IndustrialLaserEngraver.IndustrialLaserEngraverParallelMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverSpeedMixin",
             "Invoker.TTMultiblockBaseInvoker",
-            "LargeEssentiaGeneratorMixin",
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
             "MaskListMixin",
@@ -78,7 +77,6 @@ public class LateMixins implements ILateMixinLoader {
             "TreatedWater.Grade6WaterPurificationMixin",
             "TreatedWater.Grade7WaterPurificationMixin",
             "TreatedWater.Grade8WaterPurificationMixin",
-            "TranscendentPlasmaMixerMixin",
             "UUMixin"
         ));
 
