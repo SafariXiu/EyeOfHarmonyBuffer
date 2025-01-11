@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
@@ -131,6 +132,21 @@ public final class AssemblerRecipes implements IRecipePool {
             )
             .itemOutputs(
                 new ItemStack(Blocks.redstone_lamp,1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //Z-逻辑控制器
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                new ItemStack(Items.skull, 1, 2),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.Soularium,2),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.SiliconSG,2),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.RedAlloy,2)
+            )
+            .itemOutputs(
+                getModItem(EnderIO.ID, "itemFrankenSkull",1,1)
             )
             .eut(TierEU.RECIPE_HV)
             .duration(5 * SECONDS)
