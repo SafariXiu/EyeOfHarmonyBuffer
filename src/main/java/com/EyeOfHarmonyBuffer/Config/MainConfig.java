@@ -66,13 +66,11 @@ public class MainConfig {
     public static int SpaceElevatorMiningTicks = 128;
     public static boolean Water = true;
     public static boolean SpaceElevatorMiningTicksTrue = true;
-    public static boolean LargeEssentiaGeneratorEnable = true;
     public static boolean OutPutHatchMEEnable = true;
     public static boolean OutPutBusMEEnable = true;
     public static boolean TargetChamberEnable = true;
     public static boolean TargetChamberParallelEnable = true;
     public static int TargetChamberParallel = 256;
-    public static boolean TranscendentPlasmaMixerEnable = true;
     public static boolean PlanetaryGasSiphonEnable = true;
     public static int PlanetaryGasSiphonParallel = 10;
     public static boolean IndustrialDehydratorEnable = true;
@@ -148,10 +146,6 @@ public class MainConfig {
             .get("行星气体钻机","行星气体钻机产出倍率",PlanetaryGasSiphonParallel,"设置行星气体钻机产出倍率")
             .getInt(PlanetaryGasSiphonParallel);
 
-        TranscendentPlasmaMixerEnable = config
-            .get("其他机器","超维度搅拌机",TranscendentPlasmaMixerEnable,"开启后超维度搅拌机不再耗电，并行提升至20万")
-            .getBoolean(TranscendentPlasmaMixerEnable);
-
         OutPutBusMEEnable = config
             .get("ME总线","ME输出总线",OutPutBusMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
             .getBoolean(OutPutBusMEEnable);
@@ -159,10 +153,6 @@ public class MainConfig {
         OutPutHatchMEEnable = config
             .get("ME总线","ME输出仓",OutPutHatchMEEnable,"开启后为无限存储量（Long.MAX_VALUE）")
             .getBoolean(OutPutHatchMEEnable);
-
-        LargeEssentiaGeneratorEnable = config
-            .get("其他机器","大型源质发电机",LargeEssentiaGeneratorEnable,"让源神重新支持激光仓！Make 源神 Great Again")
-            .getBoolean(LargeEssentiaGeneratorEnable);
 
         SpaceElevatorAssemblerParallel = config
             .get("太空电梯-组装机模块","组装机模块并行数量设置",SpaceElevatorAssemblerParallel,"设置组装机模块并行数量")
