@@ -84,6 +84,7 @@ public class MainConfig {
     public static boolean CircuitAssemblyLineEnable = true;
     public static boolean LightningSpireEnable = true;
     public static int LightningSpireTime = 256;
+    public static boolean FuelRefineFactoryEnable = true;
 
     private static Configuration config;
 
@@ -326,6 +327,10 @@ public class MainConfig {
         NaquadahFuelRefineryMagnification = config
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
+
+        FrothFlotationCellEnable = config
+            .get("硅岩燃料精炼厂","耗电修改",FOGGravitonShardEnable,"开启后修改硅岩燃料精炼厂的不再消耗电力（能源仓需要有电但是不会消耗！）")
+            .getBoolean(FOGGravitonShardEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
             .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
