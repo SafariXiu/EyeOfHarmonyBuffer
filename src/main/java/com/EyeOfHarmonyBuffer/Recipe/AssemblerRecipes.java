@@ -151,5 +151,31 @@ public final class AssemblerRecipes implements IRecipePool {
             .eut(TierEU.RECIPE_HV)
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
+
+        //压缩太阳能
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                getModItem(NewHorizonsCoreMod.ID,"item.ReinforcedAluminiumIronPlate",1,0),
+                getModItem(IndustrialCraft2.ID, "blockGenerator",8,3)
+            )
+            .itemOutputs(
+                getModItem(ElectroMagicTools.ID, "EMTSolars",1,0)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //2级压缩太阳能
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                getModItem(NewHorizonsCoreMod.ID,"item.IrradiantReinforcedTitaniumPlate",1,0),
+                getModItem(ElectroMagicTools.ID, "EMTSolars",8,0)
+            )
+            .itemOutputs(
+                getModItem(ElectroMagicTools.ID, "EMTSolars",1,1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }
