@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Config;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.Mixins.DEFusionCrafterMixin;
 import com.EyeOfHarmonyBuffer.Mixins.HIPCompressorMixin;
 import net.minecraftforge.common.config.Configuration;
 
@@ -84,6 +85,7 @@ public class MainConfig {
     public static boolean CircuitAssemblyLineEnable = true;
     public static boolean LightningSpireEnable = true;
     public static int LightningSpireTime = 256;
+    public static boolean DEFusionCrafterEnable = true;
     public static boolean FuelRefineFactoryEnable = true;
 
     private static Configuration config;
@@ -118,6 +120,10 @@ public class MainConfig {
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
             .getBoolean(CircuitAssemblyLineEnable);
+
+        DEFusionCrafterEnable = config
+            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
+            .getBoolean(DEFusionCrafterEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
@@ -328,9 +334,9 @@ public class MainConfig {
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
 
-        FrothFlotationCellEnable = config
-            .get("硅岩燃料精炼厂","耗电修改",FOGGravitonShardEnable,"开启后修改硅岩燃料精炼厂的不再消耗电力（能源仓需要有电但是不会消耗！）")
-            .getBoolean(FOGGravitonShardEnable);
+        FuelRefineFactoryEnable = config
+            .get("硅岩燃料精炼厂","超频机制修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
+            .getBoolean(FuelRefineFactoryEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
             .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
