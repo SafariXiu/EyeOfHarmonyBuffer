@@ -190,5 +190,17 @@ public final class AssemblerRecipes implements IRecipePool {
             .eut(TierEU.RECIPE_LV)
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
+
+        //充能龙块
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                getModItem(DraconicEvolution.ID, "draconium",1,0)
+            )
+            .itemOutputs(
+                getModItem(DraconicEvolution.ID, "draconium",1,2)
+            )
+            .eut(TierEU.RECIPE_MAX)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }
