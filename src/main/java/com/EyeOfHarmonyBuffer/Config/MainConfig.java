@@ -87,6 +87,7 @@ public class MainConfig {
     public static int LightningSpireTime = 256;
     public static boolean DEFusionCrafterEnable = true;
     public static boolean FuelRefineFactoryEnable = true;
+    public static boolean DTPFEnable = true;
 
     private static Configuration config;
 
@@ -192,6 +193,10 @@ public class MainConfig {
         DTPFOpen = config
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFOpen);
+
+        DTPFEnable = config
+            .get("超维度等离子锻炉","超频机制修改",DTPFEnable,"开启后超维度锻炉不再消耗电力,所有配方都会在10tick完成，并且拥有int并行,配方不受热量限制")
+            .getBoolean(DTPFEnable);
 
         DTPFMK2Enable = config
             .get("TST","开启超维度等离子锻炉MK2锁定催化剂减免",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，不再有减免，避免通厕所")
