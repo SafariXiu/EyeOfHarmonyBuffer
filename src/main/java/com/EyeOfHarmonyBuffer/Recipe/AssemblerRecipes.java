@@ -177,5 +177,18 @@ public final class AssemblerRecipes implements IRecipePool {
             .eut(TierEU.RECIPE_EV)
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
+
+        //红色按钮
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                new ItemStack(Blocks.stone_button,1),
+                getModItem(ProjectRedCore.ID, "projectred.core.part",2,33)
+            )
+            .itemOutputs(
+                getModItem(ProjectRedIllumination.ID, "projectred.illumination.lightbutton",1,14)
+            )
+            .eut(TierEU.RECIPE_LV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }
