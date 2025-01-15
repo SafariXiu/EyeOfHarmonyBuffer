@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Config;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.Mixins.DEFusionCrafterMixin;
 import com.EyeOfHarmonyBuffer.Mixins.HIPCompressorMixin;
 import net.minecraftforge.common.config.Configuration;
 
@@ -84,6 +85,7 @@ public class MainConfig {
     public static boolean CircuitAssemblyLineEnable = true;
     public static boolean LightningSpireEnable = true;
     public static int LightningSpireTime = 256;
+    public static boolean DEFusionCrafterEnable = true;
 
     private static Configuration config;
 
@@ -117,6 +119,10 @@ public class MainConfig {
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
             .getBoolean(CircuitAssemblyLineEnable);
+
+        DEFusionCrafterEnable = config
+            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
+            .getBoolean(DEFusionCrafterEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")

@@ -34,6 +34,7 @@ public class LateMixins implements ILateMixinLoader {
             "CircuitAssemblyLineMixin",
             "DigesterMixin",
             "DissolutionTankMixin",
+            "DEFusionCrafterMixin",
             "EOH.EyeOfHarmonyAstralArrayAmount",
             "EOH.EyeOfHarmonyEU",
             "EOH.EyeOfHarmonyFluidMixin",
