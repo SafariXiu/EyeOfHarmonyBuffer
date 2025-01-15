@@ -47,6 +47,7 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonyZeroPowerStart",
             "FOGShardsAvailable",
             "FuelFactory.NaquadahFuelRefineryMixin",
+            "FuelFactory.FuelRefineFactoryMixin",
             "GodOfForgeModuleMixin.ExoticModuleMixin",
             "GodOfForgeModuleMixin.GravitonShardMixin",
             "HIPCompressorMixin",
