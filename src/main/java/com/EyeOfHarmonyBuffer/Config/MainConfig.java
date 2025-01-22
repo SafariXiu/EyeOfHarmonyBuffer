@@ -26,7 +26,7 @@ public class MainConfig {
     public static boolean EOHOpenEuOutPut = true;
     public static boolean DTPFOpen = true;
     public static boolean FOGUpDate = true;
-    public static boolean BioVatTrue = true;
+    public static boolean BioVatOutputRatioEnable = true;
     public static boolean DisTankTrue = true;
     public static boolean DigesterMixin = true;
     public static boolean LargeFusionMixin = true;
@@ -86,9 +86,9 @@ public class MainConfig {
     public static boolean LightningSpireEnable = true;
     public static int LightningSpireTime = 256;
     public static boolean DEFusionCrafterEnable = true;
-    public static boolean FuelRefineFactoryEnable = true;
-    public static boolean DTPFEnable = true;
-    public static int LightningSpireMaxRods = 8192;
+    public static boolean IndustrialChiselEnable = true;
+    public static boolean BioVatRadiationEnabled = true;
+    public static int BioVatOutputRatio = 1000000;
 
     private static Configuration config;
 
@@ -126,6 +126,22 @@ public class MainConfig {
         DEFusionCrafterEnable = config
             .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
+
+        BioVatRadiationEnabled = config
+            .get("细菌培养缸","细菌培养缸机器辐射修改",BioVatRadiationEnabled,"开启后细菌培养缸运行不再需要辐射")
+            .getBoolean(BioVatRadiationEnabled);
+
+        BioVatOutputRatioEnable = config
+            .get("细菌培养缸", "开细菌培养缸产出倍率修改", BioVatOutputRatioEnable, "开启后细菌培养缸输出倍率修改")
+            .getBoolean(BioVatOutputRatioEnable);
+
+        BioVatOutputRatio = config
+            .get("细菌培养缸","细菌培养缸产出倍率设置",BioVatOutputRatio,"设置细菌培养缸产出倍率")
+            .getInt(BioVatOutputRatio);
+
+        IndustrialChiselEnable = config
+            .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
+            .getBoolean(IndustrialChiselEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
@@ -195,10 +211,6 @@ public class MainConfig {
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFOpen);
 
-        DTPFEnable = config
-            .get("超维度等离子锻炉","超频机制修改",DTPFEnable,"开启后超维度锻炉不再消耗电力,所有配方都会在10tick完成，并且拥有int并行,配方不受热量限制")
-            .getBoolean(DTPFEnable);
-
         DTPFMK2Enable = config
             .get("TST","开启超维度等离子锻炉MK2锁定催化剂减免",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFMK2Enable);
@@ -210,10 +222,6 @@ public class MainConfig {
         LightningSpireTime = config
             .get("TST","闪电尖塔工作时间设置",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireTime);
-
-        LightningSpireMaxRods = config
-            .get("TST","闪电尖塔避雷针数量上限设置",LightningSpireMaxRods,"设置闪电尖塔内部避雷针数量上限,必须开启闪电尖塔mixin后才能生效！")
-            .getInt(LightningSpireMaxRods);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
@@ -300,10 +308,6 @@ public class MainConfig {
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
             .getBoolean(ExoticModuleEnable);
 
-        BioVatTrue = config
-            .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
-            .getBoolean(BioVatTrue);
-
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
             .getBoolean(DisTankTrue);
@@ -343,10 +347,6 @@ public class MainConfig {
         NaquadahFuelRefineryMagnification = config
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
-
-        FuelRefineFactoryEnable = config
-            .get("硅岩燃料精炼厂","超频机制修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
-            .getBoolean(FuelRefineFactoryEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
             .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
