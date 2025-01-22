@@ -4,12 +4,15 @@ import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMach
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import gregtech.api.enums.TAE;
+import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.render.TextureFactory;
 import gregtech.api.util.*;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
 import gtPlusPlus.core.block.ModBlocks;
@@ -23,6 +26,8 @@ import javax.annotation.Nonnull;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
 import static gregtech.api.enums.HatchElement.*;
+import static gregtech.api.enums.Textures.BlockIcons.*;
+import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_VendingMachines> implements IWirelessEnergyHatchInformation {
@@ -224,7 +229,38 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     }
 
     @Override
-    public ITexture[] getTexture(IGregTechTileEntity baseMetaTileEntity, ForgeDirection side, ForgeDirection facing, int colorIndex, boolean active, boolean redstoneLevel) {
-        return new ITexture[0];
+    public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
+                                 int colorIndex, boolean aActive, boolean redstoneLevel) {
+        if (side == aFacing) {
+            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
+                    .extFacing()
+                    .build(),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
+                    .extFacing()
+                    .glow()
+                    .build() };
+            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
+                    .extFacing()
+                    .build(),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
+                    .extFacing()
+                    .glow()
+                    .build() };
+        }
+        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()) };
+    }
+
+    public int getCasingTextureID() {
+        return TAE.getIndexFromPage(2, 2);
+    }
+
+    public ItemStack getTarget() {
+        return target;
     }
 }
