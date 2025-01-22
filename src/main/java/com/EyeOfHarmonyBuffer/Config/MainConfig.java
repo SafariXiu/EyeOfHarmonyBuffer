@@ -86,6 +86,7 @@ public class MainConfig {
     public static boolean LightningSpireEnable = true;
     public static int LightningSpireTime = 256;
     public static boolean DEFusionCrafterEnable = true;
+    public static boolean IndustrialChiselEnable = true;
 
     private static Configuration config;
 
@@ -123,6 +124,10 @@ public class MainConfig {
         DEFusionCrafterEnable = config
             .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
+
+        IndustrialChiselEnable = config
+            .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
+            .getBoolean(IndustrialChiselEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
