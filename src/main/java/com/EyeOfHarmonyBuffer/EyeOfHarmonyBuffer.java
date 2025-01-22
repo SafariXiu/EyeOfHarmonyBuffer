@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import com.Nxer.TwistSpaceTechnology.util.TextHandler;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -25,6 +26,7 @@ import org.apache.logging.log4j.Logger;
     dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
+    public static final boolean isInDevMode = false;
 
     public static final Logger LOG = LogManager.getLogger("EOHBuffer");
     public static String DevResource = "";
@@ -42,6 +44,7 @@ public class EyeOfHarmonyBuffer {
     public void preInit(FMLPreInitializationEvent event) {
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
+        TextHandler.initLangMap(isInDevMode);
 
         if (!configDir.exists()) {
             configDir.mkdirs();
@@ -71,6 +74,7 @@ public class EyeOfHarmonyBuffer {
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
     }
 

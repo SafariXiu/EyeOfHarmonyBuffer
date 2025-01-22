@@ -9,6 +9,9 @@ import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_VendingMachines_Controller;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_VendingMachines_MachineType;
+
 public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_VendingMachines> {
 
     public EOHB_VendingMachines(int aID, String aName, String aNameRegional) {
@@ -47,7 +50,10 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
-        return null;
+        final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
+        tt.addMachineType(Tooltip_VendingMachines_MachineType)
+            .addInfo(Tooltip_VendingMachines_Controller);
+        return tt;
     }
 
     @Override
