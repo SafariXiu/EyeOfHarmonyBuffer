@@ -89,6 +89,9 @@ public class MainConfig {
     public static boolean IndustrialChiselEnable = true;
     public static boolean BioVatRadiationEnabled = true;
     public static int BioVatOutputRatio = 1000000;
+    public static boolean FuelRefineFactoryEnable = true;
+    public static int LightningSpireMaxRods = 8192;
+    public static boolean DTPFEnable = true;
 
     private static Configuration config;
 
@@ -211,6 +214,10 @@ public class MainConfig {
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFOpen);
 
+        DTPFEnable = config
+            .get("超维度等离子锻炉","超维度等离子锻炉机器运行修改",DTPFEnable,"开启后超维度等离子锻炉运行不再受限于线圈等级，不耗电，10tick完成任何工作，int并行")
+            .getBoolean(DTPFEnable);
+
         DTPFMK2Enable = config
             .get("TST","开启超维度等离子锻炉MK2锁定催化剂减免",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFMK2Enable);
@@ -222,6 +229,10 @@ public class MainConfig {
         LightningSpireTime = config
             .get("TST","闪电尖塔工作时间设置",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireTime);
+
+        LightningSpireMaxRods = config
+            .get("TST","闪电尖塔避雷针数量设置",LightningSpireMaxRods,"设置闪电尖塔内部可缓存避雷针数量,必须开启闪电尖塔mixin后才能生效！")
+            .getInt(LightningSpireMaxRods);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
@@ -347,6 +358,10 @@ public class MainConfig {
         NaquadahFuelRefineryMagnification = config
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
+
+        FuelRefineFactoryEnable = config
+            .get("硅岩燃料精炼厂","硅岩燃料精炼厂机器运行修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂运行不再受限于线圈等级，不耗电，10tick完成任何工作，int并行")
+            .getBoolean(FuelRefineFactoryEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
             .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
