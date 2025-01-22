@@ -1,1 +1,3 @@
-NameVendingMachines= Vending Machines
+NameVendingMachines=Vending Machines
+Tooltip_VendingMachines_MachineType=Vending Machines
+Tooltip_VendingMachines_Controller=Controller block for the Vending Machines
