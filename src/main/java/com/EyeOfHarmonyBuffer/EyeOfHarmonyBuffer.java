@@ -1,9 +1,9 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
-import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import net.minecraftforge.common.config.Configuration;
@@ -56,6 +56,7 @@ public class EyeOfHarmonyBuffer {
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
 
+        MachineLoader.loadMachines();
         gemErgodic.init(event);
         ItemConfig.setGemErgodic(gemErgodic);
         ItemConfig.reloadConfig();
