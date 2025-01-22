@@ -26,7 +26,7 @@ public class MainConfig {
     public static boolean EOHOpenEuOutPut = true;
     public static boolean DTPFOpen = true;
     public static boolean FOGUpDate = true;
-    public static boolean BioVatOutputRatioEnable = true;
+    public static boolean BioVatTrue = true;
     public static boolean DisTankTrue = true;
     public static boolean DigesterMixin = true;
     public static boolean LargeFusionMixin = true;
@@ -88,8 +88,6 @@ public class MainConfig {
     public static boolean DEFusionCrafterEnable = true;
     public static boolean IndustrialChiselEnable = true;
     public static boolean DEFAULT_BATCH_MODE = false;
-    public static boolean BioVatRadiationEnabled = true;
-    public static int BioVatOutputRatio = 1000000;
 
     private static Configuration config;
 
@@ -127,18 +125,6 @@ public class MainConfig {
         DEFusionCrafterEnable = config
             .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
-
-        BioVatRadiationEnabled = config
-            .get("细菌培养缸","细菌培养缸机器辐射修改",BioVatRadiationEnabled,"开启后细菌培养缸运行不再需要辐射")
-            .getBoolean(BioVatRadiationEnabled);
-
-        BioVatOutputRatioEnable = config
-            .get("细菌培养缸", "开细菌培养缸产出倍率修改", BioVatOutputRatioEnable, "开启后细菌培养缸输出倍率修改")
-            .getBoolean(BioVatOutputRatioEnable);
-
-        BioVatOutputRatio = config
-            .get("细菌培养缸","细菌培养缸产出倍率设置",BioVatOutputRatio,"设置细菌培养缸产出倍率")
-            .getInt(BioVatOutputRatio);
 
         IndustrialChiselEnable = config
             .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
@@ -308,6 +294,10 @@ public class MainConfig {
         ExoticModuleEnable = config
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
             .getBoolean(ExoticModuleEnable);
+
+        BioVatTrue = config
+            .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
+            .getBoolean(BioVatTrue);
 
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
