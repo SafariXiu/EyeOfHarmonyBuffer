@@ -18,9 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
-import static com.Nxer.TwistSpaceTechnology.util.rewrites.TST_ItemID.createNoNBT;
-import static gregtech.api.recipe.check.CheckRecipeResultRegistry.NO_RECIPE;
-
 @Mixin(value = GTCM_LightningSpire.class, remap = false)
 public abstract class LightningSpireMixin extends TT_MultiMachineBase_EM implements IConstructable, ISurvivalConstructable {
 
