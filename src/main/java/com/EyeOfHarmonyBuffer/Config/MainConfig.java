@@ -88,6 +88,7 @@ public class MainConfig {
     public static boolean DEFusionCrafterEnable = true;
     public static boolean FuelRefineFactoryEnable = true;
     public static boolean DTPFEnable = true;
+    public static int LightningSpireMaxRods = 8192;
 
     private static Configuration config;
 
@@ -209,6 +210,10 @@ public class MainConfig {
         LightningSpireTime = config
             .get("TST","闪电尖塔工作时间设置",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireTime);
+
+        LightningSpireMaxRods = config
+            .get("TST","闪电尖塔避雷针数量上限设置",LightningSpireMaxRods,"设置闪电尖塔内部避雷针数量上限,必须开启闪电尖塔mixin后才能生效！")
+            .getInt(LightningSpireMaxRods);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
