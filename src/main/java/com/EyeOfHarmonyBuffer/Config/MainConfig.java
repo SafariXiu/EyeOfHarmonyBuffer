@@ -87,6 +87,7 @@ public class MainConfig {
     public static int LightningSpireTime = 256;
     public static boolean DEFusionCrafterEnable = true;
     public static boolean IndustrialChiselEnable = true;
+    public static boolean DEFAULT_BATCH_MODE = false;
 
     private static Configuration config;
 

@@ -16,6 +16,8 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod(
     modid = EyeOfHarmonyBuffer.MODID,
@@ -23,6 +25,9 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
     dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
+
+    public static final Logger LOG = LogManager.getLogger("EOHBuffer");
+    public static String DevResource = "";
 
     public final GemErgodic gemErgodic = new GemErgodic();
 
