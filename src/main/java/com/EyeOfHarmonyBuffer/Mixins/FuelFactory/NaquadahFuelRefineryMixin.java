@@ -1,50 +1,37 @@
 package com.EyeOfHarmonyBuffer.Mixins.FuelFactory;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
+import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import goodgenerator.blocks.tileEntity.MTEMultiNqGenerator;
+import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
+import gregtech.api.recipe.check.CheckRecipeResult;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Inject;
 
-import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import goodgenerator.loader.FuelRecipeLoader;
+@Mixin(value = MTEMultiNqGenerator.class, remap = false)
+public abstract class NaquadahFuelRefineryMixin extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable {
 
-@Mixin(value = FuelRecipeLoader.class, remap = false)
-public class NaquadahFuelRefineryMixin {
-
-    @ModifyArg(
-        method = "RegisterFuel",
-        at = @At(
-            value = "INVOKE",
-            target = "Lgregtech/api/util/GTRecipeBuilder;fluidOutputs([Lnet/minecraftforge/fluids/FluidStack;)Lgregtech/api/util/GTRecipeBuilder;"),
-        index = 0)
-    private static FluidStack[] modifyFluidOutputs(FluidStack[] originalOutputs) {
-        if (MainConfig.NaquadahFuelRefineryMixinTrue) {
-            for (FluidStack output : originalOutputs) {
-                if (output != null) {
-                    output.amount *= MainConfig.NaquadahFuelRefineryMagnification;
-                }
-            }
-            return originalOutputs;
-        }
-        return originalOutputs;
+    protected NaquadahFuelRefineryMixin(int aID, String aName, String aNameRegional) {
+        super(aID, aName, aNameRegional);
     }
 
-    @ModifyArg(
-        method = "RegisterFuel",
-        at = @At(
-            value = "INVOKE",
-            target = "Lbartworks/system/material/Werkstoff;getFluidOrGas(I)Lnet/minecraftforge/fluids/FluidStack;",
-            args = "ldc=1"
-        ),
-        index = 0)
-    private static int modifyFluidAmount(int amount){
+    @Inject(method = "checkProcessing_EM", at = @At("RETURN"), cancellable = true)
+    private void modifyOutputMultiplier(CallbackInfoReturnable<CheckRecipeResult> cir) {
         if(MainConfig.NaquadahFuelOutPutMagnificationTrue){
-            if(amount == 1){
-                return amount * MainConfig.NaquadahFuelOutPutMagnification;
+            MTEMultiNqGenerator instance = (MTEMultiNqGenerator) (Object) this;
+            if (instance.mOutputFluids != null && instance.mOutputFluids.length > 0) {
+                for (FluidStack fluid : instance.mOutputFluids) {
+                    fluid.amount *= MainConfig.NaquadahFuelOutPutMagnification;
+                }
+
+                instance.mMaxProgresstime = Math.max(1, instance.mMaxProgresstime / MainConfig.NaquadahFuelOutPutMagnification);
             }
         }
-        return amount;
     }
 }
