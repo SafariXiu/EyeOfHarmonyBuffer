@@ -30,6 +30,7 @@ public class LateMixins implements ILateMixinLoader {
             "AlloyBlastSmelterMixin",
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
+            "BioLab.BasicMachineMixin",
             "BioVatMixin",
             "BlackHoleCompressorMixin",
             "CircuitAssemblyLineMixin",
