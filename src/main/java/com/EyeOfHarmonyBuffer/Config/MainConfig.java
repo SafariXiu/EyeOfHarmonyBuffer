@@ -455,7 +455,7 @@ public class MainConfig {
             .getBoolean(Grade3WaterPurificationEnabled);
 
         Grade2WaterPurificationEnabled = config
-            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸")
+            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸(注：配方百分百成功是利用ASM字节码进行修改,如果您在游玩中使用热重载关闭了这个功能,对配方的修改也不会失效!必须重启游戏才可以")
             .getBoolean(Grade2WaterPurificationEnabled);
 
         Grade1WaterPurificationEnabled = config

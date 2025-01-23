@@ -4,8 +4,10 @@ import java.io.File;
 import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -37,6 +39,10 @@ public class EyeOfHarmonyBuffer {
     public void preInit(FMLPreInitializationEvent event) {
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
+
+        if(MainConfig.Grade2WaterPurificationEnabled){
+            Launch.classLoader.registerTransformer("com.EyeOfHarmonyBuffer.ASMChange.Grade2WaterPurificationRecipeChange");
+        }
 
         if (!configDir.exists()) {
             configDir.mkdirs();
