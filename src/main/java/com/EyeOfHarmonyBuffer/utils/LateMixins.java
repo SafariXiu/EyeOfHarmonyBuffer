@@ -58,6 +58,7 @@ public class LateMixins implements ILateMixinLoader {
             "Invoker.TTMultiblockBaseInvoker",
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
+            "LargerTurbinePlasmaMixin",
             "MaskListMixin",
             "Mask.TargetChamberMixin",
             "OutPutME.HatchOutputBusMEMixin",

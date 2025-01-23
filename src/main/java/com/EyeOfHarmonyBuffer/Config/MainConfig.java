@@ -94,6 +94,7 @@ public class MainConfig {
     public static boolean DTPFEnable = true;
     public static boolean AlloyBlastSmelterEnable = true;
     public static boolean ChemicalPlantEnable = true;
+    public static boolean LargerTurbinePlasmaEnable = true;
 
     private static Configuration config;
 
@@ -131,6 +132,10 @@ public class MainConfig {
         DEFusionCrafterEnable = config
             .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
+
+        LargerTurbinePlasmaEnable = config
+            .get("其他机器","特大等离子涡轮",LargerTurbinePlasmaEnable,"开启后特大等离子涡轮低热值等离子输出会更高")
+            .getBoolean(LargerTurbinePlasmaEnable);
 
         BioVatRadiationEnabled = config
             .get("细菌培养缸","细菌培养缸机器辐射修改",BioVatRadiationEnabled,"开启后细菌培养缸运行不再需要辐射")
