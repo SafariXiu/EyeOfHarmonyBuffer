@@ -117,30 +117,15 @@ public abstract class LightningSpireMixin extends TT_MultiMachineBase_EM impleme
             }
 
             if (this.OperatingMode == 2 && this.tRods > 0 && this.tStored == 0L) {
-                if (this.mStored.size() == 1) {
-                    this.mOutputItems = new ItemStack[]{GTUtility.copy(this.mStored.get(0))};
-                } else {
-                    this.mOutputItems = this.mStored.toArray(new ItemStack[0]);
-                }
-
-                if (this.mOutputItems != null && this.mOutputItems.length == this.mStored.size()) {
-                    this.mStored.clear();
-                } else {
-                    cir.setReturnValue(CheckRecipeResultRegistry.NO_RECIPE);
-                    cir.cancel();
-                    return;
-                }
-
+                this.mOutputItems = (ItemStack[])this.mStored.toArray(new ItemStack[0]);
+                this.mStored.clear();
                 this.updateSlots();
-
                 this.tRods = 0;
                 this.tProduct = 0L;
                 this.tMaxStored = 0L;
                 this.mMaxProgresstime = 20;
-
+                this.updateSlots();
                 cir.setReturnValue(CheckRecipeResultRegistry.SUCCESSFUL);
-                cir.cancel();
-                return;
             }
 
             cir.setReturnValue(CheckRecipeResultRegistry.NO_RECIPE);
