@@ -38,12 +38,15 @@ public abstract class LightningSpireMixin extends TT_MultiMachineBase_EM impleme
     private long tMaxStored;
 
     @Shadow
+    private int OperatingMode = 0;
+
+    @Shadow
     protected abstract void lightOnWorld();
 
     @Inject(method = "checkProcessing_EM", at = @At("HEAD"), cancellable = true)
     private void modifyCheckProcessing(CallbackInfoReturnable<CheckRecipeResult> cir) {
         if (MainConfig.LightningSpireEnable) {
-            if (tRods <= 0) {
+            if (OperatingMode == 0 && tRods <= 0) {
                 List<ItemStack> inputs = this.getStoredInputs();
                 if (inputs != null && !inputs.isEmpty()) {
                     TST_ItemID LightningRod = TST_ItemID.createNoNBT(ItemList.Machine_HV_LightningRod.get(1L, new Object[0]));
