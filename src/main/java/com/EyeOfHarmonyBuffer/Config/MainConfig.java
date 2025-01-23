@@ -92,6 +92,7 @@ public class MainConfig {
     public static boolean FuelRefineFactoryEnable = true;
     public static int LightningSpireMaxRods = 8192;
     public static boolean DTPFEnable = true;
+    public static boolean AlloyBlastSmelterEnable = true;
 
     private static Configuration config;
 
@@ -127,7 +128,7 @@ public class MainConfig {
             .getBoolean(CircuitAssemblyLineEnable);
 
         DEFusionCrafterEnable = config
-            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
+            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
 
         BioVatRadiationEnabled = config
@@ -145,6 +146,10 @@ public class MainConfig {
         IndustrialChiselEnable = config
             .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
             .getBoolean(IndustrialChiselEnable);
+
+        AlloyBlastSmelterEnable = config
+            .get("其他机器","合金冶炼炉机器运行修改",AlloyBlastSmelterEnable,"开启后(MAGA)合金冶炼炉不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(AlloyBlastSmelterEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
@@ -215,7 +220,7 @@ public class MainConfig {
             .getBoolean(DTPFOpen);
 
         DTPFEnable = config
-            .get("超维度等离子锻炉","超维度等离子锻炉机器运行修改",DTPFEnable,"开启后超维度等离子锻炉运行不再受限于线圈等级，不耗电，10tick完成任何工作，int并行")
+            .get("超维度等离子锻炉","超维度等离子锻炉机器运行修改",DTPFEnable,"开启后超维度等离子锻炉运行不再受限于线圈等级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(DTPFEnable);
 
         DTPFMK2Enable = config
@@ -360,7 +365,7 @@ public class MainConfig {
             .getInt(NaquadahFuelRefineryMagnification);
 
         FuelRefineFactoryEnable = config
-            .get("硅岩燃料精炼厂","硅岩燃料精炼厂机器运行修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂运行不再受限于线圈等级，不耗电，10tick完成任何工作，int并行")
+            .get("硅岩燃料精炼厂","硅岩燃料精炼厂机器运行修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂运行不再受限于线圈等级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(FuelRefineFactoryEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
