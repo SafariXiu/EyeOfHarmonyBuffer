@@ -93,6 +93,7 @@ public class MainConfig {
     public static int LightningSpireMaxRods = 8192;
     public static boolean DTPFEnable = true;
     public static boolean AlloyBlastSmelterEnable = true;
+    public static boolean ChemicalPlantEnable = true;
 
     private static Configuration config;
 
@@ -150,6 +151,10 @@ public class MainConfig {
         AlloyBlastSmelterEnable = config
             .get("其他机器","合金冶炼炉机器运行修改",AlloyBlastSmelterEnable,"开启后(MAGA)合金冶炼炉不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(AlloyBlastSmelterEnable);
+
+        ChemicalPlantEnable = config
+            .get("其他机器","化工厂",ChemicalPlantEnable,"开启后化工厂不再消耗催化剂")
+            .getBoolean(ChemicalPlantEnable);
 
         PCBFactoryParallelEnable = config
             .get("PCB工厂","PCB工厂并行修改开启",PCBFactoryParallelEnable,"开启后PCB工厂最大并行数量锁定为int")
