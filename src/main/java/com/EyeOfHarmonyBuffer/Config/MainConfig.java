@@ -95,6 +95,7 @@ public class MainConfig {
     public static boolean AlloyBlastSmelterEnable = true;
     public static boolean ChemicalPlantEnable = true;
     public static boolean LargerTurbinePlasmaEnable = true;
+    public static boolean PreciseAssemblerEnable = true;
 
     private static Configuration config;
 
@@ -136,6 +137,10 @@ public class MainConfig {
         LargerTurbinePlasmaEnable = config
             .get("其他机器","特大等离子涡轮",LargerTurbinePlasmaEnable,"开启后特大等离子涡轮低热值等离子输出会更高")
             .getBoolean(LargerTurbinePlasmaEnable);
+
+        PreciseAssemblerEnable = config
+            .get("其他机器","精密组装机",PreciseAssemblerEnable,"开启后精密组装机工作不受到机械方块等级与电压限制,不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(PreciseAssemblerEnable);
 
         BioVatRadiationEnabled = config
             .get("细菌培养缸","细菌培养缸机器辐射修改",BioVatRadiationEnabled,"开启后细菌培养缸运行不再需要辐射")
