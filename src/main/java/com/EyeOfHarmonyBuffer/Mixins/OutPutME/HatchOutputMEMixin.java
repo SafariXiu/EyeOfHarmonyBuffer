@@ -3,17 +3,13 @@ package com.EyeOfHarmonyBuffer.Mixins.OutPutME;
 import appeng.api.implementations.IPowerChannelState;
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IItemList;
-import appeng.items.storage.ItemBasicStorageCell;
-import appeng.me.helpers.AENetworkProxy;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.metatileentity.implementations.MTEHatchOutput;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.MTEHatchOutputME;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
@@ -57,14 +53,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
     private void onGetCacheCapacity(CallbackInfoReturnable<Long> cir) {
         if(MainConfig.OutPutHatchMEEnable) {
             cir.setReturnValue(Long.MAX_VALUE);
-            return;
-        }
-
-        ItemStack upgradeItemStack = mInventory[0];
-        if (upgradeItemStack != null && upgradeItemStack.getItem() instanceof ItemBasicStorageCell) {
-            cir.setReturnValue(((ItemBasicStorageCell) upgradeItemStack.getItem()).getBytesLong(upgradeItemStack) * 8);
-        } else {
-            cir.setReturnValue(baseCapacity);
+            cir.cancel();
         }
     }
 
@@ -98,6 +87,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
                 }
             }
             cir.setReturnValue(ss.toArray(new String[fluidCache.size() + 2]));
+            cir.cancel();
         }
     }
 }

@@ -3,16 +3,13 @@ package com.EyeOfHarmonyBuffer.Mixins.OutPutME;
 import appeng.api.implementations.IPowerChannelState;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IItemList;
-import appeng.items.storage.ItemBasicStorageCell;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.metatileentity.implementations.MTEHatchOutputBus;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.MTEHatchOutputBusME;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
@@ -56,15 +53,7 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
     private void onGetCacheCapacity(CallbackInfoReturnable<Long> cir) {
         if(MainConfig.OutPutBusMEEnable) {
             cir.setReturnValue(Long.MAX_VALUE);
-            return;
-        }
-
-        // 如果不是无限模式，保持原有逻辑
-        ItemStack upgradeItemStack = mInventory[0];
-        if (upgradeItemStack != null && upgradeItemStack.getItem() instanceof ItemBasicStorageCell) {
-            cir.setReturnValue(((ItemBasicStorageCell) upgradeItemStack.getItem()).getBytesLong(upgradeItemStack) * 8);
-        } else {
-            cir.setReturnValue(baseCapacity);
+            cir.cancel();
         }
     }
 
@@ -98,6 +87,7 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
                 }
             }
             cir.setReturnValue(ss.toArray(new String[itemCache.size() + 2]));
+            cir.cancel();
         }
     }
 }
