@@ -3,8 +3,10 @@ package com.EyeOfHarmonyBuffer.Recipe;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
@@ -200,6 +202,98 @@ public final class AssemblerRecipes implements IRecipePool {
                 getModItem(DraconicEvolution.ID, "draconium",1,2)
             )
             .eut(TierEU.RECIPE_MAX)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //超级箱1
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Automation_ChestBuffer_LV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plateDense,Materials.Iron,3),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.PulsatingIron,1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,4)
+            )
+            .itemOutputs(
+                ItemList.Super_Chest_LV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //低压缓存器
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Hull_LV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,1),
+                ItemList.Conveyor_Module_LV.get(1),
+                new ItemStack(Blocks.chest,1)
+            )
+            .itemOutputs(
+                ItemList.Automation_ChestBuffer_LV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //超级缸1
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Casing_Tank_1.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,4),
+                ItemList.Electric_Pump_MV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.Aluminium,2),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.PulsatingIron,1)
+            )
+            .itemOutputs(
+                ItemList.Super_Tank_LV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //量子缸1
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Casing_Tank_6.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,4),
+                ItemList.Electric_Pump_IV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plate,Materials.TungstenSteel,2),
+                ItemList.Field_Generator_EV.get(1)
+            )
+            .itemOutputs(
+                ItemList.Quantum_Tank_LV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //量子箱1
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Automation_ChestBuffer_LuV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,4),
+                ItemList.Field_Generator_EV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.plateQuadruple,Materials.TungstenSteel,3)
+            )
+            .itemOutputs(
+                ItemList.Quantum_Chest_LV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
+            .duration(5 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //剧差压缓存器
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Hull_LuV.get(1),
+                ItemList.Conveyor_Module_LuV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,1),
+                new ItemStack(Blocks.chest,1)
+            )
+            .itemOutputs(
+                ItemList.Automation_ChestBuffer_LuV.get(1)
+            )
+            .eut(TierEU.RECIPE_HV)
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
     }
