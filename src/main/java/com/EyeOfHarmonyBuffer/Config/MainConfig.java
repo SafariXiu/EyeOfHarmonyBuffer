@@ -96,6 +96,7 @@ public class MainConfig {
     public static boolean ChemicalPlantEnable = true;
     public static boolean LargerTurbinePlasmaEnable = true;
     public static boolean PreciseAssemblerEnable = true;
+    public static boolean CyclotronRecipeMixinEnable = true;
 
     private static Configuration config;
 
@@ -125,6 +126,10 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
+
+        CyclotronRecipeMixinEnable = config
+            .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
+            .getBoolean(CyclotronRecipeMixinEnable);
 
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
