@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Mixins;
+package com.EyeOfHarmonyBuffer.Mixins.Recipe;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gtPlusPlus.core.recipe.RecipesGregTech;
