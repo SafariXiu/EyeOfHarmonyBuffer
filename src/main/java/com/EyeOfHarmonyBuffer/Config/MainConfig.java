@@ -76,7 +76,7 @@ public class MainConfig {
     public static boolean IndustrialDehydratorEnable = true;
     public static boolean FrothFlotationCellEnable = true;
     public static boolean IsaMillEnable = true;
-    public static boolean FOGGravitonShardEnable = true;
+    public static boolean FOGGravitonShardEnable = false;
     public static boolean EOHGemEnable = true;
     public static String EOHGem = "2T";
     public static boolean PCBFactoryParallelEnable = true;
@@ -336,7 +336,7 @@ public class MainConfig {
             .getBoolean(FOGUpDate);
 
         FOGGravitonShardEnable = config
-            .get("诸神之锻炉","诸神之锻炉引力子碎片输出",FOGGravitonShardEnable,"开启后诸神之锻炉引力子碎片输出不再减少机器内部引力子碎片数量")
+            .get("诸神之锻炉","诸神之锻炉引力子碎片输出",FOGGravitonShardEnable,"开启后诸神之锻炉引力子碎片输出不再减少机器内部引力子碎片数量(默认关闭,机器内部存储大量引力子碎片可能导致机器停机等问题,后期请慎重开启)")
             .getBoolean(FOGGravitonShardEnable);
 
         ExoticModuleEnable = config
