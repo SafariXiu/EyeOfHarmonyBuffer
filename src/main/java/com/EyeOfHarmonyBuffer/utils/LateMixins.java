@@ -74,6 +74,7 @@ public class LateMixins implements ILateMixinLoader {
             "RareEarth.FrothFlotationCellMixin",
             "RareEarth.IsaMillMixin",
             "Recipe.CyclotronRecipeMixin",
+            "Recipe.naquadahFuelRefineFactoryRecipesMixin",
             "SpaceElevator.ModuleAssemblerMixin",
             "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",

@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public abstract class CyclotronRecipeMixin {
 
     @ModifyArg(
-        method = "cyclotronRecipes", // 方法名
+        method = "cyclotronRecipes",
         at = @At(
             value = "INVOKE",
             target = "Lgregtech/api/util/GTRecipeBuilder;outputChances([I)Lgregtech/api/util/GTRecipeBuilder;"
