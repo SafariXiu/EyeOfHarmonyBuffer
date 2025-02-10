@@ -100,6 +100,7 @@ public class MainConfig {
     public static boolean MoltenModuleEnable = true;
     public static boolean PlasmaModuleEnable = true;
     public static boolean SmeltingModuleEnable = true;
+    public static boolean PrimitiveBlastFurnaceEnable = true;
 
     private static Configuration config;
 
@@ -137,6 +138,10 @@ public class MainConfig {
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
             .getBoolean(CircuitAssemblyLineEnable);
+
+        PrimitiveBlastFurnaceEnable = config
+            .get("其他机器","土高炉",PrimitiveBlastFurnaceEnable,"开启后土高炉运行任何配方均只需要10tick")
+            .getBoolean(PrimitiveBlastFurnaceEnable);
 
         DEFusionCrafterEnable = config
             .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")

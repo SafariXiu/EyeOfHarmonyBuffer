@@ -72,6 +72,7 @@ public class LateMixins implements ILateMixinLoader {
             "PCBFactory.PCBFactoryCoolantMixin",
             "PCBFactory.PCBFactoryParallelMixin",
             "PreciseAssemblerMixin",
+            "PrimitiveBlastFurnaceMixin",
             "RareEarth.IndustrialDehydratorMixin",
             "RareEarth.FrothFlotationCellMixin",
             "RareEarth.IsaMillMixin",
