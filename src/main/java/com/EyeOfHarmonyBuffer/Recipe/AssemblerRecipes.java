@@ -8,6 +8,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -20,6 +21,50 @@ public final class AssemblerRecipes implements IRecipePool {
 
     @Override
     public void loadRecipes() {
+
+        ItemStack CapBank = getModItem(EnderIO.ID, "blockCapBank",1,3);
+        NBTTagCompound RfNBT = CapBank.getTagCompound();
+        if (RfNBT != null) {
+            RfNBT.setLong("storedEnergyRF", 25000000);
+        } else {
+            RfNBT = new NBTTagCompound();
+            RfNBT.setLong("storedEnergyRF", 25000000);
+            CapBank.setTagCompound(RfNBT);
+        }
+
+        ItemStack DraconiumFluxCapacitor = getModItem(DraconicEvolution.ID, "draconiumFluxCapacitor",1,0);
+        NBTTagCompound RFNBT = DraconiumFluxCapacitor.getTagCompound();
+        if(RFNBT != null) {
+            RFNBT.setLong("Energy", 80000000);
+        } else {
+            RFNBT = new NBTTagCompound();
+            RFNBT.setLong("Energy", 80000000);
+            DraconiumFluxCapacitor.setTagCompound(RFNBT);
+        }
+
+        //满电双足飞龙通量电容器
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                getModItem(DraconicEvolution.ID, "draconiumFluxCapacitor",1,0)
+            )
+            .itemOutputs(
+                DraconiumFluxCapacitor
+            )
+            .eut(TierEU.RECIPE_UXV)
+            .duration(4 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        //满电谐振电容库
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                getModItem(EnderIO.ID, "blockCapBank",1,3)
+            )
+            .itemOutputs(
+                CapBank
+            )
+            .eut(TierEU.RECIPE_UMV)
+            .duration(2 * SECONDS)
+            .addTo(assemblerRecipes);
 
         //2空间组件
         GTValues.RA.stdBuilder()
