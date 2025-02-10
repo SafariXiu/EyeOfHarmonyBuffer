@@ -4,6 +4,7 @@ import appeng.integration.modules.GT;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import gregtech.api.util.GTUtility;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -109,6 +110,7 @@ public final class AssemblerRecipes implements IRecipePool {
 
             ItemStack output = gearCaseFarmBlock.copy();
             output.stackSize = 2;
+
             NBTTagCompound tag = new NBTTagCompound();
             tag.setInteger("FarmBlock", i);
             output.setTagCompound(tag);
@@ -124,6 +126,7 @@ public final class AssemblerRecipes implements IRecipePool {
                     FluidRegistry.getFluidStack("creosote", 1000)
                 )
                 .itemOutputs(output)
+                .nbtSensitive()
                 .eut(TierEU.RECIPE_EV)
                 .duration(10 * SECONDS)
                 .addTo(assemblerRecipes);
@@ -151,6 +154,7 @@ public final class AssemblerRecipes implements IRecipePool {
                     FluidRegistry.getFluidStack("creosote", 1000)
                 )
                 .itemOutputs(output)
+                .nbtSensitive()
                 .eut(TierEU.RECIPE_EV)
                 .duration(10 * SECONDS)
                 .addTo(assemblerRecipes);
@@ -178,6 +182,7 @@ public final class AssemblerRecipes implements IRecipePool {
                     FluidRegistry.getFluidStack("creosote", 1000)
                 )
                 .itemOutputs(output)
+                .nbtSensitive()
                 .eut(TierEU.RECIPE_EV)
                 .duration(10 * SECONDS)
                 .addTo(assemblerRecipes);
@@ -205,6 +210,7 @@ public final class AssemblerRecipes implements IRecipePool {
                     FluidRegistry.getFluidStack("creosote", 1000)
                 )
                 .itemOutputs(output)
+                .nbtSensitive()
                 .eut(TierEU.RECIPE_EV)
                 .duration(10 * SECONDS)
                 .addTo(assemblerRecipes);
