@@ -97,6 +97,7 @@ public class MainConfig {
     public static boolean PreciseAssemblerEnable = true;
     public static boolean CyclotronRecipeMixinEnable = true;
     public static boolean ExoticModuleOverClock = true;
+    public static boolean MoltenModuleEnable = true;
 
     private static Configuration config;
 
@@ -347,6 +348,10 @@ public class MainConfig {
         ExoticModuleOverClock = config
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块锁定工作时间为10tick,并行200万,不耗电")
             .getBoolean(ExoticModuleOverClock);
+
+        MoltenModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳射流融化核心模块超频修改",MoltenModuleEnable,"开启后太阳射流融化核心模块不再受到任何限制,锁定工作时间为10tick,int并行,不耗电")
+            .getBoolean(MoltenModuleEnable);
 
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
