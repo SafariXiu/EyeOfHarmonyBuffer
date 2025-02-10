@@ -96,6 +96,10 @@ public class MainConfig {
     public static boolean LargerTurbinePlasmaEnable = true;
     public static boolean PreciseAssemblerEnable = true;
     public static boolean CyclotronRecipeMixinEnable = true;
+    public static boolean ExoticModuleOverClock = true;
+    public static boolean MoltenModuleEnable = true;
+    public static boolean PlasmaModuleEnable = true;
+    public static boolean SmeltingModuleEnable = true;
 
     private static Configuration config;
 
@@ -342,6 +346,22 @@ public class MainConfig {
         ExoticModuleEnable = config
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
             .getBoolean(ExoticModuleEnable);
+
+        ExoticModuleOverClock = config
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200万并行")
+            .getBoolean(ExoticModuleOverClock);
+
+        MoltenModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳射流融化核心模块超频修改",MoltenModuleEnable,"开启后太阳射流融化核心模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MoltenModuleEnable);
+
+        PlasmaModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳热能等离子体制造机超频修改",PlasmaModuleEnable,"开启后太阳热能等离子体制造机不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(PlasmaModuleEnable);
+
+        SmeltingModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳烈焰能量锻炉超频修改",SmeltingModuleEnable,"开启后太阳烈焰能量锻炉不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(SmeltingModuleEnable);
 
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
