@@ -54,6 +54,7 @@ public class LateMixins implements ILateMixinLoader {
             "GodOfForgeModuleMixin.ExoticModuleMixin",
             "GodOfForgeModuleMixin.GravitonShardMixin",
             "GodOfForgeModuleMixin.MoltenModuleMixin",
+            "GodOfForgeModuleMixin.PlasmaModuleMixin",
             "HIPCompressorMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverParallelMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverSpeedMixin",
