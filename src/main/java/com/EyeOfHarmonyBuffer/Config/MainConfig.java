@@ -99,6 +99,7 @@ public class MainConfig {
     public static boolean ExoticModuleOverClock = true;
     public static boolean MoltenModuleEnable = true;
     public static boolean PlasmaModuleEnable = true;
+    public static boolean SmeltingModuleEnable = true;
 
     private static Configuration config;
 
@@ -357,6 +358,10 @@ public class MainConfig {
         PlasmaModuleEnable = config
             .get("诸神之锻炉","诸神之锻炉太阳热能等离子体制造机超频修改",PlasmaModuleEnable,"开启后太阳热能等离子体制造机不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(PlasmaModuleEnable);
+
+        SmeltingModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳烈焰能量锻炉超频修改",SmeltingModuleEnable,"开启后太阳烈焰能量锻炉不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(SmeltingModuleEnable);
 
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
