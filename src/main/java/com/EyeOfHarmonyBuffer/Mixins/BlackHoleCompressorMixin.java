@@ -3,6 +3,10 @@ package com.EyeOfHarmonyBuffer.Mixins;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.CustomProcessingLogic;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import cpw.mods.fml.common.Optional;
+import cpw.mods.fml.relauncher.FMLLaunchHandler;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
@@ -20,6 +24,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.stream.Stream;
 
 import static com.EyeOfHarmonyBuffer.Config.MainConfig.BlackHoleCompressorPowerConsumptionModification;
@@ -40,9 +46,6 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
     protected abstract void destroyRenderBlock();
 
     @Shadow
-    public abstract void playBlackHoleSounds();
-
-    @Shadow
     private byte blackHoleStatus = 1;
 
     @Shadow
@@ -60,9 +63,23 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
     @Shadow
     protected abstract boolean createRenderBlock();
 
-    @Inject(method = "onPostTick", at = @At("HEAD"),cancellable = true)
+    private static final Method PLAY_SOUND_METHOD;
+
+    static {
+        Method method = null;
+        if (FMLLaunchHandler.side().isClient()) {
+            try {
+                method = MTEBlackHoleCompressor.class.getDeclaredMethod("playBlackHoleSounds");
+                method.setAccessible(true);
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        PLAY_SOUND_METHOD = method;
+    }
+
+    @Inject(method = "onPostTick", at = @At("HEAD"), cancellable = true)
     private void beforeOnPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick, CallbackInfo ci) {
-        if(MainConfig.BlackHoleCompressorStabilityLock){
+        if (MainConfig.BlackHoleCompressorStabilityLock) {
             super.onPostTick(aBaseMetaTileEntity, aTick);
 
             if (collapseTimer != -1) {
@@ -73,14 +90,18 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
             }
 
             if (!aBaseMetaTileEntity.isServerSide()) {
-                playBlackHoleSounds();
+                if (PLAY_SOUND_METHOD != null) {
+                    try {
+                        PLAY_SOUND_METHOD.invoke(this);
+                    } catch (IllegalAccessException | InvocationTargetException ignored) {
+                    }
+                }
                 return;
             }
 
             if (blackHoleStatus == 1 || aTick % 20 != 0) return;
 
             float stabilityDecrease = 0F;
-
             boolean didDrain = false;
 
             if (blackHoleStability >= 0) {
