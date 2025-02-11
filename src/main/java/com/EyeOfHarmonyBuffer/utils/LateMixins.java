@@ -101,6 +101,8 @@ public class LateMixins implements ILateMixinLoader {
             "TST.LightningSpireMixin"
         ));
         modMixins.put("123Technology", Arrays.asList(
+            "Invoker.MegaNineInOneInvoker",
+            "OthTech.MegaNineInOneMixin",
             "OthTech.WoodenFusionReactorMixin",
             "OthTech.Recipe.WoodenFusionReactorRecipe"
         ));
