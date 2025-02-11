@@ -63,6 +63,20 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
     @Shadow
     protected abstract boolean createRenderBlock();
 
+    private static final Method PLAY_SOUND_METHOD;
+
+    static {
+        Method method = null;
+        if (FMLLaunchHandler.side().isClient()) {
+            try {
+                method = MTEBlackHoleCompressor.class.getDeclaredMethod("playBlackHoleSounds");
+                method.setAccessible(true);
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        PLAY_SOUND_METHOD = method;
+    }
+
     @Inject(method = "onPostTick", at = @At("HEAD"), cancellable = true)
     private void beforeOnPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick, CallbackInfo ci) {
         if (MainConfig.BlackHoleCompressorStabilityLock) {
@@ -76,12 +90,10 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
             }
 
             if (!aBaseMetaTileEntity.isServerSide()) {
-                if (FMLLaunchHandler.side().isClient()) {
+                if (PLAY_SOUND_METHOD != null) {
                     try {
-                        Method playSoundMethod = this.getClass().getMethod("playBlackHoleSounds");
-                        playSoundMethod.setAccessible(true);
-                        playSoundMethod.invoke(this);
-                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+                        PLAY_SOUND_METHOD.invoke(this);
+                    } catch (IllegalAccessException | InvocationTargetException ignored) {
                     }
                 }
                 return;
