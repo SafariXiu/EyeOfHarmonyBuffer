@@ -59,8 +59,12 @@ dependencies {
     implementation('com.github.GTNewHorizons:BloodMagic:1.6.10:dev')
     implementation('com.github.GTNewHorizons:ForestryMC:4.9.21:dev')
     implementation('com.github.GTNewHorizons:EnderIO:2.8.24:dev')
+    implementation('com.github.GTNewHorizons:MagicBees:2.8.5-GTNH:dev')
+    implementation('com.github.GTNewHorizons:Binnie:2.4.7:dev')
+    implementation('com.github.GTNewHorizons:OpenComputers:1.10.28-GTNH:dev')
 
     implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.6.4.jar"))
+    implementation rfg.deobf(files("libs/123Technology.2.0.2a.jar"))
 
     implementation('curse.maven:advsolar-362768:2885953')
     implementation('com.google.auto.value:auto-value-annotations:1.10.1')
