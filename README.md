@@ -1,5 +1,5 @@
 <center> 
-  <h6>** EyeOfHarmonyBuffer!** </h6>
+  <h1>EyeOfHarmonyBuffer!</h1>
 </center>
 伟大的赤石终结者！伟大的肝脏护卫者！伟大的数值提供者！  
 
