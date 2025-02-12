@@ -101,6 +101,9 @@ public class MainConfig {
     public static boolean PlasmaModuleEnable = true;
     public static boolean SmeltingModuleEnable = true;
     public static boolean PrimitiveBlastFurnaceEnable = true;
+    public static boolean WoodenFusionReactorEnable = true;
+    public static boolean MegaNineInOneEnable = true;
+    public static boolean MegaIsaFactoryEnable = true;
 
     private static Configuration config;
 
@@ -134,6 +137,18 @@ public class MainConfig {
         CyclotronRecipeMixinEnable = config
             .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
             .getBoolean(CyclotronRecipeMixinEnable);
+
+        WoodenFusionReactorEnable = config
+            .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
+            .getBoolean(WoodenFusionReactorEnable);
+
+        MegaNineInOneEnable = config
+            .get("123123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MegaNineInOneEnable);
+
+        MegaIsaFactoryEnable = config
+            .get("123123Technology","艾萨集成工厂",MegaIsaFactoryEnable,"开启后艾萨集成工厂运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MegaIsaFactoryEnable);
 
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
