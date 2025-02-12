@@ -31,9 +31,6 @@ public abstract class MegaNineInOneMixin extends OTH_MultiMachineBase<OTEMegaNin
         super(aID, aName, aNameRegional);
     }
 
-    @Shadow
-    public abstract int getCoilTier();
-
     @Inject(method = "createProcessingLogic",at = @At("HEAD"),cancellable = true)
     public void createProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir) {
         if(MainConfig.MegaNineInOneEnable){
