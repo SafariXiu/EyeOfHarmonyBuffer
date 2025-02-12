@@ -103,6 +103,7 @@ public class MainConfig {
     public static boolean PrimitiveBlastFurnaceEnable = true;
     public static boolean WoodenFusionReactorEnable = true;
     public static boolean MegaNineInOneEnable = true;
+    public static boolean MegaIsaFactoryEnable = true;
 
     private static Configuration config;
 
@@ -142,8 +143,12 @@ public class MainConfig {
             .getBoolean(WoodenFusionReactorEnable);
 
         MegaNineInOneEnable = config
-            .get("123123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .get("123123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(MegaNineInOneEnable);
+
+        MegaIsaFactoryEnable = config
+            .get("123123Technology","艾萨集成工厂",MegaIsaFactoryEnable,"开启后艾萨集成工厂运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MegaIsaFactoryEnable);
 
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
