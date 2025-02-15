@@ -2,7 +2,9 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import gregtech.api.enums.TAE;
 import gregtech.api.enums.Textures;
@@ -12,16 +14,21 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.*;
-import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
+import gregtech.common.tileentities.machines.IDualInputHatch;
+import gregtech.common.tileentities.machines.IDualInputInventory;
 import gtPlusPlus.core.block.ModBlocks;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
@@ -32,7 +39,6 @@ import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_VendingMachines> implements IWirelessEnergyHatchInformation {
 
-    private ItemStack target;
     private static IStructureDefinition<EOHB_VendingMachines> STRUCTURE_DEFINITION = null;
     private int mCasing;
 
@@ -70,32 +76,32 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     }
 
     private GTRecipe getRecipe() {
-        for (MTEHatchInputBus bus : this.mInputBusses) {
-            // 如果是特殊输入总线，特殊逻辑处理
-            if (bus instanceof MTEHatchCraftingInputME) {
-                // 检查最后一个槽位（假设是目标槽位）
-                if (bus.mInventory[bus.getSizeInventory() - 1] == null) continue;
-                this.target = bus.mInventory[bus.getSizeInventory() - 1];
+        ItemStack outputItem = this.getControllerSlot();
+        if (outputItem == null) return null;
 
-                // 遍历其他槽位，从倒数第二个开始
-                for (int i = bus.getSizeInventory() - 2; i >= 0; i--) {
-                    ItemStack itemsInSlot = bus.mInventory[i];
-                    if (itemsInSlot != null) {
-                        // 动态生成配方
-                        GTRecipe tRecipe = createTemporaryRecipe(itemsInSlot);
-                        if (tRecipe != null) {
-                            return tRecipe;
-                        }
+        for (MTEHatchInputBus bus : this.mInputBusses) {
+            for (int i = bus.getSizeInventory() - 1; i >= 0; i--) {
+                ItemStack inputItem = bus.mInventory[i];
+                if (inputItem != null) {
+                    GTRecipe tRecipe = createTemporaryRecipe(inputItem, outputItem);
+                    if (tRecipe != null) {
+                        return tRecipe;
                     }
                 }
-            } else {
-                // 普通输入总线逻辑
-                this.target = this.getControllerSlot(); // 获取控制器槽位
-                for (int i = bus.getSizeInventory() - 1; i >= 0; i--) {
-                    ItemStack itemsInSlot = bus.mInventory[i];
-                    if (itemsInSlot != null) {
-                        // 动态生成配方
-                        GTRecipe tRecipe = createTemporaryRecipe(itemsInSlot);
+            }
+        }
+
+        for (IDualInputHatch craftingInputMe : this.mDualInputHatches) {
+            Optional<IDualInputInventory> optionalInventory = craftingInputMe.getFirstNonEmptyInventory();
+
+            if (optionalInventory.isPresent()) {
+                IDualInputInventory inventory = optionalInventory.get();
+                ItemStack[] inputItems = inventory.getItemInputs();
+
+                for (int i = inputItems.length - 1; i >= 0; i--) {
+                    ItemStack inputItem = inputItems[i];
+                    if (inputItem != null) {
+                        GTRecipe tRecipe = createTemporaryRecipe(inputItem, outputItem);
                         if (tRecipe != null) {
                             return tRecipe;
                         }
@@ -106,50 +112,38 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
         return null;
     }
 
-    private GTRecipe createTemporaryRecipe(ItemStack inputItem) {
-        if (inputItem == null) return null;
+    private GTRecipe createTemporaryRecipe(ItemStack inputItem, ItemStack outputItem) {
+        if (inputItem == null || outputItem == null) return null;
 
-        // 输入物品：将输入物品作为配方输入
-        ItemStack[] aInputs = new ItemStack[]{inputItem};
-        // 输出物品：复制输入物品作为输出
-        ItemStack[] aOutputs = new ItemStack[]{inputItem.copy()};
-        aOutputs[0].stackSize = 1; // 输出物品的数量（这里设置为 1，可根据需求调整）
+        ItemStack outputCopy = outputItem.copy();
+        outputCopy.stackSize = inputItem.stackSize;
 
-        // 概率数组（这里假设 100% 掉落率）
-        int[] aChances = new int[]{10000}; // 数值 10000 表示 100% 掉落率
-
-        // 流体输入和输出（这里为空）
-        FluidStack[] aFluidInputs = null;  // 没有流体输入
-        FluidStack[] aFluidOutputs = null; // 没有流体输出
-
-        // 配方其他属性
-        boolean aOptimize = false;  // 不启用优化
-        int aDuration = 20;         // 配方持续时间（20 ticks）
-        int aEUt = 100;             // 每 tick 消耗的能量（100 EU）
-        int aSpecialValue = 0;      // 特殊值（默认 0）
-
-        // 创建并返回配方
         return new GTRecipe(
-            aOptimize,
-            aInputs,
-            aOutputs,
-            null,       // 特殊物品
-            aChances,   // 掉落概率
-            aFluidInputs,
-            aFluidOutputs,
-            aDuration,
-            aEUt,
-            aSpecialValue
-        );
+            false,
+            new ItemStack[]{inputItem},
+            new ItemStack[]{outputCopy},
+            null, new int[]{10000},
+            null, null,
+            20, 100, 0);
     }
 
     @Override
     protected ProcessingLogic createProcessingLogic(){
         return new GTCM_ProcessingLogic(){
 
+            @Nonnull
             @Override
-            protected @NotNull OverclockCalculator createOverclockCalculator(@Nonnull GTRecipe recipe) {
-                return OverclockCalculator.ofNoOverclock(recipe);
+            protected Stream<GTRecipe> findRecipeMatches(@Nullable RecipeMap<?> map) {
+                return GTStreamUtil.ofNullable(getRecipe());
+            }
+
+            @NotNull
+            @Override
+            protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
+                return new OverclockCalculator()
+                    //.setSpeedBoost(100.0) // 速度提升 100 倍
+                    .setParallel(Integer.MAX_VALUE) // 最大并行数
+                    .setEUt(0); // 不耗电
             }
 
             @NotNull
@@ -183,20 +177,18 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                 .addShape(
                     mName,
                     transpose(
-                        // spotless:off
                         new String[][] {
                             { "CCC", "CCC", "CCC" },
                             { "C~C", "C-C", "CCC" },
                             { "CCC", "CCC", "CCC" },
                         }))
-                // spotless:on
                 .addElement(
                     'C',
                     buildHatchAdder(EOHB_VendingMachines.class)
-                        .atLeast(InputBus, OutputBus, Maintenance, Energy, Muffler)
-                        .casingIndex(90)
+                        .atLeast(InputBus, OutputBus)
+                        .casingIndex(getTextureIndex())
                         .dot(1)
-                        .buildAndChain(onElementPass(x -> ++x.mCasing, ofBlock(ModBlocks.blockCasings5Misc, 5))))
+                        .buildAndChain(onElementPass(x -> ++x.mCasing, ofBlock(ModBlocks.blockCasings3Misc, 2))))
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -204,7 +196,14 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
 
     @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
+        repairMachine();
         buildPiece(mName, stackSize, hintsOnly, 1, 1, 0);
+    }
+
+    @Override
+    public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (mMachine) return -1;
+        return survivialBuildPiece(mName, stackSize, 1, 1, 0, elementBudget, env, false, true);
     }
 
     @Override
@@ -213,7 +212,15 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
         tt.addMachineType(Tooltip_VendingMachines_MachineType)
             .addInfo(Tooltip_VendingMachines_Controller)
             .addInfo(Tooltip_VendingMachines_00)
-            .addInfo(Tooltip_VendingMachines_01);
+            .addInfo(Tooltip_VendingMachines_01)
+            .addInfo(Tooltip_VendingMachines_02)
+            .addInfo(Tooltip_VendingMachines_03)
+            .addSeparator()
+            .addInputBus(add_InputBus,1)
+            .addOutputBus(add_OutputBus,1)
+            .addInfo(TextLocalization.StructureTooComplex)
+            .addInfo(TextLocalization.BLUE_PRINT_INFO)
+            .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }
 
@@ -232,7 +239,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
                                  int colorIndex, boolean aActive, boolean redstoneLevel) {
         if (side == aFacing) {
-            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()),
+            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureId()),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
                     .extFacing()
@@ -242,7 +249,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .extFacing()
                     .glow()
                     .build() };
-            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()),
+            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureId()),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
                     .extFacing()
@@ -253,14 +260,14 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .glow()
                     .build() };
         }
-        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()) };
+        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureId()) };
     }
 
-    public int getCasingTextureID() {
+    protected int getCasingTextureId() {
+        return getTextureIndex();
+    }
+
+    public int getTextureIndex() {
         return TAE.getIndexFromPage(2, 2);
-    }
-
-    public ItemStack getTarget() {
-        return target;
     }
 }
