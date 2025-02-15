@@ -2,8 +2,6 @@ package com.EyeOfHarmonyBuffer.Config;
 
 import java.io.File;
 
-import com.EyeOfHarmonyBuffer.Mixins.DEFusionCrafterMixin;
-import com.EyeOfHarmonyBuffer.Mixins.HIPCompressorMixin;
 import net.minecraftforge.common.config.Configuration;
 
 public class MainConfig {
@@ -104,6 +102,7 @@ public class MainConfig {
     public static boolean WoodenFusionReactorEnable = true;
     public static boolean MegaNineInOneEnable = true;
     public static boolean MegaIsaFactoryEnable = true;
+    public static boolean DEFAULT_BATCH_MODE = false;
 
     private static Configuration config;
 

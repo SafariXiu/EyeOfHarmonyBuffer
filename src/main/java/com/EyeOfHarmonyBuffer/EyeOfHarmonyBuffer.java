@@ -1,13 +1,14 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
-import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import net.minecraft.launchwrapper.Launch;
+import com.Nxer.TwistSpaceTechnology.util.TextHandler;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -18,6 +19,8 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod(
     modid = EyeOfHarmonyBuffer.MODID,
@@ -25,6 +28,10 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
     dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
+    public static final boolean isInDevMode = false;
+
+    public static final Logger LOG = LogManager.getLogger("EOHBuffer");
+    public static String DevResource = "";
 
     public final GemErgodic gemErgodic = new GemErgodic();
 
@@ -39,6 +46,7 @@ public class EyeOfHarmonyBuffer {
     public void preInit(FMLPreInitializationEvent event) {
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
+        TextHandler.initLangMap(isInDevMode);
 
         if(MainConfig.Grade2WaterPurificationEnabled){
             Launch.classLoader.registerTransformer("com.EyeOfHarmonyBuffer.ASMChange.Grade2WaterPurificationRecipeChange");
@@ -51,8 +59,9 @@ public class EyeOfHarmonyBuffer {
         File mainConfigFile = new File(configDir, "main.cfg");
         File itemsConfigFile = new File(configDir, "items.cfg");
         File fluidsConfigFile = new File(configDir, "fluids.cfg");
+        File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
 
-        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile);
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
 
         proxy.preInit(event);
     }
@@ -62,6 +71,7 @@ public class EyeOfHarmonyBuffer {
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
 
+        MachineLoader.loadMachines();
         gemErgodic.init(event);
         ItemConfig.setGemErgodic(gemErgodic);
         ItemConfig.reloadConfig();
@@ -71,6 +81,7 @@ public class EyeOfHarmonyBuffer {
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
+        TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
     }
 

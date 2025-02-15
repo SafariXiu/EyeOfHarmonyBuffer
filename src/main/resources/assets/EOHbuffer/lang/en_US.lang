@@ -1,0 +1,16 @@
+Disable_loading=Machine is prohibited from loading!
+BLUE_PRINT_INFO=Follow the§9 Structure§1Lib§7 hologram projector to build the main structure.
+Waila.General.WirelessMode=Wireless Mode
+Waila.General.CurrentEuCost=Current EU Cost
+WirelessNetwork=Directly get EU from the Wireless EU Net.
+StructureTooComplex=The structure is too complex!
+Tooltip_Details=Details:
+add_InputBus=Any casing
+add_OutputBus=Any casing
+NameVendingMachines=Vending Machines
+Tooltip_VendingMachines_MachineType=Vending Machines
+Tooltip_VendingMachines_Controller=Controller block for the Vending Machines
+Tooltip_VendingMachines_00=A large trade machine, Vending Machines, Place the marked item into the machine's main block slot to set it as the machine's output item.
+Tooltip_VendingMachines_01=When powered by a wireless EU Net, it supports parallel multi-recipe processing with a fixed working time of 6.4 seconds.
+Tooltip_VendingMachines_02=Put the desired output item into the machine's main block. Any input item will produce the desired output item!
+Tooltip_VendingMachines_03=The machine has a default of int parallel processing, a fixed working time of 6.4 seconds, and consumes no power.
