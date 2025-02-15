@@ -1,15 +1,14 @@
 package com.EyeOfHarmonyBuffer.common;
 
-import com.Nxer.TwistSpaceTechnology.util.Utils;
+import com.EyeOfHarmonyBuffer.utils.Utils;
 import gregtech.api.util.GTLog;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
 
-import static com.Nxer.TwistSpaceTechnology.common.GTCMItemList.TestItem0;
-
 public enum GTCMItemList {
 
+    TestItem0,
     VendingMachines;
 
 

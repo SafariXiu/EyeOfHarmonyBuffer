@@ -40,7 +40,7 @@ public class TextLocalization {
                 + " hologram projector to build the main structure.",
             "BLUE_PRINT_INFO");
         Tooltip_Details = TextHandler.texter(EnumChatFormatting.LIGHT_PURPLE + "Details: ", "Tooltip_Details");
-        Disable_loading = TextHandler.texter("Machine is prohibited from loading!", "Disable_loading");
+        Disable_loading = TextHandler.texter("§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!", "Disable_loading");
         add_InputBus = TextHandler.texter("Any casing","add_InputBus");
         add_OutputBus = TextHandler.texter("Any casing","add_OutputBus");
 

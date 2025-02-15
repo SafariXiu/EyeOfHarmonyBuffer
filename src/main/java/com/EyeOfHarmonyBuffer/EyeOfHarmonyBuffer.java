@@ -7,8 +7,8 @@ import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import net.minecraft.launchwrapper.Launch;
-import com.Nxer.TwistSpaceTechnology.util.TextHandler;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;

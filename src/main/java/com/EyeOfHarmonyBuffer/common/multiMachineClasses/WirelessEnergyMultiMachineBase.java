@@ -25,9 +25,9 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
+import static com.EyeOfHarmonyBuffer.utils.Utils.NEGATIVE_ONE;
+import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 import static com.Nxer.TwistSpaceTechnology.config.Config.DefaultCycleNum_WirelessEnergyMultiMachineBase;
-import static com.Nxer.TwistSpaceTechnology.util.Utils.NEGATIVE_ONE;
-import static com.Nxer.TwistSpaceTechnology.util.Utils.mergeArray;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
 public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMultiMachineBase<T>>

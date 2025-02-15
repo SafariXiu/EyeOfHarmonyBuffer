@@ -14,7 +14,7 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.function.IntFunction;
 
-import static com.Nxer.TwistSpaceTechnology.TwistSpaceTechnology.isInDevMode;
+import static com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.isInDevMode;
 import static net.minecraft.util.StatCollector.translateToLocalFormatted;
 
 public class Utils {

@@ -1,4 +1,4 @@
-Disable_loading=机器被禁止加载！
+Disable_loading=§4§l§o机器被禁止加载！请前往配置文件MachineLoaderConfig中开启机器！
 BLUE_PRINT_INFO=请参考§9Structure§1Lib§7全息投影，构建主体结构
 Waila.General.WirelessMode=无线模式
 Waila.General.CurrentEuCost=当前EU消耗

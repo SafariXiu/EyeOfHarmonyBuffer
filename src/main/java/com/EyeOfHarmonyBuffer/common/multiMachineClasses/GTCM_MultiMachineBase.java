@@ -29,8 +29,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static com.Nxer.TwistSpaceTechnology.util.TextHandler.texter;
-import static com.Nxer.TwistSpaceTechnology.util.Utils.filterValidMTEs;
+import static com.EyeOfHarmonyBuffer.utils.TextHandler.texter;
+import static com.EyeOfHarmonyBuffer.utils.Utils.filterValidMTEs;
 
 public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     extends MTEExtendedPowerMultiBlockBase<T> implements IConstructable, ISurvivalConstructable {

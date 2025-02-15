@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
+import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
@@ -209,18 +210,34 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_VendingMachines_MachineType)
-            .addInfo(Tooltip_VendingMachines_Controller)
-            .addInfo(Tooltip_VendingMachines_00)
-            .addInfo(Tooltip_VendingMachines_01)
-            .addInfo(Tooltip_VendingMachines_02)
-            .addInfo(Tooltip_VendingMachines_03)
-            .addSeparator()
-            .addInputBus(add_InputBus,1)
-            .addOutputBus(add_OutputBus,1)
-            .addInfo(TextLocalization.StructureTooComplex)
-            .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .toolTipFinisher(TextLocalization.ModName);
+        if(MachineLoaderConfig.VendingMachines){
+            tt.addMachineType(Tooltip_VendingMachines_MachineType)
+                    .addInfo(Tooltip_VendingMachines_Controller)
+                    .addInfo(Tooltip_VendingMachines_00)
+                    .addInfo(Tooltip_VendingMachines_01)
+                    .addInfo(Tooltip_VendingMachines_02)
+                    .addInfo(Tooltip_VendingMachines_03)
+                    .addSeparator()
+                    .addInputBus(add_InputBus,1)
+                    .addOutputBus(add_OutputBus,1)
+                    .addInfo(TextLocalization.StructureTooComplex)
+                    .addInfo(TextLocalization.BLUE_PRINT_INFO)
+                    .toolTipFinisher(TextLocalization.ModName);
+        }else {
+            tt.addMachineType(Tooltip_VendingMachines_MachineType)
+                    .addMachineType(Tooltip_VendingMachines_Controller)
+                    .addInfo(Disable_loading)
+                    .addInfo(Tooltip_VendingMachines_00)
+                    .addInfo(Tooltip_VendingMachines_01)
+                    .addInfo(Tooltip_VendingMachines_02)
+                    .addInfo(Tooltip_VendingMachines_03)
+                    .addSeparator()
+                    .addInputBus(add_InputBus,1)
+                    .addOutputBus(add_OutputBus,1)
+                    .addInfo(TextLocalization.StructureTooComplex)
+                    .addInfo(TextLocalization.BLUE_PRINT_INFO)
+                    .toolTipFinisher(TextLocalization.ModName);
+        }
         return tt;
     }
 

@@ -80,7 +80,7 @@ public class LanguageUtil0 {
     }
 
     private static List<String> getLangList(String fullLangPath) {
-        InputStream langIS = com.Nxer.TwistSpaceTechnology.util.LanguageUtil0.class.getResourceAsStream(fullLangPath);
+        InputStream langIS = com.EyeOfHarmonyBuffer.utils.LanguageUtil0.class.getResourceAsStream(fullLangPath);
         if (langIS == null) {
             return null;
         } else {
