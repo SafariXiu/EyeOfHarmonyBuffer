@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
-import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;

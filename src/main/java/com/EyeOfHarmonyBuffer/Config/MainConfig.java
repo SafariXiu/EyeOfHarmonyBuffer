@@ -2,8 +2,6 @@ package com.EyeOfHarmonyBuffer.Config;
 
 import java.io.File;
 
-import com.EyeOfHarmonyBuffer.Mixins.DEFusionCrafterMixin;
-import com.EyeOfHarmonyBuffer.Mixins.HIPCompressorMixin;
 import net.minecraftforge.common.config.Configuration;
 
 public class MainConfig {
