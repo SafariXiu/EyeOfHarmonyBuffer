@@ -17,7 +17,6 @@ public class LateMixins implements ILateMixinLoader {
     public List<String> getMixins(Set<String> loadedMods) {
         // 创建 Mixin 列表
         List<String> mixins = new ArrayList<>(Arrays.asList(
-            "Accessor.BlackHoleCompressorAccessor",
             "Accessor.DigesterAccessor",
             "Accessor.EyeOfHarmonyAccessor",
             "Accessor.ExoticModuleAccessor",
@@ -27,11 +26,14 @@ public class LateMixins implements ILateMixinLoader {
             "Accessor.TreatedWater.Grade4WaterPurificationAccessor",
             "Accessor.PCBFactory.PCBFactoryParallelAccessor",
             "Accessor.PCBFactory.PCBFactoryParallelThisAccessor",
+            "AlloyBlastSmelterMixin",
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
+            "BioLab.BasicMachineMixin",
             "BioVatMixin",
             "BlackHoleCompressorMixin",
             "CircuitAssemblyLineMixin",
+            "ChemicalPlantMixin",
             "DigesterMixin",
             "DissolutionTankMixin",
             "DEFusionCrafterMixin",
@@ -47,8 +49,12 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonyZeroPowerStart",
             "FOGShardsAvailable",
             "FuelFactory.NaquadahFuelRefineryMixin",
+            "FuelFactory.FuelRefineFactoryMixin",
             "GodOfForgeModuleMixin.ExoticModuleMixin",
             "GodOfForgeModuleMixin.GravitonShardMixin",
+            "GodOfForgeModuleMixin.MoltenModuleMixin",
+            "GodOfForgeModuleMixin.PlasmaModuleMixin",
+            "GodOfForgeModuleMixin.SmeltingModuleMixin",
             "HIPCompressorMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverParallelMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverSpeedMixin",
@@ -56,16 +62,22 @@ public class LateMixins implements ILateMixinLoader {
             "IndustrialChiselMixin",
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
+            "LargerTurbinePlasmaMixin",
             "MaskListMixin",
             "Mask.TargetChamberMixin",
             "OutPutME.HatchOutputBusMEMixin",
             "OutPutME.HatchOutputMEMixin",
             "PlanetaryGasSiphonMixin",
+            "PlasmaForgeMixin",
             "PCBFactory.PCBFactoryCoolantMixin",
             "PCBFactory.PCBFactoryParallelMixin",
+            "PreciseAssemblerMixin",
+            "PrimitiveBlastFurnaceMixin",
             "RareEarth.IndustrialDehydratorMixin",
             "RareEarth.FrothFlotationCellMixin",
             "RareEarth.IsaMillMixin",
+            "Recipe.CyclotronRecipeMixin",
+            "Recipe.naquadahFuelRefineFactoryRecipesMixin",
             "SpaceElevator.ModuleAssemblerMixin",
             "SpaceElevator.ModuleEUMixin",
             "SpaceElevator.ModuleMinerMixin",
@@ -87,6 +99,13 @@ public class LateMixins implements ILateMixinLoader {
         modMixins.put("TwistSpaceTechnology", Arrays.asList(
             "TST.IndistinctTentaclePrototypeMK2Mixin",
             "TST.LightningSpireMixin"
+        ));
+        modMixins.put("123Technology", Arrays.asList(
+            "Invoker.MegaNineInOneInvoker",
+            "OthTech.MegaNineInOneMixin",
+            "OthTech.WoodenFusionReactorMixin",
+            "OthTech.Recipe.WoodenFusionReactorRecipe",
+            "OthTech.MegaIsaFactoryMixin"
         ));
         // 如果有其他 mod 需要 mixin，可以在这里添加，比如：
         // modMixins.put("AnotherMod", Arrays.asList("AnotherMod.SomeMixin1", "AnotherMod.SomeMixin2"));

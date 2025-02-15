@@ -1,11 +1,14 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
+import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import net.minecraft.launchwrapper.Launch;
 import com.Nxer.TwistSpaceTechnology.util.TextHandler;
 import net.minecraftforge.common.config.Configuration;
 
@@ -45,6 +48,10 @@ public class EyeOfHarmonyBuffer {
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
         TextHandler.initLangMap(isInDevMode);
+
+        if(MainConfig.Grade2WaterPurificationEnabled){
+            Launch.classLoader.registerTransformer("com.EyeOfHarmonyBuffer.ASMChange.Grade2WaterPurificationRecipeChange");
+        }
 
         if (!configDir.exists()) {
             configDir.mkdirs();

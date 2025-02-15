@@ -10,7 +10,6 @@ public class MainConfig {
 
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
     public static boolean GasInPut = true;
-    public static boolean EOHinputBusMe = true;
     public static boolean EOHinputHatchEnable= true;
     public static boolean enableFluidOutPut = true;
     public static boolean EOHItemInPut = true;
@@ -26,7 +25,7 @@ public class MainConfig {
     public static boolean EOHOpenEuOutPut = true;
     public static boolean DTPFOpen = true;
     public static boolean FOGUpDate = true;
-    public static boolean BioVatTrue = true;
+    public static boolean BioVatOutputRatioEnable = true;
     public static boolean DisTankTrue = true;
     public static boolean DigesterMixin = true;
     public static boolean LargeFusionMixin = true;
@@ -46,7 +45,7 @@ public class MainConfig {
     public static boolean BlackHoleCompressorTimeConsumptionModificationEnabled = true;
     public static String BlackHoleCompressorTimeConsumptionModification = "0.0";
     public static boolean IndustrialLaserEngraverParallelEnabled = true;
-    public static boolean IndustrialLaserEngraverOverclockEnabled = false;
+    public static boolean IndustrialLaserEngraverOverclockEnabled = true;
     public static boolean MaskInfiniteDurability = true;
     public static boolean Grade8WaterPurificationEnabled = true;
     public static boolean Grade7WaterPurificationEnabled = true;
@@ -77,7 +76,7 @@ public class MainConfig {
     public static boolean IndustrialDehydratorEnable = true;
     public static boolean FrothFlotationCellEnable = true;
     public static boolean IsaMillEnable = true;
-    public static boolean FOGGravitonShardEnable = true;
+    public static boolean FOGGravitonShardEnable = false;
     public static boolean EOHGemEnable = true;
     public static String EOHGem = "2T";
     public static boolean PCBFactoryParallelEnable = true;
@@ -87,6 +86,24 @@ public class MainConfig {
     public static int LightningSpireTime = 256;
     public static boolean DEFusionCrafterEnable = true;
     public static boolean IndustrialChiselEnable = true;
+    public static boolean BioVatRadiationEnabled = true;
+    public static int BioVatOutputRatio = 1000000;
+    public static boolean FuelRefineFactoryEnable = true;
+    public static int LightningSpireMaxRods = 8192;
+    public static boolean DTPFEnable = true;
+    public static boolean AlloyBlastSmelterEnable = true;
+    public static boolean ChemicalPlantEnable = true;
+    public static boolean LargerTurbinePlasmaEnable = true;
+    public static boolean PreciseAssemblerEnable = true;
+    public static boolean CyclotronRecipeMixinEnable = true;
+    public static boolean ExoticModuleOverClock = true;
+    public static boolean MoltenModuleEnable = true;
+    public static boolean PlasmaModuleEnable = true;
+    public static boolean SmeltingModuleEnable = true;
+    public static boolean PrimitiveBlastFurnaceEnable = true;
+    public static boolean WoodenFusionReactorEnable = true;
+    public static boolean MegaNineInOneEnable = true;
+    public static boolean MegaIsaFactoryEnable = true;
     public static boolean DEFAULT_BATCH_MODE = false;
 
     private static Configuration config;
@@ -118,13 +135,65 @@ public class MainConfig {
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
 
+        CyclotronRecipeMixinEnable = config
+            .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
+            .getBoolean(CyclotronRecipeMixinEnable);
+
+        WoodenFusionReactorEnable = config
+            .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
+            .getBoolean(WoodenFusionReactorEnable);
+
+        MegaNineInOneEnable = config
+            .get("123123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MegaNineInOneEnable);
+
+        MegaIsaFactoryEnable = config
+            .get("123123Technology","艾萨集成工厂",MegaIsaFactoryEnable,"开启后艾萨集成工厂运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MegaIsaFactoryEnable);
+
         CircuitAssemblyLineEnable = config
             .get("其他机器","电路装配线",CircuitAssemblyLineEnable,"开启后电路装配线不再耗电并且大幅度提升并行")
             .getBoolean(CircuitAssemblyLineEnable);
 
+        PrimitiveBlastFurnaceEnable = config
+            .get("其他机器","土高炉",PrimitiveBlastFurnaceEnable,"开启后土高炉运行任何配方均只需要10tick")
+            .getBoolean(PrimitiveBlastFurnaceEnable);
+
         DEFusionCrafterEnable = config
-            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力,所有配方都会在10tick完成，并且拥有int并行")
+            .get("其他机器","龙研聚合装置", DEFusionCrafterEnable,"开启后龙之研究聚合装置不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(DEFusionCrafterEnable);
+
+        LargerTurbinePlasmaEnable = config
+            .get("其他机器","特大等离子涡轮",LargerTurbinePlasmaEnable,"开启后特大等离子涡轮低热值等离子输出会更高")
+            .getBoolean(LargerTurbinePlasmaEnable);
+
+        PreciseAssemblerEnable = config
+            .get("其他机器","精密组装机",PreciseAssemblerEnable,"开启后精密组装机工作不受到机械方块等级与电压限制,不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(PreciseAssemblerEnable);
+
+        BioVatRadiationEnabled = config
+            .get("细菌培养缸","细菌培养缸机器辐射修改",BioVatRadiationEnabled,"开启后细菌培养缸运行不再需要辐射")
+            .getBoolean(BioVatRadiationEnabled);
+
+        BioVatOutputRatioEnable = config
+            .get("细菌培养缸", "开细菌培养缸产出倍率修改", BioVatOutputRatioEnable, "开启后细菌培养缸输出倍率修改")
+            .getBoolean(BioVatOutputRatioEnable);
+
+        BioVatOutputRatio = config
+            .get("细菌培养缸","细菌培养缸产出倍率设置",BioVatOutputRatio,"设置细菌培养缸产出倍率")
+            .getInt(BioVatOutputRatio);
+
+        IndustrialChiselEnable = config
+            .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
+            .getBoolean(IndustrialChiselEnable);
+
+        AlloyBlastSmelterEnable = config
+            .get("其他机器","合金冶炼炉机器运行修改",AlloyBlastSmelterEnable,"开启后(MAGA)合金冶炼炉不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(AlloyBlastSmelterEnable);
+
+        ChemicalPlantEnable = config
+            .get("其他机器","化工厂",ChemicalPlantEnable,"开启后化工厂不再消耗催化剂")
+            .getBoolean(ChemicalPlantEnable);
 
         IndustrialChiselEnable = config
             .get("其他机器","工业3D打印机",IndustrialChiselEnable,"开启后工业3D打印机设置为0耗电,速度+1000%,int并行")
@@ -198,6 +267,10 @@ public class MainConfig {
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFOpen);
 
+        DTPFEnable = config
+            .get("超维度等离子锻炉","超维度等离子锻炉机器运行修改",DTPFEnable,"开启后超维度等离子锻炉运行不再受限于线圈等级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(DTPFEnable);
+
         DTPFMK2Enable = config
             .get("TST","开启超维度等离子锻炉MK2锁定催化剂减免",DTPFMK2Enable,"开启后超维度等离子锻炉MK2催化剂减免锁定为百分百，不再有减免，避免通厕所")
             .getBoolean(DTPFMK2Enable);
@@ -209,6 +282,10 @@ public class MainConfig {
         LightningSpireTime = config
             .get("TST","闪电尖塔工作时间设置",LightningSpireTime,"设置闪电尖塔一次工作的时间，默认256tick（与原版相同）,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireTime);
+
+        LightningSpireMaxRods = config
+            .get("TST","闪电尖塔避雷针数量设置",LightningSpireMaxRods,"设置闪电尖塔内部可缓存避雷针数量,必须开启闪电尖塔mixin后才能生效！")
+            .getInt(LightningSpireMaxRods);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")
@@ -241,10 +318,6 @@ public class MainConfig {
         EOHLV = config
             .get("鸿蒙之眼功能", "鸿蒙之眼配方运行", EOHLV, "鸿蒙之眼配方运行等级修改,开启后1级外壳就可以运行任何级别的配方了")
             .getBoolean(EOHLV);
-
-        EOHinputBusMe = config
-            .get("鸿蒙之眼功能", "鸿蒙之眼ME输入总线", EOHinputBusMe, "启用鸿蒙之眼ME输入总线")
-            .getBoolean(EOHinputBusMe);
 
         EOHinputHatchEnable = config
             .get("鸿蒙之眼功能","鸿蒙之眼输入仓",EOHinputHatchEnable,"开启后鸿蒙之眼不强制需求2个输入仓，可以为0,1,2个")
@@ -288,16 +361,28 @@ public class MainConfig {
             .getBoolean(FOGUpDate);
 
         FOGGravitonShardEnable = config
-            .get("诸神之锻炉","诸神之锻炉引力子碎片输出",FOGGravitonShardEnable,"开启后诸神之锻炉引力子碎片输出不再减少机器内部引力子碎片数量")
+            .get("诸神之锻炉","诸神之锻炉引力子碎片输出",FOGGravitonShardEnable,"开启后诸神之锻炉引力子碎片输出不再减少机器内部引力子碎片数量(默认关闭,机器内部存储大量引力子碎片可能导致机器停机等问题,后期请慎重开启)")
             .getBoolean(FOGGravitonShardEnable);
 
         ExoticModuleEnable = config
             .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块",ExoticModuleEnable,"开启后太阳聚变异化器模块不需要任何输入就可以产生夸克胶子与磁流体物质")
             .getBoolean(ExoticModuleEnable);
 
-        BioVatTrue = config
-            .get("其他机器", "细菌培养缸", BioVatTrue, "开启后细菌培养缸持续最大输出不需要保持半满,仅支持传统输出仓，不支持ME输出仓")
-            .getBoolean(BioVatTrue);
+        ExoticModuleOverClock = config
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200万并行")
+            .getBoolean(ExoticModuleOverClock);
+
+        MoltenModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳射流融化核心模块超频修改",MoltenModuleEnable,"开启后太阳射流融化核心模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(MoltenModuleEnable);
+
+        PlasmaModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳热能等离子体制造机超频修改",PlasmaModuleEnable,"开启后太阳热能等离子体制造机不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(PlasmaModuleEnable);
+
+        SmeltingModuleEnable = config
+            .get("诸神之锻炉","诸神之锻炉太阳烈焰能量锻炉超频修改",SmeltingModuleEnable,"开启后太阳烈焰能量锻炉不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(SmeltingModuleEnable);
 
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
@@ -338,6 +423,10 @@ public class MainConfig {
         NaquadahFuelRefineryMagnification = config
             .get("硅岩燃料精炼厂", "燃料倍率修改", NaquadahFuelRefineryMagnification, "倍率直接反映在NEI中，减少请使用小数")
             .getInt(NaquadahFuelRefineryMagnification);
+
+        FuelRefineFactoryEnable = config
+            .get("硅岩燃料精炼厂","硅岩燃料精炼厂机器运行修改",FuelRefineFactoryEnable,"开启后硅岩燃料精炼厂运行不再受限于线圈等级，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(FuelRefineFactoryEnable);
 
         NaquadahFuelOutPutMagnificationTrue = config
             .get("硅岩反应堆","开启修改枯竭燃料产出",NaquadahFuelOutPutMagnificationTrue,"开启后可以自定义枯竭燃料产出倍率")
@@ -412,7 +501,7 @@ public class MainConfig {
             .getBoolean(Grade3WaterPurificationEnabled);
 
         Grade2WaterPurificationEnabled = config
-            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸")
+            .get("净化水产线机器","2级水",Grade2WaterPurificationEnabled,"开启后2级水机器百分百成功并且输入臭氧过量也不会爆炸(注：配方百分百成功是利用ASM字节码进行修改,如果您在游玩中使用热重载关闭了这个功能,对配方的修改也不会失效!必须重启游戏才可以")
             .getBoolean(Grade2WaterPurificationEnabled);
 
         Grade1WaterPurificationEnabled = config
