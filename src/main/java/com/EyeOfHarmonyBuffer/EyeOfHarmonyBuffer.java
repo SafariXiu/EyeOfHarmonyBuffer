@@ -70,11 +70,7 @@ public class EyeOfHarmonyBuffer {
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
-
         MachineLoader.loadMachines();
-        gemErgodic.init(event);
-        ItemConfig.setGemErgodic(gemErgodic);
-        ItemConfig.reloadConfig();
     }
 
     @Mod.EventHandler
@@ -88,6 +84,9 @@ public class EyeOfHarmonyBuffer {
     @Mod.EventHandler
     // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {
+        ItemConfig.setGemErgodic(gemErgodic);
+        GemErgodic.processOreDictionary();
+        ItemConfig.reloadConfig();
         event.registerServerCommand(new CommandReloadConfig());
     }
 
