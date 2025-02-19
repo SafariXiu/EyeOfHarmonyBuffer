@@ -6,7 +6,6 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import goodgenerator.blocks.tileEntity.MTEMultiNqGenerator;
 import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.GregTechAPI;
 import gregtech.api.enums.Textures;
@@ -23,7 +22,6 @@ import tectech.thing.casing.TTCasingsContainer;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
-import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.BLOCK_PLASCRETE;
 
 public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable {
