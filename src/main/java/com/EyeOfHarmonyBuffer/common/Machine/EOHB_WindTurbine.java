@@ -6,7 +6,6 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import goodgenerator.blocks.tileEntity.MTEMultiNqGenerator;
 import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.GregTechAPI;
 import gregtech.api.enums.Textures;
