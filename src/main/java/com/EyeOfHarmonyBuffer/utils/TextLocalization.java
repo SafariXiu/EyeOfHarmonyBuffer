@@ -6,7 +6,6 @@ public class TextLocalization {
     public static final String ModName = "Eye Of Harmony Buffer";
     public static final String Waila_WirelessMode;
     public static final String Waila_CurrentEuCost;
-    public static final String NameVendingMachines;
     public static final String WirelessNetwork;
     public static final String StructureTooComplex;
     public static final String BLUE_PRINT_INFO;
@@ -15,12 +14,17 @@ public class TextLocalization {
     public static final String add_InputBus;
     public static final String add_OutputBus;
 
+    public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
     public static final String Tooltip_VendingMachines_Controller;
     public static final String Tooltip_VendingMachines_00;
     public static final String Tooltip_VendingMachines_01;
     public static final String Tooltip_VendingMachines_02;
     public static final String Tooltip_VendingMachines_03;
+
+    public static final String NameWindTurbine;
+    public static final String Tooltip_WindTurbine_MachineType;
+    public static final String Tooltip_WindTurbine_Controller;
 
     public TextLocalization() {
     }
@@ -53,5 +57,10 @@ public class TextLocalization {
         Tooltip_VendingMachines_01 = TextHandler.texter("When powered by a wireless EU Net, it supports parallel multi-recipe processing with a fixed working time of 6.4 seconds.", "Tooltip_VendingMachines_01");
         Tooltip_VendingMachines_02 = TextHandler.texter("Put the desired output item into the machine's main block. Any input item will produce the desired output item!", "Tooltip_VendingMachines_02");
         Tooltip_VendingMachines_03 = TextHandler.texter("The machine has a default of int parallel processing, a fixed working time of 6.4 seconds, and consumes no power.", "Tooltip_VendingMachines_03");
+
+        //大型风力发电机
+        NameWindTurbine = TextHandler.texter("Large Wind Turbine", "NameWindTurbine");
+        Tooltip_WindTurbine_MachineType = TextHandler.texter("Wind Turbine", "Tooltip_WindTurbine_MachineType");
+        Tooltip_WindTurbine_Controller = TextHandler.texter("Controller block for the Large Wind Turbine", "Tooltip_WindTurbine_Controller");
     }
 }

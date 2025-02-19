@@ -9,7 +9,8 @@ import net.minecraft.item.Item;
 public enum GTCMItemList {
 
     TestItem0,
-    VendingMachines;
+    VendingMachines,
+    WindTurbines;
 
 
     private boolean mHasNotBeenSet;

@@ -5,6 +5,7 @@ import java.io.File;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
@@ -62,6 +63,8 @@ public class EyeOfHarmonyBuffer {
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
 
         Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
+
+        MaterialLoader.load();
 
         proxy.preInit(event);
     }

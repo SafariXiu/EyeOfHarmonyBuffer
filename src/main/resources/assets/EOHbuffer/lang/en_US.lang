@@ -14,3 +14,6 @@ Tooltip_VendingMachines_00=A large trade machine, Vending Machines, Place the ma
 Tooltip_VendingMachines_01=When powered by a wireless EU Net, it supports parallel multi-recipe processing with a fixed working time of 6.4 seconds.
 Tooltip_VendingMachines_02=Put the desired output item into the machine's main block. Any input item will produce the desired output item!
 Tooltip_VendingMachines_03=The machine has a default of int parallel processing, a fixed working time of 6.4 seconds, and consumes no power.
+NameWindTurbine=Large Wind Turbine
+Tooltip_WindTurbine_MachineType=Wind Turbine
+Tooltip_WindTurbine_Controller=Controller block for the Large Wind Turbine
