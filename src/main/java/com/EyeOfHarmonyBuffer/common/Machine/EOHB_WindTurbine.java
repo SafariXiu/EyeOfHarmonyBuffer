@@ -33,6 +33,7 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
 import static gregtech.api.GregTechAPI.sBlockCasings3;
 import static gregtech.api.GregTechAPI.sBlockReinforced;
+import static gregtech.api.enums.Mods.GTPlusPlus;
 import static gregtech.api.enums.Mods.IndustrialCraft2;
 import static gregtech.api.enums.Textures.BlockIcons.BLOCK_PLASCRETE;
 import static gregtech.api.util.GTModHandler.getModItem;
@@ -54,6 +55,10 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
         ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemironrotor", 1), 4);
         ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemsteelrotor", 1), 8);
         ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemwcarbonrotor", 1), 16);
+        ROTOR_VALUES.put(getModItem(GTPlusPlus.ID, "itemwoodrotor", 1), 32);
+        ROTOR_VALUES.put(getModItem(GTPlusPlus.ID, "itemironrotor", 1), 64);
+        ROTOR_VALUES.put(getModItem(GTPlusPlus.ID, "itemsteelrotor", 1), 128);
+        ROTOR_VALUES.put(getModItem(GTPlusPlus.ID, "itemwcarbonrotor", 1), 256);
     }
 
     public EOHB_WindTurbine(int aID, String aName, String aNameRegional) {
