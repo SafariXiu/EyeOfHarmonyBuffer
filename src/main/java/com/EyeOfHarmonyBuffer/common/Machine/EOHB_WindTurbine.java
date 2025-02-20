@@ -23,8 +23,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.util.ForgeDirection;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.TTCasingsContainer;
 
@@ -159,10 +157,23 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType(Tooltip_WindTurbine_MachineType)
             .addInfo(Tooltip_WindTurbine_Controller)
-/*            .addInfo()
-            .addInfo()
-            .addInfo()*/
+            .addInfo(Tooltip_WindTurbine_00)
+            .addInfo(Tooltip_WindTurbine_01)
+            .addInfo(Tooltip_WindTurbine_02)
+            .addInfo(Tooltip_WindTurbine_03)
             .addSeparator()
+            .addStructureInfo(StructureInfo_WindTurbine_00)
+            .addStructureInfo(EOHB_Text_SeparatingLine)
+            .addStructureInfo(StructureInfo_WindTurbine_01)
+            .addStructureInfo(StructureInfo_WindTurbine_02)
+            .addStructureInfo(StructureInfo_WindTurbine_03)
+            .addStructureInfo(StructureInfo_WindTurbine_04)
+            .addStructureInfo(StructureInfo_WindTurbine_05)
+            .addStructureInfo(StructureInfo_WindTurbine_06)
+            .addStructureInfo(StructureInfo_WindTurbine_07)
+            .addStructureInfo(StructureInfo_WindTurbine_08)
+            .addStructureInfo(EOHB_Text_SeparatingLine)
+            .addStructureInfo(StructureInfo_WindTurbine_09)
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
             .toolTipFinisher(TextLocalization.ModName);
