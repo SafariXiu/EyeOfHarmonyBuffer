@@ -19,7 +19,7 @@ public class CommandReloadConfig extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/eoh_reloadconfig - 重新加载 EyeOfHarmonyBuffer 的配置文件";
+        return "/eoh_reloadconfig - 重新加载 eyeofharmonybuffer 的配置文件";
     }
 
     @Override

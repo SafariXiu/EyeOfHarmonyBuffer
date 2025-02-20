@@ -37,7 +37,7 @@ public abstract class LargeFusionMixin extends MTETooltipMultiBlockBaseEM
      * 覆盖 getSingleHatchPower 方法
      * 去掉 extraPara(100) 和 / 32，保持功率计算为 电压 * 安培数。
      *
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason Simplify the power calculation by removing extraPara(100) and /32 to match current design.
      */
     @Overwrite

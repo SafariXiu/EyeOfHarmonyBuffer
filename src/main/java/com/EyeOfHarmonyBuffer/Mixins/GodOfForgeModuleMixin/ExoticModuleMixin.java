@@ -82,7 +82,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     private long EUt = 0;
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 修改夸克胶子流体的处理逻辑
      */
     @Overwrite
@@ -147,7 +147,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     }
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 修改磁物质流体的处理逻辑
      */
     @Overwrite

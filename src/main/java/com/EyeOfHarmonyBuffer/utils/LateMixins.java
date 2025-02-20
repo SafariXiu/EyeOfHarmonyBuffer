@@ -10,7 +10,7 @@ public class LateMixins implements ILateMixinLoader {
 
     @Override
     public String getMixinConfig() {
-        return "mixins.EyeOfHarmonyBuffer.late.json";
+        return "mixins.eyeofharmonybuffer.late.json";
     }
 
     @Override

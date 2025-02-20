@@ -9,13 +9,13 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
-public class CommonProxy {
+public abstract class CommonProxy {
 
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
 
-        File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
+        File configDir = new File(event.getModConfigurationDirectory(), "eyeofharmonybuffer");
 
         if (!configDir.exists()) {
             configDir.mkdirs();
@@ -37,4 +37,10 @@ public class CommonProxy {
 
     // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {}
+
+    public abstract void registerRenderers();
+
+    public abstract void registerTileEntitySpecialRenderer();
+
+    public abstract void init();
 }
