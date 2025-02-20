@@ -12,21 +12,51 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.objects.GTRenderedTexture;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.FluidStack;
+import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.TTCasingsContainer;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
-import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
-import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
+import static gregtech.api.GregTechAPI.sBlockCasings3;
+import static gregtech.api.GregTechAPI.sBlockReinforced;
+import static gregtech.api.enums.Mods.IndustrialCraft2;
 import static gregtech.api.enums.Textures.BlockIcons.BLOCK_PLASCRETE;
+import static gregtech.api.util.GTModHandler.getModItem;
+import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable {
 
     private IStructureDefinition<EOHB_WindTurbine> multiDefinition = null;
+    protected long leftEnergy = 0;
+    private ItemStack target;
+    private static final Map<ItemStack, Integer> ROTOR_VALUES = new HashMap<>();
+    private static final long BASE_POWER = 2097152;
+    private long trueOutput = 0;
+    private double lastWindSpeed = 1.0;
+    private long lastUpdateTick = 0;
+
+    static {
+        ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemwoodrotor", 1), 1);
+        ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemironrotor", 1), 4);
+        ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemsteelrotor", 1), 8);
+        ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemwcarbonrotor", 1), 16);
+    }
 
     public EOHB_WindTurbine(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -103,8 +133,20 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
                         }
                     )
                 )
-                .addElement('A',ofBlock(GregTechAPI.sBlockCasings3,11))
-                .addElement('D',ofBlock(GregTechAPI.sBlockReinforced,2))
+                .addElement('A',ofBlock(sBlockCasings3,11))
+                .addElement('D',
+                    ofChain(
+                        buildHatchAdder(EOHB_WindTurbine.class)
+                            .atLeast(
+                                tectech.thing.metaTileEntity.multi.base.TTMultiblockBase.HatchElement.DynamoMulti
+                                    .or(gregtech.api.enums.HatchElement.Dynamo),
+                                gregtech.api.enums.HatchElement.Maintenance
+                            )
+                            .casingIndex(210)
+                            .dot(1)
+                            .build(),
+                        ofBlock(sBlockReinforced,2)
+                    ))
                 .addElement('B',ofBlock(TTCasingsContainer.sBlockCasingsBA0, 7))
                 .addElement('C',ofBlock(GregTechAPI.sBlockFrames,305))
                 .build();
@@ -121,7 +163,6 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
             .addInfo()
             .addInfo()*/
             .addSeparator()
-            .addInputBus(add_InputBus,1)
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
             .toolTipFinisher(TextLocalization.ModName);
@@ -135,7 +176,7 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     @Override
     public boolean checkMachine_EM(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return structureCheck_EM(mName, 11, 59, 0) && mMaintenanceHatches.size() == 1
+        return structureCheck_EM(mName, 11, 59, 0)
             && mDynamoHatches.size() + eDynamoMulti.size() == 1;
     }
 
@@ -152,6 +193,130 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     public EOHB_WindTurbine(String name){
         super(name);
+    }
+
+    private double getWindSpeedFactor() {
+        long currentTick = this.getBaseMetaTileEntity().getWorld().getWorldTime();
+
+        if (currentTick - lastUpdateTick >= 600) {
+            lastWindSpeed = 0.5 + Math.random();
+            lastUpdateTick = currentTick;
+        }
+
+        return lastWindSpeed;
+    }
+
+    private int checkRotor(ItemStack inventory) {
+        target = this.getControllerSlot();
+        if (target == null) return 0;
+
+        for (Map.Entry<ItemStack, Integer> entry : ROTOR_VALUES.entrySet()) {
+            if (inventory.getItem() == entry.getKey().getItem()) {
+                return entry.getValue();
+            }
+        }
+
+        return 0;
+    }
+
+    @Override
+    public @NotNull CheckRecipeResult checkProcessing_EM() {
+        int rotorLevel = this.checkRotor(this.getControllerSlot());
+
+        if (rotorLevel == 0) {
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        this.mMaxProgresstime = 20;
+
+        return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    public boolean onRunningTick(ItemStack stack) {
+        if (this.getBaseMetaTileEntity().isServerSide()) {
+            if (mMaxProgresstime != 0 && mProgresstime % 20 == 0) {
+
+                int rotorLevel = this.checkRotor(this.getControllerSlot());
+                if (rotorLevel > 0) {
+                    double windSpeedFactor = getWindSpeedFactor();
+                    this.mEUt = (int) (BASE_POWER * rotorLevel * windSpeedFactor);
+                    this.trueOutput = this.mEUt;
+
+                } else {
+                    this.mEUt = 0;
+                    this.trueOutput = 0;
+                }
+            }
+            addAutoEnergy();
+        }
+        return true;
+    }
+
+    public void addAutoEnergy() {
+        long outputPower = this.trueOutput;
+        if (!this.mDynamoHatches.isEmpty()) {
+            for (MTEHatch tHatch : this.mDynamoHatches) {
+                long voltage = tHatch.maxEUOutput();
+                long outputAmperes;
+
+                if (outputPower >= voltage) {
+                    leftEnergy += outputPower;
+                    outputAmperes = leftEnergy / voltage;
+                    leftEnergy -= outputAmperes * voltage;
+                    addEnergyOutput_EM(voltage, outputAmperes);
+                } else {
+                    addEnergyOutput_EM(outputPower, 1);
+                }
+            }
+        }
+        if(!this.eDynamoMulti.isEmpty()) {
+            for (MTEHatch tHatch : this.eDynamoMulti) {
+                long voltage = tHatch.maxEUOutput();
+                long outputAmperes;
+
+                if (outputPower >= voltage) {
+                    leftEnergy += outputPower;
+                    outputAmperes = leftEnergy / voltage;
+                    leftEnergy -= outputAmperes * voltage;
+                    addEnergyOutput_EM(voltage, outputAmperes);
+                } else {
+                    addEnergyOutput_EM(outputPower, 1);
+                }
+            }
+        }
+    }
+
+    @Override
+    public String[] getInfoData() {
+        String[] info = super.getInfoData();
+        info[4] = "Currently generates: " + EnumChatFormatting.RED
+            + GTUtility.formatNumbers(Math.abs(this.trueOutput))
+            + EnumChatFormatting.RESET
+            + " EU/t";
+        info[6] = "Problems: " + EnumChatFormatting.RED
+            + (this.getIdealStatus() - this.getRepairStatus())
+            + EnumChatFormatting.RESET
+            + " Coefficient Of Wind Power: "
+            + EnumChatFormatting.YELLOW
+            + lastWindSpeed
+            + EnumChatFormatting.RESET
+            + " ";
+        return info;
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        this.leftEnergy = aNBT.getLong("mLeftEnergy");
+        this.trueOutput = aNBT.getInteger("mbasicOutput");
+        super.loadNBTData(aNBT);
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        aNBT.setLong("mLeftEnergy", this.leftEnergy);
+        aNBT.setLong("mbasicOutput", this.trueOutput);
+        super.saveNBTData(aNBT);
     }
 
     @Override
