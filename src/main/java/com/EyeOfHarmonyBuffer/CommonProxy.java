@@ -15,7 +15,7 @@ public class CommonProxy {
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
 
-        File configDir = new File(event.getModConfigurationDirectory(), "eyeofharmonybuffer");
+        File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
 
         if (!configDir.exists()) {
             configDir.mkdirs();
