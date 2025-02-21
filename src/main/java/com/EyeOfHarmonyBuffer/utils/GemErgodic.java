@@ -15,7 +15,7 @@ import java.util.List;
 public class GemErgodic {
 
     private static final List<String> gemOreNames = new ArrayList<>();
-    private static final File cacheFile = new File("config/eyeofharmonybuffer/gem_oredict_cache.json");
+    private static final File cacheFile = new File("config/EyeOfHarmonyBuffer/gem_oredict_cache.json");
 
     /**
      * 处理矿物词典，筛选 gem 开头的条目（在服务器启动时调用）
