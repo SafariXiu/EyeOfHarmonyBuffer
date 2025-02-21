@@ -39,11 +39,9 @@ public class CommonProxy {
     public void serverStarting(FMLServerStartingEvent event) {}
 
     public void registerRenderers() {
-        // 服务器端不需要渲染
     }
 
     public void registerTileEntitySpecialRenderer() {
-        // 服务器端不需要特殊渲染
     }
 
 }
