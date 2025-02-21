@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
-import com.EyeOfHarmonyBuffer.client.TileEntityWindmillRenderer;
 import com.EyeOfHarmonyBuffer.common.Block.BlockRegister;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
@@ -56,9 +55,7 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     private long lastUpdateTick = 0;
     private boolean modelCreated = false;
 
-    private final int MODEL_OFFSET_X = -9;
     private final int MODEL_OFFSET_Y = 56;
-    private final int MODEL_OFFSET_Z = 0;
 
     static {
         ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemwoodrotor", 1), 1);
