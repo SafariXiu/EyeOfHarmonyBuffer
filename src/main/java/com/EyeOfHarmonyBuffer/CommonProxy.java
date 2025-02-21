@@ -9,7 +9,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
-public abstract class CommonProxy {
+public class CommonProxy {
 
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
@@ -38,9 +38,10 @@ public abstract class CommonProxy {
     // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {}
 
-    public abstract void registerRenderers();
+    public void registerRenderers() {
+    }
 
-    public abstract void registerTileEntitySpecialRenderer();
+    public void registerTileEntitySpecialRenderer() {
+    }
 
-    public abstract void init();
 }

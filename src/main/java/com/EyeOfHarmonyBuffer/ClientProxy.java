@@ -14,9 +14,4 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void registerTileEntitySpecialRenderer() {
     }
-
-    @Override
-    public void init() {
-
-    }
 }
