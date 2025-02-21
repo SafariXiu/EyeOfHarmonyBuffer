@@ -8,13 +8,16 @@ public class TileEntityWindmill extends TileEntity {
 
     @Override
     public void updateEntity() {
-        if(!worldObj.isRemote) {
-        } else {
+        if (worldObj.isRemote) {
             rotation += 1.0F;
-            if(rotation >= 360.0F) {
+            if (rotation >= 360.0F) {
                 rotation = 0;
             }
         }
+    }
+
+    public int getFacing() {
+        return this.worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
     }
 
     public float getRotation() {

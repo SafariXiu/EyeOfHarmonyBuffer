@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
+import com.EyeOfHarmonyBuffer.client.TileEntityWindmillRenderer;
+import com.EyeOfHarmonyBuffer.common.Block.BlockRegister;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -19,6 +21,8 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.shutdown.ShutDownReason;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
@@ -26,6 +30,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.TTCasingsContainer;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +54,11 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     private long trueOutput = 0;
     private double lastWindSpeed = 1.0;
     private long lastUpdateTick = 0;
+    private boolean modelCreated = false;
+
+    private final int MODEL_OFFSET_X = -9;
+    private final int MODEL_OFFSET_Y = 56;
+    private final int MODEL_OFFSET_Z = 0;
 
     static {
         ROTOR_VALUES.put(getModItem(IndustrialCraft2.ID, "itemwoodrotor", 1), 1);
@@ -213,12 +223,10 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     private double getWindSpeedFactor() {
         long currentTick = this.getBaseMetaTileEntity().getWorld().getWorldTime();
-
         if (currentTick - lastUpdateTick >= 600) {
             lastWindSpeed = 0.5 + Math.random();
             lastUpdateTick = currentTick;
         }
-
         return lastWindSpeed;
     }
 
@@ -246,25 +254,34 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
         this.mMaxProgresstime = 20;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
+
     }
 
     @Override
     public boolean onRunningTick(ItemStack stack) {
         if (this.getBaseMetaTileEntity().isServerSide()) {
             if (mMaxProgresstime != 0 && mProgresstime % 20 == 0) {
-
                 int rotorLevel = this.checkRotor(this.getControllerSlot());
                 if (rotorLevel > 0) {
                     double windSpeedFactor = getWindSpeedFactor();
                     this.mEUt = (int) (BASE_POWER * rotorLevel * windSpeedFactor);
                     this.trueOutput = this.mEUt;
-
                 } else {
                     this.mEUt = 0;
                     this.trueOutput = 0;
                 }
             }
             addAutoEnergy();
+
+            if (this.trueOutput > 0) {
+                if (!modelCreated) {
+                    createRenderBlock();
+                }
+            } else {
+                if (modelCreated) {
+                    destroyRenderBlock();
+                }
+            }
         }
         return true;
     }
@@ -376,5 +393,60 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
             };
         }
         return new ITexture[]{TextureFactory.of(BLOCK_PLASCRETE)};
+    }
+
+    private int getFacingMeta() {
+        ForgeDirection facing = getBaseMetaTileEntity().getFrontFacing();
+        switch (facing) {
+            case SOUTH: return 0; // 南
+            case WEST: return 1;  // 西
+            case NORTH: return 2; // 北
+            case EAST: return 3;  // 东
+            default: return 0;
+        }
+    }
+
+    private void createRenderBlock() {
+        IGregTechTileEntity baseTE = getBaseMetaTileEntity();
+
+        double xOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetX;
+        double zOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetZ;
+        int x = baseTE.getXCoord() + (int)xOffset;
+        int y = baseTE.getYCoord() + MODEL_OFFSET_Y;
+        int z = baseTE.getZCoord() + (int)zOffset;
+
+        int meta = getFacingMeta();
+
+        baseTE.getWorld().setBlock(x, y, z, Blocks.air);
+        baseTE.getWorld().setBlock(x, y, z, BlockRegister.TrubineBlock, meta, 2);
+
+        modelCreated = true;
+    }
+
+    private void destroyRenderBlock() {
+        IGregTechTileEntity baseTE = getBaseMetaTileEntity();
+
+        double xOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetX;
+        double zOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetZ;
+        int x = baseTE.getXCoord() + (int)xOffset;
+        int y = baseTE.getYCoord() + MODEL_OFFSET_Y;
+        int z = baseTE.getZCoord() + (int)zOffset;
+
+        baseTE.getWorld().setBlock(x, y, z, Blocks.air);
+        modelCreated = false;
+    }
+
+    @Override
+    public void stopMachine(@Nonnull ShutDownReason reason) {
+        if (modelCreated) {
+            destroyRenderBlock();
+        }
+        super.stopMachine(reason);
+    }
+
+    @Override
+    public void onBlockDestroyed() {
+        destroyRenderBlock();
+        super.onBlockDestroyed();
     }
 }
