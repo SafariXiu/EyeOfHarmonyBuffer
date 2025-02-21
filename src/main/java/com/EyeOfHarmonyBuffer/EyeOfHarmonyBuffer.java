@@ -5,6 +5,7 @@ import java.io.File;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
@@ -28,6 +29,8 @@ import org.apache.logging.log4j.Logger;
     dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
+    public static Configuration config;
+
     public static final boolean isInDevMode = false;
 
     public static final Logger LOG = LogManager.getLogger("EOHBuffer");
@@ -35,12 +38,11 @@ public class EyeOfHarmonyBuffer {
 
     public final GemErgodic gemErgodic = new GemErgodic();
 
-    public static final String MODID = "EyeOfHarmonyBuffer";
+    public static final String MODID = "eyeofharmonybuffer";
 
     @SidedProxy(clientSide = "com.EyeOfHarmonyBuffer.ClientProxy", serverSide = "com.EyeOfHarmonyBuffer.CommonProxy")
-    public static CommonProxy proxy;
 
-    public static Configuration config;
+    public static ClientProxy proxy;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
@@ -63,6 +65,8 @@ public class EyeOfHarmonyBuffer {
 
         Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
 
+        MaterialLoader.load();
+
         proxy.preInit(event);
     }
 
@@ -71,6 +75,8 @@ public class EyeOfHarmonyBuffer {
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
         MachineLoader.loadMachines();
+        proxy.registerRenderers();
+        proxy.registerTileEntitySpecialRenderer();
     }
 
     @Mod.EventHandler

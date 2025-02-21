@@ -18,7 +18,7 @@ public abstract class Grade2WaterPurificationMixin extends MTEPurificationUnitBa
     }
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 修改判断逻辑，移除臭氧检查确保每次运行成功
      */
     @Overwrite

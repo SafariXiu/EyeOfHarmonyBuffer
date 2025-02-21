@@ -40,7 +40,7 @@ public abstract class Grade6WaterPurificationMixin extends MTEPurificationUnitBa
     protected abstract int generateNextSwapTime();
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 修改镜片逻辑
      */
     @Overwrite
@@ -91,7 +91,7 @@ public abstract class Grade6WaterPurificationMixin extends MTEPurificationUnitBa
     }
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 镜片槽为空也可以正常运行
      */
     @Overwrite

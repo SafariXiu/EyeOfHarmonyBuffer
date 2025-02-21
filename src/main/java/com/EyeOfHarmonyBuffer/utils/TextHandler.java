@@ -43,8 +43,8 @@ public class TextHandler {
                 return;
             }
 
-            File en_US_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\EOHbuffer\\lang\\en_US.lang");
-            File zh_CN_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\EOHbuffer\\lang\\zh_CN.lang");
+            File en_US_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\eyeofharmonybuffer\\lang\\en_US.lang");
+            File zh_CN_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\eyeofharmonybuffer\\lang\\zh_CN.lang");
             EyeOfHarmonyBuffer.LOG.info("File finder with en_US.lang catch a file absolutePath: " + en_US_lang.getAbsolutePath());
             EyeOfHarmonyBuffer.LOG.info("File finder with en_US.lang catch a file named: " + en_US_lang.getName());
             EyeOfHarmonyBuffer.LOG.info("Start write new text: " + en_US_lang.getAbsolutePath());

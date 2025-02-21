@@ -46,7 +46,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
     }
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 跳过检测单元的逻辑
      */
     @Inject(method = "getCacheCapacity", at = @At("HEAD"), cancellable = true)
@@ -58,7 +58,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
     }
 
     /**
-     * @author EyeOfHarmonyBuffer
+     * @author eyeofharmonybuffer
      * @reason 覆写NBT读取与高亮显示
      */
     @Inject(method = "getInfoData", at = @At("HEAD"), cancellable = true)

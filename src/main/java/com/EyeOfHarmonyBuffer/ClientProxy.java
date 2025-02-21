@@ -1,8 +1,22 @@
 package com.EyeOfHarmonyBuffer;
 
+import com.EyeOfHarmonyBuffer.client.TileEntityWindmillRenderer;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
+import cpw.mods.fml.client.registry.ClientRegistry;
+
 public class ClientProxy extends CommonProxy {
 
-    // Override CommonProxy methods here, if you want a different behaviour on the client (e.g. registering renders).
-    // Don't forget to call the super methods as well.
+    @Override
+    public void registerRenderers() {
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityWindmill.class, new TileEntityWindmillRenderer());
+    }
 
+    @Override
+    public void registerTileEntitySpecialRenderer() {
+    }
+
+    @Override
+    public void init() {
+
+    }
 }
