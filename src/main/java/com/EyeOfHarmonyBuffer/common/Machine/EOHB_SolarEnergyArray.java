@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -19,7 +20,10 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
 
     @Override
     public IStructureDefinition<EOHB_SolarEnergyArray> getStructure_EM() {
-        return null;
+        if(multiDefinition == null){
+            multiDefinition = StructureDefinition.<EOHB_SolarEnergyArray>builder()
+                .addShape()
+        }
     }
 
     @Override
