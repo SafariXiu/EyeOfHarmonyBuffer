@@ -13,6 +13,8 @@ public class TextLocalization {
     public static final String Disable_loading;
     public static final String add_InputBus;
     public static final String add_OutputBus;
+    public static final String add_DynamoHatch;
+    public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
 
     public static final String NameVendingMachines;
@@ -22,7 +24,6 @@ public class TextLocalization {
     public static final String Tooltip_VendingMachines_01;
     public static final String Tooltip_VendingMachines_02;
     public static final String Tooltip_VendingMachines_03;
-
     public static final String NameWindTurbine;
     public static final String Tooltip_WindTurbine_MachineType;
     public static final String Tooltip_WindTurbine_Controller;
@@ -64,6 +65,8 @@ public class TextLocalization {
         Disable_loading = TextHandler.texter("§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!", "Disable_loading");
         add_InputBus = TextHandler.texter("Any casing","add_InputBus");
         add_OutputBus = TextHandler.texter("Any casing","add_OutputBus");
+        add_DynamoHatch = TextHandler.texter("Any casing","add_DynamoHatch");
+        add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
 
 
