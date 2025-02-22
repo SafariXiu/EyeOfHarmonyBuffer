@@ -41,6 +41,8 @@ public class TextLocalization {
     public static final String StructureInfo_WindTurbine_08;
     public static final String StructureInfo_WindTurbine_09;
 
+    public static final String NameSolarEnergyArray;
+
     public TextLocalization() {
     }
 
@@ -94,5 +96,8 @@ public class TextLocalization {
         StructureInfo_WindTurbine_07 = TextHandler.texter("Vibrant-Level 7-128x", "StructureInfo_WindTurbine_07");
         StructureInfo_WindTurbine_08 = TextHandler.texter("Iridium-Level 8-256x", "StructureInfo_WindTurbine_08");
         StructureInfo_WindTurbine_09 = TextHandler.texter("They are terrifyingly powerful!", "StructureInfo_WindTurbine_09");
+
+        //太阳能阵列
+        NameSolarEnergyArray = TextHandler.texter("Solar Energy Array", "NameSolarEnergyArray");
     }
 }
