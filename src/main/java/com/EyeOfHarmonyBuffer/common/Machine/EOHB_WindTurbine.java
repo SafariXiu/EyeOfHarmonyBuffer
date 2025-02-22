@@ -184,10 +184,13 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
             .addStructureInfo(StructureInfo_WindTurbine_06)
             .addStructureInfo(StructureInfo_WindTurbine_07)
             .addStructureInfo(StructureInfo_WindTurbine_08)
-            .addStructureInfo(EOHB_Text_SeparatingLine)
             .addStructureInfo(StructureInfo_WindTurbine_09)
+            .addStructureInfo(EOHB_Text_SeparatingLine)
+            .addTecTechHatchInfo()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
+            .addMaintenanceHatch(add_MaintenanceHatch)
+            .addDynamoHatch(add_DynamoHatch)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }
