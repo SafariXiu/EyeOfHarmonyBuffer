@@ -15,6 +15,8 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
         super(aID, aName, aNameRegional);
     }
 
+    private IStructureDefinition<EOHB_SolarEnergyArray> multiDefinition = null;
+
     @Override
     public IStructureDefinition<EOHB_SolarEnergyArray> getStructure_EM() {
         return null;
