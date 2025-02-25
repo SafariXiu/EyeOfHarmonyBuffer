@@ -133,6 +133,10 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
         return tt;
     }
 
+    public void addAutoEnergy(){
+
+    }
+
     @Override
     @SuppressWarnings("ALL")
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
