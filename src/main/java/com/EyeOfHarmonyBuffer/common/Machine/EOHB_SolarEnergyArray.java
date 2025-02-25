@@ -10,6 +10,7 @@ import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
@@ -37,6 +38,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
 
     private IStructureDefinition<EOHB_SolarEnergyArray> multiDefinition = null;
     private long trueOutput = 0;
+    protected long leftEnergy = 0;
 
     @Override
     public IStructureDefinition<? extends TTMultiblockBase> getStructure_EM() {
@@ -146,7 +148,37 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     }
 
     public void addAutoEnergy(){
+        long outputPower = this.trueOutput;
+        if (!this.mDynamoHatches.isEmpty()) {
+            for (MTEHatch tHatch : this.mDynamoHatches) {
+                long voltage = tHatch.maxEUOutput();
+                long outputAmperes;
 
+                if (outputPower >= voltage) {
+                    leftEnergy += outputPower;
+                    outputAmperes = leftEnergy / voltage;
+                    leftEnergy -= outputAmperes * voltage;
+                    addEnergyOutput_EM(voltage, outputAmperes);
+                } else {
+                    addEnergyOutput_EM(outputPower, 1);
+                }
+            }
+        }
+        if(!this.eDynamoMulti.isEmpty()) {
+            for (MTEHatch tHatch : this.eDynamoMulti) {
+                long voltage = tHatch.maxEUOutput();
+                long outputAmperes;
+
+                if (outputPower >= voltage) {
+                    leftEnergy += outputPower;
+                    outputAmperes = leftEnergy / voltage;
+                    leftEnergy -= outputAmperes * voltage;
+                    addEnergyOutput_EM(voltage, outputAmperes);
+                } else {
+                    addEnergyOutput_EM(outputPower, 1);
+                }
+            }
+        }
     }
 
     @Override
