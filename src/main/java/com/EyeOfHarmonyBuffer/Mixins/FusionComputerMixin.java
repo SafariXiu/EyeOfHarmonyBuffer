@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.utils.CustomProcessingLogic;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import gregtech.GTMod;
 import gregtech.api.enums.GTValues;
