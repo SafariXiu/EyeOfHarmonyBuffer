@@ -50,6 +50,7 @@ public class LateMixins implements ILateMixinLoader {
             "FOGShardsAvailable",
             "FuelFactory.NaquadahFuelRefineryMixin",
             "FuelFactory.FuelRefineFactoryMixin",
+            "FusionComputerMixin",
             "GodOfForgeModuleMixin.ExoticModuleMixin",
             "GodOfForgeModuleMixin.GravitonShardMixin",
             "GodOfForgeModuleMixin.MoltenModuleMixin",
