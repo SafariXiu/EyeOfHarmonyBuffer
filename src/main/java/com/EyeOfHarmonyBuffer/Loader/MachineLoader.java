@@ -27,11 +27,11 @@ public class MachineLoader {
         ).getStackForm(1);
         GTCMItemList.WindTurbines.set(WindTurbine);
 
-        /*SolarEnergyArrays = new EOHB_SolarEnergyArray(
-            20002,
+        SolarEnergyArrays = new EOHB_SolarEnergyArray(
+            20003,
             "NameSolarEnergyArray",
             TextLocalization.NameSolarEnergyArray
         ).getStackForm(1);
-        GTCMItemList.SolarEnergyArray.set(SolarEnergyArrays);*/
+        GTCMItemList.SolarEnergyArray.set(SolarEnergyArrays);
     }
 }

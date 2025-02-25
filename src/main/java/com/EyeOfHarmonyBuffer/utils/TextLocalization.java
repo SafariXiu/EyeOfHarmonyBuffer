@@ -24,6 +24,7 @@ public class TextLocalization {
     public static final String Tooltip_VendingMachines_01;
     public static final String Tooltip_VendingMachines_02;
     public static final String Tooltip_VendingMachines_03;
+
     public static final String NameWindTurbine;
     public static final String Tooltip_WindTurbine_MachineType;
     public static final String Tooltip_WindTurbine_Controller;
@@ -43,6 +44,12 @@ public class TextLocalization {
     public static final String StructureInfo_WindTurbine_09;
 
     public static final String NameSolarEnergyArray;
+    public static final String Tooltip_SolarEnergyArray_MachineType;
+    public static final String Tooltip_SolarEnergyArray_Controller;
+    public static final String Tooltip_SolarEnergyArray_00;
+    public static final String Tooltip_SolarEnergyArray_01;
+    public static final String Tooltip_SolarEnergyArray_02;
+    public static final String Tooltip_SolarEnergyArray_03;
 
     public TextLocalization() {
     }
@@ -88,7 +95,6 @@ public class TextLocalization {
         Tooltip_WindTurbine_02 = TextHandler.texter("The power generation formula is: UHV * Wind Factor * Rotor Level.\n" +
             "The Wind Factor refreshes every 30 seconds and ranges from 0.5 to 1.5.", "Tooltip_WindTurbine_02");
         Tooltip_WindTurbine_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_WindTurbine_03");
-
         StructureInfo_WindTurbine_00 = TextHandler.texter("The rotor material is classified as follows:", "StructureInfo_WindTurbine_00");
         StructureInfo_WindTurbine_01 = TextHandler.texter("Wood-Level 1-1x", "StructureInfo_WindTurbine_01");
         StructureInfo_WindTurbine_02 = TextHandler.texter("Iron-Level 2-4x", "StructureInfo_WindTurbine_02");
@@ -102,5 +108,11 @@ public class TextLocalization {
 
         //太阳能阵列
         NameSolarEnergyArray = TextHandler.texter("Solar Energy Array", "NameSolarEnergyArray");
+        Tooltip_SolarEnergyArray_MachineType = TextHandler.texter("Solar Energy Array", "Tooltip_SolarEnergyArray_MachineType");
+        Tooltip_SolarEnergyArray_Controller = TextHandler.texter("Controller block for the Solar Energy Array", "Tooltip_SolarEnergyArray_Controller");
+        Tooltip_SolarEnergyArray_00 = TextHandler.texter("A large solar panel, better than the smaller one!", "Tooltip_SolarEnergyArray_00");
+        Tooltip_SolarEnergyArray_01 = TextHandler.texter("It works at all times, don't ask why! This is a highly advanced machine!", "Tooltip_SolarEnergyArray_01");
+        Tooltip_SolarEnergyArray_02 = TextHandler.texter("The power generation formula is MAX * MAX.", "Tooltip_SolarEnergyArray_02");
+        Tooltip_SolarEnergyArray_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_SolarEnergyArray_03");
     }
 }
