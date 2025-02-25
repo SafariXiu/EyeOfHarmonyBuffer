@@ -36,6 +36,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     }
 
     private IStructureDefinition<EOHB_SolarEnergyArray> multiDefinition = null;
+    private long trueOutput = 0;
 
     @Override
     public IStructureDefinition<? extends TTMultiblockBase> getStructure_EM() {
@@ -131,6 +132,17 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
             .addDynamoHatch(add_DynamoHatch)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
+    }
+
+    @Override
+    public boolean onRunningTick(ItemStack stack) {
+        if (this.getBaseMetaTileEntity().isServerSide()) {
+            if (mMaxProgresstime != 0 && mProgresstime % 20 == 0) {
+                this.trueOutput = (long) Integer.MAX_VALUE * Integer.MAX_VALUE;
+            }
+            addAutoEnergy();
+        }
+        return true;
     }
 
     public void addAutoEnergy(){
