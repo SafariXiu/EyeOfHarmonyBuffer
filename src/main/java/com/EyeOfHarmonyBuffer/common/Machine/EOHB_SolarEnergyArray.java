@@ -19,14 +19,19 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.BlockGTCasingsTT;
 import tectech.thing.casing.TTCasingsContainer;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
+
+import java.math.BigInteger;
+import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
@@ -34,6 +39,8 @@ import static gregtech.api.GregTechAPI.*;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
+import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
+import static java.util.Calendar.SECOND;
 
 public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable, IWirelessEnergyHatchInformation {
 
@@ -45,10 +52,15 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
         super(aName);
     }
 
+    public static void initStatics(){
+
+    }
+
     private IStructureDefinition<EOHB_SolarEnergyArray> multiDefinition = null;
     private long trueOutput = 0;
     protected long leftEnergy = 0;
-    protected boolean MachineWirelessMode = false;
+    private UUID ownerUUID;
+    private boolean MachineWirelessMode = false;
 
     @Override
     public IStructureDefinition<? extends TTMultiblockBase> getStructure_EM() {
@@ -146,9 +158,15 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
         return tt;
     }
 
-    private boolean CheckMachineWirelessMode(){
+    private boolean CheckMachineWirelessMode() {
         MachineWirelessMode = Utils.metaItemEqual(this.getControllerSlot(), MiscHelper.ASTRAL_ARRAY_FABRICATOR);
         return MachineWirelessMode;
+    }
+
+    @Override
+    public void onFirstTick_EM(IGregTechTileEntity aBaseMetaTileEntity) {
+        super.onFirstTick_EM(aBaseMetaTileEntity);
+        this.ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
     }
 
     @Override
@@ -160,6 +178,9 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     @Override
     public boolean onRunningTick(ItemStack stack) {
         if (this.getBaseMetaTileEntity().isServerSide()) {
+
+            CheckMachineWirelessMode();
+
             if (mMaxProgresstime != 0 && mProgresstime % 20 == 0) {
                 this.trueOutput = (long) Integer.MAX_VALUE * Integer.MAX_VALUE;
             }
@@ -169,35 +190,43 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     }
 
     public void addAutoEnergy(){
-        long outputPower = this.trueOutput;
-        if (!this.mDynamoHatches.isEmpty()) {
-            for (MTEHatch tHatch : this.mDynamoHatches) {
-                long voltage = tHatch.maxEUOutput();
-                long outputAmperes;
+        if(!CheckMachineWirelessMode()){
+            long outputPower = this.trueOutput;
+            if (!this.mDynamoHatches.isEmpty()) {
+                for (MTEHatch tHatch : this.mDynamoHatches) {
+                    long voltage = tHatch.maxEUOutput();
+                    long outputAmperes;
 
-                if (outputPower >= voltage) {
-                    leftEnergy += outputPower;
-                    outputAmperes = leftEnergy / voltage;
-                    leftEnergy -= outputAmperes * voltage;
-                    addEnergyOutput_EM(voltage, outputAmperes);
-                } else {
-                    addEnergyOutput_EM(outputPower, 1);
+                    if (outputPower >= voltage) {
+                        leftEnergy += outputPower;
+                        outputAmperes = leftEnergy / voltage;
+                        leftEnergy -= outputAmperes * voltage;
+                        addEnergyOutput_EM(voltage, outputAmperes);
+                    } else {
+                        addEnergyOutput_EM(outputPower, 1);
+                    }
                 }
             }
-        }
-        if(!this.eDynamoMulti.isEmpty()) {
-            for (MTEHatch tHatch : this.eDynamoMulti) {
-                long voltage = tHatch.maxEUOutput();
-                long outputAmperes;
+            if(!this.eDynamoMulti.isEmpty()) {
+                for (MTEHatch tHatch : this.eDynamoMulti) {
+                    long voltage = tHatch.maxEUOutput();
+                    long outputAmperes;
 
-                if (outputPower >= voltage) {
-                    leftEnergy += outputPower;
-                    outputAmperes = leftEnergy / voltage;
-                    leftEnergy -= outputAmperes * voltage;
-                    addEnergyOutput_EM(voltage, outputAmperes);
-                } else {
-                    addEnergyOutput_EM(outputPower, 1);
+                    if (outputPower >= voltage) {
+                        leftEnergy += outputPower;
+                        outputAmperes = leftEnergy / voltage;
+                        leftEnergy -= outputAmperes * voltage;
+                        addEnergyOutput_EM(voltage, outputAmperes);
+                    } else {
+                        addEnergyOutput_EM(outputPower, 1);
+                    }
                 }
+            }
+        } else{
+            BigInteger wirelessEnergy = BigInteger.valueOf(trueOutput);
+
+            if (!addEUToGlobalEnergyMap(ownerUUID, wirelessEnergy)) {
+                System.out.println("无线能量传输失败！");
             }
         }
     }
@@ -209,6 +238,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
             + GTUtility.formatNumbers(Math.abs(this.trueOutput))
             + EnumChatFormatting.RESET
             + " EU/t";
+        info[5] = "Wireless Mode: " + (MachineWirelessMode ? EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");
         return info;
     }
 
@@ -216,6 +246,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     public void loadNBTData(NBTTagCompound aNBT) {
         this.leftEnergy = aNBT.getLong("SolarEnergyArrayLeftEnergy");
         this.trueOutput = aNBT.getInteger("SolarEnergyArrayBasicOutput");
+        this.MachineWirelessMode = aNBT.getBoolean("MachineWirelessMode");
         super.loadNBTData(aNBT);
     }
 
@@ -223,6 +254,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     public void saveNBTData(NBTTagCompound aNBT) {
         aNBT.setLong("SolarEnergyArrayLeftEnergy", this.leftEnergy);
         aNBT.setLong("SolarEnergyArrayBasicOutput", this.trueOutput);
+        aNBT.setBoolean("MachineWirelessMode", this.MachineWirelessMode);
         super.saveNBTData(aNBT);
     }
 

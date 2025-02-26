@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
@@ -85,6 +86,11 @@ public class EyeOfHarmonyBuffer {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
+    }
+
+    @Mod.EventHandler
+    public void completeInit(FMLServerStartingEvent event) {
+        new LazyStaticsInitLoader().initStaticsOnCompleteInit();
     }
 
     @Mod.EventHandler
