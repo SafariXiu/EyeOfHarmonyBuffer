@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import com.EyeOfHarmonyBuffer.utils.Utils;
+import com.Nxer.TwistSpaceTechnology.common.machine.MiscHelper;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -10,12 +12,16 @@ import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.BlockGTCasingsTT;
@@ -29,7 +35,7 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable {
+public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable, IWirelessEnergyHatchInformation {
 
     public EOHB_SolarEnergyArray(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -42,6 +48,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     private IStructureDefinition<EOHB_SolarEnergyArray> multiDefinition = null;
     private long trueOutput = 0;
     protected long leftEnergy = 0;
+    protected boolean MachineWirelessMode = false;
 
     @Override
     public IStructureDefinition<? extends TTMultiblockBase> getStructure_EM() {
@@ -139,6 +146,11 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
         return tt;
     }
 
+    private boolean CheckMachineWirelessMode(){
+        MachineWirelessMode = Utils.metaItemEqual(this.getControllerSlot(), MiscHelper.ASTRAL_ARRAY_FABRICATOR);
+        return MachineWirelessMode;
+    }
+
     @Override
     public @NotNull CheckRecipeResult checkProcessing_EM() {
         this.mMaxProgresstime = 20;
@@ -188,6 +200,30 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
                 }
             }
         }
+    }
+
+    @Override
+    public String[] getInfoData() {
+        String[] info = super.getInfoData();
+        info[4] = "Currently generates: " + EnumChatFormatting.RED
+            + GTUtility.formatNumbers(Math.abs(this.trueOutput))
+            + EnumChatFormatting.RESET
+            + " EU/t";
+        return info;
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        this.leftEnergy = aNBT.getLong("SolarEnergyArrayLeftEnergy");
+        this.trueOutput = aNBT.getInteger("SolarEnergyArrayBasicOutput");
+        super.loadNBTData(aNBT);
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        aNBT.setLong("SolarEnergyArrayLeftEnergy", this.leftEnergy);
+        aNBT.setLong("SolarEnergyArrayBasicOutput", this.trueOutput);
+        super.saveNBTData(aNBT);
     }
 
     @Override
