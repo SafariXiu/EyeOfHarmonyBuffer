@@ -50,6 +50,8 @@ public class TextLocalization {
     public static final String Tooltip_SolarEnergyArray_01;
     public static final String Tooltip_SolarEnergyArray_02;
     public static final String Tooltip_SolarEnergyArray_03;
+    public static final String Tooltip_SolarEnergyArray_04;
+    public static final String Tooltip_SolarEnergyArray_05;
 
     public TextLocalization() {
     }
@@ -114,5 +116,7 @@ public class TextLocalization {
         Tooltip_SolarEnergyArray_01 = TextHandler.texter("It works at all times, don't ask why! This is a highly advanced machine!", "Tooltip_SolarEnergyArray_01");
         Tooltip_SolarEnergyArray_02 = TextHandler.texter("The power generation formula is MAX * MAX.", "Tooltip_SolarEnergyArray_02");
         Tooltip_SolarEnergyArray_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_SolarEnergyArray_03");
+        Tooltip_SolarEnergyArray_04 = TextHandler.texter("Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.", "Tooltip_SolarEnergyArray_04");
+        Tooltip_SolarEnergyArray_05 = TextHandler.texter("After activating Wireless Mode, Dynamo Hatches are no longer needed.", "Tooltip_SolarEnergyArray_05");
     }
 }

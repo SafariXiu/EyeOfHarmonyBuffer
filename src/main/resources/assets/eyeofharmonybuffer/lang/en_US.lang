@@ -41,3 +41,5 @@ Tooltip_SolarEnergyArray_00=A large solar panel, better than the smaller one!
 Tooltip_SolarEnergyArray_01=It works at all times, don't ask why! This is a highly advanced machine!
 Tooltip_SolarEnergyArray_02=The power generation formula is MAX * MAX.
 Tooltip_SolarEnergyArray_03=Clean energy! May your skies remain pollution-free!
+Tooltip_SolarEnergyArray_04=Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.
+Tooltip_SolarEnergyArray_05=After activating Wireless Mode, Dynamo Hatches are no longer needed.

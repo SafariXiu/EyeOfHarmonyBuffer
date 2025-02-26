@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.EyeOfHarmonyBuffer.utils.Utils;
-import com.Nxer.TwistSpaceTechnology.common.machine.MiscHelper;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -19,11 +18,9 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.BlockGTCasingsTT;
@@ -40,7 +37,6 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
-import static java.util.Calendar.SECOND;
 
 public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable, IWirelessEnergyHatchInformation {
 
@@ -136,6 +132,9 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
 
     @Override
     public boolean checkMachine_EM(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
+        if(MachineWirelessMode){
+            return structureCheck_EM(mName, 15, 10, 14);
+        }
         return structureCheck_EM(mName, 15, 10, 14)
             && mDynamoHatches.size() + eDynamoMulti.size() == 1;
     }
@@ -149,6 +148,8 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
             .addInfo(Tooltip_SolarEnergyArray_01)
             .addInfo(Tooltip_SolarEnergyArray_02)
             .addInfo(Tooltip_SolarEnergyArray_03)
+            .addInfo(Tooltip_SolarEnergyArray_04)
+            .addInfo(Tooltip_SolarEnergyArray_05)
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
