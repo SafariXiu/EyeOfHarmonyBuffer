@@ -13,6 +13,8 @@ public class TextLocalization {
     public static final String Disable_loading;
     public static final String add_InputBus;
     public static final String add_OutputBus;
+    public static final String add_DynamoHatch;
+    public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
 
     public static final String NameVendingMachines;
@@ -41,6 +43,16 @@ public class TextLocalization {
     public static final String StructureInfo_WindTurbine_08;
     public static final String StructureInfo_WindTurbine_09;
 
+    public static final String NameSolarEnergyArray;
+    public static final String Tooltip_SolarEnergyArray_MachineType;
+    public static final String Tooltip_SolarEnergyArray_Controller;
+    public static final String Tooltip_SolarEnergyArray_00;
+    public static final String Tooltip_SolarEnergyArray_01;
+    public static final String Tooltip_SolarEnergyArray_02;
+    public static final String Tooltip_SolarEnergyArray_03;
+    public static final String Tooltip_SolarEnergyArray_04;
+    public static final String Tooltip_SolarEnergyArray_05;
+
     public TextLocalization() {
     }
 
@@ -62,6 +74,8 @@ public class TextLocalization {
         Disable_loading = TextHandler.texter("§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!", "Disable_loading");
         add_InputBus = TextHandler.texter("Any casing","add_InputBus");
         add_OutputBus = TextHandler.texter("Any casing","add_OutputBus");
+        add_DynamoHatch = TextHandler.texter("Any casing","add_DynamoHatch");
+        add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
 
 
@@ -83,7 +97,6 @@ public class TextLocalization {
         Tooltip_WindTurbine_02 = TextHandler.texter("The power generation formula is: UHV * Wind Factor * Rotor Level.\n" +
             "The Wind Factor refreshes every 30 seconds and ranges from 0.5 to 1.5.", "Tooltip_WindTurbine_02");
         Tooltip_WindTurbine_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_WindTurbine_03");
-
         StructureInfo_WindTurbine_00 = TextHandler.texter("The rotor material is classified as follows:", "StructureInfo_WindTurbine_00");
         StructureInfo_WindTurbine_01 = TextHandler.texter("Wood-Level 1-1x", "StructureInfo_WindTurbine_01");
         StructureInfo_WindTurbine_02 = TextHandler.texter("Iron-Level 2-4x", "StructureInfo_WindTurbine_02");
@@ -94,5 +107,16 @@ public class TextLocalization {
         StructureInfo_WindTurbine_07 = TextHandler.texter("Vibrant-Level 7-128x", "StructureInfo_WindTurbine_07");
         StructureInfo_WindTurbine_08 = TextHandler.texter("Iridium-Level 8-256x", "StructureInfo_WindTurbine_08");
         StructureInfo_WindTurbine_09 = TextHandler.texter("They are terrifyingly powerful!", "StructureInfo_WindTurbine_09");
+
+        //太阳能阵列
+        NameSolarEnergyArray = TextHandler.texter("Solar Energy Array", "NameSolarEnergyArray");
+        Tooltip_SolarEnergyArray_MachineType = TextHandler.texter("Solar Energy Array", "Tooltip_SolarEnergyArray_MachineType");
+        Tooltip_SolarEnergyArray_Controller = TextHandler.texter("Controller block for the Solar Energy Array", "Tooltip_SolarEnergyArray_Controller");
+        Tooltip_SolarEnergyArray_00 = TextHandler.texter("A large solar panel, better than the smaller one!", "Tooltip_SolarEnergyArray_00");
+        Tooltip_SolarEnergyArray_01 = TextHandler.texter("It works at all times, don't ask why! This is a highly advanced machine!", "Tooltip_SolarEnergyArray_01");
+        Tooltip_SolarEnergyArray_02 = TextHandler.texter("The power generation formula is MAX * MAX.", "Tooltip_SolarEnergyArray_02");
+        Tooltip_SolarEnergyArray_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_SolarEnergyArray_03");
+        Tooltip_SolarEnergyArray_04 = TextHandler.texter("Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.", "Tooltip_SolarEnergyArray_04");
+        Tooltip_SolarEnergyArray_05 = TextHandler.texter("After activating Wireless Mode, Dynamo Hatches are no longer needed.", "Tooltip_SolarEnergyArray_05");
     }
 }

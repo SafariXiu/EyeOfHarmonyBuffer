@@ -25,6 +25,7 @@ public class MainConfig {
     public static boolean FOGUpDate = true;
     public static boolean BioVatOutputRatioEnable = true;
     public static boolean DisTankTrue = true;
+    public static boolean DisTankOverClockEnable = true;
     public static boolean DigesterMixin = true;
     public static boolean LargeFusionMixin = true;
     public static boolean LargeFusionParaMixin = true;
@@ -390,6 +391,10 @@ public class MainConfig {
         DisTankTrue = config
             .get("其他机器", "溶解罐", DisTankTrue, "开启后溶解罐不需要等比例流体即可工作")
             .getBoolean(DisTankTrue);
+
+        DisTankOverClockEnable = config
+            .get("其他机器","溶解罐",DisTankOverClockEnable,"开启后溶解罐不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(DisTankOverClockEnable);
 
         DigesterMixin = config
             .get("其他机器", "煮解池", DigesterMixin, "开启后煮解池通过线圈等级获得BUFF，提高处理速度与减少时间，并且 不增加额外电力消耗")

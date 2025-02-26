@@ -7,6 +7,8 @@ StructureTooComplex=结构太复杂了！
 Tooltip_Details=§d具体细节: 
 add_InputBus=任意外壳
 add_OutputBus=任意外壳
+add_DynamoHatch=任意外壳
+add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
 NameVendingMachines=大型贸易机
 Tooltip_VendingMachines_MachineType=大型贸易机
@@ -32,3 +34,14 @@ StructureInfo_WindTurbine_06=钨钢转子-等级6-64倍
 StructureInfo_WindTurbine_07=脉冲合金转子-等级7-128倍
 StructureInfo_WindTurbine_08=铱转子-等级8-256倍
 StructureInfo_WindTurbine_09=他们强的可怕
+NameSolarEnergyArray=太阳能阵列
+Tooltip_SolarEnergyArray_MachineType=太阳能阵列
+Tooltip_SolarEnergyArray_Controller=太阳能阵列的控制器方块
+Tooltip_SolarEnergyArray_00=一台大型太阳能，比小型的更好！
+Tooltip_SolarEnergyArray_01=任何时候都可以工作，不要问为什么！这是一台很高级的机器！
+Tooltip_SolarEnergyArray_02=发电公式为 MAX*MAX
+Tooltip_SolarEnergyArray_03=清洁能源！祝你的天空中没有污染！
+Tooltip_SolarEnergyArray_04=在控制器中放置星阵开启无线模式
+Tooltip_SolarEnergyArray_05=开启无线模式后不再需要能源仓
+
+
