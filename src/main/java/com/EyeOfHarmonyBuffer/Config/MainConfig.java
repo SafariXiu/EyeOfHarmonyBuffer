@@ -106,6 +106,7 @@ public class MainConfig {
     public static boolean DEFAULT_BATCH_MODE = false;
     public static boolean FusionComputerEnable = true;
     public static boolean ManufacturingCenterEnable = true;
+    public static boolean ModulePumpEnable = true;
 
     private static Configuration config;
 
@@ -267,6 +268,10 @@ public class MainConfig {
         SpaceElevatorMiningTicksTrue = config
             .get("太空电梯-采矿模块", "采矿模块运行时间修改", SpaceElevatorMiningTicksTrue, "开启后可自定义采矿模块工作时间")
             .getBoolean(SpaceElevatorMiningTicksTrue);
+
+        ModulePumpEnable = config
+            .get("太空电梯-钻机模块","钻机模块最大并行数量修改",ModulePumpEnable,"开启后钻机模块最大并行数量上限修改为int")
+            .getBoolean(ModulePumpEnable);
 
         DTPFOpen = config
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
