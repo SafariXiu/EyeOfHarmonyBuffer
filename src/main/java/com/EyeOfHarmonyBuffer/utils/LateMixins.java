@@ -84,6 +84,7 @@ public class LateMixins implements ILateMixinLoader {
             "SpaceElevator.ModuleMinerMixin",
             "SpaceElevator.ModuleMinerParallelsMixin",
             "SpaceElevator.ModuleAssemblerPowerMixin",
+            "SpaceElevator.ModulePumpMixin",
             "TreatedWater.Grade1WaterPurificationMixin",
             "TreatedWater.Grade2WaterPurificationMixin",
             "TreatedWater.Grade3WaterPurificationMixin",
