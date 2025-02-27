@@ -105,6 +105,7 @@ public class MainConfig {
     public static boolean MegaIsaFactoryEnable = true;
     public static boolean DEFAULT_BATCH_MODE = false;
     public static boolean FusionComputerEnable = true;
+    public static boolean ManufacturingCenterEnable = true;
 
     private static Configuration config;
 
@@ -290,6 +291,10 @@ public class MainConfig {
         LightningSpireMaxRods = config
             .get("TST","闪电尖塔避雷针数量设置",LightningSpireMaxRods,"设置闪电尖塔内部可缓存避雷针数量,必须开启闪电尖塔mixin后才能生效！")
             .getInt(LightningSpireMaxRods);
+
+        ManufacturingCenterEnable = config
+            .get("TST","加工工厂",ManufacturingCenterEnable,"开启后加工工厂不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行,工作不再受限于核心等级限制，支持UHV+电压配方")
+            .getBoolean(ManufacturingCenterEnable);
 
         constantOutputEUConfig = config
             .get("鸿蒙之眼发电", "鸿蒙之眼发电量设置", constantOutputEUConfig, "鸿蒙之眼发电量修改，每次运行会产出一个固定的值的电量，参数为BigInteger")

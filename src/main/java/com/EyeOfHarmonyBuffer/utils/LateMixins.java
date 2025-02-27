@@ -99,7 +99,8 @@ public class LateMixins implements ILateMixinLoader {
         Map<String, List<String>> modMixins = new HashMap<>();
         modMixins.put("TwistSpaceTechnology", Arrays.asList(
             "TST.IndistinctTentaclePrototypeMK2Mixin",
-            "TST.LightningSpireMixin"
+            "TST.LightningSpireMixin",
+            "TST.ManufacturingCenterMixin"
         ));
         modMixins.put("123Technology", Arrays.asList(
             "Invoker.MegaNineInOneInvoker",
