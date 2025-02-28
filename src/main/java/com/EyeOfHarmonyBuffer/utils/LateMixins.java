@@ -47,6 +47,7 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonySuccessRateControl",
             "EOH.EyeOfHarmonyWorkTime",
             "EOH.EyeOfHarmonyZeroPowerStart",
+            "ElementalDuplicatorMixin",
             "FOGShardsAvailable",
             "FuelFactory.NaquadahFuelRefineryMixin",
             "FuelFactory.FuelRefineFactoryMixin",
