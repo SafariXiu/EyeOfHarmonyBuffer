@@ -107,6 +107,7 @@ public class MainConfig {
     public static boolean FusionComputerEnable = true;
     public static boolean ManufacturingCenterEnable = true;
     public static boolean ModulePumpEnable = true;
+    public static boolean ElementalDuplicatorEnable = false;
 
     private static Configuration config;
 
@@ -144,6 +145,10 @@ public class MainConfig {
         FusionComputerEnable = config
             .get("其他机器","聚变反应堆MK1-MK5",FusionComputerEnable,"开启后聚变反应堆MK1-MK5锁定配方时间为10tick，大幅度提升每个能源仓可以提供的能量输入，机器运行不再消耗电力(机器中仍然需要拥有配方需要的启动电量！),拥有int并行")
             .getBoolean(FusionComputerEnable);
+
+        ElementalDuplicatorEnable = config
+            .get("其他机器","元素复制机",ElementalDuplicatorEnable,"开启后元素复制机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(ElementalDuplicatorEnable);
 
         WoodenFusionReactorEnable = config
             .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
