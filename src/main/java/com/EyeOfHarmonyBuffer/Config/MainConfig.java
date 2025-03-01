@@ -108,6 +108,8 @@ public class MainConfig {
     public static boolean ManufacturingCenterEnable = true;
     public static boolean ModulePumpEnable = true;
     public static boolean ElementalDuplicatorEnable = false;
+    public static boolean SpaceMiningRecipesEnable = false;
+
 
     private static Configuration config;
 
@@ -141,6 +143,10 @@ public class MainConfig {
         CyclotronRecipeMixinEnable = config
             .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
             .getBoolean(CyclotronRecipeMixinEnable);
+
+        SpaceMiningRecipesEnable = config
+            .get("配方类","太空电梯-采矿模块",SpaceMiningRecipesEnable,"开启后太空采矿模块所有配方的杆与钻头全部删除,任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
+            .getBoolean(SpaceMiningRecipesEnable);
 
         FusionComputerEnable = config
             .get("其他机器","聚变反应堆MK1-MK5",FusionComputerEnable,"开启后聚变反应堆MK1-MK5锁定配方时间为10tick，大幅度提升每个能源仓可以提供的能量输入，机器运行不再消耗电力(机器中仍然需要拥有配方需要的启动电量！),拥有int并行")
