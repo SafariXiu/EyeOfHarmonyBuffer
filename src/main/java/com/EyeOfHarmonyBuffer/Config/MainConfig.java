@@ -110,6 +110,7 @@ public class MainConfig {
     public static boolean ElementalDuplicatorEnable = false;
     public static boolean SpaceMiningRecipesEnable = false;
     public static boolean MegaBlastFurnaceEnable = false;
+    public static boolean IndustrialCuttingMachineEnable = false;
 
 
     private static Configuration config;
@@ -160,6 +161,10 @@ public class MainConfig {
         MegaBlastFurnaceEnable = config
             .get("其他机器","巨型工业高炉",MegaBlastFurnaceEnable,"开启后巨型工业高炉支持无损超频,拥有int并行")
             .getBoolean(MegaBlastFurnaceEnable);
+
+        IndustrialCuttingMachineEnable = config
+            .get("其他机器","工业切割机",IndustrialDehydratorEnable,"开启后工业切割机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .getBoolean(IndustrialCuttingMachineEnable);
 
         WoodenFusionReactorEnable = config
             .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")

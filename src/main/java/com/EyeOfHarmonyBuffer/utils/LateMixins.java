@@ -62,6 +62,7 @@ public class LateMixins implements ILateMixinLoader {
             "IndustrialLaserEngraver.IndustrialLaserEngraverSpeedMixin",
             "Invoker.TTMultiblockBaseInvoker",
             "IndustrialChiselMixin",
+            "IndustrialCuttingMachineMixin",
             "LargeFusion.LargeFusionMixin",
             "LargeFusion.LargeFusionPara",
             "LargerTurbinePlasmaMixin",
