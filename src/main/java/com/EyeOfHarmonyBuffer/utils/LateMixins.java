@@ -67,6 +67,7 @@ public class LateMixins implements ILateMixinLoader {
             "LargerTurbinePlasmaMixin",
             "MaskListMixin",
             "Mask.TargetChamberMixin",
+            "MegaBlastFurnaceMixin",
             "OutPutME.HatchOutputBusMEMixin",
             "OutPutME.HatchOutputMEMixin",
             "PlanetaryGasSiphonMixin",
