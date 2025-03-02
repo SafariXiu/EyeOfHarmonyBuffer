@@ -53,6 +53,8 @@ public class TextLocalization {
     public static final String Tooltip_SolarEnergyArray_04;
     public static final String Tooltip_SolarEnergyArray_05;
 
+    public static final String NameCoreDrill;
+
     public TextLocalization() {
     }
 
@@ -118,5 +120,8 @@ public class TextLocalization {
         Tooltip_SolarEnergyArray_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_SolarEnergyArray_03");
         Tooltip_SolarEnergyArray_04 = TextHandler.texter("Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.", "Tooltip_SolarEnergyArray_04");
         Tooltip_SolarEnergyArray_05 = TextHandler.texter("After activating Wireless Mode, Dynamo Hatches are no longer needed.", "Tooltip_SolarEnergyArray_05");
+
+        //地核钻机
+        NameCoreDrill = TextHandler.texter("Core Drill", "NameCoreDrill");
     }
 }
