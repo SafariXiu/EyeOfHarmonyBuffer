@@ -104,9 +104,10 @@ public class MainConfig {
     public static boolean MegaNineInOneEnable = true;
     public static boolean MegaIsaFactoryEnable = true;
     public static boolean DEFAULT_BATCH_MODE = false;
-    public static boolean FusionComputerEnable = true;
-    public static boolean ManufacturingCenterEnable = true;
-    public static boolean ModulePumpEnable = true;
+    public static boolean FusionComputerEnable = false;
+    public static boolean ManufacturingCenterEnable = false;
+    public static boolean ModulePumpEnable = false;
+    public static int ModulePumpParallel = 1024;
     public static boolean ElementalDuplicatorEnable = false;
     public static boolean SpaceMiningRecipesEnable = false;
     public static boolean MegaBlastFurnaceEnable = false;
@@ -291,8 +292,12 @@ public class MainConfig {
             .getBoolean(SpaceElevatorMiningTicksTrue);
 
         ModulePumpEnable = config
-            .get("太空电梯-钻机模块","钻机模块最大并行数量修改",ModulePumpEnable,"开启后钻机模块最大并行数量上限修改为int")
+            .get("太空电梯-钻机模块","钻机模块最大并行数量修改",ModulePumpEnable,"开启钻机模块最大并行数量上限修改")
             .getBoolean(ModulePumpEnable);
+
+        ModulePumpParallel = config
+            .get("太空电梯-钻机模块","钻机模块最大并行数量设置",ModulePumpParallel,"设置钻机模块最大并行数量")
+            .getInt(ModulePumpParallel);
 
         DTPFOpen = config
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
@@ -404,7 +409,7 @@ public class MainConfig {
             .getBoolean(ExoticModuleEnable);
 
         ExoticModuleOverClock = config
-            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200万并行")
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200000并行")
             .getBoolean(ExoticModuleOverClock);
 
         MoltenModuleEnable = config
