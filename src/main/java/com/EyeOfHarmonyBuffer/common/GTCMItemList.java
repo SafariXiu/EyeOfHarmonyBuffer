@@ -11,7 +11,8 @@ public enum GTCMItemList {
     TestItem0,
     VendingMachines,
     WindTurbines,
-    SolarEnergyArray;
+    SolarEnergyArray,
+    CoreDrill;
 
 
     private boolean mHasNotBeenSet;
