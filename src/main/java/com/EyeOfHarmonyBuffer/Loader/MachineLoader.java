@@ -42,5 +42,6 @@ public class MachineLoader {
             TextLocalization.NameCoreDrill
         ).getStackForm(1);
         GTCMItemList.CoreDrill.set(CoreDrills);
+
     }
 }
