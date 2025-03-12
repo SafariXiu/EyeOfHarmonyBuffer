@@ -7,6 +7,8 @@ StructureTooComplex=结构太复杂了！
 Tooltip_Details=§d具体细节: 
 add_InputBus=任意外壳
 add_OutputBus=任意外壳
+add_inputHatch=任意外壳
+add_outputHatch=任意外壳
 add_DynamoHatch=任意外壳
 add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
@@ -44,7 +46,14 @@ Tooltip_SolarEnergyArray_03=清洁能源！祝你的天空中没有污染！
 Tooltip_SolarEnergyArray_04=在控制器中放置星阵开启无线模式
 Tooltip_SolarEnergyArray_05=开启无线模式后不再需要能源仓
 NameCoreDrill=地核钻机
+Tooltip_NameCoreDrill_MachineType=地核钻机
+Tooltip_NameCoreDrill_Controller=地核钻机的控制器方块
+Tooltip_NameCoreDrill_00=内置一颗中子星用来采掘那些地心深处的材料！
+Tooltip_NameCoreDrill_01=当然，如果在机器内部放置一个星阵或许可以达到一些不可思议的效果......
+Tooltip_NameCoreDrill_02=我们必须假设，我们的机器能够产出万物！
+Tooltip_NameCoreDrill_03=机器拥有Int数量的并行，并且支持跨配方并行！
 
 
-#Recipe
+#RecipeMap
 eohb.recipe.coreDrill=地核钻机
+

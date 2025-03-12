@@ -13,6 +13,8 @@ public class TextLocalization {
     public static final String Disable_loading;
     public static final String add_InputBus;
     public static final String add_OutputBus;
+    public static final String add_inputHatch;
+    public static final String add_outputHatch;
     public static final String add_DynamoHatch;
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
@@ -54,6 +56,12 @@ public class TextLocalization {
     public static final String Tooltip_SolarEnergyArray_05;
 
     public static final String NameCoreDrill;
+    public static final String Tooltip_NameCoreDrill_MachineType;
+    public static final String Tooltip_NameCoreDrill_Controller;
+    public static final String Tooltip_NameCoreDrill_00;
+    public static final String Tooltip_NameCoreDrill_01;
+    public static final String Tooltip_NameCoreDrill_02;
+    public static final String Tooltip_NameCoreDrill_03;
 
     public TextLocalization() {
     }
@@ -76,6 +84,8 @@ public class TextLocalization {
         Disable_loading = TextHandler.texter("§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!", "Disable_loading");
         add_InputBus = TextHandler.texter("Any casing","add_InputBus");
         add_OutputBus = TextHandler.texter("Any casing","add_OutputBus");
+        add_inputHatch = TextHandler.texter("Any casing","add_inputHatch");
+        add_outputHatch = TextHandler.texter("Any casing","add_outputHatch");
         add_DynamoHatch = TextHandler.texter("Any casing","add_DynamoHatch");
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
@@ -123,5 +133,12 @@ public class TextLocalization {
 
         //地核钻机
         NameCoreDrill = TextHandler.texter("Core Drill", "NameCoreDrill");
+        Tooltip_NameCoreDrill_MachineType = TextHandler.texter("Core Drill", "Tooltip_NameCoreDrill_MachineType");
+        Tooltip_NameCoreDrill_Controller = TextHandler.texter("Controller block for the Core Drill", "Tooltip_NameCoreDrill_Controller");
+        Tooltip_NameCoreDrill_00 = TextHandler.texter("It has a built-in neutron star to mine materials from deep within the Earth's core!", "Tooltip_NameCoreDrill_00");
+        Tooltip_NameCoreDrill_01 = TextHandler.texter("Of course, if you place a Astral Array Fabricator inside the machine, it might achieve some incredible effects...", "Tooltip_NameCoreDrill_01");
+        Tooltip_NameCoreDrill_02 = TextHandler.texter("We must assume that our machine can produce everything!","Tooltip_NameCoreDrill_02");
+        Tooltip_NameCoreDrill_03 = TextHandler.texter("The machine has Int levels of parallelism and supports cross-recipe parallelism!","Tooltip_NameCoreDrill_03");
+
     }
 }

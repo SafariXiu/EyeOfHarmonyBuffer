@@ -7,6 +7,8 @@ StructureTooComplex=The structure is too complex!
 Tooltip_Details=Details:
 add_InputBus=Any casing
 add_OutputBus=Any casing
+add_inputHatch=Any casing
+add_outputHatch=Any casing
 add_DynamoHatch=Any casing
 add_MaintenanceHatch=Any casing
 EOHB_Text_SeparatingLine=-----------------------------------------
@@ -44,6 +46,12 @@ Tooltip_SolarEnergyArray_03=Clean energy! May your skies remain pollution-free!
 Tooltip_SolarEnergyArray_04=Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.
 Tooltip_SolarEnergyArray_05=After activating Wireless Mode, Dynamo Hatches are no longer needed.
 NameCoreDrill=Core Drill
+Tooltip_NameCoreDrill_MachineType=Core Drill
+Tooltip_NameCoreDrill_Controller=Controller block for the Core Drill
+Tooltip_NameCoreDrill_00=It has a built-in neutron star to mine materials from deep within the Earth's core!
+Tooltip_NameCoreDrill_01=Of course, if you place a Astral Array Fabricator inside the machine, it might achieve some incredible effects...
+Tooltip_NameCoreDrill_02=We must assume that our machine can produce everything!
+Tooltip_NameCoreDrill_03=The machine has Int levels of parallelism and supports cross-recipe parallelism!
 
 
 #RecipeMap

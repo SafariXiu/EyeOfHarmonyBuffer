@@ -9,16 +9,19 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
+import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gtPlusPlus.xmod.gregtech.common.blocks.textures.TexturesGtBlock;
+import gregtech.api.util.ParallelHelper;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_DynamoHatch;
 import static com.Nxer.TwistSpaceTechnology.common.machine.ValueEnum.SPACE_ELEVATOR_BASE_CASING_INDEX;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
@@ -54,21 +57,40 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_SolarEnergyArray_MachineType)
-            .addInfo(Tooltip_SolarEnergyArray_Controller)
-            .addInfo(Tooltip_SolarEnergyArray_00)
-            .addInfo(Tooltip_SolarEnergyArray_01)
-            .addInfo(Tooltip_SolarEnergyArray_02)
-            .addInfo(Tooltip_SolarEnergyArray_03)
-            .addInfo(Tooltip_SolarEnergyArray_04)
-            .addInfo(Tooltip_SolarEnergyArray_05)
+        tt.addMachineType(Tooltip_NameCoreDrill_MachineType)
+            .addInfo(Tooltip_NameCoreDrill_Controller)
+            .addInfo(Tooltip_NameCoreDrill_00)
+            .addInfo(Tooltip_NameCoreDrill_01)
+            .addInfo(Tooltip_NameCoreDrill_02)
+            .addInfo(Tooltip_NameCoreDrill_03)
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addDynamoHatch(add_DynamoHatch)
+            .addInputBus(add_InputBus)
+            .addInputHatch(add_inputHatch)
+            .addOutputBus(add_OutputBus)
+            .addOutputHatch(add_outputHatch)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
+    }
+
+    @Override
+    protected ProcessingLogic createProcessingLogic() {
+        return new ProcessingLogic(){
+
+            @NotNull
+            @Override
+            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                return CheckRecipeResultRegistry.SUCCESSFUL;
+            }
+
+            @NotNull
+            @Override
+            protected ParallelHelper createParallelHelper(@NotNull GTRecipe recipe) {
+                return new ParallelHelper()
+                    .setMaxParallel(Integer.MAX_VALUE);
+            }
+        };
     }
 
     @Override

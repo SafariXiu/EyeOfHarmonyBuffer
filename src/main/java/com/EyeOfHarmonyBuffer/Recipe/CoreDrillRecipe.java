@@ -23,7 +23,7 @@ public class CoreDrillRecipe implements IRecipePool {
             .fluidOutputs(
                 FluidRegistry.getFluidStack("for.honey", 100)
             )
-            .eut(TierEU.RECIPE_HV)
+            .eut(0)
             .duration(5 * SECONDS)
             .addTo(CoreDrill);
     }
