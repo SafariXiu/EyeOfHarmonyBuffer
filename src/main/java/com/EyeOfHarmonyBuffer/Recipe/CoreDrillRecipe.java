@@ -49,5 +49,16 @@ public class CoreDrillRecipe implements IRecipePool {
             .eut(0)
             .duration(5 * SECONDS)
             .addTo(CoreDrill);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+
+            )
+            .fluidOutputs(
+
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
     }
 }
