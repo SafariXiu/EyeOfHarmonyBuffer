@@ -4,7 +4,6 @@ import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
-import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -22,7 +21,6 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
-import static com.Nxer.TwistSpaceTechnology.common.machine.ValueEnum.SPACE_ELEVATOR_BASE_CASING_INDEX;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
 
@@ -33,10 +31,13 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
         super(aID, aName, aNameRegional);
     }
 
-    @NotNull
+    public EOHB_CoreDrill(String aName) {
+        super(aName);
+    }
+
     @Override
-    public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.CoreDrill;
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return new EOHB_CoreDrill(this.mName);
     }
 
     @Override
@@ -74,6 +75,12 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
         return tt;
     }
 
+    @NotNull
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return RecipeMaps.CoreDrill;
+    }
+
     @Override
     protected ProcessingLogic createProcessingLogic() {
         return new ProcessingLogic(){
@@ -94,6 +101,11 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     }
 
     @Override
+    public boolean getDefaultWirelessMode() {
+        return true;
+    }
+
+    @Override
     protected boolean isEnablePerfectOverclock() {
         return false;
     }
@@ -105,30 +117,24 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
 
     @Override
     protected int getMaxParallelRecipes() {
-        return 0;
+        return 5;
     }
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return 100;
     }
 
     @Override
-    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return null;
-    }
-
-    @Override
+    @SuppressWarnings("ALL")
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
                                  int colorIndex, boolean aActive, boolean redstoneLevel) {
         if (side == aFacing) {
-
             if (aActive) {
-                return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(SPACE_ELEVATOR_BASE_CASING_INDEX),
-                    TextureFactory.builder()
-                        .addIcon(OVERLAY_DTPF_ON)
-                        .extFacing()
-                        .build(),
+                return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
+                    .addIcon(OVERLAY_DTPF_ON)
+                    .extFacing()
+                    .build(),
                     TextureFactory.builder()
                         .addIcon(OVERLAY_FUSION1_GLOW)
                         .extFacing()
@@ -136,13 +142,12 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
                         .build() };
             }
 
-            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(SPACE_ELEVATOR_BASE_CASING_INDEX),
-                TextureFactory.builder()
-                    .addIcon(OVERLAY_DTPF_OFF)
-                    .extFacing()
-                    .build() };
+            return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
+                .addIcon(OVERLAY_DTPF_OFF)
+                .extFacing()
+                .build() };
         }
 
-        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(SPACE_ELEVATOR_BASE_CASING_INDEX) };
+        return new ITexture[] { casingTexturePages[0][12] };
     }
 }

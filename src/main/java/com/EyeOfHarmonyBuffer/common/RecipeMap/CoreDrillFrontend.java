@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.common.RecipeMap;
 
-import com.gtnewhorizons.modularui.api.GlStateManager;
 import com.gtnewhorizons.modularui.api.math.Pos2d;
 import com.gtnewhorizons.modularui.api.screen.ModularWindow;
 import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
@@ -8,9 +7,6 @@ import gregtech.api.recipe.BasicUIPropertiesBuilder;
 import gregtech.api.recipe.NEIRecipePropertiesBuilder;
 import gregtech.api.recipe.RecipeMapFrontend;
 import gregtech.common.gui.modularui.UIHelper;
-import gregtech.nei.GTNEIDefaultHandler;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
 
 import java.util.List;
 
@@ -26,7 +22,7 @@ public class CoreDrillFrontend extends RecipeMapFrontend {
     @Override
     public List<Pos2d> getItemInputPositions(int itemInputCount) {
         // 物品输入槽位：顶部并排两个
-        return UIHelper.getGridPositions(itemInputCount, 25, yOrigin, xDirMaxCount);
+        return UIHelper.getGridPositions(itemInputCount, 5, yOrigin, xDirMaxCount);
     }
 
     @Override
@@ -38,12 +34,12 @@ public class CoreDrillFrontend extends RecipeMapFrontend {
     @Override
     public List<Pos2d> getFluidInputPositions(int fluidInputCount) {
         // 流体输入槽位：物品输入槽下方
-        return UIHelper.getGridPositions(fluidInputCount, 25, yOrigin + 18, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidInputCount, 5, yOrigin + 18, xDirMaxCount);
     }
 
     @Override
     public List<Pos2d> getFluidOutputPositions(int fluidOutputCount) {
-        return UIHelper.getGridPositions(fluidOutputCount, 100, 40, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidOutputCount, 100, 95, xDirMaxCount);
     }
 
     @Override

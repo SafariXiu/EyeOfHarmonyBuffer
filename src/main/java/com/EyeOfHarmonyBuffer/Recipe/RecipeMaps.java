@@ -9,8 +9,8 @@ public class RecipeMaps {
 
     public static final RecipeMap<RecipeMapBackend> CoreDrill = RecipeMapBuilder
         .of("eohb.recipe.coreDrill")
-        .maxIO(2,4,2,16)
-        .neiRecipeBackgroundSize(170, 160)
+        .maxIO(4,16,4,16)
+        .neiRecipeBackgroundSize(170, 185)
         .disableOptimize()
         .useCustomFilterForNEI()
         .frontend(CoreDrillFrontend::new)
