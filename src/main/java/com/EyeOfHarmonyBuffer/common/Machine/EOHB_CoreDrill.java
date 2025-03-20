@@ -4,25 +4,26 @@ import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
+import gregtech.api.enums.TAE;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
-import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.recipe.check.CheckRecipeResult;
-import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
-import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.api.util.ParallelHelper;
+import gtPlusPlus.core.block.ModBlocks;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
+import static gregtech.api.enums.HatchElement.*;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
+import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDrill>
     implements IWirelessEnergyHatchInformation {
@@ -35,6 +36,10 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
         super(aName);
     }
 
+    protected static final String STRUCTURE_PIECE_MAIN = "mainCoreDrill";
+    protected static IStructureDefinition<EOHB_CoreDrill> STRUCTURE_DEFINITION = null;
+    private int mCasing;
+
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
         return new EOHB_CoreDrill(this.mName);
@@ -42,17 +47,43 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
 
     @Override
     public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return false;
+        mCasing = 0;
+        return checkPiece(STRUCTURE_PIECE_MAIN, 1, 1, 0) && mCasing >= 6;
     }
 
     @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
-
+        repairMachine();
+        buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 1, 1, 0);
     }
 
     @Override
+    public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (mMachine) return -1;
+        return survivialBuildPiece(STRUCTURE_PIECE_MAIN, stackSize, 1, 1, 0, elementBudget, env, false, true);
+    }
+
+    protected static final String[][] shapeMain = new String[][]{
+        { "CCC", "CCC", "CCC" },
+        { "C~C", "C-C", "CCC" },
+        { "CCC", "CCC", "CCC" },
+    };
+
+    @Override
     public IStructureDefinition<EOHB_CoreDrill> getStructureDefinition() {
-        return null;
+        if(STRUCTURE_DEFINITION == null) {
+            STRUCTURE_DEFINITION = IStructureDefinition.<EOHB_CoreDrill>builder()
+                .addShape(STRUCTURE_PIECE_MAIN,transpose(shapeMain))
+                .addElement(
+                    'C',
+                    buildHatchAdder(EOHB_CoreDrill.class)
+                        .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
+                        .casingIndex(getTextureIndex())
+                        .dot(1)
+                        .buildAndChain(onElementPass(x -> ++x.mCasing, ofBlock(ModBlocks.blockCasings3Misc, 2))))
+                .build();
+        }
+        return STRUCTURE_DEFINITION;
     }
 
     @Override
@@ -82,25 +113,6 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     }
 
     @Override
-    protected ProcessingLogic createProcessingLogic() {
-        return new ProcessingLogic(){
-
-            @NotNull
-            @Override
-            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                return CheckRecipeResultRegistry.SUCCESSFUL;
-            }
-
-            @NotNull
-            @Override
-            protected ParallelHelper createParallelHelper(@NotNull GTRecipe recipe) {
-                return new ParallelHelper()
-                    .setMaxParallel(Integer.MAX_VALUE);
-            }
-        };
-    }
-
-    @Override
     public boolean getDefaultWirelessMode() {
         return true;
     }
@@ -112,12 +124,12 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
 
     @Override
     protected float getSpeedBonus() {
-        return 0;
+        return 1;
     }
 
     @Override
     protected int getMaxParallelRecipes() {
-        return 5;
+        return 64;
     }
 
     @Override
@@ -149,5 +161,9 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
         }
 
         return new ITexture[] { casingTexturePages[0][12] };
+    }
+
+    public int getTextureIndex() {
+        return TAE.getIndexFromPage(2, 2);
     }
 }
