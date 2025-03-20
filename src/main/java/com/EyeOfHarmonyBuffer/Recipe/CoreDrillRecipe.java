@@ -2,23 +2,29 @@ package com.EyeOfHarmonyBuffer.Recipe;
 
 import bartworks.system.material.WerkstoffLoader;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
-import gregtech.api.enums.GTValues;
-import gregtech.api.enums.ItemList;
-import gregtech.api.enums.Materials;
-import gregtech.api.enums.OrePrefixes;
+import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.material.MaterialsElements;
 import gtnhlanth.common.register.WerkstoffMaterialPool;
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
 
+import static bartworks.system.material.WerkstoffLoader.*;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.CoreDrill;
 import static com.EyeOfHarmonyBuffer.utils.Utils.setStackSize;
+import static com.dreammaster.item.ItemList.TCetiESeaweedExtract;
 import static goodgenerator.items.GGMaterial.*;
 import static gregtech.api.enums.Materials.*;
+import static gregtech.api.enums.Mods.*;
+import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 import static gtPlusPlus.core.material.MaterialMisc.MUTATED_LIVING_SOLDER;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.ASTRAL_TITANIUM;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.CELESTIAL_TUNGSTEN;
+import static gtnhlanth.common.register.WerkstoffMaterialPool.Iodine;
 
 public class CoreDrillRecipe implements IRecipePool {
 
@@ -130,7 +136,7 @@ public class CoreDrillRecipe implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
-                GTUtility.copyAmount(0,GTOreDictUnificator.get(OrePrefixes.ingot,Materials.Plutonium,64)),
+                GTUtility.copyAmount(0,GTOreDictUnificator.get(OrePrefixes.ingot,Materials.Plutonium,1)),
                 GTOreDictUnificator.get(OrePrefixes.dust,Materials.Uranium,1)
             )
             .fluidInputs(
@@ -166,10 +172,10 @@ public class CoreDrillRecipe implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
-                GTUtility.copyAmount(0,GTOreDictUnificator.get(OrePrefixes.dust,Materials.Calcium,1))
+                GTOreDictUnificator.get(OrePrefixes.dust,Materials.Calcium,1)
             )
             .fluidInputs(
-                Materials.Water.getFluid(1)
+                Materials.Water.getFluid(1000)
             )
             .itemOutputs(
                 setStackSize(ItemList.Circuit_Chip_Stemcell.get(1),Integer.MAX_VALUE),
@@ -181,6 +187,168 @@ public class CoreDrillRecipe implements IRecipePool {
                 GrowthMediumRaw.getFluid(Integer.MAX_VALUE),
                 BioMediumSterilized.getFluid(Integer.MAX_VALUE),
                 BioMediumRaw.getFluid(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //液态空气
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(1)
+            )
+            .fluidInputs(
+                Air.getGas(1000)
+            )
+            .fluidOutputs(
+                Nitrogen.getGas(Integer.MAX_VALUE),
+                Oxygen.getGas(Integer.MAX_VALUE),
+                Argon.getGas(Integer.MAX_VALUE),
+                CarbonDioxide.getGas(Integer.MAX_VALUE),
+                Neon.getFluidOrGas(Integer.MAX_VALUE),
+                Helium.getGas(Integer.MAX_VALUE),
+                Methane.getGas(Integer.MAX_VALUE),
+                Krypton.getFluidOrGas(Integer.MAX_VALUE),
+                Hydrogen.getGas(Integer.MAX_VALUE),
+                Xenon.getFluidOrGas(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //海藻提取物
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(3),
+                getModItem(PamsHarvestCraft.ID, "harvestcraft:seaweedItem",1,0)
+            )
+            .fluidInputs(
+                Water.getFluid(1000)
+            )
+            .itemOutputs(
+                setStackSize(getModItem(GalaxySpace.ID, "tcetiedandelions", 1, 4),Integer.MAX_VALUE),
+                setStackSize(TCetiESeaweedExtract.getIS(1),Integer.MAX_VALUE)
+            )
+            .fluidOutputs(
+                Iodine.getFluidOrGas(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //各种乙烯？
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(1),
+                GTOreDictUnificator.get(OrePrefixes.dust,Materials.Carbon,1)
+            )
+            .fluidOutputs(
+                Materials.Plastic.getMolten(Integer.MAX_VALUE),
+                Materials.PolyvinylChloride.getMolten(Integer.MAX_VALUE),
+                Materials.Polystyrene.getMolten(Integer.MAX_VALUE),
+                Materials.Polytetrafluoroethylene.getMolten(Integer.MAX_VALUE),
+                Materials.Epoxid.getMolten(Integer.MAX_VALUE),
+                Materials.Polybenzimidazole.getMolten(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //QFT特殊材料
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(4)
+            )
+            .fluidInputs(
+                Water.getFluid(1000),
+                Air.getGas(1000)
+            )
+            .itemOutputs(
+                setStackSize(ItemList.StableAdhesive.get(1),Integer.MAX_VALUE),
+                setStackSize(ItemList.SuperconductorComposite.get(1),Integer.MAX_VALUE),
+                setStackSize(ItemList.NaquadriaSupersolid.get(1),Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //催化剂
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(1)
+            )
+            .fluidInputs(
+                Hydrogen.getGas(1000)
+            )
+            .fluidOutputs(
+                MaterialsUEVplus.ExcitedDTRC.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.ExcitedDTCC.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.ExcitedDTEC.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.ExcitedDTPC.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.ExcitedDTSC.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.StargateCrystalSlurry.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.PrimordialMatter.getFluid(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //鸿蒙
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(4)
+            )
+            .fluidInputs(
+                Helium.getGas(1000),
+                Hydrogen.getGas(1000)
+            )
+            .fluidOutputs(
+                MaterialsUEVplus.BlackDwarfMatter.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.WhiteDwarfMatter.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.Universium.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.RawStarMatter.getFluid(Integer.MAX_VALUE),
+                MaterialsUEVplus.MagnetohydrodynamicallyConstrainedStarMatter.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.SpaceTime.getMolten(Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //一些奇怪的东西......
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(24),
+                new ItemStack(Items.iron_ingot, 4),
+                new ItemStack(Items.stick, 3)
+            )
+            .itemOutputs(
+                getModItem(SGCraft.ID, "stargateRing", 16, 0),
+                getModItem(SGCraft.ID, "stargateRing", 14, 1),
+                getModItem(SGCraft.ID, "stargateBase", 2, 0),
+                getModItem(SGCraft.ID, "stargateController", 2, 0),
+                getModItem(SGCraft.ID, "rfPowerUnit", 2, 0),
+                getModItem(SGCraft.ID, "ocInterface", 2, 0),
+                getModItem(SGCraft.ID, "sgChevronUpgrade", 2, 0),
+                getModItem(SGCraft.ID, "sgIrisUpgrade", 2, 0)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(CoreDrill);
+
+        //无尽之类的
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(1),
+                GTUtility.copyAmount(0,getModItem(Avaritia.ID, "Resource",1,5))
+            )
+            .fluidInputs(
+                Water.getFluid(1000)
+            )
+            .fluidOutputs(
+                Infinity.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.Eternity.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.MagMatter.getMolten(Integer.MAX_VALUE),
+                MaterialsUEVplus.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
