@@ -12,6 +12,7 @@ add_outputHatch=任意外壳
 add_DynamoHatch=任意外壳
 add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
+EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 NameVendingMachines=大型贸易机
 Tooltip_VendingMachines_MachineType=大型贸易机
 Tooltip_VendingMachines_Controller=大型贸易机的控制器方块
@@ -45,15 +46,21 @@ Tooltip_SolarEnergyArray_02=发电公式为 MAX*MAX
 Tooltip_SolarEnergyArray_03=清洁能源！祝你的天空中没有污染！
 Tooltip_SolarEnergyArray_04=在控制器中放置星阵开启无线模式
 Tooltip_SolarEnergyArray_05=开启无线模式后不再需要能源仓
-NameCoreDrill=地核钻机
-Tooltip_NameCoreDrill_MachineType=地核钻机
-Tooltip_NameCoreDrill_Controller=地核钻机的控制器方块
-Tooltip_NameCoreDrill_00=内置一颗中子星用来采掘那些地心深处的材料！
-Tooltip_NameCoreDrill_01=当然，如果在机器内部放置一个星阵或许可以达到一些不可思议的效果......
-Tooltip_NameCoreDrill_02=我们必须假设，我们的机器能够产出万物！
-Tooltip_NameCoreDrill_03=机器拥有Int数量的并行，并且支持跨配方并行！
-
+NameSubstanceReshapingDevice=物质重塑仪
+Tooltip_SubstanceReshapingDevice_MachineType=物质重塑仪
+Tooltip_SubstanceReshapingDevice_Controller=物质重塑仪的控制器方块
+Tooltip_SubstanceReshapingDevice_00=§6✦ §e虚无孕育万物，混沌锻造神明。§6✦ 凡物皆可重塑，§c唯有伟力不可违逆。
+Tooltip_SubstanceReshapingDevice_01=§b➤ §a宇宙的法则，是牢笼，也是枷锁。万物遵循§c熵增§a，生命终将腐朽，恒星燃尽，尘埃归于尘埃。§e但我们拒绝接受这宿命。
+Tooltip_SubstanceReshapingDevice_02=§6✦ 它们是无名之物，是§7现实之外的回响§6，是我们在篡改宇宙法则时，从§e未知之境§7带回的残响。
+Tooltip_SubstanceReshapingDevice_03=§6✦ §e我们是§b星辰的缔造者§e，是§a现实的篡改者§e，是§6引力的终极主宰！§6✦
+Tooltip_SubstanceReshapingDevice_04=§b➤ §7有些粒子排列不符合已知物理规则，有些物质的存在方式§c违背了热力学定律§7。
+Tooltip_SubstanceReshapingDevice_05=§8➤ §7甚至有些产物……在我们记录它们的瞬间§c消失了§7，仿佛它们从未存在。
+Tooltip_SubstanceReshapingDevice_06=§6✦ 机器支持§e跨配方并行！§6✦
+Tooltip_SubstanceReshapingDevice_07=§b➤ §e支持最高§a10种配方同时运行！每种配方最佳比例为§b64§e×§b10§e。
+Tooltip_SubstanceReshapingDevice_08=§c➤ §7如果有配方高于§b64个§7在运行，会导致总并行下降！
+Tooltip_SubstanceReshapingDevice_09=§4✦ §e但请铭记——§c创世者§7，亦是§4毁灭者§e。§4✦
+Tooltip_SubstanceReshapingDevice_10=§6“§7当众神沉默，凡人便可夺取权柄。但请记住，§c权柄从来不会属于我们§7。§6”
 
 #RecipeMap
-eohb.recipe.coreDrill=地核钻机
+eohb.recipe.SubstanceReshapingDevice=物质重塑仪
 

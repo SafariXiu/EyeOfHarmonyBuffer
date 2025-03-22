@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.Loader;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
-import com.EyeOfHarmonyBuffer.common.Machine.EOHB_CoreDrill;
+import com.EyeOfHarmonyBuffer.common.Machine.EOHB_SubstanceReshapingDevice;
 import com.EyeOfHarmonyBuffer.common.Machine.EOHB_SolarEnergyArray;
 import com.EyeOfHarmonyBuffer.common.Machine.EOHB_VendingMachines;
 import com.EyeOfHarmonyBuffer.common.Machine.EOHB_WindTurbine;
@@ -12,7 +12,7 @@ public class MachineLoader {
     public static ItemStack VendingMachines;
     public static ItemStack WindTurbine;
     public static ItemStack SolarEnergyArrays;
-    public static ItemStack CoreDrills;
+    public static ItemStack SubstanceReshapingDevices;
 
     public static void loadMachines(){
         VendingMachines = new EOHB_VendingMachines(
@@ -36,12 +36,12 @@ public class MachineLoader {
         ).getStackForm(1);
         GTCMItemList.SolarEnergyArray.set(SolarEnergyArrays);
 
-        CoreDrills = new EOHB_CoreDrill(
+        SubstanceReshapingDevices = new EOHB_SubstanceReshapingDevice(
             20004,
             "NameCoreDrill",
-            TextLocalization.NameCoreDrill
+            TextLocalization.NameSubstanceReshapingDevice
         ).getStackForm(1);
-        GTCMItemList.CoreDrill.set(CoreDrills);
+        GTCMItemList.SubstanceReshapingDevice.set(SubstanceReshapingDevices);
 
     }
 }

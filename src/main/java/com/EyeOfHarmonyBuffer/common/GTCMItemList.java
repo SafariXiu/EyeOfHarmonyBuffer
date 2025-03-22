@@ -12,7 +12,7 @@ public enum GTCMItemList {
     VendingMachines,
     WindTurbines,
     SolarEnergyArray,
-    CoreDrill;
+    SubstanceReshapingDevice;
 
 
     private boolean mHasNotBeenSet;

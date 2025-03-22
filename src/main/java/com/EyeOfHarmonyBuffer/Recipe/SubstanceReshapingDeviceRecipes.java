@@ -7,13 +7,11 @@ import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.material.MaterialsElements;
 import gtnhlanth.common.register.WerkstoffMaterialPool;
-import net.minecraft.block.Block;
-import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import static bartworks.system.material.WerkstoffLoader.*;
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.CoreDrill;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.SubstanceReshapingDevice;
 import static com.EyeOfHarmonyBuffer.utils.Utils.setStackSize;
 import static com.dreammaster.item.ItemList.TCetiESeaweedExtract;
 import static goodgenerator.items.GGMaterial.*;
@@ -26,7 +24,7 @@ import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.ASTRAL_TITAN
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.CELESTIAL_TUNGSTEN;
 import static gtnhlanth.common.register.WerkstoffMaterialPool.Iodine;
 
-public class CoreDrillRecipe implements IRecipePool {
+public class SubstanceReshapingDeviceRecipes implements IRecipePool {
 
     @Override
     public void loadRecipes() {
@@ -46,7 +44,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //铂
         GTValues.RA.stdBuilder()
@@ -64,7 +62,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //独居石
         GTValues.RA.stdBuilder()
@@ -87,7 +85,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //硅
         GTValues.RA.stdBuilder()
@@ -101,7 +99,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //钨
         GTValues.RA.stdBuilder()
@@ -115,7 +113,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //钛
         GTValues.RA.stdBuilder()
@@ -130,7 +128,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //氡
         GTValues.RA.stdBuilder()
@@ -147,7 +145,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //硅岩
         GTValues.RA.stdBuilder()
@@ -166,7 +164,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //干细胞
         GTValues.RA.stdBuilder()
@@ -190,7 +188,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //液态空气
         GTValues.RA.stdBuilder()
@@ -214,13 +212,13 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //海藻提取物
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
-                getModItem(PamsHarvestCraft.ID, "harvestcraft:seaweedItem",1,0)
+                getModItem(PamsHarvestCraft.ID, "seaweedItem",1,0)
             )
             .fluidInputs(
                 Water.getFluid(1000)
@@ -234,7 +232,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //各种乙烯？
         GTValues.RA.stdBuilder()
@@ -252,7 +250,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //QFT特殊材料
         GTValues.RA.stdBuilder()
@@ -270,7 +268,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //催化剂
         GTValues.RA.stdBuilder()
@@ -291,7 +289,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //鸿蒙
         GTValues.RA.stdBuilder()
@@ -312,7 +310,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //一些奇怪的东西......
         GTValues.RA.stdBuilder()
@@ -333,7 +331,7 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
 
         //无尽之类的
         GTValues.RA.stdBuilder()
@@ -352,6 +350,33 @@ public class CoreDrillRecipe implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .addTo(CoreDrill);
+            .addTo(SubstanceReshapingDevice);
+
+        //电路板
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(2),
+                GTUtility.copyAmount(0,getModItem(IndustrialCraft2.ID, "itemPartCircuit",1))
+            )
+            .itemOutputs(
+                setStackSize(com.dreammaster.item.ItemList.CircuitULV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitLV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitMV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitHV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitEV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitIV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitLuV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitZPM.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUHV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUEV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUIV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUMV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitUXV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(com.dreammaster.item.ItemList.CircuitMAX.getIS(1),Integer.MAX_VALUE)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .addTo(SubstanceReshapingDevice);
     }
 }

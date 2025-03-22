@@ -25,24 +25,24 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDrill>
+public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBase<EOHB_SubstanceReshapingDevice>
     implements IWirelessEnergyHatchInformation {
 
-    public EOHB_CoreDrill(int aID, String aName, String aNameRegional) {
+    public EOHB_SubstanceReshapingDevice(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
     }
 
-    public EOHB_CoreDrill(String aName) {
+    public EOHB_SubstanceReshapingDevice(String aName) {
         super(aName);
     }
 
     protected static final String STRUCTURE_PIECE_MAIN = "mainCoreDrill";
-    protected static IStructureDefinition<EOHB_CoreDrill> STRUCTURE_DEFINITION = null;
+    protected static IStructureDefinition<EOHB_SubstanceReshapingDevice> STRUCTURE_DEFINITION = null;
     private int mCasing;
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_CoreDrill(this.mName);
+        return new EOHB_SubstanceReshapingDevice(this.mName);
     }
 
     @Override
@@ -70,13 +70,13 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     };
 
     @Override
-    public IStructureDefinition<EOHB_CoreDrill> getStructureDefinition() {
+    public IStructureDefinition<EOHB_SubstanceReshapingDevice> getStructureDefinition() {
         if(STRUCTURE_DEFINITION == null) {
-            STRUCTURE_DEFINITION = IStructureDefinition.<EOHB_CoreDrill>builder()
+            STRUCTURE_DEFINITION = IStructureDefinition.<EOHB_SubstanceReshapingDevice>builder()
                 .addShape(STRUCTURE_PIECE_MAIN,transpose(shapeMain))
                 .addElement(
                     'C',
-                    buildHatchAdder(EOHB_CoreDrill.class)
+                    buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
                         .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
                         .casingIndex(getTextureIndex())
                         .dot(1)
@@ -89,12 +89,23 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_NameCoreDrill_MachineType)
-            .addInfo(Tooltip_NameCoreDrill_Controller)
-            .addInfo(Tooltip_NameCoreDrill_00)
-            .addInfo(Tooltip_NameCoreDrill_01)
-            .addInfo(Tooltip_NameCoreDrill_02)
-            .addInfo(Tooltip_NameCoreDrill_03)
+        tt.addMachineType(Tooltip_SubstanceReshapingDevice_MachineType)
+            .addInfo(Tooltip_SubstanceReshapingDevice_Controller)
+            .addInfo(EOHB_Starry_Miracle_Project)
+            .addInfo(EOHB_Text_SeparatingLine)
+            .addInfo(Tooltip_SubstanceReshapingDevice_00)
+            .addInfo(Tooltip_SubstanceReshapingDevice_01)
+            .addInfo(Tooltip_SubstanceReshapingDevice_02)
+            .addInfo(Tooltip_SubstanceReshapingDevice_03)
+            .addInfo(Tooltip_SubstanceReshapingDevice_04)
+            .addInfo(Tooltip_SubstanceReshapingDevice_05)
+            .addInfo(EOHB_Text_SeparatingLine)
+            .addInfo(Tooltip_SubstanceReshapingDevice_06)
+            .addInfo(Tooltip_SubstanceReshapingDevice_07)
+            .addInfo(Tooltip_SubstanceReshapingDevice_08)
+            .addInfo(EOHB_Text_SeparatingLine)
+            .addInfo(Tooltip_SubstanceReshapingDevice_09)
+            .addInfo(Tooltip_SubstanceReshapingDevice_10)
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
@@ -109,7 +120,7 @@ public class EOHB_CoreDrill extends WirelessEnergyMultiMachineBase<EOHB_CoreDril
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.CoreDrill;
+        return RecipeMaps.SubstanceReshapingDevice;
     }
 
     @Override

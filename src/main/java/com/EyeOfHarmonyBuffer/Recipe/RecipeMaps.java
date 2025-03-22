@@ -7,8 +7,8 @@ import com.EyeOfHarmonyBuffer.common.RecipeMap.CoreDrillFrontend;
 
 public class RecipeMaps {
 
-    public static final RecipeMap<RecipeMapBackend> CoreDrill = RecipeMapBuilder
-        .of("eohb.recipe.coreDrill")
+    public static final RecipeMap<RecipeMapBackend> SubstanceReshapingDevice = RecipeMapBuilder
+        .of("eohb.recipe.SubstanceReshapingDevice")
         .maxIO(4,16,4,16)
         .neiRecipeBackgroundSize(170, 185)
         .disableOptimize()

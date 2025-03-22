@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.utils;
 
 import com.EyeOfHarmonyBuffer.Recipe.AssemblerRecipes;
-import com.EyeOfHarmonyBuffer.Recipe.CoreDrillRecipe;
+import com.EyeOfHarmonyBuffer.Recipe.SubstanceReshapingDeviceRecipes;
 import com.EyeOfHarmonyBuffer.Recipe.MachineBlockRecipes;
 import com.EyeOfHarmonyBuffer.Recipe.SpaceAssemblerRecipes;
 
@@ -13,7 +13,7 @@ public class RecipeLoader {
             new AssemblerRecipes(),
             new SpaceAssemblerRecipes(),
             new MachineBlockRecipes(),
-            new CoreDrillRecipe(),
+            new SubstanceReshapingDeviceRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

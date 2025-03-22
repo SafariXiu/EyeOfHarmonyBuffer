@@ -12,6 +12,7 @@ add_outputHatch=Any casing
 add_DynamoHatch=Any casing
 add_MaintenanceHatch=Any casing
 EOHB_Text_SeparatingLine=-----------------------------------------
+EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB — Starry Miracle Project §6✦
 NameVendingMachines=Vending Machines
 Tooltip_VendingMachines_MachineType=Vending Machines
 Tooltip_VendingMachines_Controller=Controller block for the Vending Machines
@@ -45,14 +46,20 @@ Tooltip_SolarEnergyArray_02=The power generation formula is MAX * MAX.
 Tooltip_SolarEnergyArray_03=Clean energy! May your skies remain pollution-free!
 Tooltip_SolarEnergyArray_04=Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.
 Tooltip_SolarEnergyArray_05=After activating Wireless Mode, Dynamo Hatches are no longer needed.
-NameCoreDrill=Core Drill
-Tooltip_NameCoreDrill_MachineType=Core Drill
-Tooltip_NameCoreDrill_Controller=Controller block for the Core Drill
-Tooltip_NameCoreDrill_00=It has a built-in neutron star to mine materials from deep within the Earth's core!
-Tooltip_NameCoreDrill_01=Of course, if you place a Astral Array Fabricator inside the machine, it might achieve some incredible effects...
-Tooltip_NameCoreDrill_02=We must assume that our machine can produce everything!
-Tooltip_NameCoreDrill_03=The machine has Int levels of parallelism and supports cross-recipe parallelism!
-
+NameSubstanceReshapingDevice=Substance Reshaping Device
+Tooltip_SubstanceReshapingDevice_MachineType=Substance Reshaping Device
+Tooltip_SubstanceReshapingDevice_Controller=Controller block for the Substance Reshaping Device
+Tooltip_SubstanceReshapingDevice_00=Void begets all things, and chaos forges gods. All matter can be reshaped, but great power cannot be defied.
+Tooltip_SubstanceReshapingDevice_01=The laws of the universe are both a cage and a shackle. All things follow the path of entropy—life will inevitably decay, stars will burn out, and dust will return to dust. But we refuse to accept this fate.
+Tooltip_SubstanceReshapingDevice_02=They are nameless entities, echoes from beyond reality, remnants we brought back from the unknown when we tampered with the laws of the universe.
+Tooltip_SubstanceReshapingDevice_03=We are the creators of stars, the manipulators of reality, and the ultimate masters of gravity!
+Tooltip_SubstanceReshapingDevice_04=Some particles exhibit arrangements that defy known physical rules, some substances exist in ways that violate the laws of thermodynamics.
+Tooltip_SubstanceReshapingDevice_05=and some creations… vanish the moment we attempt to document them, as if they never existed at all.
+Tooltip_SubstanceReshapingDevice_06=The machine supports cross-recipe parallel processing!
+Tooltip_SubstanceReshapingDevice_07=Supports up to 10 recipes running simultaneously! The optimal ratio for each recipe is 64*10!
+Tooltip_SubstanceReshapingDevice_08=If any recipe exceeds 64 units in operation, it will cause a decrease in total parallel efficiency!
+Tooltip_SubstanceReshapingDevice_09=But remember this—creators are also destroyers.
+Tooltip_SubstanceReshapingDevice_10="When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim."
 
 #RecipeMap
-eohb.recipe.coreDrill=Core Drill
+eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device
