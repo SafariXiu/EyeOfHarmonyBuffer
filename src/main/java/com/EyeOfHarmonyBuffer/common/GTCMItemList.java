@@ -12,7 +12,22 @@ public enum GTCMItemList {
     VendingMachines,
     WindTurbines,
     SolarEnergyArray,
-    SubstanceReshapingDevice;
+    SubstanceReshapingDevice,
+
+    SingularityStabilizationRingCasingsLV,
+    SingularityStabilizationRingCasingsMV,
+    SingularityStabilizationRingCasingsHV,
+    SingularityStabilizationRingCasingsEV,
+    SingularityStabilizationRingCasingsIV,
+    SingularityStabilizationRingCasingsLuV,
+    SingularityStabilizationRingCasingsZPM,
+    SingularityStabilizationRingCasingsUV,
+    SingularityStabilizationRingCasingsUHV,
+    SingularityStabilizationRingCasingsUEV,
+    SingularityStabilizationRingCasingsUIV,
+    SingularityStabilizationRingCasingsUMV,
+    SingularityStabilizationRingCasingsUXV,
+    SingularityStabilizationRingCasingsMAX;
 
 
     private boolean mHasNotBeenSet;
