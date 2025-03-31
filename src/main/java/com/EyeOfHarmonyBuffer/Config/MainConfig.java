@@ -236,15 +236,15 @@ public class MainConfig {
             .getBoolean(PCBFactoryCoolantEnable);
 
         IndustrialDehydratorEnable = config
-            .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后增强真空干燥炉到50倍速，不耗电，200万并行")
+            .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后真空干燥炉不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(IndustrialDehydratorEnable);
 
         FrothFlotationCellEnable = config
-            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后增强浮选机到50倍速，不耗电，200万并行")
+            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后浮选机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(FrothFlotationCellEnable);
 
         IsaMillEnable = config
-            .get("稀土线","艾萨研磨机",IsaMillEnable,"开启后增强艾萨研磨机到50倍速，不耗电，200万并行，研磨球不会损耗")
+            .get("稀土线","艾萨研磨机",IsaMillEnable,"开启后艾萨研磨机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行，研磨球不会损耗")
             .getBoolean(IsaMillEnable);
 
         PlanetaryGasSiphonEnable = config

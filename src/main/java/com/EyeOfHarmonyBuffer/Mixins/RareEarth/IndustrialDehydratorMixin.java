@@ -55,12 +55,8 @@ public abstract class IndustrialDehydratorMixin extends GTPPMultiBlockBase<MTEIn
                 }
             };
 
-            customLogic
-                .setSpeedBonus(1F / 0.02F)
-                .setEuModifier(0.0F)
-                .setMaxParallelSupplier(() -> 2000000);
-
             cir.setReturnValue(customLogic);
+            cir.cancel();
         }
     }
 }
