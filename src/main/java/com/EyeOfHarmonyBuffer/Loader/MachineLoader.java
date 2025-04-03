@@ -14,21 +14,21 @@ public class MachineLoader {
 
     public static void loadMachines(){
         VendingMachines = new EOHB_VendingMachines(
-            21001,
+            23001,
             "NameVendingMachines",
             TextLocalization.NameVendingMachines
         ).getStackForm(1);
         GTCMItemList.VendingMachines.set(VendingMachines);
 
         WindTurbine = new EOHB_WindTurbine(
-            21002,
+            23002,
             "NameWindTurbine",
             TextLocalization.NameWindTurbine
         ).getStackForm(1);
         GTCMItemList.WindTurbines.set(WindTurbine);
 
         SolarEnergyArrays = new EOHB_SolarEnergyArray(
-            21003,
+            23003,
             "NameSolarEnergyArray",
             TextLocalization.NameSolarEnergyArray
         ).getStackForm(1);
