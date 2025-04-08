@@ -112,6 +112,8 @@ public class MainConfig {
     public static boolean SpaceMiningRecipesEnable = false;
     public static boolean MegaBlastFurnaceEnable = false;
     public static boolean IndustrialCuttingMachineEnable = false;
+    public static boolean StorageOutputHatchEnable = false;
+    public static boolean StorageOutputBusEnable = false;
 
 
     private static Configuration config;
@@ -142,6 +144,14 @@ public class MainConfig {
         TargetChamberParallel = config
             .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
             .getInt(TargetChamberParallel);
+
+        StorageOutputHatchEnable = config
+            .get("可编程舱室","存储输出仓",StorageOutputHatchEnable,"开启后可编程舱室存储输出仓锁定为为long存储")
+            .getBoolean(StorageOutputHatchEnable);
+
+        StorageOutputBusEnable = config
+            .get("可编程舱室","存储输出总线",StorageOutputBusEnable,"开启后可编程舱室存储输出总线锁定为为long存储")
+            .getBoolean(StorageOutputBusEnable);
 
         CyclotronRecipeMixinEnable = config
             .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
