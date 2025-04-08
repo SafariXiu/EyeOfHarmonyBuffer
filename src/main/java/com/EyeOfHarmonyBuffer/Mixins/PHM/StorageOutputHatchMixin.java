@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins.PHM;
 
 import appeng.api.storage.ICellContainer;
 import appeng.me.helpers.IGridProxyable;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.common.tileentities.machines.MTEHatchOutputME;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,6 +20,8 @@ public abstract class StorageOutputHatchMixin extends MTEHatchOutputME implement
 
     @Inject(method = "getCacheCapacity", at = @At("RETURN"), cancellable = true)
     private void injectGetCacheCapacity(CallbackInfoReturnable<Long> cir) {
-        cir.setReturnValue(Long.MAX_VALUE);
+        if(MainConfig.StorageOutputHatchEnable){
+            cir.setReturnValue(Long.MAX_VALUE);
+        }
     }
 }
