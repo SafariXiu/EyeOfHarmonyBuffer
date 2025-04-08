@@ -13,9 +13,12 @@ public class TextLocalization {
     public static final String Disable_loading;
     public static final String add_InputBus;
     public static final String add_OutputBus;
+    public static final String add_inputHatch;
+    public static final String add_outputHatch;
     public static final String add_DynamoHatch;
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
+    public static final String EOHB_Starry_Miracle_Project;
 
     public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
@@ -53,6 +56,21 @@ public class TextLocalization {
     public static final String Tooltip_SolarEnergyArray_04;
     public static final String Tooltip_SolarEnergyArray_05;
 
+    public static final String NameSubstanceReshapingDevice;
+    public static final String Tooltip_SubstanceReshapingDevice_MachineType;
+    public static final String Tooltip_SubstanceReshapingDevice_Controller;
+    public static final String Tooltip_SubstanceReshapingDevice_00;
+    public static final String Tooltip_SubstanceReshapingDevice_01;
+    public static final String Tooltip_SubstanceReshapingDevice_02;
+    public static final String Tooltip_SubstanceReshapingDevice_03;
+    public static final String Tooltip_SubstanceReshapingDevice_04;
+    public static final String Tooltip_SubstanceReshapingDevice_05;
+    public static final String Tooltip_SubstanceReshapingDevice_06;
+    public static final String Tooltip_SubstanceReshapingDevice_07;
+    public static final String Tooltip_SubstanceReshapingDevice_08;
+    public static final String Tooltip_SubstanceReshapingDevice_09;
+    public static final String Tooltip_SubstanceReshapingDevice_10;
+
     public TextLocalization() {
     }
 
@@ -74,9 +92,12 @@ public class TextLocalization {
         Disable_loading = TextHandler.texter("§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!", "Disable_loading");
         add_InputBus = TextHandler.texter("Any casing","add_InputBus");
         add_OutputBus = TextHandler.texter("Any casing","add_OutputBus");
+        add_inputHatch = TextHandler.texter("Any casing","add_inputHatch");
+        add_outputHatch = TextHandler.texter("Any casing","add_outputHatch");
         add_DynamoHatch = TextHandler.texter("Any casing","add_DynamoHatch");
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
+        EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
 
 
         //大型贸易机
@@ -118,5 +139,22 @@ public class TextLocalization {
         Tooltip_SolarEnergyArray_03 = TextHandler.texter("Clean energy! May your skies remain pollution-free!","Tooltip_SolarEnergyArray_03");
         Tooltip_SolarEnergyArray_04 = TextHandler.texter("Place the Astral Array Fabricator in the Controller Block to activate Wireless Mode.", "Tooltip_SolarEnergyArray_04");
         Tooltip_SolarEnergyArray_05 = TextHandler.texter("After activating Wireless Mode, Dynamo Hatches are no longer needed.", "Tooltip_SolarEnergyArray_05");
+
+        //物质重塑仪
+        NameSubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device", "NameSubstanceReshapingDevice");
+        Tooltip_SubstanceReshapingDevice_MachineType = TextHandler.texter("Core Drill", "Tooltip_SubstanceReshapingDevice_MachineType");
+        Tooltip_SubstanceReshapingDevice_Controller = TextHandler.texter("Controller block for the Core Drill", "Tooltip_SubstanceReshapingDevice_Controller");
+        Tooltip_SubstanceReshapingDevice_00 = TextHandler.texter("It has a built-in neutron star to mine materials from deep within the Earth's core!", "Tooltip_SubstanceReshapingDevice_00");
+        Tooltip_SubstanceReshapingDevice_01 = TextHandler.texter("Of course, if you place a Astral Array Fabricator inside the machine, it might achieve some incredible effects...", "Tooltip_SubstanceReshapingDevice_01");
+        Tooltip_SubstanceReshapingDevice_02 = TextHandler.texter("We must assume that our machine can produce everything!","Tooltip_SubstanceReshapingDevice_02");
+        Tooltip_SubstanceReshapingDevice_03 = TextHandler.texter("The machine has Int levels of parallelism and supports cross-recipe parallelism!","Tooltip_SubstanceReshapingDevice_03");
+        Tooltip_SubstanceReshapingDevice_04 = TextHandler.texter("Some particles exhibit arrangements that defy known physical rules, some substances exist in ways that violate the laws of thermodynamics.","Tooltip_SubstanceReshapingDevice_04");
+        Tooltip_SubstanceReshapingDevice_05 = TextHandler.texter("and some creations… vanish the moment we attempt to document them, as if they never existed at all.","Tooltip_SubstanceReshapingDevice_05");
+        Tooltip_SubstanceReshapingDevice_06 = TextHandler.texter("The machine supports cross-recipe parallel processing!","Tooltip_SubstanceReshapingDevice_06");
+        Tooltip_SubstanceReshapingDevice_07 = TextHandler.texter("Supports up to 10 recipes running simultaneously! The optimal ratio for each recipe is 64*10!","Tooltip_SubstanceReshapingDevice_07");
+        Tooltip_SubstanceReshapingDevice_08 = TextHandler.texter("If any recipe exceeds 64 units in operation, it will cause a decrease in total parallel efficiency!","Tooltip_SubstanceReshapingDevice_08");
+        Tooltip_SubstanceReshapingDevice_09 = TextHandler.texter("But remember this—creators are also destroyers.","Tooltip_SubstanceReshapingDevice_09");
+        Tooltip_SubstanceReshapingDevice_10 = TextHandler.texter("\"When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim.\"","Tooltip_SubstanceReshapingDevice_10");
+
     }
 }
