@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import gregtech.api.enums.TAE;
@@ -14,10 +15,13 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gtPlusPlus.core.block.ModBlocks;
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
+import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabilizationRingCasingsUpgrade;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
 import static gregtech.api.enums.HatchElement.*;
@@ -36,9 +40,10 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
         super(aName);
     }
 
-    protected static final String STRUCTURE_PIECE_MAIN = "mainCoreDrill";
+    protected static final String STRUCTURE_PIECE_MAIN = "mainSubstanceReshapingDevice";
     protected static IStructureDefinition<EOHB_SubstanceReshapingDevice> STRUCTURE_DEFINITION = null;
     private int mCasing;
+    private int totalSpeedIncrement = 0;
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
@@ -59,14 +64,23 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
 
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
-        if (mMachine) return -1;
-        return survivialBuildPiece(STRUCTURE_PIECE_MAIN, stackSize, 1, 1, 0, elementBudget, env, false, true);
+        if (this.mMachine) return -1;
+        return this.survivialBuildPiece(
+            STRUCTURE_PIECE_MAIN,
+            stackSize,
+            1,
+            1,
+            0,
+            elementBudget,
+            env,
+            false,
+            true);
     }
 
     protected static final String[][] shapeMain = new String[][]{
-        { "CCC", "CCC", "CCC" },
-        { "C~C", "C-C", "CCC" },
-        { "CCC", "CCC", "CCC" },
+        { "CCC", "CCC", "CCC", "CCC" },
+        { "C~C", "CAC", "CAC", "CCC" },
+        { "CCC", "CCC", "CCC", "CCC" },
     };
 
     @Override
@@ -81,6 +95,31 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                         .casingIndex(getTextureIndex())
                         .dot(1)
                         .buildAndChain(onElementPass(x -> ++x.mCasing, ofBlock(ModBlocks.blockCasings3Misc, 2))))
+                .addElement(
+                    'A',
+                    withChannel(
+                        "SingularityStabilizationRingCasings",
+                        ofBlocksTiered(
+                            EOHB_SubstanceReshapingDevice::getSingularityStabilizationRingCasingsLevel,
+                            ImmutableList.of(
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 0),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 1),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 2),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 3),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 4),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 5),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 6),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 7),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 8),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 9),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 10),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 11),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 12),
+                                Pair.of(SingularityStabilizationRingCasingsUpgrade, 13)
+                                ),
+                            0,
+                            (m, t) -> m.totalSpeedIncrement = t,
+                            m -> m.totalSpeedIncrement)))
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -115,6 +154,11 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
             .addOutputHatch(add_outputHatch)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
+    }
+
+    private static int getSingularityStabilizationRingCasingsLevel(Block block,int meta){
+        if(block == SingularityStabilizationRingCasingsUpgrade) return meta + 1;
+        return -1;
     }
 
     @NotNull

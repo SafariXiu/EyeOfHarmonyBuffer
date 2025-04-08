@@ -48,7 +48,7 @@ public class SingularityStabilizationRingCasings extends BlockBase {
     /**
      * Tooltips of these blocks' ItemBlock.
      */
-    public static String[][] PhCUpgradeCasingTooltipsArray = new String[14][];
+    public static String[][] SingularityStabilizationRingCasingsTooltipsArray = new String[14][];
     private IIcon blockIcon;
     private String unlocalizedName;
 
@@ -63,7 +63,7 @@ public class SingularityStabilizationRingCasings extends BlockBase {
 
     public static ItemStack SingularityStabilizationRingCasingsMeta(String i18nName, int meta, String[] tooltips) {
         // Handle the tooltips
-        PhCUpgradeCasingTooltipsArray[meta] = tooltips;
+        SingularityStabilizationRingCasingsTooltipsArray[meta] = tooltips;
         return SingularityStabilizationRingCasingsMeta(i18nName, meta);
     }
 
@@ -81,6 +81,8 @@ public class SingularityStabilizationRingCasings extends BlockBase {
         return meta < iconsSingularityStabilizationRingCasingsUpgradeMap.size() ? iconsSingularityStabilizationRingCasingsUpgradeMap.get(meta)
             : iconsSingularityStabilizationRingCasingsUpgradeMap.get(0);
     }
+
+    public static int[] RecipeLevel = new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14 };
 
     @Override
     @SideOnly(Side.CLIENT)

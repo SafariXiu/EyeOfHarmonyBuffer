@@ -26,33 +26,33 @@ public class BlockRegister {
 
     public static void registryBlockContainers(){
         GTCMItemList.SingularityStabilizationRingCasingsLV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier LV Tier", 0));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings LV Tier", 0));
         GTCMItemList.SingularityStabilizationRingCasingsMV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier MV Tier", 1));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MV Tier", 1));
         GTCMItemList.SingularityStabilizationRingCasingsHV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier HV Tier", 2));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings HV Tier", 2));
         GTCMItemList.SingularityStabilizationRingCasingsEV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier EV Tier", 3));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings EV Tier", 3));
         GTCMItemList.SingularityStabilizationRingCasingsIV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier IV Tier", 4));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings IV Tier", 4));
         GTCMItemList.SingularityStabilizationRingCasingsLuV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier LuV Tier", 5));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings LuV Tier", 5));
         GTCMItemList.SingularityStabilizationRingCasingsZPM
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier ZPM Tier", 6));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings ZPM Tier", 6));
         GTCMItemList.SingularityStabilizationRingCasingsUV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UV Tier", 7));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UV Tier", 7));
         GTCMItemList.SingularityStabilizationRingCasingsUHV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UHV Tier", 8));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UHV Tier", 8));
         GTCMItemList.SingularityStabilizationRingCasingsUEV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UEV Tier", 9));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UEV Tier", 9));
         GTCMItemList.SingularityStabilizationRingCasingsUIV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UIV Tier", 10));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UIV Tier", 10));
         GTCMItemList.SingularityStabilizationRingCasingsUMV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UMV Tier", 11));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UMV Tier", 11));
         GTCMItemList.SingularityStabilizationRingCasingsUXV
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier UXV Tier", 12));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UXV Tier", 12));
         GTCMItemList.SingularityStabilizationRingCasingsMAX
-            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Photonic Intensifier MAX Tier", 13));
+            .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MAX Tier", 13));
     }
 
     public static void registry() {
