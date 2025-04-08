@@ -114,6 +114,10 @@ public class LateMixins implements ILateMixinLoader {
             "OthTech.Recipe.WoodenFusionReactorRecipe",
             "OthTech.MegaIsaFactoryMixin"
         ));
+        modMixins.put("programmablehatches", Arrays.asList(
+            "PHM.StorageOutputBusMixin",
+            "PHM.StorageOutputHatchMixin"
+        ));
         // 如果有其他 mod 需要 mixin，可以在这里添加，比如：
         // modMixins.put("AnotherMod", Arrays.asList("AnotherMod.SomeMixin1", "AnotherMod.SomeMixin2"));
 
