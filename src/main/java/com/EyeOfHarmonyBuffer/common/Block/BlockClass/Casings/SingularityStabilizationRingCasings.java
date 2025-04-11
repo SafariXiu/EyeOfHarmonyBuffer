@@ -83,6 +83,7 @@ public class SingularityStabilizationRingCasings extends BlockBase {
     }
 
     public static int[] RecipeLevel = new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14 };
+    // LV MV HV EV IV LuV ZPM UV UHV UEV UIV UMV UXV MAX
 
     @Override
     @SideOnly(Side.CLIENT)
