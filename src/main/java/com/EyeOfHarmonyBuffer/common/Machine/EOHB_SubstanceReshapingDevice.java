@@ -11,8 +11,12 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
+import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gtPlusPlus.core.block.ModBlocks;
 import net.minecraft.block.Block;
@@ -165,6 +169,20 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     @Override
     public RecipeMap<?> getRecipeMap() {
         return RecipeMaps.SubstanceReshapingDevice;
+    }
+
+    @Override
+    protected ProcessingLogic createProcessingLogic(){
+        return new ProcessingLogic(){
+            @NotNull
+            @Override
+            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe){
+                if ((Integer) recipe.mSpecialItems >= totalSpeedIncrement){
+                    return CheckRecipeResultRegistry.SUCCESSFUL;
+                } else
+                    return CheckRecipeResultRegistry.NO_RECIPE;
+            }
+        };
     }
 
     @Override
