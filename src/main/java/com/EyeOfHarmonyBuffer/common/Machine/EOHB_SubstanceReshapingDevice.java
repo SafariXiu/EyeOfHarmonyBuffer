@@ -177,7 +177,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
             @NotNull
             @Override
             protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe){
-                if ((Integer) recipe.mSpecialItems >= totalSpeedIncrement){
+                if ((Integer) recipe.mSpecialItems <= totalSpeedIncrement){
                     return CheckRecipeResultRegistry.SUCCESSFUL;
                 } else
                     return CheckRecipeResultRegistry.NO_RECIPE;
