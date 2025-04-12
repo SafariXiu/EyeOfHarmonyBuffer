@@ -70,6 +70,7 @@ public class TextLocalization {
     public static final String Tooltip_SubstanceReshapingDevice_08;
     public static final String Tooltip_SubstanceReshapingDevice_09;
     public static final String Tooltip_SubstanceReshapingDevice_10;
+    public static final String SubstanceReshapingDeviceRecipes;
 
     public TextLocalization() {
     }
@@ -155,6 +156,6 @@ public class TextLocalization {
         Tooltip_SubstanceReshapingDevice_08 = TextHandler.texter("If any recipe exceeds 64 units in operation, it will cause a decrease in total parallel efficiency!","Tooltip_SubstanceReshapingDevice_08");
         Tooltip_SubstanceReshapingDevice_09 = TextHandler.texter("But remember this—creators are also destroyers.","Tooltip_SubstanceReshapingDevice_09");
         Tooltip_SubstanceReshapingDevice_10 = TextHandler.texter("\"When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim.\"","Tooltip_SubstanceReshapingDevice_10");
-
+        SubstanceReshapingDeviceRecipes = TextHandler.texter("Singularity Stabilization Ring Casings Live:  %s","SubstanceReshapingDeviceRecipes");
     }
 }

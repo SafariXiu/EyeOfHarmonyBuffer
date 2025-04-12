@@ -78,6 +78,7 @@ Tooltip_SubstanceReshapingDevice_07=§b➤ §e支持最高§a10种配方同时�
 Tooltip_SubstanceReshapingDevice_08=§c➤ §7如果有配方高于§b64个§7在运行，会导致总并行下降！
 Tooltip_SubstanceReshapingDevice_09=§4✦ §e但请铭记——§c创世者§7，亦是§4毁灭者§e。§4✦
 Tooltip_SubstanceReshapingDevice_10=§6“§7当众神沉默，凡人便可夺取权柄。但请记住，§c权柄从来不会属于我们§7。§6”
+SubstanceReshapingDeviceRecipes=奇点稳定环等级:  %s
 
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=物质重塑仪

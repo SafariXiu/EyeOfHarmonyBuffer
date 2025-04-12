@@ -78,6 +78,7 @@ Tooltip_SubstanceReshapingDevice_07=Supports up to 10 recipes running simultaneo
 Tooltip_SubstanceReshapingDevice_08=If any recipe exceeds 64 units in operation, it will cause a decrease in total parallel efficiency!
 Tooltip_SubstanceReshapingDevice_09=But remember this—creators are also destroyers.
 Tooltip_SubstanceReshapingDevice_10="When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim."
+SubstanceReshapingDeviceRecipes=Singularity Stabilization Ring Casings Live:  %s
 
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device

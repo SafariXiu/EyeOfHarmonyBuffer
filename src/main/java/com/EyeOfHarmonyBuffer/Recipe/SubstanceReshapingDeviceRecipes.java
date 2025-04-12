@@ -19,6 +19,7 @@ import static gregtech.api.enums.Materials.*;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
+import static gregtech.api.util.GTRecipeConstants.QFT_FOCUS_TIER;
 import static gtPlusPlus.core.material.MaterialMisc.MUTATED_LIVING_SOLDER;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.ASTRAL_TITANIUM;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.CELESTIAL_TUNGSTEN;
@@ -44,7 +45,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(1)
+            .specialValue(1)
             .addTo(SubstanceReshapingDevice);
 
         //铂
@@ -63,7 +64,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(4)
+            .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
         //独居石
@@ -87,7 +88,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(5)
+            .specialValue(5)
             .addTo(SubstanceReshapingDevice);
 
         //硅
@@ -102,7 +103,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(2)
+            .specialValue(2)
             .addTo(SubstanceReshapingDevice);
 
         //钨
@@ -117,7 +118,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(3)
+            .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
         //钛
@@ -133,7 +134,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(3)
+            .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
         //氡
@@ -151,7 +152,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(3)
+            .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
         //硅岩
@@ -171,7 +172,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(6)
+            .specialValue(6)
             .addTo(SubstanceReshapingDevice);
 
         //干细胞
@@ -196,7 +197,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(7)
+            .specialValue(7)
             .addTo(SubstanceReshapingDevice);
 
         //液态空气
@@ -221,7 +222,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(3)
+            .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
         //海藻提取物
@@ -242,7 +243,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(8)
+            .specialValue(8)
             .addTo(SubstanceReshapingDevice);
 
         //各种乙烯？
@@ -261,7 +262,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(4)
+            .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
         //QFT特殊材料
@@ -280,7 +281,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(9)
+            .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
         //催化剂
@@ -302,7 +303,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(10)
+            .specialValue(10)
             .addTo(SubstanceReshapingDevice);
 
         //鸿蒙
@@ -324,7 +325,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(11)
+            .specialValue(11)
             .addTo(SubstanceReshapingDevice);
 
         //一些奇怪的东西......
@@ -346,7 +347,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(14)
+            .specialValue(14)
             .addTo(SubstanceReshapingDevice);
 
         //无尽之类的
@@ -366,7 +367,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(9)
+            .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
         //电路板
@@ -394,7 +395,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .special(9)
+            .specialValue(9)
             .addTo(SubstanceReshapingDevice);
     }
 }
