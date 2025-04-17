@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
+import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
@@ -161,8 +162,11 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     private static int getSingularityStabilizationRingCasingsLevel(Block block,int meta){
-        if(block == SingularityStabilizationRingCasingsUpgrade) return meta + 1;
-        return -1;
+        if(!MachineLoaderConfig.SubstanceReshapingDevice.get()){
+            if(block == SingularityStabilizationRingCasingsUpgrade) return meta + 1;
+            return -1;
+        }
+        return Integer.MAX_VALUE;
     }
 
     @NotNull
