@@ -79,6 +79,7 @@ Tooltip_SubstanceReshapingDevice_08=§c➤ §7如果有配方高于§b64个§7�
 Tooltip_SubstanceReshapingDevice_09=§4✦ §e但请铭记——§c创世者§7，亦是§4毁灭者§e。§4✦
 Tooltip_SubstanceReshapingDevice_10=§6“§7当众神沉默，凡人便可夺取权柄。但请记住，§c权柄从来不会属于我们§7。§6”
 SubstanceReshapingDeviceRecipes=奇点稳定环等级:  %s
+GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=物质重塑仪

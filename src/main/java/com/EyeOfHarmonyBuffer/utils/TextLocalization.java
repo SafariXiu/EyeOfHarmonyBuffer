@@ -145,10 +145,10 @@ public class TextLocalization {
         NameSubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device", "NameSubstanceReshapingDevice");
         Tooltip_SubstanceReshapingDevice_MachineType = TextHandler.texter("Core Drill", "Tooltip_SubstanceReshapingDevice_MachineType");
         Tooltip_SubstanceReshapingDevice_Controller = TextHandler.texter("Controller block for the Core Drill", "Tooltip_SubstanceReshapingDevice_Controller");
-        Tooltip_SubstanceReshapingDevice_00 = TextHandler.texter("It has a built-in neutron star to mine materials from deep within the Earth's core!", "Tooltip_SubstanceReshapingDevice_00");
-        Tooltip_SubstanceReshapingDevice_01 = TextHandler.texter("Of course, if you place a Astral Array Fabricator inside the machine, it might achieve some incredible effects...", "Tooltip_SubstanceReshapingDevice_01");
-        Tooltip_SubstanceReshapingDevice_02 = TextHandler.texter("We must assume that our machine can produce everything!","Tooltip_SubstanceReshapingDevice_02");
-        Tooltip_SubstanceReshapingDevice_03 = TextHandler.texter("The machine has Int levels of parallelism and supports cross-recipe parallelism!","Tooltip_SubstanceReshapingDevice_03");
+        Tooltip_SubstanceReshapingDevice_00 = TextHandler.texter("Void begets all things, and chaos forges gods. All matter can be reshaped, but great power cannot be defied.", "Tooltip_SubstanceReshapingDevice_00");
+        Tooltip_SubstanceReshapingDevice_01 = TextHandler.texter("The laws of the universe are both a cage and a shackle. All things follow the path of entropy—life will inevitably decay, stars will burn out, and dust will return to dust. But we refuse to accept this fate.", "Tooltip_SubstanceReshapingDevice_01");
+        Tooltip_SubstanceReshapingDevice_02 = TextHandler.texter("They are nameless entities, echoes from beyond reality, remnants we brought back from the unknown when we tampered with the laws of the universe","Tooltip_SubstanceReshapingDevice_02");
+        Tooltip_SubstanceReshapingDevice_03 = TextHandler.texter("We are the creators of stars, the manipulators of reality, and the ultimate masters of gravity!                                                          ","Tooltip_SubstanceReshapingDevice_03");
         Tooltip_SubstanceReshapingDevice_04 = TextHandler.texter("Some particles exhibit arrangements that defy known physical rules, some substances exist in ways that violate the laws of thermodynamics.","Tooltip_SubstanceReshapingDevice_04");
         Tooltip_SubstanceReshapingDevice_05 = TextHandler.texter("and some creations… vanish the moment we attempt to document them, as if they never existed at all.","Tooltip_SubstanceReshapingDevice_05");
         Tooltip_SubstanceReshapingDevice_06 = TextHandler.texter("The machine supports cross-recipe parallel processing!","Tooltip_SubstanceReshapingDevice_06");

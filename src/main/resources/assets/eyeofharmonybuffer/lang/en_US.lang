@@ -79,6 +79,7 @@ Tooltip_SubstanceReshapingDevice_08=If any recipe exceeds 64 units in operation,
 Tooltip_SubstanceReshapingDevice_09=But remember this—creators are also destroyers.
 Tooltip_SubstanceReshapingDevice_10="When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim."
 SubstanceReshapingDeviceRecipes=Singularity Stabilization Ring Casings Live:  %s
+GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device

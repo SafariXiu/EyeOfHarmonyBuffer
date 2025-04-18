@@ -16,6 +16,7 @@ import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -184,7 +185,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                 if (recipe.mSpecialValue <= totalSpeedIncrement){
                     return CheckRecipeResultRegistry.SUCCESSFUL;
                 } else
-                    return CheckRecipeResultRegistry.NO_RECIPE;
+                    return SimpleCheckRecipeResult.ofFailure("SingularityStabilizationRingCasingsLive");
             }
         };
     }
