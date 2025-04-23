@@ -30,12 +30,12 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        /**
-         * 1号：只有流体输出
-         * 2号：只有物品输出
-         * 3号：物品流体输出都有
-         * 其他均为特殊输出
-         * Value的起始值是1对应LV，往后依次+1
+        /*
+          1号：只有流体输出
+          2号：只有物品输出
+          3号：物品流体输出都有
+          其他均为特殊输出
+          Value的起始值是1对应LV，往后依次+1
          */
 
         //橡胶
