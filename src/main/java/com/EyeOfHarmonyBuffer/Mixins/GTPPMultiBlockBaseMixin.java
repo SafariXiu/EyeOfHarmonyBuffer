@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.util.ExoticEnergyInputHelper;
@@ -26,11 +27,19 @@ public abstract class GTPPMultiBlockBaseMixin<T extends MTEExtendedPowerMultiBlo
 
     @Override
     public List<MTEHatch> getExoticAndNormalEnergyHatchList() {
-        return new ArrayList<>(filterValidMTEs(this.mAllEnergyHatches));
+        if (MainConfig.GTPPMachineExoEnergyHatchFixEnable) {
+            return new ArrayList<>(filterValidMTEs(this.mAllEnergyHatches));
+        } else {
+            return super.getExoticAndNormalEnergyHatchList();
+        }
     }
 
     @Override
     public long getMaxInputVoltage() {
+        if (MainConfig.GTPPMachineExoEnergyHatchFixEnable) {
         return ExoticEnergyInputHelper.getMaxInputVoltageMulti(getExoticAndNormalEnergyHatchList());
+        } else {
+            return super.getMaxInputVoltage();
+        }
     }
 }

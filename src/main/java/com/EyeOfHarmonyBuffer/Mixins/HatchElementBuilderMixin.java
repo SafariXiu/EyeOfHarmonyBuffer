@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.interfaces.IHatchElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -28,6 +29,7 @@ public class HatchElementBuilderMixin<T> {
     @SuppressWarnings("unchecked")
     private void injectCustomAtLeastMap(Map<IHatchElement<? super T>, ? extends Number> elements,
         CallbackInfoReturnable<HatchElementBuilder<T>> cir) {
+        if (!MainConfig.AllMachineUseExoEnergyHatchEnable) return;
         if (elements == null || elements.isEmpty() || elements.containsKey(null) || elements.containsValue(null)) {
             throw new IllegalArgumentException();
         }
