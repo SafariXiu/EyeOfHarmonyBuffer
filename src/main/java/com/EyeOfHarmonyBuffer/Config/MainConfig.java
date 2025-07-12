@@ -115,6 +115,8 @@ public class MainConfig {
     public static boolean StorageOutputHatchEnable = false;
     public static boolean StorageOutputBusEnable = false;
     public static boolean ResearchCompleterEnable = false;
+    public static boolean GTPPMachineExoEnergyHatchFixEnable = false;
+    public static boolean AllMachineUseExoEnergyHatchEnable = false;
 
 
     private static Configuration config;
@@ -161,6 +163,14 @@ public class MainConfig {
         SpaceMiningRecipesEnable = config
             .get("配方类","太空电梯-采矿模块",SpaceMiningRecipesEnable,"开启后太空采矿模块所有配方的杆与钻头全部删除,任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
             .getBoolean(SpaceMiningRecipesEnable);
+
+        GTPPMachineExoEnergyHatchFixEnable = config
+            .get("其他机器","所有GTPP常规类机器", GTPPMachineExoEnergyHatchFixEnable,"开启后修复GTPP无法正常检查TecTech能源仓的问题")
+            .getBoolean(GTPPMachineExoEnergyHatchFixEnable);
+
+        AllMachineUseExoEnergyHatchEnable = config
+            .get("其他机器","所有机器", AllMachineUseExoEnergyHatchEnable,"开启后强制允许所有机器安装TecTech能源仓")
+            .getBoolean(AllMachineUseExoEnergyHatchEnable);
 
         FusionComputerEnable = config
             .get("其他机器","聚变反应堆MK1-MK5",FusionComputerEnable,"开启后聚变反应堆MK1-MK5锁定配方时间为10tick，大幅度提升每个能源仓可以提供的能量输入，机器运行不再消耗电力(机器中仍然需要拥有配方需要的启动电量！),拥有int并行")

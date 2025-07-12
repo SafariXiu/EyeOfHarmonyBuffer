@@ -31,6 +31,8 @@ public class LateMixins implements ILateMixinLoader {
             "BioLab.BioLabMixin",
             "BioLab.BasicMachineMixin",
             "BioVatMixin",
+            "GTPPMultiBlockBaseMixin",
+            "HatchElementBuilderMixin",
             "BlackHoleCompressorMixin",
             "CircuitAssemblyLineMixin",
             "ChemicalPlantMixin",
