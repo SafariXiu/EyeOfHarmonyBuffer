@@ -114,6 +114,7 @@ public class MainConfig {
     public static boolean IndustrialCuttingMachineEnable = false;
     public static boolean StorageOutputHatchEnable = false;
     public static boolean StorageOutputBusEnable = false;
+    public static boolean ResearchCompleterEnable = false;
     public static boolean GTPPMachineExoEnergyHatchFixEnable = false;
     public static boolean AllMachineUseExoEnergyHatchEnable = false;
 
@@ -186,6 +187,10 @@ public class MainConfig {
         IndustrialCuttingMachineEnable = config
             .get("其他机器","工业切割机",IndustrialDehydratorEnable,"开启后工业切割机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(IndustrialCuttingMachineEnable);
+
+        ResearchCompleterEnable = config
+            .get("其他机枪","奥法阐释者",ResearchCompleterEnable,"开启后奥法阐释者不再消耗VIS")
+            .getBoolean(ResearchCompleterEnable);
 
         WoodenFusionReactorEnable = config
             .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
