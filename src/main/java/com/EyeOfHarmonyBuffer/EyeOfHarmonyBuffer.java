@@ -52,9 +52,9 @@ public class EyeOfHarmonyBuffer {
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
         TextHandler.initLangMap(isInDevMode);
 
-        if(MainConfig.Grade2WaterPurificationEnabled){
+        /*if(MainConfig.Grade2WaterPurificationEnabled){
             Launch.classLoader.registerTransformer("com.EyeOfHarmonyBuffer.ASMChange.Grade2WaterPurificationRecipeChange");
-        }
+        }*/
 
         if (!configDir.exists()) {
             configDir.mkdirs();

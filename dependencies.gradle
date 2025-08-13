@@ -35,7 +35,7 @@
  */
 
 dependencies {
-    api('com.github.GTNewHorizons:GT5-Unofficial:5.09.51.410:dev')
+    api('com.github.GTNewHorizons:GT5-Unofficial:5.09.51.418:dev')
 
     implementation('com.github.GTNewHorizons:AE2FluidCraft-Rework:1.4.106-gtnh:dev')
     implementation('com.github.GTNewHorizons:ae2stuff:0.9.6-GTNH:dev')
@@ -65,9 +65,9 @@ dependencies {
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:Chisel:2.16.8-GTNH:dev')
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:StructureLib:1.4.15:dev')
 
-    implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.6.4.jar"))
-    implementation rfg.deobf(files("libs/123Technology.2.0.2a.jar"))
-    implementation rfg.deobf(files("libs/programmablehatches-0.1.2p33.jar"))
+    compileOnly rfg.deobf(files("libs/TwistSpaceTechnology-0.6.4.jar"))
+    compileOnly rfg.deobf(files("libs/123Technology.2.0.2a.jar"))
+    compileOnly rfg.deobf(files("libs/programmablehatches-0.1.2p33.jar"))
 
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/ae2thing-v1.68.jar"))
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/nechar-GTNH 2.7.0.jar"))
@@ -83,5 +83,6 @@ dependencies {
 }
 
 configurations.all {
+    exclude group: 'com.github.GTNewHorizons', module: 'Baubles'
     exclude group: 'com.github.GTNewHorizons', module: 'Hodgepodge'
 }

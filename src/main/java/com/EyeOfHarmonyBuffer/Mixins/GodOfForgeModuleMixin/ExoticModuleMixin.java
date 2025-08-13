@@ -287,7 +287,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
                     addToPowerTally(powerForRecipe);
                     addToRecipeTally(calculatedParallels);
-                    setCalculatedEut(0);
+                    overwriteCalculatedEut(0);
                     plasmaRecipe = null;
                     recipeInProgress = false;
                     return CheckRecipeResultRegistry.SUCCESSFUL;

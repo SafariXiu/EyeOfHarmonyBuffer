@@ -367,7 +367,6 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     }
 
     @Override
-    @SuppressWarnings("ALL")
     public ITexture[] getTexture(
         IGregTechTileEntity aBaseMetaTileEntity,
         ForgeDirection side,
@@ -375,19 +374,30 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
         int colorIndex,
         boolean aActive,
         boolean aRedstone
-    ){
-        if(side == facing){
-            if (aActive) return new ITexture[]{
-                TextureFactory.of(BLOCK_PLASCRETE),
-                new GTRenderedTexture(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE), TextureFactory.builder()
-                .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE_GLOW)
-                .glow()
-                .build()
-            };
-            else return new ITexture[]{
-                TextureFactory.of(BLOCK_PLASCRETE),
-                new GTRenderedTexture(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT)
-            };
+    ) {
+        if (side == facing) {
+            if (aActive) {
+                return new ITexture[]{
+                    TextureFactory.of(BLOCK_PLASCRETE),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE)
+                        .extFacing()
+                        .build(),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE_GLOW)
+                        .extFacing()
+                        .glow()
+                        .build()
+                };
+            } else {
+                return new ITexture[]{
+                    TextureFactory.of(BLOCK_PLASCRETE),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT)
+                        .extFacing()
+                        .build()
+                };
+            }
         }
         return new ITexture[]{TextureFactory.of(BLOCK_PLASCRETE)};
     }
