@@ -21,7 +21,7 @@ public class IndustrialLaserEngraverParallelMixin {
      * @reason 我们讨厌愚蠢的低并行!
      */
     @Overwrite
-    private int getMaxParallelRecipes() {
+    public int getMaxParallelRecipes() {
         if(MainConfig.IndustrialLaserEngraverParallelEnabled){
             return Integer.MAX_VALUE;
         }

@@ -1,16 +1,16 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.GT_MetaTileEntity_EnhancedMultiBlockBase_EM;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 @Mixin(value = TileEntityModuleBase.class,remap = false)
-public abstract class ModuleAssemblerPowerMixin extends GT_MetaTileEntity_EnhancedMultiBlockBase_EM {
+public abstract class ModuleAssemblerPowerMixin extends TTMultiblockBase {
 
     protected ModuleAssemblerPowerMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);

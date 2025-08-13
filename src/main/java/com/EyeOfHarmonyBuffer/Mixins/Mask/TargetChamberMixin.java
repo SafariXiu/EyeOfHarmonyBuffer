@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.Mixins.Mask;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
-import gregtech.api.enums.TickTime;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.util.GTUtility;
 import gtnhlanth.common.tileentity.MTETargetChamber;

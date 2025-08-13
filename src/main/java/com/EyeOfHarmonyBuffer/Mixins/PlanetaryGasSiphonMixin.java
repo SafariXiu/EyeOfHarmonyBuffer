@@ -1,10 +1,10 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.TileEntityPlanetaryGasSiphon;
 import gregtech.api.interfaces.IChunkLoader;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResult;
+import gtnhintergalactic.tile.multi.TileEntityPlanetaryGasSiphon;
 import net.minecraftforge.fluids.FluidStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

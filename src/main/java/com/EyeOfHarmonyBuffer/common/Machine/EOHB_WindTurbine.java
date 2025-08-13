@@ -14,13 +14,13 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
-import gregtech.api.objects.GTRenderedTexture;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
+import gregtech.common.render.GTRenderedTexture;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -209,7 +209,7 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (mMachine) return -1;
-        return survivialBuildPiece(mName, stackSize, 11, 59, 0, elementBudget, env, false, true);
+        return survivalBuildPiece(mName, stackSize, 11, 59, 0, elementBudget, env, false, true);
     }
 
     @Override
@@ -360,9 +360,6 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     @Override
     public int getDamageToComponent(ItemStack aStack) { return 0; }
-
-    @Override
-    public boolean explodesOnComponentBreak(ItemStack aStack) { return false; }
 
     @Override
     public boolean isCorrectMachinePart(ItemStack aStack) {
