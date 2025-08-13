@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Mixins.RareEarth;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import gregtech.api.enums.OrePrefixes;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -12,6 +13,8 @@ import gregtech.api.util.ParallelHelper;
 import gtPlusPlus.core.material.Material;
 import gtPlusPlus.xmod.gregtech.api.metatileentity.implementations.base.GTPPMultiBlockBase;
 import gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEFrothFlotationCell;
+import net.minecraft.item.ItemStack;
+import net.minecraftforge.oredict.OreDictionary;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -44,26 +47,39 @@ public abstract class FrothFlotationCellMixin extends GTPPMultiBlockBase<MTEFrot
                 @NotNull
                 @Override
                 protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                    Material foundMaterial = FlotationRecipeHandler.getMaterialOfMilledProduct(
-                        FlotationRecipeHandler.findMilledStack(recipe)
-                    );
-                    String foundMaterialName = null;
-                    if (foundMaterial != null) {
-                        foundMaterialName = foundMaterial.getUnlocalizedName();
-                    }
-
-                    if (foundMaterialName == null) {
+                    // Make sure we lock to a specific milled ore, checked via oredict
+                    String milledName = getMilledStackName(recipe);
+                    if (milledName == null) {
                         return CheckRecipeResultRegistry.NO_RECIPE;
                     }
 
-                    if (lockedMaterialName == null) {
-                        lockedMaterialName = foundMaterialName;
+                    // Set material locked for this controller
+                    // "milled" check is to clear old save data since the name caching system changed
+                    if (lockedMaterialName == null || !lockedMaterialName.startsWith("milled")) {
+                        lockedMaterialName = milledName;
                     }
 
-                    if (!Objects.equals(lockedMaterialName, foundMaterialName)) {
+                    // Ensure oredict matches
+                    if (!Objects.equals(lockedMaterialName, milledName)) {
                         return SimpleCheckRecipeResult.ofFailure("machine_locked_to_different_recipe");
                     }
                     return CheckRecipeResultRegistry.SUCCESSFUL;
+                }
+
+                private String getMilledStackName(GTRecipe recipe) {
+                    if (recipe == null || recipe.mInputs == null) {
+                        return null;
+                    }
+
+                    for (ItemStack stack : recipe.mInputs) {
+                        for (int oreID : OreDictionary.getOreIDs(stack)) {
+                            String oredict = OreDictionary.getOreName(oreID);
+                            if (oredict.startsWith(OrePrefixes.milled.toString())) {
+                                return oredict;
+                            }
+                        }
+                    }
+                    return null;
                 }
 
                 @NotNull
