@@ -37,7 +37,7 @@ public abstract class TargetChamberMixin extends MTEEnhancedMultiBlockBase<MTETa
 
     @Inject(method = "checkProcessing", at = @At("HEAD"), cancellable = true)
     private void injectCustomCheckProcessing(CallbackInfoReturnable<CheckRecipeResult> cir) {
-        // 1. 获取输入物品
+
         ArrayList<ItemStack> tItems = getStoredInputs();
         ArrayList<ItemStack> tFocusItemArray = getFocusItemStack();
         ArrayList<ItemStack> tItemsWithFocusItem = new ArrayList<>(tItems);
@@ -48,52 +48,48 @@ public abstract class TargetChamberMixin extends MTEEnhancedMultiBlockBase<MTETa
             tItemsWithFocusItem.add(focus);
         }
 
-        ItemStack[] tItemsWithFocusItemArray = tItemsWithFocusItem.toArray(new ItemStack[0]);
-        long tVoltageActual = GTValues.VP[(int) getInputVoltageTier()];
+        ItemStack[] inputs = tItemsWithFocusItem.toArray(new ItemStack[0]);
 
-        // 2. 使用假粒子束（绕过粒子检测）
-        BeamInformation fakeBeam = new BeamInformation(0, 9999, 9999, 9999);
+        long voltage = GTValues.VP[(int) getInputVoltageTier()];
 
-        // 3. 查找配方
-        GTRecipe tRecipe = LanthanidesRecipeMaps.targetChamberRecipes.findRecipeQuery()
-            .items(tItemsWithFocusItemArray)
-            .voltage(tVoltageActual)
-            .filter(recipe -> {
-                TargetChamberMetadata metadata = recipe.getMetadata(TARGET_CHAMBER_METADATA);
-                return metadata != null;
-            })
+        GTRecipe recipe = LanthanidesRecipeMaps.targetChamberRecipes.findRecipeQuery()
+            .items(inputs)
+            .voltage(voltage)
+            .filter(r -> r.getMetadata(TARGET_CHAMBER_METADATA) != null)
             .cachedRecipe(lastRecipe)
             .find();
 
-        if (tRecipe == null) {
+        if (recipe == null) {
             cir.setReturnValue(CheckRecipeResultRegistry.NO_RECIPE);
             return;
         }
 
-        // 4. 设置批次数（自由控制）
-        int batchAmount = 64;
+        int desiredBatchAmount = 2_050_781;
+        double maxParallel = recipe.maxParallelCalculatedByInputs(desiredBatchAmount, GTValues.emptyFluidStackArray, inputs);
+        int batchAmount = (int) Math.min(desiredBatchAmount, maxParallel);
+
+        if (batchAmount <= 0) {
+            cir.setReturnValue(CheckRecipeResultRegistry.NO_RECIPE);
+            return;
+        }
+
         int progressTime = 20;
-
         mMaxProgresstime = progressTime;
-        mEUt = -((int) tVoltageActual);
-        lastRecipe = tRecipe;
+        mEUt = -(int) voltage;
+        lastRecipe = recipe;
 
-        // 5. 设置输出
-        ItemStack[] outputs = ArrayExt.copyItemsIfNonEmpty(tRecipe.mOutputs);
+        ItemStack[] outputs = ArrayExt.copyItemsIfNonEmpty(recipe.mOutputs);
         for (ItemStack stack : outputs) {
             stack.stackSize *= batchAmount;
         }
         mOutputItems = outputs;
 
-        // 6. 消耗输入，但不处理焦点耐久
-        tRecipe.consumeInput(batchAmount, GTValues.emptyFluidStackArray, tItemsWithFocusItemArray);
+        recipe.consumeInput(batchAmount, GTValues.emptyFluidStackArray, inputs);
 
-        // 7. 更新状态
         updateSlots();
         mEfficiency = 10000;
         mEfficiencyIncrease = 10000;
 
-        // 8. 设置返回值，取消原方法执行
         cir.setReturnValue(CheckRecipeResultRegistry.SUCCESSFUL);
     }
 }
