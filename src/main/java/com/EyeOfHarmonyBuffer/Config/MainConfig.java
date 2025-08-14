@@ -137,16 +137,8 @@ public class MainConfig {
 
     public static void loadConfig() {
         TargetChamberEnable = config
-            .get("靶室","靶室运行设定",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，并且机器不再消耗电力，耗时为原来的二十分之一")
+            .get("其他机器","靶室",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，最大并行数量调整为2050781，锁定运行时间为20tick")
             .getBoolean(TargetChamberEnable);
-
-        TargetChamberParallelEnable = config
-            .get("靶室","靶室并行数量修改开启",TargetChamberParallelEnable,"开启靶室并行数量修改(靶室运行设定必须为True！)")
-            .getBoolean(TargetChamberParallelEnable);
-
-        TargetChamberParallel = config
-            .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
-            .getInt(TargetChamberParallel);
 
         StorageOutputHatchEnable = config
             .get("可编程舱室","存储输出仓",StorageOutputHatchEnable,"开启后可编程舱室存储输出仓锁定为为long存储")
