@@ -13,13 +13,12 @@ import net.minecraft.item.ItemStack;
 import static bartworks.system.material.WerkstoffLoader.*;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.SubstanceReshapingDevice;
 import static com.EyeOfHarmonyBuffer.utils.Utils.setStackSize;
-import static com.dreammaster.item.ItemList.TCetiESeaweedExtract;
+import static com.dreammaster.item.NHItemList.*;
 import static goodgenerator.items.GGMaterial.*;
 import static gregtech.api.enums.Materials.*;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
-import static gregtech.api.util.GTRecipeConstants.QFT_FOCUS_TIER;
 import static gtPlusPlus.core.material.MaterialMisc.MUTATED_LIVING_SOLDER;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.ASTRAL_TITANIUM;
 import static gtPlusPlus.core.material.MaterialsElements.STANDALONE.CELESTIAL_TUNGSTEN;
@@ -385,21 +384,21 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 GTUtility.copyAmount(0,getModItem(IndustrialCraft2.ID, "itemPartCircuit",1))
             )
             .itemOutputs(
-                setStackSize(com.dreammaster.item.ItemList.CircuitULV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitLV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitLuV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitZPM.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitUXV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(com.dreammaster.item.ItemList.CircuitMAX.getIS(1),Integer.MAX_VALUE)
+                setStackSize(CircuitULV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitHV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitEV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitIV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLuV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitZPM.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUHV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUEV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUIV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUMV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUXV.getIS(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMAX.getIS(1),Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)

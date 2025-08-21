@@ -88,10 +88,10 @@ public class SingularityStabilizationRingCasings extends BlockBase {
     @Override
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister reg) {
-        this.blockIcon = reg.registerIcon("gtnhcommunitymod:PhotonControllerUpgrades/0");
+        this.blockIcon = reg.registerIcon("eyeofharmonybuffer:PhotonControllerUpgrades/0");
         for (int Meta : SingularityStabilizationRingCasingsSet) {
             iconsSingularityStabilizationRingCasingsUpgradeMap
-                .put(Meta, reg.registerIcon("gtnhcommunitymod:PhotonControllerUpgrades/" + Meta));
+                .put(Meta, reg.registerIcon("eyeofharmonybuffer:PhotonControllerUpgrades/" + Meta));
         }
     }
 

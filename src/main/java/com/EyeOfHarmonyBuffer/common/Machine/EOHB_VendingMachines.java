@@ -224,7 +224,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .toolTipFinisher(TextLocalization.ModName);
         }else {
             tt.addMachineType(Tooltip_VendingMachines_MachineType)
-                    .addMachineType(Tooltip_VendingMachines_Controller)
+                    .addInfo(Tooltip_VendingMachines_Controller)
                     .addInfo(Disable_loading)
                     .addInfo(Tooltip_VendingMachines_00)
                     .addInfo(Tooltip_VendingMachines_01)

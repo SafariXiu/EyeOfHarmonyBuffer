@@ -11,9 +11,9 @@ import net.minecraft.item.ItemStack;
 
 import java.util.*;
 
+import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.MetaBlock01;
 import static com.EyeOfHarmonyBuffer.utils.MetaItemStackUtils.initMetaItemStack;
 import static com.EyeOfHarmonyBuffer.utils.MetaItemStackUtils.metaItemStackTooltipsAdd;
-import static com.Nxer.TwistSpaceTechnology.common.init.TstBlocks.MetaBlock01;
 
 public class ItemBlockBase01 extends ItemBlock {
 

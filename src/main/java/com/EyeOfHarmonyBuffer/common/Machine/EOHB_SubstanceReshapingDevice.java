@@ -11,7 +11,6 @@ import gregtech.api.enums.TAE;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
@@ -35,8 +34,7 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBase<EOHB_SubstanceReshapingDevice>
-    implements IWirelessEnergyHatchInformation {
+public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBase<EOHB_SubstanceReshapingDevice> {
 
     public EOHB_SubstanceReshapingDevice(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -63,11 +61,6 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     @Override
-    public boolean explodesOnComponentBreak(ItemStack aStack) {
-        return false;
-    }
-
-    @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
         repairMachine();
         buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 1, 1, 0);
@@ -76,7 +69,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (this.mMachine) return -1;
-        return this.survivialBuildPiece(
+        return this.survivalBuildPiece(
             STRUCTURE_PIECE_MAIN,
             stackSize,
             1,

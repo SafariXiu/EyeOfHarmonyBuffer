@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
-import com.Nxer.TwistSpaceTechnology.TwistSpaceTechnology;
+import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -32,7 +32,7 @@ public class MetaItemStackUtils {
 
     public static void metaItemStackTooltipsAdd(Map<Integer, String[]> tooltipsMap, int meta, String[] tooltips) {
         if (tooltipsMap.containsKey(meta)) {
-            TwistSpaceTechnology.LOG.info("failed to Replace a tooltips:" + tooltips[0] + " ...");
+            EyeOfHarmonyBuffer.LOG.info("failed to Replace a tooltips:" + tooltips[0] + " ...");
             return;
         }
         tooltipsMap.put(meta, tooltips);
