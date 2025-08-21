@@ -89,8 +89,8 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Gadolinium,1),Integer.MAX_VALUE),
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Lanthanum,1),Integer.MAX_VALUE),
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Terbium,1),Integer.MAX_VALUE),
-                WerkstoffLoader.Zirconium.get(OrePrefixes.dust, Integer.MAX_VALUE),
-                MaterialsElements.getInstance().HAFNIUM.getDust(Integer.MAX_VALUE),
+                setStackSize(WerkstoffLoader.Zirconium.get(OrePrefixes.dust, 1),Integer.MAX_VALUE),
+                setStackSize(MaterialsElements.getInstance().HAFNIUM.getDust(1),Integer.MAX_VALUE),
                 setStackSize(WerkstoffMaterialPool.Hafnia.get(OrePrefixes.dust,1),Integer.MAX_VALUE)
             )
             .eut(0)
@@ -121,7 +121,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .itemOutputs(
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Tungsten,1),Integer.MAX_VALUE),
-                CELESTIAL_TUNGSTEN.getDust(Integer.MAX_VALUE)
+                setStackSize(CELESTIAL_TUNGSTEN.getDust(1),Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
@@ -137,7 +137,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .itemOutputs(
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Titanium,1),Integer.MAX_VALUE),
                 setStackSize(GTOreDictUnificator.get(OrePrefixes.dust,Materials.Tritanium,1),Integer.MAX_VALUE),
-                ASTRAL_TITANIUM.getDust(Integer.MAX_VALUE)
+                setStackSize(ASTRAL_TITANIUM.getDust(1),Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
