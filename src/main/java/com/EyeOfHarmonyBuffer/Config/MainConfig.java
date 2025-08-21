@@ -7,110 +7,114 @@ import net.minecraftforge.common.config.Configuration;
 public class MainConfig {
 
     public static String constantOutputEUConfig = "3812901725648391027364519283746501928374652019384756209183475620193847562019384756201938475620193847562";
-    public static boolean GasInPut = true;
-    public static boolean EOHinputHatchEnable= true;
-    public static boolean enableFluidOutPut = true;
-    public static boolean EOHItemInPut = true;
+    public static boolean GasInPut = false;
+    public static boolean EOHinputHatchEnable= false;
+    public static boolean enableFluidOutPut = false;
+    public static boolean EOHItemInPut = false;
     public static int EOHtime = 128;
     public static double RecipeChance = 1;
     public static double RecipeYield = 1;
-    public static boolean EOHLV = true;
-    public static boolean EOHAstralArrayAmount = true;
-    public static boolean EOHZeroPowerStart = true;
-    public static boolean EOHSuccessRateControls = true;
-    public static boolean EOHOutputRateControl = true;
-    public static boolean EOHWorkTime = true;
-    public static boolean EOHOpenEuOutPut = true;
-    public static boolean DTPFOpen = true;
-    public static boolean FOGUpDate = true;
-    public static boolean BioVatOutputRatioEnable = true;
-    public static boolean DisTankTrue = true;
-    public static boolean DisTankOverClockEnable = true;
-    public static boolean DigesterMixin = true;
-    public static boolean LargeFusionMixin = true;
-    public static boolean LargeFusionParaMixin = true;
+    public static boolean EOHLV = false;
+    public static boolean EOHAstralArrayAmount = false;
+    public static boolean EOHZeroPowerStart = false;
+    public static boolean EOHSuccessRateControls = false;
+    public static boolean EOHOutputRateControl = false;
+    public static boolean EOHWorkTime = false;
+    public static boolean EOHOpenEuOutPut = false;
+    public static boolean DTPFOpen = false;
+    public static boolean FOGUpDate = false;
+    public static boolean BioVatOutputRatioEnable = false;
+    public static boolean DisTankTrue = false;
+    public static boolean DisTankOverClockEnable = false;
+    public static boolean DigesterMixin = false;
+    public static boolean LargeFusionMixin = false;
+    public static boolean LargeFusionParaMixin = false;
     public static int LargeFusionPara = 256;
-    public static boolean UUMixin = true;
-    public static boolean BioLabMixin = true;
-    public static boolean NaquadahFuelRefineryMixinTrue = true;
+    public static boolean UUMixin = false;
+    public static boolean BioLabMixin = false;
+    public static boolean NaquadahFuelRefineryMixinTrue = false;
     public static int NaquadahFuelRefineryMagnification = 10000;
-    public static boolean NaquadahFuelOutPutMagnificationTrue = true;
+    public static boolean NaquadahFuelOutPutMagnificationTrue = false;
     public static int NaquadahFuelOutPutMagnification = 10000;
-    public static boolean BlackHoleCompressorStabilityLock = true;
-    public static boolean BlackHoleCompressorParallelModificationEnabled = true;
+    public static boolean BlackHoleCompressorStabilityLock = false;
+    public static boolean BlackHoleCompressorParallelModificationEnabled = false;
     public static int BlackHoleCompressorParallelCountModification = 2000000000;
-    public static boolean BlackHoleCompressorPowerConsumptionModificationEnabled = true;
+    public static boolean BlackHoleCompressorPowerConsumptionModificationEnabled = false;
     public static String BlackHoleCompressorPowerConsumptionModification = "0.0";
-    public static boolean BlackHoleCompressorTimeConsumptionModificationEnabled = true;
+    public static boolean BlackHoleCompressorTimeConsumptionModificationEnabled = false;
     public static String BlackHoleCompressorTimeConsumptionModification = "0.0";
-    public static boolean IndustrialLaserEngraverParallelEnabled = true;
-    public static boolean IndustrialLaserEngraverOverclockEnabled = true;
-    public static boolean MaskInfiniteDurability = true;
-    public static boolean Grade8WaterPurificationEnabled = true;
-    public static boolean Grade7WaterPurificationEnabled = true;
-    public static boolean Grade6WaterPurificationEnabled = true;
-    public static boolean Grade5WaterPurificationEnabled = true;
-    public static boolean Grade4WaterPurificationEnabled = true;
-    public static boolean Grade3WaterPurificationEnabled = true;
-    public static boolean Grade2WaterPurificationEnabled = true;
-    public static boolean Grade1WaterPurificationEnabled = true;
-    public static boolean DTPFMK2Enable = true;
-    public static boolean HIPCompressorEnable = true;
-    public static boolean ExoticModuleEnable = true;
+    public static boolean IndustrialLaserEngraverParallelEnabled = false;
+    public static boolean IndustrialLaserEngraverOverclockEnabled = false;
+    public static boolean MaskInfiniteDurability = false;
+    public static boolean Grade8WaterPurificationEnabled = false;
+    public static boolean Grade7WaterPurificationEnabled = false;
+    public static boolean Grade6WaterPurificationEnabled = false;
+    public static boolean Grade5WaterPurificationEnabled = false;
+    public static boolean Grade4WaterPurificationEnabled = false;
+    public static boolean Grade3WaterPurificationEnabled = false;
+    public static boolean Grade2WaterPurificationEnabled = false;
+    public static boolean Grade1WaterPurificationEnabled = false;
+    public static boolean DTPFMK2Enable = false;
+    public static boolean HIPCompressorEnable = false;
+    public static boolean ExoticModuleEnable = false;
     public static int SpaceElevatorAssemblerParallel = 1024;
-    public static boolean SpaceElevatorAssemblerParallelEnable = true;
-    public static boolean SpaceElevatorMiningParallelsEnable = true;
-    public static boolean SpaceElevatorMiningPlasmaEnable = true;
+    public static boolean SpaceElevatorAssemblerParallelEnable = false;
+    public static boolean SpaceElevatorMiningParallelsEnable = false;
+    public static boolean SpaceElevatorMiningPlasmaEnable = false;
     public static int SpaceElevatorModuleMiningParallels = 128;
     public static int SpaceElevatorMiningTicks = 128;
-    public static boolean Water = true;
-    public static boolean SpaceElevatorMiningTicksTrue = true;
-    public static boolean OutPutHatchMEEnable = true;
-    public static boolean OutPutBusMEEnable = true;
-    public static boolean TargetChamberEnable = true;
-    public static boolean TargetChamberParallelEnable = true;
-    public static int TargetChamberParallel = 256;
-    public static boolean PlanetaryGasSiphonEnable = true;
+    public static boolean Water = false;
+    public static boolean SpaceElevatorMiningTicksTrue = false;
+    public static boolean OutPutHatchMEEnable = false;
+    public static boolean OutPutBusMEEnable = false;
+    public static boolean TargetChamberEnable = false;
+    public static boolean PlanetaryGasSiphonEnable = false;
     public static int PlanetaryGasSiphonParallel = 10;
-    public static boolean IndustrialDehydratorEnable = true;
-    public static boolean FrothFlotationCellEnable = true;
-    public static boolean IsaMillEnable = true;
+    public static boolean IndustrialDehydratorEnable = false;
+    public static boolean FrothFlotationCellEnable = false;
+    public static boolean IsaMillEnable = false;
     public static boolean FOGGravitonShardEnable = false;
-    public static boolean EOHGemEnable = true;
+    public static boolean EOHGemEnable = false;
     public static String EOHGem = "2T";
-    public static boolean PCBFactoryParallelEnable = true;
-    public static boolean PCBFactoryCoolantEnable = true;
-    public static boolean CircuitAssemblyLineEnable = true;
-    public static boolean LightningSpireEnable = true;
+    public static boolean PCBFactoryParallelEnable = false;
+    public static boolean PCBFactoryCoolantEnable = false;
+    public static boolean CircuitAssemblyLineEnable = false;
+    public static boolean LightningSpireEnable = false;
     public static int LightningSpireTime = 256;
-    public static boolean DEFusionCrafterEnable = true;
-    public static boolean IndustrialChiselEnable = true;
-    public static boolean BioVatRadiationEnabled = true;
+    public static boolean DEFusionCrafterEnable = false;
+    public static boolean IndustrialChiselEnable = false;
+    public static boolean BioVatRadiationEnabled = false;
     public static int BioVatOutputRatio = 1000000;
-    public static boolean FuelRefineFactoryEnable = true;
+    public static boolean FuelRefineFactoryEnable = false;
     public static int LightningSpireMaxRods = 8192;
-    public static boolean DTPFEnable = true;
-    public static boolean AlloyBlastSmelterEnable = true;
-    public static boolean ChemicalPlantEnable = true;
-    public static boolean LargerTurbinePlasmaEnable = true;
-    public static boolean PreciseAssemblerEnable = true;
-    public static boolean CyclotronRecipeMixinEnable = true;
-    public static boolean ExoticModuleOverClock = true;
-    public static boolean MoltenModuleEnable = true;
-    public static boolean PlasmaModuleEnable = true;
-    public static boolean SmeltingModuleEnable = true;
-    public static boolean PrimitiveBlastFurnaceEnable = true;
-    public static boolean WoodenFusionReactorEnable = true;
-    public static boolean MegaNineInOneEnable = true;
-    public static boolean MegaIsaFactoryEnable = true;
+    public static boolean DTPFEnable = false;
+    public static boolean AlloyBlastSmelterEnable = false;
+    public static boolean ChemicalPlantEnable = false;
+    public static boolean LargerTurbinePlasmaEnable = false;
+    public static boolean PreciseAssemblerEnable = false;
+    public static boolean CyclotronRecipeMixinEnable = false;
+    public static boolean ExoticModuleOverClock = false;
+    public static boolean MoltenModuleEnable = false;
+    public static boolean PlasmaModuleEnable = false;
+    public static boolean SmeltingModuleEnable = false;
+    public static boolean PrimitiveBlastFurnaceEnable = false;
+    public static boolean WoodenFusionReactorEnable = false;
+    public static boolean MegaNineInOneEnable = false;
+    public static boolean MegaIsaFactoryEnable = false;
     public static boolean DEFAULT_BATCH_MODE = false;
-    public static boolean FusionComputerEnable = true;
-    public static boolean ManufacturingCenterEnable = true;
-    public static boolean ModulePumpEnable = true;
+    public static boolean FusionComputerEnable = false;
+    public static boolean ManufacturingCenterEnable = false;
+    public static boolean ModulePumpEnable = false;
+    public static int ModulePumpParallel = 1024;
     public static boolean ElementalDuplicatorEnable = false;
     public static boolean SpaceMiningRecipesEnable = false;
     public static boolean MegaBlastFurnaceEnable = false;
     public static boolean IndustrialCuttingMachineEnable = false;
+    public static boolean StorageOutputHatchEnable = false;
+    public static boolean StorageOutputBusEnable = false;
+    public static boolean ResearchCompleterEnable = false;
+    public static boolean GTPPMachineExoEnergyHatchFixEnable = false;
+    public static boolean AllMachineUseExoEnergyHatchEnable = false;
 
 
     private static Configuration config;
@@ -131,16 +135,16 @@ public class MainConfig {
 
     public static void loadConfig() {
         TargetChamberEnable = config
-            .get("靶室","靶室运行设定",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，并且机器不再消耗电力，耗时为原来的二十分之一")
+            .get("其他机器","靶室",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，最大并行数量调整为2050781，锁定运行时间为20tick")
             .getBoolean(TargetChamberEnable);
 
-        TargetChamberParallelEnable = config
-            .get("靶室","靶室并行数量修改开启",TargetChamberParallelEnable,"开启靶室并行数量修改(靶室运行设定必须为True！)")
-            .getBoolean(TargetChamberParallelEnable);
+        StorageOutputHatchEnable = config
+            .get("可编程舱室","存储输出仓",StorageOutputHatchEnable,"开启后可编程舱室存储输出仓锁定为为long存储")
+            .getBoolean(StorageOutputHatchEnable);
 
-        TargetChamberParallel = config
-            .get("靶室","靶室并行数量修改",TargetChamberParallel,"设置靶室并行数量，最大不超过100万，超过100万取100万")
-            .getInt(TargetChamberParallel);
+        StorageOutputBusEnable = config
+            .get("可编程舱室","存储输出总线",StorageOutputBusEnable,"开启后可编程舱室存储输出总线锁定为为long存储")
+            .getBoolean(StorageOutputBusEnable);
 
         CyclotronRecipeMixinEnable = config
             .get("配方类","回旋加速器配方",CyclotronRecipeMixinEnable,"开启后原版回旋加速器配方全部变为百分百产出(不包括私货),任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
@@ -149,6 +153,14 @@ public class MainConfig {
         SpaceMiningRecipesEnable = config
             .get("配方类","太空电梯-采矿模块",SpaceMiningRecipesEnable,"开启后太空采矿模块所有配方的杆与钻头全部删除,任何配方类都mixin都不支持热重载，需要重启游戏后生效!")
             .getBoolean(SpaceMiningRecipesEnable);
+
+        GTPPMachineExoEnergyHatchFixEnable = config
+            .get("其他机器","所有GTPP常规类机器", GTPPMachineExoEnergyHatchFixEnable,"开启后修复GTPP无法正常检查TecTech能源仓的问题")
+            .getBoolean(GTPPMachineExoEnergyHatchFixEnable);
+
+        AllMachineUseExoEnergyHatchEnable = config
+            .get("其他机器","所有机器", AllMachineUseExoEnergyHatchEnable,"开启后强制允许所有机器安装TecTech能源仓")
+            .getBoolean(AllMachineUseExoEnergyHatchEnable);
 
         FusionComputerEnable = config
             .get("其他机器","聚变反应堆MK1-MK5",FusionComputerEnable,"开启后聚变反应堆MK1-MK5锁定配方时间为10tick，大幅度提升每个能源仓可以提供的能量输入，机器运行不再消耗电力(机器中仍然需要拥有配方需要的启动电量！),拥有int并行")
@@ -165,6 +177,10 @@ public class MainConfig {
         IndustrialCuttingMachineEnable = config
             .get("其他机器","工业切割机",IndustrialDehydratorEnable,"开启后工业切割机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(IndustrialCuttingMachineEnable);
+
+        ResearchCompleterEnable = config
+            .get("其他机枪","奥法阐释者",ResearchCompleterEnable,"开启后奥法阐释者不再消耗VIS")
+            .getBoolean(ResearchCompleterEnable);
 
         WoodenFusionReactorEnable = config
             .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
@@ -235,15 +251,15 @@ public class MainConfig {
             .getBoolean(PCBFactoryCoolantEnable);
 
         IndustrialDehydratorEnable = config
-            .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后增强真空干燥炉到50倍速，不耗电，200万并行")
+            .get("稀土线","真空干燥炉",IndustrialDehydratorEnable,"开启后真空干燥炉不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(IndustrialDehydratorEnable);
 
         FrothFlotationCellEnable = config
-            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后增强浮选机到50倍速，不耗电，200万并行")
+            .get("稀土线","浮选机",FrothFlotationCellEnable,"开启后浮选机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(FrothFlotationCellEnable);
 
         IsaMillEnable = config
-            .get("稀土线","艾萨研磨机",IsaMillEnable,"开启后增强艾萨研磨机到50倍速，不耗电，200万并行，研磨球不会损耗")
+            .get("稀土线","艾萨研磨机",IsaMillEnable,"开启后艾萨研磨机不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行，研磨球不会损耗")
             .getBoolean(IsaMillEnable);
 
         PlanetaryGasSiphonEnable = config
@@ -291,8 +307,12 @@ public class MainConfig {
             .getBoolean(SpaceElevatorMiningTicksTrue);
 
         ModulePumpEnable = config
-            .get("太空电梯-钻机模块","钻机模块最大并行数量修改",ModulePumpEnable,"开启后钻机模块最大并行数量上限修改为int")
+            .get("太空电梯-钻机模块","钻机模块最大并行数量修改",ModulePumpEnable,"开启钻机模块最大并行数量上限修改")
             .getBoolean(ModulePumpEnable);
+
+        ModulePumpParallel = config
+            .get("太空电梯-钻机模块","钻机模块最大并行数量设置",ModulePumpParallel,"设置钻机模块最大并行数量")
+            .getInt(ModulePumpParallel);
 
         DTPFOpen = config
             .get("超维度等离子锻炉", "开启锁定催化剂减免", DTPFOpen, "开启后超维度等离子锻炉催化剂减免锁定为百分百，不再有减免，避免通厕所")
@@ -404,7 +424,7 @@ public class MainConfig {
             .getBoolean(ExoticModuleEnable);
 
         ExoticModuleOverClock = config
-            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200万并行")
+            .get("诸神之锻炉","诸神之锻炉太阳聚变异化器模块超频修改",ExoticModuleOverClock,"开启后太阳聚变异化器模块不再受限于升级，不再消耗电力，所有工作都会在10tick内完成，并且拥有200000并行")
             .getBoolean(ExoticModuleOverClock);
 
         MoltenModuleEnable = config

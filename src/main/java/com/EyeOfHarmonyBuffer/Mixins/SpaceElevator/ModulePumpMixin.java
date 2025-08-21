@@ -1,7 +1,8 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModulePump;
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModulePump;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,6 +21,8 @@ public abstract class ModulePumpMixin extends TileEntityModuleBase {
 
     @Inject(method = "getParallels",at = @At("HEAD"),cancellable = true)
     private void getParallels(CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue(Integer.MAX_VALUE);
+        if(MainConfig.ModulePumpEnable){
+            cir.setReturnValue(MainConfig.ModulePumpParallel);
+        }
     }
 }

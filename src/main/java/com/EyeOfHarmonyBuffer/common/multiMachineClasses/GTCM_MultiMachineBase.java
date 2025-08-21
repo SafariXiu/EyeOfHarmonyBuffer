@@ -49,7 +49,6 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     // region new methods
     public void repairMachine() {
         mHardHammer = true;
-        mSoftHammer = true;
         mScrewdriver = true;
         mCrowbar = true;
         mSolderingTool = true;
@@ -114,7 +113,7 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
      * @return The value (or a method to get the value) of Max Parallel (dynamically) .
      */
     @ApiStatus.OverrideOnly
-    protected abstract int getMaxParallelRecipes();
+    public abstract int getMaxParallelRecipes();
 
     /**
      * Limit the max parallel to prevent overflow.
@@ -526,14 +525,6 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     @Override
     public int getDamageToComponent(ItemStack aStack) {
         return 0;
-    }
-
-    /**
-     * If it explodes when the Component has to be replaced.
-     */
-    @Override
-    public boolean explodesOnComponentBreak(ItemStack aStack) {
-        return false;
     }
 
     /**

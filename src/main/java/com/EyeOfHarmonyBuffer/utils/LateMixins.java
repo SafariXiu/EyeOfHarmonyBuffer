@@ -31,6 +31,8 @@ public class LateMixins implements ILateMixinLoader {
             "BioLab.BioLabMixin",
             "BioLab.BasicMachineMixin",
             "BioVatMixin",
+            "GTPPMultiBlockBaseMixin",
+            "HatchElementBuilderMixin",
             "BlackHoleCompressorMixin",
             "CircuitAssemblyLineMixin",
             "ChemicalPlantMixin",
@@ -48,6 +50,7 @@ public class LateMixins implements ILateMixinLoader {
             "EOH.EyeOfHarmonyWorkTime",
             "EOH.EyeOfHarmonyZeroPowerStart",
             "ElementalDuplicatorMixin",
+            "EMT.ResearchCompleterMixin",
             "FOGShardsAvailable",
             "FuelFactory.NaquadahFuelRefineryMixin",
             "FuelFactory.FuelRefineFactoryMixin",
@@ -113,6 +116,10 @@ public class LateMixins implements ILateMixinLoader {
             "OthTech.WoodenFusionReactorMixin",
             "OthTech.Recipe.WoodenFusionReactorRecipe",
             "OthTech.MegaIsaFactoryMixin"
+        ));
+        modMixins.put("programmablehatches", Arrays.asList(
+            "PHM.StorageOutputBusMixin",
+            "PHM.StorageOutputHatchMixin"
         ));
         // 如果有其他 mod 需要 mixin，可以在这里添加，比如：
         // modMixins.put("AnotherMod", Arrays.asList("AnotherMod.SomeMixin1", "AnotherMod.SomeMixin2"));

@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.Recipe;
 import net.minecraftforge.fluids.FluidRegistry;
 import org.apache.commons.lang3.tuple.Pair;
 
-import static com.gtnewhorizons.gtnhintergalactic.recipe.SpacePumpingRecipes.RECIPES;
+import static gtnhintergalactic.recipe.SpacePumpingRecipes.RECIPES;
 
 public class EOHBSpacePumpingRecipes {
 

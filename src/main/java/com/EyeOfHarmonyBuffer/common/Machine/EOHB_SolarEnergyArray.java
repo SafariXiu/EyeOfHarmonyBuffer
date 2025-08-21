@@ -11,7 +11,6 @@ import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -38,7 +37,7 @@ import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
-public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable, IWirelessEnergyHatchInformation {
+public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable{
 
     public EOHB_SolarEnergyArray(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -118,7 +117,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (this.mMachine) return -1;
-        return this.survivialBuildPiece(
+        return this.survivalBuildPiece(
             mName,
             stackSize,
             15,

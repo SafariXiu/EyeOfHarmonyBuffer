@@ -287,7 +287,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
                     addToPowerTally(powerForRecipe);
                     addToRecipeTally(calculatedParallels);
-                    setCalculatedEut(0);
+                    overwriteCalculatedEut(0);
                     plasmaRecipe = null;
                     recipeInProgress = false;
                     return CheckRecipeResultRegistry.SUCCESSFUL;
@@ -308,7 +308,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
             };
             wrappedLogic
                 .setEuModifier(0.0F)
-                .setMaxParallelSupplier(() -> 2000000);
+                .setMaxParallelSupplier(() -> 200000);
 
             cir.setReturnValue(wrappedLogic);
             cir.cancel();

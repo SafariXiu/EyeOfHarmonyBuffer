@@ -63,6 +63,11 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     @Override
+    public boolean explodesOnComponentBreak(ItemStack aStack) {
+        return false;
+    }
+
+    @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
         repairMachine();
         buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 1, 1, 0);
@@ -206,7 +211,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     @Override
-    protected int getMaxParallelRecipes() {
+    public int getMaxParallelRecipes() {
         return 64;
     }
 

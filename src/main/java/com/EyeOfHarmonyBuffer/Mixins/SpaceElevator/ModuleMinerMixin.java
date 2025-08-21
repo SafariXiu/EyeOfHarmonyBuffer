@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 
 import gregtech.api.enums.Materials;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;

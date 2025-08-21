@@ -27,7 +27,7 @@ public abstract class LargeFusionMixin extends MTETooltipMultiBlockBaseEM
     public abstract int getMaxPara();
 
     @Shadow
-    public abstract int extraPara(int startEnergy);
+    public abstract int extraPara(long startEnergy);
 
     protected LargeFusionMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
