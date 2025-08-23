@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.utils;
 
+import static com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig.SubstanceReshapingDevice;
+
 public class WriteOnceOnly {
 
     private Boolean value = null;
@@ -18,5 +20,9 @@ public class WriteOnceOnly {
 
     public boolean isSet() {
         return value != null;
+    }
+
+    public static boolean isSubstanceReshapingDeviceEnabled() {
+        return SubstanceReshapingDevice.isSet() && SubstanceReshapingDevice.get();
     }
 }

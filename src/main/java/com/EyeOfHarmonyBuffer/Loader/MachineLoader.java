@@ -37,7 +37,7 @@ public class MachineLoader {
         GTCMItemList.SolarEnergyArray.set(SolarEnergyArrays);
 
         SubstanceReshapingDevices = new EOHB_SubstanceReshapingDevice(
-            20004,
+            23004,
             "NameCoreDrill",
             TextLocalization.NameSubstanceReshapingDevice
         ).getStackForm(1);
