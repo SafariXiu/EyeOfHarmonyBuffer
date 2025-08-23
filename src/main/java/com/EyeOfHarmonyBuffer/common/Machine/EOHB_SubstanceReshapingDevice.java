@@ -61,23 +61,42 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
 
     @Override
     public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, 4, 4, 0);
+        if(isSubstanceReshapingDeviceEnabled()){
+            return checkPiece(STRUCTURE_PIECE_MAIN, 4, 4, 0);
+        }
+        return checkPiece(STRUCTURE_PIECE_MAIN, 19, 19, 0);
     }
 
     @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
         repairMachine();
-        buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 4, 4, 0);
+        if(isSubstanceReshapingDeviceEnabled()){
+            buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 4, 4, 0);
+        } else {
+            buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, 19, 19, 0);
+        }
     }
 
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (this.mMachine) return -1;
+        if(isSubstanceReshapingDeviceEnabled()){
+            return this.survivalBuildPiece(
+                STRUCTURE_PIECE_MAIN,
+                stackSize,
+                4,
+                4,
+                0,
+                elementBudget,
+                env,
+                false,
+                true);
+        }
         return this.survivalBuildPiece(
             STRUCTURE_PIECE_MAIN,
             stackSize,
-            4,
-            4,
+            19,
+            19,
             0,
             elementBudget,
             env,
@@ -149,7 +168,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                         'C',
                         buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
                             .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
-                            .casingIndex(getTextureIndex())
+                            .casingIndex(getCasingTextureIndex())
                             .dot(1)
                             .buildAndChain(
                                 ofBlock(ModBlocks.blockCasings3Misc, 2)
@@ -197,7 +216,13 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                     )
                     .addElement(
                         'C',
-                        ofBlock(ModBlocks.blockCasings2Misc,4)
+                        buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
+                            .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
+                            .casingIndex(getCasingTextureIndex())
+                            .dot(1)
+                            .buildAndChain(
+                                ofBlock(ModBlocks.blockCasings2Misc,4)
+                            )
                     )
                     .build();
             }
@@ -316,7 +341,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
         return new ITexture[] { casingTexturePages[0][12] };
     }
 
-    public int getTextureIndex() {
-        return TAE.getIndexFromPage(2, 2);
+    public byte getCasingTextureIndex() {
+        return (byte) TAE.GTPP_INDEX(11);
     }
 }
