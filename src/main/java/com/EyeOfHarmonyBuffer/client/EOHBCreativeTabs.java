@@ -13,17 +13,15 @@ public class EOHBCreativeTabs {
     /**
      * Creative Tab for MetaItem01
      */
-    public static final CreativeTabs tabMetaItem01 = new CreativeTabs(
-        texter("EOHB Meta Items 1", "itemGroup.EOHB.Meta.Items.1")) {
-
+    public static final CreativeTabs tabMetaItem01 = new CreativeTabs("EOHBMetaItems1") {
         @Override
         @SideOnly(Side.CLIENT)
         public Item getTabIconItem() {
             return BasicItems.MetaItem01;
         }
     };
-    public static final CreativeTabs tabGears = new CreativeTabs(texter("EOHBGears", "itemGroup.EOHBGears")) {
 
+    public static final CreativeTabs tabGears = new CreativeTabs("EOHBGears") {
         @Override
         @SideOnly(Side.CLIENT)
         public Item getTabIconItem() {
@@ -34,9 +32,7 @@ public class EOHBCreativeTabs {
     /**
      * Creative Tab for MetaBlocks
      */
-    public static final CreativeTabs TAB_META_BLOCKS = new CreativeTabs(
-        texter("EOHB Meta Blocks", "itemGroup.EOHB.Meta.Blocks")) {
-
+    public static final CreativeTabs TAB_META_BLOCKS = new CreativeTabs("EOHBMetaBlocks") {
         @Override
         @SideOnly(Side.CLIENT)
         public Item getTabIconItem() {
@@ -47,13 +43,11 @@ public class EOHBCreativeTabs {
     /**
      * Creative Tab for MetaBlock01
      */
-    public static final CreativeTabs tabGTCMGeneralTab = new CreativeTabs(texter("EOHB", "itemGroup.EOHB")) {
-
+    public static final CreativeTabs tabGTCMGeneralTab = new CreativeTabs("EOHB") {
         @Override
         @SideOnly(Side.CLIENT)
         public Item getTabIconItem() {
             return BasicItems.MetaItem01;
         }
     };
-
 }
