@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
+import goodgenerator.main.GoodGenerator;
 import gregtech.api.enums.TAE;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -29,16 +30,19 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import tconstruct.smeltery.blocks.GlassBlock;
+import tectech.thing.casing.TTCasingsContainer;
 
 import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabilizationRingCasingsUpgrade;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.WriteOnceOnly.isSubstanceReshapingDeviceEnabled;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
+import static goodgenerator.loader.Loaders.FRF_Coil_3;
 import static gregtech.api.GregTechAPI.*;
 import static gregtech.api.enums.HatchElement.*;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_DTPF_OFF;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
+import static tectech.thing.casing.TTCasingsContainer.sBlockCasingsTT;
 
 public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBase<EOHB_SubstanceReshapingDevice> {
 
@@ -53,6 +57,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     protected static final String STRUCTURE_PIECE_MAIN = "mainSubstanceReshapingDevice";
     protected static IStructureDefinition<EOHB_SubstanceReshapingDevice> STRUCTURE_DEFINITION = null;
     private int totalSpeedIncrement = 0;
+    protected static final int DIM_INJECTION_CASING = 13;
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
@@ -135,9 +140,9 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
         {"                                       ","                  DED                  ","                  DED                  ","D               DDEEEDD               D","E               EEEAEEE               E","D               DDEEEDD               D","                  DED                  ","                  DED                  ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                  DED                  "},
         {"                  DED                  ","                AA   AA                ","D               AA   AA               D","D              D       D              D","DCC    CC    CCE   F   ECC    CC    CCD","D              D       D              D","D               AA   AA               D","                AA   AA                ","                  DED                  ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                 DDDDD                 "},
         {"                  DED                  ","D               AA   AA               D","D               A     A               D","E    CC    CC  D       D    CC    CC  E","E              E   F   E              E","E  CC    CC    D       D  CC    CC    E","D               A     A               D","D               AA   AA               D","                  DED                  ","                                       ","                                       ","                 D   D                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                 DEEED                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                 DEEED                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                DDEEEDD                "},
-        {"                DDEHEDD                ","D              D       D              D","E  CC    CC    D       D  CC    CC    E","E              E       E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E       E              E","E    CC    CC  D       D    CC    CC  E","D              D       D              D","                DDEEEDD                ","                                       ","                                       ","                D     D                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DEEDEED                "},
-        {"                EEHHHEE                ","DCC    CC    CCED  F  DECC    CC    CCD","E              E   F   E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","GFFGFFGFFGFFGFFAFF G FFAFFGFFGFFGFFGFFG","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E   F   E              E","DCC    CC    CCED  F  DECC    CC    CCD","                EEEHEEE                ","                D     D                ","                D  G  D                ","                D  G  D                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DE G ED                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DE G ED                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DEDGDED                "},
-        {"                DDEHEDD                ","D              D       D              D","E    CC    CC  D       D    CC    CC  E","E              E       E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E       E              E","E  CC    CC    D       D  CC    CC    E","D              D       D              D","                DDEEEDD                ","                                       ","                                       ","                D     D                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DEEDEED                "},
+        {"                DDEEEDD                ","D              D       D              D","E  CC    CC    D       D  CC    CC    E","E              E       E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E       E              E","E    CC    CC  D       D    CC    CC  E","D              D       D              D","                DDEEEDD                ","                                       ","                                       ","                D     D                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DEEDEED                "},
+        {"                EEE~EEE                ","DCC    CC    CCED  F  DECC    CC    CCD","E              E   F   E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","GFFGFFGFFGFFGFFAFF G FFAFFGFFGFFGFFGFFG","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E   F   E              E","DCC    CC    CCED  F  DECC    CC    CCD","                EEEEEEE                ","                D     D                ","                D  G  D                ","                D  G  D                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DE G ED                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DE G ED                ","                DB F BD                ","                DB F BD                ","                DB F BD                ","                DEDGDED                "},
+        {"                DDEEEDD                ","D              D       D              D","E    CC    CC  D       D    CC    CC  E","E              E       E              E","DAAAAAAAAAAAAAAE       EAAAAAAAAAAAAAAD","E              E       E              E","E  CC    CC    D       D  CC    CC    E","D              D       D              D","                DDEEEDD                ","                                       ","                                       ","                D     D                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DE   ED                ","                 B   B                 ","                 B   B                 ","                 B   B                 ","                DEEDEED                "},
         {"                  DED                  ","D               AA    A               D","D               A     A               D","E  CC    CC    D       D  CC    CC    E","E              E   F   E              E","E    CC    CC  D       D    CC    CC  E","D               A     A               D","D               AA   AA               D","                  DED                  ","                                       ","                                       ","                 D   D                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                 DEEED                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                 DEEED                 ","                 EBBBE                 ","                 EBBBE                 ","                 EBBBE                 ","                DDEEEDD                "},
         {"                  DED                  ","                AA   AA                ","D               AA   AA               D","D              D       D              D","DCC    CC    CCE   F   ECC    CC    CCD","D              D       D              D","D               AA   AA               D","                AA   AA                ","                  DED                  ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                  DDD                  ","                   D                   ","                   D                   ","                   D                   ","                 DDDDD                 "},
         {"                                       ","                  DED                  ","                  DED                  ","D               DDEEEDD               D","E               EEEAEEE               E","D               DDEEEDD               D","                  DED                  ","                  DED                  ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                                       ","                  DED                  "},
@@ -165,17 +170,15 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                 STRUCTURE_DEFINITION = IStructureDefinition.<EOHB_SubstanceReshapingDevice>builder()
                     .addShape(STRUCTURE_PIECE_MAIN,transpose(shapeMain2))
                     .addElement(
-                        'C',
-                        buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
-                            .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
-                            .casingIndex(getCasingTextureIndex())
-                            .dot(1)
-                            .buildAndChain(
-                                ofBlock(ModBlocks.blockCasings3Misc, 2)
-                            )
+                        'A',
+                        ofBlock(ItemRegistry.bw_realglas2,0)
                     )
                     .addElement(
-                        'A',
+                        'B',
+                        ofBlock(FRF_Coil_3,0)
+                    )
+                    .addElement(
+                        'C',
                         withChannel(
                             "SingularityStabilizationRingCasings",
                             ofBlocksTiered(
@@ -195,10 +198,32 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                                     Pair.of(SingularityStabilizationRingCasingsUpgrade, 11),
                                     Pair.of(SingularityStabilizationRingCasingsUpgrade, 12),
                                     Pair.of(SingularityStabilizationRingCasingsUpgrade, 13)
-                                    ),
+                                ),
                                 0,
                                 (m, t) -> m.totalSpeedIncrement = t,
                                 m -> m.totalSpeedIncrement)))
+                    .addElement(
+                        'D',
+                        ofBlock(sBlockCasings1,12)
+                    )
+                    .addElement(
+                        'E',
+                        buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
+                            .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
+                            .casingIndex(DIM_INJECTION_CASING)
+                            .dot(1)
+                            .buildAndChain(
+                                ofBlock(sBlockCasings1, 13)
+                            )
+                    )
+                    .addElement(
+                        'F',
+                        ofBlock(sBlockCasings1,14)
+                    )
+                    .addElement(
+                        'G',
+                        ofBlock(sBlockCasingsTT,9)
+                    )
                     .build();
             }
             return STRUCTURE_DEFINITION;
