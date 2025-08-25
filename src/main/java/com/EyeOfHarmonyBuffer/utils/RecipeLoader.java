@@ -1,9 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
-import com.EyeOfHarmonyBuffer.Recipe.AssemblerRecipes;
-import com.EyeOfHarmonyBuffer.Recipe.SubstanceReshapingDeviceRecipes;
-import com.EyeOfHarmonyBuffer.Recipe.MachineBlockRecipes;
-import com.EyeOfHarmonyBuffer.Recipe.SpaceAssemblerRecipes;
+import com.EyeOfHarmonyBuffer.Recipe.*;
 
 public class RecipeLoader {
 

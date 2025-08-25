@@ -4,8 +4,7 @@ import com.EyeOfHarmonyBuffer.utils.SimpleStringSpecialFormatter;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMapBackend;
 import gregtech.api.recipe.RecipeMapBuilder;
-import com.EyeOfHarmonyBuffer.common.RecipeMap.CoreDrillFrontend;
-import gregtech.nei.formatter.SimpleSpecialValueFormatter;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.SubstanceReshapingDeviceFrontend;
 
 public class RecipeMaps {
 
@@ -15,6 +14,6 @@ public class RecipeMaps {
         .neiRecipeBackgroundSize(170, 185)
         .useCustomFilterForNEI()
         .neiSpecialInfoFormatter(new SimpleStringSpecialFormatter("SubstanceReshapingDeviceRecipes"))
-        .frontend(CoreDrillFrontend::new)
+        .frontend(SubstanceReshapingDeviceFrontend::new)
         .build();
 }

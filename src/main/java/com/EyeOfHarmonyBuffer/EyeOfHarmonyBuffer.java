@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
+import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
@@ -87,6 +88,7 @@ public class EyeOfHarmonyBuffer {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
+        AssemblyLineRecipesLoad.RecipeLoad();
 
         new SpaceModuleRecipeLoader().run();
     }

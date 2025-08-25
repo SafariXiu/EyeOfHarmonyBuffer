@@ -10,12 +10,12 @@ import gregtech.common.gui.modularui.UIHelper;
 
 import java.util.List;
 
-public class CoreDrillFrontend extends RecipeMapFrontend {
+public class SubstanceReshapingDeviceFrontend extends RecipeMapFrontend {
 
     private static final int xDirMaxCount = 4; // 每行最大槽位数
     private static final int yOrigin = 20; // Y 轴起始位置
 
-    public CoreDrillFrontend(BasicUIPropertiesBuilder uiPropertiesBuilder, NEIRecipePropertiesBuilder neiPropertiesBuilder) {
+    public SubstanceReshapingDeviceFrontend(BasicUIPropertiesBuilder uiPropertiesBuilder, NEIRecipePropertiesBuilder neiPropertiesBuilder) {
         super(uiPropertiesBuilder, neiPropertiesBuilder);
     }
 

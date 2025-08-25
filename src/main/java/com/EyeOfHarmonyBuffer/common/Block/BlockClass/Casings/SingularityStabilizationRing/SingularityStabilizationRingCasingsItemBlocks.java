@@ -14,7 +14,7 @@ public class SingularityStabilizationRingCasingsItemBlocks extends ItemBlockBase
 
     public SingularityStabilizationRingCasingsItemBlocks(Block aBlock) {
         super(aBlock);
-        this.setCreativeTab(EOHBCreativeTabs.tabGTCMGeneralTab);
+        this.setCreativeTab(EOHBCreativeTabs.TAB_META_BLOCKS);
     }
 
     @SideOnly(Side.CLIENT)

@@ -28,7 +28,7 @@ public class SingularityStabilizationRingCasings extends BlockBase {
         this.setHardness(9.0F);
         this.setResistance(5.0F);
         this.setHarvestLevel("wrench", 1);
-        this.setCreativeTab(EOHBCreativeTabs.tabGTCMGeneralTab);
+        this.setCreativeTab(EOHBCreativeTabs.TAB_META_BLOCKS);
         SingularityStabilizationRingCasingsSet.add(0);
         GregTechAPI.registerMachineBlock(this, -1);
     }

@@ -1,8 +1,12 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import gregtech.api.util.recipe.Scanning;
+import gtPlusPlus.core.material.MaterialsElements;
+import gtPlusPlus.core.material.Particle;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -13,10 +17,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
+import static gregtech.api.util.GTRecipeConstants.*;
+import static gtPlusPlus.core.material.Particle.*;
+import static gtPlusPlus.core.material.Particle.GRAVITON;
+import static gtPlusPlus.xmod.gregtech.api.enums.GregtechItemList.Controller_ElementalDuplicator;
+import static tectech.thing.CustomItemList.*;
 
 public final class AssemblerRecipes implements IRecipePool {
 
