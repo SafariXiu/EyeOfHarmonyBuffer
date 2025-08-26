@@ -10,6 +10,7 @@ import gtPlusPlus.core.material.Particle;
 
 import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
 import static com.EyeOfHarmonyBuffer.utils.WriteOnceOnly.isSubstanceReshapingDeviceEnabled;
+import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTRecipeBuilder.*;
 import static gregtech.api.util.GTRecipeConstants.*;
 import static gtPlusPlus.core.material.Particle.*;
@@ -20,7 +21,7 @@ public final class AssemblyLineRecipesLoad {
 
     public static void RecipeLoad(){
 
-        if(isSubstanceReshapingDeviceEnabled()){
+        if(!isSubstanceReshapingDeviceEnabled()){
             GTValues.RA.stdBuilder()
                 .metadata(RESEARCH_ITEM, Controller_ElementalDuplicator.get(1))
                 .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
@@ -57,7 +58,20 @@ public final class AssemblyLineRecipesLoad {
                 .duration(2000 * SECONDS)
                 .addTo(AssemblyLine);
         } else {
-
+            GTValues.RA.stdBuilder()
+                .itemInputs(
+                    ItemList.Casing_RobustTungstenSteel.get(8),
+                    ItemList.Emitter_EV.get(8),
+                    ItemList.Sensor_EV.get(8),
+                    ItemList.Field_Generator_EV.get(8),
+                    GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16)
+                )
+                .itemOutputs(
+                    GTCMItemList.SubstanceReshapingDevice.get(1)
+                )
+                .eut(TierEU.RECIPE_EV)
+                .duration(30 * SECONDS)
+                .addTo(assemblerRecipes);
         }
 
     }
