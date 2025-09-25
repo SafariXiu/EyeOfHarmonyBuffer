@@ -179,19 +179,19 @@ public class MainConfig {
             .getBoolean(IndustrialCuttingMachineEnable);
 
         ResearchCompleterEnable = config
-            .get("其他机枪","奥法阐释者",ResearchCompleterEnable,"开启后奥法阐释者不再消耗VIS")
+            .get("其他机器","奥法阐释者",ResearchCompleterEnable,"开启后奥法阐释者不再消耗VIS")
             .getBoolean(ResearchCompleterEnable);
 
         WoodenFusionReactorEnable = config
-            .get("123123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
+            .get("123Technology","压缩原木聚变反应堆Mk 0",WoodenFusionReactorEnable,"开启后压缩原木聚变反应堆Mk 0所有工作都会在10tick内完成，并且拥有int并行,配方大幅度增强")
             .getBoolean(WoodenFusionReactorEnable);
 
         MegaNineInOneEnable = config
-            .get("123123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .get("123Technology","巨型九合一",MegaNineInOneEnable,"开启后巨型九合一运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(MegaNineInOneEnable);
 
         MegaIsaFactoryEnable = config
-            .get("123123Technology","艾萨集成工厂",MegaIsaFactoryEnable,"开启后艾萨集成工厂运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
+            .get("123Technology","艾萨集成工厂",MegaIsaFactoryEnable,"开启后艾萨集成工厂运行配方不再有任何限制，不再消耗电力，所有工作都会在10tick内完成，并且拥有int并行")
             .getBoolean(MegaIsaFactoryEnable);
 
         CircuitAssemblyLineEnable = config
@@ -468,7 +468,7 @@ public class MainConfig {
             .getBoolean(UUMixin);
 
         BioLabMixin = config
-            .get("其他机器", "生物实验室", BioLabMixin, "开启后所有抽卡成功率为百分百")
+            .get("其他机器", "生物实验室", BioLabMixin, "开启后生物实验室所有抽卡成功率为百分百，附带一点奇妙的小玩意")
             .getBoolean(BioLabMixin);
 
         HIPCompressorEnable = config
