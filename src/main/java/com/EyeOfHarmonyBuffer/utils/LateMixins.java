@@ -30,7 +30,7 @@ public class LateMixins implements ILateMixinLoader {
             "BioLab.BioLabAdvancedMixin",
             "BioLab.BioLabMixin",
             "BioVatMixin",
-            "BioLabIncubationModuleMixin",
+            "BioLab.BioLabIncubationModuleMixin",
             "GTPPMultiBlockBaseMixin",
             "HatchElementBuilderMixin",
             "BlackHoleCompressorMixin",
