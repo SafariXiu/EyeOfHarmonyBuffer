@@ -468,7 +468,7 @@ public class MainConfig {
             .getBoolean(UUMixin);
 
         BioLabMixin = config
-            .get("其他机器", "生物实验室", BioLabMixin, "开启后生物实验室所有抽卡成功率为百分百，附带一点奇妙的小玩意")
+            .get("其他机器", "生物实验室", BioLabMixin, "开启后生物实验室所有抽卡成功率为百分百")
             .getBoolean(BioLabMixin);
 
         HIPCompressorEnable = config
