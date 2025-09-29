@@ -15,12 +15,15 @@ public abstract class SpaceMiningRecipesMixin2 {
     @Shadow
     @Final
     private static ItemStack[] MINING_DRILLS;
+
     @Shadow
     @Final
     private static ItemStack[] MINING_RODS;
+
     @Shadow
     @Final
     private static ItemStack[] MINING_DRONES;
+
 
 
     /**
