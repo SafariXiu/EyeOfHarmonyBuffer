@@ -12,9 +12,15 @@ import org.spongepowered.asm.mixin.*;
 @Mixin(value = SpaceMiningRecipes.class,remap = false)
 public abstract class SpaceMiningRecipesMixin2 {
 
-    @Shadow @Final private static ItemStack[] MINING_DRILLS;
-    @Shadow @Final private static ItemStack[] MINING_RODS;
-    @Shadow @Final private static ItemStack[] MINING_DRONES;
+    @Shadow
+    @Final
+    private static ItemStack[] MINING_DRILLS;
+    @Shadow
+    @Final
+    private static ItemStack[] MINING_RODS;
+    @Shadow
+    @Final
+    private static ItemStack[] MINING_DRONES;
 
 
     /**
