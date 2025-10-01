@@ -68,7 +68,7 @@ public class EyeOfHarmonyBuffer {
 
         Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
 
-        MaterialLoader.load();
+        MaterialLoader.loadPreInit();
 
         proxy.preInit(event);
     }
