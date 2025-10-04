@@ -69,7 +69,7 @@ dependencies {
 
     implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.7.2-dev.jar"))
     implementation rfg.deobf(files("libs/OTHTechnology-2.1.4+2.8.0-dev.jar"))
-    compileOnly rfg.deobf(files("libs/programmablehatches-0.1.2p33.jar"))
+    implementation rfg.deobf(files("libs/programmablehatches-0.1.3p38-dev.jar"))
 
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/ae2thing-v1.68.jar"))
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/nechar-GTNH 2.7.0.jar"))
