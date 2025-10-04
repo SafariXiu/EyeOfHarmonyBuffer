@@ -68,7 +68,7 @@ dependencies {
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:StructureLib:1.4.23:dev')
 
     compileOnly rfg.deobf(files("libs/TwistSpaceTechnology-0.6.4.jar"))
-    compileOnly rfg.deobf(files("libs/123Technology.2.0.2a.jar"))
+    implementation rfg.deobf(files("libs/OTHTechnology-2.1.4+2.8.0-dev.jar"))
     compileOnly rfg.deobf(files("libs/programmablehatches-0.1.2p33.jar"))
 
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/ae2thing-v1.68.jar"))

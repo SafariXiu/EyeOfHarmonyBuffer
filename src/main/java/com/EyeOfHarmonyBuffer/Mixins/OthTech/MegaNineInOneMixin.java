@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.Mixins.OthTech;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Mixins.Invoker.MegaNineInOneInvoker;
 import com.newmaa.othtech.machine.OTEMegaNineInOne;
-import com.newmaa.othtech.machine.machineclass.OTH_MultiMachineBase;
+import com.newmaa.othtech.machine.machineclass.OTHMultiMachineBase;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
@@ -25,7 +25,7 @@ import javax.annotation.Nullable;
 import java.util.stream.Stream;
 
 @Mixin(value = OTEMegaNineInOne.class,remap = false)
-public abstract class MegaNineInOneMixin extends OTH_MultiMachineBase<OTEMegaNineInOne> {
+public abstract class MegaNineInOneMixin extends OTHMultiMachineBase<OTEMegaNineInOne> {
 
     public MegaNineInOneMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
