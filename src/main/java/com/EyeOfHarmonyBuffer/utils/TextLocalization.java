@@ -72,6 +72,18 @@ public class TextLocalization {
     public static final String Tooltip_SubstanceReshapingDevice_10;
     public static final String SubstanceReshapingDeviceRecipes;
 
+    public static final String NameBlueDogMachine;
+    public static final String Tooltip_BlueDogMachine_MachineType;
+    public static final String Tooltip_BlueDogMachine_Controller;
+    public static final String Tooltip_BlueDogMachine_00;
+    public static final String Tooltip_BlueDogMachine_01;
+    public static final String Tooltip_BlueDogMachine_02;
+    public static final String Tooltip_BlueDogMachine_03;
+    public static final String Tooltip_BlueDogMachine_04;
+    public static final String Tooltip_BlueDogMachine_05;
+    public static final String Tooltip_BlueDogMachine_06;
+
+
     public TextLocalization() {
     }
 
@@ -143,7 +155,7 @@ public class TextLocalization {
 
         //物质重塑仪
         NameSubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device", "NameSubstanceReshapingDevice");
-        Tooltip_SubstanceReshapingDevice_MachineType = TextHandler.texter("Core Drill", "Tooltip_SubstanceReshapingDevice_MachineType");
+        Tooltip_SubstanceReshapingDevice_MachineType = TextHandler.texter("Substance Reshaping Device", "Tooltip_SubstanceReshapingDevice_MachineType");
         Tooltip_SubstanceReshapingDevice_Controller = TextHandler.texter("Controller block for the Core Drill", "Tooltip_SubstanceReshapingDevice_Controller");
         Tooltip_SubstanceReshapingDevice_00 = TextHandler.texter("Void begets all things, and chaos forges gods. All matter can be reshaped, but great power cannot be defied.", "Tooltip_SubstanceReshapingDevice_00");
         Tooltip_SubstanceReshapingDevice_01 = TextHandler.texter("The laws of the universe are both a cage and a shackle. All things follow the path of entropy—life will inevitably decay, stars will burn out, and dust will return to dust. But we refuse to accept this fate.", "Tooltip_SubstanceReshapingDevice_01");
@@ -157,5 +169,18 @@ public class TextLocalization {
         Tooltip_SubstanceReshapingDevice_09 = TextHandler.texter("But remember this—creators are also destroyers.","Tooltip_SubstanceReshapingDevice_09");
         Tooltip_SubstanceReshapingDevice_10 = TextHandler.texter("\"When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim.\"","Tooltip_SubstanceReshapingDevice_10");
         SubstanceReshapingDeviceRecipes = TextHandler.texter("Singularity Stabilization Ring Casings Live:  %s","SubstanceReshapingDeviceRecipes");
+
+        //蓝狗喷泉
+        NameBlueDogMachine = TextHandler.texter("Blue Dog Fountain","NameBlueDogMachine");
+        Tooltip_BlueDogMachine_MachineType = TextHandler.texter("Blue Dog Fountain","Tooltip_BlueDogMachine_MachineType");
+        Tooltip_BlueDogMachine_Controller = TextHandler.texter("Controller Block of Blue Dog Fountain","Tooltip_BlueDogMachine_Controller");
+        Tooltip_BlueDogMachine_00 = TextHandler.texter("In honor of BlueDog — the legendary creator of unofficial mods!","Tooltip_BlueDogMachine_00");
+        Tooltip_BlueDogMachine_01 = TextHandler.texter("A legendary device that turns regular water into ultra-pure water — with nothing else!\n" +
+            "Rumor has it the idea came from a team outing…","Tooltip_BlueDogMachine_01");
+        Tooltip_BlueDogMachine_02 = TextHandler.texter("They say if you place some curious items inside the machine’s controller, you might witness surprising results!","Tooltip_BlueDogMachine_02");
+        Tooltip_BlueDogMachine_03 = TextHandler.texter("Oh, and you’d better not look too closely at where the water comes out… It’s not exactly elegant.","Tooltip_BlueDogMachine_03");
+        Tooltip_BlueDogMachine_04 = TextHandler.texter("“He doesn’t look very comfortable, does he?”","Tooltip_BlueDogMachine_04");
+        Tooltip_BlueDogMachine_05 = TextHandler.texter("“Not really. He might actually be enjoying it…”","Tooltip_BlueDogMachine_05");
+        Tooltip_BlueDogMachine_06 = TextHandler.texter("Enjoy yourself — you’re definitely going to like him!","Tooltip_BlueDogMachine_06");
     }
 }

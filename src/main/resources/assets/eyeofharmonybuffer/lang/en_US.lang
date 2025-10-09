@@ -79,6 +79,16 @@ Tooltip_SubstanceReshapingDevice_08=If any recipe exceeds 64 units in operation,
 Tooltip_SubstanceReshapingDevice_09=But remember this—creators are also destroyers.
 Tooltip_SubstanceReshapingDevice_10="When the gods fall silent, mortals may seize the mantle of power. But remember, the mantle was never truly ours to claim."
 SubstanceReshapingDeviceRecipes=Singularity Stabilization Ring Casings Live:  %s
+NameBlueDogMachine=Blue Dog Fountain
+Tooltip_BlueDogMachine_MachineType=Blue Dog Fountain
+Tooltip_BlueDogMachine_Controller=Controller Block of Blue Dog Fountain
+Tooltip_BlueDogMachine_00=In honor of BlueDog — the legendary creator of unofficial mods!
+Tooltip_BlueDogMachine_01=A legendary device that turns regular water into ultra-pure water — with nothing else!Rumor has it the idea came from a team outing…
+Tooltip_BlueDogMachine_02=They say if you place some curious items inside the machine’s controller, you might witness surprising results!
+Tooltip_BlueDogMachine_03=Oh, and you’d better not look too closely at where the water comes out… It’s not exactly elegant.
+Tooltip_BlueDogMachine_04=“He doesn’t look very comfortable, does he?”
+Tooltip_BlueDogMachine_05=“Not really. He might actually be enjoying it…”
+Tooltip_BlueDogMachine_06=Enjoy yourself — you’re definitely going to like him!
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 
 #RecipeMap

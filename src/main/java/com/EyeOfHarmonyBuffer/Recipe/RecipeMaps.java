@@ -16,4 +16,20 @@ public class RecipeMaps {
         .neiSpecialInfoFormatter(new SimpleStringSpecialFormatter("SubstanceReshapingDeviceRecipes"))
         .frontend(SubstanceReshapingDeviceFrontend::new)
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> BlueDogMachine = RecipeMapBuilder
+        .of("eohb.recipe.BlueDogFountain")
+        .maxIO(4,16,4,16)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(SubstanceReshapingDeviceFrontend::new)
+        .build();
+
+    public static final RecipeMap<RecipeMapBackend> BlueDogMachineMax = RecipeMapBuilder
+        .of("eohb.recipe.BlueDogFountainMAX")
+        .maxIO(4,16,4,16)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(SubstanceReshapingDeviceFrontend::new)
+        .build();
 }

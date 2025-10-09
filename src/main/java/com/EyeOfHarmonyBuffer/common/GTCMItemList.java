@@ -13,6 +13,7 @@ public enum GTCMItemList {
     WindTurbines,
     SolarEnergyArray,
     SubstanceReshapingDevice,
+    BlueDogMachines,
 
     SingularityStabilizationRingCasingsLV,
     SingularityStabilizationRingCasingsMV,
