@@ -5,6 +5,7 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMapBackend;
 import gregtech.api.recipe.RecipeMapBuilder;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.SubstanceReshapingDeviceFrontend;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.BlueDogDeviceFrontend;
 
 public class RecipeMaps {
 
@@ -19,18 +20,18 @@ public class RecipeMaps {
 
     public static final RecipeMap<RecipeMapBackend> BlueDogMachine = RecipeMapBuilder
         .of("eohb.recipe.BlueDogFountain")
-        .maxIO(4,16,4,16)
+        .maxIO(0,0,1,16)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
-        .frontend(SubstanceReshapingDeviceFrontend::new)
+        .frontend(BlueDogDeviceFrontend::new)
         .build();
 
     public static final RecipeMap<RecipeMapBackend> BlueDogMachineMax = RecipeMapBuilder
         .of("eohb.recipe.BlueDogFountainMAX")
-        .maxIO(4,16,4,16)
+        .maxIO(0,0,1,16)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
-        .frontend(SubstanceReshapingDeviceFrontend::new)
+        .frontend(BlueDogDeviceFrontend::new)
         .disableRegisterNEI()
         .build();
 }

@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
-import appeng.integration.modules.GT;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.Materials;
