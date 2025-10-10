@@ -11,6 +11,7 @@ public class RecipeLoader {
             new SpaceAssemblerRecipes(),
             new MachineBlockRecipes(),
             new SubstanceReshapingDeviceRecipes(),
+            new BlueDogMachineRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

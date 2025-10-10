@@ -31,5 +31,6 @@ public class RecipeMaps {
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
         .frontend(SubstanceReshapingDeviceFrontend::new)
+        .disableRegisterNEI()
         .build();
 }
