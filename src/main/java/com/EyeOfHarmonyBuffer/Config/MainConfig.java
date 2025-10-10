@@ -116,8 +116,21 @@ public class MainConfig {
     public static boolean GTPPMachineExoEnergyHatchFixEnable = false;
     public static boolean AllMachineUseExoEnergyHatchEnable = false;
 
-
     private static Configuration config;
+
+    static {
+        File configDir = new File("config/EyeOfHarmonyBuffer");
+        if (!configDir.exists()) {
+            configDir.mkdirs();
+        }
+
+        File mainConfigFile = new File(configDir, "main.cfg");
+
+        if (config == null) {
+            config = new Configuration(mainConfigFile);
+            loadConfig();
+        }
+    }
 
     public static void init(File configFile) {
         if (config == null) {
