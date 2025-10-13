@@ -19,6 +19,8 @@ public class TextLocalization {
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
     public static final String EOHB_Starry_Miracle_Project;
+    public static final String EOHB_Client_PlayerJoin00;
+    public static final String EOHB_Client_PlayerJoin01;
 
     public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
@@ -112,6 +114,9 @@ public class TextLocalization {
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
 
+        //载入提示性文本
+        EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_PlayerJoin00");
+        EOHB_Client_PlayerJoin01 = TextHandler.texter("Remember to check your config file to see which features you’ve actually turned on — right now, everything’s snoozing by default!","EOHB_Client_PlayerJoin01");
 
         //大型贸易机
         NameVendingMachines = TextHandler.texter("Vending Machines", "NameVendingMachines");

@@ -13,6 +13,8 @@ add_DynamoHatch=任意外壳
 add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
+EOHB_Client_PlayerJoin00=欢迎使用EOHB！
+EOHB_Client_PlayerJoin01=记得去配置文件里面查看你开启了哪些功能，我们现在所有功能默认关闭了！
 itemGroup.EOHBMetaItems1=EOHB的物品们
 itemGroup.EOHBGears=EOHBGears
 itemGroup.EOHBMetaBlocks=EOHB的方块们
@@ -94,4 +96,3 @@ GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不�
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=物质重塑仪
 eohb.recipe.BlueDogFountain=蓝狗喷泉
-

@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
+import com.EyeOfHarmonyBuffer.Events.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
@@ -13,6 +14,7 @@ import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import net.minecraft.launchwrapper.Launch;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -71,6 +73,10 @@ public class EyeOfHarmonyBuffer {
         MaterialLoader.loadPreInit();
 
         proxy.preInit(event);
+
+        if (event.getSide().isClient()) {
+            MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
+        }
     }
 
     @Mod.EventHandler
