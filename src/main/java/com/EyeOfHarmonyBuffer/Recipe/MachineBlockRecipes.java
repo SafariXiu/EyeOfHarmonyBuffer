@@ -62,12 +62,12 @@ public final class MachineBlockRecipes implements IRecipePool {
         //大型太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(AdvancedSolarPanel.ID, "BlockAdvSolarPanel",64,3),
-                getModItem(AdvancedSolarPanel.ID, "BlockAdvSolarPanel",64,2),
-                getModItem(AdvancedSolarPanel.ID, "BlockAdvSolarPanel",64,1),
-                getModItem(AdvancedSolarPanel.ID, "BlockAdvSolarPanel",64,0),
                 GTOreDictUnificator.get(OrePrefixes.plateDense, Materials.SiliconSG,16),
-                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.Superconductor,16)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UV,16),
+                ItemList.Machine_HV_SolarPanel.get(64),
+                ItemList.Machine_EV_SolarPanel.get(64),
+                ItemList.Machine_IV_SolarPanel.get(64),
+                ItemList.Machine_LuV_SolarPanel.get(64)
             )
             .fluidInputs(
                 FluidRegistry.getFluidStack("molten.solderingalloy",4608)
