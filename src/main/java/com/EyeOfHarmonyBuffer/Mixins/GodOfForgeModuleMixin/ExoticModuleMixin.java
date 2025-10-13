@@ -107,7 +107,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
             );
 
             cir.setReturnValue(recipe);
-            cir.cancel(); // 拦截原方法，不再运行原逻辑
+            cir.cancel();
         }
     }
 
@@ -138,7 +138,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
             );
 
             cir.setReturnValue(recipe);
-            cir.cancel(); // 同样阻止原逻辑
+            cir.cancel();
         }
     }
 

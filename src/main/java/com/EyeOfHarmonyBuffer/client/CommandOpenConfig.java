@@ -13,16 +13,18 @@ import java.util.List;
 public class CommandOpenConfig implements ICommand {
 
     @Override
-    public String getCommandName() { return "openconfig"; }
+    public String getCommandName() {
+        return "openEOHBconfig";
+    }
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/openconfig <file.cfg>";
+        return "/openEOHBconfig <file.cfg|folder>";
     }
 
     @Override
     public List getCommandAliases() {
-        return Arrays.asList("ocfg");
+        return Arrays.asList("oeohbcfg");
     }
 
     @Override
@@ -32,11 +34,18 @@ public class CommandOpenConfig implements ICommand {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
+
         try {
-            File configDir = new File(Minecraft.getMinecraft().mcDataDir, "config");
+            File configDir = new File(Minecraft.getMinecraft().mcDataDir, "config/EyeOfHarmonyBuffer");
 
             if (!configDir.exists()) {
-                sender.addChatMessage(new ChatComponentText("§c配置文件夹不存在！"));
+                sender.addChatMessage(new ChatComponentText("§c配置目录不存在！"));
+                return;
+            }
+
+            if (args.length > 0 && args[0].equalsIgnoreCase("folder")) {
+                Desktop.getDesktop().open(configDir);
+                sender.addChatMessage(new ChatComponentText("§a已打开配置文件夹。"));
                 return;
             }
 
@@ -50,7 +59,7 @@ public class CommandOpenConfig implements ICommand {
             Desktop.getDesktop().open(target);
             sender.addChatMessage(new ChatComponentText("§a已打开：" + target.getName()));
         } catch (Exception e) {
-            sender.addChatMessage(new ChatComponentText("§c打开文件失败：" + e.getMessage()));
+            sender.addChatMessage(new ChatComponentText("§c打开配置失败：" + e.getMessage()));
         }
     }
 

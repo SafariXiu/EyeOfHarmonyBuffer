@@ -9,6 +9,9 @@ import gregtech.common.tileentities.machines.multi.purification.MTEPurificationU
 import journeymap.shadow.org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = MTEPurificationUnitOzonation.class, remap = false)
 public abstract class Grade2WaterPurificationMixin extends MTEPurificationUnitBase<MTEPurificationUnitOzonation>
@@ -17,21 +20,16 @@ public abstract class Grade2WaterPurificationMixin extends MTEPurificationUnitBa
         super(aID, aName, aNameRegional);
     }
 
-    /**
-     * @author eyeofharmonybuffer
-     * @reason 修改判断逻辑，移除臭氧检查确保每次运行成功
-     */
-    @Overwrite
-    @NotNull
-    @Override
-    public CheckRecipeResult checkProcessing() {
-        if(MainConfig.Grade2WaterPurificationEnabled){
-            CheckRecipeResult result = super.checkProcessing();
-            if (!result.wasSuccessful()) {
-                return result;
+    @Inject(method = "checkProcessing", at = @At("RETURN"), cancellable = true)
+    private void injectCheckProcessing(CallbackInfoReturnable<CheckRecipeResult> cir) {
+        if (MainConfig.Grade2WaterPurificationEnabled) {
+            CheckRecipeResult originalResult = cir.getReturnValue();
+
+            if (originalResult.wasSuccessful()) {
+                cir.setReturnValue(CheckRecipeResultRegistry.SUCCESSFUL);
+            } else {
+                cir.setReturnValue(originalResult);
             }
-            return CheckRecipeResultRegistry.SUCCESSFUL;
         }
-        return super.checkProcessing();
     }
 }

@@ -33,21 +33,13 @@ public abstract class LargeFusionMixin extends MTETooltipMultiBlockBaseEM
         super(aID, aName, aNameRegional);
     }
 
-    /**
-     * 覆盖 getSingleHatchPower 方法
-     * 去掉 extraPara(100) 和 / 32，保持功率计算为 电压 * 安培数。
-     *
-     * @author eyeofharmonybuffer
-     * @reason Simplify the power calculation by removing extraPara(100) and /32 to match current design.
-     */
-    @Overwrite
-    protected long getSingleHatchPower() {
-        if(MainConfig.LargeFusionMixin){
+    @Inject(method = "getSingleHatchPower", at = @At("RETURN"), cancellable = true)
+    private void injectGetSingleHatchPower(CallbackInfoReturnable<Long> cir) {
+        if (MainConfig.LargeFusionMixin) {
             MTELargeFusionComputer fusionComputer = (MTELargeFusionComputer) (Object) this;
-            return GTValues.V[fusionComputer.tier()] * fusionComputer.getMaxPara() * 32;
+            long customPower = GTValues.V[fusionComputer.tier()] * fusionComputer.getMaxPara() * 32L;
+            cir.setReturnValue(customPower);
         }
-
-        return GTValues.V[tier()] * getMaxPara() * extraPara(100) / 32;
     }
 
     @Inject(method = "maxEUStore", at = @At("RETURN"), cancellable = true)

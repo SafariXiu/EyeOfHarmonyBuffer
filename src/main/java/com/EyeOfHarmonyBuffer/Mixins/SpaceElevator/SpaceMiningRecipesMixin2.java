@@ -9,6 +9,9 @@ import gtnhintergalactic.recipe.SpaceMiningRecipes;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = SpaceMiningRecipes.class,remap = false)
 public abstract class SpaceMiningRecipesMixin2 {
@@ -25,21 +28,19 @@ public abstract class SpaceMiningRecipesMixin2 {
     @Final
     private static ItemStack[] MINING_DRONES;
 
-    /**
-     * @author EyeOfHarmonyBuffer
-     * @reason 重写太空钻机配方逻辑
-     */
-    @Overwrite
-    private static void addRecipesToDrones(
+    @Inject(method = "addRecipesToDrones*", at = @At("HEAD"), cancellable = true)
+    private static void injectAddRecipesToDrones(
         String asteroidName,
         ItemStack[] aItemInputs, FluidStack[] aFluidInputs,
         int[] aChances, Materials[] ores, OrePrefixes orePrefixes,
         int minSize, int maxSize, int minDistance, int maxDistance,
         int computationRequiredPerSec, int minModuleTier, int duration,
-        int EUt, int startDroneTier, int endDroneTier, int recipeWeight) {
+        int EUt, int startDroneTier, int endDroneTier, int recipeWeight,
+        CallbackInfo ci) {
 
-        if(MainConfig.SpaceMiningRecipesEnable){
+        if (MainConfig.SpaceMiningRecipesEnable) {
             ItemStack[] tItemInputs;
+
             if (aItemInputs == null) {
                 tItemInputs = new ItemStack[3];
             } else {
@@ -76,37 +77,11 @@ public abstract class SpaceMiningRecipesMixin2 {
                     minModuleTier,
                     (int) Math.ceil(duration / Math.sqrt(i - startDroneTier + 1)),
                     (int) Math.ceil(EUt * Math.sqrt(i - startDroneTier + 1)),
-                    recipeWeight);
+                    recipeWeight
+                );
             }
-        } else {
-            ItemStack[] tItemInputs;
-            if (aItemInputs == null) {
-                tItemInputs = new ItemStack[3];
-            } else {
-                tItemInputs = new ItemStack[aItemInputs.length + 3];
-                System.arraycopy(aItemInputs, 0, tItemInputs, 3, aItemInputs.length);
-            }
-            for (int i = startDroneTier; i <= endDroneTier; i++) {
-                tItemInputs[0] = MINING_DRONES[i];
-                tItemInputs[1] = MINING_DRILLS[i];
-                tItemInputs[2] = MINING_RODS[i];
-                IG_RecipeAdder.addSpaceMiningRecipe(
-                    asteroidName,
-                    tItemInputs,
-                    aFluidInputs,
-                    aChances,
-                    ores,
-                    orePrefixes,
-                    minSize + (int) GTUtility.powInt(2, i - startDroneTier) - 1,
-                    maxSize + (int) GTUtility.powInt(2, i - startDroneTier) - 1,
-                    minDistance,
-                    maxDistance,
-                    computationRequiredPerSec,
-                    minModuleTier,
-                    (int) Math.ceil(duration / Math.sqrt(i - startDroneTier + 1)),
-                    (int) Math.ceil(EUt * Math.sqrt(i - startDroneTier + 1)),
-                    recipeWeight);
-            }
+
+            ci.cancel();
         }
     }
 }
