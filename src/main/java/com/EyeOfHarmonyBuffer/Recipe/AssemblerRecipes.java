@@ -1,12 +1,8 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
-import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
-import gregtech.api.util.recipe.Scanning;
-import gtPlusPlus.core.material.MaterialsElements;
-import gtPlusPlus.core.material.Particle;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -17,16 +13,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
-import static gregtech.api.util.GTRecipeConstants.*;
-import static gtPlusPlus.core.material.Particle.*;
-import static gtPlusPlus.core.material.Particle.GRAVITON;
-import static gtPlusPlus.xmod.gregtech.api.enums.GregtechItemList.Controller_ElementalDuplicator;
-import static tectech.thing.CustomItemList.*;
 
 public final class AssemblerRecipes implements IRecipePool {
 
@@ -208,7 +198,7 @@ public final class AssemblerRecipes implements IRecipePool {
                     input,
                     ItemList.Electric_Motor_LV.get(1),
                     getModItem(Forestry.ID, "thermionicTubes", 4, 4),
-                    GTOreDictUnificator.get(OrePrefixes.circuit, Materials.Basic, 2),
+                    GTOreDictUnificator.get(OrePrefixes.circuit, Materials.LV, 2),
                     GTOreDictUnificator.get(OrePrefixes.cableGt01, Materials.Tin, 1)
                 )
                 .fluidInputs(
@@ -435,7 +425,7 @@ public final class AssemblerRecipes implements IRecipePool {
                 ItemList.Automation_ChestBuffer_LV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plateDense,Materials.Iron,3),
                 GTOreDictUnificator.get(OrePrefixes.plate,Materials.PulsatingIron,1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,4)
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LV,4)
             )
             .itemOutputs(
                 ItemList.Super_Chest_LV.get(1)
@@ -448,7 +438,7 @@ public final class AssemblerRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Hull_LV.get(1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LV,1),
                 ItemList.Conveyor_Module_LV.get(1),
                 new ItemStack(Blocks.chest,1)
             )
@@ -463,7 +453,7 @@ public final class AssemblerRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Casing_Tank_1.get(1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Basic,4),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LV,4),
                 ItemList.Electric_Pump_MV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate,Materials.Aluminium,2),
                 GTOreDictUnificator.get(OrePrefixes.plate,Materials.PulsatingIron,1)
@@ -479,7 +469,7 @@ public final class AssemblerRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Casing_Tank_6.get(1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,4),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LuV,4),
                 ItemList.Electric_Pump_IV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate,Materials.TungstenSteel,2),
                 ItemList.Field_Generator_EV.get(1)
@@ -495,7 +485,7 @@ public final class AssemblerRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Automation_ChestBuffer_LuV.get(1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,4),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LuV,4),
                 ItemList.Field_Generator_EV.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plateQuadruple,Materials.TungstenSteel,3)
             )
@@ -511,7 +501,7 @@ public final class AssemblerRecipes implements IRecipePool {
             .itemInputs(
                 ItemList.Hull_LuV.get(1),
                 ItemList.Conveyor_Module_LuV.get(1),
-                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.Master,1),
+                GTOreDictUnificator.get(OrePrefixes.circuit,Materials.LuV,1),
                 new ItemStack(Blocks.chest,1)
             )
             .itemOutputs(

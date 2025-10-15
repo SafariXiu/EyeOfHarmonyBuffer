@@ -14,7 +14,7 @@ public class CommandReloadConfig extends CommandBase {
 
     @Override
     public String getCommandName() {
-        return "eoh_reloadconfig"; // 命令名称
+        return "eoh_reloadconfig";
     }
 
     @Override
@@ -29,7 +29,6 @@ public class CommandReloadConfig extends CommandBase {
 
             DTPFReflect.DTPFUpdateValidFuels(MainConfig.DTPFOpen);
 
-            // 触发配置重载事件
             MinecraftForge.EVENT_BUS.post(new ConfigReloadedEvent());
 
             sender.addChatMessage(new ChatComponentText("配置文件已成功重新加载！"));
@@ -40,6 +39,6 @@ public class CommandReloadConfig extends CommandBase {
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 2; // 仅限管理员使用
+        return 2;
     }
 }

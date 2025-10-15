@@ -33,7 +33,7 @@ public class SpaceAssemblerRecipes implements IRecipePool {
                         getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1))
                     .specialValue(3)
                     .nbtSensitive()
-                    .duration(1 * MINUTES)
+                    .duration(MINUTES)
                     .eut(TierEU.RECIPE_UXV)
                     .addTo(IGRecipeMaps.spaceAssemblerRecipes);
             }
