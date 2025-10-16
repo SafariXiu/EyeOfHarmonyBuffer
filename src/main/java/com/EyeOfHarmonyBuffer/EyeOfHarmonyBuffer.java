@@ -3,13 +3,13 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
-import com.EyeOfHarmonyBuffer.Events.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
+import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.utils.RecipeLoader;

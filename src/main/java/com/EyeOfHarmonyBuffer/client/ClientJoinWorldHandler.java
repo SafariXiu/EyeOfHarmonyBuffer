@@ -8,6 +8,8 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatStyle;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+
 public class ClientJoinWorldHandler {
 
     private boolean shown = false;
@@ -17,13 +19,13 @@ public class ClientJoinWorldHandler {
         if (event.world.isRemote && event.entity instanceof EntityClientPlayerMP && !shown) {
             Minecraft mc = Minecraft.getMinecraft();
 
-            mc.thePlayer.addChatMessage(new ChatComponentText("§a欢迎使用 EyeOfHarmonyBuffer！"));
-            mc.thePlayer.addChatMessage(new ChatComponentText("§e你可以通过以下链接打开配置文件："));
+            mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin00));
+            mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin01));
 
-            sendConfigLink(mc, "§b[主配置文件 main.cfg]", "/openconfig main.cfg");
-            sendConfigLink(mc, "§b[物品配置 items.cfg]", "/openconfig items.cfg");
-            sendConfigLink(mc, "§b[流体配置 fluids.cfg]", "/openconfig fluids.cfg");
-            sendConfigLink(mc, "§b[机器加载配置 MachineLoaderConfig.cfg]", "/openconfig MachineLoaderConfig.cfg");
+            sendConfigLink(mc, EOHB_Client_PlayerJoin02, "/openconfig main.cfg");
+            sendConfigLink(mc, EOHB_Client_PlayerJoin03, "/openconfig items.cfg");
+            sendConfigLink(mc, EOHB_Client_PlayerJoin04, "/openconfig fluids.cfg");
+            sendConfigLink(mc, EOHB_Client_PlayerJoin05, "/openconfig MachineLoaderConfig.cfg");
 
             shown = true;
         }

@@ -21,6 +21,10 @@ public class TextLocalization {
     public static final String EOHB_Starry_Miracle_Project;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
+    public static final String EOHB_Client_PlayerJoin02;
+    public static final String EOHB_Client_PlayerJoin03;
+    public static final String EOHB_Client_PlayerJoin04;
+    public static final String EOHB_Client_PlayerJoin05;
 
     public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
@@ -117,6 +121,10 @@ public class TextLocalization {
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_PlayerJoin00");
         EOHB_Client_PlayerJoin01 = TextHandler.texter("Remember to check your config file to see which features you’ve actually turned on — right now, everything’s snoozing by default!","EOHB_Client_PlayerJoin01");
+        EOHB_Client_PlayerJoin02 = TextHandler.texter("Main Configuration File","EOHB_Client_PlayerJoin02");
+        EOHB_Client_PlayerJoin03 = TextHandler.texter("EOH Extra Item Output Config File","EOHB_Client_PlayerJoin03");
+        EOHB_Client_PlayerJoin04 = TextHandler.texter("EOH Extra Fluid Output Config File","EOHB_Client_PlayerJoin04");
+        EOHB_Client_PlayerJoin05 = TextHandler.texter("Machine Loading Config File","EOHB_Client_PlayerJoin05");
 
         //大型贸易机
         NameVendingMachines = TextHandler.texter("Vending Machines", "NameVendingMachines");
