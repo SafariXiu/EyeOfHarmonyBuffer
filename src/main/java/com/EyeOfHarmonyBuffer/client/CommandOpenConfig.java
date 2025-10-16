@@ -10,6 +10,8 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+
 public class CommandOpenConfig implements ICommand {
 
     @Override
@@ -39,13 +41,13 @@ public class CommandOpenConfig implements ICommand {
             File configDir = new File(Minecraft.getMinecraft().mcDataDir, "config/EyeOfHarmonyBuffer");
 
             if (!configDir.exists()) {
-                sender.addChatMessage(new ChatComponentText("§c配置目录不存在！"));
+                sender.addChatMessage(new ChatComponentText(EOHB_Config_Not_Exist));
                 return;
             }
 
             if (args.length > 0 && args[0].equalsIgnoreCase("folder")) {
                 Desktop.getDesktop().open(configDir);
-                sender.addChatMessage(new ChatComponentText("§a已打开配置文件夹。"));
+                sender.addChatMessage(new ChatComponentText(EOHB_Open_Config));
                 return;
             }
 
@@ -57,9 +59,9 @@ public class CommandOpenConfig implements ICommand {
             }
 
             Desktop.getDesktop().open(target);
-            sender.addChatMessage(new ChatComponentText("§a已打开：" + target.getName()));
+            sender.addChatMessage(new ChatComponentText(EOHB_Opened + target.getName()));
         } catch (Exception e) {
-            sender.addChatMessage(new ChatComponentText("§c打开配置失败：" + e.getMessage()));
+            sender.addChatMessage(new ChatComponentText(EOHB_Open_Failed + e.getMessage()));
         }
     }
 

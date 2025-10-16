@@ -21,10 +21,19 @@ public class TextLocalization {
     public static final String EOHB_Starry_Miracle_Project;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
+    public static final String EOHB_Client_PlayerJoin01_1;
     public static final String EOHB_Client_PlayerJoin02;
     public static final String EOHB_Client_PlayerJoin03;
     public static final String EOHB_Client_PlayerJoin04;
     public static final String EOHB_Client_PlayerJoin05;
+    public static final String EOHB_Client_PlayerJoin06;
+    public static final String EOHB_Client_PlayerJoin07;
+    public static final String EOHB_Client_PlayerJoin07_1;
+    public static final String EOHB_Client_PlayerJoin07_2;
+    public static final String EOHB_Config_Not_Exist;
+    public static final String EOHB_Open_Config;
+    public static final String EOHB_Opened;
+    public static final String EOHB_Open_Failed;
 
     public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
@@ -119,12 +128,21 @@ public class TextLocalization {
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
 
         //载入提示性文本
-        EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_PlayerJoin00");
-        EOHB_Client_PlayerJoin01 = TextHandler.texter("Remember to check your config file to see which features you’ve actually turned on — right now, everything’s snoozing by default!","EOHB_Client_PlayerJoin01");
+        EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
+        EOHB_Client_PlayerJoin01 = TextHandler.texter("Remember to check your config file to see which features you’ve actually turned on.","EOHB_Client_PlayerJoin01");
+        EOHB_Client_PlayerJoin01_1 = TextHandler.texter("right now, everything’s snoozing by default!","EOHB_Client_PlayerJoin01_1");
         EOHB_Client_PlayerJoin02 = TextHandler.texter("Main Configuration File","EOHB_Client_PlayerJoin02");
         EOHB_Client_PlayerJoin03 = TextHandler.texter("EOH Extra Item Output Config File","EOHB_Client_PlayerJoin03");
         EOHB_Client_PlayerJoin04 = TextHandler.texter("EOH Extra Fluid Output Config File","EOHB_Client_PlayerJoin04");
         EOHB_Client_PlayerJoin05 = TextHandler.texter("Machine Loading Config File","EOHB_Client_PlayerJoin05");
+        EOHB_Client_PlayerJoin06 = TextHandler.texter("Open configuration folder","EOHB_Client_PlayerJoin06");
+        EOHB_Client_PlayerJoin07 = TextHandler.texter("Done with your configs? Save them and hit /eoh_reloadconfig in-game for a hot reload!","EOHB_Client_PlayerJoin07");
+        EOHB_Client_PlayerJoin07_1 = TextHandler.texter("Just a heads-up: recipe tweaks and machine loads need a full restart to kick in.","EOHB_Client_PlayerJoin07_1");
+        EOHB_Client_PlayerJoin07_2 = TextHandler.texter("Have fun tweaking and playing!","EOHB_Client_PlayerJoin07_2");
+        EOHB_Config_Not_Exist = TextHandler.texter("Configuration directory does not exist!","EOHB_Config_Not_Exist");
+        EOHB_Open_Config = TextHandler.texter("Configuration folder opened.","EOHB_Open_Config");
+        EOHB_Opened = TextHandler.texter("Opened:","EOHB_Opened");
+        EOHB_Open_Failed = TextHandler.texter("Failed to open configuration:","EOHB_Open_Failed");
 
         //大型贸易机
         NameVendingMachines = TextHandler.texter("Vending Machines", "NameVendingMachines");

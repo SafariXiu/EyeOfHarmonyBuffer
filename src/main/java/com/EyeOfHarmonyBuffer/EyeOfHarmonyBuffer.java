@@ -112,11 +112,12 @@ public class EyeOfHarmonyBuffer {
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandOpenConfig());
     }
 
     @Mod.EventHandler
     public void serverLoad(FMLServerStartingEvent event) {
-        event.registerServerCommand(new CommandOpenConfig());
+
     }
 
 }
