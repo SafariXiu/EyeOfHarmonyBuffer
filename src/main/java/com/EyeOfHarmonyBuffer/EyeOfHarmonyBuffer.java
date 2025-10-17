@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.Command.CommandReloadConfig;
+import com.EyeOfHarmonyBuffer.Command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
@@ -112,6 +114,7 @@ public class EyeOfHarmonyBuffer {
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
     }
 

@@ -16,6 +16,7 @@ EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB — Starry Miracle Project §6�
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
 EOHB_Client_PlayerJoin01=You can open the config file through the link below.Remember to check your config file to see which features you’ve actually turned on.
 EOHB_Client_PlayerJoin01_1=right now, everything’s snoozing by default!
+EOHB_Client_PlayerJoin01_2=Type /EOHBconfiglist to show the four config file links below once more!
 EOHB_Client_PlayerJoin02=Main Configuration File
 EOHB_Client_PlayerJoin03=EOH Extra Item Output Config File
 EOHB_Client_PlayerJoin04=EOH Extra Fluid Output Config File

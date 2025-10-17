@@ -22,6 +22,7 @@ public class TextLocalization {
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
+    public static final String EOHB_Client_PlayerJoin01_2;
     public static final String EOHB_Client_PlayerJoin02;
     public static final String EOHB_Client_PlayerJoin03;
     public static final String EOHB_Client_PlayerJoin04;
@@ -131,6 +132,7 @@ public class TextLocalization {
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
         EOHB_Client_PlayerJoin01 = TextHandler.texter("Remember to check your config file to see which features you’ve actually turned on.","EOHB_Client_PlayerJoin01");
         EOHB_Client_PlayerJoin01_1 = TextHandler.texter("right now, everything’s snoozing by default!","EOHB_Client_PlayerJoin01_1");
+        EOHB_Client_PlayerJoin01_2 = TextHandler.texter("Type /EOHBconfiglist to show the four config file links below once more!","EOHB_Client_PlayerJoin01_2");
         EOHB_Client_PlayerJoin02 = TextHandler.texter("Main Configuration File","EOHB_Client_PlayerJoin02");
         EOHB_Client_PlayerJoin03 = TextHandler.texter("EOH Extra Item Output Config File","EOHB_Client_PlayerJoin03");
         EOHB_Client_PlayerJoin04 = TextHandler.texter("EOH Extra Fluid Output Config File","EOHB_Client_PlayerJoin04");
