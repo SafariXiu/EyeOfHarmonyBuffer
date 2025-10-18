@@ -2,7 +2,9 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 
 import bartworks.common.loaders.ItemRegistry;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -19,12 +21,15 @@ import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.OverclockCalculator;
 import gtPlusPlus.core.block.ModBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nonnull;
 
 import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabilizationRingCasingsUpgrade;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
@@ -296,17 +301,43 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     @Override
-    protected ProcessingLogic createProcessingLogic(){
-        return new ProcessingLogic(){
+    protected ProcessingLogic createProcessingLogic() {
+
+        return new GTCM_ProcessingLogic() {
+
             @NotNull
             @Override
-            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe){
-                if (recipe.mSpecialValue <= totalSpeedIncrement){
+            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                if (recipe.mSpecialValue <= totalSpeedIncrement) {
                     return CheckRecipeResultRegistry.SUCCESSFUL;
-                } else
+                } else {
                     return SimpleCheckRecipeResult.ofFailure("SingularityStabilizationRingCasingsLive");
+                }
             }
-        };
+
+            @NotNull
+            @Override
+            public CheckRecipeResult process() {
+
+                setEuModifier(getEuModifier());
+                setSpeedBonus(getSpeedBonus());
+                setOverclockType(
+                    isEnablePerfectOverclock()
+                        ? OverclockType.PerfectOverclock
+                        : OverclockType.NormalOverclock);
+
+                return super.process();
+            }
+
+            @Nonnull
+            @Override
+            protected OverclockCalculator createOverclockCalculator(@Nonnull GTRecipe recipe) {
+                return wirelessMode
+                    ? OverclockCalculator.ofNoOverclock(recipe)
+                    : super.createOverclockCalculator(recipe);
+            }
+
+        }.setMaxParallelSupplier(this::getLimitedMaxParallel);
     }
 
     @Override
@@ -326,7 +357,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
 
     @Override
     public int getMaxParallelRecipes() {
-        return 64;
+        return 10;
     }
 
     @Override

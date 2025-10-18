@@ -48,7 +48,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     protected boolean wirelessMode = getDefaultWirelessMode();
     protected BigInteger costingEU = BigInteger.ZERO;
     protected String costingEUText = ZERO_STRING;
-    protected int cycleNum = 100_000;
+    protected int cycleNum = 10;
 
     @Override
     public void saveNBTData(NBTTagCompound aNBT) {
