@@ -16,16 +16,16 @@ public class CommandShowConfigLinks implements ICommand {
 
     @Override
     public String getCommandName() {
-        return "EOHBconfiglist";
+        return "eoh_configlist";
     }
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/EOHBconfiglist";
+        return "/eoh_configlist";
     }
 
     @Override
-    public List getCommandAliases() {
+    public List<String> getCommandAliases() {
         return Arrays.asList("ecfglist");
     }
 

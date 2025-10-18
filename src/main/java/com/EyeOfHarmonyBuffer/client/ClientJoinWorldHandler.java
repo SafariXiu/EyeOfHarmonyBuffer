@@ -46,6 +46,7 @@ public class ClientJoinWorldHandler {
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin00));
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin01));
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin01_1));
+            mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin01_2));
 
             EOHBChatUtils.sendConfigLink(mc, EOHB_Client_PlayerJoin02, "/openEOHBconfig main.cfg");
             EOHBChatUtils.sendConfigLink(mc, EOHB_Client_PlayerJoin03, "/openEOHBconfig items.cfg");
@@ -54,7 +55,7 @@ public class ClientJoinWorldHandler {
             EOHBChatUtils.sendConfigLink(mc, EOHB_Client_PlayerJoin06, "/openEOHBconfig folder");
 
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin07));
-            mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin01_1));
+            mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin07_1));
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Client_PlayerJoin07_2));
             mc.thePlayer.addChatMessage(new ChatComponentText(EOHB_Text_SeparatingLine));
         }

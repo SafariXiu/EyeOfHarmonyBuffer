@@ -361,7 +361,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
-                GTUtility.copyAmount(0,getModItem(Avaritia.ID, "Resource",1,5))
+                getModItem(Avaritia.ID, "Resource",1,5)
             )
             .fluidInputs(
                 Water.getFluid(1000)
@@ -381,7 +381,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
-                GTUtility.copyAmount(0,getModItem(IndustrialCraft2.ID, "itemPartCircuit",1))
+                getModItem(IndustrialCraft2.ID, "itemPartCircuit",1)
             )
             .itemOutputs(
                 setStackSize(CircuitULV.getIS(1),Integer.MAX_VALUE),
