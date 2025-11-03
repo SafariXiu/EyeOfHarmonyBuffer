@@ -14,7 +14,7 @@ import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
-import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;

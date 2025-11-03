@@ -110,3 +110,7 @@ GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不�
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=物质重塑仪
 eohb.recipe.BlueDogFountain=蓝狗喷泉
+
+#item
+EOHB_Harmony=鸿蒙
+EOHB_Harmony_Tooltip=你是指我花费那么多材料就做出来一个这个玩意！？

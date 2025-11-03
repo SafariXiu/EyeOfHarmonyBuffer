@@ -1,6 +1,6 @@
-package com.EyeOfHarmonyBuffer.utils;
+package com.EyeOfHarmonyBuffer.Recipe;
 
-import com.EyeOfHarmonyBuffer.Recipe.*;
+import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 
 public class RecipeLoader {
 
@@ -12,6 +12,7 @@ public class RecipeLoader {
             new MachineBlockRecipes(),
             new SubstanceReshapingDeviceRecipes(),
             new BlueDogMachineRecipes(),
+            new MaterialsRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

@@ -110,3 +110,7 @@ GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization 
 #RecipeMap
 eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device
 eohb.recipe.BlueDogFountain=Blue Dog Fountain
+
+#item
+EOHB_Harmony=Harmony
+EOHB_Harmony_Tooltip=You mean I spent all those materials... just to make this thing!?
