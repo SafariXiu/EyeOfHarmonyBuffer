@@ -26,6 +26,7 @@ public class MaterialsRecipes implements IRecipePool{
                 GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, MaterialsUEVplus.WhiteDwarfMatter,1)),
                 GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, MaterialsUEVplus.BlackDwarfMatter,1)),
                 GTUtility.copyAmountUnsafe(1280000, getModItem(EternalSingularity.ID, "eternal_singularity",1)),
+                GTUtility.copyAmountUnsafe(1280000, MaterialsUEVplus.Universium.getIngots(1)),
                 EOHBCatalyst.get(OrePrefixes.dust, 1)
             )
             .fluidInputs(
@@ -50,7 +51,8 @@ public class MaterialsRecipes implements IRecipePool{
             )
             .fluidInputs(
                 MaterialsUEVplus.Antimatter.getFluid(1919810),
-                MaterialsUEVplus.PhononMedium.getFluid(1145140)
+                MaterialsUEVplus.PhononMedium.getFluid(1145140),
+                MaterialsUEVplus.QuarkGluonPlasma.getFluid(1231231)
             )
             .itemOutputs(
                 EOHBCatalyst.get(OrePrefixes.dust, 1)
