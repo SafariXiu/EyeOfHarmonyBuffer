@@ -66,6 +66,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     @Override
     public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
         if(isSubstanceReshapingDeviceEnabled()){
+            totalSpeedIncrement = Integer.MAX_VALUE;
             return checkPiece(STRUCTURE_PIECE_MAIN, 4, 4, 0);
         }
         return checkPiece(STRUCTURE_PIECE_MAIN, 19, 19, 0);
@@ -291,7 +292,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
             if(block == SingularityStabilizationRingCasingsUpgrade) return meta + 1;
             return -1;
         }
-        return Integer.MAX_VALUE;
+        return -1;
     }
 
     @NotNull
