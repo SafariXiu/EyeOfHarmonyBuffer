@@ -5,14 +5,21 @@ import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import gregtech.api.util.GTUtility;
 import gregtech.api.util.recipe.Scanning;
 import gtPlusPlus.core.material.MaterialMisc;
 import gtPlusPlus.core.material.MaterialsElements;
 import gtPlusPlus.core.material.Particle;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidRegistry;
 
+import java.lang.reflect.Field;
+import java.util.*;
+
+import static com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool.EOHBCatalyst;
 import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
 import static com.EyeOfHarmonyBuffer.utils.WriteOnceOnly.isSubstanceReshapingDeviceEnabled;
+import static com.dreammaster.item.NHItemList.*;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTModHandler.getModItem;
@@ -26,6 +33,77 @@ import static tectech.thing.CustomItemList.*;
 
 public final class MachineBlockRecipes implements IRecipePool {
 
+    private enum Tier {
+        LV, MV, HV, EV, IV, LuV, ZPM, UV, UHV, UEV, UIV, UMV, UXV, MAX
+    }
+
+    private static final Map<Tier, ItemStack> CIRCUIT_MAP = new EnumMap<>(Tier.class);
+
+    static {
+        CIRCUIT_MAP.put(Tier.LV,  CircuitLV.getIS(1));
+        CIRCUIT_MAP.put(Tier.MV,  CircuitMV.getIS(1));
+        CIRCUIT_MAP.put(Tier.HV,  CircuitHV.getIS(1));
+        CIRCUIT_MAP.put(Tier.EV,  CircuitEV.getIS(1));
+        CIRCUIT_MAP.put(Tier.IV,  CircuitIV.getIS(1));
+        CIRCUIT_MAP.put(Tier.LuV, CircuitLuV.getIS(1));
+        CIRCUIT_MAP.put(Tier.ZPM, CircuitZPM.getIS(1));
+        CIRCUIT_MAP.put(Tier.UV,  CircuitUV.getIS(1));
+        CIRCUIT_MAP.put(Tier.UHV, CircuitUHV.getIS(1));
+        CIRCUIT_MAP.put(Tier.UEV, CircuitUEV.getIS(1));
+        CIRCUIT_MAP.put(Tier.UIV, CircuitUIV.getIS(1));
+        CIRCUIT_MAP.put(Tier.UMV, CircuitUMV.getIS(1));
+        CIRCUIT_MAP.put(Tier.UXV, CircuitUXV.getIS(1));
+        CIRCUIT_MAP.put(Tier.MAX, CircuitMAX.getIS(1));
+    }
+
+    private static final Map<Tier, ItemStack> SINGULARITY_CASINGS_MAP = new EnumMap<>(Tier.class);
+
+    static {
+        SINGULARITY_CASINGS_MAP.put(Tier.LV,  GTCMItemList.SingularityStabilizationRingCasingsLV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.MV,  GTCMItemList.SingularityStabilizationRingCasingsMV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.HV,  GTCMItemList.SingularityStabilizationRingCasingsHV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.EV,  GTCMItemList.SingularityStabilizationRingCasingsEV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.IV,  GTCMItemList.SingularityStabilizationRingCasingsIV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.LuV, GTCMItemList.SingularityStabilizationRingCasingsLuV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.ZPM, GTCMItemList.SingularityStabilizationRingCasingsZPM.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UV,  GTCMItemList.SingularityStabilizationRingCasingsUV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UHV, GTCMItemList.SingularityStabilizationRingCasingsUHV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UEV, GTCMItemList.SingularityStabilizationRingCasingsUEV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UIV, GTCMItemList.SingularityStabilizationRingCasingsUIV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UMV, GTCMItemList.SingularityStabilizationRingCasingsUMV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.UXV, GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1));
+        SINGULARITY_CASINGS_MAP.put(Tier.MAX, GTCMItemList.SingularityStabilizationRingCasingsMAX.get(1));
+    }
+
+    private static final String[] COMPONENT_NAMES = {
+        "Electric_Motor", "Electric_Pump", "Electric_Piston", "Conveyor_Module", "FluidRegulator"
+    };
+
+    private static final Map<Tier, ItemStack[]> MACHINE_COMPONENTS = new EnumMap<>(Tier.class);
+
+    static {
+        for (Tier tier : Tier.values()) {
+            List<ItemStack> partList = new ArrayList<>();
+
+            for (String base : COMPONENT_NAMES) {
+                String fieldName = base + "_" + tier.name();
+                try {
+                    Field f = ItemList.class.getField(fieldName);
+                    Object val = f.get(null);
+
+                    if (val instanceof gregtech.api.enums.ItemList) {
+                        ItemStack stack = ((gregtech.api.enums.ItemList) val).get(1);
+                        if (stack != null) partList.add(stack);
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            MACHINE_COMPONENTS.put(tier, partList.toArray(new ItemStack[0]));
+        }
+    }
+
     @Override
     public void loadRecipes() {
 
@@ -34,7 +112,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             GTValues.RA.stdBuilder()
                 .itemInputs(
                     getModItem(IndustrialCraft2.ID,"blockPersonal",64,1),
-                    GTOreDictUnificator.get(OrePrefixes.circuit, Materials.Data,16),
+                    CircuitEV.getIS(16),
                     getModItem(GTPlusPlus.ID, "gtplusplus.blockcasings.3",16,2)
                 )
                 .itemOutputs(
@@ -131,6 +209,61 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .eut(TierEU.RECIPE_EV)
                 .duration(30 * SECONDS)
                 .addTo(assemblerRecipes);
+        }
+
+        //奇点稳定环
+        Tier[] tiers = Tier.values();
+
+        for (int i = 0; i < tiers.length; i++) {
+            Tier tier = tiers[i];
+            ItemStack[] components = MACHINE_COMPONENTS.get(tier);
+            if (components == null || components.length == 0) continue;
+
+            ItemStack[] adjustedComponents = new ItemStack[components.length];
+            for (int j = 0; j < components.length; j++) {
+                ItemStack stack = components[j].copy();
+                stack.stackSize = 1024;
+                adjustedComponents[j] = stack;
+            }
+
+            ItemStack circuit = CIRCUIT_MAP.get(tier).copy();
+            circuit.stackSize = 123123;
+
+            List<ItemStack> allInputs = new ArrayList<>(Arrays.asList(
+                GTUtility.copyAmountUnsafe(1024, EOHBCatalyst.get(OrePrefixes.ingot, 1)),
+                GTUtility.copyAmountUnsafe(123, getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1)),
+                GTUtility.copyAmountUnsafe(123, getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Singularity", 1)),
+                circuit
+            ));
+            Collections.addAll(allInputs, adjustedComponents);
+
+            ItemStack output = SINGULARITY_CASINGS_MAP.get(tier).copy();
+
+            ItemStack researchInput;
+
+            if (tier == Tier.LV) {
+                researchInput = EOHBCatalyst.get(OrePrefixes.ingot, 1);
+            } else {
+                researchInput = SINGULARITY_CASINGS_MAP.get(tiers[i - 1]).copy();
+            }
+
+            GTValues.RA.stdBuilder()
+                .metadata(RESEARCH_ITEM, researchInput)
+                .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
+                .itemInputsUnsafe(
+                    allInputs.toArray(new ItemStack[0])
+                )
+                .fluidInputs(
+                    MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
+                    Materials.Infinity.getMolten(128000000),
+                    MaterialsUEVplus.SpaceTime.getMolten(128000000)
+                )
+                .itemOutputs(
+                    output
+                )
+                .duration(400 + tier.ordinal() * 60)
+                .eut(1)
+                .addTo(AssemblyLine);
         }
     }
 }

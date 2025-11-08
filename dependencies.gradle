@@ -69,7 +69,7 @@ dependencies {
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:Chisel:2.16.13-GTNH:dev')
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:StructureLib:1.4.23:dev')
 
-    implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.7.2-dev.jar"))
+    implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.7.6-dev.jar"))
     implementation rfg.deobf(files("libs/OTHTechnology-2.1.4+2.8.0-dev.jar"))
     implementation rfg.deobf(files("libs/programmablehatches-0.1.3p38-dev.jar"))
 
