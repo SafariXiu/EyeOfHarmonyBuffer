@@ -76,7 +76,14 @@ public final class MachineBlockRecipes implements IRecipePool {
     }
 
     private static final String[] COMPONENT_NAMES = {
-        "Electric_Motor", "Electric_Pump", "Electric_Piston", "Conveyor_Module", "FluidRegulator"
+        "Electric_Motor",
+        "Electric_Pump",
+        "Electric_Piston",
+        "Conveyor_Module",
+        "Robot_Arm",
+        "Emitter" ,
+        "Field_Generator",
+        "Sensor"
     };
 
     private static final Map<Tier, ItemStack[]> MACHINE_COMPONENTS = new EnumMap<>(Tier.class);
@@ -216,6 +223,8 @@ public final class MachineBlockRecipes implements IRecipePool {
 
         for (int i = 0; i < tiers.length; i++) {
             Tier tier = tiers[i];
+            if (tier == Tier.MAX) continue;
+
             ItemStack[] components = MACHINE_COMPONENTS.get(tier);
             if (components == null || components.length == 0) continue;
 
@@ -229,38 +238,46 @@ public final class MachineBlockRecipes implements IRecipePool {
             ItemStack circuit = CIRCUIT_MAP.get(tier).copy();
             circuit.stackSize = 123123;
 
+            ItemStack previousCasing;
+            int casingCount;
+
+            if (tier == Tier.LV) {
+                casingCount = 1;
+                previousCasing = EOHBCatalyst.get(OrePrefixes.ingot, casingCount);
+            } else {
+                casingCount = 2;
+                previousCasing = SINGULARITY_CASINGS_MAP.get(tiers[i - 1]).copy();
+                previousCasing.stackSize = casingCount;
+            }
+
             List<ItemStack> allInputs = new ArrayList<>(Arrays.asList(
-                GTUtility.copyAmountUnsafe(1024, EOHBCatalyst.get(OrePrefixes.ingot, 1)),
+                previousCasing,
                 GTUtility.copyAmountUnsafe(123, getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1)),
-                GTUtility.copyAmountUnsafe(123, getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Singularity", 1)),
+                GTUtility.copyAmountUnsafe(123, getModItem(AE2FluidCraft.ID, "fluid_storage.Universe", 1)),
+                GTUtility.copyAmountUnsafe(123, getModItem(AppliedEnergistics2.ID, "item.ItemVoidStorageCell", 1)),
+                GTUtility.copyAmountUnsafe(1280000, getModItem(AppliedEnergistics2.ID, "tile.BlockSingularityCraftingStorage", 1)),
+                GTUtility.copyAmountUnsafe(1280000, getModItem(AppliedEnergistics2.ID, "tile.BlockAdvancedCraftingUnit", 1,3)),
+                GTUtility.copyAmountUnsafe(100000000, getModItem(AppliedEnergistics2.ID, "item.ItemMultiMaterial", 1,47)),
                 circuit
             ));
             Collections.addAll(allInputs, adjustedComponents);
 
             ItemStack output = SINGULARITY_CASINGS_MAP.get(tier).copy();
 
-            ItemStack researchInput;
-
-            if (tier == Tier.LV) {
-                researchInput = EOHBCatalyst.get(OrePrefixes.ingot, 1);
-            } else {
-                researchInput = SINGULARITY_CASINGS_MAP.get(tiers[i - 1]).copy();
-            }
+            ItemStack researchInput = (tier == Tier.LV)
+                ? EOHBCatalyst.get(OrePrefixes.ingot, 1)
+                : SINGULARITY_CASINGS_MAP.get(tiers[i - 1]).copy();
 
             GTValues.RA.stdBuilder()
                 .metadata(RESEARCH_ITEM, researchInput)
                 .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
-                .itemInputsUnsafe(
-                    allInputs.toArray(new ItemStack[0])
-                )
+                .itemInputsUnsafe(allInputs.toArray(new ItemStack[0]))
                 .fluidInputs(
                     MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
                     Materials.Infinity.getMolten(128000000),
                     MaterialsUEVplus.SpaceTime.getMolten(128000000)
                 )
-                .itemOutputs(
-                    output
-                )
+                .itemOutputs(output)
                 .duration(400 + tier.ordinal() * 60)
                 .eut(1)
                 .addTo(AssemblyLine);
