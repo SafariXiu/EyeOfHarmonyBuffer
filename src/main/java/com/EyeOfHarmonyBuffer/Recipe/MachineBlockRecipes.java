@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
+import appeng.integration.modules.GT;
 import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
@@ -271,16 +272,55 @@ public final class MachineBlockRecipes implements IRecipePool {
             GTValues.RA.stdBuilder()
                 .metadata(RESEARCH_ITEM, researchInput)
                 .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
-                .itemInputsUnsafe(allInputs.toArray(new ItemStack[0]))
+                .itemInputsUnsafe(
+                    allInputs.toArray(new ItemStack[0])
+                )
                 .fluidInputs(
                     MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
                     Materials.Infinity.getMolten(128000000),
                     MaterialsUEVplus.SpaceTime.getMolten(128000000)
                 )
-                .itemOutputs(output)
-                .duration(400 + tier.ordinal() * 60)
-                .eut(1)
+                .itemOutputs(
+                    output
+                )
+                .duration(5000 * SECONDS + + tier.ordinal() * (1000 * SECONDS))
+                .eut(TierEU.RECIPE_MAX)
                 .addTo(AssemblyLine);
         }
+
+        //奇点稳定环MAX
+        GTValues.RA.stdBuilder()
+            .metadata(RESEARCH_ITEM, GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1))
+            .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
+            .itemInputsUnsafe(
+                GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1024),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgChevronUpgrade", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgCoreCrystal", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "ic2Capacitor", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgControllerCrystal", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateChevron",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisUpgrade", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisBlade", 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "stargateBase", 1)),
+                GTUtility.copyAmountUnsafe(102400000, getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1)),
+                GTUtility.copyAmountUnsafe(102400000, getModItem(AE2FluidCraft.ID, "fluid_storage.Universe", 1)),
+                GTUtility.copyAmountUnsafe(102400000, getModItem(AppliedEnergistics2.ID, "item.ItemVoidStorageCell", 1)),
+                GTUtility.copyAmountUnsafe(10240000, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.MAX, 1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateShieldingFoil",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateFramePart",1)),
+                GTUtility.copyAmountUnsafe(10240000, ItemList.Field_Generator_MAX.get(1))
+            )
+            .fluidInputs(
+                MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
+                Materials.Infinity.getMolten(128000000),
+                MaterialsUEVplus.SpaceTime.getMolten(128000000)
+            )
+            .itemOutputs(
+                GTCMItemList.SingularityStabilizationRingCasingsMAX.get(1)
+            )
+            .duration(20000000 * SECONDS)
+            .eut(TierEU.RECIPE_MAX)
+            .addTo(AssemblyLine);
+
     }
 }
