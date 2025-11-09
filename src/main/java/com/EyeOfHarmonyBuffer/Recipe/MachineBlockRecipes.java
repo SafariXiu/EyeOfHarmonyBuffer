@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
-import appeng.integration.modules.GT;
 import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
@@ -293,7 +292,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .metadata(RESEARCH_ITEM, GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1))
             .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))
             .itemInputsUnsafe(
-                GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1024),
+                GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgChevronUpgrade", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgCoreCrystal", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "ic2Capacitor", 1)),
