@@ -1,8 +1,8 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModulePump;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModulePump;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

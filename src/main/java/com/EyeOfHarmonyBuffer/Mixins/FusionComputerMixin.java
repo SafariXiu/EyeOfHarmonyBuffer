@@ -79,7 +79,7 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
                         this.mEUStore = aBaseMetaTileEntity.getStoredEU();
                         if (this.mEnergyHatches != null) {
                             for (MTEHatchEnergy tHatch : validMTEList(mEnergyHatches)) {
-                                long energyToMove = GTValues.V[tier()] * 16;
+                                long energyToMove = GTValues.V[tier()] / 16;
                                 if (aBaseMetaTileEntity.getStoredEU() + energyToMove < maxEUStore()
                                     && tHatch.getBaseMetaTileEntity()
                                     .decreaseStoredEnergyUnits(energyToMove, false)) {
@@ -107,7 +107,7 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
                                 mLastWorkingTick = mTotalRunTime;
                                 if (mOutputFluids != null && mOutputFluids.length > 0) {
                                     try {
-                                        GTMod.achievements.issueAchivementHatchFluid(
+                                        GTMod.achievements.issueAchievementHatchFluid(
                                             aBaseMetaTileEntity.getWorld()
                                                 .getPlayerEntityByName(aBaseMetaTileEntity.getOwnerName()),
                                             mOutputFluids[0]);
@@ -138,8 +138,7 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
                         stopMachine(ShutDownReasonRegistry.STRUCTURE_INCOMPLETE);
                     }
                 }
-                aBaseMetaTileEntity
-                    .setErrorDisplayID((aBaseMetaTileEntity.getErrorDisplayID() & ~127) | (mMachine ? 0 : 64));
+                setErrorDisplayID((getErrorDisplayID() & ~127) | (mMachine ? 0 : 64));
                 aBaseMetaTileEntity.setActive(mMaxProgresstime > 0);
             } else {
                 doActivitySound(getActivitySoundLoop());

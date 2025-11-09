@@ -1,12 +1,11 @@
 package com.EyeOfHarmonyBuffer.Mixins.SpaceElevator;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 
 @Mixin(
     value = { TileEntityModuleMiner.TileEntityModuleMinerT1.class, TileEntityModuleMiner.TileEntityModuleMinerT2.class,

@@ -1,16 +1,16 @@
 package com.EyeOfHarmonyBuffer.Mixins.EMT;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import emt.tile.GT_MetaTileEntity_ResearchCompleter;
 import gregtech.api.metatileentity.implementations.MTEEnhancedMultiBlockBase;
+import gregtech.common.tileentities.machines.multi.MTEResearchCompleter;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = GT_MetaTileEntity_ResearchCompleter.class, remap = false)
-public abstract class ResearchCompleterMixin extends MTEEnhancedMultiBlockBase<GT_MetaTileEntity_ResearchCompleter> {
+@Mixin(value = MTEResearchCompleter.class, remap = false)
+public abstract class ResearchCompleterMixin extends MTEEnhancedMultiBlockBase<MTEResearchCompleter> {
 
     protected ResearchCompleterMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);

@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.Mixins.TST;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.Nxer.TwistSpaceTechnology.common.machine.GTCM_LightningSpire;
+import com.Nxer.TwistSpaceTechnology.common.machine.GeneratorMultis.GTCM_LightningSpire;
 import com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.TT_MultiMachineBase_EM;
 import com.Nxer.TwistSpaceTechnology.util.rewrites.TST_ItemID;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;

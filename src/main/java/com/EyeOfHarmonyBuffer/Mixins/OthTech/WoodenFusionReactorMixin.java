@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.Mixins.OthTech;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.utils.CustomProcessingLogic;
 import com.newmaa.othtech.machine.OTEWoodenFusionReactor;
-import com.newmaa.othtech.machine.machineclass.OTH_MultiMachineBase;
+import com.newmaa.othtech.machine.machineclass.OTHMultiMachineBase;
 import gregtech.api.logic.ProcessingLogic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = OTEWoodenFusionReactor.class, remap = false)
-public abstract class WoodenFusionReactorMixin extends OTH_MultiMachineBase<OTEWoodenFusionReactor> {
+public abstract class WoodenFusionReactorMixin extends OTHMultiMachineBase<OTEWoodenFusionReactor> {
 
     public WoodenFusionReactorMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);

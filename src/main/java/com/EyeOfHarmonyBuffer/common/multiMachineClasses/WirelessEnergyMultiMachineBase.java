@@ -48,7 +48,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     protected boolean wirelessMode = getDefaultWirelessMode();
     protected BigInteger costingEU = BigInteger.ZERO;
     protected String costingEUText = ZERO_STRING;
-    protected int cycleNum = DefaultCycleNum_WirelessEnergyMultiMachineBase;
+    protected int cycleNum = 10;
 
     @Override
     public void saveNBTData(NBTTagCompound aNBT) {
@@ -97,13 +97,13 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     }
 
     @Override
-    protected void startRecipeProcessing() {
+    public void startRecipeProcessing() {
         isRecipeProcessing = true;
         super.startRecipeProcessing();
     }
 
     @Override
-    protected void endRecipeProcessing() {
+    public void endRecipeProcessing() {
         super.endRecipeProcessing();
         isRecipeProcessing = false;
     }

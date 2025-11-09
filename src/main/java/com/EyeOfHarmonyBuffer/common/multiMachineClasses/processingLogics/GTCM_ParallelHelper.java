@@ -237,10 +237,8 @@ public class GTCM_ParallelHelper extends ParallelHelper {
             this.result = CheckRecipeResultRegistry.insufficientPower((long)tRecipeEUt);
         } else {
             int originalMaxParallel = this.maxParallel;
-            double tickTimeAfterOC = this.calculator.setParallel(originalMaxParallel).calculateDurationUnderOneTick();
-            if (tickTimeAfterOC < 1.0) {
-                this.maxParallel = Utils.safeInt((long)((double)this.maxParallel / tickTimeAfterOC), 1);
-            }
+            double multiplier = this.calculator.setParallel(originalMaxParallel).calculateMultiplierUnderOneTick();
+            maxParallel = GTUtility.safeInt((long) (maxParallel * multiplier), 0);
 
             int maxParallelBeforeBatchMode = this.maxParallel;
             if (this.batchMode) {

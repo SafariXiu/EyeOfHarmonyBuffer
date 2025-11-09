@@ -14,7 +14,6 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
-import gregtech.api.objects.GTRenderedTexture;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
@@ -209,7 +208,7 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (mMachine) return -1;
-        return survivialBuildPiece(mName, stackSize, 11, 59, 0, elementBudget, env, false, true);
+        return survivalBuildPiece(mName, stackSize, 11, 59, 0, elementBudget, env, false, true);
     }
 
     @Override
@@ -362,15 +361,11 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
     public int getDamageToComponent(ItemStack aStack) { return 0; }
 
     @Override
-    public boolean explodesOnComponentBreak(ItemStack aStack) { return false; }
-
-    @Override
     public boolean isCorrectMachinePart(ItemStack aStack) {
         return true;
     }
 
     @Override
-    @SuppressWarnings("ALL")
     public ITexture[] getTexture(
         IGregTechTileEntity aBaseMetaTileEntity,
         ForgeDirection side,
@@ -378,19 +373,30 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
         int colorIndex,
         boolean aActive,
         boolean aRedstone
-    ){
-        if(side == facing){
-            if (aActive) return new ITexture[]{
-                TextureFactory.of(BLOCK_PLASCRETE),
-                new GTRenderedTexture(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE), TextureFactory.builder()
-                .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE_GLOW)
-                .glow()
-                .build()
-            };
-            else return new ITexture[]{
-                TextureFactory.of(BLOCK_PLASCRETE),
-                new GTRenderedTexture(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT)
-            };
+    ) {
+        if (side == facing) {
+            if (aActive) {
+                return new ITexture[]{
+                    TextureFactory.of(BLOCK_PLASCRETE),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE)
+                        .extFacing()
+                        .build(),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT_ACTIVE_GLOW)
+                        .extFacing()
+                        .glow()
+                        .build()
+                };
+            } else {
+                return new ITexture[]{
+                    TextureFactory.of(BLOCK_PLASCRETE),
+                    TextureFactory.builder()
+                        .addIcon(Textures.BlockIcons.NAQUADAH_REACTOR_SOLID_FRONT)
+                        .extFacing()
+                        .build()
+                };
+            }
         }
         return new ITexture[]{TextureFactory.of(BLOCK_PLASCRETE)};
     }

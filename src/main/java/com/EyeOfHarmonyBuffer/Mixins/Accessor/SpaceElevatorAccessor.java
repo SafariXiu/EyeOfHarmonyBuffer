@@ -1,10 +1,9 @@
 package com.EyeOfHarmonyBuffer.Mixins.Accessor;
 
+import gtnhintergalactic.spaceprojects.ProjectAsteroidOutpost;
+import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
-
-import com.gtnewhorizons.gtnhintergalactic.spaceprojects.ProjectAsteroidOutpost;
-import com.gtnewhorizons.gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleMiner;
 
 import tectech.thing.metaTileEntity.multi.base.Parameters;
 

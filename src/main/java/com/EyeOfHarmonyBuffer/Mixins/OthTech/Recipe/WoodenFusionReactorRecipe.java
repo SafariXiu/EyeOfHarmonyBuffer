@@ -2,13 +2,13 @@ package com.EyeOfHarmonyBuffer.Mixins.OthTech.Recipe;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.newmaa.othtech.recipe.IRecipePool;
-import com.newmaa.othtech.recipe.recipesWoodenFusionReactor;
+import com.newmaa.othtech.recipe.RecipesWoodenFusionReactor;
 import net.minecraftforge.fluids.FluidStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-@Mixin(value = recipesWoodenFusionReactor.class, remap = false)
+@Mixin(value = RecipesWoodenFusionReactor.class, remap = false)
 public abstract class WoodenFusionReactorRecipe implements IRecipePool {
 
     @ModifyArg(

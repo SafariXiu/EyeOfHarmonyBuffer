@@ -17,7 +17,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -58,12 +57,6 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     private ItemStack[] randomizedItemInput;
 
     @Shadow
-    private native FluidStack[] convertItemToPlasma(ItemStack[] items, long multiplier);
-
-    @Shadow
-    private native FluidStack[] convertFluidToPlasma(FluidStack[] fluids, long multiplier);
-
-    @Shadow
     private boolean recipeInProgress = false;
 
     @Shadow
@@ -81,68 +74,40 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     @Shadow
     private long EUt = 0;
 
+    @Shadow
+    protected abstract GTRecipe generateMagmatterRecipe();
+
+    @Shadow
+    protected abstract GTRecipe generateQuarkGluonRecipe();
+
     /**
      * @author eyeofharmonybuffer
      * @reason 修改夸克胶子流体的处理逻辑
      */
-    @Overwrite
-    private GTRecipe generateQuarkGluonRecipe() {
-        actualParallel = super.getMaxParallel();
-
+    @Inject(method = "generateQuarkGluonRecipe", at = @At("HEAD"), cancellable = true)
+    private void injectGenerateQuarkGluonRecipe(CallbackInfoReturnable<GTRecipe> cir) {
         if (MainConfig.ExoticModuleEnable) {
-            // 无输入模式
+            actualParallel = super.getMaxParallel();
+
             numberOfFluids = 0;
             numberOfItems = 0;
             randomizedFluidInput = new FluidStack[0];
             randomizedItemInput = new ItemStack[0];
 
-            return new GTRecipe(
+            GTRecipe recipe = new GTRecipe(
                 false,
-                null,
-                null,
-                null,
-                null,
+                null, null, null, null,
                 new FluidStack[0],
-                new FluidStack[] {
+                new FluidStack[]{
                     MaterialsUEVplus.QuarkGluonPlasma.getFluid(1000 * actualParallel)
                 },
                 10 * SECONDS,
                 (int) TierEU.RECIPE_MAX,
-                0);
-        } else {
-            // 原版模式
-            numberOfFluids = 3;
-            numberOfItems = 4;
-            randomizedFluidInput = getSpecificFluidInputs();
-            randomizedItemInput = getSpecificItemInputs();
+                0
+            );
 
-            if (numberOfFluids != 0) {
-                for (FluidStack fluidStack : randomizedFluidInput) {
-                    fluidStack.amount = 1000;
-                }
-            }
-
-            if (numberOfItems != 0) {
-                for (ItemStack itemStack : randomizedItemInput) {
-                    itemStack.stackSize = 9;
-                }
-            }
-
-            return new GTRecipe(
-                false,
-                null,
-                null,
-                null,
-                null,
-                ArrayUtils.addAll(
-                    convertItemToPlasma(randomizedItemInput, 1),
-                    convertFluidToPlasma(randomizedFluidInput, 1)),
-                new FluidStack[] {
-                    MaterialsUEVplus.QuarkGluonPlasma.getFluid(1000 * actualParallel)
-                },
-                10 * SECONDS,
-                (int) TierEU.RECIPE_MAX,
-                0);
+            cir.setReturnValue(recipe);
+            cir.cancel();
         }
     }
 
@@ -150,87 +115,47 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
      * @author eyeofharmonybuffer
      * @reason 修改磁物质流体的处理逻辑
      */
-    @Overwrite
-    private GTRecipe generateMagmatterRecipe() {
-        actualParallel = super.getMaxParallel();
-
+    @Inject(method = "generateMagmatterRecipe", at = @At("HEAD"), cancellable = true)
+    private void injectGenerateMagmatterRecipe(CallbackInfoReturnable<GTRecipe> cir) {
         if (MainConfig.ExoticModuleEnable) {
-            // 无输入模式
+            actualParallel = super.getMaxParallel();
+
             numberOfItems = 0;
             numberOfFluids = 0;
             randomizedItemInput = new ItemStack[0];
             randomizedFluidInput = new FluidStack[0];
 
-            return new GTRecipe(
+            GTRecipe recipe = new GTRecipe(
                 false,
-                null,
-                null,
-                null,
-                null,
+                null, null, null, null,
                 new FluidStack[0],
-                new FluidStack[] {
+                new FluidStack[]{
                     MaterialsUEVplus.MagMatter.getMolten(576 * actualParallel)
                 },
                 10 * SECONDS,
                 (int) TierEU.RECIPE_MAX,
-                0);
-        } else {
-            // 原版模式
-            randomizedItemInput = getSpecificMagmatterItem();
-            numberOfItems = 1;
-            numberOfFluids = 2;
+                0
+            );
 
-            int timeAmount = 25;
-            int spaceAmount = 75;
-            randomizedFluidInput = new FluidStack[] {
-                MaterialsUEVplus.Time.getMolten(timeAmount * 1000L),
-                MaterialsUEVplus.Space.getMolten(spaceAmount * 1000L)
-            };
-
-            return new GTRecipe(
-                false,
-                null,
-                null,
-                null,
-                null,
-                ArrayUtils.addAll(
-                    convertItemToPlasma(randomizedItemInput, spaceAmount - timeAmount),
-                    MaterialsUEVplus.Time.getMolten(timeAmount),
-                    MaterialsUEVplus.Space.getMolten(spaceAmount)),
-                new FluidStack[] {
-                    MaterialsUEVplus.MagMatter.getMolten(576 * actualParallel)
-                },
-                10 * SECONDS,
-                (int) TierEU.RECIPE_MAX,
-                0);
+            cir.setReturnValue(recipe);
+            cir.cancel();
         }
     }
 
-    private FluidStack[] getSpecificFluidInputs() {
-        return new FluidStack[0];
-    }
-
-    private ItemStack[] getSpecificItemInputs() {
-        return new ItemStack[0];
-    }
-
-    private ItemStack[] getSpecificMagmatterItem() {
-        return new ItemStack[0];
-    }
-
-    @Inject(method = "createProcessingLogic",at = @At("HEAD"),cancellable = true)
-    private void createProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir){
-        if(MainConfig.ExoticModuleOverClock) {
+    /**
+     * @reason 夸克胶子/磁物质模块超频处理逻辑
+     */
+    @Inject(method = "createProcessingLogic", at = @At("HEAD"), cancellable = true)
+    private void injectCreateProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir) {
+        if (MainConfig.ExoticModuleOverClock) {
             ProcessingLogic wrappedLogic = new ProcessingLogic() {
                 @NotNull
                 @Override
                 protected Stream<GTRecipe> findRecipeMatches(@Nullable RecipeMap<?> map) {
                     if (!recipeInProgress) {
-                        if (magmatterMode) {
-                            plasmaRecipe = generateMagmatterRecipe();
-                        } else {
-                            plasmaRecipe = generateQuarkGluonRecipe();
-                        }
+                        plasmaRecipe = magmatterMode
+                            ? generateMagmatterRecipe()
+                            : generateQuarkGluonRecipe();
                     }
                     return GTStreamUtil.ofNullable(plasmaRecipe);
                 }
@@ -239,8 +164,10 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                 @Override
                 protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
                     if (!recipeInProgress || recipeRegenerated) {
-                        powerForRecipe = BigInteger.valueOf(getProcessingVoltage())
+                        powerForRecipe = BigInteger
+                            .valueOf(getProcessingVoltage())
                             .multiply(BigInteger.valueOf(recipe.mDuration * actualParallel));
+
                         if (getUserEU(userUUID).compareTo(powerForRecipe) < 0) {
                             plasmaRecipe = null;
                             return CheckRecipeResultRegistry.insufficientStartupPower(powerForRecipe);
@@ -248,8 +175,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
                         if (numberOfFluids != 0) {
                             for (FluidStack fluidStack : randomizedFluidInput) {
-                                dumpFluid(
-                                    mOutputHatches,
+                                dumpFluid(mOutputHatches,
                                     new FluidStack(fluidStack.getFluid(), fluidStack.amount / 1000),
                                     false);
                             }
@@ -287,7 +213,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
                     addToPowerTally(powerForRecipe);
                     addToRecipeTally(calculatedParallels);
-                    setCalculatedEut(0);
+                    overwriteCalculatedEut(0);
                     plasmaRecipe = null;
                     recipeInProgress = false;
                     return CheckRecipeResultRegistry.SUCCESSFUL;
@@ -296,16 +222,19 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                 @NotNull
                 @Override
                 protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                    return super.createOverclockCalculator(recipe).setEUt(getProcessingVoltage())
+                    return super.createOverclockCalculator(recipe)
+                        .setEUt(getProcessingVoltage())
                         .setDurationDecreasePerOC(getOverclockTimeFactor());
                 }
 
                 @Override
-                protected double calculateDuration(@Nonnull GTRecipe recipe, @Nonnull ParallelHelper helper,
+                protected double calculateDuration(@Nonnull GTRecipe recipe,
+                                                   @Nonnull ParallelHelper helper,
                                                    @Nonnull OverclockCalculator calculator) {
                     return 10;
                 }
             };
+
             wrappedLogic
                 .setEuModifier(0.0F)
                 .setMaxParallelSupplier(() -> 200000);

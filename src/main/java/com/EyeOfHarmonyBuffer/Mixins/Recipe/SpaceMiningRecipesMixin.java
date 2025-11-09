@@ -1,8 +1,8 @@
 package com.EyeOfHarmonyBuffer.Mixins.Recipe;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.gtnewhorizons.gtnhintergalactic.item.ItemMiningDrones;
-import com.gtnewhorizons.gtnhintergalactic.recipe.SpaceMiningRecipes;
+import gtnhintergalactic.item.ItemMiningDrones;
+import gtnhintergalactic.recipe.SpaceMiningRecipes;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;

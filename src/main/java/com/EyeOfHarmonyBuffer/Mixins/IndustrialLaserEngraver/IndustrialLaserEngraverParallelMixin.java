@@ -16,21 +16,16 @@ public class IndustrialLaserEngraverParallelMixin {
     @Shadow
     private int laserAmps;
 
-    /**
-     * @author 狠狠地覆盖返回值
-     * @reason 我们讨厌愚蠢的低并行!
-     */
-    @Overwrite
-    private int getMaxParallelRecipes() {
-        if(MainConfig.IndustrialLaserEngraverParallelEnabled){
-            return Integer.MAX_VALUE;
+    @Inject(method = "getMaxParallelRecipes", at = @At("RETURN"), cancellable = true)
+    private void injectGetMaxParallelRecipes(CallbackInfoReturnable<Integer> cir) {
+        if (MainConfig.IndustrialLaserEngraverParallelEnabled) {
+            cir.setReturnValue(Integer.MAX_VALUE);
         }
-        return laserAmps;
     }
 
     @Inject(method = "addLaserSource", at = @At("TAIL"))
     private void modifyLaserAmps(IGregTechTileEntity aTileEntity, int aBaseCasingIndex, CallbackInfoReturnable<Boolean> cir) {
-        if(MainConfig.IndustrialLaserEngraverParallelEnabled){
+        if (MainConfig.IndustrialLaserEngraverParallelEnabled) {
             laserAmps = Integer.MAX_VALUE;
         }
     }

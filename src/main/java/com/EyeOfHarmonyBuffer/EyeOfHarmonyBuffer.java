@@ -2,16 +2,22 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.Command.CommandReloadConfig;
+import com.EyeOfHarmonyBuffer.Command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
+import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
+import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
+import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
-import com.EyeOfHarmonyBuffer.utils.RecipeLoader;
+import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import net.minecraft.launchwrapper.Launch;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
@@ -67,9 +73,13 @@ public class EyeOfHarmonyBuffer {
 
         Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
 
-        MaterialLoader.load();
+        MaterialLoader.loadPreInit();
 
         proxy.preInit(event);
+
+        if (event.getSide().isClient()) {
+            MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
+        }
     }
 
     @Mod.EventHandler
@@ -87,6 +97,7 @@ public class EyeOfHarmonyBuffer {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
+        AssemblyLineRecipesLoad.RecipeLoad();
 
         new SpaceModuleRecipeLoader().run();
     }
@@ -103,6 +114,13 @@ public class EyeOfHarmonyBuffer {
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandShowConfigLinks());
+        event.registerServerCommand(new CommandOpenConfig());
+    }
+
+    @Mod.EventHandler
+    public void serverLoad(FMLServerStartingEvent event) {
+
     }
 
 }

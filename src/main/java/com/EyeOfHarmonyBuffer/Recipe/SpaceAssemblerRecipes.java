@@ -1,9 +1,9 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
-import com.gtnewhorizons.gtnhintergalactic.recipe.IGRecipeMaps;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import gtnhintergalactic.recipe.IGRecipeMaps;
 import net.minecraft.item.ItemStack;
 import tectech.thing.casing.TTCasingsContainer;
 
@@ -33,7 +33,7 @@ public class SpaceAssemblerRecipes implements IRecipePool {
                         getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1))
                     .specialValue(3)
                     .nbtSensitive()
-                    .duration(1 * MINUTES)
+                    .duration(MINUTES)
                     .eut(TierEU.RECIPE_UXV)
                     .addTo(IGRecipeMaps.spaceAssemblerRecipes);
             }

@@ -12,7 +12,6 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.interfaces.tileentity.IWirelessEnergyHatchInformation;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.recipe.RecipeMap;
@@ -38,7 +37,7 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_VendingMachines> implements IWirelessEnergyHatchInformation {
+public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_VendingMachines> {
 
     private static IStructureDefinition<EOHB_VendingMachines> STRUCTURE_DEFINITION = null;
     private int mCasing;
@@ -72,7 +71,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     }
 
     @Override
-    protected int getMaxParallelRecipes() {
+    public int getMaxParallelRecipes() {
         return 5;
     }
 
@@ -204,7 +203,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (mMachine) return -1;
-        return survivialBuildPiece(mName, stackSize, 1, 1, 0, elementBudget, env, false, true);
+        return survivalBuildPiece(mName, stackSize, 1, 1, 0, elementBudget, env, false, true);
     }
 
     @Override
@@ -225,7 +224,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .toolTipFinisher(TextLocalization.ModName);
         }else {
             tt.addMachineType(Tooltip_VendingMachines_MachineType)
-                    .addMachineType(Tooltip_VendingMachines_Controller)
+                    .addInfo(Tooltip_VendingMachines_Controller)
                     .addInfo(Disable_loading)
                     .addInfo(Tooltip_VendingMachines_00)
                     .addInfo(Tooltip_VendingMachines_01)
