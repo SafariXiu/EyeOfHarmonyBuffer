@@ -2,8 +2,8 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 
-import com.EyeOfHarmonyBuffer.Command.CommandReloadConfig;
-import com.EyeOfHarmonyBuffer.Command.CommandShowConfigLinks;
+import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
+import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;

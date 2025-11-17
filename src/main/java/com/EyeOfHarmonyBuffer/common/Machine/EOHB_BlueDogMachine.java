@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMach
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.EyeOfHarmonyBuffer.utils.Utils;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -13,44 +14,115 @@ import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.ParallelHelper;
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 
+import java.util.Objects;
+
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
-import static tectech.thing.casing.TTCasingsContainer.sBlockCasingsTT;
+import static gregtech.api.enums.HatchElement.InputHatch;
+import static gregtech.api.enums.HatchElement.OutputHatch;
+import static gregtech.api.enums.Mods.Chisel;
+import static gregtech.api.enums.Textures.BlockIcons.*;
+import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
+import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_BlueDogMachine> {
 
     private static IStructureDefinition<EOHB_BlueDogMachine> STRUCTURE_DEFINITION = null;
+    protected static final String STRUCTURE_PIECE_MAIN = "mainBlueDogMachine";
     private static Boolean BlueDogModel = false;
+    protected static final int DIM_INJECTION_CASING = 13;
+    private static final int OffsetsX = 5;
+    private static final int OffsetsY = 6;
+    private static final int OffsetsZ = 0;
 
     public EOHB_BlueDogMachine(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
     }
+
+    public EOHB_BlueDogMachine(String mName) {
+        super(mName);
+    }
+
+    @Override
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return new EOHB_BlueDogMachine(this.mName);
+    }
+
+    protected static final String[][] shapeMain = new String[][]{
+        {"           ","           ","           ","           ","           ","           ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","  BBBBBBB  "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","  BBBBBBB  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","  AABBBAA  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","  ADBBBDA  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"  BBD~DBB  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  BBBBBBB  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"  BBBDBBB  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  BBBBBBB  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"  BBBBBBB  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  BBBBBBB  "," B       B "," B       B ","BB       BB","BB       BB","BB       BB","BB       BB"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"   BBBBB   ","   BBBBB   ","   BBBBB   ","   BBBBB   ","   BBBBB   ","  BBBBBBB  "," B       B "," B       B ","AB       BA","AB       BA","AB       BA","AB       BA"," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","    CCC    ","    CCC    ","    CCC    ","  BBBBBBB  "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","    AAA    "},
+        {"           ","    CCC    ","    CCC    ","           ","   BBBBB   ","  BBBBBBB  "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B "," B       B ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","    BBB    ","    AAA    "},
+        {"    CCC    ","    CCC    ","           ","   BBBBB   ","   BBBBB   ","           ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","    BBB    ","    BBB    ","           "},
+        {"    CCC    ","           ","   BBBBB   ","   BBBBB   ","           ","           ","           ","   BBBBB   ","   B   B   ","   B   B   ","   B   B   ","   B   B   ","   BBBBB   ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","           ","    BBB    ","    BBB    ","           ","           "},
+        {"    CCC    ","           ","           ","           ","           ","           ","           ","   BBBBB   ","   B   B   ","   B   B   ","   B   B   ","   B   B   ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","   BBBBB   ","   BBBBB   ","    BBB    ","    BBB    ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","           ","           ","   BBBBB   ","   B   B   ","   B   B   ","   B   B   ","  BB   BB  ","  BB   BB  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  BBBBBBB  ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","           ","           ","   BBBBB   "," BB     BB "," BB     BB "," BB     BB ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  "," BB     BB "," BB     BB "," BB     BB ","  B     B  ","  BBEEEBB  ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","           ","           ","BBBBBBBBBBB","BBB     BBB","BBB     BBB","BBB     BBB","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","  B     B  ","  BBEEEBB  ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","           ","   BBBBB   ","BBBBBBBBBBB","BBB     BBB","BBB     BBB","BBB     BBB","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","  B     B  ","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","  B     B  ","  BBEEEBB  ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","           ","           ","BBB     BBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","  BBBBBBB  ","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","  BBBBBBB  ","  BBBBBBB  ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","           ","           ","           ","           ","           ","           ","           ","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","           ","           ","           ","           ","           ","           ","           "},
+        {"           ","           ","           ","           ","AAA     AAA","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","           ","           ","           ","           ","           ","           ","           ","           ","           ","AAA     AAA","BBB     BBB","BBB     BBB","BBB     BBB","BBB     BBB","           ","           ","           ","           ","           ","           ","           ","           ","           "}
+    };
 
     @Override
     public IStructureDefinition<EOHB_BlueDogMachine> getStructureDefinition(){
         if(STRUCTURE_DEFINITION == null){
             STRUCTURE_DEFINITION = StructureDefinition.<EOHB_BlueDogMachine>builder()
                 .addShape(
-                    mName,
-                    transpose(
-                        new String[][] {
-                            { "CCC", "CCC", "CCC" },
-                            { "C~C", "C-C", "CCC" },
-                            { "CCC", "CCC", "CCC" },
-                        }))
+                    STRUCTURE_PIECE_MAIN,transpose(shapeMain)
+                )
+                .addElement(
+                    'A',
+                    ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 0)
+                )
+                .addElement(
+                    'B',
+                    ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 11)
+                )
                 .addElement(
                     'C',
-                    ofBlock(sBlockCasingsTT,9)
+                    buildHatchAdder(EOHB_BlueDogMachine.class)
+                        .atLeast(InputHatch)
+                        .casingIndex(DIM_INJECTION_CASING)
+                        .dot(1)
+                        .buildAndChain(
+                            ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 14)
+                        )
+                )
+                .addElement(
+                    'D',
+                    ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 15)
+                )
+                .addElement(
+                    'E',
+                    buildHatchAdder(EOHB_BlueDogMachine.class)
+                        .atLeast(OutputHatch)
+                        .casingIndex(DIM_INJECTION_CASING)
+                        .dot(2)
+                        .buildAndChain(
+                            ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 15)
+                        )
                 )
                 .build();
         }
@@ -68,11 +140,6 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return false;
-    }
-
-    @Override
     public int getMaxParallelRecipes() {
         return 0;
     }
@@ -83,8 +150,20 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     }
 
     @Override
-    public void construct(ItemStack stackSize, boolean hintsOnly) {
+    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
+        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    }
 
+    @Override
+    public void construct(ItemStack stackSize, boolean hintsOnly) {
+        repairMachine();
+        buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, OffsetsX, OffsetsY, OffsetsZ);
+    }
+
+    @Override
+    public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (mMachine) return -1;
+        return survivalBuildPiece(STRUCTURE_PIECE_MAIN, stackSize, OffsetsX, OffsetsY, OffsetsZ, elementBudget, env, false, true);
     }
 
     @Override
@@ -164,12 +243,28 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     }
 
     @Override
-    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return null;
-    }
+    @SuppressWarnings("ALL")
+    public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
+                                 int colorIndex, boolean aActive, boolean redstoneLevel) {
+        if (side == aFacing) {
+            if (aActive) {
+                return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
+                    .addIcon(OVERLAY_DTPF_ON)
+                    .extFacing()
+                    .build(),
+                    TextureFactory.builder()
+                        .addIcon(OVERLAY_FUSION1_GLOW)
+                        .extFacing()
+                        .glow()
+                        .build() };
+            }
 
-    @Override
-    public ITexture[] getTexture(IGregTechTileEntity baseMetaTileEntity, ForgeDirection side, ForgeDirection facing, int colorIndex, boolean active, boolean redstoneLevel) {
-        return new ITexture[0];
+            return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
+                .addIcon(OVERLAY_DTPF_OFF)
+                .extFacing()
+                .build() };
+        }
+
+        return new ITexture[] { casingTexturePages[0][12] };
     }
 }
