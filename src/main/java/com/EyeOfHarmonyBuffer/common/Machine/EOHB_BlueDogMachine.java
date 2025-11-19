@@ -28,6 +28,8 @@ import javax.annotation.Nonnull;
 
 import java.util.Objects;
 
+import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META14_INDEX;
+import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META15_INDEX;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
 import static gregtech.api.enums.HatchElement.InputHatch;
@@ -104,7 +106,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
                     'C',
                     buildHatchAdder(EOHB_BlueDogMachine.class)
                         .atLeast(InputHatch)
-                        .casingIndex(DIM_INJECTION_CASING)
+                        .casingIndex(HEMPCRETE_META14_INDEX)
                         .dot(1)
                         .buildAndChain(
                             ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 14)
@@ -118,7 +120,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
                     'E',
                     buildHatchAdder(EOHB_BlueDogMachine.class)
                         .atLeast(OutputHatch)
-                        .casingIndex(DIM_INJECTION_CASING)
+                        .casingIndex(HEMPCRETE_META15_INDEX)
                         .dot(2)
                         .buildAndChain(
                             ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 15)
