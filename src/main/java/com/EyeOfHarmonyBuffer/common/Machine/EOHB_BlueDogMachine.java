@@ -20,13 +20,19 @@ import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.ParallelHelper;
 import net.minecraft.block.Block;
+import net.minecraft.entity.item.EntityFireworkRocket;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 
 import java.util.Objects;
+import java.util.Random;
 
 import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META14_INDEX;
 import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META15_INDEX;
@@ -43,8 +49,6 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
 
     private static IStructureDefinition<EOHB_BlueDogMachine> STRUCTURE_DEFINITION = null;
     protected static final String STRUCTURE_PIECE_MAIN = "mainBlueDogMachine";
-    private static Boolean BlueDogModel = false;
-    protected static final int DIM_INJECTION_CASING = 13;
     private static final int OffsetsX = 5;
     private static final int OffsetsY = 6;
     private static final int OffsetsZ = 0;
@@ -200,8 +204,57 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     }
 
     private boolean CheckMachineBluDogMode() {
-        BlueDogModel = Utils.metaItemEqual(this.getControllerSlot(), MiscHelper.ASTRAL_ARRAY_FABRICATOR);
-        return BlueDogModel;
+        return Utils.metaItemEqual(this.getControllerSlot(), MiscHelper.BlueDogItem);
+    }
+
+    private void launchFirework() {
+        IGregTechTileEntity baseTE = getBaseMetaTileEntity();
+        double MODEL_OFFSET_Y = 6;
+
+        double xOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetX;
+        double zOffset = 7 * getExtendedFacing().getRelativeBackInWorld().offsetZ;
+        double x = baseTE.getXCoord() + xOffset + 0.5D;
+        double y = baseTE.getYCoord() + MODEL_OFFSET_Y + 1.0D;
+        double z = baseTE.getZCoord() + zOffset + 0.5D;
+
+        World world = baseTE.getWorld();
+
+        if (!world.isRemote) {
+            Random random = new Random();
+
+            byte type = (byte) random.nextInt(5);
+
+            int blue = 0x0000FF;
+            int white = 0xFFFFFF;
+
+            ItemStack fireworkItem = new ItemStack(Items.fireworks);
+            NBTTagCompound tag = new NBTTagCompound();
+            NBTTagCompound fireworks = new NBTTagCompound();
+            NBTTagList explosions = new NBTTagList();
+            NBTTagCompound explosion = new NBTTagCompound();
+
+            explosion.setByte("Type", type);
+            explosion.setIntArray("Colors", new int[]{blue, white});
+            explosion.setIntArray("FadeColors", new int[]{white});
+            explosion.setBoolean("Trail", true);
+            explosion.setBoolean("Flicker", true);
+
+            explosions.appendTag(explosion);
+            fireworks.setTag("Explosions", explosions);
+            fireworks.setByte("Flight", (byte)1);
+            tag.setTag("Fireworks", fireworks);
+            fireworkItem.setTagCompound(tag);
+
+            EntityFireworkRocket firework = new EntityFireworkRocket(world, x, y, z, fireworkItem);
+
+            firework.motionX = (random.nextDouble() - 0.5D) * 0.15D;
+            firework.motionY = 0.05D + random.nextDouble() * 0.08D;
+            firework.motionZ = (random.nextDouble() - 0.5D) * 0.15D;
+            firework.rotationYaw = random.nextFloat() * 360.0F;
+            firework.rotationPitch = random.nextFloat() * 20.0F - 10.0F;
+
+            world.spawnEntityInWorld(firework);
+        }
     }
 
     @Override
@@ -210,6 +263,10 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
             @NotNull
             @Override
             protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                if(CheckMachineBluDogMode()){
+                    launchFirework();
+                    return CheckRecipeResultRegistry.SUCCESSFUL;
+                }
                 return CheckRecipeResultRegistry.SUCCESSFUL;
             }
 
