@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Command;
+package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Reflect.DTPFReflect;

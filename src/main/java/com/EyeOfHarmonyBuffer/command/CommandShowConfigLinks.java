@@ -1,11 +1,9 @@
-package com.EyeOfHarmonyBuffer.Command;
+package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.utils.EOHBChatUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.ICommand;
 import net.minecraft.command.ICommandSender;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.ChatComponentText;
 
 import java.util.Arrays;
 import java.util.List;
