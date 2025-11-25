@@ -98,13 +98,13 @@ SubstanceReshapingDeviceRecipes=奇点稳定环等级:  %s
 NameBlueDogMachine=蓝狗喷泉
 Tooltip_BlueDogMachine_MachineType=蓝狗喷泉
 Tooltip_BlueDogMachine_Controller=蓝狗喷泉的控制器方块
-Tooltip_BlueDogMachine_00=致敬传奇私活开发者：蓝狗！
-Tooltip_BlueDogMachine_01=只需要输入水就能产出高纯水的传奇机器，灵感来自某次小团体团建......
-Tooltip_BlueDogMachine_02=但是据说在机器控制器里面放入一些奇妙的东西，将会获得意想不到的效果！
-Tooltip_BlueDogMachine_03=哦，你最好不要看到他是从哪里喷出来的，这并不雅观......
-Tooltip_BlueDogMachine_04=”他看起来不太舒服？“
-Tooltip_BlueDogMachine_05=“并不，他或许乐在其中......”
-Tooltip_BlueDogMachine_06=祝你玩得开心！你会喜欢他的！
+Tooltip_BlueDogMachine_00=§9§l致敬传奇私活开发者：§b§l蓝狗！§r
+Tooltip_BlueDogMachine_01=§7只需要§b输入水§7就能产出§f高纯水§7的传奇机器，§r§8灵感来自某次小团体团建……§r
+Tooltip_BlueDogMachine_02=§7在机器中放入一个§6热狗锭§7似乎会让它§e很兴奋§7？§r
+Tooltip_BlueDogMachine_03=§8哦，你最好不要看到它是从§4哪里喷出来§8的，§c这并不雅观……§r
+Tooltip_BlueDogMachine_04=§3“他看起来不太舒服？”§r
+Tooltip_BlueDogMachine_05=§5“并不，§d他或许乐在其中§5……”§r
+Tooltip_BlueDogMachine_06=§a祝你玩得开心！§b你会喜欢他的！§r
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 
 #RecipeMap
