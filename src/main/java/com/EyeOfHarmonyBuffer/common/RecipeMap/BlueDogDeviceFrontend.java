@@ -34,12 +34,12 @@ public class BlueDogDeviceFrontend extends RecipeMapFrontend {
     @Override
     public List<Pos2d> getFluidInputPositions(int fluidInputCount) {
         // 流体输入槽位：物品输入槽下方
-        return UIHelper.getGridPositions(fluidInputCount, 5, yOrigin + 18, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidInputCount, 5, yOrigin, xDirMaxCount);
     }
 
     @Override
     public List<Pos2d> getFluidOutputPositions(int fluidOutputCount) {
-        return UIHelper.getGridPositions(fluidOutputCount, 100, 95, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidOutputCount, 100, yOrigin, xDirMaxCount);
     }
 
     @Override

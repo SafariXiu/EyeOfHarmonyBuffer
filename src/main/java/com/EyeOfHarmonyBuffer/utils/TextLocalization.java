@@ -101,6 +101,9 @@ public class TextLocalization {
 
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
+    public static final String EOHB_ChengDuHeart;
+    public static final String EOHB_ChengDuHeart_Tooltip_01;
+    public static final String EOHB_ChengDuHeart_Tooltip_02;
 
 
     public TextLocalization() {
@@ -221,5 +224,8 @@ public class TextLocalization {
 
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
+        EOHB_ChengDuHeart = TextHandler.texter("Heart Of ChengDu","chengdu_heart");
+        EOHB_ChengDuHeart_Tooltip_01 = TextHandler.texter("A... thing? Or maybe a gem? Looks pretty valuable","EOHB_ChengDuHeart_Tooltip_01");
+        EOHB_ChengDuHeart_Tooltip_02 = TextHandler.texter("and judging by where it came from… yeah, let’s not think too hard about that.","EOHB_ChengDuHeart_Tooltip_02");
     }
 }

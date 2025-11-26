@@ -114,3 +114,6 @@ eohb.recipe.BlueDogFountain=蓝狗喷泉
 #item
 EOHB_Harmony=鸿蒙
 EOHB_Harmony_Tooltip=你是指我花费那么多材料就做出来一个这个玩意！？
+item.chengdu_heart.name=成都之心
+EOHB_ChengDuHeart_Tooltip_01=一个。。？或者一颗。。？看起来很贵重的东西
+EOHB_ChengDuHeart_Tooltip_02=似乎是从某人身后掉出来的...不要深究!

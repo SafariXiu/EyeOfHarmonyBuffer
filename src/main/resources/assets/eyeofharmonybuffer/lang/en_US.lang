@@ -114,3 +114,6 @@ eohb.recipe.BlueDogFountain=Blue Dog Fountain
 #item
 EOHB_Harmony=Harmony
 EOHB_Harmony_Tooltip=You mean I spent all those materials... just to make this thing!?
+item.chengdu_heart.name=Heart Of ChengDu
+EOHB_ChengDuHeart_Tooltip_01=A... thing? Or maybe a gem? Looks pretty valuable
+EOHB_ChengDuHeart_Tooltip_02=and judging by where it came from… yeah, let’s not think too hard about that.

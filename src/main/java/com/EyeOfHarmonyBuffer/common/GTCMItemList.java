@@ -14,6 +14,7 @@ public enum GTCMItemList {
     SolarEnergyArray,
     SubstanceReshapingDevice,
     BlueDogMachines,
+    ChengDuHeart,
 
     SingularityStabilizationRingCasingsLV,
     SingularityStabilizationRingCasingsMV,
