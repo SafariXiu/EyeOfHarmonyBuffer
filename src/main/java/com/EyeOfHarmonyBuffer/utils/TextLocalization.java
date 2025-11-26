@@ -99,6 +99,8 @@ public class TextLocalization {
     public static final String Tooltip_BlueDogMachine_05;
     public static final String Tooltip_BlueDogMachine_06;
 
+    public static final String NameMonkeyShit;
+
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
     public static final String EOHB_ChengDuHeart;
@@ -221,6 +223,9 @@ public class TextLocalization {
         Tooltip_BlueDogMachine_04 = TextHandler.texter("“He doesn’t look very comfortable, does he?”","Tooltip_BlueDogMachine_04");
         Tooltip_BlueDogMachine_05 = TextHandler.texter("“Not really. He might actually be enjoying it…”","Tooltip_BlueDogMachine_05");
         Tooltip_BlueDogMachine_06 = TextHandler.texter("Enjoy yourself — you’re definitely going to like him!","Tooltip_BlueDogMachine_06");
+
+        //爱搬屎的猴子
+        NameMonkeyShit = TextHandler.texter("Monkey Shit","NameMonkeyShit");
 
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
