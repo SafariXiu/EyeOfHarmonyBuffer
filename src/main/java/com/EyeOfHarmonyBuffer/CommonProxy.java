@@ -4,6 +4,7 @@ import java.io.File;
 
 import com.EyeOfHarmonyBuffer.Config.Config;
 
+import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -14,6 +15,8 @@ public class CommonProxy {
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
+
+        new ItemLoader(event);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
 
