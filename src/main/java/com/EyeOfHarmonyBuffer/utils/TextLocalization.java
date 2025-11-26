@@ -19,6 +19,7 @@ public class TextLocalization {
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
     public static final String EOHB_Starry_Miracle_Project;
+    public static final String EOHB_Legendary_Machine_Project;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
@@ -100,6 +101,14 @@ public class TextLocalization {
     public static final String Tooltip_BlueDogMachine_06;
 
     public static final String NameMonkeyShit;
+    public static final String Tooltip_MonkeyShit_MachineType;
+    public static final String Tooltip_MonkeyShit_Controller;
+    public static final String Tooltip_MonkeyShit_00;
+    public static final String Tooltip_MonkeyShit_01;
+    public static final String Tooltip_MonkeyShit_02;
+    public static final String Tooltip_MonkeyShit_03;
+    public static final String Tooltip_MonkeyShit_04;
+    public static final String Tooltip_MonkeyShit_05;
 
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -135,6 +144,7 @@ public class TextLocalization {
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
+        EOHB_Legendary_Machine_Project = TextHandler.texter("EOHB-Legendary Machine Project","EOHB_Legendary_Machine_Project");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
@@ -226,6 +236,14 @@ public class TextLocalization {
 
         //爱搬屎的猴子
         NameMonkeyShit = TextHandler.texter("Monkey Shit","NameMonkeyShit");
+        Tooltip_MonkeyShit_MachineType = TextHandler.texter("Monkey Shit","Tooltip_MonkeyShit_MachineType");
+        Tooltip_MonkeyShit_Controller = TextHandler.texter("Controller Block of Monkey Shit","Tooltip_MonkeyShit_Controller");
+        Tooltip_MonkeyShit_00 = TextHandler.texter("The Relentless Poop Mover!","Tooltip_MonkeyShit_00");
+        Tooltip_MonkeyShit_01 = TextHandler.texter("Seriously?! Where on earth did he get all this crap!?","Tooltip_MonkeyShit_01");
+        Tooltip_MonkeyShit_02 = TextHandler.texter("At times, he walks near the gods... yet strays far from mankind.","Tooltip_MonkeyShit_02");
+        Tooltip_MonkeyShit_03 = TextHandler.texter("“Please, post something else, I’m begging you!”","Tooltip_MonkeyShit_03");
+        Tooltip_MonkeyShit_04 = TextHandler.texter("F*** it, you might as well post crap instead of this nonsense!","Tooltip_MonkeyShit_04");
+        Tooltip_MonkeyShit_05 = TextHandler.texter("Just pour some smelly liquid into the machine — who knows what kind of surprise you’ll get!","Tooltip_MonkeyShit_05");
 
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");

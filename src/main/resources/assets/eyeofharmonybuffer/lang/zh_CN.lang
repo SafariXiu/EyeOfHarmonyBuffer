@@ -13,6 +13,7 @@ add_DynamoHatch=任意外壳
 add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
+EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Client_PlayerJoin00=§a§l欢迎使用 §bEyeOfHarmonyBuffer！
 EOHB_Client_PlayerJoin01=§e你可以通过以下链接打开配置文件，查看你开启了哪些功能。
 EOHB_Client_PlayerJoin01_1=§e单击下方 §b蓝色文字 §e即可打开对应的配置文件。当前所有功能默认为§c关闭§e。
@@ -106,6 +107,14 @@ Tooltip_BlueDogMachine_04=§3“他看起来不太舒服？”§r
 Tooltip_BlueDogMachine_05=§5“并不，§d他或许乐在其中§5……”§r
 Tooltip_BlueDogMachine_06=§a祝你玩得开心！§b你会喜欢他的！§r
 NameMonkeyShit=爱搬屎的猴子
+Tooltip_MonkeyShit_MachineType=爱搬屎的猴子
+Tooltip_MonkeyShit_Controller=爱搬屎的猴子的控制器方块
+Tooltip_MonkeyShit_00=§6§l无情的搬屎机器！§r
+Tooltip_MonkeyShit_01=§e哦天哪，§c他是从哪里找到的这些玩意？！§r
+Tooltip_MonkeyShit_02=§7有的时候§d他离神很近§7，§8但是离人很远了§7……§r
+Tooltip_MonkeyShit_03=§b“§f我求你发点其他的吧§b”§r
+Tooltip_MonkeyShit_04=§c我草，§6你还是发屎吧§c，别发这些玩意了§f……§r
+Tooltip_MonkeyShit_05=§a往机器里面塞入一些有气味的液体即可获得一些惊喜！§r §7（友情提示：气味自负）§r
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 
 #RecipeMap

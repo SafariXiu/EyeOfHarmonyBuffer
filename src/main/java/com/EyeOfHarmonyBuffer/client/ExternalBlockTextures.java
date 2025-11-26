@@ -15,11 +15,13 @@ public class ExternalBlockTextures {
 
     public static int HEMPCRETE_META14_INDEX = -1;
     public static int HEMPCRETE_META15_INDEX = 0;
+    public static int HEMPCRETE_META12_INDEX = 1;
 
     @SideOnly(Side.CLIENT)
     public static void register() {
         HEMPCRETE_META14_INDEX = registerCasingTexture("chisel:hempCrete/concrete/red");
         HEMPCRETE_META15_INDEX = registerCasingTexture("chisel:hempCrete/concrete/black");
+        HEMPCRETE_META12_INDEX = registerCasingTexture("chisel:hempCrete/concrete/brown");
     }
 
     @SideOnly(Side.CLIENT)
@@ -42,5 +44,21 @@ public class ExternalBlockTextures {
         System.out.println("[EOHB] Registered " + texturePath +
             " -> casingTexturePages[" + page + "][" + freeIndex + "], casingIndex = " + casingIndex);
         return casingIndex;
+    }
+
+    @SideOnly(Side.CLIENT)
+    public static ITexture getCasingFromIndex(int casingIndex) {
+        if (casingIndex < 0) return null;
+
+        int page  = casingIndex >> 7;
+        int index = casingIndex & 0x7F;
+
+        ITexture[][] pages = Textures.BlockIcons.casingTexturePages;
+        if (page < 0 || page >= pages.length) return null;
+
+        ITexture[] pageArray = pages[page];
+        if (pageArray == null || index < 0 || index >= pageArray.length) return null;
+
+        return pageArray[index];
     }
 }

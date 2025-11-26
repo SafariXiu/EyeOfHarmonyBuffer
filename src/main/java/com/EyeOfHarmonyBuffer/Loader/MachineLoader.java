@@ -51,7 +51,7 @@ public class MachineLoader {
         ).getStackForm(1);
         GTCMItemList.BlueDogMachines.set(BlueDogMachine);
 
-        MonkeyShit = new EOHB_Shit(
+        MonkeyShit = new EOHB_MonkeyShit(
             MachineBlockID + 6,
             "NameShit",
             TextLocalization.NameMonkeyShit
