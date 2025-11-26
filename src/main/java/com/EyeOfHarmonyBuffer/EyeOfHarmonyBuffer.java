@@ -97,6 +97,7 @@ public class EyeOfHarmonyBuffer {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
+        RecipeLoader.registerRecipes();
         AssemblyLineRecipesLoad.RecipeLoad();
 
         new SpaceModuleRecipeLoader().run();

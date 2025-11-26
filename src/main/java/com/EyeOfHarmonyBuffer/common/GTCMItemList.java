@@ -9,11 +9,13 @@ import net.minecraft.item.Item;
 public enum GTCMItemList {
 
     TestItem0,
+
     VendingMachines,
     WindTurbines,
     SolarEnergyArray,
     SubstanceReshapingDevice,
     BlueDogMachines,
+
     ChengDuHeart,
 
     SingularityStabilizationRingCasingsLV,
