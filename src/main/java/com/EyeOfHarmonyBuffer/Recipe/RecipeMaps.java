@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.SimpleStringSpecialFormatter;
 import com.gtnewhorizons.modularui.api.drawable.UITexture;
+import gregtech.api.enums.ItemList;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMapBackend;
 import gregtech.api.recipe.RecipeMapBuilder;
@@ -31,6 +33,7 @@ public class RecipeMaps {
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20, 20)
         .logoPos(152, 63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ChengDuHeart.get(1)))
         .build();
 
     public static final RecipeMap<RecipeMapBackend> BlueDogMachineMax = RecipeMapBuilder
