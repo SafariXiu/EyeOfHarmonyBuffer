@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
+import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -9,12 +10,21 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.logic.ProcessingLogic;
+import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.OverclockCalculator;
+import gregtech.api.util.ParallelHelper;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.Objects;
 
 import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META12_INDEX;
@@ -65,6 +75,52 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
     @Override
     public int getMaxParallelRecipes() {
         return 0;
+    }
+
+    @NotNull
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return RecipeMaps.MonkeyShit;
+    }
+
+    @Override
+    protected ProcessingLogic createProcessingLogic(){
+        return new ProcessingLogic(){
+            @NotNull
+            @Override
+            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                return CheckRecipeResultRegistry.SUCCESSFUL;
+            }
+
+            @NotNull
+            @Override
+            protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
+                return new OverclockCalculator()
+                    .setParallel(Integer.MAX_VALUE);
+            }
+
+            @NotNull
+            @Override
+            protected ParallelHelper createParallelHelper(@NotNull GTRecipe recipe) {
+                return new ParallelHelper()
+                    .setRecipe(recipe)
+                    .setItemInputs(inputItems)
+                    .setFluidInputs(inputFluids)
+                    .setAvailableEUt(Integer.MAX_VALUE)
+                    .setMachine(machine, protectItems, protectFluids)
+                    .setMaxParallel(Integer.MAX_VALUE)
+                    .setEUtModifier(0.0)
+                    .enableBatchMode(batchSize)
+                    .setConsumption(true)
+                    .setOutputCalculation(true);
+            }
+
+            @Override
+            protected double calculateDuration(@Nonnull GTRecipe recipe, @Nonnull ParallelHelper helper,
+                                               @Nonnull OverclockCalculator calculator) {
+                return 10;
+            }
+        }.setMaxParallel(Integer.MAX_VALUE);
     }
 
     protected static final String[][] shapeMain = new String[][]{

@@ -118,8 +118,10 @@ Tooltip_MonkeyShit_05=Just pour some smelly liquid into the machine — who know
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 
 #RecipeMap
-eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device
-eohb.recipe.BlueDogFountain=Blue Dog Fountain
+EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
+EOHB_Recipe_BlueDogFountain=Blue Dog Fountain
+EOHB_Recipe_BlueDogFountainMAX=Blue Dog Fountain Max
+EOHB_Recipe_MonkeyShit=Monkey Shit
 
 #item
 EOHB_Harmony=Harmony

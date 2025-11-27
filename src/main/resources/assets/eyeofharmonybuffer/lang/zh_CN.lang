@@ -118,8 +118,10 @@ Tooltip_MonkeyShit_05=§a往机器里面塞入一些有气味的液体即可获�
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 
 #RecipeMap
-eohb.recipe.SubstanceReshapingDevice=物质重塑仪
-eohb.recipe.BlueDogFountain=蓝狗喷泉
+EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
+EOHB_Recipe_BlueDogFountain=蓝狗喷泉
+EOHB_Recipe_BlueDogFountainMAX=蓝狗喷泉Max
+EOHB_Recipe_MonkeyShit=爱搬屎的猴子
 
 #item
 EOHB_Harmony=鸿蒙

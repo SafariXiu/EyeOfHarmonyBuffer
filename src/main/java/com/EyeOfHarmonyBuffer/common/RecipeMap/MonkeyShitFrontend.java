@@ -10,12 +10,12 @@ import gregtech.common.gui.modularui.UIHelper;
 
 import java.util.List;
 
-public class SubstanceReshapingDeviceFrontend extends RecipeMapFrontend {
+public class MonkeyShitFrontend extends RecipeMapFrontend {
 
     private static final int xDirMaxCount = 4; // 每行最大槽位数
     private static final int yOrigin = 20; // Y 轴起始位置
 
-    public SubstanceReshapingDeviceFrontend(BasicUIPropertiesBuilder uiPropertiesBuilder, NEIRecipePropertiesBuilder neiPropertiesBuilder) {
+    public MonkeyShitFrontend(BasicUIPropertiesBuilder uiPropertiesBuilder, NEIRecipePropertiesBuilder neiPropertiesBuilder) {
         super(uiPropertiesBuilder, neiPropertiesBuilder);
     }
 
@@ -39,7 +39,7 @@ public class SubstanceReshapingDeviceFrontend extends RecipeMapFrontend {
 
     @Override
     public List<Pos2d> getFluidOutputPositions(int fluidOutputCount) {
-        return UIHelper.getGridPositions(fluidOutputCount, 100, yOrigin + 75, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidOutputCount, 100, yOrigin + 18, xDirMaxCount);
     }
 
     @Override

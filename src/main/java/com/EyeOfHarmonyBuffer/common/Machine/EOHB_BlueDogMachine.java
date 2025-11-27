@@ -308,7 +308,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
                                  int colorIndex, boolean aActive, boolean redstoneLevel) {
         ITexture base = ExternalBlockTextures.getCasingFromIndex(
-            ExternalBlockTextures.HEMPCRETE_META14_INDEX
+            ExternalBlockTextures.HEMPCRETE_META15_INDEX
         );
 
         if (base == null) {

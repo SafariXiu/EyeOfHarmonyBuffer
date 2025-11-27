@@ -24,6 +24,7 @@ public class RecipeLoader {
             new SubstanceReshapingDeviceRecipes(),
             new BlueDogMachineRecipes(),
             new MaterialsRecipes(),
+            new MonkeyShitRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();
