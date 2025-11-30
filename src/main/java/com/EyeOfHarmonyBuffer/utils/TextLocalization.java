@@ -19,6 +19,7 @@ public class TextLocalization {
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
     public static final String EOHB_Starry_Miracle_Project;
+    public static final String EOHB_Legendary_Machine_Project;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
@@ -99,11 +100,26 @@ public class TextLocalization {
     public static final String Tooltip_BlueDogMachine_05;
     public static final String Tooltip_BlueDogMachine_06;
 
+    public static final String NameMonkeyShit;
+    public static final String Tooltip_MonkeyShit_MachineType;
+    public static final String Tooltip_MonkeyShit_Controller;
+    public static final String Tooltip_MonkeyShit_00;
+    public static final String Tooltip_MonkeyShit_01;
+    public static final String Tooltip_MonkeyShit_02;
+    public static final String Tooltip_MonkeyShit_03;
+    public static final String Tooltip_MonkeyShit_04;
+    public static final String Tooltip_MonkeyShit_05;
+
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
     public static final String EOHB_ChengDuHeart;
     public static final String EOHB_ChengDuHeart_Tooltip_01;
     public static final String EOHB_ChengDuHeart_Tooltip_02;
+
+    public static final String EOHB_Recipe_SubstanceReshapingDevice;
+    public static final String EOHB_Recipe_BlueDogFountain;
+    public static final String EOHB_Recipe_BlueDogFountainMAX;
+    public static final String EOHB_Recipe_MonkeyShit;
 
 
     public TextLocalization() {
@@ -133,6 +149,7 @@ public class TextLocalization {
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
+        EOHB_Legendary_Machine_Project = TextHandler.texter("EOHB-Legendary Machine Project","EOHB_Legendary_Machine_Project");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
@@ -222,10 +239,28 @@ public class TextLocalization {
         Tooltip_BlueDogMachine_05 = TextHandler.texter("“Not really. He might actually be enjoying it…”","Tooltip_BlueDogMachine_05");
         Tooltip_BlueDogMachine_06 = TextHandler.texter("Enjoy yourself — you’re definitely going to like him!","Tooltip_BlueDogMachine_06");
 
+        //爱搬屎的猴子
+        NameMonkeyShit = TextHandler.texter("Monkey Shit","NameMonkeyShit");
+        Tooltip_MonkeyShit_MachineType = TextHandler.texter("Monkey Shit","Tooltip_MonkeyShit_MachineType");
+        Tooltip_MonkeyShit_Controller = TextHandler.texter("Controller Block of Monkey Shit","Tooltip_MonkeyShit_Controller");
+        Tooltip_MonkeyShit_00 = TextHandler.texter("The Relentless Poop Mover!","Tooltip_MonkeyShit_00");
+        Tooltip_MonkeyShit_01 = TextHandler.texter("Seriously?! Where on earth did he get all this crap!?","Tooltip_MonkeyShit_01");
+        Tooltip_MonkeyShit_02 = TextHandler.texter("At times, he walks near the gods... yet strays far from mankind.","Tooltip_MonkeyShit_02");
+        Tooltip_MonkeyShit_03 = TextHandler.texter("“Please, post something else, I’m begging you!”","Tooltip_MonkeyShit_03");
+        Tooltip_MonkeyShit_04 = TextHandler.texter("F*** it, you might as well post crap instead of this nonsense!","Tooltip_MonkeyShit_04");
+        Tooltip_MonkeyShit_05 = TextHandler.texter("Just pour some smelly liquid into the machine — who knows what kind of surprise you’ll get!","Tooltip_MonkeyShit_05");
+
+        //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_ChengDuHeart = TextHandler.texter("Heart Of ChengDu","chengdu_heart");
         EOHB_ChengDuHeart_Tooltip_01 = TextHandler.texter("A... thing? Or maybe a gem? Looks pretty valuable","EOHB_ChengDuHeart_Tooltip_01");
         EOHB_ChengDuHeart_Tooltip_02 = TextHandler.texter("and judging by where it came from… yeah, let’s not think too hard about that.","EOHB_ChengDuHeart_Tooltip_02");
+
+        //配方池
+        EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
+        EOHB_Recipe_BlueDogFountain = TextHandler.texter("Blue Dog Fountain","EOHB_Recipe_BlueDogFountain");
+        EOHB_Recipe_BlueDogFountainMAX = TextHandler.texter("Blue Dog Fountain MAX","EOHB_Recipe_BlueDogFountainMAX");
+        EOHB_Recipe_MonkeyShit = TextHandler.texter("Monkey Shit","EOHB_Recipe_MonkeyShit");
     }
 }

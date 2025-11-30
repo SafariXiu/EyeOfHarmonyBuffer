@@ -12,7 +12,8 @@ add_outputHatch=Any casing
 add_DynamoHatch=Any casing
 add_MaintenanceHatch=Any casing
 EOHB_Text_SeparatingLine=-----------------------------------------
-EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB — Starry Miracle Project §6✦
+EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
+EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
 EOHB_Client_PlayerJoin01=You can open the config file through the link below.Remember to check your config file to see which features you’ve actually turned on.
 EOHB_Client_PlayerJoin01_1=right now, everything’s snoozing by default!
@@ -105,11 +106,22 @@ Tooltip_BlueDogMachine_03=Oh, and you’d better not look too closely at where t
 Tooltip_BlueDogMachine_04=“He doesn’t look very comfortable, does he?”
 Tooltip_BlueDogMachine_05=“Not really. He might actually be enjoying it…”
 Tooltip_BlueDogMachine_06=Enjoy yourself — you’re definitely going to like him!
+NameMonkeyShit=Monkey Shit
+Tooltip_MonkeyShit_MachineType=Monkey Shit
+Tooltip_MonkeyShit_Controller=Controller Block of Monkey Shit
+Tooltip_MonkeyShit_00=The Relentless Poop Mover!
+Tooltip_MonkeyShit_01=Seriously?! Where on earth did he get all this crap!?
+Tooltip_MonkeyShit_02=At times, he walks near the gods... yet strays far from mankind.
+Tooltip_MonkeyShit_03=“Please, post something else, I’m begging you!”
+Tooltip_MonkeyShit_04=F*** it, you might as well post crap instead of this nonsense!
+Tooltip_MonkeyShit_05=Just pour some smelly liquid into the machine — who knows what kind of surprise you’ll get!
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 
 #RecipeMap
-eohb.recipe.SubstanceReshapingDevice=Substance Reshaping Device
-eohb.recipe.BlueDogFountain=Blue Dog Fountain
+EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
+EOHB_Recipe_BlueDogFountain=Blue Dog Fountain
+EOHB_Recipe_BlueDogFountainMAX=Blue Dog Fountain Max
+EOHB_Recipe_MonkeyShit=Monkey Shit
 
 #item
 EOHB_Harmony=Harmony

@@ -8,7 +8,6 @@ import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
 
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.util.GTModHandler.getModItem;
@@ -24,6 +23,16 @@ public class RecipeLoader {
             new SubstanceReshapingDeviceRecipes(),
             new BlueDogMachineRecipes(),
             new MaterialsRecipes(),
+        };
+        for (IRecipePool recipePool : recipePools) {
+            recipePool.loadRecipes();
+        }
+    }
+
+    public static void loadRecipesLate() {
+
+        IRecipePool[] recipePools = new IRecipePool[] {
+            new MonkeyShitRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

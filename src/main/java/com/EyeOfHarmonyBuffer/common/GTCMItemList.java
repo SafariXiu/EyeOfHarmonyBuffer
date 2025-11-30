@@ -10,14 +10,18 @@ public enum GTCMItemList {
 
     TestItem0,
 
+    //机器主方块
     VendingMachines,
     WindTurbines,
     SolarEnergyArray,
     SubstanceReshapingDevice,
     BlueDogMachines,
+    MonkeyShitS,
 
+    //物品
     ChengDuHeart,
 
+    //机器结构方块
     SingularityStabilizationRingCasingsLV,
     SingularityStabilizationRingCasingsMV,
     SingularityStabilizationRingCasingsHV,

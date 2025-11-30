@@ -10,8 +10,8 @@ public class MachineLoader {
     public static ItemStack WindTurbine;
     public static ItemStack SolarEnergyArrays;
     public static ItemStack SubstanceReshapingDevices;
-
     public static ItemStack BlueDogMachine;
+    public static ItemStack MonkeyShit;
 
     private final static int MachineBlockID = 23000;
 
@@ -50,5 +50,12 @@ public class MachineLoader {
             TextLocalization.NameBlueDogMachine
         ).getStackForm(1);
         GTCMItemList.BlueDogMachines.set(BlueDogMachine);
+
+        MonkeyShit = new EOHB_MonkeyShit(
+            MachineBlockID + 6,
+            "NameShit",
+            TextLocalization.NameMonkeyShit
+        ).getStackForm(1);
+        GTCMItemList.MonkeyShitS.set(MonkeyShit);
     }
 }

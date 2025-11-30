@@ -123,7 +123,7 @@ public class BlueDogMachineRecipes implements IRecipePool {
             )
             .fluidOutputs(
                 Materials.Grade8PurifiedWater.getFluid(900),
-                Materials.FlocculationWasteLiquid.getFluid(900),
+                Materials.StableBaryonicMatter.getFluid(500),
                 Materials.Water.getFluid(1000)
             )
             .eut(TierEU.RECIPE_UXV)

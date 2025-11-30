@@ -1,12 +1,14 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.EyeOfHarmonyBuffer.utils.Utils;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -42,7 +44,6 @@ import static gregtech.api.enums.HatchElement.InputHatch;
 import static gregtech.api.enums.HatchElement.OutputHatch;
 import static gregtech.api.enums.Mods.Chisel;
 import static gregtech.api.enums.Textures.BlockIcons.*;
-import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_BlueDogMachine> {
@@ -177,6 +178,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType(Tooltip_BlueDogMachine_MachineType)
             .addInfo(Tooltip_BlueDogMachine_Controller)
+            .addInfo(EOHB_Legendary_Machine_Project)
             .addInfo(Tooltip_BlueDogMachine_00)
             .addInfo(Tooltip_BlueDogMachine_01)
             .addInfo(Tooltip_BlueDogMachine_02)
@@ -185,12 +187,12 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
             .addInfo(Tooltip_BlueDogMachine_05)
             .addInfo(Tooltip_BlueDogMachine_06)
             .addSeparator()
-            .addInfo(TextLocalization.StructureTooComplex)
-            .addInfo(TextLocalization.BLUE_PRINT_INFO)
+            .addInfo(StructureTooComplex)
+            .addInfo(BLUE_PRINT_INFO)
             .addMaintenanceHatch(add_MaintenanceHatch)
             .addInputHatch(add_inputHatch)
             .addOutputHatch(add_outputHatch)
-            .toolTipFinisher(TextLocalization.ModName);
+            .toolTipFinisher(ModName);
         return tt;
     }
 
@@ -305,25 +307,39 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     @SuppressWarnings("ALL")
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection aFacing,
                                  int colorIndex, boolean aActive, boolean redstoneLevel) {
+        ITexture base = ExternalBlockTextures.getCasingFromIndex(
+            ExternalBlockTextures.HEMPCRETE_META15_INDEX
+        );
+
+        if (base == null) {
+            base = Textures.BlockIcons.casingTexturePages[0][12];
+        }
+
         if (side == aFacing) {
             if (aActive) {
-                return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
-                    .addIcon(OVERLAY_DTPF_ON)
-                    .extFacing()
-                    .build(),
+                return new ITexture[] {
+                    base,
+                    TextureFactory.builder()
+                        .addIcon(OVERLAY_DTPF_ON)
+                        .extFacing()
+                        .build(),
                     TextureFactory.builder()
                         .addIcon(OVERLAY_FUSION1_GLOW)
                         .extFacing()
                         .glow()
-                        .build() };
+                        .build()
+                };
             }
 
-            return new ITexture[] { casingTexturePages[0][12], TextureFactory.builder()
-                .addIcon(OVERLAY_DTPF_OFF)
-                .extFacing()
-                .build() };
+            return new ITexture[] {
+                base,
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_DTPF_OFF)
+                    .extFacing()
+                    .build()
+            };
         }
 
-        return new ITexture[] { casingTexturePages[0][12] };
+        return new ITexture[] { base };
     }
 }

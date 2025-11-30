@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
+import java.util.List;
 
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
@@ -13,9 +14,12 @@ import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
+import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import cpw.mods.fml.common.FMLLog;
+import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -96,6 +100,7 @@ public class EyeOfHarmonyBuffer {
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
+
         RecipeLoader.loadRecipes();
         RecipeLoader.registerRecipes();
         AssemblyLineRecipesLoad.RecipeLoad();
@@ -114,6 +119,11 @@ public class EyeOfHarmonyBuffer {
         ItemConfig.setGemErgodic(gemErgodic);
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
+
+        List<ItemStack> foods = FoodHelper.getAllFoods();
+        FMLLog.info("[EyeOfHarmonyBuffer] Found %d food items", foods.size());
+        RecipeLoader.loadRecipesLate();
+
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
