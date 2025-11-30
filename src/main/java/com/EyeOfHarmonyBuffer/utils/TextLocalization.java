@@ -260,7 +260,7 @@ public class TextLocalization {
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
         EOHB_Recipe_BlueDogFountain = TextHandler.texter("Blue Dog Fountain","EOHB_Recipe_BlueDogFountain");
-        EOHB_Recipe_BlueDogFountainMAX = TextHandler.texter("Blue Dog Fountain","EOHB_Recipe_BlueDogFountainMAX");
+        EOHB_Recipe_BlueDogFountainMAX = TextHandler.texter("Blue Dog Fountain MAX","EOHB_Recipe_BlueDogFountainMAX");
         EOHB_Recipe_MonkeyShit = TextHandler.texter("Monkey Shit","EOHB_Recipe_MonkeyShit");
     }
 }

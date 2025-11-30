@@ -100,8 +100,7 @@ public class EyeOfHarmonyBuffer {
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
-        List<ItemStack> foods = FoodHelper.getAllFoods();
-        FMLLog.info("[EyeOfHarmonyBuffer] Found %d food items", foods.size());
+
         RecipeLoader.loadRecipes();
         RecipeLoader.registerRecipes();
         AssemblyLineRecipesLoad.RecipeLoad();
@@ -120,6 +119,11 @@ public class EyeOfHarmonyBuffer {
         ItemConfig.setGemErgodic(gemErgodic);
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
+
+        List<ItemStack> foods = FoodHelper.getAllFoods();
+        FMLLog.info("[EyeOfHarmonyBuffer] Found %d food items", foods.size());
+        RecipeLoader.loadRecipesLate();
+
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
