@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.server.EOHItemTableManager;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import net.minecraftforge.common.config.Configuration;
 
@@ -66,6 +67,9 @@ public class ItemConfig {
                 }
             }
         }
+
+        addScannedItemTable();
+
         addOreDictionaryItems();
 
         if (config.hasChanged()) {
@@ -97,5 +101,21 @@ public class ItemConfig {
         }
 
         System.out.println("已从矿物词典中添加所有 gem 条目，共计: " + gemOreNames.size());
+    }
+
+    private static void addScannedItemTable() {
+        List<ItemInfo> scanned = EOHItemTableManager.getItemTable();
+        if (scanned == null || scanned.isEmpty()) {
+            System.out.println("[EOH] ItemConfig.addScannedItemTable: scanned item table is empty.");
+            return;
+        }
+
+        System.out.println("[EOH] ItemConfig.addScannedItemTable: copying " + scanned.size()
+            + " scanned items to outputItems.");
+
+        for (ItemInfo base : scanned) {
+            ItemInfo copy = new ItemInfo(base.modid, base.itemName, base.quantity, base.meta, base.nbt);
+            outputItems.add(copy);
+        }
     }
 }

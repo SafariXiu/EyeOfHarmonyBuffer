@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer;
 
+import com.EyeOfHarmonyBuffer.client.ClientEventHandler;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.TileEntityWindmillRenderer;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
@@ -24,5 +25,7 @@ public class ClientProxy extends CommonProxy {
     public void init(FMLInitializationEvent event) {
         super.init(event);
         ExternalBlockTextures.register();
+
+        cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new ClientEventHandler());
     }
 }

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.client.ClientEventHandler;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -13,9 +14,12 @@ import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
+import com.EyeOfHarmonyBuffer.network.EOHNetwork;
+import com.EyeOfHarmonyBuffer.server.ServerEventHandler;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -52,6 +56,8 @@ public class EyeOfHarmonyBuffer {
 
     public static CommonProxy proxy;
 
+    private final ServerEventHandler serverEventHandler = new ServerEventHandler();
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
 
@@ -80,15 +86,22 @@ public class EyeOfHarmonyBuffer {
         if (event.getSide().isClient()) {
             MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
         }
+
+        EOHNetwork.init();
     }
 
     @Mod.EventHandler
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
+        System.out.println("[EOH] Proxy class on " + event.getSide() + " is " + proxy.getClass().getName());
+
         proxy.init(event);
         MachineLoader.loadMachines();
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
+
+        System.out.println("[EOH] Registering ServerEventHandler to EVENT_BUS");
+        cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(serverEventHandler);
     }
 
     @Mod.EventHandler
@@ -105,12 +118,13 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void completeInit(FMLServerStartingEvent event) {
+        System.out.println("[EOH] completeInit(FMLServerStartingEvent) called");
         new LazyStaticsInitLoader().initStaticsOnCompleteInit();
     }
 
     @Mod.EventHandler
-    // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {
+        System.out.println("[EOH] serverStarting(FMLServerStartingEvent) called");
         ItemConfig.setGemErgodic(gemErgodic);
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
@@ -122,6 +136,13 @@ public class EyeOfHarmonyBuffer {
     @Mod.EventHandler
     public void serverLoad(FMLServerStartingEvent event) {
 
+    }
+
+    @Mod.EventHandler
+    public void onServerStarting(FMLServerStartingEvent event) {
+        System.out.println("[EOH] onServerStarting(FMLServerStartingEvent) called");
+        ServerEventHandler.onServerStarting(event);
+        serverEventHandler.resetSentPlayers();
     }
 
 }
