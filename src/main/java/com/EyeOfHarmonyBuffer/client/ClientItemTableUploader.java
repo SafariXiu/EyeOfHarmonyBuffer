@@ -1,8 +1,7 @@
 package com.EyeOfHarmonyBuffer.client;
 
-import com.EyeOfHarmonyBuffer.network.EOHNetwork;
-import com.EyeOfHarmonyBuffer.network.packet.PacketUploadItemTableChunk;
 import cpw.mods.fml.common.registry.GameData;
+import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
@@ -11,46 +10,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.zip.GZIPOutputStream;
-
-import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 
 public class ClientItemTableUploader {
-
-    private static final int MAX_CHUNK_SIZE = 28 * 1024;
-
-    public static void scanAndUpload() {
-        System.out.println("[EOH] Client scanning NEI display items (with NBT) for upload...");
-
-        List<String> lines = scanNeiDisplayWithNbtToLines();
-
-        byte[] compressed = compressLines(lines);
-        System.out.println("[EOH] Client built compressed item table, lines = "
-            + lines.size() + ", bytes = " + compressed.length);
-
-        int totalLen = compressed.length;
-        int totalChunks = (totalLen + MAX_CHUNK_SIZE - 1) / MAX_CHUNK_SIZE;
-        int uploadId = (int) (System.currentTimeMillis() & 0x7fffffff);
-
-        System.out.println("[EOH] Client will upload item table in "
-            + totalChunks + " chunks, total bytes = " + totalLen
-            + ", uploadId = " + uploadId);
-
-        for (int i = 0; i < totalChunks; i++) {
-            int start = i * MAX_CHUNK_SIZE;
-            int end = Math.min(start + MAX_CHUNK_SIZE, totalLen);
-            int len = end - start;
-
-            byte[] chunk = new byte[len];
-            System.arraycopy(compressed, start, chunk, 0, len);
-
-            EOHNetwork.NETWORK.sendToServer(
-                new PacketUploadItemTableChunk(uploadId, i, totalChunks, chunk)
-            );
-        }
-
-        System.out.println("[EOH] Client started upload of item table chunks.");
-    }
 
     @SuppressWarnings("unchecked")
     private static List<ItemStack> getNeiDisplayedItems() {
@@ -200,37 +161,23 @@ public class ClientItemTableUploader {
         return new ArrayList<String>(set);
     }
 
-    private static byte[] compressLines(List<String> lines) {
-        try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            GZIPOutputStream gzip = new GZIPOutputStream(bos);
-            OutputStreamWriter osw = new OutputStreamWriter(gzip, "UTF-8");
-            PrintWriter pw = new PrintWriter(osw);
-            for (String line : lines) {
-                pw.println(line);
-            }
-            pw.flush();
-            gzip.finish();
-            gzip.close();
-            return bos.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new byte[0];
-        }
-    }
-
     public static void exportNeiItemsToCsv(File file) {
         System.out.println("[EOH] Exporting NEI display items to CSV: " + file.getAbsolutePath());
         try {
             List<String> lines = scanNeiDisplayWithNbtToLines();
-
             writeLinesToCsv(lines, file);
-
             System.out.println("[EOH] Export finished. Total unique items = " + lines.size());
         } catch (Throwable t) {
             System.out.println("[EOH] exportNeiItemsToCsv error: " + t);
             t.printStackTrace();
         }
+    }
+
+    public static void exportNeiItemsToDefaultCsv() {
+        Minecraft mc = Minecraft.getMinecraft();
+        File gameDir = mc.mcDataDir;
+        File outFile = new File(new File(gameDir, "config/EyeOfHarmonyBuffer"), "eoh_nei_items.csv");
+        exportNeiItemsToCsv(outFile);
     }
 
     private static void writeLinesToCsv(List<String> encodedLines, File file) throws Exception {

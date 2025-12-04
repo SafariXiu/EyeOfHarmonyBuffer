@@ -1,12 +1,9 @@
 package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.client.ClientItemTableUploader;
-import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
-
-import java.io.File;
 
 public class CommandExportItems extends CommandBase {
 
@@ -22,12 +19,11 @@ public class CommandExportItems extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
-        Minecraft mc = Minecraft.getMinecraft();
-        File gameDir = mc.mcDataDir;
-        File outFile = new File(gameDir, "eoh_nei_items.csv");
-
-        ClientItemTableUploader.exportNeiItemsToCsv(outFile);
-        sender.addChatMessage(new ChatComponentText("Exported NEI items to " + outFile.getAbsolutePath()));
+        ClientItemTableUploader.exportNeiItemsToDefaultCsv();
+        sender.addChatMessage(new ChatComponentText(
+            "Exported NEI items to config/EyeOfHarmonyBuffer/eoh_nei_items.csv. " +
+                "Copy this file to your server config/EyeOfHarmonyBuffer directory."
+        ));
     }
 
     @Override
