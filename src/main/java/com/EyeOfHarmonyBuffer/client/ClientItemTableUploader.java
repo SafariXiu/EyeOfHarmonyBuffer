@@ -8,12 +8,12 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.GZIPOutputStream;
+
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 
 public class ClientItemTableUploader {
 
@@ -217,5 +217,76 @@ public class ClientItemTableUploader {
             e.printStackTrace();
             return new byte[0];
         }
+    }
+
+    public static void exportNeiItemsToCsv(File file) {
+        System.out.println("[EOH] Exporting NEI display items to CSV: " + file.getAbsolutePath());
+        try {
+            List<String> lines = scanNeiDisplayWithNbtToLines();
+
+            writeLinesToCsv(lines, file);
+
+            System.out.println("[EOH] Export finished. Total unique items = " + lines.size());
+        } catch (Throwable t) {
+            System.out.println("[EOH] exportNeiItemsToCsv error: " + t);
+            t.printStackTrace();
+        }
+    }
+
+    private static void writeLinesToCsv(List<String> encodedLines, File file) throws Exception {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        try (Writer writer = new BufferedWriter(
+            new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+
+            writer.write("modid,item_name,meta,nbt_base64");
+            writer.write("\n");
+
+            for (String encoded : encodedLines) {
+                if (encoded == null || encoded.isEmpty()) continue;
+
+                String left = encoded;
+                String nbtPart = "";
+
+                int pipeIdx = encoded.indexOf('|');
+                if (pipeIdx >= 0) {
+                    left = encoded.substring(0, pipeIdx);
+                    if (pipeIdx + 1 < encoded.length()) {
+                        nbtPart = encoded.substring(pipeIdx + 1);
+                    }
+                }
+
+                String modid = "";
+                String itemName = "";
+                String metaStr = "";
+
+                String[] parts = left.split(":", 3);
+                if (parts.length >= 1) modid = parts[0];
+                if (parts.length >= 2) itemName = parts[1];
+                if (parts.length >= 3) metaStr = parts[2];
+
+                writer.write(escapeCsv(modid));
+                writer.write(',');
+                writer.write(escapeCsv(itemName));
+                writer.write(',');
+                writer.write(escapeCsv(metaStr));
+                writer.write(',');
+                writer.write(escapeCsv(nbtPart));
+                writer.write('\n');
+            }
+        }
+    }
+
+    private static String escapeCsv(String field) {
+        if (field == null) return "";
+        boolean needQuote = field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r");
+        String result = field.replace("\"", "\"\"");
+        if (needQuote) {
+            return "\"" + result + "\"";
+        }
+        return result;
     }
 }

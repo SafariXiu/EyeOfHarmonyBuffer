@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 
 import com.EyeOfHarmonyBuffer.client.ClientEventHandler;
+import com.EyeOfHarmonyBuffer.command.CommandExportItems;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -131,6 +132,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
+        event.registerServerCommand(new CommandExportItems());
     }
 
     @Mod.EventHandler
