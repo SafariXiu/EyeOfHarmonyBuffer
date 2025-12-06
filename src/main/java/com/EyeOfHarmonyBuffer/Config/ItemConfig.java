@@ -66,6 +66,7 @@ public class ItemConfig {
                 }
             }
         }
+
         addOreDictionaryItems();
 
         if (config.hasChanged()) {
@@ -98,4 +99,6 @@ public class ItemConfig {
 
         System.out.println("已从矿物词典中添加所有 gem 条目，共计: " + gemOreNames.size());
     }
+
+
 }

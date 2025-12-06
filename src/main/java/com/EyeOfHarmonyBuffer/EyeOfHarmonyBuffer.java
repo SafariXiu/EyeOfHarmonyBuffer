@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer;
 
 import java.io.File;
 
+import com.EyeOfHarmonyBuffer.command.CommandExportItems;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -13,9 +14,12 @@ import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
+import com.EyeOfHarmonyBuffer.utils.EohItemTable;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Loader;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -89,11 +93,17 @@ public class EyeOfHarmonyBuffer {
         MachineLoader.loadMachines();
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
+
     }
 
     @Mod.EventHandler
     // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
+        System.out.println("[EOH] postInit(FMLPostInitializationEvent) called");
+        File configDir = Loader.instance().getConfigDir();
+        boolean isServerSide = !FMLCommonHandler.instance().getSide().isClient();
+        EohItemTable.loadFromCsv(configDir, isServerSide);
+
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
         RecipeLoader.loadRecipes();
@@ -105,23 +115,29 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void completeInit(FMLServerStartingEvent event) {
+        System.out.println("[EOH] completeInit(FMLServerStartingEvent) called");
         new LazyStaticsInitLoader().initStaticsOnCompleteInit();
     }
 
     @Mod.EventHandler
-    // register server commands in this event handler (Remove if not needed)
     public void serverStarting(FMLServerStartingEvent event) {
+        System.out.println("[EOH] serverStarting(FMLServerStartingEvent) called");
         ItemConfig.setGemErgodic(gemErgodic);
         GemErgodic.processOreDictionary();
         ItemConfig.reloadConfig();
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
+        event.registerServerCommand(new CommandExportItems());
     }
 
     @Mod.EventHandler
     public void serverLoad(FMLServerStartingEvent event) {
 
+    }
+
+    @Mod.EventHandler
+    public void onServerStarting(FMLServerStartingEvent event) {
     }
 
 }
