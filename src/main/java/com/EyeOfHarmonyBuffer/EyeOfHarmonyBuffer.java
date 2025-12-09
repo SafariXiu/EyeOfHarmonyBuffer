@@ -3,6 +3,8 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
+import com.EyeOfHarmonyBuffer.utils.RecipeRemover;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -106,6 +108,8 @@ public class EyeOfHarmonyBuffer {
         AssemblyLineRecipesLoad.RecipeLoad();
 
         new SpaceModuleRecipeLoader().run();
+
+        RemoverRecipe.run();
     }
 
     @Mod.EventHandler
