@@ -22,6 +22,8 @@ public enum GTCMItemList {
     ChengDuHeart,
     Monkey,
     Shit,
+    YuanShi,
+    HeChengYu,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

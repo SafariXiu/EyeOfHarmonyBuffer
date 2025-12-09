@@ -121,6 +121,11 @@ public class TextLocalization {
     public static final String EOHB_Monkey_Tooltip_00;
     public static final String EOHB_Monkey_Tooltip_01;
     public static final String EOHB_Shit_Tooltip_00;
+    public static final String EOHB_YuanShi_Tooltip_00;
+    public static final String EOHB_YuanShi_Tooltip_01;
+    public static final String EOHB_YuanShi_Tooltip_02;
+    public static final String EOHB_HeChengYu_Tooltip_00;
+    public static final String EOHB_HeChengYu_Tooltip_01;
 
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
     public static final String EOHB_Recipe_BlueDogFountain;
@@ -267,6 +272,11 @@ public class TextLocalization {
         EOHB_Monkey_Tooltip_00 = TextHandler.texter("Legendary Poop Handler of the Squad!","EOHB_Monkey_Tooltip_00");
         EOHB_Monkey_Tooltip_01 = TextHandler.texter("Monkeys and poop really are a pair of star-crossed lovers...","EOHB_Monkey_Tooltip_01");
         EOHB_Shit_Tooltip_00 = TextHandler.texter("As you can see... this is a pile of... poop.","EOHB_Shit_Tooltip_00");
+        EOHB_YuanShi_Tooltip_00 = TextHandler.texter("Widely used in industry, this Originium crystal is difficult to extract.","EOHB_YuanShi_Tooltip_00");
+        EOHB_YuanShi_Tooltip_01 = TextHandler.texter("Its production requires very fine processing, but it remains the major energy source of the world and the foundation of Originium Arts.","EOHB_YuanShi_Tooltip_01");
+        EOHB_YuanShi_Tooltip_02 = TextHandler.texter("Even if widespread rumors claim \"Originite Prime spreads an incurable disease,\" few can resist its temptation.","EOHB_YuanShi_Tooltip_02");
+        EOHB_HeChengYu_Tooltip_00 = TextHandler.texter("Made from Originite Prime, it also contains other minerals.","EOHB_HeChengYu_Tooltip_00");
+        EOHB_HeChengYu_Tooltip_01 = TextHandler.texter("In the past, it was used only as a conductive element, but it has since become a store of credit value.","EOHB_HeChengYu_Tooltip_01");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
