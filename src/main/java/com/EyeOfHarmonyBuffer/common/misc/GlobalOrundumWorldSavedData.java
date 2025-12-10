@@ -18,7 +18,6 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
     public static GlobalOrundumWorldSavedData INSTANCE;
 
     private static final String DATA_NAME = "EOHB_OrundumWorldSavedData";
-
     private static final String ORUNDUM_NBT_TAG = "EOHB_GlobalOrundum_MapNBTTag";
 
     private static void loadInstance(World world) {
@@ -31,7 +30,6 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
             INSTANCE = new GlobalOrundumWorldSavedData();
             storage.setData(DATA_NAME, INSTANCE);
         }
-        INSTANCE.markDirty();
     }
 
     @SubscribeEvent
@@ -55,6 +53,7 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
 
         try {
             if (!nbt.hasKey(ORUNDUM_NBT_TAG)) {
+                System.out.println("[EOHB] No Orundum NBT tag found, starting empty.");
                 return;
             }
 
@@ -78,6 +77,8 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
                 } catch (RuntimeException ignored) {
                 }
             }
+
+            System.out.println("[EOHB] Loaded Orundum entries: " + targetMap.size());
         } catch (IOException | ClassNotFoundException exception) {
             System.out.println(ORUNDUM_NBT_TAG + " LOAD FAILED");
             exception.printStackTrace();
@@ -89,6 +90,7 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
 
         try {
             HashMap<UUID, BigInteger> map = GlobalOrundumStorage.getInternalMap();
+            System.out.println("[EOHB] Saving Orundum entries: " + map.size());
 
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);

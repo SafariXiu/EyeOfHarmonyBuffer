@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
+import com.EyeOfHarmonyBuffer.command.CommandOrundum;
+import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.utils.RecipeRemover;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
 import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
@@ -95,6 +97,7 @@ public class EyeOfHarmonyBuffer {
         MachineLoader.loadMachines();
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
+        MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
     }
 
     @Mod.EventHandler
@@ -129,6 +132,7 @@ public class EyeOfHarmonyBuffer {
         RecipeLoader.loadRecipesLate();
 
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
     }

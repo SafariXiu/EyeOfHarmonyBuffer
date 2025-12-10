@@ -17,6 +17,7 @@ public enum GTCMItemList {
     SubstanceReshapingDevice,
     BlueDogMachines,
     MonkeyShitS,
+    OrundumDynamos,
 
     //物品
     ChengDuHeart,

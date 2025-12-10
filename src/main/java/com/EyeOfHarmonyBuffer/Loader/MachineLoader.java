@@ -12,6 +12,7 @@ public class MachineLoader {
     public static ItemStack SubstanceReshapingDevices;
     public static ItemStack BlueDogMachine;
     public static ItemStack MonkeyShit;
+    public static ItemStack OrundumDynamo;
 
     private final static int MachineBlockID = 23000;
 
@@ -57,5 +58,12 @@ public class MachineLoader {
             TextLocalization.NameMonkeyShit
         ).getStackForm(1);
         GTCMItemList.MonkeyShitS.set(MonkeyShit);
+
+        OrundumDynamo = new EOHB_OrundumDynamo(
+            MachineBlockID + 7,
+            "NameOrundumDynamo",
+            TextLocalization.NameOrundumDynamo
+        ).getStackForm(1);
+        GTCMItemList.OrundumDynamos.set(OrundumDynamo);
     }
 }

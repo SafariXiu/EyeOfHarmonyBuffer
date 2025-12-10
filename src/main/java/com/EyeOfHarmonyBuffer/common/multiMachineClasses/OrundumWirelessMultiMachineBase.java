@@ -73,6 +73,20 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         return OrundumEnergyService.changeOrundumForUser(owner, orundumCost.negate());
     }
 
+    protected void applyEuAsOrundum(BigInteger eu) {
+        if (eu == null || eu.signum() == 0 || ownerUUID == null) return;
+
+        BigInteger orundumDelta = convertEuToOrundum(eu);
+
+        if (orundumDelta.signum() != 0) {
+            OrundumEnergyService.changeOrundumForUser(ownerUUID, orundumDelta);
+        }
+    }
+
+    protected BigInteger convertEuToOrundum(BigInteger eu) {
+        return eu;
+    }
+
     @Override
     public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
                              IWailaConfigHandler config) {

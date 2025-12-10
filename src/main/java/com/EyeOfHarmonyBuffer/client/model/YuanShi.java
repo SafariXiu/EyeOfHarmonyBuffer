@@ -204,7 +204,7 @@ public class YuanShi extends ModelBase {
 
             if (faceIndex == 0) {
                 float uMin = 142F / 1024F;
-                float uMax = 440F / 1024F;
+                float uMax = 450F / 1024F;
                 float vMin = 375F / 1024F;
                 float vMax = 690F / 1024F;
 

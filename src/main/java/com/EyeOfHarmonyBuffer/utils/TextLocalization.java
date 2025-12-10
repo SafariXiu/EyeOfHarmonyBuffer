@@ -113,6 +113,8 @@ public class TextLocalization {
     public static final String Tooltip_MonkeyShit_04;
     public static final String Tooltip_MonkeyShit_05;
 
+    public static final String NameOrundumDynamo;
+
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
 
@@ -263,6 +265,9 @@ public class TextLocalization {
         Tooltip_MonkeyShit_03 = TextHandler.texter("“Please, post something else, I’m begging you!”","Tooltip_MonkeyShit_03");
         Tooltip_MonkeyShit_04 = TextHandler.texter("F*** it, you might as well post crap instead of this nonsense!","Tooltip_MonkeyShit_04");
         Tooltip_MonkeyShit_05 = TextHandler.texter("Just pour some smelly liquid into the machine — who knows what kind of surprise you’ll get!","Tooltip_MonkeyShit_05");
+
+        //源石发电机
+        NameOrundumDynamo = TextHandler.texter("Orundum Dynamo","NameOrundumDynamo");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");

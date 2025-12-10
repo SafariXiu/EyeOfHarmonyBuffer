@@ -28,6 +28,10 @@ public class ItemYuanShiRenderer implements IItemRenderer {
     public void renderItem(ItemRenderType type, ItemStack item, Object... data) {
         GL11.glPushMatrix();
 
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glColor4f(1.4F, 1.4F, 1.4F, 1.0F);
+
         float time = (Minecraft.getSystemTime() % 4000L) / 4000.0F * 360.0F;
 
         switch (type) {
@@ -40,19 +44,19 @@ public class ItemYuanShiRenderer implements IItemRenderer {
             case EQUIPPED_FIRST_PERSON: {
                 GL11.glTranslatef(0.9F, 0.7F, 0.7F);
                 GL11.glScalef(0.12F, 0.12F, 0.12F);
-                GL11.glRotatef(180, 0, 0, 1);
                 break;
             }
             case INVENTORY: {
                 GL11.glTranslatef(0.25F - 4F / 16F, 0.25F - 2F / 16F, 0F);
                 GL11.glScalef(0.18F, 0.18F, 0.18F);
+                GL11.glRotatef(180, 1, 0, 0);
                 GL11.glRotatef(210, 1, 0, 0);
                 GL11.glRotatef(45, 0, 1, 0);
                 break;
             }
             case ENTITY: {
                 GL11.glTranslatef(0F, 0.25F, 0F);
-                GL11.glScalef(0.09F, 0.09F, 0.09F);
+                GL11.glScalef(0.09F, 0.09F, -0.09F);
                 break;
             }
             default:
@@ -110,6 +114,8 @@ public class ItemYuanShiRenderer implements IItemRenderer {
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glColor4f(1F, 1F, 1F, 1F);
 
+        GL11.glEnable(GL11.GL_LIGHTING);
+        GL11.glPopAttrib();
         GL11.glPopMatrix();
     }
 }
