@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.item.itemadders;
 
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
@@ -15,14 +16,18 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
 public class ItemYuanShi extends ItemFood {
 
+    public static Item instance;
+
     public ItemYuanShi() {
         super(20, 1F, false);
 
         this.setUnlocalizedName("YuanShi");
-        this.setTextureName(EyeOfHarmonyBuffer.MODID + ":YuanShi");
+        //this.setTextureName(EyeOfHarmonyBuffer.MODID + ":YuanShi");
         this.setCreativeTab(tabMetaItem01);
         this.setMaxStackSize(64);
         this.setAlwaysEdible();
+
+        instance = this;
     }
 
     @Override

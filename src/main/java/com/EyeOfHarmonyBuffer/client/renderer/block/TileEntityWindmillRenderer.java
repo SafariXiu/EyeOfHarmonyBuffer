@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client;
+package com.EyeOfHarmonyBuffer.client.renderer.block;
 
 import com.EyeOfHarmonyBuffer.client.model.Trubine;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
