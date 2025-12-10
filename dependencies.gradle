@@ -78,8 +78,8 @@ dependencies {
 
     runtimeOnlyNonPublishable rfg.deobf(files("libs/ae2thing-v1.68.jar"))
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/nechar-GTNH 2.7.0.jar"))
-    //runtimeOnlyNonPublishable rfg.deobf(files("libs/WorldEditCuiFe-v1.0.7-mf-1.7.10-10.13.4.1566.jar"))
-    //runtimeOnlyNonPublishable rfg.deobf(files("libs/worldedit-v0.0.7.jar"))
+    runtimeOnlyNonPublishable rfg.deobf(files("libs/WorldEditCuiFe-v1.0.7-mf-1.7.10-10.13.4.1566.jar"))
+    runtimeOnlyNonPublishable rfg.deobf(files("libs/worldedit-v0.0.7.jar"))
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/programmablehatches-polyfill.jar"))
 
     implementation('curse.maven:advsolar-362768:2885953')

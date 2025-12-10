@@ -16,6 +16,7 @@ EOHB_WirelessMode_On=Wireless mode enabled.
 EOHB_WirelessMode_Off=Wireless mode disabled.
 EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
+EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
 EOHB_Client_PlayerJoin01=You can open the config file through the link below.Remember to check your config file to see which features you’ve actually turned on.
 EOHB_Client_PlayerJoin01_1=right now, everything’s snoozing by default!
@@ -119,6 +120,14 @@ Tooltip_MonkeyShit_03=“Please, post something else, I’m begging you!”
 Tooltip_MonkeyShit_04=F*** it, you might as well post crap instead of this nonsense!
 Tooltip_MonkeyShit_05=Just pour some smelly liquid into the machine — who knows what kind of surprise you’ll get!
 NameOrundumDynamo=Orundum Dynamo
+Tooltip_OrundumDynamo_MachineType=Orundum Dynamo
+Tooltip_OrundumDynamo_Controller=Controller Block of Orundum Dynamo
+Tooltip_OrundumDynamo_00=A wondrous device brought from another continent — it runs on pure Originite Prime power!
+Tooltip_OrundumDynamo_01=It creates an entirely new source of energy!An all-new internal Originium network system!
+Tooltip_OrundumDynamo_02=Upgrade the coils and glass to achieve greater efficiency and improved parallel performance.
+Tooltip_OrundumDynamo_03=Every unit of Originite Prime converts into Orundum once it’s used up.
+Tooltip_OrundumDynamo_04=Completely free from Originium dust contamination!
+Tooltip_OrundumDynamo_05=The very dawn of the Originium industry—good luck out there, Administrator!
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 
 #RecipeMap

@@ -16,6 +16,7 @@ EOHB_WirelessMode_On=无线模式已开启
 EOHB_WirelessMode_Off=无线模式已关闭
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
+EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
 EOHB_Client_PlayerJoin00=§a§l欢迎使用 §bEyeOfHarmonyBuffer！
 EOHB_Client_PlayerJoin01=§e你可以通过以下链接打开配置文件，查看你开启了哪些功能。
 EOHB_Client_PlayerJoin01_1=§e单击下方 §b蓝色文字 §e即可打开对应的配置文件。当前所有功能默认为§c关闭§e。
@@ -118,7 +119,15 @@ Tooltip_MonkeyShit_02=§7有的时候§d他离神很近§7，§8但是离人很�
 Tooltip_MonkeyShit_03=§b“§f我求你发点其他的吧§b”§r
 Tooltip_MonkeyShit_04=§c我草，§6你还是发屎吧§c，别发这些玩意了§f……§r
 Tooltip_MonkeyShit_05=§a往机器里面塞入一些有气味的液体即可获得一些惊喜！§r §7（友情提示：气味自负）§r
-NameOrundumDynamo=源石发电机
+NameOrundumDynamo=§6源石发电机
+Tooltip_OrundumDynamo_MachineType=§6源石发电机
+Tooltip_OrundumDynamo_Controller=§f源石发电机的控制器方块
+Tooltip_OrundumDynamo_00=§7来自另一片大地的神奇机器，通过§6至纯源石§7进行发电！
+Tooltip_OrundumDynamo_01=§f产生新的能源，全新的§6源石§f内化网络！
+Tooltip_OrundumDynamo_02=§7通过升级线圈与玻璃获得更高的效率与并行。
+Tooltip_OrundumDynamo_03=§f每一颗§6至纯源石§f在消耗后都会变成§c合成玉§f。
+Tooltip_OrundumDynamo_04=§7没有§6源石§7粉尘污染！
+Tooltip_OrundumDynamo_05=§f一切§6源石§f工业的开端，§a祝你好运§f，管理员！
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 
 #RecipeMap

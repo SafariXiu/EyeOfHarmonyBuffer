@@ -20,6 +20,7 @@ public class TextLocalization {
     public static final String EOHB_Text_SeparatingLine;
     public static final String EOHB_Starry_Miracle_Project;
     public static final String EOHB_Legendary_Machine_Project;
+    public static final String EOHB_Arknights_Project;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
@@ -114,6 +115,14 @@ public class TextLocalization {
     public static final String Tooltip_MonkeyShit_05;
 
     public static final String NameOrundumDynamo;
+    public static final String Tooltip_OrundumDynamo_MachineType;
+    public static final String Tooltip_OrundumDynamo_Controller;
+    public static final String Tooltip_OrundumDynamo_00;
+    public static final String Tooltip_OrundumDynamo_01;
+    public static final String Tooltip_OrundumDynamo_02;
+    public static final String Tooltip_OrundumDynamo_03;
+    public static final String Tooltip_OrundumDynamo_04;
+    public static final String Tooltip_OrundumDynamo_05;
 
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -162,6 +171,7 @@ public class TextLocalization {
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
+        EOHB_Arknights_Project= TextHandler.texter("EOHB — Arknights Project","EOHB_Arknights_Project");
         EOHB_Legendary_Machine_Project = TextHandler.texter("EOHB-Legendary Machine Project","EOHB_Legendary_Machine_Project");
         EOHB_WirelessMode_On = TextHandler.texter("Wireless mode enabled.","EOHB_WirelessMode_On");
         EOHB_WirelessMode_Off = TextHandler.texter("Wireless mode disabled.","EOHB_WirelessMode_Off");
@@ -268,6 +278,14 @@ public class TextLocalization {
 
         //源石发电机
         NameOrundumDynamo = TextHandler.texter("Orundum Dynamo","NameOrundumDynamo");
+        Tooltip_OrundumDynamo_MachineType = TextHandler.texter("Orundum Dynamo","Tooltip_OrundumDynamo_MachineType");
+        Tooltip_OrundumDynamo_Controller = TextHandler.texter("Controller Block of Orundum Dynamo","Tooltip_OrundumDynamo_Controller");
+        Tooltip_OrundumDynamo_00 = TextHandler.texter("","Tooltip_OrundumDynamo_00");
+        Tooltip_OrundumDynamo_01 = TextHandler.texter("","Tooltip_OrundumDynamo_01");
+        Tooltip_OrundumDynamo_02 = TextHandler.texter("","Tooltip_OrundumDynamo_02");
+        Tooltip_OrundumDynamo_03 = TextHandler.texter("","Tooltip_OrundumDynamo_03");
+        Tooltip_OrundumDynamo_04 = TextHandler.texter("","Tooltip_OrundumDynamo_04");
+        Tooltip_OrundumDynamo_05 = TextHandler.texter("","Tooltip_OrundumDynamo_05");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
