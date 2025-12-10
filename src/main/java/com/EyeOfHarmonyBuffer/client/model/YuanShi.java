@@ -153,6 +153,8 @@ public class YuanShi extends ModelBase {
             double intensity = Math.max(0.0, dot);
             float lightFactor = (float) (0.35 + 0.65 * intensity);
 
+            boolean isCore = useScatter || useVertexCrack;
+
             float scatter = 1.0F;
             if (useScatter) {
                 float h = hash11(faceIndex * 7347 + 13);
@@ -160,39 +162,97 @@ public class YuanShi extends ModelBase {
                 scatter = 0.9F + 0.2F * h + wobble;
             }
 
-            float r = baseR;
-            float g = baseG;
-            float b = baseB;
+            float r, g, b;
 
-            if (useHighlight) {
-                float spec = (float) Math.pow(intensity, 2.3);
-                float specStrength = 0.45F;
-
-                float targetR = 1.0F;
-                float targetG = 0.97F;
-                float targetB = 0.92F;
-
-                r = baseR * lightFactor * (1.0F - specStrength * spec)
-                    + targetR * specStrength * spec;
-                g = baseG * lightFactor * (1.0F - specStrength * spec)
-                    + targetG * specStrength * spec;
-                b = baseB * lightFactor * (1.0F - specStrength * spec)
-                    + targetB * specStrength * spec;
+            if (isCore) {
+                r = baseR;
+                g = baseG;
+                b = baseB;
             } else {
-                r = baseR * lightFactor;
-                g = baseG * lightFactor;
-                b = baseB * lightFactor;
+                r = baseR;
+                g = baseG;
+                b = baseB;
+
+                if (useHighlight) {
+                    float spec = (float) Math.pow(intensity, 2.3);
+                    float specStrength = 0.45F;
+
+                    float targetR = 1.0F;
+                    float targetG = 0.97F;
+                    float targetB = 0.92F;
+
+                    r = baseR * lightFactor * (1.0F - specStrength * spec)
+                        + targetR * specStrength * spec;
+                    g = baseG * lightFactor * (1.0F - specStrength * spec)
+                        + targetG * specStrength * spec;
+                    b = baseB * lightFactor * (1.0F - specStrength * spec)
+                        + targetB * specStrength * spec;
+                } else {
+                    r = baseR * lightFactor;
+                    g = baseG * lightFactor;
+                    b = baseB * lightFactor;
+                }
+
+                r *= scatter;
+                g *= scatter;
+                b *= scatter;
             }
 
-            r *= scatter;
-            g *= scatter;
-            b *= scatter;
+            double u0, v0u;
+            double u1, v1u;
+            double u2, v2u;
 
-            addCrackedVertex(tess, faceIndex, 0, v0, r, g, b, baseA, useVertexCrack, time);
+            if (faceIndex == 0) {
+                float uMin = 142F / 1024F;
+                float uMax = 440F / 1024F;
+                float vMin = 375F / 1024F;
+                float vMax = 690F / 1024F;
 
-            addCrackedVertex(tess, faceIndex, 1, v1, r, g, b, baseA, useVertexCrack, time);
+                u0 = uMin;      v0u = vMin;
+                u1 = uMax;      v1u = vMin;
+                u2 = (uMin + uMax) * 0.5F;
+                v2u = vMax;
 
-            addCrackedVertex(tess, faceIndex, 2, v2, r, g, b, baseA, useVertexCrack, time);
+            } else {
+
+                float safeUMin = 450F / 1024F;
+                float safeUMax = 1024F / 1024F;
+                float safeVMin = 0F   / 1024F;
+                float safeVMax = 1024F / 1024F;
+
+                float randU = hash11(faceIndex * 92821 + 1);
+                float randV = hash11(faceIndex * 92821 + 2);
+
+                float sizeU = (safeUMax - safeUMin) * 0.4F;
+                float sizeV = (safeVMax - safeVMin) * 0.4F;
+
+                float baseU = safeUMin + (safeUMax - safeUMin - sizeU) * randU;
+                float baseV = safeVMin + (safeVMax - safeVMin - sizeV) * randV;
+
+                u0 = baseU;
+                v0u = baseV;
+
+                u1 = baseU + sizeU;
+                v1u = baseV;
+
+                u2 = baseU + sizeU * 0.5F;
+                v2u = baseV + sizeV;
+            }
+
+            addCrackedVertex(tess, faceIndex, 0, v0,
+                r, g, b, baseA,
+                useVertexCrack, isCore, time,
+                u0, v0u);
+
+            addCrackedVertex(tess, faceIndex, 1, v1,
+                r, g, b, baseA,
+                useVertexCrack, isCore, time,
+                u1, v1u);
+
+            addCrackedVertex(tess, faceIndex, 2, v2,
+                r, g, b, baseA,
+                useVertexCrack, isCore, time,
+                u2, v2u);
         }
 
         tess.draw();
@@ -200,18 +260,23 @@ public class YuanShi extends ModelBase {
 
     private void addCrackedVertex(Tessellator tess,
                                   int faceIndex, int localIndex,
-                                  double[] v,
+                                  double[] pos,
                                   float r, float g, float b, float a,
                                   boolean useVertexCrack,
-                                  float time) {
+                                  boolean isCore,
+                                  float time,
+                                  double u, double v) {
 
         float jitter = 1.0F;
-        float hv = hash12(faceIndex, localIndex);
-        jitter *= (0.9F + hv * 0.3F);
 
-        if (useVertexCrack) {
-            float crack = crackNoise(v[0], v[1], v[2], time);
-            jitter *= crack;
+        if (!isCore) {
+            float hv = hash12(faceIndex, localIndex);
+            jitter *= (0.9F + hv * 0.3F);
+
+            if (useVertexCrack) {
+                float crack = crackNoise(pos[0], pos[1], pos[2], time);
+                jitter *= crack;
+            }
         }
 
         float vr = Math.min(r * jitter, 1.0F);
@@ -219,7 +284,7 @@ public class YuanShi extends ModelBase {
         float vb = Math.min(b * jitter, 1.0F);
 
         tess.setColorRGBA_F(vr, vg, vb, a);
-        tess.addVertex(v[0], v[1], v[2]);
+        tess.addVertexWithUV(pos[0], pos[1], pos[2], u, v);
     }
 
     public void renderShell(float r, float g, float b, float a) {
@@ -246,6 +311,17 @@ public class YuanShi extends ModelBase {
             true,
             false,
             true,
+            time);
+    }
+
+    public void renderMiddleLayer(float r, float g, float b, float a) {
+        float time = (Minecraft.getSystemTime() % 8000L) / 1000.0F;
+
+        tessellate(FACES_CORE,
+            r, g, b, a,
+            true,
+            false,
+            false,
             time);
     }
 }
