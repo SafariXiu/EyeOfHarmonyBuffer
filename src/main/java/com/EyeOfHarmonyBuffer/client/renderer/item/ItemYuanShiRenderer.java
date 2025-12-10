@@ -58,7 +58,6 @@ public class ItemYuanShiRenderer implements IItemRenderer {
 
         float baseScale = 2.5F;
         GL11.glScalef(baseScale, baseScale, baseScale);
-
         GL11.glRotatef(time, 0F, 1F, 0F);
 
         GL11.glDisable(GL11.GL_TEXTURE_2D);
@@ -73,27 +72,22 @@ public class ItemYuanShiRenderer implements IItemRenderer {
         GL11.glScalef(0.45F, 0.45F, 0.45F);
         GL11.glTranslatef(0.0F, 0.08F, 0.0F);
 
-        GL11.glColor4f(1.0F, 0.75F, 0.15F, 0.95F);
-        model.render(null, 0, 0, 0, 0, 0, 1.0F);
+        model.renderCoreSolid(1.0F, 0.68F, 0.18F, 0.95F);
         GL11.glPopMatrix();
 
         GL11.glDepthMask(false);
-
         GL11.glPushMatrix();
         GL11.glScalef(0.9F, 0.9F, 0.9F);
         GL11.glTranslatef(0.0F, 0.08F, 0.0F);
 
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-        GL11.glColor4f(1.0F, 0.95F, 0.8F, 1.0F);
-        model.render(null, 0, 0, 0, 0, 0, 1.0F);
+
+        model.renderCoreAdd(1.0F, 0.93F, 0.80F, 0.75F);
         GL11.glPopMatrix();
 
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        GL11.glDepthMask(false);
-
-        GL11.glColor4f(0.03F, 0.015F, 0.006F, 0.9F);
-        model.render(null, 0, 0, 0, 0, 0, 1.0F);
+        model.renderShell(0.06F, 0.05F, 0.05F, 0.55F);
 
         GL11.glDepthMask(true);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
