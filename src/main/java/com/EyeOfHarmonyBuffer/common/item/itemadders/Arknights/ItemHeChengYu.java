@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.common.item.itemadders;
+package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.entity.player.EntityPlayer;
@@ -16,7 +16,7 @@ public class ItemHeChengYu extends Item {
         super();
 
         this.setUnlocalizedName("HeChengYu");
-        this.setTextureName(EyeOfHarmonyBuffer.MODID + ":HeChengYu");
+        this.setTextureName(EyeOfHarmonyBuffer.MODID + ":Arknights/HeChengYu");
         this.setCreativeTab(tabMetaItem01);
         this.setMaxStackSize(64);
     }

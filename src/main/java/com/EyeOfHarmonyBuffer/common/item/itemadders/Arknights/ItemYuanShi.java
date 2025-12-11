@@ -1,6 +1,5 @@
-package com.EyeOfHarmonyBuffer.common.item.itemadders;
+package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
-import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;

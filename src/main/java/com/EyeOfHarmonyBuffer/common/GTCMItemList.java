@@ -17,14 +17,26 @@ public enum GTCMItemList {
     SubstanceReshapingDevice,
     BlueDogMachines,
     MonkeyShitS,
-    OrundumDynamos,
 
     //物品
     ChengDuHeart,
     Monkey,
     Shit,
+
+    //方舟物品
     YuanShi,
     HeChengYu,
+    LanTieKuang,
+    YuanShiKuang,
+    ZiJingKuang,
+    DiRongLiangDianChi,
+    ZhongRongLiangDianChi,
+    GaoRongLiangDianChi,
+    XiRangDiRongLiangDianChi,
+
+    //方舟机器
+    OrundumDynamos,
+
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,
