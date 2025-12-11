@@ -24,6 +24,7 @@ public class RecipeLoader {
             new BlueDogMachineRecipes(),
             new MaterialsRecipes(),
             new ItemRecipes(),
+            new OrundumDynamoRecipes(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

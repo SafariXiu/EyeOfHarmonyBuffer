@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Loader;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.Machine.*;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_OrundumDynamo;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.item.ItemStack;
 

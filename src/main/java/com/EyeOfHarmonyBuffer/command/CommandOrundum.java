@@ -51,6 +51,23 @@ public class CommandOrundum extends GTBaseCommand {
         try {
             switch (sub) {
                 case "add":
+                case "set":
+                case "display":
+                    if (!sender.canCommandSenderUseCommand(2, getCommandName())) {
+                        sendError(sender, "你没有权限使用此子命令。");
+                        return;
+                    }
+                    break;
+                case "join":
+                    break;
+                default:
+                    sendError(sender, "未知子命令: " + sub);
+                    sendUsage(sender);
+                    return;
+            }
+
+            switch (sub) {
+                case "add":
                     handleAdd(sender, args);
                     break;
                 case "set":
@@ -62,13 +79,10 @@ public class CommandOrundum extends GTBaseCommand {
                 case "display":
                     handleDisplay(sender, args);
                     break;
-                default:
-                    sendError(sender, "Unknown subcommand: " + sub);
-                    sendUsage(sender);
-                    break;
             }
+
         } catch (Exception e) {
-            sendError(sender, "Error while executing command: " + e.getMessage());
+            sendError(sender, "执行命令时出错: " + e.getMessage());
             e.printStackTrace();
         }
     }

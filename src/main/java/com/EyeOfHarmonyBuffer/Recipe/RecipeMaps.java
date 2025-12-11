@@ -9,6 +9,7 @@ import gregtech.api.recipe.RecipeMapBackend;
 import gregtech.api.recipe.RecipeMapBuilder;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.SubstanceReshapingDeviceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.BlueDogDeviceFrontend;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.RangeOutputFrontend;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
@@ -56,5 +57,17 @@ public class RecipeMaps {
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20,20)
         .logoPos(152,63)
+        .build();
+
+    public static final RecipeMap<RecipeMapBackend> OrundumDynamo = RecipeMapBuilder
+        .of(EOHB_Recipe_OrundumDynamo)
+        .maxIO(4,4,4,4)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RangeOutputFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.YuanShi.get(1)))
         .build();
 }

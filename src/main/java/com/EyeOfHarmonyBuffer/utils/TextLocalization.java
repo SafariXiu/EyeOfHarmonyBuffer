@@ -142,6 +142,8 @@ public class TextLocalization {
     public static final String EOHB_Recipe_BlueDogFountain;
     public static final String EOHB_Recipe_BlueDogFountainMAX;
     public static final String EOHB_Recipe_MonkeyShit;
+    public static final String EOHB_Recipe_OrundumDynamo;
+    public static final String EOHB_Recipe_OrundumDynamo_Tooltip_00;
 
 
     public TextLocalization() {
@@ -306,5 +308,7 @@ public class TextLocalization {
         EOHB_Recipe_BlueDogFountain = TextHandler.texter("Blue Dog Fountain","EOHB_Recipe_BlueDogFountain");
         EOHB_Recipe_BlueDogFountainMAX = TextHandler.texter("Blue Dog Fountain MAX","EOHB_Recipe_BlueDogFountainMAX");
         EOHB_Recipe_MonkeyShit = TextHandler.texter("The Holy Royal High Priest of Poop Transportation","EOHB_Recipe_MonkeyShit");
+        EOHB_Recipe_OrundumDynamo = TextHandler.texter("Orundum Dynamo","EOHB_Recipe_OrundumDynamo");
+        EOHB_Recipe_OrundumDynamo_Tooltip_00 = TextHandler.texter("Orundum OutPut：","EOHB_Recipe_OrundumDynamo_Tooltip_00");
     }
 }

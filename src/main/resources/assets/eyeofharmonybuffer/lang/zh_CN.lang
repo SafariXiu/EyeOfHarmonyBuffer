@@ -135,6 +135,8 @@ EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
 EOHB_Recipe_BlueDogFountain=蓝狗喷泉
 EOHB_Recipe_BlueDogFountainMAX=蓝狗喷泉Max
 EOHB_Recipe_MonkeyShit=圣皇家搬屎大祭司
+EOHB_Recipe_OrundumDynamo=源石发电机
+EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum 输出：
 
 #item
 EOHB_Harmony=鸿蒙

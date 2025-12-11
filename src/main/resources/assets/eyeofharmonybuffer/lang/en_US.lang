@@ -135,6 +135,8 @@ EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
 EOHB_Recipe_BlueDogFountain=Blue Dog Fountain
 EOHB_Recipe_BlueDogFountainMAX=Blue Dog Fountain Max
 EOHB_Recipe_MonkeyShit=The Holy Royal High Priest of Poop Transportation
+EOHB_Recipe_OrundumDynamo=Orundum Dynamo
+EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum OutPut：
 
 #item
 EOHB_Harmony=Harmony

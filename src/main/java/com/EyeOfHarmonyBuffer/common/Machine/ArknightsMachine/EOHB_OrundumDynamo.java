@@ -1,5 +1,6 @@
-package com.EyeOfHarmonyBuffer.common.Machine;
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
+import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
@@ -17,6 +18,7 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchInput;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
@@ -86,6 +88,12 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     @Override
     protected float getSpeedBonus() {
         return 0;
+    }
+
+    @NotNull
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return RecipeMaps.OrundumDynamo;
     }
 
     private int getParallelCount() {
@@ -409,7 +417,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         currentTip.add(EnumChatFormatting.GRAY + "玻璃等级:" + EnumChatFormatting.WHITE + " " + glassTierValue);
         currentTip.add(EnumChatFormatting.GRAY + "玻璃加成:" + EnumChatFormatting.GOLD +
             String.format(" ×%.2f", glassFactor) + EnumChatFormatting.RESET);
-        currentTip.add(EnumChatFormatting.AQUA + "并行线程:" + EnumChatFormatting.GOLD +
+        currentTip.add(EnumChatFormatting.GRAY + "并行线程:" + EnumChatFormatting.GOLD +
             " " + parallelUsed + "/" + parallelMax + EnumChatFormatting.RESET);
 
         currentTip.add(EnumChatFormatting.GREEN + "【综合效率】" + EnumChatFormatting.RESET);
