@@ -163,3 +163,6 @@ item.DiRongLiangDianChi.name=Low-Capacity Originium Cell
 item.ZhongRongLiangDianChi.name=Standard Originium Cell
 item.GaoRongLiangDianChi.name=High-Capacity Originium Cell
 item.XiRangDiRongLiangDianChi.name=Low-Capacity Soil Cell
+item.PoSuiYuanShi.name=Fragmented Originite Prime
+EOHB_PoSuiYuanShi_Tooltip_00=A shattered Originite Prime that has lost its energy
+EOHB_PoSuiYuanShi_Tooltip_01=there might be a way to restore its potency.

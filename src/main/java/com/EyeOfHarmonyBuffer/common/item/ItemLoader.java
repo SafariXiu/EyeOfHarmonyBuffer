@@ -23,6 +23,7 @@ public class ItemLoader {
     public static Item ZhongRongLiangDianChi = new ItemZhongRongLiangDianChi();
     public static Item GaoRongLiangDianChi = new ItemGaoRongLiangDianChi();
     public static Item XiRangDiRongLiangDianChi = new ItemXiRangDiRongLiangDianChi();
+    public static Item PoSuiYuanShi =  new ItemPoSuiYuanShi();
 
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
@@ -37,6 +38,7 @@ public class ItemLoader {
         GTCMItemList.ZhongRongLiangDianChi.set(registryAndCallback(ZhongRongLiangDianChi,"ZhongRongLiangDianChi"));
         GTCMItemList.GaoRongLiangDianChi.set(registryAndCallback(GaoRongLiangDianChi,"GaoRongLiangDianChi"));
         GTCMItemList.XiRangDiRongLiangDianChi.set(registryAndCallback(XiRangDiRongLiangDianChi,"XiRangDiRongLiangDianChi"));
+        GTCMItemList.PoSuiYuanShi.set(registryAndCallback(PoSuiYuanShi,"PoSuiYuanShi"));
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {

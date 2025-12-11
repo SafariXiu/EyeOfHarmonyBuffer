@@ -31,6 +31,42 @@ public class OrundumDynamoRecipes implements IRecipePool {
             .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "100000")
             .addTo(OrundumDynamo);
 
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.DiRongLiangDianChi.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.PoSuiYuanShi.get(25)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "500000")
+            .addTo(OrundumDynamo);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhongRongLiangDianChi.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.PoSuiYuanShi.get(50)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "1000000")
+            .addTo(OrundumDynamo);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.GaoRongLiangDianChi.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.PoSuiYuanShi.get(200)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "5000000")
+            .addTo(OrundumDynamo);
+
         /*GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.HeChengYu.get(2)

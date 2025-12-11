@@ -163,3 +163,6 @@ item.DiRongLiangDianChi.name=低容量源石电池
 item.ZhongRongLiangDianChi.name=中容量源石电池
 item.GaoRongLiangDianChi.name=高容量源石电池
 item.XiRangDiRongLiangDianChi.name=低容量息壤电池
+item.PoSuiYuanShi.name=破碎的至纯源石
+EOHB_PoSuiYuanShi_Tooltip_00=一颗失去活性破碎的至纯源石
+EOHB_PoSuiYuanShi_Tooltip_01=或许可以通过一些方法让它恢复活性

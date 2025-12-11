@@ -33,6 +33,7 @@ public enum GTCMItemList {
     ZhongRongLiangDianChi,
     GaoRongLiangDianChi,
     XiRangDiRongLiangDianChi,
+    PoSuiYuanShi,
 
     //方舟机器
     OrundumDynamos,

@@ -37,7 +37,9 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
@@ -59,6 +61,8 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     protected static final String STRUCTURE_PIECE_MAIN = "mainOrundumDynamo";
     private int glassTier = -1;
     private int lastItemOutput = 0;
+    private ItemStack lastInputType = null;
+    private InputRecipe lastRecipeConfig = null;
     private HeatingCoilLevel mCoilLevel;
     private int mOrundumEfficiency;
     private static final int OffsetsX = 9;
@@ -66,6 +70,22 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     private static final int OffsetsZ = 1;
     private static final int CASING_INDEX = 16;
     private int lastParallelCount = 1;
+
+    private static final Map<ItemStack, InputRecipe> INPUT_RECIPES = new HashMap<>();
+
+    static {
+        INPUT_RECIPES.put(GTCMItemList.YuanShi.get(1),
+            new InputRecipe(GTCMItemList.HeChengYu.get(1), 180, 100_000L));
+
+        INPUT_RECIPES.put(GTCMItemList.DiRongLiangDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 25, 500_000L));
+
+        INPUT_RECIPES.put(GTCMItemList.ZhongRongLiangDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 50, 1_000_000L));
+
+        INPUT_RECIPES.put(GTCMItemList.GaoRongLiangDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 200, 5_000_000L));
+    }
 
     public EOHB_OrundumDynamo(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -101,38 +121,54 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         return 1 << tier;
     }
 
+    private static class InputRecipe {
+        final ItemStack output;
+        final int baseItemOutput;
+        final BigInteger baseOrundum;
+
+        InputRecipe(ItemStack output, int itemOut, long orundumOut) {
+            this.output = output;
+            this.baseItemOutput = itemOut;
+            this.baseOrundum = BigInteger.valueOf(orundumOut);
+        }
+    }
+
     @NotNull
     @Override
     public CheckRecipeResult checkProcessing() {
-        if (mMaxProgresstime > 0) {
-            return CheckRecipeResultRegistry.SUCCESSFUL;
+        List<ItemStack> inputs = getStoredInputs();
+        ItemStack foundType = null;
+        InputRecipe recipeConfig = null;
+        int availableCount = 0;
+
+        for (ItemStack stack : inputs) {
+            if (stack == null) continue;
+
+            for (Map.Entry<ItemStack, InputRecipe> entry : INPUT_RECIPES.entrySet()) {
+                if (stack.isItemEqual(entry.getKey())) {
+                    foundType = entry.getKey();
+                    recipeConfig = entry.getValue();
+                    availableCount += stack.stackSize;
+                    break;
+                }
+            }
+            if (foundType != null) break;
+        }
+
+        if (foundType == null || recipeConfig == null || availableCount <= 0) {
+            return CheckRecipeResultRegistry.NO_RECIPE;
         }
 
         int maxParallel = getParallelCount();
-        int availableCount = 0;
-
-        List<ItemStack> inputs = getStoredInputs();
-        for (ItemStack stack : inputs) {
-            if (stack != null && stack.isItemEqual(GTCMItemList.YuanShi.get(1))) {
-                availableCount += stack.stackSize;
-            }
-        }
-
-        if (availableCount <= 0) {
-            return CheckRecipeResultRegistry.NO_RECIPE;
-        }
-
         int usedParallel = Math.min(availableCount, maxParallel);
-        if (usedParallel <= 0) {
-            return CheckRecipeResultRegistry.NO_RECIPE;
-        }
 
         int remaining = usedParallel;
         for (MTEHatchInputBus bus : validMTEList(mInputBusses)) {
             IGregTechTileEntity base = bus.getBaseMetaTileEntity();
             for (int i = bus.getSizeInventory() - 1; i >= 0 && remaining > 0; i--) {
                 ItemStack stack = base.getStackInSlot(i);
-                if (stack != null && stack.isItemEqual(GTCMItemList.YuanShi.get(1))) {
+                if (stack == null) continue;
+                if (stack.isItemEqual(foundType)) {
                     int take = Math.min(stack.stackSize, remaining);
                     base.decrStackSize(i, take);
                     remaining -= take;
@@ -145,7 +181,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
             for (MTEHatchInput hatch : validMTEList(mInputHatches)) {
                 IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
                 ItemStack slot0 = base.getStackInSlot(0);
-                if (slot0 != null && slot0.isItemEqual(GTCMItemList.YuanShi.get(1))) {
+                if (slot0 != null && slot0.isItemEqual(foundType)) {
                     int take = Math.min(slot0.stackSize, remaining);
                     base.decrStackSize(0, take);
                     remaining -= take;
@@ -154,15 +190,13 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
             }
         }
 
-        if (remaining > 0) {
-            GTLog.out.println("[OrundumDynamo] Warning: not enough YuanShi found to deplete fully.");
-        }
-
         mMaxProgresstime = TICKS_PER_CYCLE;
         mProgresstime = 0;
         mEfficiency = 10000;
-        mEfficiencyIncrease = 0;
+
         this.lastParallelCount = usedParallel;
+        this.lastInputType = foundType;
+        this.lastRecipeConfig = recipeConfig;
 
         int coilHeat = (int) this.getCoilLevel().getHeat();
         double baseHeat = 1800.0;
@@ -171,19 +205,21 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         double effFactor = this.mOrundumEfficiency / 100.0;
 
         double totalMultiplier = coilFactor * glassFactor * effFactor * usedParallel;
-        this.pendingOrundum = ORUNDUM_PER_PURE_ORIGINIUM.multiply(BigInteger.valueOf((long) totalMultiplier));
+
+        BigInteger orundumGain = recipeConfig.baseOrundum.multiply(BigInteger.valueOf((long) totalMultiplier));
+        this.pendingOrundum = orundumGain;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
     @Override
     public void endRecipeProcessing() {
-        int usedParallel = this.lastParallelCount;
-
-        if (usedParallel <= 0) {
-            usedParallel = 1;
+        if (this.lastRecipeConfig == null) {
+            super.endRecipeProcessing();
+            return;
         }
 
+        int usedParallel = Math.max(1, this.lastParallelCount);
         int coilHeat = (int) this.getCoilLevel().getHeat();
         double baseHeat = 1800.0;
         double coilFactor = Math.pow(coilHeat / baseHeat, 1.2);
@@ -191,20 +227,21 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         double effFactor = this.mOrundumEfficiency / 100.0;
 
         double totalEnergyMul = coilFactor * glassFactor * effFactor * usedParallel;
+        BigInteger totalOrundum = this.lastRecipeConfig.baseOrundum.multiply(BigInteger.valueOf((long) totalEnergyMul));
 
         if (ownerUUID != null) {
-            BigInteger orundumGain = ORUNDUM_PER_PURE_ORIGINIUM.multiply(
-                BigInteger.valueOf((long) totalEnergyMul)
-            );
-            OrundumEnergyService.changeOrundumForUser(ownerUUID, orundumGain);
+            OrundumEnergyService.changeOrundumForUser(ownerUUID, totalOrundum);
         }
 
         double itemMultiplier = (coilFactor * 0.9 + glassFactor * 0.1) * effFactor;
-        int outputPerThread = Math.max(1, (int) (180 * itemMultiplier));
+        int outputPerThread = (int) (this.lastRecipeConfig.baseItemOutput * itemMultiplier);
         int totalOutput = outputPerThread * usedParallel;
 
         this.lastItemOutput = totalOutput;
-        addOutput(GTCMItemList.HeChengYu.get(totalOutput));
+
+        ItemStack outTemplate = this.lastRecipeConfig.output.copy();
+        outTemplate.stackSize = totalOutput;
+        addOutput(outTemplate);
 
         pendingOrundum = BigInteger.ZERO;
         super.endRecipeProcessing();
@@ -365,6 +402,12 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         tag.setInteger("parallelMax", getParallelCount());
         tag.setInteger("parallelUsed", this.lastParallelCount);
+
+        if (this.lastRecipeConfig != null) {
+            tag.setLong("baseOrundum", this.lastRecipeConfig.baseOrundum.longValue());
+        } else {
+            tag.setLong("baseOrundum", ORUNDUM_PER_PURE_ORIGINIUM.longValue());
+        }
     }
 
     @Override
@@ -402,9 +445,10 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         double totalEnergyMul = coilFactor * glassFactor * effBonus * parallelUsed;
 
-        BigInteger dynamicEnergy = ORUNDUM_PER_PURE_ORIGINIUM.multiply(
-            BigInteger.valueOf((long)(totalEnergyMul))
-        );
+        long baseOrundumL = tag.hasKey("baseOrundum") ? tag.getLong("baseOrundum") : ORUNDUM_PER_PURE_ORIGINIUM.longValue();
+
+        BigInteger dynamicEnergy = BigInteger.valueOf(baseOrundumL)
+            .multiply(BigInteger.valueOf((long)(totalEnergyMul)));
         BigInteger orundumPerTick = dynamicEnergy.divide(BigInteger.valueOf(TICKS_PER_CYCLE));
         BigInteger orundumPerSecond = orundumPerTick.multiply(BigInteger.valueOf(20L));
 
@@ -434,7 +478,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         if (itemOutValue > 0) {
             currentTip.add(EnumChatFormatting.GREEN + "每循环产出:" + EnumChatFormatting.GOLD +
-                " " + itemOutValue + EnumChatFormatting.RESET + " 个合成玉");
+                " " + itemOutValue + EnumChatFormatting.RESET + " 个产物");
         }
     }
 
@@ -445,6 +489,10 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         if (this.mCoilLevel != null) {
             aNBT.setInteger("coilHeat", (int) this.mCoilLevel.getHeat());
         }
+
+        if (this.lastInputType != null)
+            aNBT.setString("lastInputType", this.lastInputType.getUnlocalizedName());
+
         aNBT.setInteger("glassTier", this.glassTier);
         aNBT.setInteger("orundumEff", this.mOrundumEfficiency);
 
@@ -466,6 +514,17 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         if (aNBT.hasKey("itemOut")) {
             this.lastItemOutput = aNBT.getInteger("itemOut");
+        }
+
+        if (aNBT.hasKey("lastInputType")) {
+            String name = aNBT.getString("lastInputType");
+            for (ItemStack key : INPUT_RECIPES.keySet()) {
+                if (key.getUnlocalizedName().equals(name)) {
+                    this.lastInputType = key;
+                    this.lastRecipeConfig = INPUT_RECIPES.get(key);
+                    break;
+                }
+            }
         }
     }
 

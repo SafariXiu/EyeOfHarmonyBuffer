@@ -137,6 +137,8 @@ public class TextLocalization {
     public static final String EOHB_YuanShi_Tooltip_02;
     public static final String EOHB_HeChengYu_Tooltip_00;
     public static final String EOHB_HeChengYu_Tooltip_01;
+    public static final String EOHB_PoSuiYuanShi_Tooltip_00;
+    public static final String EOHB_PoSuiYuanShi_Tooltip_01;
 
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
     public static final String EOHB_Recipe_BlueDogFountain;
@@ -302,6 +304,8 @@ public class TextLocalization {
         EOHB_YuanShi_Tooltip_02 = TextHandler.texter("Even if widespread rumors claim \"Originite Prime spreads an incurable disease,\" few can resist its temptation.","EOHB_YuanShi_Tooltip_02");
         EOHB_HeChengYu_Tooltip_00 = TextHandler.texter("Made from Originite Prime, it also contains other minerals.","EOHB_HeChengYu_Tooltip_00");
         EOHB_HeChengYu_Tooltip_01 = TextHandler.texter("In the past, it was used only as a conductive element, but it has since become a store of credit value.","EOHB_HeChengYu_Tooltip_01");
+        EOHB_PoSuiYuanShi_Tooltip_00 = TextHandler.texter("A shattered Originite Prime that has lost its energy","EOHB_PoSuiYuanShi_Tooltip_00");
+        EOHB_PoSuiYuanShi_Tooltip_01 = TextHandler.texter("there might be a way to restore its potency.","EOHB_PoSuiYuanShi_Tooltip_01");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
