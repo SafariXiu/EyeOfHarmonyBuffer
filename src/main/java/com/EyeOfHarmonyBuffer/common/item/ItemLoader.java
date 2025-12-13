@@ -24,6 +24,22 @@ public class ItemLoader {
     public static Item GaoRongLiangDianChi = new ItemGaoRongLiangDianChi();
     public static Item XiRangDiRongLiangDianChi = new ItemXiRangDiRongLiangDianChi();
     public static Item PoSuiYuanShi =  new ItemPoSuiYuanShi();
+    public static Item JingTiWaiKeFenMo = new ItemJingTiWaiKeFenMo();
+    public static Item LanTieFenMo = new ItemLanTieFenMo();
+    public static Item ShaYeFenMo = new ItemShaYeFenMo();
+    public static Item TanFenMo = new ItemTanFenMo();
+    public static Item TongHuaGuanMuFenMo = new ItemTongHuaGuanMuFenMo();
+    public static Item XiRang = new ItemXiRang();
+    public static Item YuanShiFenMo = new ItemYuanShiFenMo();
+    public static Item ZiJingFenMo = new ItemZiJingFenMo();
+    public static Item TanKuai = new ItemTanKuai();
+    public static Item JingTiWaiKe =  new ItemJingTiWaiKe();
+    public static Item LanTieKuai = new ItemLanTieKuai();
+    public static Item WenDingTanKuai = new ItemWenDingTanKuai();
+    public static Item ZiJingXianWei =  new ItemZiJingXianWei();
+    public static Item MiZhiJingTi = new ItemMiZhiJingTi();
+    public static Item GaoJingXianWei =  new ItemGaoJingXianWei();
+    public static Item GangKuai = new ItemGangKuai();
 
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
@@ -39,6 +55,22 @@ public class ItemLoader {
         GTCMItemList.GaoRongLiangDianChi.set(registryAndCallback(GaoRongLiangDianChi,"GaoRongLiangDianChi"));
         GTCMItemList.XiRangDiRongLiangDianChi.set(registryAndCallback(XiRangDiRongLiangDianChi,"XiRangDiRongLiangDianChi"));
         GTCMItemList.PoSuiYuanShi.set(registryAndCallback(PoSuiYuanShi,"PoSuiYuanShi"));
+        GTCMItemList.JingTiWaiKeFenMo.set(registryAndCallback(JingTiWaiKeFenMo,"JingTiWaiKeFenMo"));
+        GTCMItemList.LanTieFenMo.set(registryAndCallback(LanTieFenMo,"LanTieFenMo"));
+        GTCMItemList.ShaYeFenMo.set(registryAndCallback(ShaYeFenMo,"ShaYeFenMo"));
+        GTCMItemList.TanFenMo.set(registryAndCallback(TanFenMo,"TanFenMo"));
+        GTCMItemList.TongHuaGuanMuFenMo.set(registryAndCallback(TongHuaGuanMuFenMo,"TongHuaGuanMuFenMo"));
+        GTCMItemList.XiRang.set(registryAndCallback(XiRang,"XiRang"));
+        GTCMItemList.YuanShiFenMo.set(registryAndCallback(YuanShiFenMo,"YuanShiFenMo"));
+        GTCMItemList.ZiJingFenMo.set(registryAndCallback(ZiJingFenMo,"ZiJingFenMo"));
+        GTCMItemList.TanKuai.set(registryAndCallback(TanKuai,"TanKuai"));
+        GTCMItemList.JingTiWaiKe.set(registryAndCallback(JingTiWaiKe,"JingTiWaiKe"));
+        GTCMItemList.LanTieKuai.set(registryAndCallback(LanTieKuai,"LanTieKuai"));
+        GTCMItemList.WenDingTanKuai.set(registryAndCallback(WenDingTanKuai,"WenDingTanKuai"));
+        GTCMItemList.ZiJingXianWei.set(registryAndCallback(ZiJingXianWei,"ZiJingXianWei"));
+        GTCMItemList.MiZhiJingTi.set(registryAndCallback(MiZhiJingTi,"MiZhiJingTi"));
+        GTCMItemList.GaoJingXianWei.set(registryAndCallback(GaoJingXianWei,"GaoJingXianWei"));
+        GTCMItemList.GangKuai.set(registryAndCallback(GangKuai,"GangKuai"));
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {
