@@ -182,3 +182,7 @@ item.GangKuai.name=钢块
 item.WenDingTanKuai.name=稳定碳块
 item.TanKuai.name=碳块
 item.LanTieKuai.name=蓝铁块
+item.ChunJingYuanShiFenMo.name=纯净源石粉末
+item.DiChunYuanShiFenMo.name=低纯源石粉末
+item.YuanShiJingHe.name=源石晶核
+item.UnactivatedYuanShi.name=未激活的源石

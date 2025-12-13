@@ -5,10 +5,13 @@ import java.io.File;
 import com.EyeOfHarmonyBuffer.Config.Config;
 
 import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+
+import static com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.MODID;
 
 public class CommonProxy {
 
@@ -17,6 +20,7 @@ public class CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
 
         new ItemLoader(event);
+        ItemIntermediateProducts.initAndRegister(EyeOfHarmonyBuffer.MODID);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
 

@@ -40,6 +40,7 @@ public class ItemLoader {
     public static Item MiZhiJingTi = new ItemMiZhiJingTi();
     public static Item GaoJingXianWei =  new ItemGaoJingXianWei();
     public static Item GangKuai = new ItemGangKuai();
+    public static Item UnactivatedYuanShi = new ItemUnactivatedYuanShi();
 
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
@@ -71,6 +72,7 @@ public class ItemLoader {
         GTCMItemList.MiZhiJingTi.set(registryAndCallback(MiZhiJingTi,"MiZhiJingTi"));
         GTCMItemList.GaoJingXianWei.set(registryAndCallback(GaoJingXianWei,"GaoJingXianWei"));
         GTCMItemList.GangKuai.set(registryAndCallback(GangKuai,"GangKuai"));
+        GTCMItemList.UnactivatedYuanShi.set(registryAndCallback(UnactivatedYuanShi,"UnactivatedYuanShi"));
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {

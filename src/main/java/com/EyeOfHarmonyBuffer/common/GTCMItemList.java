@@ -50,6 +50,10 @@ public enum GTCMItemList {
     MiZhiJingTi,
     GaoJingXianWei,
     GangKuai,
+    ChunJingYuanShiFenMo,
+    DiChunYuanShiFenMo,
+    YuanShiJingHe,
+    UnactivatedYuanShi,
 
     //方舟机器
     OrundumDynamos,
