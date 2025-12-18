@@ -1,5 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
+import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Beach;
+import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Ocean;
+import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Plains;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -18,18 +22,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final World world;
     private final SimplexNoiseOctave continentNoise;
     private final SimplexNoiseOctave terrainNoise;
-
-    /**
-     * 简单的内部枚举，用于标记每个 (x,z) 的大致地貌类型：
-     * - OCEAN：深海或远海区域
-     * - BEACH：海岸线及沙滩区域
-     * - PLAINS：内陆平原/陆地区域
-     */
-    private enum TalosBiomeType {
-        OCEAN,
-        BEACH,
-        PLAINS
-    }
 
     public ChunkProviderTalos2(World world, long seed, boolean mapFeaturesEnabled) {
         super(world, seed, mapFeaturesEnabled);
@@ -51,7 +43,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     @Override
     protected BiomeGenBase[] getBiomesForGeneration() {
-        return new BiomeGenBase[]{BiomeGenTalos2.talos2};
+        return new BiomeGenBase[]{
+            TalosBiomes.TALOS_OCEAN,
+            TalosBiomes.TALOS_BEACH,
+            TalosBiomes.TALOS_PLAINS
+        };
     }
 
     /**
@@ -73,17 +69,15 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         clearChunkBlocks(blocks, meta);
 
-        TalosBiomeType[][] talosBiomes = computeBiomeTypes(chunkX, chunkZ);
-
         double[][] plainsBase = computePlainsBase(chunkX, chunkZ);
 
-        int[][] heightMap = computeBaseHeightMap(chunkX, chunkZ, talosBiomes, plainsBase);
+        int[][] heightMap = computeBaseHeightMap(chunkX, chunkZ, plainsBase);
 
         smoothHeightMap(heightMap);
 
-        ensureMinBeachHeight(heightMap, talosBiomes);
+        ensureMinBeachHeight(heightMap, chunkX, chunkZ);
 
-        fillBlocksFromHeightMap(blocks, meta, heightMap, talosBiomes);
+        fillBlocksFromHeightMap(blocks, meta, heightMap, chunkX, chunkZ);
 
         strongCleanOceanFloor(blocks, meta);
         buildWideShelf(blocks, meta, chunkX, chunkZ);
@@ -103,45 +97,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     /**
-     * 步骤 2：使用 continentNoise（大尺度噪声）计算每个 (localX, localZ) 的地貌类型：
-     * OCEAN / BEACH / PLAINS。
-     *
-     * c 值说明：
-     *   - c < 0.45       → OCEAN
-     *   - 0.45 <= c < 0.55 → BEACH（狭窄地带，靠近海岸/岸线）
-     *   - c >= 0.55      → PLAINS（内陆）
-     *
-     * 返回大小为 [17][17] 的数组，包含了 chunk 边界一圈以外的值，便于平滑处理。
-     */
-    private TalosBiomeType[][] computeBiomeTypes(int chunkX, int chunkZ) {
-        final int SIZE = 17;
-        TalosBiomeType[][] biomes = new TalosBiomeType[SIZE][SIZE];
-
-        final double continentScale = 0.0007D;
-
-        for (int localX = 0; localX <= 16; localX++) {
-            for (int localZ = 0; localZ <= 16; localZ++) {
-                int gx = chunkX * 16 + localX;
-                int gz = chunkZ * 16 + localZ;
-
-                double cRaw = this.continentNoise.noise(gx * continentScale, gz * continentScale);
-                double c = (cRaw + 1.0D) * 0.5D;
-                c = c * c * (3.0D - 2.0D * c);
-
-                if (c < 0.45D) {
-                    biomes[localX][localZ] = TalosBiomeType.OCEAN;
-                } else if (c < 0.55D) {
-                    biomes[localX][localZ] = TalosBiomeType.BEACH;
-                } else {
-                    biomes[localX][localZ] = TalosBiomeType.PLAINS;
-                }
-            }
-        }
-
-        return biomes;
-    }
-
-    /**
      * 步骤 3：计算“平原基准高度图” plainsBase。
      * 这里只使用 terrainNoise（中尺度噪声）来生成基础的平原高度，范围大致在 [PLAIN_MIN, PLAIN_MAX]。
      *
@@ -151,9 +106,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int SIZE = 17;
         final double detailScale = 0.0025D;
 
-        final int waterLevel = this.getWaterLevel();
-        final double PLAIN_MIN = waterLevel + 6;   // 70
-        final double PLAIN_MAX = 96.0D;
+        BiomeGenTalos2Plains plainsBiome = TalosBiomes.TALOS_PLAINS;
+
+        double plainMin = plainsBiome.plainMin;
+        double plainMax = plainsBiome.plainMax;
 
         double[][] plainsBase = new double[SIZE][SIZE];
 
@@ -165,7 +121,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 double dRaw = this.terrainNoise.noise(gx * detailScale, gz * detailScale);
                 double d = (dRaw + 1.0D) * 0.5D; // [0,1]
 
-                double hPlains = PLAIN_MIN + d * (PLAIN_MAX - PLAIN_MIN);
+                double hPlains = plainMin + d * (plainMax - plainMin);
                 plainsBase[localX][localZ] = hPlains;
             }
         }
@@ -189,31 +145,33 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private int[][] computeBaseHeightMap(
         int chunkX,
         int chunkZ,
-        TalosBiomeType[][] biomes,
         double[][] plainsBase) {
 
         final int SIZE = 17;
         final int worldHeight = 256;
         final int waterLevel  = this.getWaterLevel();
 
-        final double DEEP_MIN = 16.0D;
-        final double DEEP_MAX = waterLevel - 18; // 46
+        BiomeGenTalos2Ocean oceanBiome  = TalosBiomes.TALOS_OCEAN;
+        BiomeGenTalos2Beach beachBiome  = TalosBiomes.TALOS_BEACH;
+        BiomeGenTalos2Plains plainsBiome = TalosBiomes.TALOS_PLAINS;
 
-        final double SHELF_TOP_MIN = waterLevel - 12;
-        final double SHELF_TOP_MAX = waterLevel - 6;
+        double DEEP_MIN      = oceanBiome.deepMin;
+        double DEEP_MAX      = oceanBiome.deepMax;
+        double SHELF_TOP_MIN = oceanBiome.shelfTopMin;
+        double SHELF_TOP_MAX = oceanBiome.shelfTopMax;
 
-        final double BEACH_MIN = waterLevel - 2;
-        final double BEACH_MAX = waterLevel + 3;
+        double BEACH_MIN = beachBiome.beachMin;
+        double BEACH_MAX = beachBiome.beachMax;
 
-        final double PLAIN_MIN = waterLevel + 6;
-        final double PLAIN_MAX = 96.0D;
+        double PLAIN_MIN = plainsBiome.plainMin;
+        double PLAIN_MAX = plainsBiome.plainMax;
 
         final double cShelfStart = 0.30D;
-        final double cShelfEnd = 0.45D;
-        final double cBeachEnd = 0.55D;
+        final double cShelfEnd   = 0.45D;
+        final double cBeachEnd   = 0.55D;
 
         final double continentScale = 0.0007D;
-        final double detailScale = 0.0025D;
+        final double detailScale    = 0.0025D;
 
         int[][] heightMap = new int[SIZE][SIZE];
 
@@ -390,15 +348,19 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      * 步骤 6：确保被标记为 BEACH 的格子的高度不低于水位。
      * 防止出现“沙滩生物群系在水下”的情况。
      */
-    private void ensureMinBeachHeight(int[][] heightMap, TalosBiomeType[][] biomes) {
+    private void ensureMinBeachHeight(int[][] heightMap, int chunkX, int chunkZ) {
         final int CHUNK_SIZE = 16;
         int waterLevel = this.getWaterLevel();
 
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
-                if (biomes[x][z] != TalosBiomeType.BEACH) {
-                    continue;
-                }
+
+                int gx = chunkX * 16 + x;
+                int gz = chunkZ * 16 + z;
+
+                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
+                if (biome != TalosBiomes.TALOS_BEACH) continue;
+
                 if (heightMap[x][z] < waterLevel) {
                     heightMap[x][z] = waterLevel;
                 }
@@ -419,99 +381,107 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         Block[] blocks,
         byte[] meta,
         int[][] heightMap,
-        TalosBiomeType[][] biomes) {
+        int chunkX,
+        int chunkZ) {
 
         final int worldHeight = 256;
         final int CHUNK_SIZE  = 16;
-
-        BlockMetaPair grass = this.getGrassBlock();
-        BlockMetaPair dirt  = this.getDirtBlock();
-        BlockMetaPair stone = this.getStoneBlock();
-        BlockMetaPair sand  = this.getSandBlock();
-        BlockMetaPair water = this.getWaterBlock();
 
         int waterLevel = this.getWaterLevel();
 
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
 
+                int gx = chunkX * 16 + localX;
+                int gz = chunkZ * 16 + localZ;
+
                 int groundHeight = heightMap[localX][localZ];
                 int columnBase   = (localX * 16 + localZ) * worldHeight;
-                TalosBiomeType tBiome = biomes[localX][localZ];
 
-                switch (tBiome) {
-                    case OCEAN: {
-                        for (int y = 0; y <= groundHeight; y++) {
-                            int idx = columnBase + y;
-                            blocks[idx] = stone.getBlock();
-                            meta[idx]   = stone.getMetadata();
-                        }
-                        if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
-                            for (int y = groundHeight + 1; y <= waterLevel; y++) {
-                                int idx = columnBase + y;
-                                blocks[idx] = water.getBlock();
-                                meta[idx]   = water.getMetadata();
-                            }
-                        }
-                        break;
+                BiomeGenBase baseBiome = this.world.getBiomeGenForCoords(gx, gz);
+
+                if (baseBiome == TalosBiomes.TALOS_OCEAN) {
+                    BiomeGenTalos2Ocean biome = (BiomeGenTalos2Ocean) baseBiome;
+                    BlockMetaPair stone = biome.bottomBlock;
+                    BlockMetaPair water = this.getWaterBlock();
+
+                    for (int y = 0; y <= groundHeight; y++) {
+                        int idx = columnBase + y;
+                        blocks[idx] = stone.getBlock();
+                        meta[idx]   = stone.getMetadata();
                     }
-                    case BEACH: {
-                        int top = groundHeight;
-
-                        for (int y = 0; y <= top; y++) {
+                    if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
+                        for (int y = groundHeight + 1; y <= waterLevel; y++) {
                             int idx = columnBase + y;
-
-                            BlockMetaPair pair;
-                            if (y == top || y == top - 1) {
-                                pair = sand;
-                            } else if (y >= top - 4) {
-                                pair = dirt;
-                            } else {
-                                pair = stone;
-                            }
-
-                            blocks[idx] = pair.getBlock();
-                            meta[idx]   = pair.getMetadata();
+                            blocks[idx] = water.getBlock();
+                            meta[idx]   = water.getMetadata();
                         }
-
-                        if (this.canGenerateWaterBlock() && top < waterLevel - 2) {
-                            for (int y = top + 1; y <= waterLevel; y++) {
-                                int idx = columnBase + y;
-                                blocks[idx] = water.getBlock();
-                                meta[idx]   = water.getMetadata();
-                            }
-                        }
-
-                        break;
                     }
-                    case PLAINS:
-                    default: {
-                        int top = groundHeight;
 
-                        for (int y = 0; y <= top; y++) {
+                } else if (baseBiome == TalosBiomes.TALOS_BEACH) {
+                    BiomeGenTalos2Beach biome = (BiomeGenTalos2Beach) baseBiome;
+                    BlockMetaPair sand  = biome.surfaceBlock;
+                    BlockMetaPair dirt  = biome.fillerBlock;
+                    BlockMetaPair stone = biome.stoneBlock;
+                    BlockMetaPair water = this.getWaterBlock();
+
+                    int top = groundHeight;
+
+                    for (int y = 0; y <= top; y++) {
+                        int idx = columnBase + y;
+
+                        BlockMetaPair pair;
+                        if (y == top || y == top - 1) {
+                            pair = sand;
+                        } else if (y >= top - 4) {
+                            pair = dirt;
+                        } else {
+                            pair = stone;
+                        }
+
+                        blocks[idx] = pair.getBlock();
+                        meta[idx]   = pair.getMetadata();
+                    }
+
+                    if (this.canGenerateWaterBlock() && top < waterLevel - 2) {
+                        for (int y = top + 1; y <= waterLevel; y++) {
                             int idx = columnBase + y;
+                            blocks[idx] = water.getBlock();
+                            meta[idx]   = water.getMetadata();
+                        }
+                    }
 
-                            BlockMetaPair pair;
-                            if (y == top) {
-                                pair = grass;
-                            } else if (y >= top - 3) {
-                                pair = dirt;
-                            } else {
-                                pair = stone;
-                            }
+                } else { // PLAINS
+                    BiomeGenTalos2Plains biome = (BiomeGenTalos2Plains) baseBiome;
+                    BlockMetaPair grass = biome.surfaceBlock;
+                    BlockMetaPair dirt  = biome.fillerBlock;
+                    BlockMetaPair stone = biome.stoneBlock;
+                    BlockMetaPair water = this.getWaterBlock();
 
-                            blocks[idx] = pair.getBlock();
-                            meta[idx]   = pair.getMetadata();
+                    int top = groundHeight;
+
+                    for (int y = 0; y <= top; y++) {
+                        int idx = columnBase + y;
+
+                        BlockMetaPair pair;
+                        if (y == top) {
+                            pair = grass;
+                        } else if (y >= top - 3) {
+                            pair = dirt;
+                        } else {
+                            pair = stone;
                         }
 
-                        if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
-                            for (int y = groundHeight + 1; y <= waterLevel; y++) {
-                                int idx = columnBase + y;
-                                blocks[idx] = water.getBlock();
-                                meta[idx]   = water.getMetadata();
-                            }
+                        blocks[idx] = pair.getBlock();
+                        meta[idx]   = pair.getMetadata();
+                    }
+
+                    if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
+                        for (int y = groundHeight + 1; y <= waterLevel; y++) {
+                            int idx = columnBase + y;
+                            blocks[idx] = water.getBlock();
+                            meta[idx]   = water.getMetadata();
                         }
-                        break;
                     }
                 }
             }
