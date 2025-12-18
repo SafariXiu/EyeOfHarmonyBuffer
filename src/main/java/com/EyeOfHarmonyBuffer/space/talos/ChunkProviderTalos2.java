@@ -23,6 +23,15 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final SimplexNoiseOctave continentNoise;
     private final SimplexNoiseOctave terrainNoise;
 
+    private static final boolean DEBUG_BEACH_HIGHS = false;
+    private static final int DEBUG_PRINT_LIMIT_PER_CHUNK = 8;
+
+    private static final boolean CLAMP_BEACH_MAX_HEIGHT = false;
+
+    private static final int BEACH_MAX_TOLERANCE = 1;
+
+    private static final boolean FIX_PLAINS_PULL_TO_SHORE = true;
+
     public ChunkProviderTalos2(World world, long seed, boolean mapFeaturesEnabled) {
         super(world, seed, mapFeaturesEnabled);
         this.world = world;
@@ -50,30 +59,26 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         };
     }
 
-    /**
-     * 核心：按 chunk 坐标生成地形方块数组。
-     * 流程：
-     *   1. 清空方块数组
-     *   2. 计算 (x,z) 的大致地貌类型 OCEAN/BEACH/PLAINS
-     *   3. 计算平原基准高度图 plainsBase（仅与 terrainNoise 相关）
-     *   4. 根据 continentNoise + terrainNoise + 各种规则生成基础高度图 heightMap
-     *   5. 对高度图做 3x3 平滑
-     *   6. 确保沙滩高度不低于水位
-     *   7. 根据高度图和地貌类型填充方块（石头/沙/土/草/水）
-     *   8. 对海底和岸边做一系列后处理：清理海底、生成宽大陆架、向下延伸岸壁、平滑沙滩与草地边缘
-     */
     @Override
     public void onChunkProvider(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
 
-        System.out.println("[Talos2] onChunkProvider at " + chunkX + ", " + chunkZ);
+        //System.out.println("[Talos2] onChunkProvider chunk=(" + chunkX + "," + chunkZ + ")");
 
         clearChunkBlocks(blocks, meta);
 
         double[][] plainsBase = computePlainsBase(chunkX, chunkZ);
 
-        int[][] heightMap = computeBaseHeightMap(chunkX, chunkZ, plainsBase);
+        NoiseDebugInfo[][] noiseInfo = DEBUG_BEACH_HIGHS ? new NoiseDebugInfo[17][17] : null;
+
+        int[][] heightMapRaw = computeBaseHeightMap(chunkX, chunkZ, plainsBase, noiseInfo);
+
+        int[][] heightMap = copyHeightMap(heightMapRaw);
 
         smoothHeightMap(heightMap);
+
+        if (CLAMP_BEACH_MAX_HEIGHT) {
+            clampBeachMaxHeight(heightMap, chunkX, chunkZ);
+        }
 
         ensureMinBeachHeight(heightMap, chunkX, chunkZ);
 
@@ -82,13 +87,26 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         strongCleanOceanFloor(blocks, meta);
         buildWideShelf(blocks, meta, chunkX, chunkZ);
         extendLandEdgesDown(blocks, meta);
-        smoothBeachPlainEdges(blocks, meta);
+
+        //smoothBeachPlainEdges(blocks, meta);
+        //removeMoatRing(blocks, meta);
+        softenBeachBoundaryNoMoat(chunkX, chunkZ, blocks, meta);
+
+
+        if (DEBUG_BEACH_HIGHS) {
+            debugPrintHighBeachColumns(chunkX, chunkZ, blocks, heightMapRaw, heightMap, noiseInfo);
+        }
     }
 
-    /**
-     * 步骤 1：将整个 chunk 的方块数组清空（置为 null / 0）。
-     * 这样后续生成过程可以假设初始都是“空气”。
-     */
+    private static int[][] copyHeightMap(int[][] src) {
+        int[][] dst = new int[src.length][];
+        for (int i = 0; i < src.length; i++) {
+            dst[i] = new int[src[i].length];
+            System.arraycopy(src[i], 0, dst[i], 0, src[i].length);
+        }
+        return dst;
+    }
+
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
         for (int i = 0; i < blocks.length; i++) {
             blocks[i] = null;
@@ -96,12 +114,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * 步骤 3：计算“平原基准高度图” plainsBase。
-     * 这里只使用 terrainNoise（中尺度噪声）来生成基础的平原高度，范围大致在 [PLAIN_MIN, PLAIN_MAX]。
-     *
-     * 之后在实际高度计算时，海洋/沙滩/陆架都会参考这个基准平原高度进行过渡或约束。
-     */
     private double[][] computePlainsBase(int chunkX, int chunkZ) {
         final int SIZE = 17;
         final double detailScale = 0.0025D;
@@ -118,8 +130,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int gx = chunkX * 16 + localX;
                 int gz = chunkZ * 16 + localZ;
 
-                double dRaw = this.terrainNoise.noise(gx * detailScale, gz * detailScale);
-                double d = (dRaw + 1.0D) * 0.5D; // [0,1]
+                double d = sampleTerrain01(gx, gz, detailScale);
 
                 double hPlains = plainMin + d * (plainMax - plainMin);
                 plainsBase[localX][localZ] = hPlains;
@@ -129,34 +140,27 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return plainsBase;
     }
 
-    /**
-     * 步骤 4：综合 continentNoise 和 terrainNoise 计算基础高度图：
-     * - c 控制从深海 → 陆架 → 海滩 → 平原的过渡
-     * - d 控制局部起伏（深海凹凸、陆架高度变化、平原起伏等）
-     *
-     * 这里会分为 4 段逻辑：
-     *   1) c < cShelfStart     → 深海区：高度 ~ [DEEP_MIN, DEEP_MAX]
-     *   2) cShelfStart..cShelfEnd → 深海到陆架的坡面
-     *   3) cShelfEnd..cBeachEnd  → 陆架/沙滩过渡区，高度围绕水位
-     *   4) c >= cBeachEnd     → 内陆平原及其向海岸的高度回拉
-     *
-     * 返回的 heightMap 是 int 高度（已做了基础的 min/max 裁剪）。
-     */
+    private static class NoiseDebugInfo {
+        double c;
+        double d;
+        int segment;
+    }
+
     private int[][] computeBaseHeightMap(
         int chunkX,
         int chunkZ,
-        double[][] plainsBase) {
+        double[][] plainsBase,
+        NoiseDebugInfo[][] dbgOut) {
 
         final int SIZE = 17;
         final int worldHeight = 256;
-        final int waterLevel  = this.getWaterLevel();
 
         BiomeGenTalos2Ocean oceanBiome  = TalosBiomes.TALOS_OCEAN;
         BiomeGenTalos2Beach beachBiome  = TalosBiomes.TALOS_BEACH;
         BiomeGenTalos2Plains plainsBiome = TalosBiomes.TALOS_PLAINS;
 
-        double DEEP_MIN      = oceanBiome.deepMin;
-        double DEEP_MAX      = oceanBiome.deepMax;
+        double DEEP_MIN = oceanBiome.deepMin;
+        double DEEP_MAX  = oceanBiome.deepMax;
         double SHELF_TOP_MIN = oceanBiome.shelfTopMin;
         double SHELF_TOP_MAX = oceanBiome.shelfTopMax;
 
@@ -167,11 +171,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         double PLAIN_MAX = plainsBiome.plainMax;
 
         final double cShelfStart = 0.30D;
-        final double cShelfEnd   = 0.45D;
-        final double cBeachEnd   = 0.55D;
+        final double cShelfEnd = 0.45D;
+        final double cBeachEnd = 0.55D;
 
         final double continentScale = 0.0007D;
-        final double detailScale    = 0.0025D;
+        final double detailScale = 0.0025D;
 
         int[][] heightMap = new int[SIZE][SIZE];
 
@@ -185,99 +189,94 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 double c = (cRaw + 1.0D) * 0.5D;
                 c = c * c * (3.0D - 2.0D * c);
 
-                double dRaw = this.terrainNoise.noise(gx * detailScale, gz * detailScale);
-                double d = (dRaw + 1.0D) * 0.5D; // [0,1]
+                double d = sampleTerrain01(gx, gz, detailScale);
 
                 double hDeep   = DEEP_MIN + d * (DEEP_MAX - DEEP_MIN);
                 double hPlains = PLAIN_MIN + d * (PLAIN_MAX - PLAIN_MIN);
 
-                double h;
+                final double BLEND = 0.03D;
 
-                if (c < cShelfStart) {
-                    h = hDeep;
+                double hDeepOnly = hDeep;
 
-                } else if (c < cShelfEnd) {
-                    double t = (c - cShelfStart) / (cShelfEnd - cShelfStart);
-                    t = clamp01(t);
+                double tShelf = (c - cShelfStart) / (cShelfEnd - cShelfStart);
+                tShelf = clamp01(tShelf);
+                double shelfTop = SHELF_TOP_MIN + d * (SHELF_TOP_MAX - SHELF_TOP_MIN);
 
-                    double shelfTop = SHELF_TOP_MIN + d * (SHELF_TOP_MAX - SHELF_TOP_MIN);
-
-                    double cliffZone = 0.20D;
-                    double tCliff;
-                    if (t < cliffZone) {
-                        double nt = t / cliffZone;
-                        tCliff = nt * nt * nt;
-                    } else {
-                        tCliff = 1.0D;
-                    }
-
-                    h = hDeep * (1.0D - tCliff) + shelfTop * tCliff;
-
-                } else if (c < cBeachEnd) {
-                    h = computeBeachHeight(c, d, hPlains, BEACH_MIN, BEACH_MAX, cShelfEnd, cBeachEnd);
-
+                double cliffZone = 0.20D;
+                double tCliff;
+                if (tShelf < cliffZone) {
+                    double nt = tShelf / cliffZone;
+                    tCliff = nt * nt * nt;
                 } else {
-                    h = computePlainsHeightNearCoast(c, d, hPlains, BEACH_MAX, cBeachEnd);
+                    tCliff = 1.0D;
                 }
+                double hShelfOnly = hDeep * (1.0D - tCliff) + shelfTop * tCliff;
 
-                int ih = (int) Math.round(h);
+                double hBeachOnly  = computeBeachHeight(c, d, hPlains, BEACH_MIN, BEACH_MAX, cShelfEnd, cBeachEnd);
+                double hPlainsOnly = computePlainsHeightNearCoast(c, d, hPlains, BEACH_MAX, cBeachEnd);
+
+                double w01 = smoothstep(cShelfStart - BLEND, cShelfStart + BLEND, c);
+                double w12 = smoothstep(cShelfEnd - BLEND, cShelfEnd + BLEND, c);
+                double w23 = smoothstep(cBeachEnd - BLEND, cBeachEnd + BLEND, c);
+
+                double h01 = lerp(hDeepOnly, hShelfOnly, w01);
+                double h12 = lerp(h01, hBeachOnly, w12);
+                double h = lerp(h12, hPlainsOnly, w23);
+
+                int seg = (c < cShelfStart) ? 0 : (c < cShelfEnd ? 1 : (c < cBeachEnd ? 2 : 3));
+
+                int ih = (int) Math.floor(h);
                 if (ih < 4) ih = 4;
                 if (ih > worldHeight - 4) ih = worldHeight - 4;
 
                 heightMap[localX][localZ] = ih;
+
+                if (dbgOut != null) {
+                    NoiseDebugInfo inf = new NoiseDebugInfo();
+                    inf.c = c;
+                    inf.d = d;
+                    inf.segment = seg;
+                    dbgOut[localX][localZ] = inf;
+                }
             }
         }
 
         return heightMap;
     }
 
-    /**
-     * 海滩/近岸区域的高度计算逻辑。
-     *
-     * 效果：
-     * - 高度围绕水位附近(BEACH_MIN..BEACH_MAX)
-     * - 少量由 d 控制的细微信息
-     * - 接向内陆平原高度时，差值被限制在 ±2 格之内，避免“沙滩旁边突然大高坡”
-     */
     private double computeBeachHeight(
-        double c,
-        double d,
-        double hPlainsRef,
-        double beachMin,
-        double beachMax,
-        double cShelfEnd,
-        double cBeachEnd) {
+        double c, double d, double hPlainsRef,
+        double beachMin, double beachMax,
+        double cShelfEnd, double cBeachEnd) {
 
-        double beachMid = (beachMin + beachMax) * 0.5D;
-        double smallVar = (d - 0.5D) * 4.0D;
-        double baseBeach = beachMid + smallVar;
+        double t = (c - cShelfEnd) / (cBeachEnd - cShelfEnd);
+        t = clamp01(t);
+        t = t * t * (3.0D - 2.0D * t);
 
-        if (baseBeach < beachMin) baseBeach = beachMin;
-        if (baseBeach > beachMax) baseBeach = beachMax;
+        double base = beachMin * (1.0D - t) + beachMax * t;
+
+        double micro = (d - 0.5D) * 1.2D;
+
+        double h = base + micro;
+
+        double min = beachMin - 0.3D;
+        double max = beachMax + 0.3D;
+        if (h < min) h = min;
+        if (h > max) h = max;
 
         double edgeBandFrac = 0.15D;
         double bandStartC = cBeachEnd - edgeBandFrac * (cBeachEnd - cShelfEnd);
-        double tEdge = (c - bandStartC) / (cBeachEnd - bandStartC);
-        tEdge = clamp01(tEdge);
+        double te = (c - bandStartC) / (cBeachEnd - bandStartC);
+        te = clamp01(te);
 
         double maxDelta = 2.0D;
         double targetPlain = hPlainsRef;
-        if (targetPlain > baseBeach + maxDelta) {
-            targetPlain = baseBeach + maxDelta;
-        }
-        if (targetPlain < baseBeach - maxDelta) {
-            targetPlain = baseBeach - maxDelta;
-        }
+        if (targetPlain > h + maxDelta) targetPlain = h + maxDelta;
+        if (targetPlain < h - maxDelta) targetPlain = h - maxDelta;
 
-        return baseBeach * (1.0D - tEdge) + targetPlain * tEdge;
+        return h * (1.0D - te) + targetPlain * te;
     }
 
-    /**
-     * 内陆平原的高度计算，同时对靠近海岸线的区域进行“回拉”：
-     * - d 控制整体平原起伏（可产生高地或低洼）
-     * - 靠近 c ≈ cBeachEnd 的岸边区域，如果高度过高，会被强制压制到一个合理范围，
-     *   避免沙滩旁边直接竖起高墙。
-     */
     private double computePlainsHeightNearCoast(
         double c,
         double d,
@@ -288,17 +287,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         double basePlain = hPlains;
 
         double td = d - 0.5D;
-        double adjust = td * td * 16.0D * (td >= 0 ? 1 : -1);
+        double adjust = td * td * 6.0D * (td >= 0 ? 1 : -1);
         basePlain += adjust;
 
         double shorelineBand = 0.05D;
-        double tShore = (c - cBeachEnd) / shorelineBand;
-
-        if (tShore <= 0.0D) {
-            return basePlain;
-        }
-
-        if (tShore > 1.0D) tShore = 1.0D;
+        double t = (c - cBeachEnd) / shorelineBand;
+        t = clamp01(t);
 
         double targetBeach = beachMax - 1.0D;
 
@@ -307,54 +301,47 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             basePlain = targetBeach + maxDelta;
         }
 
-        return targetBeach * (1.0D - tShore) + basePlain * tShore;
+        if (!FIX_PLAINS_PULL_TO_SHORE) {
+            if (t <= 0.0D) return basePlain;
+            return targetBeach * (1.0D - t) + basePlain * t;
+        }
+
+        return targetBeach * (1.0D - t) + basePlain * t;
     }
 
-    /**
-     * 步骤 5：对高度图进行 3×3 邻域平均，平滑高差。
-     * 目的：
-     * - 去掉独立的\n      小山包或小坑
-     * - 减少地形的“噪点”，使海岸线、平原边缘更柔和
-     */
     private void smoothHeightMap(int[][] heightMap) {
         final int SIZE = 17;
-        int[][] smoothMap = new int[SIZE][SIZE];
+        int[][] out = new int[SIZE][SIZE];
 
         for (int x = 0; x <= 16; x++) {
             for (int z = 0; z <= 16; z++) {
-                int sum = 0;
-                int cnt = 0;
+                int sum = 0, cnt = 0;
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
-                        int nx = x + dx;
-                        int nz = z + dz;
+                        int nx = x + dx, nz = z + dz;
                         if (nx < 0 || nx > 16 || nz < 0 || nz > 16) continue;
                         sum += heightMap[nx][nz];
                         cnt++;
                     }
                 }
-                smoothMap[x][z] = sum / cnt;
+                double avg = sum / (double) cnt;
+                out[x][z] = (int) Math.floor(avg + 1e-6);
             }
         }
 
         for (int x = 0; x <= 16; x++) {
             for (int z = 0; z <= 16; z++) {
-                heightMap[x][z] = smoothMap[x][z];
+                heightMap[x][z] = out[x][z];
             }
         }
     }
 
-    /**
-     * 步骤 6：确保被标记为 BEACH 的格子的高度不低于水位。
-     * 防止出现“沙滩生物群系在水下”的情况。
-     */
     private void ensureMinBeachHeight(int[][] heightMap, int chunkX, int chunkZ) {
         final int CHUNK_SIZE = 16;
         int waterLevel = this.getWaterLevel();
 
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
-
                 int gx = chunkX * 16 + x;
                 int gz = chunkZ * 16 + z;
 
@@ -368,15 +355,27 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * 步骤 7：根据高度图和地貌类型填充实际方块数据：
-     *
-     * - OCEAN：地面以下全石头，直至 groundHeight；若低于水位则填水柱至水位
-     * - BEACH：顶层 1~2 格为沙，下 2~3 格为泥土，再下是石头；若高度低于水位-2，则补水到水位
-     * - PLAINS：顶层草，下 3 格泥土，再下石头；若高度低于水位则形成“内陆湖”
-     *
-     * 填充时按列 (localX, localZ) 纵向遍历 y。
-     */
+    private void clampBeachMaxHeight(int[][] heightMap, int chunkX, int chunkZ) {
+        final int CHUNK_SIZE = 16;
+
+        BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
+        int maxY = (int)Math.round(beachBiome.beachMax) + BEACH_MAX_TOLERANCE;
+
+        for (int x = 0; x < CHUNK_SIZE; x++) {
+            for (int z = 0; z < CHUNK_SIZE; z++) {
+                int gx = chunkX * 16 + x;
+                int gz = chunkZ * 16 + z;
+
+                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
+                if (biome != TalosBiomes.TALOS_BEACH) continue;
+
+                if (heightMap[x][z] > maxY) {
+                    heightMap[x][z] = maxY;
+                }
+            }
+        }
+    }
+
     private void fillBlocksFromHeightMap(
         Block[] blocks,
         byte[] meta,
@@ -451,7 +450,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         }
                     }
 
-                } else { // PLAINS
+                } else {
                     BiomeGenTalos2Plains biome = (BiomeGenTalos2Plains) baseBiome;
                     BlockMetaPair grass = biome.surfaceBlock;
                     BlockMetaPair dirt  = biome.fillerBlock;
@@ -488,12 +487,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * strongCleanOceanFloor:
-     * - 清理水下的地表层，把草/泥土/砾石替换为石头。
-     * - 判断标准：该方块位于一个“水柱”下方（上方直到水位范围内存在水）。
-     * 目的是让海底外观更干净统一，不会出现草块在水下面。
-     */
     private void strongCleanOceanFloor(Block[] blocks, byte[] meta) {
         final int worldHeight = 256;
         int waterLevel = this.getWaterLevel();
@@ -525,13 +518,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         }
                     }
 
-                    if (!inWaterColumn) {
-                        continue;
-                    }
+                    if (!inWaterColumn) continue;
 
-                    if (b == Blocks.grass ||
-                        b == Blocks.dirt  ||
-                        b == Blocks.gravel) {
+                    if (b == Blocks.grass || b == Blocks.dirt || b == Blocks.gravel) {
                         blocks[index] = stone.getBlock();
                         meta[index]   = stone.getMetadata();
                     }
@@ -540,20 +529,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * buildWideShelf:
-     * - 在靠近大陆（continentNoise 介于一定范围）且水下有实心地形的区域，
-     *   检测到附近一定范围内存在“露出水面的陆地”时，
-     *   会在这片区域内构造一段“大陆架”和“海底陡坡”。
-     *
-     * 实现方式：
-     *   1) 标记 isNearContinent: c ∈ [0.30, 0.52]
-     *   2) 标记 hasSolidBelowWater: 该 (x,z) 列在 waterLevel 以下存在实心方块
-     *   3) 在曼哈顿半径 50 范围内查找最近的“露出水面的陆地块”
-     *   4) 根据距离 nearest 计算一个 shelfTopY 和 cliffBottomY，高度区间内填充石头
-     *
-     * 效果：在大陆周围生成一圈较宽的石质大陆架，海底从陆地向外有较自然的坡度和平台。
-     */
     private void buildWideShelf(Block[] blocks, byte[] meta, int chunkX, int chunkZ) {
         final int worldHeight = 256;
         final int waterLevel  = this.getWaterLevel();
@@ -571,11 +546,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 double cRaw = this.continentNoise.noise(gx * continentScale, gz * continentScale);
                 double c = (cRaw + 1.0D) * 0.5D;
                 c = c * c * (3.0D - 2.0D * c);
-                if (c >= 0.30D && c <= 0.52D) {
-                    isNearContinent[x][z] = true;
-                } else {
-                    isNearContinent[x][z] = false;
-                }
+                isNearContinent[x][z] = (c >= 0.30D && c <= 0.52D);
             }
         }
 
@@ -606,6 +577,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int columnBase = (x * 16 + z) * worldHeight;
 
                 int nearest = MAX_SHELF_RADIUS + 1;
+
                 for (int dx = -MAX_SHELF_RADIUS; dx <= MAX_SHELF_RADIUS; dx++) {
                     int xx = x + dx;
                     if (xx < 0 || xx >= CHUNK_SIZE) continue;
@@ -630,15 +602,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
                 }
 
-                if (nearest > MAX_SHELF_RADIUS) {
-                    continue;
-                }
+                if (nearest > MAX_SHELF_RADIUS) continue;
 
                 double t = nearest / (double) MAX_SHELF_RADIUS;
 
                 int shelfTopY = (int)Math.round(
-                    (waterLevel - 6) * (1.0D - t) +
-                        (waterLevel - 14) * t
+                    (waterLevel - 6) * (1.0D - t) + (waterLevel - 14) * t
                 );
                 if (shelfTopY < 8) shelfTopY = 8;
 
@@ -659,13 +628,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * extendLandEdgesDown:
-     * - 对“靠岸列”（水面之上某几格高度内有草/土/石/沙）进行处理，
-     *   如果它们在水下有实心块，则从那个块往下再填充一段石头，使岸壁向下延伸更深。
-     *
-     * 目的是让海岸线在水下有更厚实的结构，看起来像断崖或较陡的海底坡。
-     */
     private void extendLandEdgesDown(Block[] blocks, byte[] meta) {
         final int worldHeight = 256;
         final int waterLevel  = this.getWaterLevel();
@@ -714,92 +676,360 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * smoothBeachPlainEdges:
-     * - 用于在沙滩 (sand) 和草地 (grass) 的交界处平滑高度差。
-     *
-     * 逻辑：
-     *   1) 对每一列，找到顶层非空气方块的 yTop；
-     *   2) 如果顶层是沙子，检查四个方向相邻列顶部是否有草方块；
-     *   3) 若存在草且高度差在 1~2 格之间，则将当前顶层沙子（以及其下一层）改为泥土；
-     *
-     * 效果：
-     * - 避免“沙子高出草地一格或两格”的小悬崖；
-     * - 让沙滩逐渐向草地过渡，看上去更自然。
-     */
     private void smoothBeachPlainEdges(Block[] blocks, byte[] meta) {
         final int worldHeight = 256;
         final int CHUNK_SIZE  = 16;
 
-        for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-            for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
+        final int BAND = 4;
 
-                int columnBase = (localX * CHUNK_SIZE + localZ) * worldHeight;
+        int[][] topY = new int[CHUNK_SIZE][CHUNK_SIZE];
+        Block[][] topB = new Block[CHUNK_SIZE][CHUNK_SIZE];
 
+        for (int x = 0; x < CHUNK_SIZE; x++) {
+            for (int z = 0; z < CHUNK_SIZE; z++) {
+                int base = (x * CHUNK_SIZE + z) * worldHeight;
                 int yTop = -1;
+                Block bTop = null;
+
                 for (int y = worldHeight - 1; y >= 0; y--) {
-                    Block b = blocks[columnBase + y];
+                    Block b = blocks[base + y];
                     if (b != null && b != Blocks.air) {
                         yTop = y;
+                        bTop = b;
                         break;
                     }
                 }
-                if (yTop < 0) continue;
 
-                Block topBlock = blocks[columnBase + yTop];
+                topY[x][z] = yTop;
+                topB[x][z] = bTop;
+            }
+        }
 
-                if (topBlock != Blocks.sand) continue;
+        for (int x = 0; x < CHUNK_SIZE; x++) {
+            for (int z = 0; z < CHUNK_SIZE; z++) {
 
-                boolean nearGrass = false;
-                int maxGrassY = -1;
+                int y = topY[x][z];
+                Block b = topB[x][z];
+                if (y < 0 || b != Blocks.sand) continue;
 
-                int[][] dirs = { {1,0}, {-1,0}, {0,1}, {0,-1} };
-                for (int i = 0; i < 4; i++) {
-                    int nx = localX + dirs[i][0];
-                    int nz = localZ + dirs[i][1];
-                    if (nx < 0 || nx >= CHUNK_SIZE || nz < 0 || nz >= CHUNK_SIZE) continue;
+                int nearest = BAND + 1;
 
-                    int nBase = (nx * CHUNK_SIZE + nz) * worldHeight;
+                for (int dx = -BAND; dx <= BAND; dx++) {
+                    int xx = x + dx;
+                    if (xx < 0 || xx >= CHUNK_SIZE) continue;
 
-                    for (int ny = worldHeight - 1; ny >= 0; ny--) {
-                        Block nb = blocks[nBase + ny];
-                        if (nb != null && nb != Blocks.air) {
-                            if (nb == Blocks.grass) {
-                                nearGrass = true;
-                                if (ny > maxGrassY) maxGrassY = ny;
-                            }
-                            break;
+                    for (int dz = -BAND; dz <= BAND; dz++) {
+                        int zz = z + dz;
+                        if (zz < 0 || zz >= CHUNK_SIZE) continue;
+
+                        Block nb = topB[xx][zz];
+                        if (nb == Blocks.grass || nb == Blocks.dirt) {
+                            int dist = Math.abs(dx) + Math.abs(dz);
+                            if (dist < nearest) nearest = dist;
                         }
                     }
                 }
 
-                if (!nearGrass || maxGrassY < 0) continue;
+                if (nearest > BAND) continue;
 
-                int heightDiff = yTop - maxGrassY;
+                int base = (x * CHUNK_SIZE + z) * worldHeight;
+                int idxTop = base + y;
 
-                if (heightDiff >= 1 && heightDiff <= 2) {
-                    blocks[columnBase + yTop] = Blocks.dirt;
-                    meta[columnBase + yTop]   = 0;
+                if (nearest <= 1) {
+                    blocks[idxTop] = Blocks.grass;
+                    meta[idxTop] = 0;
 
-                    if (yTop - 1 >= 0) {
-                        Block below = blocks[columnBase + yTop - 1];
-                        if (below == Blocks.sand) {
-                            blocks[columnBase + yTop - 1] = Blocks.dirt;
-                            meta[columnBase + yTop - 1]   = 0;
-                        }
+                    if (y - 1 >= 0 && blocks[base + y - 1] == Blocks.sand) {
+                        blocks[base + y - 1] = Blocks.dirt;
+                        meta[base + y - 1] = 0;
+                    }
+                } else {
+                    blocks[idxTop] = Blocks.dirt;
+                    meta[idxTop] = 0;
+                }
+            }
+        }
+    }
+
+    private void debugPrintHighBeachColumns(
+        int chunkX,
+        int chunkZ,
+        Block[] blocks,
+        int[][] heightRaw,
+        int[][] heightSmooth,
+        NoiseDebugInfo[][] info) {
+
+        final int SAMPLE_LIMIT = 4;
+
+        BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
+        int beachMax = (int) Math.round(beachBiome.beachMax);
+        int threshold = beachMax + BEACH_MAX_TOLERANCE;
+
+        int beachCount = 0;
+        int highCount = 0;
+
+        int minH = Integer.MAX_VALUE;
+        int maxH = Integer.MIN_VALUE;
+
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
+                if (biome != TalosBiomes.TALOS_BEACH) continue;
+
+                beachCount++;
+
+                int hs = heightSmooth[lx][lz];
+                if (hs < minH) minH = hs;
+                if (hs > maxH) maxH = hs;
+
+                if (hs > threshold) highCount++;
+            }
+        }
+
+        System.out.println(
+            "[Talos2][DBG] chunk=(" + chunkX + "," + chunkZ + ") " +
+                "BEACH columns=" + beachCount + " " +
+                (beachCount > 0 ? ("hSmooth[min,max]=[" + minH + "," + maxH + "] ") : "") +
+                "beachMax=" + beachMax + " threshold=" + threshold + " " +
+                "highBeachCount=" + highCount
+        );
+
+        if (beachCount == 0) return;
+
+        int samplePrinted = 0;
+        for (int lx = 0; lx < 16 && samplePrinted < SAMPLE_LIMIT; lx++) {
+            for (int lz = 0; lz < 16 && samplePrinted < SAMPLE_LIMIT; lz++) {
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
+                if (biome != TalosBiomes.TALOS_BEACH) continue;
+
+                NoiseDebugInfo inf = (info != null) ? info[lx][lz] : null;
+                double c = (inf != null) ? inf.c : -1;
+                double d = (inf != null) ? inf.d : -1;
+                int seg = (inf != null) ? inf.segment : -1;
+
+                int yTop = findTopSolidY(blocks, lx, lz);
+                Block top = (yTop >= 0) ? blocks[(lx * 16 + lz) * 256 + yTop] : null;
+
+                System.out.println(
+                    "[Talos2][DBG] BEACH sample " +
+                        "local=(" + lx + "," + lz + ") world=(" + gx + "," + gz + ") " +
+                        "c=" + fmt3(c) + " d=" + fmt3(d) + " seg=" + seg + " " +
+                        "hRaw=" + heightRaw[lx][lz] + " hSmooth=" + heightSmooth[lx][lz] + " " +
+                        "yTop=" + yTop + " top=" + (top == null ? "null" : top.getUnlocalizedName())
+                );
+
+                samplePrinted++;
+            }
+        }
+
+        if (highCount == 0) return;
+
+        int printed = 0;
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
+                if (biome != TalosBiomes.TALOS_BEACH) continue;
+
+                int hs = heightSmooth[lx][lz];
+                if (hs <= threshold) continue;
+
+                NoiseDebugInfo inf = (info != null) ? info[lx][lz] : null;
+                double c = (inf != null) ? inf.c : -1;
+                double d = (inf != null) ? inf.d : -1;
+                int seg = (inf != null) ? inf.segment : -1;
+
+                int yTop = findTopSolidY(blocks, lx, lz);
+                Block top = (yTop >= 0) ? blocks[(lx * 16 + lz) * 256 + yTop] : null;
+
+                System.out.println(
+                    "[Talos2][DBG] High BEACH column " +
+                        "local=(" + lx + "," + lz + ") world=(" + gx + "," + gz + ") " +
+                        "c=" + fmt3(c) + " d=" + fmt3(d) + " seg=" + seg + " " +
+                        "hRaw=" + heightRaw[lx][lz] + " hSmooth=" + hs +
+                        " yTop=" + yTop + " top=" + (top == null ? "null" : top.getUnlocalizedName())
+                );
+
+                printed++;
+                if (printed >= DEBUG_PRINT_LIMIT_PER_CHUNK) return;
+            }
+        }
+    }
+
+    private static String fmt3(double v) {
+        return String.format(java.util.Locale.ROOT, "%.3f", v);
+    }
+
+    private static int findTopSolidY(Block[] blocks, int lx, int lz) {
+        int base = (lx * 16 + lz) * 256;
+        for (int y = 255; y >= 0; y--) {
+            Block b = blocks[base + y];
+            if (b != null && b != Blocks.air) return y;
+        }
+        return -1;
+    }
+
+    private static double clamp01(double v) {
+        if (v < 0.0D) return 0.0D;
+        if (v > 1.0D) return 1.0D;
+        return v;
+    }
+
+    private void removeMoatRing(Block[] blocks, byte[] meta) {
+        final int H = 256, S = 16;
+        final int SEA = 64;
+
+        final int MIN_Y = SEA - 2;
+        final int MAX_Y = SEA + 8;
+
+        int[][] topY = new int[S][S];
+        Block[][] topB = new Block[S][S];
+
+        for (int x = 0; x < S; x++) {
+            for (int z = 0; z < S; z++) {
+                int base = (x * S + z) * H;
+                int yTop = -1;
+                Block bTop = null;
+                for (int y = H - 1; y >= 0; y--) {
+                    Block b = blocks[base + y];
+                    if (b != null && b != Blocks.air) { yTop = y; bTop = b; break; }
+                }
+                topY[x][z] = yTop;
+                topB[x][z] = bTop;
+            }
+        }
+
+        for (int x = 1; x < S - 1; x++) {
+            for (int z = 1; z < S - 1; z++) {
+                int y = topY[x][z];
+                if (y < MIN_Y || y > MAX_Y) continue;
+
+                if (topB[x][z] != Blocks.dirt) continue;
+
+                boolean adjSand  = false;
+                boolean adjGrass = false;
+
+                Block b1 = topB[x - 1][z];
+                Block b2 = topB[x + 1][z];
+                Block b3 = topB[x][z - 1];
+                Block b4 = topB[x][z + 1];
+
+                if (b1 == Blocks.sand || b2 == Blocks.sand || b3 == Blocks.sand || b4 == Blocks.sand) adjSand = true;
+                if (b1 == Blocks.grass || b2 == Blocks.grass || b3 == Blocks.grass || b4 == Blocks.grass) adjGrass = true;
+
+                if (!(adjSand && adjGrass)) continue;
+
+                int base = (x * S + z) * H;
+
+                blocks[base + y] = Blocks.grass; meta[base + y] = 0;
+
+                for (int dy = 1; dy <= 2; dy++) {
+                    int yy = y - dy;
+                    if (yy < 0) break;
+                    Block bb = blocks[base + yy];
+                    if (bb == Blocks.sand || bb == Blocks.dirt || bb == Blocks.grass) {
+                        blocks[base + yy] = Blocks.dirt;
+                        meta[base + yy] = 0;
                     }
                 }
             }
         }
     }
 
-    /**
-     * 将一个 double 值限制在 [0,1] 范围内。
-     */
-    private static double clamp01(double v) {
-        if (v < 0.0D) return 0.0D;
-        if (v > 1.0D) return 1.0D;
-        return v;
+    private void softenBeachBoundaryNoMoat(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
+        final int H = 256, S = 16;
+        final int SEA = getWaterLevel();
+
+        final int MAX_Y = SEA + 6;
+        final int R = 5;
+        final float NEAR = 0.60f;
+        final float FAR  = 0.10f;
+
+        for (int lx = 0; lx < S; lx++) {
+            for (int lz = 0; lz < S; lz++) {
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                if (world.getBiomeGenForCoords(gx, gz) != TalosBiomes.TALOS_PLAINS) continue;
+
+                int base = (lx * S + lz) * H;
+                int yTop = -1;
+                for (int y = H - 1; y >= 0; y--) {
+                    Block b = blocks[base + y];
+                    if (b != null && b != Blocks.air) { yTop = y; break; }
+                }
+                if (yTop < 0 || yTop > MAX_Y) continue;
+
+                if (blocks[base + yTop] != Blocks.grass) continue;
+
+                int best = R + 1;
+                for (int dx = -R; dx <= R; dx++) {
+                    for (int dz = -R; dz <= R; dz++) {
+                        int wx = gx + dx;
+                        int wz = gz + dz;
+                        if (world.getBiomeGenForCoords(wx, wz) == TalosBiomes.TALOS_BEACH) {
+                            int d = Math.abs(dx) + Math.abs(dz);
+                            if (d < best) best = d;
+                        }
+                    }
+                }
+                if (best > R) continue;
+
+                float t = best / (float) R;
+                float chance = NEAR * (1f - t) + FAR * t;
+
+                if (pseudoNoise01(gx, gz) < chance) {
+                    blocks[base + yTop] = Blocks.sand;
+                    meta[base + yTop] = 0;
+
+                    if (yTop - 1 >= 0 && blocks[base + yTop - 1] == Blocks.dirt) {
+                        blocks[base + yTop - 1] = Blocks.sand;
+                        meta[base + yTop - 1] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    private float pseudoNoise01(int x, int z) {
+        int h = x * 374761393 + z * 668265263;
+        h = (h ^ (h >> 13)) * 1274126177;
+        h ^= (h >> 16);
+        return (h & 0x7fffffff) / (float)0x80000000;
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * t;
+    }
+
+    private static double smoothstep(double e0, double e1, double x) {
+        double t = (x - e0) / (e1 - e0);
+        t = clamp01(t);
+        return t * t * (3.0D - 2.0D * t);
+    }
+
+    private double sampleTerrain01(int gx, int gz, double scale) {
+        double sx = gx * scale;
+        double sz = gz * scale;
+
+        final double COS = 0.8660254037844386;
+        final double SIN = 0.5;
+        double rx = sx * COS - sz * SIN;
+        double rz = sx * SIN + sz * COS;
+
+        rx += 1000.0;
+        rz -= 1000.0;
+
+        double raw = this.terrainNoise.noise(rx, rz);
+        return (raw + 1.0D) * 0.5D;
     }
 
     @Override
