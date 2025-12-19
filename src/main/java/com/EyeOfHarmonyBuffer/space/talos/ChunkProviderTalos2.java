@@ -339,7 +339,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private void ensureMinBeachHeight(int[][] heightMap, int chunkX, int chunkZ) {
         final int CHUNK_SIZE = 16;
-        int waterLevel = this.getWaterLevel();
+
+        BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
+
+        int minY = (int)Math.round(Math.max(this.getWaterLevel(), beachBiome.beachMin));
 
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
@@ -349,8 +352,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
                 if (biome != TalosBiomes.TALOS_BEACH) continue;
 
-                if (heightMap[x][z] < waterLevel) {
-                    heightMap[x][z] = waterLevel;
+                if (heightMap[x][z] < minY) {
+                    heightMap[x][z] = minY;
                 }
             }
         }
