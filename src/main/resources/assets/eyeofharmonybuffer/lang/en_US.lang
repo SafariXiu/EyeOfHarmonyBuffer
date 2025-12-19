@@ -186,3 +186,8 @@ item.ChunJingYuanShiFenMo.name=Pure Originium Powder
 item.DiChunYuanShiFenMo.name=Low-Purity Originium Powder
 item.YuanShiJingHe.name=Originium Core
 item.UnactivatedYuanShi.name=Unactivated Originium
+
+solarsystem.talosSystem=Talos
+star.talosStar=Talos
+planet.Talos=Talos-1
+moon.Talos2=Talos-2

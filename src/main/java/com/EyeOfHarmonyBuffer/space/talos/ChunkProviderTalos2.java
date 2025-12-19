@@ -92,6 +92,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         //removeMoatRing(blocks, meta);
         softenBeachBoundaryNoMoat(chunkX, chunkZ, blocks, meta);
 
+        applyBedrockFloor(blocks, meta, chunkX, chunkZ);
 
         if (DEBUG_BEACH_HIGHS) {
             debugPrintHighBeachColumns(chunkX, chunkZ, blocks, heightMapRaw, heightMap, noiseInfo);
@@ -993,6 +994,28 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     if (yTop - 1 >= 0 && blocks[base + yTop - 1] == Blocks.dirt) {
                         blocks[base + yTop - 1] = Blocks.sand;
                         meta[base + yTop - 1] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    private void applyBedrockFloor(Block[] blocks, byte[] meta, int chunkX, int chunkZ) {
+        final int H = 256;
+        final int LAYERS = 5;
+
+        java.util.Random r = new java.util.Random(
+            (long)chunkX * 341873128712L + (long)chunkZ * 132897987541L + this.world.getSeed()
+        );
+
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                int base = (lx * 16 + lz) * H;
+
+                for (int y = 0; y < LAYERS; y++) {
+                    if (y == 0 || r.nextInt(LAYERS) > y) {
+                        blocks[base + y] = Blocks.bedrock;
+                        meta[base + y] = 0;
                     }
                 }
             }
