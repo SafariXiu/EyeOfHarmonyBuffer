@@ -26,7 +26,7 @@ public class WorldProviderTalos2 extends WorldProviderSpaceGS
 
     @Override
     public void registerWorldChunkManager() {
-        this.worldChunkMgr = new WorldChunkManagerTalos2();
+        this.worldChunkMgr = new WorldChunkManagerTalos2(this.worldObj);
         this.hasNoSky = false;
     }
 

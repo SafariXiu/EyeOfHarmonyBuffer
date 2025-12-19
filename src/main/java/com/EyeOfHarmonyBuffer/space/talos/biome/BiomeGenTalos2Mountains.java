@@ -26,7 +26,7 @@ public class BiomeGenTalos2Mountains extends GSBiomeGenBase {
         this.heightVariation = 0.8F;
 
         this.mountainMin = 110.0D;
-        this.mountainMax = 180.0D;
+        this.mountainMax = 200.0D;
 
         this.surfaceBlock = new BlockMetaPair(Blocks.stone, (byte) 0);
         this.fillerBlock  = new BlockMetaPair(Blocks.stone, (byte) 0);

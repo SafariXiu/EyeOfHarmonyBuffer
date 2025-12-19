@@ -2,45 +2,30 @@ package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
+import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
-
-import java.util.Random;
 
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     private final SimplexNoiseOctave continentNoise;
     private final double continentScale = 0.0007D;
 
-    public WorldChunkManagerTalos2() {
+    public WorldChunkManagerTalos2(World world) {
         super();
-        // 你的 SimplexNoiseOctave 只需要倍频数量，不需要 seed
-        this.continentNoise = new SimplexNoiseOctave(4);
+        long seed = world.getSeed();
+        this.continentNoise = new SimplexNoiseOctave(
+            seed ^ Talos2Continent.CONTINENT_SALT,
+            Talos2Continent.CONTINENT_OCTAVES
+        );
     }
-
-    /**
-     * WorldChunkManagerSpace 传统接口：单一群系。
-     * 为了兼容这里随便给一个默认的（比如平原），
-     * 真正用的地方应该调用 getBiomeGenAt(x,z)。
-     */
     @Override
     public BiomeGenBase getBiome() {
         return TalosBiomes.TALOS_PLAINS;
     }
 
-    /** 根据坐标选择 Talos 的具体群系。 */
     private BiomeGenBase pickBiomeFor(int x, int z) {
-        double cRaw = this.continentNoise.noise(x * continentScale, z * continentScale);
-        double c = (cRaw + 1.0D) * 0.5D;
-        // smoothstep 平滑
-        c = c * c * (3.0D - 2.0D * c);
-
-        if (c < 0.45D) {
-            return TalosBiomes.TALOS_OCEAN;
-        } else if (c < 0.55D) {
-            return TalosBiomes.TALOS_BEACH;
-        } else {
-            return TalosBiomes.TALOS_PLAINS;
-        }
+        double c = Talos2Continent.sampleC01(this.continentNoise, x, z);
+        return Talos2Continent.pickBiome(c);
     }
 
     @Override

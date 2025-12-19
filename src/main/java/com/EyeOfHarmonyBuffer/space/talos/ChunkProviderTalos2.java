@@ -24,9 +24,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final SimplexNoiseOctave terrainNoise;
 
     private static final boolean DEBUG_BEACH_HIGHS = false;
+
+    private static final boolean DEBUG_CONTINENT_SYNC = false;
+
     private static final int DEBUG_PRINT_LIMIT_PER_CHUNK = 8;
 
-    private static final boolean CLAMP_BEACH_MAX_HEIGHT = false;
+    private static final boolean CLAMP_BEACH_MAX_HEIGHT = true;
 
     private static final int BEACH_MAX_TOLERANCE = 1;
 
@@ -36,8 +39,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, mapFeaturesEnabled);
         this.world = world;
 
-        this.continentNoise = new SimplexNoiseOctave(4);
-        this.terrainNoise = new SimplexNoiseOctave(5);
+        this.terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
+        this.continentNoise = new SimplexNoiseOctave(
+            seed ^ Talos2Continent.CONTINENT_SALT,
+            Talos2Continent.CONTINENT_OCTAVES
+        );
     }
 
     @Override
@@ -66,11 +72,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         clearChunkBlocks(blocks, meta);
 
-        double[][] plainsBase = computePlainsBase(chunkX, chunkZ);
-
         NoiseDebugInfo[][] noiseInfo = DEBUG_BEACH_HIGHS ? new NoiseDebugInfo[17][17] : null;
 
-        int[][] heightMapRaw = computeBaseHeightMap(chunkX, chunkZ, plainsBase, noiseInfo);
+        int[][] heightMapRaw = computeBaseHeightMap(chunkX, chunkZ, noiseInfo);
 
         int[][] heightMap = copyHeightMap(heightMapRaw);
 
@@ -90,7 +94,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         //smoothBeachPlainEdges(blocks, meta);
         //removeMoatRing(blocks, meta);
-        softenBeachBoundaryNoMoat(chunkX, chunkZ, blocks, meta);
+        //softenBeachBoundaryNoMoat(chunkX, chunkZ, blocks, meta);
 
         applyBedrockFloor(blocks, meta, chunkX, chunkZ);
 
@@ -150,7 +154,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private int[][] computeBaseHeightMap(
         int chunkX,
         int chunkZ,
-        double[][] plainsBase,
         NoiseDebugInfo[][] dbgOut) {
 
         final int SIZE = 17;
@@ -171,11 +174,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         double PLAIN_MIN = plainsBiome.plainMin;
         double PLAIN_MAX = plainsBiome.plainMax;
 
-        final double cShelfStart = 0.30D;
-        final double cShelfEnd = 0.45D;
-        final double cBeachEnd = 0.55D;
+        final double cShelfStart = Talos2Continent.C_SHELF_START;
+        final double cShelfEnd = Talos2Continent.C_SHELF_END;
+        final double cBeachEnd = Talos2Continent.C_BEACH_END;
 
-        final double continentScale = 0.0007D;
         final double detailScale = 0.0025D;
 
         int[][] heightMap = new int[SIZE][SIZE];
@@ -186,9 +188,20 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int gx = chunkX * 16 + localX;
                 int gz = chunkZ * 16 + localZ;
 
-                double cRaw = this.continentNoise.noise(gx * continentScale, gz * continentScale);
-                double c = (cRaw + 1.0D) * 0.5D;
-                c = c * c * (3.0D - 2.0D * c);
+                double c = Talos2Continent.sampleC01(this.continentNoise, gx, gz);
+
+                if (DEBUG_CONTINENT_SYNC) {
+                    BiomeGenBase byC = Talos2Continent.pickBiome(c);
+                    BiomeGenBase byW = this.world.getBiomeGenForCoords(gx, gz);
+
+                    if (byC != byW) {
+                        System.out.println("[Talos2][SYNC] MISMATCH at (" + gx + "," + gz + ")"
+                            + " c=" + fmt3(c)
+                            + " byC=" + (byC == null ? "null" : byC.biomeName)
+                            + " byW=" + (byW == null ? "null" : byW.biomeName)
+                        );
+                    }
+                }
 
                 double d = sampleTerrain01(gx, gz, detailScale);
 
@@ -214,7 +227,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 double hShelfOnly = hDeep * (1.0D - tCliff) + shelfTop * tCliff;
 
                 double hBeachOnly  = computeBeachHeight(c, d, hPlains, BEACH_MIN, BEACH_MAX, cShelfEnd, cBeachEnd);
-                double hPlainsOnly = computePlainsHeightNearCoast(c, d, hPlains, BEACH_MAX, cBeachEnd);
+                double hPlainsOnly = computePlainsHeightNearCoast(gx, gz, c, d, hPlains, BEACH_MAX, cBeachEnd);
 
                 double w01 = smoothstep(cShelfStart - BLEND, cShelfStart + BLEND, c);
                 double w12 = smoothstep(cShelfEnd - BLEND, cShelfEnd + BLEND, c);
@@ -279,61 +292,74 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     private double computePlainsHeightNearCoast(
+        int gx,
+        int gz,
         double c,
         double d,
         double hPlains,
         double beachMax,
         double cBeachEnd) {
 
-        double basePlain = hPlains;
+        final double COAST_BLEND_BAND = 0.12D;
+        double tInland = (c - cBeachEnd) / COAST_BLEND_BAND;
+        tInland = clamp01(tInland);
+        tInland = tInland * tInland * (3.0D - 2.0D * tInland);
 
-        double td = d - 0.5D;
-        double adjust = td * td * 6.0D * (td >= 0 ? 1 : -1);
-        basePlain += adjust;
+        double targetBeach = beachMax - (1.0D - tInland) * 0.3D;
 
-        double shorelineBand = 0.05D;
-        double t = (c - cBeachEnd) / shorelineBand;
-        t = clamp01(t);
+        double nLow = sampleTerrain01(gx, gz, 0.00055D);
+        double nMid = sampleTerrain01(gx, gz, 0.00180D);
+        double nHi  = d;
 
-        double targetBeach = beachMax - 1.0D;
+        double hill =
+            (nLow - 0.5D) * 16.0D +
+                (nMid - 0.5D) * 6.0D +
+                (nHi - 0.5D) * 1.2D;
 
-        double maxDelta = 4.0D;
-        if (basePlain > targetBeach + maxDelta) {
-            basePlain = targetBeach + maxDelta;
-        }
+        hill *= tInland;
+
+        double basePlain = hPlains + hill;
+
+        double maxDeltaNear = 4.0D;
+        double maxDeltaFar  = 30.0D;
+
+        double tt = tInland * tInland;
+        double maxDelta = lerp(maxDeltaNear, maxDeltaFar, tt);
+
+        double cap = targetBeach + maxDelta;
+        if (basePlain > cap) basePlain = cap;
 
         if (!FIX_PLAINS_PULL_TO_SHORE) {
-            if (t <= 0.0D) return basePlain;
-            return targetBeach * (1.0D - t) + basePlain * t;
+            if (tInland <= 0.0D) return basePlain;
+            return targetBeach * (1.0D - tInland) + basePlain * tInland;
         }
 
-        return targetBeach * (1.0D - t) + basePlain * t;
+        return targetBeach * (1.0D - tInland) + basePlain * tInland;
     }
 
     private void smoothHeightMap(int[][] heightMap) {
         final int SIZE = 17;
         int[][] out = new int[SIZE][SIZE];
 
+        int[] buf = new int[9];
+
         for (int x = 0; x <= 16; x++) {
             for (int z = 0; z <= 16; z++) {
-                int sum = 0, cnt = 0;
+                int n = 0;
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
                         int nx = x + dx, nz = z + dz;
                         if (nx < 0 || nx > 16 || nz < 0 || nz > 16) continue;
-                        sum += heightMap[nx][nz];
-                        cnt++;
+                        buf[n++] = heightMap[nx][nz];
                     }
                 }
-                double avg = sum / (double) cnt;
-                out[x][z] = (int) Math.floor(avg + 1e-6);
+                java.util.Arrays.sort(buf, 0, n);
+                out[x][z] = buf[n / 2];
             }
         }
 
         for (int x = 0; x <= 16; x++) {
-            for (int z = 0; z <= 16; z++) {
-                heightMap[x][z] = out[x][z];
-            }
+            System.arraycopy(out[x], 0, heightMap[x], 0, SIZE);
         }
     }
 
@@ -540,17 +566,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         BlockMetaPair stone = this.getStoneBlock();
 
-        final double continentScale = 0.0007D;
-
         boolean[][] isNearContinent = new boolean[CHUNK_SIZE][CHUNK_SIZE];
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 int gx = chunkX * 16 + x;
                 int gz = chunkZ * 16 + z;
-                double cRaw = this.continentNoise.noise(gx * continentScale, gz * continentScale);
-                double c = (cRaw + 1.0D) * 0.5D;
-                c = c * c * (3.0D - 2.0D * c);
-                isNearContinent[x][z] = (c >= 0.30D && c <= 0.52D);
+                double c = Talos2Continent.sampleC01(this.continentNoise, gx, gz);
+                isNearContinent[x][z] = (c >= Talos2Continent.C_SHELF_START && c <= Talos2Continent.C_BEACH_END);
             }
         }
 
@@ -570,7 +592,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             }
         }
 
-        int MAX_SHELF_RADIUS = 50;
+        int MAX_SHELF_RADIUS = 15;
 
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
@@ -991,12 +1013,22 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 float chance = NEAR * (1f - t) + FAR * t;
 
                 if (pseudoNoise01(gx, gz) < chance) {
-                    blocks[base + yTop] = Blocks.sand;
+
+                    blocks[base + yTop] = Blocks.air;
                     meta[base + yTop] = 0;
 
-                    if (yTop - 1 >= 0 && blocks[base + yTop - 1] == Blocks.dirt) {
-                        blocks[base + yTop - 1] = Blocks.sand;
-                        meta[base + yTop - 1] = 0;
+                    int newTop = yTop - 1;
+                    if (newTop < 0) continue;
+
+                    blocks[base + newTop] = Blocks.sand;
+                    meta[base + newTop] = 0;
+
+                    if (newTop - 1 >= 0) {
+                        Block below = blocks[base + newTop - 1];
+                        if (below == Blocks.grass) {
+                            blocks[base + newTop - 1] = Blocks.dirt;
+                            meta[base + newTop - 1] = 0;
+                        }
                     }
                 }
             }
