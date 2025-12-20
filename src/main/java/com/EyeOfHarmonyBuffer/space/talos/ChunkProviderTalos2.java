@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
+import com.EyeOfHarmonyBuffer.space.Talos2MapExporter;
 import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Beach;
 import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Ocean;
 import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Plains;
@@ -27,6 +28,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final boolean DEBUG_CONTINENT_SYNC = false;
 
+    private static final boolean DEBUG_Map = true;
+
     private static final int DEBUG_PRINT_LIMIT_PER_CHUNK = 8;
 
     private static final boolean CLAMP_BEACH_MAX_HEIGHT = true;
@@ -44,6 +47,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             seed ^ Talos2Continent.CONTINENT_SALT,
             Talos2Continent.CONTINENT_OCTAVES
         );
+
+        if (world.provider.dimensionId == 14001) {
+            try {
+                if (DEBUG_Map) {
+                    Talos2MapExporter.exportHuge(world, this.continentNoise, "talos2_bigmap.png", 50000, 16);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override

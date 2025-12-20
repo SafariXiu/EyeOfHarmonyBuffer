@@ -3,7 +3,7 @@ plugins {
 }
 
 minecraft {
-    extraRunJvmArguments.add("-Xmx8G")
+    extraRunJvmArguments.add("-Xmx32G")
     extraRunJvmArguments.add("-Xms8G")
 }
 
