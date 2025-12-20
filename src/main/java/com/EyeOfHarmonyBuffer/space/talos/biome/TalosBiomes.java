@@ -11,6 +11,7 @@ public class TalosBiomes {
     public static BiomeGenTalos2Basin TALOS_BASIN;
     public static BiomeGenTalos2Plateau TALOS_PLATEAU;
     public static BiomeGenTalos2Desert TALOS_DESERT;
+    public static BiomeGenTalos2Shelf TALOS_SHELF;
 
     public static void init(){
         TALOS_OCEAN  = new BiomeGenTalos2Ocean(180);
@@ -20,8 +21,10 @@ public class TalosBiomes {
         TALOS_BASIN = new BiomeGenTalos2Basin(184);
         TALOS_PLATEAU = new BiomeGenTalos2Plateau(185);
         TALOS_DESERT = new BiomeGenTalos2Desert(186);
+        TALOS_SHELF = new BiomeGenTalos2Shelf(187);
 
         BiomeDictionary.registerBiomeType(TALOS_OCEAN,  BiomeDictionary.Type.OCEAN);
+        BiomeDictionary.registerBiomeType(TALOS_SHELF, BiomeDictionary.Type.OCEAN);
 
         BiomeDictionary.registerBiomeType(TALOS_BEACH,  BiomeDictionary.Type.BEACH);
 

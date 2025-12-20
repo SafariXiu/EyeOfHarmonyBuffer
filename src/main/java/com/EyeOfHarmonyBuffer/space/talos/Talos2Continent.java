@@ -6,7 +6,7 @@ import net.minecraft.world.biome.BiomeGenBase;
 public final class Talos2Continent {
     private Talos2Continent() {}
 
-    public static final double CONTINENT_SCALE = 0.0007D;
+    public static final double CONTINENT_SCALE = 0.00007D;
     public static final int CONTINENT_OCTAVES = 2;
     public static final long CONTINENT_SALT = 0xC0FFEE1234ABCDEFL;
 

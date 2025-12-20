@@ -1,10 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.space.Talos2MapExporter;
-import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Beach;
-import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Ocean;
-import com.EyeOfHarmonyBuffer.space.talos.biome.BiomeGenTalos2Plains;
-import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.biome.*;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -74,7 +71,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return new BiomeGenBase[]{
             TalosBiomes.TALOS_OCEAN,
             TalosBiomes.TALOS_BEACH,
-            TalosBiomes.TALOS_PLAINS
+            TalosBiomes.TALOS_PLAINS,
+            TalosBiomes.TALOS_SHELF,
         };
     }
 
@@ -99,11 +97,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         ensureMinBeachHeight(heightMap, chunkX, chunkZ);
 
+        finalizeHeightMapConstraints(heightMap, chunkX, chunkZ);
+
         fillBlocksFromHeightMap(blocks, meta, heightMap, chunkX, chunkZ);
 
         strongCleanOceanFloor(blocks, meta);
-        buildWideShelf(blocks, meta, chunkX, chunkZ);
-        extendLandEdgesDown(blocks, meta);
+
+        //buildWideShelf(blocks, meta, chunkX, chunkZ);
+        //extendLandEdgesDown(blocks, meta);
 
         //smoothBeachPlainEdges(blocks, meta);
         //removeMoatRing(blocks, meta);
@@ -172,26 +173,30 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int SIZE = 17;
         final int worldHeight = 256;
 
-        BiomeGenTalos2Ocean oceanBiome  = TalosBiomes.TALOS_OCEAN;
-        BiomeGenTalos2Beach beachBiome  = TalosBiomes.TALOS_BEACH;
+        BiomeGenTalos2Ocean oceanBiome   = TalosBiomes.TALOS_OCEAN;
+        BiomeGenTalos2Beach beachBiome   = TalosBiomes.TALOS_BEACH;
         BiomeGenTalos2Plains plainsBiome = TalosBiomes.TALOS_PLAINS;
+        BiomeGenTalos2Shelf shelfBiome = TalosBiomes.TALOS_SHELF;
 
-        double DEEP_MIN = oceanBiome.deepMin;
-        double DEEP_MAX  = oceanBiome.deepMax;
-        double SHELF_TOP_MIN = oceanBiome.shelfTopMin;
-        double SHELF_TOP_MAX = oceanBiome.shelfTopMax;
+        final double DEEP_MIN      = oceanBiome.deepMin;
+        final double DEEP_MAX      = oceanBiome.deepMax;
+        final double SHELF_TOP_MIN = shelfBiome.shelfTopMin;
+        final double SHELF_TOP_MAX = shelfBiome.shelfTopMax;
 
-        double BEACH_MIN = beachBiome.beachMin;
-        double BEACH_MAX = beachBiome.beachMax;
+        final double BEACH_MIN = beachBiome.beachMin;
+        final double BEACH_MAX = beachBiome.beachMax;
 
-        double PLAIN_MIN = plainsBiome.plainMin;
-        double PLAIN_MAX = plainsBiome.plainMax;
+        final double PLAIN_MIN = plainsBiome.plainMin;
+        final double PLAIN_MAX = plainsBiome.plainMax;
 
         final double cShelfStart = Talos2Continent.C_SHELF_START;
-        final double cShelfEnd = Talos2Continent.C_SHELF_END;
-        final double cBeachEnd = Talos2Continent.C_BEACH_END;
+        final double cShelfEnd   = Talos2Continent.C_SHELF_END;
+        final double cBeachEnd   = Talos2Continent.C_BEACH_END;
 
         final double detailScale = 0.0025D;
+
+        // Keep your blend width; c only controls weights/segments
+        final double BLEND = 0.03D;
 
         int[][] heightMap = new int[SIZE][SIZE];
 
@@ -216,39 +221,64 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
                 }
 
+                // d is the *shape driver*, 0..1
                 double d = sampleTerrain01(gx, gz, detailScale);
+                d = clamp01(d);
 
-                double hDeep   = DEEP_MIN + d * (DEEP_MAX - DEEP_MIN);
-                double hPlains = PLAIN_MIN + d * (PLAIN_MAX - PLAIN_MIN);
+                // --- Layer 1: Ocean deep base (purely from d) ---
+                double hDeep = DEEP_MIN + d * (DEEP_MAX - DEEP_MIN);
 
-                final double BLEND = 0.03D;
-
-                double hDeepOnly = hDeep;
-
-                double tShelf = (c - cShelfStart) / (cShelfEnd - cShelfStart);
-                tShelf = clamp01(tShelf);
+                // --- Layer 2: Shelf top target (purely from d) ---
                 double shelfTop = SHELF_TOP_MIN + d * (SHELF_TOP_MAX - SHELF_TOP_MIN);
 
-                double cliffZone = 0.20D;
+                // Shelf morph across the shelf band ONLY (c controls mix)
+                // 0 at shelf start -> 1 at shelf end
+                double tShelfBand = (c - cShelfStart) / (cShelfEnd - cShelfStart);
+                tShelfBand = clamp01(tShelfBand);
+
+                // Create a steep continental slope near shelf start:
+                // in the first cliffZone portion, ramp up sharply; then stay at shelfTop.
+                final double cliffZone = 0.20D;
                 double tCliff;
-                if (tShelf < cliffZone) {
-                    double nt = tShelf / cliffZone;
-                    tCliff = nt * nt * nt;
+                if (tShelfBand < cliffZone) {
+                    double nt = tShelfBand / cliffZone;
+                    tCliff = nt * nt * nt; // sharp
                 } else {
                     tCliff = 1.0D;
                 }
-                double hShelfOnly = hDeep * (1.0D - tCliff) + shelfTop * tCliff;
 
-                double hBeachOnly  = computeBeachHeight(c, d, hPlains, BEACH_MIN, BEACH_MAX, cShelfEnd, cBeachEnd);
-                double hPlainsOnly = computePlainsHeightNearCoast(gx, gz, c, d, hPlains, BEACH_MAX, cBeachEnd);
+                // This is the key: shelf only morphs ocean height, not land.
+                double hShelfOnly = lerp(hDeep, shelfTop, tCliff);
 
-                double w01 = smoothstep(cShelfStart - BLEND, cShelfStart + BLEND, c);
-                double w12 = smoothstep(cShelfEnd - BLEND, cShelfEnd + BLEND, c);
-                double w23 = smoothstep(cBeachEnd - BLEND, cBeachEnd + BLEND, c);
+                // --- Layer 3: Beach height (keep it inside BEACH_MIN..BEACH_MAX) ---
+                // Reuse your function; it should clamp internally, but we enforce anyway.
+                double hBeachOnly = computeBeachHeight(c, d, /*hPlains=*/0.0D, BEACH_MIN, BEACH_MAX, cShelfEnd, cBeachEnd);
+                if (hBeachOnly < BEACH_MIN) hBeachOnly = BEACH_MIN;
+                if (hBeachOnly > BEACH_MAX) hBeachOnly = BEACH_MAX;
 
-                double h01 = lerp(hDeepOnly, hShelfOnly, w01);
-                double h12 = lerp(h01, hBeachOnly, w12);
-                double h = lerp(h12, hPlainsOnly, w23);
+                // --- Layer 4: Inland / plains height ---
+                // Base plains from d only (no c)
+                double hPlainsBase = PLAIN_MIN + d * (PLAIN_MAX - PLAIN_MIN);
+
+                // Your existing inland hills logic (likely uses gx/gz + extra noises).
+                // We keep it, but we also add a "coastal flatten" to prevent near-coast spikes.
+                double hPlainsRaw = computePlainsHeightNearCoast(gx, gz, c, d, hPlainsBase, BEACH_MAX, cBeachEnd);
+
+                // Coastal flatten: right after beach end, keep land close to BEACH_MAX and ramp inland.
+                // This makes coast-to-land smoother while keeping inland fully varied.
+                final double coastalRamp = 0.08D; // tune 0.04..0.10
+                double tInland = smoothstep(cBeachEnd, cBeachEnd + coastalRamp, c);
+                double hPlainsOnly = lerp(BEACH_MAX, hPlainsRaw, tInland);
+
+                // --- c-driven weights (ONLY for blending) ---
+                double w01 = smoothstep(cShelfStart - BLEND, cShelfStart + BLEND, c); // deep->shelf
+                double w12 = smoothstep(cShelfEnd   - BLEND, cShelfEnd   + BLEND, c); // shelf->beach
+                double w23 = smoothstep(cBeachEnd   - BLEND, cBeachEnd   + BLEND, c); // beach->plains
+
+                // --- Final blend chain ---
+                double h01 = lerp(hDeep,      hShelfOnly,  w01);
+                double h12 = lerp(h01,        hBeachOnly,  w12);
+                double h   = lerp(h12,        hPlainsOnly, w23);
 
                 int seg = (c < cShelfStart) ? 0 : (c < cShelfEnd ? 1 : (c < cBeachEnd ? 2 : 3));
 
@@ -257,6 +287,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 if (ih > worldHeight - 4) ih = worldHeight - 4;
 
                 heightMap[localX][localZ] = ih;
+
+                if (ih >= 68 && c >= Talos2Continent.C_SHELF_END && c < Talos2Continent.C_BEACH_END) {
+                    System.out.println("[Talos2][HM>=68] gx=" + gx + " gz=" + gz
+                        + " ih=" + ih + " h=" + h
+                        + " c=" + fmt3(c) + " d=" + fmt3(d));
+                }
 
                 if (dbgOut != null) {
                     NoiseDebugInfo inf = new NoiseDebugInfo();
@@ -377,44 +413,39 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     private void ensureMinBeachHeight(int[][] heightMap, int chunkX, int chunkZ) {
-        final int CHUNK_SIZE = 16;
+        final int SIZE = 17;
 
         BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
-
         int minY = (int)Math.round(Math.max(this.getWaterLevel(), beachBiome.beachMin));
 
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int z = 0; z < CHUNK_SIZE; z++) {
+        for (int x = 0; x < SIZE; x++) {
+            for (int z = 0; z < SIZE; z++) {
                 int gx = chunkX * 16 + x;
                 int gz = chunkZ * 16 + z;
 
-                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
-                if (biome != TalosBiomes.TALOS_BEACH) continue;
+                double c = sampleC01(gx, gz);
+                if (!isBeachBandByC(c)) continue;
 
-                if (heightMap[x][z] < minY) {
-                    heightMap[x][z] = minY;
-                }
+                if (heightMap[x][z] < minY) heightMap[x][z] = minY;
             }
         }
     }
 
     private void clampBeachMaxHeight(int[][] heightMap, int chunkX, int chunkZ) {
-        final int CHUNK_SIZE = 16;
+        final int SIZE = 17;
 
         BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
         int maxY = (int)Math.round(beachBiome.beachMax) + BEACH_MAX_TOLERANCE;
 
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int z = 0; z < CHUNK_SIZE; z++) {
+        for (int x = 0; x < SIZE; x++) {
+            for (int z = 0; z < SIZE; z++) {
                 int gx = chunkX * 16 + x;
                 int gz = chunkZ * 16 + z;
 
-                BiomeGenBase biome = this.world.getBiomeGenForCoords(gx, gz);
-                if (biome != TalosBiomes.TALOS_BEACH) continue;
+                double c = sampleC01(gx, gz);
+                if (!isBeachBandByC(c)) continue;
 
-                if (heightMap[x][z] > maxY) {
-                    heightMap[x][z] = maxY;
-                }
+                if (heightMap[x][z] > maxY) heightMap[x][z] = maxY;
             }
         }
     }
@@ -440,7 +471,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int groundHeight = heightMap[localX][localZ];
                 int columnBase   = (localX * 16 + localZ) * worldHeight;
 
-                BiomeGenBase baseBiome = this.world.getBiomeGenForCoords(gx, gz);
+                double c = sampleC01(gx, gz);
+                BiomeGenBase baseBiome = Talos2Continent.pickBiome(c);
 
                 if (baseBiome == TalosBiomes.TALOS_OCEAN) {
                     BiomeGenTalos2Ocean biome = (BiomeGenTalos2Ocean) baseBiome;
@@ -663,6 +695,39 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         meta[idx]   = stone.getMetadata();
                     }
                 }
+            }
+        }
+    }
+
+    private void finalizeHeightMapConstraints(int[][] hm, int chunkX, int chunkZ) {
+        final int SIZE = 17;
+
+        final int PLAIN_MIN_Y = 67;
+        final int BEACH_MAX_Y = 67;
+        final double C_SPLIT = Talos2Continent.C_BEACH_END;
+
+        for (int lx = 0; lx < SIZE; lx++) {
+            for (int lz = 0; lz < SIZE; lz++) {
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                double c = sampleC01(gx, gz);
+
+                double dc = Math.abs(c - Talos2Continent.C_BEACH_END);
+                final double DC_EDGE = 0.02;
+                boolean inTransition = dc <= DC_EDGE;
+
+                boolean inland = c >= C_SPLIT;
+                boolean beachOrCoast = c < C_SPLIT;
+
+                int y = hm[lx][lz];
+
+                if (inland && y < PLAIN_MIN_Y) y = PLAIN_MIN_Y;
+                if (beachOrCoast && y > BEACH_MAX_Y) y = BEACH_MAX_Y;
+
+                if (inTransition) y = PLAIN_MIN_Y; // 67 对齐
+
+                hm[lx][lz] = y;
             }
         }
     }
@@ -903,6 +968,53 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
+    private void scanAnomalies(String tag, int chunkX, int chunkZ, Block[] blocks, int[][] heightMap) {
+        final int H = 256;
+        final int SEA = getWaterLevel();
+
+        int printed = 0;
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+
+                int gx = chunkX * 16 + lx;
+                int gz = chunkZ * 16 + lz;
+
+                int base = (lx * 16 + lz) * H;
+
+                int topY = -1;
+                Block topB = null;
+                for (int y = H - 1; y >= 0; y--) {
+                    Block b = blocks[base + y];
+                    if (b != null && b != Blocks.air) { topY = y; topB = b; break; }
+                }
+
+                boolean sand68 = (topB == Blocks.sand && topY >= 68);
+
+                double c = sampleC01(gx, gz);
+                boolean inlandByC = (c >= Talos2Continent.C_BEACH_END);
+                boolean lowInland = inlandByC && topY >= 0 && topY <= 66;
+
+                if (!sand68 && !lowInland) continue;
+
+                BiomeGenBase byW = world.getBiomeGenForCoords(gx, gz);
+                BiomeGenBase byC = Talos2Continent.pickBiome(c);
+
+                int hm = (heightMap != null) ? heightMap[lx][lz] : -999;
+
+                System.out.println("[Talos2][ANOM][" + tag + "] "
+                    + "chunk=(" + chunkX + "," + chunkZ + ") "
+                    + "local=(" + lx + "," + lz + ") world=(" + gx + "," + gz + ") "
+                    + "topY=" + topY + " topB=" + (topB == null ? "null" : topB.getUnlocalizedName()) + " "
+                    + "hm=" + hm + " sea=" + SEA + " "
+                    + "c=" + fmt3(c) + " byC=" + (byC == null ? "null" : byC.biomeName)
+                    + " byW=" + (byW == null ? "null" : byW.biomeName)
+                );
+
+                if (++printed >= 12) return; // 每 chunk 最多打 12 条，防止刷屏
+            }
+        }
+    }
+
     private static String fmt3(double v) {
         return String.format(java.util.Locale.ROOT, "%.3f", v);
     }
@@ -1077,14 +1189,40 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return (h & 0x7fffffff) / (float)0x80000000;
     }
 
-    private static double lerp(double a, double b, double t) {
-        return a + (b - a) * t;
-    }
-
     private static double smoothstep(double e0, double e1, double x) {
         double t = (x - e0) / (e1 - e0);
         t = clamp01(t);
         return t * t * (3.0D - 2.0D * t);
+    }
+
+    private double sampleC01(int gx, int gz) {
+        return Talos2Continent.sampleC01(this.continentNoise, gx, gz);
+    }
+
+    private static boolean isBeachBandByC(double c) {
+        return c >= Talos2Continent.C_SHELF_END && c < Talos2Continent.C_BEACH_END;
+    }
+
+    private static boolean isNearCoastByC(double c) {
+        return c >= Talos2Continent.C_SHELF_START && c <= Talos2Continent.C_BEACH_END;
+    }
+
+    /** Smooth 0..1 weight for Ocean->Beach transition (centered at cShelfEnd). */
+    private static double wOceanToBeach(double c, double blend) {
+        return smoothstep(Talos2Continent.C_SHELF_END - blend, Talos2Continent.C_SHELF_END + blend, c);
+    }
+
+    /** Smooth 0..1 weight for Beach->Land transition (centered at cBeachEnd). */
+    private static double wBeachToLand(double c, double blend) {
+        return smoothstep(Talos2Continent.C_BEACH_END - blend, Talos2Continent.C_BEACH_END + blend, c);
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * t;
+    }
+
+    private static double saturate(double x) {
+        return x < 0 ? 0 : (x > 1 ? 1 : x);
     }
 
     private double sampleTerrain01(int gx, int gz, double scale) {
