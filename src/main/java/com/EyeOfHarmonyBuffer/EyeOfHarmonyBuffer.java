@@ -140,7 +140,6 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
-        event.registerServerCommand(new CommandOpenConfig());
         event.registerServerCommand(new CommandTalos2Export());
     }
 

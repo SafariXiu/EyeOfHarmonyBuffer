@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer;
 
+import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityWindmillRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemUnactivatedYuanShiRenderer;
@@ -11,6 +12,7 @@ import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 public class ClientProxy extends CommonProxy {
@@ -32,5 +34,7 @@ public class ClientProxy extends CommonProxy {
     public void init(FMLInitializationEvent event) {
         super.init(event);
         ExternalBlockTextures.register();
+
+        ClientCommandHandler.instance.registerCommand(new CommandOpenConfig());
     }
 }

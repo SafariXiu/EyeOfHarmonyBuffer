@@ -19,6 +19,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final World world;
     private final SimplexNoiseOctave continentNoise;
     private final SimplexNoiseOctave terrainNoise;
+    private final MacroBiomeField macroBiomeField;
+    private final CoastWidthField coastWidthField;
 
     private static final boolean TALOS_TIMING = false;
     private static final int SLOW_CHUNK_MS = 80;
@@ -59,6 +61,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, mapFeaturesEnabled);
         this.world = world;
 
+        this.macroBiomeField = new MacroBiomeField(seed);
+        this.coastWidthField = new CoastWidthField(seed);
         this.terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
         this.continentNoise = new SimplexNoiseOctave(
             seed ^ Talos2Continent.CONTINENT_SALT,
@@ -520,34 +524,32 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private void buildShoreCache(int chunkX, int chunkZ, ChunkShoreCache out) {
         final int SIZE = 17;
 
-        final double C_SPLIT = Talos2Continent.C_LAND;
-
-        final double BAND = 0.08D;
         final int COAST_RADIUS_BLOCKS = 192;
 
-        final int BEACH_W = 24;
-        final int SHELF_W = 96;
+        ChunkCoastField cf = ChunkCoastField.build(this.continentNoise, chunkX, chunkZ, COAST_RADIUS_BLOCKS);
 
         for (int lx = 0; lx < SIZE; lx++) {
             for (int lz = 0; lz < SIZE; lz++) {
                 int gx = chunkX * 16 + lx;
                 int gz = chunkZ * 16 + lz;
 
-                double c = Talos2Continent.sampleC01(this.continentNoise, gx, gz);
+                boolean isLand = cf.isLandAt(this.continentNoise, gx, gz);
+                int dist = cf.distToCoastAt(this.continentNoise, gx, gz);
 
-                boolean isLand = c >= C_SPLIT;
+                MacroBiome m = this.macroBiomeField.pick(gx, gz);
+                CoastProfile p = CoastProfiles.forMacro(m);
+
+                int beachW = this.coastWidthField.beachWidthBlocks(gx, gz, p);
+                int shelfW = this.coastWidthField.shelfWidthBlocks(gx, gz, p);
+
                 out.isLand[lx][lz] = isLand;
 
-                double dc = Math.abs(c - C_SPLIT);
-                double t = clamp01(dc / BAND);
-
-                int dist = (int) Math.round(t * COAST_RADIUS_BLOCKS);
                 if (dist < 0) dist = 0;
                 if (dist > 65535) dist = 65535;
-
                 out.dist[lx][lz] = (short) dist;
-                out.beachW[lx][lz] = (short) BEACH_W;
-                out.shelfW[lx][lz] = (short) SHELF_W;
+
+                out.beachW[lx][lz] = (short) beachW;
+                out.shelfW[lx][lz] = (short) shelfW;
             }
         }
     }
