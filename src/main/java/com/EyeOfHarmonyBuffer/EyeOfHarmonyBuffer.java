@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.command.CommandOrundum;
+import com.EyeOfHarmonyBuffer.command.CommandTalos2Export;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
@@ -140,6 +141,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandOpenConfig());
+        event.registerServerCommand(new CommandTalos2Export());
     }
 
     @Mod.EventHandler

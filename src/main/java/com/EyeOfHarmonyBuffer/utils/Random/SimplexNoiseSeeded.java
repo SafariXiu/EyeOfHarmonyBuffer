@@ -4,6 +4,9 @@ import java.util.Random;
 
 public final class SimplexNoiseSeeded {
 
+    static final java.util.concurrent.atomic.LongAdder CALLS = new java.util.concurrent.atomic.LongAdder();
+    private static final boolean DEBUG_CALLS = true;
+
     private static final int[][] GRAD3 = {
         {1, 1}, {-1, 1}, {1, -1}, {-1, -1},
         {1, 0}, {-1, 0}, {1, 0}, {-1, 0},
@@ -42,6 +45,9 @@ public final class SimplexNoiseSeeded {
     }
 
     public double noise(double xin, double yin) {
+
+        if (DEBUG_CALLS) CALLS.increment();
+
         double s = (xin + yin) * F2;
         int i = fastFloor(xin + s);
         int j = fastFloor(yin + s);

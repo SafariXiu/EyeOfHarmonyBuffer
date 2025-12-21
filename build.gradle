@@ -38,3 +38,11 @@ tasks.named("runServer", JavaExec) {
     }
 }
 
+tasks.named("runClient17", JavaExec) {
+    workingDir = file("${projectDir}/run/client17")
+    doFirst {
+        workingDir.mkdirs()
+        file("logs").mkdirs()
+    }
+    jvmArgs "-Xlog:gc*,safepoint=info:file=K:/moder/EyeOfHarmonyBuffer/run/client17/logs/mc-gc-%t.log:time,uptime,level,tags:filecount=10,filesize=20M"
+}

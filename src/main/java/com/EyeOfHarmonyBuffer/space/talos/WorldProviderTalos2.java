@@ -178,4 +178,13 @@ public class WorldProviderTalos2 extends WorldProviderSpaceGS
         }
         return this.skyProvider;
     }
+
+    @Override
+    public IChunkProvider createChunkGenerator() {
+        System.out.println("[PERF] WorldProviderTalos2.createChunkGenerator dim=" + this.worldObj.provider.dimensionId);
+        IChunkProvider real = new ChunkProviderTalos2(this.worldObj, this.worldObj.getSeed(), true);
+        IChunkProvider wrapped = new ProfilingChunkProvider(real);
+        System.out.println("[PERF] Wrapped provider = " + wrapped.getClass().getName() + " -> " + real.getClass().getName());
+        return wrapped;
+    }
 }
