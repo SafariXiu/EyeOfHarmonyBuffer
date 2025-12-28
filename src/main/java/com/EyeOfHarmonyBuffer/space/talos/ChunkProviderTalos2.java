@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
+import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver.Talos2BiomeResolver;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
+import galaxyspace.core.world.GSBiomeGenBase;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
@@ -16,11 +18,23 @@ import java.util.List;
 
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
+    private static final MacroBiome[] MACRO_VALUES = MacroBiome.values();
+
+    private final CoastlineAtlas coastlineAtlas;
     private final World world;
-    private final SimplexNoiseOctave continentNoise;
+
     private final SimplexNoiseOctave terrainNoise;
     private final MacroBiomeField macroBiomeField;
-    private final CoastWidthField coastWidthField;
+
+    private final MacroBiomeSelector macroSelector;
+
+    private final Talos2ClimateSampler surfaceClimateSampler;
+    private final Talos2BiomeResolver biomeResolver;
+
+    private static final BlockMetaPair SNOW_SURFACE = new BlockMetaPair(Blocks.snow, (byte) 0);
+    private static final BlockMetaPair PACKED_ICE = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
+    private static final BlockMetaPair SANDSTONE_FILL = new BlockMetaPair(Blocks.sandstone, (byte) 0);
+    private static final BlockMetaPair MYCELIUM_TOP = new BlockMetaPair(Blocks.mycelium, (byte) 0);
 
     private static final boolean TALOS_TIMING = false;
     private static final int SLOW_CHUNK_MS = 80;
@@ -61,13 +75,34 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, mapFeaturesEnabled);
         this.world = world;
 
-        this.macroBiomeField = new MacroBiomeField(seed);
-        this.coastWidthField = new CoastWidthField(seed);
+        Talos2Hooks.HookData hook = Talos2Hooks.resolve(world);
+
+        MacroBiomeField.MacroBiomeConfig macroConfig =
+            (hook != null && hook.macroConfig != null)
+                ? hook.macroConfig
+                : Talos2NoiseConfig.currentMacroConfig();
+
+        this.macroSelector = new MacroBiomeSelector(seed);
+
+        if (hook != null && hook.macroField != null && hook.coastlineAtlas != null) {
+            this.macroBiomeField = hook.macroField;
+            this.coastlineAtlas = hook.coastlineAtlas;
+        } else {
+            this.macroBiomeField = new MacroBiomeField(seed, macroConfig);
+            this.coastlineAtlas = new DefaultCoastlineAtlas(this.macroBiomeField, seed);
+            Talos2Hooks.register(
+                world.provider.dimensionId,
+                world,
+                seed,
+                (DefaultCoastlineAtlas) this.coastlineAtlas,
+                this.macroBiomeField,
+                macroConfig
+            );
+        }
+
         this.terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
-        this.continentNoise = new SimplexNoiseOctave(
-            seed ^ Talos2Continent.CONTINENT_SALT,
-            Talos2Continent.CONTINENT_OCTAVES
-        );
+        this.surfaceClimateSampler = new Talos2ClimateSampler(world, this.macroBiomeField);
+        this.biomeResolver = new Talos2BiomeResolver(world, this.macroBiomeField);
     }
 
     @Override
@@ -87,6 +122,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             TalosBiomes.TALOS_BEACH,
             TalosBiomes.TALOS_PLAINS,
             TalosBiomes.TALOS_SHELF,
+            TalosBiomes.TALOS_DESERT,
         };
     }
 
@@ -145,10 +181,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int SIZE = 17;
         final int worldHeight = 256;
 
-        BiomeGenTalos2Ocean oceanBiome   = TalosBiomes.TALOS_OCEAN;
-        BiomeGenTalos2Beach beachBiome   = TalosBiomes.TALOS_BEACH;
-        BiomeGenTalos2Plains plainsBiome = TalosBiomes.TALOS_PLAINS;
-        BiomeGenTalos2Shelf shelfBiome   = TalosBiomes.TALOS_SHELF;
+        BiomeGenTalos2Ocean oceanBiome = TalosBiomes.TALOS_OCEAN;
+        BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
+        BiomeGenTalos2Shelf shelfBiome = TalosBiomes.TALOS_SHELF;
 
         final double DEEP_MIN      = oceanBiome.deepMin;
         final double DEEP_MAX      = oceanBiome.deepMax;
@@ -157,9 +192,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         final double BEACH_MIN = beachBiome.beachMin;
         final double BEACH_MAX = beachBiome.beachMax;
-
-        final double PLAIN_MIN = plainsBiome.plainMin;
-        final double PLAIN_MAX = plainsBiome.plainMax;
 
         final double detailScale = 0.0025D;
 
@@ -171,6 +203,18 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         for (int localX = 0; localX <= 16; localX++) {
             for (int localZ = 0; localZ <= 16; localZ++) {
 
+                int macroPrimaryId = shore.macroPrimary[localX][localZ] & 0xFF;
+                int macroSecondaryId = shore.macroSecondary[localX][localZ] & 0xFF;
+                double macroBlend = (shore.macroBlend[localX][localZ] & 0xFF) / 255.0;
+
+                MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
+                MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
+
+                if (macroPrimary == null) macroPrimary = MacroBiome.PLAINS_TEMPERATE;
+                if (macroSecondary == null) macroSecondary = macroPrimary;
+
+                MacroHeightSample heightSample = blendHeightProfiles(macroPrimary, macroSecondary, macroBlend);
+
                 int gx = chunkX * 16 + localX;
                 int gz = chunkZ * 16 + localZ;
 
@@ -180,24 +224,35 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int beachW = shore.beachW[localX][localZ] & 0xFFFF;
                 int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
 
-                double d = sampleTerrain01(gx, gz, detailScale);
-                d = clamp01(d);
+                boolean isDesert = isLand && dist > beachW &&
+                    (macroPrimary == MacroBiome.WARM_DRY ||
+                        (macroSecondary == MacroBiome.WARM_DRY && macroBlend < 0.45));
+
+                double d = clamp01(sampleTerrain01(gx, gz, detailScale));
 
                 double hDeep = DEEP_MIN + d * (DEEP_MAX - DEEP_MIN);
                 double shelfTop = SHELF_TOP_MIN + d * (SHELF_TOP_MAX - SHELF_TOP_MIN);
 
-                double tShelfNear = 1.0D - clamp01(dist / (double) shelfW);
+                double tShelfNear = 1.0D - clamp01(dist / (double) Math.max(1, shelfW));
                 tShelfNear = smooth01(tShelfNear);
                 double hShelfOnly = lerp(hDeep, shelfTop, tShelfNear);
 
-                double hPlainsBase = PLAIN_MIN + d * (PLAIN_MAX - PLAIN_MIN);
+                double hMacroBase = sampleBlendedMacroHeight(gx, gz, d, heightSample);
                 double hPlainsOnly = computePlainsHeightNearCoast_DIST(
-                    gx, gz, dist, beachW, d, hPlainsBase, BEACH_MAX, INLAND_RAMP_BLOCKS
+                    gx, gz, dist, beachW, d, hMacroBase, BEACH_MAX, INLAND_RAMP_BLOCKS
                 );
 
-                double beach01 = clamp01(dist / (double) beachW);
-                double hBeachOnly = computeBeachHeight01(beach01, d, hPlainsOnly, BEACH_MIN, BEACH_MAX);
+                double hDesertOnly = hPlainsOnly;
+                if (isDesert) {
+                    hDesertOnly = computeDesertHeight(
+                        gx, gz, d,
+                        heightSample.min,
+                        heightSample.max
+                    );
+                }
 
+                double beach01 = clamp01(dist / (double) Math.max(1, beachW));
+                double hBeachOnly = computeBeachHeight01(beach01, d, hPlainsOnly, BEACH_MIN, BEACH_MAX);
                 if (hBeachOnly < BEACH_MIN) hBeachOnly = BEACH_MIN;
                 if (hBeachOnly > BEACH_MAX) hBeachOnly = BEACH_MAX;
 
@@ -206,8 +261,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     double t = smoothstep(shelfW - BLEND_BLOCKS, shelfW + BLEND_BLOCKS, dist);
                     h = lerp(hShelfOnly, hDeep, t);
                 } else {
+                    double inlandTarget = isDesert ? hDesertOnly : hPlainsOnly;
                     double t = smoothstep(beachW - BLEND_BLOCKS, beachW + BLEND_BLOCKS, dist);
-                    h = lerp(hBeachOnly, hPlainsOnly, t);
+                    h = lerp(hBeachOnly, inlandTarget, t);
                 }
 
                 int ih = (int) Math.floor(h);
@@ -251,27 +307,47 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         int waterLevel = this.getWaterLevel();
 
-        BiomeGenTalos2Beach beachBiome = TalosBiomes.TALOS_BEACH;
-        int beachMinY = (int) Math.round(Math.max(waterLevel, beachBiome.beachMin));
-        int beachMaxY = (int) Math.round(beachBiome.beachMax) + 1; // tolerance
-
-        final int PLAIN_MIN_Y = 67;
+        MacroBiome.MacroHeightProfile beachProfile = MacroBiome.COASTAL.height;
+        int beachMinY = (int) Math.round(Math.max(waterLevel, beachProfile.absoluteMin));
+        int beachMaxY = (int) Math.round(beachProfile.absoluteMax) + 1;
 
         for (int lx = 0; lx < SIZE; lx++) {
             for (int lz = 0; lz < SIZE; lz++) {
+
+                int macroPrimaryId  = shore.macroPrimary[lx][lz] & 0xFF;
+                int macroSecondaryId = shore.macroSecondary[lx][lz] & 0xFF;
+                double macroBlend = (shore.macroBlend[lx][lz] & 0xFF) / 255.0;
+
+                MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
+                MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
+
+                if (macroPrimary == null) macroPrimary = MacroBiome.PLAINS_TEMPERATE;
+                if (macroSecondary == null) macroSecondary = macroPrimary;
+
+                MacroHeightSample heightSample = blendHeightProfiles(macroPrimary, macroSecondary, macroBlend);
 
                 if (!shore.isLand[lx][lz]) continue;
 
                 int dist = shore.dist[lx][lz] & 0xFFFF;
                 int beachW = shore.beachW[lx][lz] & 0xFFFF;
 
+                boolean isDesert = dist > beachW &&
+                    (macroPrimary == MacroBiome.WARM_DRY ||
+                        (macroSecondary == MacroBiome.WARM_DRY && macroBlend < 0.45));
+
                 int y = hm[lx][lz];
 
                 if (dist <= beachW) {
                     if (y < beachMinY) y = beachMinY;
                     if (y > beachMaxY) y = beachMaxY;
+                } else if (isDesert) {
+                    int desertMinY = (int) Math.floor(heightSample.min);
+                    int desertMaxY = (int) Math.ceil(heightSample.max);
+                    if (y < desertMinY) y = desertMinY;
+                    if (y > desertMaxY) y = desertMaxY;
                 } else {
-                    if (y < PLAIN_MIN_Y) y = PLAIN_MIN_Y;
+                    int inlandMinY = (int) Math.floor(heightSample.min);
+                    if (y < inlandMinY) y = inlandMinY;
                 }
 
                 hm[lx][lz] = y;
@@ -282,7 +358,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private void fillBlocksFromHeightMap(
         Block[] blocks,
         byte[] meta,
-        int[][] heightMap,      // 17x17
+        int[][] heightMap,
         int chunkX,
         int chunkZ,
         ChunkShoreCache shore) {
@@ -298,8 +374,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int gx = chunkX * 16 + localX;
                 int gz = chunkZ * 16 + localZ;
 
-                int groundHeight = heightMap[localX][localZ];
                 int columnBase = (localX * 16 + localZ) * worldHeight;
+                int groundHeight = heightMap[localX][localZ];
 
                 boolean isLand = shore.isLand[localX][localZ];
                 int dist = shore.dist[localX][localZ] & 0xFFFF;
@@ -308,111 +384,37 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
 
                 BiomeGenBase baseBiome;
+                Talos2ClimateSampler.ClimateSample climateSample = null;
+
                 if (!isLand) {
                     baseBiome = (dist <= shelfW) ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+                } else if (dist <= beachW) {
+                    baseBiome = TalosBiomes.TALOS_BEACH;
                 } else {
-                    baseBiome = (dist <= beachW) ? TalosBiomes.TALOS_BEACH : TalosBiomes.TALOS_PLAINS;
+                    baseBiome = biomeResolver.resolve(gx, gz);
+                    climateSample = surfaceClimateSampler.sample(gx, gz);
+
+                    if (baseBiome == null) {
+                        int macroPrimaryId = shore.macroPrimary[localX][localZ] & 0xFF;
+                        int macroSecondaryId = shore.macroSecondary[localX][localZ] & 0xFF;
+                        double macroBlend = (shore.macroBlend[localX][localZ] & 0xFF) / 255.0;
+                        MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
+                        MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
+                        baseBiome = macroSelector.pick(gx, gz, macroPrimary, macroSecondary, macroBlend);
+                    }
                 }
 
                 if (baseBiome == TalosBiomes.TALOS_OCEAN) {
-                    BiomeGenTalos2Ocean biome = (BiomeGenTalos2Ocean) baseBiome;
-                    BlockMetaPair stone = biome.bottomBlock;
-                    BlockMetaPair water = this.getWaterBlock();
-
-                    for (int y = 0; y <= groundHeight; y++) {
-                        int idx = columnBase + y;
-                        blocks[idx] = stone.getBlock();
-                        meta[idx] = stone.getMetadata();
-                    }
-                    if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
-                        for (int y = groundHeight + 1; y <= waterLevel; y++) {
-                            int idx = columnBase + y;
-                            blocks[idx] = water.getBlock();
-                            meta[idx] = water.getMetadata();
-                        }
-                    }
-
+                    fillOceanColumn(blocks, meta, columnBase, groundHeight, waterLevel);
                 } else if (baseBiome == TalosBiomes.TALOS_SHELF) {
-                    BiomeGenTalos2Shelf biome = (BiomeGenTalos2Shelf) baseBiome;
-
-                    BlockMetaPair top = biome.surfaceBlock;
-                    BlockMetaPair stone = biome.shelfBlock;
-                    BlockMetaPair water = this.getWaterBlock();
-
-                    int topY = groundHeight;
-
-                    for (int y = 0; y <= topY; y++) {
-                        int idx = columnBase + y;
-                        BlockMetaPair pair = (y == topY) ? top : stone;
-                        blocks[idx] = pair.getBlock();
-                        meta[idx] = pair.getMetadata();
-                    }
-
-                    if (this.canGenerateWaterBlock() && topY < waterLevel) {
-                        for (int y = topY + 1; y <= waterLevel; y++) {
-                            int idx = columnBase + y;
-                            blocks[idx] = water.getBlock();
-                            meta[idx] = water.getMetadata();
-                        }
-                    }
-
+                    fillShelfColumn(blocks, meta, columnBase, groundHeight, waterLevel,
+                        (BiomeGenTalos2Shelf) baseBiome);
                 } else if (baseBiome == TalosBiomes.TALOS_BEACH) {
-                    BiomeGenTalos2Beach biome = (BiomeGenTalos2Beach) baseBiome;
-                    BlockMetaPair sand = biome.surfaceBlock;
-                    BlockMetaPair dirt = biome.fillerBlock;
-                    BlockMetaPair stone = biome.stoneBlock;
-                    BlockMetaPair water = this.getWaterBlock();
-
-                    int top = groundHeight;
-
-                    for (int y = 0; y <= top; y++) {
-                        int idx = columnBase + y;
-
-                        BlockMetaPair pair;
-                        if (y == top || y == top - 1) pair = sand;
-                        else if (y >= top - 4) pair = dirt;
-                        else pair = stone;
-
-                        blocks[idx] = pair.getBlock();
-                        meta[idx] = pair.getMetadata();
-                    }
-
-                    if (this.canGenerateWaterBlock() && top < waterLevel - 2) {
-                        for (int y = top + 1; y <= waterLevel; y++) {
-                            int idx = columnBase + y;
-                            blocks[idx] = water.getBlock();
-                            meta[idx] = water.getMetadata();
-                        }
-                    }
-
+                    fillBeachColumn(blocks, meta, columnBase, groundHeight, waterLevel,
+                        (BiomeGenTalos2Beach) baseBiome);
                 } else {
-                    BiomeGenTalos2Plains biome = (BiomeGenTalos2Plains) baseBiome;
-                    BlockMetaPair grass = biome.surfaceBlock;
-                    BlockMetaPair dirt = biome.fillerBlock;
-                    BlockMetaPair stone = biome.stoneBlock;
-                    BlockMetaPair water = this.getWaterBlock();
-
-                    int top = groundHeight;
-
-                    for (int y = 0; y <= top; y++) {
-                        int idx = columnBase + y;
-
-                        BlockMetaPair pair;
-                        if (y == top) pair = grass;
-                        else if (y >= top - 3) pair = dirt;
-                        else pair = stone;
-
-                        blocks[idx] = pair.getBlock();
-                        meta[idx] = pair.getMetadata();
-                    }
-
-                    if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
-                        for (int y = groundHeight + 1; y <= waterLevel; y++) {
-                            int idx = columnBase + y;
-                            blocks[idx] = water.getBlock();
-                            meta[idx] = water.getMetadata();
-                        }
-                    }
+                    buildColumnForBiome(blocks, meta, columnBase, groundHeight, waterLevel,
+                        baseBiome, climateSample);
                 }
             }
         }
@@ -524,46 +526,78 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private void buildShoreCache(int chunkX, int chunkZ, ChunkShoreCache out) {
         final int SIZE = 17;
 
-        final int COAST_RADIUS_BLOCKS = 192;
-
-        ChunkCoastField cf = ChunkCoastField.build(this.continentNoise, chunkX, chunkZ, COAST_RADIUS_BLOCKS);
+        this.macroBiomeField.sample(chunkX, chunkZ, out);
 
         for (int lx = 0; lx < SIZE; lx++) {
             for (int lz = 0; lz < SIZE; lz++) {
+
                 int gx = chunkX * 16 + lx;
                 int gz = chunkZ * 16 + lz;
 
-                boolean isLand = cf.isLandAt(this.continentNoise, gx, gz);
-                int dist = cf.distToCoastAt(this.continentNoise, gx, gz);
+                int macroId = out.macroPrimary[lx][lz] & 0xFF;
+                MacroBiome macro = MACRO_VALUES[macroId];
+                if (macro == null) {
+                    macro = MacroBiome.PLAINS_TEMPERATE;
+                }
 
-                MacroBiome m = this.macroBiomeField.pick(gx, gz);
-                CoastProfile p = CoastProfiles.forMacro(m);
+                boolean isLand = this.coastlineAtlas.isLand(gx, gz);
+                int distRaw = this.coastlineAtlas.distanceToCoast(gx, gz);
+                int beachWidthRaw = this.coastlineAtlas.beachWidth(gx, gz, macro);
+                int shelfWidthRaw = this.coastlineAtlas.shelfWidth(gx, gz, macro);
 
-                int beachW = this.coastWidthField.beachWidthBlocks(gx, gz, p);
-                int shelfW = this.coastWidthField.shelfWidthBlocks(gx, gz, p);
-
-                out.isLand[lx][lz] = isLand;
-
+                int dist = distRaw;
                 if (dist < 0) dist = 0;
                 if (dist > 65535) dist = 65535;
-                out.dist[lx][lz] = (short) dist;
 
+                int beachW = beachWidthRaw;
+                if (beachW < 0) beachW = 0;
+                if (beachW > 65535) beachW = 65535;
+
+                int shelfW = shelfWidthRaw;
+                if (shelfW < 0) shelfW = 0;
+                if (shelfW > 65535) shelfW = 65535;
+
+                out.isLand[lx][lz] = isLand;
+                out.dist[lx][lz] = (short) dist;
                 out.beachW[lx][lz] = (short) beachW;
                 out.shelfW[lx][lz] = (short) shelfW;
             }
         }
     }
 
-    static final class ChunkShoreCache {
-        final boolean[][] isLand = new boolean[17][17];
-        final short[][] dist = new short[17][17];
-        final short[][] beachW = new short[17][17];
-        final short[][] shelfW = new short[17][17];
+    private double computeDesertHeight(int gx, int gz, double baseNoise01, double min, double max) {
+        double dunes = sampleTerrain01(gx, gz, 0.0065D);
+        double mesas = sampleTerrain01(gx, gz, 0.0012D);
+        double blend = clamp01(0.55D * baseNoise01 + 0.30D * dunes + 0.15D * mesas);
+
+        double height = min + blend * (max - min);
+
+        double ripples = sampleTerrain01(gx + 4000, gz - 4000, 0.0120D);
+        height += (ripples - 0.5D) * 2.5D;
+
+        return clamp(height, min, max);
     }
 
+    public static final class ChunkShoreCache {
+        public final boolean[][] isLand = new boolean[17][17];
+        public final short[][] dist = new short[17][17];
+        public final short[][] beachW = new short[17][17];
+        public final short[][] shelfW = new short[17][17];
+        public final byte[][] macro = new byte[17][17];
+
+        public final byte[][] macroPrimary = new byte[17][17];
+        public final byte[][] macroSecondary = new byte[17][17];
+        public final byte[][] macroBlend = new byte[17][17];
+    }
 
     private static double clamp01(double v) {
         return v < 0.0D ? 0.0D : (v > 1.0D ? 1.0D : v);
+    }
+
+    private static double clamp(double v, double min, double max) {
+        if (v < min) return min;
+        if (v > max) return max;
+        return v;
     }
 
     private static double lerp(double a, double b, double t) {
@@ -667,6 +701,218 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         if (basePlain > cap) basePlain = cap;
 
         return targetBeach * (1.0D - tInland) + basePlain * tInland;
+    }
+
+    private double sampleBlendedMacroHeight(int gx, int gz,
+                                            double noise01,
+                                            MacroHeightSample sample) {
+
+        double absMin = sample.min;
+        double absMax = sample.max;
+
+        double base = absMin + noise01 * (absMax - absMin);
+        double extra = (noise01 - 0.5D) * sample.variation * 32.0D;
+        double offset = sample.offset * 16.0D;
+
+        double value = base + extra + offset;
+        return clamp(value, Math.min(absMin, absMax), Math.max(absMin, absMax));
+    }
+
+    private void buildColumnForBiome(
+        Block[] blocks, byte[] meta,
+        int columnBase, int groundHeight, int waterLevel,
+        BiomeGenBase biome,
+        Talos2ClimateSampler.ClimateSample climateSample
+    ) {
+        BlockMetaPair surface = getSurfaceBlock(biome);
+        BlockMetaPair filler = getFillerBlock(biome);
+        BlockMetaPair stone = getStoneBlockForBiome(biome);
+        BlockMetaPair water = this.getWaterBlock();
+
+        if (climateSample != null) {
+            double temp = climateSample.temperature;
+            double humid = climateSample.humidity;
+
+            if (temp < 0.16D) {
+                surface = SNOW_SURFACE;
+                filler = PACKED_ICE;
+            } else if (temp > 0.82D && humid < 0.35D) {
+                surface = getSandBlock();
+                filler = SANDSTONE_FILL;
+            } else if (humid > 0.78D && temp > 0.55D) {
+                surface = MYCELIUM_TOP;
+                filler = this.getDirtBlock();
+            }
+        }
+
+        for (int y = 0; y <= groundHeight; y++) {
+            int idx = columnBase + y;
+            BlockMetaPair pair;
+
+            if (y == groundHeight) {
+                pair = surface;
+            } else if (y >= groundHeight - 3) {
+                pair = (filler != null) ? filler : surface;
+            } else {
+                pair = (stone != null) ? stone : this.getStoneBlock();
+            }
+
+            blocks[idx] = pair.getBlock();
+            meta[idx] = pair.getMetadata();
+        }
+
+        if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
+            for (int y = groundHeight + 1; y <= waterLevel; y++) {
+                int idx = columnBase + y;
+                blocks[idx] = water.getBlock();
+                meta[idx] = water.getMetadata();
+            }
+        }
+    }
+
+    private static final class MacroHeightSample {
+        final double min;
+        final double max;
+        final double offset;
+        final double variation;
+
+        MacroHeightSample(double min, double max, double offset, double variation) {
+            this.min = min;
+            this.max = max;
+            this.offset = offset;
+            this.variation = variation;
+        }
+    }
+
+    private MacroHeightSample blendHeightProfiles(MacroBiome primary,
+                                                  MacroBiome secondary,
+                                                  double blendPrimary) {
+
+        MacroBiome.MacroHeightProfile hpA = primary.height;
+        MacroBiome.MacroHeightProfile hpB = secondary.height;
+
+        double t = clamp01(blendPrimary);
+        double invT = 1.0 - t;
+
+        double min = hpA.absoluteMin * t + hpB.absoluteMin * invT;
+        double max = hpA.absoluteMax * t + hpB.absoluteMax * invT;
+        double offset = hpA.baseHeightOffset * t + hpB.baseHeightOffset * invT;
+        double variation = hpA.heightVariation * t + hpB.heightVariation * invT;
+
+        return new MacroHeightSample(min, max, offset, variation);
+    }
+
+    private BlockMetaPair getSurfaceBlock(BiomeGenBase biome) {
+        if (biome instanceof GSBiomeGenBase gs) {
+            Block top = gs.topBlock != null ? gs.topBlock : Blocks.grass;
+            byte meta = gs.topMeta;
+            return new BlockMetaPair(top, meta);
+        }
+        return this.getGrassBlock();
+    }
+
+    private BlockMetaPair getFillerBlock(BiomeGenBase biome) {
+        if (biome instanceof GSBiomeGenBase gs) {
+            Block filler = gs.fillerBlock != null ? gs.fillerBlock : Blocks.dirt;
+            byte meta = gs.fillerMeta;
+            return new BlockMetaPair(filler, meta);
+        }
+        return this.getDirtBlock();
+    }
+
+    private BlockMetaPair getStoneBlockForBiome(BiomeGenBase biome) {
+        if (biome instanceof GSBiomeGenBase gs && gs.stoneBlock != null) {
+            return new BlockMetaPair(gs.stoneBlock, gs.stoneMeta);
+        }
+        return this.getStoneBlock();
+    }
+
+    private void fillOceanColumn(Block[] blocks,
+                                 byte[] meta,
+                                 int columnBase,
+                                 int groundHeight,
+                                 int waterLevel) {
+
+        BiomeGenTalos2Ocean biome = TalosBiomes.TALOS_OCEAN;
+        BlockMetaPair stone = biome.bottomBlock;
+        BlockMetaPair water = this.getWaterBlock();
+
+        for (int y = 0; y <= groundHeight; y++) {
+            int idx = columnBase + y;
+            blocks[idx] = stone.getBlock();
+            meta[idx] = stone.getMetadata();
+        }
+        if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
+            for (int y = groundHeight + 1; y <= waterLevel; y++) {
+                int idx = columnBase + y;
+                blocks[idx] = water.getBlock();
+                meta[idx] = water.getMetadata();
+            }
+        }
+    }
+
+    private void fillShelfColumn(Block[] blocks,
+                                 byte[] meta,
+                                 int columnBase,
+                                 int groundHeight,
+                                 int waterLevel,
+                                 BiomeGenTalos2Shelf biome) {
+
+        BlockMetaPair top = biome.surfaceBlock;
+        BlockMetaPair shelf = biome.shelfBlock;
+        BlockMetaPair water = this.getWaterBlock();
+
+        for (int y = 0; y <= groundHeight; y++) {
+            int idx = columnBase + y;
+            BlockMetaPair pair = (y == groundHeight) ? top : shelf;
+            blocks[idx] = pair.getBlock();
+            meta[idx] = pair.getMetadata();
+        }
+
+        if (this.canGenerateWaterBlock() && groundHeight < waterLevel) {
+            for (int y = groundHeight + 1; y <= waterLevel; y++) {
+                int idx = columnBase + y;
+                blocks[idx] = water.getBlock();
+                meta[idx] = water.getMetadata();
+            }
+        }
+    }
+
+    private void fillBeachColumn(Block[] blocks,
+                                 byte[] meta,
+                                 int columnBase,
+                                 int groundHeight,
+                                 int waterLevel,
+                                 BiomeGenTalos2Beach biome) {
+
+        BlockMetaPair sand = biome.surfaceBlock;
+        BlockMetaPair dirt = biome.fillerBlock;
+        BlockMetaPair stone = biome.stoneBlock;
+        BlockMetaPair water = this.getWaterBlock();
+
+        for (int y = 0; y <= groundHeight; y++) {
+            int idx = columnBase + y;
+
+            BlockMetaPair pair;
+            if (y == groundHeight || y == groundHeight - 1) {
+                pair = sand;
+            } else if (y >= groundHeight - 4) {
+                pair = dirt;
+            } else {
+                pair = stone;
+            }
+
+            blocks[idx] = pair.getBlock();
+            meta[idx] = pair.getMetadata();
+        }
+
+        if (this.canGenerateWaterBlock() && groundHeight < waterLevel - 2) {
+            for (int y = groundHeight + 1; y <= waterLevel; y++) {
+                int idx = columnBase + y;
+                blocks[idx] = water.getBlock();
+                meta[idx] = water.getMetadata();
+            }
+        }
     }
 
     @Override

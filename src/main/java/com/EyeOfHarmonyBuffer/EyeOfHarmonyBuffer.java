@@ -3,13 +3,11 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Events.Talos2WorldEvents;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
-import com.EyeOfHarmonyBuffer.command.CommandOrundum;
-import com.EyeOfHarmonyBuffer.command.CommandTalos2Export;
+import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
-import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
-import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
@@ -18,7 +16,6 @@ import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
 import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
-import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
@@ -104,6 +101,8 @@ public class EyeOfHarmonyBuffer {
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
 
         RegisterDimensions.init();
+
+        Talos2WorldEvents.register();
     }
 
     @Mod.EventHandler
@@ -141,6 +140,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandTalos2Export());
+        event.registerServerCommand(new CommandTalosClimate());
     }
 
     @Mod.EventHandler

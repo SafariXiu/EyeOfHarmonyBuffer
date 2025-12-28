@@ -20,7 +20,6 @@ public class SimplexNoiseOctave {
             this.frequencies[i] = Math.pow(2, i);
             this.amplitudes[i] = Math.pow(0.5, i);
 
-            // Derive a different seed per octave (avoid correlations)
             long octaveSeed = mixSeed(seed, i);
             this.simplex[i] = new SimplexNoiseSeeded(octaveSeed);
         }

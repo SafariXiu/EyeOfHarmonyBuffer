@@ -1,9 +1,11 @@
 package com.EyeOfHarmonyBuffer.space;
 
-import com.EyeOfHarmonyBuffer.space.talos.SimplexNoiseOctave;
-import com.EyeOfHarmonyBuffer.space.talos.Talos2Continent;
+import com.EyeOfHarmonyBuffer.space.talos.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
+import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver.Talos2BiomeResolver;
+import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -11,62 +13,19 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Objects;
 
 public class Talos2MapExporter {
 
     private Talos2MapExporter() {}
 
     public static final class ExportConfig {
-        private static boolean boolProp(String key, boolean def) {
-            String v = System.getProperty(key);
-            return (v == null) ? def : Boolean.parseBoolean(v);
-        }
-        private static int intProp(String key, int def) {
-            String v = System.getProperty(key);
-            if (v == null) return def;
-            try { return Integer.parseInt(v.trim()); }
-            catch (Exception e) { return def; }
-        }
+
         private static String strProp(String key, String def) {
             String v = System.getProperty(key);
             return (v == null || v.isEmpty()) ? def : v;
-        }
-
-        public static boolean enabled() {
-            return boolProp("talos.export", false);
-        }
-
-        public static String mode() {
-            return strProp("talos.export.mode", "distZone");
-        }
-
-        public static int sizeBlocks() {
-            return intProp("talos.export.size", 32768);
-        }
-
-        public static int stepBlocks() {
-            return intProp("talos.export.step", 16);
-        }
-
-        public static String fileName() {
-            return strProp("talos.export.file", "talos_export.png");
-        }
-
-        public static int coastRadiusBlocks() {
-            return intProp("talos.export.coastRadius", 192);
-        }
-
-        public static int visRadiusBlocks() {
-            return intProp("talos.export.visRadius", 160);
-        }
-
-        public static int tilePixels() {
-            return intProp("talos.export.tile", 24);
-        }
-
-        public static boolean progressLog() {
-            return boolProp("talos.export.log", true);
         }
 
         public static String outDirName() {
@@ -74,53 +33,29 @@ public class Talos2MapExporter {
         }
     }
 
-    public static void maybeExportFromSystemProps(
-        World world,
-        SimplexNoiseOctave continentNoise,
-        long seed
-    ) throws IOException {
-
-        if (!ExportConfig.enabled()) return;
-
-        String mode = ExportConfig.mode();
-        String file = ExportConfig.fileName();
-
-        int size = ExportConfig.sizeBlocks();
-        int step = ExportConfig.stepBlocks();
-
-        if ("distZone".equalsIgnoreCase(mode)) {
-            exportDistZoneMap(world, continentNoise, seed, file, size, step,
-                ExportConfig.coastRadiusBlocks(),
-                ExportConfig.visRadiusBlocks(),
-                ExportConfig.tilePixels(),
-                ExportConfig.progressLog()
-            );
-            return;
+    private static CoastlineAtlas resolveCoastlineAtlas(Talos2Hooks.HookData hook, long seed) {
+        if (hook != null) {
+            if (hook.coastlineAtlas != null) return hook.coastlineAtlas;
+            if (hook.macroField != null) {
+                return new DefaultCoastlineAtlas(hook.macroField, seed);
+            }
         }
+        MacroBiomeField macroField = new MacroBiomeField(seed, Talos2NoiseConfig.currentMacroConfig());
+        return new DefaultCoastlineAtlas(macroField, seed);
+    }
 
-        if ("isLand".equalsIgnoreCase(mode)) {
-            exportIsLandMap(world, continentNoise, seed, file, size, step,
-                ExportConfig.coastRadiusBlocks(),
-                ExportConfig.tilePixels(),
-                ExportConfig.progressLog()
-            );
-            return;
-        }
-
-        if ("c01".equalsIgnoreCase(mode)) {
-            exportContinentC01Map(world, continentNoise, seed, file, size, step,
-                ExportConfig.tilePixels(),
-                ExportConfig.progressLog()
-            );
-            return;
-        }
-
-        throw new IllegalArgumentException("Unknown talos.export.mode=" + mode);
+    private static MacroBiomeField.MacroBiomeConfig resolveMacroConfig(
+        Talos2Hooks.HookData hook,
+        MacroBiomeField.MacroBiomeConfig override
+    ) {
+        if (override != null) return override;
+        if (hook != null && hook.macroConfig != null) return hook.macroConfig;
+        return Talos2NoiseConfig.currentMacroConfig();
     }
 
     public static void exportDistZoneMap(
+        Talos2Hooks.HookData hook,
         World world,
-        SimplexNoiseOctave continentNoise,
         long seed,
         String fileName,
         int sizeBlocks,
@@ -128,8 +63,14 @@ public class Talos2MapExporter {
         int coastRadiusBlocks,
         int visRadiusBlocks,
         int tilePixels,
-        boolean progressLog
+        boolean progressLog,
+        int centerX,
+        int centerZ,
+        MacroBiomeField.MacroBiomeConfig macroConfig
     ) throws IOException {
+
+        final MacroBiomeField.MacroBiomeConfig macroCfg = resolveMacroConfig(hook, macroConfig);
+        Objects.requireNonNull(macroCfg, "macroConfig");
 
         requirePositive(sizeBlocks, "sizeBlocks");
         requirePositive(stepBlocks, "stepBlocks");
@@ -138,23 +79,27 @@ public class Talos2MapExporter {
         requirePositive(tilePixels, "tilePixels");
 
         final int pixels = sizeBlocks / stepBlocks;
-        if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        if (pixels <= 0) {
+            throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        }
 
-        final MacroBiomeField macroField = new MacroBiomeField(seed);
-        final CoastWidthField coastWidthField = new CoastWidthField(seed);
+        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
+        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
             System.out.println("[Talos2][EXPORT] distZone " + pixels + "x" + pixels
                 + " -> " + outFile.getAbsolutePath()
                 + " (size=" + sizeBlocks + ", step=" + stepBlocks
+                + ", center=" + centerX + "," + centerZ
                 + ", coastRadius=" + coastRadiusBlocks + ", tilePixels=" + tilePixels + ")");
         }
 
         BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
 
-        final int minGx = -sizeBlocks / 2;
-        final int minGz = -sizeBlocks / 2;
+        final int half = sizeBlocks / 2;
+        final int minGx = centerX - half;
+        final int minGz = centerZ - half;
         final int minChunkX = floorDiv(minGx, 16);
         final int minChunkZ = floorDiv(minGz, 16);
 
@@ -162,9 +107,7 @@ public class Talos2MapExporter {
 
         long t0 = System.currentTimeMillis();
         long last = t0;
-
         long samples = 0;
-        long builds = 0;
 
         for (int tilePz = 0; tilePz < pixels; tilePz += tilePixels) {
             for (int tilePx = 0; tilePx < pixels; tilePx += tilePixels) {
@@ -173,15 +116,6 @@ public class Talos2MapExporter {
                 int pz1 = Math.min(pixels, tilePz + tilePixels);
                 int px1 = Math.min(pixels, tilePx + tilePixels);
 
-                int centerPx = (px0 + px1 - 1) >> 1;
-                int centerPz = (pz0 + pz1 - 1) >> 1;
-
-                int centerChunkX = minChunkX + centerPx * chunkStride;
-                int centerChunkZ = minChunkZ + centerPz * chunkStride;
-
-                ChunkCoastField coast = ChunkCoastField.build(continentNoise, centerChunkX, centerChunkZ, coastRadiusBlocks);
-                builds++;
-
                 for (int pz = pz0; pz < pz1; pz++) {
                     int chunkZ = minChunkZ + pz * chunkStride;
                     int gz = (chunkZ << 4) + 8;
@@ -189,14 +123,16 @@ public class Talos2MapExporter {
                         int chunkX = minChunkX + px * chunkStride;
                         int gx = (chunkX << 4) + 8;
 
-                        boolean isLand = coast.isLandAt(continentNoise, gx, gz);
-                        int dist = coast.distToCoastAt(continentNoise, gx, gz);
+                        boolean isLand = coastlineAtlas.isLand(gx, gz);
+                        int dist = coastlineAtlas.distanceToCoast(gx, gz);
 
-                        MacroBiome macro = macroField.pick(gx, gz);
-                        CoastProfile profile = CoastProfiles.forMacro(macro);
+                        MacroBiomeField.SampleDual macroSample = macroField.sampleDual(gx, gz);
+                        MacroBiome macroPrimary = (macroSample != null && macroSample.primary != null)
+                            ? macroSample.primary
+                            : MacroBiome.PLAINS_TEMPERATE;
 
-                        int shelfW = coastWidthField.shelfWidthBlocks(gx, gz, profile);
-                        int beachW = coastWidthField.beachWidthBlocks(gx, gz, profile);
+                        int shelfW = coastlineAtlas.shelfWidth(gx, gz, macroPrimary);
+                        int beachW = coastlineAtlas.beachWidth(gx, gz, macroPrimary);
 
                         Zone zone;
                         if (!isLand) zone = (dist <= shelfW) ? Zone.SHELF : Zone.DEEP;
@@ -218,11 +154,11 @@ public class Talos2MapExporter {
                 long now = System.currentTimeMillis();
                 double percent = 100.0 * tilePz / pixels;
                 System.out.printf(Locale.ROOT,
-                    "[Talos2][EXPORT] %.2f%% row=%d/%d dt=%.3fs total=%.1fs builds=%d samples=%d%n",
+                    "[Talos2][EXPORT] distZone %.2f%% row=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
                     percent, tilePz, pixels,
                     (now - last) / 1000.0,
                     (now - t0) / 1000.0,
-                    builds, samples
+                    samples
                 );
                 last = now;
             }
@@ -233,46 +169,53 @@ public class Talos2MapExporter {
         if (progressLog) {
             long t1 = System.currentTimeMillis();
             System.out.println("[Talos2][EXPORT] finished: " + outFile.getAbsolutePath()
-                + " time=" + ((t1 - t0) / 1000.0) + "s builds=" + builds + " samples=" + samples);
+                + " time=" + ((t1 - t0) / 1000.0) + "s samples=" + samples);
         }
     }
 
     public static void exportIsLandMap(
+        Talos2Hooks.HookData hook,
         World world,
-        SimplexNoiseOctave continentNoise,
         long seed,
         String fileName,
         int sizeBlocks,
         int stepBlocks,
         int coastRadiusBlocks,
         int tilePixels,
-        boolean progressLog
+        boolean progressLog,
+        int centerX,
+        int centerZ
     ) throws IOException {
 
         requirePositive(sizeBlocks, "sizeBlocks");
         requirePositive(stepBlocks, "stepBlocks");
+
+        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed);
 
         final int pixels = sizeBlocks / stepBlocks;
         if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
-            System.out.println("[Talos2][EXPORT] isLand " + pixels + "x" + pixels + " -> " + outFile.getAbsolutePath());
+            System.out.println("[Talos2][EXPORT] isLand " + pixels + "x" + pixels
+                + " -> " + outFile.getAbsolutePath()
+                + " (size=" + sizeBlocks + ", step=" + stepBlocks
+                + ", center=" + centerX + "," + centerZ
+                + ", coastRadius=" + coastRadiusBlocks + ", tilePixels=" + tilePixels + ")");
         }
 
         BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
 
-        final int minGx = -sizeBlocks / 2;
-        final int minGz = -sizeBlocks / 2;
+        final int half = sizeBlocks / 2;
+        final int minGx = centerX - half;
+        final int minGz = centerZ - half;
         final int minChunkX = floorDiv(minGx, 16);
         final int minChunkZ = floorDiv(minGz, 16);
         final int chunkStride = Math.max(1, stepBlocks / 16);
 
         long t0 = System.currentTimeMillis();
         long last = t0;
-
         long samples = 0;
-        long builds = 0;
 
         for (int tilePz = 0; tilePz < pixels; tilePz += tilePixels) {
             for (int tilePx = 0; tilePx < pixels; tilePx += tilePixels) {
@@ -280,15 +223,6 @@ public class Talos2MapExporter {
                 int pz0 = tilePz, px0 = tilePx;
                 int pz1 = Math.min(pixels, tilePz + tilePixels);
                 int px1 = Math.min(pixels, tilePx + tilePixels);
-
-                int centerPx = (px0 + px1 - 1) >> 1;
-                int centerPz = (pz0 + pz1 - 1) >> 1;
-
-                int centerChunkX = minChunkX + centerPx * chunkStride;
-                int centerChunkZ = minChunkZ + centerPz * chunkStride;
-
-                ChunkCoastField coast = ChunkCoastField.build(continentNoise, centerChunkX, centerChunkZ, coastRadiusBlocks);
-                builds++;
 
                 for (int pz = pz0; pz < pz1; pz++) {
                     int chunkZ = minChunkZ + pz * chunkStride;
@@ -298,7 +232,7 @@ public class Talos2MapExporter {
                         int chunkX = minChunkX + px * chunkStride;
                         int gx = (chunkX << 4) + 8;
 
-                        boolean isLand = coast.isLandAt(continentNoise, gx, gz);
+                        boolean isLand = coastlineAtlas.isLand(gx, gz);
                         img.setRGB(px, pz, isLand ? 0xFFFFFF : 0x000000);
                         samples++;
                     }
@@ -308,11 +242,11 @@ public class Talos2MapExporter {
             if (progressLog) {
                 long now = System.currentTimeMillis();
                 System.out.printf(Locale.ROOT,
-                    "[Talos2][EXPORT] row=%d/%d dt=%.3fs total=%.1fs builds=%d samples=%d%n",
+                    "[Talos2][EXPORT] isLand row=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
                     tilePz, pixels,
                     (now - last) / 1000.0,
                     (now - t0) / 1000.0,
-                    builds, samples
+                    samples
                 );
                 last = now;
             }
@@ -323,13 +257,14 @@ public class Talos2MapExporter {
 
     public static void exportContinentC01Map(
         World world,
-        SimplexNoiseOctave continentNoise,
         long seed,
         String fileName,
         int sizeBlocks,
         int stepBlocks,
         int tilePixels,
-        boolean progressLog
+        boolean progressLog,
+        int centerX,
+        int centerZ
     ) throws IOException {
 
         requirePositive(sizeBlocks, "sizeBlocks");
@@ -340,20 +275,29 @@ public class Talos2MapExporter {
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
-            System.out.println("[Talos2][EXPORT] c01 " + pixels + "x" + pixels + " -> " + outFile.getAbsolutePath());
+            System.out.println("[Talos2][EXPORT] c01 " + pixels + "x" + pixels
+                + " -> " + outFile.getAbsolutePath()
+                + " (size=" + sizeBlocks + ", step=" + stepBlocks
+                + ", center=" + centerX + "," + centerZ + ")");
         }
 
         BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
 
-        final int minGx = -sizeBlocks / 2;
-        final int minGz = -sizeBlocks / 2;
+        final int half = sizeBlocks / 2;
+        final int minGx = centerX - half;
+        final int minGz = centerZ - half;
 
         long t0 = System.currentTimeMillis();
         long last = t0;
-
         long samples = 0;
 
+        SimplexNoiseOctave continentNoise = new SimplexNoiseOctave(
+            seed ^ Talos2Continent.CONTINENT_SALT,
+            Talos2Continent.CONTINENT_OCTAVES
+        );
+
         for (int pz = 0; pz < pixels; pz++) {
+
             int gz = minGz + pz * stepBlocks + (stepBlocks >> 1);
             for (int px = 0; px < pixels; px++) {
                 int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
@@ -370,8 +314,201 @@ public class Talos2MapExporter {
             if (progressLog && (pz % tilePixels == 0)) {
                 long now = System.currentTimeMillis();
                 System.out.printf(Locale.ROOT,
-                    "[Talos2][EXPORT] row=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
+                    "[Talos2][EXPORT] c01 row=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
                     pz, pixels,
+                    (now - last) / 1000.0,
+                    (now - t0) / 1000.0,
+                    samples
+                );
+                last = now;
+            }
+        }
+
+        ImageIO.write(img, "png", outFile);
+    }
+
+    public static void exportMacroBiomeMap(
+        Talos2Hooks.HookData hook,
+        World world,
+        long seed,
+        String fileName,
+        int sizeBlocks,
+        int stepBlocks,
+        int tilePixels,
+        boolean progressLog,
+        int centerX,
+        int centerZ,
+        MacroBiomeField.MacroBiomeConfig macroConfig
+    ) throws IOException {
+
+        final MacroBiomeField.MacroBiomeConfig macroCfg = resolveMacroConfig(hook, macroConfig);
+        Objects.requireNonNull(macroCfg, "macroConfig");
+
+        requirePositive(sizeBlocks, "sizeBlocks");
+        requirePositive(stepBlocks, "stepBlocks");
+        requirePositive(tilePixels, "tilePixels");
+
+        final int pixels = sizeBlocks / stepBlocks;
+        if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+
+        File outFile = resolveOutFile(world, fileName);
+        if (progressLog) {
+            System.out.println("[Talos2][EXPORT] macroBiome " + pixels + "x" + pixels
+                + " -> " + outFile.getAbsolutePath()
+                + " (size=" + sizeBlocks + ", step=" + stepBlocks
+                + ", center=" + centerX + "," + centerZ + ")");
+        }
+
+        BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
+
+        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
+        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
+
+        final int half = sizeBlocks / 2;
+        final int minGx = centerX - half;
+        final int minGz = centerZ - half;
+
+        long t0 = System.currentTimeMillis();
+        long last = t0;
+        long samples = 0;
+
+        for (int tilePz = 0; tilePz < pixels; tilePz += tilePixels) {
+            int pz1 = Math.min(pixels, tilePz + tilePixels);
+
+            for (int tilePx = 0; tilePx < pixels; tilePx += tilePixels) {
+                int px1 = Math.min(pixels, tilePx + tilePixels);
+
+                for (int pz = tilePz; pz < pz1; pz++) {
+                    int gz = minGz + pz * stepBlocks + (stepBlocks >> 1);
+
+                    for (int px = tilePx; px < px1; px++) {
+                        int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
+
+                        boolean isLand = coastlineAtlas.isLand(gx, gz);
+                        if (!isLand) {
+                            int dist = coastlineAtlas.distanceToCoast(gx, gz);
+                            int shelf = coastlineAtlas.shelfWidth(gx, gz, MacroBiome.OCEANIC);
+                            MacroBiome waterMacro = (dist <= shelf) ? MacroBiome.COASTAL : MacroBiome.OCEANIC;
+                            img.setRGB(px, pz, macroColor(waterMacro));
+                            samples++;
+                            continue;
+                        }
+
+                        MacroBiomeField.SampleDual sample = macroField.sampleDual(gx, gz);
+                        MacroBiome primary = (sample != null && sample.primary != null)
+                            ? sample.primary
+                            : MacroBiome.PLAINS_TEMPERATE;
+
+                        img.setRGB(px, pz, macroColor(primary));
+                        samples++;
+                    }
+                }
+            }
+
+            if (progressLog) {
+                long now = System.currentTimeMillis();
+                double percent = 100.0 * tilePz / pixels;
+                System.out.printf(Locale.ROOT,
+                    "[Talos2][EXPORT] macroBiome %.2f%% rows=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
+                    percent, tilePz, pixels,
+                    (now - last) / 1000.0,
+                    (now - t0) / 1000.0,
+                    samples
+                );
+                last = now;
+            }
+        }
+
+        ImageIO.write(img, "png", outFile);
+    }
+
+    public static void exportFinalBiomeMap(
+        Talos2Hooks.HookData hook,
+        World world,
+        long seed,
+        String fileName,
+        int sizeBlocks,
+        int stepBlocks,
+        int tilePixels,
+        boolean progressLog,
+        int centerX,
+        int centerZ,
+        MacroBiomeField.MacroBiomeConfig macroConfig
+    ) throws IOException {
+
+        final MacroBiomeField.MacroBiomeConfig macroCfg = resolveMacroConfig(hook, macroConfig);
+        Objects.requireNonNull(macroCfg, "macroConfig");
+
+        requirePositive(sizeBlocks, "sizeBlocks");
+        requirePositive(stepBlocks, "stepBlocks");
+        requirePositive(tilePixels, "tilePixels");
+
+        final int pixels = sizeBlocks / stepBlocks;
+        if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+
+        File outFile = resolveOutFile(world, fileName);
+        if (progressLog) {
+            System.out.println("[Talos2][EXPORT] biome " + pixels + "x" + pixels
+                + " -> " + outFile.getAbsolutePath()
+                + " (size=" + sizeBlocks + ", step=" + stepBlocks
+                + ", center=" + centerX + "," + centerZ + ")");
+        }
+
+        BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
+
+        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
+        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
+
+        Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
+
+        final int half = sizeBlocks / 2;
+        final int minGx = centerX - half;
+        final int minGz = centerZ - half;
+
+        long t0 = System.currentTimeMillis();
+        long last = t0;
+        long samples = 0;
+
+        for (int tilePz = 0; tilePz < pixels; tilePz += tilePixels) {
+            int pz1 = Math.min(pixels, tilePz + tilePixels);
+
+            for (int tilePx = 0; tilePx < pixels; tilePx += tilePixels) {
+                int px1 = Math.min(pixels, tilePx + tilePixels);
+
+                for (int pz = tilePz; pz < pz1; pz++) {
+                    int gz = minGz + pz * stepBlocks + (stepBlocks >> 1);
+
+                    for (int px = tilePx; px < px1; px++) {
+                        int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
+
+                        boolean isLand = coastlineAtlas.isLand(gx, gz);
+                        if (!isLand) {
+                            int dist = coastlineAtlas.distanceToCoast(gx, gz);
+                            int shelf = coastlineAtlas.shelfWidth(gx, gz, MacroBiome.OCEANIC);
+                            boolean isShelf = dist <= shelf;
+                            BiomeGenBase oceanBiome = isShelf ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+                            MacroBiome oceanMacro = isShelf ? MacroBiome.COASTAL : MacroBiome.OCEANIC;
+                            int rgb = biomeColor(oceanBiome, oceanMacro);
+                            img.setRGB(px, pz, rgb);
+                            samples++;
+                            continue;
+                        }
+
+                        MacroBiome macro = macroField.getMacroBiome(gx, gz);
+                        BiomeGenBase biome = resolver.resolve(gx, gz);
+                        int rgb = biomeColor(biome, macro);
+                        img.setRGB(px, pz, rgb);
+                        samples++;
+                    }
+                }
+            }
+
+            if (progressLog) {
+                long now = System.currentTimeMillis();
+                double percent = 100.0 * tilePz / pixels;
+                System.out.printf(Locale.ROOT,
+                    "[Talos2][EXPORT] biome %.2f%% rows=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
+                    percent, tilePz, pixels,
                     (now - last) / 1000.0,
                     (now - t0) / 1000.0,
                     samples
@@ -402,6 +539,25 @@ public class Talos2MapExporter {
         int g = (int) Math.round(dst.getGreen() + (src.getGreen() - dst.getGreen()) * alpha);
         int b = (int) Math.round(dst.getBlue()  + (src.getBlue()  - dst.getBlue())  * alpha);
         return new Color(clamp255(r), clamp255(g), clamp255(b));
+    }
+
+    private static int biomeColor(BiomeGenBase biome, MacroBiome macro) {
+        if (macro == null) macro = MacroBiome.PLAINS_TEMPERATE;
+        int base = macroColor(macro);
+
+        if (biome == null) return base;
+
+        int hash = (biome.biomeID * 31) & 0x0F;
+        float delta = (hash - 7) * 0.008f;
+        return adjustBrightness(base, delta);
+    }
+
+    private static int adjustBrightness(int rgb, float delta) {
+        float factor = 1.0f + delta;
+        int r = clamp255(Math.round(((rgb >> 16) & 0xFF) * factor));
+        int g = clamp255(Math.round(((rgb >> 8) & 0xFF) * factor));
+        int b = clamp255(Math.round((rgb & 0xFF) * factor));
+        return (r << 16) | (g << 8) | b;
     }
 
     private static int clamp255(int v) {
@@ -437,8 +593,7 @@ public class Talos2MapExporter {
         String safe = sanitizeFileName(fileName);
         safe = ensurePngExt(safe);
 
-        File outFile = uniqueFile(outDir, safe);
-        return outFile;
+        return uniqueFile(outDir, safe);
     }
 
     private static String sanitizeFileName(String name) {
@@ -495,5 +650,39 @@ public class Talos2MapExporter {
         }
 
         return new File(dir, base + "-" + System.currentTimeMillis() + ext);
+    }
+
+    private static int blendColor(int baseRgb, int overlayRgb, double alpha) {
+        alpha = clamp01(alpha);
+        int br = (baseRgb >> 16) & 0xFF;
+        int bg = (baseRgb >> 8) & 0xFF;
+        int bb = baseRgb & 0xFF;
+
+        int or = (overlayRgb >> 16) & 0xFF;
+        int og = (overlayRgb >> 8) & 0xFF;
+        int ob = overlayRgb & 0xFF;
+
+        int r = (int) Math.round(br + (or - br) * alpha);
+        int g = (int) Math.round(bg + (og - bg) * alpha);
+        int b = (int) Math.round(bb + (ob - bb) * alpha);
+
+        return (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b);
+    }
+
+    private static final EnumMap<MacroBiome, Integer> MACRO_COLORS = new EnumMap<>(MacroBiome.class);
+    static {
+        MACRO_COLORS.put(MacroBiome.OCEANIC, 0x0C285A);
+        MACRO_COLORS.put(MacroBiome.COASTAL, 0xE7D38B);
+        MACRO_COLORS.put(MacroBiome.LOWLAND_WET, 0x2A6FCC);
+        MACRO_COLORS.put(MacroBiome.PLAINS_TEMPERATE,0x55B44D);
+        MACRO_COLORS.put(MacroBiome.WARM_DRY, 0xD7B26A);
+        MACRO_COLORS.put(MacroBiome.TROPICAL_HUMID, 0x1F8B45);
+        MACRO_COLORS.put(MacroBiome.COOL_FORESTED, 0x3E5C4D);
+        MACRO_COLORS.put(MacroBiome.SUBPOLAR, 0x95B6C7);
+        MACRO_COLORS.put(MacroBiome.MOUNTAINOUS, 0x9DA4A8);
+    }
+
+    private static int macroColor(MacroBiome biome) {
+        return MACRO_COLORS.getOrDefault(biome, 0xFF00FF);
     }
 }
