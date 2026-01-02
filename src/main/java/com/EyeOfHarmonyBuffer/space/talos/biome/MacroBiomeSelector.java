@@ -25,6 +25,21 @@ public final class MacroBiomeSelector {
                              MacroBiome primary,
                              MacroBiome secondary,
                              double blendPrimary) {
+        return pick(gx, gz, primary, secondary, blendPrimary,
+            (byte) 0,
+            false,
+            0.0D
+        );
+    }
+
+    public BiomeGenBase pick(int gx,
+                             int gz,
+                             MacroBiome primary,
+                             MacroBiome secondary,
+                             double blendPrimary,
+                             byte patchVariant,
+                             boolean patchSingleBiome,
+                             double patchEdgeBlend) {
 
         if (primary == null && secondary == null) {
             return TalosBiomes.TALOS_PLAINS;
@@ -38,50 +53,24 @@ public final class MacroBiomeSelector {
         boolean primaryEmpty = primaryVariants == null || primaryVariants.isEmpty();
         boolean secondaryEmpty = secondaryVariants == null || secondaryVariants.isEmpty();
 
-        double t = clamp01(blendPrimary);
-
         if (primaryEmpty && secondaryEmpty) {
             return TalosBiomes.TALOS_PLAINS;
-        } else if (primaryEmpty) {
-            return pickFromList(gx, gz, secondaryVariants);
-        } else if (secondaryEmpty) {
-            return pickFromList(gx, gz, primaryVariants);
         }
 
-        if (t >= 0.75D) {
-            return pickFromList(gx, gz, primaryVariants);
-        }
-        if (t <= 0.25D) {
-            return pickFromList(gx, gz, secondaryVariants);
-        }
+        double selectorFromPatch = (patchVariant & 0xFF) / 255.0D;
+        double noise = sampleNoise01(gx, gz);
+        double edgeStrength = clamp01(patchEdgeBlend);
+        double selector01 = lerp(noise, selectorFromPatch, edgeStrength);
 
-        return pickFromBlendedLists(gx, gz, primaryVariants, secondaryVariants, t);
-    }
+        double effectiveBlend = patchSingleBiome ? 1.0D : clamp01(blendPrimary);
 
-    private BiomeGenBase pickFromList(int gx, int gz, List<MacroBiome.MacroBiomeVariant> variants) {
-        if (variants == null || variants.isEmpty()) {
-            return TalosBiomes.TALOS_PLAINS;
-        }
+        if (primaryEmpty)  return pickFromListWithSelector(secondaryVariants, selector01);
+        if (secondaryEmpty) return pickFromListWithSelector(primaryVariants, selector01);
 
-        double noise = selectorNoise.noise(gx * 0.0025D, gz * 0.0025D);
-        double value = (noise + 1.0D) * 0.5D;
+        if (effectiveBlend >= 0.999D) return pickFromListWithSelector(primaryVariants, selector01);
+        if (effectiveBlend <= 0.001D) return pickFromListWithSelector(secondaryVariants, selector01);
 
-        int totalWeight = 0;
-        for (MacroBiome.MacroBiomeVariant v : variants) {
-            totalWeight += v.weight;
-        }
-
-        double target = value * totalWeight;
-        int cumulative = 0;
-
-        for (MacroBiome.MacroBiomeVariant v : variants) {
-            cumulative += v.weight;
-            if (target <= cumulative) {
-                return v.biome;
-            }
-        }
-
-        return variants.get(variants.size() - 1).biome;
+        return pickFromBlendedListsWithSelector(primaryVariants, secondaryVariants, effectiveBlend, selector01);
     }
 
     private BiomeGenBase pickFromBlendedLists(int gx,
@@ -89,12 +78,41 @@ public final class MacroBiomeSelector {
                                               List<MacroBiome.MacroBiomeVariant> primary,
                                               List<MacroBiome.MacroBiomeVariant> secondary,
                                               double blendPrimary) {
+        double noise = sampleNoise01(gx, gz);
+        return pickFromBlendedListsWithSelector(primary, secondary, blendPrimary, noise);
+    }
 
+    private BiomeGenBase pickFromListWithSelector(List<MacroBiome.MacroBiomeVariant> variants,
+                                                  double selector01) {
+        if (variants == null || variants.isEmpty()) {
+            return TalosBiomes.TALOS_PLAINS;
+        }
+
+        int totalWeight = 0;
+        for (MacroBiome.MacroBiomeVariant v : variants) {
+            totalWeight += v.weight;
+        }
+        if (totalWeight <= 0) {
+            return variants.get(0).biome;
+        }
+
+        double target = selector01 * totalWeight;
+        int cumulative = 0;
+        for (MacroBiome.MacroBiomeVariant v : variants) {
+            cumulative += v.weight;
+            if (target <= cumulative) {
+                return v.biome;
+            }
+        }
+        return variants.get(variants.size() - 1).biome;
+    }
+
+    private BiomeGenBase pickFromBlendedListsWithSelector(List<MacroBiome.MacroBiomeVariant> primary,
+                                                          List<MacroBiome.MacroBiomeVariant> secondary,
+                                                          double blendPrimary,
+                                                          double selector01) {
         double weightPrimary = clamp01(blendPrimary);
         double weightSecondary = 1.0D - weightPrimary;
-
-        double noise = selectorNoise.noise(gx * 0.0025D, gz * 0.0025D);
-        double value = (noise + 1.0D) * 0.5D; // 0..1
 
         double totalWeight = 0.0D;
         for (MacroBiome.MacroBiomeVariant v : primary)   totalWeight += v.weight * weightPrimary;
@@ -104,7 +122,7 @@ public final class MacroBiomeSelector {
             return TalosBiomes.TALOS_PLAINS;
         }
 
-        double target = value * totalWeight;
+        double target = selector01 * totalWeight;
         double cumulative = 0.0D;
 
         for (MacroBiome.MacroBiomeVariant v : primary) {
@@ -121,6 +139,15 @@ public final class MacroBiomeSelector {
         }
 
         return primary.get(primary.size() - 1).biome;
+    }
+
+    private double sampleNoise01(int gx, int gz) {
+        double noise = selectorNoise.noise(gx * 0.0025D, gz * 0.0025D);
+        return (noise + 1.0D) * 0.5D;
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * clamp01(t);
     }
 
     private static double clamp01(double v) {

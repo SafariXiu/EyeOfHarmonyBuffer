@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.space.talos.biome;
 
 import net.minecraft.world.biome.BiomeGenBase;
 
-import java.util.EnumMap;
 import java.util.List;
 
 public enum MacroBiome {

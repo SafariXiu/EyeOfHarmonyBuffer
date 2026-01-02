@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos;
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.util.ResourceLocation;
 
-public interface  ResourcesDimensions {
+public interface ResourcesDimensions {
 
     ResourceLocation TalosGasGiant = new ResourceLocation(
         EyeOfHarmonyBuffer.MODID,

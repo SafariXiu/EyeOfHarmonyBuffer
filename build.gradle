@@ -47,7 +47,7 @@ tasks.named("runClient17", JavaExec) {
     }
 
     jvmArgs(
-        "-XX:StartFlightRecording=filename=K:/moder/EyeOfHarmonyBuffer/run/client17/talos_jfr.jfr,delay=90s,duration=120s,settings=profile",
+        //"-XX:StartFlightRecording=filename=K:/moder/EyeOfHarmonyBuffer/run/client17/talos_jfr.jfr,delay=90s,duration=120s,settings=profile",
         //"-Dtalos.debug.macroInterval=1",
         //"-Dtalos.debug.microInterval=1"
     )

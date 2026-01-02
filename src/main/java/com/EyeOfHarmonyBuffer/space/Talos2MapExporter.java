@@ -13,9 +13,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-import java.util.EnumMap;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 
 public class Talos2MapExporter {
 
@@ -33,15 +31,30 @@ public class Talos2MapExporter {
         }
     }
 
-    private static CoastlineAtlas resolveCoastlineAtlas(Talos2Hooks.HookData hook, long seed) {
+    private static MacroBiomeField resolveMacroField(
+        Talos2Hooks.HookData hook,
+        long seed,
+        MacroBiomeField.MacroBiomeConfig macroCfg
+    ) {
+        if (hook != null && hook.macroField != null) return hook.macroField;
+        return new MacroBiomeField(seed, macroCfg);
+    }
+
+    private static CoastlineAtlas resolveCoastlineAtlas(
+        Talos2Hooks.HookData hook,
+        long seed,
+        MacroBiomeField macroField,
+        MacroBiomeField.MacroBiomeConfig macroCfg
+    ) {
         if (hook != null) {
             if (hook.coastlineAtlas != null) return hook.coastlineAtlas;
-            if (hook.macroField != null) {
-                return new DefaultCoastlineAtlas(hook.macroField, seed);
-            }
+            if (hook.macroField != null) return new DefaultCoastlineAtlas(hook.macroField, seed);
         }
-        MacroBiomeField macroField = new MacroBiomeField(seed, Talos2NoiseConfig.currentMacroConfig());
-        return new DefaultCoastlineAtlas(macroField, seed);
+        MacroBiomeField source = (macroField != null)
+            ? macroField
+            : new MacroBiomeField(seed,
+            macroCfg != null ? macroCfg : Talos2NoiseConfig.currentMacroConfig());
+        return new DefaultCoastlineAtlas(source, seed);
     }
 
     private static MacroBiomeField.MacroBiomeConfig resolveMacroConfig(
@@ -83,8 +96,8 @@ public class Talos2MapExporter {
             throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
         }
 
-        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
-        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
+        final MacroBiomeField macroField = resolveMacroField(hook, seed, macroCfg);
+        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed, macroField, macroCfg);
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
@@ -117,22 +130,20 @@ public class Talos2MapExporter {
                 int px1 = Math.min(pixels, tilePx + tilePixels);
 
                 for (int pz = pz0; pz < pz1; pz++) {
-                    int chunkZ = minChunkZ + pz * chunkStride;
-                    int gz = (chunkZ << 4) + 8;
+                    int gz = minGz + pz * stepBlocks + (stepBlocks >> 1);
                     for (int px = px0; px < px1; px++) {
-                        int chunkX = minChunkX + px * chunkStride;
-                        int gx = (chunkX << 4) + 8;
+                        int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
 
                         boolean isLand = coastlineAtlas.isLand(gx, gz);
                         int dist = coastlineAtlas.distanceToCoast(gx, gz);
 
-                        MacroBiomeField.SampleDual macroSample = macroField.sampleDual(gx, gz);
-                        MacroBiome macroPrimary = (macroSample != null && macroSample.primary != null)
-                            ? macroSample.primary
+                        MacroBiomeField.MacroSample sample = macroField.sampleMacro(gx, gz);
+                        MacroBiome primary = (sample != null && sample.dominant != null)
+                            ? sample.dominant
                             : MacroBiome.PLAINS_TEMPERATE;
 
-                        int shelfW = coastlineAtlas.shelfWidth(gx, gz, macroPrimary);
-                        int beachW = coastlineAtlas.beachWidth(gx, gz, macroPrimary);
+                        int shelfW = coastlineAtlas.shelfWidth(gx, gz, primary);
+                        int beachW = coastlineAtlas.beachWidth(gx, gz, primary);
 
                         Zone zone;
                         if (!isLand) zone = (dist <= shelfW) ? Zone.SHELF : Zone.DEEP;
@@ -190,7 +201,12 @@ public class Talos2MapExporter {
         requirePositive(sizeBlocks, "sizeBlocks");
         requirePositive(stepBlocks, "stepBlocks");
 
-        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed);
+        MacroBiomeField.MacroBiomeConfig hookMacroCfg =
+            (hook != null && hook.macroConfig != null) ? hook.macroConfig : null;
+        MacroBiomeField hookMacroField = (hook != null) ? hook.macroField : null;
+        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(
+            hook, seed, hookMacroField, hookMacroCfg
+        );
 
         final int pixels = sizeBlocks / stepBlocks;
         if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
@@ -225,12 +241,10 @@ public class Talos2MapExporter {
                 int px1 = Math.min(pixels, tilePx + tilePixels);
 
                 for (int pz = pz0; pz < pz1; pz++) {
-                    int chunkZ = minChunkZ + pz * chunkStride;
-                    int gz = (chunkZ << 4) + 8;
+                    int gz = minGz + pz * stepBlocks + (stepBlocks >> 1);
 
                     for (int px = px0; px < px1; px++) {
-                        int chunkX = minChunkX + px * chunkStride;
-                        int gx = (chunkX << 4) + 8;
+                        int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
 
                         boolean isLand = coastlineAtlas.isLand(gx, gz);
                         img.setRGB(px, pz, isLand ? 0xFFFFFF : 0x000000);
@@ -349,7 +363,9 @@ public class Talos2MapExporter {
         requirePositive(tilePixels, "tilePixels");
 
         final int pixels = sizeBlocks / stepBlocks;
-        if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        if (pixels <= 0) {
+            throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        }
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
@@ -361,8 +377,10 @@ public class Talos2MapExporter {
 
         BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
 
-        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
-        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
+        final MacroBiomeField macroField = resolveMacroField(hook, seed, macroCfg);
+        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed, macroField, macroCfg);
+        final Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
+        final MacroCellSampler sampler = new MacroCellSampler(macroField, coastlineAtlas, seed);
 
         final int half = sizeBlocks / 2;
         final int minGx = centerX - half;
@@ -384,8 +402,14 @@ public class Talos2MapExporter {
                     for (int px = tilePx; px < px1; px++) {
                         int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
 
-                        boolean isLand = coastlineAtlas.isLand(gx, gz);
-                        if (!isLand) {
+                        ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = sampler.sampleCell(gx, gz);
+                        if (cell == null) {
+                            img.setRGB(px, pz, macroColor(MacroBiome.PLAINS_TEMPERATE));
+                            samples++;
+                            continue;
+                        }
+
+                        if (!cell.isLand) {
                             int dist = coastlineAtlas.distanceToCoast(gx, gz);
                             int shelf = coastlineAtlas.shelfWidth(gx, gz, MacroBiome.OCEANIC);
                             MacroBiome waterMacro = (dist <= shelf) ? MacroBiome.COASTAL : MacroBiome.OCEANIC;
@@ -394,12 +418,8 @@ public class Talos2MapExporter {
                             continue;
                         }
 
-                        MacroBiomeField.SampleDual sample = macroField.sampleDual(gx, gz);
-                        MacroBiome primary = (sample != null && sample.primary != null)
-                            ? sample.primary
-                            : MacroBiome.PLAINS_TEMPERATE;
-
-                        img.setRGB(px, pz, macroColor(primary));
+                        MacroBiome macro = cell.primary != null ? cell.primary : MacroBiome.PLAINS_TEMPERATE;
+                        img.setRGB(px, pz, macroColor(macro));
                         samples++;
                     }
                 }
@@ -421,6 +441,7 @@ public class Talos2MapExporter {
 
         ImageIO.write(img, "png", outFile);
     }
+
 
     public static void exportFinalBiomeMap(
         Talos2Hooks.HookData hook,
@@ -444,11 +465,13 @@ public class Talos2MapExporter {
         requirePositive(tilePixels, "tilePixels");
 
         final int pixels = sizeBlocks / stepBlocks;
-        if (pixels <= 0) throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        if (pixels <= 0) {
+            throw new IllegalArgumentException("pixels=sizeBlocks/stepBlocks must be > 0");
+        }
 
         File outFile = resolveOutFile(world, fileName);
         if (progressLog) {
-            System.out.println("[Talos2][EXPORT] biome " + pixels + "x" + pixels
+            System.out.println("[Talos2][EXPORT] finalBiome " + pixels + "x" + pixels
                 + " -> " + outFile.getAbsolutePath()
                 + " (size=" + sizeBlocks + ", step=" + stepBlocks
                 + ", center=" + centerX + "," + centerZ + ")");
@@ -456,10 +479,10 @@ public class Talos2MapExporter {
 
         BufferedImage img = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_RGB);
 
-        final MacroBiomeField macroField = new MacroBiomeField(seed, macroCfg);
-        final DefaultCoastlineAtlas coastlineAtlas = new DefaultCoastlineAtlas(macroField, seed);
-
-        Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
+        final MacroBiomeField macroField = resolveMacroField(hook, seed, macroCfg);
+        final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed, macroField, macroCfg);
+        final Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
+        final MacroCellSampler sampler = new MacroCellSampler(macroField, coastlineAtlas, seed);
 
         final int half = sizeBlocks / 2;
         final int minGx = centerX - half;
@@ -481,23 +504,29 @@ public class Talos2MapExporter {
                     for (int px = tilePx; px < px1; px++) {
                         int gx = minGx + px * stepBlocks + (stepBlocks >> 1);
 
-                        boolean isLand = coastlineAtlas.isLand(gx, gz);
-                        if (!isLand) {
-                            int dist = coastlineAtlas.distanceToCoast(gx, gz);
-                            int shelf = coastlineAtlas.shelfWidth(gx, gz, MacroBiome.OCEANIC);
-                            boolean isShelf = dist <= shelf;
-                            BiomeGenBase oceanBiome = isShelf ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
-                            MacroBiome oceanMacro = isShelf ? MacroBiome.COASTAL : MacroBiome.OCEANIC;
-                            int rgb = biomeColor(oceanBiome, oceanMacro);
-                            img.setRGB(px, pz, rgb);
+                        ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = sampler.sampleCell(gx, gz);
+                        if (cell == null) {
+                            img.setRGB(px, pz, biomeColor(TalosBiomes.TALOS_PLAINS, MacroBiome.PLAINS_TEMPERATE));
                             samples++;
                             continue;
                         }
 
-                        MacroBiome macro = macroField.getMacroBiome(gx, gz);
-                        BiomeGenBase biome = resolver.resolve(gx, gz);
-                        int rgb = biomeColor(biome, macro);
-                        img.setRGB(px, pz, rgb);
+                        if (!cell.isLand) {
+                            int dist = coastlineAtlas.distanceToCoast(gx, gz);
+                            int shelf = coastlineAtlas.shelfWidth(gx, gz, MacroBiome.OCEANIC);
+                            MacroBiome waterMacro = (dist <= shelf) ? MacroBiome.COASTAL : MacroBiome.OCEANIC;
+                            BiomeGenBase waterBiome = (dist <= shelf)
+                                ? TalosBiomes.TALOS_SHELF
+                                : TalosBiomes.TALOS_OCEAN;
+
+                            img.setRGB(px, pz, biomeColor(waterBiome, waterMacro));
+                            samples++;
+                            continue;
+                        }
+
+                        MacroBiome macro = cell.primary != null ? cell.primary : MacroBiome.PLAINS_TEMPERATE;
+                        BiomeGenBase biome = resolver.resolve(gx, gz, cell);
+                        img.setRGB(px, pz, biomeColor(biome, macro));
                         samples++;
                     }
                 }
@@ -507,7 +536,7 @@ public class Talos2MapExporter {
                 long now = System.currentTimeMillis();
                 double percent = 100.0 * tilePz / pixels;
                 System.out.printf(Locale.ROOT,
-                    "[Talos2][EXPORT] biome %.2f%% rows=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
+                    "[Talos2][EXPORT] finalBiome %.2f%% rows=%d/%d dt=%.3fs total=%.1fs samples=%d%n",
                     percent, tilePz, pixels,
                     (now - last) / 1000.0,
                     (now - t0) / 1000.0,
@@ -652,23 +681,6 @@ public class Talos2MapExporter {
         return new File(dir, base + "-" + System.currentTimeMillis() + ext);
     }
 
-    private static int blendColor(int baseRgb, int overlayRgb, double alpha) {
-        alpha = clamp01(alpha);
-        int br = (baseRgb >> 16) & 0xFF;
-        int bg = (baseRgb >> 8) & 0xFF;
-        int bb = baseRgb & 0xFF;
-
-        int or = (overlayRgb >> 16) & 0xFF;
-        int og = (overlayRgb >> 8) & 0xFF;
-        int ob = overlayRgb & 0xFF;
-
-        int r = (int) Math.round(br + (or - br) * alpha);
-        int g = (int) Math.round(bg + (og - bg) * alpha);
-        int b = (int) Math.round(bb + (ob - bb) * alpha);
-
-        return (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b);
-    }
-
     private static final EnumMap<MacroBiome, Integer> MACRO_COLORS = new EnumMap<>(MacroBiome.class);
     static {
         MACRO_COLORS.put(MacroBiome.OCEANIC, 0x0C285A);
@@ -684,5 +696,136 @@ public class Talos2MapExporter {
 
     private static int macroColor(MacroBiome biome) {
         return MACRO_COLORS.getOrDefault(biome, 0xFF00FF);
+    }
+
+    private static final class MacroCellSampler {
+        private static final MacroBiome[] MACRO_VALUES = MacroBiome.values();
+
+        private final MacroBiomeField macroField;
+        private final CoastlineAtlas coastline;
+        private final SimplexNoiseOctave terrainNoise;
+        private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> chunkCache = new HashMap<>();
+
+        MacroCellSampler(MacroBiomeField field, CoastlineAtlas coastline, long worldSeed) {
+            this.macroField = Objects.requireNonNull(field, "macroField");
+            this.coastline = Objects.requireNonNull(coastline, "coastline");
+            this.terrainNoise = new SimplexNoiseOctave(worldSeed ^ 0x1234ABCDL, 4);
+        }
+
+        ChunkProviderTalos2.ChunkShoreCache.MacroCell sampleCell(int gx, int gz) {
+            int chunkX = floorDiv(gx, 16);
+            int chunkZ = floorDiv(gz, 16);
+            long key = (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+
+            ChunkProviderTalos2.ChunkShoreCache chunk = chunkCache.computeIfAbsent(
+                key, k -> buildChunk(chunkX, chunkZ)
+            );
+
+            int lx = gx - chunkX * 16;
+            int lz = gz - chunkZ * 16;
+            return chunk.macroContext[lx][lz];
+        }
+
+        private ChunkProviderTalos2.ChunkShoreCache buildChunk(int chunkX, int chunkZ) {
+            ChunkProviderTalos2.ChunkShoreCache cache = new ChunkProviderTalos2.ChunkShoreCache();
+            macroField.sample(chunkX, chunkZ, cache);
+            populateCoastlineAndHeights(cache, chunkX, chunkZ);
+            return cache;
+        }
+
+        private void populateCoastlineAndHeights(ChunkProviderTalos2.ChunkShoreCache out,
+                                                 int chunkX, int chunkZ) {
+            for (int lx = 0; lx < 17; lx++) {
+                for (int lz = 0; lz < 17; lz++) {
+                    int gx = chunkX * 16 + lx;
+                    int gz = chunkZ * 16 + lz;
+
+                    MacroBiome primary = safeMacro(out.macroPrimary[lx][lz]);
+                    MacroBiome secondary = safeMacro(out.macroSecondary[lx][lz]);
+                    double blend = (out.macroBlend[lx][lz] & 0xFF) / 255.0;
+
+                    boolean isLand = coastline.isLand(gx, gz);
+                    int dist = clampToU16(coastline.distanceToCoast(gx, gz));
+                    int beach = clampToU16(coastline.beachWidth(gx, gz, primary));
+                    int shelf = clampToU16(coastline.shelfWidth(gx, gz, primary));
+
+                    ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = out.macroContext[lx][lz];
+                    cell.primary = primary;
+                    cell.secondary = secondary;
+                    cell.blendPrimary = blend;
+                    cell.tier = out.macroTier[lx][lz];
+                    cell.plateId = out.macroPlateId[lx][lz];
+                    cell.plateauAnchor = out.macroPlateau[lx][lz];
+                    cell.isLand = isLand;
+                    cell.distToCoast = (short) dist;
+                    cell.beachWidth = (short) beach;
+                    cell.shelfWidth = (short) shelf;
+
+                    cell.patchVariant = out.macroPatchVariant[lx][lz];
+                    cell.patchSingleBiome = (out.macroPatchFlags[lx][lz] & 0x1) != 0;
+                    cell.patchEdgeBlend = (out.macroPatchEdge[lx][lz] & 0xFF) / 255.0D;
+
+                    short macroBase = (short) Math.round(
+                        sampleBlendedMacroHeight(gx, gz, primary, secondary, blend)
+                    );
+                    cell.macroBaseHeight = macroBase;
+                }
+            }
+        }
+
+        private MacroBiome safeMacro(byte id) {
+            MacroBiome m = MACRO_VALUES[id & 0xFF];
+            return (m != null) ? m : MacroBiome.PLAINS_TEMPERATE;
+        }
+
+        private short clampToU16(int v) {
+            if (v < 0) return 0;
+            if (v > 65535) return (short) 0xFFFF;
+            return (short) v;
+        }
+
+        private double sampleBlendedMacroHeight(int gx, int gz,
+                                                MacroBiome primary,
+                                                MacroBiome secondary,
+                                                double blendPrimary) {
+            MacroHeightSample sample = blendHeightProfiles(primary, secondary, blendPrimary);
+            double base = lerp(sample.min, sample.max, sample.blend);
+            double plateau = sample.offset * 32.0D;
+            double micro = terrainNoise.noise(gx * 0.0008D, gz * 0.0008D) * sample.variation * 3.0D;
+            return clamp(base + plateau + micro, sample.min, sample.max);
+        }
+
+        private MacroHeightSample blendHeightProfiles(MacroBiome primary,
+                                                      MacroBiome secondary,
+                                                      double blendPrimary) {
+            MacroBiome.MacroHeightProfile hpA = (primary != null) ? primary.height : MacroBiome.PLAINS_TEMPERATE.height;
+            MacroBiome.MacroHeightProfile hpB = (secondary != null) ? secondary.height : hpA;
+
+            double t = clamp01(blendPrimary);
+            double invT = 1.0D - t;
+
+            double min = hpA.absoluteMin * t + hpB.absoluteMin * invT;
+            double max = hpA.absoluteMax * t + hpB.absoluteMax * invT;
+            double offset = hpA.baseHeightOffset * t + hpB.baseHeightOffset * invT;
+            double variation = hpA.heightVariation * t + hpB.heightVariation * invT;
+
+            return new MacroHeightSample(min, max, offset, variation, t);
+        }
+
+        private static final class MacroHeightSample {
+            final double min, max, offset, variation, blend;
+            MacroHeightSample(double min, double max, double offset, double variation, double blend) {
+                this.min = min; this.max = max; this.offset = offset;
+                this.variation = variation; this.blend = blend;
+            }
+        }
+
+        private static double clamp(double v, double min, double max) {
+            return v < min ? min : (v > max ? max : v);
+        }
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * clamp01(t);
     }
 }

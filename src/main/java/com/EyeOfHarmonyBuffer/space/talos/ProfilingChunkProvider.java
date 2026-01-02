@@ -38,7 +38,7 @@ public final class ProfilingChunkProvider implements net.minecraft.world.chunk.I
         try {
             return delegate.provideChunk(x, z);
         } finally {
-            logSlow("provideChunk", x, z, t0, 50);
+            //logSlow("provideChunk", x, z, t0, 50);
         }
     }
 
@@ -48,7 +48,7 @@ public final class ProfilingChunkProvider implements net.minecraft.world.chunk.I
         try {
             return delegate.loadChunk(x, z);
         } finally {
-            logSlow("loadChunk", x, z, t0, 50);
+            //logSlow("loadChunk", x, z, t0, 50);
         }
     }
 
@@ -58,7 +58,7 @@ public final class ProfilingChunkProvider implements net.minecraft.world.chunk.I
         try {
             delegate.populate(provider, x, z);
         } finally {
-            logSlow("populate", x, z, t0, 50);
+            //logSlow("populate", x, z, t0, 50);
         }
     }
 

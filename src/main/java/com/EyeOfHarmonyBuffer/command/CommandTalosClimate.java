@@ -1,16 +1,20 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.space.talos.Talos2ClimateService;
-import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2ClimateSampler;
+import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
+import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiomeField;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.NumberInvalidException;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
 
 import java.util.List;
+import java.util.Locale;
 
 public class CommandTalosClimate extends CommandBase {
 
@@ -39,12 +43,35 @@ public class CommandTalosClimate extends CommandBase {
         double x = (args.length >= 1) ? parseCoord(sender, defaultX, args[0]) : defaultX;
         double z = (args.length >= 2) ? parseCoord(sender, defaultZ, args[1]) : defaultZ;
 
-        Talos2ClimateSampler sampler = Talos2ClimateService.get(world);
-        Talos2ClimateSampler.ClimateSample sample = sampler.sample((int) Math.floor(x), (int) Math.floor(z));
+        int xi = MathHelper.floor_double(x);
+        int zi = MathHelper.floor_double(z);
 
-        String msg = String.format(
-            "[Talos2] x=%.1f z=%.1f | temp=%.3f hum=%.3f continental=%.3f macroId=%d",
-            x, z, sample.temperature, sample.humidity, sample.continentalness, sample.primaryMacroId);
+        BiomeGenBase biome = world.getBiomeGenForCoords(xi, zi);
+        float temp = biome.temperature;
+        float humid = biome.rainfall;
+
+        MacroBiomeField.SampleDual macroSample = null;
+        Talos2Hooks.HookData hook = Talos2Hooks.resolve(world);
+        if (hook != null && hook.macroField != null) {
+            macroSample = hook.macroField.sampleDual(xi, zi);
+        }
+
+        MacroBiome primary = (macroSample != null) ? macroSample.primary : null;
+        MacroBiome secondary = (macroSample != null) ? macroSample.secondary : null;
+        double weight = (macroSample != null) ? macroSample.primaryWeight : 0.0D;
+        int macroId = (primary != null) ? primary.getId() : -1;
+
+        String msg = String.format(Locale.ROOT,
+            "[Talos2] x=%.1f z=%.1f | biome=%s temp=%.3f hum=%.3f macro=%s/%s weight=%.2f macroId=%d",
+            x, z,
+            biome.biomeName,
+            temp,
+            humid,
+            primary != null ? primary.name() : "none",
+            secondary != null ? secondary.name() : "none",
+            weight,
+            macroId
+        );
 
         sender.addChatMessage(new ChatComponentText(msg));
     }

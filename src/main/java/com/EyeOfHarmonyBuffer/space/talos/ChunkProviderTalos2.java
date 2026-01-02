@@ -13,10 +13,11 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
+
+    private static final boolean DEBUG_SOFTEN = false;
 
     private static final MacroBiome[] MACRO_VALUES = MacroBiome.values();
 
@@ -28,8 +29,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final MacroBiomeSelector macroSelector;
 
-    private final Talos2ClimateSampler surfaceClimateSampler;
     private final Talos2BiomeResolver biomeResolver;
+
+    private final TalosMacroCellBuilder macroCellBuilder;
 
     private static final BlockMetaPair SNOW_SURFACE = new BlockMetaPair(Blocks.snow, (byte) 0);
     private static final BlockMetaPair PACKED_ICE = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
@@ -39,6 +41,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private static final boolean TALOS_TIMING = false;
     private static final int SLOW_CHUNK_MS = 80;
     private static final int VERY_SLOW_CHUNK_MS = 300;
+    private static final Set<Long> CLIFF_TRANSITIONS;
+    private static final int HARD_BOUNDARY_TIER_DELTA = 2;
+    private static final int STEP_FOR_ADJACENT_TIERS = 6;
+    private static final boolean ENFORCE_PLATE_LOCK = true;
 
     private static long now() { return System.nanoTime(); }
     private static long ms(long nanos) { return nanos / 1_000_000L; }
@@ -75,34 +81,17 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, mapFeaturesEnabled);
         this.world = world;
 
-        Talos2Hooks.HookData hook = Talos2Hooks.resolve(world);
+        Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
 
-        MacroBiomeField.MacroBiomeConfig macroConfig =
-            (hook != null && hook.macroConfig != null)
-                ? hook.macroConfig
-                : Talos2NoiseConfig.currentMacroConfig();
-
+        this.macroBiomeField = hook.macroField;
+        this.coastlineAtlas = hook.coastlineAtlas;
+        this.macroCellBuilder = hook.macroCellBuilder;
+        this.terrainNoise = hook.terrainNoise;
         this.macroSelector = new MacroBiomeSelector(seed);
-
-        if (hook != null && hook.macroField != null && hook.coastlineAtlas != null) {
-            this.macroBiomeField = hook.macroField;
-            this.coastlineAtlas = hook.coastlineAtlas;
-        } else {
-            this.macroBiomeField = new MacroBiomeField(seed, macroConfig);
-            this.coastlineAtlas = new DefaultCoastlineAtlas(this.macroBiomeField, seed);
-            Talos2Hooks.register(
-                world.provider.dimensionId,
-                world,
-                seed,
-                (DefaultCoastlineAtlas) this.coastlineAtlas,
-                this.macroBiomeField,
-                macroConfig
-            );
-        }
-
-        this.terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
-        this.surfaceClimateSampler = new Talos2ClimateSampler(world, this.macroBiomeField);
         this.biomeResolver = new Talos2BiomeResolver(world, this.macroBiomeField);
+
+        System.out.println("[Talos2] CP builder instance=" +
+            System.identityHashCode(this.macroCellBuilder));
     }
 
     @Override
@@ -126,6 +115,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         };
     }
 
+    static {
+        Set<Long> cliffPairs = new HashSet<>();
+        addCliffPair(cliffPairs, MacroBiome.MOUNTAINOUS, MacroBiome.SUBPOLAR);
+        CLIFF_TRANSITIONS = Collections.unmodifiableSet(cliffPairs);
+    }
+
     @Override
     public void onChunkProvider(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
         final long t0 = now();
@@ -137,8 +132,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         tClear = now() - a;
 
         a = now();
-        ChunkShoreCache shore = new ChunkShoreCache();
-        buildShoreCache(chunkX, chunkZ, shore);
+        ChunkShoreCache shore = macroCellBuilder.build(chunkX, chunkZ);
         tCache = now() - a;
 
         a = now();
@@ -146,11 +140,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         tBase = now() - a;
 
         a = now();
-        smoothHeightMap(hm);
+        //smoothHeightMap(hm);
         tSmooth = now() - a;
 
+        //softenMacroTransitions(hm, shore);
+
         a = now();
-        applyDistHeightConstraints(hm, shore);
+        applyDistHeightConstraints(hm, shore, chunkX, chunkZ);
         tClamp = now() - a;
 
         a = now();
@@ -194,7 +190,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final double BEACH_MAX = beachBiome.beachMax;
 
         final double detailScale = 0.0025D;
-
         final int BLEND_BLOCKS = 8;
         final int INLAND_RAMP_BLOCKS = 24;
 
@@ -205,70 +200,68 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
                 int macroPrimaryId = shore.macroPrimary[localX][localZ] & 0xFF;
                 int macroSecondaryId = shore.macroSecondary[localX][localZ] & 0xFF;
-                double macroBlend = (shore.macroBlend[localX][localZ] & 0xFF) / 255.0;
+                double macroBlend01 = (shore.macroBlend[localX][localZ] & 0xFF) / 255.0;
 
                 MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
                 MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
-
                 if (macroPrimary == null) macroPrimary = MacroBiome.PLAINS_TEMPERATE;
                 if (macroSecondary == null) macroSecondary = macroPrimary;
 
-                MacroHeightSample heightSample = blendHeightProfiles(macroPrimary, macroSecondary, macroBlend);
+                MacroHeightSample heightSample = blendHeightProfiles(macroPrimary, macroSecondary, macroBlend01);
 
                 int gx = chunkX * 16 + localX;
                 int gz = chunkZ * 16 + localZ;
 
                 boolean isLand = shore.isLand[localX][localZ];
                 int dist = shore.dist[localX][localZ] & 0xFFFF;
-
                 int beachW = shore.beachW[localX][localZ] & 0xFFFF;
                 int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
 
-                boolean isDesert = isLand && dist > beachW &&
-                    (macroPrimary == MacroBiome.WARM_DRY ||
-                        (macroSecondary == MacroBiome.WARM_DRY && macroBlend < 0.45));
+                int effectiveBeachW = Math.max(1, beachW);
+                int effectiveShelfW = Math.max(1, shelfW);
 
                 double d = clamp01(sampleTerrain01(gx, gz, detailScale));
 
                 double hDeep = DEEP_MIN + d * (DEEP_MAX - DEEP_MIN);
                 double shelfTop = SHELF_TOP_MIN + d * (SHELF_TOP_MAX - SHELF_TOP_MIN);
 
-                double tShelfNear = 1.0D - clamp01(dist / (double) Math.max(1, shelfW));
+                double tShelfNear = 1.0D - clamp01(dist / (double) effectiveShelfW);
                 tShelfNear = smooth01(tShelfNear);
                 double hShelfOnly = lerp(hDeep, shelfTop, tShelfNear);
 
-                double hMacroBase = sampleBlendedMacroHeight(gx, gz, d, heightSample);
-                double hPlainsOnly = computePlainsHeightNearCoast_DIST(
-                    gx, gz, dist, beachW, d, hMacroBase, BEACH_MAX, INLAND_RAMP_BLOCKS
-                );
+                double hMacroBase = sampleBlendedMacroHeight(gx, gz, heightSample);
+                shore.macroBaseHeight[localX][localZ] = (short) Math.round(hMacroBase);
+                ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
+                cell.macroBaseHeight = (short) Math.round(hMacroBase);
 
-                double hDesertOnly = hPlainsOnly;
-                if (isDesert) {
-                    hDesertOnly = computeDesertHeight(
-                        gx, gz, d,
-                        heightSample.min,
-                        heightSample.max
-                    );
-                }
+                double plainsDelta = computePlainsHeightNearCoast_DIST(
+                    gx, gz, dist, effectiveBeachW, d, hMacroBase, BEACH_MAX, INLAND_RAMP_BLOCKS
+                ) - hMacroBase;
+                plainsDelta = clamp(plainsDelta, -4.0D, 4.0D);
 
-                double beach01 = clamp01(dist / (double) Math.max(1, beachW));
-                double hBeachOnly = computeBeachHeight01(beach01, d, hPlainsOnly, BEACH_MIN, BEACH_MAX);
-                if (hBeachOnly < BEACH_MIN) hBeachOnly = BEACH_MIN;
-                if (hBeachOnly > BEACH_MAX) hBeachOnly = BEACH_MAX;
+                double inlandTarget = hMacroBase + plainsDelta;
+
+                double beach01 = clamp01(dist / (double) effectiveBeachW);
+                double hBeachOnly = computeBeachHeight01(beach01, d, hMacroBase, BEACH_MIN, BEACH_MAX);
+                hBeachOnly = clamp(hBeachOnly, BEACH_MIN, BEACH_MAX);
 
                 double h;
                 if (!isLand) {
-                    double t = smoothstep(shelfW - BLEND_BLOCKS, shelfW + BLEND_BLOCKS, dist);
-                    h = lerp(hShelfOnly, hDeep, t);
+                    double tOceanBlend = smoothstep(effectiveShelfW - BLEND_BLOCKS,
+                        effectiveShelfW + BLEND_BLOCKS, dist);
+                    double oceanTarget = lerp(hShelfOnly, hDeep, tOceanBlend);
+                    double macroOceanBias = hMacroBase - 32.0D;
+                    h = lerp(macroOceanBias, oceanTarget, clamp01(dist / (double) effectiveShelfW));
                 } else {
-                    double inlandTarget = isDesert ? hDesertOnly : hPlainsOnly;
-                    double t = smoothstep(beachW - BLEND_BLOCKS, beachW + BLEND_BLOCKS, dist);
-                    h = lerp(hBeachOnly, inlandTarget, t);
+                    double tLandBlend = smoothstep(effectiveBeachW - BLEND_BLOCKS,
+                        effectiveBeachW + BLEND_BLOCKS, dist);
+                    h = lerp(hBeachOnly, inlandTarget, tLandBlend);
                 }
 
                 int ih = (int) Math.floor(h);
                 if (ih < 4) ih = 4;
                 if (ih > worldHeight - 4) ih = worldHeight - 4;
+
                 heightMap[localX][localZ] = ih;
             }
         }
@@ -302,7 +295,79 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    private void applyDistHeightConstraints(int[][] hm, ChunkShoreCache shore) {
+    private void softenMacroTransitions(int[][] hm, ChunkShoreCache shore) {
+        final int SIZE = 17;
+        final int PASSES = 1;
+
+        int macroDiffPairs = 0;
+        int heightAdjustments = 0;
+
+        for (int pass = 0; pass < PASSES; pass++) {
+            for (int x = 0; x < SIZE; x++) {
+                for (int z = 0; z < SIZE; z++) {
+
+                    MacroBiome macroHere = safeMacro(shore.macroPrimary[x][z]);
+                    byte tierHere = shore.macroTier[x][z];
+
+                    for (int dx = 0; dx <= 1; dx++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            if (dx == 0 && dz <= 0) continue;
+
+                            int nx = x + dx;
+                            int nz = z + dz;
+                            if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE) continue;
+
+                            MacroBiome macroNeighbor = safeMacro(shore.macroPrimary[nx][nz]);
+                            if (macroHere == macroNeighbor) continue;
+                            if (isCliffPair(macroHere, macroNeighbor)) continue;
+
+                            byte tierNeighbor = shore.macroTier[nx][nz];
+                            int tierDelta = Math.abs(tierHere - tierNeighbor);
+
+                            if (tierDelta >= HARD_BOUNDARY_TIER_DELTA) continue;
+                            if (isPlateLockBoundary(shore, x, z, nx, nz)) continue;
+
+                            macroDiffPairs++;
+
+                            int allowedStep = getAllowedStep(macroHere, macroNeighbor);
+                            if (tierDelta == 1) {
+                                allowedStep = Math.min(allowedStep, STEP_FOR_ADJACENT_TIERS);
+                            }
+
+                            int h = hm[x][z];
+                            int hn = hm[nx][nz];
+                            int delta = h - hn;
+
+                            int anchorHere = shore.macroPlateau[x][z];
+                            int anchorNeighbor = shore.macroPlateau[nx][nz];
+                            int anchorDelta = anchorHere - anchorNeighbor;
+
+                            int lower = anchorDelta - allowedStep;
+                            int upper = anchorDelta + allowedStep;
+
+                            if (delta >= lower && delta <= upper) continue;
+
+                            int targetDelta = clamp(delta, lower, upper);
+                            int adjust = delta - targetDelta;
+                            if (adjust == 0) continue;
+
+                            int half = adjust / 2;
+                            hm[x][z] = h - half;
+                            hm[nx][nz] = hn + (adjust - half);
+                            heightAdjustments++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (DEBUG_SOFTEN) {
+            System.out.println("[soften] macroDiffPairs=" + macroDiffPairs +
+                " heightAdjustments=" + heightAdjustments);
+        }
+    }
+
+    private void applyDistHeightConstraints(int[][] hm, ChunkShoreCache shore, int chunkX, int chunkZ) {
         final int SIZE = 17;
 
         int waterLevel = this.getWaterLevel();
@@ -314,43 +379,37 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         for (int lx = 0; lx < SIZE; lx++) {
             for (int lz = 0; lz < SIZE; lz++) {
 
-                int macroPrimaryId  = shore.macroPrimary[lx][lz] & 0xFF;
-                int macroSecondaryId = shore.macroSecondary[lx][lz] & 0xFF;
-                double macroBlend = (shore.macroBlend[lx][lz] & 0xFF) / 255.0;
-
-                MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
-                MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
-
-                if (macroPrimary == null) macroPrimary = MacroBiome.PLAINS_TEMPERATE;
-                if (macroSecondary == null) macroSecondary = macroPrimary;
-
-                MacroHeightSample heightSample = blendHeightProfiles(macroPrimary, macroSecondary, macroBlend);
-
+                int before = hm[lx][lz];
                 if (!shore.isLand[lx][lz]) continue;
 
                 int dist = shore.dist[lx][lz] & 0xFFFF;
                 int beachW = shore.beachW[lx][lz] & 0xFFFF;
-
-                boolean isDesert = dist > beachW &&
-                    (macroPrimary == MacroBiome.WARM_DRY ||
-                        (macroSecondary == MacroBiome.WARM_DRY && macroBlend < 0.45));
 
                 int y = hm[lx][lz];
 
                 if (dist <= beachW) {
                     if (y < beachMinY) y = beachMinY;
                     if (y > beachMaxY) y = beachMaxY;
-                } else if (isDesert) {
-                    int desertMinY = (int) Math.floor(heightSample.min);
-                    int desertMaxY = (int) Math.ceil(heightSample.max);
-                    if (y < desertMinY) y = desertMinY;
-                    if (y > desertMaxY) y = desertMaxY;
                 } else {
-                    int inlandMinY = (int) Math.floor(heightSample.min);
-                    if (y < inlandMinY) y = inlandMinY;
+                    double macroBaseline = shore.macroBaseHeight[lx][lz];
+
+                    int bufferLow = 6;
+                    int bufferHigh = 12;
+                    int minY = (int) Math.floor(macroBaseline - bufferLow);
+                    int maxY = (int) Math.ceil(macroBaseline + bufferHigh);
+
+                    if (y < minY) y = minY;
+                    if (y > maxY) y = maxY;
                 }
 
                 hm[lx][lz] = y;
+
+                if (DEBUG_SOFTEN && before != y) {
+                    MacroBiome macro = MACRO_VALUES[shore.macroPrimary[lx][lz] & 0xFF];
+                    System.out.println("[soften] clamp adjusted (" + lx + "," + lz + ") macro=" + macro +
+                        " dist=" + (shore.dist[lx][lz] & 0xFFFF) +
+                        " from " + before + " to " + y);
+                }
             }
         }
     }
@@ -384,23 +443,25 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
 
                 BiomeGenBase baseBiome;
-                Talos2ClimateSampler.ClimateSample climateSample = null;
 
                 if (!isLand) {
                     baseBiome = (dist <= shelfW) ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
                 } else if (dist <= beachW) {
                     baseBiome = TalosBiomes.TALOS_BEACH;
                 } else {
-                    baseBiome = biomeResolver.resolve(gx, gz);
-                    climateSample = surfaceClimateSampler.sample(gx, gz);
+                    ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
+                    baseBiome = biomeResolver.resolve(gx, gz, cell);
 
                     if (baseBiome == null) {
-                        int macroPrimaryId = shore.macroPrimary[localX][localZ] & 0xFF;
-                        int macroSecondaryId = shore.macroSecondary[localX][localZ] & 0xFF;
-                        double macroBlend = (shore.macroBlend[localX][localZ] & 0xFF) / 255.0;
-                        MacroBiome macroPrimary = MACRO_VALUES[macroPrimaryId];
-                        MacroBiome macroSecondary = MACRO_VALUES[macroSecondaryId];
-                        baseBiome = macroSelector.pick(gx, gz, macroPrimary, macroSecondary, macroBlend);
+                        baseBiome = macroSelector.pick(
+                            gx, gz,
+                            cell.primary,
+                            cell.secondary,
+                            cell.blendPrimary,
+                            cell.patchVariant,
+                            cell.patchSingleBiome,
+                            cell.patchEdgeBlend
+                        );
                     }
                 }
 
@@ -413,9 +474,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     fillBeachColumn(blocks, meta, columnBase, groundHeight, waterLevel,
                         (BiomeGenTalos2Beach) baseBiome);
                 } else {
-                    buildColumnForBiome(blocks, meta, columnBase, groundHeight, waterLevel,
-                        baseBiome, climateSample);
+                    buildColumnForBiome(blocks, meta, columnBase, groundHeight, waterLevel, baseBiome);
                 }
+
+                TalosBiomeDebugHooks.recordGeneratedBiome(chunkX, chunkZ, localX, localZ, baseBiome);
             }
         }
     }
@@ -561,7 +623,32 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 out.dist[lx][lz] = (short) dist;
                 out.beachW[lx][lz] = (short) beachW;
                 out.shelfW[lx][lz] = (short) shelfW;
+
+                ChunkShoreCache.MacroCell cell = out.macroContext[lx][lz];
+                cell.primary = macro;
+                cell.secondary = MACRO_VALUES[out.macroSecondary[lx][lz] & 0xFF];
+                cell.blendPrimary = (out.macroBlend[lx][lz] & 0xFF) / 255.0;
+                cell.tier = out.macroTier[lx][lz];
+                cell.plateId = out.macroPlateId[lx][lz];
+                cell.plateauAnchor = out.macroPlateau[lx][lz];
+                cell.isLand = isLand;
+                cell.distToCoast = (short) dist;
+                cell.beachWidth = (short) beachW;
+                cell.shelfWidth = (short) shelfW;
+                cell.patchVariant = out.macroPatchVariant[lx][lz];
+                cell.patchSingleBiome = (out.macroPatchFlags[lx][lz] & 0x1) != 0;
+                cell.patchEdgeBlend = (out.macroPatchEdge[lx][lz] & 0xFF) / 255.0D;
             }
+        }
+
+        if (DEBUG_SOFTEN) {
+            Set<MacroBiome> macros = new HashSet<>();
+            for (int lx = 0; lx < SIZE; lx++) {
+                for (int lz = 0; lz < SIZE; lz++) {
+                    macros.add(MACRO_VALUES[out.macroPrimary[lx][lz] & 0xFF]);
+                }
+            }
+            System.out.println("[soften] chunk=(" + chunkX + "," + chunkZ + ") macroPrimary=" + macros);
         }
     }
 
@@ -588,6 +675,47 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         public final byte[][] macroPrimary = new byte[17][17];
         public final byte[][] macroSecondary = new byte[17][17];
         public final byte[][] macroBlend = new byte[17][17];
+
+        public final byte[][] macroWet = new byte[17][17];
+        public final byte[][] macroCold = new byte[17][17];
+        public final byte[][] macroCoast = new byte[17][17];
+
+        public short[][] macroPlateau = new short[17][17];
+        public byte[][] macroTier = new byte[17][17];
+        public byte[][] macroPlateId = new byte[17][17];
+
+        public final short[][] macroBaseHeight = new short[17][17];
+
+        public final MacroCell[][] macroContext = new MacroCell[17][17];
+
+        public final byte[][] macroPatchVariant = new byte[17][17];
+        public final byte[][] macroPatchFlags = new byte[17][17];
+        public final byte[][] macroPatchEdge = new byte[17][17];
+
+        public ChunkShoreCache() {
+            for (int x = 0; x < 17; x++) {
+                for (int z = 0; z < 17; z++) {
+                    macroContext[x][z] = new MacroCell();
+                }
+            }
+        }
+
+        public static final class MacroCell {
+            public MacroBiome primary;
+            public MacroBiome secondary;
+            public double blendPrimary;
+            public byte tier;
+            public byte plateId;
+            public short plateauAnchor;
+            public boolean isLand;
+            public short distToCoast;
+            public short beachWidth;
+            public short shelfWidth;
+            public short macroBaseHeight;
+            public byte patchVariant;
+            public boolean patchSingleBiome;
+            public double patchEdgeBlend;
+        }
     }
 
     private static double clamp01(double v) {
@@ -703,46 +831,43 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return targetBeach * (1.0D - tInland) + basePlain * tInland;
     }
 
-    private double sampleBlendedMacroHeight(int gx, int gz,
-                                            double noise01,
-                                            MacroHeightSample sample) {
+    private double sampleBlendedMacroHeight(int gx, int gz, MacroHeightSample sample) {
 
-        double absMin = sample.min;
-        double absMax = sample.max;
+        double base = lerp(sample.min, sample.max, sample.blend);
+        double plateau = sample.offset * 32.0D;
 
-        double base = absMin + noise01 * (absMax - absMin);
-        double extra = (noise01 - 0.5D) * sample.variation * 32.0D;
-        double offset = sample.offset * 16.0D;
+        double micro = terrainNoise.noise(gx * 0.0008D, gz * 0.0008D)
+            * sample.variation * 3.0D;
 
-        double value = base + extra + offset;
-        return clamp(value, Math.min(absMin, absMax), Math.max(absMin, absMax));
+        double value = base + plateau + micro;
+        return clamp(value, sample.min, sample.max);
     }
 
     private void buildColumnForBiome(
-        Block[] blocks, byte[] meta,
-        int columnBase, int groundHeight, int waterLevel,
-        BiomeGenBase biome,
-        Talos2ClimateSampler.ClimateSample climateSample
+        Block[] blocks,
+        byte[] meta,
+        int columnBase,
+        int groundHeight,
+        int waterLevel,
+        BiomeGenBase biome
     ) {
         BlockMetaPair surface = getSurfaceBlock(biome);
         BlockMetaPair filler = getFillerBlock(biome);
         BlockMetaPair stone = getStoneBlockForBiome(biome);
         BlockMetaPair water = this.getWaterBlock();
 
-        if (climateSample != null) {
-            double temp = climateSample.temperature;
-            double humid = climateSample.humidity;
+        float temp = biome.temperature;
+        float humid = biome.rainfall;
 
-            if (temp < 0.16D) {
-                surface = SNOW_SURFACE;
-                filler = PACKED_ICE;
-            } else if (temp > 0.82D && humid < 0.35D) {
-                surface = getSandBlock();
-                filler = SANDSTONE_FILL;
-            } else if (humid > 0.78D && temp > 0.55D) {
-                surface = MYCELIUM_TOP;
-                filler = this.getDirtBlock();
-            }
+        if (temp < 0.16F) {
+            surface = SNOW_SURFACE;
+            filler = PACKED_ICE;
+        } else if (temp > 0.82F && humid < 0.35F) {
+            surface = getSandBlock();
+            filler = SANDSTONE_FILL;
+        } else if (humid > 0.78F && temp > 0.55F) {
+            surface = MYCELIUM_TOP;
+            filler = this.getDirtBlock();
         }
 
         for (int y = 0; y <= groundHeight; y++) {
@@ -775,12 +900,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final double max;
         final double offset;
         final double variation;
+        final double blend;
 
-        MacroHeightSample(double min, double max, double offset, double variation) {
+        MacroHeightSample(double min, double max, double offset, double variation, double blend) {
             this.min = min;
             this.max = max;
             this.offset = offset;
             this.variation = variation;
+            this.blend = blend;
         }
     }
 
@@ -799,7 +926,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         double offset = hpA.baseHeightOffset * t + hpB.baseHeightOffset * invT;
         double variation = hpA.heightVariation * t + hpB.heightVariation * invT;
 
-        return new MacroHeightSample(min, max, offset, variation);
+        return new MacroHeightSample(min, max, offset, variation, t);
     }
 
     private BlockMetaPair getSurfaceBlock(BiomeGenBase biome) {
@@ -913,6 +1040,59 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 meta[idx] = water.getMetadata();
             }
         }
+    }
+
+    private static boolean isCliffPair(MacroBiome a, MacroBiome b) {
+        if (a == null || b == null) return false;
+        return CLIFF_TRANSITIONS.contains(key(a, b));
+    }
+
+    private static void addCliffPair(Set<Long> target, MacroBiome a, MacroBiome b) {
+        if (a == null || b == null) return;
+        target.add(key(a, b));
+    }
+
+    private static long key(MacroBiome a, MacroBiome b) {
+        int idA = a.getId();
+        int idB = b.getId();
+        return ((long) Math.min(idA, idB) << 32) | Math.max(idA, idB);
+    }
+
+    private MacroBiome safeMacro(int id) {
+        MacroBiome m = MACRO_VALUES[id & 0xFF];
+        return m != null ? m : MacroBiome.PLAINS_TEMPERATE;
+    }
+
+    private int getAllowedStep(MacroBiome a, MacroBiome b) {
+        if (isMountainous(a) || isMountainous(b)) return 6;
+        if (isPlateau(a) || isPlateau(b)) return 4;
+        return 3;
+    }
+
+    private static boolean isMountainous(MacroBiome biome) {
+        if (biome == null) return false;
+        if (biome == MacroBiome.MOUNTAINOUS) return true;
+
+        MacroBiome.MacroHeightProfile hp = biome.height;
+        double relief = hp.absoluteMax - hp.absoluteMin;
+        return relief >= 32.0D || hp.heightVariation >= 0.08F;
+    }
+
+    private static boolean isPlateau(MacroBiome biome) {
+        if (biome == null) return false;
+
+        MacroBiome.MacroHeightProfile hp = biome.height;
+        double relief = hp.absoluteMax - hp.absoluteMin;
+        return relief <= 18.0D && hp.baseHeightOffset >= 0.05F;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return value < min ? min : Math.min(value, max);
+    }
+
+    private static boolean isPlateLockBoundary(ChunkShoreCache shore, int x, int z, int nx, int nz) {
+        if (!ENFORCE_PLATE_LOCK) return false;
+        return shore.macroPlateId[x][z] != shore.macroPlateId[nx][nz];
     }
 
     @Override

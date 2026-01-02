@@ -2,35 +2,35 @@ package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver.Talos2BiomeResolver;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
+
+import java.util.Map;
 
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     private final MacroBiomeField macroField;
     private final CoastlineAtlas coastlineAtlas;
     private final Talos2BiomeResolver biomeResolver;
+    private final TalosMacroCellBuilder macroCellBuilder;
+    private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> shoreCache = new Long2ObjectOpenHashMap<>();
+    private final World world;
 
     public WorldChunkManagerTalos2(World world) {
         super();
-        long seed = world.getSeed();
-        Talos2Hooks.HookData hook = Talos2Hooks.resolve(world);
+        this.world = world;
 
-        MacroBiomeField.MacroBiomeConfig macroConfig =
-            (hook != null && hook.macroConfig != null)
-                ? hook.macroConfig
-                : Talos2NoiseConfig.currentMacroConfig();
+        Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
 
-        if (hook != null && hook.macroField != null && hook.coastlineAtlas != null) {
-            this.macroField = hook.macroField;
-            this.coastlineAtlas = hook.coastlineAtlas;
-        } else {
-            this.macroField = new MacroBiomeField(seed, macroConfig);
-            this.coastlineAtlas = new DefaultCoastlineAtlas(this.macroField, seed);
-        }
-
+        this.macroField = hook.macroField;
+        this.coastlineAtlas = hook.coastlineAtlas;
+        this.macroCellBuilder = hook.macroCellBuilder;
         this.biomeResolver = new Talos2BiomeResolver(world, this.macroField);
+
+        System.out.println("[Talos2] WCM builder instance=" +
+            System.identityHashCode(this.macroCellBuilder));
     }
 
     @Override
@@ -39,27 +39,40 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     }
 
     private BiomeGenBase pickBiomeFor(int x, int z) {
-        MacroBiomeField.SampleDual sample = this.macroField.sampleDual(x, z);
-        MacroBiome macroPrimary = (sample != null && sample.primary != null)
-            ? sample.primary
-            : MacroBiome.PLAINS_TEMPERATE;
-        boolean isLand = this.coastlineAtlas.isLand(x, z);
-        int dist = this.coastlineAtlas.distanceToCoast(x, z);
-        int shelfW = this.coastlineAtlas.shelfWidth(x, z, macroPrimary);
-        int beachW = this.coastlineAtlas.beachWidth(x, z, macroPrimary);
-
-        if (!isLand) {
-            return (dist <= shelfW) ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+        ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = getCell(x, z);
+        if (cell == null) {
+            return TalosBiomes.TALOS_PLAINS;
         }
 
-        if (dist <= beachW) {
-            return TalosBiomes.TALOS_BEACH;
+        BiomeGenBase biome;
+        if (!cell.isLand) {
+            int dist = ushort(cell.distToCoast);
+            int shelf = ushort(cell.shelfWidth);
+            biome = (dist <= shelf) ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+        } else {
+            int dist = ushort(cell.distToCoast);
+            int beach = ushort(cell.beachWidth);
+            if (dist <= beach) {
+                biome = TalosBiomes.TALOS_BEACH;
+            } else {
+                biome = this.biomeResolver.resolve(x, z, cell);
+                if (biome == null) {
+                    biome = TalosBiomes.TALOS_PLAINS;
+                }
+            }
         }
 
-        BiomeGenBase biome = this.biomeResolver.resolve(x, z);
-        if (biome == null) {
-            biome = TalosBiomes.TALOS_PLAINS;
+        BiomeGenBase generated = TalosBiomeDebugHooks.getGeneratedBiome(x, z);
+        if (generated != null && generated != biome) {
+            System.out.println("[Talos2] BIOME MISMATCH @ (" + x + "," + z + ")" +
+                " WCM=" + biome.biomeName + ", CP=" + generated.biomeName +
+                " macro=" + cell.primary + "/" + cell.secondary +
+                " tier=" + cell.tier +
+                " plate=" + cell.plateId +
+                " patch=" + cell.patchVariant +
+                " blend=" + String.format("%.2f", cell.blendPrimary));
         }
+
         return biome;
     }
 
@@ -92,5 +105,23 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
                                                  int x, int z,
                                                  int width, int depth) {
         return getBiomesForGeneration(array, x, z, width, depth);
+    }
+
+    private static int ushort(short v) {
+        return v & 0xFFFF;
+    }
+
+    private ChunkProviderTalos2.ChunkShoreCache.MacroCell getCell(int gx, int gz) {
+        int chunkX = Math.floorDiv(gx, 16);
+        int chunkZ = Math.floorDiv(gz, 16);
+        long key = (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+
+        ChunkProviderTalos2.ChunkShoreCache cache = shoreCache.computeIfAbsent(
+            key, k -> macroCellBuilder.build(chunkX, chunkZ)
+        );
+
+        int lx = gx - chunkX * 16;
+        int lz = gz - chunkZ * 16;
+        return cache.macroContext[lx][lz];
     }
 }
