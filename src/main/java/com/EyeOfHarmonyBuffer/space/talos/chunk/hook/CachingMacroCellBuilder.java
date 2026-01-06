@@ -1,29 +1,30 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.hook;
 
-import com.EyeOfHarmonyBuffer.space.talos.TalosMacroCellBuilder;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.ChunkProviderTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.MacroCacheInvalidator;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.ChunkProviderTalos2;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class CachingMacroCellBuilder {
+public final class CachingMacroCellBuilder implements IMacroCellProvider, MacroCacheInvalidator {
 
-    private final TalosMacroCellBuilder delegate;
+    private final IMacroCellProvider delegate;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final LinkedHashMap<Long, ChunkProviderTalos2.ChunkShoreCache> cache;
-
     private final int maxEntries;
 
-    public CachingMacroCellBuilder(TalosMacroCellBuilder delegate) {
+    public CachingMacroCellBuilder(IMacroCellProvider delegate) {
         this(delegate, 512);
     }
 
-    public CachingMacroCellBuilder(TalosMacroCellBuilder delegate, int maxEntries) {
+    public CachingMacroCellBuilder(IMacroCellProvider delegate, int maxEntries) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.maxEntries = Math.max(32, maxEntries);
-        this.cache = new LinkedHashMap<Long, ChunkProviderTalos2.ChunkShoreCache>(this.maxEntries, 0.75f, true) {
+        this.cache = new LinkedHashMap<>(this.maxEntries, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Long, ChunkProviderTalos2.ChunkShoreCache> eldest) {
                 return size() > CachingMacroCellBuilder.this.maxEntries;
@@ -31,14 +32,10 @@ public final class CachingMacroCellBuilder {
         };
     }
 
-    /**
-     * Builds (or retrieves) the macro data for the given chunk. The returned object is always a fresh,
-     * mutable instance that the caller owns. An immutable snapshot is stored internally for later peeks.
-     */
+    @Override
     public ChunkProviderTalos2.ChunkShoreCache build(int chunkX, int chunkZ) {
         long key = toKey(chunkX, chunkZ);
 
-        // Fast-path: if we already cached this chunk, clone the snapshot instead of recomputing.
         lock.readLock().lock();
         try {
             ChunkProviderTalos2.ChunkShoreCache cached = cache.get(key);
@@ -49,7 +46,6 @@ public final class CachingMacroCellBuilder {
             lock.readLock().unlock();
         }
 
-        // Cache miss -> ask the real builder.
         ChunkProviderTalos2.ChunkShoreCache fresh = delegate.build(chunkX, chunkZ);
         ChunkProviderTalos2.ChunkShoreCache snapshot = cloneCache(fresh);
 
@@ -62,10 +58,7 @@ public final class CachingMacroCellBuilder {
         return fresh;
     }
 
-    /**
-     * Returns a read-only snapshot if the chunk is already cached, or null otherwise.
-     * Callers must treat the returned object as immutable (do not mutate).
-     */
+    @Override
     public ChunkProviderTalos2.ChunkShoreCache peekCached(int chunkX, int chunkZ) {
         long key = toKey(chunkX, chunkZ);
         lock.readLock().lock();
@@ -77,6 +70,7 @@ public final class CachingMacroCellBuilder {
         }
     }
 
+    @Override
     public void invalidate(int chunkX, int chunkZ) {
         long key = toKey(chunkX, chunkZ);
         lock.writeLock().lock();
@@ -87,6 +81,7 @@ public final class CachingMacroCellBuilder {
         }
     }
 
+    @Override
     public void invalidateAll() {
         lock.writeLock().lock();
         try {
@@ -96,8 +91,6 @@ public final class CachingMacroCellBuilder {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-
     private static long toKey(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) ^ (chunkZ & 0xFFFFFFFFL);
     }
@@ -105,28 +98,35 @@ public final class CachingMacroCellBuilder {
     private static ChunkProviderTalos2.ChunkShoreCache cloneCache(ChunkProviderTalos2.ChunkShoreCache src) {
         ChunkProviderTalos2.ChunkShoreCache dst = new ChunkProviderTalos2.ChunkShoreCache();
 
-        copy(src.isLand,        dst.isLand);
-        copy(src.dist,          dst.dist);
-        copy(src.beachW,        dst.beachW);
-        copy(src.shelfW,        dst.shelfW);
-        copy(src.macroPrimary,  dst.macroPrimary);
-        copy(src.macroSecondary,dst.macroSecondary);
-        copy(src.macroBlend,    dst.macroBlend);
-        copy(src.macroWet,      dst.macroWet);
-        copy(src.macroCold,     dst.macroCold);
-        copy(src.macroCoast,    dst.macroCoast);
-        copy(src.macroPlateau,  dst.macroPlateau);
-        copy(src.macroTier,     dst.macroTier);
-        copy(src.macroPlateId,  dst.macroPlateId);
-        copy(src.macroBaseHeight, dst.macroBaseHeight);
-        copy(src.macroPatchVariant, dst.macroPatchVariant);
-        copy(src.macroPatchFlags,   dst.macroPatchFlags);
-        copy(src.macroPatchEdge,    dst.macroPatchEdge);
-        copy(src.anchorWeight,      dst.anchorWeight);
-        copy(src.hardEdge,          dst.hardEdge);
+        copy(src.isLand,         dst.isLand);
+        copy(src.dist,           dst.dist);
+        copy(src.beachW,         dst.beachW);
+        copy(src.shelfW,         dst.shelfW);
+        copy(src.baselineLocked, dst.baselineLocked);
 
-        for (int x = 0; x < 17; x++) {
-            for (int z = 0; z < 17; z++) {
+        copy(src.macroPrimary,   dst.macroPrimary);
+        copy(src.macroSecondary, dst.macroSecondary);
+        copy(src.macroBlend,     dst.macroBlend);
+
+        copy(src.macroWet,       dst.macroWet);
+        copy(src.macroCold,      dst.macroCold);
+        copy(src.macroCoast,     dst.macroCoast);
+
+        copy(src.macroPlateau,   dst.macroPlateau);
+        copy(src.macroTier,      dst.macroTier);
+        copy(src.macroPlateId,   dst.macroPlateId);
+        copy(src.macroBaseHeight,dst.macroBaseHeight);
+
+        copy(src.macroPatchVariant, dst.macroPatchVariant);
+        copy(src.macroPatchSingle,  dst.macroPatchSingle);
+        copy(src.macroPatchEdge,    dst.macroPatchEdge);
+
+        copy(src.anchorWeight,   dst.anchorWeight);
+        copy(src.hardEdge,       dst.hardEdge);
+        copy(src.boundaryTouched,dst.boundaryTouched);
+
+        for (int x = 0; x < ChunkProviderTalos2.ChunkShoreCache.GRID_SIZE; x++) {
+            for (int z = 0; z < ChunkProviderTalos2.ChunkShoreCache.GRID_SIZE; z++) {
                 ChunkProviderTalos2.ChunkShoreCache.MacroCell s = src.macroContext[x][z];
                 ChunkProviderTalos2.ChunkShoreCache.MacroCell d = dst.macroContext[x][z];
 
@@ -146,13 +146,12 @@ public final class CachingMacroCellBuilder {
                 d.patchEdgeBlend = s.patchEdgeBlend;
                 d.anchorWeight = s.anchorWeight;
                 d.hardEdge = s.hardEdge;
+                d.resolvedBiome = s.resolvedBiome;
             }
         }
 
         return dst;
     }
-
-    // -------- helper overloads for copying primitive 2D arrays --------
 
     private static void copy(boolean[][] src, boolean[][] dst) {
         for (int i = 0; i < src.length; i++) {
@@ -173,6 +172,12 @@ public final class CachingMacroCellBuilder {
     }
 
     private static void copy(float[][] src, float[][] dst) {
+        for (int i = 0; i < src.length; i++) {
+            System.arraycopy(src[i], 0, dst[i], 0, src[i].length);
+        }
+    }
+
+    private static void copy(MacroTag[][] src, MacroTag[][] dst) {
         for (int i = 0; i < src.length; i++) {
             System.arraycopy(src[i], 0, dst[i], 0, src[i].length);
         }

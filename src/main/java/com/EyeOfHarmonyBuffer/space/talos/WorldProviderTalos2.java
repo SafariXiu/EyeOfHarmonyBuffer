@@ -3,8 +3,8 @@ package com.EyeOfHarmonyBuffer.space.talos;
 import java.util.Random;
 
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.ChunkProviderTalos2;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.WorldChunkManagerTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.ChunkProviderTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.WorldChunkManagerTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.client.render.HugePlanetSkyRenderer;
 import galaxyspace.core.dimension.WorldProviderSpaceGS;
 import net.minecraft.entity.Entity;

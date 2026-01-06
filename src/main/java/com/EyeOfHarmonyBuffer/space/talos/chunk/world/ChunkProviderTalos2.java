@@ -1,9 +1,11 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.CachingMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.TalosMacroCellBuilder;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import galaxyspace.core.world.GSBiomeGenBase;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -22,7 +24,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private static final boolean DEBUG_SOFTEN = false;
 
     private final World world;
-    private final CachingMacroCellBuilder macroCellBuilder;
+    private final IMacroCellProvider macroCellBuilder;
 
     private static final BlockMetaPair SNOW_SURFACE = new BlockMetaPair(Blocks.snow, (byte) 0);
     private static final BlockMetaPair PACKED_ICE = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
@@ -69,7 +71,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
 
-        this.macroCellBuilder = hook.macroCellBuilder;
+        this.macroCellBuilder = hook.macroCellBuilder();
 
         System.out.println("[Talos2] CP builder instance=" +
             System.identityHashCode(this.macroCellBuilder));
@@ -329,6 +331,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     public static final class ChunkShoreCache {
+
         public static final int GRID_SIZE = TalosMacroCellBuilder.GRID_SIZE;
 
         public final boolean[][] isLand = new boolean[GRID_SIZE][GRID_SIZE];
@@ -337,28 +340,28 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         public final short[][] shelfW = new short[GRID_SIZE][GRID_SIZE];
         public final boolean[][] baselineLocked = new boolean[GRID_SIZE][GRID_SIZE];
 
-        public final byte[][] macroPrimary = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroSecondary = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroBlend = new byte[GRID_SIZE][GRID_SIZE];
+        public final MacroTag[][] macroPrimary = new MacroTag[GRID_SIZE][GRID_SIZE];
+        public final MacroTag[][] macroSecondary = new MacroTag[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroBlend = new float[GRID_SIZE][GRID_SIZE];
 
-        public final byte[][] macroWet = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroCold = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroCoast = new byte[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroWet = new float[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroCold = new float[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroCoast = new float[GRID_SIZE][GRID_SIZE];
 
-        public final short[][] macroPlateau = new short[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroPlateau = new float[GRID_SIZE][GRID_SIZE];
         public final byte[][] macroTier = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroPlateId = new byte[GRID_SIZE][GRID_SIZE];
+        public final short[][] macroPlateId = new short[GRID_SIZE][GRID_SIZE];
 
         public final short[][] macroBaseHeight = new short[GRID_SIZE][GRID_SIZE];
 
         public final MacroCell[][] macroContext = new MacroCell[GRID_SIZE][GRID_SIZE];
 
         public final byte[][] macroPatchVariant = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroPatchFlags = new byte[GRID_SIZE][GRID_SIZE];
-        public final byte[][] macroPatchEdge = new byte[GRID_SIZE][GRID_SIZE];
+        public final boolean[][] macroPatchSingle = new boolean[GRID_SIZE][GRID_SIZE];
+        public final float[][] macroPatchEdge = new float[GRID_SIZE][GRID_SIZE];
 
         public final float[][] anchorWeight = new float[GRID_SIZE][GRID_SIZE];
-        public final boolean[][] hardEdge = new boolean[GRID_SIZE][GRID_SIZE];
+        public final float[][] hardEdge = new float[GRID_SIZE][GRID_SIZE];
 
         public final boolean[][] boundaryTouched = new boolean[GRID_SIZE][GRID_SIZE];
 
@@ -371,12 +374,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
 
         public static final class MacroCell {
-            public MacroBiome primary;
-            public MacroBiome secondary;
+            public MacroTag primary;
+            public MacroTag secondary;
             public double blendPrimary;
             public byte tier;
-            public byte plateId;
-            public short plateauAnchor;
+            public short plateId;
+            public float plateauAnchor;
             public boolean isLand;
             public short distToCoast;
             public short beachWidth;
@@ -386,7 +389,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             public boolean patchSingleBiome;
             public double patchEdgeBlend;
             public float anchorWeight;
-            public boolean hardEdge;
+            public float hardEdge;
             public BiomeGenBase resolvedBiome;
         }
     }

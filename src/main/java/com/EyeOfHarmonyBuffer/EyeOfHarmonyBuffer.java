@@ -139,8 +139,8 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
-        event.registerServerCommand(new CommandTalos2Export());
-        event.registerServerCommand(new CommandTalosClimate());
+        //event.registerServerCommand(new CommandTalos2Export());
+        //event.registerServerCommand(new CommandTalosClimate());
     }
 
     @Mod.EventHandler

@@ -1,9 +1,9 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.CachingMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.TalosBiomeDebugHooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
-    private final CachingMacroCellBuilder macroCellBuilder;
+    private final IMacroCellProvider macroCellBuilder;
     private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> shoreCache = new Long2ObjectOpenHashMap<>();
     private final World world;
 
@@ -22,7 +22,7 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         this.world = world;
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
-        this.macroCellBuilder = hook.macroCellBuilder;
+        this.macroCellBuilder = hook.macroCellBuilder();
 
         System.out.println("[Talos2] WCM builder instance=" +
             System.identityHashCode(this.macroCellBuilder));
