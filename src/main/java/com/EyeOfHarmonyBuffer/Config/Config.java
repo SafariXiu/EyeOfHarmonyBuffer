@@ -5,11 +5,12 @@ import java.math.BigInteger;
 
 public class Config {
 
-    public static void init(File mainConfigFile, File itemsConfigFile, File fluidsConfigFile,File MachineLoaderConfigFile) {
+    public static void init(File mainConfigFile, File itemsConfigFile, File fluidsConfigFile,File MachineLoaderConfigFile, File fieldManagerCacheConfigFile) {
         MainConfig.init(mainConfigFile);
         ItemConfig.init(itemsConfigFile);
         FluidConfig.init(fluidsConfigFile);
         MachineLoaderConfig.init(MachineLoaderConfigFile);
+        FieldManagerCacheConfig.init(fieldManagerCacheConfigFile);
     }
 
     public static void reloadConfig() {
@@ -17,6 +18,7 @@ public class Config {
         ItemConfig.reloadConfig();
         FluidConfig.reloadConfig();
         MachineLoaderConfig.reloadConfig();
+        FieldManagerCacheConfig.reloadConfig();
     }
 
     public static BigInteger getConstantOutputEU() {

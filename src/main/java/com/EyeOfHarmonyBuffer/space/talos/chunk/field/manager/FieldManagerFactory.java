@@ -4,8 +4,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.BiomeDecisionStrategy;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.FullStrategy;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.SimplifiedStrategy;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.NoiseCoastlineProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.config.MacroCacheConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.MacroCacheProbe;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.ClimateProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.HydroProvider;
@@ -16,6 +18,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseHydroP
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseMacroFieldProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.CachingMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseTerrainProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.MacroCacheInvalidator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.TalosMacroCellBuilder;
 import net.minecraft.world.World;
 
@@ -40,10 +44,23 @@ public final class FieldManagerFactory {
         CoastlineProvider coastlineProvider =
             new NoiseCoastlineProvider(seed, config.getCoastlineSettings());
 
-        TalosMacroCellBuilder rawBuilder = new TalosMacroCellBuilder(macroProvider, coastlineProvider);
-        CachingMacroCellBuilder cachedBuilder = new CachingMacroCellBuilder(rawBuilder, config.getMacroCacheSize());
+        MacroCacheConfig macroCacheConfig = Objects.requireNonNull(
+            config.getMacroCache(), "macroCache");
 
-        FieldDiagnostics diagnostics = new FieldDiagnostics();
+        FieldDiagnostics diagnostics =
+            new FieldDiagnostics(macroCacheConfig.isDiagnosticsEnabled());
+
+        IMacroCellProvider macroCellProvider = createMacroProvider(
+            macroProvider,
+            coastlineProvider,
+            macroCacheConfig,
+            diagnostics
+        );
+
+        MacroCacheInvalidator macroCache =
+            macroCellProvider instanceof MacroCacheInvalidator
+                ? (MacroCacheInvalidator) macroCellProvider
+                : null;
 
         TerrainProvider terrainProvider = new NoiseTerrainProvider(
             seed,
@@ -59,8 +76,8 @@ public final class FieldManagerFactory {
         );
 
         FieldManager fieldManager = new DefaultFieldManager(
-            cachedBuilder,
-            cachedBuilder,
+            macroCellProvider,
+            macroCache,
             terrainProvider,
             climateProvider,
             hydroProvider,
@@ -74,18 +91,33 @@ public final class FieldManagerFactory {
             seed,
             macroProvider,
             coastlineProvider,
-            rawBuilder,
-            cachedBuilder,
             fieldManager,
             strategy,
             diagnostics
         );
     }
 
+    private static IMacroCellProvider createMacroProvider(MacroFieldProvider macroFieldProvider,
+                                                          CoastlineProvider coastlineProvider,
+                                                          MacroCacheConfig macroCacheConfig,
+                                                          FieldDiagnostics diagnostics) {
+
+        TalosMacroCellBuilder rawBuilder =
+            new TalosMacroCellBuilder(macroFieldProvider, coastlineProvider);
+
+        if (!macroCacheConfig.isEnabled()) {
+            return rawBuilder;
+        }
+
+        int cacheSize = Math.max(32, macroCacheConfig.getMaxEntries());
+        MacroCacheProbe probe = diagnostics.macroCache();
+
+        return new CachingMacroCellBuilder(rawBuilder, cacheSize, probe);
+    }
+
     private static BiomeDecisionStrategy createStrategy(FieldManagerConfig config,
                                                         FieldManager fieldManager,
                                                         World world) {
-
         return switch (config.getStrategyMode()) {
             case FULL -> new FullStrategy(config.getStrategyVersion(), fieldManager, world);
             case SIMPLIFIED -> new SimplifiedStrategy(config.getStrategyVersion(), fieldManager, world);

@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManagerConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.ChunkProviderTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineSample;
@@ -31,18 +32,18 @@ public final class TalosMacroCellBuilder implements IMacroCellProvider {
     }
 
     @Override
-    public ChunkProviderTalos2.ChunkShoreCache peekCached(int chunkX, int chunkZ) {
-        return null;
-    }
-
-    @Override
-    public void invalidate(int chunkX, int chunkZ) {
-        // raw builder没有缓存
-    }
-
-    @Override
     public void invalidateAll() {
-        // raw builder没有缓存
+        // Stateless builder; nothing to invalidate.
+    }
+
+    @Override
+    public void warmup(FieldManagerConfig config, long worldSeed) {
+        // No-op for now; hook available for future precomputation.
+    }
+
+    @Override
+    public DiagnosticsView getDiagnostics() {
+        return DiagnosticsView.noop();
     }
 
     public void populate(int chunkX, int chunkZ, ChunkProviderTalos2.ChunkShoreCache out) {

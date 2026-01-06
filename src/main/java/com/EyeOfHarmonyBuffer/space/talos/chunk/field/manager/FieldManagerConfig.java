@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineSettings;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.config.MacroCacheConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings.ClimateProviderSettings;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings.HydroProviderSettings;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings.MacroFieldSettings;
@@ -18,21 +19,25 @@ public final class FieldManagerConfig {
     private final MacroFieldSettings macroSettings;
     private final CoastlineSettings coastlineSettings;
     private final int macroCacheSize;
+    private final boolean macroCacheEnabled;
     private final StrategyMode strategyMode;
     private final String strategyVersion;
     private final TerrainProviderSettings terrainSettings;
     private final ClimateProviderSettings climateSettings;
     private final HydroProviderSettings hydroSettings;
+    private final MacroCacheConfig macroCache;
 
     private FieldManagerConfig(Builder builder) {
         this.macroSettings = builder.macroSettings;
         this.coastlineSettings = builder.coastlineSettings;
         this.macroCacheSize = builder.macroCacheSize;
+        this.macroCacheEnabled = builder.macroCacheEnabled;
         this.strategyMode = builder.strategyMode;
         this.strategyVersion = builder.strategyVersion;
         this.terrainSettings = builder.terrainSettings;
         this.climateSettings = builder.climateSettings;
         this.hydroSettings = builder.hydroSettings;
+        this.macroCache = Objects.requireNonNull(builder.macroCache, "macroCache");
     }
 
     public static Builder builder() {
@@ -75,11 +80,21 @@ public final class FieldManagerConfig {
         return hydroSettings;
     }
 
+    public boolean isMacroCacheEnabled() {
+        return macroCacheEnabled;
+    }
+
+    public MacroCacheConfig getMacroCache() {
+        return macroCache;
+    }
+
     public static final class Builder {
 
         private MacroFieldSettings macroSettings = MacroFieldSettings.defaults();
         private CoastlineSettings coastlineSettings = CoastlineSettings.defaults();
         private int macroCacheSize = 1024;
+        private MacroCacheConfig macroCache = MacroCacheConfig.defaults();
+        private boolean macroCacheEnabled = true;
         private StrategyMode strategyMode = StrategyMode.SIMPLIFIED;
         private String strategyVersion = "1.0.0";
         private TerrainProviderSettings terrainSettings = TerrainProviderSettings.defaults();
@@ -100,6 +115,16 @@ public final class FieldManagerConfig {
 
         public Builder macroCacheSize(int macroCacheSize) {
             this.macroCacheSize = macroCacheSize;
+            return this;
+        }
+
+        public Builder macroCache(MacroCacheConfig macroCache) {
+            this.macroCache = Objects.requireNonNull(macroCache, "macroCache");
+            return this;
+        }
+
+        public Builder macroCacheEnabled(boolean macroCacheEnabled) {
+            this.macroCacheEnabled = macroCacheEnabled;
             return this;
         }
 

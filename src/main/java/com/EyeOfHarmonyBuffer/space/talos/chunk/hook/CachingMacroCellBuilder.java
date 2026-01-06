@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.hook;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.MacroCacheProbe;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.MacroCacheInvalidator;
@@ -16,18 +17,30 @@ public final class CachingMacroCellBuilder implements IMacroCellProvider, MacroC
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final LinkedHashMap<Long, ChunkProviderTalos2.ChunkShoreCache> cache;
     private final int maxEntries;
+    private final MacroCacheProbe probe;
 
     public CachingMacroCellBuilder(IMacroCellProvider delegate) {
         this(delegate, 512);
     }
 
     public CachingMacroCellBuilder(IMacroCellProvider delegate, int maxEntries) {
+        this(delegate, maxEntries, MacroCacheProbe.NOOP);
+    }
+
+    public CachingMacroCellBuilder(IMacroCellProvider delegate,
+                                   int maxEntries,
+                                   MacroCacheProbe probe) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.maxEntries = Math.max(32, maxEntries);
+        this.probe = Objects.requireNonNull(probe, "probe");
         this.cache = new LinkedHashMap<>(this.maxEntries, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Long, ChunkProviderTalos2.ChunkShoreCache> eldest) {
-                return size() > CachingMacroCellBuilder.this.maxEntries;
+                boolean evict = size() > CachingMacroCellBuilder.this.maxEntries;
+                if (evict) {
+                    CachingMacroCellBuilder.this.probe.recordEviction();
+                }
+                return evict;
             }
         };
     }
@@ -40,13 +53,18 @@ public final class CachingMacroCellBuilder implements IMacroCellProvider, MacroC
         try {
             ChunkProviderTalos2.ChunkShoreCache cached = cache.get(key);
             if (cached != null) {
+                probe.recordHit();
                 return cloneCache(cached);
             }
         } finally {
             lock.readLock().unlock();
         }
 
+        probe.recordMiss();
+        long start = System.nanoTime();
         ChunkProviderTalos2.ChunkShoreCache fresh = delegate.build(chunkX, chunkZ);
+        probe.recordLoadNanos(Math.max(0L, System.nanoTime() - start));
+
         ChunkProviderTalos2.ChunkShoreCache snapshot = cloneCache(fresh);
 
         lock.writeLock().lock();

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
@@ -16,6 +17,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
@@ -25,11 +28,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final World world;
     private final IMacroCellProvider macroCellBuilder;
+    private final FieldDiagnostics diagnostics;
 
     private static final BlockMetaPair SNOW_SURFACE = new BlockMetaPair(Blocks.snow, (byte) 0);
     private static final BlockMetaPair PACKED_ICE = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
     private static final BlockMetaPair SANDSTONE_FILL = new BlockMetaPair(Blocks.sandstone, (byte) 0);
     private static final BlockMetaPair MYCELIUM_TOP = new BlockMetaPair(Blocks.mycelium, (byte) 0);
+
+    private static final Logger LOGGER = LogManager.getLogger("EyeOfHarmonyBuffer");
 
     private static long now() { return System.nanoTime(); }
     private static long ms(long nanos) { return nanos / 1_000_000L; }
@@ -72,6 +78,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
 
         this.macroCellBuilder = hook.macroCellBuilder();
+        this.diagnostics = hook.diagnostics();
 
         System.out.println("[Talos2] CP builder instance=" +
             System.identityHashCode(this.macroCellBuilder));
@@ -102,7 +109,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final long t0 = now();
 
         long tClear = 0, tCache = 0, tBase = 0, tFill = 0, tClean = 0, tBed = 0;
-        long tClamp = 0; // kept for timing log compatibility
+        long tClamp = 0;
 
         long a = now();
         clearChunkBlocks(blocks, meta);
@@ -114,7 +121,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         ChunkShoreCache east = macroCellBuilder.peekCached(chunkX + 1, chunkZ);
         if (east != null) {
-            // placeholder for cache diagnostics if needed
         }
 
         resolveBiomesForCells(chunkX, chunkZ, shore);
@@ -138,6 +144,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         long tTotal = now() - t0;
         logChunkTiming(chunkX, chunkZ, tTotal, tClear, tCache, tBase, tClamp, tFill, tClean, tBed);
+
+        logMacroCacheStats("chunk=" + chunkX + "," + chunkZ);
     }
 
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
@@ -579,6 +587,20 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 cell.resolvedBiome = biome;
             }
         }
+    }
+
+    private void logMacroCacheStats(String reason) {
+        if (diagnostics == null) return;
+
+        FieldDiagnostics.MacroCacheSnapshot snapshot = diagnostics.snapshot().macroCache();
+        LOGGER.info(
+            "[MacroCache][{}] hits={} misses={} hitRate={} evictions={}",
+            reason,
+            snapshot.getHits(),
+            snapshot.getMisses(),
+            snapshot.hitRate(),
+            snapshot.getEvictions()
+        );
     }
 
     @Override

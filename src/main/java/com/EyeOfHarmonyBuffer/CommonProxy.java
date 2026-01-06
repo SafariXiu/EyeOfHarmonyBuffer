@@ -32,8 +32,9 @@ public class CommonProxy {
         File itemsConfigFile = new File(configDir, "items.cfg");
         File fluidsConfigFile = new File(configDir, "fluids.cfg");
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
+        File FieldManagerCacheConfig = new File(configDir, "FieldManagerCacheConfig.cfg");
 
-        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile,MachineLoaderConfigFile);
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile,MachineLoaderConfigFile, FieldManagerCacheConfig);
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)

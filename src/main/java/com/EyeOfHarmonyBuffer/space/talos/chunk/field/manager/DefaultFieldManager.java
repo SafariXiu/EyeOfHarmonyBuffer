@@ -50,6 +50,20 @@ public final class DefaultFieldManager implements FieldManager {
     }
 
     @Override
+    public FieldDiagnostics getDiagnostics() {
+        ensureActive();
+        return diagnostics;
+    }
+
+    @Override
+    public void invalidateMacroCache() {
+        ensureActive();
+        if (macroCache != null) {
+            macroCache.invalidateAll();
+        }
+    }
+
+    @Override
     public TerrainProvider getTerrainProvider() {
         ensureActive();
         return terrainProvider;
@@ -133,8 +147,8 @@ public final class DefaultFieldManager implements FieldManager {
             ? EnumSet.allOf(FieldDomain.class)
             : EnumSet.copyOf(Arrays.asList(domains));
 
-        if (targets.contains(FieldDomain.MACRO) && macroCache != null) {
-            macroCache.invalidateAll();
+        if (targets.contains(FieldDomain.MACRO)) {
+            invalidateMacroCache();
         }
         if (targets.contains(FieldDomain.TERRAIN) && terrainProvider != null) {
             terrainProvider.invalidateCaches();

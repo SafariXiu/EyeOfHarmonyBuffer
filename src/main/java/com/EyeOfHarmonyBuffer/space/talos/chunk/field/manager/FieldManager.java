@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.ClimateProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.HydroProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
@@ -13,6 +14,10 @@ import java.util.Objects;
 public interface FieldManager extends AutoCloseable {
 
     IMacroCellProvider getMacroProvider();
+
+    FieldDiagnostics getDiagnostics();
+
+    void invalidateMacroCache();
 
     TerrainProvider getTerrainProvider();
 

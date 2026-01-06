@@ -1,9 +1,10 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldDomain;
@@ -21,17 +22,14 @@ public final class FieldDiagnostics {
     private final EnumMap<FieldDomain, LongAdder> providerNanos = new EnumMap<>(FieldDomain.class);
 
     private final LongAdder aggregateRequests = new LongAdder();
+    private final MacroCacheMetrics macroCacheMetrics;
+    private final MacroCacheProbe macroCacheProbe;
 
     public FieldDiagnostics() {
-        for (FieldDomain domain : FieldDomain.values()) {
-            requestCounts.put(domain, new LongAdder());
-            providerCalls.put(domain, new LongAdder());
-            providerErrors.put(domain, new LongAdder());
-            providerNanos.put(domain, new LongAdder());
-        }
+        this(true);
     }
 
-    public void recordSample(EnumSet<FieldDomain> domains) {
+    public void recordSample(java.util.EnumSet<FieldDomain> domains) {
         aggregateRequests.increment();
         for (FieldDomain domain : domains) {
             requestCounts.get(domain).increment();
@@ -45,10 +43,9 @@ public final class FieldDiagnostics {
     }
 
     public void end(SampleToken token) {
-        if (token == null) {
-            return;
+        if (token != null) {
+            token.close();
         }
-        token.close();
     }
 
     void finish(FieldDomain domain, long elapsedNanos) {
@@ -66,7 +63,8 @@ public final class FieldDiagnostics {
 
     public DiagnosticsReport snapshot() {
         DiagnosticsReport.Builder builder = DiagnosticsReport.builder()
-            .totalRequests(aggregateRequests.sum());
+            .totalRequests(aggregateRequests.sum())
+            .macroCache(macroCacheMetrics.snapshot());
 
         for (FieldDomain domain : FieldDomain.values()) {
             builder.withDomainMetrics(
@@ -78,6 +76,22 @@ public final class FieldDiagnostics {
             );
         }
         return builder.build();
+    }
+
+    public FieldDiagnostics(boolean diagnosticsEnabled) {
+        this.macroCacheMetrics = diagnosticsEnabled
+            ? MacroCacheMetrics.create()
+            : MacroCacheMetrics.noop();
+
+        this.macroCacheProbe = diagnosticsEnabled
+            ? new SlidingWindowMacroCacheProbe(macroCacheMetrics)
+            : MacroCacheProbe.NOOP;
+
+        initializeDomainCounters();
+    }
+
+    public MacroCacheProbe macroCache() {
+        return macroCacheProbe;
     }
 
     public static final class SampleToken implements AutoCloseable {
@@ -94,11 +108,10 @@ public final class FieldDiagnostics {
 
         @Override
         public void close() {
-            if (closed) {
-                return;
+            if (!closed) {
+                closed = true;
+                diagnostics.finish(domain, System.nanoTime() - startNanos);
             }
-            closed = true;
-            diagnostics.finish(domain, System.nanoTime() - startNanos);
         }
 
         public FieldDomain domain() {
@@ -110,14 +123,26 @@ public final class FieldDiagnostics {
 
         private final long totalRequests;
         private final EnumMap<FieldDomain, DomainMetrics> metrics;
+        private final MacroCacheSnapshot macroCacheSnapshot;
 
-        private DiagnosticsReport(long totalRequests, EnumMap<FieldDomain, DomainMetrics> metrics) {
+        private DiagnosticsReport(long totalRequests,
+                                  EnumMap<FieldDomain, DomainMetrics> metrics,
+                                  MacroCacheSnapshot macroCacheSnapshot) {
             this.totalRequests = totalRequests;
             this.metrics = metrics;
+            this.macroCacheSnapshot = macroCacheSnapshot;
         }
 
         public long getTotalRequests() {
             return totalRequests;
+        }
+
+        public EnumMap<FieldDomain, DomainMetrics> allMetrics() {
+            return new EnumMap<>(metrics);
+        }
+
+        public MacroCacheSnapshot macroCache() {
+            return macroCacheSnapshot;
         }
 
         public static final class DomainMetrics {
@@ -153,10 +178,6 @@ public final class FieldDiagnostics {
             }
         }
 
-        public EnumMap<FieldDomain, DomainMetrics> allMetrics() {
-            return new EnumMap<>(metrics);
-        }
-
         public static Builder builder() {
             return new Builder();
         }
@@ -165,11 +186,11 @@ public final class FieldDiagnostics {
 
             private long totalRequests;
             private final EnumMap<FieldDomain, DomainMetrics> metrics = new EnumMap<>(FieldDomain.class);
+            private MacroCacheSnapshot macroCacheSnapshot = MacroCacheSnapshot.empty();
 
             private Builder() {
-                for (FieldDomain domain : FieldDomain.values()) {
-                    metrics.put(domain, new DomainMetrics(0L, 0L, 0L, 0L));
-                }
+                Arrays.stream(FieldDomain.values())
+                    .forEach(domain -> metrics.put(domain, new DomainMetrics(0L, 0L, 0L, 0L)));
             }
 
             public Builder totalRequests(long totalRequests) {
@@ -186,9 +207,162 @@ public final class FieldDiagnostics {
                 return this;
             }
 
-            public DiagnosticsReport build() {
-                return new DiagnosticsReport(totalRequests, metrics);
+            public Builder macroCache(MacroCacheSnapshot snapshot) {
+                this.macroCacheSnapshot = snapshot;
+                return this;
             }
+
+            public DiagnosticsReport build() {
+                return new DiagnosticsReport(totalRequests, metrics, macroCacheSnapshot);
+            }
+        }
+    }
+
+    public static final class MacroCacheMetrics {
+
+        private static final MacroCacheMetrics NOOP = new MacroCacheMetrics(true);
+
+        private final boolean noop;
+        private final LongAdder hits = new LongAdder();
+        private final LongAdder misses = new LongAdder();
+        private final LongAdder peekHits = new LongAdder();
+        private final LongAdder peekMisses = new LongAdder();
+        private final LongAdder evictions = new LongAdder();
+        private final LongAdder buildNanos = new LongAdder();
+
+        private MacroCacheMetrics(boolean noop) {
+            this.noop = noop;
+        }
+
+        public static MacroCacheMetrics create() {
+            return new MacroCacheMetrics(false);
+        }
+
+        public static MacroCacheMetrics noop() {
+            return NOOP;
+        }
+
+        public void recordHit()       { if (!noop) hits.increment(); }
+        public void recordMiss()      { if (!noop) misses.increment(); }
+        public void recordPeekHit()   { if (!noop) peekHits.increment(); }
+        public void recordPeekMiss()  { if (!noop) peekMisses.increment(); }
+        public void recordEviction()  { if (!noop) evictions.increment(); }
+        public void recordBuildNanos(long nanos) {
+            if (!noop && nanos > 0L) {
+                buildNanos.add(nanos);
+            }
+        }
+
+        public MacroCacheSnapshot snapshot() {
+            if (noop) {
+                return MacroCacheSnapshot.empty();
+            }
+            return new MacroCacheSnapshot(
+                hits.sum(),
+                misses.sum(),
+                peekHits.sum(),
+                peekMisses.sum(),
+                evictions.sum(),
+                buildNanos.sum()
+            );
+        }
+    }
+
+    public static final class MacroCacheSnapshot {
+        private static final MacroCacheSnapshot EMPTY = new MacroCacheSnapshot(0, 0, 0, 0, 0, 0);
+
+        private final long hits;
+        private final long misses;
+        private final long peekHits;
+        private final long peekMisses;
+        private final long evictions;
+        private final long buildNanos;
+
+        private MacroCacheSnapshot(long hits,
+                                   long misses,
+                                   long peekHits,
+                                   long peekMisses,
+                                   long evictions,
+                                   long buildNanos) {
+            this.hits = hits;
+            this.misses = misses;
+            this.peekHits = peekHits;
+            this.peekMisses = peekMisses;
+            this.evictions = evictions;
+            this.buildNanos = buildNanos;
+        }
+
+        public static MacroCacheSnapshot empty() {
+            return EMPTY;
+        }
+
+        public long getHits()       { return hits; }
+        public long getMisses()     { return misses; }
+        public long getPeekHits()   { return peekHits; }
+        public long getPeekMisses() { return peekMisses; }
+        public long getEvictions()  { return evictions; }
+        public long getBuildNanos() { return buildNanos; }
+
+        public double hitRate() {
+            long total = hits + misses;
+            return total == 0 ? 0.0 : hits / (double) total;
+        }
+
+        public double averageBuildMillis() {
+            long builds = Math.max(1L, hits + misses);
+            return (buildNanos / 1_000_000.0) / builds;
+        }
+    }
+
+    private static final class SlidingWindowMacroCacheProbe implements MacroCacheProbe {
+        private final AtomicLong hits = new AtomicLong();
+        private final AtomicLong misses = new AtomicLong();
+        private final AtomicLong totalLoadNanos = new AtomicLong();
+        private final AtomicLong evictions = new AtomicLong();
+        private final MacroCacheMetrics metrics;
+
+        private SlidingWindowMacroCacheProbe(MacroCacheMetrics metrics) {
+            this.metrics = Objects.requireNonNull(metrics, "metrics");
+        }
+
+        @Override public void recordHit() {
+            hits.incrementAndGet();
+            metrics.recordHit();
+        }
+
+        @Override public void recordMiss() {
+            misses.incrementAndGet();
+            metrics.recordMiss();
+        }
+
+        @Override public void recordLoadNanos(long nanos) {
+            long clamped = Math.max(0L, nanos);
+            totalLoadNanos.addAndGet(clamped);
+            metrics.recordBuildNanos(clamped);
+        }
+
+        @Override public void recordEviction() {
+            evictions.incrementAndGet();
+            metrics.recordEviction();
+        }
+
+        @Override
+        public MacroCacheStats snapshot() {
+            return new MacroCacheStats(
+                hits.get(),
+                misses.get(),
+                totalLoadNanos.get(),
+                evictions.get()
+            );
+        }
+    }
+
+    private void initializeDomainCounters() {
+        for (FieldDomain domain : FieldDomain.values()) {
+            requestCounts.putIfAbsent(domain, new LongAdder());
+            providerCalls.putIfAbsent(domain, new LongAdder());
+            providerErrors.putIfAbsent(domain, new LongAdder());
+            providerNanos.putIfAbsent(domain, new LongAdder());
         }
     }
 }
