@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver;
 
-import com.EyeOfHarmonyBuffer.space.talos.ChunkProviderTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.ChunkProviderTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiomeField;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;

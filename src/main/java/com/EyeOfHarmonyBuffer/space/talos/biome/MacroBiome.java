@@ -169,12 +169,43 @@ public enum MacroBiome {
         return this == OCEANIC;
     }
 
+    public boolean isHardEdge() {
+        switch (this) {
+            case MOUNTAINOUS:
+            case SUBPOLAR:
+                return true;
+            default:
+                return false;
+        }
+    }
     public boolean isCoastal() {
         return this == COASTAL;
     }
 
     public boolean isLand() {
         return !isOceanic();
+    }
+
+    public float getPlateauAnchorWeight() {
+        switch (this) {
+            case OCEANIC:
+            case COASTAL:
+                return 0.0f;
+            case LOWLAND_WET:
+                return 0.05f;
+            case PLAINS_TEMPERATE:
+            case WARM_DRY:
+            case TROPICAL_HUMID:
+                return 0.10f;
+            case COOL_FORESTED:
+                return 0.20f;
+            case SUBPOLAR:
+                return 0.35f;
+            case MOUNTAINOUS:
+                return 1.0f;
+            default:
+                return 0.0f;
+        }
     }
 
     private static int adjustBrightness(int rgb, float delta) {

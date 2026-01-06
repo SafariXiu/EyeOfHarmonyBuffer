@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.Talos2MapExporter;
 import com.EyeOfHarmonyBuffer.space.talos.Talos2NoiseConfig;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiomeField;
-import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;

@@ -1,7 +1,9 @@
-package com.EyeOfHarmonyBuffer.space.talos;
+package com.EyeOfHarmonyBuffer.space.talos.chunk;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.CachingMacroCellBuilder;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.TalosBiomeDebugHooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
-import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver.Talos2BiomeResolver;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -11,10 +13,7 @@ import java.util.Map;
 
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
-    private final MacroBiomeField macroField;
-    private final CoastlineAtlas coastlineAtlas;
-    private final Talos2BiomeResolver biomeResolver;
-    private final TalosMacroCellBuilder macroCellBuilder;
+    private final CachingMacroCellBuilder macroCellBuilder;
     private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> shoreCache = new Long2ObjectOpenHashMap<>();
     private final World world;
 
@@ -23,11 +22,7 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         this.world = world;
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
-
-        this.macroField = hook.macroField;
-        this.coastlineAtlas = hook.coastlineAtlas;
         this.macroCellBuilder = hook.macroCellBuilder;
-        this.biomeResolver = new Talos2BiomeResolver(world, this.macroField);
 
         System.out.println("[Talos2] WCM builder instance=" +
             System.identityHashCode(this.macroCellBuilder));
@@ -39,41 +34,32 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     }
 
     private BiomeGenBase pickBiomeFor(int x, int z) {
+        BiomeGenBase generated = TalosBiomeDebugHooks.getGeneratedBiome(x, z);
+        if (generated != null) {
+            return generated;
+        }
+
         ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = getCell(x, z);
         if (cell == null) {
             return TalosBiomes.TALOS_PLAINS;
         }
 
-        BiomeGenBase biome;
-        if (!cell.isLand) {
-            int dist = ushort(cell.distToCoast);
-            int shelf = ushort(cell.shelfWidth);
-            biome = (dist <= shelf) ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
-        } else {
-            int dist = ushort(cell.distToCoast);
-            int beach = ushort(cell.beachWidth);
-            if (dist <= beach) {
-                biome = TalosBiomes.TALOS_BEACH;
-            } else {
-                biome = this.biomeResolver.resolve(x, z, cell);
-                if (biome == null) {
-                    biome = TalosBiomes.TALOS_PLAINS;
-                }
-            }
-        }
+        boolean isLand = cell.isLand;
+        int dist = ushort(cell.distToCoast);
+        int beach = ushort(cell.beachWidth);
+        int shelf = ushort(cell.shelfWidth);
 
-        BiomeGenBase generated = TalosBiomeDebugHooks.getGeneratedBiome(x, z);
-        if (generated != null && generated != biome) {
-            System.out.println("[Talos2] BIOME MISMATCH @ (" + x + "," + z + ")" +
-                " WCM=" + biome.biomeName + ", CP=" + generated.biomeName +
-                " macro=" + cell.primary + "/" + cell.secondary +
-                " tier=" + cell.tier +
-                " plate=" + cell.plateId +
-                " patch=" + cell.patchVariant +
-                " blend=" + String.format("%.2f", cell.blendPrimary));
-        }
+        return pickBaseBiome(isLand, dist, beach, shelf);
+    }
 
-        return biome;
+    private BiomeGenBase pickBaseBiome(boolean isLand, int distToCoast, int beachWidth, int shelfWidth) {
+        if (!isLand) {
+            return distToCoast <= shelfWidth ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+        }
+        if (distToCoast <= beachWidth) {
+            return TalosBiomes.TALOS_BEACH;
+        }
+        return TalosBiomes.TALOS_PLAINS;
     }
 
     @Override
@@ -116,9 +102,8 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         int chunkZ = Math.floorDiv(gz, 16);
         long key = (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
 
-        ChunkProviderTalos2.ChunkShoreCache cache = shoreCache.computeIfAbsent(
-            key, k -> macroCellBuilder.build(chunkX, chunkZ)
-        );
+        ChunkProviderTalos2.ChunkShoreCache cache =
+            shoreCache.computeIfAbsent(key, k -> macroCellBuilder.build(chunkX, chunkZ));
 
         int lx = gx - chunkX * 16;
         int lz = gz - chunkZ * 16;

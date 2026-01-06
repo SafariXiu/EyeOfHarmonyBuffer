@@ -1,5 +1,9 @@
-package com.EyeOfHarmonyBuffer.space.talos;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.hook;
 
+import com.EyeOfHarmonyBuffer.space.talos.DefaultCoastlineAtlas;
+import com.EyeOfHarmonyBuffer.space.talos.SimplexNoiseOctave;
+import com.EyeOfHarmonyBuffer.space.talos.Talos2NoiseConfig;
+import com.EyeOfHarmonyBuffer.space.talos.TalosMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiomeField;
 import net.minecraft.world.World;
 
@@ -18,7 +22,8 @@ public final class Talos2Hooks {
         public final DefaultCoastlineAtlas coastlineAtlas;
         public final MacroBiomeField macroField;
         public final MacroBiomeField.MacroBiomeConfig macroConfig;
-        public final TalosMacroCellBuilder macroCellBuilder;
+        public final TalosMacroCellBuilder rawMacroCellBuilder;
+        public final CachingMacroCellBuilder macroCellBuilder;
         public final SimplexNoiseOctave terrainNoise;
 
         private HookData(World world,
@@ -26,13 +31,15 @@ public final class Talos2Hooks {
                          DefaultCoastlineAtlas coastlineAtlas,
                          MacroBiomeField macroField,
                          MacroBiomeField.MacroBiomeConfig macroConfig,
-                         TalosMacroCellBuilder macroCellBuilder,
+                         TalosMacroCellBuilder rawMacroCellBuilder,
+                         CachingMacroCellBuilder macroCellBuilder,
                          SimplexNoiseOctave terrainNoise) {
             this.world = world;
             this.seed = seed;
             this.coastlineAtlas = coastlineAtlas;
             this.macroField = macroField;
             this.macroConfig = macroConfig;
+            this.rawMacroCellBuilder = rawMacroCellBuilder;
             this.macroCellBuilder = macroCellBuilder;
             this.terrainNoise = terrainNoise;
         }
@@ -46,7 +53,20 @@ public final class Talos2Hooks {
                                 MacroBiomeField.MacroBiomeConfig macroConfig,
                                 TalosMacroCellBuilder macroCellBuilder,
                                 SimplexNoiseOctave terrainNoise) {
-        HookData data = new HookData(world, seed, coastlineAtlas, macroField, macroConfig, macroCellBuilder, terrainNoise);
+
+        TalosMacroCellBuilder rawBuilder = macroCellBuilder;
+        CachingMacroCellBuilder cachedBuilder = new CachingMacroCellBuilder(rawBuilder, 1024);
+
+        HookData data = new HookData(
+            world,
+            seed,
+            coastlineAtlas,
+            macroField,
+            macroConfig,
+            rawBuilder,
+            cachedBuilder,
+            terrainNoise
+        );
         HOOKS.put(dim, data);
         log("register", dim, world, data);
     }
@@ -75,9 +95,10 @@ public final class Talos2Hooks {
         MacroBiomeField field = new MacroBiomeField(seed, macroConfig);
         DefaultCoastlineAtlas atlas = new DefaultCoastlineAtlas(field, seed);
         SimplexNoiseOctave terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
-        TalosMacroCellBuilder builder = new TalosMacroCellBuilder(field, atlas, terrainNoise);
+        TalosMacroCellBuilder rawBuilder = new TalosMacroCellBuilder(field, atlas);
+        CachingMacroCellBuilder cachedBuilder = new CachingMacroCellBuilder(rawBuilder, 1024);
 
-        return new HookData(world, seed, atlas, field, macroConfig, builder, terrainNoise);
+        return new HookData(world, seed, atlas, field, macroConfig, rawBuilder, cachedBuilder, terrainNoise);
     }
 
     private static void log(String tag, int dim, World world, HookData data) {
@@ -86,7 +107,8 @@ public final class Talos2Hooks {
             " worldHash=" + System.identityHashCode(world) +
             (data == null
                 ? " -> null"
-                : " -> builderId=" + System.identityHashCode(data.macroCellBuilder) +
+                : " -> rawBuilderId=" + System.identityHashCode(data.rawMacroCellBuilder) +
+                " cachedBuilderId=" + System.identityHashCode(data.macroCellBuilder) +
                 " macroConfig=" + macroConfigDigest(data.macroConfig)));
     }
 

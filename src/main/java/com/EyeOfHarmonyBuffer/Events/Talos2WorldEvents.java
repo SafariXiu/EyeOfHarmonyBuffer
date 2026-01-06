@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.Events;
 
-import com.EyeOfHarmonyBuffer.space.talos.ChunkProviderTalos2;
-import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.ChunkProviderTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;

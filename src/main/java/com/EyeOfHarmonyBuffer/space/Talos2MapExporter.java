@@ -1,9 +1,10 @@
 package com.EyeOfHarmonyBuffer.space;
 
 import com.EyeOfHarmonyBuffer.space.talos.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.ChunkProviderTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.Talos2BiomeResolver.Talos2BiomeResolver;
-import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -17,7 +18,8 @@ import java.util.*;
 
 public class Talos2MapExporter {
 
-    private Talos2MapExporter() {}
+    public Talos2MapExporter() {
+    }
 
     public static final class ExportConfig {
 
@@ -138,8 +140,8 @@ public class Talos2MapExporter {
                         int dist = coastlineAtlas.distanceToCoast(gx, gz);
 
                         MacroBiomeField.MacroSample sample = macroField.sampleMacro(gx, gz);
-                        MacroBiome primary = (sample != null && sample.dominant != null)
-                            ? sample.dominant
+                        MacroBiome primary = (sample != null && sample.primary != null)
+                            ? sample.primary
                             : MacroBiome.PLAINS_TEMPERATE;
 
                         int shelfW = coastlineAtlas.shelfWidth(gx, gz, primary);
@@ -379,8 +381,9 @@ public class Talos2MapExporter {
 
         final MacroBiomeField macroField = resolveMacroField(hook, seed, macroCfg);
         final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed, macroField, macroCfg);
-        final Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
-        final MacroCellSampler sampler = new MacroCellSampler(macroField, coastlineAtlas, seed);
+        SimplexNoiseOctave terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
+        TalosMacroCellBuilder builder = new TalosMacroCellBuilder(macroField, coastlineAtlas);
+        MacroCellSampler sampler = new MacroCellSampler(builder);
 
         final int half = sizeBlocks / 2;
         final int minGx = centerX - half;
@@ -482,7 +485,9 @@ public class Talos2MapExporter {
         final MacroBiomeField macroField = resolveMacroField(hook, seed, macroCfg);
         final CoastlineAtlas coastlineAtlas = resolveCoastlineAtlas(hook, seed, macroField, macroCfg);
         final Talos2BiomeResolver resolver = new Talos2BiomeResolver(world, macroField);
-        final MacroCellSampler sampler = new MacroCellSampler(macroField, coastlineAtlas, seed);
+        SimplexNoiseOctave terrainNoise = new SimplexNoiseOctave(seed ^ 0x1234ABCDL, 4);
+        TalosMacroCellBuilder builder = new TalosMacroCellBuilder(macroField, coastlineAtlas);
+        MacroCellSampler sampler = new MacroCellSampler(builder);
 
         final int half = sizeBlocks / 2;
         final int minGx = centerX - half;
@@ -699,17 +704,11 @@ public class Talos2MapExporter {
     }
 
     private static final class MacroCellSampler {
-        private static final MacroBiome[] MACRO_VALUES = MacroBiome.values();
-
-        private final MacroBiomeField macroField;
-        private final CoastlineAtlas coastline;
-        private final SimplexNoiseOctave terrainNoise;
+        private final TalosMacroCellBuilder builder;
         private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> chunkCache = new HashMap<>();
 
-        MacroCellSampler(MacroBiomeField field, CoastlineAtlas coastline, long worldSeed) {
-            this.macroField = Objects.requireNonNull(field, "macroField");
-            this.coastline = Objects.requireNonNull(coastline, "coastline");
-            this.terrainNoise = new SimplexNoiseOctave(worldSeed ^ 0x1234ABCDL, 4);
+        MacroCellSampler(TalosMacroCellBuilder builder) {
+            this.builder = Objects.requireNonNull(builder, "builder");
         }
 
         ChunkProviderTalos2.ChunkShoreCache.MacroCell sampleCell(int gx, int gz) {
@@ -717,115 +716,12 @@ public class Talos2MapExporter {
             int chunkZ = floorDiv(gz, 16);
             long key = (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
 
-            ChunkProviderTalos2.ChunkShoreCache chunk = chunkCache.computeIfAbsent(
-                key, k -> buildChunk(chunkX, chunkZ)
-            );
+            ChunkProviderTalos2.ChunkShoreCache chunk =
+                chunkCache.computeIfAbsent(key, k -> builder.build(chunkX, chunkZ));
 
             int lx = gx - chunkX * 16;
             int lz = gz - chunkZ * 16;
             return chunk.macroContext[lx][lz];
         }
-
-        private ChunkProviderTalos2.ChunkShoreCache buildChunk(int chunkX, int chunkZ) {
-            ChunkProviderTalos2.ChunkShoreCache cache = new ChunkProviderTalos2.ChunkShoreCache();
-            macroField.sample(chunkX, chunkZ, cache);
-            populateCoastlineAndHeights(cache, chunkX, chunkZ);
-            return cache;
-        }
-
-        private void populateCoastlineAndHeights(ChunkProviderTalos2.ChunkShoreCache out,
-                                                 int chunkX, int chunkZ) {
-            for (int lx = 0; lx < 17; lx++) {
-                for (int lz = 0; lz < 17; lz++) {
-                    int gx = chunkX * 16 + lx;
-                    int gz = chunkZ * 16 + lz;
-
-                    MacroBiome primary = safeMacro(out.macroPrimary[lx][lz]);
-                    MacroBiome secondary = safeMacro(out.macroSecondary[lx][lz]);
-                    double blend = (out.macroBlend[lx][lz] & 0xFF) / 255.0;
-
-                    boolean isLand = coastline.isLand(gx, gz);
-                    int dist = clampToU16(coastline.distanceToCoast(gx, gz));
-                    int beach = clampToU16(coastline.beachWidth(gx, gz, primary));
-                    int shelf = clampToU16(coastline.shelfWidth(gx, gz, primary));
-
-                    ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = out.macroContext[lx][lz];
-                    cell.primary = primary;
-                    cell.secondary = secondary;
-                    cell.blendPrimary = blend;
-                    cell.tier = out.macroTier[lx][lz];
-                    cell.plateId = out.macroPlateId[lx][lz];
-                    cell.plateauAnchor = out.macroPlateau[lx][lz];
-                    cell.isLand = isLand;
-                    cell.distToCoast = (short) dist;
-                    cell.beachWidth = (short) beach;
-                    cell.shelfWidth = (short) shelf;
-
-                    cell.patchVariant = out.macroPatchVariant[lx][lz];
-                    cell.patchSingleBiome = (out.macroPatchFlags[lx][lz] & 0x1) != 0;
-                    cell.patchEdgeBlend = (out.macroPatchEdge[lx][lz] & 0xFF) / 255.0D;
-
-                    short macroBase = (short) Math.round(
-                        sampleBlendedMacroHeight(gx, gz, primary, secondary, blend)
-                    );
-                    cell.macroBaseHeight = macroBase;
-                }
-            }
-        }
-
-        private MacroBiome safeMacro(byte id) {
-            MacroBiome m = MACRO_VALUES[id & 0xFF];
-            return (m != null) ? m : MacroBiome.PLAINS_TEMPERATE;
-        }
-
-        private short clampToU16(int v) {
-            if (v < 0) return 0;
-            if (v > 65535) return (short) 0xFFFF;
-            return (short) v;
-        }
-
-        private double sampleBlendedMacroHeight(int gx, int gz,
-                                                MacroBiome primary,
-                                                MacroBiome secondary,
-                                                double blendPrimary) {
-            MacroHeightSample sample = blendHeightProfiles(primary, secondary, blendPrimary);
-            double base = lerp(sample.min, sample.max, sample.blend);
-            double plateau = sample.offset * 32.0D;
-            double micro = terrainNoise.noise(gx * 0.0008D, gz * 0.0008D) * sample.variation * 3.0D;
-            return clamp(base + plateau + micro, sample.min, sample.max);
-        }
-
-        private MacroHeightSample blendHeightProfiles(MacroBiome primary,
-                                                      MacroBiome secondary,
-                                                      double blendPrimary) {
-            MacroBiome.MacroHeightProfile hpA = (primary != null) ? primary.height : MacroBiome.PLAINS_TEMPERATE.height;
-            MacroBiome.MacroHeightProfile hpB = (secondary != null) ? secondary.height : hpA;
-
-            double t = clamp01(blendPrimary);
-            double invT = 1.0D - t;
-
-            double min = hpA.absoluteMin * t + hpB.absoluteMin * invT;
-            double max = hpA.absoluteMax * t + hpB.absoluteMax * invT;
-            double offset = hpA.baseHeightOffset * t + hpB.baseHeightOffset * invT;
-            double variation = hpA.heightVariation * t + hpB.heightVariation * invT;
-
-            return new MacroHeightSample(min, max, offset, variation, t);
-        }
-
-        private static final class MacroHeightSample {
-            final double min, max, offset, variation, blend;
-            MacroHeightSample(double min, double max, double offset, double variation, double blend) {
-                this.min = min; this.max = max; this.offset = offset;
-                this.variation = variation; this.blend = blend;
-            }
-        }
-
-        private static double clamp(double v, double min, double max) {
-            return v < min ? min : (v > max ? max : v);
-        }
-    }
-
-    private static double lerp(double a, double b, double t) {
-        return a + (b - a) * clamp01(t);
     }
 }

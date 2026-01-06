@@ -1,8 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import com.EyeOfHarmonyBuffer.space.talos.ChunkProviderTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.ContinentalField;
 import com.EyeOfHarmonyBuffer.space.talos.SimplexNoiseOctave;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.util.MathHelper;
 
 import java.util.Arrays;
@@ -11,16 +12,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome.*;
+import static com.cleanroommc.modularui.ModularUI.LOGGER;
 
 public final class MacroBiomeField implements ContinentalField {
 
+    public final class TalosDebugFlags {
+        public static final boolean DEBUG_PLATE_ID = false;
+    }
+
     public static final long MACRO_SALT = 0x9E3779B97F4A7C15L;
 
-    private static final double MACRO_SELECTOR_SOFTNESS = 0.32D;
-    private static final double SECONDARY_OFFSET = 0.015D;
+    private final double selectorSoftness;
+    private final double secondaryOffset;
 
     private static final int TILE_SIZE = 64;
     private static final int MAX_TILES = 256;
+    private static final int WORLD_CELL_SIZE = 32;
+
+    private static final MacroBiome[] BIOME_TABLE = MacroBiome.values();
 
     private static final long PATCH_SALT = 0xC6BC279692B5C323L;
 
@@ -40,6 +49,19 @@ public final class MacroBiomeField implements ContinentalField {
     private final SimplexNoiseOctave baseNoiseFine;
     private final SimplexNoiseOctave detailNoise;
     private final SimplexNoiseOctave latitudeWarpNoise;
+
+    private final SimplexNoiseOctave plateNoise;
+    private final SimplexNoiseOctave plateWarpNoise;
+
+    private final Long2ObjectMap<MacroSample> macroCache = new Long2ObjectOpenHashMap<>();
+    private final Object macroCacheLock = new Object();
+    private final SimplexNoiseOctave macroBaseNoise;
+    private final SimplexNoiseOctave macroBaseShapeNoise;
+    private final SimplexNoiseOctave macroOffsetNoise;
+
+    private final double plateNoiseScale;
+    private final double plateWarpScale;
+    private final double plateWarpStrength;
 
     private final double macroScale;
     private final double baseCoarseScale;
@@ -134,6 +156,28 @@ public final class MacroBiomeField implements ContinentalField {
         this.patchWarpNoiseX = new SimplexNoiseOctave(worldSeed ^ (PATCH_SALT >>> 1), 2);
         this.patchWarpNoiseZ = new SimplexNoiseOctave((worldSeed + 0xD1342543L) ^ (PATCH_SALT >>> 2), 2);
 
+        this.selectorSoftness = this.config.selectorSoftness;
+        this.secondaryOffset = this.config.secondaryOffset;
+
+        this.plateNoiseScale = (this.config.macroPlateLock > 0.0D)
+            ? this.macroScale * 0.35D
+            : this.macroScale * 0.25D;
+        this.plateWarpScale = this.plateNoiseScale * 2.0D;
+        this.plateWarpStrength = Math.max(48.0D, this.macroCellSize * 0.02D);
+
+        this.plateNoise = new SimplexNoiseOctave(
+            (worldSeed ^ 0xD1B54A32D192ED03L) + MACRO_SALT,
+            3
+        );
+        this.plateWarpNoise = new SimplexNoiseOctave(
+            worldSeed ^ 0x94D049BB133111EBL,
+            2
+        );
+
+        this.macroBaseNoise = new SimplexNoiseOctave(worldSeed ^ 0xA24BAED4963EE407L, 2);
+        this.macroBaseShapeNoise = new SimplexNoiseOctave(worldSeed ^ 0x0000A9BCL, 2);
+        this.macroOffsetNoise    = new SimplexNoiseOctave(worldSeed ^ 0x0000C37FL, 2);
+
         System.out.println("[EOHBMacro]:" + "1");
     }
 
@@ -145,54 +189,6 @@ public final class MacroBiomeField implements ContinentalField {
     @Override
     public double continentalLatitude01(int x, int z) {
         return sampleNoise(x, z).latitude01;
-    }
-
-    public void sample(int chunkX, int chunkZ, ChunkProviderTalos2.ChunkShoreCache cache) {
-        NoiseSample nsChunk = sampleNoise(chunkX, chunkZ);
-
-        for (int lx = 0; lx <= 16; lx++) {
-            for (int lz = 0; lz <= 16; lz++) {
-                int gx = chunkX * 16 + lx;
-                int gz = chunkZ * 16 + lz;
-
-                MacroSample macroSample = buildMacroSample(gx, gz, nsChunk);
-                cache.macroPatchVariant[lx][lz] = nsChunk.patchVariant;
-                cache.macroPatchFlags[lx][lz] = (byte) (nsChunk.patchSingleBiome ? 0x1 : 0x0);
-                cache.macroPatchEdge[lx][lz] = (byte) MathHelper.clamp_int(
-                    (int) Math.round(nsChunk.patchEdgeBlend * 255.0), 0, 255);
-                MacroBiome primary = macroSample.dominant;
-                MacroBiome secondary = pickSecondary(gx, gz, nsChunk, primary);
-                double blend = computeBlend(nsChunk.base, nsChunk.detail);
-
-                byte primaryId = (byte) primary.ordinal();
-                byte secondaryId = (byte) secondary.ordinal();
-                byte blendByte = (byte) MathHelper.clamp_int((int) Math.round(blend * 255.0), 0, 255);
-
-                short plateau = computePlateauHeight(gx, gz, primary, nsChunk);
-                byte tier = computeMacroTier(primary);
-
-                byte plateId = (byte) MathHelper.clamp_int(
-                    (int) (cellHash01(gx, gz, 0x3FBCF9A97E65L) * 255.0),
-                    0, 255
-                );
-
-                cache.macroPlateau[lx][lz] = plateau;
-                cache.macroTier[lx][lz] = tier;
-                cache.macroPlateId[lx][lz] = plateId;
-
-                cache.macroWet[lx][lz] = (byte) MathHelper.clamp_int(
-                    (int) Math.round(macroSample.wetWeight * 255.0), 0, 255);
-                cache.macroCold[lx][lz] = (byte) MathHelper.clamp_int(
-                    (int) Math.round(macroSample.coldWeight * 255.0), 0, 255);
-                cache.macroCoast[lx][lz] = (byte) MathHelper.clamp_int(
-                    (int) Math.round(macroSample.coastWeight * 255.0), 0, 255);
-
-                cache.macroPrimary[lx][lz] = primaryId;
-                cache.macroSecondary[lx][lz] = secondaryId;
-                cache.macroBlend[lx][lz] = blendByte;
-                cache.macro[lx][lz] = primaryId;
-            }
-        }
     }
 
     public SampleDual sampleDual(int x, int z) {
@@ -212,8 +208,7 @@ public final class MacroBiomeField implements ContinentalField {
     }
 
     public MacroSample sampleMacro(int x, int z) {
-        NoiseSample ns = sampleNoise(x, z);
-        return buildMacroSample(x, z, ns);
+        return sampleWorldCell(x, z);
     }
 
     private static double smoothstep(double edge0, double edge1, double x) {
@@ -222,53 +217,55 @@ public final class MacroBiomeField implements ContinentalField {
     }
 
     public static final class MacroSample {
+        public final MacroBiome primary;
+        public final MacroBiome secondary;
+        public final double blendPrimary;
+        public final byte tier;
+        public final byte plateId;
+        public final short plateauHeight;
+        public final float anchorWeight;
+        public final boolean hardEdge;
+        public final short macroBaseHeight;
+
+        public final byte patchVariant;
+        public final boolean patchSingleBiome;
+        public final double patchEdgeBlend;
+
         public final double wetWeight;
         public final double coldWeight;
         public final double coastWeight;
-        public final MacroBiome dominant;
-        public final byte patchVariant;
-        public final boolean singleBiome;
-        public final double patchEdgeBlend;
 
-        private MacroSample(double wetWeight,
-                            double coldWeight,
-                            double coastWeight,
-                            MacroBiome dominant,
+        private MacroSample(MacroBiome primary,
+                            MacroBiome secondary,
+                            double blendPrimary,
+                            byte tier,
+                            byte plateId,
+                            short plateauHeight,
+                            float anchorWeight,
+                            boolean hardEdge,
+                            short macroBaseHeight,
                             byte patchVariant,
-                            boolean singleBiome,
-                            double patchEdgeBlend) {
+                            boolean patchSingleBiome,
+                            double patchEdgeBlend,
+                            double wetWeight,
+                            double coldWeight,
+                            double coastWeight) {
+            this.primary = primary;
+            this.secondary = secondary;
+            this.blendPrimary = blendPrimary;
+            this.tier = tier;
+            this.plateId = plateId;
+            this.plateauHeight = plateauHeight;
+            this.anchorWeight = anchorWeight;
+            this.hardEdge = hardEdge;
+            this.macroBaseHeight = macroBaseHeight;
+            this.patchVariant = patchVariant;
+            this.patchSingleBiome = patchSingleBiome;
+            this.patchEdgeBlend = patchEdgeBlend;
             this.wetWeight = wetWeight;
             this.coldWeight = coldWeight;
             this.coastWeight = coastWeight;
-            this.dominant = dominant;
-            this.patchVariant = patchVariant;
-            this.singleBiome = singleBiome;
-            this.patchEdgeBlend = patchEdgeBlend;
         }
-    }
-
-    private MacroSample buildMacroSample(int gx, int gz, NoiseSample ns) {
-        double wet = clamp01(0.5D + ns.base * 0.35D + ns.detail * 0.15D);
-        double cold = clamp01(1.0D - ns.latitude01);
-        double continental = clamp01(0.5D + ns.base * 0.5D);
-        double coast = 1.0D - smoothstep(0.35D, 0.65D, continental);
-        MacroBiome dominant = pickPrimary(gx, gz, ns);
-        return new MacroSample(
-            wet, cold, coast, dominant,
-            ns.patchVariant,
-            ns.patchSingleBiome,
-            ns.patchEdgeBlend
-        );
-    }
-
-    public MacroBiome getMacroBiome(int x, int z) {
-        SampleDual sample = sampleDual(x, z);
-        return (sample != null && sample.primary != null) ? sample.primary : MacroBiome.PLAINS_TEMPERATE;
-    }
-
-    public double sampleContinentalness(int x, int z) {
-        NoiseSample ns = sampleNoise(x, z);
-        return clamp01(0.5D + ns.base * 0.5D);
     }
 
     private NoiseSample sampleNoise(int gx, int gz) {
@@ -302,7 +299,7 @@ public final class MacroBiomeField implements ContinentalField {
 
         LatitudeBlend blend = sampleLatitudeBlend(ns.latitude01);
         int bandIndex = blend.representativeIndex();
-        double selector = clamp01(bandStats[bandIndex].normalize(ns.base) + SECONDARY_OFFSET);
+        double selector = clamp01(bandStats[bandIndex].normalize(ns.base) + this.secondaryOffset);
         double coast = clamp01(1.0D - smoothstep(0.35D, 0.65D, clamp01(0.5D + ns.base * 0.5D)));
         selector -= coast * 0.06D;
         selector = clamp01(selector + ns.patchSelectorOffset * 0.8D);
@@ -421,7 +418,7 @@ public final class MacroBiomeField implements ContinentalField {
             return selector;
         }
 
-        double plate = cellHash01(gx, gz, salt ^ 0xA5A5A5A5A5A5A5A5L);
+        double plate = plateHash01(gx, gz, salt ^ 0xA5A5A5A5A5A5A5A5L);
         double bias = (plate - 0.5D) * macroPlateLock;
 
         double scale = Math.min(1.0D, poolLength / 4.0D);
@@ -623,7 +620,8 @@ public final class MacroBiomeField implements ContinentalField {
 
                     if (dist > patchBlendRadius) continue;
 
-                    double weight = 1.0D - smoothstep(patchBlendRadius * 0.65D, patchBlendRadius, dist);
+                    double t = clamp01(dist / patchBlendRadius);
+                    double weight = 1.0D - t * t;
                     if (weight <= bestWeight) continue;
 
                     double offset = (doubleFromHash(hash >>> 2) * 2.0D - 1.0D) * patchSelectorRange;
@@ -748,8 +746,8 @@ public final class MacroBiomeField implements ContinentalField {
         return v;
     }
 
-    private static double softenSelector(double selector) {
-        double width = MACRO_SELECTOR_SOFTNESS;
+    private double softenSelector(double selector) {
+        double width = this.selectorSoftness;
         if (width <= 0.0D) {
             return selector;
         }
@@ -791,6 +789,34 @@ public final class MacroBiomeField implements ContinentalField {
             ^ (cellX * 0x632BE5ABDCB5A641L)
             ^ (cellZ * 0x9E3779B185EBCA87L));
         return doubleFromHash(hash);
+    }
+
+    private double plateHash01(int gx, int gz, long salt) {
+        double plateNoise01 = samplePlateField(gx, gz);
+
+        final int coarseSize = Math.max(512, macroCellSize);
+        int cellX = Math.floorDiv(gx + 37, coarseSize);
+        int cellZ = Math.floorDiv(gz - 91, coarseSize);
+
+        long hash = mix64(worldSeed ^ salt
+            ^ (cellX * 0x632BE5ABDCB5A641L)
+            ^ (cellZ * 0x9E3779B185EBCA87L));
+
+        double coarseJitter = (doubleFromHash(hash) * 2.0D - 1.0D) * 0.08D;
+
+        return clamp01(plateNoise01 + coarseJitter);
+    }
+
+    private double samplePlateField(int gx, int gz) {
+        double warp = plateWarpNoise.noise(gx * plateWarpScale, gz * plateWarpScale) * plateWarpStrength;
+        double px = gx + warp;
+        double pz = gz - warp * 0.37D;
+
+        double primary = plateNoise.noise(px * plateNoiseScale, pz * plateNoiseScale);
+        double secondary = baseNoiseFine.noise(px * plateNoiseScale * 1.9D, pz * plateNoiseScale * 1.9D) * 0.2D;
+        double combined = primary * 0.8D + secondary;
+
+        return clamp01(0.5D + combined * 0.5D);
     }
 
     public static final class SampleDual {
@@ -856,24 +882,38 @@ public final class MacroBiomeField implements ContinentalField {
         }
     }
 
-    private double buildPrimarySelector(int gx, int gz, NoiseSample ns, LatitudeBlend blend, int bandIndex, boolean applyJitter) {
-        double selector = bandStats[bandIndex].normalize(ns.base);
-        double coast = clamp01(1.0D - smoothstep(0.35D, 0.65D, clamp01(0.5D + ns.base * 0.5D)));
-        selector -= coast * 0.04D;
-        selector = clamp01(selector + ns.patchSelectorOffset);
+    private double buildPrimarySelector(int gx, int gz,
+                                        NoiseSample ns,
+                                        LatitudeBlend blend,
+                                        int bandIndex,
+                                        boolean applyJitter) {
+
+        double warp = detailNoise.noise(gx * (macroScale * 0.35D), gz * (macroScale * 0.35D)) * 25.0D;
+        double wx = gx + warp;
+        double wz = gz + warp * 0.5D;
+
+        double coarse = baseNoiseCoarse.noise(wx * (macroScale * config.coarseScaleFactor),
+            wz * (macroScale * config.coarseScaleFactor));
+        double fine   = baseNoiseFine.noise(wx * (macroScale * 1.6D),
+            wz * (macroScale * 1.6D)) * 0.35D;
+
+        double selector = coarse * 0.75D + fine * 0.25D;
+        selector += ns.base * 0.20D;
+
         if (applyJitter) {
-            selector = clamp01(selector + selectorJitter(gx, gz, bandIndex));
+            selector += selectorJitter(gx, gz, bandIndex);
         }
+
+        selector = clamp01(0.5D + selector * 0.5D);
         selector = softenSelector(selector);
-        double softnessBoost = lerp(0.0D, 0.12D, ns.patchEdgeBlend);
-        return lerp(selector, 0.5D, softnessBoost);
+        return selector;
     }
 
     private double selectorJitter(int gx, int gz, int bandIndex) {
         long hash = mix64(worldSeed
             ^ 0x4CF5AD432745937FL
-            ^ (((long) (gx >> 4)) << 32)
-            ^ (gz >> 4)
+            ^ (((long) gx) << 32)
+            ^ (gz & 0xFFFFFFFFL)
             ^ ((long) bandIndex * 0x9E3779B97F4A7C15L));
         return (doubleFromHash(hash) * 2.0D - 1.0D) * 0.02D;
     }
@@ -889,6 +929,121 @@ public final class MacroBiomeField implements ContinentalField {
             ^ (gz >> 10));
         int rotation = (int) (hash & 0x7FFFFFFFL);
         return rotation % length;
+    }
+
+    private byte encodePlateId(int gx, int gz) {
+        double plate = plateHash01(gx, gz, 0x3FBCF9A97E65L);
+        return (byte) MathHelper.clamp_int((int) Math.round(plate * 255.0), 0, 255);
+    }
+
+    public MacroSample sampleWorldCell(int gx, int gz) {
+        long key = (((long)gx) << 32) ^ (gz & 0xFFFFFFFFL);
+        MacroSample cached = macroCache.get(key);
+        if (cached != null) return cached;
+
+        MacroSample generated;
+        synchronized (macroCacheLock) {
+            cached = macroCache.get(key);
+            if (cached != null) return cached;
+            generated = buildWorldSampleAt(gx, gz);
+            macroCache.put(key, generated);
+        }
+        return generated;
+    }
+
+    private MacroSample buildWorldSampleAt(int gx, int gz) {
+        NoiseSample ns = sampleNoise(gx, gz);
+
+        MacroBiome primary = pickPrimary(gx, gz, ns);
+        MacroBiome secondary = pickSecondary(gx, gz, ns, primary);
+        double blend = computeBlend(ns.base, ns.detail);
+
+        short plateauHeight = computePlateauHeight(gx, gz, primary, ns);
+        short macroBaseHeight = computeMacroBaseHeight(gx, gz, primary, secondary, blend);
+
+        byte tier = computeMacroTier(primary);
+        byte plateId = encodePlateId(gx, gz);
+        float anchorWeight = primary.getPlateauAnchorWeight();
+        boolean hardEdge = primary.isHardEdge();
+
+        double wetWeight = clamp01(0.5 + ns.base * 0.35 + ns.detail * 0.15);
+        double coldWeight = clamp01(1.0 - ns.latitude01);
+        double coastWeight = computeCoastWeight(ns.base);
+
+        if ((gx & 31) == 31 && (gz & 31) == 0) {
+            LOGGER.debug("[MacroSample] gx={},gz={} baseHeight={} plateau={} offset={} variation={} prim={} sec={} blend={}",
+                gx, gz,
+                macroBaseHeight,
+                plateauHeight,
+                primary.height.baseHeightOffset,
+                primary.height.heightVariation,
+                primary.id,
+                secondary.id,
+                blend
+            );
+        }
+
+        return new MacroSample(
+            primary,
+            secondary,
+            blend,
+            tier,
+            plateId,
+            plateauHeight,
+            anchorWeight,
+            hardEdge,
+            macroBaseHeight,
+            ns.patchVariant,
+            ns.patchSingleBiome,
+            ns.patchEdgeBlend,
+            wetWeight,
+            coldWeight,
+            coastWeight
+        );
+    }
+
+    private short computeMacroBaseHeight(int gx, int gz,
+                                         MacroBiome primary,
+                                         MacroBiome secondary,
+                                         double blend) {
+        MacroBiome.MacroHeightProfile hpA = primary.height;
+        MacroBiome.MacroHeightProfile hpB = secondary.height;
+
+        double t = clamp01(blend);
+
+        // ① 独立的宏高度噪声，避免直接用 t
+        double macroNoise = clamp01(0.5 + macroBaseShapeNoise.noise(gx * 0.0006, gz * 0.0006) * 0.5);
+        double macroA = lerp(hpA.absoluteMin, hpA.absoluteMax, macroNoise);
+        double macroB = lerp(hpB.absoluteMin, hpB.absoluteMax, macroNoise);
+        double macro = lerp(macroA, macroB, t);
+
+        // ② 平滑 plateau 与 offset
+        double offset = lerp(hpA.baseHeightOffset, hpB.baseHeightOffset, t);
+        double offsetNoise = clamp01(0.5 + macroOffsetNoise.noise(gx * 0.0004, gz * 0.0004) * 0.5);
+        double plateau = offset * 32.0 * offsetNoise;
+
+        double variation = lerp(hpA.heightVariation, hpB.heightVariation, t);
+        double micro = macroBaseNoise.noise(gx * 0.0008, gz * 0.0008) * variation * 3.0;
+
+        double minH = Math.min(hpA.absoluteMin, hpB.absoluteMin) - 8.0;
+        double maxH = Math.max(hpA.absoluteMax, hpB.absoluteMax) + 8.0;
+        double height = clamp(macro + plateau + micro, minH, maxH);
+        return (short) Math.round(height);
+    }
+
+    private static double computeCoastWeight(double base) {
+        double continental = clamp01(0.5D + base * 0.5D);
+        return 1.0D - smoothstep(0.35D, 0.65D, continental);
+    }
+
+    private static double clamp(double value, double min, double max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    public MacroBiomeConfig getConfig() {
+        return this.config;
     }
 
     public static final class MacroBiomeConfig {
@@ -925,6 +1080,16 @@ public final class MacroBiomeField implements ContinentalField {
         public final double patchWarpScale;
         public final double patchWarpStrength;
 
+        public final double selectorSoftness;
+        public final double secondaryOffset;
+
+        public final double baselineBlurRadius;
+        public final int baselineIterations;
+        public final double baselineClampMax;
+        public final double clampSlopeFactor;
+        public final double rampThreshold;
+        public final int rampWidth;
+
         private MacroBiomeConfig(double macroScale,
                                  double coarseScaleFactor,
                                  double detailScaleFactor,
@@ -949,7 +1114,15 @@ public final class MacroBiomeField implements ContinentalField {
                                  double patchBlendRadius,
                                  double patchSingleBiomeChance,
                                  double patchWarpScale,
-                                 double patchWarpStrength) {
+                                 double patchWarpStrength,
+                                 double selectorSoftness,
+                                 double secondaryOffset,
+                                 double baselineBlurRadius,
+                                 int baselineIterations,
+                                 double baselineClampMax,
+                                 double clampSlopeFactor,
+                                 double rampThreshold,
+                                 int rampWidth) {
             this.macroScale = macroScale;
             this.coarseScaleFactor = coarseScaleFactor;
             this.detailScaleFactor = detailScaleFactor;
@@ -975,6 +1148,14 @@ public final class MacroBiomeField implements ContinentalField {
             this.patchSingleBiomeChance = patchSingleBiomeChance;
             this.patchWarpScale = patchWarpScale;
             this.patchWarpStrength = patchWarpStrength;
+            this.selectorSoftness = selectorSoftness;
+            this.secondaryOffset = secondaryOffset;
+            this.baselineBlurRadius = baselineBlurRadius;
+            this.baselineIterations = baselineIterations;
+            this.baselineClampMax = baselineClampMax;
+            this.clampSlopeFactor = clampSlopeFactor;
+            this.rampThreshold = rampThreshold;
+            this.rampWidth = rampWidth;
         }
 
         public static MacroBiomeConfig bruteForcePreset() {
@@ -1010,7 +1191,15 @@ public final class MacroBiomeField implements ContinentalField {
             0.30D,
             0.15D,
             0.0D,
-            0.0D
+            0.0D,
+            1.0D,
+            0.05D,
+            9.5D,
+            4,
+            24.0D,
+            0.45D,
+            12.0D,
+            14
         );
     }
 }

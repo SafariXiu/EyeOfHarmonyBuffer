@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.space.talos.Talos2Hooks;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiomeField;
 import net.minecraft.command.CommandBase;
