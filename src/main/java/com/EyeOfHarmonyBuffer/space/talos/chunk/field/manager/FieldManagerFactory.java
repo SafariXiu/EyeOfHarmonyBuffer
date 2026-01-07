@@ -68,11 +68,13 @@ public final class FieldManagerFactory {
         );
         ClimateProvider climateProvider = new NoiseClimateProvider(
             seed,
-            config.getClimateSettings()
+            config.getClimateSettings(),
+            world::getTotalWorldTime
         );
         HydroProvider hydroProvider = new NoiseHydroProvider(
             seed,
-            config.getHydroSettings()
+            config.getHydroSettings(),
+            coastlineProvider
         );
 
         FieldManager fieldManager = new DefaultFieldManager(

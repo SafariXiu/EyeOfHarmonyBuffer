@@ -10,7 +10,7 @@ public class Config {
         ItemConfig.init(itemsConfigFile);
         FluidConfig.init(fluidsConfigFile);
         MachineLoaderConfig.init(MachineLoaderConfigFile);
-        FieldManagerCacheConfig.init(fieldManagerCacheConfigFile);
+        FieldManagerConfigSpec.init(fieldManagerCacheConfigFile);
     }
 
     public static void reloadConfig() {
@@ -18,7 +18,7 @@ public class Config {
         ItemConfig.reloadConfig();
         FluidConfig.reloadConfig();
         MachineLoaderConfig.reloadConfig();
-        FieldManagerCacheConfig.reloadConfig();
+        FieldManagerConfigSpec.reloadConfig();
     }
 
     public static BigInteger getConstantOutputEU() {

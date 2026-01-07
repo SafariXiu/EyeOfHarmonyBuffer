@@ -8,6 +8,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.ClimateProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.FieldProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.HydroProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.TerrainProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.ClimateSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.HydroSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.TerrainSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.MacroCacheInvalidator;
 
@@ -16,6 +19,8 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.cleanroommc.modularui.ModularUI.LOGGER;
 
 public final class DefaultFieldManager implements FieldManager {
 
@@ -143,9 +148,12 @@ public final class DefaultFieldManager implements FieldManager {
     @Override
     public void invalidateCaches(FieldDomain... domains) {
         ensureActive();
+
         EnumSet<FieldDomain> targets = (domains == null || domains.length == 0)
             ? EnumSet.allOf(FieldDomain.class)
             : EnumSet.copyOf(Arrays.asList(domains));
+
+        LOGGER.info("[TalosFieldManager] invalidateCaches called. targets={}", targets);
 
         if (targets.contains(FieldDomain.MACRO)) {
             invalidateMacroCache();
@@ -159,6 +167,45 @@ public final class DefaultFieldManager implements FieldManager {
         if (targets.contains(FieldDomain.HYDRO) && hydroProvider != null) {
             hydroProvider.invalidateCaches();
         }
+    }
+
+    @Override
+    public TerrainSample sampleTerrain(int blockX, int blockZ) {
+        FieldSampleRequest req = FieldSampleRequest.builder()
+            .block(blockX, blockZ)
+            .domains(FieldDomain.TERRAIN)
+            .build();
+        FieldSnapshot snapshot = sample(req);
+        return snapshot.getTerrain();
+    }
+
+    @Override
+    public ClimateSample sampleClimate(int blockX, int blockZ) {
+        FieldSampleRequest req = FieldSampleRequest.builder()
+            .block(blockX, blockZ)
+            .domains(FieldDomain.TERRAIN)
+            .build();
+        FieldSnapshot snapshot = sample(req);
+        return snapshot.getClimate();
+    }
+
+    @Override
+    public HydroSample sampleHydro(int blockX, int blockZ) {
+        FieldSampleRequest req = FieldSampleRequest.builder()
+            .block(blockX, blockZ)
+            .domains(FieldDomain.TERRAIN)
+            .build();
+        FieldSnapshot snapshot = sample(req);
+        return snapshot.getHydro();
+    }
+
+    @Override
+    public FieldSnapshot sampleAll(int blockX, int blockZ) {
+        FieldSampleRequest req = FieldSampleRequest.builder()
+            .block(blockX, blockZ)
+            .domains(FieldDomain.values())
+            .build();
+        return sample(req);
     }
 
     @Override

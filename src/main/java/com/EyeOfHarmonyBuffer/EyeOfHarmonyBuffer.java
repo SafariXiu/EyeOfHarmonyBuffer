@@ -77,7 +77,7 @@ public class EyeOfHarmonyBuffer {
         File itemsConfigFile = new File(configDir, "items.cfg");
         File fluidsConfigFile = new File(configDir, "fluids.cfg");
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
-        File FieldManagerCacheConfig = new File(configDir, "FieldManagerCacheConfig.cfg");
+        File FieldManagerCacheConfig = new File(configDir, "FieldManagerConfigSpec.cfg");
 
         Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile, FieldManagerCacheConfig);
 

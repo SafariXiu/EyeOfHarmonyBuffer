@@ -266,6 +266,18 @@ public final class FieldDiagnostics {
                 buildNanos.sum()
             );
         }
+
+        public void reset() {
+            if (noop) {
+                return;
+            }
+            hits.reset();
+            misses.reset();
+            peekHits.reset();
+            peekMisses.reset();
+            evictions.reset();
+            buildNanos.reset();
+        }
     }
 
     public static final class MacroCacheSnapshot {
@@ -355,6 +367,14 @@ public final class FieldDiagnostics {
                 evictions.get()
             );
         }
+
+        @Override
+        public void reset() {
+            hits.set(0L);
+            misses.set(0L);
+            totalLoadNanos.set(0L);
+            evictions.set(0L);
+        }
     }
 
     private void initializeDomainCounters() {
@@ -364,5 +384,19 @@ public final class FieldDiagnostics {
             providerErrors.putIfAbsent(domain, new LongAdder());
             providerNanos.putIfAbsent(domain, new LongAdder());
         }
+    }
+
+    public void resetAll() {
+        aggregateRequests.reset();
+        requestCounts.values().forEach(LongAdder::reset);
+        providerCalls.values().forEach(LongAdder::reset);
+        providerErrors.values().forEach(LongAdder::reset);
+        providerNanos.values().forEach(LongAdder::reset);
+        resetMacroCacheStats();
+    }
+
+    public void resetMacroCacheStats() {
+        macroCacheProbe.reset();
+        macroCacheMetrics.reset();
     }
 }

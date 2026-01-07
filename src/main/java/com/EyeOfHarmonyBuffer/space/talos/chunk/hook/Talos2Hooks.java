@@ -97,10 +97,24 @@ public final class Talos2Hooks {
         public void onConfigReload(ConfigReloadedEvent event) {
             CONTEXTS.forEach((dim, hookData) -> {
                 FieldContext oldContext = hookData.context();
+                FieldManager oldManager = oldContext.getFieldManager();
+                FieldDiagnostics diagnostics = hookData.diagnostics();
+
+                if (diagnostics != null) {
+                    System.out.println("[Talos2Hooks] reset diagnostics for dim " + dim);
+                    diagnostics.resetMacroCacheStats();
+                }
+
+                if (oldManager != null) {
+                    System.out.println("[Talos2Hooks] invalidate old fieldManager for dim " + dim);
+                    oldManager.invalidateCaches();
+                }
+
                 World world = oldContext.getWorld();
                 if (world == null) {
                     return;
                 }
+
                 FieldContext newContext = TalosFieldContextBootstrap.create(world);
                 replaceContext(dim, newContext, "reload");
             });

@@ -35,7 +35,7 @@ public enum MacroTag {
         if (continental < 0.05) {
             return BEACH;
         }
-        // …根据湿度、温度继续细分…
+
         if (temperature > 0.75) {
             return (humidity > 0.6) ? TROPICAL : DESERT;
         }

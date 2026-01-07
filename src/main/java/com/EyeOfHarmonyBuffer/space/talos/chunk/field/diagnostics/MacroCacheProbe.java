@@ -12,6 +12,8 @@ public interface MacroCacheProbe {
 
     MacroCacheStats snapshot();
 
+    void reset();
+
     MacroCacheProbe NOOP = new MacroCacheProbe() {
         @Override public void recordHit() {}
         @Override public void recordMiss() {}
@@ -20,5 +22,6 @@ public interface MacroCacheProbe {
         @Override public MacroCacheStats snapshot() {
             return MacroCacheStats.EMPTY;
         }
+        @Override public void reset() {}
     };
 }
