@@ -25,6 +25,31 @@ public enum MacroTag {
         };
     }
 
+    public boolean isCoastal() {
+        return switch (this) {
+            case BEACH, SHELF -> true;
+            default -> false;
+        };
+    }
+
+    public boolean isFrozen() {
+        return switch (this) {
+            case TUNDRA, POLAR_DESERT, ALPINE -> true;
+            default -> false;
+        };
+    }
+
+    public boolean isArid() {
+        return switch (this) {
+            case DESERT, STEPPE, SAVANNA -> true;
+            default -> false;
+        };
+    }
+
+    public boolean isLand() {
+        return !isOceanic();
+    }
+
     public static MacroTag pick(double continental, double humidity, double temperature) {
         if (continental < -0.2) {
             return OCEAN;

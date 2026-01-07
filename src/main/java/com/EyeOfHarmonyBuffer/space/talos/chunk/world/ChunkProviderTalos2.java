@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroBiomeSelector;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectionResult;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
@@ -29,6 +31,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final World world;
     private final IMacroCellProvider macroCellBuilder;
     private final FieldDiagnostics diagnostics;
+    private final MacroBiomeSelector macroSelector;
 
     private static final BlockMetaPair SNOW_SURFACE = new BlockMetaPair(Blocks.snow, (byte) 0);
     private static final BlockMetaPair PACKED_ICE = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
@@ -76,6 +79,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         this.world = world;
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
+
+        this.macroSelector = hook.fieldContext().getMacroSelector();
 
         this.macroCellBuilder = hook.macroCellBuilder();
         this.diagnostics = hook.diagnostics();
@@ -197,16 +202,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int columnBase = (localX * 16 + localZ) * worldHeight;
                 int groundHeight = heightMap[localX][localZ];
 
-                boolean isLand = shore.isLand[localX][localZ];
-                int dist = shore.dist[localX][localZ] & 0xFFFF;
-
-                int beachW = shore.beachW[localX][localZ] & 0xFFFF;
-                int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
-
                 ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
+                if (cell == null) {
+                    continue;
+                }
 
-                BiomeGenBase baseBiome = pickBaseBiome(isLand, dist, beachW, shelfW);
-                cell.resolvedBiome = baseBiome;
+                BiomeGenBase baseBiome = cell.resolvedBiome;
+                if (baseBiome == null) {
+                    baseBiome = pickBiomeFromMacro(cell.macroResult);
+                    cell.resolvedBiome = baseBiome;
+                }
 
                 if (baseBiome == TalosBiomes.TALOS_OCEAN) {
                     fillOceanColumn(blocks, meta, columnBase, groundHeight, waterLevel);
@@ -223,16 +228,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 TalosBiomeDebugHooks.recordGeneratedBiome(chunkX, chunkZ, localX, localZ, baseBiome);
             }
         }
-    }
-
-    private BiomeGenBase pickBaseBiome(boolean isLand, int distToCoast, int beachWidth, int shelfWidth) {
-        if (!isLand) {
-            return distToCoast <= shelfWidth ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
-        }
-        if (distToCoast <= beachWidth) {
-            return TalosBiomes.TALOS_BEACH;
-        }
-        return TalosBiomes.TALOS_PLAINS;
     }
 
     private void strongCleanOceanFloor(Block[] blocks, byte[] meta) {
@@ -399,6 +394,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             public float anchorWeight;
             public float hardEdge;
             public BiomeGenBase resolvedBiome;
+            public MacroSelectionResult macroResult;
+            public MacroTag macroTag;
+            public int macroPatchId;
+            public boolean macroRare;
+            public double macroTemp;
+            public double macroHumid;
+            public double macroContinental;
+            public double macroCoastWidth;
+            public double macroShelfWidth;
+            public MacroBiome.MacroBiomeVariant macroVariant;
         }
     }
 
@@ -568,22 +573,32 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     private void resolveBiomesForCells(int chunkX, int chunkZ, ChunkShoreCache shore) {
-        final int CHUNK_SIZE = 16;
+        final int GRID = 16;
 
-        for (int localX = 0; localX <= CHUNK_SIZE; localX++) {
-            for (int localZ = 0; localZ <= CHUNK_SIZE; localZ++) {
+        for (int localX = 0; localX <= GRID; localX++) {
+            for (int localZ = 0; localZ <= GRID; localZ++) {
+
+                int gx = chunkX * 16 + localX;
+                int gz = chunkZ * 16 + localZ;
 
                 ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
                 if (cell == null) {
                     continue;
                 }
 
-                boolean isLand = shore.isLand[localX][localZ];
-                int dist = shore.dist[localX][localZ] & 0xFFFF;
-                int beachW = shore.beachW[localX][localZ] & 0xFFFF;
-                int shelfW = shore.shelfW[localX][localZ] & 0xFFFF;
+                MacroSelectionResult macro = macroSelector.select(gx, gz);
+                cell.macroResult = macro;
+                cell.macroTag = macro.macroTag();
+                cell.macroPatchId = macro.patchId();
+                cell.macroRare = macro.rare();
+                cell.macroTemp = macro.temperature();
+                cell.macroHumid = macro.humidity();
+                cell.macroContinental = macro.continentalScore();
+                cell.macroCoastWidth = macro.coastWidth();
+                cell.macroShelfWidth = macro.shelfWidth();
+                cell.macroVariant = macro.variant();
 
-                BiomeGenBase biome = pickBaseBiome(isLand, dist, beachW, shelfW);
+                BiomeGenBase biome = pickBiomeFromMacro(macro);
                 cell.resolvedBiome = biome;
             }
         }
@@ -601,6 +616,41 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             snapshot.hitRate(),
             snapshot.getEvictions()
         );
+    }
+
+    private BiomeGenBase pickBiomeFromMacro(MacroSelectionResult macro) {
+        MacroBiome.MacroBiomeVariant variant = macro.variant();
+        if (variant != null && variant.biome != null) {
+            return variant.biome;
+        }
+
+        MacroTag tag = macro.macroTag();
+
+        if (tag.isOceanic()) {
+            return macro.coastDistance() <= macro.shelfWidth()
+                ? TalosBiomes.TALOS_SHELF
+                : TalosBiomes.TALOS_OCEAN;
+        }
+
+        if (tag.isCoastal() || macro.coastDistance() <= macro.coastWidth()) {
+            return TalosBiomes.TALOS_BEACH;
+        }
+
+        if (tag.isFrozen()) {
+            return TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
+        }
+
+        return switch (tag) {
+            case DESERT -> TalosBiomes.TALOS_DESERT;
+            case SAVANNA -> TalosBiomes.TALOS_SAVANNA;
+            case STEPPE -> TalosBiomes.TALOS_WARM_STEPPE;
+            case COOL_FOREST -> TalosBiomes.TALOS_COOL_FOREST;
+            case TROPICAL -> TalosBiomes.TALOS_TROPICAL_RAIN;
+            case TUNDRA -> TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
+            case MOUNTAIN, ALPINE -> TalosBiomes.TALOS_MOUNTAINS;
+            case BASIN -> TalosBiomes.TALOS_BASIN;
+            default -> TalosBiomes.TALOS_PLAINS;
+        };
     }
 
     @Override

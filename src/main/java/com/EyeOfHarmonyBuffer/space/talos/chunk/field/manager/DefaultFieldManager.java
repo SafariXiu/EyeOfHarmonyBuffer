@@ -175,28 +175,25 @@ public final class DefaultFieldManager implements FieldManager {
             .block(blockX, blockZ)
             .domains(FieldDomain.TERRAIN)
             .build();
-        FieldSnapshot snapshot = sample(req);
-        return snapshot.getTerrain();
+        return sample(req).getTerrain();
     }
 
     @Override
     public ClimateSample sampleClimate(int blockX, int blockZ) {
         FieldSampleRequest req = FieldSampleRequest.builder()
             .block(blockX, blockZ)
-            .domains(FieldDomain.TERRAIN)
+            .domains(FieldDomain.CLIMATE)
             .build();
-        FieldSnapshot snapshot = sample(req);
-        return snapshot.getClimate();
+        return sample(req).getClimate();
     }
 
     @Override
     public HydroSample sampleHydro(int blockX, int blockZ) {
         FieldSampleRequest req = FieldSampleRequest.builder()
             .block(blockX, blockZ)
-            .domains(FieldDomain.TERRAIN)
+            .domains(FieldDomain.HYDRO)
             .build();
-        FieldSnapshot snapshot = sample(req);
-        return snapshot.getHydro();
+        return sample(req).getHydro();
     }
 
     @Override

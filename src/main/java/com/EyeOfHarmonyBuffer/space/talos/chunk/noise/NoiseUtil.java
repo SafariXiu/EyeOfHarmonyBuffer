@@ -1,5 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.noise;
 
+import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
+
+import java.util.List;
+
 public final class NoiseUtil {
 
     private NoiseUtil() {}
@@ -72,5 +76,71 @@ public final class NoiseUtil {
     public static int hashToInt(long seed, int x, int z, long salt) {
         long mixed = mix(seed, x, z, salt);
         return (int) (mixed ^ (mixed >>> 32));
+    }
+
+    public static <T> int weightedIndex(long seed,
+                                       long salt,
+                                       int x,
+                                       int z,
+                                       List<T> elements,
+                                       java.util.function.ToIntFunction<T> weightExtractor) {
+        if (elements == null || elements.isEmpty()) {
+            return -1;
+        }
+
+        int totalWeight = 0;
+        int[] weights = new int[elements.size()];
+        for (int i = 0; i < elements.size(); i++) {
+            int w = Math.max(1, weightExtractor.applyAsInt(elements.get(i)));
+            weights[i] = w;
+            totalWeight += w;
+        }
+
+        if (totalWeight <= 0) {
+            return 0;
+        }
+
+        long hash = mix(seed, x, z, salt);
+        int pick = (int) Math.floorMod(hash, totalWeight);
+
+        int cumulative = 0;
+        for (int i = 0; i < weights.length; i++) {
+            cumulative += weights[i];
+            if (pick < cumulative) {
+                return i;
+            }
+        }
+        return weights.length - 1;
+    }
+
+    public static int weightedIndex(long seed,
+                                    long salt,
+                                    int x,
+                                    int z,
+                                    List<MacroBiome.MacroBiomeVariant> variants) {
+        if (variants == null || variants.isEmpty()) {
+            return -1;
+        }
+
+        int totalWeight = 0;
+        int[] weights = new int[variants.size()];
+        for (int i = 0; i < variants.size(); i++) {
+            MacroBiome.MacroBiomeVariant variant = variants.get(i);
+            int w = Math.max(1, variant.weight);
+            weights[i] = w;
+            totalWeight += w;
+        }
+
+        long hash = mix(seed, x, z, salt);
+        int pick = (int) Math.floorMod(hash, totalWeight);
+
+        int cumulative = 0;
+        for (int i = 0; i < weights.length; i++) {
+            cumulative += weights[i];
+            if (pick < cumulative) {
+                return i;
+            }
+        }
+        return weights.length - 1;
     }
 }

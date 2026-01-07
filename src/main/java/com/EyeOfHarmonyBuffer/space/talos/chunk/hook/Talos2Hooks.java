@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.WorldChunkManagerTalos2;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
@@ -19,6 +20,8 @@ import java.util.concurrent.ConcurrentMap;
 public final class Talos2Hooks {
 
     private static final ConcurrentMap<Integer, HookData> CONTEXTS = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Integer, WorldChunkManagerTalos2> WORLD_CHUNK_MANAGERS =
+        new ConcurrentHashMap<>();
 
     static {
         MinecraftForge.EVENT_BUS.register(new ReloadListener());
@@ -71,6 +74,20 @@ public final class Talos2Hooks {
             removed.dispose();
         }
         log("unregister", dim, removed == null ? null : removed.context());
+        WORLD_CHUNK_MANAGERS.remove(dim);
+    }
+
+    public static void registerWorldChunkManager(int dim, WorldChunkManagerTalos2 manager) {
+        Objects.requireNonNull(manager, "manager");
+        WORLD_CHUNK_MANAGERS.put(dim, manager);
+    }
+
+    public static void unregisterWorldChunkManager(int dim, WorldChunkManagerTalos2 manager) {
+        if (manager == null) {
+            WORLD_CHUNK_MANAGERS.remove(dim);
+        } else {
+            WORLD_CHUNK_MANAGERS.remove(dim, manager);
+        }
     }
 
     private static void replaceContext(int dim, FieldContext context, String tag) {
@@ -116,7 +133,17 @@ public final class Talos2Hooks {
                 }
 
                 FieldContext newContext = TalosFieldContextBootstrap.create(world);
-                replaceContext(dim, newContext, "reload");
+                WorldChunkManagerTalos2 manager = WORLD_CHUNK_MANAGERS.get(dim);
+
+                try {
+                    if (manager != null) {
+                        manager.reload(newContext);
+                    }
+                    replaceContext(dim, newContext, "reload");
+                } catch (RuntimeException ex) {
+                    newContext.dispose();
+                    throw ex;
+                }
             });
         }
     }
@@ -160,6 +187,10 @@ public final class Talos2Hooks {
 
         public CoastlineProvider coastlineProvider() {
             return context.getCoastlineProvider();
+        }
+
+        public FieldContext fieldContext() {
+            return context;
         }
 
         public void dispose() {

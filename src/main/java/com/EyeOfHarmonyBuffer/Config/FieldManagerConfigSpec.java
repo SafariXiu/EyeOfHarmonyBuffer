@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.Config;
 
 import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.common.config.Property;
 
 import java.io.File;
 
@@ -9,6 +10,12 @@ public final class FieldManagerConfigSpec {
     private static Configuration config;
 
     private static final String CAT_MACRO_CACHE = "fieldManager.macroCache";
+    private static final String CAT_SELECTOR = "fieldManager.macroSelector";
+    private static final String CAT_SELECTOR_PATCH = "fieldManager.macroSelector.patch";
+    private static final String CAT_SELECTOR_RARE = "fieldManager.macroSelector.rare";
+    private static final String CAT_SELECTOR_CONTINENTAL = "fieldManager.macroSelector.continental";
+    private static final String CAT_SELECTOR_DEBUG = "fieldManager.macroSelector.debug";
+
     private static final String CAT_TERRAIN = "fieldManager.terrain";
     private static final String CAT_CLIMATE_TEMPERATURE = "fieldManager.climate.temperature";
     private static final String CAT_CLIMATE_HUMIDITY = "fieldManager.climate.humidity";
@@ -30,6 +37,49 @@ public final class FieldManagerConfigSpec {
     public static boolean macroCacheEnabled = true;
     public static int macroCacheMaxEntries = 512;
     public static boolean macroCacheDiagnostics = true;
+
+    // selector - shared
+    public static long selectorSeedSalt = 0x5EEDL;
+    public static boolean selectorDebugLogging = false;
+
+    // selector - voronoi macro/micro
+    public static int selectorMacroGridSize = 8192;
+    public static double selectorMacroSiteSpacing = 10000.0d;
+    public static double selectorMacroBlendWidth = 700.0d;
+    public static long selectorMacroSiteSalt = 0xC0FFEE11L;
+    public static double selectorEdgeNoiseFrequency = 1.0d / 512.0d;
+    public static double selectorEdgeNoiseAmplitude = 1.0d;
+    public static long selectorEdgeNoiseSalt = 0xED9E5101L;
+
+    public static int selectorMicroGridSize = 4096;
+    public static double selectorMicroSiteSpacing = 5000.0d;
+    public static long selectorMicroSiteSalt = 0x1CE0BEEFCL;
+
+    // selector - patch noise
+    public static double selectorPatchFrequency = 0.0018d;
+    public static int selectorPatchOctaves = 3;
+    public static double selectorPatchLacunarity = 2.0d;
+    public static double selectorPatchGain = 0.5d;
+    public static double selectorPatchScale = 4096.0d;
+    public static long selectorPatchSalt = 0x71A7105L;
+
+    // selector - rare marker
+    public static boolean selectorRareEnabled = true;
+    public static double selectorRareFrequency = 0.0045d;
+    public static double selectorRareThreshold = 0.83d;
+    public static long selectorRareSalt = 0xBADBEEFL;
+
+    // selector - continental blend
+    public static double selectorElevationMin = 40.0d;
+    public static double selectorElevationMax = 160.0d;
+    public static double selectorElevationWeight = 0.5d;
+    public static double selectorCoastScale = 96.0d;
+    public static double selectorCoastWeight = 0.3d;
+    public static double selectorHydroWeight = 0.2d;
+    public static double selectorContinentalPivot = 0.45d;
+    public static double selectorContinentalScale = 2.2d;
+    public static double selectorCoastBeachWidth = 24.0d;
+    public static double selectorCoastShelfWidth = 48.0d;
 
     // diagnostics
     public static boolean diagnosticsSampleUsePlayer = false;
@@ -125,6 +175,7 @@ public final class FieldManagerConfigSpec {
     private static void loadConfig() {
 
         loadMacroCache();
+        loadMacroSelector();
         loadDiagnostics();
         loadTerrain();
         loadClimate();
@@ -153,6 +204,219 @@ public final class FieldManagerConfigSpec {
             .get(CAT_MACRO_CACHE, "diagnosticsEnabled", macroCacheDiagnostics,
                 "是否启用缓存诊断统计。")
             .getBoolean(macroCacheDiagnostics);
+    }
+
+    private static void loadMacroSelector() {
+        selectorSeedSalt = getLongProperty(
+            CAT_SELECTOR,
+            "noiseSeedSalt",
+            selectorSeedSalt,
+            "宏群系选择器内部噪声的 seed salt。"
+        );
+
+        selectorDebugLogging = config
+            .get(CAT_SELECTOR_DEBUG, "enableDebugLogging", selectorDebugLogging,
+                "选择器是否输出调试日志。")
+            .getBoolean(selectorDebugLogging);
+
+        selectorPatchFrequency = config
+            .get(CAT_SELECTOR_PATCH, "frequency", selectorPatchFrequency,
+                "Patch 噪声频率。")
+            .getDouble(selectorPatchFrequency);
+
+        selectorPatchOctaves = config
+            .get(CAT_SELECTOR_PATCH, "octaves", selectorPatchOctaves,
+                "Patch 噪声音阶数（>=1）。")
+            .getInt(selectorPatchOctaves);
+        if (selectorPatchOctaves < 1) {
+            selectorPatchOctaves = 1;
+        }
+
+        selectorPatchLacunarity = config
+            .get(CAT_SELECTOR_PATCH, "lacunarity", selectorPatchLacunarity,
+                "Patch 噪声频率倍增系数。")
+            .getDouble(selectorPatchLacunarity);
+
+        selectorPatchGain = config
+            .get(CAT_SELECTOR_PATCH, "gain", selectorPatchGain,
+                "Patch 噪声振幅衰减系数。")
+            .getDouble(selectorPatchGain);
+
+        selectorPatchScale = config
+            .get(CAT_SELECTOR_PATCH, "idScale", selectorPatchScale,
+                "Patch ID 的缩放上限（>0）。")
+            .getDouble(selectorPatchScale);
+        if (selectorPatchScale < 1.0d) {
+            selectorPatchScale = 1.0d;
+        }
+
+        selectorPatchSalt = getLongProperty(
+            CAT_SELECTOR_PATCH,
+            "salt",
+            selectorPatchSalt,
+            "Patch 噪声 salt。"
+        );
+
+        selectorRareEnabled = config
+            .get(CAT_SELECTOR_RARE, "enabled", selectorRareEnabled,
+                "是否开启稀有标记。")
+            .getBoolean(selectorRareEnabled);
+
+        selectorRareFrequency = config
+            .get(CAT_SELECTOR_RARE, "frequency", selectorRareFrequency,
+                "稀有噪声频率。")
+            .getDouble(selectorRareFrequency);
+
+        selectorRareThreshold = config
+            .get(CAT_SELECTOR_RARE, "threshold", selectorRareThreshold,
+                "稀有判定阈值（0~1，越低越容易触发）。")
+            .getDouble(selectorRareThreshold);
+
+        selectorRareSalt = getLongProperty(
+            CAT_SELECTOR_RARE,
+            "salt",
+            selectorRareSalt,
+            "稀有噪声 salt。"
+        );
+
+        selectorElevationMin = config
+            .get(CAT_SELECTOR_CONTINENTAL, "elevationMin", selectorElevationMin,
+                "海陆判定参考的最低海拔。")
+            .getDouble(selectorElevationMin);
+
+        selectorElevationMax = config
+            .get(CAT_SELECTOR_CONTINENTAL, "elevationMax", selectorElevationMax,
+                "海陆判定参考的最高海拔。")
+            .getDouble(selectorElevationMax);
+        if (selectorElevationMax <= selectorElevationMin) {
+            selectorElevationMax = selectorElevationMin + 1.0d;
+        }
+
+        selectorElevationWeight = config
+            .get(CAT_SELECTOR_CONTINENTAL, "elevationWeight", selectorElevationWeight,
+                "海拔对大陆度的权重。")
+            .getDouble(selectorElevationWeight);
+
+        selectorCoastScale = config
+            .get(CAT_SELECTOR_CONTINENTAL, "coastScale", selectorCoastScale,
+                "海岸距离归一化尺度（越大远海越慢接近 1）。")
+            .getDouble(selectorCoastScale);
+        if (selectorCoastScale < 1.0d) {
+            selectorCoastScale = 1.0d;
+        }
+
+        selectorCoastBeachWidth = config
+            .get(CAT_SELECTOR_CONTINENTAL, "beachWidth", selectorCoastBeachWidth,
+                "海滩判定宽度（方块数，>=1）。")
+            .getDouble(selectorCoastBeachWidth);
+        if (selectorCoastBeachWidth < 1.0d) {
+            selectorCoastBeachWidth = 1.0d;
+        }
+
+        selectorCoastShelfWidth = config
+            .get(CAT_SELECTOR_CONTINENTAL, "shelfWidth", selectorCoastShelfWidth,
+                "陆架（浅海）判定宽度（方块数，>=1）。")
+            .getDouble(selectorCoastShelfWidth);
+        if (selectorCoastShelfWidth < 1.0d) {
+            selectorCoastShelfWidth = 1.0d;
+        }
+
+        selectorCoastWeight = config
+            .get(CAT_SELECTOR_CONTINENTAL, "coastWeight", selectorCoastWeight,
+                "海岸距离对大陆度的权重。")
+            .getDouble(selectorCoastWeight);
+
+        selectorHydroWeight = config
+            .get(CAT_SELECTOR_CONTINENTAL, "hydroWeight", selectorHydroWeight,
+                "水文（湿度/饱和度）对大陆度的权重。")
+            .getDouble(selectorHydroWeight);
+
+        selectorContinentalPivot = config
+            .get(CAT_SELECTOR_CONTINENTAL, "pivot", selectorContinentalPivot,
+                "权重合成后映射到 [-1,1] 的枢轴点（0~1）。")
+            .getDouble(selectorContinentalPivot);
+
+        selectorContinentalScale = config
+            .get(CAT_SELECTOR_CONTINENTAL, "scale", selectorContinentalScale,
+                "权重合成后映射到 [-1,1] 的缩放因子。")
+            .getDouble(selectorContinentalScale);
+        if (selectorContinentalScale <= 0.0d) {
+            selectorContinentalScale = 1.0d;
+        }
+
+        selectorMacroGridSize = config
+            .get(CAT_SELECTOR, "macroGridSize", selectorMacroGridSize,
+                "Voronoi 宏站点索引网格尺寸（block 单位，建议 8192~12288）。")
+            .getInt(selectorMacroGridSize);
+        if (selectorMacroGridSize < 1024) {
+            selectorMacroGridSize = 1024;
+        }
+
+        selectorMacroSiteSpacing = config
+            .get(CAT_SELECTOR, "macroSiteSpacing", selectorMacroSiteSpacing,
+                "宏站点平均间距（block 单位，建议 9000~11000）。")
+            .getDouble(selectorMacroSiteSpacing);
+        if (selectorMacroSiteSpacing < 2048.0d) {
+            selectorMacroSiteSpacing = 2048.0d;
+        }
+
+        selectorMacroBlendWidth = config
+            .get(CAT_SELECTOR, "macroBlendWidth", selectorMacroBlendWidth,
+                "宏边界过渡带宽度 W（block 单位，建议 400~900）。")
+            .getDouble(selectorMacroBlendWidth);
+        if (selectorMacroBlendWidth < 64.0d) {
+            selectorMacroBlendWidth = 64.0d;
+        }
+
+        selectorMacroSiteSalt = getLongProperty(
+            CAT_SELECTOR,
+            "macroSiteSalt",
+            selectorMacroSiteSalt,
+            "宏站点 jitter/ID 生成 salt。"
+        );
+
+        selectorEdgeNoiseFrequency = config
+            .get(CAT_SELECTOR, "edgeNoiseFrequency", selectorEdgeNoiseFrequency,
+                "宏边界破碎噪声频率（1/波长，建议约 1/512）。")
+            .getDouble(selectorEdgeNoiseFrequency);
+        if (selectorEdgeNoiseFrequency <= 0.0d) {
+            selectorEdgeNoiseFrequency = 1.0d / 512.0d;
+        }
+
+        selectorEdgeNoiseAmplitude = config
+            .get(CAT_SELECTOR, "edgeNoiseAmplitude", selectorEdgeNoiseAmplitude,
+                "宏边界破碎噪声振幅（0~1，控制翻转概率曲线）。")
+            .getDouble(selectorEdgeNoiseAmplitude);
+
+        selectorEdgeNoiseSalt = getLongProperty(
+            CAT_SELECTOR,
+            "edgeNoiseSalt",
+            selectorEdgeNoiseSalt,
+            "宏边界破碎噪声 salt。"
+        );
+
+        selectorMicroGridSize = config
+            .get(CAT_SELECTOR, "microGridSize", selectorMicroGridSize,
+                "微站点索引网格尺寸（block 单位，建议 4096~6144）。")
+            .getInt(selectorMicroGridSize);
+        if (selectorMicroGridSize < 512) {
+            selectorMicroGridSize = 512;
+        }
+
+        selectorMicroSiteSpacing = config
+            .get(CAT_SELECTOR, "microSiteSpacing", selectorMicroSiteSpacing,
+                "微站点平均间距（block 单位，建议 4000~6000）。")
+            .getDouble(selectorMicroSiteSpacing);
+        if (selectorMicroSiteSpacing < 1024.0d) {
+            selectorMicroSiteSpacing = 1024.0d;
+        }
+
+        selectorMicroSiteSalt = getLongProperty(
+            CAT_SELECTOR,
+            "microSiteSalt",
+            selectorMicroSiteSalt,
+            "微站点 jitter/ID 生成 salt（请与宏 salt 区分）。"
+        );
     }
 
     private static void loadTerrain() {
@@ -450,5 +714,22 @@ public final class FieldManagerConfigSpec {
             .get(CAT_DIAGNOSTICS, "sampleZ", diagnosticsSampleZ,
                 "diagnosticsUseSpawn=false 时的采样 Z 坐标。")
             .getInt(diagnosticsSampleZ);
+    }
+
+    private static long getLongProperty(String category, String key, long defaultValue, String comment) {
+        Property property = config.get(category, key, Long.toString(defaultValue), comment);
+        String raw = property.getString();
+
+        if (raw == null || raw.trim().isEmpty()) {
+            property.set(Long.toString(defaultValue));
+            return defaultValue;
+        }
+
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException ex) {
+            property.set(Long.toString(defaultValue));
+            return defaultValue;
+        }
     }
 }

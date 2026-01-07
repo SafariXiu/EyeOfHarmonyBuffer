@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.context;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.BiomeDecisionStrategy;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroBiomeSelector;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineProvider;
@@ -22,6 +24,8 @@ public final class FieldContext {
     private final BiomeDecisionStrategy strategy;
     private final FieldDiagnostics diagnostics;
 
+    private final MacroBiomeSelector macroSelector;
+
     public FieldContext(World world,
                         long seed,
                         MacroFieldProvider macroFieldProvider,
@@ -39,6 +43,12 @@ public final class FieldContext {
         this.fieldManager = Objects.requireNonNull(fieldManager, "fieldManager");
         this.strategy = Objects.requireNonNull(strategy, "strategy");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+
+        this.macroSelector = new MacroBiomeSelector(
+            this.fieldManager,
+            this.seed,
+            MacroSelectorConfig.fromSpec()
+        );
     }
 
     public int getDimensionId() {
@@ -71,6 +81,10 @@ public final class FieldContext {
 
     public FieldDiagnostics getDiagnostics() {
         return diagnostics;
+    }
+
+    public MacroBiomeSelector getMacroSelector() {
+        return macroSelector;
     }
 
     public void dispose() {

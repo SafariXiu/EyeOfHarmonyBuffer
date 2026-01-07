@@ -8,8 +8,8 @@ public enum MacroBiome {
 
     OCEANIC(
         0,
-        new ClimateProfile(0.40f, 0.90f, 0.20f),
-        new MacroHeightProfile(48.0, 68.0, -1.20f, 0.05f),
+        new ClimateProfile(0.42f, 0.95f, 0.08f),
+        new MacroHeightProfile(42.0, 60.0, -1.30f, 0.04f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_OCEAN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_SHELF, 1)
@@ -18,19 +18,18 @@ public enum MacroBiome {
 
     COASTAL(
         1,
-        new ClimateProfile(0.65f, 0.85f, 0.30f),
-        new MacroHeightProfile(62.0, 70.0, -0.40f, 0.03f),
+        new ClimateProfile(0.58f, 0.82f, 0.22f),
+        new MacroHeightProfile(58.0, 72.0, -0.35f, 0.04f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_BEACH, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_PLAINS, 1)
         )
     ),
 
-
     LOWLAND_WET(
         2,
-        new ClimateProfile(0.80f, 0.95f, 0.60f),
-        new MacroHeightProfile(68.0, 82.0, -0.10f, 0.04f),
+        new ClimateProfile(0.75f, 0.98f, 0.18f),
+        new MacroHeightProfile(64.0, 78.0, -0.05f, 0.03f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_BASIN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TROPICAL_RAIN, 1)
@@ -39,8 +38,8 @@ public enum MacroBiome {
 
     PLAINS_TEMPERATE(
         3,
-        new ClimateProfile(0.55f, 0.65f, 0.55f),
-        new MacroHeightProfile(70.0, 92.0, 0.00f, 0.05f),
+        new ClimateProfile(0.52f, 0.60f, 0.32f),
+        new MacroHeightProfile(68.0, 96.0, 0.02f, 0.05f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_PLAINS, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TEMPERATE_FOREST, 2),
@@ -50,8 +49,8 @@ public enum MacroBiome {
 
     WARM_DRY(
         4,
-        new ClimateProfile(0.85f, 0.35f, 0.20f),
-        new MacroHeightProfile(70.0, 92.0, 0.05f, 0.03f),
+        new ClimateProfile(0.82f, 0.30f, 0.28f),
+        new MacroHeightProfile(70.0, 100.0, 0.06f, 0.06f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_DESERT, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_WARM_STEPPE, 2),
@@ -61,8 +60,8 @@ public enum MacroBiome {
 
     TROPICAL_HUMID(
         5,
-        new ClimateProfile(1.00f, 0.95f, 0.25f),
-        new MacroHeightProfile(72.0, 92.0, 0.05f, 0.06f),
+        new ClimateProfile(0.95f, 0.92f, 0.24f),
+        new MacroHeightProfile(72.0, 90.0, 0.04f, 0.05f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_TROPICAL_RAIN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_SAVANNA, 1)
@@ -71,8 +70,8 @@ public enum MacroBiome {
 
     COOL_FORESTED(
         6,
-        new ClimateProfile(0.35f, 0.75f, 0.50f),
-        new MacroHeightProfile(80.0, 102.0, 0.20f, 0.07f),
+        new ClimateProfile(0.32f, 0.70f, 0.45f),
+        new MacroHeightProfile(82.0, 116.0, 0.18f, 0.08f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_COOL_FOREST, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TEMPERATE_FOREST, 1)
@@ -81,8 +80,8 @@ public enum MacroBiome {
 
     SUBPOLAR(
         7,
-        new ClimateProfile(0.20f, 0.40f, 0.30f),
-        new MacroHeightProfile(70.0, 110.0, 0.10f, 0.05f),
+        new ClimateProfile(0.18f, 0.45f, 0.50f),
+        new MacroHeightProfile(92.0, 132.0, 0.22f, 0.09f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_SUBPOLAR_TUNDRA, 2),
             new MacroBiomeVariant(TalosBiomes.TALOS_POLAR_DESERT, 1),
@@ -92,8 +91,8 @@ public enum MacroBiome {
 
     MOUNTAINOUS(
         8,
-        new ClimateProfile(0.30f, 0.35f, 0.80f),
-        new MacroHeightProfile(92.0, 140.0, 0.45f, 0.15f),
+        new ClimateProfile(0.25f, 0.35f, 0.80f),
+        new MacroHeightProfile(110.0, 180.0, 0.48f, 0.16f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_MOUNTAINS, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_PLATEAU, 2),

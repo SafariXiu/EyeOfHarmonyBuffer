@@ -1,65 +1,65 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroBiomeSelector;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectionResult;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.TalosBiomeDebugHooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.MacroSite;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
-import java.util.Map;
+import java.util.Objects;
 
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
-    private final IMacroCellProvider macroCellBuilder;
-    private final Map<Long, ChunkProviderTalos2.ChunkShoreCache> shoreCache = new Long2ObjectOpenHashMap<>();
+    private static final BiomeGenBase DEFAULT_BIOME = TalosBiomes.TALOS_PLAINS;
+
     private final World world;
+    private final Long2ObjectMap<ChunkBiomeCache> chunkCache = new Long2ObjectOpenHashMap<>();
+
+    private volatile MacroBiomeSelector macroSelector;
 
     public WorldChunkManagerTalos2(World world) {
         super();
-        this.world = world;
+        this.world = Objects.requireNonNull(world, "world");
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
-        this.macroCellBuilder = hook.macroCellBuilder();
+        reload(hook.context());
 
-        System.out.println("[Talos2] WCM builder instance=" +
-            System.identityHashCode(this.macroCellBuilder));
+        Talos2Hooks.registerWorldChunkManager(world.provider.dimensionId, this);
+    }
+
+    public void dispose() {
+        Talos2Hooks.unregisterWorldChunkManager(world.provider.dimensionId, this);
+        synchronized (chunkCache) {
+            chunkCache.clear();
+        }
     }
 
     @Override
     public BiomeGenBase getBiome() {
-        return TalosBiomes.TALOS_PLAINS;
+        return DEFAULT_BIOME;
     }
 
-    private BiomeGenBase pickBiomeFor(int x, int z) {
-        BiomeGenBase generated = TalosBiomeDebugHooks.getGeneratedBiome(x, z);
-        if (generated != null) {
-            return generated;
+    public synchronized void reload(FieldContext context) {
+        Objects.requireNonNull(context, "FieldContext");
+
+        MacroBiomeSelector selector = context.getMacroSelector();
+        if (selector == null) {
+            throw new IllegalStateException("FieldContext returned null MacroBiomeSelector");
         }
 
-        ChunkProviderTalos2.ChunkShoreCache.MacroCell cell = getCell(x, z);
-        if (cell == null) {
-            return TalosBiomes.TALOS_PLAINS;
-        }
+        this.macroSelector = selector;
 
-        boolean isLand = cell.isLand;
-        int dist = ushort(cell.distToCoast);
-        int beach = ushort(cell.beachWidth);
-        int shelf = ushort(cell.shelfWidth);
-
-        return pickBaseBiome(isLand, dist, beach, shelf);
-    }
-
-    private BiomeGenBase pickBaseBiome(boolean isLand, int distToCoast, int beachWidth, int shelfWidth) {
-        if (!isLand) {
-            return distToCoast <= shelfWidth ? TalosBiomes.TALOS_SHELF : TalosBiomes.TALOS_OCEAN;
+        synchronized (chunkCache) {
+            chunkCache.clear();
         }
-        if (distToCoast <= beachWidth) {
-            return TalosBiomes.TALOS_BEACH;
-        }
-        return TalosBiomes.TALOS_PLAINS;
     }
 
     @Override
@@ -78,9 +78,9 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         int i = 0;
         for (int dz = 0; dz < depth; dz++) {
             for (int dx = 0; dx < width; dx++) {
-                int gx = x + dx;
-                int gz = z + dz;
-                array[i++] = pickBiomeFor(gx, gz);
+                int worldX = (x + dx) << 2;
+                int worldZ = (z + dz) << 2;
+                array[i++] = pickBiomeFor(worldX, worldZ);
             }
         }
         return array;
@@ -90,23 +90,142 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     public BiomeGenBase[] loadBlockGeneratorData(BiomeGenBase[] array,
                                                  int x, int z,
                                                  int width, int depth) {
-        return getBiomesForGeneration(array, x, z, width, depth);
+        if (array == null || array.length < width * depth) {
+            array = new BiomeGenBase[width * depth];
+        }
+
+        int i = 0;
+        for (int dz = 0; dz < depth; dz++) {
+            for (int dx = 0; dx < width; dx++) {
+                int worldX = x + dx;
+                int worldZ = z + dz;
+                array[i++] = pickBiomeFor(worldX, worldZ);
+            }
+        }
+        return array;
     }
 
-    private static int ushort(short v) {
-        return v & 0xFFFF;
+    private BiomeGenBase pickBiomeFor(int x, int z) {
+        BiomeGenBase debug = TalosBiomeDebugHooks.getGeneratedBiome(x, z);
+        if (debug != null) {
+            return debug;
+        }
+
+        MacroBiomeSelector selector = this.macroSelector;
+        if (selector == null) {
+            return DEFAULT_BIOME;
+        }
+
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+        int localX = x & 15;
+        int localZ = z & 15;
+        int index = (localZ << 4) | localX;
+
+        ChunkBiomeCache cache = resolveChunkCache(chunkX, chunkZ);
+
+        BiomeGenBase biome = cache.biomes[index];
+        if (biome != null) {
+            return biome;
+        }
+
+        MacroSelectionResult macro = selector.select(x, z);
+        biome = pickBiomeFromMacro(macro);
+        cache.biomes[index] = biome;
+        return biome;
     }
 
-    private ChunkProviderTalos2.ChunkShoreCache.MacroCell getCell(int gx, int gz) {
-        int chunkX = Math.floorDiv(gx, 16);
-        int chunkZ = Math.floorDiv(gz, 16);
-        long key = (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+    private ChunkBiomeCache resolveChunkCache(int chunkX, int chunkZ) {
+        long key = chunkKey(chunkX, chunkZ);
+        synchronized (chunkCache) {
+            ChunkBiomeCache cache = chunkCache.get(key);
+            if (cache == null) {
+                cache = new ChunkBiomeCache();
+                chunkCache.put(key, cache);
+            }
+            return cache;
+        }
+    }
 
-        ChunkProviderTalos2.ChunkShoreCache cache =
-            shoreCache.computeIfAbsent(key, k -> macroCellBuilder.build(chunkX, chunkZ));
+    private static long chunkKey(int chunkX, int chunkZ) {
+        return (((long) chunkX) << 32) | (chunkZ & 0xFFFFFFFFL);
+    }
 
-        int lx = gx - chunkX * 16;
-        int lz = gz - chunkZ * 16;
-        return cache.macroContext[lx][lz];
+    private BiomeGenBase pickBiomeFromMacro(MacroSelectionResult macro) {
+        MacroBiome.MacroBiomeVariant variant = macro.variant();
+        if (variant != null && variant.biome != null) {
+            return variant.biome;
+        }
+
+        BiomeGenBase primary = pickBaseBiomeForTag(macro.macroTag(), macro);
+        MacroSite secondarySite = macro.secondarySite();
+
+        if (secondarySite != null && macro.edgeFactor() < 0.45d) {
+            BiomeGenBase secondary = pickBaseBiomeForTag(secondarySite.macroTag(), macro);
+            if (secondary != null && secondary != primary) {
+                return selectTransitionBiome(
+                    primary,
+                    secondary,
+                    macro.edgeFactor(),
+                    macro.macroSiteId(),
+                    macro.microSiteId()
+                );
+            }
+        }
+
+        return primary != null ? primary : DEFAULT_BIOME;
+    }
+
+    private BiomeGenBase pickBaseBiomeForTag(MacroTag tag, MacroSelectionResult macro) {
+        if (tag == null) {
+            return DEFAULT_BIOME;
+        }
+
+        if (tag.isOceanic()) {
+            return macro.coastDistance() <= macro.shelfWidth()
+                ? TalosBiomes.TALOS_SHELF
+                : TalosBiomes.TALOS_OCEAN;
+        }
+
+        if (tag.isCoastal() || macro.coastDistance() <= macro.coastWidth()) {
+            return TalosBiomes.TALOS_BEACH;
+        }
+
+        if (tag.isFrozen()) {
+            return TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
+        }
+
+        return switch (tag) {
+            case DESERT -> TalosBiomes.TALOS_DESERT;
+            case SAVANNA -> TalosBiomes.TALOS_SAVANNA;
+            case STEPPE -> TalosBiomes.TALOS_WARM_STEPPE;
+            case COOL_FOREST -> TalosBiomes.TALOS_COOL_FOREST;
+            case TROPICAL -> TalosBiomes.TALOS_TROPICAL_RAIN;
+            case TUNDRA -> TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
+            case MOUNTAIN, ALPINE -> TalosBiomes.TALOS_MOUNTAINS;
+            case BASIN -> TalosBiomes.TALOS_BASIN;
+            default -> DEFAULT_BIOME;
+        };
+    }
+
+    private BiomeGenBase selectTransitionBiome(BiomeGenBase primary,
+                                               BiomeGenBase secondary,
+                                               double edgeFactor,
+                                               long macroSiteId,
+                                               long microSiteId) {
+        if (edgeFactor >= 0.55d) {
+            return primary;
+        }
+        if (edgeFactor <= 0.20d) {
+            return secondary;
+        }
+
+        long mixed = macroSiteId ^ (microSiteId * 0x9E3779B97F4A7C15L)
+            ^ Double.doubleToLongBits(edgeFactor);
+        return (mixed & 1L) == 0L ? primary : secondary;
+    }
+
+    private static final class ChunkBiomeCache {
+        private final BiomeGenBase[] biomes = new BiomeGenBase[16 * 16];
     }
 }
