@@ -3,6 +3,10 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector;
 import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
 import com.github.bsideup.jabel.Desugar;
 
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 @Desugar
@@ -11,6 +15,9 @@ public record MacroSelectorConfig(
     NoiseSettings patchNoise,
     RareSettings rareSettings,
     ContinentalSettings continentalSettings,
+    double continentalLandThreshold,
+    double coastSoftBandWidth,
+    LatitudeSettings latitudeSettings,
     boolean debugLogging,
     int macroGridSize,
     double macroSiteSpacing,
@@ -23,13 +30,19 @@ public record MacroSelectorConfig(
     long edgeNoiseSalt,
     int microGridSize,
     double microSiteSpacing,
-    long microSiteSalt
+    long microSiteSalt,
+    HeightSettings heightSettings,
+    TransitionSettings transitionSettings,
+    HeightProfile heightProfile
 ) {
 
     public MacroSelectorConfig {
         Objects.requireNonNull(patchNoise, "patchNoise");
         Objects.requireNonNull(rareSettings, "rareSettings");
         Objects.requireNonNull(continentalSettings, "continentalSettings");
+        Objects.requireNonNull(heightSettings, "heightSettings");
+        Objects.requireNonNull(heightProfile, "heightProfile");
+        Objects.requireNonNull(latitudeSettings, "latitudeSettings");
 
         if (macroGridSize < 512) {
             throw new IllegalArgumentException("macroGridSize must be >= 512");
@@ -58,9 +71,47 @@ public record MacroSelectorConfig(
         if (microSiteSpacing <= 0.0d) {
             throw new IllegalArgumentException("microSiteSpacing must be > 0");
         }
+        if (continentalLandThreshold <= 0.0d || continentalLandThreshold >= 1.0d) {
+            throw new IllegalArgumentException("continentalLandThreshold must be within (0,1)");
+        }
+        if (coastSoftBandWidth < 0.0d || coastSoftBandWidth > 0.25d) {
+            throw new IllegalArgumentException("coastSoftBandWidth must be within [0,0.25]");
+        }
     }
 
     public static MacroSelectorConfig fromSpec() {
+        NoiseSettings heightNoise = null;
+        if (FieldManagerConfigSpec.selectorHeightNoiseEnabled) {
+            heightNoise = new NoiseSettings(
+                FieldManagerConfigSpec.selectorHeightNoiseSalt,
+                FieldManagerConfigSpec.selectorHeightNoiseFrequency,
+                FieldManagerConfigSpec.selectorHeightNoiseOctaves,
+                FieldManagerConfigSpec.selectorHeightNoiseLacunarity,
+                FieldManagerConfigSpec.selectorHeightNoiseGain,
+                1.0d
+            );
+        }
+
+        HeightSettings heightSettings = new HeightSettings(
+            heightNoise,
+            FieldManagerConfigSpec.selectorMacroHeightNoiseStrength,
+            FieldManagerConfigSpec.selectorMicroHeightNoiseStrength
+        );
+
+        TransitionSettings transitionSettings = new TransitionSettings(
+            FieldManagerConfigSpec.selectorTransitionEnabled,
+            FieldManagerConfigSpec.selectorTransitionDefaultCoastWidth,
+            Arrays.asList(FieldManagerConfigSpec.selectorTransitionRules)
+        );
+
+        HeightProfile heightProfile = new HeightProfile(
+            FieldManagerConfigSpec.terrainWorldFloor,
+            FieldManagerConfigSpec.terrainWorldCeiling,
+            FieldManagerConfigSpec.terrainFloorY,
+            FieldManagerConfigSpec.terrainCeilingY,
+            FieldManagerConfigSpec.terrainSeaLevel
+        );
+
         return new MacroSelectorConfig(
             FieldManagerConfigSpec.selectorSeedSalt,
             new NoiseSettings(
@@ -89,11 +140,21 @@ public record MacroSelectorConfig(
                 FieldManagerConfigSpec.selectorCoastBeachWidth,
                 FieldManagerConfigSpec.selectorCoastShelfWidth
             ),
+            FieldManagerConfigSpec.selectorContinentalLandThreshold,
+            FieldManagerConfigSpec.selectorCoastSoftBandWidth,
+            new LatitudeSettings(
+                FieldManagerConfigSpec.selectorLatitudePeriod,
+                FieldManagerConfigSpec.selectorLatitudeBlendWidth,
+                FieldManagerConfigSpec.selectorLatitudeBaseBias,
+                FieldManagerConfigSpec.selectorLatitudeMixWeight,
+                FieldManagerConfigSpec.selectorLatitudeWarpScale,
+                FieldManagerConfigSpec.selectorLatitudeWarpAmplitude,
+                FieldManagerConfigSpec.selectorLatitudeWarpSalt
+            ),
             FieldManagerConfigSpec.selectorDebugLogging,
             FieldManagerConfigSpec.selectorMacroGridSize,
             FieldManagerConfigSpec.selectorMacroSiteSpacing,
             FieldManagerConfigSpec.selectorMacroSiteSalt,
-            /* neighbor radius → 可暂写死 2，如需配置可在 spec 中新增 */
             2,
             FieldManagerConfigSpec.macroCacheMaxEntries,
             FieldManagerConfigSpec.selectorMacroBlendWidth,
@@ -102,7 +163,10 @@ public record MacroSelectorConfig(
             FieldManagerConfigSpec.selectorEdgeNoiseSalt,
             FieldManagerConfigSpec.selectorMicroGridSize,
             FieldManagerConfigSpec.selectorMicroSiteSpacing,
-            FieldManagerConfigSpec.selectorMicroSiteSalt
+            FieldManagerConfigSpec.selectorMicroSiteSalt,
+            heightSettings,
+            transitionSettings,
+            heightProfile
         );
     }
 
@@ -129,6 +193,30 @@ public record MacroSelectorConfig(
     ) {
         public double clampThreshold() {
             return Math.max(0.0d, Math.min(1.0d, threshold));
+        }
+    }
+
+    @Desugar
+    public record HeightSettings(
+        @Nullable NoiseSettings noise,
+        double macroNoiseStrength,
+        double microNoiseStrength
+    ) {
+        public boolean enabled() {
+            return noise != null && macroNoiseStrength != 0.0d;
+        }
+    }
+
+    @Desugar
+    public record TransitionSettings(
+        boolean enabled,
+        double defaultCoastWidth,
+        List<String> ruleStrings
+    ) {
+        public List<String> ruleStrings() {
+            return ruleStrings == null
+                ? Collections.emptyList()
+                : Collections.unmodifiableList(ruleStrings);
         }
     }
 
@@ -205,6 +293,49 @@ public record MacroSelectorConfig(
 
         public double shelfWidthBlocks() {
             return shelfWidth;
+        }
+    }
+
+    @Desugar
+    public record HeightProfile(
+        int worldFloorY,
+        int worldCeilingY,
+        double terrainFloorY,
+        double terrainCeilingY,
+        double seaLevelY
+    ) {
+        public double terrainRange() {
+            return Math.max(1.0d, terrainCeilingY - terrainFloorY);
+        }
+    }
+
+    @Desugar
+    public record LatitudeSettings(
+        double periodBlocks,
+        double blendWidth,
+        double baseBias,
+        double mixWeight,
+        double warpScale,
+        double warpAmplitude,
+        long warpSalt
+    ) {
+        public LatitudeSettings {
+            if (periodBlocks <= 0.0d) {
+                throw new IllegalArgumentException("Latitude period must be > 0");
+            }
+            if (blendWidth < 0.0d) {
+                throw new IllegalArgumentException("Latitude blendWidth must be >= 0");
+            }
+            if (warpScale < 0.0d) {
+                throw new IllegalArgumentException("Latitude warpScale must be >= 0");
+            }
+            if (warpAmplitude < 0.0d) {
+                throw new IllegalArgumentException("Latitude warpAmplitude must be >= 0");
+            }
+        }
+
+        public double normalizedBlendWidth() {
+            return Math.max(0.0d, Math.min(0.5d, blendWidth));
         }
     }
 }

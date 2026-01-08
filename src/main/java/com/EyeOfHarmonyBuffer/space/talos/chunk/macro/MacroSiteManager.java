@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.macro;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.MacroDomain;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.ClimateSample;
@@ -10,7 +11,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.gen.NoiseGeneratorSimplex;
 
+import java.util.Random;
+import java.util.Locale;
 import java.util.Objects;
 
 public final class MacroSiteManager {
@@ -23,6 +27,60 @@ public final class MacroSiteManager {
     private final long macroSiteSalt;
     private final int neighborRadius;
     private final int maxCacheEntries;
+    private final MacroSelectorConfig.LatitudeSettings latitudeSettings;
+    private final double continentalLandThreshold;
+    private final double coastSoftBandWidth;
+    private final NoiseGeneratorSimplex latitudeWarpNoise;
+
+    private static final LatitudeBand[] LATITUDE_BANDS = new LatitudeBand[]{
+        new LatitudeBand(
+            0,
+            0.00d,
+            0.12d,
+            new MacroBiome[]{MacroBiome.SUBPOLAR, MacroBiome.MOUNTAINOUS},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        ),
+        // 冷温带
+        new LatitudeBand(
+            1,
+            0.12d,
+            0.28d,
+            new MacroBiome[]{MacroBiome.COOL_FORESTED, MacroBiome.SUBPOLAR},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        ),
+        // 温带
+        new LatitudeBand(
+            2,
+            0.28d,
+            0.52d,
+            new MacroBiome[]{MacroBiome.PLAINS_TEMPERATE, MacroBiome.COOL_FORESTED},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        ),
+        // 亚热带
+        new LatitudeBand(
+            3,
+            0.52d,
+            0.72d,
+            new MacroBiome[]{MacroBiome.WARM_DRY, MacroBiome.LOWLAND_WET},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        ),
+        // 热带
+        new LatitudeBand(
+            4,
+            0.72d,
+            0.88d,
+            new MacroBiome[]{MacroBiome.TROPICAL_HUMID, MacroBiome.LOWLAND_WET},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        ),
+        // 赤道带
+        new LatitudeBand(
+            5,
+            0.88d,
+            1.00d,
+            new MacroBiome[]{MacroBiome.TROPICAL_HUMID, MacroBiome.WARM_DRY},
+            new MacroBiome[]{MacroBiome.OCEANIC}
+        )
+    };
 
     private final Long2ObjectLinkedOpenHashMap<MacroSite> siteCache = new Long2ObjectLinkedOpenHashMap<>();
 
@@ -39,6 +97,11 @@ public final class MacroSiteManager {
         this.macroSiteSalt = config.macroSiteSalt();
         this.neighborRadius = Math.max(2, config.macroNeighborRadius());
         this.maxCacheEntries = Math.max(64, config.macroCacheMaxEntries());
+        this.latitudeSettings = config.latitudeSettings();
+        this.continentalLandThreshold = config.continentalLandThreshold();
+        this.coastSoftBandWidth = config.coastSoftBandWidth();
+        long latitudeSeed = config.baseSalt() ^ latitudeSettings.warpSalt();
+        this.latitudeWarpNoise = new NoiseGeneratorSimplex(new Random(latitudeSeed));
     }
 
     public MacroSiteQueryResult query(int blockX, int blockZ) {
@@ -112,13 +175,35 @@ public final class MacroSiteManager {
         double humidity = MathHelper.clamp_float((float) climate.humidity(), 0.0f, 1.0f);
         double temperature = MathHelper.clamp_float((float) climate.temperature(), 0.0f, 1.0f);
 
-        MacroTag macroTag = MacroTag.pick(continentalScore, humidity, temperature);
-        MacroBiome macroBiome = macroTag.toMacroBiome();
+        // --- 新字段计算 ---
+        MacroDomain domain = resolveDomain(continentalScore);
+        double coastSoftness = computeCoastSoftness(continentalScore);
 
-        long id = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt);
+        double latitude01 = sampleLatitude01(centerX, centerZ);
+        LatitudeBand latitudeBand = findLatitudeBand(latitude01);
+        int latitudeBandIndex = latitudeBand.index;
+
+        MacroBiome[] pool = poolForDomain(latitudeBand, domain);
+
+        long siteSeed = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt);
+        MacroBiome macroBiome = selectMacroBiome(pool, siteSeed, humidity, temperature, coastSoftness);
+
+        MacroTag macroTag = MacroTag.fromBiome(macroBiome);
+
+        if (config.debugLogging()) {
+            System.out.println(
+                "[MacroSiteManager] cell=(" + cellX + "," + cellZ + ")"
+                    + " center=(" + centerX + "," + centerZ + ")"
+                    + " lat01=" + String.format(Locale.ROOT, "%.3f", latitude01)
+                    + " band=" + latitudeBandIndex
+                    + " domain=" + domain
+                    + " coastSoft=" + String.format(Locale.ROOT, "%.2f", coastSoftness)
+                    + " biome=" + macroBiome
+            );
+        }
 
         return new MacroSite(
-            id,
+            siteSeed,
             cellX,
             cellZ,
             centerX,
@@ -127,7 +212,11 @@ public final class MacroSiteManager {
             macroBiome,
             continentalScore,
             humidity,
-            temperature
+            temperature,
+            domain,
+            latitude01,
+            latitudeBandIndex,
+            coastSoftness
         );
     }
 
@@ -136,6 +225,93 @@ public final class MacroSiteManager {
             long key = siteCache.lastLongKey();
             siteCache.removeLast();
         }
+    }
+
+    private static final class LatitudeBand {
+        final int index;
+        final double min;
+        final double max;
+        final MacroBiome[] landPool;
+        final MacroBiome[] seaPool;
+
+        LatitudeBand(int index,
+                     double min,
+                     double max,
+                     MacroBiome[] landPool,
+                     MacroBiome[] seaPool) {
+            this.index = index;
+            this.min = min;
+            this.max = max;
+            this.landPool = landPool;
+            this.seaPool = seaPool;
+        }
+
+        boolean contains(double latitude01) {
+            return latitude01 >= min && latitude01 <= max;
+        }
+    }
+
+    private static LatitudeBand findLatitudeBand(double latitude01) {
+        for (LatitudeBand band : LATITUDE_BANDS) {
+            if (band.contains(latitude01)) {
+                return band;
+            }
+        }
+        return LATITUDE_BANDS[LATITUDE_BANDS.length - 1];
+    }
+
+    private double sampleLatitude01(int blockX, int blockZ) {
+        double period = latitudeSettings.periodBlocks();
+        double basePhase = (blockZ / period) + latitudeSettings.baseBias();
+        double wrapped = basePhase - Math.floor(basePhase);
+        if (wrapped < 0.0d) {
+            wrapped += 1.0d;
+        }
+
+        if (latitudeSettings.warpScale() > 0.0d && latitudeSettings.warpAmplitude() > 0.0d) {
+            double nx = blockX * latitudeSettings.warpScale();
+            double nz = blockZ * latitudeSettings.warpScale();
+            double warp = latitudeWarpNoise.func_151605_a(nx, nz);
+            wrapped += warp * latitudeSettings.warpAmplitude();
+        }
+
+        wrapped = MathHelper.clamp_double(wrapped, 0.0d, 1.0d);
+
+        if (latitudeSettings.mixWeight() > 0.0d) {
+            double mirror = 1.0d - wrapped;
+            wrapped = lerp(latitudeSettings.mixWeight(), wrapped, mirror);
+        }
+
+        return wrapped;
+    }
+
+    private MacroDomain resolveDomain(double continentalValue) {
+        return continentalValue >= continentalLandThreshold ? MacroDomain.LAND : MacroDomain.OCEAN;
+    }
+
+    private double computeCoastSoftness(double continentalValue) {
+        if (coastSoftBandWidth <= 0.0d) {
+            return 0.0d;
+        }
+        double delta = Math.abs(continentalValue - continentalLandThreshold);
+        double softness = 1.0d - (delta / coastSoftBandWidth);
+        return MathHelper.clamp_double(softness, 0.0d, 1.0d);
+    }
+
+    private static MacroBiome[] poolForDomain(LatitudeBand band, MacroDomain domain) {
+        return domain == MacroDomain.OCEAN ? band.seaPool : band.landPool;
+    }
+
+    private MacroBiome selectMacroBiome(MacroBiome[] pool,
+                                        long siteSeed,
+                                        double humidity,
+                                        double temperature,
+                                        double coastSoftness) {
+        if (pool.length == 1) {
+            return pool[0];
+        }
+        Random rng = new Random(siteSeed);
+        return pool[rng.nextInt(pool.length)];
     }
 
     private static double distanceSq(int x1, int z1, int x2, int z2) {
@@ -153,5 +329,9 @@ public final class MacroSiteManager {
 
     private static long pack(int x, int z) {
         return (((long) x) << 32) ^ (z & 0xFFFFFFFFL);
+    }
+
+    private static double lerp(double alpha, double from, double to) {
+        return from + alpha * (to - from);
     }
 }

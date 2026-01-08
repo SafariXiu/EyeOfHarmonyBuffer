@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.BiomeDecisionStrategy;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.FullStrategy;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.SimplifiedStrategy;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.NoiseCoastlineProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.config.MacroCacheConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
@@ -16,6 +17,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.TerrainProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseClimateProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseHydroProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseMacroFieldProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings.HydroProviderSettings;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.CachingMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise.NoiseTerrainProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
@@ -38,6 +40,11 @@ public final class FieldManagerFactory {
         Objects.requireNonNull(config, "config");
 
         long seed = world.getSeed();
+
+        MacroSelectorConfig macroSelectorConfig = MacroSelectorConfig.fromSpec();
+        MacroSelectorConfig.HeightProfile heightProfile = macroSelectorConfig.heightProfile();
+
+        HydroProviderSettings hydroSettings = HydroProviderSettings.fromConfig();
 
         MacroFieldProvider macroProvider =
             new NoiseMacroFieldProvider(seed, config.getMacroSettings());
@@ -73,8 +80,10 @@ public final class FieldManagerFactory {
         );
         HydroProvider hydroProvider = new NoiseHydroProvider(
             seed,
-            config.getHydroSettings(),
-            coastlineProvider
+            hydroSettings,
+            coastlineProvider,
+            terrainProvider,
+            heightProfile
         );
 
         FieldManager fieldManager = new DefaultFieldManager(

@@ -87,6 +87,10 @@ public final class FieldContext {
         return macroSelector;
     }
 
+    public MacroSelectorConfig.HeightProfile heightProfile() {
+        return macroSelector.heightProfile();
+    }
+
     public void dispose() {
         try {
             fieldManager.dispose();

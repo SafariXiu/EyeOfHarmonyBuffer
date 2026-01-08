@@ -4,11 +4,14 @@ import com.EyeOfHarmonyBuffer.space.talos.*;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroBiomeSelector;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectionResult;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.diagnostics.FieldDiagnostics;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.TalosMacroCellBuilder;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import galaxyspace.core.world.GSBiomeGenBase;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -16,6 +19,7 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
@@ -40,12 +44,26 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final Logger LOGGER = LogManager.getLogger("EyeOfHarmonyBuffer");
 
+    private static final long MACRO_HEIGHT_NOISE_SALT = 0xCBF29CE484222325L;
+    private static final long MICRO_HEIGHT_NOISE_SALT = 0x9E3779B185EBCA87L;
+
+    private static final double MACRO_HEIGHT_NOISE_FREQUENCY = 1.0 / 480.0;
+    private static final double MICRO_HEIGHT_NOISE_FREQUENCY = 1.0 / 64.0;
+
     private static long now() { return System.nanoTime(); }
     private static long ms(long nanos) { return nanos / 1_000_000L; }
 
     private static final boolean TALOS_TIMING = false;
     private static final int SLOW_CHUNK_MS = 80;
     private static final int VERY_SLOW_CHUNK_MS = 300;
+
+    private final MacroSelectorConfig.HeightProfile heightProfile;
+    private final int worldFloorY;
+    private final int worldCeilingY;
+    private final double terrainFloorY;
+    private final double terrainCeilingY;
+    private final double heightRange;
+    private final int configuredSeaLevel;
 
     private static void logChunkTiming(int chunkX, int chunkZ,
                                        long tTotal,
@@ -80,10 +98,20 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         Talos2Hooks.HookData hook = Talos2Hooks.resolveOrCreate(world);
 
-        this.macroSelector = hook.fieldContext().getMacroSelector();
-
         this.macroCellBuilder = hook.macroCellBuilder();
         this.diagnostics = hook.diagnostics();
+
+        FieldContext fieldContext = hook.fieldContext();
+        this.macroSelector = hook.fieldContext().getMacroSelector();
+
+        this.heightProfile = fieldContext.heightProfile();
+
+        this.worldFloorY = heightProfile.worldFloorY();
+        this.worldCeilingY = heightProfile.worldCeilingY();
+        this.terrainFloorY = heightProfile.terrainFloorY();
+        this.terrainCeilingY = heightProfile.terrainCeilingY();
+        this.heightRange = heightProfile.terrainRange();
+        this.configuredSeaLevel = (int) Math.round(heightProfile.seaLevelY());
 
         System.out.println("[Talos2] CP builder instance=" +
             System.identityHashCode(this.macroCellBuilder));
@@ -165,18 +193,32 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int worldHeight = 256;
         final int waterLevel = this.getWaterLevel();
 
-        final int landHeight = Math.min(worldHeight - 4, waterLevel + 5);
-        final int seaFloorHeight = Math.max(4, waterLevel - 12);
+        final int fallbackLand = Math.min(worldCeilingY - 4, configuredSeaLevel + 5);
+        final int fallbackSea = Math.max(worldFloorY + 4, configuredSeaLevel - 12);
 
         int[][] heightMap = new int[SIZE][SIZE];
 
         for (int localX = 0; localX <= 16; localX++) {
             for (int localZ = 0; localZ <= 16; localZ++) {
-                heightMap[localX][localZ] =
-                    shore.isLand[localX][localZ] ? landHeight : seaFloorHeight;
+                ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
+                MacroSelectionResult macro = cell != null ? cell.macroResult : null;
+
+                int worldX = chunkX * 16 + localX;
+                int worldZ = chunkZ * 16 + localZ;
+
+                int groundHeight;
+                if (macro != null) {
+                    groundHeight = computeGroundHeightFromMacro(macro, worldX, worldZ);
+                } else {
+                    groundHeight = (cell != null && cell.isLand) ? fallbackLand : fallbackSea;
+                }
+
+                heightMap[localX][localZ] = groundHeight;
+                if (cell != null) {
+                    cell.macroBaseHeight = (short) groundHeight;
+                }
             }
         }
-
         return heightMap;
     }
 
@@ -653,6 +695,52 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         };
     }
 
+    private int computeGroundHeightFromMacro(MacroSelectionResult macro,
+                                             int worldX,
+                                             int worldZ) {
+
+        double base = macro.worldBaseHeight();
+        double macroAmp = macro.worldMacroVariance();
+        double microAmp = macro.worldMicroVariance();
+
+        base = MathHelper.clamp_double(base, worldFloorY, worldCeilingY);
+        macroAmp = MathHelper.clamp_double(macroAmp, 0.0D, heightRange);
+        microAmp = MathHelper.clamp_double(microAmp, 0.0D, heightRange);
+
+        double macroNoise = NoiseUtil.fractal(
+            this.world.getSeed(),
+            MACRO_HEIGHT_NOISE_SALT,
+            worldX,
+            worldZ,
+            MACRO_HEIGHT_NOISE_FREQUENCY,
+            3,
+            2.0D,
+            0.5D
+        ) * 2.0D - 1.0D;
+
+        double microNoise = NoiseUtil.fractal(
+            this.world.getSeed(),
+            MICRO_HEIGHT_NOISE_SALT,
+            worldX,
+            worldZ,
+            MICRO_HEIGHT_NOISE_FREQUENCY,
+            2,
+            2.0D,
+            0.65D
+        ) * 2.0D - 1.0D;
+
+        double finalHeight = base
+            + macroNoise * macroAmp
+            + microNoise * microAmp;
+
+        int clamped = (int) MathHelper.clamp_double(
+            finalHeight,
+            worldFloorY + 1,
+            worldCeilingY - 1
+        );
+        return clamped;
+    }
+
     @Override
     public void onPopulate(IChunkProvider provider, int x, int z) {
 
@@ -685,7 +773,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     @Override
     public int getWaterLevel() {
-        return 64;
+        return this.configuredSeaLevel;
     }
 
     @Override

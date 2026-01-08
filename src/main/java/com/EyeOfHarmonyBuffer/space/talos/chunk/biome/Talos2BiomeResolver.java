@@ -68,7 +68,6 @@ public final class Talos2BiomeResolver {
             weightSum += Math.max(1, variant.weight);
         }
 
-        // 通过坐标 + plateId/tier 稳定随机
         long seed = ((long) cell.plateId << 32) ^ ((long) cell.tier << 24)
             ^ ((long) lx << 12) ^ (long) lz;
         random.setSeed(seed);

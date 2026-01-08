@@ -2,6 +2,10 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
 
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
+
 public enum MacroTag {
     OCEAN,
     SHELF,
@@ -17,6 +21,29 @@ public enum MacroTag {
     BASIN,
     POLAR_DESERT,
     ALPINE;
+
+    private static final Map<MacroBiome, MacroTag> CANONICAL_BY_BIOME;
+
+    static {
+        EnumMap<MacroBiome, MacroTag> map = new EnumMap<>(MacroBiome.class);
+        map.put(MacroBiome.OCEANIC, OCEAN);
+        map.put(MacroBiome.COASTAL, BEACH);
+        map.put(MacroBiome.LOWLAND_WET, TROPICAL);
+        map.put(MacroBiome.PLAINS_TEMPERATE, PLAINS);
+        map.put(MacroBiome.WARM_DRY, DESERT);
+        map.put(MacroBiome.COOL_FORESTED, COOL_FOREST);
+        map.put(MacroBiome.SUBPOLAR, TUNDRA);
+        map.put(MacroBiome.MOUNTAINOUS, MOUNTAIN);
+        CANONICAL_BY_BIOME = Collections.unmodifiableMap(map);
+    }
+
+    public static MacroTag fromBiome(MacroBiome biome) {
+        MacroTag tag = CANONICAL_BY_BIOME.get(biome);
+        if (tag == null) {
+            throw new IllegalArgumentException("No MacroTag mapping defined for biome: " + biome);
+        }
+        return tag;
+    }
 
     public boolean isOceanic() {
         return switch (this) {

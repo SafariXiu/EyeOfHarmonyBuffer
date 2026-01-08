@@ -1,9 +1,12 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.noise;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.HydroProvider;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.TerrainProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.HydroSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.TerrainSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings.HydroProviderSettings;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.FractalNoise2D;
@@ -31,14 +34,20 @@ public final class NoiseHydroProvider implements HydroProvider {
     private final FractalNoise2D riverNoise;
     private final FractalNoise2D riverDetailNoise;
     private final FractalNoise2D lakeNoise;
+    private final TerrainProvider terrainProvider;
+    private final MacroSelectorConfig.HeightProfile heightProfile;
     private final Long2ObjectLinkedOpenHashMap<HydroChunkCache> chunkCache = new Long2ObjectLinkedOpenHashMap<>();
 
     public NoiseHydroProvider(long seed,
                               HydroProviderSettings settings,
-                              CoastlineProvider coastlineProvider) {
+                              CoastlineProvider coastlineProvider,
+                              TerrainProvider terrainProvider,
+                              MacroSelectorConfig.HeightProfile heightProfile) {
 
         this.settings = Objects.requireNonNull(settings, "settings");
         this.coastlineProvider = Objects.requireNonNull(coastlineProvider, "coastlineProvider");
+        this.terrainProvider = Objects.requireNonNull(terrainProvider);
+        this.heightProfile = Objects.requireNonNull(heightProfile);
 
         HydroProviderSettings.GroundwaterSettings gw = settings.groundwater();
         this.saturationNoise = createNoise(
@@ -104,7 +113,9 @@ public final class NoiseHydroProvider implements HydroProvider {
     }
 
     private HydroSample computeSample(int blockX, int blockZ) {
-        GroundwaterResult groundwater = sampleGroundwater(blockX, blockZ);
+        TerrainSample terrain = terrainProvider.sample(blockX, blockZ);
+
+        GroundwaterResult groundwater = sampleGroundwater(blockX, blockZ, terrain);
         RiverMetrics river = sampleRiver(blockX, blockZ);
         double lakeFactor = sampleLake(blockX, blockZ);
 
@@ -113,7 +124,16 @@ public final class NoiseHydroProvider implements HydroProvider {
             : CoastlineContext.inlandFallback();
 
         double coastInfluence = coastline.influence(settings.coast().falloff());
-        double waterLevel = lerp(groundwater.aquiferLevelBlocks(), settings.seaLevelBlocks(), coastInfluence);
+        double seaLevel = heightProfile.seaLevelY();
+        double waterLevel = lerp(
+            groundwater.aquiferLevelBlocks(),
+            seaLevel,
+            coastInfluence
+        );
+
+        double terrainY = terrain.elevation();
+        double buffer = settings.waterTableBufferBlocks();
+        waterLevel = Math.min(waterLevel, terrainY - buffer);
 
         boolean inlandSea = lakeFactor > 0.75d
             && coastline.distance() > (coastline.beachWidth() + coastline.shelfWidth());
@@ -143,20 +163,33 @@ public final class NoiseHydroProvider implements HydroProvider {
         chunkCache.clear();
     }
 
-    private GroundwaterResult sampleGroundwater(int blockX, int blockZ) {
+    private GroundwaterResult sampleGroundwater(int blockX, int blockZ, TerrainSample terrain) {
         HydroProviderSettings.GroundwaterSettings gw = settings.groundwater();
 
-        double saturationNoiseValue = saturationNoise.sample(blockX, blockZ);
-        double saturation = clamp01(gw.waterTableLevel() +
-            gw.saturationVariance() * saturationNoiseValue);
+        double terrainY = terrain.elevation();
+        double seaLevelY = heightProfile.seaLevelY();
+        double heightDelta = terrainY - seaLevelY;
 
-        double aquiferLevel = clamp01(gw.waterTableLevel() +
-            gw.aquiferVariance() * saturationNoiseValue);
-        double aquiferLevelBlocks = aquiferLevel * WORLD_HEIGHT;
+        double heightResponse = clamp01(0.5 - heightDelta / gw.heightFalloff());
+        double noise = saturationNoise.sample(blockX, blockZ);
+        double noiseResponse = 0.5 + 0.5 * noise;
+
+        double saturation = clamp01(
+            gw.baseSaturation()
+                + gw.saturationVariance() * noiseResponse
+                + gw.heightWeight() * heightResponse
+        );
+
+        double aquiferNorm = clamp01(
+            gw.baseAquifer() + gw.aquiferVariance() * noiseResponse
+        );
+
+        double aquiferLevelBlocks =
+            heightProfile.terrainFloorY() + aquiferNorm * heightProfile.terrainRange();
 
         double flowNoiseValue = flowNoise.sample(blockX, blockZ);
         double flowRate = clamp01(
-            gw.maxFlowRate() * (0.5d + 0.5d * flowNoiseValue)
+            gw.maxFlowRate() * (0.5 + 0.5 * flowNoiseValue)
         );
 
         return new GroundwaterResult(saturation, flowRate, aquiferLevelBlocks);

@@ -19,7 +19,7 @@ public enum MacroBiome {
     COASTAL(
         1,
         new ClimateProfile(0.58f, 0.82f, 0.22f),
-        new MacroHeightProfile(58.0, 72.0, -0.35f, 0.04f),
+        new MacroHeightProfile(64.0, 72.0, -0.35f, 0.04f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_BEACH, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_PLAINS, 1)

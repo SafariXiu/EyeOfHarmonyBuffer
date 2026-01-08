@@ -10,12 +10,13 @@ public record HydroProviderSettings(
     RiverSettings river,
     LakeSettings lake,
     CoastSettings coast,
-    DiagnosticsSettings diagnostics
+    DiagnosticsSettings diagnostics,
+    double waterTableBufferBlocks
 ) {
     private static final double DEFAULT_LACUNARITY = 2.0d;
     private static final double DEFAULT_PERSISTENCE = 0.5d;
     private static final int DEFAULT_OCTAVES = 4;
-    private static final double WORLD_HEIGHT = 256.0d;
+    private static final double DEFAULT_WATER_TABLE_BUFFER = 6.0d;
 
     @Desugar
     public record NoiseSettings(
@@ -27,10 +28,13 @@ public record HydroProviderSettings(
 
     @Desugar
     public record GroundwaterSettings(
-        double waterTableLevel,
+        double baseSaturation,
         double saturationVariance,
+        double baseAquifer,
         double aquiferVariance,
         double maxFlowRate,
+        double heightFalloff,
+        double heightWeight,
         NoiseSettings saturationNoise,
         NoiseSettings flowNoise
     ) {}
@@ -66,10 +70,13 @@ public record HydroProviderSettings(
 
     public static HydroProviderSettings defaults() {
         GroundwaterSettings groundwater = new GroundwaterSettings(
-            0.4d,
-            0.4d,
-            0.3d,
+            0.25d,
+            0.35d,
+            0.45d,
+            0.25d,
             0.8d,
+            64.0d,
+            0.5d,
             new NoiseSettings(1.0d / 256.0d, DEFAULT_LACUNARITY, DEFAULT_PERSISTENCE, DEFAULT_OCTAVES),
             new NoiseSettings(1.0d / 192.0d, DEFAULT_LACUNARITY, DEFAULT_PERSISTENCE, DEFAULT_OCTAVES)
         );
@@ -80,34 +87,40 @@ public record HydroProviderSettings(
             new RiverSettings(0.0015d, 0.006d, 1.0d, 0.45d, 51, 2),
             new LakeSettings(false, 0.7d, 73),
             new CoastSettings(true, 16.0d),
-            new DiagnosticsSettings(false, 500)
+            new DiagnosticsSettings(false, 500),
+            DEFAULT_WATER_TABLE_BUFFER
         );
     }
 
     public static HydroProviderSettings fromConfig() {
-        double waterTableLevel = clamp01(FieldManagerConfigSpec.hydroSeaLevel / WORLD_HEIGHT);
+        double seaLevelBlocks = FieldManagerConfigSpec.hydroSeaLevel;
+        double normalizedAquiferBase = clamp01(FieldManagerConfigSpec.hydroBaseAquiferNormalized);
+        double waterTableBuffer = Math.max(0.0d, FieldManagerConfigSpec.hydroWaterTableBufferBlocks);
 
         GroundwaterSettings groundwater = new GroundwaterSettings(
-            waterTableLevel,
-            FieldManagerConfigSpec.hydroRiverStrength,
-            clamp01(FieldManagerConfigSpec.hydroRiverThreshold),
-            Math.max(0.0d, FieldManagerConfigSpec.hydroRiverStrength),
+            clamp01(FieldManagerConfigSpec.hydroBaseSaturation),
+            clamp01(FieldManagerConfigSpec.hydroSaturationVariance),
+            normalizedAquiferBase,
+            clamp01(FieldManagerConfigSpec.hydroAquiferVariance),
+            clamp01(FieldManagerConfigSpec.hydroMaxFlowRate),
+            Math.max(1.0d, FieldManagerConfigSpec.hydroHeightFalloffBlocks),
+            clamp01(FieldManagerConfigSpec.hydroHeightWeight),
             new NoiseSettings(
-                FieldManagerConfigSpec.hydroRiverFrequency,
-                DEFAULT_LACUNARITY,
-                DEFAULT_PERSISTENCE,
-                DEFAULT_OCTAVES
+                FieldManagerConfigSpec.hydroSaturationNoiseFrequency,
+                FieldManagerConfigSpec.hydroSaturationNoiseLacunarity,
+                FieldManagerConfigSpec.hydroSaturationNoisePersistence,
+                FieldManagerConfigSpec.hydroSaturationNoiseOctaves
             ),
             new NoiseSettings(
-                FieldManagerConfigSpec.hydroRiverDetailFrequency,
-                DEFAULT_LACUNARITY,
-                DEFAULT_PERSISTENCE,
-                DEFAULT_OCTAVES
+                FieldManagerConfigSpec.hydroFlowNoiseFrequency,
+                FieldManagerConfigSpec.hydroFlowNoiseLacunarity,
+                FieldManagerConfigSpec.hydroFlowNoisePersistence,
+                FieldManagerConfigSpec.hydroFlowNoiseOctaves
             )
         );
 
         return new HydroProviderSettings(
-            FieldManagerConfigSpec.hydroSeaLevel,
+            seaLevelBlocks,
             groundwater,
             new RiverSettings(
                 FieldManagerConfigSpec.hydroRiverFrequency,
@@ -129,7 +142,8 @@ public record HydroProviderSettings(
             new DiagnosticsSettings(
                 FieldManagerConfigSpec.hydroDiagLogSamples,
                 FieldManagerConfigSpec.hydroDiagProbeInterval
-            )
+            ),
+            waterTableBuffer
         );
     }
 

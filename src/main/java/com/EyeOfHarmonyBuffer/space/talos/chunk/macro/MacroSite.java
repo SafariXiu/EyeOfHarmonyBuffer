@@ -18,6 +18,10 @@ public final class MacroSite {
     private final double continentalScore;
     private final double humidity;
     private final double temperature;
+    private final MacroDomain domain;
+    private final double latitude01;
+    private final int latitudeBandIndex;
+    private final double coastSoftness;
 
     public MacroSite(long id,
                      int cellX,
@@ -28,7 +32,11 @@ public final class MacroSite {
                      MacroBiome macroBiome,
                      double continentalScore,
                      double humidity,
-                     double temperature) {
+                     double temperature,
+                     MacroDomain domain,
+                     double latitude01,
+                     int latitudeBandIndex,
+                     double coastSoftness) {
 
         this.id = id;
         this.cellX = cellX;
@@ -40,6 +48,10 @@ public final class MacroSite {
         this.continentalScore = continentalScore;
         this.humidity = humidity;
         this.temperature = temperature;
+        this.domain = Objects.requireNonNull(domain, "domain");
+        this.latitude01 = latitude01;
+        this.latitudeBandIndex = latitudeBandIndex;
+        this.coastSoftness = coastSoftness;
     }
 
     public long id() {
@@ -80,6 +92,22 @@ public final class MacroSite {
 
     public double temperature() {
         return temperature;
+    }
+
+    public MacroDomain domain() {
+        return domain;
+    }
+
+    public double latitude01() {
+        return latitude01;
+    }
+
+    public int latitudeBandIndex() {
+        return latitudeBandIndex;
+    }
+
+    public double coastSoftness() {
+        return coastSoftness;
     }
 
     public double distanceTo(int blockX, int blockZ) {

@@ -15,7 +15,7 @@ public final class FieldManagerConfigSpec {
     private static final String CAT_SELECTOR_RARE = "fieldManager.macroSelector.rare";
     private static final String CAT_SELECTOR_CONTINENTAL = "fieldManager.macroSelector.continental";
     private static final String CAT_SELECTOR_DEBUG = "fieldManager.macroSelector.debug";
-
+    private static final String CAT_SELECTOR_LATITUDE = "fieldManager.macroSelector.latitude";
     private static final String CAT_TERRAIN = "fieldManager.terrain";
     private static final String CAT_CLIMATE_TEMPERATURE = "fieldManager.climate.temperature";
     private static final String CAT_CLIMATE_HUMIDITY = "fieldManager.climate.humidity";
@@ -28,6 +28,8 @@ public final class FieldManagerConfigSpec {
     private static final String CAT_HYDRO_COAST = "fieldManager.hydro.coastline";
     private static final String CAT_HYDRO_DIAG = "fieldManager.hydro.diagnostics";
     private static final String CAT_DIAGNOSTICS = "fieldManager.diagnostics";
+    private static final String CAT_SELECTOR_HEIGHT = "fieldManager.macroSelector.height";
+    private static final String CAT_SELECTOR_TRANSITION = "fieldManager.macroSelector.transition";
 
     private FieldManagerConfigSpec() {}
 
@@ -41,6 +43,19 @@ public final class FieldManagerConfigSpec {
     // selector - shared
     public static long selectorSeedSalt = 0x5EEDL;
     public static boolean selectorDebugLogging = false;
+
+    // selector - latitude bands
+    public static double selectorLatitudePeriod = 48000.0d;
+    public static double selectorLatitudeBlendWidth = 0.12d;
+    public static double selectorLatitudeBaseBias = 0.0d;
+    public static double selectorLatitudeMixWeight = 0.25d;
+    public static double selectorLatitudeWarpScale = 0.0006d;
+    public static double selectorLatitudeWarpAmplitude = 0.08d;
+    public static long selectorLatitudeWarpSalt = 0x71A7105EL;
+
+    // selector - continental thresholds
+    public static double selectorContinentalLandThreshold = 0.45d;
+    public static double selectorCoastSoftBandWidth = 0.08d;
 
     // selector - voronoi macro/micro
     public static int selectorMacroGridSize = 8192;
@@ -80,6 +95,21 @@ public final class FieldManagerConfigSpec {
     public static double selectorContinentalScale = 2.2d;
     public static double selectorCoastBeachWidth = 24.0d;
     public static double selectorCoastShelfWidth = 48.0d;
+
+    public static boolean selectorHeightNoiseEnabled = true;
+    public static long selectorHeightNoiseSalt = 0x71A7105DL;
+    public static double selectorHeightNoiseFrequency = 0.0009d;
+    public static int selectorHeightNoiseOctaves = 3;
+    public static double selectorHeightNoiseLacunarity = 2.0d;
+    public static double selectorHeightNoiseGain = 0.45d;
+    public static double selectorMacroHeightNoiseStrength = 0.65d;
+    public static double selectorMicroHeightNoiseStrength = 0.35d;
+
+    public static boolean selectorTransitionEnabled = true;
+    public static double selectorTransitionDefaultCoastWidth = 32.0d;
+    public static String[] selectorTransitionRules = new String[] {
+        "8|32|allowVariants=talos:mountains,talos:plateau,talos:alpine"
+    };
 
     // diagnostics
     public static boolean diagnosticsSampleUsePlayer = false;
@@ -137,6 +167,27 @@ public final class FieldManagerConfigSpec {
     // hydro
     public static double hydroSeaLevel = 63.0d;
 
+    // hydro - groundwater
+    public static double hydroBaseSaturation = 0.25d;
+    public static double hydroSaturationVariance = 0.35d;
+    public static double hydroBaseAquiferNormalized = 0.45d;
+    public static double hydroAquiferVariance = 0.25d;
+    public static double hydroMaxFlowRate = 0.8d;
+    public static double hydroHeightFalloffBlocks = 64.0d;
+    public static double hydroHeightWeight = 0.5d;
+
+    public static double hydroSaturationNoiseFrequency = 1.0d / 256.0d;
+    public static double hydroSaturationNoiseLacunarity = 2.0d;
+    public static double hydroSaturationNoisePersistence = 0.5d;
+    public static int    hydroSaturationNoiseOctaves = 4;
+
+    public static double hydroFlowNoiseFrequency = 1.0d / 192.0d;
+    public static double hydroFlowNoiseLacunarity = 2.0d;
+    public static double hydroFlowNoisePersistence = 0.5d;
+    public static int    hydroFlowNoiseOctaves = 4;
+
+    public static double hydroWaterTableBufferBlocks = 6.0d;
+
     // hydro - river
     public static double hydroRiverFrequency = 0.0015d;
     public static double hydroRiverDetailFrequency = 0.006d;
@@ -158,6 +209,12 @@ public final class FieldManagerConfigSpec {
     public static boolean hydroDiagLogSamples = false;
     public static int hydroDiagProbeInterval = 500;
 
+    public static int terrainWorldFloor = 0;
+    public static int terrainWorldCeiling = 255;
+    public static double terrainFloorY = selectorElevationMin;   // 默认 40
+    public static double terrainCeilingY = selectorElevationMax; // 默认 160
+    public static double terrainSeaLevel = hydroSeaLevel;        // 默认 63
+
     public static void init(File configFile) {
         if (config == null) {
             config = new Configuration(configFile);
@@ -176,6 +233,8 @@ public final class FieldManagerConfigSpec {
 
         loadMacroCache();
         loadMacroSelector();
+        loadMacroSelectorHeight();
+        loadMacroSelectorTransition();
         loadDiagnostics();
         loadTerrain();
         loadClimate();
@@ -344,6 +403,18 @@ public final class FieldManagerConfigSpec {
             selectorContinentalScale = 1.0d;
         }
 
+        selectorContinentalLandThreshold = clamp01(
+            config.get(CAT_SELECTOR_CONTINENTAL, "landThreshold", selectorContinentalLandThreshold,
+                    "大陆度 >= 该值判定为陆地（0 按旧行为，1 全部视为海洋）。")
+                .getDouble(selectorContinentalLandThreshold)
+        );
+
+        selectorCoastSoftBandWidth = Math.max(0.0d,
+            config.get(CAT_SELECTOR_CONTINENTAL, "coastSoftBandWidth", selectorCoastSoftBandWidth,
+                    "围绕 landThreshold 计算海岸柔化的窗口宽度（越大海岸过渡越宽，0 关闭 soft band）。")
+                .getDouble(selectorCoastSoftBandWidth)
+        );
+
         selectorMacroGridSize = config
             .get(CAT_SELECTOR, "macroGridSize", selectorMacroGridSize,
                 "Voronoi 宏站点索引网格尺寸（block 单位，建议 8192~12288）。")
@@ -417,6 +488,49 @@ public final class FieldManagerConfigSpec {
             selectorMicroSiteSalt,
             "微站点 jitter/ID 生成 salt（请与宏 salt 区分）。"
         );
+
+        selectorLatitudePeriod = Math.max(1.0d,
+            config.get(CAT_SELECTOR_LATITUDE, "periodBlocks", selectorLatitudePeriod,
+                    "Z 轴上从极地到极地的完整周期长度（方块数）。")
+                .getDouble(selectorLatitudePeriod)
+        );
+
+        selectorLatitudeBlendWidth = clamp01(
+            config.get(CAT_SELECTOR_LATITUDE, "blendWidth", selectorLatitudeBlendWidth,
+                    "纬度带之间的重叠宽度（0~1，影响 band 筛选柔化程度）。")
+                .getDouble(selectorLatitudeBlendWidth)
+        );
+
+        selectorLatitudeBaseBias = clamp01(
+            config.get(CAT_SELECTOR_LATITUDE, "baseBias", selectorLatitudeBaseBias,
+                    "纬度相位基础偏移（0~1，可整体北移/南移带状分布）。")
+                .getDouble(selectorLatitudeBaseBias)
+        );
+
+        selectorLatitudeMixWeight = clamp01(
+            config.get(CAT_SELECTOR_LATITUDE, "mixWeight", selectorLatitudeMixWeight,
+                    "南北镜像混合权重（0=不混合，1=完全对称）。")
+                .getDouble(selectorLatitudeMixWeight)
+        );
+
+        selectorLatitudeWarpScale = Math.max(0.0d,
+            config.get(CAT_SELECTOR_LATITUDE, "warpScale", selectorLatitudeWarpScale,
+                    "纬度扰动噪声的输入缩放（越大曲度越频繁，0=禁用扰动）。")
+                .getDouble(selectorLatitudeWarpScale)
+        );
+
+        selectorLatitudeWarpAmplitude = Math.max(0.0d,
+            config.get(CAT_SELECTOR_LATITUDE, "warpAmplitude", selectorLatitudeWarpAmplitude,
+                    "纬度扰动幅度（0=禁用扰动）。")
+                .getDouble(selectorLatitudeWarpAmplitude)
+        );
+
+        selectorLatitudeWarpSalt = getLongProperty(
+            CAT_SELECTOR_LATITUDE,
+            "warpSalt",
+            selectorLatitudeWarpSalt,
+            "纬度扰动噪声的 salt。"
+        );
     }
 
     private static void loadTerrain() {
@@ -475,6 +589,21 @@ public final class FieldManagerConfigSpec {
         if (terrainCacheSize < 32) {
             terrainCacheSize = 32;
         }
+
+        terrainWorldFloor = config.get(CAT_TERRAIN, "worldFloor", terrainWorldFloor,
+            "绝对世界底部（方块高度，通常 0）。").getInt(terrainWorldFloor);
+
+        terrainWorldCeiling = config.get(CAT_TERRAIN, "worldCeiling", terrainWorldCeiling,
+            "绝对世界顶部（方块高度，通常 255）。").getInt(terrainWorldCeiling);
+
+        terrainFloorY = config.get(CAT_TERRAIN, "terrainFloorY", terrainFloorY,
+            "可用地形高度区间下限（与 Stage 6.2 的海陆判定保持一致）。").getDouble(terrainFloorY);
+
+        terrainCeilingY = config.get(CAT_TERRAIN, "terrainCeilingY", terrainCeilingY,
+            "可用地形高度区间上限。").getDouble(terrainCeilingY);
+
+        terrainSeaLevel = config.get(CAT_TERRAIN, "terrainSeaLevel", terrainSeaLevel,
+            "用于地形生成的海平面高度。").getDouble(terrainSeaLevel);
     }
 
     private static void loadClimate() {
@@ -618,6 +747,93 @@ public final class FieldManagerConfigSpec {
                 "海平面高度。")
             .getDouble(hydroSeaLevel);
 
+        hydroBaseSaturation = clamp01(
+            config.get(CAT_HYDRO, "baseSaturation", hydroBaseSaturation,
+                    "陆地平均饱和度（0~1，越高越湿）。")
+                .getDouble(hydroBaseSaturation)
+        );
+
+        hydroSaturationVariance = clamp01(
+            config.get(CAT_HYDRO, "saturationVariance", hydroSaturationVariance,
+                    "饱和度噪声波动幅度（0~1）。")
+                .getDouble(hydroSaturationVariance)
+        );
+
+        hydroBaseAquiferNormalized = clamp01(
+            config.get(CAT_HYDRO, "baseAquiferNormalized", hydroBaseAquiferNormalized,
+                    "地下水位在世界高度中的归一化位置（0=世界底，1=世界顶）。")
+                .getDouble(hydroBaseAquiferNormalized)
+        );
+
+        hydroAquiferVariance = clamp01(
+            config.get(CAT_HYDRO, "aquiferVariance", hydroAquiferVariance,
+                    "地下水位噪声幅度（0~1）。")
+                .getDouble(hydroAquiferVariance)
+        );
+
+        hydroMaxFlowRate = clamp01(
+            config.get(CAT_HYDRO, "maxFlowRate", hydroMaxFlowRate,
+                    "地下水流速上限（0~1）。")
+                .getDouble(hydroMaxFlowRate)
+        );
+
+        hydroHeightFalloffBlocks = Math.max(1.0d,
+            config.get(CAT_HYDRO, "heightFalloffBlocks", hydroHeightFalloffBlocks,
+                    "地形高于海平面多少方块后饱和度衰减到 0。")
+                .getDouble(hydroHeightFalloffBlocks)
+        );
+
+        hydroHeightWeight = clamp01(
+            config.get(CAT_HYDRO, "heightWeight", hydroHeightWeight,
+                    "高度因子对饱和度的影响权重（0~1）。")
+                .getDouble(hydroHeightWeight)
+        );
+
+// 饱和度噪声
+        hydroSaturationNoiseFrequency = config
+            .get(CAT_HYDRO, "saturationNoiseFrequency", hydroSaturationNoiseFrequency,
+                "饱和度噪声频率（1/波长）。")
+            .getDouble(hydroSaturationNoiseFrequency);
+        hydroSaturationNoiseLacunarity = config
+            .get(CAT_HYDRO, "saturationNoiseLacunarity", hydroSaturationNoiseLacunarity,
+                "饱和度噪声每层频率倍增系数。")
+            .getDouble(hydroSaturationNoiseLacunarity);
+        hydroSaturationNoisePersistence = config
+            .get(CAT_HYDRO, "saturationNoisePersistence", hydroSaturationNoisePersistence,
+                "饱和度噪声每层振幅衰减系数。")
+            .getDouble(hydroSaturationNoisePersistence);
+        hydroSaturationNoiseOctaves = Math.max(1,
+            config.get(CAT_HYDRO, "saturationNoiseOctaves", hydroSaturationNoiseOctaves,
+                    "饱和度噪声叠加层数（>=1）。")
+                .getInt(hydroSaturationNoiseOctaves)
+        );
+
+// 流速噪声
+        hydroFlowNoiseFrequency = config
+            .get(CAT_HYDRO, "flowNoiseFrequency", hydroFlowNoiseFrequency,
+                "水流噪声频率。")
+            .getDouble(hydroFlowNoiseFrequency);
+        hydroFlowNoiseLacunarity = config
+            .get(CAT_HYDRO, "flowNoiseLacunarity", hydroFlowNoiseLacunarity,
+                "水流噪声每层频率倍增。")
+            .getDouble(hydroFlowNoiseLacunarity);
+        hydroFlowNoisePersistence = config
+            .get(CAT_HYDRO, "flowNoisePersistence", hydroFlowNoisePersistence,
+                "水流噪声每层振幅衰减。")
+            .getDouble(hydroFlowNoisePersistence);
+        hydroFlowNoiseOctaves = Math.max(1,
+            config.get(CAT_HYDRO, "flowNoiseOctaves", hydroFlowNoiseOctaves,
+                    "水流噪声叠加层数（>=1）。")
+                .getInt(hydroFlowNoiseOctaves)
+        );
+
+// 地表缓冲
+        hydroWaterTableBufferBlocks = Math.max(0.0d,
+            config.get(CAT_HYDRO, "waterTableBufferBlocks", hydroWaterTableBufferBlocks,
+                    "水位距离地表的最小缓冲（方块数，>=0）。")
+                .getDouble(hydroWaterTableBufferBlocks)
+        );
+
         // river
         hydroRiverFrequency = config
             .get(CAT_HYDRO_RIVER, "frequency", hydroRiverFrequency,
@@ -716,6 +932,68 @@ public final class FieldManagerConfigSpec {
             .getInt(diagnosticsSampleZ);
     }
 
+    private static void loadMacroSelectorHeight() {
+        selectorHeightNoiseEnabled = config
+            .get(CAT_SELECTOR_HEIGHT, "enabled", selectorHeightNoiseEnabled,
+                "是否启用宏群系高度噪声（方案 B）。")
+            .getBoolean(selectorHeightNoiseEnabled);
+
+        selectorHeightNoiseSalt = getLongProperty(
+            CAT_SELECTOR_HEIGHT, "salt", selectorHeightNoiseSalt,
+            "高度噪声 salt（与 patch/rare 区分）。"
+        );
+
+        selectorHeightNoiseFrequency = config
+            .get(CAT_SELECTOR_HEIGHT, "frequency", selectorHeightNoiseFrequency,
+                "高度噪声频率。")
+            .getDouble(selectorHeightNoiseFrequency);
+
+        selectorHeightNoiseOctaves = config
+            .get(CAT_SELECTOR_HEIGHT, "octaves", selectorHeightNoiseOctaves,
+                "高度噪声叠加层数（>=1）。")
+            .getInt(selectorHeightNoiseOctaves);
+        if (selectorHeightNoiseOctaves < 1) {
+            selectorHeightNoiseOctaves = 1;
+        }
+
+        selectorHeightNoiseLacunarity = config
+            .get(CAT_SELECTOR_HEIGHT, "lacunarity", selectorHeightNoiseLacunarity,
+                "高度噪声频率倍增系数。")
+            .getDouble(selectorHeightNoiseLacunarity);
+
+        selectorHeightNoiseGain = config
+            .get(CAT_SELECTOR_HEIGHT, "gain", selectorHeightNoiseGain,
+                "高度噪声振幅衰减系数。")
+            .getDouble(selectorHeightNoiseGain);
+
+        selectorMacroHeightNoiseStrength = config
+            .get(CAT_SELECTOR_HEIGHT, "macroNoiseStrength", selectorMacroHeightNoiseStrength,
+                "噪声对 baseHeight 的影响权重（宏尺度）。")
+            .getDouble(selectorMacroHeightNoiseStrength);
+
+        selectorMicroHeightNoiseStrength = config
+            .get(CAT_SELECTOR_HEIGHT, "microNoiseStrength", selectorMicroHeightNoiseStrength,
+                "噪声对 microVariance 的影响权重。")
+            .getDouble(selectorMicroHeightNoiseStrength);
+    }
+
+    private static void loadMacroSelectorTransition() {
+        selectorTransitionEnabled = config
+            .get(CAT_SELECTOR_TRANSITION, "enabled", selectorTransitionEnabled,
+                "是否启用海岸 Transition 覆写规则。")
+            .getBoolean(selectorTransitionEnabled);
+
+        selectorTransitionDefaultCoastWidth = config
+            .get(CAT_SELECTOR_TRANSITION, "defaultCoastWidth", selectorTransitionDefaultCoastWidth,
+                "Transition 默认海岸判定宽度（方块）。")
+            .getDouble(selectorTransitionDefaultCoastWidth);
+
+        selectorTransitionRules = config
+            .get(CAT_SELECTOR_TRANSITION, "rules", selectorTransitionRules,
+                "自定义 Transition 规则，每行格式：<macroId>|<width>|allowVariants=a,b,c")
+            .getStringList();
+    }
+
     private static long getLongProperty(String category, String key, long defaultValue, String comment) {
         Property property = config.get(category, key, Long.toString(defaultValue), comment);
         String raw = property.getString();
@@ -731,5 +1009,9 @@ public final class FieldManagerConfigSpec {
             property.set(Long.toString(defaultValue));
             return defaultValue;
         }
+    }
+
+    private static double clamp01(double value) {
+        return Math.max(0.0d, Math.min(1.0d, value));
     }
 }

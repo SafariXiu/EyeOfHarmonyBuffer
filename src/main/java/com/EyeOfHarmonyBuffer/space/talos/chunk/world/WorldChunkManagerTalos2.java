@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.command.TalosClimateDiagnostics;
+import com.EyeOfHarmonyBuffer.command.TalosClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroBiomeSelector;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectionResult;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
@@ -56,6 +58,14 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         }
 
         this.macroSelector = selector;
+
+        TalosClimateDiagnostics.installSampler((world, sampleX, sampleZ) -> {
+            MacroBiomeSelector active = this.macroSelector;
+            if (active == null) {
+                return TalosClimateSample.error(sampleX, sampleZ, "Macro selector not ready");
+            }
+            return active.buildDiagnosticSample(sampleX, sampleZ);
+        });
 
         synchronized (chunkCache) {
             chunkCache.clear();
