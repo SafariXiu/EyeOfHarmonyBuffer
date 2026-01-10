@@ -56,6 +56,8 @@ public final class FieldManagerConfigSpec {
     // selector - continental thresholds
     public static double selectorContinentalLandThreshold = 0.45d;
     public static double selectorCoastSoftBandWidth = 0.08d;
+    public static double selectorOverrideLandScoreThreshold = 0.28d;
+    public static double selectorOverrideMinShelfWidth = 48.0d;
 
     // selector - voronoi macro/micro
     public static int selectorMacroGridSize = 8192;
@@ -165,7 +167,7 @@ public final class FieldManagerConfigSpec {
     public static double climateSeasonRainfallAmplitude = 0.04d;
 
     // hydro
-    public static double hydroSeaLevel = 63.0d;
+    public static double hydroSeaLevel = 64.0d;
 
     // hydro - groundwater
     public static double hydroBaseSaturation = 0.25d;
@@ -413,6 +415,25 @@ public final class FieldManagerConfigSpec {
             config.get(CAT_SELECTOR_CONTINENTAL, "coastSoftBandWidth", selectorCoastSoftBandWidth,
                     "围绕 landThreshold 计算海岸柔化的窗口宽度（越大海岸过渡越宽，0 关闭 soft band）。")
                 .getDouble(selectorCoastSoftBandWidth)
+        );
+
+        selectorOverrideLandScoreThreshold = clamp01(
+            config.get(CAT_SELECTOR_CONTINENTAL, "overrideLandScoreThreshold",
+                    selectorOverrideLandScoreThreshold,
+                    "当大陆度 >= 该值且远离陆架时，强制把宏域视为陆地。")
+                .getDouble(selectorOverrideLandScoreThreshold)
+        );
+        if (selectorOverrideLandScoreThreshold <= 0.0d) {
+            selectorOverrideLandScoreThreshold = 0.01d;
+        } else if (selectorOverrideLandScoreThreshold >= 1.0d) {
+            selectorOverrideLandScoreThreshold = 0.99d;
+        }
+
+        selectorOverrideMinShelfWidth = Math.max(0.0d,
+            config.get(CAT_SELECTOR_CONTINENTAL, "overrideMinShelfWidth",
+                    selectorOverrideMinShelfWidth,
+                    "Override 生效所需的最小海岸距离（方块数，>陆架宽度即视为真实陆地）。")
+                .getDouble(selectorOverrideMinShelfWidth)
         );
 
         selectorMacroGridSize = config

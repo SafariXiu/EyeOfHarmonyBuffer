@@ -9,7 +9,7 @@ public enum MacroBiome {
     OCEANIC(
         0,
         new ClimateProfile(0.42f, 0.95f, 0.08f),
-        new MacroHeightProfile(42.0, 60.0, -1.30f, 0.04f),
+        new MacroHeightProfile(42.0, 64.0, -1.30f, 0.04f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_OCEAN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_SHELF, 1)

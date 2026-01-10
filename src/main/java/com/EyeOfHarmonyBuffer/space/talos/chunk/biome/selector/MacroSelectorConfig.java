@@ -17,6 +17,7 @@ public record MacroSelectorConfig(
     ContinentalSettings continentalSettings,
     double continentalLandThreshold,
     double coastSoftBandWidth,
+    OverrideSettings overrideSettings,
     LatitudeSettings latitudeSettings,
     boolean debugLogging,
     int macroGridSize,
@@ -43,6 +44,7 @@ public record MacroSelectorConfig(
         Objects.requireNonNull(heightSettings, "heightSettings");
         Objects.requireNonNull(heightProfile, "heightProfile");
         Objects.requireNonNull(latitudeSettings, "latitudeSettings");
+        Objects.requireNonNull(overrideSettings, "overrideSettings");
 
         if (macroGridSize < 512) {
             throw new IllegalArgumentException("macroGridSize must be >= 512");
@@ -142,6 +144,10 @@ public record MacroSelectorConfig(
             ),
             FieldManagerConfigSpec.selectorContinentalLandThreshold,
             FieldManagerConfigSpec.selectorCoastSoftBandWidth,
+            new OverrideSettings(
+                FieldManagerConfigSpec.selectorOverrideLandScoreThreshold,
+                FieldManagerConfigSpec.selectorOverrideMinShelfWidth
+            ),
             new LatitudeSettings(
                 FieldManagerConfigSpec.selectorLatitudePeriod,
                 FieldManagerConfigSpec.selectorLatitudeBlendWidth,
@@ -336,6 +342,21 @@ public record MacroSelectorConfig(
 
         public double normalizedBlendWidth() {
             return Math.max(0.0d, Math.min(0.5d, blendWidth));
+        }
+    }
+
+    @Desugar
+    public record OverrideSettings(
+        double landScoreThreshold,
+        double minShelfWidthBlocks
+    ) {
+        public OverrideSettings {
+            if (landScoreThreshold <= 0.0d || landScoreThreshold >= 1.0d) {
+                throw new IllegalArgumentException("landScoreThreshold must be within (0,1)");
+            }
+            if (minShelfWidthBlocks < 0.0d) {
+                throw new IllegalArgumentException("minShelfWidthBlocks must be >= 0");
+            }
         }
     }
 }

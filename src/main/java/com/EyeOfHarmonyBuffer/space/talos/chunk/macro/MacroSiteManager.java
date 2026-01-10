@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.macro;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.MacroDomain;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.ClimateSample;
@@ -157,7 +156,7 @@ public final class MacroSiteManager {
         long hashX = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt ^ 0x45CCAA11L);
         long hashZ = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt ^ 0xBC117A31L);
 
-        double jitterRadius = macroGridSize * 0.5;
+        double jitterRadius = macroGridSize * 0.5d;
         double offsetX = (NoiseUtil.hashToUnit(hashX) - 0.5d) * 2.0d * jitterRadius;
         double offsetZ = (NoiseUtil.hashToUnit(hashZ) - 0.5d) * 2.0d * jitterRadius;
 
@@ -175,9 +174,23 @@ public final class MacroSiteManager {
         double humidity = MathHelper.clamp_float((float) climate.humidity(), 0.0f, 1.0f);
         double temperature = MathHelper.clamp_float((float) climate.temperature(), 0.0f, 1.0f);
 
-        // --- 新字段计算 ---
         MacroDomain domain = resolveDomain(continentalScore);
         double coastSoftness = computeCoastSoftness(continentalScore);
+
+        MacroSelectorConfig.OverrideSettings override = config.overrideSettings();
+        if (domain == MacroDomain.OCEAN
+            && continentalScore >= override.landScoreThreshold()
+            && hydro.coastDistance() > override.minShelfWidthBlocks()) {
+            if (config.debugLogging()) {
+                System.out.println(
+                    "[MacroSiteManager] override -> LAND cell=(" + cellX + "," + cellZ + ")"
+                        + " center=(" + centerX + "," + centerZ + ")"
+                        + " score=" + String.format(Locale.ROOT, "%.3f", continentalScore)
+                        + " coastDist=" + String.format(Locale.ROOT, "%.1f", hydro.coastDistance())
+                );
+            }
+            domain = MacroDomain.LAND;
+        }
 
         double latitude01 = sampleLatitude01(centerX, centerZ);
         LatitudeBand latitudeBand = findLatitudeBand(latitude01);
@@ -187,7 +200,6 @@ public final class MacroSiteManager {
 
         long siteSeed = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt);
         MacroBiome macroBiome = selectMacroBiome(pool, siteSeed, humidity, temperature, coastSoftness);
-
         MacroTag macroTag = MacroTag.fromBiome(macroBiome);
 
         if (config.debugLogging()) {
@@ -198,6 +210,8 @@ public final class MacroSiteManager {
                     + " band=" + latitudeBandIndex
                     + " domain=" + domain
                     + " coastSoft=" + String.format(Locale.ROOT, "%.2f", coastSoftness)
+                    + " score=" + String.format(Locale.ROOT, "%.3f", continentalScore)
+                    + " coastDist=" + String.format(Locale.ROOT, "%.1f", hydro.coastDistance())
                     + " biome=" + macroBiome
             );
         }

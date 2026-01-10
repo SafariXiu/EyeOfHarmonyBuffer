@@ -146,6 +146,12 @@ public final class MacroBiomeSelector {
         double ceiling = profile != null ? profile.terrainCeilingY() : 256.0d;
         double range = Math.max(1.0d, ceiling - floor);
 
+        double seaLevelY = profile != null ? profile.seaLevelY() : 64.0d;
+
+        if (macroTag != null && macroTag.isOceanic()) {
+            height = clampOceanicHeights(height, seaLevelY, floor, range);
+        }
+
         double normalizedBase = clamp01(0.5d * (height.finalBaseHeight() + 1.0d));
         double worldBaseHeight = floor + normalizedBase * range;
         double worldMacroVariance = clamp01(0.5d * (height.macroVariance() + 1.0d)) * range;
@@ -615,6 +621,55 @@ public final class MacroBiomeSelector {
         }
         return null;
     }
+
+    private static HeightComputation clampOceanicHeights(HeightComputation original,
+                                                         double seaLevelY,
+                                                         double floor,
+                                                         double range) {
+        if (original == null) {
+            return null;
+        }
+
+        double seaLevel01 = clamp01((seaLevelY - floor) / range);
+
+        double base01 = clamp01(0.5d * (original.finalBaseHeight() + 1.0d));
+        double clampedBase01 = Math.min(base01, seaLevel01);
+        double clampedFinalBase = clampedBase01 * 2.0d - 1.0d;
+        double baseWorld = floor + clampedBase01 * range;
+
+        double macroVar01 = clamp01(0.5d * (original.macroVariance() + 1.0d));
+        double macroWorld = macroVar01 * range;
+        double microWorld = Math.max(0.0d, original.finalMicroVariance()) * range;
+
+        double headroom = Math.max(0.0d, seaLevelY - baseWorld);
+        double totalVariance = macroWorld + microWorld;
+
+        double varianceScale = (totalVariance <= headroom || totalVariance <= 0.0d)
+            ? 1.0d
+            : headroom / totalVariance;
+
+        double clampedMacroWorld = macroWorld * varianceScale;
+        double clampedMicroWorld = microWorld * varianceScale;
+
+        double clampedMacro01 = clamp01(clampedMacroWorld / range);
+        double clampedMacroVariance = clampedMacro01 * 2.0d - 1.0d;
+        double clampedFinalMicroVariance = clampedMicroWorld / range;
+
+        double adjustedMacroHeightNoise = clampedFinalBase - original.macroBaseHeight();
+        double adjustedMicroHeightNoise = clampedFinalMicroVariance - original.microVariance();
+
+        return new HeightComputation(
+            original.macroBaseHeight(),
+            clampedMacroVariance,
+            original.microVariance(),
+            adjustedMacroHeightNoise,
+            adjustedMicroHeightNoise,
+            clampedFinalBase,
+            clampedFinalMicroVariance,
+            original.noiseSample()
+        );
+    }
+
 
     public MacroSelectorConfig config() {
         return this.config;

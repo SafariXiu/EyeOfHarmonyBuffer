@@ -34,6 +34,7 @@ public enum MacroTag {
         map.put(MacroBiome.COOL_FORESTED, COOL_FOREST);
         map.put(MacroBiome.SUBPOLAR, TUNDRA);
         map.put(MacroBiome.MOUNTAINOUS, MOUNTAIN);
+        map.put(MacroBiome.TROPICAL_HUMID, TROPICAL);
         CANONICAL_BY_BIOME = Collections.unmodifiableMap(map);
     }
 
