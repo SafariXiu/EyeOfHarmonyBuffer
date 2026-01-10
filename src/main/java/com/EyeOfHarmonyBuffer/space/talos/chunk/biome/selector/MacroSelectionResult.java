@@ -46,6 +46,7 @@ public final class MacroSelectionResult {
     private final double worldBaseHeight;
     private final double worldMacroVariance;
     private final double worldMicroVariance;
+    private final double heightVariation;
 
     public MacroSelectionResult(long macroSiteId,
                                 MacroSite primarySite,
@@ -83,7 +84,8 @@ public final class MacroSelectionResult {
                                 String transitionRuleId,
                                 double worldBaseHeight,
                                 double worldMacroVariance,
-                                double worldMicroVariance) {
+                                double worldMicroVariance,
+                                double heightVariation) {
 
         this.macroSiteId = macroSiteId;
         this.primarySite = Objects.requireNonNull(primarySite, "primarySite");
@@ -122,6 +124,7 @@ public final class MacroSelectionResult {
         this.worldBaseHeight = worldBaseHeight;
         this.worldMacroVariance = Math.max(0.0d, worldMacroVariance);
         this.worldMicroVariance = Math.max(0.0d, worldMicroVariance);
+        this.heightVariation = Double.isNaN(heightVariation) ? 0.0d : Math.max(0.0d, heightVariation);
     }
 
     public long macroSiteId() {
@@ -302,5 +305,9 @@ public final class MacroSelectionResult {
 
     public double worldMicroVariance() {
         return worldMicroVariance;
+    }
+
+    public double heightVariation() {
+        return heightVariation;
     }
 }

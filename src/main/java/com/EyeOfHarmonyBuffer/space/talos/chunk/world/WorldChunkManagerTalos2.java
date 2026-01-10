@@ -10,6 +10,7 @@ import com.EyeOfHarmonyBuffer.space.talos.TalosBiomeDebugHooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.MacroSite;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosBiomeResolver;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
@@ -140,7 +141,7 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         }
 
         MacroSelectionResult macro = selector.select(x, z);
-        biome = pickBiomeFromMacro(macro);
+        biome = TalosBiomeResolver.resolve(macro);
         cache.biomes[index] = biome;
         return biome;
     }
@@ -159,80 +160,6 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     private static long chunkKey(int chunkX, int chunkZ) {
         return (((long) chunkX) << 32) | (chunkZ & 0xFFFFFFFFL);
-    }
-
-    private BiomeGenBase pickBiomeFromMacro(MacroSelectionResult macro) {
-        MacroBiome.MacroBiomeVariant variant = macro.variant();
-        if (variant != null && variant.biome != null) {
-            return variant.biome;
-        }
-
-        BiomeGenBase primary = pickBaseBiomeForTag(macro.macroTag(), macro);
-        MacroSite secondarySite = macro.secondarySite();
-
-        if (secondarySite != null && macro.edgeFactor() < 0.45d) {
-            BiomeGenBase secondary = pickBaseBiomeForTag(secondarySite.macroTag(), macro);
-            if (secondary != null && secondary != primary) {
-                return selectTransitionBiome(
-                    primary,
-                    secondary,
-                    macro.edgeFactor(),
-                    macro.macroSiteId(),
-                    macro.microSiteId()
-                );
-            }
-        }
-
-        return primary != null ? primary : DEFAULT_BIOME;
-    }
-
-    private BiomeGenBase pickBaseBiomeForTag(MacroTag tag, MacroSelectionResult macro) {
-        if (tag == null) {
-            return DEFAULT_BIOME;
-        }
-
-        if (tag.isOceanic()) {
-            return macro.coastDistance() <= macro.shelfWidth()
-                ? TalosBiomes.TALOS_SHELF
-                : TalosBiomes.TALOS_OCEAN;
-        }
-
-        if (tag.isCoastal() || macro.coastDistance() <= macro.coastWidth()) {
-            return TalosBiomes.TALOS_BEACH;
-        }
-
-        if (tag.isFrozen()) {
-            return TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
-        }
-
-        return switch (tag) {
-            case DESERT -> TalosBiomes.TALOS_DESERT;
-            case SAVANNA -> TalosBiomes.TALOS_SAVANNA;
-            case STEPPE -> TalosBiomes.TALOS_WARM_STEPPE;
-            case COOL_FOREST -> TalosBiomes.TALOS_COOL_FOREST;
-            case TROPICAL -> TalosBiomes.TALOS_TROPICAL_RAIN;
-            case TUNDRA -> TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
-            case MOUNTAIN, ALPINE -> TalosBiomes.TALOS_MOUNTAINS;
-            case BASIN -> TalosBiomes.TALOS_BASIN;
-            default -> DEFAULT_BIOME;
-        };
-    }
-
-    private BiomeGenBase selectTransitionBiome(BiomeGenBase primary,
-                                               BiomeGenBase secondary,
-                                               double edgeFactor,
-                                               long macroSiteId,
-                                               long microSiteId) {
-        if (edgeFactor >= 0.55d) {
-            return primary;
-        }
-        if (edgeFactor <= 0.20d) {
-            return secondary;
-        }
-
-        long mixed = macroSiteId ^ (microSiteId * 0x9E3779B97F4A7C15L)
-            ^ Double.doubleToLongBits(edgeFactor);
-        return (mixed & 1L) == 0L ? primary : secondary;
     }
 
     private static final class ChunkBiomeCache {

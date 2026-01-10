@@ -12,6 +12,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.IMacroCellProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.builder.TalosMacroCellBuilder;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosBiomeResolver;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import galaxyspace.core.world.GSBiomeGenBase;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -251,7 +252,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
                 BiomeGenBase baseBiome = cell.resolvedBiome;
                 if (baseBiome == null) {
-                    baseBiome = pickBiomeFromMacro(cell.macroResult);
+                    baseBiome = TalosBiomeResolver.resolve(cell.macroResult);
                     cell.resolvedBiome = baseBiome;
                 }
 
@@ -615,33 +616,22 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     private void resolveBiomesForCells(int chunkX, int chunkZ, ChunkShoreCache shore) {
-        final int GRID = 16;
+        final int GRID = ChunkShoreCache.GRID_SIZE - 1; // 16，如果 GRID_SIZE = 17
 
         for (int localX = 0; localX <= GRID; localX++) {
             for (int localZ = 0; localZ <= GRID; localZ++) {
-
-                int gx = chunkX * 16 + localX;
-                int gz = chunkZ * 16 + localZ;
-
                 ChunkShoreCache.MacroCell cell = shore.macroContext[localX][localZ];
-                if (cell == null) {
-                    continue;
+                if (cell == null) continue;
+
+                MacroSelectionResult macro = cell.macroResult;
+                if (macro == null) {
+                    int gx = chunkX * 16 + localX;
+                    int gz = chunkZ * 16 + localZ;
+                    macro = macroSelector.select(gx, gz);
+                    cell.macroResult = macro;
                 }
 
-                MacroSelectionResult macro = macroSelector.select(gx, gz);
-                cell.macroResult = macro;
-                cell.macroTag = macro.macroTag();
-                cell.macroPatchId = macro.patchId();
-                cell.macroRare = macro.rare();
-                cell.macroTemp = macro.temperature();
-                cell.macroHumid = macro.humidity();
-                cell.macroContinental = macro.continentalScore();
-                cell.macroCoastWidth = macro.coastWidth();
-                cell.macroShelfWidth = macro.shelfWidth();
-                cell.macroVariant = macro.variant();
-
-                BiomeGenBase biome = pickBiomeFromMacro(macro);
-                cell.resolvedBiome = biome;
+                cell.resolvedBiome = TalosBiomeResolver.resolve(cell.macroResult);
             }
         }
     }
@@ -658,41 +648,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             snapshot.hitRate(),
             snapshot.getEvictions()
         );
-    }
-
-    private BiomeGenBase pickBiomeFromMacro(MacroSelectionResult macro) {
-        MacroBiome.MacroBiomeVariant variant = macro.variant();
-        if (variant != null && variant.biome != null) {
-            return variant.biome;
-        }
-
-        MacroTag tag = macro.macroTag();
-
-        if (tag.isOceanic()) {
-            return macro.coastDistance() <= macro.shelfWidth()
-                ? TalosBiomes.TALOS_SHELF
-                : TalosBiomes.TALOS_OCEAN;
-        }
-
-        if (tag.isCoastal() || macro.coastDistance() <= macro.coastWidth()) {
-            return TalosBiomes.TALOS_BEACH;
-        }
-
-        if (tag.isFrozen()) {
-            return TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
-        }
-
-        return switch (tag) {
-            case DESERT -> TalosBiomes.TALOS_DESERT;
-            case SAVANNA -> TalosBiomes.TALOS_SAVANNA;
-            case STEPPE -> TalosBiomes.TALOS_WARM_STEPPE;
-            case COOL_FOREST -> TalosBiomes.TALOS_COOL_FOREST;
-            case TROPICAL -> TalosBiomes.TALOS_TROPICAL_RAIN;
-            case TUNDRA -> TalosBiomes.TALOS_SUBPOLAR_TUNDRA;
-            case MOUNTAIN, ALPINE -> TalosBiomes.TALOS_MOUNTAINS;
-            case BASIN -> TalosBiomes.TALOS_BASIN;
-            default -> TalosBiomes.TALOS_PLAINS;
-        };
     }
 
     private int computeGroundHeightFromMacro(MacroSelectionResult macro,

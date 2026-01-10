@@ -12,8 +12,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -21,21 +19,6 @@ import java.util.Objects;
 public final class MacroBiomeSelector {
 
     private static final Logger LOGGER = LogManager.getLogger(MacroBiomeSelector.class);
-
-    private static final String[] SITE_BASE_METHODS = {"baseHeight", "heightBase", "getBaseHeight", "getBase"};
-    private static final String[] SITE_BASE_FIELDS = {"baseHeight", "heightBase", "base"};
-    private static final String[] SITE_MACRO_VARIANCE_METHODS = {"macroVariance", "macroVar", "getMacroVariance"};
-    private static final String[] SITE_MACRO_VARIANCE_FIELDS = {"macroVariance", "macroVar"};
-    private static final String[] SITE_MICRO_VARIANCE_METHODS = {"microVariance", "microVar", "getMicroVariance"};
-    private static final String[] SITE_MICRO_VARIANCE_FIELDS = {"microVariance", "microVar"};
-    private static final String[] SITE_HEIGHT_PROFILE_METHODS = {"heightProfile", "getHeightProfile", "heights", "getHeights"};
-    private static final String[] SITE_HEIGHT_PROFILE_FIELDS = {"heightProfile", "heights"};
-    private static final String[] PROFILE_BASE_METHODS = {"baseHeight", "getBaseHeight", "base"};
-    private static final String[] PROFILE_BASE_FIELDS = {"baseHeight", "base"};
-    private static final String[] PROFILE_MACRO_VARIANCE_METHODS = {"macroVariance", "getMacroVariance"};
-    private static final String[] PROFILE_MACRO_VARIANCE_FIELDS = {"macroVariance"};
-    private static final String[] PROFILE_MICRO_VARIANCE_METHODS = {"microVariance", "getMicroVariance"};
-    private static final String[] PROFILE_MICRO_VARIANCE_FIELDS = {"microVariance"};
 
     private final FieldManager fieldManager;
     private final MacroSelectorConfig config;
@@ -60,11 +43,16 @@ public final class MacroBiomeSelector {
         MacroSite primarySite = Objects.requireNonNull(query.primary(), "MacroSiteManager primarySite");
         MacroSite secondarySite = query.secondary();
 
+        double primaryDistance = query.primaryDistance();
+        double secondaryDistance = query.secondaryDistance();
+        double edgeMetric = query.edgeMetric();
+
         if (secondarySite != null && !isBlendCompatible(primarySite, secondarySite)) {
             secondarySite = null;
+            secondaryDistance = Double.POSITIVE_INFINITY;
+            edgeMetric = Double.POSITIVE_INFINITY;
         }
 
-        double edgeMetric = query.edgeMetric();
         boolean edgeFlipped = false;
         MacroSite activeSite = primarySite;
 
@@ -138,7 +126,6 @@ public final class MacroBiomeSelector {
             }
         }
 
-        double edgeFactor = computeEdgeFactor(edgeMetric);
         HeightComputation height = computeHeight(activeSite, blockX, blockZ);
 
         MacroSelectorConfig.HeightProfile profile = config.heightProfile();
@@ -161,10 +148,10 @@ public final class MacroBiomeSelector {
             activeSite.id(),
             primarySite,
             secondarySite,
-            query.primaryDistance(),
-            query.secondaryDistance(),
-            edgeMetric,
-            edgeFactor,
+            primaryDistance,
+            secondarySite != null ? secondaryDistance : Double.POSITIVE_INFINITY,
+            secondarySite != null ? edgeMetric : Double.POSITIVE_INFINITY,
+            computeEdgeFactor(secondarySite != null ? edgeMetric : Double.POSITIVE_INFINITY),
             edgeFlipped,
             macroTag,
             macroBiome,
@@ -181,20 +168,21 @@ public final class MacroBiomeSelector {
             variant,
             microSiteId,
             microVariantId,
-            height.macroBaseHeight(),
+            height.baseHeight(),
             height.macroVariance(),
             height.microVariance(),
-            height.macroHeightNoise(),
-            height.microHeightNoise(),
+            height.macroNoise(),
+            height.microNoise(),
             height.finalBaseHeight(),
             height.finalMicroVariance(),
-            height.noiseSample(),
+            height.heightNoiseSample(),
             transitionOverride,
             transitionCoastWidth,
             transitionRuleId,
             worldBaseHeight,
             worldMacroVariance,
-            worldMicroVariance
+            worldMicroVariance,
+            height.heightVariation()
         );
 
         if (config.debugLogging() && LOGGER.isDebugEnabled()) {
@@ -207,7 +195,7 @@ public final class MacroBiomeSelector {
                 macroTag,
                 rare,
                 edgeMetric,
-                edgeFactor,
+                computeEdgeFactor(edgeMetric),
                 edgeFlipped,
                 transitionOverride
             );
@@ -242,6 +230,7 @@ public final class MacroBiomeSelector {
 
     private HeightComputation computeHeight(MacroSite site, int blockX, int blockZ) {
         SiteHeightSample sample = SiteHeightSample.extract(site);
+        double variation = Math.max(0.0d, sample.heightVariation());
 
         MacroSelectorConfig.HeightSettings settings = config.heightSettings();
         if (settings == null || !settings.enabled() || settings.noise() == null) {
@@ -253,7 +242,8 @@ public final class MacroBiomeSelector {
                 0.0d,
                 sample.baseHeight(),
                 sample.microVariance(),
-                0.0d
+                0.0d,
+                variation
             );
         }
 
@@ -270,8 +260,9 @@ public final class MacroBiomeSelector {
         );
         double normalized = raw * 2.0d - 1.0d;
 
-        double macroHeightNoise = normalized * settings.macroNoiseStrength();
-        double microHeightNoise = normalized * settings.microNoiseStrength();
+        double macroHeightNoise = normalized * settings.macroNoiseStrength() * Math.max(0.25d, variation);
+        double microHeightNoise = normalized * settings.microNoiseStrength() * Math.max(0.25d, variation);
+
         double finalBaseHeight = sample.baseHeight() + macroHeightNoise;
         double finalMicroVariance = Math.max(0.0d, sample.microVariance() + microHeightNoise);
 
@@ -283,7 +274,8 @@ public final class MacroBiomeSelector {
             microHeightNoise,
             finalBaseHeight,
             finalMicroVariance,
-            normalized
+            normalized,
+            variation
         );
     }
 
@@ -407,13 +399,11 @@ public final class MacroBiomeSelector {
 
         float temperature = (float) result.temperature();
         float humidity = (float) result.humidity();
-        float roughness = biome != null && biome.climate != null
-            ? biome.climate.roughness
-            : Float.NaN;
+        float macroVariance = (float) result.macroVariance();
 
         return new TalosClimateSample.Builder(blockX, blockZ)
             .macroBiome(biome.name(), biome.id)
-            .climate(temperature, humidity, roughness)
+            .climate(temperature, humidity, macroVariance)
             .heights(
                 result.finalBaseHeight(),
                 result.macroVariance(),
@@ -444,6 +434,7 @@ public final class MacroBiomeSelector {
         private final double finalBaseHeight;
         private final double finalMicroVariance;
         private final double noiseSample;
+        private final double heightVariation;
 
         private HeightComputation(double macroBaseHeight,
                                   double macroVariance,
@@ -452,7 +443,8 @@ public final class MacroBiomeSelector {
                                   double microHeightNoise,
                                   double finalBaseHeight,
                                   double finalMicroVariance,
-                                  double noiseSample) {
+                                  double noiseSample,
+                                  double heightVariation) {
             this.macroBaseHeight = macroBaseHeight;
             this.macroVariance = macroVariance;
             this.microVariance = microVariance;
@@ -461,10 +453,7 @@ public final class MacroBiomeSelector {
             this.finalBaseHeight = finalBaseHeight;
             this.finalMicroVariance = finalMicroVariance;
             this.noiseSample = noiseSample;
-        }
-
-        double macroBaseHeight() {
-            return macroBaseHeight;
+            this.heightVariation = heightVariation;
         }
 
         double macroVariance() {
@@ -494,6 +483,26 @@ public final class MacroBiomeSelector {
         double noiseSample() {
             return noiseSample;
         }
+
+        double heightVariation() {
+            return heightVariation;
+        }
+
+        double baseHeight() {
+            return macroBaseHeight;
+        }
+
+        double macroNoise() {
+            return macroHeightNoise;
+        }
+
+        double microNoise() {
+            return microHeightNoise;
+        }
+
+        double heightNoiseSample() {
+            return noiseSample;
+        }
     }
 
     private static final class SiteHeightSample {
@@ -501,38 +510,28 @@ public final class MacroBiomeSelector {
         private final double baseHeight;
         private final double macroVariance;
         private final double microVariance;
+        private final double heightVariation;
 
-        private SiteHeightSample(double baseHeight, double macroVariance, double microVariance) {
+        private SiteHeightSample(double baseHeight,
+                                 double macroVariance,
+                                 double microVariance,
+                                 double heightVariation) {
             this.baseHeight = Double.isNaN(baseHeight) ? 0.0d : baseHeight;
             this.macroVariance = Double.isNaN(macroVariance) ? 0.0d : macroVariance;
-            this.microVariance = Double.isNaN(microVariance) ? 0.0d : microVariance;
+            this.microVariance = Double.isNaN(microVariance) ? 0.0d : Math.max(0.0d, microVariance);
+            this.heightVariation = Double.isNaN(heightVariation) ? 0.0d : Math.max(0.0d, heightVariation);
         }
 
         static SiteHeightSample extract(MacroSite site) {
             if (site == null) {
-                return new SiteHeightSample(0.0d, 0.0d, 0.0d);
+                return new SiteHeightSample(0.0d, 0.0d, 0.0d, 0.0d);
             }
-
-            double base = readSiteDouble(site, SITE_BASE_METHODS, SITE_BASE_FIELDS);
-            double macroVar = readSiteDouble(site, SITE_MACRO_VARIANCE_METHODS, SITE_MACRO_VARIANCE_FIELDS);
-            double microVar = readSiteDouble(site, SITE_MICRO_VARIANCE_METHODS, SITE_MICRO_VARIANCE_FIELDS);
-
-            if (Double.isNaN(base) || Double.isNaN(macroVar) || Double.isNaN(microVar)) {
-                Object profile = readSiteObject(site, SITE_HEIGHT_PROFILE_METHODS, SITE_HEIGHT_PROFILE_FIELDS);
-                if (profile != null) {
-                    if (Double.isNaN(base)) {
-                        base = readSiteDouble(profile, PROFILE_BASE_METHODS, PROFILE_BASE_FIELDS);
-                    }
-                    if (Double.isNaN(macroVar)) {
-                        macroVar = readSiteDouble(profile, PROFILE_MACRO_VARIANCE_METHODS, PROFILE_MACRO_VARIANCE_FIELDS);
-                    }
-                    if (Double.isNaN(microVar)) {
-                        microVar = readSiteDouble(profile, PROFILE_MICRO_VARIANCE_METHODS, PROFILE_MICRO_VARIANCE_FIELDS);
-                    }
-                }
-            }
-
-            return new SiteHeightSample(base, macroVar, microVar);
+            return new SiteHeightSample(
+                site.baseHeight(),
+                site.macroVariance(),
+                site.microVariance(),
+                site.heightVariation()
+            );
         }
 
         double baseHeight() {
@@ -546,80 +545,10 @@ public final class MacroBiomeSelector {
         double microVariance() {
             return microVariance;
         }
-    }
 
-    private static double readSiteDouble(Object target, String[] methodNames, String[] fieldNames) {
-        Object value = readSiteValue(target, methodNames, fieldNames);
-        if (value instanceof Number number) {
-            return number.doubleValue();
+        double heightVariation() {
+            return heightVariation;
         }
-        if (value instanceof String string) {
-            try {
-                return Double.parseDouble(string.trim());
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        return Double.NaN;
-    }
-
-    private static Object readSiteObject(Object target, String[] methodNames, String[] fieldNames) {
-        return readSiteValue(target, methodNames, fieldNames);
-    }
-
-    private static Object readSiteValue(Object target, String[] methodNames, String[] fieldNames) {
-        if (target == null) {
-            return null;
-        }
-        Object viaMethod = invokeCandidate(target, methodNames);
-        if (viaMethod != null) {
-            return viaMethod;
-        }
-        return readFieldCandidate(target, fieldNames);
-    }
-
-    private static Object invokeCandidate(Object target, String[] candidates) {
-        if (target == null || candidates == null) {
-            return null;
-        }
-        Class<?> type = target.getClass();
-        for (String name : candidates) {
-            if (name == null || name.isEmpty()) {
-                continue;
-            }
-            try {
-                Method method = type.getMethod(name);
-                method.setAccessible(true);
-                return method.invoke(target);
-            } catch (ReflectiveOperationException ignored) {
-            }
-            String getter = "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
-            try {
-                Method method = type.getMethod(getter);
-                method.setAccessible(true);
-                return method.invoke(target);
-            } catch (ReflectiveOperationException ignored) {
-            }
-        }
-        return null;
-    }
-
-    private static Object readFieldCandidate(Object target, String[] candidates) {
-        if (target == null || candidates == null) {
-            return null;
-        }
-        Class<?> type = target.getClass();
-        for (String name : candidates) {
-            if (name == null || name.isEmpty()) {
-                continue;
-            }
-            try {
-                Field field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                return field.get(target);
-            } catch (ReflectiveOperationException ignored) {
-            }
-        }
-        return null;
     }
 
     private static HeightComputation clampOceanicHeights(HeightComputation original,
@@ -655,21 +584,21 @@ public final class MacroBiomeSelector {
         double clampedMacroVariance = clampedMacro01 * 2.0d - 1.0d;
         double clampedFinalMicroVariance = clampedMicroWorld / range;
 
-        double adjustedMacroHeightNoise = clampedFinalBase - original.macroBaseHeight();
+        double adjustedMacroHeightNoise = clampedFinalBase - original.baseHeight();
         double adjustedMicroHeightNoise = clampedFinalMicroVariance - original.microVariance();
 
         return new HeightComputation(
-            original.macroBaseHeight(),
+            original.baseHeight(),
             clampedMacroVariance,
             original.microVariance(),
             adjustedMacroHeightNoise,
             adjustedMicroHeightNoise,
             clampedFinalBase,
             clampedFinalMicroVariance,
-            original.noiseSample()
+            original.heightNoiseSample(),
+            original.heightVariation()
         );
     }
-
 
     public MacroSelectorConfig config() {
         return this.config;

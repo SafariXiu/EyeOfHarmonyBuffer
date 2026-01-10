@@ -22,6 +22,10 @@ public final class MacroSite {
     private final double latitude01;
     private final int latitudeBandIndex;
     private final double coastSoftness;
+    private final double baseHeight;
+    private final double macroVariance;
+    private final double microVariance;
+    private final double heightVariation;
 
     public MacroSite(long id,
                      int cellX,
@@ -36,7 +40,11 @@ public final class MacroSite {
                      MacroDomain domain,
                      double latitude01,
                      int latitudeBandIndex,
-                     double coastSoftness) {
+                     double coastSoftness,
+                     double baseHeight,
+                     double macroVariance,
+                     double microVariance,
+                     double heightVariation) {
 
         this.id = id;
         this.cellX = cellX;
@@ -52,6 +60,10 @@ public final class MacroSite {
         this.latitude01 = latitude01;
         this.latitudeBandIndex = latitudeBandIndex;
         this.coastSoftness = coastSoftness;
+        this.baseHeight = baseHeight;
+        this.macroVariance = macroVariance;
+        this.microVariance = microVariance;
+        this.heightVariation = Double.isNaN(heightVariation) ? 0.0d : Math.max(0.0d, heightVariation);
     }
 
     public long id() {
@@ -108,6 +120,22 @@ public final class MacroSite {
 
     public double coastSoftness() {
         return coastSoftness;
+    }
+
+    public double baseHeight() {
+        return baseHeight;
+    }
+
+    public double macroVariance() {
+        return macroVariance;
+    }
+
+    public double microVariance() {
+        return microVariance;
+    }
+
+    public double heightVariation() {
+        return heightVariation;
     }
 
     public double distanceTo(int blockX, int blockZ) {
