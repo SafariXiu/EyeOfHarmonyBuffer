@@ -209,7 +209,7 @@ public class Utils {
     public static ItemStack setStackSize(ItemStack itemStack, int amount) {
         if (itemStack == null) return null;
         if (amount < 0) {
-            EyeOfHarmonyBuffer.LOG
+            EyeOfHarmonyBuffer.LOGGER
                 .info("Error! Trying to set a item stack size lower than zero! " + itemStack + " to amount " + amount);
             return itemStack;
         }
@@ -269,7 +269,7 @@ public class Utils {
     public static FluidStack setStackSize(FluidStack fluidStack, int amount) {
         if (fluidStack == null) return null;
         if (amount < 0) {
-            EyeOfHarmonyBuffer.LOG
+            EyeOfHarmonyBuffer.LOGGER
                 .info("Error! Trying to set a item stack size lower than zero! " + fluidStack + " to amount " + amount);
             return fluidStack;
         }
@@ -312,7 +312,7 @@ public class Utils {
     public static void debugLogInfo(String... strings) {
         if (isInDevMode) {
             for (String msg : strings) {
-                EyeOfHarmonyBuffer.LOG.info(msg);
+                EyeOfHarmonyBuffer.LOGGER.info(msg);
             }
         }
     }

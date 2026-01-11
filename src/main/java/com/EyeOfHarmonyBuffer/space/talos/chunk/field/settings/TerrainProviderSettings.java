@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings;
 
-import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.TerrainConfigSection;
 import com.github.bsideup.jabel.Desugar;
 
 @Desugar
@@ -34,16 +34,16 @@ public record TerrainProviderSettings(
 
     public static TerrainProviderSettings fromConfig() {
         return new TerrainProviderSettings(
-            FieldManagerConfigSpec.terrainBaseHeight,
-            FieldManagerConfigSpec.terrainAmplitude,
-            FieldManagerConfigSpec.terrainFrequency,
-            FieldManagerConfigSpec.terrainLacunarity,
-            FieldManagerConfigSpec.terrainPersistence,
-            FieldManagerConfigSpec.terrainOctaves,
-            Math.max(1.0d, FieldManagerConfigSpec.terrainSlopeSampleStep),
-            FieldManagerConfigSpec.terrainNoiseSeedOffset,
-            FieldManagerConfigSpec.terrainCacheEnabled,
-            FieldManagerConfigSpec.terrainCacheSize
+            TerrainConfigSection.terrainBaseHeight,
+            TerrainConfigSection.terrainAmplitude,
+            TerrainConfigSection.terrainFrequency,
+            TerrainConfigSection.terrainLacunarity,
+            TerrainConfigSection.terrainPersistence,
+            TerrainConfigSection.terrainOctaves,
+            Math.max(1.0d, TerrainConfigSection.terrainSlopeSampleStep),
+            TerrainConfigSection.terrainNoiseSeedOffset,
+            TerrainConfigSection.terrainCacheEnabled,
+            TerrainConfigSection.terrainCacheSize
         );
     }
 }

@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector;
 
-import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.*;
 import com.github.bsideup.jabel.Desugar;
 
 import javax.annotation.Nullable;
@@ -33,8 +33,11 @@ public record MacroSelectorConfig(
     double microSiteSpacing,
     long microSiteSalt,
     HeightSettings heightSettings,
+    HeightContinuitySettings heightContinuity,
     TransitionSettings transitionSettings,
-    HeightProfile heightProfile
+    HeightProfile heightProfile,
+    boolean continuousHeightField,
+    int heightControlResolution
 ) {
 
     public MacroSelectorConfig {
@@ -79,100 +82,121 @@ public record MacroSelectorConfig(
         if (coastSoftBandWidth < 0.0d || coastSoftBandWidth > 0.25d) {
             throw new IllegalArgumentException("coastSoftBandWidth must be within [0,0.25]");
         }
+        if (heightControlResolution < 1) {
+            throw new IllegalArgumentException("heightControlResolution must be >= 1");
+        }
     }
 
     public static MacroSelectorConfig fromSpec() {
         NoiseSettings heightNoise = null;
-        if (FieldManagerConfigSpec.selectorHeightNoiseEnabled) {
+        if (MacroSelectorHeightConfigSection.selectorHeightNoiseEnabled) {
             heightNoise = new NoiseSettings(
-                FieldManagerConfigSpec.selectorHeightNoiseSalt,
-                FieldManagerConfigSpec.selectorHeightNoiseFrequency,
-                FieldManagerConfigSpec.selectorHeightNoiseOctaves,
-                FieldManagerConfigSpec.selectorHeightNoiseLacunarity,
-                FieldManagerConfigSpec.selectorHeightNoiseGain,
+                MacroSelectorHeightConfigSection.selectorHeightNoiseSalt,
+                MacroSelectorHeightConfigSection.selectorHeightNoiseFrequency,
+                MacroSelectorHeightConfigSection.selectorHeightNoiseOctaves,
+                MacroSelectorHeightConfigSection.selectorHeightNoiseLacunarity,
+                MacroSelectorHeightConfigSection.selectorHeightNoiseGain,
                 1.0d
             );
         }
 
         HeightSettings heightSettings = new HeightSettings(
             heightNoise,
-            FieldManagerConfigSpec.selectorMacroHeightNoiseStrength,
-            FieldManagerConfigSpec.selectorMicroHeightNoiseStrength
+            MacroSelectorHeightConfigSection.selectorMacroHeightNoiseStrength,
+            MacroSelectorHeightConfigSection.selectorMicroHeightNoiseStrength
+        );
+
+        HeightContinuitySettings continuitySettings = new HeightContinuitySettings(
+            MacroSelectorContinuityConfigSection.continuityEnabled,
+            MacroSelectorContinuityConfigSection.globalFieldWeight,
+            MacroSelectorContinuityConfigSection.maxNeighborDelta,
+            MacroSelectorContinuityConfigSection.smoothingRadius,
+            MacroSelectorContinuityConfigSection.relaxIterations,
+            MacroSelectorContinuityConfigSection.maxEdgeDelta,
+            MacroSelectorContinuityConfigSection.varianceFalloff,
+            MacroSelectorContinuityConfigSection.gridBlurStrength,
+            MacroSelectorContinuityConfigSection.finalPassEnabled,
+            MacroSelectorContinuityConfigSection.finalBlendStrength,
+            MacroSelectorContinuityConfigSection.finalPointSampleRadius,
+            MacroSelectorContinuityConfigSection.finalMaxDelta
         );
 
         TransitionSettings transitionSettings = new TransitionSettings(
-            FieldManagerConfigSpec.selectorTransitionEnabled,
-            FieldManagerConfigSpec.selectorTransitionDefaultCoastWidth,
-            Arrays.asList(FieldManagerConfigSpec.selectorTransitionRules)
+            MacroSelectorTransitionConfigSection.selectorTransitionEnabled,
+            MacroSelectorTransitionConfigSection.selectorTransitionDefaultCoastWidth,
+            Arrays.asList(MacroSelectorTransitionConfigSection.selectorTransitionRules)
         );
 
         HeightProfile heightProfile = new HeightProfile(
-            FieldManagerConfigSpec.terrainWorldFloor,
-            FieldManagerConfigSpec.terrainWorldCeiling,
-            FieldManagerConfigSpec.terrainFloorY,
-            FieldManagerConfigSpec.terrainCeilingY,
-            FieldManagerConfigSpec.terrainSeaLevel
+            TerrainConfigSection.terrainWorldFloor,
+            TerrainConfigSection.terrainWorldCeiling,
+            TerrainConfigSection.terrainFloorY,
+            TerrainConfigSection.terrainCeilingY,
+            TerrainConfigSection.terrainSeaLevel
         );
 
         return new MacroSelectorConfig(
-            FieldManagerConfigSpec.selectorSeedSalt,
+            MacroSelectorConfigSection.selectorSeedSalt,
             new NoiseSettings(
-                FieldManagerConfigSpec.selectorPatchSalt,
-                FieldManagerConfigSpec.selectorPatchFrequency,
-                FieldManagerConfigSpec.selectorPatchOctaves,
-                FieldManagerConfigSpec.selectorPatchLacunarity,
-                FieldManagerConfigSpec.selectorPatchGain,
-                FieldManagerConfigSpec.selectorPatchScale
+                MacroSelectorConfigSection.selectorPatchSalt,
+                MacroSelectorConfigSection.selectorPatchFrequency,
+                MacroSelectorConfigSection.selectorPatchOctaves,
+                MacroSelectorConfigSection.selectorPatchLacunarity,
+                MacroSelectorConfigSection.selectorPatchGain,
+                MacroSelectorConfigSection.selectorPatchScale
             ),
             new RareSettings(
-                FieldManagerConfigSpec.selectorRareEnabled,
-                FieldManagerConfigSpec.selectorRareSalt,
-                FieldManagerConfigSpec.selectorRareFrequency,
-                FieldManagerConfigSpec.selectorRareThreshold
+                MacroSelectorConfigSection.selectorRareEnabled,
+                MacroSelectorConfigSection.selectorRareSalt,
+                MacroSelectorConfigSection.selectorRareFrequency,
+                MacroSelectorConfigSection.selectorRareThreshold
             ),
             new ContinentalSettings(
-                FieldManagerConfigSpec.selectorElevationMin,
-                FieldManagerConfigSpec.selectorElevationMax,
-                FieldManagerConfigSpec.selectorElevationWeight,
-                FieldManagerConfigSpec.selectorCoastScale,
-                FieldManagerConfigSpec.selectorCoastWeight,
-                FieldManagerConfigSpec.selectorHydroWeight,
-                FieldManagerConfigSpec.selectorContinentalPivot,
-                FieldManagerConfigSpec.selectorContinentalScale,
-                FieldManagerConfigSpec.selectorCoastBeachWidth,
-                FieldManagerConfigSpec.selectorCoastShelfWidth
+                MacroSelectorConfigSection.selectorElevationMin,
+                MacroSelectorConfigSection.selectorElevationMax,
+                MacroSelectorConfigSection.selectorElevationWeight,
+                MacroSelectorConfigSection.selectorCoastScale,
+                MacroSelectorConfigSection.selectorCoastWeight,
+                MacroSelectorConfigSection.selectorHydroWeight,
+                MacroSelectorConfigSection.selectorContinentalPivot,
+                MacroSelectorConfigSection.selectorContinentalScale,
+                MacroSelectorConfigSection.selectorCoastBeachWidth,
+                MacroSelectorConfigSection.selectorCoastShelfWidth
             ),
-            FieldManagerConfigSpec.selectorContinentalLandThreshold,
-            FieldManagerConfigSpec.selectorCoastSoftBandWidth,
+            MacroSelectorConfigSection.selectorContinentalLandThreshold,
+            MacroSelectorConfigSection.selectorCoastSoftBandWidth,
             new OverrideSettings(
-                FieldManagerConfigSpec.selectorOverrideLandScoreThreshold,
-                FieldManagerConfigSpec.selectorOverrideMinShelfWidth
+                MacroSelectorConfigSection.selectorOverrideLandScoreThreshold,
+                MacroSelectorConfigSection.selectorOverrideMinShelfWidth
             ),
             new LatitudeSettings(
-                FieldManagerConfigSpec.selectorLatitudePeriod,
-                FieldManagerConfigSpec.selectorLatitudeBlendWidth,
-                FieldManagerConfigSpec.selectorLatitudeBaseBias,
-                FieldManagerConfigSpec.selectorLatitudeMixWeight,
-                FieldManagerConfigSpec.selectorLatitudeWarpScale,
-                FieldManagerConfigSpec.selectorLatitudeWarpAmplitude,
-                FieldManagerConfigSpec.selectorLatitudeWarpSalt
+                MacroSelectorConfigSection.selectorLatitudePeriod,
+                MacroSelectorConfigSection.selectorLatitudeBlendWidth,
+                MacroSelectorConfigSection.selectorLatitudeBaseBias,
+                MacroSelectorConfigSection.selectorLatitudeMixWeight,
+                MacroSelectorConfigSection.selectorLatitudeWarpScale,
+                MacroSelectorConfigSection.selectorLatitudeWarpAmplitude,
+                MacroSelectorConfigSection.selectorLatitudeWarpSalt
             ),
-            FieldManagerConfigSpec.selectorDebugLogging,
-            FieldManagerConfigSpec.selectorMacroGridSize,
-            FieldManagerConfigSpec.selectorMacroSiteSpacing,
-            FieldManagerConfigSpec.selectorMacroSiteSalt,
+            MacroSelectorConfigSection.selectorDebugLogging,
+            MacroSelectorConfigSection.selectorMacroGridSize,
+            MacroSelectorConfigSection.selectorMacroSiteSpacing,
+            MacroSelectorConfigSection.selectorMacroSiteSalt,
             2,
-            FieldManagerConfigSpec.macroCacheMaxEntries,
-            FieldManagerConfigSpec.selectorMacroBlendWidth,
-            FieldManagerConfigSpec.selectorEdgeNoiseFrequency,
-            FieldManagerConfigSpec.selectorEdgeNoiseAmplitude,
-            FieldManagerConfigSpec.selectorEdgeNoiseSalt,
-            FieldManagerConfigSpec.selectorMicroGridSize,
-            FieldManagerConfigSpec.selectorMicroSiteSpacing,
-            FieldManagerConfigSpec.selectorMicroSiteSalt,
+            MacroCacheConfigSection.macroCacheMaxEntries,
+            MacroSelectorConfigSection.selectorMacroBlendWidth,
+            MacroSelectorConfigSection.selectorEdgeNoiseFrequency,
+            MacroSelectorConfigSection.selectorEdgeNoiseAmplitude,
+            MacroSelectorConfigSection.selectorEdgeNoiseSalt,
+            MacroSelectorConfigSection.selectorMicroGridSize,
+            MacroSelectorConfigSection.selectorMicroSiteSpacing,
+            MacroSelectorConfigSection.selectorMicroSiteSalt,
             heightSettings,
+            continuitySettings,
             transitionSettings,
-            heightProfile
+            heightProfile,
+            MacroSelectorHeightConfigSection.selectorContinuousHeightField,
+            MacroSelectorHeightConfigSection.selectorHeightControlResolution
         );
     }
 
@@ -357,6 +381,59 @@ public record MacroSelectorConfig(
             if (minShelfWidthBlocks < 0.0d) {
                 throw new IllegalArgumentException("minShelfWidthBlocks must be >= 0");
             }
+        }
+    }
+
+    @Desugar
+    public record HeightContinuitySettings(
+        boolean enabled,
+        double globalFieldWeight,
+        double maxNeighborDelta,
+        int smoothingRadius,
+        int relaxIterations,
+        double maxEdgeDelta,
+        double varianceFalloff,
+        double gridBlurStrength,
+        boolean finalPassEnabled,
+        double finalBlendStrength,
+        int finalPointSampleRadius,
+        double finalMaxDelta
+    ) {
+        public HeightContinuitySettings {
+            if (globalFieldWeight < 0.0d || globalFieldWeight > 1.0d) {
+                throw new IllegalArgumentException("globalFieldWeight must be within [0,1]");
+            }
+            if (maxNeighborDelta < 0.0d || maxNeighborDelta > 1.0d) {
+                throw new IllegalArgumentException("maxNeighborDelta must be within [0,1]");
+            }
+            if (smoothingRadius < 0) {
+                throw new IllegalArgumentException("smoothingRadius must be >= 0");
+            }
+            if (relaxIterations < 0) {
+                throw new IllegalArgumentException("relaxIterations must be >= 0");
+            }
+            if (maxEdgeDelta < 0.0d || maxEdgeDelta > 1.0d) {
+                throw new IllegalArgumentException("maxEdgeDelta must be within [0,1]");
+            }
+            if (varianceFalloff < 0.5d) {
+                throw new IllegalArgumentException("varianceFalloff must be >= 0.5");
+            }
+            if (gridBlurStrength < 0.0d || gridBlurStrength > 1.0d) {
+                throw new IllegalArgumentException("gridBlurStrength must be within [0,1]");
+            }
+            if (finalBlendStrength < 0.0d || finalBlendStrength > 1.0d) {
+                throw new IllegalArgumentException("finalBlendStrength must be within [0,1]");
+            }
+            if (finalPointSampleRadius < 1) {
+                throw new IllegalArgumentException("finalPointSampleRadius must be >= 1");
+            }
+            if (finalMaxDelta < 0.0d || finalMaxDelta > 1.0d) {
+                throw new IllegalArgumentException("finalMaxDelta must be within [0,1]");
+            }
+        }
+
+        public boolean disabled() {
+            return !enabled;
         }
     }
 }

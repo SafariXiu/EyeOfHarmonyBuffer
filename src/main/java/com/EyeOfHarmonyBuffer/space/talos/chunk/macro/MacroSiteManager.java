@@ -3,8 +3,10 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.macro;
 import com.EyeOfHarmonyBuffer.space.talos.biome.MacroBiome;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.selector.MacroSelectorConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.MacroFieldProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.ClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.HydroSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.MacroSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.TerrainSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
@@ -83,14 +85,20 @@ public final class MacroSiteManager {
     private final NoiseGeneratorSimplex latitudeWarpNoise;
     private final MacroSelectorConfig.HeightProfile heightProfile;
     private final PlateMaskSampler plateMaskSampler;
+    private final MacroFieldProvider macroFieldProvider;
+    private final MacroSelectorConfig.HeightContinuitySettings continuitySettings;
+
 
     private final Long2ObjectLinkedOpenHashMap<MacroSite> siteCache = new Long2ObjectLinkedOpenHashMap<>();
 
     public MacroSiteManager(FieldManager fieldManager,
+                            MacroFieldProvider macroFieldProvider,
                             MacroSelectorConfig config,
                             long worldSeed) {
 
         this.fieldManager = Objects.requireNonNull(fieldManager, "fieldManager");
+        this.macroFieldProvider = Objects.requireNonNull(macroFieldProvider, "macroFieldProvider");
+        this.continuitySettings = Objects.requireNonNull(config.heightContinuity(), "heightContinuity");
         this.config = Objects.requireNonNull(config, "config");
         this.worldSeed = worldSeed;
 
@@ -219,7 +227,57 @@ public final class MacroSiteManager {
 
         double heightVariation = computeHeightVariation(macroBiome);
 
+        int gridRes = config.continuousHeightField()
+            ? Math.max(2, config.heightControlResolution())
+            : 1;
+
+        double[] baseGrid = null;
+        double[] macroGrid = null;
+        double[] microGrid = null;
+        double gridStep = 0.0d;
+
+        if (gridRes > 1) {
+            baseGrid = new double[gridRes * gridRes];
+            macroGrid = new double[gridRes * gridRes];
+            microGrid = new double[gridRes * gridRes];
+            gridStep = (double) macroGridSize / (gridRes - 1);
+            double halfSpan = (gridRes - 1) * 0.5d;
+
+            for (int gz = 0; gz < gridRes; gz++) {
+                double offsetZ1 = (gz - halfSpan) * gridStep;
+                int sampleZ = (int) Math.round(centerZ + offsetZ1);
+
+                for (int gx = 0; gx < gridRes; gx++) {
+
+                    double offsetX1 = (gx - halfSpan) * gridStep;
+                    int sampleX = (int) Math.round(centerX + offsetX1);
+                    TerrainSample gridTerrain = fieldManager.sampleTerrain(sampleX, sampleZ);
+                    ClimateSample gridClimate = fieldManager.sampleClimate(sampleX, sampleZ);
+                    HydroSample gridHydro = fieldManager.sampleHydro(sampleX, sampleZ);
+                    double gridContinental = config.continentalSettings().compose(
+                            gridTerrain.elevation(),
+                        gridHydro.coastDistance(),
+                        gridHydro.saturation()
+                    );
+                    double gridHumidity = MathHelper.clamp_double(gridClimate.humidity(), 0.0d, 1.0d);
+                    double sampleBase = computeBaseHeight(macroBiome, gridContinental);
+                    sampleBase = anchorBaseHeight(sampleX, sampleZ, sampleBase, heightVariation);
+
+                    double sampleMacro = computeMacroVariance(macroBiome, gridHumidity, heightVariation);
+                    double sampleMicro = computeMicroVariance(macroBiome, gridHumidity, heightVariation);
+
+                    int idx = gz * gridRes + gx;
+                    baseGrid[idx] = sampleBase;
+                    macroGrid[idx] = sampleMacro;
+                    microGrid[idx] = sampleMicro;
+
+                    applyContinuityFilters(baseGrid, gridRes);
+                }
+            }
+        }
+
         double baseHeight = computeBaseHeight(macroBiome, continentalScore);
+        baseHeight = anchorBaseHeight(centerX, centerZ, baseHeight, heightVariation);
         double macroVariance = computeMacroVariance(macroBiome, humidity, heightVariation);
         double microVariance = computeMicroVariance(macroBiome, humidity, heightVariation);
 
@@ -256,7 +314,12 @@ public final class MacroSiteManager {
             baseHeight,
             macroVariance,
             microVariance,
-            heightVariation
+            heightVariation,
+            baseGrid,
+            macroGrid,
+            microGrid,
+            gridRes,
+            gridStep
         );
     }
 
@@ -656,6 +719,115 @@ public final class MacroSiteManager {
             );
             rawHeightCache.put(key, value);
             return value;
+        }
+    }
+
+    private double anchorBaseHeight(int blockX,
+                                    int blockZ,
+                                    double localBase,
+                                    double variation) {
+        if (continuitySettings == null || continuitySettings.disabled()) {
+            return localBase;
+        }
+
+        MacroSample macroSample = macroFieldProvider.sample(blockX, blockZ);
+        if (macroSample == null) {
+            return localBase;
+        }
+
+        double anchor = normalizeMacroSampleHeight(macroSample.macroBaseHeight());
+        double anchorWeight = continuitySettings.globalFieldWeight();
+        double sampleWeight = MathHelper.clamp_double(macroSample.anchorWeight(), 0.0d, 1.0d);
+        double hardEdge = MathHelper.clamp_double(macroSample.hardEdge(), 0.0d, 1.0d);
+
+        double weight = anchorWeight * (0.5d + 0.5d * sampleWeight) * (0.75d + 0.25d * hardEdge);
+        if (weight <= 0.0d) {
+            return localBase;
+        }
+
+        double blended = lerp(weight, localBase, anchor);
+        return MathHelper.clamp_double(blended, -1.0d, 1.0d);
+    }
+
+    private static double normalizeMacroSampleHeight(short macroBaseHeight) {
+        return MathHelper.clamp_double(macroBaseHeight / 32767.0d, -1.0d, 1.0d);
+    }
+
+    private void applyContinuityFilters(double[] grid, int resolution) {
+        if (continuitySettings == null
+            || continuitySettings.disabled()
+            || grid == null
+            || resolution <= 1) {
+            return;
+        }
+
+        if (continuitySettings.maxNeighborDelta() > 0.0d) {
+            clampNeighborDelta(grid, resolution, continuitySettings.maxNeighborDelta());
+        }
+
+        int iterations = Math.max(0, continuitySettings.relaxIterations());
+        double strength = MathHelper.clamp_double(continuitySettings.gridBlurStrength(), 0.0d, 1.0d);
+        if (iterations > 0 && strength > 0.0d) {
+            int radius = Math.max(1, continuitySettings.smoothingRadius());
+            for (int i = 0; i < iterations; i++) {
+                boxBlurGrid(grid, resolution, radius, strength);
+            }
+        }
+    }
+
+    private void clampNeighborDelta(double[] grid,
+                                    int resolution,
+                                    double maxDelta) {
+        double allowed = MathHelper.clamp_double(maxDelta, 0.0d, 1.0d);
+        if (allowed <= 0.0d) {
+            return;
+        }
+
+        for (int z = 0; z < resolution; z++) {
+            for (int x = 0; x < resolution; x++) {
+                int idx = z * resolution + x;
+                double value = grid[idx];
+
+                if (x + 1 < resolution) {
+                    int right = idx + 1;
+                    double delta = grid[right] - value;
+                    if (Math.abs(delta) > allowed) {
+                        grid[right] = value + Math.copySign(allowed, delta);
+                    }
+                }
+                if (z + 1 < resolution) {
+                    int down = idx + resolution;
+                    double delta = grid[down] - value;
+                    if (Math.abs(delta) > allowed) {
+                        grid[down] = value + Math.copySign(allowed, delta);
+                    }
+                }
+            }
+        }
+    }
+
+    private void boxBlurGrid(double[] grid,
+                             int resolution,
+                             int radius,
+                             double strength) {
+        double[] scratch = Arrays.copyOf(grid, grid.length);
+        double invArea = 1.0d / ((radius * 2 + 1) * (radius * 2 + 1));
+        double wSelf = 1.0d - strength;
+
+        for (int z = 0; z < resolution; z++) {
+            for (int x = 0; x < resolution; x++) {
+                double sum = 0.0d;
+                for (int dz = -radius; dz <= radius; dz++) {
+                    int nz = MathHelper.clamp_int(z + dz, 0, resolution - 1);
+                    for (int dx = -radius; dx <= radius; dx++) {
+                        int nx = MathHelper.clamp_int(x + dx, 0, resolution - 1);
+                        sum += scratch[nz * resolution + nx];
+                    }
+                }
+                double blurred = sum * invArea;
+                int idx = z * resolution + x;
+                grid[idx] = grid[idx] * wSelf + blurred * strength;
+            }
         }
     }
 

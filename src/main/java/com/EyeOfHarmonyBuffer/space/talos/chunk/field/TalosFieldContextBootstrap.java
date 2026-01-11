@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field;
 
-import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.coastline.CoastlineSettings;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.config.MacroCacheConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
@@ -38,17 +38,17 @@ public final class TalosFieldContextBootstrap {
             "[TalosFieldContext][Bootstrap] Building FieldContext for dim={} ({}) macroCacheEnabled={}, macroCacheSize={}, terrainFreq={}, climateTempBase={}, hydroSeaLevel={}",
             dimensionId,
             dimensionName,
-            FieldManagerConfigSpec.macroCacheEnabled,
-            FieldManagerConfigSpec.macroCacheMaxEntries,
-            FieldManagerConfigSpec.terrainFrequency,
-            FieldManagerConfigSpec.climateTempBase,
-            FieldManagerConfigSpec.hydroSeaLevel
+            MacroCacheConfigSection.macroCacheEnabled,
+            MacroCacheConfigSection.macroCacheMaxEntries,
+            TerrainConfigSection.terrainFrequency,
+            ClimateConfigSection.climateTempBase,
+            HydroConfigSection.hydroSeaLevel
         );
 
         MacroCacheConfig macroCache = MacroCacheConfig.builder()
-            .enabled(FieldManagerConfigSpec.macroCacheEnabled)
-            .maxEntries(FieldManagerConfigSpec.macroCacheMaxEntries)
-            .diagnosticsEnabled(FieldManagerConfigSpec.macroCacheDiagnostics)
+            .enabled(MacroCacheConfigSection.macroCacheEnabled)
+            .maxEntries(MacroCacheConfigSection.macroCacheMaxEntries)
+            .diagnosticsEnabled(MacroCacheConfigSection.macroCacheDiagnostics)
             .build();
 
         FieldManagerConfig config = FieldManagerConfig.builder()
@@ -58,17 +58,17 @@ public final class TalosFieldContextBootstrap {
             .climateSettings(ClimateProviderSettings.fromConfig())
             .hydroSettings(HydroProviderSettings.fromConfig())
             .macroCache(macroCache)
-            .macroCacheEnabled(FieldManagerConfigSpec.macroCacheEnabled)
-            .macroCacheSize(FieldManagerConfigSpec.macroCacheMaxEntries)
+            .macroCacheEnabled(MacroCacheConfigSection.macroCacheEnabled)
+            .macroCacheSize(MacroCacheConfigSection.macroCacheMaxEntries)
             .build();
 
         FieldContext context = FieldManagerFactory.create(world, config);
 
-        if (FieldManagerConfigSpec.macroCacheDiagnostics) {
+        if (MacroCacheConfigSection.macroCacheDiagnostics) {
             int sampleX;
             int sampleZ;
 
-            if (FieldManagerConfigSpec.diagnosticsSampleUsePlayer) {
+            if (DiagnosticsConfigSection.diagnosticsSampleUsePlayer) {
                 EntityPlayer player = world.playerEntities.isEmpty()
                     ? null
                     : (EntityPlayer) world.playerEntities.get(0);
@@ -132,28 +132,28 @@ public final class TalosFieldContextBootstrap {
             "[TalosFieldContext][Ready] FieldContext ready for dim={} ({}) macroCacheDiagnostics={}, terrainOctaves={}, climateHumidityFrequency={}, hydroRiverThreshold={}",
             dimensionId,
             dimensionName,
-            FieldManagerConfigSpec.macroCacheDiagnostics,
-            FieldManagerConfigSpec.terrainOctaves,
-            FieldManagerConfigSpec.climateHumidityFrequency,
-            FieldManagerConfigSpec.hydroRiverThreshold
+            MacroCacheConfigSection.macroCacheDiagnostics,
+            TerrainConfigSection.terrainOctaves,
+            ClimateConfigSection.climateHumidityFrequency,
+            HydroConfigSection.hydroRiverThreshold
         );
 
         return context;
     }
 
     private static int resolveFallbackX(World world) {
-        if (FieldManagerConfigSpec.diagnosticsSampleUseSpawn) {
+        if (DiagnosticsConfigSection.diagnosticsSampleUseSpawn) {
             ChunkCoordinates spawn = world.getSpawnPoint();
             return spawn != null ? spawn.posX : 0;
         }
-        return FieldManagerConfigSpec.diagnosticsSampleX;
+        return DiagnosticsConfigSection.diagnosticsSampleX;
     }
 
     private static int resolveFallbackZ(World world) {
-        if (FieldManagerConfigSpec.diagnosticsSampleUseSpawn) {
+        if (DiagnosticsConfigSection.diagnosticsSampleUseSpawn) {
             ChunkCoordinates spawn = world.getSpawnPoint();
             return spawn != null ? spawn.posZ : 0;
         }
-        return FieldManagerConfigSpec.diagnosticsSampleZ;
+        return DiagnosticsConfigSection.diagnosticsSampleZ;
     }
 }

@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings;
 
-import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.HydroConfigSection;
 import com.github.bsideup.jabel.Desugar;
 
 @Desugar
@@ -93,29 +93,29 @@ public record HydroProviderSettings(
     }
 
     public static HydroProviderSettings fromConfig() {
-        double seaLevelBlocks = FieldManagerConfigSpec.hydroSeaLevel;
-        double normalizedAquiferBase = clamp01(FieldManagerConfigSpec.hydroBaseAquiferNormalized);
-        double waterTableBuffer = Math.max(0.0d, FieldManagerConfigSpec.hydroWaterTableBufferBlocks);
+        double seaLevelBlocks = HydroConfigSection.hydroSeaLevel;
+        double normalizedAquiferBase = clamp01(HydroConfigSection.hydroBaseAquiferNormalized);
+        double waterTableBuffer = Math.max(0.0d, HydroConfigSection.hydroWaterTableBufferBlocks);
 
         GroundwaterSettings groundwater = new GroundwaterSettings(
-            clamp01(FieldManagerConfigSpec.hydroBaseSaturation),
-            clamp01(FieldManagerConfigSpec.hydroSaturationVariance),
+            clamp01(HydroConfigSection.hydroBaseSaturation),
+            clamp01(HydroConfigSection.hydroSaturationVariance),
             normalizedAquiferBase,
-            clamp01(FieldManagerConfigSpec.hydroAquiferVariance),
-            clamp01(FieldManagerConfigSpec.hydroMaxFlowRate),
-            Math.max(1.0d, FieldManagerConfigSpec.hydroHeightFalloffBlocks),
-            clamp01(FieldManagerConfigSpec.hydroHeightWeight),
+            clamp01(HydroConfigSection.hydroAquiferVariance),
+            clamp01(HydroConfigSection.hydroMaxFlowRate),
+            Math.max(1.0d, HydroConfigSection.hydroHeightFalloffBlocks),
+            clamp01(HydroConfigSection.hydroHeightWeight),
             new NoiseSettings(
-                FieldManagerConfigSpec.hydroSaturationNoiseFrequency,
-                FieldManagerConfigSpec.hydroSaturationNoiseLacunarity,
-                FieldManagerConfigSpec.hydroSaturationNoisePersistence,
-                FieldManagerConfigSpec.hydroSaturationNoiseOctaves
+                HydroConfigSection.hydroSaturationNoiseFrequency,
+                HydroConfigSection.hydroSaturationNoiseLacunarity,
+                HydroConfigSection.hydroSaturationNoisePersistence,
+                HydroConfigSection.hydroSaturationNoiseOctaves
             ),
             new NoiseSettings(
-                FieldManagerConfigSpec.hydroFlowNoiseFrequency,
-                FieldManagerConfigSpec.hydroFlowNoiseLacunarity,
-                FieldManagerConfigSpec.hydroFlowNoisePersistence,
-                FieldManagerConfigSpec.hydroFlowNoiseOctaves
+                HydroConfigSection.hydroFlowNoiseFrequency,
+                HydroConfigSection.hydroFlowNoiseLacunarity,
+                HydroConfigSection.hydroFlowNoisePersistence,
+                HydroConfigSection.hydroFlowNoiseOctaves
             )
         );
 
@@ -123,25 +123,25 @@ public record HydroProviderSettings(
             seaLevelBlocks,
             groundwater,
             new RiverSettings(
-                FieldManagerConfigSpec.hydroRiverFrequency,
-                FieldManagerConfigSpec.hydroRiverDetailFrequency,
-                FieldManagerConfigSpec.hydroRiverStrength,
-                FieldManagerConfigSpec.hydroRiverThreshold,
-                FieldManagerConfigSpec.hydroRiverSeedOffset,
-                FieldManagerConfigSpec.hydroRiverSmoothRadius
+                HydroConfigSection.hydroRiverFrequency,
+                HydroConfigSection.hydroRiverDetailFrequency,
+                HydroConfigSection.hydroRiverStrength,
+                HydroConfigSection.hydroRiverThreshold,
+                HydroConfigSection.hydroRiverSeedOffset,
+                HydroConfigSection.hydroRiverSmoothRadius
             ),
             new LakeSettings(
-                FieldManagerConfigSpec.hydroLakeEnabled,
-                FieldManagerConfigSpec.hydroLakeThreshold,
-                FieldManagerConfigSpec.hydroLakeSeedOffset
+                HydroConfigSection.hydroLakeEnabled,
+                HydroConfigSection.hydroLakeThreshold,
+                HydroConfigSection.hydroLakeSeedOffset
             ),
             new CoastSettings(
-                FieldManagerConfigSpec.hydroCoastSyncWithMacro,
-                FieldManagerConfigSpec.hydroCoastFalloff
+                HydroConfigSection.hydroCoastSyncWithMacro,
+                HydroConfigSection.hydroCoastFalloff
             ),
             new DiagnosticsSettings(
-                FieldManagerConfigSpec.hydroDiagLogSamples,
-                FieldManagerConfigSpec.hydroDiagProbeInterval
+                HydroConfigSection.hydroDiagLogSamples,
+                HydroConfigSection.hydroDiagProbeInterval
             ),
             waterTableBuffer
         );

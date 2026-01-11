@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.field.settings;
 
-import com.EyeOfHarmonyBuffer.Config.FieldManagerConfigSpec;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.ClimateConfigSection;
 import com.github.bsideup.jabel.Desugar;
 
 @Desugar
@@ -58,43 +58,43 @@ public record ClimateProviderSettings(
 
     public static ClimateProviderSettings fromConfig() {
         NoiseChannel temperatureChannel = new NoiseChannel(
-            FieldManagerConfigSpec.climateTempBase,
-            FieldManagerConfigSpec.climateTempVariance,
-            FieldManagerConfigSpec.climateTempFrequency,
-            FieldManagerConfigSpec.climateTempOctaves,
-            FieldManagerConfigSpec.climateTempSeedOffset
+            ClimateConfigSection.climateTempBase,
+            ClimateConfigSection.climateTempVariance,
+            ClimateConfigSection.climateTempFrequency,
+            ClimateConfigSection.climateTempOctaves,
+            ClimateConfigSection.climateTempSeedOffset
         );
 
         NoiseChannel humidityChannel = new NoiseChannel(
-            FieldManagerConfigSpec.climateHumidityBase,
-            FieldManagerConfigSpec.climateHumidityVariance,
-            FieldManagerConfigSpec.climateHumidityFrequency,
-            FieldManagerConfigSpec.climateHumidityOctaves,
-            FieldManagerConfigSpec.climateHumiditySeedOffset
+            ClimateConfigSection.climateHumidityBase,
+            ClimateConfigSection.climateHumidityVariance,
+            ClimateConfigSection.climateHumidityFrequency,
+            ClimateConfigSection.climateHumidityOctaves,
+            ClimateConfigSection.climateHumiditySeedOffset
         );
 
         NoiseChannel rainfallChannel = new NoiseChannel(
-            FieldManagerConfigSpec.climateRainfallBase,
-            FieldManagerConfigSpec.climateRainfallVariance,
-            FieldManagerConfigSpec.climateRainfallFrequency,
-            FieldManagerConfigSpec.climateRainfallOctaves,
-            FieldManagerConfigSpec.climateRainfallSeedOffset
+            ClimateConfigSection.climateRainfallBase,
+            ClimateConfigSection.climateRainfallVariance,
+            ClimateConfigSection.climateRainfallFrequency,
+            ClimateConfigSection.climateRainfallOctaves,
+            ClimateConfigSection.climateRainfallSeedOffset
         );
 
         WindSettings windSettings = new WindSettings(
-            FieldManagerConfigSpec.climateWindEnabled,
-            FieldManagerConfigSpec.climateWindDirectionVariance,
-            FieldManagerConfigSpec.climateWindSpeedBase,
-            FieldManagerConfigSpec.climateWindSpeedVariance
+            ClimateConfigSection.climateWindEnabled,
+            ClimateConfigSection.climateWindDirectionVariance,
+            ClimateConfigSection.climateWindSpeedBase,
+            ClimateConfigSection.climateWindSpeedVariance
         );
 
         SeasonSettings seasonSettings = new SeasonSettings(
-            FieldManagerConfigSpec.climateSeasonEnabled,
-            Math.max(1.0d, FieldManagerConfigSpec.climateSeasonLengthDays * TICKS_PER_DAY),
-            normalizePhase(FieldManagerConfigSpec.climateSeasonPhaseOffset),
-            FieldManagerConfigSpec.climateSeasonTemperatureAmplitude,
-            FieldManagerConfigSpec.climateSeasonHumidityAmplitude,
-            FieldManagerConfigSpec.climateSeasonRainfallAmplitude
+            ClimateConfigSection.climateSeasonEnabled,
+            Math.max(1.0d, ClimateConfigSection.climateSeasonLengthDays * TICKS_PER_DAY),
+            normalizePhase(ClimateConfigSection.climateSeasonPhaseOffset),
+            ClimateConfigSection.climateSeasonTemperatureAmplitude,
+            ClimateConfigSection.climateSeasonHumidityAmplitude,
+            ClimateConfigSection.climateSeasonRainfallAmplitude
         );
 
         return new ClimateProviderSettings(

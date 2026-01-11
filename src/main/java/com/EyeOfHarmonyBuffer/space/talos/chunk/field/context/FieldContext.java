@@ -47,6 +47,7 @@ public final class FieldContext {
         this.macroSelector = new MacroBiomeSelector(
             this.fieldManager,
             this.seed,
+            this.macroFieldProvider,
             MacroSelectorConfig.fromSpec()
         );
     }

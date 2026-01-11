@@ -11,8 +11,6 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
-import static com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.MODID;
-
 public class CommonProxy {
 
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
@@ -34,7 +32,8 @@ public class CommonProxy {
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
         File FieldManagerCacheConfig = new File(configDir, "FieldManagerConfigSpec.cfg");
 
-        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile,MachineLoaderConfigFile, FieldManagerCacheConfig);
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile, FieldManagerCacheConfig);
+        System.out.println("Fuck You Config");
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)

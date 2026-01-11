@@ -27,8 +27,6 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 
-import com.EyeOfHarmonyBuffer.Config.Config;
-
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -48,7 +46,7 @@ public class EyeOfHarmonyBuffer {
 
     public static final boolean isInDevMode = false;
 
-    public static final Logger LOG = LogManager.getLogger("EOHBuffer");
+    public static final Logger LOGGER = LogManager.getLogger("EOHBuffer");
     public static String DevResource = "";
 
     public final GemErgodic gemErgodic = new GemErgodic();
@@ -73,13 +71,13 @@ public class EyeOfHarmonyBuffer {
             configDir.mkdirs();
         }
 
-        File mainConfigFile = new File(configDir, "main.cfg");
+        /*File mainConfigFile = new File(configDir, "main.cfg");
         File itemsConfigFile = new File(configDir, "items.cfg");
         File fluidsConfigFile = new File(configDir, "fluids.cfg");
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
         File FieldManagerCacheConfig = new File(configDir, "FieldManagerConfigSpec.cfg");
 
-        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile, FieldManagerCacheConfig);
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile, FieldManagerCacheConfig);*/
 
         MaterialLoader.loadPreInit();
 
