@@ -144,7 +144,7 @@ public final class MacroBiomeSelector {
             ? HeightComputation.lerp(primaryHeight, secondaryHeight, blend)
             : primaryHeight;
 
-        height = applyEdgeContinuity(height, primaryHeight, edgeFactor, secondarySite != null);
+        height = applyEdgeContinuity(height, primaryHeight, secondaryHeight, edgeFactor, secondarySite != null);
 
         MacroSelectorConfig.HeightProfile profile = config.heightProfile();
         double floor = profile != null ? profile.terrainFloorY() : 0.0d;
@@ -648,6 +648,7 @@ public final class MacroBiomeSelector {
 
     private HeightComputation applyEdgeContinuity(HeightComputation height,
                                                   HeightComputation primaryHeight,
+                                                  HeightComputation secondaryHeight,
                                                   double edgeFactor,
                                                   boolean hasSecondary) {
         if (continuitySettings == null || continuitySettings.disabled() || height == null) {
@@ -656,11 +657,14 @@ public final class MacroBiomeSelector {
 
         HeightComputation adjusted = height;
 
-        if (hasSecondary && primaryHeight != null && continuitySettings.maxEdgeDelta() > 0.0d) {
+        if (hasSecondary
+            && primaryHeight != null
+            && secondaryHeight != null
+            && continuitySettings.maxEdgeDelta() > 0.0d) {
             double delta = continuitySettings.maxEdgeDelta();
-            double min = primaryHeight.finalBaseHeight() - delta;
-            double max = primaryHeight.finalBaseHeight() + delta;
-            adjusted = adjusted.clampFinalBase(min, max);
+            double minBase = Math.min(primaryHeight.finalBaseHeight(), secondaryHeight.finalBaseHeight()) - delta;
+            double maxBase = Math.max(primaryHeight.finalBaseHeight(), secondaryHeight.finalBaseHeight()) + delta;
+            adjusted = adjusted.clampFinalBase(minBase, maxBase);
         }
 
         double varianceScale = Math.pow(Math.max(0.0d, 1.0d - edgeFactor),

@@ -7,13 +7,13 @@ public final class MacroSelectorContinuityConfigSection {
     private static final String CATEGORY = "fieldmanager.macroselector.continuity";
 
     public static boolean continuityEnabled = true;
-    public static double globalFieldWeight = 0.6d;
-    public static double maxNeighborDelta = 0.35d;
-    public static int smoothingRadius = 2;
+    public static double globalFieldWeight = 0.35d;
+    public static double maxNeighborDelta = 0.4d;
+    public static int smoothingRadius = 1;
     public static int relaxIterations = 2;
     public static double maxEdgeDelta = 0.45d;
-    public static double varianceFalloff = 2.0d;
-    public static double gridBlurStrength = 0.4d;
+    public static double varianceFalloff = 1.0d;
+    public static double gridBlurStrength = 0.65d;
     public static boolean finalPassEnabled = true;
     public static double finalBlendStrength = 0.85d;
     public static int finalPointSampleRadius = 24;

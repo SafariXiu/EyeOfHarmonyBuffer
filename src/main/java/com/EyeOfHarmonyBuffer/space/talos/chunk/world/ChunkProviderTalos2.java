@@ -463,30 +463,20 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         BlockMetaPair stone = getStoneBlockForBiome(biome);
         BlockMetaPair water = this.getWaterBlock();
 
-        float temp = biome.temperature;
-        float humid = biome.rainfall;
-
-        if (temp < 0.16F) {
-            surface = SNOW_SURFACE;
-            filler = PACKED_ICE;
-        } else if (temp > 0.82F && humid < 0.35F) {
-            surface = getSandBlock();
-            filler = SANDSTONE_FILL;
-        } else if (humid > 0.78F && temp > 0.55F) {
-            surface = MYCELIUM_TOP;
-            filler = this.getDirtBlock();
-        }
+        BlockMetaPair defaultSurface = surface != null ? surface : this.getGrassBlock();
+        BlockMetaPair defaultFiller = filler != null ? filler : this.getDirtBlock();
+        BlockMetaPair defaultStone = stone != null ? stone : this.getStoneBlock();
 
         for (int y = 0; y <= groundHeight; y++) {
             int idx = columnBase + y;
             BlockMetaPair pair;
 
             if (y == groundHeight) {
-                pair = surface;
+                pair = defaultSurface;
             } else if (y >= groundHeight - 3) {
-                pair = (filler != null) ? filler : surface;
+                pair = defaultFiller;
             } else {
-                pair = (stone != null) ? stone : this.getStoneBlock();
+                pair = defaultStone;
             }
 
             blocks[idx] = pair.getBlock();

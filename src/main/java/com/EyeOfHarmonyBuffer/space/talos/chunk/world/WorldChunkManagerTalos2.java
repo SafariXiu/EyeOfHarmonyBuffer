@@ -8,8 +8,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.field.context.FieldContext;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.hook.Talos2Hooks;
 import com.EyeOfHarmonyBuffer.space.talos.TalosBiomeDebugHooks;
 import com.EyeOfHarmonyBuffer.space.talos.biome.*;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.MacroSite;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosBiomeResolver;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
