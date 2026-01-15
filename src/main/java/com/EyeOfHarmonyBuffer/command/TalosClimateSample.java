@@ -1,5 +1,18 @@
 package com.EyeOfHarmonyBuffer.command;
 
+/**
+ * TalosClimateSample
+ *
+ * 职责：
+ * - 调试/诊断用的数据快照对象
+ * - 将某个坐标点的 MacroBiome、气候参数（温度/湿度/粗糙度）与高度参数等信息打包
+ * - formatForChat() 用于以可读文本输出到日志/聊天/调试工具
+ *
+ * 说明：
+ * - 此类不参与实际地形生成逻辑，只用于观测与排查问题
+ * - 可在 message 中扩展输出更多字段（例如 absoluteMin/absoluteMax/baseHeightOffset）
+ *   以验证 MacroBiome Height Profile 参数是否生效、是否在边界处平滑
+ */
 public final class TalosClimateSample {
 
     private final int x;

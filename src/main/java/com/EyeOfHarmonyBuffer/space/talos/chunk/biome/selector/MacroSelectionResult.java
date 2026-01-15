@@ -6,6 +6,30 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 
 import java.util.Objects;
 
+/**
+ * MacroSelectionResult
+ *
+ * 职责：
+ * - 承载 MacroBiomeSelector 对某个 (x,z) 的选择结果与高度计算结果
+ * - 作为跨模块数据载体：Selector -> ChunkProvider，以及调试/诊断系统
+ * - 不在此类中做复杂计算，保持不可变与可序列化式的“快照”语义
+ *
+ * 主要内容：
+ * - 宏选择信息：macroSiteId、primary/secondary、距离、edgeMetric/edgeFactor、macroTag/macroBiome、variant/microSite 等
+ * - 高度信息：
+ *   - signed 高度：base/variance/noise/finalBase 等（通常在 [-1,1] 或非负）
+ *   - world-space 高度：worldBaseHeight/world variances（映射到世界 Y）
+ *   - 连续高度场：continuousWorldBaseHeight、continuousFinalBaseHeight、continuousDetailAmpY
+ *
+ * 本次改动（接入 MacroBiome Height Profile 三参数）：
+ * - 新增并存储三个“融合后的高度配置参数”（来自 Selector 的权重混合结果）：
+ *   - baseHeightOffset：宏形状偏置（用于 ChunkProvider 对宏噪声做 bias、对振幅做倍增等风格控制）
+ *   - absoluteMinY：MacroBiome 允许的最终世界高度下限（world Y clamp）
+ *   - absoluteMaxY：MacroBiome 允许的最终世界高度上限（world Y clamp）
+ *
+ * 设计要点：
+ * - 必须存“融合后的值”，不要让下游再去读 primary biome 的配置，否则边界区域会跳变
+ */
 public final class MacroSelectionResult {
 
     private final long macroSiteId;
@@ -47,6 +71,12 @@ public final class MacroSelectionResult {
     private final double worldMacroVariance;
     private final double worldMicroVariance;
     private final double heightVariation;
+    private final double continuousFinalBaseHeight;
+    private final double continuousWorldBaseHeight;
+    private final double continuousDetailAmpY;
+    private final double baseHeightOffset;
+    private final double absoluteMinY;
+    private final double absoluteMaxY;
 
     public MacroSelectionResult(long macroSiteId,
                                 MacroSite primarySite,
@@ -85,7 +115,13 @@ public final class MacroSelectionResult {
                                 double worldBaseHeight,
                                 double worldMacroVariance,
                                 double worldMicroVariance,
-                                double heightVariation) {
+                                double heightVariation,
+                                double continuousFinalBaseHeight,
+                                double continuousWorldBaseHeight,
+                                double continuousDetailAmpY,
+                                double baseHeightOffset,
+                                double absoluteMinY,
+                                double absoluteMaxY) {
 
         this.macroSiteId = macroSiteId;
         this.primarySite = Objects.requireNonNull(primarySite, "primarySite");
@@ -125,6 +161,12 @@ public final class MacroSelectionResult {
         this.worldMacroVariance = Math.max(0.0d, worldMacroVariance);
         this.worldMicroVariance = Math.max(0.0d, worldMicroVariance);
         this.heightVariation = Double.isNaN(heightVariation) ? 0.0d : Math.max(0.0d, heightVariation);
+        this.continuousFinalBaseHeight = continuousFinalBaseHeight;
+        this.continuousWorldBaseHeight = continuousWorldBaseHeight;
+        this.continuousDetailAmpY = continuousDetailAmpY;
+        this.baseHeightOffset = Double.isNaN(baseHeightOffset) ? 0.0d : baseHeightOffset;
+        this.absoluteMinY = Double.isNaN(absoluteMinY) ? Double.NEGATIVE_INFINITY : absoluteMinY;
+        this.absoluteMaxY = Double.isNaN(absoluteMaxY) ? Double.POSITIVE_INFINITY : absoluteMaxY;
     }
 
     public long macroSiteId() {
@@ -309,5 +351,29 @@ public final class MacroSelectionResult {
 
     public double heightVariation() {
         return heightVariation;
+    }
+
+    public double continuousFinalBaseHeight() {
+        return continuousFinalBaseHeight;
+    }
+
+    public double continuousWorldBaseHeight() {
+        return continuousWorldBaseHeight;
+    }
+
+    public double continuousDetailAmpY() {
+        return continuousDetailAmpY;
+    }
+
+    public double baseHeightOffset() {
+        return baseHeightOffset;
+    }
+
+    public double absoluteMinY() {
+        return absoluteMinY;
+    }
+
+    public double absoluteMaxY() {
+        return absoluteMaxY;
     }
 }

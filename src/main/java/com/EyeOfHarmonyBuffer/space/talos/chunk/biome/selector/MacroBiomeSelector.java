@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.biome.transition.TransitionRule;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.manager.FieldManager;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.provider.MacroFieldProvider;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.HydroSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.field.sample.TerrainSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.macro.data.MacroTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
@@ -18,9 +19,44 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * MacroBiomeSelector
+ *
+ * 职责：
+ * - 给定世界坐标 (blockX, blockZ)，选择当前点的宏站点（primary/secondary）与 MacroBiome/MacroTag/variant 等信息
+ * - 计算该点用于地形生成的宏高度参数，并输出不可变结果 MacroSelectionResult
+ *
+ * 主要输入：
+ * - MacroSiteManager 的 query 结果：primary/secondary + hits（候选站点距离列表）
+ * - FieldManager 的场采样：HydroSample（海岸/河流/湿度等）、TerrainSample（坡度/粗糙度/海拔等）
+ * - ContinuousHeightField：生成连续的 worldY 基准高度（减少大尺度断裂）
+ * - TransitionResolver：海岸带/过渡规则，可能强制更换 variant
+ *
+ * 核心流程（简化）：
+ * - 站点选择：primary/secondary 与 edgeMetric/edgeFactor 评估
+ * - 高度融合：对 hits 使用 gaussian 权重混合 base/variance/noise 等高度参数
+ * - 边界连续性：applyEdgeContinuity 限制边界处基准高度差并衰减方差
+ * - signed->worldY：将 signed 高度映射到世界 Y（floor/range），并与 continuous worldY 融合
+ *
+ * 本次改动（接入 MacroBiome Height Profile 三参数）：
+ * - 在 hits gaussian 融合阶段，同时对以下参数做同权重混合（避免边界跳变）：
+ *   - baseHeightOffset（宏形状偏置）
+ *   - absoluteMin / absoluteMax（MacroBiome 允许的世界高度硬下限/硬上限）
+ * - 在 world-space 高度计算后，对 worldBaseHeight 与 continuousWorldBaseHeight 按 blendedAbsMin/Max 做 clamp
+ * - 将 blendedBaseHeightOffset / blendedAbsMinY / blendedAbsMaxY 写入 MacroSelectionResult，供 ChunkProvider 使用
+ *
+ * 设计要点：
+ * - absoluteMin/absoluteMax 的语义是“世界 Y 空间的硬约束”，适合在 worldY 计算后 clamp
+ * - baseHeightOffset 的语义是“风格偏置”，最终如何影响噪声/振幅由 ChunkProvider 实现
+ */
 public final class MacroBiomeSelector {
 
     private static final Logger LOGGER = LogManager.getLogger(MacroBiomeSelector.class);
+
+    private static final boolean DEBUG_EDGE = true;
+    private static final boolean DEBUG_DISABLE_EDGE_CLAMP = false;
+    private static final int DEBUG_PRINT_EVERY_N_BLOCKS = 16;
+    private static final double DEBUG_EDGE_PRINT_THRESHOLD = 0.85;
 
     private final FieldManager fieldManager;
     private final MacroSelectorConfig config;
@@ -29,6 +65,7 @@ public final class MacroBiomeSelector {
     private final MicroSiteManager microSiteManager;
     private final TransitionResolver transitionResolver;
     private final MacroSelectorConfig.HeightContinuitySettings continuitySettings;
+    private final ContinuousHeightField continuousHeightField;
 
     public MacroBiomeSelector(FieldManager fieldManager,
                               long worldSeed,
@@ -41,6 +78,7 @@ public final class MacroBiomeSelector {
         this.microSiteManager = new MicroSiteManager(fieldManager, config, worldSeed);
         this.transitionResolver = new TransitionResolver(config.transitionSettings());
         this.continuitySettings = config.heightContinuity();
+        this.continuousHeightField = new ContinuousHeightField(config.heightProfile());
     }
 
     public MacroSelectionResult select(int blockX, int blockZ) {
@@ -50,27 +88,15 @@ public final class MacroBiomeSelector {
 
         double primaryDistance = query.primaryDistance();
         double secondaryDistance = query.secondaryDistance();
-        double edgeMetric = query.edgeMetric();
 
-        if (secondarySite != null && !isBlendCompatible(primarySite, secondarySite)) {
-            secondarySite = null;
-            secondaryDistance = Double.POSITIVE_INFINITY;
-            edgeMetric = Double.POSITIVE_INFINITY;
-        }
+        final boolean edgeFlipped = false;
+        final MacroSite activeSite = primarySite;
 
-        boolean edgeFlipped = false;
-        MacroSite activeSite = primarySite;
-
-        if (secondarySite != null && shouldFlipToSecondary(edgeMetric, blockX, blockZ)) {
-            edgeFlipped = true;
-            activeSite = secondarySite;
-        }
-
-        MacroTag macroTag = activeSite.macroTag();
-        MacroBiome macroBiome = activeSite.macroBiome();
-        double continentalScore = activeSite.continentalScore();
-        double humidity = clamp01(activeSite.humidity());
-        double temperature = clamp01(activeSite.temperature());
+        final MacroTag macroTag = primarySite.macroTag();
+        final MacroBiome macroBiome = primarySite.macroBiome();
+        final double continentalScore = primarySite.continentalScore();
+        final double humidity = clamp01(primarySite.humidity());
+        final double temperature = clamp01(primarySite.temperature());
 
         HydroSample hydro = Objects.requireNonNull(
             fieldManager.sampleHydro(blockX, blockZ),
@@ -83,6 +109,36 @@ public final class MacroBiomeSelector {
         double normalizedHydro = continental.normalizeHydro(hydro.saturation());
         double coastWidth = continental.beachWidthBlocks();
         double shelfWidth = continental.shelfWidthBlocks();
+
+        TerrainSample terrainXZ = Objects.requireNonNull(
+            fieldManager.sampleTerrain(blockX, blockZ),
+            "TerrainSample"
+        );
+
+        double continentalScoreXZ = config.continentalSettings().compose(
+            terrainXZ.elevation(),
+            hydro.coastDistance(),
+            hydro.saturation()
+        );
+
+        double riverStrength = clamp01(hydro.riverStrength());
+
+        final double RIVER_DISTANCE_SCALE_BLOCKS = 1024.0d;
+        double riverDistanceBlocks = clamp01(hydro.riverDistance()) * RIVER_DISTANCE_SCALE_BLOCKS;
+
+        final double SLOPE_NORM = 0.08d;
+        double slope01 = clamp01(terrainXZ.slope() / SLOPE_NORM);
+
+        double roughness01 = clamp01(terrainXZ.roughness());
+
+        ContinuousHeightField.HeightContext continuous = continuousHeightField.sample(
+            continentalScoreXZ,
+            clamp01(hydro.saturation()),
+            riverStrength,
+            riverDistanceBlocks,
+            slope01,
+            roughness01
+        );
 
         boolean rare = config.rareSettings().enabled()
             && computeRareNoise(blockX, blockZ) >= config.rareSettings().clampThreshold();
@@ -132,19 +188,160 @@ public final class MacroBiomeSelector {
         }
 
         HeightComputation primaryHeight = computeHeight(primarySite, blockX, blockZ);
-        HeightComputation secondaryHeight = (secondarySite != null)
-            ? computeHeight(secondarySite, blockX, blockZ)
-            : primaryHeight;
+        HeightComputation secondaryHeight = null;
+        if (secondarySite != null) {
+            secondaryHeight = computeHeight(secondarySite, blockX, blockZ);
+        }
 
-        double edgeFactorInput = secondarySite != null ? edgeMetric : Double.POSITIVE_INFINITY;
-        double edgeFactor = computeEdgeFactor(edgeFactorInput);
+        List<MacroSiteManager.SiteHit> hits = Objects.requireNonNull(query.hits(), "hits");
+
+        double edgeMetricStable = Double.POSITIVE_INFINITY;
+
+        if (hits != null && hits.size() >= 2) {
+            double d1 = hits.get(0).dist;
+            double d2 = hits.get(1).dist;
+
+            edgeMetricStable = d2 - d1;
+
+            if (hits.size() >= 3) {
+                double d3 = hits.get(2).dist;
+                edgeMetricStable = Math.min(edgeMetricStable, d3 - d1);
+            }
+        }
+
+        if (secondarySite == null) {
+            edgeMetricStable = Double.POSITIVE_INFINITY;
+        } else if (!isBlendCompatible(primarySite, secondarySite)) {
+            secondarySite = null;
+            secondaryDistance = Double.POSITIVE_INFINITY;
+            secondaryHeight = null;
+            edgeMetricStable = Double.POSITIVE_INFINITY;
+        }
+
+        double sigma = Math.max(1.0d, config.macroBlendWidth());
+
+        double wSum = 0.0d;
+
+        double base = 0, macroVar = 0, microVar = 0;
+        double macroNoise = 0, microNoise = 0;
+        double finalBase = 0, finalMicro = 0;
+        double noiseSample= 0, variation = 0;
+        double baseHeightOffsetAcc = 0.0d;
+        double absMinAcc = 0.0d;
+        double absMaxAcc = 0.0d;
+
+        for (int i = 0; i < hits.size(); i++) {
+            MacroSite s = hits.get(i).site;
+            double d = hits.get(i).dist;
+
+            if (i > 0 && !isBlendCompatible(primarySite, s)) continue;
+
+            double w = gaussianW(d, sigma);
+            if (w <= 0.0d) continue;
+
+            HeightComputation h = computeHeight(s, blockX, blockZ);
+
+            wSum += w;
+
+            MacroBiome sb = (s != null) ? s.macroBiome() : null;
+            if (sb != null && sb.height != null) {
+                baseHeightOffsetAcc += w * (double) sb.height.baseHeightOffset;
+                absMinAcc += w * (double) sb.height.absoluteMin;
+                absMaxAcc += w * (double) sb.height.absoluteMax;
+            } else {
+                MacroBiome pb = macroBiome;
+                if (pb != null && pb.height != null) {
+                    baseHeightOffsetAcc += w * (double) pb.height.baseHeightOffset;
+                    absMinAcc += w * (double) pb.height.absoluteMin;
+                    absMaxAcc += w * (double) pb.height.absoluteMax;
+                }
+            }
+
+            base += w * h.baseHeight();
+            macroVar += w * h.macroVariance();
+            microVar += w * h.microVariance();
+            macroNoise += w * h.macroNoise();
+            microNoise += w * h.microNoise();
+            finalBase += w * h.finalBaseHeight();
+            finalMicro += w * h.finalMicroVariance();
+            noiseSample += w * h.noiseSample();
+            variation += w * h.heightVariation();
+        }
+
+        HeightComputation height;
+        if (wSum > 0.0d) {
+            double inv = 1.0d / wSum;
+            height = new HeightComputation(
+                base * inv,
+                macroVar * inv,
+                microVar * inv,
+                macroNoise * inv,
+                microNoise * inv,
+                finalBase * inv,
+                finalMicro * inv,
+                noiseSample * inv,
+                variation * inv
+            );
+        } else {
+            height = primaryHeight;
+        }
+
+        boolean hasSecondary = (secondarySite != null);
+        double edgeFactor = computeEdgeFactor(hasSecondary ? edgeMetricStable : Double.POSITIVE_INFINITY);
         double blend = computeBlendWeight(edgeFactor);
 
-        HeightComputation height = (secondarySite != null)
-            ? HeightComputation.lerp(primaryHeight, secondaryHeight, blend)
-            : primaryHeight;
+        if (DEBUG_EDGE
+            && secondarySite != null
+            && (Math.floorMod(blockX, DEBUG_PRINT_EVERY_N_BLOCKS) == 0)
+            && (Math.floorMod(blockZ, DEBUG_PRINT_EVERY_N_BLOCKS) == 0)) {
 
-        height = applyEdgeContinuity(height, primaryHeight, secondaryHeight, edgeFactor, secondarySite != null);
+            if (edgeFactor < DEBUG_EDGE_PRINT_THRESHOLD) {
+                LOGGER.info(
+                    "[EDGE-DIAG] pos=({}, {}) edgeMetric={} edgeFactor={} blend={} " +
+                        "P(site={}, biome={}, base={}, finalBase={}) " +
+                        "S(site={}, biome={}, base={}, finalBase={}) " +
+                        "L(finalBase={}, macroVar={}, microVar={})",
+                    blockX, blockZ,
+                    fmt(edgeMetricStable), fmt(edgeFactor), fmt(blend),
+
+                    primarySite.id(), primarySite.macroBiome(),
+                    fmt(primaryHeight.baseHeight()), fmt(primaryHeight.finalBaseHeight()),
+
+                    secondarySite.id(), secondarySite.macroBiome(),
+                    fmt(secondaryHeight.baseHeight()), fmt(secondaryHeight.finalBaseHeight()),
+
+                    fmt(height.finalBaseHeight()), fmt(height.macroVariance()), fmt(height.finalMicroVariance())
+                );
+            }
+        }
+
+        height = applyEdgeContinuity(height, primaryHeight, secondaryHeight, edgeFactor, hasSecondary);
+
+        double blendedBaseHeightOffset;
+        double blendedAbsMinY;
+        double blendedAbsMaxY;
+
+        if (wSum > 0.0d) {
+            blendedBaseHeightOffset = baseHeightOffsetAcc / wSum;
+            blendedAbsMinY = absMinAcc / wSum;
+            blendedAbsMaxY = absMaxAcc / wSum;
+        } else {
+            if (macroBiome != null && macroBiome.height != null) {
+                blendedBaseHeightOffset = (double) macroBiome.height.baseHeightOffset;
+                blendedAbsMinY = (double) macroBiome.height.absoluteMin;
+                blendedAbsMaxY = (double) macroBiome.height.absoluteMax;
+            } else {
+                blendedBaseHeightOffset = 0.0d;
+                blendedAbsMinY = Double.NEGATIVE_INFINITY;
+                blendedAbsMaxY = Double.POSITIVE_INFINITY;
+            }
+        }
+
+        if (blendedAbsMinY > blendedAbsMaxY) {
+            double t0 = blendedAbsMinY;
+            blendedAbsMinY = blendedAbsMaxY;
+            blendedAbsMaxY = t0;
+        }
 
         MacroSelectorConfig.HeightProfile profile = config.heightProfile();
         double floor = profile != null ? profile.terrainFloorY() : 0.0d;
@@ -155,6 +352,21 @@ public final class MacroBiomeSelector {
 
         if (macroTag != null && macroTag.isOceanic()) {
             height = clampOceanicHeights(height, seaLevelY, floor, range);
+
+            double clampedWorldY = Math.min(continuous.worldY(), seaLevelY);
+            if (clampedWorldY != continuous.worldY()) {
+                continuous = new ContinuousHeightField.HeightContext(
+                    continuous.continentalScore(),
+                    continuous.continental01(),
+                    continuous.ruggedness01(),
+                    continuous.baseY(),
+                    continuous.upliftY(),
+                    continuous.carveY(),
+                    continuous.wetDepressY(),
+                    clampedWorldY,
+                    continuous.detailAmpY()
+                );
+            }
         }
 
         double normalizedBase = clamp01(0.5d * (height.finalBaseHeight() + 1.0d));
@@ -162,14 +374,42 @@ public final class MacroBiomeSelector {
         double worldMacroVariance = clamp01(0.5d * (height.macroVariance() + 1.0d)) * range;
         double worldMicroVariance = Math.max(0.0d, height.finalMicroVariance()) * range;
 
+// 3) continuous world base Y（你原逻辑保留）
+        double contY = continuous.worldY();
+        if (macroTag != null && macroTag.isOceanic()) {
+            contY = Math.min(contY, seaLevelY);
+        }
+
+        final double MAX_DELTA_Y = 48.0d;
+        double minY = worldBaseHeight - MAX_DELTA_Y;
+        double maxY = worldBaseHeight + MAX_DELTA_Y;
+        if (contY < minY) contY = minY;
+        else if (contY > maxY) contY = maxY;
+
+        double edge = clamp01(edgeFactor);
+        double nearEdge = 1.0d - edge;
+        double t = nearEdge * nearEdge * (3.0d - 2.0d * nearEdge);
+
+        double continuousWorldBaseHeight = contY + (worldBaseHeight - contY) * t;
+
+        if (Double.isFinite(blendedAbsMinY) || Double.isFinite(blendedAbsMaxY)) {
+            worldBaseHeight = MathHelper.clamp_double(worldBaseHeight, blendedAbsMinY, blendedAbsMaxY);
+            continuousWorldBaseHeight = MathHelper.clamp_double(continuousWorldBaseHeight, blendedAbsMinY, blendedAbsMaxY);
+        }
+
+        double continuous01 = clamp01((continuousWorldBaseHeight - floor) / Math.max(1.0d, range));
+        double continuousFinalBaseHeight = continuous01 * 2.0d - 1.0d;
+
+        double continuousDetailAmpY = continuous.detailAmpY();
+
         MacroSelectionResult result = new MacroSelectionResult(
             activeSite.id(),
             primarySite,
             secondarySite,
             primaryDistance,
             secondarySite != null ? secondaryDistance : Double.POSITIVE_INFINITY,
-            secondarySite != null ? edgeMetric : Double.POSITIVE_INFINITY,
-            computeEdgeFactor(secondarySite != null ? edgeMetric : Double.POSITIVE_INFINITY),
+            hasSecondary ? edgeMetricStable : Double.POSITIVE_INFINITY,
+            edgeFactor,
             edgeFlipped,
             macroTag,
             macroBiome,
@@ -200,8 +440,48 @@ public final class MacroBiomeSelector {
             worldBaseHeight,
             worldMacroVariance,
             worldMicroVariance,
-            height.heightVariation()
+            height.heightVariation(),
+            continuousFinalBaseHeight,
+            continuousWorldBaseHeight,
+            continuousDetailAmpY,
+            blendedBaseHeightOffset,
+            blendedAbsMinY,
+            blendedAbsMaxY
         );
+
+        if (DEBUG_EDGE
+            && (Math.floorMod(blockX, DEBUG_PRINT_EVERY_N_BLOCKS) == 0)
+            && (Math.floorMod(blockZ, DEBUG_PRINT_EVERY_N_BLOCKS) == 0)) {
+
+            if (edgeFactor < DEBUG_EDGE_PRINT_THRESHOLD) {
+                String pCell = primarySite != null ? (primarySite.cellX() + "," + primarySite.cellZ()) : "null";
+                String sCell = (secondarySite != null) ? (secondarySite.cellX() + "," + secondarySite.cellZ()) : "none";
+
+                double d1 = (hits != null && hits.size() > 0) ? hits.get(0).dist : Double.NaN;
+                double d2 = (hits != null && hits.size() > 1) ? hits.get(1).dist : Double.NaN;
+
+                LOGGER.info(
+                    "[TERR-DIAG] pos=({}, {}) biome={} " +
+                        "finalBase={} worldBaseY={} contWorldY={} contSigned={} " +
+                        "macroVar={} microVar={} var={} " +
+                        "P(site={} cell={} d={} pFinalBase={}) " +
+                        "S(site={} cell={} d={} sFinalBase={})",
+                    blockX, blockZ,
+                    macroBiome != null ? macroBiome.name() : "null",
+                    fmt(height.finalBaseHeight()),
+                    fmt(worldBaseHeight),
+                    fmt(continuousWorldBaseHeight),
+                    fmt(continuousFinalBaseHeight),
+                    fmt(height.macroVariance()),
+                    fmt(height.finalMicroVariance()),
+                    fmt(height.heightVariation()),
+                    primarySite != null ? primarySite.id() : -1,
+                    pCell, fmt(d1), fmt(primaryHeight != null ? primaryHeight.finalBaseHeight() : Double.NaN),
+                    secondarySite != null ? secondarySite.id() : -1,
+                    sCell, fmt(d2), fmt(secondaryHeight != null ? secondaryHeight.finalBaseHeight() : Double.NaN)
+                );
+            }
+        }
 
         if (config.debugLogging() && LOGGER.isDebugEnabled()) {
             LOGGER.debug(
@@ -212,8 +492,8 @@ public final class MacroBiomeSelector {
                 microSiteId,
                 macroTag,
                 rare,
-                edgeMetric,
-                computeEdgeFactor(edgeMetric),
+                edgeMetricStable,
+                edgeFactor,
                 edgeFlipped,
                 transitionOverride
             );
@@ -308,37 +588,12 @@ public final class MacroBiomeSelector {
         );
     }
 
-    private boolean shouldFlipToSecondary(double edgeMetric, int blockX, int blockZ) {
-        if (!Double.isFinite(edgeMetric)) {
-            return false;
-        }
-        double blendWidth = config.macroBlendWidth();
-        if (edgeMetric >= blendWidth) {
-            return false;
-        }
-        double intensity = 1.0d - clamp01(edgeMetric / blendWidth);
-        if (intensity <= 0.0d) {
-            return false;
-        }
-
-        double flipProbability = intensity * 0.5d * config.edgeNoiseAmplitude();
-        flipProbability = clamp01(flipProbability);
-        if (flipProbability <= 0.0d) {
-            return false;
-        }
-
-        double nx = blockX * config.edgeNoiseFrequency();
-        double nz = blockZ * config.edgeNoiseFrequency();
-        double raw = NoiseUtil.valueNoise(worldSeed, config.edgeNoiseSalt() ^ config.baseSalt(), nx, nz);
-        double noise01 = 0.5d + 0.5d * raw;
-        return noise01 < flipProbability;
-    }
-
     private double computeEdgeFactor(double edgeMetric) {
         if (!Double.isFinite(edgeMetric)) {
             return 1.0d;
         }
-        double normalized = edgeMetric / config.macroBlendWidth();
+        double w = Math.max(1e-6, config.macroBlendWidth());
+        double normalized = edgeMetric / w;
         return clamp01(normalized);
     }
 
@@ -444,11 +699,17 @@ public final class MacroBiomeSelector {
             .hydroLevel(result.normalizedHydro())
             .distanceToCoast(result.coastDistance())
             .message(String.format(
-                "macroSite=%d secondary=%s transitionOverride=%s rule=%s",
+                "macroSite=%d secondary=%s transitionOverride=%s rule=%s contWorldY=%.2f contSigned=%.3f oldWorldY=%.2f absMin=%.1f absMax=%.1f off=%.3f",
                 result.macroSiteId(),
                 result.secondarySite() != null ? result.secondarySite().id() : "none",
                 result.transitionOverride(),
-                result.transitionRuleId() != null ? result.transitionRuleId() : "none"
+                result.transitionRuleId() != null ? result.transitionRuleId() : "none",
+                result.continuousWorldBaseHeight(),
+                result.continuousFinalBaseHeight(),
+                result.worldBaseHeight(),
+                result.absoluteMinY(),
+                result.absoluteMaxY(),
+                result.baseHeightOffset()
             ))
             .build();
     }
@@ -639,11 +900,13 @@ public final class MacroBiomeSelector {
     }
 
     private double computeBlendWeight(double edgeFactor) {
-        double base = 1.0d - edgeFactor;
-        if (continuitySettings == null || continuitySettings.disabled()) {
-            return base;
-        }
-        return 1.0d - smoothStep(edgeFactor);
+        double t = clamp01(edgeFactor);
+
+        double s = smoothStep(t);
+        double base = 1.0d - s;
+
+        double p = 1.35d;// 1.0线性，>1更柔，<1更硬
+        return Math.pow(base, p);
     }
 
     private HeightComputation applyEdgeContinuity(HeightComputation height,
@@ -657,7 +920,8 @@ public final class MacroBiomeSelector {
 
         HeightComputation adjusted = height;
 
-        if (hasSecondary
+        if (!DEBUG_DISABLE_EDGE_CLAMP
+            && hasSecondary
             && primaryHeight != null
             && secondaryHeight != null
             && continuitySettings.maxEdgeDelta() > 0.0d) {
@@ -667,8 +931,16 @@ public final class MacroBiomeSelector {
             adjusted = adjusted.clampFinalBase(minBase, maxBase);
         }
 
-        double varianceScale = Math.pow(Math.max(0.0d, 1.0d - edgeFactor),
-            Math.max(0.0d, continuitySettings.varianceFalloff()));
+        double edge = clamp01(edgeFactor);
+        double k = Math.max(0.0d, continuitySettings.varianceFalloff());
+
+        double nearEdge = 1.0d - smoothStep(edge);
+
+        double minScale = 0.55d;
+
+        double varianceScale = (1.0d - nearEdge) * 1.0d + nearEdge * minScale;
+        varianceScale = Math.pow(MathHelper.clamp_double(varianceScale, 0.0d, 1.0d), Math.max(1.0d, k));
+
         adjusted = adjusted.scaleVariance(varianceScale);
 
         return adjusted;
@@ -685,5 +957,19 @@ public final class MacroBiomeSelector {
 
     public MacroSelectorConfig.HeightProfile heightProfile() {
         return this.config.heightProfile();
+    }
+
+    private static double lerp(double t, double a, double b) {
+        return a + t * (b - a);
+    }
+
+    private static String fmt(double v) {
+        if (!Double.isFinite(v)) return "NaN/Inf";
+        return String.format(java.util.Locale.ROOT, "%.4f", v);
+    }
+
+    private static double gaussianW(double d, double sigma) {
+        double x = d / Math.max(1e-6, sigma);
+        return Math.exp(-0.5 * x * x);
     }
 }

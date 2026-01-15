@@ -114,17 +114,26 @@ public final class NoiseHydroProvider implements HydroProvider {
 
     private HydroSample computeSample(int blockX, int blockZ) {
         TerrainSample terrain = terrainProvider.sample(blockX, blockZ);
-
         GroundwaterResult groundwater = sampleGroundwater(blockX, blockZ, terrain);
+
         RiverMetrics river = sampleRiver(blockX, blockZ);
         double lakeFactor = sampleLake(blockX, blockZ);
 
         CoastlineContext coastline = settings.coast().syncWithMacro()
             ? sampleCoastline(blockX, blockZ)
-            : CoastlineContext.inlandFallback();
+            : CoastlineContext.inlandFallback(settings.coast().falloff());
 
-        double coastInfluence = coastline.influence(settings.coast().falloff());
+        double falloff = settings.coast().falloff();
+
+        double dist = coastline.distance();
+        double normalized = coastline.land
+            ? 1.0d - (dist / Math.max(1.0d, falloff))
+            : 1.0d;
+
+        double coastInfluence = clamp01(normalized);
+
         double seaLevel = heightProfile.seaLevelY();
+
         double waterLevel = lerp(
             groundwater.aquiferLevelBlocks(),
             seaLevel,
@@ -136,7 +145,7 @@ public final class NoiseHydroProvider implements HydroProvider {
         waterLevel = Math.min(waterLevel, terrainY - buffer);
 
         boolean inlandSea = lakeFactor > 0.75d
-            && coastline.distance() > (coastline.beachWidth() + coastline.shelfWidth());
+            && dist > (coastline.beachWidth() + coastline.shelfWidth());
 
         return new HydroSample(
             groundwater.saturation(),
@@ -145,11 +154,12 @@ public final class NoiseHydroProvider implements HydroProvider {
             river.strength(),
             lakeFactor,
             waterLevel,
-            coastline.distance(),
+            dist,
             river.distance(),
             inlandSea
         );
     }
+
 
     @Override
     public void invalidateCaches() {
@@ -265,7 +275,11 @@ public final class NoiseHydroProvider implements HydroProvider {
     }
 
     private static double smoothstep(double edge0, double edge1, double x) {
-        double t = clamp01((x - edge0) / (edge1 - edge0));
+        double denom = (edge1 - edge0);
+        if (Math.abs(denom) < 1e-9) {
+            return x < edge0 ? 0.0d : 1.0d;
+        }
+        double t = clamp01((x - edge0) / denom);
         return t * t * (3.0d - 2.0d * t);
     }
 
@@ -274,16 +288,23 @@ public final class NoiseHydroProvider implements HydroProvider {
                                      double flowRate,
                                      double aquiferLevelBlocks) {}
 
+    /*@Desugar
+    private record RiverMetrics(double strength, double distance) {}*/
+
     @Desugar
-    private record RiverMetrics(double strength, double distance) {}
+    private record RiverMetrics(double strength, double distance) {
+        static RiverMetrics none() {
+            return new RiverMetrics(0.0d, 1.0d);
+        }
+    }
 
     private static final class CoastlineContext {
         private final boolean land;
-        private final int distance;
+        private final double distance;
         private final int beachWidth;
         private final int shelfWidth;
 
-        CoastlineContext(boolean land, int distance, int beachWidth, int shelfWidth) {
+        CoastlineContext(boolean land, double distance, int beachWidth, int shelfWidth) {
             this.land = land;
             this.distance = distance;
             this.beachWidth = beachWidth;
@@ -303,15 +324,21 @@ public final class NoiseHydroProvider implements HydroProvider {
         }
 
         double influence(double falloff) {
-            if (!land) {
-                return 1.0d;
-            }
-            double normalized = 1.0d - (distance / Math.max(1.0d, falloff));
-            return clamp01(normalized);
+            if (!land) return 1.0d;
+
+            double f = Math.max(1.0d, falloff);
+            double d = distance;
+
+            if (!Double.isFinite(d) || d < 0.0d) d = 0.0d;
+            if (!Double.isFinite(f)) f = 1.0d;
+
+            double t = clamp01(1.0d - (d / f));
+
+            return t * t * (3.0d - 2.0d * t);
         }
 
-        static CoastlineContext inlandFallback() {
-            return new CoastlineContext(true, 10_000, 0, 0);
+        static CoastlineContext inlandFallback(double maxDistance) {
+            return new CoastlineContext(true, maxDistance, 0, 0);
         }
     }
 

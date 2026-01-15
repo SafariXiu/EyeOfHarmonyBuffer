@@ -13,6 +13,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.noise.NoiseUtil;
 import com.github.bsideup.jabel.Desugar;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.gen.NoiseGeneratorSimplex;
 
@@ -91,6 +92,87 @@ public final class MacroSiteManager {
 
     private final Long2ObjectLinkedOpenHashMap<MacroSite> siteCache = new Long2ObjectLinkedOpenHashMap<>();
 
+    private final Long2ObjectLinkedOpenHashMap<SeedSite> seedCache = new Long2ObjectLinkedOpenHashMap<>();
+
+    private final LongOpenHashSet seeding = new LongOpenHashSet();
+    private final LongOpenHashSet finalizing = new LongOpenHashSet();
+
+    private static final class SeedSite {
+        final long id;
+        final int cellX, cellZ;
+        final int centerX, centerZ;
+
+        final MacroDomain domain;
+        final double latitude01;
+        final int latitudeBandIndex;
+
+        final double continentalScore;
+        final double humidity;
+        final double temperature;
+        final double coastSoftness;
+
+        final List<BiomeScore> scored;
+        final MacroBiome initialPick;
+
+        final double heightVariation;
+        final double baseHeight;
+        final double macroVariance;
+        final double microVariance;
+
+        final double[] baseGrid;
+        final double[] macroGrid;
+        final double[] microGrid;
+        final int gridRes;
+        final double gridStep;
+
+        SeedSite(long id,
+                 int cellX, int cellZ,
+                 int centerX, int centerZ,
+                 MacroDomain domain,
+                 double latitude01,
+                 int latitudeBandIndex,
+                 double continentalScore,
+                 double humidity,
+                 double temperature,
+                 double coastSoftness,
+                 List<BiomeScore> scored,
+                 MacroBiome initialPick,
+                 double heightVariation,
+                 double baseHeight,
+                 double macroVariance,
+                 double microVariance,
+                 double[] baseGrid,
+                 double[] macroGrid,
+                 double[] microGrid,
+                 int gridRes,
+                 double gridStep) {
+
+            this.id = id;
+            this.cellX = cellX;
+            this.cellZ = cellZ;
+            this.centerX = centerX;
+            this.centerZ = centerZ;
+            this.domain = Objects.requireNonNull(domain, "domain");
+            this.latitude01 = latitude01;
+            this.latitudeBandIndex = latitudeBandIndex;
+            this.continentalScore = continentalScore;
+            this.humidity = humidity;
+            this.temperature = temperature;
+            this.coastSoftness = coastSoftness;
+            this.scored = Objects.requireNonNull(scored, "scored");
+            this.initialPick = Objects.requireNonNull(initialPick, "initialPick");
+            this.heightVariation = Double.isNaN(heightVariation) ? 0.0d : Math.max(0.0d, heightVariation);
+            this.baseHeight = baseHeight;
+            this.macroVariance = macroVariance;
+            this.microVariance = microVariance;
+            this.baseGrid = baseGrid;
+            this.macroGrid = macroGrid;
+            this.microGrid = microGrid;
+            this.gridRes = gridRes;
+            this.gridStep = gridStep;
+        }
+    }
+
     public MacroSiteManager(FieldManager fieldManager,
                             MacroFieldProvider macroFieldProvider,
                             MacroSelectorConfig config,
@@ -121,13 +203,13 @@ public final class MacroSiteManager {
     }
 
     public MacroSiteQueryResult query(int blockX, int blockZ) {
+        final int K = 3;
         int cellX = floorDiv(blockX, macroGridSize);
         int cellZ = floorDiv(blockZ, macroGridSize);
 
-        MacroSite primary = null;
-        MacroSite secondary = null;
-        double bestDistSq = Double.POSITIVE_INFINITY;
-        double secondDistSq = Double.POSITIVE_INFINITY;
+        MacroSite[] bestSite = new MacroSite[K];
+        double[] bestDistSq = new double[K];
+        for (int i = 0; i < K; i++) bestDistSq[i] = Double.POSITIVE_INFINITY;
 
         for (int dz = -neighborRadius; dz <= neighborRadius; dz++) {
             for (int dx = -neighborRadius; dx <= neighborRadius; dx++) {
@@ -135,38 +217,88 @@ public final class MacroSiteManager {
                 int nz = cellZ + dz;
                 MacroSite site = resolveSite(nx, nz);
                 double distSq = distanceSq(blockX, blockZ, site.centerX(), site.centerZ());
-                if (distSq < bestDistSq) {
-                    secondary = primary;
-                    secondDistSq = bestDistSq;
-                    primary = site;
-                    bestDistSq = distSq;
-                } else if (distSq < secondDistSq) {
-                    secondary = site;
-                    secondDistSq = distSq;
+
+                for (int i = 0; i < K; i++) {
+                    if (distSq < bestDistSq[i]) {
+                        for (int j = K - 1; j > i; j--) {
+                            bestDistSq[j] = bestDistSq[j - 1];
+                            bestSite[j] = bestSite[j - 1];
+                        }
+                        bestDistSq[i] = distSq;
+                        bestSite[i] = site;
+                        break;
+                    }
                 }
             }
         }
 
-        double primaryDist = Math.sqrt(bestDistSq);
-        double secondaryDist = secondary == null ? Double.POSITIVE_INFINITY : Math.sqrt(secondDistSq);
+        ArrayList<SiteHit> hits = new ArrayList<>(K);
+        for (int i = 0; i < K; i++) {
+            if (bestSite[i] != null) {
+                hits.add(new SiteHit(bestSite[i], bestDistSq[i]));
+            }
+        }
 
-        return new MacroSiteQueryResult(primary, secondary, primaryDist, secondaryDist);
+        if (hits.isEmpty()) {
+            throw new IllegalStateException("MacroSiteManager.query produced no hits");
+        }
+        return new MacroSiteQueryResult(hits);
     }
 
     private MacroSite resolveSite(int cellX, int cellZ) {
         long key = pack(cellX, cellZ);
+
         MacroSite cached = siteCache.get(key);
         if (cached != null) {
             return cached;
         }
 
-        MacroSite generated = generateSite(cellX, cellZ);
-        siteCache.putAndMoveToFirst(key, generated);
-        trimCache();
-        return generated;
+        if (finalizing.contains(key)) {
+            throw new IllegalStateException("Recursive finalize detected for cell=(" + cellX + "," + cellZ + ")");
+        }
+
+        finalizing.add(key);
+        try {
+            SeedSite seed = resolveSeedSite(cellX, cellZ);
+            MacroBiome chosen = pickWithLandDiversity(seed);
+
+            MacroTag tag = MacroTag.fromBiome(chosen);
+
+            MacroSite site = new MacroSite(
+                seed.id,
+                seed.cellX,
+                seed.cellZ,
+                seed.centerX,
+                seed.centerZ,
+                tag,
+                chosen,
+                seed.continentalScore,
+                seed.humidity,
+                seed.temperature,
+                seed.domain,
+                seed.latitude01,
+                seed.latitudeBandIndex,
+                seed.coastSoftness,
+                seed.baseHeight,
+                seed.macroVariance,
+                seed.microVariance,
+                seed.heightVariation,
+                seed.baseGrid,
+                seed.macroGrid,
+                seed.microGrid,
+                seed.gridRes,
+                seed.gridStep
+            );
+
+            siteCache.putAndMoveToFirst(key, site);
+            trimCache();
+            return site;
+        } finally {
+            finalizing.remove(key);
+        }
     }
 
-    private MacroSite generateSite(int cellX, int cellZ) {
+    private SeedSite seedSite(int cellX, int cellZ) {
         int originX = cellX * macroGridSize;
         int originZ = cellZ * macroGridSize;
 
@@ -201,6 +333,7 @@ public final class MacroSiteManager {
         if (domain == MacroDomain.OCEAN
             && continentalScore >= override.landScoreThreshold()
             && hydro.coastDistance() > override.minShelfWidthBlocks()) {
+
             if (config.debugLogging()) {
                 System.out.println(
                     "[MacroSiteManager] override -> LAND cell=(" + cellX + "," + cellZ + ")"
@@ -220,12 +353,11 @@ public final class MacroSiteManager {
         long siteSeed = NoiseUtil.mix(worldSeed, cellX, cellZ, macroSiteSalt);
 
         List<BiomeScore> scored = scoreBiomes(pool, siteSeed, humidity, temperature, coastSoftness);
-        MacroBiome macroBiome = scored.isEmpty() ? pool[0] : scored.get(0).biome();
-        macroBiome = enforceLandDiversity(cellX, cellZ, domain, macroBiome, scored);
 
-        MacroTag macroTag = MacroTag.fromBiome(macroBiome);
+        // IMPORTANT: seed pick is neighbor-free; diversity is applied later in finalize().
+        MacroBiome initialPick = scored.isEmpty() ? pool[0] : scored.get(0).biome();
 
-        double heightVariation = computeHeightVariation(macroBiome);
+        double heightVariation = computeHeightVariation(initialPick);
 
         int gridRes = config.continuousHeightField()
             ? Math.max(2, config.heightControlResolution())
@@ -248,42 +380,47 @@ public final class MacroSiteManager {
                 int sampleZ = (int) Math.round(centerZ + offsetZ1);
 
                 for (int gx = 0; gx < gridRes; gx++) {
-
                     double offsetX1 = (gx - halfSpan) * gridStep;
                     int sampleX = (int) Math.round(centerX + offsetX1);
+
                     TerrainSample gridTerrain = fieldManager.sampleTerrain(sampleX, sampleZ);
                     ClimateSample gridClimate = fieldManager.sampleClimate(sampleX, sampleZ);
                     HydroSample gridHydro = fieldManager.sampleHydro(sampleX, sampleZ);
+
                     double gridContinental = config.continentalSettings().compose(
-                            gridTerrain.elevation(),
+                        gridTerrain.elevation(),
                         gridHydro.coastDistance(),
                         gridHydro.saturation()
                     );
+
                     double gridHumidity = MathHelper.clamp_double(gridClimate.humidity(), 0.0d, 1.0d);
-                    double sampleBase = computeBaseHeight(macroBiome, gridContinental);
+
+                    double sampleBase = computeBaseHeight(initialPick, gridContinental);
                     sampleBase = anchorBaseHeight(sampleX, sampleZ, sampleBase, heightVariation);
 
-                    double sampleMacro = computeMacroVariance(macroBiome, gridHumidity, heightVariation);
-                    double sampleMicro = computeMicroVariance(macroBiome, gridHumidity, heightVariation);
+                    double sampleMacro = computeMacroVariance(initialPick, gridHumidity, heightVariation);
+                    double sampleMicro = computeMicroVariance(initialPick, gridHumidity, heightVariation);
 
                     int idx = gz * gridRes + gx;
                     baseGrid[idx] = sampleBase;
                     macroGrid[idx] = sampleMacro;
                     microGrid[idx] = sampleMicro;
-
-                    applyContinuityFilters(baseGrid, gridRes);
                 }
             }
+
+            applyContinuityFilters(baseGrid, gridRes);
+            applyContinuityFilters(macroGrid, gridRes);
+            applyContinuityFilters(microGrid, gridRes);
         }
 
-        double baseHeight = computeBaseHeight(macroBiome, continentalScore);
+        double baseHeight = computeBaseHeight(initialPick, continentalScore);
         baseHeight = anchorBaseHeight(centerX, centerZ, baseHeight, heightVariation);
-        double macroVariance = computeMacroVariance(macroBiome, humidity, heightVariation);
-        double microVariance = computeMicroVariance(macroBiome, humidity, heightVariation);
+        double macroVariance = computeMacroVariance(initialPick, humidity, heightVariation);
+        double microVariance = computeMicroVariance(initialPick, humidity, heightVariation);
 
         if (config.debugLogging()) {
             System.out.println(
-                "[MacroSiteManager] cell=(" + cellX + "," + cellZ + ")"
+                "[MacroSiteManager] seed cell=(" + cellX + "," + cellZ + ")"
                     + " center=(" + centerX + "," + centerZ + ")"
                     + " lat01=" + String.format(Locale.ROOT, "%.3f", latitude01)
                     + " band=" + latitudeBandIndex
@@ -292,29 +429,27 @@ public final class MacroSiteManager {
                     + " coastSoft=" + String.format(Locale.ROOT, "%.2f", coastSoftness)
                     + " score=" + String.format(Locale.ROOT, "%.3f", continentalScore)
                     + " coastDist=" + String.format(Locale.ROOT, "%.1f", hydro.coastDistance())
-                    + " biome=" + macroBiome
+                    + " initialBiome=" + initialPick
             );
         }
 
-        return new MacroSite(
+        return new SeedSite(
             siteSeed,
-            cellX,
-            cellZ,
-            centerX,
-            centerZ,
-            macroTag,
-            macroBiome,
-            continentalScore,
-            humidity,
-            temperature,
+            cellX, cellZ,
+            centerX, centerZ,
             domain,
             latitude01,
             latitudeBandIndex,
+            continentalScore,
+            humidity,
+            temperature,
             coastSoftness,
+            scored,
+            initialPick,
+            heightVariation,
             baseHeight,
             macroVariance,
             microVariance,
-            heightVariation,
             baseGrid,
             macroGrid,
             microGrid,
@@ -325,8 +460,10 @@ public final class MacroSiteManager {
 
     private void trimCache() {
         while (siteCache.size() > maxCacheEntries) {
-            long key = siteCache.lastLongKey();
             siteCache.removeLast();
+        }
+        while (seedCache.size() > maxCacheEntries) {
+            seedCache.removeLast();
         }
     }
 
@@ -429,55 +566,6 @@ public final class MacroSiteManager {
         return scored;
     }
 
-    private MacroBiome enforceLandDiversity(int cellX,
-                                            int cellZ,
-                                            MacroDomain domain,
-                                            MacroBiome proposed,
-                                            List<BiomeScore> scored) {
-        if (domain == MacroDomain.OCEAN || scored.size() <= 1) {
-            return proposed;
-        }
-
-        int duplicates = countNeighborMatches(cellX, cellZ, proposed);
-        if (duplicates < LAND_DIVERSITY_DUP_THRESHOLD) {
-            return proposed;
-        }
-
-        for (BiomeScore candidate : scored) {
-            MacroBiome biome = candidate.biome();
-            if (biome == proposed || biome.isOceanic()) {
-                continue;
-            }
-            if (countNeighborMatches(cellX, cellZ, biome) == 0) {
-                return biome;
-            }
-        }
-
-        return proposed;
-    }
-
-    private int countNeighborMatches(int cellX, int cellZ, MacroBiome biome) {
-        int matches = 0;
-        for (int dz = -LAND_DIVERSITY_NEIGHBOR_RADIUS; dz <= LAND_DIVERSITY_NEIGHBOR_RADIUS; dz++) {
-            for (int dx = -LAND_DIVERSITY_NEIGHBOR_RADIUS; dx <= LAND_DIVERSITY_NEIGHBOR_RADIUS; dx++) {
-                if (dx == 0 && dz == 0) {
-                    continue;
-                }
-                MacroSite neighbor = siteCache.get(pack(cellX + dx, cellZ + dz));
-                if (neighbor == null) {
-                    continue;
-                }
-                if (neighbor.domain() != MacroDomain.LAND) {
-                    continue;
-                }
-                if (neighbor.macroBiome() == biome) {
-                    matches++;
-                }
-            }
-        }
-        return matches;
-    }
-
     private double computeHeightVariation(MacroBiome macroBiome) {
         if (macroBiome == null) {
             return 0.0d;
@@ -490,33 +578,27 @@ public final class MacroSiteManager {
         return MathHelper.clamp_double(normalized, 0.05d, 1.50d);
     }
 
-    private double computeBaseHeight(MacroBiome macroBiome,
-                                     double continentalScore) {
-        MacroBiome.MacroHeightProfile macroHeight = macroBiome.height;
+    private double computeBaseHeight(MacroBiome macroBiome, double continentalScore) {
         double continental01 = clamp01(0.5d * (continentalScore + 1.0d));
 
-        double worldHeight = lerp(
-            macroHeight.absoluteMin,
-            macroHeight.absoluteMax,
-            continental01
-        ) + macroHeight.baseHeightOffset;
-
-        double clampedWorld = MathHelper.clamp_double(
-            worldHeight,
-            macroHeight.absoluteMin,
-            macroHeight.absoluteMax
-        );
+        double t = smoothStep(continental01);
 
         if (heightProfile != null) {
             double floor = heightProfile.terrainFloorY();
             double range = heightProfile.terrainRange();
-            double normalized = (clampedWorld - floor) / range;
-            return MathHelper.clamp_double(normalized * 2.0d - 1.0d, -1.0d, 1.0d);
+
+            double worldY = floor + t * range;
+
+            double normalized01 = (worldY - floor) / range;
+            return MathHelper.clamp_double(normalized01 * 2.0d - 1.0d, -1.0d, 1.0d);
         }
 
-        double macroRange = Math.max(1.0d, macroHeight.absoluteMax - macroHeight.absoluteMin);
-        double normalized = (clampedWorld - macroHeight.absoluteMin) / macroRange;
-        return MathHelper.clamp_double(normalized * 2.0d - 1.0d, -1.0d, 1.0d);
+        return MathHelper.clamp_double(t * 2.0d - 1.0d, -1.0d, 1.0d);
+    }
+
+    private static double smoothStep(double t) {
+        double c = clamp01(t);
+        return c * c * (3.0d - 2.0d * c);
     }
 
     private double computeMacroVariance(MacroBiome macroBiome,
@@ -846,6 +928,81 @@ public final class MacroSiteManager {
 
         boolean isLand() {
             return land;
+        }
+    }
+
+    private SeedSite resolveSeedSite(int cellX, int cellZ) {
+        long key = pack(cellX, cellZ);
+
+        SeedSite cached = seedCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        if (seeding.contains(key)) {
+            // Should never happen because seeding must be neighbor-free.
+            throw new IllegalStateException("Recursive seeding detected for cell=(" + cellX + "," + cellZ + ")");
+        }
+
+        seeding.add(key);
+        try {
+            SeedSite seeded = seedSite(cellX, cellZ);
+            seedCache.putAndMoveToFirst(key, seeded);
+            trimCache();
+            return seeded;
+        } finally {
+            seeding.remove(key);
+        }
+    }
+
+    private MacroBiome pickWithLandDiversity(SeedSite self) {
+        if (self.domain == MacroDomain.OCEAN || self.scored.size() <= 1) {
+            return self.initialPick;
+        }
+
+        MacroBiome proposed = self.initialPick;
+
+        int duplicates = countNeighborMatchesSeed(self.cellX, self.cellZ, proposed);
+        if (duplicates < LAND_DIVERSITY_DUP_THRESHOLD) {
+            return proposed;
+        }
+
+        for (BiomeScore candidate : self.scored) {
+            MacroBiome biome = candidate.biome();
+            if (biome == proposed || biome.isOceanic()) continue;
+            if (countNeighborMatchesSeed(self.cellX, self.cellZ, biome) == 0) {
+                return biome;
+            }
+        }
+        return proposed;
+    }
+
+    private int countNeighborMatchesSeed(int cellX, int cellZ, MacroBiome biome) {
+        int matches = 0;
+        for (int dz = -LAND_DIVERSITY_NEIGHBOR_RADIUS; dz <= LAND_DIVERSITY_NEIGHBOR_RADIUS; dz++) {
+            for (int dx = -LAND_DIVERSITY_NEIGHBOR_RADIUS; dx <= LAND_DIVERSITY_NEIGHBOR_RADIUS; dx++) {
+                if (dx == 0 && dz == 0) continue;
+
+                SeedSite neighbor = resolveSeedSite(cellX + dx, cellZ + dz);
+                if (neighbor.domain != MacroDomain.LAND) continue;
+
+                if (neighbor.initialPick == biome) {
+                    matches++;
+                }
+            }
+        }
+        return matches;
+    }
+
+    public static final class SiteHit {
+        public final MacroSite site;
+        public final double distSq;
+        public final double dist;
+
+        public SiteHit(MacroSite site, double distSq) {
+            this.site = site;
+            this.distSq = distSq;
+            this.dist = Math.sqrt(distSq);
         }
     }
 }

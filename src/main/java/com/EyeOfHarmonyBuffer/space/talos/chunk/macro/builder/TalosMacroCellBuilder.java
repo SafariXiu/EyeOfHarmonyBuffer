@@ -99,10 +99,10 @@ public final class TalosMacroCellBuilder implements IMacroCellProvider {
         }
     }
 
-    private static short clamp16(int value) {
-        if (value < 0) {
-            return 0;
-        }
-        return (short) Math.min(value, 0xFFFF);
+    private static short clamp16(double v) {
+        int iv = (int) Math.round(v);
+        if (iv < 0) iv = 0;
+        if (iv > 32767) iv = 32767;
+        return (short) iv;
     }
 }

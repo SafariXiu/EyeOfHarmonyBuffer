@@ -9,10 +9,6 @@ import java.util.Objects;
 public final class NoiseCoastlineProvider implements CoastlineProvider {
 
     private static final long SALT_COAST = 0xBEEFF00D00FFL;
-    private static final int[][] OFFSETS = {
-        { 1, 0}, {-1, 0}, {0, 1}, {0,-1},
-        { 1, 1}, {-1, 1}, {1,-1}, {-1,-1}
-    };
 
     private final long seed;
     private final CoastlineSettings settings;
@@ -27,7 +23,8 @@ public final class NoiseCoastlineProvider implements CoastlineProvider {
         double height = coastHeight(blockX, blockZ);
         boolean isLand = height >= settings.seaLevel();
 
-        int distance = estimateDistance(blockX, blockZ, isLand);
+        double distance = estimateDistanceContinuous(blockX, blockZ);
+
         int beach = beachWidth(distance, macroTag);
         int shelf = shelfWidth(distance, macroTag, isLand);
 
@@ -42,39 +39,48 @@ public final class NoiseCoastlineProvider implements CoastlineProvider {
         return (primary * 2.0 - 1.0) + (detail - 0.5) * 0.4;
     }
 
-    private int estimateDistance(int x, int z, boolean currentLand) {
-        final int step = settings.distanceSampleStep();
-        final int max = settings.maxDistance();
+    private double estimateDistanceContinuous(int x, int z) {
+        final double sea = settings.seaLevel();
 
-        for (int radius = step; radius <= max; radius += step) {
-            for (int[] offset : OFFSETS) {
-                int dx = x + offset[0] * radius;
-                int dz = z + offset[1] * radius;
-                boolean land = coastHeight(dx, dz) >= settings.seaLevel();
-                if (land != currentLand) {
-                    return radius;
-                }
-            }
-        }
-        return max;
+        final double f0 = coastHeight(x, z) - sea;
+
+        final double h = 2.0;
+
+        final double fx1 = coastHeight((int) (x + h), z) - sea;
+        final double fx0 = coastHeight((int) (x - h), z) - sea;
+        final double fz1 = coastHeight(x, (int) (z + h)) - sea;
+        final double fz0 = coastHeight(x, (int) (z - h)) - sea;
+
+        final double dfdx = (fx1 - fx0) / (2.0 * h);
+        final double dfdz = (fz1 - fz0) / (2.0 * h);
+
+        final double grad = Math.sqrt(dfdx * dfdx + dfdz * dfdz);
+
+        final double dist = Math.abs(f0) / Math.max(1e-4, grad);
+
+        return Math.min(dist, settings.maxDistance());
     }
 
-    private int beachWidth(int distance, MacroTag macroTag) {
-        int width = settings.baseBeachWidth();
+    private int beachWidth(double distance, MacroTag macroTag) {
+        double width = settings.baseBeachWidth();
         if (macroTag.isHumid()) {
-            width += 2;
+            width += 2.0;
         }
-        width += Math.max(0, 12 - distance / 2);
-        return MathHelper.clamp_int(width, 2, 32);
+
+        width += Math.max(0.0, 12.0 - (distance / 2.0));
+
+        return MathHelper.clamp_int((int) Math.round(width), 2, 32);
     }
 
-    private int shelfWidth(int distance, MacroTag macroTag, boolean isLand) {
-        int width = settings.baseShelfWidth();
+    private int shelfWidth(double distance, MacroTag macroTag, boolean isLand) {
+        double width = settings.baseShelfWidth();
         if (!isLand || macroTag.isOceanic()) {
-            width += 4;
+            width += 4.0;
         }
-        width += distance / 3;
-        return MathHelper.clamp_int(width, 6, 64);
+
+        width += distance / 3.0;
+
+        return MathHelper.clamp_int((int) Math.round(width), 6, 64);
     }
 }
 

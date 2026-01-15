@@ -29,9 +29,41 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
+/**
+ * ChunkProviderTalos2
+ *
+ * 职责：
+ * - Talos 世界的区块生成器（ChunkProvider）
+ * - 使用 MacroSelectionResult 生成高度图（height map），并根据生物群系填充方块（地表/填充/石头/水等）
+ * - 执行额外的清理/修饰：海底硬化、海岸向下延展、bedrock 层等
+ *
+ * 关键方法：
+ * - onChunkProvider：生成一个 chunk 的整体流程（清空 -> 缓存 -> 高度图 -> 填充 -> 清理 -> 基岩）
+ * - computeBaseHeightMap：对 17x17 采样点计算地表高度（供后续插值/列填充）
+ * - computeGroundHeightFromMacro：MacroSelectionResult -> 最终地表高度 Y（核心高度合成）
+ *
+ * computeGroundHeightFromMacro 的基本逻辑：
+ * - base：取 worldBaseHeight 或 continuousWorldBaseHeight 作为基准
+ * - macroAmp/microAmp：宏/微起伏幅度（world-space）
+ * - macroNoise/microNoise：噪声采样，叠加到 base 上
+ * - riverCarveDepth：河谷侵蚀下切
+ * - 最终 clamp 到世界高度范围
+ *
+ * 本次改动（接入 MacroBiome Height Profile 三参数）：
+ * - 使用 MacroSelectionResult 中的 baseHeightOffset：
+ *   - 对宏噪声做 bias（macroNoise + offset），控制更偏“隆起/盆地”的风格
+ *   - 计算 ampMul 倍增 macroAmp/microAmp，使地形起伏强度随 biome 风格变化
+ * - 使用 absoluteMinY/absoluteMaxY：
+ *   - 对最终 finalHeight（包含噪声与河流侵蚀后）做 相对高度 clamp（双保险）
+ *
+ * 设计要点：
+ * - Selector 阶段 clamp 的是“基准 worldBaseHeight”；ChunkProvider 阶段仍可能叠加噪声/侵蚀越界
+ * - 因此最终高度处的 absoluteMin/Max clamp 是确保配置“必然生效”的关键一步
+ */
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final boolean DEBUG_SOFTEN = false;
+    private static final boolean USE_CONTINUOUS_BASE_Y = true;
 
     private final World world;
     private final IMacroCellProvider macroCellBuilder;
@@ -65,6 +97,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     private final double terrainCeilingY;
     private final double heightRange;
     private final int configuredSeaLevel;
+    private static final long RIVER_WARP_SALT = 0xA3C59AC3F1E2D4B1L;
+    private static final long RIVER_FIELD_SALT = 0x19D3B6C8E5A7F02DL;
 
     private static void logChunkTiming(int chunkX, int chunkZ,
                                        long tTotal,
@@ -606,7 +640,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     private void resolveBiomesForCells(int chunkX, int chunkZ, ChunkShoreCache shore) {
-        final int GRID = ChunkShoreCache.GRID_SIZE - 1; // 16，如果 GRID_SIZE = 17
+        final int GRID = ChunkShoreCache.GRID_SIZE - 1;
 
         for (int localX = 0; localX <= GRID; localX++) {
             for (int localZ = 0; localZ <= GRID; localZ++) {
@@ -624,6 +658,45 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 cell.resolvedBiome = TalosBiomeResolver.resolve(cell.macroResult);
             }
         }
+    }
+
+    private double valleyMask01(int worldX, int worldZ) {
+        double freq = 1.0 / 1800.0;
+
+        double warpFreq = 1.0 / 900.0;
+        double wx = n2(NoiseUtil.fractal(world.getSeed(), RIVER_WARP_SALT, worldX, worldZ, warpFreq, 2, 2.0, 0.5)) * 120.0;
+        double wz = n2(NoiseUtil.fractal(world.getSeed(), RIVER_WARP_SALT ^ 0xB4L, worldX, worldZ, warpFreq, 2, 2.0, 0.5)) * 120.0;
+
+        double nx = worldX + wx;
+        double nz = worldZ + wz;
+
+        double f = NoiseUtil.fractal(world.getSeed(), RIVER_FIELD_SALT, nx, nz, freq, 3, 2.0, 0.5);
+
+        double d = Math.abs(f - 0.5);
+
+        double riverHalfWidth = 0.07;
+        double m = 1.0 - smoothstep(0.0, riverHalfWidth, d);
+
+        return m;
+    }
+
+    private double riverCarveDepth(int worldX, int worldZ, MacroSelectionResult macro, double currentHeight) {
+        double mask = valleyMask01(worldX, worldZ);
+
+        double maxDepth = 42.0;
+
+        double sea = this.configuredSeaLevel;
+
+        double base = USE_CONTINUOUS_BASE_Y
+            ? macro.continuousWorldBaseHeight()
+            : macro.worldBaseHeight();
+
+        double baseGate = smoothstep(sea + 2.0, sea + 18.0, base);
+
+        double heightGate = smoothstep(sea - 8.0, sea + 10.0, currentHeight);
+        //double heightGate = 1;
+
+        return mask * maxDepth * baseGate * heightGate;
     }
 
     private void logMacroCacheStats(String reason) {
@@ -644,13 +717,40 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                                              int worldX,
                                              int worldZ) {
 
-        double base = macro.worldBaseHeight();
+        double base = USE_CONTINUOUS_BASE_Y
+            ? macro.continuousWorldBaseHeight()
+            : macro.worldBaseHeight();
+
         double macroAmp = macro.worldMacroVariance();
         double microAmp = macro.worldMicroVariance();
 
-        base = MathHelper.clamp_double(base, worldFloorY, worldCeilingY);
+        double baseHeightOffset = macro.baseHeightOffset();
+        double absMinY = macro.absoluteMinY();
+        double absMaxY = macro.absoluteMaxY();
+
+        double baseMin = worldFloorY;
+        double baseMax = worldCeilingY;
+
+        if (Double.isFinite(absMinY)) baseMin = Math.max(baseMin, absMinY);
+        if (Double.isFinite(absMaxY)) baseMax = Math.min(baseMax, absMaxY);
+        if (baseMin > baseMax) { double t = baseMin; baseMin = baseMax; baseMax = t; }
+
+        base = MathHelper.clamp_double(base, baseMin, baseMax);
+
+        double offClamped = MathHelper.clamp_double(baseHeightOffset, -1.5d, 1.5d);
+        double ampMul = 1.0d + 0.35d * offClamped;
+        ampMul = MathHelper.clamp_double(ampMul, 0.55d, 1.65d);
+
+        macroAmp *= ampMul;
+        microAmp *= ampMul;
+
         macroAmp = MathHelper.clamp_double(macroAmp, 0.0D, heightRange);
         microAmp = MathHelper.clamp_double(microAmp, 0.0D, heightRange);
+
+        if (USE_CONTINUOUS_BASE_Y) {
+            double detail = MathHelper.clamp_double(macro.continuousDetailAmpY(), 0.0d, heightRange);
+            microAmp = MathHelper.clamp_double(microAmp * 0.5d + detail * 0.5d, 0.0d, heightRange);
+        }
 
         double macroNoise = NoiseUtil.fractal(
             this.world.getSeed(),
@@ -662,6 +762,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             2.0D,
             0.5D
         ) * 2.0D - 1.0D;
+
+        double biasedMacroNoise = MathHelper.clamp_double(macroNoise + baseHeightOffset, -1.0d, 1.0d);
 
         double microNoise = NoiseUtil.fractal(
             this.world.getSeed(),
@@ -675,8 +777,21 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         ) * 2.0D - 1.0D;
 
         double finalHeight = base
-            + macroNoise * macroAmp
+            + biasedMacroNoise * macroAmp
             + microNoise * microAmp;
+
+        finalHeight -= riverCarveDepth(worldX, worldZ, macro, finalHeight);
+
+        if (Double.isFinite(absMinY) || Double.isFinite(absMaxY)) {
+            double minY = absMinY;
+            double maxY = absMaxY;
+            if (Double.isFinite(minY) && Double.isFinite(maxY) && minY > maxY) {
+                double t = minY; minY = maxY; maxY = t;
+            }
+
+            final double SOFT_BAND_Y = 24.0d;
+            finalHeight = softClamp(finalHeight, minY, maxY, SOFT_BAND_Y);
+        }
 
         int clamped = (int) MathHelper.clamp_double(
             finalHeight,
@@ -685,6 +800,51 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         );
         return clamped;
     }
+
+    private static double saturate(double x) {
+        return x < 0 ? 0 : (x > 1 ? 1 : x);
+    }
+
+    private static double smoothstep(double e0, double e1, double x) {
+        double t = saturate((x - e0) / (e1 - e0));
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    private static double smoothstep01(double t) {
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    private static double softClamp(double y, double minY, double maxY, double bandY) {
+        if (!(Double.isFinite(minY) || Double.isFinite(maxY))) return y;
+
+        if (Double.isFinite(minY) && Double.isFinite(maxY) && minY > maxY) {
+            double t = minY; minY = maxY; maxY = t;
+        }
+        bandY = Math.max(0.0d, bandY);
+
+        if (bandY <= 1.0e-9) {
+            return MathHelper.clamp_double(y, minY, maxY);
+        }
+
+        if (Double.isFinite(maxY) && y > maxY) {
+            double d = y - maxY;
+            double t = d / bandY;
+            double s = smoothstep01(t);
+            return maxY + bandY * (1.0d - (1.0d - s) * (1.0d - t));
+        }
+
+        if (Double.isFinite(minY) && y < minY) {
+            double d = minY - y;
+            double t = d / bandY;
+            double s = smoothstep01(t);
+            return minY - bandY * (1.0d - (1.0d - s) * (1.0d - t));
+        }
+
+        return y;
+    }
+
+    private static double n2(double n01) { return n01 * 2.0 - 1.0; }
 
     @Override
     public void onPopulate(IChunkProvider provider, int x, int z) {
