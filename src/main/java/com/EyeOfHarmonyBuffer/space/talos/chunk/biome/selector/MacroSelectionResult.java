@@ -30,6 +30,7 @@ import java.util.Objects;
  * 设计要点：
  * - 必须存“融合后的值”，不要让下游再去读 primary biome 的配置，否则边界区域会跳变
  */
+
 public final class MacroSelectionResult {
 
     private final long macroSiteId;
@@ -77,6 +78,7 @@ public final class MacroSelectionResult {
     private final double baseHeightOffset;
     private final double absoluteMinY;
     private final double absoluteMaxY;
+    private final double ruggedness;
 
     public MacroSelectionResult(long macroSiteId,
                                 MacroSite primarySite,
@@ -119,6 +121,7 @@ public final class MacroSelectionResult {
                                 double continuousFinalBaseHeight,
                                 double continuousWorldBaseHeight,
                                 double continuousDetailAmpY,
+                                double ruggedness,
                                 double baseHeightOffset,
                                 double absoluteMinY,
                                 double absoluteMaxY) {
@@ -164,6 +167,7 @@ public final class MacroSelectionResult {
         this.continuousFinalBaseHeight = continuousFinalBaseHeight;
         this.continuousWorldBaseHeight = continuousWorldBaseHeight;
         this.continuousDetailAmpY = continuousDetailAmpY;
+        this.ruggedness = Double.isNaN(ruggedness) ? 0.5d : clamp01(ruggedness);
         this.baseHeightOffset = Double.isNaN(baseHeightOffset) ? 0.0d : baseHeightOffset;
         this.absoluteMinY = Double.isNaN(absoluteMinY) ? Double.NEGATIVE_INFINITY : absoluteMinY;
         this.absoluteMaxY = Double.isNaN(absoluteMaxY) ? Double.POSITIVE_INFINITY : absoluteMaxY;
@@ -365,6 +369,8 @@ public final class MacroSelectionResult {
         return continuousDetailAmpY;
     }
 
+    public double ruggedness() { return ruggedness; }
+
     public double baseHeightOffset() {
         return baseHeightOffset;
     }
@@ -375,5 +381,9 @@ public final class MacroSelectionResult {
 
     public double absoluteMaxY() {
         return absoluteMaxY;
+    }
+
+    private static double clamp01(double v) {
+        return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
     }
 }

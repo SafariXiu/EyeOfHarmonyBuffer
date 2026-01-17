@@ -12,7 +12,7 @@ public enum MacroBiome {
         MacroDomain.OCEAN,
         0,
         new ClimateProfile(0.42f, 0.95f),
-        new MacroHeightProfile(42.0, 64.0, -1.30f),
+        new MacroHeightProfile(42.0, 64.0, -0.12f, 0.28f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_OCEAN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_SHELF, 1)
@@ -23,7 +23,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         1,
         new ClimateProfile(0.58f, 0.82f),
-        new MacroHeightProfile(64.0, 72.0, -0.35f),
+        new MacroHeightProfile(64.0, 72.0, -0.08f, 0.35f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_BEACH, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_PLAINS, 1)
@@ -34,7 +34,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         2,
         new ClimateProfile(0.75f, 0.98f),
-        new MacroHeightProfile(64.0, 78.0, -0.05f),
+        new MacroHeightProfile(64.0, 78.0, -0.03f, 0.32f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_BASIN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TROPICAL_RAIN, 1)
@@ -45,7 +45,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         3,
         new ClimateProfile(0.52f, 0.60f),
-        new MacroHeightProfile(68.0, 96.0, 0.02f),
+        new MacroHeightProfile(68.0, 96.0, 0.02f, 0.40f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_PLAINS, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TEMPERATE_FOREST, 2),
@@ -57,7 +57,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         4,
         new ClimateProfile(0.82f, 0.30f),
-        new MacroHeightProfile(70.0, 100.0, 0.06f),
+        new MacroHeightProfile(70.0, 100.0, 0.06f, 0.48f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_DESERT, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_WARM_STEPPE, 2),
@@ -69,7 +69,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         5,
         new ClimateProfile(0.95f, 0.92f),
-        new MacroHeightProfile(72.0, 90.0, 0.04f),
+        new MacroHeightProfile(72.0, 90.0, 0.04f, 0.44f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_TROPICAL_RAIN, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_SAVANNA, 1)
@@ -80,7 +80,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         6,
         new ClimateProfile(0.32f, 0.70f),
-        new MacroHeightProfile(82.0, 116.0, 0.18f),
+        new MacroHeightProfile(82.0, 116.0, 0.14f, 0.56f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_COOL_FOREST, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_TEMPERATE_FOREST, 1)
@@ -91,7 +91,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         7,
         new ClimateProfile(0.18f, 0.45f),
-        new MacroHeightProfile(92.0, 132.0, 0.22f),
+        new MacroHeightProfile(92.0, 132.0, 0.18f, 0.62f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_SUBPOLAR_TUNDRA, 2),
             new MacroBiomeVariant(TalosBiomes.TALOS_POLAR_DESERT, 1),
@@ -103,7 +103,7 @@ public enum MacroBiome {
         MacroDomain.LAND,
         8,
         new ClimateProfile(0.25f, 0.35f),
-        new MacroHeightProfile(110.0, 180.0, 0.48f),
+        new MacroHeightProfile(110.0, 180.0, 0.48f, 0.82f),
         variants(
             new MacroBiomeVariant(TalosBiomes.TALOS_MOUNTAINS, 3),
             new MacroBiomeVariant(TalosBiomes.TALOS_PLATEAU, 2),
@@ -200,14 +200,26 @@ public enum MacroBiome {
     public static final class MacroHeightProfile {
         public final double absoluteMin;
         public final double absoluteMax;
-        public final float baseHeightOffset;
+        public final float varianceBias;
+        public final float ruggedness;
 
         public MacroHeightProfile(double absoluteMin,
                                   double absoluteMax,
-                                  float baseHeightOffset) {
+                                  float varianceBias) {
             this.absoluteMin = absoluteMin;
             this.absoluteMax = absoluteMax;
-            this.baseHeightOffset = baseHeightOffset;
+            this.varianceBias = varianceBias;
+            this.ruggedness = 0.5f;
+        }
+
+        public MacroHeightProfile(double absoluteMin,
+                                  double absoluteMax,
+                                  float varianceBias,
+                                  float ruggedness) {
+            this.absoluteMin = absoluteMin;
+            this.absoluteMax = absoluteMax;
+            this.varianceBias = varianceBias;
+            this.ruggedness = ruggedness;
         }
     }
 

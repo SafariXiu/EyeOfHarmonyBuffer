@@ -43,17 +43,18 @@ import java.util.Objects;
  *   - baseHeightOffset（宏形状偏置）
  *   - absoluteMin / absoluteMax（MacroBiome 允许的世界高度硬下限/硬上限）
  * - 在 world-space 高度计算后，对 worldBaseHeight 与 continuousWorldBaseHeight 按 blendedAbsMin/Max 做 clamp
- * - 将 blendedBaseHeightOffset / blendedAbsMinY / blendedAbsMaxY 写入 MacroSelectionResult，供 ChunkProvider 使用
+ * - 将 blendedVarianceBias / blendedAbsMinY / blendedAbsMaxY 写入 MacroSelectionResult，供 ChunkProvider 使用
  *
  * 设计要点：
  * - absoluteMin/absoluteMax 的语义是“世界 Y 空间的硬约束”，适合在 worldY 计算后 clamp
  * - baseHeightOffset 的语义是“风格偏置”，最终如何影响噪声/振幅由 ChunkProvider 实现
  */
+
 public final class MacroBiomeSelector {
 
     private static final Logger LOGGER = LogManager.getLogger(MacroBiomeSelector.class);
 
-    private static final boolean DEBUG_EDGE = true;
+    private static final boolean DEBUG_EDGE = false;
     private static final boolean DEBUG_DISABLE_EDGE_CLAMP = false;
     private static final int DEBUG_PRINT_EVERY_N_BLOCKS = 16;
     private static final double DEBUG_EDGE_PRINT_THRESHOLD = 0.85;
@@ -226,9 +227,10 @@ public final class MacroBiomeSelector {
         double macroNoise = 0, microNoise = 0;
         double finalBase = 0, finalMicro = 0;
         double noiseSample= 0, variation = 0;
-        double baseHeightOffsetAcc = 0.0d;
+        double varianceBiasAcc = 0.0d;
         double absMinAcc = 0.0d;
         double absMaxAcc = 0.0d;
+        double ruggednessAcc = 0.0d;
 
         for (int i = 0; i < hits.size(); i++) {
             MacroSite s = hits.get(i).site;
@@ -245,15 +247,17 @@ public final class MacroBiomeSelector {
 
             MacroBiome sb = (s != null) ? s.macroBiome() : null;
             if (sb != null && sb.height != null) {
-                baseHeightOffsetAcc += w * (double) sb.height.baseHeightOffset;
+                varianceBiasAcc += w * (double) sb.height.varianceBias;
                 absMinAcc += w * (double) sb.height.absoluteMin;
                 absMaxAcc += w * (double) sb.height.absoluteMax;
+                ruggednessAcc += w * (double) sb.height.ruggedness;
             } else {
                 MacroBiome pb = macroBiome;
                 if (pb != null && pb.height != null) {
-                    baseHeightOffsetAcc += w * (double) pb.height.baseHeightOffset;
+                    varianceBiasAcc += w * (double) pb.height.varianceBias;
                     absMinAcc += w * (double) pb.height.absoluteMin;
                     absMaxAcc += w * (double) pb.height.absoluteMax;
+                    ruggednessAcc += w * (double) pb.height.ruggedness;
                 }
             }
 
@@ -317,23 +321,27 @@ public final class MacroBiomeSelector {
 
         height = applyEdgeContinuity(height, primaryHeight, secondaryHeight, edgeFactor, hasSecondary);
 
-        double blendedBaseHeightOffset;
+        double blendedVarianceBias;
         double blendedAbsMinY;
         double blendedAbsMaxY;
+        double blendedRuggedness;
 
         if (wSum > 0.0d) {
-            blendedBaseHeightOffset = baseHeightOffsetAcc / wSum;
+            blendedVarianceBias = varianceBiasAcc / wSum;
             blendedAbsMinY = absMinAcc / wSum;
             blendedAbsMaxY = absMaxAcc / wSum;
+            blendedRuggedness = ruggednessAcc / wSum;
         } else {
             if (macroBiome != null && macroBiome.height != null) {
-                blendedBaseHeightOffset = (double) macroBiome.height.baseHeightOffset;
+                blendedVarianceBias = (double) macroBiome.height.varianceBias;
                 blendedAbsMinY = (double) macroBiome.height.absoluteMin;
                 blendedAbsMaxY = (double) macroBiome.height.absoluteMax;
+                blendedRuggedness = (double) macroBiome.height.ruggedness;
             } else {
-                blendedBaseHeightOffset = 0.0d;
+                blendedVarianceBias = 0.0d;
                 blendedAbsMinY = Double.NEGATIVE_INFINITY;
                 blendedAbsMaxY = Double.POSITIVE_INFINITY;
+                blendedRuggedness = 0.5d;
             }
         }
 
@@ -374,7 +382,18 @@ public final class MacroBiomeSelector {
         double worldMacroVariance = clamp01(0.5d * (height.macroVariance() + 1.0d)) * range;
         double worldMicroVariance = Math.max(0.0d, height.finalMicroVariance()) * range;
 
-// 3) continuous world base Y（你原逻辑保留）
+        double off = blendedVarianceBias;
+
+        double varMul = 0.5d + off * 3.0d;
+        varMul = MathHelper.clamp_double(varMul, 0.08d, 4.0d);
+
+        double macroMul = 0.75d + off * 1.5d;
+        macroMul = MathHelper.clamp_double(macroMul, 0.08d, 3.0d);
+
+        double microMul = varMul;
+        worldMacroVariance *= macroMul;
+        worldMicroVariance *= microMul;
+
         double contY = continuous.worldY();
         if (macroTag != null && macroTag.isOceanic()) {
             contY = Math.min(contY, seaLevelY);
@@ -444,7 +463,8 @@ public final class MacroBiomeSelector {
             continuousFinalBaseHeight,
             continuousWorldBaseHeight,
             continuousDetailAmpY,
-            blendedBaseHeightOffset,
+            blendedRuggedness,
+            blendedVarianceBias,
             blendedAbsMinY,
             blendedAbsMaxY
         );
@@ -676,40 +696,99 @@ public final class MacroBiomeSelector {
     }
 
     public TalosClimateSample buildDiagnosticSample(int blockX, int blockZ) {
-        MacroSelectionResult result = select(blockX, blockZ);
+        LOGGER.warn("[DIAG] buildDiagnosticSample CALLED @({}, {}) loader={}",
+            blockX, blockZ,
+            MacroBiomeSelector.class.getProtectionDomain().getCodeSource().getLocation());
 
-        MacroBiome biome = result.macroBiome();
-        MacroTag tag = result.macroTag();
+        MacroSelectionResult r = select(blockX, blockZ);
 
-        float temperature = (float) result.temperature();
-        float humidity = (float) result.humidity();
-        float macroVariance = (float) result.macroVariance();
+        MacroBiome biome = r.macroBiome();
+        MacroTag tag = r.macroTag();
+
+        double off = r.baseHeightOffset();
+
+        double varMul = 0.5d + off * 3.0d;
+
+        double totalWorldVar = r.worldMacroVariance() + r.worldMicroVariance();
+        double contDelta = r.worldBaseHeight() - r.continuousWorldBaseHeight();
+        double macroShare = totalWorldVar > 1e-9 ? (r.worldMacroVariance() / totalWorldVar) : 0.0d;
+
+        String biomeName = biome != null ? biome.name() : "null";
+        int biomeId = biome != null ? biome.id : -1;
 
         return new TalosClimateSample.Builder(blockX, blockZ)
-            .macroBiome(biome.name(), biome.id)
-            .climate(temperature, humidity, macroVariance)
-            .heights(
-                result.finalBaseHeight(),
-                result.macroVariance(),
-                result.finalMicroVariance()
-            )
-            .hardEdge(biome.isHardEdge())
-            .plateauAnchorWeight(biome.getPlateauAnchorWeight())
+            .macroBiome(biomeName, biomeId)
+            .climate((float) r.temperature(), (float) r.humidity(), (float) r.macroVariance())
+            .heights(r.finalBaseHeight(), r.macroVariance(), r.finalMicroVariance())
+            .hardEdge(biome != null && biome.isHardEdge())
+            .plateauAnchorWeight(biome != null ? biome.getPlateauAnchorWeight() : 0.0f)
             .oceanicCandidate(tag != null && tag.isOceanic())
-            .hydroLevel(result.normalizedHydro())
-            .distanceToCoast(result.coastDistance())
-            .message(String.format(
-                "macroSite=%d secondary=%s transitionOverride=%s rule=%s contWorldY=%.2f contSigned=%.3f oldWorldY=%.2f absMin=%.1f absMax=%.1f off=%.3f",
-                result.macroSiteId(),
-                result.secondarySite() != null ? result.secondarySite().id() : "none",
-                result.transitionOverride(),
-                result.transitionRuleId() != null ? result.transitionRuleId() : "none",
-                result.continuousWorldBaseHeight(),
-                result.continuousFinalBaseHeight(),
-                result.worldBaseHeight(),
-                result.absoluteMinY(),
-                result.absoluteMaxY(),
-                result.baseHeightOffset()
+            .hydroLevel(r.normalizedHydro())
+            .distanceToCoast(r.coastDistance())
+            .message("[NEW-BUILD-DIAG-v2] " + String.format(
+                java.util.Locale.ROOT,
+
+                "pos=(%d,%d) biome=%s(%d) tag(ocean=%s coast=%s frozen=%s) " +
+                    "macroSite=%d microSite=%d microVarId=%d patch=%d rare=%s " +
+
+                    "edgeMetric=%.3f edgeFactor=%.3f flipped=%s secondary=%s " +
+
+                    "signed(base=%.4f finalBase=%.4f) " +
+                    "signedVar(macro=%.4f micro=%.4f) " +
+                    "noise(macro=%.4f micro=%.4f sample=%.4f applied=%s) " +
+                    "variation=%.4f " +
+
+                    "worldBaseY=%.2f contWorldY=%.2f contSigned=%.4f contDelta=%.2f detailAmpY=%.2f " +
+                    "worldVar(macro=%.2f micro=%.2f total=%.2f macroShare=%.2f) " +
+
+                    "absMin=%.1f absMax=%.1f off=%.4f varMul≈%.3f " +
+
+                    "transitionOverride=%s coastWidth=%.2f rule=%s",
+
+                blockX, blockZ,
+                biomeName, biomeId,
+                String.valueOf(r.isOceanic()),
+                String.valueOf(r.isCoastal()),
+                String.valueOf(r.isFrozen()),
+                r.macroSiteId(),
+                r.microSiteId(),
+                r.microVariantId(),
+                r.patchId(),
+                String.valueOf(r.rare()),
+
+                r.edgeMetric(),
+                r.edgeFactor(),
+                String.valueOf(r.edgeFlipped()),
+                r.secondarySite() != null ? String.valueOf(r.secondarySite().id()) : "none",
+
+                r.macroBaseHeight(),
+                r.finalBaseHeight(),
+                r.macroVariance(),
+                r.finalMicroVariance(),
+                r.macroHeightNoise(),
+                r.microHeightNoise(),
+                r.heightNoiseSample(),
+                String.valueOf(r.heightNoiseApplied()),
+                r.heightVariation(),
+
+                r.worldBaseHeight(),
+                r.continuousWorldBaseHeight(),
+                r.continuousFinalBaseHeight(),
+                contDelta,
+                r.continuousDetailAmpY(),
+                r.worldMacroVariance(),
+                r.worldMicroVariance(),
+                totalWorldVar,
+                macroShare,
+
+                r.absoluteMinY(),
+                r.absoluteMaxY(),
+                off,
+                varMul,
+
+                String.valueOf(r.transitionOverride()),
+                r.transitionCoastWidth(),
+                r.transitionRuleId() != null ? r.transitionRuleId() : "none"
             ))
             .build();
     }

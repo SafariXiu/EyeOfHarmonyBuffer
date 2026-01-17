@@ -13,6 +13,7 @@ package com.EyeOfHarmonyBuffer.command;
  * - 可在 message 中扩展输出更多字段（例如 absoluteMin/absoluteMax/baseHeightOffset）
  *   以验证 MacroBiome Height Profile 参数是否生效、是否在边界处平滑
  */
+
 public final class TalosClimateSample {
 
     private final int x;

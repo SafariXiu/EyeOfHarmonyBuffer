@@ -29,6 +29,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
+import static net.minecraft.realms.RealmsMth.clamp;
+
 /**
  * ChunkProviderTalos2
  *
@@ -60,6 +62,7 @@ import java.util.*;
  * - Selector 阶段 clamp 的是“基准 worldBaseHeight”；ChunkProvider 阶段仍可能叠加噪声/侵蚀越界
  * - 因此最终高度处的 absoluteMin/Max clamp 是确保配置“必然生效”的关键一步
  */
+
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final boolean DEBUG_SOFTEN = false;
@@ -724,7 +727,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         double macroAmp = macro.worldMacroVariance();
         double microAmp = macro.worldMicroVariance();
 
-        double baseHeightOffset = macro.baseHeightOffset();
+        // Deprecated in PR2 flow: keep reading only if you must for logging/migration,
+        // but DO NOT apply it to height generation.
+        // double baseHeightOffset = macro.baseHeightOffset();
+
         double absMinY = macro.absoluteMinY();
         double absMaxY = macro.absoluteMaxY();
 
@@ -737,9 +743,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         base = MathHelper.clamp_double(base, baseMin, baseMax);
 
-        double offClamped = MathHelper.clamp_double(baseHeightOffset, -1.5d, 1.5d);
-        double ampMul = 1.0d + 0.35d * offClamped;
-        ampMul = MathHelper.clamp_double(ampMul, 0.55d, 1.65d);
+        double ampMul = ampMulFromRuggedness(macro.ruggedness());
 
         macroAmp *= ampMul;
         microAmp *= ampMul;
@@ -748,8 +752,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         microAmp = MathHelper.clamp_double(microAmp, 0.0D, heightRange);
 
         if (USE_CONTINUOUS_BASE_Y) {
-            double detail = MathHelper.clamp_double(macro.continuousDetailAmpY(), 0.0d, heightRange);
-            microAmp = MathHelper.clamp_double(microAmp * 0.5d + detail * 0.5d, 0.0d, heightRange);
+            double detail = clamp(macro.continuousDetailAmpY(), 0, heightRange) * ampMul;
+            microAmp = clamp(microAmp * 0.5 + detail * 0.5, 0, heightRange);
         }
 
         double macroNoise = NoiseUtil.fractal(
@@ -763,8 +767,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             0.5D
         ) * 2.0D - 1.0D;
 
-        double biasedMacroNoise = MathHelper.clamp_double(macroNoise + baseHeightOffset, -1.0d, 1.0d);
-
         double microNoise = NoiseUtil.fractal(
             this.world.getSeed(),
             MICRO_HEIGHT_NOISE_SALT,
@@ -777,11 +779,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         ) * 2.0D - 1.0D;
 
         double finalHeight = base
-            + biasedMacroNoise * macroAmp
+            + macroNoise * macroAmp
             + microNoise * microAmp;
 
         finalHeight -= riverCarveDepth(worldX, worldZ, macro, finalHeight);
 
+        // Keep your existing hard constraint behavior (+24 soft band) exactly as-is.
         if (Double.isFinite(absMinY) || Double.isFinite(absMaxY)) {
             double minY = absMinY;
             double maxY = absMaxY;
@@ -842,6 +845,25 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
 
         return y;
+    }
+
+    private static double ampMulFromRuggedness(double ruggedness01) {
+        double r = clamp01(ruggedness01);
+
+        // Nonlinear curve so the low end stays very flat for longer.
+        double t = r * r; // try r*r*r if you want even flatter for small r
+
+        final double MIN_MUL = 0.08; // 0 => almost flat
+        final double MAX_MUL = 2.20; // 1 => very rugged
+        return lerp(MIN_MUL, MAX_MUL, t);
+    }
+
+    private static double clamp01(double v) {
+        return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * t;
     }
 
     private static double n2(double n01) { return n01 * 2.0 - 1.0; }
