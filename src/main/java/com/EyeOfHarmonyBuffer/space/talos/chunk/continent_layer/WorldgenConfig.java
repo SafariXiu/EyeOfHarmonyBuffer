@@ -17,7 +17,7 @@ public class WorldgenConfig {
     public static final int SUPER_MIN_RADIUS = 4000;
     public static final int SUPER_MAX_RADIUS = 9000;
     public static final int SUPER_MAX_INFLUENCE = 40000;
-    public static final double LATITUDE_CYCLE = 10000.0;
+    public static final double LATITUDE_CYCLE = 100000.0;
 
     // 噪声扰动参数
     public static final double BIG_AMP_RATIO = 0.6;

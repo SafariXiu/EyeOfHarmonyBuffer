@@ -8,6 +8,7 @@ import net.minecraft.world.World;
  * 所有 Minecraft 侧代码（chunk 生成、群系、结构、装饰等）应只通过这里访问，
  * 以保证和 ChunkProviderTalos2 / WorldChunkManagerTalos2 完全一致。
  */
+
 public final class TalosLandMask {
 
     private TalosLandMask() {}

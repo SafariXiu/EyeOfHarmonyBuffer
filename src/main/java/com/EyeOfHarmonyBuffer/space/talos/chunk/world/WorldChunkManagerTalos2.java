@@ -1,8 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -15,14 +14,13 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     private final World world;
     private final int worldSeedInt;
 
-    // 缓存：key = (x, z) 打包成 long，value = Biome
     private final Long2ObjectOpenHashMap<BiomeGenBase> biomeCache =
         new Long2ObjectOpenHashMap<>();
 
     public WorldChunkManagerTalos2(World world) {
         super();
         this.world = world;
-        this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
+        this.worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
     }
 
     private static long packXZ(int x, int z) {
@@ -31,7 +29,16 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     /**
      * 为某个世界坐标 (x,z) 选择群系。
-     * 注意：这里不再做 BIOME_SHIFT 降采样，保证与方块级海陆一致。
+     *
+     * 现在的逻辑：
+     *   - 使用 TalosMacroClimate（内部走 MacroRegionLayer + MacroPackageLayer）：
+     *       * 先得到平滑后的宏群系 ID；
+     *       * 再通过 MacroPackageDefs.pickDeterministicBiome 选具体 Biome；
+     *   - 结果在 biomeCache 中缓存。
+     *
+     * 注意：
+     *   - 坐标 x,z 均为世界方块坐标（与海陆 / 板块系统一致）；
+     *   - 不再有 BIOME_SHIFT 降采样。
      */
     private BiomeGenBase pickBiomeFor(int x, int z) {
         long key = packXZ(x, z);
@@ -41,14 +48,14 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
             return cached;
         }
 
-        WorldgenAPI.SampleResult result =
-            TalosLandMask.sample(x, z, worldSeedInt);
-
         BiomeGenBase biome;
-        if (result == null) {
+        try {
+            biome = TalosMacroClimate.getBiome(x, z, worldSeedInt);
+            if (biome == null) {
+                biome = DEFAULT_BIOME;
+            }
+        } catch (Throwable t) {
             biome = DEFAULT_BIOME;
-        } else {
-            biome = result.isLand ? TalosBiomes.TALOS_PLAINS : TalosBiomes.TALOS_OCEAN;
         }
 
         biomeCache.put(key, biome);
@@ -57,12 +64,13 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     @Override
     public BiomeGenBase getBiomeGenAt(int x, int z) {
-        // 参数本身就是世界坐标
         return pickBiomeFor(x, z);
     }
 
     @Override
-    public BiomeGenBase[] getBiomesForGeneration(BiomeGenBase[] array, int x, int z, int width, int depth) {
+    public BiomeGenBase[] getBiomesForGeneration(BiomeGenBase[] array,
+                                                 int x, int z,
+                                                 int width, int depth) {
         if (array == null || array.length < width * depth) {
             array = new BiomeGenBase[width * depth];
         }
@@ -70,7 +78,6 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         int i = 0;
         for (int dz = 0; dz < depth; dz++) {
             for (int dx = 0; dx < width; dx++) {
-                // Galacticraft 这里传的是 4x 缩放坐标，继续保持：
                 int worldX = (x + dx) << 2;
                 int worldZ = (z + dz) << 2;
                 array[i++] = pickBiomeFor(worldX, worldZ);
@@ -80,7 +87,9 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     }
 
     @Override
-    public BiomeGenBase[] loadBlockGeneratorData(BiomeGenBase[] array, int x, int z, int width, int depth) {
+    public BiomeGenBase[] loadBlockGeneratorData(BiomeGenBase[] array,
+                                                 int x, int z,
+                                                 int width, int depth) {
         if (array == null || array.length < width * depth) {
             array = new BiomeGenBase[width * depth];
         }
@@ -88,7 +97,6 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         int i = 0;
         for (int dz = 0; dz < depth; dz++) {
             for (int dx = 0; dx < width; dx++) {
-                // 这里本身就是逐方块坐标
                 array[i++] = pickBiomeFor(x + dx, z + dz);
             }
         }

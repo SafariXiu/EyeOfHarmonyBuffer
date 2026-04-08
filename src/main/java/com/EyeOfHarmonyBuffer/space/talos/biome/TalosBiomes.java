@@ -4,7 +4,6 @@ import net.minecraftforge.common.BiomeDictionary;
 
 public class TalosBiomes {
 
-    public static BiomeGenTalos2Beach TALOS_BEACH;
     public static BiomeGenTalos2Ocean TALOS_OCEAN;
     public static BiomeGenTalos2Plains TALOS_PLAINS;
     public static BiomeGenTalos2Mountains TALOS_MOUNTAINS;
@@ -28,8 +27,6 @@ public class TalosBiomes {
             .setColor(0x0C285A);
         TALOS_SHELF = (BiomeGenTalos2Shelf) new BiomeGenTalos2Shelf(187)
             .setColor(0x1F6CB3);
-        TALOS_BEACH = (BiomeGenTalos2Beach) new BiomeGenTalos2Beach(181)
-            .setColor(0xE7D38B);
         TALOS_PLAINS = (BiomeGenTalos2Plains) new BiomeGenTalos2Plains(182)
             .setColor(0x55B44D);
         TALOS_TEMPERATE_FOREST = (BiomeGenTalos2TemperateForest) new BiomeGenTalos2TemperateForest(191)
@@ -63,8 +60,6 @@ public class TalosBiomes {
 
         BiomeDictionary.registerBiomeType(TALOS_OCEAN,  BiomeDictionary.Type.OCEAN);
         BiomeDictionary.registerBiomeType(TALOS_SHELF,  BiomeDictionary.Type.OCEAN);
-
-        BiomeDictionary.registerBiomeType(TALOS_BEACH,  BiomeDictionary.Type.BEACH);
 
         BiomeDictionary.registerBiomeType(TALOS_PLAINS, BiomeDictionary.Type.PLAINS);
 
