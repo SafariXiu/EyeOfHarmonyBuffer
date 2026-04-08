@@ -95,32 +95,4 @@ public class TalosBiomes {
         BiomeDictionary.registerBiomeType(TALOS_POLAR_DESERT,
             BiomeDictionary.Type.SNOWY, BiomeDictionary.Type.WASTELAND, BiomeDictionary.Type.COLD, BiomeDictionary.Type.DRY);
     }
-
-    private static void registerMacroBiomes() {
-        MacroBiomeRegistry.register(TALOS_OCEAN, MacroBiome.OCEANIC);
-        MacroBiomeRegistry.register(TALOS_SHELF, MacroBiome.OCEANIC);
-
-        MacroBiomeRegistry.register(TALOS_BEACH, MacroBiome.COASTAL);
-
-        MacroBiomeRegistry.register(TALOS_BASIN, MacroBiome.LOWLAND_WET);
-
-        MacroBiomeRegistry.register(TALOS_PLAINS, MacroBiome.PLAINS_TEMPERATE);
-        MacroBiomeRegistry.register(TALOS_TEMPERATE_STEPPE, MacroBiome.PLAINS_TEMPERATE);
-        MacroBiomeRegistry.register(TALOS_TEMPERATE_FOREST, MacroBiome.PLAINS_TEMPERATE);
-
-        MacroBiomeRegistry.register(TALOS_DESERT, MacroBiome.WARM_DRY);
-        MacroBiomeRegistry.register(TALOS_WARM_STEPPE, MacroBiome.WARM_DRY);
-        MacroBiomeRegistry.register(TALOS_SAVANNA, MacroBiome.WARM_DRY);
-
-        MacroBiomeRegistry.register(TALOS_TROPICAL_RAIN, MacroBiome.TROPICAL_HUMID);
-
-        MacroBiomeRegistry.register(TALOS_COOL_FOREST, MacroBiome.COOL_FORESTED);
-
-        MacroBiomeRegistry.register(TALOS_SUBPOLAR_TUNDRA, MacroBiome.SUBPOLAR);
-        MacroBiomeRegistry.register(TALOS_POLAR_DESERT, MacroBiome.SUBPOLAR);
-
-        MacroBiomeRegistry.register(TALOS_MOUNTAINS, MacroBiome.MOUNTAINOUS);
-        MacroBiomeRegistry.register(TALOS_PLATEAU, MacroBiome.MOUNTAINOUS);
-        MacroBiomeRegistry.register(TALOS_ALPINE, MacroBiome.MOUNTAINOUS);
-    }
 }

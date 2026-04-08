@@ -5,7 +5,7 @@ import micdoodle8.mods.galacticraft.api.galaxies.*;
 import micdoodle8.mods.galacticraft.api.vector.Vector3;
 import com.EyeOfHarmonyBuffer.space.talos.WorldProviderTalos2;
 
-import static com.EyeOfHarmonyBuffer.space.talos.ResourcesDimensions.*;
+import static com.EyeOfHarmonyBuffer.space.talos.client.resources.ResourcesDimensions.*;
 
 public class RegisterDimensions {
 

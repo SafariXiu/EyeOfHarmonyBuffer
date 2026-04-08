@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
-import com.EyeOfHarmonyBuffer.Events.Talos2WorldEvents;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
@@ -100,8 +99,6 @@ public class EyeOfHarmonyBuffer {
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
 
         RegisterDimensions.init();
-
-        Talos2WorldEvents.register();
     }
 
     @Mod.EventHandler
@@ -138,8 +135,6 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandReloadConfig());
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
-        event.registerServerCommand(new CommandTalosClimateHeight());
-        //event.registerServerCommand(new CommandTalosClimate());
     }
 
     @Mod.EventHandler
