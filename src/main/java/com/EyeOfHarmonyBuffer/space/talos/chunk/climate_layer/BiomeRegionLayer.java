@@ -1,66 +1,56 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
 
-
 /**
- * 第二阶段：宏群系平滑 / 小块吞并层（标准版）。
+ * 真实群系（Biome）级别的小块吞并 / 平滑层（标准版）。
  *
- * 链路统一：
- *   - 宏群系原始结果统一来自 MacroPackageLayer（内部是“陆/海两套 Worley 场叠加 + TalosLandMask 精确裁剪”）；
+ * 链条统一：
+ *   - 原始 Biome 必须统一来自 TalosMacroClimate.getRawBiome(...)：
+ *       * 内部：MacroPackageLayer（陆/海两套 Worley 场叠加 + TalosLandMask 精确裁剪）
+ *       * 再用 MacroSitesSeparated.SubPatch 决定站点内部微结构。
  *   - 海陆标记统一来自 TalosLandMask.isLand(worldX, worldZ, worldSeedInt)；
- *   - 在 tile 的 16x16 低分辨率网格上做连通分量、小块吞并；
- *   - 最终对单个 block 查询时，再用同一个 TalosLandMask 做 block 级精确校验：
- *       * 若当前 block 的 isLand 与该格子缓存的 isLand 不一致，则回退到底层 MacroPackageLayer 逐方块结果；
- *       * 否则使用平滑后的 smoothedPkg。
+ *   - 在 tile 的 16x16 网格上按 (Biome, isLand) 做连通分量、小块吞并：
+ *       * 同 isLand 的 component 之间可以互相吞并；
+ *       * 对“靠岸的海洋 component”使用更严格的吞并阈值；
+ *   - 最终对 block 查询时，再用 block 级 isLand 校验：
+ *       * 若当前 block 的 isLand 与该格子的 isLand[index] 不一致，则回退到原始 Biome。
  */
 
-public final class MacroRegionLayer {
+public final class BiomeRegionLayer {
 
-    /** 每个 tile 覆盖的世界空间大小（以 block 为单位）。*/
+    /** 每个 tile 覆盖的世界空间大小（以 block 为单位）。 */
     public static final int TILE_SIZE = 1024;
 
-    /** 低分辨率采样步长（以 block 为单位）。*/
+    /** 低分辨率采样步长（以 block 为单位）。 */
     public static final int SAMPLE_STEP = 64;
 
     /** 网格尺寸 = TILE_SIZE / SAMPLE_STEP。*/
     public static final int GRID_SIZE = TILE_SIZE / SAMPLE_STEP; // 1024/64 = 16
 
-    /** 连通分量里“最小保留格子数”基础值。*/
-    public static final int MIN_LAND_COMPONENT_SIZE  = 8; // 陆地：允许略微细碎
-    public static final int MIN_OCEAN_COMPONENT_SIZE = 16; // 海洋：更激进地吃小块
+    /** 连通分量里“最小保留格子数”的基础阈值。*/
+    public static final int MIN_LAND_COMPONENT_SIZE = 4; // 陆地
+    public static final int MIN_OCEAN_COMPONENT_SIZE = 4; // 远离海岸的海洋
+    public static final int MIN_COAST_OCEAN_COMPONENT_SIZE = 8; // 靠岸海洋分量更易被吞
 
     /** 是否使用 8 邻域（true）或 4 邻域（false）。一般 4 邻更规整。*/
     public static final boolean USE_8_NEIGHBOR = false;
 
     private final int worldSeedInt;
-    /** 宏群系原始层：陆/海两套 Worley 场叠加 + TalosLandMask 精确裁剪。 */
-    private final MacroPackageLayer baseLayer;
 
-    private final Long2ObjectOpenHashMap<MacroTile> tileCache = new Long2ObjectOpenHashMap<>();
+    private final Long2ObjectOpenHashMap<BiomeTile> tileCache = new Long2ObjectOpenHashMap<>();
 
-    public MacroRegionLayer(int worldSeedInt) {
+    public BiomeRegionLayer(int worldSeedInt) {
         this.worldSeedInt = worldSeedInt;
-        this.baseLayer = new MacroPackageLayer(worldSeedInt);
     }
 
-    /** 对外暴露：获取“原始”宏群系 ID（不做平滑），方便 debug 对比。*/
-    public MacroPackageId getRawMacroPackageIdAt(int x, int z) {
-        return baseLayer.getMacroPackageIdAt(x, z);
-    }
-
-    /** 对外主接口：获取“平滑后的”宏群系 ID。*/
-    public MacroPackageId getSmoothedMacroPackageIdAt(int x, int z) {
-        MacroTile tile = getOrCreateTileFor(x, z);
-        return tile.getSmoothedPkgAt(x, z);
-    }
-
-    /** 对外主接口：获取“平滑后的”群系 ID（基于宏宏系 + 确定性子 Biome 选择）。*/
-    public BiomeGenBase getBiomeAt(int x, int z) {
-        MacroPackageId id = getSmoothedMacroPackageIdAt(x, z);
-        return MacroPackageDefs.pickDeterministicBiome(id, x, z, worldSeedInt);
+    /** 对外主接口：获取“平滑后的” Biome。*/
+    public BiomeGenBase getSmoothedBiomeAt(int x, int z) {
+        BiomeTile tile = getOrCreateTileFor(x, z);
+        return tile.getSmoothedBiomeAt(x, z);
     }
 
     private static long packTile(int tx, int tz) {
@@ -68,13 +58,13 @@ public final class MacroRegionLayer {
             | (((long) tz) & 0xffffffffL);
     }
 
-    private MacroTile getOrCreateTileFor(int x, int z) {
+    private BiomeTile getOrCreateTileFor(int x, int z) {
         int tx = worldToTileCoord(x);
         int tz = worldToTileCoord(z);
         long key = packTile(tx, tz);
-        MacroTile tile = tileCache.get(key);
+        BiomeTile tile = tileCache.get(key);
         if (tile == null) {
-            tile = new MacroTile(tx, tz);
+            tile = new BiomeTile(tx, tz);
             tileCache.put(key, tile);
         }
         return tile;
@@ -95,25 +85,24 @@ public final class MacroRegionLayer {
         return local;
     }
 
-    private final class MacroTile {
+    private final class BiomeTile {
 
-        /** 该 tile 在 tile 坐标系中的位置。*/
         final int tileX;
         final int tileZ;
 
-        final MacroPackageId[] rawPkg; // 原始 pkgId
-        final MacroPackageId[] smoothedPkg; // 平滑后的 pkgId
+        final BiomeGenBase[] rawBiome; // 原始 Biome（TalosMacroClimate.getRawBiome）
+        final BiomeGenBase[] smoothedBiome; // 平滑后的 Biome
         final boolean[] isLand; // TalosLandMask 的海陆标记
         final int[] compId; // 连通分量 ID
 
         int compCount;
         Component[] components;
 
-        MacroTile(int tileX, int tileZ) {
+        BiomeTile(int tileX, int tileZ) {
             this.tileX = tileX;
             this.tileZ = tileZ;
-            this.rawPkg = new MacroPackageId[GRID_SIZE * GRID_SIZE];
-            this.smoothedPkg = new MacroPackageId[GRID_SIZE * GRID_SIZE];
+            this.rawBiome = new BiomeGenBase[GRID_SIZE * GRID_SIZE];
+            this.smoothedBiome = new BiomeGenBase[GRID_SIZE * GRID_SIZE];
             this.isLand = new boolean[GRID_SIZE * GRID_SIZE];
             this.compId = new int[GRID_SIZE * GRID_SIZE];
 
@@ -127,12 +116,11 @@ public final class MacroRegionLayer {
             mergeSmallComponents();
         }
 
-        /** 将 (gx, gz) 映射到一维索引。*/
         private int idx(int gx, int gz) {
             return gz * GRID_SIZE + gx;
         }
 
-        /** 采样阶段：填充 rawPkg / isLand。*/
+        /** 采样阶段：填充 rawBiome / isLand。*/
         private void sampleRawGrid() {
             int baseWorldX = tileX * TILE_SIZE;
             int baseWorldZ = tileZ * TILE_SIZE;
@@ -144,11 +132,11 @@ public final class MacroRegionLayer {
                     int worldX = baseWorldX + gx * SAMPLE_STEP + SAMPLE_STEP / 2;
                     int worldZ = baseWorldZ + gz * SAMPLE_STEP + SAMPLE_STEP / 2;
 
-                    MacroPackageId id = baseLayer.getMacroPackageIdAt(worldX, worldZ);
+                    BiomeGenBase biome = TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
                     boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
 
-                    rawPkg[index] = id;
-                    smoothedPkg[index] = id;
+                    rawBiome[index] = biome;
+                    smoothedBiome[index] = biome;
                     isLand[index] = land;
                     compId[index] = -1;
                 }
@@ -157,12 +145,13 @@ public final class MacroRegionLayer {
 
         /** 连通分量数据结构。*/
         private final class Component {
-            MacroPackageId pkgId;
+            BiomeGenBase biome;
             boolean isLand;
             int size;
+            boolean touchesCoast;
         }
 
-        /** 在 rawPkg 上按 (pkgId, isLand) 做连通分量分析。*/
+        /** 在 rawBiome 上按 (biome, isLand) 做连通分量分析。*/
         private void buildComponents() {
             components = new Component[GRID_SIZE * GRID_SIZE];
             compCount = 0;
@@ -183,19 +172,20 @@ public final class MacroRegionLayer {
                         continue;
                     }
 
-                    MacroPackageId id = rawPkg[startIndex];
+                    BiomeGenBase biome = rawBiome[startIndex];
                     boolean land = isLand[startIndex];
 
-                    if (id == null) {
+                    if (biome == null) {
                         compId[startIndex] = -2;
                         continue;
                     }
 
                     int thisComp = compCount;
                     Component comp = new Component();
-                    comp.pkgId = id;
+                    comp.biome = biome;
                     comp.isLand = land;
                     comp.size = 0;
+                    comp.touchesCoast = false;
                     components[thisComp] = comp;
                     compCount++;
 
@@ -210,13 +200,26 @@ public final class MacroRegionLayer {
                         int cx = cur % GRID_SIZE;
                         int cz = cur / GRID_SIZE;
 
+                        if (!isLand[cur]) {
+                            for (int[] d4 : OFFS_4) {
+                                int nx4 = cx + d4[0];
+                                int nz4 = cz + d4[1];
+                                if (nx4 < 0 || nx4 >= GRID_SIZE || nz4 < 0 || nz4 >= GRID_SIZE) continue;
+                                int ni4 = idx(nx4, nz4);
+                                if (isLand[ni4]) {
+                                    comp.touchesCoast = true;
+                                    break;
+                                }
+                            }
+                        }
+
                         for (int[] d : OFFS) {
                             int nx = cx + d[0];
                             int nz = cz + d[1];
                             if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) continue;
                             int ni = idx(nx, nz);
                             if (compId[ni] != -1) continue;
-                            if (rawPkg[ni] != id) continue;
+                            if (rawBiome[ni] != biome) continue;
                             if (isLand[ni] != land) continue;
                             compId[ni] = thisComp;
                             queue[qTail++] = ni;
@@ -230,7 +233,12 @@ public final class MacroRegionLayer {
          * 小分量合并：
          *   - 对 size < 阈值 的分量；
          *   - 找它们的邻居分量（同 isLand）；
-         *   - 并入“size 最大的邻居分量”的 pkgId。
+         *   - 并入“size 最大的邻居分量”的 biome。
+         *
+         * 阈值策略：
+         *   - 陆地分量：MIN_LAND_COMPONENT_SIZE；
+         *   - 远海分量：MIN_OCEAN_COMPONENT_SIZE；
+         *   - 靠岸海洋分量：MIN_COAST_OCEAN_COMPONENT_SIZE（更容易被吞掉）。
          */
         private void mergeSmallComponents() {
             if (compCount <= 0) return;
@@ -248,7 +256,15 @@ public final class MacroRegionLayer {
                 Component c = components[compIndex];
                 if (c == null) continue;
 
-                int threshold = c.isLand ? MIN_LAND_COMPONENT_SIZE : MIN_OCEAN_COMPONENT_SIZE;
+                int threshold;
+                if (c.isLand) {
+                    threshold = MIN_LAND_COMPONENT_SIZE;
+                } else if (c.touchesCoast) {
+                    threshold = MIN_COAST_OCEAN_COMPONENT_SIZE;
+                } else {
+                    threshold = MIN_OCEAN_COMPONENT_SIZE;
+                }
+
                 if (c.size >= threshold) {
                     continue;
                 }
@@ -296,18 +312,18 @@ public final class MacroRegionLayer {
                 }
 
                 Component target = components[bestNeighbor];
-                MacroPackageId targetId = target.pkgId;
+                BiomeGenBase targetBiome = target.biome;
 
-                for (int i = 0; i < smoothedPkg.length; i++) {
+                for (int i = 0; i < smoothedBiome.length; i++) {
                     if (compId[i] == compIndex) {
-                        smoothedPkg[i] = targetId;
+                        smoothedBiome[i] = targetBiome;
                     }
                 }
             }
         }
 
-        /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 pkgId（带 block 级海陆校验）。*/
-        MacroPackageId getSmoothedPkgAt(int worldX, int worldZ) {
+        /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验）。*/
+        BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ) {
             int localX = worldToLocalInTile(worldX);
             int localZ = worldToLocalInTile(worldZ);
 
@@ -324,17 +340,14 @@ public final class MacroRegionLayer {
             boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
 
             if (isLandHere != isLand[index]) {
-                return baseLayer.getMacroPackageIdAt(worldX, worldZ);
+                return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
             }
 
-            MacroPackageId id = smoothedPkg[index];
-            if (id == null) {
-                id = rawPkg[index];
-                if (id == null) {
-                    return MacroPackageId.TEMPERATE_LOWLAND;
-                }
+            BiomeGenBase biome = smoothedBiome[index];
+            if (biome == null) {
+                biome = rawBiome[index];
             }
-            return id;
+            return biome;
         }
     }
 }

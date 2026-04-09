@@ -1,8 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroRegionLayer;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -11,15 +9,16 @@ import net.minecraft.world.biome.BiomeGenBase;
  * Talos 宏气候 / 宏群系 统一入口。
  *
  * 所有 Minecraft 侧代码（chunk 生成、群系、结构、装饰等）应只通过这里访问宏气候相关信息，
- * 以保证和 MacroRegionLayer / MacroPackageLayer 完全一致。
+ * 以保证和 MacroRegionLayer / MacroPackageLayer / BiomeRegionLayer 完全一致。
  *
  * 功能：
  *   - worldSeedInt 统一计算；
- *   - 按 worldSeedInt 缓存 MacroRegionLayer 实例；
+ *   - 按 worldSeedInt 缓存 MacroRegionLayer / MacroPackageLayer / BiimeRegionLayer 实例；
  *   - 提供：
- *       * 原始宏群系 ID（未平滑，纯 Worley 结果）；
- *       * 平滑后的宏群系 ID（小块吞并后）；
- *       * 根据平滑宏群系 ID 选出的 BiomeGenBase；
+ *       * 原始宏群系 ID（未平滑，纯 MacroPackageLayer 结果）；
+ *       * 平滑后的宏群系 ID（小块吞并后，来自 MacroRegionLayer）；
+ *       * 原始 Biome（MacroPackageLayer + SubPatch 直接输出）；
+ *       * 平滑后的 Biome（在上述基础上再做一次小块吞并，来自 BiomeRegionLayer）；
  *       * 当前纬度带 Belt 以及带内插值 t。
  */
 
@@ -35,7 +34,16 @@ public final class TalosMacroClimate {
         return (int) (world.getSeed() & 0x7FFFFFFFL);
     }
 
+    /** 按 worldSeedInt 缓存宏群系平滑层。 */
     private static final Int2ObjectOpenHashMap<MacroRegionLayer> LAYERS =
+        new Int2ObjectOpenHashMap<>();
+
+    /** 按 worldSeedInt 缓存原始 MacroPackageLayer（用于 SubPatch 选 biome / raw pkg）。 */
+    private static final Int2ObjectOpenHashMap<MacroPackageLayer> BASE_LAYERS =
+        new Int2ObjectOpenHashMap<>();
+
+    /** 按 worldSeedInt 缓存真实群系平滑层。 */
+    private static final Int2ObjectOpenHashMap<BiomeRegionLayer> BIOME_LAYERS =
         new Int2ObjectOpenHashMap<>();
 
     private static MacroRegionLayer getLayer(int worldSeedInt) {
@@ -43,6 +51,24 @@ public final class TalosMacroClimate {
         if (layer == null) {
             layer = new MacroRegionLayer(worldSeedInt);
             LAYERS.put(worldSeedInt, layer);
+        }
+        return layer;
+    }
+
+    private static MacroPackageLayer getBaseLayer(int worldSeedInt) {
+        MacroPackageLayer layer = BASE_LAYERS.get(worldSeedInt);
+        if (layer == null) {
+            layer = new MacroPackageLayer(worldSeedInt);
+            BASE_LAYERS.put(worldSeedInt, layer);
+        }
+        return layer;
+    }
+
+    private static BiomeRegionLayer getBiomeLayer(int worldSeedInt) {
+        BiomeRegionLayer layer = BIOME_LAYERS.get(worldSeedInt);
+        if (layer == null) {
+            layer = new BiomeRegionLayer(worldSeedInt);
+            BIOME_LAYERS.put(worldSeedInt, layer);
         }
         return layer;
     }
@@ -66,13 +92,32 @@ public final class TalosMacroClimate {
     }
 
     /**
-     * 方便直接拿到一个具体 Biome：
-     *   - 内部使用的是 MacroRegionLayer.getBiomeAt：
-     *       * 当前版本：先取平滑后的宏群系 ID，再通过 MacroPackageDefs.pickDeterministicBiome 选群系。
+     * 返回“原始 Biome”：
+     *   - 直接走 MacroPackageLayer.getBiomeAt；
+     *   - 只做 Worley 站点 + SubPatch 的划分，不做任何二次平滑。
+     *
+     * 主要用于：BiomeRegionLayer 采样原始数据，避免递归。
+     */
+    public static BiomeGenBase getRawBiome(int worldX, int worldZ, int worldSeedInt) {
+        MacroPackageLayer baseLayer = getBaseLayer(worldSeedInt);
+        return baseLayer.getBiomeAt(worldX, worldZ);
+    }
+
+    /**
+     * 返回“平滑后的 Biome”：
+     *
+     * 逻辑：
+     *   1. 基于 MacroPackageLayer + SubPatch 得到原始 Biome（通过 getRawBiome）；
+     *   2. 在 tile 级别做一次连通分量分析 + 小块吞并（BiomeRegionLayer）；
+     *
+     * 效果：
+     *   - 站点内部仍然是较大块的 SubPatch；
+     *   - 不同站点 / 海岸线附近的小块真实群系会被合并到附近更大的 Biome 块中；
+     *   - 严格遵守海陆，不会跨海陆吞并。
      */
     public static BiomeGenBase getBiome(int worldX, int worldZ, int worldSeedInt) {
-        MacroRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getBiomeAt(worldX, worldZ);
+        BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
+        return layer.getSmoothedBiomeAt(worldX, worldZ);
     }
 
     /**

@@ -7,6 +7,14 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
+/**
+ * Talos 2 代世界群系管理：
+ *   - 所有群系查询统一走 TalosMacroClimate.getBiome(...)：
+ *       * 内部先用 MacroPackageLayer + SubPatch 划分宏观块状 Biome；
+ *       * 再用 BiomeRegionLayer 做一次 tile 级平滑 / 小块吞并；
+ *   - 这样可以同时避免 per-block hash 马赛克 & 海岸线小碎块。
+ */
+
 public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
 
     private static final BiomeGenBase DEFAULT_BIOME = TalosBiomes.TALOS_PLAINS;
@@ -31,9 +39,9 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
      * 为某个世界坐标 (x,z) 选择群系。
      *
      * 现在的逻辑：
-     *   - 使用 TalosMacroClimate（内部走 MacroRegionLayer + MacroPackageLayer）：
-     *       * 先得到平滑后的宏群系 ID；
-     *       * 再通过 MacroPackageDefs.pickDeterministicBiome 选具体 Biome；
+     *   - 使用 TalosMacroClimate：
+     *       * 原始层：MacroPackageLayer + MacroSites.SubPatch 决定大块 Biome；
+     *       * 平滑层：BiomeRegionLayer 在 tile 上对 Biome 做小块吞并；
      *   - 结果在 biomeCache 中缓存。
      *
      * 注意：
