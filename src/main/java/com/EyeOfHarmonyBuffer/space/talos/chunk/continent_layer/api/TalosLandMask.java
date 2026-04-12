@@ -55,6 +55,22 @@ public final class TalosLandMask {
     }
 
     /**
+     * 连续陆地权重 [0,1]
+     */
+    public static double getLandWeight(int worldX, int worldZ, int worldSeedInt) {
+        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
+        return r != null ? r.landWeight : 0.0;
+    }
+
+    /**
+     * 海岸带权重 [0,1]
+     */
+    public static double getCoastWeight(int worldX, int worldZ, int worldSeedInt) {
+        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
+        return r != null ? r.coastWeight : 0.0;
+    }
+
+    /**
      * 如果你在 chunk 内需要频繁访问，可以先拿到 tile 再做本地遍历。
      * 注意：LandTile 内部数组顺序为 [z][x]。
      */

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import java.util.*;
 
+
 /**
  * =====================================================
  * 类名：WorldgenCore
@@ -32,10 +33,13 @@ public class WorldgenCore {
         public final int bestContinentId;
         public final int bestSuperId;
 
-        public LandEval(boolean isLand, int bestContinentId, int bestSuperId) {
+        public final double landMask;
+
+        public LandEval(boolean isLand, int bestContinentId, int bestSuperId, double landMask) {
             this.isLand = isLand;
             this.bestContinentId = bestContinentId;
             this.bestSuperId = bestSuperId;
+            this.landMask = landMask;
         }
     }
 
@@ -471,6 +475,7 @@ public class WorldgenCore {
         double bestScore = -1e9;
         int bestCont = 0;
         int bestSuper = 0;
+        double bestLandMask = 0.0;
 
         for (SuperContinentCenter c : centers) {
             double dx0 = x - c.worldX;
@@ -591,11 +596,14 @@ public class WorldgenCore {
                 bestScore = v;
                 bestCont = minCont;
                 bestSuper = superId;
+                bestLandMask = Math.min(v, 1.0);
             }
+
         }
 
         boolean isLand = bestCont != 0;
-        return new LandEval(isLand, bestCont, bestSuper);
+        double finalMask = isLand ? bestLandMask : 0.0;
+        return new LandEval(isLand, bestCont, bestSuper, finalMask);
     }
 
     public static LandContext prepareLandContextForRect(
@@ -610,15 +618,33 @@ public class WorldgenCore {
         return new LandContext(centers, LAND_NOISE);
     }
 
+    private static double computeCoastWeightFromLandWeight(double lw) {
+        // lw in [0,1]
+        double d = Math.abs(lw - 0.5);
+        double B = 0.25;
+
+        double t = d / B;
+        if (t > 1.0) t = 1.0;
+        if (t < 0.0) t = 0.0;
+
+        double s = t * t * (3.0 - 2.0 * t);
+
+        return 1.0 - s;
+    }
+
     public static LandResult isLandWithContext(int x, int z, LandContext ctx) {
         if (ctx.centers.isEmpty()) {
-            return new LandResult(false, 0, 0);
+            return new LandResult(false, 0, 0, 0.0, 0.0);
         }
         LandEval eval = isSuperLandAt(x, z, ctx.centers, ctx.noise);
         if (!eval.isLand) {
-            return new LandResult(false, 0, 0);
+            return new LandResult(false, 0, 0, 0.0, 0.0);
         }
-        return new LandResult(true, eval.bestContinentId, eval.bestSuperId);
+
+        double lw = eval.landMask;
+        double cw = computeCoastWeightFromLandWeight(lw);
+
+        return new LandResult(true, eval.bestContinentId, eval.bestSuperId, lw, cw);
     }
 
     public static LandResult isLandRaw(int x, int z, int worldSeed) {
@@ -631,10 +657,24 @@ public class WorldgenCore {
         public int plateId;
         public int superId;
 
-        public LandResult(boolean land, int plate, int sup) {
+        /** 连续陆地权重 [0,1] */
+        public double landWeight;
+
+        /** 海岸带权重 [0,1] */
+        public double coastWeight;
+
+        public LandResult(boolean land, int plate, int sup,
+                          double landWeight, double coastWeight) {
             this.isLand = land;
             this.plateId = plate;
             this.superId = sup;
+            this.landWeight = landWeight;
+            this.coastWeight = coastWeight;
+        }
+
+        /** 旧签名的兼容构造器，默认陆地点权重=1，海洋=0，无海岸权重 */
+        public LandResult(boolean land, int plate, int sup) {
+            this(land, plate, sup, land ? 1.0 : 0.0, 0.0);
         }
     }
 }

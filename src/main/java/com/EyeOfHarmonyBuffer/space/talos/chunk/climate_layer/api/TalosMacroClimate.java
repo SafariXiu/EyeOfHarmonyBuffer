@@ -75,15 +75,6 @@ public final class TalosMacroClimate {
     }
 
     /**
-     * 原始宏群系 ID（不做平滑，只是 MacroPackageLayer 的直接输出）。
-     * 主要用于 debug 对比 “raw vs smoothed”。
-     */
-    public static MacroPackageId getRawMacroPackageId(int worldX, int worldZ, int worldSeedInt) {
-        MacroRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getRawMacroPackageIdAt(worldX, worldZ);
-    }
-
-    /**
      * 平滑后的宏群系 ID（做了 tile 级别的小块吞并 / 尖刺清理）。
      * 推荐所有实际玩法逻辑都用这个。
      */
@@ -162,5 +153,50 @@ public final class TalosMacroClimate {
         }
 
         return MacroPackageRegistry.get(pkgId).riverStyle();
+    }
+
+    /**
+     * 一个位置附近的“宏群系混合条目”：id + 权重。
+     * weight ∈ (0,1]，整组 entries 的 weight 之和约为 1。
+     */
+    public static final class MacroBlendEntry {
+        public final MacroPackageId id;
+        public final double weight;
+
+        public MacroBlendEntry(MacroPackageId id, double weight) {
+            this.id = id;
+            this.weight = weight;
+        }
+    }
+
+    /**
+     * 某点的宏群系混合结果。
+     * entries 按 weight 从大到小排序。
+     */
+    public static final class MacroBlendSample {
+        public final MacroBlendEntry[] entries;
+
+        public MacroBlendSample(MacroBlendEntry[] entries) {
+            this.entries = entries;
+        }
+    }
+
+    /**
+     * 对外统一入口：在宏群系平滑层上，对 (worldX,worldZ) 做一个
+     * 小邻域空间加权统计，返回最多 maxEntries 个宏群系及其权重。
+     *
+     * 典型用法：
+     *   - maxEntries = 1：只要主宏群系（等价于 getMacroPackageId）；
+     *   - maxEntries = 2：主 + 次，用于地形 preset 混合；
+     *   - maxEntries ≥3：后续更复杂玩法可用。
+     */
+    public static MacroBlendSample sampleMacroBlend(int worldX, int worldZ,
+                                                    int worldSeedInt,
+                                                    int maxEntries) {
+        if (maxEntries <= 0) {
+            return new MacroBlendSample(new MacroBlendEntry[0]);
+        }
+        MacroRegionLayer layer = getLayer(worldSeedInt);
+        return layer.sampleBlendAt(worldX, worldZ, maxEntries);
     }
 }

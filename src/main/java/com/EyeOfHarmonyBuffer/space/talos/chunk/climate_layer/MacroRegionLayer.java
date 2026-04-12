@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -29,8 +30,8 @@ public final class MacroRegionLayer {
     public static final int GRID_SIZE = TILE_SIZE / SAMPLE_STEP; // 1024/64 = 16
 
     /** 连通分量里“最小保留格子数”基础值。*/
-    public static final int MIN_LAND_COMPONENT_SIZE  = 8; // 陆地：允许略微细碎
-    public static final int MIN_OCEAN_COMPONENT_SIZE = 16; // 海洋：更激进地吃小块
+    public static final int MIN_LAND_COMPONENT_SIZE  = 8;
+    public static final int MIN_OCEAN_COMPONENT_SIZE = 16;
 
     /** 是否使用 8 邻域（true）或 4 邻域（false）。一般 4 邻更规整。*/
     public static final boolean USE_8_NEIGHBOR = false;
@@ -39,16 +40,14 @@ public final class MacroRegionLayer {
     /** 宏群系原始层：陆/海两套 Worley 场叠加 + TalosLandMask 精确裁剪。 */
     private final MacroPackageLayer baseLayer;
 
+    /** 宏群系种类总数，用于内部权重数组。 */
+    private static final int MACRO_COUNT = MacroPackageId.values().length;
+
     private final Long2ObjectOpenHashMap<MacroTile> tileCache = new Long2ObjectOpenHashMap<>();
 
     public MacroRegionLayer(int worldSeedInt) {
         this.worldSeedInt = worldSeedInt;
         this.baseLayer = new MacroPackageLayer(worldSeedInt);
-    }
-
-    /** 对外暴露：获取“原始”宏群系 ID（不做平滑），方便 debug 对比。*/
-    public MacroPackageId getRawMacroPackageIdAt(int x, int z) {
-        return baseLayer.getMacroPackageIdAt(x, z);
     }
 
     /** 对外主接口：获取“平滑后的”宏群系 ID。*/
@@ -57,10 +56,107 @@ public final class MacroRegionLayer {
         return tile.getSmoothedPkgAt(x, z);
     }
 
-    /** 对外主接口：获取“平滑后的”群系 ID（基于宏宏系 + 确定性子 Biome 选择）。*/
+    /** 对外主接口：获取“平滑后的”群系 ID（基于宏群系 + 确定性子 Biome 选择）。*/
     public BiomeGenBase getBiomeAt(int x, int z) {
         MacroPackageId id = getSmoothedMacroPackageIdAt(x, z);
         return MacroPackageDefs.pickDeterministicBiome(id, x, z, worldSeedInt);
+    }
+
+    /**
+     * 在宏群系平滑网格上，对 (worldX,worldZ) 附近做一个小邻域空间加权统计，
+     * 返回最多 maxEntries 个宏群系及其权重。
+     *
+     * 新实现：
+     *   - 不再限制在“当前 tile 内”的 3x3；改为在世界坐标上采样；
+     *   - 每个采样点通过 getSmoothedMacroPackageIdAt(...) 获取 pkgId，可自然跨 tile；
+     *   - 权重仍然使用 1 / (dist^2 + 1) 的反平方衰减；
+     *   - 按 pkg 聚合、归一化，再取权重最大的前 maxEntries 个。
+     */
+    public TalosMacroClimate.MacroBlendSample sampleBlendAt(int worldX, int worldZ,
+                                                            int maxEntries) {
+        if (maxEntries <= 0) {
+            return new TalosMacroClimate.MacroBlendSample(
+                new TalosMacroClimate.MacroBlendEntry[0]
+            );
+        }
+
+        final int radius = 1;
+
+        MacroTile centerTile = getOrCreateTileFor(worldX, worldZ);
+
+        int localX = worldToLocalInTile(worldX);
+        int localZ = worldToLocalInTile(worldZ);
+
+        int gxCenter = localX / SAMPLE_STEP;
+        int gzCenter = localZ / SAMPLE_STEP;
+
+        int baseWorldX = centerTile.tileX * TILE_SIZE;
+        int baseWorldZ = centerTile.tileZ * TILE_SIZE;
+        int centerCellWorldX = baseWorldX + gxCenter * SAMPLE_STEP + SAMPLE_STEP / 2;
+        int centerCellWorldZ = baseWorldZ + gzCenter * SAMPLE_STEP + SAMPLE_STEP / 2;
+
+        double[] accum = new double[MACRO_COUNT];
+
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+
+                int sampleWorldX = centerCellWorldX + dx * SAMPLE_STEP;
+                int sampleWorldZ = centerCellWorldZ + dz * SAMPLE_STEP;
+
+                MacroPackageId id = getSmoothedMacroPackageIdAt(sampleWorldX, sampleWorldZ);
+                if (id == null) continue;
+
+                double ddx = worldX - sampleWorldX;
+                double ddz = worldZ - sampleWorldZ;
+                double dist2 = ddx * ddx + ddz * ddz;
+
+                double w = 1.0 / (dist2 + 1.0);
+
+                accum[id.ordinal()] += w;
+            }
+        }
+
+        double sum = 0.0;
+        for (double v : accum) {
+            sum += v;
+        }
+
+        if (sum <= 0.0) {
+            MacroPackageId id = getSmoothedMacroPackageIdAt(worldX, worldZ);
+            TalosMacroClimate.MacroBlendEntry[] entries =
+                new TalosMacroClimate.MacroBlendEntry[] {
+                    new TalosMacroClimate.MacroBlendEntry(id, 1.0)
+                };
+            return new TalosMacroClimate.MacroBlendSample(entries);
+        }
+
+        MacroPackageId[] allIds = MacroPackageId.values();
+        int countNonZero = 0;
+        for (int i = 0; i < MACRO_COUNT; i++) {
+            if (accum[i] > 1e-9) countNonZero++;
+        }
+
+        TalosMacroClimate.MacroBlendEntry[] allEntries =
+            new TalosMacroClimate.MacroBlendEntry[countNonZero];
+
+        int idxEntry = 0;
+        for (int i = 0; i < MACRO_COUNT; i++) {
+            double v = accum[i];
+            if (v <= 1e-9) continue;
+            double weight = v / sum;
+            allEntries[idxEntry++] =
+                new TalosMacroClimate.MacroBlendEntry(allIds[i], weight);
+        }
+
+        java.util.Arrays.sort(allEntries,
+            (a, b) -> Double.compare(b.weight, a.weight));
+
+        int outCount = Math.min(maxEntries, allEntries.length);
+        TalosMacroClimate.MacroBlendEntry[] result =
+            new TalosMacroClimate.MacroBlendEntry[outCount];
+        System.arraycopy(allEntries, 0, result, 0, outCount);
+
+        return new TalosMacroClimate.MacroBlendSample(result);
     }
 
     private static long packTile(int tx, int tz) {
@@ -101,10 +197,10 @@ public final class MacroRegionLayer {
         final int tileX;
         final int tileZ;
 
-        final MacroPackageId[] rawPkg; // 原始 pkgId
-        final MacroPackageId[] smoothedPkg; // 平滑后的 pkgId
-        final boolean[] isLand; // TalosLandMask 的海陆标记
-        final int[] compId; // 连通分量 ID
+        final MacroPackageId[] rawPkg;
+        final MacroPackageId[] smoothedPkg;
+        final boolean[]        isLand;
+        final int[]            compId;
 
         int compCount;
         Component[] components;
@@ -128,7 +224,7 @@ public final class MacroRegionLayer {
         }
 
         /** 将 (gx, gz) 映射到一维索引。*/
-        private int idx(int gx, int gz) {
+        int idx(int gx, int gz) {
             return gz * GRID_SIZE + gx;
         }
 
@@ -306,35 +402,90 @@ public final class MacroRegionLayer {
             }
         }
 
-        /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 pkgId（带 block 级海陆校验）。*/
+        /** 优先使用平滑后的 pkgId，若为 null 则退回 rawPkg。*/
+        private MacroPackageId getCellPkgSafe(int index) {
+            MacroPackageId id = smoothedPkg[index];
+            if (id == null) {
+                id = rawPkg[index];
+            }
+            return id;
+        }
+
+        /**
+         * 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 pkgId：
+         *   - 先用 TalosLandMask 做 block 级海陆校验；
+         *   - 然后在当前 tile 内的 3x3 采样格上做空间加权投票；
+         *   - 投票只考虑与当前 block 海陆一致的格子；
+         *   - 选权重最大的宏群系作为结果；
+         *   - 若极端情况下没有任何格子参与投票，则退回到底层 baseLayer。
+         */
         MacroPackageId getSmoothedPkgAt(int worldX, int worldZ) {
             int localX = worldToLocalInTile(worldX);
             int localZ = worldToLocalInTile(worldZ);
 
-            int gx = localX / SAMPLE_STEP;
-            int gz = localZ / SAMPLE_STEP;
+            double gx = (double) localX / SAMPLE_STEP;
+            double gz = (double) localZ / SAMPLE_STEP;
 
-            if (gx < 0) gx = 0;
-            if (gz < 0) gz = 0;
-            if (gx >= GRID_SIZE) gx = GRID_SIZE - 1;
-            if (gz >= GRID_SIZE) gz = GRID_SIZE - 1;
+            int gxCenter = (int) Math.floor(gx);
+            int gzCenter = (int) Math.floor(gz);
 
-            int index = idx(gx, gz);
+            if (gxCenter < 0) gxCenter = 0;
+            if (gzCenter < 0) gzCenter = 0;
+            if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
+            if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
 
             boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
 
-            if (isLandHere != isLand[index]) {
+            final int radius = 1;
+
+            double[] accum = new double[MACRO_COUNT];
+
+            int baseWorldX = tileX * TILE_SIZE;
+            int baseWorldZ = tileZ * TILE_SIZE;
+
+            for (int dz = -radius; dz <= radius; dz++) {
+                int gzN = gzCenter + dz;
+                if (gzN < 0 || gzN >= GRID_SIZE) continue;
+
+                for (int dx = -radius; dx <= radius; dx++) {
+                    int gxN = gxCenter + dx;
+                    if (gxN < 0 || gxN >= GRID_SIZE) continue;
+
+                    int index = idx(gxN, gzN);
+
+                    if (isLand[index] != isLandHere) continue;
+
+                    MacroPackageId id = getCellPkgSafe(index);
+                    if (id == null) continue;
+
+                    int cellWorldX = baseWorldX + gxN * SAMPLE_STEP + SAMPLE_STEP / 2;
+                    int cellWorldZ = baseWorldZ + gzN * SAMPLE_STEP + SAMPLE_STEP / 2;
+
+                    double ddx = worldX - cellWorldX;
+                    double ddz = worldZ - cellWorldZ;
+                    double dist2 = ddx * ddx + ddz * ddz;
+
+                    double w = 1.0 / (dist2 + 1.0);
+
+                    accum[id.ordinal()] += w;
+                }
+            }
+
+            int bestIdx = -1;
+            double bestW = -1.0;
+            for (int i = 0; i < MACRO_COUNT; i++) {
+                double v = accum[i];
+                if (v > bestW) {
+                    bestW = v;
+                    bestIdx = i;
+                }
+            }
+
+            if (bestIdx < 0 || bestW <= 0.0) {
                 return baseLayer.getMacroPackageIdAt(worldX, worldZ);
             }
 
-            MacroPackageId id = smoothedPkg[index];
-            if (id == null) {
-                id = rawPkg[index];
-                if (id == null) {
-                    return MacroPackageId.TEMPERATE_LOWLAND;
-                }
-            }
-            return id;
+            return MacroPackageId.values()[bestIdx];
         }
     }
 }

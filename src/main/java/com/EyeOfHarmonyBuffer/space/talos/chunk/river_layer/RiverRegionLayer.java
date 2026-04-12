@@ -35,18 +35,22 @@ public final class RiverRegionLayer {
     private final int worldSeedInt;
 
     /** 每个 plateId 的主河折线 */
-    private final java.util.Map<Integer, java.util.List<RiverPolyline>> mainRiversByPlateId = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Integer, java.util.List<RiverPolyline>> mainRiversByPlateId =
+        new java.util.concurrent.ConcurrentHashMap<>();
     /** 每个 plateId 的支流（当前还未生成，保留结构） */
-    private final java.util.Map<Integer, java.util.List<RiverPolyline>> tributariesByPlateId = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Integer, java.util.List<RiverPolyline>> tributariesByPlateId =
+        new java.util.concurrent.ConcurrentHashMap<>();
     /** 每条河的源头描述（按 riverId 索引） */
     private final java.util.Map<Integer, RiverSourceDescriptor> sourceByRiverId =
         new java.util.concurrent.ConcurrentHashMap<>();
 
     /** 每个 plateId 的简化板块信息（中心 + 近似半径），懒加载 */
-    private final java.util.Map<Integer, PlateInfo> plateInfoById = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Integer, PlateInfo> plateInfoById =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int CACHE_SHIFT = 0;
-    private final java.util.Map<Long, CachedSample> sampleCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Long, CachedSample> sampleCache =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     public RiverRegionLayer(int worldSeedInt) {
         this.worldSeedInt = worldSeedInt;
@@ -125,7 +129,8 @@ public final class RiverRegionLayer {
     public java.util.List<RiverPolyline> getMainRivers(int plateId) {
         ensureRiversForPlate(plateId);
         java.util.List<RiverPolyline> list = mainRiversByPlateId.get(plateId);
-        return list != null ? java.util.Collections.unmodifiableList(list) : java.util.Collections.emptyList();
+        return list != null ? java.util.Collections.unmodifiableList(list)
+            : java.util.Collections.emptyList();
     }
 
     /**
@@ -134,7 +139,8 @@ public final class RiverRegionLayer {
     public java.util.List<RiverPolyline> getTributaries(int plateId) {
         ensureRiversForPlate(plateId);
         java.util.List<RiverPolyline> list = tributariesByPlateId.get(plateId);
-        return list != null ? java.util.Collections.unmodifiableList(list) : java.util.Collections.emptyList();
+        return list != null ? java.util.Collections.unmodifiableList(list)
+            : java.util.Collections.emptyList();
     }
 
     public static final class NearestRiverSample {
@@ -236,33 +242,33 @@ public final class RiverRegionLayer {
         }
 
         double bestDist = Double.MAX_VALUE;
-        int   bestRiverId = 0;
-        int   bestRiverLevel = 0;
+        int    bestRiverId = 0;
+        int    bestRiverLevel = 0;
         double bestNearestX = 0.0;
         double bestNearestZ = 0.0;
 
         if (mainList != null) {
             for (RiverPolyline rp : mainList) {
-                ClosestResult r = findClosestOnPolylineWithPoint(rp, worldX, worldZ);
+                ClosestPointResult r = findClosestOnPolylineWithPoint(rp, worldX, worldZ);
                 if (r.distance < bestDist) {
-                    bestDist = r.distance;
-                    bestRiverId = rp.id;
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
                     bestRiverLevel = rp.level;
-                    bestNearestX = r.nearestX;
-                    bestNearestZ = r.nearestZ;
+                    bestNearestX   = r.nearestX;
+                    bestNearestZ   = r.nearestZ;
                 }
             }
         }
 
         if (tribList != null) {
             for (RiverPolyline rp : tribList) {
-                ClosestResult r = findClosestOnPolylineWithPoint(rp, worldX, worldZ);
+                ClosestPointResult r = findClosestOnPolylineWithPoint(rp, worldX, worldZ);
                 if (r.distance < bestDist) {
-                    bestDist = r.distance;
-                    bestRiverId = rp.id;
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
                     bestRiverLevel = rp.level;
-                    bestNearestX = r.nearestX;
-                    bestNearestZ = r.nearestZ;
+                    bestNearestX   = r.nearestX;
+                    bestNearestZ   = r.nearestZ;
                 }
             }
         }
@@ -275,6 +281,7 @@ public final class RiverRegionLayer {
             plateId, bestNearestX, bestNearestZ);
     }
 
+    /** 正式距离场缓存条目 */
     private static final class CachedSample {
         final double distance;
         final double widthCore;
@@ -331,19 +338,19 @@ public final class RiverRegionLayer {
             return new CachedSample(Double.MAX_VALUE, 0, 0, 0, 0, 0, 0);
         }
 
-        double bestDist = Double.MAX_VALUE;
-        int   bestRiverId = 0;
-        int   bestRiverLevel = 0;
-        double bestTAlong = 0.0; // [0,1]，河上参数
+        double bestDist       = Double.MAX_VALUE;
+        int    bestRiverId    = 0;
+        int    bestRiverLevel = 0;
+        double bestTAlong     = 0.0;
 
         if (mainList != null) {
             for (RiverPolyline rp : mainList) {
                 ClosestResult r = findClosestOnPolyline(rp, worldX, worldZ);
                 if (r.distance < bestDist) {
-                    bestDist = r.distance;
-                    bestRiverId = rp.id;
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
                     bestRiverLevel = rp.level;
-                    bestTAlong = r.tAlong;
+                    bestTAlong     = r.tAlong;
                 }
             }
         }
@@ -352,10 +359,10 @@ public final class RiverRegionLayer {
             for (RiverPolyline rp : tribList) {
                 ClosestResult r = findClosestOnPolyline(rp, worldX, worldZ);
                 if (r.distance < bestDist) {
-                    bestDist = r.distance;
-                    bestRiverId = rp.id;
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
                     bestRiverLevel = rp.level;
-                    bestTAlong = r.tAlong;
+                    bestTAlong     = r.tAlong;
                 }
             }
         }
@@ -381,99 +388,188 @@ public final class RiverRegionLayer {
             mask, bestRiverId, bestRiverLevel);
     }
 
+    /** soft‑min 用的最近结果：只需要距离 + 沿程参数 */
     private static final class ClosestResult {
         final double distance;
-        final double tAlong;   // 0..1
-        final double nearestX;
-        final double nearestZ;
+        final double tAlong;
 
-        ClosestResult(double distance, double tAlong, double nearestX, double nearestZ) {
+        ClosestResult(double distance, double tAlong) {
             this.distance = distance;
-            this.tAlong = tAlong;
-            this.nearestX = nearestX;
-            this.nearestZ = nearestZ;
+            this.tAlong   = tAlong;
         }
     }
 
     /**
-     * 求一点对一条 polyline 的最近距离及沿程参数 t。
-     * t = 0 表示在首点附近，t = 1 表示在尾点附近。
+     * 对整条折线做“平滑最小距离”：
+     * - distance 使用 soft-min 组合所有线段的距离
+     * - tAlong   按 soft-min 权重做加权平均
+     *
+     * 正式距离场采样使用这个函数。
      */
-    private static ClosestResult findClosestOnPolyline(RiverPolyline rp, double x, double z) {
-        java.util.List<RiverPolyline.Node> nodes = rp.nodes;
-        int size = nodes.size();
-        if (size == 0) {
-            return new ClosestResult(Double.MAX_VALUE, 0.0, x, z);
+    private ClosestResult findClosestOnPolyline(RiverPolyline rp, int worldX, int worldZ) {
+
+        rp.ensureLengthCache();
+
+        int n = rp.xs.size();
+        if (n < 2) {
+            int px = rp.xs.getInt(0);
+            int pz = rp.zs.getInt(0);
+            double dx = worldX - px;
+            double dz = worldZ - pz;
+            double d  = Math.sqrt(dx * dx + dz * dz);
+            return new ClosestResult(d, 0.0);
         }
-        if (size == 1) {
-            RiverPolyline.Node n = nodes.get(0);
-            double dx = x - n.x;
-            double dz = z - n.z;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            return new ClosestResult(dist, 0.0, n.x, n.z);
-        }
 
-        double bestDistSq = Double.MAX_VALUE;
-        double bestS = 0.0;
-        double bestX = 0.0;
-        double bestZ = 0.0;
+        final double ALPHA = 0.15;
 
-        double totalLength = 0.0;
-        double sAccum = 0.0;
+        double sumW  = 0.0; // Σ w_i
+        double sumWt = 0.0; // Σ t_i * w_i
+        double sumWe = 0.0; // Σ exp(-α d_i)
 
-        for (int i = 0; i < size - 1; i++) {
-            RiverPolyline.Node a = nodes.get(i);
-            RiverPolyline.Node b = nodes.get(i + 1);
+        for (int i = 0; i < n - 1; i++) {
+            int x0 = rp.xs.getInt(i);
+            int z0 = rp.zs.getInt(i);
+            int x1 = rp.xs.getInt(i + 1);
+            int z1 = rp.zs.getInt(i + 1);
 
-            double vx = b.x - a.x;
-            double vz = b.z - a.z;
+            double vx = x1 - x0;
+            double vz = z1 - z0;
+
+            double wx = worldX - x0;
+            double wz = worldZ - z0;
 
             double segLenSq = vx * vx + vz * vz;
-            if (segLenSq <= 0.0) segLenSq = 1e-12;
-            double segLen = Math.sqrt(segLenSq);
+            if (segLenSq <= 1e-6) {
+                double dx = wx;
+                double dz = wz;
+                double d  = Math.sqrt(dx * dx + dz * dz);
+                double tAlong = rp.computeTAlong(i, 0.0);
 
-            totalLength += segLen;
-
-            double wx = x - a.x;
-            double wz = z - a.z;
-
-            double t = (wx * vx + wz * vz) / segLenSq;
-            if (t < 0.0) t = 0.0;
-            else if (t > 1.0) t = 1.0;
-
-            double projX = a.x + vx * t;
-            double projZ = a.z + vz * t;
-
-            double dx = x - projX;
-            double dz = z - projZ;
-            double distSq = dx * dx + dz * dz;
-
-            if (distSq < bestDistSq) {
-                bestDistSq = distSq;
-                bestX = projX;
-                bestZ = projZ;
-                bestS = sAccum + segLen * t;
+                double w = Math.exp(-ALPHA * d);
+                sumWe += w;
+                sumW  += w;
+                sumWt += tAlong * w;
+                continue;
             }
 
-            sAccum += segLen;
+            // 投影参数 u ∈ [0,1]
+            double u = (wx * vx + wz * vz) / segLenSq;
+            if (u < 0.0) u = 0.0;
+            else if (u > 1.0) u = 1.0;
+
+            double cx = x0 + u * vx;
+            double cz = z0 + u * vz;
+
+            double dx = worldX - cx;
+            double dz = worldZ - cz;
+            double d  = Math.sqrt(dx * dx + dz * dz);
+
+            double tAlong = rp.computeTAlong(i, u);
+
+            double w = Math.exp(-ALPHA * d);
+
+            sumWe += w;
+            sumW  += w;
+            sumWt += tAlong * w;
         }
 
-        double bestDist = Math.sqrt(bestDistSq);
-        double tAlong = (totalLength > 0.0) ? (bestS / totalLength) : 0.0;
-        if (tAlong < 0.0) tAlong = 0.0;
-        else if (tAlong > 1.0) tAlong = 1.0;
+        if (sumWe <= 0.0 || sumW <= 0.0) {
+            return new ClosestResult(Double.MAX_VALUE, 0.0);
+        }
 
-        return new ClosestResult(bestDist, tAlong, bestX, bestZ);
+        double distance = -Math.log(sumWe) / ALPHA;
+        double tAlong   = sumWt / sumW;
+
+        if (Double.isNaN(distance) || Double.isInfinite(distance)) {
+            distance = Double.MAX_VALUE;
+            tAlong   = 0.0;
+        }
+
+        return new ClosestResult(distance, tAlong);
+    }
+
+    /** Debug 用最近点结果：包含最近点坐标 */
+    private static final class ClosestPointResult {
+        final double distance;
+        final double tAlong;
+        final double nearestX;
+        final double nearestZ;
+
+        ClosestPointResult(double distance,
+                           double tAlong,
+                           double nearestX,
+                           double nearestZ) {
+            this.distance  = distance;
+            this.tAlong    = tAlong;
+            this.nearestX  = nearestX;
+            this.nearestZ  = nearestZ;
+        }
     }
 
     /**
      * 求一点对一条 polyline 的最近距离、沿程参数 t 以及最近点坐标。
-     * t = 0 表示在首点附近，t = 1 表示在尾点附近。
      *
-     * 当前实现与 findClosestOnPolyline 完全一致，只是保留独立方法名方便调试调用。
+     * 注意：
+     *   - 这是标准的“硬 min 最近点”实现，只用于 debug，可视化最近点；
+     *   - 正式距离场仍然走上面的 soft-min 版本。
      */
-    private static ClosestResult findClosestOnPolylineWithPoint(RiverPolyline rp, double x, double z) {
-        return findClosestOnPolyline(rp, x, z);
+    private static ClosestPointResult findClosestOnPolylineWithPoint(RiverPolyline rp,
+                                                                     int worldX, int worldZ) {
+        rp.ensureLengthCache();
+
+        int n = rp.xs.size();
+        if (n < 2) {
+            int px = rp.xs.getInt(0);
+            int pz = rp.zs.getInt(0);
+            double dx = worldX - px;
+            double dz = worldZ - pz;
+            double d  = Math.sqrt(dx * dx + dz * dz);
+            return new ClosestPointResult(d, 0.0, px, pz);
+        }
+
+        double bestDist = Double.MAX_VALUE;
+        double bestT    = 0.0;
+        double bestX    = 0.0;
+        double bestZ    = 0.0;
+
+        for (int i = 0; i < n - 1; i++) {
+            int x0 = rp.xs.getInt(i);
+            int z0 = rp.zs.getInt(i);
+            int x1 = rp.xs.getInt(i + 1);
+            int z1 = rp.zs.getInt(i + 1);
+
+            double vx = x1 - x0;
+            double vz = z1 - z0;
+
+            double wx = worldX - x0;
+            double wz = worldZ - z0;
+
+            double segLenSq = vx * vx + vz * vz;
+            double u;
+            if (segLenSq <= 1e-6) {
+                u = 0.0;
+            } else {
+                u = (wx * vx + wz * vz) / segLenSq;
+                if (u < 0.0) u = 0.0;
+                else if (u > 1.0) u = 1.0;
+            }
+
+            double cx = x0 + u * vx;
+            double cz = z0 + u * vz;
+
+            double dx = worldX - cx;
+            double dz = worldZ - cz;
+            double d  = Math.sqrt(dx * dx + dz * dz);
+
+            if (d < bestDist) {
+                bestDist = d;
+                bestT    = rp.computeTAlong(i, u);
+                bestX    = cx;
+                bestZ    = cz;
+            }
+        }
+
+        return new ClosestPointResult(bestDist, bestT, bestX, bestZ);
     }
 
     private static final class WidthTriplet {
@@ -499,7 +595,7 @@ public final class RiverRegionLayer {
      * 后续可以在这里接入真正的 riverStyleParams(x,z) 混合逻辑。
      */
     private WidthTriplet computeWidthsForSample(int plateId, int riverLevel, double tAlong) {
-        double baseCore = 18.0; // 主河核心直径 ~36
+        double baseCore = 18.0;   // 主河核心直径 ~36
         double baseValley = 72.0; // 主河谷地直径 ~144
         double baseAvoid = 120.0; // 主河避让直径 ~240
 
@@ -513,9 +609,9 @@ public final class RiverRegionLayer {
         long key = (((long) worldSeedInt) << 32) ^ (plateId & 0xFFFFFFFFL);
         java.util.Random rand = new java.util.Random(hash64(key, 0xBEEFCAFEL));
 
-        double jitterCore = 0.75 + rand.nextDouble() * 0.5; // 0.75..1.25
+        double jitterCore = 0.75 + rand.nextDouble() * 0.5;   // 0.75..1.25
         double jitterValley = 0.75 + rand.nextDouble() * 0.5; // 0.75..1.25
-        double jitterAvoid = 0.75 + rand.nextDouble() * 0.5; // 0.75..1.25
+        double jitterAvoid = 0.75 + rand.nextDouble() * 0.5;  // 0.75..1.25
 
         double phase = tAlong * Math.PI * 2.0;
         double sinFactor = 1.0 + 0.25 * Math.sin(phase * 2.0 + plateId * 0.37);
@@ -872,15 +968,6 @@ public final class RiverRegionLayer {
     /**
      * 沿着 (centerX,centerZ) + t * dirX,dirZ 这一条射线，
      * 查找第一个“满足扇形条件的河口（陆->海交界点）”。
-     *
-     * 逻辑：
-     *   - 从中心开始，每步 step 一直走到 maxDist；
-     *   - 发现“本板陆地 -> 非本板陆地/水体”的交界时：
-     *       * 用 refineCoastCrossing 精细化交界点；
-     *       * 用 isBigWaterBodyAlongRay 检查是不是大水体（不是就继续往前）；
-     *       * 用 estimateCoastNormal 求海岸法线；
-     *       * 若 n 与射线方向 d 的夹角在给定扇形内，则返回这个 mouth；
-     *       * 否则视作“非正面触碰”，丢弃这个交界点，继续沿射线扫描。
      */
     private MouthHit findMouthAlongRayWithSector(int plateId,
                                                  double centerX, double centerZ,
@@ -974,11 +1061,6 @@ public final class RiverRegionLayer {
 
     /**
      * 检测从“入水起点”开始，沿同一射线向外走，是否碰到“大水体”。
-     *
-     * 逻辑：
-     *   - 从 startDist 开始，沿 dirX,dirZ 每步 step 一直往外走；
-     *   - 若连续水段长度 >= minThickness，则认为是“大水体”（海/大湖）；
-     *   - 若在水段长度还没到 minThickness 就重新上岸，则认为只是小湖/窄水体。
      */
     private boolean isBigWaterBodyAlongRay(double centerX, double centerZ,
                                            double dirX, double dirZ,
@@ -1015,8 +1097,6 @@ public final class RiverRegionLayer {
     /**
      * 从 mouth 出发，朝板块中心方向 + 噪声步进生长主河骨架。
      * 成功则返回一条 RiverPolyline（坐标为世界坐标，单位 blocks）。
-     *
-     * 这里保留原始“撞出板块就终止”的简单逻辑，不再做末端重塑。
      */
     private RiverPolyline buildMainRiverForPlate(int plateId,
                                                  int indexWithinPlate,

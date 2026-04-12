@@ -37,7 +37,7 @@ public final class BiomeRegionLayer {
     public static final int MIN_COAST_OCEAN_COMPONENT_SIZE = 8; // 靠岸海洋分量更易被吞
 
     /** 是否使用 8 邻域（true）或 4 邻域（false）。一般 4 邻更规整。*/
-    public static final boolean USE_8_NEIGHBOR = false;
+    public static final boolean USE_8_NEIGHBOR = true;
 
     private final int worldSeedInt;
 
@@ -322,32 +322,84 @@ public final class BiomeRegionLayer {
             }
         }
 
-        /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验）。*/
+        /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验 + 多格插值）。*/
         BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ) {
             int localX = worldToLocalInTile(worldX);
             int localZ = worldToLocalInTile(worldZ);
 
-            int gx = localX / SAMPLE_STEP;
-            int gz = localZ / SAMPLE_STEP;
+            double gx = (double) localX / SAMPLE_STEP;
+            double gz = (double) localZ / SAMPLE_STEP;
 
-            if (gx < 0) gx = 0;
-            if (gz < 0) gz = 0;
-            if (gx >= GRID_SIZE) gx = GRID_SIZE - 1;
-            if (gz >= GRID_SIZE) gz = GRID_SIZE - 1;
+            int gxCenter = (int) Math.floor(gx);
+            int gzCenter = (int) Math.floor(gz);
 
-            int index = idx(gx, gz);
+            if (gxCenter < 0) gxCenter = 0;
+            if (gzCenter < 0) gzCenter = 0;
+            if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
+            if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
 
             boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
 
-            if (isLandHere != isLand[index]) {
+            final int radius = 1;
+
+            double[] accum = null;
+
+            int baseWorldX = tileX * TILE_SIZE;
+            int baseWorldZ = tileZ * TILE_SIZE;
+
+            java.util.IdentityHashMap<BiomeGenBase, Double> weightMap = new java.util.IdentityHashMap<>();
+
+            for (int dz = -radius; dz <= radius; dz++) {
+                int gzN = gzCenter + dz;
+                if (gzN < 0 || gzN >= GRID_SIZE) continue;
+
+                for (int dx = -radius; dx <= radius; dx++) {
+                    int gxN = gxCenter + dx;
+                    if (gxN < 0 || gxN >= GRID_SIZE) continue;
+
+                    int index = idx(gxN, gzN);
+
+                    if (isLand[index] != isLandHere) continue;
+
+                    BiomeGenBase b = smoothedBiome[index];
+                    if (b == null) {
+                        b = rawBiome[index];
+                    }
+                    if (b == null) continue;
+
+                    int cellWorldX = baseWorldX + gxN * SAMPLE_STEP + SAMPLE_STEP / 2;
+                    int cellWorldZ = baseWorldZ + gzN * SAMPLE_STEP + SAMPLE_STEP / 2;
+
+                    double ddx = worldX - cellWorldX;
+                    double ddz = worldZ - cellWorldZ;
+                    double dist2 = ddx * ddx + ddz * ddz;
+
+                    double w = 1.0 / (dist2 + 1.0);
+
+                    Double old = weightMap.get(b);
+                    weightMap.put(b, (old == null ? 0.0 : old) + w);
+                }
+            }
+
+            if (weightMap.isEmpty()) {
                 return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
             }
 
-            BiomeGenBase biome = smoothedBiome[index];
-            if (biome == null) {
-                biome = rawBiome[index];
+            BiomeGenBase bestBiome = null;
+            double bestW = -1.0;
+            for (java.util.Map.Entry<BiomeGenBase, Double> e : weightMap.entrySet()) {
+                double w = e.getValue();
+                if (w > bestW) {
+                    bestW = w;
+                    bestBiome = e.getKey();
+                }
             }
-            return biome;
+
+            if (bestBiome != null) {
+                return bestBiome;
+            }
+
+            return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
         }
     }
 }

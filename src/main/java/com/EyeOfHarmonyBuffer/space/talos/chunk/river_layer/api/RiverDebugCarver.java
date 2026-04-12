@@ -77,7 +77,7 @@ public final class RiverDebugCarver {
                     meta[idx] = 0;
                 }
 
-                for (int y = seaLevel + 1; y <= seaLevel + 3; y++) {
+                for (int y = seaLevel + 1; y <= seaLevel + 32; y++) {
                     if (y < 0 || y >= 256) break;
                     int idx = getIndex(localX, y, localZ);
                     blocks[idx] = Blocks.air;

@@ -1,0 +1,202 @@
+package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
+
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
+
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.lerp;
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.smoothstep;
+
+/**
+ * 层4内部调度引擎：
+ *   - 通过 TalosLandMask 拿海陆 + 权重；
+ *   - 通过 TalosMacroClimate 拿宏群系 ID / 混合信息；
+ *   - 通过 TerrainMacroPresetRegistry 拿地形 preset；
+ *   - 通过 TerrainBaseHeight 计算基础高度；
+ *   - 用 landWeight / coastWeight 做轻量约束和海岸平滑。
+ */
+
+public final class TerrainEngine {
+
+    private TerrainEngine() {}
+
+    public static double sampleBaseHeight(int worldX, int worldZ,
+                                          int worldSeedInt,
+                                          int seaLevel) {
+        WorldgenAPI.SampleResult landSample =
+            TalosLandMask.sample(worldX, worldZ, worldSeedInt);
+
+        boolean isLand      = landSample != null && landSample.isLand;
+        double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
+        double  coastWeight = (landSample != null) ? landSample.coastWeight : 0.0;
+
+        TalosMacroClimate.MacroBlendSample blend =
+            TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2);
+
+        MacroPackageId primaryId;
+        MacroPackageId secondaryId;
+        double w1, w2;
+
+        if (blend != null && blend.entries != null && blend.entries.length > 0) {
+            primaryId = blend.entries[0].id;
+            w1        = blend.entries[0].weight;
+
+            if (blend.entries.length > 1) {
+                secondaryId = blend.entries[1].id;
+                w2          = blend.entries[1].weight;
+            } else {
+                secondaryId = primaryId;
+                w2          = 0.0;
+            }
+        } else {
+            primaryId =
+                TalosMacroClimate.getMacroPackageId(worldX, worldZ, worldSeedInt);
+            secondaryId = primaryId;
+            w1 = 1.0;
+            w2 = 0.0;
+        }
+
+        if (!isLand) {
+            primaryId   = MacroPackageId.OCEANIC;
+            secondaryId = MacroPackageId.OCEANIC;
+            w1 = 1.0;
+            w2 = 0.0;
+        } else {
+            if (primaryId == MacroPackageId.OCEANIC &&
+                secondaryId != MacroPackageId.OCEANIC) {
+
+                primaryId = secondaryId;
+                w1 = w1 + w2;
+                w2 = 0.0;
+
+            } else if (secondaryId == MacroPackageId.OCEANIC &&
+                primaryId != MacroPackageId.OCEANIC) {
+
+                w1 = 1.0;
+                w2 = 0.0;
+
+            } else if (primaryId == MacroPackageId.OCEANIC &&
+                secondaryId == MacroPackageId.OCEANIC) {
+
+                primaryId   = MacroPackageId.TEMPERATE_LOWLAND;
+                secondaryId = primaryId;
+                w1 = 1.0;
+                w2 = 0.0;
+            }
+        }
+
+        BaseTerrainPreset  preset1  = TerrainMacroPresetRegistry.get(primaryId);
+        BaseTerrainPreset  preset2  = TerrainMacroPresetRegistry.get(secondaryId);
+
+        BaseTerrainProfile profile1 = BaseTerrainProfile.fromPreset(preset1);
+        BaseTerrainProfile profile2 = BaseTerrainProfile.fromPreset(preset2);
+
+        double h1 = computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile1);
+        double h2 = computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile2);
+
+        double t;
+        double sumW = w1 + w2;
+        if (sumW > 0.0) {
+            t = w2 / sumW;  // t ∈ [0,1]，代表 secondary 占比
+        } else {
+            t = 0.0;
+        }
+
+        t = smoothstep(0.2, 0.8, t);
+
+        double h = lerp(h1, h2, t);
+
+        if (primaryId != secondaryId) {
+            h = applyMacroBoundarySmooth(h, h1, h2, t);
+        }
+
+        if (primaryId == MacroPackageId.OCEANIC) {
+            h = applyOceanDepthLimit(h, profile1, seaLevel);
+        }
+
+        h = applyCoastSmooth(h, coastWeight, seaLevel, isLand);
+
+        return h;
+    }
+
+    /**
+     * 宏群系边界的额外平滑（加强版）：
+     *   - 放大“边界带宽度”，只要 t 落在比较宽的区间，就适度往两侧平均高度拉；
+     *   - 高度差越大，越倾向于在边界把这条“断层”抹弯，而不是保留一条很直的台阶线。
+     */
+    private static double applyMacroBoundarySmooth(double h,
+                                                   double h1,
+                                                   double h2,
+                                                   double t) {
+        final double center = 0.5;
+
+        final double innerBand = 0.15;
+        final double outerBand = 0.45;
+
+        double d = Math.abs(t - center);
+        if (d >= outerBand) {
+            return h;
+        }
+
+        double wRegion;
+        if (d <= innerBand) {
+            wRegion = 1.0;
+        } else {
+            double u = (d - innerBand) / (outerBand - innerBand); // 0..1
+            // 1 - smoothstep(0,1,u)
+            wRegion = 1.0 - (u * u * (3.0 - 2.0 * u));
+        }
+
+        double mid = 0.5 * (h1 + h2);
+
+        final double baseStrength = 0.7;
+        double blend = baseStrength * wRegion;
+
+        h = lerp(h, mid, blend);
+
+        double diff = Math.abs(h1 - h2);
+        if (diff > 6.0) {
+            double cliffFactor;
+            if (diff >= 24.0) {
+                cliffFactor = 1.0;
+            } else {
+                double v = (diff - 6.0) / (24.0 - 6.0);
+                cliffFactor = v * v * (3.0 - 2.0 * v);
+            }
+
+            double extraStrength = 0.5 * wRegion * cliffFactor;
+
+            if (extraStrength > 0.0) {
+                h = lerp(h, mid, extraStrength);
+            }
+        }
+
+        return h;
+    }
+
+    /**
+     * 海岸平滑：保持你原来的逻辑，只做相对柔和的一点点调整。
+     * 这里的前提是：经过 applyLandOceanShapingWithWeight 之后（如果启用），
+     * 不会再出现把整条内陆边界压到 seaLevel 的那种极端情况。
+     */
+    private static double applyCoastSmooth(double h,
+                                           double coastWeight,
+                                           int seaLevel,
+                                           boolean isLand) {
+        if (coastWeight <= 0.0) {
+            return h;
+        }
+
+        if (!isLand) {
+            return h;
+        }
+
+        double blend = 0.4 * coastWeight;
+        double target = seaLevel + (h - seaLevel) * 0.6;
+
+        return lerp(h, target, blend);
+    }
+}
