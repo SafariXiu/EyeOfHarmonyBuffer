@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -143,5 +144,23 @@ public final class TalosMacroClimate {
      */
     public static int getDistanceToLatitudeCenter(int worldZ) {
         return ClimateLatitudes.getDistanceToCenter(worldZ);
+    }
+
+    /**
+     * 按“平滑后的宏群系 ID”返回对应的河流风格预设。
+     *
+     * 约定：
+     *   - 只在陆地上有意义（isLandHere == true）；
+     *   - 海洋（OCEANIC）目前不生成河流骨架，返回 null；
+     *   - 若某个包未配置 riverStyle，则抛出异常或返回一个保守默认，由你选择。
+     */
+    public static MacroPackageRegistry.RiverStylePreset getRiverStylePreset(int worldX, int worldZ, int worldSeedInt) {
+        MacroPackageId pkgId = getMacroPackageId(worldX, worldZ, worldSeedInt);
+
+        if (pkgId == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        return MacroPackageRegistry.get(pkgId).riverStyle();
     }
 }

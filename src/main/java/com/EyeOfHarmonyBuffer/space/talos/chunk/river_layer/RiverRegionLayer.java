@@ -38,6 +38,9 @@ public final class RiverRegionLayer {
     private final java.util.Map<Integer, java.util.List<RiverPolyline>> mainRiversByPlateId = new java.util.concurrent.ConcurrentHashMap<>();
     /** 每个 plateId 的支流（当前还未生成，保留结构） */
     private final java.util.Map<Integer, java.util.List<RiverPolyline>> tributariesByPlateId = new java.util.concurrent.ConcurrentHashMap<>();
+    /** 每条河的源头描述（按 riverId 索引） */
+    private final java.util.Map<Integer, RiverSourceDescriptor> sourceByRiverId =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
     /** 每个 plateId 的简化板块信息（中心 + 近似半径），懒加载 */
     private final java.util.Map<Integer, PlateInfo> plateInfoById = new java.util.concurrent.ConcurrentHashMap<>();
@@ -84,6 +87,38 @@ public final class RiverRegionLayer {
         return s.riverLevel;
     }
 
+    public RiverRegionLayer.RiverSourceDescriptor getSourceByRiverId(int riverId) {
+        return sourceByRiverId.get(riverId);
+    }
+
+    public RiverSourceDescriptor findNearestSource(int worldX, int worldZ, double maxRadiusBlocks) {
+        int plateId = TalosLandMask.getPlateId(worldX, worldZ, worldSeedInt);
+        if (plateId == 0) return null;
+
+        ensureRiversForPlate(plateId);
+
+        java.util.List<RiverPolyline> mainList = mainRiversByPlateId.get(plateId);
+        if (mainList == null || mainList.isEmpty()) return null;
+
+        RiverSourceDescriptor best = null;
+        double bestDistSq = maxRadiusBlocks > 0.0 ? maxRadiusBlocks * maxRadiusBlocks : Double.MAX_VALUE;
+
+        for (RiverPolyline rp : mainList) {
+            RiverSourceDescriptor src = sourceByRiverId.get(rp.id);
+            if (src == null) continue;
+
+            double dx = worldX - src.centerX;
+            double dz = worldZ - src.centerZ;
+            double d2 = dx * dx + dz * dz;
+            if (d2 < bestDistSq) {
+                bestDistSq = d2;
+                best = src;
+            }
+        }
+
+        return best;
+    }
+
     /**
      * 调试 / 可视化用途：拿到某个 plateId 的主河。
      */
@@ -125,6 +160,57 @@ public final class RiverRegionLayer {
             this.plateId = plateId;
             this.nearestX = nearestX;
             this.nearestZ = nearestZ;
+        }
+    }
+
+    /** 单条河的源头描述（湖 + 中央裂隙） */
+    public static final class RiverSourceDescriptor {
+        public final int riverId;
+        public final int plateId;
+        public final int level;
+
+        /** 源头湖中心（世界坐标，blocks） */
+        public final double centerX;
+        public final double centerZ;
+
+        /** 源头湖半径（水平，大致圆形半径） */
+        public final double lakeRadiusBlocks;
+
+        /** 湖盆最大下挖深度（相对周围地表） */
+        public final double lakeDepthBlocks;
+
+        /** 中央裂隙半径（水平半径） */
+        public final double fissureRadiusBlocks;
+
+        /** 裂隙最大深度（相对周围地表，可以比 lakeDepth 更深） */
+        public final double fissureDepthBlocks;
+
+        /** 源头出水方向（从湖流向下游的单位向量） */
+        public final double outflowDirX;
+        public final double outflowDirZ;
+
+        public RiverSourceDescriptor(int riverId,
+                                     int plateId,
+                                     int level,
+                                     double centerX,
+                                     double centerZ,
+                                     double lakeRadiusBlocks,
+                                     double lakeDepthBlocks,
+                                     double fissureRadiusBlocks,
+                                     double fissureDepthBlocks,
+                                     double outflowDirX,
+                                     double outflowDirZ) {
+            this.riverId = riverId;
+            this.plateId = plateId;
+            this.level = level;
+            this.centerX = centerX;
+            this.centerZ = centerZ;
+            this.lakeRadiusBlocks = lakeRadiusBlocks;
+            this.lakeDepthBlocks = lakeDepthBlocks;
+            this.fissureRadiusBlocks = fissureRadiusBlocks;
+            this.fissureDepthBlocks = fissureDepthBlocks;
+            this.outflowDirX = outflowDirX;
+            this.outflowDirZ = outflowDirZ;
         }
     }
 
@@ -586,11 +672,87 @@ public final class RiverRegionLayer {
             indexWithinPlate++;
             if (rp != null) {
                 mainList.add(rp);
+
+                RiverSourceDescriptor src = buildSourceForRiver(plateId, rp, plateInfo);
+                if (src != null) {
+                    sourceByRiverId.put(rp.id, src);
+                }
             }
         }
 
         mainRiversByPlateId.put(plateId, mainList);
         tributariesByPlateId.put(plateId, tribList);
+    }
+
+    private RiverSourceDescriptor buildSourceForRiver(int plateId,
+                                                      RiverPolyline rp,
+                                                      PlateInfo plateInfo) {
+        if (rp == null || rp.nodes == null || rp.nodes.size() < 2) return null;
+
+        java.util.List<RiverPolyline.Node> nodes = rp.nodes;
+
+        RiverPolyline.Node mouthNode = nodes.get(0);
+        RiverPolyline.Node srcNode   = nodes.get(nodes.size() - 1);
+
+        double centerX = srcNode.x;
+        double centerZ = srcNode.z;
+
+        RiverPolyline.Node nearSrc = nodes.get(nodes.size() - 2);
+        double outDirX = nearSrc.x - srcNode.x;
+        double outDirZ = nearSrc.z - srcNode.z;
+        double len = Math.sqrt(outDirX * outDirX + outDirZ * outDirZ);
+        if (len <= 1e-6) {
+            double toCenterX = plateInfo.centerX - centerX;
+            double toCenterZ = plateInfo.centerZ - centerZ;
+            double len2 = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
+            if (len2 <= 1e-6) {
+                outDirX = 0.0;
+                outDirZ = 1.0;
+            } else {
+                outDirX = toCenterX / len2;
+                outDirZ = toCenterZ / len2;
+            }
+        } else {
+            outDirX /= len;
+            outDirZ /= len;
+        }
+
+        int level = rp.level;
+
+        double scale = 1.0 / (level + 1.0);
+
+        double baseRiverValley = 72.0 * scale;
+
+        double lakeRadius = baseRiverValley * 2.5;
+        if (lakeRadius < 80.0 * scale) {
+            lakeRadius = 80.0 * scale;
+        }
+        if (lakeRadius > 260.0 * scale) {
+            lakeRadius = 260.0 * scale;
+        }
+
+        double lakeDepth = 18.0 * scale; // 最大下挖 18 格左右，看起来像一个明显湖盆
+
+        double fissureRadius = lakeRadius * 0.18;
+        if (fissureRadius < 6.0 * scale) fissureRadius = 6.0 * scale;
+        if (fissureRadius > 20.0 * scale) fissureRadius = 20.0 * scale;
+
+        double fissureDepth = lakeDepth * 2.5;
+        if (fissureDepth < 32.0 * scale) fissureDepth = 32.0 * scale;
+
+        return new RiverSourceDescriptor(
+            rp.id,
+            plateId,
+            level,
+            centerX,
+            centerZ,
+            lakeRadius,
+            lakeDepth,
+            fissureRadius,
+            fissureDepth,
+            outDirX,
+            outDirZ
+        );
     }
 
     private int computeMainRiverCount(int plateId) {

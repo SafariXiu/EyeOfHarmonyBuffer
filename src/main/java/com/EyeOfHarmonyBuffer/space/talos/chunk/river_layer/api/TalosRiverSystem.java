@@ -124,6 +124,23 @@ public final class TalosRiverSystem {
         return layer.getTributaries(superId);
     }
 
+    public static RiverRegionLayer.RiverSourceDescriptor getRiverSourceById(int riverId, int worldSeedInt) {
+        RiverRegionLayer layer = getLayer(worldSeedInt);
+        return layer.getSourceByRiverId(riverId);
+    }
+
+    /**
+     * 在给定世界坐标附近查找最近的河源头（只看同一板块的主河）。
+     * maxRadiusBlocks <= 0 表示不限制半径。
+     */
+    public static RiverRegionLayer.RiverSourceDescriptor findNearestSource(int worldX,
+                                                                           int worldZ,
+                                                                           double maxRadiusBlocks,
+                                                                           int worldSeedInt) {
+        RiverRegionLayer layer = getLayer(worldSeedInt);
+        return layer.findNearestSource(worldX, worldZ, maxRadiusBlocks);
+    }
+
     public static final class DebugNearestRiverInfo {
         public final boolean hasRiver;
         public final double distance;

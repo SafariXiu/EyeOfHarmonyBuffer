@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.RiverDebugCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -92,51 +93,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /**
-     * Debug 版：在基础海陆图上，按照 Layer3 的河场挖一条固定宽/深的河道并灌水。
-     *
-     * 用法（临时调试）：
-     *   - 先调用 generateBasicLandWater(...) 填好石头/草/水；
-     *   - 再调用 generateDebugRivers(...) 在其上强行挖河。
-     */
     private void generateDebugRivers(int chunkX, int chunkZ, Block[] blocks, byte[] meta, int worldSeedInt) {
-        final int CHUNK_SIZE = 16;
-        final int seaLevel = getWaterLevel();
-
-        final double debugRiverHalfWidth = 40;
-        final int debugRiverDepth = 10;
-
-        int worldX0 = chunkX * CHUNK_SIZE;
-        int worldZ0 = chunkZ * CHUNK_SIZE;
-
-        for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-            for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-                int worldX = worldX0 + localX;
-                int worldZ = worldZ0 + localZ;
-
-                double dist = TalosRiverSystem.getRiverDistance(worldX, worldZ, worldSeedInt);
-
-                if (dist > debugRiverHalfWidth) {
-                    continue;
-                }
-
-                int bottomY = seaLevel - debugRiverDepth + 1;
-                if (bottomY < 1) bottomY = 1;
-
-                for (int y = bottomY; y <= seaLevel; y++) {
-                    int idx = getIndex(localX, y, localZ);
-                    blocks[idx] = Blocks.water;
-                    meta[idx] = 0;
-                }
-
-                for (int y = seaLevel + 1; y <= seaLevel + 3; y++) {
-                    if (y < 0 || y >= 256) break;
-                    int idx = getIndex(localX, y, localZ);
-                    blocks[idx] = Blocks.air;
-                    meta[idx] = 0;
-                }
-            }
-        }
+        RiverDebugCarver.carveFlatChunk(
+            chunkX, chunkZ,
+            worldSeedInt,
+            blocks, meta,
+            getWaterLevel()
+        );
     }
 
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
