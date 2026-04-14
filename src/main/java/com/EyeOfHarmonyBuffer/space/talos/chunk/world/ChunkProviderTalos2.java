@@ -1,9 +1,12 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.RiverDebugCarver;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -23,9 +26,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final int worldSeedInt;
 
+    private final TalosRiverCarver.MacroPackageResolver macroResolver;
+
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
+        this.macroResolver = createMacroResolver();
     }
 
     @Override
@@ -49,7 +55,15 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         generateTerrainWithBaseHeightSimple(chunkX, chunkZ, blocks, meta);
 
-        generateDebugRivers(chunkX, chunkZ, blocks, meta, worldSeedInt);
+        //generateDebugRivers(chunkX, chunkZ, blocks, meta, worldSeedInt);
+
+        TalosRiverCarver.carveChunkRivers(
+            chunkX, chunkZ,
+            worldSeedInt,
+            blocks, meta,
+            getWaterLevel(),
+            macroResolver
+        );
     }
 
     /**
@@ -175,6 +189,22 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
+    private TalosRiverCarver.MacroPackageResolver createMacroResolver() {
+        return new TalosRiverCarver.MacroPackageResolver() {
+            @Override
+            public MacroPackageId resolveMacroPackageId(int worldX, int worldZ) {
+                MacroPackageId pkgId = TalosMacroClimate.getMacroPackageId(worldX, worldZ, worldSeedInt);
+
+                if (pkgId == MacroPackageId.OCEANIC) {
+                    return null;
+                }
+
+                return pkgId;
+            }
+        };
+    }
+
+    @SuppressWarnings("unused")
     private void generateDebugRivers(int chunkX, int chunkZ, Block[] blocks, byte[] meta, int worldSeedInt) {
         RiverDebugCarver.carveFlatChunk(
             chunkX, chunkZ,

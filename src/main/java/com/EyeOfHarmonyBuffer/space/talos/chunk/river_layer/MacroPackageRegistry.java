@@ -35,7 +35,10 @@ public final class MacroPackageRegistry {
                     320,
                     460,
                     0.9,
-                    1200
+                    1200,
+                    22,
+                    0.5,
+                    RiverValleyType.U_SHAPED
                 ))
                 .build()
         );
@@ -48,7 +51,10 @@ public final class MacroPackageRegistry {
                     260,
                     380,
                     0.7,
-                    1100
+                    1100,
+                    18,
+                    0.5,
+                    RiverValleyType.V_SHAPED
                 ))
                 .build()
         );
@@ -62,7 +68,10 @@ public final class MacroPackageRegistry {
                     240,
                     360,
                     0.6,
-                    1000
+                    1000,
+                    18,
+                    0.5,
+                    RiverValleyType.U_SHAPED
                 ))
                 .build()
         );
@@ -75,7 +84,10 @@ public final class MacroPackageRegistry {
                     230,
                     340,
                     0.65,
-                    950
+                    950,
+                    18,
+                    0.5,
+                    RiverValleyType.U_SHAPED
                 ))
                 .build()
         );
@@ -88,7 +100,10 @@ public final class MacroPackageRegistry {
                     190,
                     300,
                     0.5,
-                    800
+                    800,
+                    16,
+                    0.55,
+                    RiverValleyType.V_SHAPED
                 ))
                 .build()
         );
@@ -102,7 +117,10 @@ public final class MacroPackageRegistry {
                     180,
                     280,
                     0.45,
-                    850
+                    850,
+                    16,
+                    0.55,
+                    RiverValleyType.V_SHAPED
                 ))
                 .build()
         );
@@ -115,7 +133,10 @@ public final class MacroPackageRegistry {
                     160,
                     260,
                     0.35,
-                    900
+                    900,
+                    16,
+                    0.55,
+                    RiverValleyType.V_SHAPED
                 ))
                 .build()
         );
@@ -128,7 +149,10 @@ public final class MacroPackageRegistry {
                     140,
                     240,
                     0.2,
-                    900
+                    900,
+                    14,
+                    0.6,
+                    RiverValleyType.V_SHAPED
                 ))
                 .build()
         );
@@ -188,12 +212,20 @@ public final class MacroPackageRegistry {
                 if (riverStyle == null) {
                     riverStyle = new RiverStylePreset(
                         32, 200, 300,
-                        0.5, 900
+                        0.5, 900,
+                        16,
+                        0.5,
+                        RiverValleyType.U_SHAPED
                     );
                 }
                 return new MacroPackageSpec(this);
             }
         }
+    }
+
+    public enum RiverValleyType {
+        U_SHAPED,
+        V_SHAPED
     }
 
     /**
@@ -225,16 +257,31 @@ public final class MacroPackageRegistry {
          */
         public final int meanderWavelengthBlocks;
 
+        /** 主河典型最大下挖深度（blocks） */
+        public final int baseDepthBlocks;
+
+        /** 支流深度缩放（每升一级乘的系数，0.0~1.0） */
+        public final double tributaryDepthScale;
+
+        /** 河谷类型  */
+        public final RiverValleyType riverValleyType;
+
         public RiverStylePreset(int coreWidthBlocks,
                                 int valleyWidthBlocks,
                                 int avoidWidthBlocks,
                                 double meanderStrength,
-                                int meanderWavelengthBlocks) {
+                                int meanderWavelengthBlocks,
+                                int baseDepthBlocks,
+                                double tributaryDepthScale,
+                                RiverValleyType riverValleyType) {
             this.coreWidthBlocks = coreWidthBlocks;
             this.valleyWidthBlocks = valleyWidthBlocks;
             this.avoidWidthBlocks = avoidWidthBlocks;
             this.meanderStrength = meanderStrength;
             this.meanderWavelengthBlocks = meanderWavelengthBlocks;
+            this.baseDepthBlocks = baseDepthBlocks;
+            this.tributaryDepthScale = tributaryDepthScale;
+            this.riverValleyType = riverValleyType;
         }
 
         @Override
@@ -245,6 +292,9 @@ public final class MacroPackageRegistry {
                 ", avoid=" + avoidWidthBlocks +
                 ", meanderStrength=" + meanderStrength +
                 ", wavelength=" + meanderWavelengthBlocks +
+                ", baseDepth=" + baseDepthBlocks +
+                ", tribScale=" + tributaryDepthScale +
+                ", riverValleyTypes=" + riverValleyType +
                 '}';
         }
     }

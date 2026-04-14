@@ -282,14 +282,14 @@ public final class RiverRegionLayer {
     }
 
     /** 正式距离场缓存条目 */
-    private static final class CachedSample {
-        final double distance;
-        final double widthCore;
-        final double widthValley;
-        final double widthAvoid;
-        final double mask;
-        final int riverId;
-        final int riverLevel;
+    public static final class CachedSample {
+        public final double distance;
+        public final double widthCore;
+        public final double widthValley;
+        public final double widthAvoid;
+        public final double mask;
+        public final int riverId;
+        public final int riverLevel;
 
         CachedSample(double distance, double widthCore, double widthValley,
                      double widthAvoid, double mask, int riverId, int riverLevel) {
@@ -376,6 +376,84 @@ public final class RiverRegionLayer {
         if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
             return new CachedSample(Double.MAX_VALUE, 0, 0, 0, 0, 0, 0);
         }
+
+        double mask = 0.0;
+        if (w.widthValley > 0.0) {
+            double t = bestDist / w.widthValley;
+            t = clamp01(t);
+            mask = 1.0 - smoothstep01(t);
+        }
+
+        return new CachedSample(bestDist, w.widthCore, w.widthValley, w.widthAvoid,
+            mask, bestRiverId, bestRiverLevel);
+    }
+
+    /**
+     * 水文专用采样：在陆地 + 海洋上都返回河场（同板块内）。
+     *
+     * 语义：
+     *   - 仍然要求 plateId != 0；
+     *   - 不做 isLand 过滤，海洋单元也有 distance / width / mask；
+     *   - widthCore/Valley/Avoid 与正式陆地版本一致；
+     *   - mask 始终是基于 valleyWidth 的 0..1 平滑权重。
+     *
+     * 用途：
+     *   - 河口 / 海底峡谷 / 海岸侵蚀 / Debug Carver 等“水文相关逻辑”。
+     *
+     * 注意：
+     *   - 不走 sampleCache，避免把“含海洋”的结果污染给陆地版本。
+     */
+    public CachedSample sampleHydroField(int worldX, int worldZ) {
+
+        int plateId = TalosLandMask.getPlateId(worldX, worldZ, worldSeedInt);
+        if (plateId == 0) {
+            return new CachedSample(Double.MAX_VALUE, 0, 0, 0, 0, 0, 0);
+        }
+
+        ensureRiversForPlate(plateId);
+
+        java.util.List<RiverPolyline> mainList = mainRiversByPlateId.get(plateId);
+        java.util.List<RiverPolyline> tribList = tributariesByPlateId.get(plateId);
+
+        if ((mainList == null || mainList.isEmpty()) &&
+            (tribList == null || tribList.isEmpty())) {
+            return new CachedSample(Double.MAX_VALUE, 0, 0, 0, 0, 0, 0);
+        }
+
+        double bestDist       = Double.MAX_VALUE;
+        int    bestRiverId    = 0;
+        int    bestRiverLevel = 0;
+        double bestTAlong     = 0.0;
+
+        if (mainList != null) {
+            for (RiverPolyline rp : mainList) {
+                ClosestResult r = findClosestOnPolyline(rp, worldX, worldZ);
+                if (r.distance < bestDist) {
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
+                    bestRiverLevel = rp.level;
+                    bestTAlong     = r.tAlong;
+                }
+            }
+        }
+
+        if (tribList != null) {
+            for (RiverPolyline rp : tribList) {
+                ClosestResult r = findClosestOnPolyline(rp, worldX, worldZ);
+                if (r.distance < bestDist) {
+                    bestDist       = r.distance;
+                    bestRiverId    = rp.id;
+                    bestRiverLevel = rp.level;
+                    bestTAlong     = r.tAlong;
+                }
+            }
+        }
+
+        if (bestDist == Double.MAX_VALUE) {
+            return new CachedSample(Double.MAX_VALUE, 0, 0, 0, 0, 0, 0);
+        }
+
+        WidthTriplet w = computeWidthsForSample(plateId, bestRiverLevel, bestTAlong);
 
         double mask = 0.0;
         if (w.widthValley > 0.0) {
