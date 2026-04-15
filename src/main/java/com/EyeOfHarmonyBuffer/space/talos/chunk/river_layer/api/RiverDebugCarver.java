@@ -32,10 +32,10 @@ public final class RiverDebugCarver {
     public static void carveFlatChunk(int chunkX, int chunkZ,
                                       int worldSeedInt,
                                       Block[] blocks, byte[] meta,
+                                      int worldHeight,
                                       int seaLevel) {
 
         final int CHUNK_SIZE   = 16;
-        final int WORLD_HEIGHT = 256;
 
         int worldX0 = chunkX * CHUNK_SIZE;
         int worldZ0 = chunkZ * CHUNK_SIZE;
@@ -76,7 +76,7 @@ public final class RiverDebugCarver {
                             if (bottomY < 1) bottomY = 1;
 
                             for (int y = bottomY; y <= seaLevel; y++) {
-                                if (y < 0 || y >= WORLD_HEIGHT) break;
+                                if (y < 0 || y >= worldHeight) break;
                                 int idx = getIndex(localX, y, localZ);
                                 Block b = blocks[idx];
 
@@ -92,7 +92,7 @@ public final class RiverDebugCarver {
 
                             {
                                 int y = bottomY - 1;
-                                while (y >= 0 && y < WORLD_HEIGHT) {
+                                while (y >= 0 && y < worldHeight) {
                                     int idx = getIndex(localX, y, localZ);
                                     Block b = blocks[idx];
 
@@ -107,7 +107,7 @@ public final class RiverDebugCarver {
                                 }
                             }
 
-                            for (int y = seaLevel + 1; y <= seaLevel + 32 && y < WORLD_HEIGHT; y++) {
+                            for (int y = seaLevel + 1; y <= seaLevel + 32 && y < worldHeight; y++) {
                                 if (y < 0) continue;
                                 int idx = getIndex(localX, y, localZ);
                                 blocks[idx] = Blocks.air;
@@ -116,7 +116,7 @@ public final class RiverDebugCarver {
                         }
                     }
                 }
-                for (int y = 0; y <= seaLevel && y < WORLD_HEIGHT; y++) {
+                for (int y = 0; y <= seaLevel && y < worldHeight; y++) {
                     int idx = getIndex(localX, y, localZ);
                     blocks[idx] = Blocks.glowstone;
                     meta[idx]   = 0;

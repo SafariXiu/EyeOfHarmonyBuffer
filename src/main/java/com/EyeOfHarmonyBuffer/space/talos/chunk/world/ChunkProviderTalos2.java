@@ -22,7 +22,7 @@ import java.util.*;
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final int CHUNK_SIZE = 16;
-    private static final int WORLD_HEIGHT = 256;
+    private final int worldHeight;
 
     private final int worldSeedInt;
 
@@ -32,6 +32,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, flag);
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
         this.macroResolver = createMacroResolver();
+        this.worldHeight = world.getActualHeight();
     }
 
     @Override
@@ -62,6 +63,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             worldSeedInt,
             blocks, meta,
             getWaterLevel(),
+            worldHeight,
             macroResolver
         );
     }
@@ -97,8 +99,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int h = (int) Math.round(baseHeightD);
                 if (h < 1) {
                     h = 1;
-                } else if (h > WORLD_HEIGHT - 2) {
-                    h = WORLD_HEIGHT - 2;
+                } else if (h > worldHeight - 2) {
+                    h = worldHeight - 2;
                 }
 
                 int bedrockIndex = getIndex(localX, 0, localZ);
@@ -210,6 +212,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             chunkX, chunkZ,
             worldSeedInt,
             blocks, meta,
+            worldHeight,
             getWaterLevel()
         );
     }
@@ -221,11 +224,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    private static int getIndex(int x, int y, int z) {
-        return (x * CHUNK_SIZE + z) * WORLD_HEIGHT + y;
+    private int getIndex(int x, int y, int z) {
+        return (x * CHUNK_SIZE + z) * worldHeight + y;
     }
-
-    // ====== 下面这些保持不变 ======
 
     @Override
     public void onPopulate(IChunkProvider provider, int x, int z) {

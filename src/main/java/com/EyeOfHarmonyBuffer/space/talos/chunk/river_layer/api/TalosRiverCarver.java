@@ -40,10 +40,10 @@ public final class TalosRiverCarver {
                                         int worldSeedInt,
                                         Block[] blocks, byte[] meta,
                                         int seaLevel,
+                                        int worldHeight,
                                         MacroPackageResolver macroResolver) {
 
         final int CHUNK_SIZE   = 16;
-        final int WORLD_HEIGHT = 256;
 
         int worldX0 = chunkX * CHUNK_SIZE;
         int worldZ0 = chunkZ * CHUNK_SIZE;
@@ -99,7 +99,7 @@ public final class TalosRiverCarver {
                     continue;
                 }
 
-                for (int y = riverBedY; y <= seaLevel && y < WORLD_HEIGHT; y++) {
+                for (int y = riverBedY; y <= seaLevel && y < worldHeight; y++) {
                     if (y < 0) continue;
 
                     int idx = getIndex(localX, y, localZ);
@@ -111,7 +111,7 @@ public final class TalosRiverCarver {
 
                 {
                     int y = riverBedY - 1;
-                    while (y >= 0 && y < WORLD_HEIGHT) {
+                    while (y >= 0 && y < worldHeight) {
                         int idx = getIndex(localX, y, localZ);
                         Block b = blocks[idx];
 
@@ -126,7 +126,7 @@ public final class TalosRiverCarver {
                     }
                 }
 
-                for (int y = seaLevel + 1; y <= seaLevel + 32 && y < WORLD_HEIGHT; y++) {
+                for (int y = seaLevel + 1; y <= seaLevel + 32 && y < worldHeight; y++) {
                     if (y < 0) continue;
                     int idx = getIndex(localX, y, localZ);
                     blocks[idx] = Blocks.air;
