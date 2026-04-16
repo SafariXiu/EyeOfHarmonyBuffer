@@ -71,6 +71,14 @@ public final class TalosLandMask {
     }
 
     /**
+     * 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘
+     */
+    public static double getEdgeWeight(int worldX, int worldZ, int worldSeedInt) {
+        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
+        return r != null ? r.edgeWeight : 0.0;
+    }
+
+    /**
      * 如果你在 chunk 内需要频繁访问，可以先拿到 tile 再做本地遍历。
      * 注意：LandTile 内部数组顺序为 [z][x]。
      */

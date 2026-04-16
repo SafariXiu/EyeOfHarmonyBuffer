@@ -28,6 +28,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final TalosRiverCarver.MacroPackageResolver macroResolver;
 
+    private static final boolean DEBUG_COASTLINE = true;
+
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
@@ -103,11 +105,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     h = worldHeight - 2;
                 }
 
+                // 基岩
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
                 meta[bedrockIndex] = 0;
 
                 if (isLand) {
+                    // 陆地：石头 + 草
                     for (int y = 1; y < h; y++) {
                         int idx = getIndex(localX, y, localZ);
                         blocks[idx] = Blocks.stone;
@@ -118,6 +122,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     blocks[topIndex] = Blocks.grass;
                     meta[topIndex] = 0;
 
+                    // 陆地但低于海平面的地方，补水
                     if (h < seaLevel) {
                         for (int y = h + 1; y <= seaLevel; y++) {
                             int idx = getIndex(localX, y, localZ);
@@ -127,6 +132,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
 
                 } else {
+                    // 海底 + 水
                     int seabedY = Math.min(h, seaLevel - 1);
                     if (seabedY < 1) seabedY = 1;
 
@@ -139,6 +145,23 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     for (int y = seabedY + 1; y <= seaLevel; y++) {
                         int idx = getIndex(localX, y, localZ);
                         blocks[idx] = Blocks.water;
+                        meta[idx] = 0;
+                    }
+                }
+
+                if (DEBUG_COASTLINE && landSample != null && landSample.isLand) {
+                    double coastW = landSample.coastWeight;
+                    if (coastW > 0.0) {
+                        int topY = Math.min(h, worldHeight - 1);
+                        int idx = getIndex(localX, topY, localZ);
+
+                        if (coastW > 0.66) {
+                            blocks[idx] = Blocks.gold_block;
+                        } else if (coastW > 0.33) {
+                            blocks[idx] = Blocks.iron_block;
+                        } else {
+                            blocks[idx] = Blocks.sand;
+                        }
                         meta[idx] = 0;
                     }
                 }

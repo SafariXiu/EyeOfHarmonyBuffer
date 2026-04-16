@@ -52,25 +52,30 @@ public class WorldgenAPI {
         /** 海岸带权重 [0,1] */
         public final double coastWeight;
 
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        public final double edgeWeight;
+
         public SampleResult(boolean isLand, int plateId, int superId,
-                            double landWeight, double coastWeight) {
+                            double landWeight, double coastWeight,
+                            double edgeWeight) {
             this.isLand = isLand;
             this.plateId = plateId;
             this.superId = superId;
             this.landWeight = landWeight;
             this.coastWeight = coastWeight;
+            this.edgeWeight = edgeWeight;
         }
 
-        /** 兼容旧调用：默认陆地=1.0，海洋=0.0，海岸=0.0 */
+        /** 兼容旧调用：默认陆地=1.0，海洋=0.0，海岸/边缘=0.0 */
         public SampleResult(boolean isLand, int plateId, int superId) {
-            this(isLand, plateId, superId, isLand ? 1.0 : 0.0, 0.0);
+            this(isLand, plateId, superId, isLand ? 1.0 : 0.0, 0.0, 0.0);
         }
 
         @Override
         public String toString() {
             return String.format(
-                "Land=%s, Plate=%d, Super=%d, landW=%.3f, coastW=%.3f",
-                isLand, plateId, superId, landWeight, coastWeight
+                "Land=%s, Plate=%d, Super=%d, landW=%.3f, coastW=%.3f, edgeW=%.3f",
+                isLand, plateId, superId, landWeight, coastWeight, edgeWeight
             );
         }
     }
@@ -81,7 +86,7 @@ public class WorldgenAPI {
     public static SampleResult samplePoint(int x, int z, int worldSeed) {
         WorldgenCore.LandResult raw = WorldgenCore.isLandRaw(x, z, worldSeed);
         return new SampleResult(raw.isLand, raw.plateId, raw.superId,
-            raw.landWeight, raw.coastWeight);
+            raw.landWeight, raw.coastWeight, raw.edgeWeight);
     }
 
     /**
@@ -126,7 +131,7 @@ public class WorldgenAPI {
 
         WorldgenCore.LandResult raw = WorldgenCore.isLandWithContext(x, z, ctx.landContext);
         return new SampleResult(raw.isLand, raw.plateId, raw.superId,
-            raw.landWeight, raw.coastWeight);
+            raw.landWeight, raw.coastWeight, raw.edgeWeight);
     }
 
 
@@ -258,7 +263,7 @@ public class WorldgenAPI {
             WorldgenCore.isLandRaw(x, z, worldSeed);
 
         return new SampleResult(isLand, plateId, superId,
-            raw.landWeight, raw.coastWeight);
+            raw.landWeight, raw.coastWeight, raw.edgeWeight);
     }
 
     /**
@@ -276,6 +281,4 @@ public class WorldgenAPI {
         int worldZ0 = chunkZ * 16;
         return getOrBuildTileForPoint(worldX0, worldZ0, worldSeed);
     }
-
-
 }

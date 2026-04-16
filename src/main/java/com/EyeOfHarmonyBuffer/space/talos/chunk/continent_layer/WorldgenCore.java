@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import java.util.*;
 
-
 /**
  * =====================================================
  * 类名：WorldgenCore
@@ -28,18 +27,35 @@ public class WorldgenCore {
     private static final NoiseFamily LAND_NOISE =
         new NoiseFamily(1001, 1.0, 3, 2.0, 0.5);
 
+    private static final Object SUPER_CENTER_LOCK = new Object();
+    private static final Object SUPER_CACHE_LOCK = new Object();
+
     public static final class LandEval {
         public final boolean isLand;
         public final int bestContinentId;
         public final int bestSuperId;
 
+        /** 原始骨架权重（用于 landWeight） */
         public final double landMask;
 
-        public LandEval(boolean isLand, int bestContinentId, int bestSuperId, double landMask) {
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        public final double edgeWeight;
+
+        /** 从海陆边界往内陆的距离（单位：方块，海侧为 0） */
+        public final double inlandDist;
+
+        public LandEval(boolean isLand,
+                        int bestContinentId,
+                        int bestSuperId,
+                        double landMask,
+                        double edgeWeight,
+                        double inlandDist) {
             this.isLand = isLand;
             this.bestContinentId = bestContinentId;
             this.bestSuperId = bestSuperId;
             this.landMask = landMask;
+            this.edgeWeight = edgeWeight;
+            this.inlandDist = inlandDist;
         }
     }
 
@@ -131,14 +147,16 @@ public class WorldgenCore {
 
     private static SuperContinentCenter getSuperCenterForGridCached(int gx, int gz, int worldSeed) {
         long key = packSuperGridKey(gx, gz, worldSeed);
-        SuperContinentCenter c = SUPER_CENTER_CACHE.get(key);
-        if (c != null) return c;
+        synchronized (SUPER_CENTER_LOCK) {
+            SuperContinentCenter c = SUPER_CENTER_CACHE.get(key);
+            if (c != null) return c;
 
-        c = getSuperCenterForGrid(gx, gz, worldSeed);
-        if (c != null) {
-            SUPER_CENTER_CACHE.put(key, c);
+            c = getSuperCenterForGrid(gx, gz, worldSeed);
+            if (c != null) {
+                SUPER_CENTER_CACHE.put(key, c);
+            }
+            return c;
         }
-        return c;
     }
 
     public static double latitudeWeight(int worldZ) {
@@ -193,7 +211,6 @@ public class WorldgenCore {
         int zMinExt = zMin - WorldgenConfig.SUPER_MAX_INFLUENCE;
         int zMaxExt = zMax + WorldgenConfig.SUPER_MAX_INFLUENCE;
 
-        // 用整数 floorDiv，避免 double + Math.floor
         int gxMin = Math.floorDiv(xMinExt, WorldgenConfig.SUPER_GRID_SIZE);
         int gxMax = Math.floorDiv(xMaxExt, WorldgenConfig.SUPER_GRID_SIZE);
         int gzMin = Math.floorDiv(zMinExt, WorldgenConfig.SUPER_GRID_SIZE);
@@ -456,12 +473,14 @@ public class WorldgenCore {
 
     private static SuperPrecomputed getPrecomputedForSuper(SuperContinentCenter center) {
         int superId = center.superId;
-        SuperPrecomputed cached = SUPER_CACHE.get(superId);
-        if (cached != null) return cached;
+        synchronized (SUPER_CACHE_LOCK) {
+            SuperPrecomputed cached = SUPER_CACHE.get(superId);
+            if (cached != null) return cached;
 
-        SuperPrecomputed built = buildSuperPrecomputed(center);
-        SuperPrecomputed prev = SUPER_CACHE.putIfAbsent(superId, built);
-        return prev != null ? prev : built;
+            SuperPrecomputed built = buildSuperPrecomputed(center);
+            SUPER_CACHE.put(superId, built);
+            return built;
+        }
     }
 
     public static LandEval isSuperLandAt(
@@ -476,6 +495,9 @@ public class WorldgenCore {
         int bestCont = 0;
         int bestSuper = 0;
         double bestLandMask = 0.0;
+        double bestInlandDist = 0.0;
+
+        SuperContinentCenter bestCenter = null;
 
         for (SuperContinentCenter c : centers) {
             double dx0 = x - c.worldX;
@@ -592,18 +614,39 @@ public class WorldgenCore {
             double v = 1.0 - normDist;
             v = v > 0 ? v * v : v * 1.5;
 
+            double inlandDist = effR - minDist;
+
             if (v > 0 && v > bestScore) {
                 bestScore = v;
                 bestCont = minCont;
                 bestSuper = superId;
                 bestLandMask = Math.min(v, 1.0);
+
+                bestInlandDist = Math.max(0.0, inlandDist);
+
+                bestCenter = c;
             }
 
         }
 
         boolean isLand = bestCont != 0;
         double finalMask = isLand ? bestLandMask : 0.0;
-        return new LandEval(isLand, bestCont, bestSuper, finalMask);
+
+        double edgeWeight = 0.0;
+        if (isLand && bestCenter != null) {
+            double dxC = x - bestCenter.worldX;
+            double dzC = z - bestCenter.worldZ;
+            double rCenter = Math.sqrt(dxC * dxC + dzC * dzC);
+
+            double outerRadiusBase = bestCenter.baseRadius * 1.2;
+            double t = rCenter / outerRadiusBase;
+            if (t < 0.0) t = 0.0;
+            if (t > 1.0) t = 1.0;
+
+            edgeWeight = t;
+        }
+
+        return new LandEval(isLand, bestCont, bestSuper, finalMask, edgeWeight, bestInlandDist);
     }
 
     public static LandContext prepareLandContextForRect(
@@ -618,33 +661,53 @@ public class WorldgenCore {
         return new LandContext(centers, LAND_NOISE);
     }
 
-    private static double computeCoastWeightFromLandWeight(double lw) {
-        // lw in [0,1]
-        double d = Math.abs(lw - 0.5);
-        double B = 0.25;
+    /**
+     * 基于“从海陆边界向内陆的距离”计算海岸带权重：
+     *   - dInland <= 0      → 正好在海岸线上，coastWeight = 1
+     *   - 0 < dInland <= 30 → 仍然视为强海岸线，coastWeight = 1
+     *   - 30 < dInland < 100→ 从 1 平滑衰减到 0
+     *   - dInland >= 100    → 视为内陆，coastWeight = 0
+     */
+    private static double computeCoastWeightFromInlandDist(double dInland) {
+        final double SCALE = 0.3;
 
-        double t = d / B;
-        if (t > 1.0) t = 1.0;
-        if (t < 0.0) t = 0.0;
+        dInland *= SCALE;
 
-        double s = t * t * (3.0 - 2.0 * t);
+        if (dInland <= 0.0) {
+            return 1.0;
+        }
 
-        return 1.0 - s;
+        final double FULL_RANGE = 30.0;  // 0–30 格：完整海岸带
+        final double ZERO_RANGE = 100.0; // >=100 格：完全内陆
+
+        if (dInland <= FULL_RANGE) {
+            return 1.0;
+        }
+        if (dInland >= ZERO_RANGE) {
+            return 0.0;
+        }
+
+        double t = (dInland - FULL_RANGE) / (ZERO_RANGE - FULL_RANGE);
+
+        double s = 1.0 - (t * t * (3.0 - 2.0 * t));
+
+        return Math.max(0.0, Math.min(1.0, s));
     }
 
     public static LandResult isLandWithContext(int x, int z, LandContext ctx) {
         if (ctx.centers.isEmpty()) {
-            return new LandResult(false, 0, 0, 0.0, 0.0);
+            return new LandResult(false, 0, 0, 0.0, 0.0, 0.0);
         }
         LandEval eval = isSuperLandAt(x, z, ctx.centers, ctx.noise);
         if (!eval.isLand) {
-            return new LandResult(false, 0, 0, 0.0, 0.0);
+            return new LandResult(false, 0, 0, 0.0, 0.0, 0.0);
         }
 
         double lw = eval.landMask;
-        double cw = computeCoastWeightFromLandWeight(lw);
+        double cw = computeCoastWeightFromInlandDist(eval.inlandDist);
+        double ew = eval.edgeWeight;
 
-        return new LandResult(true, eval.bestContinentId, eval.bestSuperId, lw, cw);
+        return new LandResult(true, eval.bestContinentId, eval.bestSuperId, lw, cw, ew);
     }
 
     public static LandResult isLandRaw(int x, int z, int worldSeed) {
@@ -663,18 +726,23 @@ public class WorldgenCore {
         /** 海岸带权重 [0,1] */
         public double coastWeight;
 
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        public double edgeWeight;
+
         public LandResult(boolean land, int plate, int sup,
-                          double landWeight, double coastWeight) {
+                          double landWeight, double coastWeight,
+                          double edgeWeight) {
             this.isLand = land;
             this.plateId = plate;
             this.superId = sup;
             this.landWeight = landWeight;
             this.coastWeight = coastWeight;
+            this.edgeWeight = edgeWeight;
         }
 
-        /** 旧签名的兼容构造器，默认陆地点权重=1，海洋=0，无海岸权重 */
+        /** 旧签名的兼容构造器，默认陆地点权重=1，海洋=0，无海岸/边缘权重 */
         public LandResult(boolean land, int plate, int sup) {
-            this(land, plate, sup, land ? 1.0 : 0.0, 0.0);
+            this(land, plate, sup, land ? 1.0 : 0.0, 0.0, 0.0);
         }
     }
 }
