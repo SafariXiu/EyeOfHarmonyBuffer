@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -20,22 +21,14 @@ public abstract class Grade7WaterPurificationMixin extends MTEPurificationUnitBa
         super(aID, aName, aNameRegional);
     }
 
-    @Inject(method = "startCycle", at = @At("HEAD"))
-    private void forceControlSignal(int cycleTime, int progressTime, CallbackInfo ci) {
-        if(MainConfig.Grade7WaterPurificationEnabled){
-            try {
-                Field controlSignalField = MTEPurificationUnitDegasser.class.getDeclaredField("controlSignal");
-                controlSignalField.setAccessible(true);
-                Class<?> controlSignalClass = Class.forName("gregtech.common.tileentities.machines.multi.purification.MTEPurificationUnitDegasser$ControlSignal");
-                Constructor<?> constructor = controlSignalClass.getDeclaredConstructor(byte.class);
-                constructor.setAccessible(true);
-                Object newControlSignal = constructor.newInstance((byte) 4);
-
-                controlSignalField.set(this, newControlSignal);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    @Inject(
+        method = "calculateFinalSuccessChance",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    private void alwaysSuccess(CallbackInfoReturnable<Float> cir) {
+        if (MainConfig.Grade7WaterPurificationEnabled) {
+            cir.setReturnValue(100.0f);
         }
     }
 }
