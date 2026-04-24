@@ -187,6 +187,10 @@ item.DiChunYuanShiFenMo.name=Low-Purity Originium Powder
 item.YuanShiJingHe.name=Originium Core
 item.UnactivatedYuanShi.name=Unactivated Originium
 
+#block
+tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
+tile.yuan_shi_block.name=Originite Prime Vein Block
+
 solarsystem.talosSystem=Talos
 star.talosStar=Talos
 planet.Talos=Talos-1

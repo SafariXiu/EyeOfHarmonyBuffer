@@ -187,6 +187,10 @@ item.DiChunYuanShiFenMo.name=低纯源石粉末
 item.YuanShiJingHe.name=源石晶核
 item.UnactivatedYuanShi.name=未激活的源石
 
+#block
+tile.yuan_shi_main_block.name=源石主矿脉块
+tile.yuan_shi_block.name=源石矿脉块
+
 solarsystem.talosSystem=塔罗斯
 star.talosStar=塔罗斯
 planet.Talos=塔罗斯-1

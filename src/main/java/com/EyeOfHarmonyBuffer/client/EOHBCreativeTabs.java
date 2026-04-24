@@ -9,7 +9,7 @@ import com.EyeOfHarmonyBuffer.common.item.items.BasicItems;
 
 import java.util.List;
 
-import static com.EyeOfHarmonyBuffer.utils.TextHandler.texter;
+import static com.EyeOfHarmonyBuffer.common.item.ItemLoader.YuanShi;
 
 public class EOHBCreativeTabs {
 
@@ -77,6 +77,14 @@ public class EOHBCreativeTabs {
             if (MachineLoader.MonkeyShit != null) {
                 itemList.add(MachineLoader.MonkeyShit);
             }
+        }
+    };
+
+    public static final CreativeTabs ArknightsProject_Block = new CreativeTabs("ArknightsProjectBlock") {
+        @Override
+        @SideOnly(Side.CLIENT)
+        public Item getTabIconItem() {
+            return YuanShi;
         }
     };
 }
