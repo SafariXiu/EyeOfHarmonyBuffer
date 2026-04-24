@@ -40,6 +40,7 @@ public class TextLocalization {
     public static final String EOHB_WirelessMode_On;
     public static final String EOHB_WirelessMode_Off;
 
+    //机器
     public static final String NameVendingMachines;
     public static final String Tooltip_VendingMachines_MachineType;
     public static final String Tooltip_VendingMachines_Controller;
@@ -124,9 +125,15 @@ public class TextLocalization {
     public static final String Tooltip_OrundumDynamo_04;
     public static final String Tooltip_OrundumDynamo_05;
 
+    public static final String NameElectricTypeOneMiningMachine;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_MachineType;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_Controller;
+
+    //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
 
+    //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
     public static final String EOHB_ChengDuHeart_Tooltip_01;
     public static final String EOHB_Monkey_Tooltip_00;
@@ -140,6 +147,7 @@ public class TextLocalization {
     public static final String EOHB_PoSuiYuanShi_Tooltip_00;
     public static final String EOHB_PoSuiYuanShi_Tooltip_01;
 
+    //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
     public static final String EOHB_Recipe_BlueDogFountain;
     public static final String EOHB_Recipe_BlueDogFountainMAX;
@@ -290,6 +298,11 @@ public class TextLocalization {
         Tooltip_OrundumDynamo_03 = TextHandler.texter("","Tooltip_OrundumDynamo_03");
         Tooltip_OrundumDynamo_04 = TextHandler.texter("","Tooltip_OrundumDynamo_04");
         Tooltip_OrundumDynamo_05 = TextHandler.texter("","Tooltip_OrundumDynamo_05");
+
+        //电力一形矿机
+        NameElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","NameElectricTypeOneMiningMachine");
+        Tooltip_ElectricTypeOneMiningMachine_MachineType = TextHandler.texter("Power Miner","Tooltip_ElectricTypeOneMiningMachine_MachineType");
+        Tooltip_ElectricTypeOneMiningMachine_Controller = TextHandler.texter("Controller Block of Electric Type-I Mining Machine","Tooltip_ElectricTypeOneMiningMachine_Controller");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");

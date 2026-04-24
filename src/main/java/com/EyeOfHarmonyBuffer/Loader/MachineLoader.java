@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Loader;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.Machine.*;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_ElectricTypeOneMiningMachine;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_OrundumDynamo;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.item.ItemStack;
@@ -14,6 +15,7 @@ public class MachineLoader {
     public static ItemStack BlueDogMachine;
     public static ItemStack MonkeyShit;
     public static ItemStack OrundumDynamo;
+    public static ItemStack ElectricTypeOneMiningMachine;
 
     private final static int MachineBlockID = 23000;
 
@@ -66,5 +68,12 @@ public class MachineLoader {
             TextLocalization.NameOrundumDynamo
         ).getStackForm(1);
         GTCMItemList.OrundumDynamos.set(OrundumDynamo);
+
+        /*ElectricTypeOneMiningMachine = new EOHB_ElectricTypeOneMiningMachine(
+            MachineBlockID + 8,
+            "NameElectricTypeOneMiningMachine",
+            TextLocalization.NameElectricTypeOneMiningMachine
+        ).getStackForm(1);
+        GTCMItemList.ElectricTypeOneMiningMachines.set(ElectricTypeOneMiningMachine);*/
     }
 }

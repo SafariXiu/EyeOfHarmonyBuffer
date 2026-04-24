@@ -129,6 +129,9 @@ Tooltip_OrundumDynamo_03=Every unit of Originite Prime converts into Orundum onc
 Tooltip_OrundumDynamo_04=Completely free from Originium dust contamination!
 Tooltip_OrundumDynamo_05=The very dawn of the Originium industry—good luck out there, Administrator!
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
+NameElectricTypeOneMiningMachine=Electric Type-I Mining Machine
+Tooltip_ElectricTypeOneMiningMachine_MachineType=Power Miner
+Tooltip_ElectricTypeOneMiningMachine_Controller=Controller Block of Electric Type-I Mining Machine
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device

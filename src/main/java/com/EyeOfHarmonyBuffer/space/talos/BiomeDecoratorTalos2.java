@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiDepositTalos;
+import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -13,7 +14,7 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
     private World currentWorld;
 
-    private final WorldGenYuanShiDepositTalos yuanShiGen = new WorldGenYuanShiDepositTalos();
+    private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
 
     @Override
     protected void setCurrentWorld(World world) {
@@ -51,6 +52,6 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             return;
         }
 
-        yuanShiGen.generate(world, rand, chunkX, chunkZ);
+        veinGen.generate(world, rand, chunkX, chunkZ);
     }
 }

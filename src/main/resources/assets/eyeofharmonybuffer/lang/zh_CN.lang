@@ -129,6 +129,9 @@ Tooltip_OrundumDynamo_03=§f每一颗§6至纯源石§f在消耗后都会变成�
 Tooltip_OrundumDynamo_04=§7没有§6源石§7粉尘污染！
 Tooltip_OrundumDynamo_05=§f一切§6源石§f工业的开端，§a祝你好运§f，管理员！
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
+NameElectricTypeOneMiningMachine=电力一形矿机
+Tooltip_ElectricTypeOneMiningMachine_MachineType=电力矿机
+Tooltip_ElectricTypeOneMiningMachine_Controller=电力矿机的控制器方块
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪

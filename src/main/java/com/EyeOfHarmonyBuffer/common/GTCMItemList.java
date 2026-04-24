@@ -57,6 +57,7 @@ public enum GTCMItemList {
 
     //方舟机器
     OrundumDynamos,
+    ElectricTypeOneMiningMachines,
 
 
     //机器结构方块

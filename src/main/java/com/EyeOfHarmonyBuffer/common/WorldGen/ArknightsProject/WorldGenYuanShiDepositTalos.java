@@ -9,14 +9,7 @@ import java.util.Random;
 
 public class WorldGenYuanShiDepositTalos {
 
-    public void generate(World world, Random rand, int chunkX, int chunkZ) {
-
-        if (rand.nextInt(10) != 0) {
-            return;
-        }
-
-        int baseX = chunkX * 16 + rand.nextInt(16 - 12);
-        int baseZ = chunkZ * 16 + rand.nextInt(16 - 12);
+    public void generateAt(World world, Random rand, int baseX, int baseZ) {
 
         if (!isAreaSuitable(world, baseX, baseZ)) {
             return;
