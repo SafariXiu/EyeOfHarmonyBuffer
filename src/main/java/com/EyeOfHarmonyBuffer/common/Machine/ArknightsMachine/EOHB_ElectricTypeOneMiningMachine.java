@@ -1,8 +1,8 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
-import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -14,7 +14,6 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
-import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.block.Block;
@@ -33,16 +32,15 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachineBase<EOHB_ElectricTypeOneMiningMachine> implements IConstructable, ISurvivalConstructable {
+public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachineBase<EOHB_ElectricTypeOneMiningMachine>
+    implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_ElectricTypeOneMiningMachine> STRUCTURE_DEFINITION = null;
     private static final String STRUCTURE_PIECE_MAIN = "mainOrundumDynamo";
     private static final int OffsetsX = 4;
     private static final int OffsetsY = 10;
     private static final int OffsetsZ = 3;
-    private static final int CASING_INDEX = 16;
     private static final int CASING_INDEX1 = 183;
-    private static final int TICKS_PER_CYCLE = 200;
 
     public EOHB_ElectricTypeOneMiningMachine(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -54,7 +52,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return 200;
     }
 
     @Override
@@ -74,7 +72,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
 
     @Override
     public int getMaxParallelRecipes() {
-        return 0;
+        return 1;
     }
 
     @NotNull
@@ -116,66 +114,22 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     public IStructureDefinition<EOHB_ElectricTypeOneMiningMachine> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
             STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ElectricTypeOneMiningMachine>builder()
-                .addShape(
-                    STRUCTURE_PIECE_MAIN,transpose(shapeMain)
-                )
-                .addElement(
-                    'A',
-                    ofBlock(sBlockGlass1,0)
-                )
+                .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
+                .addElement('A', ofBlock(sBlockGlass1, 0))
                 .addElement(
                     'B',
                     buildHatchAdder(EOHB_ElectricTypeOneMiningMachine.class)
-                        .atLeast(InputBus,OutputBus)
+                        .atLeast(InputBus, OutputBus, Energy.or(ExoticEnergy))
                         .casingIndex(CASING_INDEX1)
                         .dot(1)
                         .buildAndChain(
-                            sBlockCasings8,7
+                            sBlockCasings8, 7
                         )
                 )
-                .addElement(
-                    'C',
-                    ofBlock(sBlockFrames,305)
-                )
+                .addElement('C', ofBlock(sBlockFrames, 305))
                 .build();
         }
         return STRUCTURE_DEFINITION;
-    }
-
-    @NotNull
-    @Override
-    public CheckRecipeResult checkProcessing() {
-        if (!mMachine) {
-            return CheckRecipeResultRegistry.NO_RECIPE;
-        }
-
-        IGregTechTileEntity base = getBaseMetaTileEntity();
-        World world = base.getWorld();
-        int cx = base.getXCoord();
-        int cy = base.getYCoord();
-        int cz = base.getZCoord();
-        ForgeDirection front = base.getFrontFacing();
-
-        if (!hasYuanShiInMiningArea(world, cx, cy, cz, front)) {
-            return CheckRecipeResultRegistry.NO_RECIPE;
-        }
-
-        this.mMaxProgresstime = TICKS_PER_CYCLE;
-        this.mProgresstime = 0;
-        this.mEfficiency = 10000;
-
-        this.mEUt = -5000;
-
-        return CheckRecipeResultRegistry.SUCCESSFUL;
-    }
-
-    @Override
-    public void endRecipeProcessing() {
-        ItemStack out = GTCMItemList.YuanShiKuang.get(10);
-
-        addOutput(out);
-
-        super.endRecipeProcessing();
     }
 
     @Override
@@ -207,6 +161,15 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
         return new EOHB_ElectricTypeOneMiningMachine(this.mName);
     }
 
+    @NotNull
+    @Override
+    public CheckRecipeResult checkProcessing() {
+        return super.checkProcessing();
+    }
+
+    /**
+     * 7×7×4 区域检测：在机器背后、向下 4 层的盒子里找 YuanShiMainBlock。
+     */
     private boolean hasYuanShiInMiningArea(World world, int cx, int cy, int cz, ForgeDirection front) {
         ForgeDirection back = front.getOpposite();
         int bx = cx + back.offsetX;
@@ -237,26 +200,32 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
                                  int aColorIndex, boolean aActive, boolean aRedstone) {
         if (side == facing) {
-            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
+            if (aActive)
+                return new ITexture[]{
+                    Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1),
+                    TextureFactory.builder()
+                        .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
+                        .extFacing()
+                        .build(),
+                    TextureFactory.builder()
+                        .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
+                        .extFacing()
+                        .glow()
+                        .build()
+                };
+            return new ITexture[]{
+                Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1),
                 TextureFactory.builder()
-                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
                     .extFacing()
                     .build(),
-                TextureFactory.builder()
-                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
-                    .extFacing()
-                    .glow()
-                    .build() };
-            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
-                .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
-                .extFacing()
-                .build(),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
                     .extFacing()
                     .glow()
-                    .build() };
+                    .build()
+            };
         }
-        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
+        return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1)};
     }
 }

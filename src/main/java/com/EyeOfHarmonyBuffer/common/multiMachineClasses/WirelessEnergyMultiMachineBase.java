@@ -27,7 +27,6 @@ import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.Utils.NEGATIVE_ONE;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
-import static com.Nxer.TwistSpaceTechnology.config.Config.DefaultCycleNum_WirelessEnergyMultiMachineBase;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
 public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMultiMachineBase<T>>
@@ -59,7 +58,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     @Override
     public void loadNBTData(NBTTagCompound aNBT) {
         super.loadNBTData(aNBT);
-        wirelessMode = aNBT.getBoolean("wirelessMode");
+        this.wirelessMode = aNBT.getBoolean("wirelessMode");
     }
 
     @Override
@@ -210,7 +209,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     public abstract int getWirelessModeProcessingTime();
 
     public boolean getDefaultWirelessMode() {
-        return false;
+        return true;
     }
 
 }

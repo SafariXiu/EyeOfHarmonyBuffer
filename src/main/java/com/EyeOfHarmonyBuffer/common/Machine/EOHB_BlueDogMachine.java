@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.common.Machine;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
-import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.EyeOfHarmonyBuffer.utils.Utils;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;

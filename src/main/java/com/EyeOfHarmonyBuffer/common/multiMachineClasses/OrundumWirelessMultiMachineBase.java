@@ -104,9 +104,4 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
                     + " Orundum");
         }
     }
-
-    @Override
-    public boolean getDefaultWirelessMode() {
-        return true;
-    }
 }
