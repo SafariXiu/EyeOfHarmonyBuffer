@@ -128,6 +128,12 @@ public class TextLocalization {
     public static final String NameElectricTypeOneMiningMachine;
     public static final String Tooltip_ElectricTypeOneMiningMachine_MachineType;
     public static final String Tooltip_ElectricTypeOneMiningMachine_Controller;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_00;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_01;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_02;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_03;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_04;
+    public static final String Tooltip_ElectricTypeOneMiningMachine_05;
 
     //MOD
     public static final String EOHB_Harmony;
@@ -154,6 +160,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_MonkeyShit;
     public static final String EOHB_Recipe_OrundumDynamo;
     public static final String EOHB_Recipe_OrundumDynamo_Tooltip_00;
+    public static final String EOHB_Recipe_ElectricTypeOneMiningMachine;
 
 
     public TextLocalization() {
@@ -303,6 +310,12 @@ public class TextLocalization {
         NameElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","NameElectricTypeOneMiningMachine");
         Tooltip_ElectricTypeOneMiningMachine_MachineType = TextHandler.texter("Power Miner","Tooltip_ElectricTypeOneMiningMachine_MachineType");
         Tooltip_ElectricTypeOneMiningMachine_Controller = TextHandler.texter("Controller Block of Electric Type-I Mining Machine","Tooltip_ElectricTypeOneMiningMachine_Controller");
+        Tooltip_ElectricTypeOneMiningMachine_00 = TextHandler.texter("The Electric Type-I Mining Machine is the first piece of equipment you gain access to for fully automated mining of Orundum ore veins.","Tooltip_ElectricTypeOneMiningMachine_00");
+        Tooltip_ElectricTypeOneMiningMachine_01 = TextHandler.texter("Just set the structure on top of the Orundum ore veins unique to Planet Talos and it will start operating!","Tooltip_ElectricTypeOneMiningMachine_01");
+        Tooltip_ElectricTypeOneMiningMachine_02 = TextHandler.texter("The machine requires at least one Originite Prime Main Vein Block within its detection range to operate.","Tooltip_ElectricTypeOneMiningMachine_02");
+        Tooltip_ElectricTypeOneMiningMachine_03 = TextHandler.texter("The detection range is a 7×7×3 cubic area that starts one block behind and two blocks below the machine’s main block.","Tooltip_ElectricTypeOneMiningMachine_03");
+        Tooltip_ElectricTypeOneMiningMachine_04 = TextHandler.texter("By default, the machine operates with a single parallel line, yielding 10 Orundum ore every 10 seconds.","Tooltip_ElectricTypeOneMiningMachine_04");
+        Tooltip_ElectricTypeOneMiningMachine_05 = TextHandler.texter("","Tooltip_ElectricTypeOneMiningMachine_05");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -327,5 +340,6 @@ public class TextLocalization {
         EOHB_Recipe_MonkeyShit = TextHandler.texter("The Holy Royal High Priest of Poop Transportation","EOHB_Recipe_MonkeyShit");
         EOHB_Recipe_OrundumDynamo = TextHandler.texter("Orundum Dynamo","EOHB_Recipe_OrundumDynamo");
         EOHB_Recipe_OrundumDynamo_Tooltip_00 = TextHandler.texter("Orundum OutPut：","EOHB_Recipe_OrundumDynamo_Tooltip_00");
+        EOHB_Recipe_ElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","EOHB_Recipe_ElectricTypeOneMiningMachine");
     }
 }

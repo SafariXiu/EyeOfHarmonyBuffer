@@ -22,7 +22,6 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
-import gregtech.api.util.GTLog;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import mcp.mobius.waila.api.IWailaConfigHandler;

@@ -69,11 +69,11 @@ public class MachineLoader {
         ).getStackForm(1);
         GTCMItemList.OrundumDynamos.set(OrundumDynamo);
 
-        /*ElectricTypeOneMiningMachine = new EOHB_ElectricTypeOneMiningMachine(
+        ElectricTypeOneMiningMachine = new EOHB_ElectricTypeOneMiningMachine(
             MachineBlockID + 8,
             "NameElectricTypeOneMiningMachine",
             TextLocalization.NameElectricTypeOneMiningMachine
         ).getStackForm(1);
-        GTCMItemList.ElectricTypeOneMiningMachines.set(ElectricTypeOneMiningMachine);*/
+        GTCMItemList.ElectricTypeOneMiningMachines.set(ElectricTypeOneMiningMachine);
     }
 }

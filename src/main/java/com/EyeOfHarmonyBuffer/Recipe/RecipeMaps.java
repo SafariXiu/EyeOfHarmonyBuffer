@@ -70,4 +70,16 @@ public class RecipeMaps {
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.YuanShi.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> ElectricTypeOneMiningMachine = RecipeMapBuilder
+        .of(EOHB_Recipe_ElectricTypeOneMiningMachine)
+        .maxIO(1,4,0,0)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RangeOutputFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.YuanShiKuang.get(1)))
+        .build();
 }

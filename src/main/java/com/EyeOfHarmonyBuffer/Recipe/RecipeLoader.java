@@ -25,6 +25,7 @@ public class RecipeLoader {
             new MaterialsRecipes(),
             new ItemRecipes(),
             new OrundumDynamoRecipes(),
+            new ElectricTypeOneMiningMachineRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

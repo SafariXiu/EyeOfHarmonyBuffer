@@ -132,6 +132,12 @@ GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization 
 NameElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 Tooltip_ElectricTypeOneMiningMachine_MachineType=Power Miner
 Tooltip_ElectricTypeOneMiningMachine_Controller=Controller Block of Electric Type-I Mining Machine
+Tooltip_ElectricTypeOneMiningMachine_00=The Electric Type-I Mining Machine is the first piece of equipment you gain access to for fully automated mining of Orundum ore veins.
+Tooltip_ElectricTypeOneMiningMachine_01=Just set the structure on top of the Orundum ore veins unique to Planet Talos and it will start operating!
+Tooltip_ElectricTypeOneMiningMachine_02=The machine requires at least one Originite Prime Main Vein Block within its detection range to operate.
+Tooltip_ElectricTypeOneMiningMachine_03=The detection range is a 7×7×3 cubic area that starts one block behind and two blocks below the machine’s main block.
+Tooltip_ElectricTypeOneMiningMachine_04=By default, the machine operates with a single parallel line, yielding 10 Orundum ore every 10 seconds.
+Tooltip_ElectricTypeOneMiningMachine_05=You can later increase its output by placing upgrade modules inside the main block!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -140,6 +146,7 @@ EOHB_Recipe_BlueDogFountainMAX=Blue Dog Fountain Max
 EOHB_Recipe_MonkeyShit=The Holy Royal High Priest of Poop Transportation
 EOHB_Recipe_OrundumDynamo=Orundum Dynamo
 EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum OutPut：
+EOHB_Recipe_ElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 
 #item
 EOHB_Harmony=Harmony
