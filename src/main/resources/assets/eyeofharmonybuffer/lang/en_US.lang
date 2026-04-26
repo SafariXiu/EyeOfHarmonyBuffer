@@ -128,7 +128,6 @@ Tooltip_OrundumDynamo_02=Upgrade the coils and glass to achieve greater efficien
 Tooltip_OrundumDynamo_03=Every unit of Originite Prime converts into Orundum once it’s used up.
 Tooltip_OrundumDynamo_04=Completely free from Originium dust contamination!
 Tooltip_OrundumDynamo_05=The very dawn of the Originium industry—good luck out there, Administrator!
-GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 NameElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 Tooltip_ElectricTypeOneMiningMachine_MachineType=Power Miner
 Tooltip_ElectricTypeOneMiningMachine_Controller=Controller Block of Electric Type-I Mining Machine
@@ -201,7 +200,12 @@ item.UnactivatedYuanShi.name=Unactivated Originium
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
 tile.yuan_shi_block.name=Originite Prime Vein Block
 
+#space
 solarsystem.talosSystem=Talos
 star.talosStar=Talos
 planet.Talos=Talos-1
 moon.Talos2=Talos-2
+
+#RecipeResultRegistry
+GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
+GT5U.gui.text.NoOriginitePrimeMainVeinBlock=No Originite Prime Main Vein Block!

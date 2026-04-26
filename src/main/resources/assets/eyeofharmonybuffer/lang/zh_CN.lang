@@ -128,7 +128,6 @@ Tooltip_OrundumDynamo_02=§7通过升级线圈与玻璃获得更高的效率与�
 Tooltip_OrundumDynamo_03=§f每一颗§6至纯源石§f在消耗后都会变成§c合成玉§f。
 Tooltip_OrundumDynamo_04=§7没有§6源石§7粉尘污染！
 Tooltip_OrundumDynamo_05=§f一切§6源石§f工业的开端，§a祝你好运§f，管理员！
-GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 NameElectricTypeOneMiningMachine=§6电力一型矿机
 Tooltip_ElectricTypeOneMiningMachine_MachineType=§6电力一型矿机
 Tooltip_ElectricTypeOneMiningMachine_Controller=§f电力一型矿机的控制器方块
@@ -201,7 +200,12 @@ item.UnactivatedYuanShi.name=未激活的源石
 tile.yuan_shi_main_block.name=源石主矿脉块
 tile.yuan_shi_block.name=源石矿脉块
 
+#space
 solarsystem.talosSystem=塔罗斯
 star.talosStar=塔罗斯
 planet.Talos=塔罗斯-1
 moon.Talos2=塔罗斯-2
+
+#RecipeResultRegistry
+GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
+GT5U.gui.text.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！

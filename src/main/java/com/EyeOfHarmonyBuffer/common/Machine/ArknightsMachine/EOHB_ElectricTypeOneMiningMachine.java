@@ -13,6 +13,8 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.block.Block;
@@ -165,6 +167,20 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     @NotNull
     @Override
     public CheckRecipeResult checkProcessing() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        World world = null;
+        if (base != null) {
+            world = base.getWorld();
+        }
+        int cx = base.getXCoord();
+        int cy = base.getYCoord();
+        int cz = base.getZCoord();
+        ForgeDirection front = base.getFrontFacing();
+
+        if (!hasYuanShiInMiningArea(world, cx, cy, cz, front)) {
+            return SimpleCheckRecipeResult.ofFailure("NoOriginitePrimeMainVeinBlock");
+        }
+
         return super.checkProcessing();
     }
 
