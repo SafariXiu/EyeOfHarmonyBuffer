@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
-import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessEnergyMultiMachineBase;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -44,10 +43,12 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
 
     public EOHB_ElectricTypeOneMiningMachine(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
+        setWirelessCycleNum(1);
     }
 
     public EOHB_ElectricTypeOneMiningMachine(String aName) {
         super(aName);
+        setWirelessCycleNum(1);
     }
 
     @Override

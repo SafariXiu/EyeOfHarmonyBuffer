@@ -142,7 +142,10 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
         boolean succeeded = false;
         CheckRecipeResult finalResult = CheckRecipeResultRegistry.SUCCESSFUL;
-        for (int i = 0; i < cycleNum; i++) {
+
+        int cycles = getWirelessCycleNum();
+
+        for (int i = 0; i < cycles; i++) {
             CheckRecipeResult r = wirelessModeProcessOnce();
             if (!r.wasSuccessful()) {
                 finalResult = r;
@@ -192,6 +195,15 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
         endRecipeProcessing();
         return result;
     }
+
+    protected int getWirelessCycleNum() {
+        return Math.max(1, cycleNum);
+    }
+
+    protected void setWirelessCycleNum(int wirelessCycleNum) {
+        this.cycleNum = Math.max(1, wirelessCycleNum);
+    }
+
 
     protected void prepareProcessing() {}
 
