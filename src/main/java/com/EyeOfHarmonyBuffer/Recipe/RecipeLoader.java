@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
+import com.EyeOfHarmonyBuffer.Recipe.ArknightsProject.OriginitePrime_GTNHRecipe;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -25,7 +26,8 @@ public class RecipeLoader {
             new MaterialsRecipes(),
             new ItemRecipes(),
             new OrundumDynamoRecipes(),
-            new ElectricTypeOneMiningMachineRecipes()
+            new ElectricTypeOneMiningMachineRecipes(),
+            new OriginitePrime_GTNHRecipe()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

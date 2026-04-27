@@ -139,6 +139,9 @@ public class TextLocalization {
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
 
+    //流体
+    public static final String EOHB_OriginiumWasteLiquid;
+
     //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
     public static final String EOHB_ChengDuHeart_Tooltip_01;
@@ -332,6 +335,9 @@ public class TextLocalization {
         EOHB_HeChengYu_Tooltip_01 = TextHandler.texter("In the past, it was used only as a conductive element, but it has since become a store of credit value.","EOHB_HeChengYu_Tooltip_01");
         EOHB_PoSuiYuanShi_Tooltip_00 = TextHandler.texter("A shattered Originite Prime that has lost its energy","EOHB_PoSuiYuanShi_Tooltip_00");
         EOHB_PoSuiYuanShi_Tooltip_01 = TextHandler.texter("there might be a way to restore its potency.","EOHB_PoSuiYuanShi_Tooltip_01");
+
+        //流体
+        EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
