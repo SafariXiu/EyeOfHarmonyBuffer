@@ -4,8 +4,7 @@ import bartworks.system.material.Werkstoff;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TextureSet;
 
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Harmony;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Harmony_Tooltip;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
 public class EOHBMaterialPool implements Runnable{
 
@@ -27,10 +26,9 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_SHINY
     );
 
-    public static final Werkstoff EOHBSolution = new Werkstoff(
-        new short[]{64, 180, 240},
-        "EOHB-Solution",
-        subscriptNumbers("(EOHB)(H2O)"),
+    public static final Werkstoff OriginiumWasteLiquid = new Werkstoff(
+        new short[]{90, 150, 40},
+        EOHB_OriginiumWasteLiquid,
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.ELEMENT,
         new Werkstoff.GenerationFeatures()

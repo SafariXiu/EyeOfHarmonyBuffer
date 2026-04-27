@@ -48,7 +48,9 @@ dependencies {
     implementation('com.github.GTNewHorizons:Electro-Magic-Tools:1.6.17:dev')
     implementation('com.github.GTNewHorizons:EnderIO:2.9.26:dev')
     implementation('com.github.GTNewHorizons:Eternal-Singularity:1.2.1:dev')
+    implementation('com.github.GTNewHorizons:Et-Futurum-Requiem:2.6.2.25-GTNH:dev')
     implementation('com.github.GTNewHorizons:ForestryMC:4.10.17:dev')
+    implementation('com.github.GTNewHorizons:Hardcore-Ender-Expansion:1.12.16-GTNH:dev')
     implementation('com.github.GTNewHorizons:MagicBees:2.9.4-GTNH:dev')
     implementation("com.github.GTNewHorizons:Mobs-Info:0.5.4-GTNH:dev")
     implementation('com.github.GTNewHorizons:NewHorizonsCoreMod:2.7.260:dev')
@@ -75,6 +77,7 @@ dependencies {
     implementation rfg.deobf(files("libs/TwistSpaceTechnology-0.7.6-dev.jar"))
     implementation rfg.deobf(files("libs/OTHTechnology-2.1.4+2.8.0-dev.jar"))
     implementation rfg.deobf(files("libs/programmablehatches-0.1.3p38-dev.jar"))
+    implementation rfg.deobf(files("libs/BiomesOPlenty-1.7.10-2.1.0.2308-universal.jar"))
 
     runtimeOnlyNonPublishable rfg.deobf(files("libs/ae2thing-v1.68.jar"))
     //runtimeOnlyNonPublishable rfg.deobf(files("libs/nechar-GTNH 2.7.0.jar"))

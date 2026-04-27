@@ -195,6 +195,7 @@ item.ChunJingYuanShiFenMo.name=Pure Originium Powder
 item.DiChunYuanShiFenMo.name=Low-Purity Originium Powder
 item.YuanShiJingHe.name=Originium Core
 item.UnactivatedYuanShi.name=Unactivated Originium
+item.HanZaYuanShiFenMo.name=Impure Originium Powder
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
@@ -205,6 +206,9 @@ solarsystem.talosSystem=Talos
 star.talosStar=Talos
 planet.Talos=Talos-1
 moon.Talos2=Talos-2
+
+#fluid
+EOHB_OriginiumWasteLiquid=Originium Waste Liquid
 
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!

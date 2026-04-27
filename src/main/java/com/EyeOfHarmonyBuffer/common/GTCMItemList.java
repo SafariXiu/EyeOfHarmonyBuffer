@@ -54,6 +54,7 @@ public enum GTCMItemList {
     DiChunYuanShiFenMo,
     YuanShiJingHe,
     UnactivatedYuanShi,
+    HanZaYuanShiFenMo,
 
     //方舟机器
     OrundumDynamos,
