@@ -6,6 +6,7 @@ import java.util.List;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
+import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
@@ -97,6 +98,8 @@ public class EyeOfHarmonyBuffer {
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
+
+        ExampleQuestRegistration.registerAll();
 
         RegisterDimensions.init();
     }

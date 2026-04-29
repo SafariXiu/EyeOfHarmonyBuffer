@@ -213,3 +213,11 @@ EOHB_OriginiumWasteLiquid=Originium Waste Liquid
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 GT5U.gui.text.NoOriginitePrimeMainVeinBlock=No Originite Prime Main Vein Block!
+
+#Task Document - Chapter
+betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
+betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.desc=Your very first step in industrializing Planet Talos!
+
+#Task Specification - Task
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=Welcome to Taros!
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=Welcome to Planet Talos!What? You’re not here yet? You only need a Tier 4 Rocket to fly over!It’s in the upper-right area of the solar system, so it won’t be hard to find!You’re going to love it here. We have lots of brand-new minerals and industrial machines waiting for you to craft.Now, let’s search this land for Orundum ore veins. They’re scattered all across the surface.By mining those black, glass-like ore blocks, you can obtain Orundum ore, which is the foundation of everything we do here!Have fun!

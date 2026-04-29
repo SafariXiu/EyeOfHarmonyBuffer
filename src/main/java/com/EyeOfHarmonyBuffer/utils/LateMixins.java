@@ -32,6 +32,8 @@ public class LateMixins implements ILateMixinLoader {
             "BioLab.BioLabMixin",
             "BioLab.BioLabIncubationModuleMixin",
             "BioVatMixin",
+            //"BetterQuesting.MixinQuestCommandDefaults",
+            //"BetterQuesting.MixinSaveLoadHandler",
             "GTPPMultiBlockBaseMixin",
             "HatchElementBuilderMixin",
             "BlackHoleCompressorMixin",

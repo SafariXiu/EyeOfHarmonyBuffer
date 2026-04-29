@@ -213,3 +213,11 @@ EOHB_OriginiumWasteLiquid=源石废液
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 GT5U.gui.text.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！
+
+#Task Document - Chapter
+betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
+betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.desc=你在塔罗斯星发展工业的第一步！
+
+#Task Specification - Task
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=§6§l欢迎来到塔罗斯！
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=§e§l欢迎来到塔罗斯星球！§r%n%n§a什么？你说你还没来？§r你只需要一个§64阶火箭§r就可以飞过来了！在太阳系的右上方，不会很难找的！你会喜欢这里的，我们有许多§b全新的矿物和工业设备§r等你制作呢。现在，让我们在这片大地上找一些§6源石矿脉§r，它们分布在这片大地的各个地方，你可以通过挖掘那些黑色的玻璃状的矿脉块获得§6源石矿§r，%n%n那是我们一切的一切的基础！%n%n§d§l玩得愉快！§r
