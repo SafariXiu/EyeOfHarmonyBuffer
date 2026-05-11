@@ -121,7 +121,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
                 .addElement(
                     'B',
                     buildHatchAdder(EOHB_ElectricTypeOneMiningMachine.class)
-                        .atLeast(InputBus, OutputBus, Energy.or(ExoticEnergy))
+                        .atLeast(InputBus, OutputBus)
                         .casingIndex(CASING_INDEX1)
                         .dot(1)
                         .buildAndChain(

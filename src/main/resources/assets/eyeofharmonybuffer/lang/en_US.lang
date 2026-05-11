@@ -196,10 +196,23 @@ item.DiChunYuanShiFenMo.name=Low-Purity Originium Powder
 item.YuanShiJingHe.name=Originium Core
 item.UnactivatedYuanShi.name=Unactivated Originium
 item.HanZaYuanShiFenMo.name=Impure Originium Powder
+item.ChiTongKuang.name=Cuprite
+item.GanShiZhongZi.name=Citrus Seed
+item.JinCaoZhongZi.name=Embroidered Grass Seed
+item.QiaoHuaZhongZi.name=Buckwheat Seed
+item.ShaYeZhongZi.name=Sand Leaf Seed
+item.TongHuaShuZhong.name=Ketone Tree Seed
+item.YaZhenZhongZi.name=Bud Needle Seed
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
 tile.yuan_shi_block.name=Originite Prime Vein Block
+tile.GanShi.name=Citrus Fruit
+tile.JinCao.name=Embroidered Grass
+tile.QiaoHua.name=Buckwheat Flower
+tile.ShaYe.name=Sand Leaf
+tile.TongHuaGuanMu.name=Ketone Bush
+tile.YaZhen.name=Bud Needle
 
 #space
 solarsystem.talosSystem=Talos
@@ -219,5 +232,7 @@ betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.desc=Your very first step in industrializing Planet Talos!
 
 #Task Specification - Task
-betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=Welcome to Taros!
-betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=Welcome to Planet Talos!What? You’re not here yet? You only need a Tier 4 Rocket to fly over!It’s in the upper-right area of the solar system, so it won’t be hard to find!You’re going to love it here. We have lots of brand-new minerals and industrial machines waiting for you to craft.Now, let’s search this land for Orundum ore veins. They’re scattered all across the surface.By mining those black, glass-like ore blocks, you can obtain Orundum ore, which is the foundation of everything we do here!Have fun!
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=Welcome to Talos!
+betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=Welcome to Planet Talos!%n%nWhat? You’re not here yet? All you need is a Tier 4 Rocket to fly over! Planet Talos is located in the upper-right region of the solar system, so it won’t be hard to find.%n%nYou’re going to love it here. We have plenty of brand-new minerals and industrial machines waiting for you to craft. Now, let’s search this land for Orundum ore veins scattered across the continent.%n%nBy mining those black, glass-like ore blocks, you can obtain Orundum ore, which is the foundation of all our industry here!%n%nHave fun!
+betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.name=Your First Ark Machine!
+betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.desc=This machine will see you through the early stages of the game! You don’t really want to run all over Planet Talos and still barely dig up any Orundum Ore, right?%n%nI hope you’ve prepared enough Originite Prime to build it! Before that, I recommend checking the quest line on the left and crafting your very first piece of Originite Prime!

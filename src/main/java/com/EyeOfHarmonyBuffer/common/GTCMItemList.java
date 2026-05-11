@@ -23,7 +23,7 @@ public enum GTCMItemList {
     Monkey,
     Shit,
 
-    //方舟物品
+    //方舟-物品
     YuanShi,
     HeChengYu,
     LanTieKuang,
@@ -55,6 +55,21 @@ public enum GTCMItemList {
     YuanShiJingHe,
     UnactivatedYuanShi,
     HanZaYuanShiFenMo,
+    ChiTongKuang,
+
+    //方舟-植物
+    GanShi,
+    GanShiZhongZi,
+    JinCao,
+    JinCaoZhongZi,
+    QiaoHua,
+    QiaoHuaZhongZi,
+    ShaYe,
+    ShaYeZhongZi,
+    TongHuaGuanMu,
+    TongHuaShuZhong,
+    YaZhen,
+    YaZhenZhongZi,
 
     //方舟机器
     OrundumDynamos,

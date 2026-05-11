@@ -16,13 +16,13 @@ public class ArknightsBlockRegister {
 
         YuanShiMainBlock = new BlockYuanShiMain()
             .setBlockName("yuan_shi_main_block")
-            .setBlockTextureName("eyeofharmonybuffer:ArknightsProject/yuanshi_main_block")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/yuanshi_main_block")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(YuanShiMainBlock, "yuan_shi_main_block");
 
         YuanShiBlock = new BlockYuanShi()
             .setBlockName("yuan_shi_block")
-            .setBlockTextureName("eyeofharmonybuffer:ArknightsProject/yuanshi_block")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/yuanshi_block")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(YuanShiBlock, "yuan_shi_block");
     }

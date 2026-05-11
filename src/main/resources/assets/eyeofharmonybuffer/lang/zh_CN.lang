@@ -196,10 +196,23 @@ item.DiChunYuanShiFenMo.name=低纯源石粉末
 item.YuanShiJingHe.name=源石晶核
 item.UnactivatedYuanShi.name=未激活的源石
 item.HanZaYuanShiFenMo.name=含杂源石粉末
+item.ChiTongKuang.name=赤铜矿
+item.GanShiZhongZi.name=柑实种子
+item.JinCaoZhongZi.name=锦草种子
+item.QiaoHuaZhongZi.name=荞花种子
+item.ShaYeZhongZi.name=砂叶种子
+item.TongHuaShuZhong.name=酮化树种
+item.YaZhenZhongZi.name=芽针种子
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
 tile.yuan_shi_block.name=源石矿脉块
+tile.GanShi.name=柑实
+tile.JinCao.name=锦草
+tile.QiaoHua.name=荞花
+tile.ShaYe.name=砂叶
+tile.TongHuaGuanMu.name=酮化灌木
+tile.YaZhen.name=芽针
 
 #space
 solarsystem.talosSystem=塔罗斯
@@ -221,3 +234,5 @@ betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.desc=你在塔罗斯星发展工
 #Task Specification - Task
 betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=§6§l欢迎来到塔罗斯！
 betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=§e§l欢迎来到塔罗斯星球！§r%n%n§a什么？你说你还没来？§r你只需要一个§64阶火箭§r就可以飞过来了！在太阳系的右上方，不会很难找的！你会喜欢这里的，我们有许多§b全新的矿物和工业设备§r等你制作呢。现在，让我们在这片大地上找一些§6源石矿脉§r，它们分布在这片大地的各个地方，你可以通过挖掘那些黑色的玻璃状的矿脉块获得§6源石矿§r，%n%n那是我们一切的一切的基础！%n%n§d§l玩得愉快！§r
+betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.name=§6§l你的第一台方舟机器！
+betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.desc=§a这台机器会一直陪你度过游戏的前期！§r你总不想跑遍整颗塔罗斯星，却还挖不到几块§6源石矿§r，对吧？%n%n希望你已经准备好了足够的§6至纯源石§r来制造它！在此之前，我建议你先看看左边的任务线，去合成你的第一颗§6至纯源石§r！

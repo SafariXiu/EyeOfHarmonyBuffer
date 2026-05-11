@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.command.*;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
@@ -86,6 +88,9 @@ public class EyeOfHarmonyBuffer {
         if (event.getSide().isClient()) {
             MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
         }
+
+        ItemIntermediateProducts.initAndRegister(MODID);
+        BlockIntermediateResources.registerAll(MODID);
 
         TalosBiomes.init();
     }
