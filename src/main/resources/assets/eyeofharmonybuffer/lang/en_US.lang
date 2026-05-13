@@ -145,6 +145,14 @@ Tooltip_Planter_01=Comes with 1 parallel slot by default; upgrading the glass ca
 Tooltip_Planter_02=Operates at 100% work time by default; upgrade the coil to reduce work time.
 Tooltip_Planter_03=Can grow the majority of native crops found on Talos-2!
 Tooltip_Planter_04=Use together with the Seed Collecting device!
+NameSeedCollectingMachine=Seed Collecting Machine
+Tooltip_SeedCollectingMachine_MachineType=Seed Collecting Machine
+Tooltip_SeedCollectingMachine_Controller=Controller Block of Seed Collecting Machine
+Tooltip_SeedCollectingMachine_00=A device designed to collect ordinary plant seeds. On Talos-2, a bountiful harvest is always a cause for great joy.
+Tooltip_SeedCollectingMachine_01=Comes with 1 parallel slot by default; upgrading the glass casing allows for additional parallel operations.
+Tooltip_SeedCollectingMachine_02=Operates at 100% work time by default; upgrade the coil to reduce work time.
+Tooltip_SeedCollectingMachine_03=Can gather the majority of native crops found on Talos-2!
+Tooltip_SeedCollectingMachine_04=Use together with the Planter!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -155,6 +163,7 @@ EOHB_Recipe_OrundumDynamo=Orundum Dynamo
 EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum OutPut：
 EOHB_Recipe_ElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 EOHB_Recipe_Planter=Planter
+EOHB_Recipe_SeedCollectingMachine=Seed Collecting Machine
 
 #item
 EOHB_Harmony=Harmony

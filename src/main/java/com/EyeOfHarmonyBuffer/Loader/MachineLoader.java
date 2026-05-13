@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.common.Machine.*;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_ElectricTypeOneMiningMachine;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_OrundumDynamo;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_Planter;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_SeedCollectingMachine;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.item.ItemStack;
 
@@ -18,6 +19,7 @@ public class MachineLoader {
     public static ItemStack OrundumDynamo;
     public static ItemStack ElectricTypeOneMiningMachine;
     public static ItemStack Planter;
+    public static ItemStack SeedCollectingMachine;
 
     private final static int MachineBlockID = 23000;
 
@@ -84,5 +86,12 @@ public class MachineLoader {
             TextLocalization.NamePlanter
         ).getStackForm(1);
         GTCMItemList.Planters.set(Planter);
+
+        SeedCollectingMachine = new EOHB_SeedCollectingMachine(
+            MachineBlockID + 10,
+            "NamePlanterSeedCollectingMachine",
+            TextLocalization.NameSeedCollectingMachine
+        ).getStackForm(1);
+        GTCMItemList.SeedCollectingMachines.set(SeedCollectingMachine);
     }
 }

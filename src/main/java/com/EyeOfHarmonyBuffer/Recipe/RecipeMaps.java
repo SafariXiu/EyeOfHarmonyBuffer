@@ -94,4 +94,16 @@ public class RecipeMaps {
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ShaYe.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> SeedCollectingMachine = RecipeMapBuilder
+        .of(EOHB_Recipe_SeedCollectingMachine)
+        .maxIO(1, 1, 1, 0)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RangeOutputFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ShaYeZhongZi.get(1)))
+        .build();
 }

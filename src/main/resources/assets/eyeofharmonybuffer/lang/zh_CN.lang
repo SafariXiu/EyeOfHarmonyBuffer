@@ -145,6 +145,14 @@ Tooltip_Planter_01=§7默认拥有§e1§7并行，升级§b玻璃外壳§7可获
 Tooltip_Planter_02=§7默认为§e100％§7工作时间，升级§b线圈§7可缩短工作时间。
 Tooltip_Planter_03=§a可以种植绝大部分塔卫二星球的原生作物！§r
 Tooltip_Planter_04=§a建议搭配§b采种机§a一同使用！§r
+NameSeedCollectingMachine=§a采种机
+Tooltip_SeedCollectingMachine_MachineType=§a采种机
+Tooltip_SeedCollectingMachine_Controller=§a采种机的控制器方块§r
+Tooltip_SeedCollectingMachine_00=§a能够采集塔卫二植物种子的设备。在塔卫二，丰收是令人格外欣喜的事情。
+Tooltip_SeedCollectingMachine_01=§7默认拥有§e1§7并行，升级§b玻璃外壳§7可获得更多并行。
+Tooltip_SeedCollectingMachine_02=§7默认为§e100％§7工作时间，升级§b线圈§7可缩短工作时间。
+Tooltip_SeedCollectingMachine_03=§a可以采集绝大部分塔卫二星球的原生作物的种子！§r
+Tooltip_SeedCollectingMachine_04=§a建议搭配§b种植机§a一同使用！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -155,6 +163,7 @@ EOHB_Recipe_OrundumDynamo=源石发电机
 EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum 输出：
 EOHB_Recipe_ElectricTypeOneMiningMachine=电力一形矿机
 EOHB_Recipe_Planter=种植机
+EOHB_Recipe_SeedCollectingMachine=采种机
 
 #item
 EOHB_Harmony=鸿蒙

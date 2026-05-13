@@ -75,6 +75,7 @@ public enum GTCMItemList {
     OrundumDynamos,
     ElectricTypeOneMiningMachines,
     Planters,
+    SeedCollectingMachines,
 
 
     //机器结构方块
