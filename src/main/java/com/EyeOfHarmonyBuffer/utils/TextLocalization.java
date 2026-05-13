@@ -135,6 +135,14 @@ public class TextLocalization {
     public static final String Tooltip_ElectricTypeOneMiningMachine_04;
     public static final String Tooltip_ElectricTypeOneMiningMachine_05;
 
+    public static final String NamePlanter;
+    public static final String Tooltip_Planter_MachineType;
+    public static final String Tooltip_Planter_Controller;
+    public static final String Tooltip_Planter_00;
+    public static final String Tooltip_Planter_01;
+    public static final String Tooltip_Planter_02;
+    public static final String Tooltip_Planter_03;
+    public static final String Tooltip_Planter_04;
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -164,6 +172,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_OrundumDynamo;
     public static final String EOHB_Recipe_OrundumDynamo_Tooltip_00;
     public static final String EOHB_Recipe_ElectricTypeOneMiningMachine;
+    public static final String EOHB_Recipe_Planter;
 
 
     public TextLocalization() {
@@ -320,6 +329,15 @@ public class TextLocalization {
         Tooltip_ElectricTypeOneMiningMachine_04 = TextHandler.texter("By default, the machine operates with a single parallel line, yielding 10 Orundum ore every 10 seconds.","Tooltip_ElectricTypeOneMiningMachine_04");
         Tooltip_ElectricTypeOneMiningMachine_05 = TextHandler.texter("","Tooltip_ElectricTypeOneMiningMachine_05");
 
+        NamePlanter = TextHandler.texter("Planter","NamePlanter");
+        Tooltip_Planter_MachineType = TextHandler.texter("Planter","Tooltip_Planter_MachineType");
+        Tooltip_Planter_Controller = TextHandler.texter("Controller Block of Planter","Tooltip_Planter_Controller");
+        Tooltip_Planter_00 = TextHandler.texter("A silo-shaped device capable of cultivating various common plants. Developed in-house by Endfield, it offers real-time monitoring and adjustment of internal lighting, temperature, and plant hormone conditions — its greatest technical advantage.","Tooltip_Planter_00");
+        Tooltip_Planter_01 = TextHandler.texter("Comes with 1 parallel slot by default; upgrading the glass casing allows for additional parallel operations.","Tooltip_Planter_01");
+        Tooltip_Planter_02 = TextHandler.texter("Operates at 100% work time by default; upgrade the coil to reduce work time.","Tooltip_Planter_02");
+        Tooltip_Planter_03 = TextHandler.texter("Can grow the majority of native crops found on Talos-2!","Tooltip_Planter_03");
+        Tooltip_Planter_04 = TextHandler.texter("Use together with the Seed Collecting device!","Tooltip_Planter_04");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -347,5 +365,6 @@ public class TextLocalization {
         EOHB_Recipe_OrundumDynamo = TextHandler.texter("Orundum Dynamo","EOHB_Recipe_OrundumDynamo");
         EOHB_Recipe_OrundumDynamo_Tooltip_00 = TextHandler.texter("Orundum OutPut：","EOHB_Recipe_OrundumDynamo_Tooltip_00");
         EOHB_Recipe_ElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","EOHB_Recipe_ElectricTypeOneMiningMachine");
+        EOHB_Recipe_Planter = TextHandler.texter("Planter","EOHB_Recipe_Planter");
     }
 }

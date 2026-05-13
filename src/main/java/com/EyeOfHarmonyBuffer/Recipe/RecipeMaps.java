@@ -82,4 +82,16 @@ public class RecipeMaps {
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.YuanShiKuang.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> Planter = RecipeMapBuilder
+        .of(EOHB_Recipe_Planter)
+        .maxIO(1, 1, 1, 0)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RangeOutputFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ShaYe.get(1)))
+        .build();
 }

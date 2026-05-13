@@ -27,7 +27,8 @@ public class RecipeLoader {
             new ItemRecipes(),
             new OrundumDynamoRecipes(),
             new ElectricTypeOneMiningMachineRecipes(),
-            new OriginitePrime_GTNHRecipe()
+            new OriginitePrime_GTNHRecipe(),
+            new PlanterRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

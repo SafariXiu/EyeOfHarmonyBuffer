@@ -137,6 +137,14 @@ Tooltip_ElectricTypeOneMiningMachine_02=§f机器检测范围内§c必须§f存�
 Tooltip_ElectricTypeOneMiningMachine_03=§7检测范围为：以§6机器主方块§7为基准，向后延伸 §b1 格§7、向下延伸 §b2 格§7，覆盖 §b7×7×3§7 的方形区域。
 Tooltip_ElectricTypeOneMiningMachine_04=§7默认并行数：§b1§7，每§b10 秒§7可稳定产出§a10 个源石矿§7。
 Tooltip_ElectricTypeOneMiningMachine_05=§7可在§6主方块内部§7安装§6升级模块§7，以§a提升并行数与产量§7，是§6源石§7工业化开采的第一步。
+NamePlanter=§a种植机
+Tooltip_Planter_MachineType=§a种植机
+Tooltip_Planter_Controller=§a种植机的控制器方块§r
+Tooltip_Planter_00=§a能够培育各类普通植物的仓形设备。§r该款由§b终末地工业§r自研的设备，其最大技术优势在于对内部§e光照§r、§e温度§r以及§e植物激素状态§r的实时监控与调整。
+Tooltip_Planter_01=§7默认拥有§e1§7并行，升级§b玻璃外壳§7可获得更多并行。
+Tooltip_Planter_02=§7默认为§e100％§7工作时间，升级§b线圈§7可缩短工作时间。
+Tooltip_Planter_03=§a可以种植绝大部分塔卫二星球的原生作物！§r
+Tooltip_Planter_04=§a建议搭配§b采种机§a一同使用！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -146,6 +154,7 @@ EOHB_Recipe_MonkeyShit=圣皇家搬屎大祭司
 EOHB_Recipe_OrundumDynamo=源石发电机
 EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum 输出：
 EOHB_Recipe_ElectricTypeOneMiningMachine=电力一形矿机
+EOHB_Recipe_Planter=种植机
 
 #item
 EOHB_Harmony=鸿蒙

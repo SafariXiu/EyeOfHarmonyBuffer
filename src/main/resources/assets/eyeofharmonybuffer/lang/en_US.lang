@@ -137,6 +137,14 @@ Tooltip_ElectricTypeOneMiningMachine_02=The machine requires at least one Origin
 Tooltip_ElectricTypeOneMiningMachine_03=The detection range is a 7×7×3 cubic area that starts one block behind and two blocks below the machine’s main block.
 Tooltip_ElectricTypeOneMiningMachine_04=By default, the machine operates with a single parallel line, yielding 10 Orundum ore every 10 seconds.
 Tooltip_ElectricTypeOneMiningMachine_05=You can later increase its output by placing upgrade modules inside the main block!
+NamePlanter=Planter
+Tooltip_Planter_MachineType=Planter
+Tooltip_Planter_Controller=Controller Block of Planter
+Tooltip_Planter_00=A silo-shaped device capable of cultivating various common plants. Developed in-house by Endfield, it offers real-time monitoring and adjustment of internal lighting, temperature, and plant hormone conditions — its greatest technical advantage.
+Tooltip_Planter_01=Comes with 1 parallel slot by default; upgrading the glass casing allows for additional parallel operations.
+Tooltip_Planter_02=Operates at 100% work time by default; upgrade the coil to reduce work time.
+Tooltip_Planter_03=Can grow the majority of native crops found on Talos-2!
+Tooltip_Planter_04=Use together with the Seed Collecting device!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -146,6 +154,7 @@ EOHB_Recipe_MonkeyShit=The Holy Royal High Priest of Poop Transportation
 EOHB_Recipe_OrundumDynamo=Orundum Dynamo
 EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum OutPut：
 EOHB_Recipe_ElectricTypeOneMiningMachine=Electric Type-I Mining Machine
+EOHB_Recipe_Planter=Planter
 
 #item
 EOHB_Harmony=Harmony

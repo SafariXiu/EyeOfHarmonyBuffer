@@ -29,6 +29,11 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     }
 
     @Override
+    protected boolean shouldShowEuWirelessHud() {
+        return false;
+    }
+
+    @Override
     public CheckRecipeResult wirelessModeProcessOnce() {
         if (!isRecipeProcessing) startRecipeProcessing();
         setupProcessingLogic(processingLogic);
