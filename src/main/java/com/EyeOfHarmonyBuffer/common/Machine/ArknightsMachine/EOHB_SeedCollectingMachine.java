@@ -16,9 +16,18 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
@@ -175,6 +184,50 @@ public class EOHB_SeedCollectingMachine extends OrundumWirelessMultiMachineBase<
             .addOutputBus(add_OutputBus)
             .toolTipFinisher(ModName);
         return tt;
+    }
+
+    @Override
+    public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag,
+                                World world, int x, int y, int z) {
+        super.getWailaNBTData(player, tile, tag, world, x, y, z);
+
+        tag.setInteger("PlanterGlassTier", this.glassTier);
+        tag.setInteger("PlanterParallel", getMaxParallelRecipes());
+
+        int wirelessTime = getWirelessModeProcessingTime();
+        tag.setInteger("PlanterWirelessTime", wirelessTime);
+
+        final int planterBaseTime = 200;
+        float reductionPct = Math.max(0.0f,
+            (planterBaseTime - wirelessTime) * 100.0f / planterBaseTime);
+        tag.setInteger("PlanterBaseTime", planterBaseTime);
+        tag.setFloat("PlanterTimeReductionPct", reductionPct);
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
+                             IWailaConfigHandler config) {
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+
+        NBTTagCompound tag = accessor.getNBTData();
+        if (tag == null) return;
+
+        int glassTierShown = tag.getInteger("PlanterGlassTier");
+        int parallelShown = tag.getInteger("PlanterParallel");
+        int wirelessTimeShown = tag.getInteger("PlanterWirelessTime");
+        float reductionPct = tag.getFloat("PlanterTimeReductionPct");
+        int baseTime = tag.getInteger("PlanterBaseTime");
+
+        currentTip.add(EnumChatFormatting.DARK_AQUA + "【采种机状态】");
+        currentTip.add(EnumChatFormatting.AQUA + "玻璃等级："
+            + EnumChatFormatting.GOLD + glassTierShown);
+        currentTip.add(EnumChatFormatting.AQUA + "最大并行："
+            + EnumChatFormatting.GOLD + parallelShown + " 路");
+        currentTip.add(EnumChatFormatting.AQUA + "无线加工时间："
+            + EnumChatFormatting.GOLD + wirelessTimeShown + " tick "
+            + EnumChatFormatting.GRAY + "(基准 " + baseTime + " tick)");
+        currentTip.add(EnumChatFormatting.AQUA + "时间减免："
+            + EnumChatFormatting.GREEN + String.format("%.1f%%", reductionPct));
     }
 
     @Override
