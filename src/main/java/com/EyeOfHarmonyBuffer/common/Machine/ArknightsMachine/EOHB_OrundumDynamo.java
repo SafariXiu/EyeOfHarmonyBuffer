@@ -64,9 +64,9 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     private InputRecipe lastRecipeConfig = null;
     private HeatingCoilLevel mCoilLevel;
     private int mOrundumEfficiency;
-    private static final int OffsetsX = 9;
-    private static final int OffsetsY = 29;
-    private static final int OffsetsZ = 1;
+    private static final int OffsetsX = 5;
+    private static final int OffsetsY = 14;
+    private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
     private int lastParallelCount = 1;
 
@@ -281,38 +281,22 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     }
 
     protected static final String[][] shapeMain = new String[][]{
-        {"                   ","                   ","                   "," C               C "," C               C "," C               C "," C               C "," E               E "," C               C "," C               C "," E               E "," C               C "," C               C "," C               C "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  C             C  "," CC             CC "," CC             CC "," CC             CC "," CC             CC "," EEEEEEEEEEEEEEEEE "," CC             CC "," CC             CC "," EEEEEEEEEEEEEEEEE "," CC             CC "," CC             CC "," CC             CC "," CC             CC ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCCCCCCCCCCCCCC  "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," ECCCCCCCCCCCCCCCE "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," ECCCCCCCCCCCCCCCE "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC "," CCCCCCCCCCCCCCCCC ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C               C "," C               C "," C      GGG      C "," E     G   G     E "," C     G   G     C "," C     G   G     C "," E      GGG      E "," C               C "," C               C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C               C "," C               C "," C      GGG      C "," E     G   G     E "," C     G   G     C "," C     G   G     C "," E      GGG      E "," C               C "," C               C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C               C "," C      CCC      C "," C     CCCCC     C "," E    CC   CC    E "," C    CC   CC    C "," C    CC   CC    C "," E     CCCCC     E "," C      CCC      C "," C               C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    CC   CC    C "," C   CC     CC   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   CC     CC   E "," C    CC   CCC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     CCCCC     C "," C    C     C    C "," C   C       C   C "," E   C       C   E "," C   C       C   C "," C   C       C   C "," E   C       C   E "," C    C     CC   C "," C     CCCCCCC   C "," CFFFFFFFFFFFFFFFC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," C               C "," C     EEEEE     C "," C    E     E    C "," C   E       E   C "," ECCDE       EDCCE "," CCCDE       EDCCC "," CCCDE       EDCCC "," E   E       E   E "," C    E     E    C "," C     EEEEE     C "," CCCCCCCCCCCCCCCCC "," C               C ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," B               B "," C     CCCCC     C "," C    C     C    C "," CCCDC       CDCCC "," E   C       C   E ","CC   C       C   CC","CC   C       C   CC"," ECCDC       CDCCE "," C    C     C    C "," C     CCCCC     C "," CCCCCCCCCCCCCCCCC "," B               B ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," B               B "," C               C "," C     GGGGG     C "," CCCDDGG   GGDDCCC ","CE   DG     G    EC","FC   DG     G    CF","FC   DG     G    CF","CECCDDGG   GGDDCCEC"," C     GGGGG     C "," C               C "," CCCCCCCCCCCCCCCCC "," B               B ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," B               B "," C               C "," C     GGGGG     C "," CCCDDGG   GGDDCCC ","CE   DG     G    EC","FC   DG     G    CF","FC   DG     G    CF","CECCDDGG   GGDDCCEC"," C     GGGGG     C "," C               C "," CCCCCCCCCCCCCCCCC "," B               B ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," B               B "," C     CCCCC     C "," C    C     C    C "," CCCDC       CDCCC "," E   C       C   E ","CC   C       C   CC","CC   C       C   CC"," ECCDC       CDCCE "," C    C     C    C "," C     CCCCC     C "," CCCCCCCCCCCCCCCCC "," B               B ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," B               B "," C     EEEEE     C "," C    E     E    C "," C   E       E   C "," ECCDE       EDCCE "," CCCDE       EDCCC "," CCCDE       EDCCC "," E   E       E   E "," C    E     E    C "," C     EEEEE     C "," CCCCCCCCCCCCCCCCC "," B               B ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," CCC           CCC "," CCC   CCCCC   CCC "," C    CCCCCCC    C "," C   CCCCCCCCC   C "," E   CCC   CCC   E "," C   CCC   CCC   C "," C   CCC   CCC   C "," E   CCCCCCCCC   E "," C    CCCCCCC    C "," CCCCCCCCCCCCCCCCC "," CCC           CCC "," CCC           CCC ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," CCC           CCC "," CCC           CCC "," C               C "," C      GGG      C "," E     G   G     E "," C     G   G     C "," C     G   G     C "," E      GGG      E "," CCCCCCCCCCCCCCCCC "," C               C "," CCC           CCC "," CCC           CCC ","                   ","                   ","                   "},
-        {"                   ","                   ","  CCAAAAAAAAAAACC  "," CCC           CCC "," CCC           CCC "," C               C "," C      GGG      C "," E     G   G     E "," C     G   G     C "," C     G   G     C "," E      GGG      E "," CCCCCCCCCCCCCCCCC "," C               C "," CCC           CCC "," CCC           CCC ","                   ","                   ","                   "},
-        {"                   ","                   ","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC"," CCCCCCCCCCCCCCCCC ","  CCCCCCCCCCCCCCC  ","   CCCC     CCCC   "},
-        {"                   ","                   ","C        C        C","C        C        C","CCEEEEEECCCEEEEEECC","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C"," C               C ","  C    CCCCC    C  ","   CCCC     CCCC   "},
-        {"                   ","C        ~        C","C        C        C","C        C        C","CCEEEEEECCCEEEEEECC","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C"," C               C ","  C    CCCCC    C  ","   CCCC     CCCC   "},
-        {"C        C        C","C        C        C","C        C        C","C        C        C","CCEEEEEECCCEEEEEECC","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C","C                 C"," C               C ","  C    CCCCC    C  ","   CCCC     CCCC   "},
-        {"CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC","CCCCCCCCCCCCCCCCCCC"," CCCCCCCCCCCCCCCCC ","  CCCCCCCCCCCCCCC  ","   CCCC     CCCC   "}
+        {"           ","           ","           ","  B     B  ","  B     B  ","  DDDDDDD  ","  B     B  ","  DDDDDDD  ","  B     B  ","  B     B  ","           ","           "},
+        {"           ","           ","           ","  BBBBBBB  "," BBBBBBBBB "," DBBBBBBBD "," BBBBBBBBB "," DBBBBBBBD "," BBBBBBBBB ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  CCC  D "," B  C C  B "," D  CCC  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  CCC  D "," B  C C  B "," D  CCC  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  EEE  D "," B  E E  B "," D  EEE  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  EEE  D "," B  E E  B "," D  EEE  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  CCC  D "," B  C C  B "," D  CCC  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D  CCC  D "," B  C C  B "," D  CCC  D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," BDDDDDDDB "," DDDDDDDDD "," BDDDDDDDB "," DDDDDDDDD "," BDDDDDDDB ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D EEEEE D "," B E   E B "," D EEEEE D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BAAAAAB  "," B       B "," D EEEEE D "," B E   E B "," D EEEEE D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","           ","  BBBBBBB  "," B       B "," D EEEEE D "," B E   E B "," D EEEEE D "," B       B ","  BBBBBBB  ","           ","           "},
+        {"           ","           ","BDDDDBDDDDB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB"," BBB   BBB "},
+        {"           ","B    B    B","BBBBBBBBBBB","B         B","B         B","B         B","B         B","B         B","B         B","B         B","B   BBB   B"," BBB   BBB "},
+        {"B    ~    B","B    B    B","BBBBBBBBBBB","B         B","B         B","B         B","B         B","B         B","B         B","B         B","B   BBB   B"," BBB   BBB "},
+        {"BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB","BBBBBBBBBBB"," BBB   BBB "}
     };
 
     @Override
@@ -328,32 +312,24 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
                 )
                 .addElement(
                     'B',
-                    ofBlock(sBlockCasings10,10)
-                )
-                .addElement(
-                    'C',
-                    ofBlock(sBlockCasings2,0)
-                )
-                .addElement(
-                    'D',
-                    ofBlock(sBlockCasings2,3)
-                )
-                .addElement(
-                    'E',
                     buildHatchAdder(EOHB_OrundumDynamo.class)
                         .atLeast(InputBus,InputHatch,OutputHatch,OutputBus)
                         .casingIndex(CASING_INDEX)
                         .dot(1)
                         .buildAndChain(
-                            ofBlock(sBlockCasings2,13)
+                            ofBlock(sBlockCasings2,0)
                         )
                 )
                 .addElement(
-                    'F',
-                    ofBlock(sBlockCasings3,14)
+                    'C',
+                    ofBlock(sBlockCasings2,3)
                 )
                 .addElement(
-                    'G',
+                    'D',
+                    ofBlock(sBlockCasings2,13)
+                )
+                .addElement(
+                    'E',
                     GTStructureChannels.HEATING_COIL
                         .use(activeCoils(ofCoil(EOHB_OrundumDynamo::setCoilLevel, EOHB_OrundumDynamo::getCoilLevel)))
                 )

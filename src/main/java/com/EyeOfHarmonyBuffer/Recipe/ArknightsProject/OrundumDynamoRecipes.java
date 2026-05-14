@@ -1,18 +1,12 @@
-package com.EyeOfHarmonyBuffer.Recipe;
+package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
-import gregtech.api.recipe.RecipeMetadataKey;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
 
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeKey.GTExtendedRecipeKeys.NEI_OUTPUT_MAX;
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeKey.GTExtendedRecipeKeys.NEI_OUTPUT_MIN;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.OrundumDynamo;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Recipe_OrundumDynamo_Tooltip_00;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
-import static net.minecraft.world.EnumSkyBlock.Block;
 
 public class OrundumDynamoRecipes implements IRecipePool {
 

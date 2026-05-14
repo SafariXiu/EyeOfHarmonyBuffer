@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.Recipe;
+package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
