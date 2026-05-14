@@ -10,6 +10,7 @@ import gregtech.api.recipe.RecipeMapBuilder;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.SubstanceReshapingDeviceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.BlueDogDeviceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.RangeOutputFrontend;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.PlanterOutputFrontend;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
@@ -88,7 +89,7 @@ public class RecipeMaps {
         .maxIO(1, 1, 1, 0)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
-        .frontend(RangeOutputFrontend::new)
+        .frontend(PlanterOutputFrontend::new)
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20,20)
         .logoPos(152,63)
@@ -100,7 +101,7 @@ public class RecipeMaps {
         .maxIO(1, 1, 1, 0)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
-        .frontend(RangeOutputFrontend::new)
+        .frontend(PlanterOutputFrontend::new)
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20,20)
         .logoPos(152,63)
