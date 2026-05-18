@@ -173,6 +173,9 @@ public class TextLocalization {
     public static final String EOHB_HeChengYu_Tooltip_01;
     public static final String EOHB_PoSuiYuanShi_Tooltip_00;
     public static final String EOHB_PoSuiYuanShi_Tooltip_01;
+    public static final String EOHB_UpgradeChipMK1_Tooltip_00;
+    public static final String EOHB_UpgradeChipMK2_Tooltip_00;
+    public static final String EOHB_UpgradeChipMK3_Tooltip_00;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -375,6 +378,9 @@ public class TextLocalization {
         EOHB_HeChengYu_Tooltip_01 = TextHandler.texter("In the past, it was used only as a conductive element, but it has since become a store of credit value.","EOHB_HeChengYu_Tooltip_01");
         EOHB_PoSuiYuanShi_Tooltip_00 = TextHandler.texter("A shattered Originite Prime that has lost its energy","EOHB_PoSuiYuanShi_Tooltip_00");
         EOHB_PoSuiYuanShi_Tooltip_01 = TextHandler.texter("there might be a way to restore its potency.","EOHB_PoSuiYuanShi_Tooltip_01");
+        EOHB_UpgradeChipMK1_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks, and cross‑recipe parallelism increases to 4.","EOHB_UpgradeChipMK1_Tooltip_00");
+        EOHB_UpgradeChipMK2_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks, and cross‑recipe parallelism increases to 8.","EOHB_UpgradeChipMK2_Tooltip_00");
+        EOHB_UpgradeChipMK3_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks, and cross‑recipe parallelism increases to 16.","EOHB_UpgradeChipMK3_Tooltip_00");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");

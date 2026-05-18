@@ -56,6 +56,9 @@ public enum GTCMItemList {
     UnactivatedYuanShi,
     HanZaYuanShiFenMo,
     ChiTongKuang,
+    UpgradeChipsMK1,
+    UpgradeChipsMK2,
+    UpgradeChipsMK3,
 
     //方舟-植物
     GanShi,

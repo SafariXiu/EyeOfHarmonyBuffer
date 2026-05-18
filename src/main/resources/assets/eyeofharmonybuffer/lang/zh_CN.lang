@@ -221,6 +221,12 @@ item.QiaoHuaZhongZi.name=荞花种子
 item.ShaYeZhongZi.name=砂叶种子
 item.TongHuaShuZhong.name=酮化树种
 item.YaZhenZhongZi.name=芽针种子
+item.UpgradeChipMK1.name=升级芯片-MK1
+item.UpgradeChipMK2.name=升级芯片-MK2
+item.UpgradeChipMK3.name=升级芯片-MK3
+EOHB_UpgradeChipMK1_Tooltip_00=插入后机器单配方并行提升至16 单次运行工作时间降低至100tick 跨配方并行提升至1
+EOHB_UpgradeChipMK2_Tooltip_00=插入后机器单配方并行提升至64 单次运行工作时间降低至50tick 跨配方并行提升至1
+EOHB_UpgradeChipMK3_Tooltip_00=插入后机器单配方并行提升至512 单次运行工作时间降低至20tick 跨配方并行提升至1
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

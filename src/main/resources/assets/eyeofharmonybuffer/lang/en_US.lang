@@ -221,6 +221,12 @@ item.QiaoHuaZhongZi.name=Buckwheat Seed
 item.ShaYeZhongZi.name=Sand Leaf Seed
 item.TongHuaShuZhong.name=Ketone Tree Seed
 item.YaZhenZhongZi.name=Bud Needle Seed
+item.UpgradeChipMK1.name=UpGrade Chip-MK1
+item.UpgradeChipMK2.name=UpGrade Chip-MK2
+item.UpgradeChipMK3.name=UpGrade Chip-MK3
+EOHB_UpgradeChipMK1_Tooltip_00=When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks, and cross‑recipe parallelism increases to 4.
+EOHB_UpgradeChipMK2_Tooltip_00=When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks, and cross‑recipe parallelism increases to 8.
+EOHB_UpgradeChipMK3_Tooltip_00=When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks, and cross‑recipe parallelism increases to 16.
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
