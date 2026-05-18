@@ -251,6 +251,10 @@ item.ZhiMiYuanShiFenMo.name=致密源石粉末
 item.ZhiMiTanFenMo.name=致密碳粉末
 item.ZhiMiLanTieFenMo.name=致密蓝铁粉末
 item.GaoJingFenMo.name=高晶粉末
+item.GanShiFenMo.name=柑实粉末
+item.YaZhenFenMo.name=芽针粉末
+item.QiaoHuaFenMo.name=荞花粉末
+item.JinCaoFenMo.name=锦草粉末
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

@@ -251,6 +251,10 @@ item.ZhiMiYuanShiFenMo.name=Dense Orundum Powder
 item.ZhiMiTanFenMo.name=Dense Carbon Powder
 item.ZhiMiLanTieFenMo.name=Dense Blue Iron Powder
 item.GaoJingFenMo.name=High-Crystal Powder
+item.GanShiFenMo.name=Citrus Fruit Powder
+item.YaZhenFenMo.name=Bud Needle Powder
+item.QiaoHuaFenMo.name=Buckwheat Flower Powder
+item.JinCaoFenMo.name=Embroidered Grass Powder
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

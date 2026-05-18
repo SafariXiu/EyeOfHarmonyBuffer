@@ -64,6 +64,10 @@ public enum GTCMItemList {
     ZhiMiTanFenMo,
     ZhiMiLanTieFenMo,
     GaoJingFenMo,
+    GanShiFenMo,
+    YaZhenFenMo,
+    QiaoHuaFenMo,
+    JinCaoFenMo,
 
     //方舟-植物
     GanShi,
