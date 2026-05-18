@@ -11,6 +11,7 @@ import com.EyeOfHarmonyBuffer.common.RecipeMap.SubstanceReshapingDeviceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.BlueDogDeviceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.RangeOutputFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.PlanterOutputFrontend;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.RefiningFurnaceFrontend;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
@@ -106,5 +107,17 @@ public class RecipeMaps {
         .logoSize(20,20)
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ShaYeZhongZi.get(1)))
+        .build();
+
+    public static final RecipeMap<RecipeMapBackend> RefiningFurnace = RecipeMapBuilder
+        .of(EOHB_Recipe_RefiningFurnace)
+        .maxIO(1, 1, 1, 1)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RefiningFurnaceFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.JingTiWaiKe.get(1)))
         .build();
 }

@@ -59,6 +59,11 @@ public enum GTCMItemList {
     UpgradeChipsMK1,
     UpgradeChipsMK2,
     UpgradeChipsMK3,
+    ZhiMiJingTiFenMo,
+    ZhiMiYuanShiFenMo,
+    ZhiMiTanFenMo,
+    ZhiMiLanTieFenMo,
+    GaoJingFenMo,
 
     //方舟-植物
     GanShi,
@@ -79,6 +84,7 @@ public enum GTCMItemList {
     ElectricTypeOneMiningMachines,
     Planters,
     SeedCollectingMachines,
+    RefiningFurnaces,
 
 
     //机器结构方块

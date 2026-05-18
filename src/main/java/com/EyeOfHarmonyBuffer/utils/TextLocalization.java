@@ -21,6 +21,7 @@ public class TextLocalization {
     public static final String EOHB_Starry_Miracle_Project;
     public static final String EOHB_Legendary_Machine_Project;
     public static final String EOHB_Arknights_Project;
+    public static final String EOHB_Arknights_Project_Energy;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
@@ -153,6 +154,16 @@ public class TextLocalization {
     public static final String Tooltip_SeedCollectingMachine_03;
     public static final String Tooltip_SeedCollectingMachine_04;
 
+    public static final String NameRefiningFurnace;
+    public static final String Tooltip_RefiningFurnace_MachineType;
+    public static final String Tooltip_RefiningFurnace_Controller;
+    public static final String Tooltip_RefiningFurnace_00;
+    public static final String Tooltip_RefiningFurnace_01;
+    public static final String Tooltip_RefiningFurnace_02;
+    public static final String Tooltip_RefiningFurnace_03;
+    public static final String Tooltip_RefiningFurnace_04;
+    public static final String Tooltip_RefiningFurnace_05;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -187,6 +198,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ElectricTypeOneMiningMachine;
     public static final String EOHB_Recipe_Planter;
     public static final String EOHB_Recipe_SeedCollectingMachine;
+    public static final String EOHB_Recipe_RefiningFurnace;
 
 
     public TextLocalization() {
@@ -217,6 +229,7 @@ public class TextLocalization {
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
         EOHB_Arknights_Project= TextHandler.texter("EOHB — Arknights Project","EOHB_Arknights_Project");
+        EOHB_Arknights_Project_Energy = TextHandler.texter("This machine runs on Orundum energy!","EOHB_Arknights_Project_Energy");
         EOHB_Legendary_Machine_Project = TextHandler.texter("EOHB-Legendary Machine Project","EOHB_Legendary_Machine_Project");
         EOHB_WirelessMode_On = TextHandler.texter("Wireless mode enabled.","EOHB_WirelessMode_On");
         EOHB_WirelessMode_Off = TextHandler.texter("Wireless mode disabled.","EOHB_WirelessMode_Off");
@@ -357,11 +370,22 @@ public class TextLocalization {
         NameSeedCollectingMachine = TextHandler.texter("Seed Collecting Machine","NameSeedCollectingMachine");
         Tooltip_SeedCollectingMachine_MachineType = TextHandler.texter("Seed Collecting Machine","Tooltip_SeedCollectingMachine_MachineType");
         Tooltip_SeedCollectingMachine_Controller = TextHandler.texter("Controller Block of Seed Collecting Machine","Tooltip_SeedCollectingMachine_Controller");
-        Tooltip_SeedCollectingMachine_00 = TextHandler.texter("","Tooltip_SeedCollectingMachine_00");
-        Tooltip_SeedCollectingMachine_01 = TextHandler.texter("","Tooltip_SeedCollectingMachine_01");
-        Tooltip_SeedCollectingMachine_02 = TextHandler.texter("","Tooltip_SeedCollectingMachine_02");
-        Tooltip_SeedCollectingMachine_03 = TextHandler.texter("","Tooltip_SeedCollectingMachine_03");
-        Tooltip_SeedCollectingMachine_04 = TextHandler.texter("","Tooltip_SeedCollectingMachine_04");
+        Tooltip_SeedCollectingMachine_00 = TextHandler.texter("A device designed to collect ordinary plant seeds. On Talos-2, a bountiful harvest is always a cause for great joy.","Tooltip_SeedCollectingMachine_00");
+        Tooltip_SeedCollectingMachine_01 = TextHandler.texter("Comes with 1 parallel slot by default; upgrading the glass casing allows for additional parallel operations.","Tooltip_SeedCollectingMachine_01");
+        Tooltip_SeedCollectingMachine_02 = TextHandler.texter("Operates at 100% work time by default; upgrade the coil to reduce work time.","Tooltip_SeedCollectingMachine_02");
+        Tooltip_SeedCollectingMachine_03 = TextHandler.texter("Can gather the majority of native crops found on Talos-2!","Tooltip_SeedCollectingMachine_03");
+        Tooltip_SeedCollectingMachine_04 = TextHandler.texter("Use together with the Planter!","Tooltip_SeedCollectingMachine_04");
+
+        //精炼炉
+        NameRefiningFurnace = TextHandler.texter("Refining Furnace","NameRefiningFurnace");
+        Tooltip_RefiningFurnace_MachineType = TextHandler.texter("","Tooltip_RefiningFurnace_MachineType");
+        Tooltip_RefiningFurnace_Controller = TextHandler.texter("","Tooltip_RefiningFurnace_Controller");
+        Tooltip_RefiningFurnace_00 = TextHandler.texter("","Tooltip_RefiningFurnace_00");
+        Tooltip_RefiningFurnace_01 = TextHandler.texter("","Tooltip_RefiningFurnace_01");
+        Tooltip_RefiningFurnace_02 = TextHandler.texter("","Tooltip_RefiningFurnace_02");
+        Tooltip_RefiningFurnace_03 = TextHandler.texter("","Tooltip_RefiningFurnace_03");
+        Tooltip_RefiningFurnace_04 = TextHandler.texter("","Tooltip_RefiningFurnace_04");
+        Tooltip_RefiningFurnace_05 = TextHandler.texter("","Tooltip_RefiningFurnace_05");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -395,5 +419,6 @@ public class TextLocalization {
         EOHB_Recipe_ElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","EOHB_Recipe_ElectricTypeOneMiningMachine");
         EOHB_Recipe_Planter = TextHandler.texter("Planter","EOHB_Recipe_Planter");
         EOHB_Recipe_SeedCollectingMachine = TextHandler.texter("Seed Collecting Machine","EOHB_Recipe_SeedCollectingMachine");
+        EOHB_Recipe_RefiningFurnace = TextHandler.texter("Refining Furnace","EOHB_Recipe_RefiningFurnace");
     }
 }

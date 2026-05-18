@@ -19,7 +19,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.ShaYe.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
 
         GTValues.RA.stdBuilder()
@@ -30,7 +30,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.YaZhen.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
 
         GTValues.RA.stdBuilder()
@@ -41,7 +41,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.QiaoHua.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
 
         GTValues.RA.stdBuilder()
@@ -52,7 +52,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.TongHuaGuanMu.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
 
         GTValues.RA.stdBuilder()
@@ -63,7 +63,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.GanShi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
 
         GTValues.RA.stdBuilder()
@@ -74,7 +74,7 @@ public class PlanterRecipes implements IRecipePool {
                 GTCMItemList.JinCao.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Planter);
     }
 }

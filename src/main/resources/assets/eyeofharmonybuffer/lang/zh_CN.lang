@@ -17,6 +17,7 @@ EOHB_WirelessMode_Off=无线模式已关闭
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
+EOHB_Arknights_Project_Energy=§6本机器使用源石能量！
 EOHB_Client_PlayerJoin00=§a§l欢迎使用 §bEyeOfHarmonyBuffer！
 EOHB_Client_PlayerJoin01=§e你可以通过以下链接打开配置文件，查看你开启了哪些功能。
 EOHB_Client_PlayerJoin01_1=§e单击下方 §b蓝色文字 §e即可打开对应的配置文件。当前所有功能默认为§c关闭§e。
@@ -153,6 +154,15 @@ Tooltip_SeedCollectingMachine_01=§7默认拥有§e1§7并行，升级§b玻璃�
 Tooltip_SeedCollectingMachine_02=§7默认为§e100％§7工作时间，升级§b线圈§7可缩短工作时间。
 Tooltip_SeedCollectingMachine_03=§a可以采集绝大部分塔卫二星球的原生作物的种子！§r
 Tooltip_SeedCollectingMachine_04=§a建议搭配§b种植机§a一同使用！§r
+NameRefiningFurnace=§6精炼炉
+Tooltip_RefiningFurnace_MachineType=§6精炼炉
+Tooltip_RefiningFurnace_Controller=§7精炼炉的§b控制器方块§r
+Tooltip_RefiningFurnace_00=§a用于在高温下精炼其他材料的专业设备。§r
+Tooltip_RefiningFurnace_01=§7剥离、塑造……材料的形态将在高温中不断变换，直至§e焕然一新§7。§r
+Tooltip_RefiningFurnace_02=§7默认拥有§e1§7并行，§e200 Tick§7工作时间。§r
+Tooltip_RefiningFurnace_03=§a升级§b线圈§a以及§b玻璃结构§a，可获得更强大的性能！§r
+Tooltip_RefiningFurnace_04=§c它可不是普通的熔炉！§r§7不要试图往里面塞其他杂七杂八的原材料！§r
+Tooltip_RefiningFurnace_05=§e希望你已经准备好了足够的§6源石§e能量！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -164,6 +174,7 @@ EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum 输出：
 EOHB_Recipe_ElectricTypeOneMiningMachine=电力一形矿机
 EOHB_Recipe_Planter=种植机
 EOHB_Recipe_SeedCollectingMachine=采种机
+EOHB_Recipe_RefiningFurnace=精炼炉
 
 #item
 EOHB_Harmony=鸿蒙
@@ -227,6 +238,11 @@ item.UpgradeChipMK3.name=升级芯片-MK3
 EOHB_UpgradeChipMK1_Tooltip_00=插入后机器单配方并行提升至16 单次运行工作时间降低至100tick 跨配方并行提升至1
 EOHB_UpgradeChipMK2_Tooltip_00=插入后机器单配方并行提升至64 单次运行工作时间降低至50tick 跨配方并行提升至1
 EOHB_UpgradeChipMK3_Tooltip_00=插入后机器单配方并行提升至512 单次运行工作时间降低至20tick 跨配方并行提升至1
+item.ZhiMiJingTiFenMo.name=致密晶体粉末
+item.ZhiMiYuanShiFenMo.name=致密源石粉末
+item.ZhiMiTanFenMo.name=致密碳粉末
+item.ZhiMiLanTieFenMo.name=致密蓝铁粉末
+item.GaoJingFenMo.name=高晶粉末
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

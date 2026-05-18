@@ -176,6 +176,7 @@ public class EOHB_SeedCollectingMachine extends OrundumWirelessMultiMachineBase<
             .addInfo(Tooltip_SeedCollectingMachine_02)
             .addInfo(Tooltip_SeedCollectingMachine_03)
             .addInfo(Tooltip_SeedCollectingMachine_04)
+            .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
@@ -191,17 +192,17 @@ public class EOHB_SeedCollectingMachine extends OrundumWirelessMultiMachineBase<
                                 World world, int x, int y, int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
 
-        tag.setInteger("PlanterGlassTier", this.glassTier);
-        tag.setInteger("PlanterParallel", getMaxParallelRecipes());
+        tag.setInteger("SeedCollectingGlassTier", this.glassTier);
+        tag.setInteger("SeedCollectingParallel", getMaxParallelRecipes());
 
         int wirelessTime = getWirelessModeProcessingTime();
-        tag.setInteger("PlanterWirelessTime", wirelessTime);
+        tag.setInteger("SeedCollectingWirelessTime", wirelessTime);
 
         final int planterBaseTime = 200;
         float reductionPct = Math.max(0.0f,
             (planterBaseTime - wirelessTime) * 100.0f / planterBaseTime);
-        tag.setInteger("PlanterBaseTime", planterBaseTime);
-        tag.setFloat("PlanterTimeReductionPct", reductionPct);
+        tag.setInteger("SeedCollectingBaseTime", planterBaseTime);
+        tag.setFloat("SeedCollectingTimeReductionPct", reductionPct);
     }
 
     @Override
@@ -212,11 +213,11 @@ public class EOHB_SeedCollectingMachine extends OrundumWirelessMultiMachineBase<
         NBTTagCompound tag = accessor.getNBTData();
         if (tag == null) return;
 
-        int glassTierShown = tag.getInteger("PlanterGlassTier");
-        int parallelShown = tag.getInteger("PlanterParallel");
-        int wirelessTimeShown = tag.getInteger("PlanterWirelessTime");
-        float reductionPct = tag.getFloat("PlanterTimeReductionPct");
-        int baseTime = tag.getInteger("PlanterBaseTime");
+        int glassTierShown = tag.getInteger("SeedCollectingGlassTier");
+        int parallelShown = tag.getInteger("SeedCollectingParallel");
+        int wirelessTimeShown = tag.getInteger("SeedCollectingWirelessTime");
+        float reductionPct = tag.getFloat("SeedCollectingTimeReductionPct");
+        int baseTime = tag.getInteger("SeedCollectingBaseTime");
 
         currentTip.add(EnumChatFormatting.DARK_AQUA + "【采种机状态】");
         currentTip.add(EnumChatFormatting.AQUA + "玻璃等级："

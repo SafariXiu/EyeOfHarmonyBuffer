@@ -19,7 +19,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.ShaYeZhongZi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
 
         GTValues.RA.stdBuilder()
@@ -30,7 +30,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.YaZhenZhongZi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
 
         GTValues.RA.stdBuilder()
@@ -41,7 +41,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.QiaoHuaZhongZi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
 
         GTValues.RA.stdBuilder()
@@ -52,7 +52,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.TongHuaShuZhong.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
 
         GTValues.RA.stdBuilder()
@@ -63,7 +63,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.GanShiZhongZi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
 
         GTValues.RA.stdBuilder()
@@ -74,7 +74,7 @@ public class SeedCollectingMachineRecipes implements IRecipePool {
                 GTCMItemList.JinCaoZhongZi.get(2)
             )
             .eut(2000)
-            .duration(5 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeedCollectingMachine);
     }
 }

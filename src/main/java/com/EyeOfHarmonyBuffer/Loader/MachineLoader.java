@@ -2,10 +2,7 @@ package com.EyeOfHarmonyBuffer.Loader;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.Machine.*;
-import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_ElectricTypeOneMiningMachine;
-import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_OrundumDynamo;
-import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_Planter;
-import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.EOHB_SeedCollectingMachine;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.*;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.item.ItemStack;
 
@@ -20,6 +17,7 @@ public class MachineLoader {
     public static ItemStack ElectricTypeOneMiningMachine;
     public static ItemStack Planter;
     public static ItemStack SeedCollectingMachine;
+    public static ItemStack RefiningFurnace;
 
     private final static int MachineBlockID = 23000;
 
@@ -93,5 +91,12 @@ public class MachineLoader {
             TextLocalization.NameSeedCollectingMachine
         ).getStackForm(1);
         GTCMItemList.SeedCollectingMachines.set(SeedCollectingMachine);
+
+        RefiningFurnace = new EOHB_RefiningFurnace(
+            MachineBlockID + 11,
+            "NameRefiningFurnace",
+            TextLocalization.NameRefiningFurnace
+        ).getStackForm(1);
+        GTCMItemList.RefiningFurnaces.set(RefiningFurnace);
     }
 }

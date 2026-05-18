@@ -17,6 +17,7 @@ EOHB_WirelessMode_Off=Wireless mode disabled.
 EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
 EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
+EOHB_Arknights_Project_Energy=This machine runs on Orundum energy!
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
 EOHB_Client_PlayerJoin01=You can open the config file through the link below.Remember to check your config file to see which features you’ve actually turned on.
 EOHB_Client_PlayerJoin01_1=right now, everything’s snoozing by default!
@@ -153,6 +154,15 @@ Tooltip_SeedCollectingMachine_01=Comes with 1 parallel slot by default; upgradin
 Tooltip_SeedCollectingMachine_02=Operates at 100% work time by default; upgrade the coil to reduce work time.
 Tooltip_SeedCollectingMachine_03=Can gather the majority of native crops found on Talos-2!
 Tooltip_SeedCollectingMachine_04=Use together with the Planter!
+NameRefiningFurnace=Refining Furnace
+Tooltip_RefiningFurnace_MachineType=Refining Furnace
+Tooltip_RefiningFurnace_Controller=The controller block of the Refining Furnace
+Tooltip_RefiningFurnace_00=A specialized device that refines other materials at extremely high temperatures.
+Tooltip_RefiningFurnace_01=Stripping, reshaping... under intense heat, the form of the material changes again and again until it emerges completely renewed.
+Tooltip_RefiningFurnace_02=Starts with 1 parallel line by default and a work time of 200 ticks.
+Tooltip_RefiningFurnace_03=Upgrade the coils and glass structure to unlock even greater performance!
+Tooltip_RefiningFurnace_04=This is not an ordinary furnace! Do not try to stuff random raw materials into it!
+Tooltip_RefiningFurnace_05=I hope you’ve stored up enough Orundum energy!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -164,6 +174,7 @@ EOHB_Recipe_OrundumDynamo_Tooltip_00=Orundum OutPut：
 EOHB_Recipe_ElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 EOHB_Recipe_Planter=Planter
 EOHB_Recipe_SeedCollectingMachine=Seed Collecting Machine
+EOHB_Recipe_RefiningFurnace=Refining Furnace
 
 #item
 EOHB_Harmony=Harmony
@@ -227,6 +238,11 @@ item.UpgradeChipMK3.name=UpGrade Chip-MK3
 EOHB_UpgradeChipMK1_Tooltip_00=When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks, and cross‑recipe parallelism increases to 4.
 EOHB_UpgradeChipMK2_Tooltip_00=When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks, and cross‑recipe parallelism increases to 8.
 EOHB_UpgradeChipMK3_Tooltip_00=When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks, and cross‑recipe parallelism increases to 16.
+item.ZhiMiJingTiFenMo.name=Dense Crystal Powder
+item.ZhiMiYuanShiFenMo.name=Dense Orundum Powder
+item.ZhiMiTanFenMo.name=Dense Carbon Powder
+item.ZhiMiLanTieFenMo.name=Dense Blue Iron Powder
+item.GaoJingFenMo.name=High-Crystal Powder
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

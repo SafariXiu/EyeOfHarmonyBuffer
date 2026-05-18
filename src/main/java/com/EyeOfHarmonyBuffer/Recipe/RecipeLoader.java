@@ -29,7 +29,8 @@ public class RecipeLoader {
             new ElectricTypeOneMiningMachineRecipes(),
             new OriginitePrime_GTNHRecipe(),
             new PlanterRecipes(),
-            new SeedCollectingMachineRecipes()
+            new SeedCollectingMachineRecipes(),
+            new RefiningFurnaceRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

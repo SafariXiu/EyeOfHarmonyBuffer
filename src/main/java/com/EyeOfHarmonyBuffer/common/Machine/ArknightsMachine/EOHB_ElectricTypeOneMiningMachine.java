@@ -146,6 +146,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
             .addInfo(Tooltip_ElectricTypeOneMiningMachine_03)
             .addInfo(Tooltip_ElectricTypeOneMiningMachine_04)
             .addInfo(Tooltip_ElectricTypeOneMiningMachine_05)
+            .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

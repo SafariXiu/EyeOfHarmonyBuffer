@@ -34,30 +34,30 @@ import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
 import static gregtech.api.enums.HatchElement.*;
+import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.*;
 import static gregtech.api.util.GTStructureUtility.ofCoil;
 
-public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
+public class EOHB_RefiningFurnace extends OrundumWirelessMultiMachineBase<EOHB_RefiningFurnace>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_Planter> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainPlanter";
-    private static final int OffsetsX = 5;
-    private static final int OffsetsY = 6;
+    private static IStructureDefinition<EOHB_RefiningFurnace> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainRefiningFurnace";
+    private static final int OffsetsX = 3;
+    private static final int OffsetsY = 7;
     private static final int OffsetsZ = 0;
-    private static final int CASING_INDEX1 = 183;
-
+    private static final int CASING_INDEX = 16;
+    private HeatingCoilLevel mCoilLevel;
     private int glassTier = -1;
-    private HeatingCoilLevel mCoilLevel = HeatingCoilLevel.None;
 
-    public EOHB_Planter(int aID, String aName, String aNameRegional) {
+    public EOHB_RefiningFurnace(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_Planter(String aName) {
+    public EOHB_RefiningFurnace(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -101,18 +101,12 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.Planter;
+        return RecipeMaps.RefiningFurnace;
     }
 
     @Override
     public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        this.glassTier = -1;
-        this.setCoilLevel(HeatingCoilLevel.None);
-
-        if (!checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ)) {
-            return false;
-        }
-        return this.getCoilLevel() != null && this.getCoilLevel() != HeatingCoilLevel.None;
+        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
     }
 
     @Override
@@ -128,60 +122,83 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
     }
 
     private static final String[][] shapeMain = new String[][]{
-        {"           ","           ","           ","EEEEEEEEEEE","           ","           ","           "},
-        {"           ","           "," DDDDDDDDD ","EDDDDDDDDDE"," DDDDDDDDD ","           ","           "},
-        {"           "," DAAAAAAAD "," DC     CD ","EDC     CDE"," DC     CD "," DAAAAAAAD ","           "},
-        {"           "," DAAAAAAAD "," DC     CD ","EBBBBBBBBBE"," DC     CD "," DAAAAAAAD ","           "},
-        {"           "," DAAAAAAAD "," DC     CD ","ED       DE"," DC     CD "," DAAAAAAAD ","           "},
-        {"           "," DAAAAAAAD "," DC     CD ","ED       DE"," DC     CD "," DAAAAAAAD ","           "},
-        {"EEEEE~EEEEE","EDDDDDDDDDE","EDDDDDDDDDE","EDDDDDDDDDE","EDDDDDDDDDE","EDDDDDDDDDE","EEEEEEEEEEE"}
+        {"       "," EEEE  ","CEAAEE ","CEAAEE "," EEEE  ","       ","       "},
+        {"       "," EAAE  ","CEDDEE ","CEDDEE "," EEEE  ","       ","       "},
+        {"       "," EAAE  ","CEDDEE ","CE  EE "," EEEE  ","       ","       "},
+        {"       "," EAAE  ","CEDDEE ","CE  EE "," EEEE  ","       ","       "},
+        {"       "," EAAE  ","CEDDEE ","CE  EE "," EEEE  ","       ","       "},
+        {"       ","FEAAEFF","FEDDEEF","FE  EEF","FEEEE F","FFFFFFF","       "},
+        {"     CC","FEEEECC","CEEEEEC","CEEEEEC","CEEEE C","FCCCCCF","       "},
+        {"BBB~BBB","BBBBBBB","BBBBBBB","BBBBBBB","BBBBBBB","BBBBBBB","BBBBBBB"}
     };
 
     @Override
-    public IStructureDefinition<EOHB_Planter> getStructureDefinition() {
-        if (STRUCTURE_DEFINITION == null) {
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_Planter>builder()
-                .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
-                .addElement('E', ofBlock(sBlockFrames, 305))
+    public IStructureDefinition<EOHB_RefiningFurnace> getStructureDefinition() {
+        if(STRUCTURE_DEFINITION == null){
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_RefiningFurnace>builder()
+                .addShape(
+                    STRUCTURE_PIECE_MAIN,transpose(shapeMain)
+                )
                 .addElement(
-                    'D',
-                    buildHatchAdder(EOHB_Planter.class)
-                        .atLeast(InputBus, OutputBus, InputHatch)
-                        .casingIndex(CASING_INDEX1)
+                    'A',
+                    chainAllGlasses(-1, (te, t) -> te.glassTier = t, te -> te.glassTier)
+                )
+                .addElement(
+                    'B',
+                    buildHatchAdder(EOHB_RefiningFurnace.class)
+                        .atLeast(InputBus,InputHatch,OutputHatch,OutputBus)
+                        .casingIndex(CASING_INDEX)
                         .dot(1)
                         .buildAndChain(
-                            sBlockCasings8, 7
+                            ofBlock(sBlockCasings2,0)
                         )
                 )
-                .addElement('A', chainAllGlasses(-1, (te, t) -> te.glassTier = t, te -> te.glassTier))
-                .addElement('B', ofBlock(sBlockCasings2, 13))
-                .addElement('C', GTStructureChannels.HEATING_COIL
-                    .use(activeCoils(ofCoil(
-                        EOHB_Planter::setCoilLevel, EOHB_Planter::getCoilLevel))))
+                .addElement(
+                    'C',
+                    ofBlock(sBlockCasings2, 13)
+                )
+                .addElement(
+                    'D',
+                    GTStructureChannels.HEATING_COIL
+                        .use(activeCoils(ofCoil(EOHB_RefiningFurnace::setCoilLevel, EOHB_RefiningFurnace::getCoilLevel)))
+                )
+                .addElement(
+                    'E',
+                    ofBlock(
+                        sBlockCasings8, 7
+                    )
+                )
+                .addElement(
+                    'F',
+                    ofBlock(
+                        sBlockFrames, 305
+                    )
+                )
                 .build();
         }
         return STRUCTURE_DEFINITION;
     }
 
     public void setCoilLevel(HeatingCoilLevel aCoilLevel) {
-        this.mCoilLevel = aCoilLevel == null ? HeatingCoilLevel.None : aCoilLevel;
+        this.mCoilLevel = aCoilLevel;
     }
 
     public HeatingCoilLevel getCoilLevel() {
-        return this.mCoilLevel == null ? HeatingCoilLevel.None : this.mCoilLevel;
+        return this.mCoilLevel;
     }
 
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_Planter_MachineType)
-            .addInfo(Tooltip_Planter_Controller)
+        tt.addMachineType(Tooltip_RefiningFurnace_MachineType)
+            .addInfo(Tooltip_RefiningFurnace_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_Planter_00)
-            .addInfo(Tooltip_Planter_01)
-            .addInfo(Tooltip_Planter_02)
-            .addInfo(Tooltip_Planter_03)
-            .addInfo(Tooltip_Planter_04)
+            .addInfo(Tooltip_RefiningFurnace_00)
+            .addInfo(Tooltip_RefiningFurnace_01)
+            .addInfo(Tooltip_RefiningFurnace_02)
+            .addInfo(Tooltip_RefiningFurnace_03)
+            .addInfo(Tooltip_RefiningFurnace_04)
+            .addInfo(Tooltip_RefiningFurnace_05)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
@@ -189,6 +206,7 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
             .addMaintenanceHatch(add_MaintenanceHatch)
             .addInputHatch(add_inputHatch)
             .addInputBus(add_InputBus)
+            .addOutputHatch(add_outputHatch)
             .addOutputBus(add_OutputBus)
             .toolTipFinisher(ModName);
         return tt;
@@ -199,17 +217,17 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
                                 World world, int x, int y, int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
 
-        tag.setInteger("PlanterGlassTier", this.glassTier);
-        tag.setInteger("PlanterParallel", getMaxParallelRecipes());
+        tag.setInteger("RefiningFurnaceGlassTier", this.glassTier);
+        tag.setInteger("RefiningFurnaceParallel", getMaxParallelRecipes());
 
         int wirelessTime = getWirelessModeProcessingTime();
-        tag.setInteger("PlanterWirelessTime", wirelessTime);
+        tag.setInteger("RefiningFurnaceWirelessTime", wirelessTime);
 
         final int planterBaseTime = 200;
         float reductionPct = Math.max(0.0f,
             (planterBaseTime - wirelessTime) * 100.0f / planterBaseTime);
-        tag.setInteger("PlanterBaseTime", planterBaseTime);
-        tag.setFloat("PlanterTimeReductionPct", reductionPct);
+        tag.setInteger("RefiningFurnaceBaseTime", planterBaseTime);
+        tag.setFloat("RefiningFurnaceTimeReductionPct", reductionPct);
     }
 
     @Override
@@ -220,13 +238,13 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
         NBTTagCompound tag = accessor.getNBTData();
         if (tag == null) return;
 
-        int glassTierShown = tag.getInteger("PlanterGlassTier");
-        int parallelShown = tag.getInteger("PlanterParallel");
-        int wirelessTimeShown = tag.getInteger("PlanterWirelessTime");
-        float reductionPct = tag.getFloat("PlanterTimeReductionPct");
-        int baseTime = tag.getInteger("PlanterBaseTime");
+        int glassTierShown = tag.getInteger("RefiningFurnaceGlassTier");
+        int parallelShown = tag.getInteger("RefiningFurnaceParallel");
+        int wirelessTimeShown = tag.getInteger("RefiningFurnaceWirelessTime");
+        float reductionPct = tag.getFloat("RefiningFurnaceTimeReductionPct");
+        int baseTime = tag.getInteger("RefiningFurnaceBaseTime");
 
-        currentTip.add(EnumChatFormatting.DARK_AQUA + "【种植机状态】");
+        currentTip.add(EnumChatFormatting.DARK_AQUA + "【精炼炉状态】");
         currentTip.add(EnumChatFormatting.AQUA + "玻璃等级："
             + EnumChatFormatting.GOLD + glassTierShown);
         currentTip.add(EnumChatFormatting.AQUA + "最大并行："
@@ -240,39 +258,33 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_Planter(this.mName);
+        return new EOHB_RefiningFurnace(this.mName);
     }
 
     @Override
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
                                  int aColorIndex, boolean aActive, boolean aRedstone) {
         if (side == facing) {
-            if (aActive)
-                return new ITexture[]{
-                    Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1),
-                    TextureFactory.builder()
-                        .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
-                        .extFacing()
-                        .build(),
-                    TextureFactory.builder()
-                        .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
-                        .extFacing()
-                        .glow()
-                        .build()
-                };
-            return new ITexture[]{
-                Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1),
+            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
                 TextureFactory.builder()
-                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
                     .extFacing()
                     .build(),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
+                    .extFacing()
+                    .glow()
+                    .build() };
+            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
+                .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
+                .extFacing()
+                .build(),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
                     .extFacing()
                     .glow()
-                    .build()
-            };
+                    .build() };
         }
-        return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX1)};
+        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
     }
 }
