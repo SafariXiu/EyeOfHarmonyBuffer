@@ -18,6 +18,7 @@ public class MachineLoader {
     public static ItemStack Planter;
     public static ItemStack SeedCollectingMachine;
     public static ItemStack RefiningFurnace;
+    public static ItemStack Pulverizer;
 
     private final static int MachineBlockID = 23000;
 
@@ -98,5 +99,12 @@ public class MachineLoader {
             TextLocalization.NameRefiningFurnace
         ).getStackForm(1);
         GTCMItemList.RefiningFurnaces.set(RefiningFurnace);
+
+        Pulverizer = new EOHB_Pulverizer(
+            MachineBlockID + 12,
+            "NamePulverizer",
+            TextLocalization.NamePulverizer
+        ).getStackForm(1);
+        GTCMItemList.Pulverizers.set(Pulverizer);
     }
 }

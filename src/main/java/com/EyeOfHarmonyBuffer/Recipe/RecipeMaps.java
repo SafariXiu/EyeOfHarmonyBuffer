@@ -120,4 +120,16 @@ public class RecipeMaps {
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.JingTiWaiKe.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> Pulverizer = RecipeMapBuilder
+        .of(EOHB_Recipe_Pulverizer)
+        .maxIO(1, 1, 0, 0)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(RefiningFurnaceFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ShaYeFenMo.get(1)))
+        .build();
 }

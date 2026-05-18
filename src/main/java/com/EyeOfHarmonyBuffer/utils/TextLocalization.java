@@ -22,6 +22,7 @@ public class TextLocalization {
     public static final String EOHB_Legendary_Machine_Project;
     public static final String EOHB_Arknights_Project;
     public static final String EOHB_Arknights_Project_Energy;
+    public static final String EOHB_Arknights_Project_UpgradeCard;
     public static final String EOHB_Client_PlayerJoin00;
     public static final String EOHB_Client_PlayerJoin01;
     public static final String EOHB_Client_PlayerJoin01_1;
@@ -164,6 +165,13 @@ public class TextLocalization {
     public static final String Tooltip_RefiningFurnace_04;
     public static final String Tooltip_RefiningFurnace_05;
 
+    public static final String NamePulverizer;
+    public static final String Tooltip_Pulverizer_MachineType;
+    public static final String Tooltip_Pulverizer_Controller;
+    public static final String Tooltip_Pulverizer_00;
+    public static final String Tooltip_Pulverizer_01;
+    public static final String Tooltip_Pulverizer_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -199,6 +207,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_Planter;
     public static final String EOHB_Recipe_SeedCollectingMachine;
     public static final String EOHB_Recipe_RefiningFurnace;
+    public static final String EOHB_Recipe_Pulverizer;
 
 
     public TextLocalization() {
@@ -231,6 +240,7 @@ public class TextLocalization {
         EOHB_Arknights_Project= TextHandler.texter("EOHB — Arknights Project","EOHB_Arknights_Project");
         EOHB_Arknights_Project_Energy = TextHandler.texter("This machine runs on Orundum energy!","EOHB_Arknights_Project_Energy");
         EOHB_Legendary_Machine_Project = TextHandler.texter("EOHB-Legendary Machine Project","EOHB_Legendary_Machine_Project");
+        EOHB_Arknights_Project_UpgradeCard = TextHandler.texter("This machine can be upgraded by upgrading the chips!","EOHB_Arknights_Project_UpgradeCard");
         EOHB_WirelessMode_On = TextHandler.texter("Wireless mode enabled.","EOHB_WirelessMode_On");
         EOHB_WirelessMode_Off = TextHandler.texter("Wireless mode disabled.","EOHB_WirelessMode_Off");
 
@@ -387,6 +397,14 @@ public class TextLocalization {
         Tooltip_RefiningFurnace_04 = TextHandler.texter("","Tooltip_RefiningFurnace_04");
         Tooltip_RefiningFurnace_05 = TextHandler.texter("","Tooltip_RefiningFurnace_05");
 
+        //粉碎机
+        NamePulverizer = TextHandler.texter("Pulverizer","NamePulverizer");
+        Tooltip_Pulverizer_MachineType = TextHandler.texter("","Tooltip_Pulverizer_MachineType");
+        Tooltip_Pulverizer_Controller = TextHandler.texter("","Tooltip_Pulverizer_Controller");
+        Tooltip_Pulverizer_00 = TextHandler.texter("","Tooltip_Pulverizer_00");
+        Tooltip_Pulverizer_01 = TextHandler.texter("","Tooltip_Pulverizer_01");
+        Tooltip_Pulverizer_02 = TextHandler.texter("","Tooltip_Pulverizer_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -420,5 +438,6 @@ public class TextLocalization {
         EOHB_Recipe_Planter = TextHandler.texter("Planter","EOHB_Recipe_Planter");
         EOHB_Recipe_SeedCollectingMachine = TextHandler.texter("Seed Collecting Machine","EOHB_Recipe_SeedCollectingMachine");
         EOHB_Recipe_RefiningFurnace = TextHandler.texter("Refining Furnace","EOHB_Recipe_RefiningFurnace");
+        EOHB_Recipe_Pulverizer = TextHandler.texter("Pulverizer","EOHB_Recipe_Pulverizer");
     }
 }

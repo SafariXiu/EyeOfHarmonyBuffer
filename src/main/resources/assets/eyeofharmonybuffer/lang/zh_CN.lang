@@ -18,6 +18,7 @@ EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
 EOHB_Arknights_Project_Energy=§6本机器使用源石能量！
+EOHB_Arknights_Project_UpgradeCard=§6本机器可以通过升级芯片升级！
 EOHB_Client_PlayerJoin00=§a§l欢迎使用 §bEyeOfHarmonyBuffer！
 EOHB_Client_PlayerJoin01=§e你可以通过以下链接打开配置文件，查看你开启了哪些功能。
 EOHB_Client_PlayerJoin01_1=§e单击下方 §b蓝色文字 §e即可打开对应的配置文件。当前所有功能默认为§c关闭§e。
@@ -163,6 +164,12 @@ Tooltip_RefiningFurnace_02=§7默认拥有§e1§7并行，§e200 Tick§7工作�
 Tooltip_RefiningFurnace_03=§a升级§b线圈§a以及§b玻璃结构§a，可获得更强大的性能！§r
 Tooltip_RefiningFurnace_04=§c它可不是普通的熔炉！§r§7不要试图往里面塞其他杂七杂八的原材料！§r
 Tooltip_RefiningFurnace_05=§e希望你已经准备好了足够的§6源石§e能量！§r
+NamePulverizer=§9粉碎机
+Tooltip_Pulverizer_MachineType=§9粉碎机
+Tooltip_Pulverizer_Controller=§7粉碎机的§b控制器方块§r
+Tooltip_Pulverizer_00=§a能够粉碎各类材料的重型工业设备。§r
+Tooltip_Pulverizer_01=§7听见它咀嚼坚硬物料的声音了吗？§r
+Tooltip_Pulverizer_02=§e塔罗斯星球的机器§7只能粉碎§e塔罗斯星球的物品§7——这很合理，不是吗？§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -175,6 +182,7 @@ EOHB_Recipe_ElectricTypeOneMiningMachine=电力一形矿机
 EOHB_Recipe_Planter=种植机
 EOHB_Recipe_SeedCollectingMachine=采种机
 EOHB_Recipe_RefiningFurnace=精炼炉
+EOHB_Recipe_Pulverizer=粉碎机
 
 #item
 EOHB_Harmony=鸿蒙

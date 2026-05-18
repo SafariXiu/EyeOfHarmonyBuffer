@@ -18,6 +18,7 @@ EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6�
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
 EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
 EOHB_Arknights_Project_Energy=This machine runs on Orundum energy!
+EOHB_Arknights_Project_UpgradeCard=This machine can be upgraded by upgrading the chips!
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
 EOHB_Client_PlayerJoin01=You can open the config file through the link below.Remember to check your config file to see which features you’ve actually turned on.
 EOHB_Client_PlayerJoin01_1=right now, everything’s snoozing by default!
@@ -163,6 +164,12 @@ Tooltip_RefiningFurnace_02=Starts with 1 parallel line by default and a work tim
 Tooltip_RefiningFurnace_03=Upgrade the coils and glass structure to unlock even greater performance!
 Tooltip_RefiningFurnace_04=This is not an ordinary furnace! Do not try to stuff random raw materials into it!
 Tooltip_RefiningFurnace_05=I hope you’ve stored up enough Orundum energy!
+NamePulverizer=Pulverizer
+Tooltip_Pulverizer_MachineType=Pulverizer
+Tooltip_Pulverizer_Controller=The controller block of the Pulverizer
+Tooltip_Pulverizer_00=A heavy-duty industrial device capable of pulverizing various materials.
+Tooltip_Pulverizer_01=Do you hear the sound of it chewing through those hard materials?
+Tooltip_Pulverizer_02=Machines on Planet Talos can only pulverize items from Planet Talos—makes perfect sense, doesn’t it?
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -175,6 +182,7 @@ EOHB_Recipe_ElectricTypeOneMiningMachine=Electric Type-I Mining Machine
 EOHB_Recipe_Planter=Planter
 EOHB_Recipe_SeedCollectingMachine=Seed Collecting Machine
 EOHB_Recipe_RefiningFurnace=Refining Furnace
+EOHB_Recipe_Pulverizer=Pulverizer
 
 #item
 EOHB_Harmony=Harmony

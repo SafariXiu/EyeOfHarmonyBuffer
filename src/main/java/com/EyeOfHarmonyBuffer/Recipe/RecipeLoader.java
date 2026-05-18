@@ -30,7 +30,8 @@ public class RecipeLoader {
             new OriginitePrime_GTNHRecipe(),
             new PlanterRecipes(),
             new SeedCollectingMachineRecipes(),
-            new RefiningFurnaceRecipes()
+            new RefiningFurnaceRecipes(),
+            new PulverizerRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

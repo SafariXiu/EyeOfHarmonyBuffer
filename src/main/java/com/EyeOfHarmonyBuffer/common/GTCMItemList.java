@@ -85,6 +85,7 @@ public enum GTCMItemList {
     Planters,
     SeedCollectingMachines,
     RefiningFurnaces,
+    Pulverizers,
 
 
     //机器结构方块
