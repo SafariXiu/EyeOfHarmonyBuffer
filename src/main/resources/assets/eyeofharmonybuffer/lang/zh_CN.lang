@@ -170,6 +170,11 @@ Tooltip_Pulverizer_Controller=§7粉碎机的§b控制器方块§r
 Tooltip_Pulverizer_00=§a能够粉碎各类材料的重型工业设备。§r
 Tooltip_Pulverizer_01=§7听见它咀嚼坚硬物料的声音了吗？§r
 Tooltip_Pulverizer_02=§e塔罗斯星球的机器§7只能粉碎§e塔罗斯星球的物品§7——这很合理，不是吗？§r
+NameAccessoriesMachine=§b配件机
+Tooltip_AccessoriesMachine_MachineType=§b配件机
+Tooltip_AccessoriesMachine_Controller=§7配件机的§b控制器方块§r
+Tooltip_AccessoriesMachine_00=§a能够加工各式零件的多功能加工平台。§r
+Tooltip_AccessoriesMachine_01=§7车、铣、刨、磨……精密加工，一机搞定。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -183,6 +188,7 @@ EOHB_Recipe_Planter=种植机
 EOHB_Recipe_SeedCollectingMachine=采种机
 EOHB_Recipe_RefiningFurnace=精炼炉
 EOHB_Recipe_Pulverizer=粉碎机
+EOHB_Recipe_AccessoriesMachine=配件机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -255,6 +261,10 @@ item.GanShiFenMo.name=柑实粉末
 item.YaZhenFenMo.name=芽针粉末
 item.QiaoHuaFenMo.name=荞花粉末
 item.JinCaoFenMo.name=锦草粉末
+item.GangZhiLingJian.name=钢制零件
+item.GaoJingLingJian.name=高晶零件
+item.ZiJingLingJian.name=紫晶零件
+item.TieZhiLingJian.name=铁制零件
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

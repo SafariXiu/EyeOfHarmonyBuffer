@@ -31,7 +31,8 @@ public class RecipeLoader {
             new PlanterRecipes(),
             new SeedCollectingMachineRecipes(),
             new RefiningFurnaceRecipes(),
-            new PulverizerRecipes()
+            new PulverizerRecipes(),
+            new AccessoriesMachineRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

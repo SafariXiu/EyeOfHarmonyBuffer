@@ -19,6 +19,7 @@ public class MachineLoader {
     public static ItemStack SeedCollectingMachine;
     public static ItemStack RefiningFurnace;
     public static ItemStack Pulverizer;
+    public static ItemStack AccessoriesMachine;
 
     private final static int MachineBlockID = 23000;
 
@@ -106,5 +107,12 @@ public class MachineLoader {
             TextLocalization.NamePulverizer
         ).getStackForm(1);
         GTCMItemList.Pulverizers.set(Pulverizer);
+
+        AccessoriesMachine = new EOHB_AccessoriesMachine(
+            MachineBlockID + 13,
+            "NameAccessoriesMachine",
+            TextLocalization.NameAccessoriesMachine
+        ).getStackForm(1);
+        GTCMItemList.AccessoriesMachines.set(AccessoriesMachine);
     }
 }

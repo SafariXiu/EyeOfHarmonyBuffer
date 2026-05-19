@@ -172,6 +172,12 @@ public class TextLocalization {
     public static final String Tooltip_Pulverizer_01;
     public static final String Tooltip_Pulverizer_02;
 
+    public static final String NameAccessoriesMachine;
+    public static final String Tooltip_AccessoriesMachine_MachineType;
+    public static final String Tooltip_AccessoriesMachine_Controller;
+    public static final String Tooltip_AccessoriesMachine_00;
+    public static final String Tooltip_AccessoriesMachine_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -208,6 +214,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_SeedCollectingMachine;
     public static final String EOHB_Recipe_RefiningFurnace;
     public static final String EOHB_Recipe_Pulverizer;
+    public static final String EOHB_Recipe_AccessoriesMachine;
 
 
     public TextLocalization() {
@@ -348,12 +355,12 @@ public class TextLocalization {
         NameOrundumDynamo = TextHandler.texter("Orundum Dynamo","NameOrundumDynamo");
         Tooltip_OrundumDynamo_MachineType = TextHandler.texter("Orundum Dynamo","Tooltip_OrundumDynamo_MachineType");
         Tooltip_OrundumDynamo_Controller = TextHandler.texter("Controller Block of Orundum Dynamo","Tooltip_OrundumDynamo_Controller");
-        Tooltip_OrundumDynamo_00 = TextHandler.texter("","Tooltip_OrundumDynamo_00");
-        Tooltip_OrundumDynamo_01 = TextHandler.texter("","Tooltip_OrundumDynamo_01");
-        Tooltip_OrundumDynamo_02 = TextHandler.texter("","Tooltip_OrundumDynamo_02");
-        Tooltip_OrundumDynamo_03 = TextHandler.texter("","Tooltip_OrundumDynamo_03");
-        Tooltip_OrundumDynamo_04 = TextHandler.texter("","Tooltip_OrundumDynamo_04");
-        Tooltip_OrundumDynamo_05 = TextHandler.texter("","Tooltip_OrundumDynamo_05");
+        Tooltip_OrundumDynamo_00 = TextHandler.texter("A wondrous device brought from another continent — it runs on pure Originite Prime power!","Tooltip_OrundumDynamo_00");
+        Tooltip_OrundumDynamo_01 = TextHandler.texter("It creates an entirely new source of energy!An all-new internal Originium network system!","Tooltip_OrundumDynamo_01");
+        Tooltip_OrundumDynamo_02 = TextHandler.texter("Upgrade the coils and glass to achieve greater efficiency and improved parallel performance.","Tooltip_OrundumDynamo_02");
+        Tooltip_OrundumDynamo_03 = TextHandler.texter("Every unit of Originite Prime converts into Orundum once it’s used up.","Tooltip_OrundumDynamo_03");
+        Tooltip_OrundumDynamo_04 = TextHandler.texter("Completely free from Originium dust contamination!","Tooltip_OrundumDynamo_04");
+        Tooltip_OrundumDynamo_05 = TextHandler.texter("The very dawn of the Originium industry—good luck out there, Administrator!","Tooltip_OrundumDynamo_05");
 
         //电力一形矿机
         NameElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","NameElectricTypeOneMiningMachine");
@@ -399,11 +406,17 @@ public class TextLocalization {
 
         //粉碎机
         NamePulverizer = TextHandler.texter("Pulverizer","NamePulverizer");
-        Tooltip_Pulverizer_MachineType = TextHandler.texter("","Tooltip_Pulverizer_MachineType");
-        Tooltip_Pulverizer_Controller = TextHandler.texter("","Tooltip_Pulverizer_Controller");
-        Tooltip_Pulverizer_00 = TextHandler.texter("","Tooltip_Pulverizer_00");
-        Tooltip_Pulverizer_01 = TextHandler.texter("","Tooltip_Pulverizer_01");
-        Tooltip_Pulverizer_02 = TextHandler.texter("","Tooltip_Pulverizer_02");
+        Tooltip_Pulverizer_MachineType = TextHandler.texter("Pulverizer","Tooltip_Pulverizer_MachineType");
+        Tooltip_Pulverizer_Controller = TextHandler.texter("The controller block of the Pulverizer","Tooltip_Pulverizer_Controller");
+        Tooltip_Pulverizer_00 = TextHandler.texter("A heavy-duty industrial device capable of pulverizing various materials.","Tooltip_Pulverizer_00");
+        Tooltip_Pulverizer_01 = TextHandler.texter("Do you hear the sound of it chewing through those hard materials?","Tooltip_Pulverizer_01");
+        Tooltip_Pulverizer_02 = TextHandler.texter("Machines on Planet Talos can only pulverize items from Planet Talos—makes perfect sense, doesn’t it?","Tooltip_Pulverizer_02");
+
+        NameAccessoriesMachine = TextHandler.texter("Accessories Machine","NameAccessoriesMachine");
+        Tooltip_AccessoriesMachine_MachineType = TextHandler.texter("Accessories Machine","Tooltip_AccessoriesMachine_MachineType");
+        Tooltip_AccessoriesMachine_Controller = TextHandler.texter("The controller block of the Accessories Machine","Tooltip_AccessoriesMachine_Controller");
+        Tooltip_AccessoriesMachine_00 = TextHandler.texter("A versatile processing platform capable of machining all kinds of parts.","Tooltip_AccessoriesMachine_00");
+        Tooltip_AccessoriesMachine_01 = TextHandler.texter("Turning, milling, planing, grinding—precision machining all in one machine.","Tooltip_AccessoriesMachine_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -439,5 +452,6 @@ public class TextLocalization {
         EOHB_Recipe_SeedCollectingMachine = TextHandler.texter("Seed Collecting Machine","EOHB_Recipe_SeedCollectingMachine");
         EOHB_Recipe_RefiningFurnace = TextHandler.texter("Refining Furnace","EOHB_Recipe_RefiningFurnace");
         EOHB_Recipe_Pulverizer = TextHandler.texter("Pulverizer","EOHB_Recipe_Pulverizer");
+        EOHB_Recipe_AccessoriesMachine = TextHandler.texter("Accessories Machine","EOHB_Recipe_AccessoriesMachine");
     }
 }

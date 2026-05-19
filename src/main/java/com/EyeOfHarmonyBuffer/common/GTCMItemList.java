@@ -68,6 +68,10 @@ public enum GTCMItemList {
     YaZhenFenMo,
     QiaoHuaFenMo,
     JinCaoFenMo,
+    GangZhiLingJian,
+    GaoJingLingJian,
+    ZiJingLingJian,
+    TieZhiLingJian,
 
     //方舟-植物
     GanShi,
@@ -90,6 +94,7 @@ public enum GTCMItemList {
     SeedCollectingMachines,
     RefiningFurnaces,
     Pulverizers,
+    AccessoriesMachines,
 
 
     //机器结构方块

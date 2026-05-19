@@ -170,6 +170,11 @@ Tooltip_Pulverizer_Controller=The controller block of the Pulverizer
 Tooltip_Pulverizer_00=A heavy-duty industrial device capable of pulverizing various materials.
 Tooltip_Pulverizer_01=Do you hear the sound of it chewing through those hard materials?
 Tooltip_Pulverizer_02=Machines on Planet Talos can only pulverize items from Planet Talos—makes perfect sense, doesn’t it?
+NameAccessoriesMachine=Accessories Machine
+Tooltip_AccessoriesMachine_MachineType=Accessories Machine
+Tooltip_AccessoriesMachine_Controller=The controller block of the Accessories Machine
+Tooltip_AccessoriesMachine_00=A versatile processing platform capable of machining all kinds of parts.
+Tooltip_AccessoriesMachine_01=Turning, milling, planing, grinding—precision machining all in one machine.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -183,6 +188,7 @@ EOHB_Recipe_Planter=Planter
 EOHB_Recipe_SeedCollectingMachine=Seed Collecting Machine
 EOHB_Recipe_RefiningFurnace=Refining Furnace
 EOHB_Recipe_Pulverizer=Pulverizer
+EOHB_Recipe_AccessoriesMachine=Accessories Machine
 
 #item
 EOHB_Harmony=Harmony
@@ -255,6 +261,10 @@ item.GanShiFenMo.name=Citrus Fruit Powder
 item.YaZhenFenMo.name=Bud Needle Powder
 item.QiaoHuaFenMo.name=Buckwheat Flower Powder
 item.JinCaoFenMo.name=Embroidered Grass Powder
+item.GangZhiLingJian.name=Steel Parts
+item.GaoJingLingJian.name=High-Grade Crystal Parts
+item.ZiJingLingJian.name=Violet Crystal Parts
+item.TieZhiLingJian.name=Iron Parts
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
