@@ -175,6 +175,12 @@ Tooltip_AccessoriesMachine_MachineType=§b配件机
 Tooltip_AccessoriesMachine_Controller=§7配件机的§b控制器方块§r
 Tooltip_AccessoriesMachine_00=§a能够加工各式零件的多功能加工平台。§r
 Tooltip_AccessoriesMachine_01=§7车、铣、刨、磨……精密加工，一机搞定。§r
+NameShapingMachine=§b塑形机
+Tooltip_ShapingMachine_MachineType=§b塑形机
+Tooltip_ShapingMachine_Controller=§7塑形机的§b控制器方块§r
+Tooltip_ShapingMachine_00=§a能够冲压并成型各类容器的专用设备。§r
+Tooltip_ShapingMachine_01=§7在与§b联盟工团§7联合举办产品研讨会之后，§r
+Tooltip_ShapingMachine_02=§b终末地工业§7成功攻克了“§e模具更换§7”这一关键技术难题。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -189,6 +195,7 @@ EOHB_Recipe_SeedCollectingMachine=采种机
 EOHB_Recipe_RefiningFurnace=精炼炉
 EOHB_Recipe_Pulverizer=粉碎机
 EOHB_Recipe_AccessoriesMachine=配件机
+EOHB_Recipe_ShapingMachine=塑形机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -265,6 +272,10 @@ item.GangZhiLingJian.name=钢制零件
 item.GaoJingLingJian.name=高晶零件
 item.ZiJingLingJian.name=紫晶零件
 item.TieZhiLingJian.name=铁制零件
+item.GangZhiPing.name=钢制瓶
+item.GaoJingZhiPing.name=高晶质瓶
+item.ZiJingZhiPing.name=紫晶瓶
+item.LanTiePing.name=蓝铁瓶
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

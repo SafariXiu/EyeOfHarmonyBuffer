@@ -178,6 +178,13 @@ public class TextLocalization {
     public static final String Tooltip_AccessoriesMachine_00;
     public static final String Tooltip_AccessoriesMachine_01;
 
+    public static final String NameShapingMachine;
+    public static final String Tooltip_ShapingMachine_MachineType;
+    public static final String Tooltip_ShapingMachine_Controller;
+    public static final String Tooltip_ShapingMachine_00;
+    public static final String Tooltip_ShapingMachine_01;
+    public static final String Tooltip_ShapingMachine_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -215,6 +222,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_RefiningFurnace;
     public static final String EOHB_Recipe_Pulverizer;
     public static final String EOHB_Recipe_AccessoriesMachine;
+    public static final String EOHB_Recipe_ShapingMachine;
 
 
     public TextLocalization() {
@@ -412,11 +420,20 @@ public class TextLocalization {
         Tooltip_Pulverizer_01 = TextHandler.texter("Do you hear the sound of it chewing through those hard materials?","Tooltip_Pulverizer_01");
         Tooltip_Pulverizer_02 = TextHandler.texter("Machines on Planet Talos can only pulverize items from Planet Talos—makes perfect sense, doesn’t it?","Tooltip_Pulverizer_02");
 
+        //配件机
         NameAccessoriesMachine = TextHandler.texter("Accessories Machine","NameAccessoriesMachine");
         Tooltip_AccessoriesMachine_MachineType = TextHandler.texter("Accessories Machine","Tooltip_AccessoriesMachine_MachineType");
         Tooltip_AccessoriesMachine_Controller = TextHandler.texter("The controller block of the Accessories Machine","Tooltip_AccessoriesMachine_Controller");
         Tooltip_AccessoriesMachine_00 = TextHandler.texter("A versatile processing platform capable of machining all kinds of parts.","Tooltip_AccessoriesMachine_00");
         Tooltip_AccessoriesMachine_01 = TextHandler.texter("Turning, milling, planing, grinding—precision machining all in one machine.","Tooltip_AccessoriesMachine_01");
+
+        //塑形机
+        NameShapingMachine = TextHandler.texter("Shaping Machine","NameShapingMachine");
+        Tooltip_ShapingMachine_MachineType = TextHandler.texter("","Tooltip_ShapingMachine_MachineType");
+        Tooltip_ShapingMachine_Controller = TextHandler.texter("","Tooltip_ShapingMachine_Controller");
+        Tooltip_ShapingMachine_00 = TextHandler.texter("","Tooltip_ShapingMachine_00");
+        Tooltip_ShapingMachine_01 = TextHandler.texter("","Tooltip_ShapingMachine_01");
+        Tooltip_ShapingMachine_02 = TextHandler.texter("","Tooltip_ShapingMachine_02");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -453,5 +470,6 @@ public class TextLocalization {
         EOHB_Recipe_RefiningFurnace = TextHandler.texter("Refining Furnace","EOHB_Recipe_RefiningFurnace");
         EOHB_Recipe_Pulverizer = TextHandler.texter("Pulverizer","EOHB_Recipe_Pulverizer");
         EOHB_Recipe_AccessoriesMachine = TextHandler.texter("Accessories Machine","EOHB_Recipe_AccessoriesMachine");
+        EOHB_Recipe_ShapingMachine = TextHandler.texter("Shaping Machine","EOHB_Recipe_ShapingMachine");
     }
 }

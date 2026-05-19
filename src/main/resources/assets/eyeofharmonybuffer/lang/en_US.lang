@@ -175,6 +175,12 @@ Tooltip_AccessoriesMachine_MachineType=Accessories Machine
 Tooltip_AccessoriesMachine_Controller=The controller block of the Accessories Machine
 Tooltip_AccessoriesMachine_00=A versatile processing platform capable of machining all kinds of parts.
 Tooltip_AccessoriesMachine_01=Turning, milling, planing, grinding—precision machining all in one machine.
+NameShapingMachine=Shaping Machine
+Tooltip_ShapingMachine_MachineType=Shaping Machine
+Tooltip_ShapingMachine_Controller=The controller block of the Shaping Machine
+Tooltip_ShapingMachine_00=A specialized device capable of stamping and forming various containers.
+Tooltip_ShapingMachine_01=After holding a product workshop in collaboration with the Alliance Industrial Union,
+Tooltip_ShapingMachine_02=Terminal Land Industries finally overcame the key technical challenge of “mold replacement”.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -189,6 +195,7 @@ EOHB_Recipe_SeedCollectingMachine=Seed Collecting Machine
 EOHB_Recipe_RefiningFurnace=Refining Furnace
 EOHB_Recipe_Pulverizer=Pulverizer
 EOHB_Recipe_AccessoriesMachine=Accessories Machine
+EOHB_Recipe_ShapingMachine=Shaping Machine
 
 #item
 EOHB_Harmony=Harmony
@@ -265,6 +272,10 @@ item.GangZhiLingJian.name=Steel Parts
 item.GaoJingLingJian.name=High-Grade Crystal Parts
 item.ZiJingLingJian.name=Violet Crystal Parts
 item.TieZhiLingJian.name=Iron Parts
+item.GangZhiPing.name=Steel Bottle
+item.GaoJingZhiPing.name=High-Grade Crystal Bottle
+item.ZiJingZhiPing.name=Violet Crystal Bottle
+item.LanTiePing.name=Blue Iron Bottle
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
