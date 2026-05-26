@@ -21,6 +21,7 @@ public class MachineLoader {
     public static ItemStack Pulverizer;
     public static ItemStack AccessoriesMachine;
     public static ItemStack ShapingMachine;
+    public static ItemStack Grinder;
 
     private final static int MachineBlockID = 23000;
 
@@ -122,5 +123,12 @@ public class MachineLoader {
             TextLocalization.NameShapingMachine
         ).getStackForm(1);
         GTCMItemList.ShapingMachines.set(ShapingMachine);
+
+        Grinder = new EOHB_Grinder(
+            MachineBlockID + 15,
+            "NameGrinder",
+            TextLocalization.NameGrinder
+        ).getStackForm(1);
+        GTCMItemList.Grinders.set(Grinder);
     }
 }

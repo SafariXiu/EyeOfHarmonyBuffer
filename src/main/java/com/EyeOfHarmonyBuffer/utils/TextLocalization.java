@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
+import net.minecraft.profiler.PlayerUsageSnooper;
 import net.minecraft.util.EnumChatFormatting;
 
 public class TextLocalization {
@@ -185,6 +186,12 @@ public class TextLocalization {
     public static final String Tooltip_ShapingMachine_01;
     public static final String Tooltip_ShapingMachine_02;
 
+    public static final String NameGrinder;
+    public static final String Tooltip_Grinder_MachineType;
+    public static final String Tooltip_Grinder_Controller;
+    public static final String Tooltip_Grinder_00;
+    public static final String Tooltip_Grinder_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -223,6 +230,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_Pulverizer;
     public static final String EOHB_Recipe_AccessoriesMachine;
     public static final String EOHB_Recipe_ShapingMachine;
+    public static final String EOHB_Recipe_Grinder;
 
 
     public TextLocalization() {
@@ -429,11 +437,18 @@ public class TextLocalization {
 
         //塑形机
         NameShapingMachine = TextHandler.texter("Shaping Machine","NameShapingMachine");
-        Tooltip_ShapingMachine_MachineType = TextHandler.texter("","Tooltip_ShapingMachine_MachineType");
-        Tooltip_ShapingMachine_Controller = TextHandler.texter("","Tooltip_ShapingMachine_Controller");
-        Tooltip_ShapingMachine_00 = TextHandler.texter("","Tooltip_ShapingMachine_00");
-        Tooltip_ShapingMachine_01 = TextHandler.texter("","Tooltip_ShapingMachine_01");
-        Tooltip_ShapingMachine_02 = TextHandler.texter("","Tooltip_ShapingMachine_02");
+        Tooltip_ShapingMachine_MachineType = TextHandler.texter("Shaping Machine","Tooltip_ShapingMachine_MachineType");
+        Tooltip_ShapingMachine_Controller = TextHandler.texter("The controller block of the Shaping Machine","Tooltip_ShapingMachine_Controller");
+        Tooltip_ShapingMachine_00 = TextHandler.texter("A specialized device capable of stamping and forming various containers.","Tooltip_ShapingMachine_00");
+        Tooltip_ShapingMachine_01 = TextHandler.texter("After holding a product workshop in collaboration with the Alliance Industrial Union,","Tooltip_ShapingMachine_01");
+        Tooltip_ShapingMachine_02 = TextHandler.texter("Terminal Land Industries finally overcame the key technical challenge of “mold replacement”.","Tooltip_ShapingMachine_02");
+
+        //研磨机
+        NameGrinder = TextHandler.texter("Grinder","NameGrinder");
+        Tooltip_Grinder_MachineType = TextHandler.texter("","Tooltip_Grinder_MachineType");
+        Tooltip_Grinder_Controller = TextHandler.texter("","Tooltip_Grinder_Controller");
+        Tooltip_Grinder_00 = TextHandler.texter("","Tooltip_Grinder_00");
+        Tooltip_Grinder_01 = TextHandler.texter("","Tooltip_Grinder_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -471,5 +486,6 @@ public class TextLocalization {
         EOHB_Recipe_Pulverizer = TextHandler.texter("Pulverizer","EOHB_Recipe_Pulverizer");
         EOHB_Recipe_AccessoriesMachine = TextHandler.texter("Accessories Machine","EOHB_Recipe_AccessoriesMachine");
         EOHB_Recipe_ShapingMachine = TextHandler.texter("Shaping Machine","EOHB_Recipe_ShapingMachine");
+        EOHB_Recipe_Grinder = TextHandler.texter("Grinder","EOHB_Recipe_Grinder");
     }
 }

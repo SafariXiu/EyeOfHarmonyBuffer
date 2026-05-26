@@ -181,6 +181,11 @@ Tooltip_ShapingMachine_Controller=§7塑形机的§b控制器方块§r
 Tooltip_ShapingMachine_00=§a能够冲压并成型各类容器的专用设备。§r
 Tooltip_ShapingMachine_01=§7在与§b联盟工团§7联合举办产品研讨会之后，§r
 Tooltip_ShapingMachine_02=§b终末地工业§7成功攻克了“§e模具更换§7”这一关键技术难题。§r
+NameGrinder=§b研磨机
+Tooltip_Grinder_MachineType=§b研磨机
+Tooltip_Grinder_Controller=§7研磨机的§b控制器方块§r
+Tooltip_Grinder_00=§a可对各类粉末材料进行精细研磨处理的专业设备。§r
+Tooltip_Grinder_01=§7本设备脱胎于某种历史悠久的炎国农产品加工机械。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -196,6 +201,7 @@ EOHB_Recipe_RefiningFurnace=精炼炉
 EOHB_Recipe_Pulverizer=粉碎机
 EOHB_Recipe_AccessoriesMachine=配件机
 EOHB_Recipe_ShapingMachine=塑形机
+EOHB_Recipe_Grinder=研磨机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -276,6 +282,8 @@ item.GangZhiPing.name=钢制瓶
 item.GaoJingZhiPing.name=高晶质瓶
 item.ZiJingZhiPing.name=紫晶瓶
 item.LanTiePing.name=蓝铁瓶
+item.XiMoGanShiFenMo.name=细磨柑实粉末
+item.XiMoQiaoHuaFenMo.name=细磨荞花粉末
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
