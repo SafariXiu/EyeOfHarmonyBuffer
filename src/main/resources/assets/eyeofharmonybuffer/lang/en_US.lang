@@ -284,6 +284,11 @@ item.ZiJingZhiPing.name=Violet Crystal Bottle
 item.LanTiePing.name=Blue Iron Bottle
 item.XiMoGanShiFenMo.name=Finely Ground Citrus Fruit Powder
 item.XiMoQiaoHuaFenMo.name=Finely Ground Buckwheat Flower Powder
+EOHB_ArsenicImpact=Arsenic Impact
+EOHB_ArsenicImpact_Tooltip=Omg
+item.MiGuardFrostShard.name=Mi-Guard Frost Shard
+EOHB_Hoyomixium=Hoyomixium
+EOHB_Hoyomixium_Tooltip=TECH OTAKUS SAVE THE WORLD
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

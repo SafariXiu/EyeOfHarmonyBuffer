@@ -284,6 +284,11 @@ item.ZiJingZhiPing.name=紫晶瓶
 item.LanTiePing.name=蓝铁瓶
 item.XiMoGanShiFenMo.name=细磨柑实粉末
 item.XiMoQiaoHuaFenMo.name=细磨荞花粉末
+EOHB_ArsenicImpact=原砷
+EOHB_ArsenicImpact_Tooltip=Omg
+item.MiGuardFrostShard.name=米卫冰
+EOHB_Hoyomixium=镁铪铕合金
+EOHB_Hoyomixium_Tooltip=技术宅拯救世界
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

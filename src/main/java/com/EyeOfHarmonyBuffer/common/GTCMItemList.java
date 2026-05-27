@@ -22,6 +22,7 @@ public enum GTCMItemList {
     ChengDuHeart,
     Monkey,
     Shit,
+    MiGuardFrostShard,
 
     //方舟-物品
     YuanShi,

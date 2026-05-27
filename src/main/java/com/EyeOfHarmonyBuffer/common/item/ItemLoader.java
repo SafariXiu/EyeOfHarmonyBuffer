@@ -44,6 +44,7 @@ public class ItemLoader {
     public static Item UpgradeChipMK1 = new itemUpgradeChipMK1();
     public static Item UpgradeChipMK2 = new itemUpgradeChipMK2();
     public static Item UpgradeChipMK3 = new itemUpgradeChipMK3();
+    public static Item MiGuardFrostShard = new itemMiGuardFrostShard();
 
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
@@ -79,6 +80,7 @@ public class ItemLoader {
         GTCMItemList.UpgradeChipsMK1.set(registryAndCallback(UpgradeChipMK1,"UpgradeChipMK1"));
         GTCMItemList.UpgradeChipsMK2.set(registryAndCallback(UpgradeChipMK2,"UpgradeChipMK2"));
         GTCMItemList.UpgradeChipsMK3.set(registryAndCallback(UpgradeChipMK3,"UpgradeChipMK3"));
+        GTCMItemList.MiGuardFrostShard.set(registryAndCallback(MiGuardFrostShard,"MiGuardFrostShard"));
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {

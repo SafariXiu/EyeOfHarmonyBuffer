@@ -195,6 +195,10 @@ public class TextLocalization {
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
+    public static final String EOHB_ArsenicImpact;
+    public static final String EOHB_ArsenicImpact_Tooltip;
+    public static final String EOHB_Hoyomixium;
+    public static final String EOHB_Hoyomixium_Tooltip;
 
     //流体
     public static final String EOHB_OriginiumWasteLiquid;
@@ -411,14 +415,14 @@ public class TextLocalization {
 
         //精炼炉
         NameRefiningFurnace = TextHandler.texter("Refining Furnace","NameRefiningFurnace");
-        Tooltip_RefiningFurnace_MachineType = TextHandler.texter("","Tooltip_RefiningFurnace_MachineType");
-        Tooltip_RefiningFurnace_Controller = TextHandler.texter("","Tooltip_RefiningFurnace_Controller");
-        Tooltip_RefiningFurnace_00 = TextHandler.texter("","Tooltip_RefiningFurnace_00");
-        Tooltip_RefiningFurnace_01 = TextHandler.texter("","Tooltip_RefiningFurnace_01");
-        Tooltip_RefiningFurnace_02 = TextHandler.texter("","Tooltip_RefiningFurnace_02");
-        Tooltip_RefiningFurnace_03 = TextHandler.texter("","Tooltip_RefiningFurnace_03");
-        Tooltip_RefiningFurnace_04 = TextHandler.texter("","Tooltip_RefiningFurnace_04");
-        Tooltip_RefiningFurnace_05 = TextHandler.texter("","Tooltip_RefiningFurnace_05");
+        Tooltip_RefiningFurnace_MachineType = TextHandler.texter("Refining Furnace","Tooltip_RefiningFurnace_MachineType");
+        Tooltip_RefiningFurnace_Controller = TextHandler.texter("The controller block of the Refining Furnace","Tooltip_RefiningFurnace_Controller");
+        Tooltip_RefiningFurnace_00 = TextHandler.texter("A specialized device that refines other materials at extremely high temperatures.","Tooltip_RefiningFurnace_00");
+        Tooltip_RefiningFurnace_01 = TextHandler.texter("Stripping, reshaping... under intense heat, the form of the material changes again and again until it emerges completely renewed.","Tooltip_RefiningFurnace_01");
+        Tooltip_RefiningFurnace_02 = TextHandler.texter("Starts with 1 parallel line by default and a work time of 200 ticks.","Tooltip_RefiningFurnace_02");
+        Tooltip_RefiningFurnace_03 = TextHandler.texter("Upgrade the coils and glass structure to unlock even greater performance!","Tooltip_RefiningFurnace_03");
+        Tooltip_RefiningFurnace_04 = TextHandler.texter("This is not an ordinary furnace! Do not try to stuff random raw materials into it!","Tooltip_RefiningFurnace_04");
+        Tooltip_RefiningFurnace_05 = TextHandler.texter("I hope you’ve stored up enough Orundum energy!","Tooltip_RefiningFurnace_05");
 
         //粉碎机
         NamePulverizer = TextHandler.texter("Pulverizer","NamePulverizer");
@@ -445,10 +449,10 @@ public class TextLocalization {
 
         //研磨机
         NameGrinder = TextHandler.texter("Grinder","NameGrinder");
-        Tooltip_Grinder_MachineType = TextHandler.texter("","Tooltip_Grinder_MachineType");
-        Tooltip_Grinder_Controller = TextHandler.texter("","Tooltip_Grinder_Controller");
-        Tooltip_Grinder_00 = TextHandler.texter("","Tooltip_Grinder_00");
-        Tooltip_Grinder_01 = TextHandler.texter("","Tooltip_Grinder_01");
+        Tooltip_Grinder_MachineType = TextHandler.texter("Grinder","Tooltip_Grinder_MachineType");
+        Tooltip_Grinder_Controller = TextHandler.texter("The controller block of the Grinder","Tooltip_Grinder_Controller");
+        Tooltip_Grinder_00 = TextHandler.texter("A specialized device capable of finely grinding various powdered materials.","Tooltip_Grinder_00");
+        Tooltip_Grinder_01 = TextHandler.texter("This machine traces its origins back to a traditional agricultural processing device from the Yan Kingdom.","Tooltip_Grinder_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -468,6 +472,10 @@ public class TextLocalization {
         EOHB_UpgradeChipMK1_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks, and cross‑recipe parallelism increases to 4.","EOHB_UpgradeChipMK1_Tooltip_00");
         EOHB_UpgradeChipMK2_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks, and cross‑recipe parallelism increases to 8.","EOHB_UpgradeChipMK2_Tooltip_00");
         EOHB_UpgradeChipMK3_Tooltip_00 = TextHandler.texter("When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks, and cross‑recipe parallelism increases to 16.","EOHB_UpgradeChipMK3_Tooltip_00");
+        EOHB_ArsenicImpact = TextHandler.texter("Arsenic Impact","EOHB_ArsenicImpact");
+        EOHB_ArsenicImpact_Tooltip = TextHandler.texter("Omg","EOHB_ArsenicImpact_Tooltip");
+        EOHB_Hoyomixium = TextHandler.texter("Magnesium–Hafnium–Europium Alloy","EOHB_Hoyomixium");
+        EOHB_Hoyomixium_Tooltip = TextHandler.texter("TECH OTAKUS SAVE THE WORLD","EOHB_Hoyomixium_Tooltip");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
