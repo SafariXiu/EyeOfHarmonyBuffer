@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.client.renderer.block;
 
-import com.EyeOfHarmonyBuffer.example.tile.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;

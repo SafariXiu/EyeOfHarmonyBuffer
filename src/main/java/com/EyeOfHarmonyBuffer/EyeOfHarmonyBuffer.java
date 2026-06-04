@@ -7,10 +7,11 @@ import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
-import com.EyeOfHarmonyBuffer.example.tile.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.handler.CommonEventHandler;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
@@ -114,6 +115,7 @@ public class EyeOfHarmonyBuffer {
         RegisterDimensions.init();
 
         MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
+        MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
     }
 
     @Mod.EventHandler

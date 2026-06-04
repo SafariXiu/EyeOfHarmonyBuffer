@@ -1,14 +1,22 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights;
 
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.example.material.ModMaterials;
-import com.EyeOfHarmonyBuffer.example.tile.TileEntityOverdomainErosion;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.BlockContainer;
+import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.World;
+
+import java.util.Random;
 
 public class BlcokOverdomainErosion extends BlockContainer {
 
@@ -17,6 +25,8 @@ public class BlcokOverdomainErosion extends BlockContainer {
         setBlockName("overdomain_erosion");
         setLightLevel(0.8F);
         setBlockBounds(0F, 0F, 0F, 1F, 0.875F, 1F);
+        setBlockUnbreakable();
+        setResistance(6000000.0F);
     }
 
     @Override
@@ -40,6 +50,41 @@ public class BlcokOverdomainErosion extends BlockContainer {
     }
 
     @Override
+    public Item getItemDropped(int meta, Random random, int fortune) {
+        return null;
+    }
+
+    @Override
+    public int quantityDropped(Random random) {
+        return 0;
+    }
+
+    @Override
+    protected boolean canSilkHarvest() {
+        return false;
+    }
+
+    @Override
+    public float getPlayerRelativeBlockHardness(EntityPlayer player, World world, int x, int y, int z) {
+        if (!player.capabilities.isCreativeMode) {
+            return 0.0F;
+        }
+        return super.getPlayerRelativeBlockHardness(player, world, x, y, z);
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public boolean addHitEffects(World world, MovingObjectPosition target, EffectRenderer effectRenderer) {
+        return true;
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public boolean addDestroyEffects(World world, int x, int y, int z, int meta, EffectRenderer effectRenderer) {
+        return true;
+    }
+
+    @Override
     public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {
         return null;
     }
@@ -53,6 +98,16 @@ public class BlcokOverdomainErosion extends BlockContainer {
     @Override
     public void onEntityCollidedWithBlock(World world, int x, int y, int z, Entity entity) {
         if (world.isRemote) return;
+
+        if (entity instanceof EntityItem) {
+            entity.setDead();
+            return;
+        }
+
+        if (entity instanceof EntityXPOrb) {
+            entity.setDead();
+            return;
+        }
     }
 
     // @Override
