@@ -27,7 +27,7 @@ public class RefiningFurnaceRecipes implements IRecipePool {
                 GTCMItemList.LanTieKuai.get(1)
             )
             .itemOutputs(
-                GTCMItemList.LanTieKuai.get(1)
+                GTCMItemList.GangKuai.get(1)
             )
             .eut(5000)
             .duration(10 * SECONDS)
