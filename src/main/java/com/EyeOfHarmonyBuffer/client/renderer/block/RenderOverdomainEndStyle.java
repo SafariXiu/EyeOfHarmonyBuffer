@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.client.renderer.block;
 import com.EyeOfHarmonyBuffer.example.tile.TileEntityOverdomainErosion;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.GLAllocation;
@@ -10,27 +11,41 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 import java.util.Random;
-
 
 @SideOnly(Side.CLIENT)
 public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
 
     private static final ResourceLocation SKY_TEXTURE =
         new ResourceLocation("textures/environment/end_sky.png");
-
     private static final ResourceLocation PORTAL_TEXTURE =
         new ResourceLocation("textures/entity/end_portal.png");
 
     private static final Random RANDOM = new Random(31100L);
     private final FloatBuffer floatBuffer = GLAllocation.createDirectFloatBuffer(16);
 
+    private final Block selfBlock;
+
+    public RenderOverdomainEndStyle(Block selfBlock) {
+        this.selfBlock = selfBlock;
+    }
+
+    private enum Face {
+        UP, DOWN, NORTH, SOUTH, WEST, EAST
+    }
+
     public void renderTileEntityAt(TileEntityOverdomainErosion te,
                                    double x, double y, double z,
                                    float partialTicks) {
+
+        World world = te.getWorldObj();
+        int bx = te.xCoord;
+        int by = te.yCoord;
+        int bz = te.zCoord;
 
         float playerX = (float) this.field_147501_a.field_147560_j;
         float playerY = (float) this.field_147501_a.field_147561_k;
@@ -39,7 +54,64 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         GL11.glDisable(GL11.GL_LIGHTING);
         RANDOM.setSeed(31100L);
 
-        float surfaceY = 0.875F;
+        float minY = 0.0F;
+        float maxY = 1.0F;
+
+        if (shouldRenderSide(world, bx, by, bz, Face.UP)) {
+            renderFaceLayered(Face.UP, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        if (shouldRenderSide(world, bx, by, bz, Face.DOWN)) {
+            renderFaceLayered(Face.DOWN, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        if (shouldRenderSide(world, bx, by, bz, Face.NORTH)) {
+            renderFaceLayered(Face.NORTH, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        if (shouldRenderSide(world, bx, by, bz, Face.SOUTH)) {
+            renderFaceLayered(Face.SOUTH, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        if (shouldRenderSide(world, bx, by, bz, Face.WEST)) {
+            renderFaceLayered(Face.WEST, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        if (shouldRenderSide(world, bx, by, bz, Face.EAST)) {
+            renderFaceLayered(Face.EAST, x, y, z,
+                minY, maxY, playerX, playerY, playerZ, partialTicks);
+        }
+
+        GL11.glEnable(GL11.GL_LIGHTING);
+    }
+
+    private boolean shouldRenderSide(World world, int x, int y, int z, Face face) {
+        int nx = x, ny = y, nz = z;
+
+        switch (face) {
+            case UP:    ny += 1; break;
+            case DOWN:  ny -= 1; break;
+            case NORTH: nz -= 1; break;
+            case SOUTH: nz += 1; break;
+            case WEST:  nx -= 1; break;
+            case EAST:  nx += 1; break;
+        }
+
+        Block neighbor = world.getBlock(nx, ny, nz);
+
+        return neighbor != selfBlock;
+    }
+
+    private void renderFaceLayered(Face face,
+                                   double x, double y, double z,
+                                   float minY, float maxY,
+                                   float playerX, float playerY, float playerZ,
+                                   float partialTicks) {
 
         for (int i = 0; i < 16; ++i) {
 
@@ -54,7 +126,6 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 brightnessFactor = 0.10F;
                 depthFactor = 65.0F;
                 texScale = 0.125F;
-
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
@@ -66,6 +137,7 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 texScale = 0.5F;
             }
 
+            float surfaceY = maxY;
             float baseY = (float) (-(y + (double) surfaceY));
             float y1 = baseY + ActiveRenderInfo.objectY;
             float y2 = baseY + depthFactor + ActiveRenderInfo.objectY;
@@ -137,16 +209,7 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 b * brightnessFactor,
                 1.0F);
 
-            double x0 = x;
-            double x1 = x + 1.0D;
-            double z0 = z;
-            double z1 = z + 1.0D;
-            double ySurf = y + (double) surfaceY;
-
-            tess.addVertex(x0, ySurf, z0);
-            tess.addVertex(x0, ySurf, z1);
-            tess.addVertex(x1, ySurf, z1);
-            tess.addVertex(x1, ySurf, z0);
+            addFaceVertices(tess, face, x, y, z, minY, maxY);
 
             tess.draw();
 
@@ -159,7 +222,62 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         GL11.glDisable(GL11.GL_TEXTURE_GEN_T);
         GL11.glDisable(GL11.GL_TEXTURE_GEN_R);
         GL11.glDisable(GL11.GL_TEXTURE_GEN_Q);
-        GL11.glEnable(GL11.GL_LIGHTING);
+    }
+
+    private void addFaceVertices(Tessellator tess, Face face,
+                                 double x, double y, double z,
+                                 float minY, float maxY) {
+
+        double x0 = x;
+        double x1 = x + 1.0D;
+        double y0 = y + minY;
+        double y1 = y + maxY;
+        double z0 = z;
+        double z1 = z + 1.0D;
+
+        switch (face) {
+            case UP:
+                tess.addVertex(x0, y1, z0);
+                tess.addVertex(x0, y1, z1);
+                tess.addVertex(x1, y1, z1);
+                tess.addVertex(x1, y1, z0);
+                break;
+
+            case DOWN:
+                tess.addVertex(x0, y0, z0);
+                tess.addVertex(x1, y0, z0);
+                tess.addVertex(x1, y0, z1);
+                tess.addVertex(x0, y0, z1);
+                break;
+
+            case NORTH:
+                tess.addVertex(x0, y0, z0);
+                tess.addVertex(x0, y1, z0);
+                tess.addVertex(x1, y1, z0);
+                tess.addVertex(x1, y0, z0);
+                break;
+
+            case SOUTH:
+                tess.addVertex(x0, y0, z1);
+                tess.addVertex(x1, y0, z1);
+                tess.addVertex(x1, y1, z1);
+                tess.addVertex(x0, y1, z1);
+                break;
+
+            case WEST:
+                tess.addVertex(x0, y0, z0);
+                tess.addVertex(x0, y0, z1);
+                tess.addVertex(x0, y1, z1);
+                tess.addVertex(x0, y1, z0);
+                break;
+
+            case EAST:
+                tess.addVertex(x1, y0, z0);
+                tess.addVertex(x1, y1, z0);
+                tess.addVertex(x1, y1, z1);
+                tess.addVertex(x1, y0, z1);
+                break;
+        }
     }
 
     private FloatBuffer makePlane(float a, float b, float c, float d) {

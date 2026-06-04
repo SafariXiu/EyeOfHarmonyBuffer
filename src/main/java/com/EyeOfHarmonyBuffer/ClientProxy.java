@@ -17,6 +17,8 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 
+import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.OverdomainErosion;
+
 public class ClientProxy extends CommonProxy {
 
     @Override
@@ -26,7 +28,7 @@ public class ClientProxy extends CommonProxy {
         MinecraftForgeClient.registerItemRenderer(ItemYuanShi.instance,new ItemYuanShiRenderer());
         MinecraftForgeClient.registerItemRenderer(ItemUnactivatedYuanShi.instance,new ItemUnactivatedYuanShiRenderer());
 
-        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle());
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle(OverdomainErosion));
     }
 
     @Override
