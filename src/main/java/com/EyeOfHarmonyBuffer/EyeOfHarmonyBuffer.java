@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
+import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
@@ -111,6 +112,8 @@ public class EyeOfHarmonyBuffer {
         ExampleQuestRegistration.registerAll();
 
         RegisterDimensions.init();
+
+        MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
     }
 
     @Mod.EventHandler

@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -50,40 +51,46 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         float playerY = (float) this.field_147501_a.field_147561_k;
         float playerZ = (float) this.field_147501_a.field_147558_l;
 
+        boolean inside = isPlayerInsideOverdomainVolume(world);
+
         GL11.glDisable(GL11.GL_LIGHTING);
         RANDOM.setSeed(31100L);
+
+        if (inside) {
+            GL11.glDisable(GL11.GL_CULL_FACE);
+        }
 
         float minY = 0.0F;
         float maxY = 1.0F;
 
         if (shouldRenderSide(world, bx, by, bz, Face.UP)) {
             renderFaceLayered(Face.UP, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
         }
 
         if (shouldRenderSide(world, bx, by, bz, Face.DOWN)) {
             renderFaceLayered(Face.DOWN, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
         }
-
         if (shouldRenderSide(world, bx, by, bz, Face.NORTH)) {
             renderFaceLayered(Face.NORTH, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
         }
-
         if (shouldRenderSide(world, bx, by, bz, Face.SOUTH)) {
             renderFaceLayered(Face.SOUTH, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
         }
-
         if (shouldRenderSide(world, bx, by, bz, Face.WEST)) {
             renderFaceLayered(Face.WEST, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
         }
-
         if (shouldRenderSide(world, bx, by, bz, Face.EAST)) {
             renderFaceLayered(Face.EAST, x, y, z,
-                minY, maxY, playerX, playerY, playerZ, partialTicks);
+                minY, maxY, playerX, playerY, playerZ, partialTicks, inside);
+        }
+
+        if (inside) {
+            GL11.glEnable(GL11.GL_CULL_FACE);
         }
 
         GL11.glEnable(GL11.GL_LIGHTING);
@@ -110,8 +117,8 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                                    double x, double y, double z,
                                    float minY, float maxY,
                                    float playerX, float playerY, float playerZ,
-                                   float partialTicks) {
-        // GL11.glDepthMask(false);
+                                   float partialTicks,
+                                   boolean inside) {
 
         for (int i = 0; i < 16; ++i) {
 
@@ -123,15 +130,17 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
 
             GL11.glPushMatrix();
 
-            float depthFactor = (float) (16 - i);
-            float texScale = 0.0625F;
-            float brightnessFactor = 1.0F / (depthFactor + 1.0F);
+            float layer = (float) i;
+
+            float texScale = 0.04F + layer * 0.01F;
+
+            float brightnessFactor = 0.25F + layer * 0.03F;
+            if (brightnessFactor > 1.0F) brightnessFactor = 1.0F;
 
             if (i == 0) {
                 this.bindTexture(SKY_TEXTURE);
-                brightnessFactor = 0.10F;
-                depthFactor = 65.0F;
-                texScale = 0.125F;
+                brightnessFactor = 0.15F;
+                texScale = 0.12F;
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
@@ -140,10 +149,10 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 this.bindTexture(PORTAL_TEXTURE);
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
-                texScale = 0.5F;
+                texScale *= 1.4F;
             }
 
-            float layerOffset = 0.0F + i * 0.02F;
+            float layerOffset = i * 0.05F;
             GL11.glTranslatef(0.0F, 0.0F, layerOffset);
 
             GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
@@ -179,10 +188,12 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
             GL11.glLoadIdentity();
 
             float t = (Minecraft.getSystemTime() % 360000L) / 360000.0F;
-            GL11.glTranslatef(0.0F, t + i * 0.01F, 0.0F);
+
+            GL11.glTranslatef(0.0F, t * (0.4F + layer * 0.05F), 0.0F);
+
             GL11.glScalef(texScale, texScale, texScale);
             GL11.glTranslatef(0.5F, 0.5F, 0.0F);
-            GL11.glRotatef(i * 8.0F, 0.0F, 0.0F, 1.0F);
+            GL11.glRotatef(layer * 10.0F, 0.0F, 0.0F, 1.0F);
             GL11.glTranslatef(-0.5F, -0.5F, 0.0F);
 
             Tessellator tess = Tessellator.instance;
@@ -198,19 +209,72 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 baseB = 0.8F;
             }
 
+            if (RANDOM.nextFloat() < 0.7F) {
+                baseR *= 0.3F;
+                baseG *= 0.3F;
+                baseB *= 0.3F;
+            } else {
+                baseR *= 1.4F;
+                baseG *= 1.4F;
+                baseB *= 1.4F;
+            }
+
+            float depthLerp = layer / 15.0F;
+            baseR += 0.08F * depthLerp;
+            baseB -= 0.06F * depthLerp;
+            if (baseR > 1.0F) baseR = 1.0F;
+            if (baseB < 0.0F) baseB = 0.0F;
+
             float r = baseR * 1.4F;
             float g = baseG * 0.4F;
             float b = baseB * 0.4F;
 
-            tess.setColorRGBA_F(r * brightnessFactor,
+            tess.setColorRGBA_F(
+                r * brightnessFactor,
                 g * brightnessFactor,
                 b * brightnessFactor,
-                1.0F);
+                1.0F
+            );
 
             addFaceVertices(tess, face, x, y, z, minY, maxY);
 
             tess.draw();
 
+            GL11.glPopMatrix();
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        }
+
+        if (inside) {
+            Tessellator tess = Tessellator.instance;
+
+            GL11.glMatrixMode(GL11.GL_TEXTURE);
+            GL11.glPushMatrix();
+            GL11.glLoadIdentity();
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthMask(false);
+            GL11.glDisable(GL11.GL_BLEND);
+
+            this.bindTexture(PORTAL_TEXTURE);
+
+            tess.startDrawingQuads();
+
+            float r = 0.15F;
+            float g = 0.02F;
+            float b = 0.05F;
+            float a = 1.0F;
+
+            tess.setColorRGBA_F(r, g, b, a);
+
+            addFaceVertices(tess, face, x, y, z, minY, maxY);
+
+            tess.draw();
+
+            GL11.glDepthMask(true);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+
+            GL11.glMatrixMode(GL11.GL_TEXTURE);
             GL11.glPopMatrix();
             GL11.glMatrixMode(GL11.GL_MODELVIEW);
         }
@@ -284,6 +348,20 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         this.floatBuffer.put(a).put(b).put(c).put(d);
         this.floatBuffer.flip();
         return this.floatBuffer;
+    }
+
+    private boolean isPlayerInsideOverdomainVolume(World world) {
+        Minecraft mc = Minecraft.getMinecraft();
+        EntityPlayer player = mc.thePlayer;
+        if (player == null) return false;
+
+        int px = (int)Math.floor(player.posX);
+        int py = (int)Math.floor(player.posY + player.getEyeHeight());
+        int pz = (int)Math.floor(player.posZ);
+
+        Block inBlock = world.getBlock(px, py, pz);
+
+        return inBlock == selfBlock;
     }
 
     @Override
