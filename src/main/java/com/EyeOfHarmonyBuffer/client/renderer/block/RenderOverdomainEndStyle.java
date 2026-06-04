@@ -5,7 +5,6 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
@@ -112,8 +111,15 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                                    float minY, float maxY,
                                    float playerX, float playerY, float playerZ,
                                    float partialTicks) {
+        // GL11.glDepthMask(false);
 
         for (int i = 0; i < 16; ++i) {
+
+            if (i == 0) {
+                GL11.glDepthMask(true);
+            } else {
+                GL11.glDepthMask(false);
+            }
 
             GL11.glPushMatrix();
 
@@ -137,29 +143,34 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
                 texScale = 0.5F;
             }
 
-            float surfaceY = maxY;
-            float baseY = (float) (-(y + (double) surfaceY));
-            float y1 = baseY + ActiveRenderInfo.objectY;
-            float y2 = baseY + depthFactor + ActiveRenderInfo.objectY;
-            float layerOffset = y1 / y2;
-            layerOffset += surfaceY;
-
-            GL11.glTranslatef(playerX, layerOffset, playerZ);
+            float layerOffset = 0.0F + i * 0.02F;
+            GL11.glTranslatef(0.0F, 0.0F, layerOffset);
 
             GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
             GL11.glTexGeni(GL11.GL_T, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
             GL11.glTexGeni(GL11.GL_R, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
-            GL11.glTexGeni(GL11.GL_Q, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_EYE_LINEAR);
 
-            GL11.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, makePlane(1.0F, 0.0F, 0.0F, 0.0F));
-            GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 0.0F, 1.0F, 0.0F));
-            GL11.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 0.0F, 0.0F, 1.0F));
-            GL11.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE,    makePlane(0.0F, 1.0F, 0.0F, 0.0F));
+            switch (face) {
+                case UP:
+                case DOWN:
+                    GL11.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, makePlane(1.0F, 0.0F, 0.0F, 0.0F));
+                    GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 0.0F, 1.0F, 0.0F));
+                    break;
+                case NORTH:
+                case SOUTH:
+                    GL11.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, makePlane(1.0F, 0.0F, 0.0F, 0.0F));
+                    GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 1.0F, 0.0F, 0.0F));
+                    break;
+                case WEST:
+                case EAST:
+                    GL11.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 0.0F, 1.0F, 0.0F));
+                    GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, makePlane(0.0F, 1.0F, 0.0F, 0.0F));
+                    break;
+            }
 
             GL11.glEnable(GL11.GL_TEXTURE_GEN_S);
             GL11.glEnable(GL11.GL_TEXTURE_GEN_T);
             GL11.glEnable(GL11.GL_TEXTURE_GEN_R);
-            GL11.glEnable(GL11.GL_TEXTURE_GEN_Q);
 
             GL11.glPopMatrix();
 
@@ -167,25 +178,12 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
             GL11.glPushMatrix();
             GL11.glLoadIdentity();
 
-            GL11.glTranslatef(
-                0.0F,
-                (float) (Minecraft.getSystemTime() % 700000L) / 700000.0F,
-                0.0F
-            );
-
+            float t = (Minecraft.getSystemTime() % 360000L) / 360000.0F;
+            GL11.glTranslatef(0.0F, t + i * 0.01F, 0.0F);
             GL11.glScalef(texScale, texScale, texScale);
             GL11.glTranslatef(0.5F, 0.5F, 0.0F);
-            GL11.glRotatef((float) (i * i * 4321 + i * 9) * 2.0F,
-                0.0F, 0.0F, 1.0F);
+            GL11.glRotatef(i * 8.0F, 0.0F, 0.0F, 1.0F);
             GL11.glTranslatef(-0.5F, -0.5F, 0.0F);
-
-            GL11.glTranslatef(-playerX, -playerZ, -playerY);
-            y1 = baseY + ActiveRenderInfo.objectY;
-            GL11.glTranslatef(
-                ActiveRenderInfo.objectX * depthFactor / y1,
-                ActiveRenderInfo.objectZ * depthFactor / y1,
-                -playerY
-            );
 
             Tessellator tess = Tessellator.instance;
             tess.startDrawingQuads();
@@ -221,7 +219,8 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         GL11.glDisable(GL11.GL_TEXTURE_GEN_S);
         GL11.glDisable(GL11.GL_TEXTURE_GEN_T);
         GL11.glDisable(GL11.GL_TEXTURE_GEN_R);
-        GL11.glDisable(GL11.GL_TEXTURE_GEN_Q);
+
+        GL11.glDepthMask(true);
     }
 
     private void addFaceVertices(Tessellator tess, Face face,
