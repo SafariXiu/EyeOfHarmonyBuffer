@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateRes
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
+import com.EyeOfHarmonyBuffer.example.tile.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
 import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
@@ -24,6 +25,7 @@ import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import cpw.mods.fml.common.FMLLog;
+import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
@@ -91,6 +93,8 @@ public class EyeOfHarmonyBuffer {
 
         ItemIntermediateProducts.initAndRegister(MODID);
         BlockIntermediateResources.registerAll(MODID);
+
+        GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
 
         TalosBiomes.init();
     }

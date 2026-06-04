@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlcokOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlockYuanShi;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlockYuanShiMain;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -11,6 +12,7 @@ public class ArknightsBlockRegister {
 
     public static Block YuanShiMainBlock;
     public static Block YuanShiBlock;
+    public static Block OverdomainErosion;
 
     public static void registryBlocks(){
 
@@ -25,6 +27,12 @@ public class ArknightsBlockRegister {
             .setBlockTextureName("eyeofharmonybuffer:Arknights/yuanshi_block")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(YuanShiBlock, "yuan_shi_block");
+
+        OverdomainErosion = new BlcokOverdomainErosion()
+            .setBlockName("overdomain_erosion")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/overdomain_erosion_portal")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(OverdomainErosion, "overdomain_erosion");
     }
 
     public static void registry() {
