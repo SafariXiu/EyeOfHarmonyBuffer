@@ -299,6 +299,7 @@ tile.QiaoHua.name=荞花
 tile.ShaYe.name=砂叶
 tile.TongHuaGuanMu.name=酮化灌木
 tile.YaZhen.name=芽针
+tile.overdomain_erosion.name=§4超域侵蚀
 
 #space
 solarsystem.talosSystem=塔罗斯

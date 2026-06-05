@@ -28,6 +28,10 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
     private static final Random RANDOM = new Random(31100L);
     private final FloatBuffer floatBuffer = GLAllocation.createDirectFloatBuffer(16);
 
+    private final float[] layerR = new float[16];
+    private final float[] layerG = new float[16];
+    private final float[] layerB = new float[16];
+
     private final Block selfBlock;
 
     public RenderOverdomainEndStyle(Block selfBlock) {
@@ -54,7 +58,41 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
         boolean inside = isPlayerInsideOverdomainVolume(world);
 
         GL11.glDisable(GL11.GL_LIGHTING);
+
         RANDOM.setSeed(31100L);
+        for (int i = 0; i < 16; ++i) {
+            float layer = (float) i;
+
+            float baseR = RANDOM.nextFloat() * 0.5F + 0.1F;
+            float baseG = RANDOM.nextFloat() * 0.3F + 0.0F;
+            float baseB = RANDOM.nextFloat() * 0.5F + 0.3F;
+
+            if (i == 0) {
+                baseR = 1.0F;
+                baseG = 0.8F;
+                baseB = 0.8F;
+            } else {
+                if (RANDOM.nextFloat() < 0.7F) {
+                    baseR *= 0.3F;
+                    baseG *= 0.3F;
+                    baseB *= 0.3F;
+                } else {
+                    baseR *= 1.4F;
+                    baseG *= 1.4F;
+                    baseB *= 1.4F;
+                }
+            }
+
+            float depthLerp = layer / 15.0F;
+            baseR += 0.08F * depthLerp;
+            baseB -= 0.06F * depthLerp;
+            if (baseR > 1.0F) baseR = 1.0F;
+            if (baseB < 0.0F) baseB = 0.0F;
+
+            layerR[i] = baseR * 1.4F;
+            layerG[i] = baseG * 0.4F;
+            layerB[i] = baseB * 0.4F;
+        }
 
         if (inside) {
             GL11.glDisable(GL11.GL_CULL_FACE);
@@ -199,35 +237,9 @@ public class RenderOverdomainEndStyle extends TileEntitySpecialRenderer {
             Tessellator tess = Tessellator.instance;
             tess.startDrawingQuads();
 
-            float baseR = RANDOM.nextFloat() * 0.5F + 0.1F;
-            float baseG = RANDOM.nextFloat() * 0.3F + 0.0F;
-            float baseB = RANDOM.nextFloat() * 0.5F + 0.3F;
-
-            if (i == 0) {
-                baseR = 1.0F;
-                baseG = 0.8F;
-                baseB = 0.8F;
-            }
-
-            if (RANDOM.nextFloat() < 0.7F) {
-                baseR *= 0.3F;
-                baseG *= 0.3F;
-                baseB *= 0.3F;
-            } else {
-                baseR *= 1.4F;
-                baseG *= 1.4F;
-                baseB *= 1.4F;
-            }
-
-            float depthLerp = layer / 15.0F;
-            baseR += 0.08F * depthLerp;
-            baseB -= 0.06F * depthLerp;
-            if (baseR > 1.0F) baseR = 1.0F;
-            if (baseB < 0.0F) baseB = 0.0F;
-
-            float r = baseR * 1.4F;
-            float g = baseG * 0.4F;
-            float b = baseB * 0.4F;
+            float r = layerR[i];
+            float g = layerG[i];
+            float b = layerB[i];
 
             tess.setColorRGBA_F(
                 r * brightnessFactor,

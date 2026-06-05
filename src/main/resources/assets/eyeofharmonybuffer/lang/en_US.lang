@@ -299,6 +299,7 @@ tile.QiaoHua.name=Buckwheat Flower
 tile.ShaYe.name=Sand Leaf
 tile.TongHuaGuanMu.name=Ketone Bush
 tile.YaZhen.name=Bud Needle
+tile.overdomain_erosion.name=Overdomain Erosion
 
 #space
 solarsystem.talosSystem=Talos
