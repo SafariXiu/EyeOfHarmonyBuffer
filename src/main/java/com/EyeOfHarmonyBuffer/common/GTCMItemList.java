@@ -80,6 +80,9 @@ public enum GTCMItemList {
     XiMoGanShiFenMo,
     XiMoQiaoHuaFenMo,
     XiYiYuanShi,
+    GongYeBaoZhaWu,
+    YaZhenZhenJi,
+    JinCaoRuanYin,
 
     //方舟-植物
     GanShi,
@@ -105,6 +108,7 @@ public enum GTCMItemList {
     AccessoriesMachines,
     ShapingMachines,
     Grinders,
+    EncapsulationMachines,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

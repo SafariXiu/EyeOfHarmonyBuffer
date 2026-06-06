@@ -13,6 +13,7 @@ import com.EyeOfHarmonyBuffer.common.RecipeMap.RangeOutputFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.PlanterOutputFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.RefiningFurnaceFrontend;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.GrinderFrontend;
+import com.EyeOfHarmonyBuffer.common.RecipeMap.GeneralFrontend;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 
@@ -168,5 +169,22 @@ public class RecipeMaps {
         .logoSize(20,20)
         .logoPos(152,63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ZhiMiJingTiFenMo.get(1)))
+        .build();
+
+    public static final RecipeMap<RecipeMapBackend> EncapsulationMachine = RecipeMapBuilder
+        .of(EOHB_Recipe_EncapsulationMachine)
+        .maxIO(4, 4, 4, 4)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                4,
+                4
+            )
+        )
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.DiRongLiangDianChi.get(1)))
         .build();
 }

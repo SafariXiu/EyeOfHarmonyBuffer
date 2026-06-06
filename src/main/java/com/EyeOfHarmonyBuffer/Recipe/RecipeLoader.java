@@ -34,7 +34,8 @@ public class RecipeLoader {
             new PulverizerRecipes(),
             new AccessoriesMachineRecipes(),
             new ShapingMachineRecipes(),
-            new GrinderRecipes()
+            new GrinderRecipes(),
+            new EncapsulationMachineRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

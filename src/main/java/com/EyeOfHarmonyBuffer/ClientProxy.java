@@ -8,12 +8,16 @@ import com.EyeOfHarmonyBuffer.client.renderer.item.ItemUnactivatedYuanShiRendere
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemYuanShiRenderer;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
+import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemUnactivatedYuanShi;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemYuanShi;
+import com.EyeOfHarmonyBuffer.entity.Arknights.EntityIndustrialExplosive;
 import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.client.renderer.entity.RenderSnowball;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -29,6 +33,8 @@ public class ClientProxy extends CommonProxy {
         MinecraftForgeClient.registerItemRenderer(ItemUnactivatedYuanShi.instance,new ItemUnactivatedYuanShiRenderer());
 
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle(OverdomainErosion));
+
+        RenderingRegistry.registerEntityRenderingHandler(EntityIndustrialExplosive.class, new RenderSnowball(ItemLoader.GongYeBaoZhaWu));
     }
 
     @Override

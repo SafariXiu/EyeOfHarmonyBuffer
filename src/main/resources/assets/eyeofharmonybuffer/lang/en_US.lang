@@ -186,6 +186,12 @@ Tooltip_Grinder_MachineType=Grinder
 Tooltip_Grinder_Controller=The controller block of the Grinder
 Tooltip_Grinder_00=A specialized device capable of finely grinding various powdered materials.
 Tooltip_Grinder_01=This machine traces its origins back to a traditional agricultural processing device from the Yan Kingdom.
+NameEncapsulationMachine=Encapsulation Machine
+Tooltip_EncapsulationMachine_MachineType=Encapsulation Machine
+Tooltip_EncapsulationMachine_Controller=The controller block of the Encapsulation Machine
+Tooltip_EncapsulationMachine_00=A specialized device used for encapsulating certain energy components.
+Tooltip_EncapsulationMachine_01=Across Talos II, many different forms and designs of batteries once emerged.
+Tooltip_EncapsulationMachine_02=After humanity finally escaped the quagmire of war, the production standards for these products gradually became unified.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -202,6 +208,7 @@ EOHB_Recipe_Pulverizer=Pulverizer
 EOHB_Recipe_AccessoriesMachine=Accessories Machine
 EOHB_Recipe_ShapingMachine=Shaping Machine
 EOHB_Recipe_Grinder=Grinder
+EOHB_Recipe_EncapsulationMachine=Encapsulation Machine
 
 #item
 EOHB_Harmony=Harmony
@@ -290,6 +297,13 @@ item.MiGuardFrostShard.name=Mi-Guard Frost Shard
 EOHB_Hoyomixium=Hoyomixium
 EOHB_Hoyomixium_Tooltip=TECH OTAKUS SAVE THE WORLD
 item.XiYiYuanShi.name=Protocol Originite
+item.GongYeBaoZhaWu.name=Industrial Explosives
+item.YaZhenZhenJi.name=Bud Needle Injection
+EOHB_YaZhenZhenJi_00=Automatically used as long as it is in your inventory.
+EOHB_YaZhenZhenJi_01=When your health drops below 6 points, it will automatically consume one Bud Needle Injection and start regenerating your HP.
+item.JinCaoRuanYin.name=Embroidered Soft Drink
+EOHB_JinCaoRuanYin_00=Automatically used as long as it is in your inventory.
+EOHB_JinCaoRuanYin_01=When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

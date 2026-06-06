@@ -192,6 +192,13 @@ public class TextLocalization {
     public static final String Tooltip_Grinder_00;
     public static final String Tooltip_Grinder_01;
 
+    public static final String NameEncapsulationMachine;
+    public static final String Tooltip_EncapsulationMachine_MachineType;
+    public static final String Tooltip_EncapsulationMachine_Controller;
+    public static final String Tooltip_EncapsulationMachine_00;
+    public static final String Tooltip_EncapsulationMachine_01;
+    public static final String Tooltip_EncapsulationMachine_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -219,6 +226,10 @@ public class TextLocalization {
     public static final String EOHB_UpgradeChipMK1_Tooltip_00;
     public static final String EOHB_UpgradeChipMK2_Tooltip_00;
     public static final String EOHB_UpgradeChipMK3_Tooltip_00;
+    public static final String EOHB_YaZhenZhenJi_00;
+    public static final String EOHB_YaZhenZhenJi_01;
+    public static final String EOHB_JinCaoRuanYin_00;
+    public static final String EOHB_JinCaoRuanYin_01;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -235,6 +246,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_AccessoriesMachine;
     public static final String EOHB_Recipe_ShapingMachine;
     public static final String EOHB_Recipe_Grinder;
+    public static final String EOHB_Recipe_EncapsulationMachine;
 
 
     public TextLocalization() {
@@ -454,6 +466,14 @@ public class TextLocalization {
         Tooltip_Grinder_00 = TextHandler.texter("A specialized device capable of finely grinding various powdered materials.","Tooltip_Grinder_00");
         Tooltip_Grinder_01 = TextHandler.texter("This machine traces its origins back to a traditional agricultural processing device from the Yan Kingdom.","Tooltip_Grinder_01");
 
+        //封装机
+        NameEncapsulationMachine = TextHandler.texter("Encapsulation Machine","NameEncapsulationMachine");
+        Tooltip_EncapsulationMachine_MachineType = TextHandler.texter("Encapsulation Machine","Tooltip_EncapsulationMachine_MachineType");
+        Tooltip_EncapsulationMachine_Controller = TextHandler.texter("The controller block of the Encapsulation Machine","Tooltip_EncapsulationMachine_Controller");
+        Tooltip_EncapsulationMachine_00 = TextHandler.texter("A specialized device used for encapsulating certain energy components.","Tooltip_EncapsulationMachine_00");
+        Tooltip_EncapsulationMachine_01 = TextHandler.texter("Across Talos II, many different forms and designs of batteries once emerged.","Tooltip_EncapsulationMachine_01");
+        Tooltip_EncapsulationMachine_02 = TextHandler.texter("After humanity finally escaped the quagmire of war, the production standards for these products gradually became unified.","Tooltip_EncapsulationMachine_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -476,6 +496,10 @@ public class TextLocalization {
         EOHB_ArsenicImpact_Tooltip = TextHandler.texter("Omg","EOHB_ArsenicImpact_Tooltip");
         EOHB_Hoyomixium = TextHandler.texter("Magnesium–Hafnium–Europium Alloy","EOHB_Hoyomixium");
         EOHB_Hoyomixium_Tooltip = TextHandler.texter("TECH OTAKUS SAVE THE WORLD","EOHB_Hoyomixium_Tooltip");
+        EOHB_YaZhenZhenJi_00 = TextHandler.texter("Automatically used as long as it is in your inventory.","EOHB_YaZhenZhenJi_00");
+        EOHB_YaZhenZhenJi_01 = TextHandler.texter("When your health drops below 6 points, it will automatically consume one Bud Needle Injection and start regenerating your HP.","EOHB_YaZhenZhenJi_01");
+        EOHB_JinCaoRuanYin_00 = TextHandler.texter("Automatically used as long as it is in your inventory.","EOHB_JinCaoRuanYin_00");
+        EOHB_JinCaoRuanYin_01 = TextHandler.texter("When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.","EOHB_JinCaoRuanYin_01");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
@@ -495,5 +519,6 @@ public class TextLocalization {
         EOHB_Recipe_AccessoriesMachine = TextHandler.texter("Accessories Machine","EOHB_Recipe_AccessoriesMachine");
         EOHB_Recipe_ShapingMachine = TextHandler.texter("Shaping Machine","EOHB_Recipe_ShapingMachine");
         EOHB_Recipe_Grinder = TextHandler.texter("Grinder","EOHB_Recipe_Grinder");
+        EOHB_Recipe_EncapsulationMachine = TextHandler.texter("Encapsulation Machine","EOHB_Recipe_EncapsulationMachine");
     }
 }

@@ -22,6 +22,7 @@ public class MachineLoader {
     public static ItemStack AccessoriesMachine;
     public static ItemStack ShapingMachine;
     public static ItemStack Grinder;
+    public static ItemStack EncapsulationMachine;
 
     private final static int MachineBlockID = 23000;
 
@@ -130,5 +131,12 @@ public class MachineLoader {
             TextLocalization.NameGrinder
         ).getStackForm(1);
         GTCMItemList.Grinders.set(Grinder);
+
+        EncapsulationMachine = new EOHB_EncapsulationMachine(
+            MachineBlockID + 16,
+            "NameEncapsulationMachine",
+            TextLocalization.NameEncapsulationMachine
+        ).getStackForm(1);
+        GTCMItemList.EncapsulationMachines.set(EncapsulationMachine);
     }
 }

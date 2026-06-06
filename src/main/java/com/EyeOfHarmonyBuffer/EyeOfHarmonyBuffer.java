@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Loader.*;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
@@ -11,14 +12,12 @@ import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosio
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
+import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
+import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
 import com.EyeOfHarmonyBuffer.handler.CommonEventHandler;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
-import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
-import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
-import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
@@ -58,6 +57,9 @@ public class EyeOfHarmonyBuffer {
     public final GemErgodic gemErgodic = new GemErgodic();
 
     public static final String MODID = "eyeofharmonybuffer";
+
+    @Mod.Instance(EyeOfHarmonyBuffer.MODID)
+    public static EyeOfHarmonyBuffer instance;
 
     @SidedProxy(clientSide = "com.EyeOfHarmonyBuffer.ClientProxy", serverSide = "com.EyeOfHarmonyBuffer.CommonProxy")
 
@@ -105,6 +107,9 @@ public class EyeOfHarmonyBuffer {
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
+
+        EntityLoader.registerEntities();
+
         MachineLoader.loadMachines();
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
@@ -116,6 +121,8 @@ public class EyeOfHarmonyBuffer {
 
         MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
         MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
+        MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
+        MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
     }
 
     @Mod.EventHandler
