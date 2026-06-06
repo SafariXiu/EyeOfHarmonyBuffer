@@ -289,6 +289,7 @@ EOHB_ArsenicImpact_Tooltip=Omg
 item.MiGuardFrostShard.name=米卫冰
 EOHB_Hoyomixium=镁铪铕合金
 EOHB_Hoyomixium_Tooltip=技术宅拯救世界
+item.XiYiYuanShi.name=§3协议源石
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

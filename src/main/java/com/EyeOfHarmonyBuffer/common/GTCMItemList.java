@@ -79,6 +79,7 @@ public enum GTCMItemList {
     LanTiePing,
     XiMoGanShiFenMo,
     XiMoQiaoHuaFenMo,
+    XiYiYuanShi,
 
     //方舟-植物
     GanShi,

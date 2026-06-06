@@ -39,6 +39,7 @@ public class ItemIntermediateProducts {
     public static Item LanTiePing;
     public static Item XiMoGanShiFenMo;
     public static Item XiMoQiaoHuaFenMo;
+    public static Item XiYiYuanShi;
 
     public static void initAndRegister(String modid) {
         String textureFolder = "Arknights/";
