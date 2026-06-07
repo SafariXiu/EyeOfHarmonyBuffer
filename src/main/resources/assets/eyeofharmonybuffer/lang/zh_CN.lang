@@ -304,6 +304,16 @@ EOHB_YaZhenZhenJi_01=在生命小于6点时，使用一个芽针针剂并开始�
 item.JinCaoRuanYin.name=锦草软饮
 EOHB_JinCaoRuanYin_00=放在背包中即可自动使用
 EOHB_JinCaoRuanYin_01=在生命小于6点时，使用一个锦草软饮并瞬间回复一定血量
+item.ChiTongFenMo.name=赤铜粉末
+item.ChiTongKuai.name=赤铜块
+item.ChiTongLingJian.name=赤铜零件
+item.ChiTongPing.name=赤铜瓶
+item.HeTongKuai.name=赫铜块
+item.HeTongLingJian.name=赫铜零件
+item.HeTongPing.name=赫铜瓶
+item.RangJing.name=壤晶
+item.ZhongRongWuLingDianChi.name=中容武陵电池
+item.ZhongXiRang.name=§3重息壤
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

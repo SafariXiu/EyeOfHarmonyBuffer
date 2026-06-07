@@ -83,6 +83,16 @@ public enum GTCMItemList {
     GongYeBaoZhaWu,
     YaZhenZhenJi,
     JinCaoRuanYin,
+    ChiTongFenMo,
+    ChiTongKuai,
+    ChiTongLingJian,
+    ChiTongPing,
+    HeTongKuai,
+    HeTongLingJian,
+    HeTongPing,
+    RangJing,
+    ZhongRongWuLingDianChi,
+    ZhongXiRang,
 
     //方舟-植物
     GanShi,

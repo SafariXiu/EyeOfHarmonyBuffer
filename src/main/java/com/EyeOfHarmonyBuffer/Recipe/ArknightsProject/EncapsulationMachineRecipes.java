@@ -59,5 +59,29 @@ public class EncapsulationMachineRecipes implements IRecipePool {
             .eut(50000)
             .duration(10 * SECONDS)
             .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.XiRang.get(5),
+                GTCMItemList.ZhiMiYuanShiFenMo.get(15)
+            )
+            .itemOutputs(
+                GTCMItemList.XiRangDiRongLiangDianChi.get(10)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.RangJing.get(5),
+                GTCMItemList.ZhiMiYuanShiFenMo.get(20)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhongRongWuLingDianChi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
     }
 }

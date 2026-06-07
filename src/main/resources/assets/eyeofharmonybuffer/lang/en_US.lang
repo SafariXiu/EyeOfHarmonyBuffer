@@ -304,6 +304,16 @@ EOHB_YaZhenZhenJi_01=When your health drops below 6 points, it will automaticall
 item.JinCaoRuanYin.name=Embroidered Soft Drink
 EOHB_JinCaoRuanYin_00=Automatically used as long as it is in your inventory.
 EOHB_JinCaoRuanYin_01=When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.
+item.ChiTongFenMo.name=Scarlet Copper Powder
+item.ChiTongKuai.name=Scarlet Copper Block
+item.ChiTongLingJian.name=Scarlet Copper Parts
+item.ChiTongPing.name=Scarlet Copper Bottle
+item.HeTongKuai.name=Radiant Copper Block
+item.HeTongLingJian.name=Radiant Copper Parts
+item.HeTongPing.name=Radiant Copper Bottle
+item.RangJing.name=Terra Crystal
+item.ZhongRongWuLingDianChi.name=Wuling Medium-Capacity Battery
+item.ZhongXiRang.name=Gravisoil
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
