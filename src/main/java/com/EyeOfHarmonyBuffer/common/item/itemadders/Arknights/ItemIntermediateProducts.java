@@ -8,6 +8,8 @@ import net.minecraft.item.ItemStack;
 
 import java.lang.reflect.Field;
 
+import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
+
 public class ItemIntermediateProducts {
 
     public static Item ChunJingYuanShiFenMo;
@@ -62,7 +64,8 @@ public class ItemIntermediateProducts {
                     Item item = (Item) field.getType().newInstance();
 
                     item.setUnlocalizedName(name)
-                        .setTextureName(modid + ":" + textureFolder + name);
+                        .setTextureName(modid + ":" + textureFolder + name)
+                        .setCreativeTab(tabMetaItem01);
 
                     GameRegistry.registerItem(item, name);
                     field.set(null, item);
