@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

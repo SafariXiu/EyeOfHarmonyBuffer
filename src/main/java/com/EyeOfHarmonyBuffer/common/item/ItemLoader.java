@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.item;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.*;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.*;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -49,6 +50,14 @@ public class ItemLoader {
     public static Item YaZhenZhenJi = new ItemYaZhenZhenJi();
     public static Item JinCaoRuanYin = new ItemJinCaoRuanYin();
 
+    //瓶子
+    public static Item ChiTongFluidBottle;
+    public static Item GangZhiFluidBottle;
+    public static Item LanTieFluidBottle;
+    public static Item ZiJingZhiFluidBottle;
+    public static Item GaoJingFluidBottle;
+    public static Item HeTongFluidBottle;
+
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
         GTCMItemList.Monkey.set(registryAndCallback(Monkey,"Monkey"));
@@ -87,6 +96,43 @@ public class ItemLoader {
         GTCMItemList.GongYeBaoZhaWu.set(registryAndCallback(GongYeBaoZhaWu,"GongYeBaoZhaWu"));
         GTCMItemList.YaZhenZhenJi.set(registryAndCallback(YaZhenZhenJi,"YaZhenZhenJi"));
         GTCMItemList.JinCaoRuanYin.set(registryAndCallback(JinCaoRuanYin,"JinCaoRuanYin"));
+
+        EnumBottleFluid[] allFluids = EnumBottleFluid.values();
+        ChiTongFluidBottle = new ItemBottleBase(
+            "ChiTongFluidBottle",
+            "ChiTongPing_empty",
+            EnumBottleFluid.YA_ZHEN_RONG_YE,
+            EnumBottleFluid.JIN_CAO_RONG_YE
+        );
+        GangZhiFluidBottle = new ItemBottleBase(
+            "GangZhiFluidBottle",
+            "GangZhiPing_empty"
+        );
+        LanTieFluidBottle = new ItemBottleBase(
+            "LanTieFluidBottle",
+            "LanTiePing_empty",
+            EnumBottleFluid.YA_ZHEN_RONG_YE,
+            EnumBottleFluid.JIN_CAO_RONG_YE
+        );
+        ZiJingZhiFluidBottle = new ItemBottleBase(
+            "ZiJingZhiFluidBottle",
+            "ZiJingZhiPing_empty"
+        );
+        GaoJingFluidBottle = new ItemBottleBase(
+            "GaoJingFluidBottle",
+            "GaoJingZhiPing_empty"
+        );
+        HeTongFluidBottle = new ItemBottleBase(
+            "HeTongFluidBottle",
+            "HeTongPing_empty"
+        );
+
+        GTCMItemList.ChiTongFluidBottle.set(registryAndCallback(ChiTongFluidBottle, "ChiTongFluidBottle", 0));
+        GTCMItemList.GangZhiFluidBottle.set(registryAndCallback(GangZhiFluidBottle, "GangZhiFluidBottle", 0));
+        GTCMItemList.LanTieFluidBottle.set(registryAndCallback(LanTieFluidBottle, "LanTieFluidBottle", 0));
+        GTCMItemList.ZiJingZhiFluidBottle.set(registryAndCallback(ZiJingZhiFluidBottle, "ZiJingZhiFluidBottle", 0));
+        GTCMItemList.GaoJingFluidBottle.set(registryAndCallback(GaoJingFluidBottle, "GaoJingFluidBottle", 0));
+        GTCMItemList.HeTongFluidBottle.set(registryAndCallback(HeTongFluidBottle, "HeTongFluidBottle", 0));
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {

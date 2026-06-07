@@ -93,6 +93,12 @@ public enum GTCMItemList {
     RangJing,
     ZhongRongWuLingDianChi,
     ZhongXiRang,
+    ChiTongFluidBottle,
+    GangZhiFluidBottle,
+    LanTieFluidBottle,
+    ZiJingZhiFluidBottle,
+    GaoJingFluidBottle,
+    HeTongFluidBottle,
 
     //方舟-植物
     GanShi,

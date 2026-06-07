@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer;
 
+import codechicken.nei.api.API;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
@@ -8,7 +9,9 @@ import com.EyeOfHarmonyBuffer.client.renderer.item.ItemUnactivatedYuanShiRendere
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemYuanShiRenderer;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
+import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemBottleBase;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemUnactivatedYuanShi;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemYuanShi;
 import com.EyeOfHarmonyBuffer.entity.Arknights.EntityIndustrialExplosive;
@@ -18,6 +21,8 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.renderer.entity.RenderSnowball;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -48,5 +53,24 @@ public class ClientProxy extends CommonProxy {
         ExternalBlockTextures.register();
 
         ClientCommandHandler.instance.registerCommand(new CommandOpenConfig());
+
+        hideDisallowedBottleFluids(ItemLoader.ChiTongFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.GangZhiFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.LanTieFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.ZiJingZhiFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.GaoJingFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.HeTongFluidBottle);
+    }
+
+    @SideOnly(Side.CLIENT)
+    private void hideDisallowedBottleFluids(Item item) {
+        if (!(item instanceof ItemBottleBase)) return;
+        ItemBottleBase bottle = (ItemBottleBase) item;
+
+        for (EnumBottleFluid fluid : EnumBottleFluid.values()) {
+            if (fluid == EnumBottleFluid.EMPTY || !bottle.isFluidAllowed(fluid)) {
+                API.hideItem(new ItemStack(item, 1, fluid.meta));
+            }
+        }
     }
 }
