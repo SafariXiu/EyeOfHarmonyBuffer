@@ -49,6 +49,8 @@ public class ItemLoader {
     public static Item GongYeBaoZhaWu = new ItemGongYeBaoZhaWu();
     public static Item YaZhenZhenJi = new ItemYaZhenZhenJi();
     public static Item JinCaoRuanYin = new ItemJinCaoRuanYin();
+    public static Item YouZhiYaZhenZhenJi =  new ItemYouZhiYaZhenZhenJi();
+    public static Item YouZhiJinCaoRuanYin = new ItemYouZhiJinCaoRuanYin();
 
     //瓶子
     public static Item ChiTongFluidBottle;
@@ -96,6 +98,8 @@ public class ItemLoader {
         GTCMItemList.GongYeBaoZhaWu.set(registryAndCallback(GongYeBaoZhaWu,"GongYeBaoZhaWu"));
         GTCMItemList.YaZhenZhenJi.set(registryAndCallback(YaZhenZhenJi,"YaZhenZhenJi"));
         GTCMItemList.JinCaoRuanYin.set(registryAndCallback(JinCaoRuanYin,"JinCaoRuanYin"));
+        GTCMItemList.YouZhiYaZhenZhenJi.set(registryAndCallback(YouZhiYaZhenZhenJi,"YouZhiYaZhenZhenJi"));
+        GTCMItemList.YouZhiJinCaoRuanYin.set(registryAndCallback(YouZhiJinCaoRuanYin,"YouZhiJinCaoRuanYin"));
 
         EnumBottleFluid[] allFluids = EnumBottleFluid.values();
         ChiTongFluidBottle = new ItemBottleBase(

@@ -3,18 +3,31 @@ package com.EyeOfHarmonyBuffer.handler;
 import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 public class AutoInstantHealHandler {
 
     private static final float HEALTH_THRESHOLD = 6.0F;
-
-    private static final float HEAL_AMOUNT = 10.0F;
-
     private static final long COOLDOWN_MS = 5000L;
 
     private static java.util.Map<Integer, Long> lastUseTime = new java.util.HashMap<Integer, Long>();
+
+    private static class InstantHealItemConfig {
+        public final Item item;
+        public final float healAmount;
+
+        public InstantHealItemConfig(Item item, float healAmount) {
+            this.item = item;
+            this.healAmount = healAmount;
+        }
+    }
+
+    private static final InstantHealItemConfig[] INSTANT_HEAL_ITEMS = new InstantHealItemConfig[] {
+        new InstantHealItemConfig(ItemLoader.YouZhiJinCaoRuanYin, 16.0F),
+        new InstantHealItemConfig(ItemLoader.JinCaoRuanYin, 10.0F)
+    };
 
     @SubscribeEvent
     public void onPlayerHurt(LivingHurtEvent event) {
@@ -44,10 +57,13 @@ public class AutoInstantHealHandler {
             return;
         }
 
-        int slot = findJinCaoRuanYinInInventory(player);
-        if (slot == -1) {
+        ItemUseResult useResult = findInstantHealItemInInventory(player);
+        if (useResult == null) {
             return;
         }
+
+        int slot = useResult.slot;
+        InstantHealItemConfig config = useResult.config;
 
         ItemStack stack = player.inventory.getStackInSlot(slot);
         if (stack == null) {
@@ -61,13 +77,33 @@ public class AutoInstantHealHandler {
 
         lastUseTime.put(id, now);
 
-        player.heal(HEAL_AMOUNT);
+        player.heal(config.healAmount);
     }
 
-    private int findJinCaoRuanYinInInventory(EntityPlayer player) {
+    private static class ItemUseResult {
+        public final int slot;
+        public final InstantHealItemConfig config;
+
+        public ItemUseResult(int slot, InstantHealItemConfig config) {
+            this.slot = slot;
+            this.config = config;
+        }
+    }
+
+    private ItemUseResult findInstantHealItemInInventory(EntityPlayer player) {
+        for (InstantHealItemConfig config : INSTANT_HEAL_ITEMS) {
+            int slot = findItemSlot(player, config.item);
+            if (slot != -1) {
+                return new ItemUseResult(slot, config);
+            }
+        }
+        return null;
+    }
+
+    private int findItemSlot(EntityPlayer player, Item target) {
         for (int i = 0; i < player.inventory.mainInventory.length; i++) {
             ItemStack stack = player.inventory.mainInventory[i];
-            if (stack != null && stack.getItem() == ItemLoader.JinCaoRuanYin) {
+            if (stack != null && stack.getItem() == target) {
                 return i;
             }
         }

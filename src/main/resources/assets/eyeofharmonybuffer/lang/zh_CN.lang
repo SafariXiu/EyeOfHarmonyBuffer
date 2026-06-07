@@ -314,6 +314,12 @@ item.HeTongPing.name=赫铜瓶
 item.RangJing.name=壤晶
 item.ZhongRongWuLingDianChi.name=中容武陵电池
 item.ZhongXiRang.name=§3重息壤
+item.ChiTongFluidBottle.ya_zhen_rong_ye.name=赤铜瓶-芽针溶液
+item.ChiTongFluidBottle.jin_cao_rong_ye.name=赤铜瓶-锦草溶液
+item.LanTieFluidBottle.ya_zhen_rong_ye.name=蓝铁瓶-芽针溶液
+item.LanTieFluidBottle.jin_cao_rong_ye.name=蓝铁瓶-锦草溶液
+item.YouZhiYaZhenZhenJi.name=优质芽针针剂
+item.YouZhiJinCaoRuanYin.name=优质锦草软饮
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

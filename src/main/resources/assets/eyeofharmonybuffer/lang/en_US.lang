@@ -314,6 +314,12 @@ item.HeTongPing.name=Radiant Copper Bottle
 item.RangJing.name=Terra Crystal
 item.ZhongRongWuLingDianChi.name=Wuling Medium-Capacity Battery
 item.ZhongXiRang.name=Gravisoil
+item.ChiTongFluidBottle.ya_zhen_rong_ye.name=Scarlet Copper Bottle - Bud Needle Solution
+item.ChiTongFluidBottle.jin_cao_rong_ye.name=Scarlet Copper Bottle - Embroidered Grass Solution
+item.LanTieFluidBottle.ya_zhen_rong_ye.name=Blue Iron Bottle - Bud Needle Solution
+item.LanTieFluidBottle.jin_cao_rong_ye.name=Blue Iron Bottle - Embroidered Grass Solution
+item.YouZhiYaZhenZhenJi.name=Premium Bud Needle Injection
+item.YouZhiJinCaoRuanYin.name=Premium Embroidered Soft Drink
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
