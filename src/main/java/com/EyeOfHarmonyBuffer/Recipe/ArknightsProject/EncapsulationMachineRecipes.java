@@ -1,8 +1,11 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
+import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
+import net.minecraft.item.ItemStack;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.EncapsulationMachine;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -66,7 +69,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
                 GTCMItemList.ZhiMiYuanShiFenMo.get(15)
             )
             .itemOutputs(
-                GTCMItemList.XiRangDiRongLiangDianChi.get(10)
+                GTCMItemList.XiRangDiRongLiangDianChi.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)
@@ -79,6 +82,54 @@ public class EncapsulationMachineRecipes implements IRecipePool {
             )
             .itemOutputs(
                 GTCMItemList.ZhongRongWuLingDianChi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.TieZhiLingJian.get(10),
+                new ItemStack(ItemLoader.LanTieFluidBottle, 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+            )
+            .itemOutputs(
+                GTCMItemList.YaZhenZhenJi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongLingJian.get(10),
+                new ItemStack(ItemLoader.ChiTongFluidBottle, 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+            )
+            .itemOutputs(
+                GTCMItemList.YouZhiYaZhenZhenJi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongLingJian.get(10),
+                new ItemStack(ItemLoader.LanTieFluidBottle, 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+            )
+            .itemOutputs(
+                GTCMItemList.JinCaoRuanYin.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongLingJian.get(10),
+                new ItemStack(ItemLoader.ChiTongFluidBottle, 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+            )
+            .itemOutputs(
+                GTCMItemList.YouZhiJinCaoRuanYin.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)

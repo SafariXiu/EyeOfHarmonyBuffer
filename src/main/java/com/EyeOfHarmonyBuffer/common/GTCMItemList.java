@@ -99,6 +99,8 @@ public enum GTCMItemList {
     ZiJingZhiFluidBottle,
     GaoJingFluidBottle,
     HeTongFluidBottle,
+    YouZhiYaZhenZhenJi,
+    YouZhiJinCaoRuanYin,
 
     //方舟-植物
     GanShi,
