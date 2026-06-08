@@ -131,5 +131,16 @@ public class PulverizerRecipes implements IRecipePool {
             .eut(5000)
             .duration(10 * SECONDS)
             .addTo(Pulverizer);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongKuai.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiTongFenMo.get(2)
+            )
+            .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(Pulverizer);
     }
 }

@@ -54,5 +54,27 @@ public class ShapingMachineRecipes implements IRecipePool {
             .eut(10000)
             .duration(10 * SECONDS)
             .addTo(ShapingMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongKuai.get(2)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiTongPing.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.HeTongKuai.get(2)
+            )
+            .itemOutputs(
+                GTCMItemList.HeTongPing.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
     }
 }

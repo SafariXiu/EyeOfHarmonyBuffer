@@ -1,8 +1,10 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.Materials;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.RefiningFurnace;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -127,6 +129,23 @@ public class RefiningFurnaceRecipes implements IRecipePool {
             )
             .itemOutputs(
                 GTCMItemList.TanKuai.get(2)
+            )
+            .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(RefiningFurnace);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongKuai.get(1)
+            )
+            .fluidInputs(
+                Materials.Wheat.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiTongKuai.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Sewage.getFluidOrGas(1000)
             )
             .eut(5000)
             .duration(10 * SECONDS)
