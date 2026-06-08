@@ -29,8 +29,11 @@ public class AutoHealHandler {
     }
 
     private static final RegenItemConfig[] REGEN_ITEMS = new RegenItemConfig[] {
-        new RegenItemConfig(ItemLoader.YouZhiYaZhenZhenJi, 20 * 20, 3),
-        new RegenItemConfig(ItemLoader.YaZhenZhenJi, 20 * 10, 2)
+        new RegenItemConfig(ItemLoader.YouZhiYaZhenZhenJi, 20 * 20, 4),
+        new RegenItemConfig(ItemLoader.YaZhenZhenJi, 20 * 10, 3),
+        new RegenItemConfig(ItemLoader.JingXuanGanShiGuanTou,20 * 10,2),
+        new RegenItemConfig(ItemLoader.YouZhiGanShiGuanTou,10 * 10,2),
+        new RegenItemConfig(ItemLoader.GanShiGuanTou,10 * 10,1),
     };
 
     @SubscribeEvent

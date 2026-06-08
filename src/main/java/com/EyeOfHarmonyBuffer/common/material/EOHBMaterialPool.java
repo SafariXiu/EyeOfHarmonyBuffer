@@ -89,6 +89,126 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_METALLIC
     );
 
+    public static final Werkstoff PrecipitationAcid = new Werkstoff(
+        new short[] { 230, 185, 45 },
+        EOHB_PrecipitationAcid,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 5,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff CupriumSolution = new Werkstoff(
+        new short[] { 205, 35, 35 },
+        EOHB_CupriumSolution,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 6,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff InertXirconEffluent = new Werkstoff(
+        new short[] { 20, 95, 145 },
+        EOHB_InertXirconEffluent,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 7,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HetoniteSolution = new Werkstoff(
+        new short[] { 220, 55, 70 },
+        EOHB_HetoniteSolution,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 8,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JinCaoSolution = new Werkstoff(
+        new short[] { 225, 245, 185 },
+        EOHB_JinCaoSolution,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 9,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff XirconEffluent = new Werkstoff(
+        new short[] { 35, 150, 175 },
+        EOHB_XirconEffluent,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 10,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff Sewage = new Werkstoff(
+        new short[] { 125, 125, 125 },
+        EOHB_Sewage,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 11,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff YaZhenSolution = new Werkstoff(
+        new short[] { 195, 220, 75 },
+        EOHB_YaZhenSolution,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 12,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff LiquidXiranite = new Werkstoff(
+        new short[] { 60, 185, 85 },
+        EOHB_LiquidXiranite,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 13,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff LiquidHeavyXiranite = new Werkstoff(
+        new short[] { 25, 105, 45 },
+        EOHB_LiquidHeavyXiranite,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 14,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

@@ -101,6 +101,12 @@ public enum GTCMItemList {
     HeTongFluidBottle,
     YouZhiYaZhenZhenJi,
     YouZhiJinCaoRuanYin,
+    GanShiGuanTou,
+    YouZhiGanShiGuanTou,
+    JingXuanGanShiGuanTou,
+    QiaoYuJiaoNang,
+    YouZhiQiaoYuJiaoNang,
+    JingXuanQiaoYuJiaoNang,
 
     //方舟-植物
     GanShi,
@@ -127,6 +133,7 @@ public enum GTCMItemList {
     ShapingMachines,
     Grinders,
     EncapsulationMachines,
+    FillingUnits,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

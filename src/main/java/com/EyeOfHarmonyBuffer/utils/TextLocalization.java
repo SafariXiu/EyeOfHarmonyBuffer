@@ -199,6 +199,12 @@ public class TextLocalization {
     public static final String Tooltip_EncapsulationMachine_01;
     public static final String Tooltip_EncapsulationMachine_02;
 
+    public static final String NameFillingUnit;
+    public static final String Tooltip_FillingUnit_MachineType;
+    public static final String Tooltip_FillingUnit_Controller;
+    public static final String Tooltip_FillingUnit_00;
+    public static final String Tooltip_FillingUnit_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -206,6 +212,16 @@ public class TextLocalization {
     public static final String EOHB_ArsenicImpact_Tooltip;
     public static final String EOHB_Hoyomixium;
     public static final String EOHB_Hoyomixium_Tooltip;
+    public static final String EOHB_PrecipitationAcid;
+    public static final String EOHB_CupriumSolution;
+    public static final String EOHB_InertXirconEffluent;
+    public static final String EOHB_HetoniteSolution;
+    public static final String EOHB_JinCaoSolution;
+    public static final String EOHB_XirconEffluent;
+    public static final String EOHB_Sewage;
+    public static final String EOHB_YaZhenSolution;
+    public static final String EOHB_LiquidXiranite;
+    public static final String EOHB_LiquidHeavyXiranite;
 
     //流体
     public static final String EOHB_OriginiumWasteLiquid;
@@ -247,6 +263,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ShapingMachine;
     public static final String EOHB_Recipe_Grinder;
     public static final String EOHB_Recipe_EncapsulationMachine;
+    public static final String EOHB_Recipe_FillingUnit;
 
 
     public TextLocalization() {
@@ -474,6 +491,13 @@ public class TextLocalization {
         Tooltip_EncapsulationMachine_01 = TextHandler.texter("Across Talos II, many different forms and designs of batteries once emerged.","Tooltip_EncapsulationMachine_01");
         Tooltip_EncapsulationMachine_02 = TextHandler.texter("After humanity finally escaped the quagmire of war, the production standards for these products gradually became unified.","Tooltip_EncapsulationMachine_02");
 
+        //灌装机
+        NameFillingUnit = TextHandler.texter("Filling Unit","NameFillingUnit");
+        Tooltip_FillingUnit_MachineType = TextHandler.texter("Filling Unit","Tooltip_FillingUnit_MachineType");
+        Tooltip_FillingUnit_Controller = TextHandler.texter("The controller block of the Filling Unit","Tooltip_FillingUnit_Controller");
+        Tooltip_FillingUnit_00 = TextHandler.texter("","Tooltip_FillingUnit_00");
+        Tooltip_FillingUnit_01 = TextHandler.texter("","Tooltip_FillingUnit_01");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -503,6 +527,16 @@ public class TextLocalization {
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
+        EOHB_PrecipitationAcid = TextHandler.texter("Precipitation Acid","EOHB_PrecipitationAcid");
+        EOHB_CupriumSolution = TextHandler.texter("Cuprium Solution","EOHB_CupriumSolution");
+        EOHB_InertXirconEffluent = TextHandler.texter("Inert Xircon Effluent","EOHB_InertXirconEffluent");
+        EOHB_HetoniteSolution = TextHandler.texter("Hetonite Solution","EOHB_HetoniteSolution");
+        EOHB_JinCaoSolution = TextHandler.texter("JinCao Solution","EOHB_JinCaoSolution");
+        EOHB_XirconEffluent = TextHandler.texter("Xircon Effluent","EOHB_XirconEffluent");
+        EOHB_Sewage = TextHandler.texter("Sewage","EOHB_Sewage");
+        EOHB_YaZhenSolution = TextHandler.texter("YaZhen Solution","EOHB_YaZhenSolution");
+        EOHB_LiquidXiranite = TextHandler.texter("Liquid Xiranite","EOHB_LiquidXiranite");
+        EOHB_LiquidHeavyXiranite = TextHandler.texter("Liquid Heavy Xiranite","EOHB_LiquidHeavyXiranite");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
@@ -520,5 +554,6 @@ public class TextLocalization {
         EOHB_Recipe_ShapingMachine = TextHandler.texter("Shaping Machine","EOHB_Recipe_ShapingMachine");
         EOHB_Recipe_Grinder = TextHandler.texter("Grinder","EOHB_Recipe_Grinder");
         EOHB_Recipe_EncapsulationMachine = TextHandler.texter("Encapsulation Machine","EOHB_Recipe_EncapsulationMachine");
+        EOHB_Recipe_FillingUnit = TextHandler.texter("Filling Unit","EOHB_Recipe_FillingUnit");
     }
 }

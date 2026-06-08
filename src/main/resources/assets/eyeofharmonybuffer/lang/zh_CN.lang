@@ -192,6 +192,11 @@ Tooltip_EncapsulationMachine_Controller=§7封装机的§b控制器方块§r
 Tooltip_EncapsulationMachine_00=§a用于封装部分能量元件的专用设备。§r
 Tooltip_EncapsulationMachine_01=§7塔卫二各地曾诞生过许多形制各异的电池，§r
 Tooltip_EncapsulationMachine_02=§7在人类摆脱战争困局之后，这些产品的生产标准也逐渐得到了统一。§r
+NameFillingUnit=§b灌装机
+Tooltip_FillingUnit_MachineType=§b灌装机
+Tooltip_FillingUnit_Controller=§7灌装机的§b控制器方块§r
+Tooltip_FillingUnit_00=§a能够将原料§e精准灌装§a到各类容器中的专业设备。§r
+Tooltip_FillingUnit_01=§7采用§b专利级无菌分装技术§7，大幅降低了产品受§c污染§7的几率。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -209,6 +214,7 @@ EOHB_Recipe_AccessoriesMachine=配件机
 EOHB_Recipe_ShapingMachine=塑形机
 EOHB_Recipe_Grinder=研磨机
 EOHB_Recipe_EncapsulationMachine=封装机
+EOHB_Recipe_FillingUnit=灌装机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -382,6 +388,12 @@ item.HeTongFluidBottle.ye_hua_xi_rang.name=赫铜瓶-液化息壤
 item.HeTongFluidBottle.ye_hua_zhong_xi_rang.name=赫铜瓶-液化重息壤
 item.YouZhiYaZhenZhenJi.name=优质芽针针剂
 item.YouZhiJinCaoRuanYin.name=优质锦草软饮
+item.GanShiGuanTou.name=柑实罐头
+item.YouZhiGanShiGuanTou.name=优质柑实罐头
+item.JingXuanGanShiGuanTou.name=精选柑实罐头
+item.QiaoYuJiaoNang.name=荞愈胶囊
+item.YouZhiQiaoYuJiaoNang.name=优质荞愈胶囊
+item.JingXuanQiaoYuJiaoNang.name=精选荞愈胶囊
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
@@ -402,6 +414,16 @@ moon.Talos2=塔罗斯-2
 
 #fluid
 EOHB_OriginiumWasteLiquid=源石废液
+EOHB_PrecipitationAcid=沉积酸
+EOHB_CupriumSolution=赤铜溶液
+EOHB_InertXirconEffluent=惰性壤晶废液
+EOHB_HetoniteSolution=赫铜溶液
+EOHB_JinCaoSolution=锦草溶液
+EOHB_XirconEffluent=壤晶废液
+EOHB_Sewage=污水
+EOHB_YaZhenSolution=芽针溶液
+EOHB_LiquidXiranite=液化息壤
+EOHB_LiquidHeavyXiranite=液化重息壤
 
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！

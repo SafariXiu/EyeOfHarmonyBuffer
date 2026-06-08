@@ -51,6 +51,12 @@ public class ItemLoader {
     public static Item JinCaoRuanYin = new ItemJinCaoRuanYin();
     public static Item YouZhiYaZhenZhenJi =  new ItemYouZhiYaZhenZhenJi();
     public static Item YouZhiJinCaoRuanYin = new ItemYouZhiJinCaoRuanYin();
+    public static Item GanShiGuanTou = new ItemGanShiGuanTou();
+    public static Item YouZhiGanShiGuanTou = new ItemYouZhiGanShiGuanTou();
+    public static Item JingXuanGanShiGuanTou = new ItemJingXuanGanShiGuanTou();
+    public static Item QiaoYuJiaoNang = new ItemQiaoYuJiaoNang();
+    public static Item YouZhiQiaoYuJiaoNang = new ItemYouZhiQiaoYuJiaoNang();
+    public static Item JingXuanQiaoYuJiaoNang = new ItemJingXuanQiaoYuJiaoNang();
 
     //瓶子
     public static Item ChiTongFluidBottle;
@@ -100,6 +106,12 @@ public class ItemLoader {
         GTCMItemList.JinCaoRuanYin.set(registryAndCallback(JinCaoRuanYin,"JinCaoRuanYin"));
         GTCMItemList.YouZhiYaZhenZhenJi.set(registryAndCallback(YouZhiYaZhenZhenJi,"YouZhiYaZhenZhenJi"));
         GTCMItemList.YouZhiJinCaoRuanYin.set(registryAndCallback(YouZhiJinCaoRuanYin,"YouZhiJinCaoRuanYin"));
+        GTCMItemList.GanShiGuanTou.set(registryAndCallback(GanShiGuanTou,"GanShiGuanTou"));
+        GTCMItemList.YouZhiGanShiGuanTou.set(registryAndCallback(YouZhiGanShiGuanTou,"YouZhiGanShiGuanTou"));
+        GTCMItemList.JingXuanGanShiGuanTou.set(registryAndCallback(JingXuanGanShiGuanTou,"JingXuanGanShiGuanTou"));
+        GTCMItemList.QiaoYuJiaoNang.set(registryAndCallback(QiaoYuJiaoNang,"QiaoYuJiaoNang"));
+        GTCMItemList.YouZhiQiaoYuJiaoNang.set(registryAndCallback(YouZhiQiaoYuJiaoNang,"YouZhiQiaoYuJiaoNang"));
+        GTCMItemList.JingXuanQiaoYuJiaoNang.set(registryAndCallback(JingXuanQiaoYuJiaoNang,"JingXuanQiaoYuJiaoNang"));
 
         EnumBottleFluid[] allFluids = EnumBottleFluid.values();
         ChiTongFluidBottle = new ItemBottleBase(

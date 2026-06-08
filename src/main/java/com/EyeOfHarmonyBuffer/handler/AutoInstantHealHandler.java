@@ -25,8 +25,11 @@ public class AutoInstantHealHandler {
     }
 
     private static final InstantHealItemConfig[] INSTANT_HEAL_ITEMS = new InstantHealItemConfig[] {
-        new InstantHealItemConfig(ItemLoader.YouZhiJinCaoRuanYin, 16.0F),
-        new InstantHealItemConfig(ItemLoader.JinCaoRuanYin, 10.0F)
+        new InstantHealItemConfig(ItemLoader.YouZhiJinCaoRuanYin, 20.0F),
+        new InstantHealItemConfig(ItemLoader.JinCaoRuanYin, 16.0F),
+        new InstantHealItemConfig(ItemLoader.JingXuanQiaoYuJiaoNang, 12F),
+        new InstantHealItemConfig(ItemLoader.YouZhiQiaoYuJiaoNang, 8F),
+        new InstantHealItemConfig(ItemLoader.QiaoYuJiaoNang, 4F),
     };
 
     @SubscribeEvent
