@@ -110,21 +110,36 @@ public class ItemLoader {
         );
         GangZhiFluidBottle = new ItemBottleBase(
             "GangZhiFluidBottle",
-            "GangZhiPing_empty"
+            "GangZhiPing_empty",
+            EnumBottleFluid.QING_SHUI,
+            EnumBottleFluid.YA_ZHEN_RONG_YE,
+            EnumBottleFluid.JIN_CAO_RONG_YE,
+            EnumBottleFluid.YE_HUA_XI_RANG
         );
         LanTieFluidBottle = new ItemBottleBase(
             "LanTieFluidBottle",
             "LanTiePing_empty",
             EnumBottleFluid.YA_ZHEN_RONG_YE,
-            EnumBottleFluid.JIN_CAO_RONG_YE
+            EnumBottleFluid.JIN_CAO_RONG_YE,
+            EnumBottleFluid.QING_SHUI,
+            EnumBottleFluid.YE_HUA_XI_RANG,
+            EnumBottleFluid.YE_HUA_ZHONG_XI_RANG
         );
         ZiJingZhiFluidBottle = new ItemBottleBase(
             "ZiJingZhiFluidBottle",
-            "ZiJingZhiPing_empty"
+            "ZiJingZhiPing_empty",
+            EnumBottleFluid.QING_SHUI,
+            EnumBottleFluid.YA_ZHEN_RONG_YE,
+            EnumBottleFluid.JIN_CAO_RONG_YE,
+            EnumBottleFluid.YE_HUA_XI_RANG
         );
         GaoJingFluidBottle = new ItemBottleBase(
             "GaoJingFluidBottle",
-            "GaoJingZhiPing_empty"
+            "GaoJingZhiPing_empty",
+            EnumBottleFluid.QING_SHUI,
+            EnumBottleFluid.YA_ZHEN_RONG_YE,
+            EnumBottleFluid.JIN_CAO_RONG_YE,
+            EnumBottleFluid.YE_HUA_XI_RANG
         );
         HeTongFluidBottle = new ItemBottleBase(
             "HeTongFluidBottle",
