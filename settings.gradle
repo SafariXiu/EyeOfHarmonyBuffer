@@ -1,8 +1,17 @@
 
 pluginManagement {
     repositories {
+
         maven {
-            // RetroFuturaGradle
+            name = "GTNH Maven Mirror"
+            url = "https://maven.gaytnh.com/gtnh-public"
+            mavenContent {
+                includeGroup("com.gtnewhorizons")
+                includeGroupByRegex("com\\.gtnewhorizons\\..+")
+            }
+        }
+
+        maven {
             name = "GTNH Maven"
             url = "https://nexus.gtnewhorizons.com/repository/public/"
             mavenContent {

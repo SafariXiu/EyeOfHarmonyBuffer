@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.Materials;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.Planter;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -25,6 +26,9 @@ public class PlanterRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YaZhenZhongZi.get(1)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(1000)
             )
             .itemOutputs(
                 GTCMItemList.YaZhen.get(2)
@@ -69,6 +73,9 @@ public class PlanterRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.JinCaoZhongZi.get(1)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(1000)
             )
             .itemOutputs(
                 GTCMItemList.JinCao.get(2)

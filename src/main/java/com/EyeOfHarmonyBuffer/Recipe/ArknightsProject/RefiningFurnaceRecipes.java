@@ -136,15 +136,15 @@ public class RefiningFurnaceRecipes implements IRecipePool {
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.ChiTongKuai.get(1)
+                GTCMItemList.ChiTongKuang.get(1)
             )
             .fluidInputs(
-                Materials.Wheat.getFluid(1000)
+                Materials.Water.getFluid(1000)
             )
             .itemOutputs(
                 GTCMItemList.ChiTongKuai.get(1)
             )
-            .fluidInputs(
+            .fluidOutputs(
                 EOHBMaterialPool.Sewage.getFluidOrGas(1000)
             )
             .eut(5000)
