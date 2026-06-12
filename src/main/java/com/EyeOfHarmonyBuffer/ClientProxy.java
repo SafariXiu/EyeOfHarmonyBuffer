@@ -4,9 +4,11 @@ import codechicken.nei.api.API;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
+import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityWindmillRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemUnactivatedYuanShiRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemYuanShiRenderer;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
@@ -33,6 +35,8 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void registerRenderers() {
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityWindmill.class, new TileEntityWindmillRenderer());
+
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityForgeOfTheSkyCore.class, new TileEntityForgeOfTheSkyCoreRenderer());
 
         MinecraftForgeClient.registerItemRenderer(ItemYuanShi.instance,new ItemYuanShiRenderer());
         MinecraftForgeClient.registerItemRenderer(ItemUnactivatedYuanShi.instance,new ItemUnactivatedYuanShiRenderer());

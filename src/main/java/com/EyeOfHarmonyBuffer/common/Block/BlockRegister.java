@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlcokForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRing.SingularityStabilizationRingCasingsItemBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRingCasings;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -12,11 +14,16 @@ import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabili
 public class BlockRegister {
 
     public static Block TrubineBlock;
+    public static Block ForgeOfSkyBlockCore;
 
     public static void registryBlocks(){
         TrubineBlock = new BlockWindmill().setBlockName("blockWindmill");
         GameRegistry.registerBlock(TrubineBlock, "blockWindmill");
         GameRegistry.registerTileEntity(TileEntityWindmill.class, "Windmill_TE");
+
+        ForgeOfSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("blockBlcokForgeOfTheSkyCore");
+        GameRegistry.registerBlock(ForgeOfSkyBlockCore, "blockBlcokForgeOfTheSkyCore");
+        GameRegistry.registerTileEntity(TileEntityForgeOfTheSkyCore.class, "ForgeOfTheSkyCore_TE");
 
         GameRegistry.registerBlock(
             SingularityStabilizationRingCasingsUpgrade,
