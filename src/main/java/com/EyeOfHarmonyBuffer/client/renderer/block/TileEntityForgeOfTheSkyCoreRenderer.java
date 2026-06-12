@@ -31,9 +31,9 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
 
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
 
-        GL11.glTranslated(x + 0.80D, y - 0.25D, z + 0.88D);
+        GL11.glTranslated(x + 0.80D, y - 0.7D, z + 0.88D);
         GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
-        GL11.glScalef(0.5F, 0.6F, 0.5F);
+        GL11.glScalef(0.5F, 0.85F, 0.5F);
 
         this.bindTexture(texture);
         model.render(null, 0, 0, 0, 0, 0, 0.0625F);
