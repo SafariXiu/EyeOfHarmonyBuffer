@@ -1,0 +1,1133 @@
+package com.EyeOfHarmonyBuffer.client.model;
+// Made with Blockbench 5.1.4
+// Exported for Minecraft version 1.7 - 1.12
+// Paste this class into your mod and generate all required imports
+
+
+import net.minecraft.client.model.ModelBase;
+import net.minecraft.client.model.ModelBox;
+import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.entity.Entity;
+
+public class ForgeOfTheSky_OuterRace extends ModelBase {
+	private final ModelRenderer DaMoXing;
+	private final ModelRenderer ZhengFanMian;
+	private final ModelRenderer YiZu;
+	private final ModelRenderer MuBan;
+	private final ModelRenderer BiaoZhi;
+	private final ModelRenderer ZhuTi;
+	private final ModelRenderer MuBan2;
+	private final ModelRenderer BiaoZhi2;
+	private final ModelRenderer ZhuTi2;
+	private final ModelRenderer YiZu2;
+	private final ModelRenderer MuBan3;
+	private final ModelRenderer BiaoZhi3;
+	private final ModelRenderer ZhuTi3;
+	private final ModelRenderer MuBan4;
+	private final ModelRenderer BiaoZhi4;
+	private final ModelRenderer ZhuTi4;
+	private final ModelRenderer ZhengFanMian2;
+	private final ModelRenderer YiZu3;
+	private final ModelRenderer MuBan5;
+	private final ModelRenderer BiaoZhi5;
+	private final ModelRenderer ZhuTi5;
+	private final ModelRenderer MuBan6;
+	private final ModelRenderer BiaoZhi6;
+	private final ModelRenderer ZhuTi6;
+	private final ModelRenderer YiZu4;
+	private final ModelRenderer MuBan7;
+	private final ModelRenderer BiaoZhi7;
+	private final ModelRenderer ZhuTi7;
+	private final ModelRenderer MuBan8;
+	private final ModelRenderer BiaoZhi8;
+	private final ModelRenderer ZhuTi8;
+	private final ModelRenderer ZhengFanMian3;
+	private final ModelRenderer YiZu5;
+	private final ModelRenderer MuBan9;
+	private final ModelRenderer BiaoZhi9;
+	private final ModelRenderer ZhuTi9;
+	private final ModelRenderer MuBan10;
+	private final ModelRenderer BiaoZhi10;
+	private final ModelRenderer ZhuTi10;
+	private final ModelRenderer YiZu6;
+	private final ModelRenderer MuBan11;
+	private final ModelRenderer BiaoZhi11;
+	private final ModelRenderer ZhuTi11;
+	private final ModelRenderer MuBan12;
+	private final ModelRenderer BiaoZhi12;
+	private final ModelRenderer ZhuTi12;
+	private final ModelRenderer ZhengFanMian4;
+	private final ModelRenderer YiZu7;
+	private final ModelRenderer MuBan13;
+	private final ModelRenderer BiaoZhi13;
+	private final ModelRenderer ZhuTi13;
+	private final ModelRenderer MuBan14;
+	private final ModelRenderer BiaoZhi14;
+	private final ModelRenderer ZhuTi14;
+	private final ModelRenderer YiZu8;
+	private final ModelRenderer MuBan15;
+	private final ModelRenderer BiaoZhi15;
+	private final ModelRenderer ZhuTi15;
+	private final ModelRenderer MuBan16;
+	private final ModelRenderer BiaoZhi16;
+	private final ModelRenderer ZhuTi16;
+	private final ModelRenderer ZhengMian;
+	private final ModelRenderer ZhengMian2;
+	private final ModelRenderer CeMian;
+	private final ModelRenderer CeMian2;
+
+	public ForgeOfTheSky_OuterRace() {
+		textureWidth = 1024;
+		textureHeight = 1024;
+
+		DaMoXing = new ModelRenderer(this);
+		DaMoXing.setRotationPoint(-3.0F, 22.0F, -17.0F);
+
+
+		ZhengFanMian = new ModelRenderer(this);
+		ZhengFanMian.setRotationPoint(0.0F, 0.0F, 0.0F);
+		DaMoXing.addChild(ZhengFanMian);
+
+
+		YiZu = new ModelRenderer(this);
+		YiZu.setRotationPoint(0.0F, 0.0F, 0.0F);
+		ZhengFanMian.addChild(YiZu);
+
+
+		MuBan = new ModelRenderer(this);
+		MuBan.setRotationPoint(0.0F, 0.0F, 0.0F);
+		YiZu.addChild(MuBan);
+
+
+		BiaoZhi = new ModelRenderer(this);
+		BiaoZhi.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan.addChild(BiaoZhi);
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 456, 460, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 264, 470, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 306, 470, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 348, 470, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 470, 350, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 470, 353, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 470, 356, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 488, 336, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 378, 488, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 224, 494, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 262, 494, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 496, 190, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 496, 193, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 496, 286, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 498, 30, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 500, 97, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 292, 497, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 504, 481, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 300, 494, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi.cubeList.add(new ModelBox(BiaoZhi, 208, 510, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi = new ModelRenderer(this);
+		ZhuTi.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan.addChild(ZhuTi);
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 320, 491, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 0, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 10, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 20, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 30, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 40, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 204, 170, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 204, 180, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 204, 190, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 204, 200, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 264, 280, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 0, 290, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 330, 230, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 330, 240, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 248, 340, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 308, 340, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 384, 290, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 392, 280, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 400, 70, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 406, 390, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 312, 420, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 436, 400, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 450, 210, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 454, 100, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi.cubeList.add(new ModelBox(ZhuTi, 360, 440, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan2 = new ModelRenderer(this);
+		MuBan2.setRotationPoint(3.0F, -66.0F, 7.0F);
+		YiZu.addChild(MuBan2);
+		setRotationAngle(MuBan2, 0.0F, 0.0F, -1.5708F);
+
+
+		BiaoZhi2 = new ModelRenderer(this);
+		BiaoZhi2.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan2.addChild(BiaoZhi2);
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 462, 420, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 359, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 362, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 365, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 368, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 371, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 470, 374, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 488, 429, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 488, 432, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 496, 100, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 496, 103, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 496, 196, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 496, 199, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 496, 389, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 498, 33, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 224, 500, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 464, 503, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 504, 484, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 376, 507, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi2.cubeList.add(new ModelBox(BiaoZhi2, 512, 358, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi2 = new ModelRenderer(this);
+		ZhuTi2.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan2.addChild(ZhuTi2);
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 352, 491, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 0, 50, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 0, 60, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 68, 0, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 68, 10, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 68, 20, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 0, 210, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 66, 210, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 132, 210, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 198, 210, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 64, 290, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 128, 290, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 330, 250, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 256, 330, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 0, 350, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 60, 350, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 384, 300, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 394, 210, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 400, 80, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 0, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 420, 350, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 120, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 216, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 454, 110, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi2.cubeList.add(new ModelBox(ZhuTi2, 456, 50, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		YiZu2 = new ModelRenderer(this);
+		YiZu2.setRotationPoint(-80.0F, 0.0F, 0.0F);
+		ZhengFanMian.addChild(YiZu2);
+
+
+		MuBan3 = new ModelRenderer(this);
+		MuBan3.setRotationPoint(0.0F, 0.0F, 0.0F);
+		YiZu2.addChild(MuBan3);
+		setRotationAngle(MuBan3, 0.0F, 0.0F, 1.5708F);
+
+
+		BiaoZhi3 = new ModelRenderer(this);
+		BiaoZhi3.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan3.addChild(BiaoZhi3);
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 462, 423, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 470, 377, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 470, 380, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 470, 383, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 470, 386, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 390, 470, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 432, 472, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 488, 435, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 488, 438, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 496, 106, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 496, 109, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 496, 202, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 496, 205, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 496, 392, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 498, 36, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 254, 500, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 492, 503, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 504, 487, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 68, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi3.cubeList.add(new ModelBox(BiaoZhi3, 512, 361, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi3 = new ModelRenderer(this);
+		ZhuTi3.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan3.addChild(ZhuTi3);
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 384, 491, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 68, 30, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 68, 40, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 68, 50, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 68, 60, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 0, 70, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 0, 220, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 66, 220, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 132, 220, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 198, 220, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 192, 290, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 256, 290, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 330, 260, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 330, 270, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 120, 350, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 180, 350, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 384, 310, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 394, 220, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 400, 90, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 52, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 420, 360, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 168, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 450, 220, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 454, 120, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi3.cubeList.add(new ModelBox(ZhuTi3, 456, 60, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan4 = new ModelRenderer(this);
+		MuBan4.setRotationPoint(-2.0F, -66.0F, 7.0F);
+		YiZu2.addChild(MuBan4);
+		setRotationAngle(MuBan4, 0.0F, 0.0F, -3.1416F);
+
+
+		BiaoZhi4 = new ModelRenderer(this);
+		BiaoZhi4.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan4.addChild(BiaoZhi4);
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 462, 426, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 0, 473, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 42, 473, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 84, 473, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 126, 473, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 168, 473, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 210, 473, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 488, 441, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 488, 444, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 496, 112, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 496, 115, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 496, 208, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 496, 211, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 496, 395, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 498, 39, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 284, 500, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 0, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 20, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 88, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi4.cubeList.add(new ModelBox(BiaoZhi4, 512, 364, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi4 = new ModelRenderer(this);
+		ZhuTi4.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan4.addChild(ZhuTi4);
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 492, 450, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 68, 70, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 0, 80, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 68, 80, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 0, 90, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 68, 90, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 0, 230, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 66, 230, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 132, 230, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 198, 230, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 0, 300, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 64, 300, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 318, 330, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 336, 170, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 240, 350, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 300, 350, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 384, 320, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 398, 170, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 400, 100, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 104, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 362, 420, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 216, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 450, 230, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 454, 130, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi4.cubeList.add(new ModelBox(ZhuTi4, 458, 390, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		ZhengFanMian2 = new ModelRenderer(this);
+		ZhengFanMian2.setRotationPoint(-40.0F, -63.0F, 150.75F);
+		DaMoXing.addChild(ZhengFanMian2);
+		setRotationAngle(ZhengFanMian2, 3.1416F, 0.0F, 0.0F);
+
+
+		YiZu3 = new ModelRenderer(this);
+		YiZu3.setRotationPoint(40.0F, 0.0F, 0.0F);
+		ZhengFanMian2.addChild(YiZu3);
+
+
+		MuBan5 = new ModelRenderer(this);
+		MuBan5.setRotationPoint(0.0F, 0.0F, 0.0F);
+		YiZu3.addChild(MuBan5);
+
+
+		BiaoZhi5 = new ModelRenderer(this);
+		BiaoZhi5.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan5.addChild(BiaoZhi5);
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 456, 463, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 252, 473, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 294, 473, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 336, 473, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 378, 473, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 474, 472, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 420, 475, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 488, 447, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 490, 290, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 496, 118, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 496, 121, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 496, 214, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 496, 217, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 224, 497, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 498, 42, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 500, 460, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 28, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 44, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 108, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi5.cubeList.add(new ModelBox(BiaoZhi5, 512, 367, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi5 = new ModelRenderer(this);
+		ZhuTi5.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan5.addChild(ZhuTi5);
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 416, 493, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 100, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 68, 100, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 110, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 68, 110, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 120, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 240, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 66, 240, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 132, 240, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 198, 240, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 128, 300, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 192, 300, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 336, 180, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 336, 190, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 360, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 60, 360, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 398, 180, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 400, 110, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 156, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 420, 370, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 264, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 450, 240, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 454, 140, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi5.cubeList.add(new ModelBox(ZhuTi5, 0, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan6 = new ModelRenderer(this);
+		MuBan6.setRotationPoint(3.0F, -66.0F, 7.0F);
+		YiZu3.addChild(MuBan6);
+		setRotationAngle(MuBan6, 0.0F, 0.0F, -1.5708F);
+
+
+		BiaoZhi6 = new ModelRenderer(this);
+		BiaoZhi6.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan6.addChild(BiaoZhi6);
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 456, 466, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 462, 475, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 0, 476, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 42, 476, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 84, 476, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 126, 476, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 168, 476, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 490, 293, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 490, 296, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 496, 124, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 496, 127, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 496, 220, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 496, 223, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 258, 497, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 498, 45, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 500, 463, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 56, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 68, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 128, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi6.cubeList.add(new ModelBox(BiaoZhi6, 512, 370, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi6 = new ModelRenderer(this);
+		ZhuTi6.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan6.addChild(ZhuTi6);
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 448, 493, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 68, 120, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 0, 130, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 68, 130, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 136, 0, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 136, 10, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 0, 250, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 66, 250, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 132, 250, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 198, 250, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 256, 300, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 0, 310, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 336, 200, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 338, 0, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 120, 360, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 180, 360, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 58, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 398, 190, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 112, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 208, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 420, 380, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 312, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 450, 250, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 454, 150, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi6.cubeList.add(new ModelBox(ZhuTi6, 38, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		YiZu4 = new ModelRenderer(this);
+		YiZu4.setRotationPoint(-40.0F, 0.0F, 0.0F);
+		ZhengFanMian2.addChild(YiZu4);
+
+
+		MuBan7 = new ModelRenderer(this);
+		MuBan7.setRotationPoint(0.0F, -1.0F, 0.0F);
+		YiZu4.addChild(MuBan7);
+		setRotationAngle(MuBan7, 0.0F, 0.0F, 1.5708F);
+
+
+		BiaoZhi7 = new ModelRenderer(this);
+		BiaoZhi7.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan7.addChild(BiaoZhi7);
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 468, 410, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 210, 476, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 252, 476, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 294, 476, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 336, 476, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 378, 476, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 478, 340, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 490, 299, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 490, 302, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 496, 130, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 496, 133, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 496, 226, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 496, 229, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 498, 0, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 498, 490, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 500, 466, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 84, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 92, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 148, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi7.cubeList.add(new ModelBox(BiaoZhi7, 512, 373, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi7 = new ModelRenderer(this);
+		ZhuTi7.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan7.addChild(ZhuTi7);
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 480, 493, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 136, 20, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 136, 30, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 136, 40, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 136, 50, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 136, 60, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 0, 260, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 66, 260, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 132, 260, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 198, 260, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 64, 310, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 128, 310, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 338, 10, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 338, 20, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 240, 360, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 300, 360, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 116, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 398, 200, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 400, 120, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 260, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 412, 420, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 440, 330, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 450, 260, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 454, 160, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi7.cubeList.add(new ModelBox(ZhuTi7, 76, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan8 = new ModelRenderer(this);
+		MuBan8.setRotationPoint(-2.0F, -66.0F, 7.0F);
+		YiZu4.addChild(MuBan8);
+		setRotationAngle(MuBan8, 0.0F, 0.0F, -3.1416F);
+
+
+		BiaoZhi8 = new ModelRenderer(this);
+		BiaoZhi8.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan8.addChild(BiaoZhi8);
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 468, 413, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 478, 343, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 478, 346, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 420, 478, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 462, 478, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 0, 479, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 42, 479, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 490, 305, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 490, 308, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 496, 136, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 496, 139, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 496, 232, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 496, 235, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 498, 3, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 500, 70, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 500, 469, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 112, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 116, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 168, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi8.cubeList.add(new ModelBox(BiaoZhi8, 512, 376, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi8 = new ModelRenderer(this);
+		ZhuTi8.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan8.addChild(ZhuTi8);
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 0, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 136, 70, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 136, 80, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 136, 90, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 136, 100, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 136, 110, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 264, 210, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 264, 220, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 264, 230, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 264, 240, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 192, 310, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 256, 310, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 338, 30, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 338, 40, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 360, 350, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 360, 360, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 174, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 0, 400, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 400, 130, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 312, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 428, 340, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 440, 430, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 262, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 454, 170, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi8.cubeList.add(new ModelBox(ZhuTi8, 114, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		ZhengFanMian3 = new ModelRenderer(this);
+		ZhengFanMian3.setRotationPoint(-110.75F, -63.0F, 75.0F);
+		DaMoXing.addChild(ZhengFanMian3);
+		setRotationAngle(ZhengFanMian3, 3.1416F, -1.5708F, 0.0F);
+
+
+		YiZu5 = new ModelRenderer(this);
+		YiZu5.setRotationPoint(40.0F, 0.0F, 0.0F);
+		ZhengFanMian3.addChild(YiZu5);
+
+
+		MuBan9 = new ModelRenderer(this);
+		MuBan9.setRotationPoint(0.0F, 1.0F, 0.0F);
+		YiZu5.addChild(MuBan9);
+
+
+		BiaoZhi9 = new ModelRenderer(this);
+		BiaoZhi9.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan9.addChild(BiaoZhi9);
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 468, 416, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 84, 479, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 126, 479, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 168, 479, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 210, 479, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 252, 479, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 294, 479, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 490, 311, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 490, 314, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 496, 142, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 496, 145, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 496, 238, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 496, 241, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 498, 6, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 500, 73, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 314, 501, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 140, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 140, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 188, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi9.cubeList.add(new ModelBox(BiaoZhi9, 512, 379, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi9 = new ModelRenderer(this);
+		ZhuTi9.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan9.addChild(ZhuTi9);
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 32, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 136, 120, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 136, 130, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 0, 140, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 68, 140, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 136, 140, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 264, 250, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 264, 260, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 0, 270, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 66, 270, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 0, 320, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 64, 320, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 338, 50, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 338, 60, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 368, 340, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 0, 370, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 232, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 400, 0, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 400, 140, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 364, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 0, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 440, 440, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 450, 270, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 454, 180, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi9.cubeList.add(new ModelBox(ZhuTi9, 152, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan10 = new ModelRenderer(this);
+		MuBan10.setRotationPoint(3.0F, -66.0F, 7.0F);
+		YiZu5.addChild(MuBan10);
+		setRotationAngle(MuBan10, 0.0F, 0.0F, -1.5708F);
+
+
+		BiaoZhi10 = new ModelRenderer(this);
+		BiaoZhi10.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan10.addChild(BiaoZhi10);
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 456, 469, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 336, 479, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 378, 479, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 420, 481, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 462, 481, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 0, 482, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 42, 482, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 490, 317, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 490, 320, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 496, 148, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 496, 151, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 496, 244, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 496, 247, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 498, 9, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 500, 76, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 344, 501, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 168, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 164, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 304, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi10.cubeList.add(new ModelBox(BiaoZhi10, 512, 382, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi10 = new ModelRenderer(this);
+		ZhuTi10.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan10.addChild(ZhuTi10);
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 494, 50, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 0, 150, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 68, 150, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 136, 150, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 0, 160, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 68, 160, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 132, 270, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 270, 170, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 270, 180, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 270, 190, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 128, 320, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 192, 320, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 338, 70, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 338, 80, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 60, 370, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 120, 370, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 290, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 400, 10, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 400, 150, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 416, 410, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 50, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 442, 290, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 308, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 454, 190, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi10.cubeList.add(new ModelBox(ZhuTi10, 190, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		YiZu6 = new ModelRenderer(this);
+		YiZu6.setRotationPoint(-40.0F, 0.0F, 0.0F);
+		ZhengFanMian3.addChild(YiZu6);
+
+
+		MuBan11 = new ModelRenderer(this);
+		MuBan11.setRotationPoint(0.0F, 0.0F, 0.0F);
+		YiZu6.addChild(MuBan11);
+		setRotationAngle(MuBan11, 0.0F, 0.0F, 1.5708F);
+
+
+		BiaoZhi11 = new ModelRenderer(this);
+		BiaoZhi11.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan11.addChild(BiaoZhi11);
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 0, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 84, 482, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 126, 482, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 168, 482, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 210, 482, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 252, 482, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 294, 482, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 490, 323, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 490, 326, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 496, 154, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 496, 157, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 496, 250, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 496, 253, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 498, 12, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 500, 79, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 374, 501, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 196, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 188, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 324, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi11.cubeList.add(new ModelBox(BiaoZhi11, 512, 385, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi11 = new ModelRenderer(this);
+		ZhuTi11.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan11.addChild(ZhuTi11);
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 494, 60, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 136, 160, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 0, 170, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 68, 170, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 136, 170, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 0, 180, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 198, 270, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 270, 200, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 264, 270, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 272, 0, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 256, 320, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 320, 290, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 338, 90, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 338, 100, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 180, 370, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 240, 370, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 348, 390, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 400, 20, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 400, 160, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 0, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 100, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 442, 300, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 354, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 454, 200, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi11.cubeList.add(new ModelBox(ZhuTi11, 228, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan12 = new ModelRenderer(this);
+		MuBan12.setRotationPoint(-2.0F, -66.0F, 7.0F);
+		YiZu6.addChild(MuBan12);
+		setRotationAngle(MuBan12, 0.0F, 0.0F, -3.1416F);
+
+
+		BiaoZhi12 = new ModelRenderer(this);
+		BiaoZhi12.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan12.addChild(BiaoZhi12);
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 44, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 336, 482, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 378, 482, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 484, 400, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 484, 403, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 484, 406, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 420, 484, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 418, 490, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 458, 490, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 496, 160, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 496, 163, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 496, 256, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 496, 259, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 498, 15, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 500, 82, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 224, 503, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 314, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 304, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 344, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi12.cubeList.add(new ModelBox(BiaoZhi12, 512, 409, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi12 = new ModelRenderer(this);
+		ZhuTi12.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan12.addChild(ZhuTi12);
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 64, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 68, 180, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 136, 180, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 0, 190, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 68, 190, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 136, 190, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 272, 10, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 272, 20, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 272, 30, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 272, 40, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 320, 300, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 320, 310, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 338, 110, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 338, 120, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 300, 370, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 360, 370, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 392, 230, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 400, 30, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 166, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 52, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 150, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 442, 310, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 400, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 456, 0, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi12.cubeList.add(new ModelBox(ZhuTi12, 266, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		ZhengFanMian4 = new ModelRenderer(this);
+		ZhengFanMian4.setRotationPoint(34.25F, -63.0F, 77.0F);
+		DaMoXing.addChild(ZhengFanMian4);
+		setRotationAngle(ZhengFanMian4, 0.0F, 1.5708F, 3.1416F);
+
+
+		YiZu7 = new ModelRenderer(this);
+		YiZu7.setRotationPoint(40.0F, 0.0F, 0.0F);
+		ZhengFanMian4.addChild(YiZu7);
+
+
+		MuBan13 = new ModelRenderer(this);
+		MuBan13.setRotationPoint(0.0F, 1.0F, 0.0F);
+		YiZu7.addChild(MuBan13);
+
+
+		BiaoZhi13 = new ModelRenderer(this);
+		BiaoZhi13.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan13.addChild(BiaoZhi13);
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 88, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 462, 484, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 0, 485, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 42, 485, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 84, 485, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 126, 485, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 168, 485, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 0, 491, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 40, 491, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 496, 166, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 496, 169, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 496, 262, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 496, 265, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 498, 18, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 500, 85, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 254, 503, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 342, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 328, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 364, 510, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi13.cubeList.add(new ModelBox(BiaoZhi13, 512, 412, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi13 = new ModelRenderer(this);
+		ZhuTi13.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan13.addChild(ZhuTi13);
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 96, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 0, 200, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 68, 200, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 136, 200, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 204, 0, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 204, 10, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 272, 50, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 272, 60, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 272, 70, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 272, 80, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 320, 320, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 328, 280, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 338, 130, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 338, 140, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 0, 380, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 60, 380, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 392, 240, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 400, 40, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 220, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 104, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 200, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 442, 320, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 446, 450, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 456, 10, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi13.cubeList.add(new ModelBox(ZhuTi13, 304, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan14 = new ModelRenderer(this);
+		MuBan14.setRotationPoint(3.0F, -66.0F, 7.0F);
+		YiZu7.addChild(MuBan14);
+		setRotationAngle(MuBan14, 0.0F, 0.0F, -1.5708F);
+
+
+		BiaoZhi14 = new ModelRenderer(this);
+		BiaoZhi14.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan14.addChild(BiaoZhi14);
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 132, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 210, 485, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 252, 485, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 294, 485, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 336, 485, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 378, 485, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 420, 487, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 80, 491, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 120, 491, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 496, 172, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 496, 175, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 496, 268, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 496, 271, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 498, 21, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 500, 88, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 284, 503, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 370, 504, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 352, 507, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 512, 349, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi14.cubeList.add(new ModelBox(BiaoZhi14, 512, 415, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi14 = new ModelRenderer(this);
+		ZhuTi14.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan14.addChild(ZhuTi14);
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 128, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 204, 20, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 204, 30, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 204, 40, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 204, 50, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 204, 60, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 272, 90, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 272, 100, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 272, 110, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 272, 120, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 0, 330, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 64, 330, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 338, 150, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 338, 160, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 120, 380, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 180, 380, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 392, 250, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 400, 50, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 274, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 156, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 250, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 448, 280, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 454, 70, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 456, 20, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi14.cubeList.add(new ModelBox(ZhuTi14, 342, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		YiZu8 = new ModelRenderer(this);
+		YiZu8.setRotationPoint(-40.0F, 0.0F, 0.0F);
+		ZhengFanMian4.addChild(YiZu8);
+
+
+		MuBan15 = new ModelRenderer(this);
+		MuBan15.setRotationPoint(0.0F, 0.0F, 0.0F);
+		YiZu8.addChild(MuBan15);
+		setRotationAngle(MuBan15, 0.0F, 0.0F, 1.5708F);
+
+
+		BiaoZhi15 = new ModelRenderer(this);
+		BiaoZhi15.setRotationPoint(0.0F, 0.0F, 1.0F);
+		MuBan15.addChild(BiaoZhi15);
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 176, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 462, 487, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 0, 488, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 42, 488, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 84, 488, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 126, 488, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 168, 488, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 160, 491, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 200, 491, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 496, 178, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 496, 181, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 496, 274, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 496, 277, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 498, 24, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 500, 91, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 404, 503, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 504, 475, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 20, 510, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 512, 352, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi15.cubeList.add(new ModelBox(BiaoZhi15, 512, 493, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi15 = new ModelRenderer(this);
+		ZhuTi15.setRotationPoint(3.0F, -22.0F, 2.0F);
+		MuBan15.addChild(ZhuTi15);
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 160, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 204, 70, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 204, 80, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 204, 90, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 204, 100, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 204, 110, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 272, 130, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 272, 140, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 272, 150, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 272, 160, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 128, 330, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 192, 330, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 0, 340, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 62, 340, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 240, 380, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 300, 380, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 392, 260, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 56, 400, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 328, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 208, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 300, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 120, 450, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 454, 80, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 456, 30, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi15.cubeList.add(new ModelBox(ZhuTi15, 380, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		MuBan16 = new ModelRenderer(this);
+		MuBan16.setRotationPoint(-2.0F, -66.0F, 7.0F);
+		YiZu8.addChild(MuBan16);
+		setRotationAngle(MuBan16, 0.0F, 0.0F, -3.1416F);
+
+
+		BiaoZhi16 = new ModelRenderer(this);
+		BiaoZhi16.setRotationPoint(-3.0F, -2.0F, -6.0F);
+		MuBan16.addChild(BiaoZhi16);
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 220, 470, -19.0F, -1.0F, -1.0F, 20, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 210, 488, -18.0F, -2.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 252, 488, -18.0F, -3.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 294, 488, -18.0F, -4.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 488, 330, -18.0F, -5.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 488, 333, -18.0F, -6.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 336, 488, -18.0F, -7.0F, -1.0F, 19, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 240, 491, -17.0F, -8.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 280, 491, -17.0F, -9.0F, -1.0F, 18, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 496, 184, -16.0F, -10.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 496, 187, -16.0F, -11.0F, -1.0F, 17, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 496, 280, -15.0F, -12.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 496, 283, -15.0F, -13.0F, -1.0F, 16, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 498, 27, -14.0F, -14.0F, -1.0F, 15, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 500, 94, -13.0F, -15.0F, -1.0F, 14, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 434, 503, -12.0F, -16.0F, -1.0F, 13, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 504, 478, -11.0F, -17.0F, -1.0F, 12, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 44, 510, -9.0F, -18.0F, -1.0F, 10, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 512, 355, -7.0F, -19.0F, -1.0F, 8, 1, 2, 0.0F));
+		BiaoZhi16.cubeList.add(new ModelBox(BiaoZhi16, 512, 496, -5.0F, -20.0F, -1.0F, 6, 1, 2, 0.0F));
+
+		ZhuTi16 = new ModelRenderer(this);
+		ZhuTi16.setRotationPoint(0.0F, -24.0F, -5.0F);
+		MuBan16.addChild(ZhuTi16);
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 192, 494, -7.0F, -1.0F, 0.0F, 7, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 204, 120, -25.0F, 23.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 204, 130, -25.0F, 22.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 204, 140, -25.0F, 21.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 204, 150, -25.0F, 20.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 204, 160, -25.0F, 19.0F, 0.0F, 25, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 0, 280, -24.0F, 18.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 66, 280, -24.0F, 17.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 132, 280, -24.0F, 16.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 198, 280, -24.0F, 15.0F, 0.0F, 24, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 330, 210, -23.0F, 14.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 330, 220, -23.0F, 13.0F, 0.0F, 23, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 124, 340, -22.0F, 12.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 186, 340, -22.0F, 11.0F, 0.0F, 22, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 380, 330, -21.0F, 10.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 360, 380, -21.0F, 9.0F, 0.0F, 21, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 392, 270, -20.0F, 8.0F, 0.0F, 20, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 400, 60, -19.0F, 7.0F, 0.0F, 19, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 382, 400, -18.0F, 6.0F, 0.0F, 18, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 260, 420, -17.0F, 5.0F, 0.0F, 17, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 350, 430, -16.0F, 4.0F, 0.0F, 16, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 168, 450, -15.0F, 3.0F, 0.0F, 15, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 454, 90, -14.0F, 2.0F, 0.0F, 14, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 456, 40, -12.0F, 1.0F, 0.0F, 12, 1, 9, 0.0F));
+		ZhuTi16.cubeList.add(new ModelBox(ZhuTi16, 418, 460, -10.0F, 0.0F, 0.0F, 10, 1, 9, 0.0F));
+
+		ZhengMian = new ModelRenderer(this);
+		ZhengMian.setRotationPoint(20.0F, -7.0F, 68.0F);
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 224, 506, 17.0F, -35.0F, -25.0F, 5, 5, 5, 0.0F));
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 264, 506, 17.0F, -35.0F, 3.0F, 5, 5, 5, 0.0F));
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 244, 506, 17.0F, 25.0F, -25.0F, 5, 5, 5, 0.0F));
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 418, 506, 17.0F, 25.0F, 3.0F, 5, 5, 5, 0.0F));
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 284, 506, 17.0F, -5.0F, -44.0F, 5, 5, 5, 0.0F));
+		ZhengMian.cubeList.add(new ModelBox(ZhengMian, 398, 506, 17.0F, -5.0F, 21.0F, 5, 5, 5, 0.0F));
+
+		ZhengMian2 = new ModelRenderer(this);
+		ZhengMian2.setRotationPoint(-142.0F, -7.0F, 68.0F);
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 506, 419, 17.0F, -35.0F, -25.0F, 5, 5, 5, 0.0F));
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 438, 506, 17.0F, -35.0F, 3.0F, 5, 5, 5, 0.0F));
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 458, 506, 17.0F, 25.0F, -25.0F, 5, 5, 5, 0.0F));
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 478, 506, 17.0F, 25.0F, 3.0F, 5, 5, 5, 0.0F));
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 498, 506, 17.0F, -5.0F, -44.0F, 5, 5, 5, 0.0F));
+		ZhengMian2.cubeList.add(new ModelBox(ZhengMian2, 0, 507, 17.0F, -5.0F, 21.0F, 5, 5, 5, 0.0F));
+
+		CeMian = new ModelRenderer(this);
+		CeMian.setRotationPoint(-38.0F, 25.0F, -29.0F);
+		CeMian.cubeList.add(new ModelBox(CeMian, 0, 440, -9.0F, -69.0F, -1.0F, 10, 10, 10, 0.0F));
+		CeMian.cubeList.add(new ModelBox(CeMian, 400, 430, -9.0F, -10.0F, -1.0F, 10, 10, 10, 0.0F));
+
+		CeMian2 = new ModelRenderer(this);
+		CeMian2.setRotationPoint(-38.0F, 25.0F, 138.0F);
+		CeMian2.cubeList.add(new ModelBox(CeMian2, 40, 440, -9.0F, -69.0F, -1.0F, 10, 10, 10, 0.0F));
+		CeMian2.cubeList.add(new ModelBox(CeMian2, 80, 440, -9.0F, -10.0F, -1.0F, 10, 10, 10, 0.0F));
+	}
+
+	@Override
+	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5) {
+		DaMoXing.render(f5);
+		ZhengMian.render(f5);
+		ZhengMian2.render(f5);
+		CeMian.render(f5);
+		CeMian2.render(f5);
+	}
+
+	public void setRotationAngle(ModelRenderer modelRenderer, float x, float y, float z) {
+		modelRenderer.rotateAngleX = x;
+		modelRenderer.rotateAngleY = y;
+		modelRenderer.rotateAngleZ = z;
+	}
+}

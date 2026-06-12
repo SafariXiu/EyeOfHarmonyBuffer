@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.client.renderer.block;
 
 import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_Interlayer;
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_OuterRace;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -18,6 +19,10 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
         new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_Interlayer.png");
     private final ForgeOfTheSky_Interlayer Interlayer = new ForgeOfTheSky_Interlayer();
 
+    private final ResourceLocation OuterRaceTexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_OuterRace.png");
+    private final ForgeOfTheSky_OuterRace OuterRace = new ForgeOfTheSky_OuterRace();
+
     @Override
     public void renderTileEntityAt(TileEntity te,
                                    double x,
@@ -27,6 +32,8 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
 
         renderCore(te, x, y, z, partialTicks);
         renderInterlayer(te, x, y, z, partialTicks);
+
+        renderOuterRace(te, x, y, z, partialTicks);
     }
 
     private void renderCore(TileEntity te,
@@ -109,6 +116,51 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
 
         this.bindTexture(InterlayerTexture);
         Interlayer.render(null, 0, 0, 0, 0, 0, 0.0625F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+
+    private void renderOuterRace(TileEntity te,
+                                 double x,
+                                 double y,
+                                 double z,
+                                 float partialTicks) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(x + 2.5D - 0.1D, y + 0.15D, z + 3.1D);
+
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+
+        GL11.glScalef(0.7F, 0.6F, 0.7F);
+
+        this.bindTexture(OuterRaceTexture);
+        OuterRace.render(null, 0, 0, 0, 0, 0, 0.0625F);
 
         OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
         if (lightmapEnabled) {
