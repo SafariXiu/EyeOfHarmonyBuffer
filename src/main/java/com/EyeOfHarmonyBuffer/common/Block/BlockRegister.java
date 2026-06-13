@@ -21,8 +21,8 @@ public class BlockRegister {
         GameRegistry.registerBlock(TrubineBlock, "blockWindmill");
         GameRegistry.registerTileEntity(TileEntityWindmill.class, "Windmill_TE");
 
-        ForgeOfSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("blockBlcokForgeOfTheSkyCore");
-        GameRegistry.registerBlock(ForgeOfSkyBlockCore, "blockBlcokForgeOfTheSkyCore");
+        ForgeOfSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("BlcokForgeOfTheSkyCore");
+        GameRegistry.registerBlock(ForgeOfSkyBlockCore, "BlcokForgeOfTheSkyCore");
         GameRegistry.registerTileEntity(TileEntityForgeOfTheSkyCore.class, "ForgeOfTheSkyCore_TE");
 
         GameRegistry.registerBlock(

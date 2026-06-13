@@ -38,20 +38,6 @@ public class ForgeOfTheSky_OutermostCircle extends ModelBase {
 	private final ModelRenderer JiaoBiao3;
 	private final ModelRenderer JiaoBiao4;
 
-    private static final float[] SLOT_ANGLES = new float[] {
-        -10.0F,  10.0F,
-        60.0F,  120.0F,
-        170.0F, 190.0F,
-        240.0F, 300.0F
-    };
-
-    private static final float[] SLOT_YAW_OFFSETS = new float[] {
-        -12.0F,  12.0F,
-        5.0F,   18.0F,
-        12.0F, -12.0F,
-        -18.0F, -5.0F
-    };
-
 	public ForgeOfTheSky_OutermostCircle() {
 		textureWidth = 64;
 		textureHeight = 64;
@@ -252,31 +238,57 @@ public class ForgeOfTheSky_OutermostCircle extends ModelBase {
         int i = 0;
 
         // doube up doube down doube up doube down
-        renderOnCircle(MuKuai_doube, i++, total, radius, scale); // 0
-        renderOnCircle(MuKuai2_up,   i++, total, radius, scale); // 1
-        renderOnCircle(MuKuai_doube, i++, total, radius, scale); // 2
-        renderOnCircle(MuKuai3_down, i++, total, radius, scale); // 3
-        renderOnCircle(MuKuai_doube, i++, total, radius, scale); // 4
-        renderOnCircle(MuKuai2_up,   i++, total, radius, scale); // 5
-        renderOnCircle(MuKuai_doube, i++, total, radius, scale); // 6
-        renderOnCircle(MuKuai3_down, i++, total, radius, scale); // 7
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai2_up,   i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai3_down, i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai2_up,   i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, 0.0F);
+        renderOnCircle(MuKuai3_down, i++, total, radius, scale, 0.0F);
 
         GL11.glPopMatrix();
     }
 
-    private void renderOnCircle(ModelRenderer part, int index, int total,
-                                float radius, float scale) {
+    private void renderOnCircle(ModelRenderer part,
+                                int index,
+                                int total,
+                                float radius,
+                                float scale,
+                                float globalAngleOffset) {
         GL11.glPushMatrix();
 
-        float angle = 360.0F * index / (float) total;
+        float anglePerSlot = 360.0F / (float) total;
+        float angle = anglePerSlot * index + globalAngleOffset;
 
         GL11.glRotatef(angle, 0.0F, 1.0F, 0.0F);
-
         GL11.glTranslatef(0.0F, 0.0F, radius);
 
-        GL11.glRotatef(0.0F, 0.0F, 1.0F, 0.0F);
-
         part.render(scale);
+
+        GL11.glPopMatrix();
+    }
+
+    public void renderAnimated(float scale,
+                               float globalAngleOffset,
+                               float radiusOffset) {
+
+        GL11.glPushMatrix();
+
+        int total = 8;
+        float baseRadius = 100.0F * scale;
+        float radius = baseRadius + radiusOffset;
+
+        int i = 0;
+
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai2_up,   i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai3_down, i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai2_up,   i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai_doube, i++, total, radius, scale, globalAngleOffset);
+        renderOnCircle(MuKuai3_down, i++, total, radius, scale, globalAngleOffset);
 
         GL11.glPopMatrix();
     }

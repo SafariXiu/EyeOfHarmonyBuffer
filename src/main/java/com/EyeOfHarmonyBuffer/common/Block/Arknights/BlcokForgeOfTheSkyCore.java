@@ -10,12 +10,14 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
+import static com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.MODID;
+
 public class BlcokForgeOfTheSkyCore extends BlockContainer {
 
     public BlcokForgeOfTheSkyCore() {
         super(Material.iron);
-        setBlockName("blockForgeOfTheSkyCore");
-        setBlockTextureName("eyeofharmonybuffer:forge_of_the_sky_core");
+        setBlockName("ForgeOfTheSkyCore");
+        setBlockTextureName(MODID + ":Arknights/ForgeOfTheSky_Core");
         setCreativeTab(CreativeTabs.tabMisc);
 
         setHardness(-1.0F);
