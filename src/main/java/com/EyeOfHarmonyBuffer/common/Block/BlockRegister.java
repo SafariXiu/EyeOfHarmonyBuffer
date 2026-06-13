@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabili
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockForgeOfTheSkyCore;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 
@@ -21,8 +22,8 @@ public class BlockRegister {
         GameRegistry.registerBlock(TrubineBlock, "blockWindmill");
         GameRegistry.registerTileEntity(TileEntityWindmill.class, "Windmill_TE");
 
-        ForgeOfSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("BlcokForgeOfTheSkyCore");
-        GameRegistry.registerBlock(ForgeOfSkyBlockCore, "BlcokForgeOfTheSkyCore");
+        ForgeOfSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("ForgeOfTheSkyCore");
+        GameRegistry.registerBlock(ForgeOfSkyBlockCore, ItemBlockForgeOfTheSkyCore.class, "ForgeOfTheSkyCore");
         GameRegistry.registerTileEntity(TileEntityForgeOfTheSkyCore.class, "ForgeOfTheSkyCore_TE");
 
         GameRegistry.registerBlock(

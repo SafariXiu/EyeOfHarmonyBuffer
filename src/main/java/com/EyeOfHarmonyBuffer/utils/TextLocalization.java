@@ -246,6 +246,8 @@ public class TextLocalization {
     public static final String EOHB_YaZhenZhenJi_01;
     public static final String EOHB_JinCaoRuanYin_00;
     public static final String EOHB_JinCaoRuanYin_01;
+    public static final String EOHB_ForgeOfTheSkyCore_Tooltip_00;
+    public static final String EOHB_ForgeOfTheSkyCore_Tooltip_01;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -524,6 +526,8 @@ public class TextLocalization {
         EOHB_YaZhenZhenJi_01 = TextHandler.texter("When your health drops below 6 points, it will automatically consume one Bud Needle Injection and start regenerating your HP.","EOHB_YaZhenZhenJi_01");
         EOHB_JinCaoRuanYin_00 = TextHandler.texter("Automatically used as long as it is in your inventory.","EOHB_JinCaoRuanYin_00");
         EOHB_JinCaoRuanYin_01 = TextHandler.texter("When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.","EOHB_JinCaoRuanYin_01");
+        EOHB_ForgeOfTheSkyCore_Tooltip_00 = TextHandler.texter("","EOHB_ForgeOfTheSkyCore_Tooltip_00");
+        EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("","EOHB_ForgeOfTheSkyCore_Tooltip_01");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
