@@ -134,6 +134,7 @@ public enum GTCMItemList {
     Grinders,
     EncapsulationMachines,
     FillingUnits,
+    ForgeOfTheSkys,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

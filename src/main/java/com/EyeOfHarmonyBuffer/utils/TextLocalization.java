@@ -205,6 +205,12 @@ public class TextLocalization {
     public static final String Tooltip_FillingUnit_00;
     public static final String Tooltip_FillingUnit_01;
 
+    public static final String NameForgeOfTheSky;
+    public static final String Tooltip_ForgeOfTheSky_MachineType;
+    public static final String Tooltip_ForgeOfTheSky_Controller;
+    public static final String Tooltip_ForgeOfTheSky_00;
+    public static final String Tooltip_ForgeOfTheSky_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -266,6 +272,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_Grinder;
     public static final String EOHB_Recipe_EncapsulationMachine;
     public static final String EOHB_Recipe_FillingUnit;
+    public static final String EOHB_Recipe_ForgeOfTheSky;
 
 
     public TextLocalization() {
@@ -497,8 +504,15 @@ public class TextLocalization {
         NameFillingUnit = TextHandler.texter("Filling Unit","NameFillingUnit");
         Tooltip_FillingUnit_MachineType = TextHandler.texter("Filling Unit","Tooltip_FillingUnit_MachineType");
         Tooltip_FillingUnit_Controller = TextHandler.texter("The controller block of the Filling Unit","Tooltip_FillingUnit_Controller");
-        Tooltip_FillingUnit_00 = TextHandler.texter("","Tooltip_FillingUnit_00");
-        Tooltip_FillingUnit_01 = TextHandler.texter("","Tooltip_FillingUnit_01");
+        Tooltip_FillingUnit_00 = TextHandler.texter("A specialized device capable of precisely filling raw materials into containers.","Tooltip_FillingUnit_00");
+        Tooltip_FillingUnit_01 = TextHandler.texter("Its patented aseptic filling technology greatly reduces the risk of product contamination.","Tooltip_FillingUnit_01");
+
+        //天有洪炉
+        NameForgeOfTheSky = TextHandler.texter("Forge Of The Sky","NameForgeOfTheSky");
+        Tooltip_ForgeOfTheSky_MachineType = TextHandler.texter("Forge Of The Sky","Tooltip_ForgeOfTheSky_MachineType");
+        Tooltip_ForgeOfTheSky_Controller = TextHandler.texter("The controller block of the Forge Of The Sky","Tooltip_ForgeOfTheSky_Controller");
+        Tooltip_ForgeOfTheSky_00 = TextHandler.texter("A specialized device used for synthesizing products related to Xiranite.","Tooltip_ForgeOfTheSky_00");
+        Tooltip_ForgeOfTheSky_01 = TextHandler.texter("The Earth gives birth to metals. The Sky holds the Forge.","Tooltip_ForgeOfTheSky_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -526,8 +540,8 @@ public class TextLocalization {
         EOHB_YaZhenZhenJi_01 = TextHandler.texter("When your health drops below 6 points, it will automatically consume one Bud Needle Injection and start regenerating your HP.","EOHB_YaZhenZhenJi_01");
         EOHB_JinCaoRuanYin_00 = TextHandler.texter("Automatically used as long as it is in your inventory.","EOHB_JinCaoRuanYin_00");
         EOHB_JinCaoRuanYin_01 = TextHandler.texter("When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.","EOHB_JinCaoRuanYin_01");
-        EOHB_ForgeOfTheSkyCore_Tooltip_00 = TextHandler.texter("","EOHB_ForgeOfTheSkyCore_Tooltip_00");
-        EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("","EOHB_ForgeOfTheSkyCore_Tooltip_01");
+        EOHB_ForgeOfTheSkyCore_Tooltip_00 = TextHandler.texter("Core component of the multiblock structure Forge of the Sky.","EOHB_ForgeOfTheSkyCore_Tooltip_00");
+        EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("Forge of the Sky, the Earth gives birth to metals.","EOHB_ForgeOfTheSkyCore_Tooltip_01");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
@@ -559,5 +573,6 @@ public class TextLocalization {
         EOHB_Recipe_Grinder = TextHandler.texter("Grinder","EOHB_Recipe_Grinder");
         EOHB_Recipe_EncapsulationMachine = TextHandler.texter("Encapsulation Machine","EOHB_Recipe_EncapsulationMachine");
         EOHB_Recipe_FillingUnit = TextHandler.texter("Filling Unit","EOHB_Recipe_FillingUnit");
+        EOHB_Recipe_ForgeOfTheSky = TextHandler.texter("Forge Of The Sky","EOHB_Recipe_ForgeOfTheSky");
     }
 }

@@ -24,6 +24,7 @@ public class MachineLoader {
     public static ItemStack Grinder;
     public static ItemStack EncapsulationMachine;
     public static ItemStack FillingUnit;
+    public static ItemStack ForgeOfTheSky;
 
     private final static int MachineBlockID = 23000;
 
@@ -146,5 +147,12 @@ public class MachineLoader {
             TextLocalization.NameFillingUnit
         ).getStackForm(1);
         GTCMItemList.FillingUnits.set(FillingUnit);
+
+        ForgeOfTheSky = new EOHB_ForgeOfTheSky(
+            MachineBlockID + 18,
+            "NameForgeOfTheSky",
+            TextLocalization.NameForgeOfTheSky
+        ).getStackForm(1);
+        GTCMItemList.ForgeOfTheSkys.set(ForgeOfTheSky);
     }
 }

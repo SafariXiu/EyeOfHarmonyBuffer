@@ -197,6 +197,11 @@ Tooltip_FillingUnit_MachineType=§b灌装机
 Tooltip_FillingUnit_Controller=§7灌装机的§b控制器方块§r
 Tooltip_FillingUnit_00=§a能够将原料§e精准灌装§a到各类容器中的专业设备。§r
 Tooltip_FillingUnit_01=§7采用§b专利级无菌分装技术§7，大幅降低了产品受§c污染§7的几率。§r
+NameForgeOfTheSky=§a天有洪炉
+Tooltip_ForgeOfTheSky_MachineType=§a天有洪炉
+Tooltip_ForgeOfTheSky_Controller=§7天有洪炉的§b控制器方块§r
+Tooltip_ForgeOfTheSky_00=§a用于§3息壤§a相关产物合成的专业设备。§r
+Tooltip_ForgeOfTheSky_01=§c地生五金。§r §a天有洪炉。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -215,6 +220,7 @@ EOHB_Recipe_ShapingMachine=塑形机
 EOHB_Recipe_Grinder=研磨机
 EOHB_Recipe_EncapsulationMachine=封装机
 EOHB_Recipe_FillingUnit=灌装机
+EOHB_Recipe_ForgeOfTheSky=天有洪炉
 
 #item
 EOHB_Harmony=鸿蒙

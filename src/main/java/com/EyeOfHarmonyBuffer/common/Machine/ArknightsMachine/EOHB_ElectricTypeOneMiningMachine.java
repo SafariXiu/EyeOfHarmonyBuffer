@@ -36,7 +36,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_ElectricTypeOneMiningMachine> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainOrundumDynamo";
+    private static final String STRUCTURE_PIECE_MAIN = "mainElectricTypeOneMiningMachine";
     private static final int OffsetsX = 4;
     private static final int OffsetsY = 10;
     private static final int OffsetsZ = 3;

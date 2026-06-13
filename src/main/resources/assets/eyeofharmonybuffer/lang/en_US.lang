@@ -197,6 +197,11 @@ Tooltip_FillingUnit_MachineType=Filling Unit
 Tooltip_FillingUnit_Controller=Controller block of the Filling Unit
 Tooltip_FillingUnit_00=A specialized device capable of precisely filling raw materials into containers.
 Tooltip_FillingUnit_01=Its patented aseptic filling technology greatly reduces the risk of product contamination.
+NameForgeOfTheSky=Forge of the Sky
+Tooltip_ForgeOfTheSky_MachineType=Forge of the Sky
+Tooltip_ForgeOfTheSky_Controller=Controller block of the Forge of the Sky
+Tooltip_ForgeOfTheSky_00=A specialized device used for synthesizing products related to Xiranite.
+Tooltip_ForgeOfTheSky_01=The Earth gives birth to metals. The Sky holds the Forge.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -215,6 +220,7 @@ EOHB_Recipe_ShapingMachine=Shaping Machine
 EOHB_Recipe_Grinder=Grinder
 EOHB_Recipe_EncapsulationMachine=Encapsulation Machine
 EOHB_Recipe_FillingUnit=Filling Unit
+EOHB_Recipe_ForgeOfTheSky=Forge Of The Sky
 
 #item
 EOHB_Harmony=Harmony

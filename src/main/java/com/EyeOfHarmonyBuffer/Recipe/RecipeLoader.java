@@ -36,7 +36,8 @@ public class RecipeLoader {
             new ShapingMachineRecipes(),
             new GrinderRecipes(),
             new EncapsulationMachineRecipes(),
-            new FillingUnitRecipes()
+            new FillingUnitRecipes(),
+            new ForgeOfTheSkyRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();
