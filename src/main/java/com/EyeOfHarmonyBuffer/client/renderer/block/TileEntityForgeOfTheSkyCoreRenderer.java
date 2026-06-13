@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.client.renderer.block;
 import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_Interlayer;
 import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_OuterRace;
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_OutermostCircle;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -23,6 +24,10 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
         new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_OuterRace.png");
     private final ForgeOfTheSky_OuterRace OuterRace = new ForgeOfTheSky_OuterRace();
 
+    private final ResourceLocation OuterMostTexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_OuterMost.png");
+    private final ForgeOfTheSky_OutermostCircle OuterMost = new ForgeOfTheSky_OutermostCircle();
+
     @Override
     public void renderTileEntityAt(TileEntity te,
                                    double x,
@@ -30,10 +35,10 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
                                    double z,
                                    float partialTicks) {
 
-        renderCore(te, x, y, z, partialTicks);
-        renderInterlayer(te, x, y, z, partialTicks);
-
-        renderOuterRace(te, x, y, z, partialTicks);
+        //renderCore(te, x, y, z, partialTicks);
+        //renderInterlayer(te, x, y, z, partialTicks);
+        //renderOuterRace(te, x, y, z, partialTicks);
+        renderOuterMost(te, x, y, z, partialTicks);
     }
 
     private void renderCore(TileEntity te,
@@ -161,6 +166,51 @@ public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRender
 
         this.bindTexture(OuterRaceTexture);
         OuterRace.render(null, 0, 0, 0, 0, 0, 0.0625F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+
+    private void renderOuterMost(TileEntity te,
+                                 double x,
+                                 double y,
+                                 double z,
+                                 float partialTicks) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(x + 0.5D, y - 0.10D, z + 0.5D);
+
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+
+        GL11.glScalef(0.8F, 0.8F, 0.8F);
+
+        this.bindTexture(OuterMostTexture);
+        OuterMost.render(null, 0, 0, 0, 0, 0, 0.0625F);
 
         OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
         if (lightmapEnabled) {
