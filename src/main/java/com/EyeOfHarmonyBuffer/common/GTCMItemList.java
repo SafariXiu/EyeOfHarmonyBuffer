@@ -150,7 +150,8 @@ public enum GTCMItemList {
     SingularityStabilizationRingCasingsUIV,
     SingularityStabilizationRingCasingsUMV,
     SingularityStabilizationRingCasingsUXV,
-    SingularityStabilizationRingCasingsMAX;
+    SingularityStabilizationRingCasingsMAX,
+    ForgeOfTheSkyCore;
 
 
     private boolean mHasNotBeenSet;

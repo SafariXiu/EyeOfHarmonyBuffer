@@ -126,7 +126,7 @@ public class EOHB_ForgeOfTheSky extends OrundumWirelessMultiMachineBase<EOHB_For
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings2, 0))
                 .addElement('B', ofBlock(sBlockCasings8, 7))
-                .addElement('D', ofBlock(BlockRegister.ForgeOfSkyBlockCore, 0))
+                .addElement('D', ofBlock(BlockRegister.ForgeOfTheSkyBlockCore, 0))
                 .addElement(
                     'E',
                     buildHatchAdder(EOHB_ForgeOfTheSky.class)
