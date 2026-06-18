@@ -216,6 +216,12 @@ Tooltip_ReactorCrucible_Controller=§7反应池的§b控制器方块§r
 Tooltip_ReactorCrucible_00=§a用于进行§e固液体化学反应§a的专业设备。§r
 Tooltip_ReactorCrucible_01=§7终末地工业最终决定向§b工团§7订购一批产自§a塔卫二§7南部的§6特种钢材§7。§r
 Tooltip_ReactorCrucible_02=§7以应对反应设备所产生的§c腐蚀性故障§7。§r
+NameExpandedCrucible=§b扩容反应池
+Tooltip_ExpandedCrucible_MachineType=§b反应池
+Tooltip_ExpandedCrucible_Controller=§7扩容反应池的§b控制器方块§r
+Tooltip_ExpandedCrucible_00=§a用于进行§e固液体化学反应§a的高性能设备，§7拥有更多的端口并可同时进行多组化学反应。§r
+Tooltip_ExpandedCrucible_01=§6高容量，§a更安全。§r
+Tooltip_ExpandedCrucible_02=§e本机器支持至多§b4§e种配方§a同时并行运作！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -297,9 +303,9 @@ item.YaZhenZhongZi.name=芽针种子
 item.UpgradeChipMK1.name=升级芯片-MK1
 item.UpgradeChipMK2.name=升级芯片-MK2
 item.UpgradeChipMK3.name=升级芯片-MK3
-EOHB_UpgradeChipMK1_Tooltip_00=插入后机器单配方并行提升至16 单次运行工作时间降低至100tick 跨配方并行提升至1
-EOHB_UpgradeChipMK2_Tooltip_00=插入后机器单配方并行提升至64 单次运行工作时间降低至50tick 跨配方并行提升至1
-EOHB_UpgradeChipMK3_Tooltip_00=插入后机器单配方并行提升至512 单次运行工作时间降低至20tick 跨配方并行提升至1
+EOHB_UpgradeChipMK1_Tooltip_00=插入后机器单配方并行提升至16，单次运行工作时间降低至100tick。
+EOHB_UpgradeChipMK2_Tooltip_00=插入后机器单配方并行提升至64，单次运行工作时间降低至50tick。
+EOHB_UpgradeChipMK3_Tooltip_00=插入后机器单配方并行提升至512，单次运行工作时间降低至20tick。
 item.ZhiMiJingTiFenMo.name=致密晶体粉末
 item.ZhiMiYuanShiFenMo.name=致密源石粉末
 item.ZhiMiTanFenMo.name=致密碳粉末

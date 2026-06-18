@@ -27,6 +27,7 @@ public class MachineLoader {
     public static ItemStack ForgeOfTheSky;
     public static ItemStack PurificationUnit;
     public static ItemStack ReactorCrucible;
+    public static ItemStack ExpandedCrucible;
 
     private final static int MachineBlockID = 23000;
 
@@ -170,5 +171,12 @@ public class MachineLoader {
             TextLocalization.NameReactorCrucible
         ).getStackForm(1);
         GTCMItemList.ReactorCrucibles.set(ReactorCrucible);
+
+        ExpandedCrucible = new EOHB_ExpandedCrucible(
+            MachineBlockID + 21,
+            "NameExpandedCrucible",
+            TextLocalization.NameExpandedCrucible
+        ).getStackForm(1);
+        GTCMItemList.ExpandedCrucibles.set(ExpandedCrucible);
     }
 }

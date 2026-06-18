@@ -216,6 +216,12 @@ Tooltip_ReactorCrucible_Controller=Controller block of the Reactor Crucible
 Tooltip_ReactorCrucible_00=A specialized device used for solid-liquid chemical reactions.
 Tooltip_ReactorCrucible_01=Terminal Industries ultimately decided to order a batch of special steel from the southern region of Talos II, produced by the Syndicate.
 Tooltip_ReactorCrucible_02=This was done to counter the corrosive failures occurring within their reaction equipment.
+NameExpandedCrucible=Expanded Reactor Crucible
+Tooltip_ExpandedCrucible_MachineType=Reactor Crucible
+Tooltip_ExpandedCrucible_Controller=Controller block of the Expanded Reactor Crucible
+Tooltip_ExpandedCrucible_00=A high-performance device for conducting solid-liquid chemical reactions, equipped with more ports to handle multiple reactions simultaneously.
+Tooltip_ExpandedCrucible_01=Higher capacity, greater safety.
+Tooltip_ExpandedCrucible_02=This machine supports up to four recipes running in parallel!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -297,9 +303,9 @@ item.YaZhenZhongZi.name=YaZhen Seed
 item.UpgradeChipMK1.name=UpGrade Chip-MK1
 item.UpgradeChipMK2.name=UpGrade Chip-MK2
 item.UpgradeChipMK3.name=UpGrade Chip-MK3
-EOHB_UpgradeChipMK1_Tooltip_00=When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks, and cross‑recipe parallelism increases to 4.
-EOHB_UpgradeChipMK2_Tooltip_00=When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks, and cross‑recipe parallelism increases to 8.
-EOHB_UpgradeChipMK3_Tooltip_00=When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks, and cross‑recipe parallelism increases to 16.
+EOHB_UpgradeChipMK1_Tooltip_00=When installed, single‑recipe parallelism increases to 16, single operation time decreases to 100 ticks.
+EOHB_UpgradeChipMK2_Tooltip_00=When installed, single‑recipe parallelism increases to 64, single operation time decreases to 50 ticks.
+EOHB_UpgradeChipMK3_Tooltip_00=When installed, single‑recipe parallelism increases to 512, single operation time decreases to 20 ticks.
 item.ZhiMiJingTiFenMo.name=Dense Crystal Powder
 item.ZhiMiYuanShiFenMo.name=Dense Orundum Powder
 item.ZhiMiTanFenMo.name=Dense Carbon Powder

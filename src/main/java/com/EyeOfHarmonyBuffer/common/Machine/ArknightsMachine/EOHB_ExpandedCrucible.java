@@ -26,28 +26,29 @@ import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose
 import static gregtech.api.GregTechAPI.sBlockCasings2;
 import static gregtech.api.GregTechAPI.sBlockCasings8;
 import static gregtech.api.enums.HatchElement.*;
+import static gregtech.api.enums.HatchElement.OutputHatch;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineBase<EOHB_ReactorCrucible>
+public class EOHB_ExpandedCrucible extends UpgradableOrundumWirelessMultiMachineBase<EOHB_ExpandedCrucible>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_ReactorCrucible> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainReactorCrucible";
+    private static IStructureDefinition<EOHB_ExpandedCrucible> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainExpandedCrucible";
     private static final int OffsetsX = 8;
     private static final int OffsetsY = 16;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
 
-    public EOHB_ReactorCrucible(int aID, String aName, String aNameRegional) {
+    public EOHB_ExpandedCrucible(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
-        setWirelessCycleNum(1);
+        setWirelessCycleNum(4);
     }
 
-    public EOHB_ReactorCrucible(String aName) {
+    public EOHB_ExpandedCrucible(String aName) {
         super(aName);
-        setWirelessCycleNum(1);
+        setWirelessCycleNum(4);
     }
 
     @NotNull
@@ -78,15 +79,15 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
         {"                 ","                 ","   B         B   ","  DB      B  BD  ","  BBB     B BBB  ","  BBB     B BBB  ","  BBB     B BBB  ","  DB      B  BD  ","   B         B   ","                 ","                 "},
         {"                 ","                 ","                 ","  DDB     B BDD  ","  DDBBBBBBBBBDD  ","  DDBBBBBBBBBDD  ","  DDBBBBBBBBBDD  ","  DDB     B BDD  ","                 ","                 ","                 "},
         {"                 ","                 ","                 ","  DDDDDDDDDDDDD  ","  DDBDDDDDDDBDD  ","  DDBDDDDDDDBDD  ","  DDBDDDDDDDBDD  ","  DDDDDDDDDDDDD  ","                 ","                 ","                 "},
-        {"                 ","                 ","                 ","  DDADADADADADD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDADADADADADD  ","                 ","                 ","                 "},
-        {"                 ","                 ","                 ","  DDADADADADADD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDADADADADADD  ","                 ","                 ","                 "},
-        {"                 ","                 "," DDD         DDD "," DDDADADADADADDD "," DDDBBBBBBBBBDDD "," DDDB       BDDD "," DDDBBBBBBBBBDDD "," DDDADADADADADDD "," DDD         DDD ","                 ","                 "},
-        {"                 ","                 "," BDD         DDB "," BDDADADADADADDB "," BDDBBBBBBBBBDDB "," BDDB       BDDB "," BDDBBBBBBBBBDDB "," BDDADADADADADDB "," BDD         DDB ","                 ","                 "},
-        {"                 "," B             B "," BDD         DDB "," CDDADADADADADDC "," CDDBBBBBBBBBDDC "," CDDB       BDDC "," CDDBBBBBBBBBDDC "," CDDADADADADADDC "," BDD         DDB "," B             B ","                 "},
-        {"                 ","                 "," BDD         DDB "," BDDADADADADADDB ","BBDDBBBBBBBBBDDBB","BBDDB       BDDBB","BBDDBBBBBBBBBDDBB"," BDDADADADADADDB "," BDD         DDB ","                 ","                 "},
-        {"                 ","                 ","  DD         DD  ","  DDADADADADADD  ","BBDDBBBBBBBBBDDBB","BBDDB       BDDBB","BBDDBBBBBBBBBDDBB","  DDADADADADADD  ","  DD         DD  ","                 ","                 "},
-        {"                 ","                 ","  DD         DD  ","  DDADADADADADD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDADADADADADD  ","  DD         DD  ","                 ","                 "},
-        {"                 ","                 ","   D         D   ","   DDDDDDDDDDD   ","   DBBBBBBBBBD   ","   DBBBBBBBBBD   ","   DBBBBBBBBBD   ","   DDDDDDDDDDD   ","   D         D   ","                 ","                 "},
+        {"                 ","                 ","                 ","  DDDADADADADDD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDDADADADADDD  ","                 ","                 ","                 "},
+        {"                 ","                 ","                 ","  DDDADADADADDD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDDADADADADDD  ","                 ","                 ","                 "},
+        {"                 ","                 "," DDD         DDD "," DDDDADADADADDDD "," DDDBBBBBBBBBDDD "," DDDB       BDDD "," DDDBBBBBBBBBDDD "," DDDDADADADADDDD "," DDD         DDD ","                 ","                 "},
+        {"                 ","                 "," BDD         DDB "," BDDDADADADADDDB "," BDDBBBBBBBBBDDB "," BDDB       BDDB "," BDDBBBBBBBBBDDB "," BDDDADADADADDDB "," BDD         DDB ","                 ","                 "},
+        {"                 "," B             B "," BDDDDDDDDDDDDDB "," CDDDDDDDDDDDDDC "," CDDBBBBBBBBBDDC "," CDDB       BDDC "," CDDBBBBBBBBBDDC "," CDDDDDDDDDDDDDC "," BDDDDDDDDDDDDDB "," B             B ","                 "},
+        {"                 ","                 "," BDD         DDB "," BDDDADADADADDDB ","BBDDBBBBBBBBBDDBB","BBDDB       BDDBB","BBDDBBBBBBBBBDDBB"," BDDDADADADADDDB "," BDD         DDB ","                 ","                 "},
+        {"                 ","                 ","  DD         DD  ","  DDDADADADADDD  ","BBDDBBBBBBBBBDDBB","BBDDB       BDDBB","BBDDBBBBBBBBBDDBB","  DDDADADADADDD  ","  DD         DD  ","                 ","                 "},
+        {"                 ","                 ","  DD         DD  ","  DDDADADADADDD  ","  DDBBBBBBBBBDD  ","  DDB       BDD  ","  DDBBBBBBBBBDD  ","  DDDADADADADDD  ","  DD         DD  ","                 ","                 "},
+        {"                 ","                 ","   D         D   ","   DDDDDDDDDDD   ","   DBBBBBBBBBD   ","   DBBBBBBBBBD   ","   DBBBBBBBBBD   ","   DBBBBBBBBBD   ","   D         D   ","                 ","                 "},
         {"                 ","                 ","   D         D   ","   DB       BD   ","   DB  BBB  BD   ","   DB  BBB  BD   ","   DB  BBB  BD   ","   DB       BD   ","   D         D   ","                 ","                 "},
         {"                 ","                 ","  DD         DD  ","  DDB       BDD  ","  DDB       BDD  ","  DDB   B   BDD  ","  DDB       BDD  ","  DDB       BDD  ","  DD         DD  ","                 ","                 "},
         {"                 ","                 ","  DD   DDD   DD  ","  DDB DDDDD BDD  ","  DDBDDDDDDDBDD  ","  DDBDDDDDDDBDD  ","  DDBDDDDDDDBDD  ","  DDB DDDDD BDD  ","  DD   DDD   DD  ","                 ","                 "},
@@ -95,9 +96,9 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
     };
 
     @Override
-    public IStructureDefinition<EOHB_ReactorCrucible> getStructureDefinition() {
+    public IStructureDefinition<EOHB_ExpandedCrucible> getStructureDefinition() {
         if(STRUCTURE_DEFINITION == null){
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ReactorCrucible>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ExpandedCrucible>builder()
                 .addShape(
                     STRUCTURE_PIECE_MAIN,transpose(shapeMain)
                 )
@@ -119,7 +120,7 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
                 )
                 .addElement(
                     'E',
-                    buildHatchAdder(EOHB_ReactorCrucible.class)
+                    buildHatchAdder(EOHB_ExpandedCrucible.class)
                         .atLeast(InputBus, InputHatch, OutputBus, OutputHatch)
                         .casingIndex(CASING_INDEX)
                         .dot(1)
@@ -135,12 +136,12 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_ReactorCrucible_MachineType)
-            .addInfo(Tooltip_ReactorCrucible_Controller)
+        tt.addMachineType(Tooltip_ExpandedCrucible_MachineType)
+            .addInfo(Tooltip_ExpandedCrucible_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_ReactorCrucible_00)
-            .addInfo(Tooltip_ReactorCrucible_01)
-            .addInfo(Tooltip_ReactorCrucible_02)
+            .addInfo(Tooltip_ExpandedCrucible_00)
+            .addInfo(Tooltip_ExpandedCrucible_01)
+            .addInfo(Tooltip_ExpandedCrucible_02)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
@@ -157,7 +158,7 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_ReactorCrucible(this.mName);
+        return new EOHB_ExpandedCrucible(this.mName);
     }
 
     @Override
