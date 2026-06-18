@@ -137,6 +137,7 @@ public enum GTCMItemList {
     FillingUnits,
     ForgeOfTheSkys,
     PurificationUnits,
+    ReactorCrucibles,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

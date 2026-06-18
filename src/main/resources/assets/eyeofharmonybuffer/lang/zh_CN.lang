@@ -210,6 +210,12 @@ Tooltip_PurificationUnit_01=§7“你知道的，对吧，我的朋友，§r§7�
 Tooltip_PurificationUnit_02=§7“我们的征途与成就，怎么能止步于此呢？”§r
 Tooltip_PurificationUnit_03=§7“我需要一个好环境——一个§6优秀§7、§a稳定§7的§6源石§7环境。”§r
 Tooltip_PurificationUnit_04=§7“§c这就是§r§7你差点炸穿§b帝江号§7的理由？”§r
+NameReactorCrucible=§b反应池
+Tooltip_ReactorCrucible_MachineType=§b反应池
+Tooltip_ReactorCrucible_Controller=§7反应池的§b控制器方块§r
+Tooltip_ReactorCrucible_00=§a用于进行§e固液体化学反应§a的专业设备。§r
+Tooltip_ReactorCrucible_01=§7终末地工业最终决定向§b工团§7订购一批产自§a塔卫二§7南部的§6特种钢材§7。§r
+Tooltip_ReactorCrucible_02=§7以应对反应设备所产生的§c腐蚀性故障§7。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -230,6 +236,7 @@ EOHB_Recipe_EncapsulationMachine=封装机
 EOHB_Recipe_FillingUnit=灌装机
 EOHB_Recipe_ForgeOfTheSky=天有洪炉
 EOHB_Recipe_PurificationUnit=提纯机
+EOHB_Recipe_ReactorCrucible=反应池
 
 #item
 EOHB_Harmony=鸿蒙

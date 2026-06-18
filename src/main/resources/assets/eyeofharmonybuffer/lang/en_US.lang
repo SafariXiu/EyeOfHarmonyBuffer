@@ -210,6 +210,12 @@ Tooltip_PurificationUnit_01="You know, my friend, our alchemy has such a gloriou
 Tooltip_PurificationUnit_02="How could our journey and achievements possibly end here?"
 Tooltip_PurificationUnit_03="I need a proper environment—an excellent, stable Originium environment."
 Tooltip_PurificationUnit_04="That’s your reason for almost blowing a hole through the O.M.V. DiJiang?"
+NameReactorCrucible=Reactor Crucible
+Tooltip_ReactorCrucible_MachineType=Reactor Crucible
+Tooltip_ReactorCrucible_Controller=Controller block of the Reactor Crucible
+Tooltip_ReactorCrucible_00=A specialized device used for solid-liquid chemical reactions.
+Tooltip_ReactorCrucible_01=Terminal Industries ultimately decided to order a batch of special steel from the southern region of Talos II, produced by the Syndicate.
+Tooltip_ReactorCrucible_02=This was done to counter the corrosive failures occurring within their reaction equipment.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -230,6 +236,7 @@ EOHB_Recipe_EncapsulationMachine=Encapsulation Machine
 EOHB_Recipe_FillingUnit=Filling Unit
 EOHB_Recipe_ForgeOfTheSky=Forge Of The Sky
 EOHB_Recipe_PurificationUnit=Purification Unit
+EOHB_Recipe_ReactorCrucible=Reactor Crucible
 
 #item
 EOHB_Harmony=Harmony

@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
+import bartworks.common.loaders.ItemRegistry;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.UpgradableOrundumWirelessMultiMachineBase;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
@@ -29,22 +30,22 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachineBase<EOHB_PurificationUnit>
+public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineBase<EOHB_ReactorCrucible>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_PurificationUnit> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainPurificationUnit";
+    private static IStructureDefinition<EOHB_ReactorCrucible> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainReactorCrucible";
     private static final int OffsetsX = 7;
-    private static final int OffsetsY = 8;
+    private static final int OffsetsY = 16;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
 
-    public EOHB_PurificationUnit(int aID, String aName, String aNameRegional) {
+    public EOHB_ReactorCrucible(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_PurificationUnit(String aName) {
+    public EOHB_ReactorCrucible(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -52,7 +53,7 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.PurificationUnit;
+        return RecipeMaps.ReactorCrucible;
     }
 
     @Override
@@ -73,40 +74,53 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
     }
 
     private static final String[][] shapeMain = new String[][]{
-        {"               ","  C            ","  C         A  ","  C         A  "," CC         AC "," CA         AC "," CA         CC ","  A         C  ","  A         C  ","            C  ","               "},
-        {"               ","  C         A  ","  C         A  "," CCBBBBBBBBBAC "," CAA       AAC "," CAA       AAC "," CAA       AAC "," CABBBBBBBBBCC ","  A         C  ","  A         C  ","               "},
-        {"               ","            A  "," C          AC "," CAA       AAC "," C  AA C AA  C "," A  AA C AA  A "," C  AA C AA  C "," CAA       AAC "," CA          C ","  A            ","               "},
-        {"               ","            A  "," C          AC "," CAA       AAC "," A  AA C AA  A "," ABBBBBBBBBBBA "," A  AA C AA  A "," CAA       AAC "," CA          C ","  A            ","               "},
-        {"               ","               "," C           C "," CAA       AAC "," C  AA C AA  C "," A  AA C AA  A "," C  AA C AA  C "," CAA       AAC "," C           C ","               ","               "},
-        {"               ","               ","               "," CBBBBBBBBBBBC "," CAA       AAC "," CAA       AAC "," CAA       AAC "," CBBBBBBBBBBBC ","               ","               ","               "},
-        {"               ","               "," A           A ","               "," C           C "," C           C "," C           C ","               "," A           A ","               ","               "},
-        {"               "," A           A ","      CCC      ","     CCACC     "," AAACCAAACC    "," AAACAAAAAC    "," AAACCAAACC    ","     CCACC     ","      CCC      "," A           A ","               "},
-        {"DDDDDDD~DDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD"}
+        {"               ","               ","  B         B  ","  B         B  ","               ","               ","               ","  B         B  ","  B         B  ","               ","               "},
+        {"               ","               ","  B         B  "," DB      B  BD "," BBB     B BBB "," BBB     B BBB "," BBB     B BBB "," DB      B  BD ","  B         B  ","               ","               "},
+        {"               ","               ","               "," DDB     B BDD "," DDBBBBBBBBBDD "," DDBBBBBBBBBDD "," DDBBBBBBBBBDD "," DDB     B BDD ","               ","               ","               "},
+        {"               ","               ","               "," DDDDDDDDDDDDD "," DDBDDDDDDDBDD "," DDBDDDDDDDBDD "," DDBDDDDDDDBDD "," DDDDDDDDDDDDD ","               ","               ","               "},
+        {"               ","               ","               "," DDADADADADADD "," DDBBBBBBBBBDD "," DDB       BDD "," DDBBBBBBBBBDD "," DDABABABABADD ","               ","               ","               "},
+        {"               ","               ","               "," DDADADADADADD "," DDBBBBBBBBBDD "," DDB       BDD "," DDBBBBBBBBBDD "," DDABABABABADD ","               ","               ","               "},
+        {"               ","               ","DDD         DDD","DDDADADADADADDD","DDDBBBBBBBBBDDD","DDDB       BDDD","DDDBBBBBBBBBDDD","DDDABABABABADDD","DDD         DDD","               ","               "},
+        {"               ","               ","BDD         DDB","BDDADADADADADDB","BDDBBBBBBBBBDDB","BDDB       BDDB","BDDBBBBBBBBBDDB","BDDABABABABADDB","BDD         DDB","               ","               "},
+        {"               ","B             B","BDD         DDB","CDDADADADADADDC","CDDBBBBBBBBBDDC","CDDB       BDDC","CDDBBBBBBBBBDDC","CDDABABABABADDC","BDD         DDB","B             B","               "},
+        {"               ","               ","BDD         DDB","BDDADADADADADDB","BDDBBBBBBBBBDDB","BDDB       BDDB","BDDBBBBBBBBBDDB","BDDABABABABADDB","BDD         DDB","               ","               "},
+        {"               ","               "," DD         DD "," DDADADADADADD ","BDDBBBBBBBBBDDB","BDDB       BDDB","BDDBBBBBBBBBDDB"," DDABABABABADD "," DD         DD ","               ","               "},
+        {"               ","               "," DD         DD "," DDADADADADADD "," DDBBBBBBBBBDD "," DDB       BDD "," DDBBBBBBBBBDD "," DDABABABABADD "," DD         DD ","               ","               "},
+        {"               ","               ","  D         D  ","  DDDDDDDDDDD  ","  DBBBBBBBBBD  ","  DBBBBBBBBBD  ","  DBBBBBBBBBD  ","  DBBBBBBBBBD  ","  D         D  ","               ","               "},
+        {"               ","               ","  D         D  ","  DB       BD  ","  DB  BBB  BD  ","  DB  BBB  BD  ","  DB  BBB  BD  ","  DB       BD  ","  D         D  ","               ","               "},
+        {"               ","               "," DD         DD "," DDB       BDD "," DDB       BDD "," DDB   B   BDD "," DDB       BDD "," DDB       BDD "," DD         DD ","               ","               "},
+        {"               ","               "," DD   DDD   DD "," DDB DDDDD BDD "," DDBDDDDDDDBDD "," DDBDDDDDDDBDD "," DDBDDDDDDDBDD "," DDB DDDDD BDD "," DD   DDD   DD ","               ","               "},
+        {"EEEEEEE~EEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE","EEEEEEEEEEEEEEE"},
+        {"B             B","               ","               ","               ","               ","               ","               ","               ","               ","               ","B             B"}
     };
 
     @Override
-    public IStructureDefinition<EOHB_PurificationUnit> getStructureDefinition() {
+    public IStructureDefinition<EOHB_ReactorCrucible> getStructureDefinition() {
         if(STRUCTURE_DEFINITION == null){
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_PurificationUnit>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ReactorCrucible>builder()
                 .addShape(
                     STRUCTURE_PIECE_MAIN,transpose(shapeMain)
                 )
                 .addElement(
                     'A',
-                    ofBlock(sBlockCasings2, 0)
+                    ofBlock(ItemRegistry.bw_realglas, 0)
                 )
                 .addElement(
                     'B',
-                    ofBlock(sBlockCasings2, 13)
+                    ofBlock(sBlockCasings2, 0)
                 )
                 .addElement(
                     'C',
-                    ofBlock(sBlockCasings8,7)
+                    ofBlock(sBlockCasings2, 13)
                 )
                 .addElement(
                     'D',
-                    buildHatchAdder(EOHB_PurificationUnit.class)
-                        .atLeast(InputHatch,OutputHatch)
+                    ofBlock(sBlockCasings8, 7)
+                )
+                .addElement(
+                    'E',
+                    buildHatchAdder(EOHB_ReactorCrucible.class)
+                        .atLeast(InputBus, InputHatch, OutputBus, OutputHatch)
                         .casingIndex(CASING_INDEX)
                         .dot(1)
                         .buildAndChain(
@@ -121,21 +135,21 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_PurificationUnit_MachineType)
-            .addInfo(Tooltip_PurificationUnit_Controller)
+        tt.addMachineType(Tooltip_ReactorCrucible_MachineType)
+            .addInfo(Tooltip_ReactorCrucible_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_PurificationUnit_00)
-            .addInfo(Tooltip_PurificationUnit_01)
-            .addInfo(Tooltip_PurificationUnit_02)
-            .addInfo(Tooltip_PurificationUnit_03)
-            .addInfo(Tooltip_PurificationUnit_04)
+            .addInfo(Tooltip_ReactorCrucible_00)
+            .addInfo(Tooltip_ReactorCrucible_01)
+            .addInfo(Tooltip_ReactorCrucible_02)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
             .addMaintenanceHatch(add_MaintenanceHatch)
+            .addInputBus(add_InputBus)
             .addInputHatch(add_inputHatch)
+            .addOutputBus(add_OutputBus)
             .addOutputHatch(add_outputHatch)
             .toolTipFinisher(ModName);
         return tt;
@@ -143,7 +157,7 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_PurificationUnit(this.mName);
+        return new EOHB_ReactorCrucible(this.mName);
     }
 
     @Override

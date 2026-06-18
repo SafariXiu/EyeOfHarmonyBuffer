@@ -155,10 +155,10 @@ public class EOHB_ForgeOfTheSky extends OrundumWirelessMultiMachineBase<EOHB_For
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
             .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputHatch(add_inputHatch)
             .addInputBus(add_InputBus)
-            .addOutputHatch(add_outputHatch)
+            .addInputHatch(add_inputHatch)
             .addOutputBus(add_OutputBus)
+            .addOutputHatch(add_outputHatch)
             .toolTipFinisher(ModName);
         return tt;
     }

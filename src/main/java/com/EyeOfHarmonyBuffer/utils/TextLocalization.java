@@ -220,6 +220,13 @@ public class TextLocalization {
     public static final String Tooltip_PurificationUnit_03;
     public static final String Tooltip_PurificationUnit_04;
 
+    public static final String NameReactorCrucible;
+    public static final String Tooltip_ReactorCrucible_MachineType;
+    public static final String Tooltip_ReactorCrucible_Controller;
+    public static final String Tooltip_ReactorCrucible_00;
+    public static final String Tooltip_ReactorCrucible_01;
+    public static final String Tooltip_ReactorCrucible_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -283,6 +290,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_FillingUnit;
     public static final String EOHB_Recipe_ForgeOfTheSky;
     public static final String EOHB_Recipe_PurificationUnit;
+    public static final String EOHB_Recipe_ReactorCrucible;
 
     public TextLocalization() {
     }
@@ -533,6 +541,14 @@ public class TextLocalization {
         Tooltip_PurificationUnit_03 = TextHandler.texter("\"I need a proper environment—an excellent, stable Originium environment.\"","Tooltip_PurificationUnit_03");
         Tooltip_PurificationUnit_04 = TextHandler.texter("\"That’s your reason for almost blowing a hole through the O.M.V. DiJiang?\"","Tooltip_PurificationUnit_04");
 
+        //反应池
+        NameReactorCrucible = TextHandler.texter("Reactor Crucible","NameReactorCrucible");
+        Tooltip_ReactorCrucible_MachineType = TextHandler.texter("Reactor Crucible","Tooltip_ReactorCrucible_MachineType");
+        Tooltip_ReactorCrucible_Controller = TextHandler.texter("The controller block of the Reactor Crucible","Tooltip_ReactorCrucible_Controller");
+        Tooltip_ReactorCrucible_00 = TextHandler.texter("","Tooltip_ReactorCrucible_00");
+        Tooltip_ReactorCrucible_01 = TextHandler.texter("","Tooltip_ReactorCrucible_01");
+        Tooltip_ReactorCrucible_02 = TextHandler.texter("","Tooltip_ReactorCrucible_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -594,5 +610,6 @@ public class TextLocalization {
         EOHB_Recipe_FillingUnit = TextHandler.texter("Filling Unit","EOHB_Recipe_FillingUnit");
         EOHB_Recipe_ForgeOfTheSky = TextHandler.texter("Forge Of The Sky","EOHB_Recipe_ForgeOfTheSky");
         EOHB_Recipe_PurificationUnit = TextHandler.texter("Purification Unit","EOHB_Recipe_PurificationUnit");
+        EOHB_Recipe_ReactorCrucible = TextHandler.texter("Reactor Crucible","EOHB_Recipe_ReactorCrucible");
     }
 }

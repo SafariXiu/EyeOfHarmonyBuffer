@@ -187,8 +187,8 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
             .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputHatch(add_inputHatch)
             .addInputBus(add_InputBus)
+            .addInputHatch(add_inputHatch)
             .addOutputBus(add_OutputBus)
             .toolTipFinisher(ModName);
         return tt;

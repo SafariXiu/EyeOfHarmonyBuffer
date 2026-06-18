@@ -26,6 +26,7 @@ public class MachineLoader {
     public static ItemStack FillingUnit;
     public static ItemStack ForgeOfTheSky;
     public static ItemStack PurificationUnit;
+    public static ItemStack ReactorCrucible;
 
     private final static int MachineBlockID = 23000;
 
@@ -162,5 +163,12 @@ public class MachineLoader {
             TextLocalization.NamePurificationUnit
         ).getStackForm(1);
         GTCMItemList.PurificationUnits.set(PurificationUnit);
+
+        ReactorCrucible = new EOHB_ReactorCrucible(
+            MachineBlockID + 20,
+            "NameReactorCrucible",
+            TextLocalization.NameReactorCrucible
+        ).getStackForm(1);
+        GTCMItemList.ReactorCrucibles.set(ReactorCrucible);
     }
 }
