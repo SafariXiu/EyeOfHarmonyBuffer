@@ -107,6 +107,7 @@ public enum GTCMItemList {
     QiaoYuJiaoNang,
     YouZhiQiaoYuJiaoNang,
     JingXuanQiaoYuJiaoNang,
+    HeTongRongYe,
 
     //方舟-植物
     GanShi,
@@ -135,6 +136,7 @@ public enum GTCMItemList {
     EncapsulationMachines,
     FillingUnits,
     ForgeOfTheSkys,
+    PurificationUnits,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

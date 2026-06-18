@@ -36,7 +36,7 @@ public class EOHB_Pulverizer extends UpgradableOrundumWirelessMultiMachineBase<E
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_Pulverizer> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainRefiningFurnace";
+    private static final String STRUCTURE_PIECE_MAIN = "mainPulverizer";
     private static final int OffsetsX = 3;
     private static final int OffsetsY = 10;
     private static final int OffsetsZ = 0;

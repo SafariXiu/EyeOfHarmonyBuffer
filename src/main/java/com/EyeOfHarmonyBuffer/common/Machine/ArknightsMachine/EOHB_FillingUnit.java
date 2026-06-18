@@ -31,7 +31,7 @@ public class EOHB_FillingUnit extends UpgradableOrundumWirelessMultiMachineBase<
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_FillingUnit> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainAccessoriesMachine";
+    private static final String STRUCTURE_PIECE_MAIN = "mainFillingUnit";
     private static final int OffsetsX = 7;
     private static final int OffsetsY = 10;
     private static final int OffsetsZ = 0;

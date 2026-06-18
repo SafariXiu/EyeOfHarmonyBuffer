@@ -211,6 +211,15 @@ public class TextLocalization {
     public static final String Tooltip_ForgeOfTheSky_00;
     public static final String Tooltip_ForgeOfTheSky_01;
 
+    public static final String NamePurificationUnit;
+    public static final String Tooltip_PurificationUnit_MachineType;
+    public static final String Tooltip_PurificationUnit_Controller;
+    public static final String Tooltip_PurificationUnit_00;
+    public static final String Tooltip_PurificationUnit_01;
+    public static final String Tooltip_PurificationUnit_02;
+    public static final String Tooltip_PurificationUnit_03;
+    public static final String Tooltip_PurificationUnit_04;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -273,7 +282,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_EncapsulationMachine;
     public static final String EOHB_Recipe_FillingUnit;
     public static final String EOHB_Recipe_ForgeOfTheSky;
-
+    public static final String EOHB_Recipe_PurificationUnit;
 
     public TextLocalization() {
     }
@@ -514,6 +523,16 @@ public class TextLocalization {
         Tooltip_ForgeOfTheSky_00 = TextHandler.texter("A specialized device used for synthesizing products related to Xiranite.","Tooltip_ForgeOfTheSky_00");
         Tooltip_ForgeOfTheSky_01 = TextHandler.texter("The Earth gives birth to metals. The Sky holds the Forge.","Tooltip_ForgeOfTheSky_01");
 
+        //提纯机
+        NamePurificationUnit = TextHandler.texter("Purification Unit","NamePurificationUnit");
+        Tooltip_PurificationUnit_MachineType = TextHandler.texter("Purification Unit","Tooltip_PurificationUnit_MachineType");
+        Tooltip_PurificationUnit_Controller = TextHandler.texter("The controller block of the Purification Unit","Tooltip_PurificationUnit_Controller");
+        Tooltip_PurificationUnit_00 = TextHandler.texter("A precision device used to purify solutions to higher concentrations.","Tooltip_PurificationUnit_00");
+        Tooltip_PurificationUnit_01 = TextHandler.texter("\"You know, my friend, our alchemy has such a glorious history. Look out into space...\"","Tooltip_PurificationUnit_01");
+        Tooltip_PurificationUnit_02 = TextHandler.texter("\"How could our journey and achievements possibly end here?\"","Tooltip_PurificationUnit_02");
+        Tooltip_PurificationUnit_03 = TextHandler.texter("\"I need a proper environment—an excellent, stable Originium environment.\"","Tooltip_PurificationUnit_03");
+        Tooltip_PurificationUnit_04 = TextHandler.texter("\"That’s your reason for almost blowing a hole through the O.M.V. DiJiang?\"","Tooltip_PurificationUnit_04");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -574,5 +593,6 @@ public class TextLocalization {
         EOHB_Recipe_EncapsulationMachine = TextHandler.texter("Encapsulation Machine","EOHB_Recipe_EncapsulationMachine");
         EOHB_Recipe_FillingUnit = TextHandler.texter("Filling Unit","EOHB_Recipe_FillingUnit");
         EOHB_Recipe_ForgeOfTheSky = TextHandler.texter("Forge Of The Sky","EOHB_Recipe_ForgeOfTheSky");
+        EOHB_Recipe_PurificationUnit = TextHandler.texter("Purification Unit","EOHB_Recipe_PurificationUnit");
     }
 }

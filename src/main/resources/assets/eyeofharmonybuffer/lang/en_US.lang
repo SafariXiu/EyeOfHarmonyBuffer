@@ -202,6 +202,14 @@ Tooltip_ForgeOfTheSky_MachineType=Forge of the Sky
 Tooltip_ForgeOfTheSky_Controller=Controller block of the Forge of the Sky
 Tooltip_ForgeOfTheSky_00=A specialized device used for synthesizing products related to Xiranite.
 Tooltip_ForgeOfTheSky_01=The Earth gives birth to metals. The Sky holds the Forge.
+NamePurificationUnit=Purification Unit
+Tooltip_PurificationUnit_MachineType=Purification Unit
+Tooltip_PurificationUnit_Controller=Controller block of the Purification Unit
+Tooltip_PurificationUnit_00=A precision device used to purify solutions to higher concentrations.
+Tooltip_PurificationUnit_01="You know, my friend, our alchemy has such a glorious history. Look out into space..."
+Tooltip_PurificationUnit_02="How could our journey and achievements possibly end here?"
+Tooltip_PurificationUnit_03="I need a proper environment—an excellent, stable Originium environment."
+Tooltip_PurificationUnit_04="That’s your reason for almost blowing a hole through the O.M.V. DiJiang?"
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -221,6 +229,7 @@ EOHB_Recipe_Grinder=Grinder
 EOHB_Recipe_EncapsulationMachine=Encapsulation Machine
 EOHB_Recipe_FillingUnit=Filling Unit
 EOHB_Recipe_ForgeOfTheSky=Forge Of The Sky
+EOHB_Recipe_PurificationUnit=Purification Unit
 
 #item
 EOHB_Harmony=Harmony

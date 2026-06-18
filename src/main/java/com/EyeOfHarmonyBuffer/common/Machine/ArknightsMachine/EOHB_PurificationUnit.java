@@ -19,32 +19,32 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.sBlockCasings2;
 import static gregtech.api.GregTechAPI.sBlockCasings8;
-import static gregtech.api.enums.HatchElement.InputBus;
-import static gregtech.api.enums.HatchElement.OutputBus;
+import static gregtech.api.enums.HatchElement.*;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMachineBase<EOHB_EncapsulationMachine>
+public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachineBase<EOHB_PurificationUnit>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_EncapsulationMachine> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainEncapsulationMachine";
-    private static final int OffsetsX = 10;
-    private static final int OffsetsY = 9;
+    private static IStructureDefinition<EOHB_PurificationUnit> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainPurificationUnit";
+    private static final int OffsetsX = 7;
+    private static final int OffsetsY = 8;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
 
-    public EOHB_EncapsulationMachine(int aID, String aName, String aNameRegional) {
+    public EOHB_PurificationUnit(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_EncapsulationMachine(String aName) {
+    public EOHB_PurificationUnit(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -52,7 +52,7 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.EncapsulationMachine;
+        return RecipeMaps.PurificationUnit;
     }
 
     @Override
@@ -73,34 +73,27 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
     }
 
     private static final String[][] shapeMain = new String[][]{
-        {"                     ","                     ","                     ","                     "," CCC                 "," CCC                 "," CCC                 ","                     ","                     ","                     ","                     "},
-        {"                     ","                     ","                     ","        A B A        ","CC      A B A    CC  ","CC      A   A    CC  ","CC      A   A    CC  ","        A   A        ","        CCCCC        ","         CCC         ","                     "},
-        {"          C          ","        C C C        ","       CC C CC       ","   AAAAAABBBAAAAAA   ","C  BBBBBBBBBBBBBBBCC ","C  BBBBBB B BBBBBBCC ","C  BBBBBB B BBBBBBCC ","   AAAAAA B AAAAAA   ","        CCCCC        ","         CCC         ","                     "},
-        {"          C          ","        C   C        ","       CC   CC       ","  AAAAAAA B AAAAAAA  ","C AAAAAAA B AAAAAAAC ","C AAAAAAA   AAAAAAAC ","C AAAAAAA   AAAAAAAC ","  AAAAAAA   AAAAAAA  ","       CCCCCCC       ","         CCC         ","                     "},
-        {"          C          ","        C   C        ","      CCC   CCC      ","  AAAAAAAAAAAAAAAAA  ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","  AAAAAAAAAAAAAAAAA  ","      CCCCCCCCC      ","         CCC         ","                     "},
-        {"          C          ","        C   C        ","     CCCC   CCCC     ","  AAAAAAAAAAAAAAAAA  ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","  AAAAAAAAAAAAAAAAA  ","     CCCCCCCCCCC     ","         CCC         ","                     "},
-        {"          C          ","        C C C        ","    CCCCC   CCCCC    ","  AAAAAAAAAAAAAAAAA  ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","C AAAAAAAAAAAAAAAAAC ","  AAAAAAAAAAAAAAAAA  ","    CCCCCCCCCCCCC    ","         CCC         ","                     "},
-        {"                     ","        C C C        ","   CCCCCC C CCCCCC   ","  AAAAAAAAAAAAAAAAA  "," CAAAAAAAAAAAAAAAAA  "," CAAAAAAAAAAAAAAAAA  "," CAAAAAAAAAAAAAAAAA  ","  AAAAAAAAAAAAAAAAA  ","   CCCCCCCCCCCCCCC   ","         CCC         ","                     "},
-        {"                     ","   CCCCCCCCCCCCCCC   ","  CCCCCCCCCCCCCCCCC  "," AACCCCCCCCCCCCCCCAA ","  CCCCCCCCCCCCCCCCC  ","  CCCCCCCCCCCCCCCCC  ","  CCCCCCCCCCCCCCCCC  "," AACCCCCCCCCCCCCCCAA ","  CCCCCCCCCCCCCCCCC  ","   CCCCCCCCCCCCCCC   ","                     "},
-        {" AAAAAAAAA~AAAAAAAAA "," AAAAAAAAAAAAAAAAAAA ","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA","AAAAAAAAAAAAAAAAAAAAA"," AAAAAAAAAAAAAAAAAAA "," AAAAAAAAAAAAAAAAAAA "}
+        {"               ","  C            ","  C         A  ","  C         A  "," CC         AC "," CA         AC "," CA         CC ","  A         C  ","  A         C  ","            C  ","               "},
+        {"               ","  C         A  ","  C         A  "," CCBBBBBBBBBAC "," CAA       AAC "," CAA       AAC "," CAA       AAC "," CABBBBBBBBBCC ","  A         C  ","  A         C  ","               "},
+        {"               ","            A  "," C          AC "," CAA       AAC "," C  AA C AA  C "," A  AA C AA  A "," C  AA C AA  C "," CAA       AAC "," CA          C ","  A            ","               "},
+        {"               ","            A  "," C          AC "," CAA       AAC "," A  AA C AA  A "," ABBBBBBBBBBBA "," A  AA C AA  A "," CAA       AAC "," CA          C ","  A            ","               "},
+        {"               ","               "," C           C "," CAA       AAC "," C  AA C AA  C "," A  AA C AA  A "," C  AA C AA  C "," CAA       AAC "," C           C ","               ","               "},
+        {"               ","               ","               "," CBBBBBBBBBBBC "," CAA       AAC "," CAA       AAC "," CAA       AAC "," CBBBBBBBBBBBC ","               ","               ","               "},
+        {"               ","               "," A           A ","               "," C           C "," C           C "," C           C ","               "," A           A ","               ","               "},
+        {"               "," A           A ","      CCC      ","     CCACC     "," AAACCAAACC    "," AAACAAAAAC    "," AAACCAAACC    ","     CCACC     ","      CCC      "," A           A ","               "},
+        {"DDDDDDD~DDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD","DDDDDDDDDDDDDDD"}
     };
 
     @Override
-    public IStructureDefinition<EOHB_EncapsulationMachine> getStructureDefinition() {
+    public IStructureDefinition<EOHB_PurificationUnit> getStructureDefinition() {
         if(STRUCTURE_DEFINITION == null){
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_EncapsulationMachine>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_PurificationUnit>builder()
                 .addShape(
                     STRUCTURE_PIECE_MAIN,transpose(shapeMain)
                 )
                 .addElement(
                     'A',
-                    buildHatchAdder(EOHB_EncapsulationMachine.class)
-                        .atLeast(InputBus,OutputBus)
-                        .casingIndex(CASING_INDEX)
-                        .dot(1)
-                        .buildAndChain(
-                            ofBlock(sBlockCasings2,0)
-                        )
+                    ofBlock(sBlockCasings2, 0)
                 )
                 .addElement(
                     'B',
@@ -110,6 +103,16 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
                     'C',
                     ofBlock(sBlockCasings8,7)
                 )
+                .addElement(
+                    'D',
+                    buildHatchAdder(EOHB_PurificationUnit.class)
+                        .atLeast(InputHatch,OutputHatch)
+                        .casingIndex(CASING_INDEX)
+                        .dot(1)
+                        .buildAndChain(
+                            ofBlock(sBlockCasings2,0)
+                        )
+                )
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -118,19 +121,21 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_EncapsulationMachine_MachineType)
-            .addInfo(Tooltip_EncapsulationMachine_Controller)
+        tt.addMachineType(Tooltip_PurificationUnit_MachineType)
+            .addInfo(Tooltip_PurificationUnit_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_EncapsulationMachine_00)
-            .addInfo(Tooltip_EncapsulationMachine_01)
-            .addInfo(Tooltip_EncapsulationMachine_02)
+            .addInfo(Tooltip_PurificationUnit_00)
+            .addInfo(Tooltip_PurificationUnit_01)
+            .addInfo(Tooltip_PurificationUnit_02)
+            .addInfo(Tooltip_PurificationUnit_03)
+            .addInfo(Tooltip_PurificationUnit_04)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
             .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputBus(add_InputBus)
+            .addInputBus(add_inputHatch)
             .addOutputBus(add_OutputBus)
             .toolTipFinisher(ModName);
         return tt;
@@ -138,7 +143,7 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_EncapsulationMachine(this.mName);
+        return new EOHB_PurificationUnit(this.mName);
     }
 
     @Override

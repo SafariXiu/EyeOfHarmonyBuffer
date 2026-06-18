@@ -202,6 +202,14 @@ Tooltip_ForgeOfTheSky_MachineType=§a天有洪炉
 Tooltip_ForgeOfTheSky_Controller=§7天有洪炉的§b控制器方块§r
 Tooltip_ForgeOfTheSky_00=§a用于§3息壤§a相关产物合成的专业设备。§r
 Tooltip_ForgeOfTheSky_01=§c地生五金。§r §a天有洪炉。§r
+NamePurificationUnit=§b提纯机
+Tooltip_PurificationUnit_MachineType=§b提纯机
+Tooltip_PurificationUnit_Controller=§7提纯机的§b控制器方块§r
+Tooltip_PurificationUnit_00=§a用于将§e溶液§a提纯至更高浓度的精密设备。§r
+Tooltip_PurificationUnit_01=§7“你知道的，对吧，我的朋友，§r§7我们的炼金术有着多么辉煌的历史，看看外面的§b太空§7……”§r
+Tooltip_PurificationUnit_02=§7“我们的征途与成就，怎么能止步于此呢？”§r
+Tooltip_PurificationUnit_03=§7“我需要一个好环境——一个§6优秀§7、§a稳定§7的§6源石§7环境。”§r
+Tooltip_PurificationUnit_04=§7“§c这就是§r§7你差点炸穿§b帝江号§7的理由？”§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -221,6 +229,7 @@ EOHB_Recipe_Grinder=研磨机
 EOHB_Recipe_EncapsulationMachine=封装机
 EOHB_Recipe_FillingUnit=灌装机
 EOHB_Recipe_ForgeOfTheSky=天有洪炉
+EOHB_Recipe_PurificationUnit=提纯机
 
 #item
 EOHB_Harmony=鸿蒙
