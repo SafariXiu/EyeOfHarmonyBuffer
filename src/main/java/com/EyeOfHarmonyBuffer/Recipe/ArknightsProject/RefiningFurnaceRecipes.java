@@ -114,10 +114,10 @@ public class RefiningFurnaceRecipes implements IRecipePool {
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.QiaoHua.get(1)
+                GTCMItemList.LanTieKuang.get(1)
             )
             .itemOutputs(
-                GTCMItemList.TanKuai.get(1)
+                GTCMItemList.LanTieKuai.get(1)
             )
             .eut(5000)
             .duration(10 * SECONDS)
