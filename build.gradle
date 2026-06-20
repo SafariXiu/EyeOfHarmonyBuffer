@@ -11,6 +11,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
     implementation 'org.ow2.asm:asm-commons:9.2'
+    compileOnly 'xyz.wagyourtail.jvmdowngrader:jvmdowngrader-java-api:0.9.0'
 }
 
 tasks.withType(JavaCompile) {

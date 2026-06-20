@@ -23,16 +23,16 @@ public class MaterialsRecipes implements IRecipePool{
         GTValues.RA.stdBuilder()
             .itemInputsUnsafe(
                 GTUtility.copyAmount(0, CustomItemList.Machine_Multi_EyeOfHarmony.get(1)),
-                GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,MaterialsUEVplus.MagMatter.getDust(1)),
+                GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,Materials.MagMatter.getDust(1)),
                 GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,GTOreDictUnificator.get(OrePrefixes.dust, Materials.Bedrockium, 1)),
-                GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,MaterialsUEVplus.Eternity.getDust(1)),
+                GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,Materials.Eternity.getDust(1)),
                 GTUtility.copyAmountUnsafe(Integer.MAX_VALUE,Materials.Infinity.getDust(1))
 
             )
             .fluidInputs(
-                MaterialsUEVplus.Antimatter.getFluid(1919810),
-                MaterialsUEVplus.PhononMedium.getFluid(1145140),
-                MaterialsUEVplus.QuarkGluonPlasma.getFluid(1231231)
+                Materials.Antimatter.getFluid(1919810),
+                Materials.PhononMedium.getFluid(1145140),
+                Materials.QuarkGluonPlasma.getFluid(1231231)
             )
             .itemOutputs(
                 EOHBCatalyst.get(OrePrefixes.dust, 1)
@@ -43,14 +43,14 @@ public class MaterialsRecipes implements IRecipePool{
 
         GTValues.RA.stdBuilder()
             .itemInputsUnsafe(
-                GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, MaterialsUEVplus.WhiteDwarfMatter,1)),
-                GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, MaterialsUEVplus.BlackDwarfMatter,1)),
+                GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, Materials.WhiteDwarfMatter,1)),
+                GTUtility.copyAmountUnsafe(1280000, GTOreDictUnificator.get(OrePrefixes.ingot, Materials.BlackDwarfMatter,1)),
                 GTUtility.copyAmountUnsafe(1280000, getModItem(EternalSingularity.ID, "eternal_singularity",1)),
-                GTUtility.copyAmountUnsafe(1280000, MaterialsUEVplus.Universium.getIngots(1)),
+                GTUtility.copyAmountUnsafe(1280000, Materials.Universium.getIngots(1)),
                 EOHBCatalyst.get(OrePrefixes.dust, 1)
             )
             .fluidInputs(
-                MaterialsUEVplus.SpaceTime.getMolten(1440000)
+                Materials.SpaceTime.getMolten(1440000)
             )
             .itemOutputs(
                 EOHBCatalyst.get(OrePrefixes.ingotHot, 1)
@@ -65,8 +65,8 @@ public class MaterialsRecipes implements IRecipePool{
                 EOHBCatalyst.get(OrePrefixes.ingotHot, 1)
             )
             .fluidInputs(
-                MaterialsUEVplus.Space.getMolten(1440000),
-                MaterialsUEVplus.Time.getMolten(1440000)
+                Materials.Space.getMolten(1440000),
+                Materials.Time.getMolten(1440000)
             )
             .itemOutputs(
                 EOHBCatalyst.get(OrePrefixes.ingot, 1)

@@ -24,7 +24,5 @@ public class SingularityStabilizationRingCasingsItemBlocks extends ItemBlockBase
                                boolean p_77624_4_) {
         if (null == aItemStack) return;
 
-        theTooltipsList.add(mNoMobsToolTip);
-        theTooltipsList.add(mNoTileEntityToolTip);
     }
 }

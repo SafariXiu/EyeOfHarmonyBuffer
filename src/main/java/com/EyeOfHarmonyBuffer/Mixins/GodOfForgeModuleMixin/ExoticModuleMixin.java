@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.Mixins.GodOfForgeModuleMixin;
 
 import com.EyeOfHarmonyBuffer.Mixins.Accessor.GodOfForgeModule.MTEExoticModuleAccessor;
-import gregtech.api.enums.MaterialsUEVplus;
+import gregtech.api.enums.Materials;
 import gregtech.api.enums.TierEU;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
@@ -35,7 +35,7 @@ import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
 
-@Mixin(value = MTEExoticModule.class,remap = false)
+@Mixin(value = MTEExoticModule.class, remap = false)
 public abstract class ExoticModuleMixin extends MTEBaseModule {
 
     public ExoticModuleMixin(int aID, String aName, String aNameRegional) {
@@ -58,22 +58,22 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     private ItemStack[] randomizedItemInput;
 
     @Shadow
-    private boolean recipeInProgress = false;
+    private boolean recipeInProgress;
 
     @Shadow
-    private boolean magmatterMode = false;
+    private boolean magmatterMode;
 
     @Shadow
-    private GTRecipe plasmaRecipe = null;
+    private GTRecipe plasmaRecipe;
 
     @Shadow
-    private boolean recipeRegenerated = false;
+    private boolean recipeRegenerated;
 
     @Shadow
-    private BigInteger powerForRecipe = BigInteger.ZERO;
+    private BigInteger powerForRecipe;
 
     @Shadow
-    private long EUt = 0;
+    private long EUt;
 
     @Shadow
     protected abstract GTRecipe generateMagmatterRecipe();
@@ -88,7 +88,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     @Inject(method = "generateQuarkGluonRecipe", at = @At("HEAD"), cancellable = true)
     private void injectGenerateQuarkGluonRecipe(CallbackInfoReturnable<GTRecipe> cir) {
         if (MainConfig.ExoticModuleEnable) {
-            actualParallel = super.getMaxParallel();
+            actualParallel = getActualParallel();
 
             numberOfFluids = 0;
             numberOfItems = 0;
@@ -97,10 +97,16 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
             GTRecipe recipe = new GTRecipe(
                 false,
-                null, null, null, null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 new FluidStack[0],
                 new FluidStack[]{
-                    MaterialsUEVplus.QuarkGluonPlasma.getFluid(1000 * actualParallel)
+                    Materials.QuarkGluonPlasma.getFluid((int) (1000L * actualParallel))
                 },
                 10 * SECONDS,
                 (int) TierEU.RECIPE_MAX,
@@ -119,7 +125,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
     @Inject(method = "generateMagmatterRecipe", at = @At("HEAD"), cancellable = true)
     private void injectGenerateMagmatterRecipe(CallbackInfoReturnable<GTRecipe> cir) {
         if (MainConfig.ExoticModuleEnable) {
-            actualParallel = super.getMaxParallel();
+            actualParallel = getActualParallel();
 
             numberOfItems = 0;
             numberOfFluids = 0;
@@ -128,10 +134,16 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
             GTRecipe recipe = new GTRecipe(
                 false,
-                null, null, null, null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 new FluidStack[0],
                 new FluidStack[]{
-                    MaterialsUEVplus.MagMatter.getMolten(576 * actualParallel)
+                    Materials.MagMatter.getMolten((int) (576L * actualParallel))
                 },
                 10 * SECONDS,
                 (int) TierEU.RECIPE_MAX,
@@ -168,7 +180,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                     if (!recipeInProgress || recipeRegenerated) {
                         powerForRecipe = BigInteger
                             .valueOf(getProcessingVoltage())
-                            .multiply(BigInteger.valueOf(recipe.mDuration * actualParallel));
+                            .multiply(BigInteger.valueOf((long) recipe.mDuration * actualParallel));
 
                         if (getUserEU(userUUID).compareTo(powerForRecipe) < 0) {
                             plasmaRecipe = null;
@@ -177,16 +189,16 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
                         if (numberOfFluids != 0) {
                             for (FluidStack fluidStack : randomizedFluidInput) {
-                                dumpFluid(mOutputHatches,
+                                dumpFluid(
+                                    mOutputHatches,
                                     new FluidStack(fluidStack.getFluid(), fluidStack.amount / 1000),
-                                    false);
+                                    false
+                                );
                             }
                         }
 
                         if (numberOfItems != 0) {
-                            for (ItemStack itemStack : randomizedItemInput) {
-                                addOutput(itemStack);
-                            }
+                            addItemOutputs(randomizedItemInput);
                         }
 
                         recipeInProgress = true;
@@ -207,7 +219,7 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                 protected CheckRecipeResult onRecipeStart(@NotNull GTRecipe recipe) {
                     EUt = calculatedEut;
                     powerForRecipe = BigInteger.valueOf(EUt)
-                        .multiply(BigInteger.valueOf(duration * actualParallel));
+                        .multiply(BigInteger.valueOf((long) duration * actualParallel));
 
                     if (!addEUToGlobalEnergyMap(userUUID, powerForRecipe.negate())) {
                         return CheckRecipeResultRegistry.insufficientStartupPower(powerForRecipe);

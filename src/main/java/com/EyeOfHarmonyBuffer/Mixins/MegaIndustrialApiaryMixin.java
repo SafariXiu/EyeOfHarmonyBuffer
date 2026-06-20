@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mixin(targets = "kubatech.tileentity.gregtech.multiblock.MTEMegaIndustrialApiary$BeeSimulator", remap = false)
+@Mixin(value = MTEMegaIndustrialApiary.BeeSimulator.class, remap = false)
 public abstract class MegaIndustrialApiaryMixin {
 
     @Inject(
@@ -23,12 +23,12 @@ public abstract class MegaIndustrialApiaryMixin {
                             CallbackInfoReturnable<List<ItemStack>> cir) {
         int multiplier = Math.max(1, MainConfig.MegaIndustrialApiaryOutPut);
 
-        if(!MainConfig.MegaIndustrialApiaryOutPutEnable) return;
+        if (!MainConfig.MegaIndustrialApiaryOutPutEnable) return;
 
         List<ItemStack> original = cir.getReturnValue();
         if (original == null || original.isEmpty()) return;
 
-        List<ItemStack> boosted = new ArrayList<ItemStack>();
+        List<ItemStack> boosted = new ArrayList<>();
 
         for (ItemStack stack : original) {
             if (stack == null) continue;

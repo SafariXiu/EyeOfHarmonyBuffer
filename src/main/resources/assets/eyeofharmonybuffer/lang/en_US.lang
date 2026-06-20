@@ -1,3 +1,5 @@
+gt.nomobspawnsonthisblock=Mobs cannot Spawn on this Block
+gt.notileentityinthisblock=This is NOT a TileEntity!
 Disable_loading=§4§l§oMachine is prohibited from loading!Please go to the configuration file MachineLoaderConfig to enable the machine!
 BLUE_PRINT_INFO=Follow the§9 Structure§1Lib§7 hologram projector to build the main structure.
 Waila.General.WirelessMode=Wireless Mode
@@ -137,3 +139,6 @@ EOHB_Monkey_Tooltip_00=Legendary Poop Handler of the Squad!
 EOHB_Monkey_Tooltip_01=Monkeys and poop really are a pair of star-crossed lovers...
 item.Shit.name=Shit
 EOHB_Shit_Tooltip_00=As you can see... this is a pile of... poop.
+
+#text
+GT5U.gui.text.structure_error.one_dynamo_only=Must have exactly one Dynamo hatch in total.

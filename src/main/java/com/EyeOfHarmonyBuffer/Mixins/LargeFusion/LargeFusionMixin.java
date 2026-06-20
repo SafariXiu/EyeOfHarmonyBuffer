@@ -1,11 +1,8 @@
 package com.EyeOfHarmonyBuffer.Mixins.LargeFusion;
 
-import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
-import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.tileentity.IOverclockDescriptionProvider;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,10 +12,10 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import goodgenerator.blocks.tileEntity.base.MTELargeFusionComputer;
 import gregtech.api.enums.GTValues;
+import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 @Mixin(value = MTELargeFusionComputer.class, remap = false)
-public abstract class LargeFusionMixin extends MTETooltipMultiBlockBaseEM
-    implements IConstructable, ISurvivalConstructable, IOverclockDescriptionProvider {
+public abstract class LargeFusionMixin extends TTMultiblockBase implements ISurvivalConstructable, IOverclockDescriptionProvider {
 
     @Shadow
     public abstract int tier();

@@ -4,15 +4,15 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.logic.ProcessingLogic;
+import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.ParallelHelper;
-import gtPlusPlus.core.material.Material;
+import gregtech.common.tileentities.machines.multi.MTEFrothFlotationCell;
 import gtPlusPlus.xmod.gregtech.api.metatileentity.implementations.base.GTPPMultiBlockBase;
-import gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.MTEFrothFlotationCell;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @Mixin(value = MTEFrothFlotationCell.class, remap = false)
-public abstract class FrothFlotationCellMixin extends GTPPMultiBlockBase<MTEFrothFlotationCell> implements ISurvivalConstructable {
+public abstract class FrothFlotationCellMixin extends MTEExtendedPowerMultiBlockBase<MTEFrothFlotationCell> implements ISurvivalConstructable {
 
     public FrothFlotationCellMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
