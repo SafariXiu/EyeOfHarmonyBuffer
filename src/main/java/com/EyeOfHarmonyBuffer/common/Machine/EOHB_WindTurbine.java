@@ -367,16 +367,31 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     @Override
     public String[] getInfoData() {
-        String[] info = super.getInfoData();
-        info[4] = "Currently generates: " + EnumChatFormatting.RED
-            + GTUtility.formatNumbers(Math.abs(this.trueOutput))
-            + EnumChatFormatting.RESET + " EU/t";
-        info[6] = "Problems: " + EnumChatFormatting.RED
-            + (this.getIdealStatus() - this.getRepairStatus())
-            + EnumChatFormatting.RESET + " Coefficient Of Wind Power: "
-            + EnumChatFormatting.YELLOW + lastWindSpeed + EnumChatFormatting.RESET;
-        info[7] = "Wireless Mode: " + (MachineWirelessMode ?
-            EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");
+        String[] base = super.getInfoData();
+        int minLength = 8;
+        int newLength = base == null ? minLength : Math.max(minLength, base.length);
+
+        String[] info = new String[newLength];
+        if (base != null) {
+            System.arraycopy(base, 0, info, 0, base.length);
+        }
+        if (newLength > 4) {
+            info[4] = "Currently generates: " + EnumChatFormatting.RED
+                + GTUtility.formatNumbers(Math.abs(this.trueOutput))
+                + EnumChatFormatting.RESET + " EU/t";
+        }
+        if (newLength > 6) {
+            info[6] = "Problems: " + EnumChatFormatting.RED
+                + (this.getIdealStatus() - this.getRepairStatus())
+                + EnumChatFormatting.RESET + " Coefficient Of Wind Power: "
+                + EnumChatFormatting.YELLOW + lastWindSpeed + EnumChatFormatting.RESET;
+        }
+        if (newLength > 7) {
+            info[7] = "Wireless Mode: " + (MachineWirelessMode
+                ? EnumChatFormatting.GREEN + "ENABLED"
+                : EnumChatFormatting.RED + "DISABLED");
+        }
+
         return info;
     }
 
