@@ -16,6 +16,7 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
@@ -111,7 +113,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
                     buildHatchAdder(EOHB_BlueDogMachine.class)
                         .atLeast(InputHatch)
                         .casingIndex(HEMPCRETE_META14_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 14)
                         )
@@ -125,7 +127,7 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
                     buildHatchAdder(EOHB_BlueDogMachine.class)
                         .atLeast(OutputHatch)
                         .casingIndex(HEMPCRETE_META15_INDEX)
-                        .dot(2)
+                        .hint(2)
                         .buildAndChain(
                             ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 15)
                         )
@@ -156,8 +158,15 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+
+        if (!ok) return;
+
+        checkHasInputHatch(errors);
+        checkHasOutputHatch(errors);
     }
 
     @Override

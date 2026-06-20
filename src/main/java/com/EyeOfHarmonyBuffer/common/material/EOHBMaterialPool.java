@@ -213,7 +213,7 @@ public class EOHBMaterialPool implements Runnable{
 
     @Override
     public void run() {
-        for (var prefix : OrePrefixes.values()) {
+        for (OrePrefixes prefix : OrePrefixes.VALUES) {
             gf.addPrefix(prefix);
         }
         gf.removePrefix(OrePrefixes.ore);

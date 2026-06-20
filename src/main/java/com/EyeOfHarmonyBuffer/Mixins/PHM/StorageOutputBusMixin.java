@@ -1,26 +1,18 @@
 package com.EyeOfHarmonyBuffer.Mixins.PHM;
 
-import appeng.api.storage.ICellContainer;
-import appeng.me.helpers.IGridProxyable;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import gregtech.common.tileentities.machines.MTEHatchOutputBusME;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import reobf.proghatches.gt.metatileentity.StorageOutputBus;
-import reobf.proghatches.gt.metatileentity.util.IStoageCellUpdate;
 
 @Mixin(value = StorageOutputBus.class, remap = false)
-public abstract class StorageOutputBusMixin extends MTEHatchOutputBusME implements ICellContainer, IGridProxyable, IStoageCellUpdate {
-
-    public StorageOutputBusMixin(int aID, String aName, String aNameRegional) {
-        super(aID, aName, aNameRegional);
-    }
+public abstract class StorageOutputBusMixin {
 
     @Inject(method = "getCacheCapacity", at = @At("RETURN"), cancellable = true)
     private void injectGetCacheCapacity(CallbackInfoReturnable<Long> cir) {
-        if(MainConfig.StorageOutputBusEnable){
+        if (MainConfig.StorageOutputBusEnable) {
             cir.setReturnValue(Long.MAX_VALUE);
         }
     }

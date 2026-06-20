@@ -1,3 +1,5 @@
+gt.nomobspawnsonthisblock=Mobs cannot Spawn on this Block
+gt.notileentityinthisblock=This is NOT a TileEntity!
 Disable_loading=§4§l§o机器被禁止加载！请前往配置文件MachineLoaderConfig中开启机器！
 BLUE_PRINT_INFO=请参考§9Structure§1Lib§7全息投影，构建主体结构
 Waila.General.WirelessMode=无线模式
@@ -469,3 +471,6 @@ betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.name=§6§l欢迎来到塔罗斯！
 betterquesting.quest.ahCSSUdvNkOqrpz07SDAlQ.desc=§e§l欢迎来到塔罗斯星球！§r%n%n§a什么？你说你还没来？§r你只需要一个§64阶火箭§r就可以飞过来了！在太阳系的右上方，不会很难找的！你会喜欢这里的，我们有许多§b全新的矿物和工业设备§r等你制作呢。现在，让我们在这片大地上找一些§6源石矿脉§r，它们分布在这片大地的各个地方，你可以通过挖掘那些黑色的玻璃状的矿脉块获得§6源石矿§r，%n%n那是我们一切的一切的基础！%n%n§d§l玩得愉快！§r
 betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.name=§6§l你的第一台方舟机器！
 betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.desc=§a这台机器会一直陪你度过游戏的前期！§r你总不想跑遍整颗塔罗斯星，却还挖不到几块§6源石矿§r，对吧？%n%n希望你已经准备好了足够的§6至纯源石§r来制造它！在此之前，我建议你先看看左边的任务线，去合成你的第一颗§6至纯源石§r！
+
+#text
+GT5U.gui.text.structure_error.one_dynamo_only=至少有一个动力舱！

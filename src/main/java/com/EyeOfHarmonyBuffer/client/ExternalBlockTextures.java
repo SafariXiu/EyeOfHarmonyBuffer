@@ -35,7 +35,7 @@ public class ExternalBlockTextures {
         int freeIndex = 0;
         while (freeIndex < 128 && pageArray[freeIndex] != null) freeIndex++;
 
-        IIconContainer iconContainer = new Textures.BlockIcons.CustomIcon(texturePath);
+        IIconContainer iconContainer = Textures.BlockIcons.custom(texturePath);
         ITexture texture = TextureFactory.of(iconContainer);
 
         pageArray[freeIndex] = texture;

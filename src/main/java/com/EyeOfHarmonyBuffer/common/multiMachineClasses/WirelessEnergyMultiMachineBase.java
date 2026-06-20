@@ -3,12 +3,12 @@ package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
-import gregtech.api.util.GTUtility;
 import gregtech.api.util.OverclockCalculator;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -163,7 +163,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
         updateSlots();
         if (!succeeded) return finalResult;
-        costingEUText = GTUtility.formatNumbers(costingEU);
+        costingEUText = NumberFormatUtil.formatNumber(costingEU);
 
         mEfficiency = 10000;
         mEfficiencyIncrease = 10000;

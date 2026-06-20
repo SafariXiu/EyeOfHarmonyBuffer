@@ -20,7 +20,6 @@ public class LateMixins implements ILateMixinLoader {
             "Accessor.DigesterAccessor",
             "Accessor.EyeOfHarmonyAccessor",
             "Accessor.ExoticModuleAccessor",
-            "Accessor.FOGAccessor",
             "Accessor.SpaceElevatorAccessor",
             "Accessor.TTMultiblockBaseAccessor",
             "Accessor.TreatedWater.Grade4WaterPurificationAccessor",

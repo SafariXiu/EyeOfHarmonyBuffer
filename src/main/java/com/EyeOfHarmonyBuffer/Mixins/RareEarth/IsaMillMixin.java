@@ -30,9 +30,6 @@ public abstract class IsaMillMixin extends GTPPMultiBlockBase<MTEIsaMill> implem
     @Shadow
     protected abstract void damageMillingBall(ItemStack aStack);
 
-    @Shadow
-    protected abstract ItemStack findMillingBall(ItemStack[] aItemInputs);
-
     @Inject(
         method = "createProcessingLogic",
         at = @At("HEAD"),

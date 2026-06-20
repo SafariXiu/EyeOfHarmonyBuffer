@@ -7,7 +7,6 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.GregTechAPI;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
@@ -17,6 +16,8 @@ import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
@@ -28,10 +29,12 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.casing.TTCasingsContainer;
+import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,8 +49,9 @@ import static gregtech.api.util.GTModHandler.getModItem;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
-public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable {
+public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable, ISurvivalConstructable {
 
+    private static final String STRUCTURE_PIECE_MAIN = "mainWindTurbine";
     private IStructureDefinition<EOHB_WindTurbine> multiDefinition = null;
     protected long leftEnergy = 0;
     private static final Map<ItemStack, Integer> ROTOR_VALUES = new HashMap<>();
@@ -157,7 +161,7 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
                                 gregtech.api.enums.HatchElement.Maintenance
                             )
                             .casingIndex(210)
-                            .dot(1)
+                            .hint(1)
                             .build(),
                         ofBlock(sBlockReinforced,2)
                     ))
@@ -202,16 +206,25 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     @Override
     public void construct(ItemStack itemStack, boolean hintsOnly) {
-        structureBuild_EM(mName, 11, 59, 0, itemStack, hintsOnly);
+        buildPiece(STRUCTURE_PIECE_MAIN, itemStack, hintsOnly, 11, 59, 0);
     }
 
     @Override
-    public boolean checkMachine_EM(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        if(MachineWirelessMode){
-            return structureCheck_EM(mName, 11, 59, 0);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+
+        boolean ok = checkPiece(mName, 11, 59, 0, errors);
+        if (!ok) return;
+
+        if (MachineWirelessMode) {
+            return;
         }
-        return structureCheck_EM(mName, 11, 59, 0)
-            && mDynamoHatches.size() + eDynamoMulti.size() == 1;
+
+        int dynamos = mDynamoHatches.size() + eDynamoMulti.size();
+        if (dynamos != 1) {
+            errors.add(StructureErrors.of("GT5U.gui.text.structure_error.one_dynamo_only"));
+        }
     }
 
     @Override
@@ -367,16 +380,31 @@ public class EOHB_WindTurbine extends MTETooltipMultiBlockBaseEM implements ICon
 
     @Override
     public String[] getInfoData() {
-        String[] info = super.getInfoData();
-        info[4] = "Currently generates: " + EnumChatFormatting.RED
-            + GTUtility.formatNumbers(Math.abs(this.trueOutput))
-            + EnumChatFormatting.RESET + " EU/t";
-        info[6] = "Problems: " + EnumChatFormatting.RED
-            + (this.getIdealStatus() - this.getRepairStatus())
-            + EnumChatFormatting.RESET + " Coefficient Of Wind Power: "
-            + EnumChatFormatting.YELLOW + lastWindSpeed + EnumChatFormatting.RESET;
-        info[7] = "Wireless Mode: " + (MachineWirelessMode ?
-            EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");
+        String[] base = super.getInfoData();
+        int minLength = 8;
+        int newLength = base == null ? minLength : Math.max(minLength, base.length);
+
+        String[] info = new String[newLength];
+        if (base != null) {
+            System.arraycopy(base, 0, info, 0, base.length);
+        }
+        if (newLength > 4) {
+            info[4] = "Currently generates: " + EnumChatFormatting.RED
+                + GTUtility.formatShortenedLong(Math.abs(this.trueOutput))
+                + EnumChatFormatting.RESET + " EU/t";
+        }
+        if (newLength > 6) {
+            info[6] = "Problems: " + EnumChatFormatting.RED
+                + (this.getIdealStatus() - this.getRepairStatus())
+                + EnumChatFormatting.RESET + " Coefficient Of Wind Power: "
+                + EnumChatFormatting.YELLOW + lastWindSpeed + EnumChatFormatting.RESET;
+        }
+        if (newLength > 7) {
+            info[7] = "Wireless Mode: " + (MachineWirelessMode
+                ? EnumChatFormatting.GREEN + "ENABLED"
+                : EnumChatFormatting.RED + "DISABLED");
+        }
+
         return info;
     }
 
