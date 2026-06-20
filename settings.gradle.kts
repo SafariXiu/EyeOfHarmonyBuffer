@@ -4,7 +4,7 @@ pluginManagement {
         maven {
             // RetroFuturaGradle
             name = "GTNH Maven"
-            url = "https://nexus.gtnewhorizons.com/repository/public/"
+            url = uri("https://nexus.gtnewhorizons.com/repository/public/")
             mavenContent {
                 includeGroup("com.gtnewhorizons")
                 includeGroupByRegex("com\\.gtnewhorizons\\..+")
@@ -14,8 +14,12 @@ pluginManagement {
         mavenCentral()
         mavenLocal()
     }
+    plugins {
+        kotlin("jvm") version "1.9.24"
+    }
 }
 
 plugins {
-    id 'com.gtnewhorizons.gtnhsettingsconvention' version '1.0.42'
+    id("com.gtnewhorizons.gtnhsettingsconvention") version("2.0.26")
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 }
