@@ -31,7 +31,6 @@ public class MainConfig {
     public static boolean LargeFusionParaMixin = false;
     public static int LargeFusionPara = 256;
     public static boolean UUMixin = false;
-    public static boolean BioLabMixin = false;
     public static boolean NaquadahFuelRefineryMixinTrue = false;
     public static int NaquadahFuelRefineryMagnification = 10000;
     public static boolean NaquadahFuelOutPutMagnificationTrue = false;
@@ -499,10 +498,6 @@ public class MainConfig {
         UUMixin = config
             .get("其他机器", "大UU", UUMixin, "开启后大UU启用不耗电+int并行")
             .getBoolean(UUMixin);
-
-        BioLabMixin = config
-            .get("其他机器", "生物实验室", BioLabMixin, "开启后生物实验室所有抽卡成功率为百分百")
-            .getBoolean(BioLabMixin);
 
         HIPCompressorEnable = config
             .get("其他机器","HIP压缩机", HIPCompressorEnable,"开启后关闭HIP热量系统")

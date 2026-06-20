@@ -57,4 +57,15 @@ public class RecipeMaps {
         .logoSize(20,20)
         .logoPos(152,63)
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> NewBioLab = RecipeMapBuilder
+        .of(EOHB_Recipe_MonkeyShit)
+        .maxIO(6,6,6,6)
+        .neiRecipeBackgroundSize(170,185)
+        .useCustomFilterForNEI()
+        .frontend(MonkeyShitFrontend::new)
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20,20)
+        .logoPos(152,63)
+        .build();
 }

@@ -34,6 +34,7 @@ public class RecipeLoader {
 
         IRecipePool[] recipePools = new IRecipePool[] {
             new MonkeyShitRecipes(),
+            new NewBioLabRecipe(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();
