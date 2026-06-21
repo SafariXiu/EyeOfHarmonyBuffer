@@ -35,7 +35,7 @@
  */
 
 dependencies {
-    api('com.github.GTNewHorizons:GT5-Unofficial:5.09.51.470:dev')
+    api('com.github.GTNewHorizons:GT5-Unofficial:5.09.52.594:dev')
 
     implementation('com.github.GTNewHorizons:AE2FluidCraft-Rework:1.4.115-gtnh:dev')
     implementation('com.github.GTNewHorizons:ae2stuff:0.9.8-GTNH:dev')
@@ -47,7 +47,6 @@ dependencies {
     implementation('com.github.GTNewHorizons:Draconic-Evolution:1.4.27-GTNH:dev')
     implementation('com.github.GTNewHorizons:Electro-Magic-Tools:1.6.17:dev')
     implementation('com.github.GTNewHorizons:EnderIO:2.9.26:dev')
-    implementation('com.github.GTNewHorizons:Eternal-Singularity:1.2.1:dev')
     implementation('com.github.GTNewHorizons:Et-Futurum-Requiem:2.6.2.25-GTNH:dev')
     implementation('com.github.GTNewHorizons:ForestryMC:4.10.17:dev')
     implementation('com.github.GTNewHorizons:Hardcore-Ender-Expansion:1.12.16-GTNH:dev')
