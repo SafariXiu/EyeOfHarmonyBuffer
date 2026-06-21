@@ -106,7 +106,7 @@ public class EOHB_Pulverizer extends UpgradableOrundumWirelessMultiMachineBase<E
                     buildHatchAdder(EOHB_Pulverizer.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

@@ -4,7 +4,7 @@ pluginManagement {
 
         maven {
             name = "GTNH Maven Mirror"
-            url = "https://maven.gaytnh.com/gtnh-public"
+            url = uri("https://maven.gaytnh.com/gtnh-public")
             mavenContent {
                 includeGroup("com.gtnewhorizons")
                 includeGroupByRegex("com\\.gtnewhorizons\\..+")
@@ -13,12 +13,13 @@ pluginManagement {
 
         maven {
             name = "GTNH Maven"
-            url = "https://nexus.gtnewhorizons.com/repository/public/"
+            url = uri("https://nexus.gtnewhorizons.com/repository/public/")
             mavenContent {
                 includeGroup("com.gtnewhorizons")
                 includeGroupByRegex("com\\.gtnewhorizons\\..+")
             }
         }
+
         gradlePluginPortal()
         mavenCentral()
         mavenLocal()
@@ -26,5 +27,5 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gtnewhorizons.gtnhsettingsconvention") version("2.0.26")
+    id("com.gtnewhorizons.gtnhsettingsconvention") version "2.0.26"
 }

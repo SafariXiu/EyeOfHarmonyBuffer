@@ -93,7 +93,7 @@ public class EOHB_ShapingMachine extends UpgradableOrundumWirelessMultiMachineBa
                     buildHatchAdder(EOHB_ShapingMachine.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

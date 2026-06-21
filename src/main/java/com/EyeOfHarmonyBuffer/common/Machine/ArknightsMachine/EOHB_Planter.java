@@ -148,7 +148,7 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
                     buildHatchAdder(EOHB_Planter.class)
                         .atLeast(InputBus, OutputBus, InputHatch)
                         .casingIndex(CASING_INDEX1)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             sBlockCasings8, 7
                         )

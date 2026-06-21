@@ -98,7 +98,7 @@ public class EOHB_Grinder extends UpgradableOrundumWirelessMultiMachineBase<EOHB
                     buildHatchAdder(EOHB_Grinder.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )
@@ -112,7 +112,7 @@ public class EOHB_Grinder extends UpgradableOrundumWirelessMultiMachineBase<EOHB
                     buildHatchAdder(EOHB_Grinder.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings8,7)
                         )

@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.example;
 import com.hfstudio.bqapi.BQApi;
 import com.hfstudio.bqapi.api.builder.Chapters;
 import com.hfstudio.bqapi.api.builder.Quests;
-import com.hfstudio.bqapi.api.builder.RewardBuilders;
 import com.hfstudio.bqapi.api.builder.TaskBuilders;
 import com.hfstudio.bqapi.api.definition.ChapterDefinition;
 import com.hfstudio.bqapi.api.definition.QuestDefinition;

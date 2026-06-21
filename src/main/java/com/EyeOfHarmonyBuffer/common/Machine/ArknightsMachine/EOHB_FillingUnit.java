@@ -96,7 +96,7 @@ public class EOHB_FillingUnit extends UpgradableOrundumWirelessMultiMachineBase<
                     buildHatchAdder(EOHB_FillingUnit.class)
                         .atLeast(InputBus,OutputBus,InputHatch)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

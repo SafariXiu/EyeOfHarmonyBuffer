@@ -108,7 +108,7 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
                     buildHatchAdder(EOHB_PurificationUnit.class)
                         .atLeast(InputHatch,OutputHatch)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

@@ -122,7 +122,7 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
                     buildHatchAdder(EOHB_ReactorCrucible.class)
                         .atLeast(InputBus, InputHatch, OutputBus, OutputHatch)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

@@ -123,7 +123,7 @@ public class EOHB_ExpandedCrucible extends UpgradableOrundumWirelessMultiMachine
                     buildHatchAdder(EOHB_ExpandedCrucible.class)
                         .atLeast(InputBus, InputHatch, OutputBus, OutputHatch)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

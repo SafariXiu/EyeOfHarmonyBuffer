@@ -58,11 +58,11 @@ public class EOHBMaterialPool implements Runnable{
             .addPrefix(OrePrefixes.dustTiny)
             .addMolten()
             .addCells()
-            .setBlacklist(OrePrefixes.ore)
-            .setBlacklist(OrePrefixes.oreBlackgranite)
-            .setBlacklist(OrePrefixes.oreRedgranite)
-            .setBlacklist(OrePrefixes.oreEnd)
-            .setBlacklist(OrePrefixes.oreNether),
+            .removePrefix(OrePrefixes.ore)
+            .removePrefix(OrePrefixes.oreBlackgranite)
+            .removePrefix(OrePrefixes.oreRedgranite)
+            .removePrefix(OrePrefixes.oreEnd)
+            .removePrefix(OrePrefixes.oreNether),
         OFFSET_ID + 3,
         TextureSet.SET_SHINY
     );

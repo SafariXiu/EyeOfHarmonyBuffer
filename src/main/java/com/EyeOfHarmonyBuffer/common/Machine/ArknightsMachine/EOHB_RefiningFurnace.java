@@ -148,7 +148,7 @@ public class EOHB_RefiningFurnace extends OrundumWirelessMultiMachineBase<EOHB_R
                     buildHatchAdder(EOHB_RefiningFurnace.class)
                         .atLeast(InputBus,InputHatch,OutputHatch,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

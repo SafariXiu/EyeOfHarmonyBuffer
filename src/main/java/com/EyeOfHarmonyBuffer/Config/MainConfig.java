@@ -115,6 +115,10 @@ public class MainConfig {
     public static boolean ResearchCompleterEnable = false;
     public static boolean GTPPMachineExoEnergyHatchFixEnable = false;
     public static boolean AllMachineUseExoEnergyHatchEnable = false;
+    public static boolean ExtremeIndustrialGreenhouseOutPutEnable = false;
+    public static int ExtremeIndustrialGreenhouseOutPut = 10;
+    public static boolean MegaIndustrialApiaryOutPutEnable = false;
+    public static int MegaIndustrialApiaryOutPut = 10;
 
     private static Configuration config;
 
@@ -150,6 +154,22 @@ public class MainConfig {
         TargetChamberEnable = config
             .get("其他机器","靶室",TargetChamberEnable,"开启后删除光束流等机器需求，只保留物品输入检测，最大并行数量调整为2050781，锁定运行时间为20tick")
             .getBoolean(TargetChamberEnable);
+
+        ExtremeIndustrialGreenhouseOutPutEnable = config
+            .get("极限工业温室","极限工业温室产物输出倍率修改",ExtremeIndustrialGreenhouseOutPutEnable,"开启后可以配置极限工业温室产物输出倍率")
+            .getBoolean(ExtremeIndustrialGreenhouseOutPutEnable);
+
+        ExtremeIndustrialGreenhouseOutPut = config
+            .get("极限工业温室","极限工业温室产物输出倍率",ExtremeIndustrialGreenhouseOutPut,"设置极限工业温室产物输出倍率")
+            .getInt(ExtremeIndustrialGreenhouseOutPut);
+
+        MegaIndustrialApiaryOutPutEnable= config
+            .get("巨型工业蜂箱","巨型工业蜂箱产物输出倍率修改",MegaIndustrialApiaryOutPutEnable,"开启后可以配置巨型工业蜂箱产物输出倍率")
+            .getBoolean(MegaIndustrialApiaryOutPutEnable);
+
+        MegaIndustrialApiaryOutPut= config
+            .get("巨型工业蜂箱","巨型工业蜂箱产物输出倍率",MegaIndustrialApiaryOutPut,"设置巨型工业蜂箱产物输出倍率")
+            .getInt(MegaIndustrialApiaryOutPut);
 
         StorageOutputHatchEnable = config
             .get("可编程舱室","存储输出仓",StorageOutputHatchEnable,"开启后可编程舱室存储输出仓锁定为为long存储")

@@ -240,7 +240,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         ItemStack outTemplate = this.lastRecipeConfig.output.copy();
         outTemplate.stackSize = totalOutput;
-        addOutput(outTemplate);
+        addOutputPartial(outTemplate);
 
         pendingOrundum = BigInteger.ZERO;
         super.endRecipeProcessing();
@@ -315,7 +315,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
                     buildHatchAdder(EOHB_OrundumDynamo.class)
                         .atLeast(InputBus,InputHatch,OutputHatch,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

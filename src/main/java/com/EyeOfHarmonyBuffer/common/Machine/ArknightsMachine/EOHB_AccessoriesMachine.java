@@ -94,7 +94,7 @@ public class EOHB_AccessoriesMachine extends UpgradableOrundumWirelessMultiMachi
                     buildHatchAdder(EOHB_AccessoriesMachine.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

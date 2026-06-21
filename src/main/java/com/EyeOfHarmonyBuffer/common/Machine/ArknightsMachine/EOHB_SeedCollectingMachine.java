@@ -143,7 +143,7 @@ public class EOHB_SeedCollectingMachine extends OrundumWirelessMultiMachineBase<
                     buildHatchAdder(EOHB_SeedCollectingMachine.class)
                     .atLeast(InputBus, OutputBus)
                     .casingIndex(CASING_INDEX)
-                    .dot(1)
+                    .hint(1)
                     .buildAndChain(
                         sBlockCasings2, 0
                     ))

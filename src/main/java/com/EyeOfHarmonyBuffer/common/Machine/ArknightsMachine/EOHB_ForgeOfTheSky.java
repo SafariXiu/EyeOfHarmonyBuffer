@@ -132,7 +132,7 @@ public class EOHB_ForgeOfTheSky extends OrundumWirelessMultiMachineBase<EOHB_For
                     buildHatchAdder(EOHB_ForgeOfTheSky.class)
                         .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
                         .casingIndex(CASING_INDEX1)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             sBlockCasings2, 0
                         )

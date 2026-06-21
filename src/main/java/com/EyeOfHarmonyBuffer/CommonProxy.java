@@ -18,7 +18,6 @@ public class CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
 
         new ItemLoader(event);
-        ItemIntermediateProducts.initAndRegister(EyeOfHarmonyBuffer.MODID);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
 

@@ -97,7 +97,7 @@ public class EOHB_EncapsulationMachine extends UpgradableOrundumWirelessMultiMac
                     buildHatchAdder(EOHB_EncapsulationMachine.class)
                         .atLeast(InputBus,OutputBus)
                         .casingIndex(CASING_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
                         )

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTUtility;
@@ -59,7 +60,7 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         }
 
         this.costingEU = this.costingEU.add(orundumCost);
-        this.costingEUText = GTUtility.formatNumbers(this.costingEU);
+        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
 
         mOutputItems = mergeArray(mOutputItems, processingLogic.getOutputItems());
         mOutputFluids = mergeArray(mOutputFluids, processingLogic.getOutputFluids());
