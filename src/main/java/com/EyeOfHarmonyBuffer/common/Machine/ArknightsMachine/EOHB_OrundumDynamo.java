@@ -22,6 +22,8 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -247,20 +249,26 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+
         this.glassTier = -1;
         this.setCoilLevel(HeatingCoilLevel.None);
 
-        if (!checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ))
-            return false;
+        if (!checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors)) {
+            return;
+        }
 
-        if (this.getCoilLevel() == HeatingCoilLevel.None)
-            return false;
+        if (this.getCoilLevel() == HeatingCoilLevel.None) {
+            return;
+        }
 
         int baseHeat = (int) this.getCoilLevel().getHeat();
         this.mOrundumEfficiency = 100 + (baseHeat / 1000);
 
-        return true;
+        checkHasOutputBus(errors);
+        checkHasInputBus(errors);
     }
 
     @Override

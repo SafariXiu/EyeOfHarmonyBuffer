@@ -14,6 +14,7 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -105,14 +106,20 @@ public class EOHB_Planter extends OrundumWirelessMultiMachineBase<EOHB_Planter>
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+
         this.glassTier = -1;
         this.setCoilLevel(HeatingCoilLevel.None);
 
-        if (!checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ)) {
-            return false;
+        if (!checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors)) {
+            return;
         }
-        return this.getCoilLevel() != null && this.getCoilLevel() != HeatingCoilLevel.None;
+
+        if (this.getCoilLevel() == null || this.getCoilLevel() == HeatingCoilLevel.None) {
+            return;
+        }
     }
 
     @Override
