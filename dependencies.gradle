@@ -35,7 +35,7 @@
  */
 
 dependencies {
-    api('com.github.GTNewHorizons:GT5-Unofficial:5.09.52.594:dev')
+    api("com.github.GTNewHorizons:GT5-Unofficial:5.09.52.618:dev")
 
     implementation('com.github.GTNewHorizons:AE2FluidCraft-Rework:1.5.88-gtnh:dev')
     implementation('com.github.GTNewHorizons:Avaritia:1.97:dev')
@@ -48,7 +48,7 @@ dependencies {
     implementation('com.github.GTNewHorizons:EnderIO:2.10.30:dev')
     implementation('com.github.GTNewHorizons:Et-Futurum-Requiem:2.6.40-GTNH:dev')
     implementation('com.github.GTNewHorizons:ForestryMC:4.11.26:dev')
-    implementation('com.github.GTNewHorizons:GTNHLib:0.11.11:dev')
+    implementation('com.github.GTNewHorizons:GTNHLib:0.11.14:dev')
     implementation('com.github.GTNewHorizons:MagicBees:2.10.9-GTNH:dev')
     implementation("com.github.GTNewHorizons:Mobs-Info:0.5.17-GTNH:dev")
     implementation('com.github.GTNewHorizons:NewHorizonsCoreMod:2.8.279:dev') {
@@ -70,6 +70,7 @@ dependencies {
     implementation('com.github.GTNewHorizons:Galacticraft:3.4.29-GTNH:dev')
 
     implementation('thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev')
+    //implementation(rfg.deobf("curse.maven:industrialcraft-242638:6833054"))
 
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:BetterP2P:1.4.3:dev')
     runtimeOnlyNonPublishable('com.github.GTNewHorizons:Chisel:2.17.26-GTNH:dev')
@@ -112,8 +113,8 @@ configurations.all {
         eachDependency { details ->
             if (details.requested.group == "com.github.GTNewHorizons" &&
                 details.requested.name == "GTNHLib") {
-                details.useVersion "0.11.11"
-                details.because "强制使用自定义 GTNHLib 0.11.11，屏蔽 0.10.X"
+                details.useVersion "0.11.14"
+                details.because "强制使用自定义 GTNHLib 0.11.14，屏蔽 0.10.X"
             }
         }
     }

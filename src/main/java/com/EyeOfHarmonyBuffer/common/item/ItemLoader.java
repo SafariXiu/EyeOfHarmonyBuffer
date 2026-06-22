@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.*;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.*;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.FuelRod.GTCMReactorFuelCells;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.item.Item;
@@ -166,6 +167,8 @@ public class ItemLoader {
         GTCMItemList.ZiJingZhiFluidBottle.set(registryAndCallback(ZiJingZhiFluidBottle, "ZiJingZhiFluidBottle", 0));
         GTCMItemList.GaoJingFluidBottle.set(registryAndCallback(GaoJingFluidBottle, "GaoJingFluidBottle", 0));
         GTCMItemList.HeTongFluidBottle.set(registryAndCallback(HeTongFluidBottle, "HeTongFluidBottle", 0));
+
+        GTCMReactorFuelCells.init();
     }
 
     private static ItemStack registryAndCallback(Item item, String name) {

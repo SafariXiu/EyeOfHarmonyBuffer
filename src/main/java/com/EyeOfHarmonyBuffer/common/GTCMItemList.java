@@ -108,6 +108,12 @@ public enum GTCMItemList {
     YouZhiQiaoYuJiaoNang,
     JingXuanQiaoYuJiaoNang,
     HeTongRongYe,
+    YuanShiFuelRod1,
+    YuanShiFuelRod2,
+    YuanShiFuelRod4,
+    YuanShiDepletedFuelRod1,
+    YuanShiDepletedFuelRod2,
+    YuanShiDepletedFuelRod4,
 
     //方舟-植物
     GanShi,

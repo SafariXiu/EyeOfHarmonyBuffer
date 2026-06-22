@@ -8,8 +8,6 @@ import gregtech.api.metatileentity.implementations.MTEHatchOutputBus;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
 import gregtech.common.tileentities.machines.outputme.base.MTEHatchOutputMEBase;
-import gregtech.common.tileentities.machines.outputme.filter.MEFilterItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,8 +28,9 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
         super(aID, aName, aNameRegional, aTier);
     }
 
-    @Shadow @Final
-    private MTEHatchOutputMEBase<IAEItemStack, MEFilterItem, ItemStack> provider;
+    @Shadow
+    @Final
+    private MTEHatchOutputMEBase<IAEItemStack> provider;
 
     @Shadow
     public abstract AENetworkProxy getProxy();
@@ -47,9 +46,6 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
         return constant;
     }
 
-    /**
-     * 覆写信息显示
-     */
     @Inject(method = "getInfoData", at = @At("HEAD"), cancellable = true)
     private void onGetInfoData(CallbackInfoReturnable<String[]> cir) {
         if (!MainConfig.OutPutBusMEEnable) {

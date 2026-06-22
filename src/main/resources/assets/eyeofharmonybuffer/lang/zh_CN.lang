@@ -16,6 +16,7 @@ add_MaintenanceHatch=任意外壳
 EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_WirelessMode_On=无线模式已开启
 EOHB_WirelessMode_Off=无线模式已关闭
+EOHB_FuelRob_NO_Outgrowth=本燃料棒没有产出！烧完即消失
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
@@ -424,6 +425,9 @@ item.JingXuanGanShiGuanTou.name=精选柑实罐头
 item.QiaoYuJiaoNang.name=荞愈胶囊
 item.YouZhiQiaoYuJiaoNang.name=优质荞愈胶囊
 item.JingXuanQiaoYuJiaoNang.name=精选荞愈胶囊
+item.YuanShiFuelRod1.name=燃料棒（源石）
+item.YuanShiFuelRod2.name=二联燃料棒（源石）
+item.YuanShiFuelRod4.name=四联燃料棒（源石）
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

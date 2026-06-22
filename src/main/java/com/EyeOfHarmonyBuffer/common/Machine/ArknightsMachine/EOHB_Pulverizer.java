@@ -7,17 +7,19 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import gregtech.api.enums.HeatingCoilLevel;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
@@ -60,8 +62,12 @@ public class EOHB_Pulverizer extends UpgradableOrundumWirelessMultiMachineBase<E
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+
+        if (!ok) return;
     }
 
     @Override

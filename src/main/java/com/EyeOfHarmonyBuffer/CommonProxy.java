@@ -5,7 +5,6 @@ import java.io.File;
 import com.EyeOfHarmonyBuffer.Config.Config;
 
 import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
-import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;

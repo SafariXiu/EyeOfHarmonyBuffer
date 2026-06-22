@@ -13,10 +13,13 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
@@ -54,8 +57,12 @@ public class EOHB_FillingUnit extends UpgradableOrundumWirelessMultiMachineBase<
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+
+        if (!ok) return;
     }
 
     @Override

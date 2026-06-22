@@ -42,6 +42,7 @@ public class TextLocalization {
     public static final String EOHB_Open_Failed;
     public static final String EOHB_WirelessMode_On;
     public static final String EOHB_WirelessMode_Off;
+    public static final String EOHB_FuelRob_NO_Outgrowth;
 
     //机器
     public static final String NameVendingMachines;
@@ -332,6 +333,7 @@ public class TextLocalization {
         EOHB_Arknights_Project_UpgradeCard = TextHandler.texter("This machine can be upgraded by upgrading the chips!","EOHB_Arknights_Project_UpgradeCard");
         EOHB_WirelessMode_On = TextHandler.texter("Wireless mode enabled.","EOHB_WirelessMode_On");
         EOHB_WirelessMode_Off = TextHandler.texter("Wireless mode disabled.","EOHB_WirelessMode_Off");
+        EOHB_FuelRob_NO_Outgrowth = TextHandler.texter("This fuel rod does not produce anything! It disappears upon burning.", "EOHB_FuelRob_NO_Outgrowth");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");

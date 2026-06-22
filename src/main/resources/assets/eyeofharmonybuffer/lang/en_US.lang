@@ -16,6 +16,7 @@ add_MaintenanceHatch=Any casing
 EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_WirelessMode_On=Wireless mode enabled.
 EOHB_WirelessMode_Off=Wireless mode disabled.
+EOHB_FuelRob_NO_Outgrowth=This fuel rod does not produce anything! It disappears upon burning.
 EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
 EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
@@ -424,6 +425,9 @@ item.JingXuanGanShiGuanTou.name=Canned Citrome A
 item.QiaoYuJiaoNang.name=Buck Capsule C
 item.YouZhiQiaoYuJiaoNang.name=Buck Capsule B
 item.JingXuanQiaoYuJiaoNang.name=Buck Capsule A
+item.YuanShiFuelRod1.name=Fuel Rod (Orundum)
+item.YuanShiFuelRod2.name=Dual Fuel Rod (Orundum)
+item.YuanShiFuelRod4.name=Quad Rod (Orundum)
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

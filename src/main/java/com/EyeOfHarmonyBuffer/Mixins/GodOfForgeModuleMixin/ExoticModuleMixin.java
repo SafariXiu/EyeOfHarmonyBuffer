@@ -29,6 +29,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -188,13 +189,16 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                         }
 
                         if (numberOfFluids != 0) {
-                            for (FluidStack fluidStack : randomizedFluidInput) {
-                                dumpFluid(
-                                    mOutputHatches,
-                                    new FluidStack(fluidStack.getFluid(), fluidStack.amount / 1000),
-                                    false
-                                );
-                            }
+                            addFluidOutputs(
+                                Arrays.stream(randomizedFluidInput)
+                                    .map(fluid -> {
+                                        FluidStack copy = fluid.copy();
+                                        copy.amount = copy.amount / 1000;
+                                        return copy;
+                                    })
+                                    .toArray(FluidStack[]::new),
+                                mOutputHatches
+                            );
                         }
 
                         if (numberOfItems != 0) {

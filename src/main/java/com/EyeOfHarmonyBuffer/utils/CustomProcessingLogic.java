@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.utils;
 
+import com.gtnewhorizons.angelica.shadow.javax.annotation.Nonnull;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -7,8 +8,6 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.ParallelHelper;
 import org.jetbrains.annotations.NotNull;
-
-import javax.annotation.Nonnull;
 
 public class CustomProcessingLogic extends ProcessingLogic {
 

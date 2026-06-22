@@ -15,12 +15,15 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.YuanShiMainBlock;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
@@ -68,8 +71,12 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+
+        if (!ok) return;
     }
 
     @Override
