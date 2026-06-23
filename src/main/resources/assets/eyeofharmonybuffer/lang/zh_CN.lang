@@ -428,6 +428,12 @@ item.JingXuanQiaoYuJiaoNang.name=精选荞愈胶囊
 item.YuanShiFuelRod1.name=燃料棒（源石）
 item.YuanShiFuelRod2.name=二联燃料棒（源石）
 item.YuanShiFuelRod4.name=四联燃料棒（源石）
+item.YuanShiDepletedFuelRod1.name=燃料棒（失活源石）
+item.YuanShiDepletedFuelRod2.name=二联燃料棒（失活源石）
+item.YuanShiDepletedFuelRod4.name=四联燃料棒（失活源石）
+item.FuelRod_empty1.name=燃料棒（空）
+item.FuelRod_empty2.name=二联燃料棒（空）
+item.FuelRod_empty4.name=四联燃料棒（空）
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

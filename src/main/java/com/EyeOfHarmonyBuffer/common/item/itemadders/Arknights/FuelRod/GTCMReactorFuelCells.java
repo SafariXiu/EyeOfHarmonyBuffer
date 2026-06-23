@@ -24,14 +24,14 @@ public final class GTCMReactorFuelCells {
     }
 
     public static void init() {
-        //registerDepletedCells();
+        registerDepletedCells();
         registerFuelCells();
     }
 
     private static void registerDepletedCells() {
         YuanShiDepletedFuelRod1 = new Item()
             .setUnlocalizedName("YuanShiDepletedFuelRod1")
-            .setTextureName("gtcm:DepletedRodThorium")
+            .setTextureName("eyeofharmonybuffer:Arknights/YuanShiDepletedFuelRod1")
             .setCreativeTab(tabMetaItem01);
         GTCMItemList.YuanShiDepletedFuelRod1.set(
             registryAndCallback(YuanShiDepletedFuelRod1, "YuanShiDepletedFuelRod1")
@@ -39,7 +39,7 @@ public final class GTCMReactorFuelCells {
 
         YuanShiDepletedFuelRod2 = new Item()
             .setUnlocalizedName("YuanShiDepletedFuelRod2")
-            .setTextureName("gtcm:DepletedRodThorium2")
+            .setTextureName("eyeofharmonybuffer:Arknights/YuanShiDepletedFuelRod2")
             .setCreativeTab(tabMetaItem01);
         GTCMItemList.YuanShiDepletedFuelRod2.set(
             registryAndCallback(YuanShiDepletedFuelRod2, "YuanShiDepletedFuelRod2")
@@ -47,7 +47,7 @@ public final class GTCMReactorFuelCells {
 
         YuanShiDepletedFuelRod4 = new Item()
             .setUnlocalizedName("YuanShiDepletedFuelRod4")
-            .setTextureName("gtcm:DepletedRodThorium4")
+            .setTextureName("eyeofharmonybuffer:Arknights/YuanShiDepletedFuelRod4")
             .setCreativeTab(tabMetaItem01);
         GTCMItemList.YuanShiDepletedFuelRod4.set(
             registryAndCallback(YuanShiDepletedFuelRod4, "YuanShiDepletedFuelRod4")
@@ -102,7 +102,7 @@ public final class GTCMReactorFuelCells {
             1.0F, // 发热倍率
             false, // 是否 MOX
             1.0F, // MOX 加成
-            null
+            GTCMItemList.YuanShiDepletedFuelRod1
         ));
 
         defs.add(new FuelCellDef(
@@ -115,7 +115,7 @@ public final class GTCMReactorFuelCells {
             1.0F,
             false,
             1.0F,
-            null
+            GTCMItemList.YuanShiDepletedFuelRod2
         ));
 
         defs.add(new FuelCellDef(
@@ -128,7 +128,7 @@ public final class GTCMReactorFuelCells {
             1.0F,
             false,
             1.0F,
-            null
+            GTCMItemList.YuanShiDepletedFuelRod4
         ));
 
         for (FuelCellDef def : defs) {

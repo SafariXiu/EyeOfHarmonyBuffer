@@ -428,6 +428,12 @@ item.JingXuanQiaoYuJiaoNang.name=Buck Capsule A
 item.YuanShiFuelRod1.name=Fuel Rod (Orundum)
 item.YuanShiFuelRod2.name=Dual Fuel Rod (Orundum)
 item.YuanShiFuelRod4.name=Quad Rod (Orundum)
+item.YuanShiDepletedFuelRod1.name=Fuel Rod (Depleted Orundum)
+item.YuanShiDepletedFuelRod2.name=Dual Fuel Rod (Depleted Orundum)
+item.YuanShiDepletedFuelRod4.name=Quad Fuel Rod (Depleted Orundum)
+item.FuelRod_empty1.name=Fuel Rod (Empty)
+item.FuelRod_empty2.name=Dual Fuel Rod (Empty)
+item.FuelRod_empty4.name=Quad Fuel Rod (Empty)
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
