@@ -434,6 +434,8 @@ item.YuanShiDepletedFuelRod4.name=Quad Fuel Rod (Depleted Orundum)
 item.FuelRod_empty1.name=Fuel Rod (Empty)
 item.FuelRod_empty2.name=Dual Fuel Rod (Empty)
 item.FuelRod_empty4.name=Quad Fuel Rod (Empty)
+item.OrundumPowder.name=Orundum Powder
+item.OrundumSlag.name=Orundum Slag
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
@@ -467,6 +469,10 @@ EOHB_Sewage=Sewage
 EOHB_YaZhenSolution=YaZhen Solution
 EOHB_LiquidXiranite=Liquid Xiranite
 EOHB_LiquidHeavyXiranite=Liquid Heavy Xiranite
+EOHB_LiquefiedOrundum=Liquefied Orundum
+EOHB_CrudeLiquefiedOrundum=Crude Liquefied Orundum
+EOHB_HighEnergyOrundumSolvent=High-Energy Orundum Solvent
+EOHB_UnstableOrundumSolvent=Unstable Orundum Solvent
 
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!

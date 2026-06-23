@@ -2,12 +2,7 @@ package com.EyeOfHarmonyBuffer.Recipe;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
-import gregtech.api.enums.GTValues;
-import gregtech.api.enums.ItemList;
-import gregtech.api.enums.Materials;
-import gregtech.api.enums.TierEU;
-import gtPlusPlus.core.fluids.GTPPFluids;
-import net.minecraftforge.fluids.FluidStack;
+import gregtech.api.enums.*;
 
 import static gregtech.api.recipe.RecipeMaps.fluidSolidifierRecipes;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;

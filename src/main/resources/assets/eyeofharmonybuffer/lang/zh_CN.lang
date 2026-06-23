@@ -434,6 +434,8 @@ item.YuanShiDepletedFuelRod4.name=四联燃料棒（失活源石）
 item.FuelRod_empty1.name=燃料棒（空）
 item.FuelRod_empty2.name=二联燃料棒（空）
 item.FuelRod_empty4.name=四联燃料棒（空）
+item.OrundumPowder.name=源石微粉
+item.OrundumSlag.name=源石渣
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
@@ -467,6 +469,10 @@ EOHB_Sewage=污水
 EOHB_YaZhenSolution=芽针溶液
 EOHB_LiquidXiranite=液化息壤
 EOHB_LiquidHeavyXiranite=液化重息壤
+EOHB_LiquefiedOrundum=液化源石
+EOHB_CrudeLiquefiedOrundum=粗制源石溶液
+EOHB_HighEnergyOrundumSolvent=高能源石溶剂
+EOHB_UnstableOrundumSolvent=不稳定源石溶剂
 
 #RecipeResultRegistry
 GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！

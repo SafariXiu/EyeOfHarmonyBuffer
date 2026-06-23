@@ -1,8 +1,10 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.OrePrefixes;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ShapingMachine;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -72,6 +74,17 @@ public class ShapingMachineRecipes implements IRecipePool {
             )
             .itemOutputs(
                 GTCMItemList.HeTongPing.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.ArsenicImpact.get(OrePrefixes.ingot, 2)
+            )
+            .itemOutputs(
+                GTCMItemList.FuelRod_empty1.get(1)
             )
             .eut(10000)
             .duration(10 * SECONDS)

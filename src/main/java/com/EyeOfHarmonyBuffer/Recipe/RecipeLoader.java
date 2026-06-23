@@ -40,6 +40,7 @@ public class RecipeLoader {
             new ForgeOfTheSkyRecipes(),
             new PurificationUnitRecipes(),
             new ReactorCrucibleRecipes(),
+            new ArknightsRecipesLoad(),
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

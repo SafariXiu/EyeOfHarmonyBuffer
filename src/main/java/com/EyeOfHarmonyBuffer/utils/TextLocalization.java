@@ -252,6 +252,10 @@ public class TextLocalization {
     public static final String EOHB_YaZhenSolution;
     public static final String EOHB_LiquidXiranite;
     public static final String EOHB_LiquidHeavyXiranite;
+    public static final String EOHB_LiquefiedOrundum;
+    public static final String EOHB_CrudeLiquefiedOrundum;
+    public static final String EOHB_HighEnergyOrundumSolvent;
+    public static final String EOHB_UnstableOrundumSolvent;
 
     //流体
     public static final String EOHB_OriginiumWasteLiquid;
@@ -607,6 +611,10 @@ public class TextLocalization {
         EOHB_YaZhenSolution = TextHandler.texter("YaZhen Solution","EOHB_YaZhenSolution");
         EOHB_LiquidXiranite = TextHandler.texter("Liquid Xiranite","EOHB_LiquidXiranite");
         EOHB_LiquidHeavyXiranite = TextHandler.texter("Liquid Heavy Xiranite","EOHB_LiquidHeavyXiranite");
+        EOHB_LiquefiedOrundum = TextHandler.texter("Liquefied Orundum","EOHB_LiquefiedOrundum");
+        EOHB_CrudeLiquefiedOrundum = TextHandler.texter("Crude Liquefied Orundum","EOHB_CrudeLiquefiedOrundum");
+        EOHB_HighEnergyOrundumSolvent = TextHandler.texter("High-Energy Orundum Solvent","EOHB_HighEnergyOrundumSolvent");
+        EOHB_UnstableOrundumSolvent = TextHandler.texter("Unstable Orundum Solvent","EOHB_UnstableOrundumSolvent");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");

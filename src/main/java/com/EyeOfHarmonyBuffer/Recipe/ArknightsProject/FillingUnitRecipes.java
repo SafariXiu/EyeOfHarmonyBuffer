@@ -354,5 +354,19 @@ public class FillingUnitRecipes implements IRecipePool {
             .eut(20000)
             .duration(10 * SECONDS)
             .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.FuelRod_empty1.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.HighEnergyOrundumSolvent.getFluidOrGas(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.YuanShiFuelRod1.get(1)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
     }
 }

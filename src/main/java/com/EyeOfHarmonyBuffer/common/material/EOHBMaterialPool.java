@@ -209,6 +209,54 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff LiquefiedOrundum = new Werkstoff(
+        new short[] { 219, 165, 82 },
+        EOHB_LiquefiedOrundum,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 15,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff CrudeLiquefiedOrundum = new Werkstoff(
+        new short[] { 153, 116, 57 },
+        EOHB_CrudeLiquefiedOrundum,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 16,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HighEnergyOrundumSolvent = new Werkstoff(
+        new short[] { 255, 200, 100 },
+        EOHB_HighEnergyOrundumSolvent,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 17,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff UnstableOrundumSolvent = new Werkstoff(
+        new short[] { 255, 80, 0 },
+        EOHB_UnstableOrundumSolvent,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 18,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

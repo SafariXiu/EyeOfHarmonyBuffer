@@ -125,10 +125,15 @@ public class RecipeMaps {
 
     public static final RecipeMap<RecipeMapBackend> Pulverizer = RecipeMapBuilder
         .of(EOHB_Recipe_Pulverizer)
-        .maxIO(1, 1, 0, 0)
+        .maxIO(4, 4, 4, 4)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
-        .frontend(RefiningFurnaceFrontend::new)
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                4,
+                4
+            )
+        )
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20,20)
         .logoPos(152,63)

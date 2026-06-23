@@ -1,8 +1,11 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.Materials;
+import gregtech.api.enums.OrePrefixes;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.Grinder;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -92,6 +95,18 @@ public class GrinderRecipes implements IRecipePool {
                 GTCMItemList.XiMoGanShiFenMo.get(1)
             )
             .eut(50000)
+            .duration(5 * SECONDS)
+            .addTo(Grinder);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.Hoyomixium.get(OrePrefixes.dust, 1),
+                Materials.CallistoIce.getDust(1)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.ArsenicImpact.get(OrePrefixes.dust, 1)
+            )
+            .eut(500000)
             .duration(5 * SECONDS)
             .addTo(Grinder);
     }

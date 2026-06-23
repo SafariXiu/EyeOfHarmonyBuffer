@@ -56,6 +56,8 @@ public class ItemIntermediateProducts {
     public static Item FuelRod_empty1;
     public static Item FuelRod_empty2;
     public static Item FuelRod_empty4;
+    public static Item OrundumPowder;
+    public static Item OrundumSlag;
 
     public static void initAndRegister(String modid) {
         String textureFolder = "Arknights/";

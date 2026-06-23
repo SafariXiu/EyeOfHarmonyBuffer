@@ -114,6 +114,11 @@ public enum GTCMItemList {
     YuanShiDepletedFuelRod1,
     YuanShiDepletedFuelRod2,
     YuanShiDepletedFuelRod4,
+    OrundumPowder,
+    OrundumSlag,
+    FuelRod_empty1,
+    FuelRod_empty2,
+    FuelRod_empty4,
 
     //方舟-植物
     GanShi,

@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 
@@ -140,6 +141,24 @@ public class PulverizerRecipes implements IRecipePool {
                 GTCMItemList.ChiTongFenMo.get(2)
             )
             .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(Pulverizer);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShi.get(8)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.OriginiumWasteLiquid.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.OrundumPowder.get(32),
+                GTCMItemList.OrundumSlag.get(16)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.CrudeLiquefiedOrundum.getFluidOrGas(1000)
+            )
+            .eut(50000)
             .duration(10 * SECONDS)
             .addTo(Pulverizer);
     }

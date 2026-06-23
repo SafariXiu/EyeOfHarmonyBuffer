@@ -130,5 +130,21 @@ public class ReactorCrucibleRecipes implements IRecipePool {
             .eut(50000)
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.OrundumPowder.get(8)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.LiquefiedOrundum.getFluidOrGas(8000),
+                EOHBMaterialPool.CrudeLiquefiedOrundum.getFluidOrGas(16000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.HighEnergyOrundumSolvent.getFluidOrGas(30000),
+                EOHBMaterialPool.UnstableOrundumSolvent.getFluidOrGas(2000)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
     }
 }
