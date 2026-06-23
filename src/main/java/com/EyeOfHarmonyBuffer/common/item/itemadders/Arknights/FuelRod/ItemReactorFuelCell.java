@@ -55,7 +55,7 @@ public class ItemReactorFuelCell extends Item implements IReactorComponent {
         setMaxDamage(maxDamage);
         setCreativeTab(tabMetaItem01);
 
-        if (this.energyPerPulse > 0 && this.heatMultiplier > 0) {
+        if (this.energyPerPulse > 0) {
             int pulses = this.numberOfCells / 2 + 1;
 
             float nukePowerMult = 5.0f * ConfigUtil.getFloat(
@@ -70,7 +70,9 @@ public class ItemReactorFuelCell extends Item implements IReactorComponent {
             String modelText = StatCollector.translateToLocal(modelKey);
 
             String heatText;
-            if (this.numberOfCells == 1) {
+            if (this.heatMultiplier <= 0.0F) {
+                heatText = StatCollector.translateToLocal("GT5U.nei.nuclear.heat.none");
+            } else if (this.numberOfCells == 1) {
                 heatText = StatCollector.translateToLocalFormatted(
                     "GT5U.nei.nuclear.heat.0",
                     this.heatMultiplier / 2.0F
