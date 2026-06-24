@@ -456,6 +456,7 @@ tile.overdomain_erosion.name=Overdomain Erosion
 tile.ForgeOfTheSkyCore.name=§aForge Of The Sky Core
 EOHB_ForgeOfTheSkyCore_Tooltip_00=Core component of the multiblock structure Forge of the Sky.
 EOHB_ForgeOfTheSkyCore_Tooltip_01=Forge of the Sky, the Earth gives birth to metals.
+tile.fluid.precipitationacid.name=Precipitation Acid
 
 #space
 solarsystem.talosSystem=Talos

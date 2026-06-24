@@ -90,7 +90,7 @@ public class EOHBMaterialPool implements Runnable{
     );
 
     public static final Werkstoff PrecipitationAcid = new Werkstoff(
-        new short[] { 230, 185, 45 },
+        new short[] { 255, 170, 0 },
         EOHB_PrecipitationAcid,
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
