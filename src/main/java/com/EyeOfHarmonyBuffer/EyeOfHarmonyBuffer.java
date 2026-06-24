@@ -24,7 +24,7 @@ import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
-import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
+import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.registry.GameRegistry;

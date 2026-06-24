@@ -235,11 +235,11 @@ public class TextLocalization {
     public static final String Tooltip_ExpandedCrucible_01;
     public static final String Tooltip_ExpandedCrucible_02;
 
-    public static final String NameFluidPump;
-    public static final String Tooltip_FluidPump_MachineType;
-    public static final String Tooltip_FluidPump_Controller;
-    public static final String Tooltip_FluidPump_00;
-    public static final String Tooltip_FluidPump_01;
+    public static final String NameFluidPumpMK1;
+    public static final String Tooltip_FluidPumpMK1_MachineType;
+    public static final String Tooltip_FluidPumpMK1_Controller;
+    public static final String Tooltip_FluidPumpMK1_00;
+    public static final String Tooltip_FluidPumpMK1_01;
 
     //MOD
     public static final String EOHB_Harmony;
@@ -578,11 +578,11 @@ public class TextLocalization {
         Tooltip_ExpandedCrucible_02 = TextHandler.texter("This machine supports up to four recipes running in parallel!","Tooltip_ExpandedCrucible_02");
 
         //水泵
-        NameFluidPump = TextHandler.texter("","NameFluidPump");
-        Tooltip_FluidPump_MachineType = TextHandler.texter("","Tooltip_FluidPump_MachineType");
-        Tooltip_FluidPump_Controller = TextHandler.texter("","Tooltip_FluidPump_Controller");
-        Tooltip_FluidPump_00 = TextHandler.texter("","Tooltip_FluidPump_00");
-        Tooltip_FluidPump_01 = TextHandler.texter("","Tooltip_FluidPump_01");
+        NameFluidPumpMK1 = TextHandler.texter("Fluid Pump MK1","NameFluidPumpMK1");
+        Tooltip_FluidPumpMK1_MachineType = TextHandler.texter("Fluid Pump","Tooltip_FluidPumpMK1_MachineType");
+        Tooltip_FluidPumpMK1_Controller = TextHandler.texter("ontroller block of the Fluid Pump","Tooltip_FluidPumpMK1_Controller");
+        Tooltip_FluidPumpMK1_00 = TextHandler.texter("A basic device used for extracting liquids.","Tooltip_FluidPumpMK1_00");
+        Tooltip_FluidPumpMK1_01 = TextHandler.texter("The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.","Tooltip_FluidPumpMK1_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");

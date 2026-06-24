@@ -44,22 +44,22 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_FluidPump extends UpgradableOrundumWirelessMultiMachineBase<EOHB_FluidPump>
+public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase<EOHB_FluidPumpMK1>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_FluidPump> STRUCTURE_DEFINITION = null;
+    private static IStructureDefinition<EOHB_FluidPumpMK1> STRUCTURE_DEFINITION = null;
     private static final String STRUCTURE_PIECE_MAIN = "mainFluidPump";
     private static final int OffsetsX = 4;
     private static final int OffsetsY = 14;
     private static final int OffsetsZ = 2;
     private static final int CASING_INDEX1 = 183;
 
-    public EOHB_FluidPump(int aID, String aName, String aNameRegional) {
+    public EOHB_FluidPumpMK1(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_FluidPump(String aName) {
+    public EOHB_FluidPumpMK1(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -135,16 +135,16 @@ public class EOHB_FluidPump extends UpgradableOrundumWirelessMultiMachineBase<EO
     };
 
     @Override
-    public IStructureDefinition<EOHB_FluidPump> getStructureDefinition() {
+    public IStructureDefinition<EOHB_FluidPumpMK1> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_FluidPump>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_FluidPumpMK1>builder()
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings2, 0))
                 .addElement('B', ofBlock(sBlockCasings2, 13))
                 .addElement('C', ofBlock(sBlockCasings8, 7))
                 .addElement(
                     'D',
-                    buildHatchAdder(EOHB_FluidPump.class)
+                    buildHatchAdder(EOHB_FluidPumpMK1.class)
                         .atLeast(InputBus)
                         .casingIndex(CASING_INDEX1)
                         .hint(2)
@@ -154,7 +154,7 @@ public class EOHB_FluidPump extends UpgradableOrundumWirelessMultiMachineBase<EO
                 )
                 .addElement(
                     'E',
-                    buildHatchAdder(EOHB_FluidPump.class)
+                    buildHatchAdder(EOHB_FluidPumpMK1.class)
                         .atLeast(OutputHatch)
                         .casingIndex(CASING_INDEX1)
                         .hint(2)
@@ -195,11 +195,11 @@ public class EOHB_FluidPump extends UpgradableOrundumWirelessMultiMachineBase<EO
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_FluidPump_MachineType)
-            .addInfo(Tooltip_FluidPump_Controller)
+        tt.addMachineType(Tooltip_FluidPumpMK1_MachineType)
+            .addInfo(Tooltip_FluidPumpMK1_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_FluidPump_00)
-            .addInfo(Tooltip_FluidPump_01)
+            .addInfo(Tooltip_FluidPumpMK1_00)
+            .addInfo(Tooltip_FluidPumpMK1_01)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
@@ -213,7 +213,7 @@ public class EOHB_FluidPump extends UpgradableOrundumWirelessMultiMachineBase<EO
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_FluidPump(this.mName);
+        return new EOHB_FluidPumpMK1(this.mName);
     }
 
     @Override

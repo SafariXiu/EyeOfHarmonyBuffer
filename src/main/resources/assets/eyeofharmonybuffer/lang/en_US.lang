@@ -225,11 +225,11 @@ Tooltip_ExpandedCrucible_Controller=Controller block of the Expanded Reactor Cru
 Tooltip_ExpandedCrucible_00=A high-performance device for conducting solid-liquid chemical reactions, equipped with more ports to handle multiple reactions simultaneously.
 Tooltip_ExpandedCrucible_01=Higher capacity, greater safety.
 Tooltip_ExpandedCrucible_02=This machine supports up to four recipes running in parallel!
-NameFluidPump=Fluid Pump
-Tooltip_FluidPump_MachineType=Fluid Pump
-Tooltip_FluidPump_Controller=Controller block of the Fluid Pump
-Tooltip_FluidPump_00=A basic device used for extracting liquids.
-Tooltip_FluidPump_01=The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.
+NameFluidPumpMK1=Fluid Pump MK1
+Tooltip_FluidPumpMK1_MachineType=Fluid Pump
+Tooltip_FluidPumpMK1_Controller=Controller block of the Fluid Pump
+Tooltip_FluidPumpMK1_00=A basic device used for extracting liquids.
+Tooltip_FluidPumpMK1_01=The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device

@@ -119,6 +119,8 @@ public enum GTCMItemList {
     FuelRod_empty1,
     FuelRod_empty2,
     FuelRod_empty4,
+    QingShui,
+    ChenJiSuan,
 
     //方舟-植物
     GanShi,
@@ -150,7 +152,7 @@ public enum GTCMItemList {
     PurificationUnits,
     ReactorCrucibles,
     ExpandedCrucibles,
-    FluidPump,
+    FluidPumpMK1,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

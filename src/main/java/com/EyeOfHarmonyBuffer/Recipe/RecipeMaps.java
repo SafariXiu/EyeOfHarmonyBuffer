@@ -275,6 +275,6 @@ public class RecipeMaps {
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20, 20)
         .logoPos(152, 63)
-        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.RangJing.get(1)))
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.QingShui.get(1)))
         .build();
 }
