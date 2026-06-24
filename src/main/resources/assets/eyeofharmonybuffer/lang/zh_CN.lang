@@ -225,6 +225,11 @@ Tooltip_ExpandedCrucible_Controller=§7扩容反应池的§b控制器方块§r
 Tooltip_ExpandedCrucible_00=§a用于进行§e固液体化学反应§a的高性能设备，§7拥有更多的端口并可同时进行多组化学反应。§r
 Tooltip_ExpandedCrucible_01=§6高容量，§a更安全。§r
 Tooltip_ExpandedCrucible_02=§e本机器支持至多§b4§e种配方§a同时并行运作！§r
+NameFluidPump=§b水泵
+Tooltip_FluidPump_MachineType=§b水泵
+Tooltip_FluidPump_Controller=§7水泵的§b控制器方块§r
+Tooltip_FluidPump_00=§a用于§e抽取液体§a的基础设备。§r
+Tooltip_FluidPump_01=§7商务部门采购§b水泵基础件§7，生产基地加装§e供能模块§7——§a能够集成于工业系统中的增压设备§7就此诞生。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -246,6 +251,7 @@ EOHB_Recipe_FillingUnit=灌装机
 EOHB_Recipe_ForgeOfTheSky=天有洪炉
 EOHB_Recipe_PurificationUnit=提纯机
 EOHB_Recipe_ReactorCrucible=反应池
+EOHB_Recipe_FluidPump=水泵
 
 #item
 EOHB_Harmony=鸿蒙
@@ -475,8 +481,9 @@ EOHB_HighEnergyOrundumSolvent=高能源石溶剂
 EOHB_UnstableOrundumSolvent=不稳定源石溶剂
 
 #RecipeResultRegistry
-GT5U.gui.text.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
-GT5U.gui.text.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！
+GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
+GT5U.gui.text.recipe_result.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！
+GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=检测不到水源！在控制器背后第10格、向下1格的位置必须是水源方块（静止的水）。
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始

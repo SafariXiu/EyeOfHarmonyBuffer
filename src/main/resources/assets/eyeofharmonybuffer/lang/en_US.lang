@@ -225,6 +225,11 @@ Tooltip_ExpandedCrucible_Controller=Controller block of the Expanded Reactor Cru
 Tooltip_ExpandedCrucible_00=A high-performance device for conducting solid-liquid chemical reactions, equipped with more ports to handle multiple reactions simultaneously.
 Tooltip_ExpandedCrucible_01=Higher capacity, greater safety.
 Tooltip_ExpandedCrucible_02=This machine supports up to four recipes running in parallel!
+NameFluidPump=Fluid Pump
+Tooltip_FluidPump_MachineType=Fluid Pump
+Tooltip_FluidPump_Controller=Controller block of the Fluid Pump
+Tooltip_FluidPump_00=A basic device used for extracting liquids.
+Tooltip_FluidPump_01=The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -246,6 +251,7 @@ EOHB_Recipe_FillingUnit=Filling Unit
 EOHB_Recipe_ForgeOfTheSky=Forge Of The Sky
 EOHB_Recipe_PurificationUnit=Purification Unit
 EOHB_Recipe_ReactorCrucible=Reactor Crucible
+EOHB_Recipe_FluidPump=Fluid Pump
 
 #item
 EOHB_Harmony=Harmony
@@ -475,8 +481,9 @@ EOHB_HighEnergyOrundumSolvent=High-Energy Orundum Solvent
 EOHB_UnstableOrundumSolvent=Unstable Orundum Solvent
 
 #RecipeResultRegistry
-GT5U.gui.text.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
-GT5U.gui.text.NoOriginitePrimeMainVeinBlock=No Originite Prime Main Vein Block!
+GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
+GT5U.gui.text.recipe_result.NoOriginitePrimeMainVeinBlock=No Originite Prime Main Vein Block!
+GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=No water source detected! A source water block is required 10 blocks behind and 1 block below the controller.
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start

@@ -150,6 +150,7 @@ public enum GTCMItemList {
     PurificationUnits,
     ReactorCrucibles,
     ExpandedCrucibles,
+    FluidPump,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

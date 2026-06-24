@@ -235,6 +235,12 @@ public class TextLocalization {
     public static final String Tooltip_ExpandedCrucible_01;
     public static final String Tooltip_ExpandedCrucible_02;
 
+    public static final String NameFluidPump;
+    public static final String Tooltip_FluidPump_MachineType;
+    public static final String Tooltip_FluidPump_Controller;
+    public static final String Tooltip_FluidPump_00;
+    public static final String Tooltip_FluidPump_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -303,6 +309,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ForgeOfTheSky;
     public static final String EOHB_Recipe_PurificationUnit;
     public static final String EOHB_Recipe_ReactorCrucible;
+    public static final String EOHB_Recipe_FluidPump;
 
     public TextLocalization() {
     }
@@ -570,6 +577,13 @@ public class TextLocalization {
         Tooltip_ExpandedCrucible_01 = TextHandler.texter("Higher capacity, greater safety.","Tooltip_ExpandedCrucible_01");
         Tooltip_ExpandedCrucible_02 = TextHandler.texter("This machine supports up to four recipes running in parallel!","Tooltip_ExpandedCrucible_02");
 
+        //水泵
+        NameFluidPump = TextHandler.texter("","NameFluidPump");
+        Tooltip_FluidPump_MachineType = TextHandler.texter("","Tooltip_FluidPump_MachineType");
+        Tooltip_FluidPump_Controller = TextHandler.texter("","Tooltip_FluidPump_Controller");
+        Tooltip_FluidPump_00 = TextHandler.texter("","Tooltip_FluidPump_00");
+        Tooltip_FluidPump_01 = TextHandler.texter("","Tooltip_FluidPump_01");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -636,5 +650,6 @@ public class TextLocalization {
         EOHB_Recipe_ForgeOfTheSky = TextHandler.texter("Forge Of The Sky","EOHB_Recipe_ForgeOfTheSky");
         EOHB_Recipe_PurificationUnit = TextHandler.texter("Purification Unit","EOHB_Recipe_PurificationUnit");
         EOHB_Recipe_ReactorCrucible = TextHandler.texter("Reactor Crucible","EOHB_Recipe_ReactorCrucible");
+        EOHB_Recipe_FluidPump = TextHandler.texter("Fluid Pump","EOHB_Recipe_FluidPump");
     }
 }

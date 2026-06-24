@@ -43,8 +43,8 @@ public class GTCM_ParallelHelper extends ParallelHelper {
     private boolean built;
     private double durationMultiplier;
     private float eutModifier = 1.0F;
-    private ParallelHelper.MaxParallelCalculator maxParallelCalculator = com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper::maxParallelCalculatedByInputs;
-    private ParallelHelper.InputConsumer inputConsumer = com.Nxer.TwistSpaceTechnology.common.machine.multiMachineClasses.processingLogics.GTCM_ParallelHelper::consumeInput;
+    private ParallelHelper.MaxParallelCalculator maxParallelCalculator = GTCM_ParallelHelper::maxParallelCalculatedByInputs;
+    private ParallelHelper.InputConsumer inputConsumer = GTCM_ParallelHelper::consumeInput;
     private OverclockCalculator calculator;
     private CheckRecipeResult result;
     private Function<Integer, ItemStack[]> customItemOutputCalculation;

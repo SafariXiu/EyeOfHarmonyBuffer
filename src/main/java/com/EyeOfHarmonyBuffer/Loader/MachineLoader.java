@@ -28,6 +28,7 @@ public class MachineLoader {
     public static ItemStack PurificationUnit;
     public static ItemStack ReactorCrucible;
     public static ItemStack ExpandedCrucible;
+    public static ItemStack FluidPump;
 
     private final static int MachineBlockID = 23000;
 
@@ -178,5 +179,12 @@ public class MachineLoader {
             TextLocalization.NameExpandedCrucible
         ).getStackForm(1);
         GTCMItemList.ExpandedCrucibles.set(ExpandedCrucible);
+
+        FluidPump = new EOHB_FluidPump(
+            MachineBlockID + 22,
+            "NameFluidPump",
+            TextLocalization.NameFluidPump
+        ).getStackForm(1);
+        GTCMItemList.FluidPump.set(FluidPump);
     }
 }
