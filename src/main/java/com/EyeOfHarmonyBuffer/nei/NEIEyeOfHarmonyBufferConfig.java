@@ -19,9 +19,9 @@ public class NEIEyeOfHarmonyBufferConfig implements IConfigureNEI {
         ItemStack ChenJiSuanStack = GTCMItemList.HeTongRongYe.get(1);
         API.hideItem(ChenJiSuanStack);
 
-        if (EOHBFluidBlockRegistry.precipitationAcidBlock != null) {
+        /*if (EOHBFluidBlockRegistry.precipitationAcidBlock != null) {
             API.hideItem(new ItemStack(EOHBFluidBlockRegistry.precipitationAcidBlock));
-        }
+        }*/
     }
 
     @Override

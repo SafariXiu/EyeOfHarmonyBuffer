@@ -29,6 +29,7 @@ public class MachineLoader {
     public static ItemStack ReactorCrucible;
     public static ItemStack ExpandedCrucible;
     public static ItemStack FluidPumpMK1;
+    public static ItemStack FluidPumpMK2;
 
     private final static int MachineBlockID = 23000;
 
@@ -186,5 +187,12 @@ public class MachineLoader {
             TextLocalization.NameFluidPumpMK1
         ).getStackForm(1);
         GTCMItemList.FluidPumpMK1.set(FluidPumpMK1);
+
+        FluidPumpMK2 = new EOHB_FluidPumpMK2(
+            MachineBlockID + 23,
+            "NameFluidPumpMK2",
+            TextLocalization.NameFluidPumpMK2
+        ).getStackForm(1);
+        GTCMItemList.FluidPumpMK2.set(FluidPumpMK2);
     }
 }

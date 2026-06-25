@@ -241,6 +241,14 @@ public class TextLocalization {
     public static final String Tooltip_FluidPumpMK1_00;
     public static final String Tooltip_FluidPumpMK1_01;
 
+    public static final String NameFluidPumpMK2;
+    public static final String Tooltip_FluidPumpMK2_MachineType;
+    public static final String Tooltip_FluidPumpMK2_Controller;
+    public static final String Tooltip_FluidPumpMK2_00;
+    public static final String Tooltip_FluidPumpMK2_01;
+    public static final String Tooltip_FluidPumpMK2_02;
+    public static final String Tooltip_FluidPumpMK2_03;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -309,7 +317,8 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ForgeOfTheSky;
     public static final String EOHB_Recipe_PurificationUnit;
     public static final String EOHB_Recipe_ReactorCrucible;
-    public static final String EOHB_Recipe_FluidPump;
+    public static final String EOHB_Recipe_FluidPumpMK1;
+    public static final String EOHB_Recipe_FluidPumpMK2;
 
     public TextLocalization() {
     }
@@ -565,9 +574,9 @@ public class TextLocalization {
         NameReactorCrucible = TextHandler.texter("Reactor Crucible","NameReactorCrucible");
         Tooltip_ReactorCrucible_MachineType = TextHandler.texter("Reactor Crucible","Tooltip_ReactorCrucible_MachineType");
         Tooltip_ReactorCrucible_Controller = TextHandler.texter("The controller block of the Reactor Crucible","Tooltip_ReactorCrucible_Controller");
-        Tooltip_ReactorCrucible_00 = TextHandler.texter("","Tooltip_ReactorCrucible_00");
-        Tooltip_ReactorCrucible_01 = TextHandler.texter("","Tooltip_ReactorCrucible_01");
-        Tooltip_ReactorCrucible_02 = TextHandler.texter("","Tooltip_ReactorCrucible_02");
+        Tooltip_ReactorCrucible_00 = TextHandler.texter("A specialized device used for solid-liquid chemical reactions.","Tooltip_ReactorCrucible_00");
+        Tooltip_ReactorCrucible_01 = TextHandler.texter("Terminal Industries ultimately decided to order a batch of special steel from the southern region of Talos II, produced by the Syndicate.","Tooltip_ReactorCrucible_01");
+        Tooltip_ReactorCrucible_02 = TextHandler.texter("This was done to counter the corrosive failures occurring within their reaction equipment.","Tooltip_ReactorCrucible_02");
 
         //扩容反应池
         NameExpandedCrucible = TextHandler.texter("Expanded Crucible","NameExpandedCrucible");
@@ -577,12 +586,21 @@ public class TextLocalization {
         Tooltip_ExpandedCrucible_01 = TextHandler.texter("Higher capacity, greater safety.","Tooltip_ExpandedCrucible_01");
         Tooltip_ExpandedCrucible_02 = TextHandler.texter("This machine supports up to four recipes running in parallel!","Tooltip_ExpandedCrucible_02");
 
-        //水泵
+        //水泵MK1
         NameFluidPumpMK1 = TextHandler.texter("Fluid Pump MK1","NameFluidPumpMK1");
         Tooltip_FluidPumpMK1_MachineType = TextHandler.texter("Fluid Pump","Tooltip_FluidPumpMK1_MachineType");
-        Tooltip_FluidPumpMK1_Controller = TextHandler.texter("ontroller block of the Fluid Pump","Tooltip_FluidPumpMK1_Controller");
+        Tooltip_FluidPumpMK1_Controller = TextHandler.texter("ontroller block of the Fluid Pump MK1","Tooltip_FluidPumpMK1_Controller");
         Tooltip_FluidPumpMK1_00 = TextHandler.texter("A basic device used for extracting liquids.","Tooltip_FluidPumpMK1_00");
         Tooltip_FluidPumpMK1_01 = TextHandler.texter("The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.","Tooltip_FluidPumpMK1_01");
+
+        //水泵MK2
+        NameFluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","NameFluidPumpMK2");
+        Tooltip_FluidPumpMK2_MachineType = TextHandler.texter("Fluid Pump","Tooltip_FluidPumpMK2_MachineType");
+        Tooltip_FluidPumpMK2_Controller = TextHandler.texter("ontroller block of the Fluid Pump MK2","Tooltip_FluidPumpMK2_Controller");
+        Tooltip_FluidPumpMK2_00 = TextHandler.texter("A powered device used for extracting liquids, capable of handling corrosive fluids.","Tooltip_FluidPumpMK2_00");
+        Tooltip_FluidPumpMK2_01 = TextHandler.texter("According to rather unreliable reports, engineers involved in developing the Type‑II acid‑resistant pump once whispered concerns about this product in a corner of the O.M.V.DiJiang’s cafeteria.","Tooltip_FluidPumpMK2_01");
+        Tooltip_FluidPumpMK2_02 = TextHandler.texter("Admittedly, Precipitation Acid has been proven to be a sufficiently safe material, yet they still worried that it might react uncontrollably with other Angel‑related substances.","Tooltip_FluidPumpMK2_02");
+        Tooltip_FluidPumpMK2_03 = TextHandler.texter("Therefore, an emergency‑lock module was added to this model.","Tooltip_FluidPumpMK2_03");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -650,6 +668,7 @@ public class TextLocalization {
         EOHB_Recipe_ForgeOfTheSky = TextHandler.texter("Forge Of The Sky","EOHB_Recipe_ForgeOfTheSky");
         EOHB_Recipe_PurificationUnit = TextHandler.texter("Purification Unit","EOHB_Recipe_PurificationUnit");
         EOHB_Recipe_ReactorCrucible = TextHandler.texter("Reactor Crucible","EOHB_Recipe_ReactorCrucible");
-        EOHB_Recipe_FluidPump = TextHandler.texter("Fluid Pump","EOHB_Recipe_FluidPump");
+        EOHB_Recipe_FluidPumpMK1 = TextHandler.texter("Fluid Pump MK1","EOHB_Recipe_FluidPumpMK1");
+        EOHB_Recipe_FluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","EOHB_Recipe_FluidPumpMK2");
     }
 }

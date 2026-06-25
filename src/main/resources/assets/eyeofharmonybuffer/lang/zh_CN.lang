@@ -227,9 +227,16 @@ Tooltip_ExpandedCrucible_01=§6高容量，§a更安全。§r
 Tooltip_ExpandedCrucible_02=§e本机器支持至多§b4§e种配方§a同时并行运作！§r
 NameFluidPumpMK1=§b水泵MK1
 Tooltip_FluidPumpMK1_MachineType=§b水泵
-Tooltip_FluidPumpMK1_Controller=§7水泵的§b控制器方块§r
+Tooltip_FluidPumpMK1_Controller=§7水泵MK1的§b控制器方块§r
 Tooltip_FluidPumpMK1_00=§a用于§e抽取液体§a的基础设备。§r
 Tooltip_FluidPumpMK1_01=§7商务部门采购§b水泵基础件§7，生产基地加装§e供能模块§7——§a能够集成于工业系统中的增压设备§7就此诞生。§r
+NameFluidPumpMK2=§b水泵 MK2
+Tooltip_FluidPumpMK2_MachineType=§b水泵
+Tooltip_FluidPumpMK2_Controller=§7水泵MK2的§b控制器方块§r
+Tooltip_FluidPumpMK2_00=§a通电状态下可§e抽取液体§a的设备，支持处理§c腐蚀性液体§a。§r
+Tooltip_FluidPumpMK2_01=§7据较不可靠消息，研发§b二型耐酸水泵§7的工程师们，曾在§b帝江号§7食堂角落小声表达过对本产品的担忧。§r
+Tooltip_FluidPumpMK2_02=§7诚然，§e沉积酸§7已被证明是一种足够安全的材料，§r§7但他们仍担心其可能与其他§6天使相关物品§7发生不可控反应。§r
+Tooltip_FluidPumpMK2_03=§a因此，为该款水泵添加了§e应急锁定模块§a。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -251,7 +258,8 @@ EOHB_Recipe_FillingUnit=灌装机
 EOHB_Recipe_ForgeOfTheSky=天有洪炉
 EOHB_Recipe_PurificationUnit=提纯机
 EOHB_Recipe_ReactorCrucible=反应池
-EOHB_Recipe_FluidPump=水泵
+EOHB_Recipe_FluidPumpMK1=水泵 MK1
+EOHB_Recipe_FluidPumpMK2=水泵 MK2
 
 #item
 EOHB_Harmony=鸿蒙
@@ -485,6 +493,8 @@ EOHB_UnstableOrundumSolvent=不稳定源石溶剂
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
 GT5U.gui.text.recipe_result.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！
 GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=检测不到水源！在控制器背后第10格、向下1格的位置必须是水源方块（静止的水）。
+GT5U.gui.text.recipe_result.UnsupportedFluid=不支持的液体！
+GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器背后第10格、向下1格的位置必须是液体源!
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
@@ -499,3 +509,6 @@ betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.desc=§a这台机器会一直陪你�
 #text
 GT5U.gui.text.structure_error.one_dynamo_only=至少有一个动力舱！
 GT5U.nei.nuclear.heat.none=无热量
+eohb_recipe.fluidpump.water_source=需要水源
+eohb_recipe.fluidpump.precipitation_acid=需要沉积酸
+eohb_recipe.fluidpump.lava_source=需要岩浆

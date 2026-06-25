@@ -227,9 +227,16 @@ Tooltip_ExpandedCrucible_01=Higher capacity, greater safety.
 Tooltip_ExpandedCrucible_02=This machine supports up to four recipes running in parallel!
 NameFluidPumpMK1=Fluid Pump MK1
 Tooltip_FluidPumpMK1_MachineType=Fluid Pump
-Tooltip_FluidPumpMK1_Controller=Controller block of the Fluid Pump
+Tooltip_FluidPumpMK1_Controller=Controller block of the Fluid Pump MK1
 Tooltip_FluidPumpMK1_00=A basic device used for extracting liquids.
 Tooltip_FluidPumpMK1_01=The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.
+NameFluidPumpMK2=Fluid Pump MK2
+Tooltip_FluidPumpMK2_MachineType=Fluid Pump
+Tooltip_FluidPumpMK2_Controller=Controller block of the Fluid Pump MK2
+Tooltip_FluidPumpMK2_00=A powered device used for extracting liquids, capable of handling corrosive fluids.
+Tooltip_FluidPumpMK2_01=According to rather unreliable reports, engineers involved in developing the Type‑II acid‑resistant pump once whispered concerns about this product in a corner of the O.M.V.DiJiang’s cafeteria.
+Tooltip_FluidPumpMK2_02=Admittedly, Precipitation Acid has been proven to be a sufficiently safe material, yet they still worried that it might react uncontrollably with other Angel‑related substances.
+Tooltip_FluidPumpMK2_03=Therefore, an emergency‑lock module was added to this model.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -251,7 +258,8 @@ EOHB_Recipe_FillingUnit=Filling Unit
 EOHB_Recipe_ForgeOfTheSky=Forge Of The Sky
 EOHB_Recipe_PurificationUnit=Purification Unit
 EOHB_Recipe_ReactorCrucible=Reactor Crucible
-EOHB_Recipe_FluidPump=Fluid Pump
+EOHB_Recipe_FluidPumpMK1=Fluid Pump MK1
+EOHB_Recipe_FluidPumpMK2=Fluid Pump MK2
 
 #item
 EOHB_Harmony=Harmony
@@ -485,6 +493,8 @@ EOHB_UnstableOrundumSolvent=Unstable Orundum Solvent
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
 GT5U.gui.text.recipe_result.NoOriginitePrimeMainVeinBlock=No Originite Prime Main Vein Block!
 GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=No water source detected! A source water block is required 10 blocks behind and 1 block below the controller.
+GT5U.gui.text.recipe_result.UnsupportedFluid=Unsupported fluid!
+GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source block is required 10 blocks behind and 1 block below the controller
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
@@ -499,3 +509,6 @@ betterquesting.quest.2jkE9GM8NlOsrYkogMmzdw.desc=This machine will see you throu
 #text
 GT5U.gui.text.structure_error.one_dynamo_only=Must have exactly one Dynamo hatch in total.
 GT5U.nei.nuclear.heat.none=No heat
+eohb_recipe.fluidpump.water_source=Need Water
+eohb_recipe.fluidpump.precipitation_acid=Need Precipitation Acid
+eohb_recipe.fluidpump.lava_source=Need lava
