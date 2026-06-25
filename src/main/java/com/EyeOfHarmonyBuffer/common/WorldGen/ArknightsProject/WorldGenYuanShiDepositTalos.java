@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject;
 
-import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -9,13 +8,14 @@ import java.util.Random;
 
 public class WorldGenYuanShiDepositTalos {
 
-    public void generateAt(World world, Random rand, int baseX, int baseZ) {
+    public void generateAt(World world, Random rand, int baseX, int baseZ,
+                           Block oreBlock, Block coreBlock) {
 
         if (!isAreaSuitable(world, baseX, baseZ)) {
             return;
         }
 
-        generateYuanShiDeposit(world, baseX, baseZ, rand);
+        generateDepositInternal(world, baseX, baseZ, rand, oreBlock, coreBlock);
     }
 
     private int findGroundYAt(World world, int x, int z) {
@@ -53,7 +53,8 @@ public class WorldGenYuanShiDepositTalos {
         return (maxY - minY) <= 2;
     }
 
-    private void generateYuanShiDeposit(World world, int baseX, int baseZ, Random rand) {
+    private void generateDepositInternal(World world, int baseX, int baseZ, Random rand,
+                                         Block oreBlock, Block coreBlock) {
 
         final int size = 12;
 
@@ -120,7 +121,7 @@ public class WorldGenYuanShiDepositTalos {
 
                 for (int y = columnBaseY + 1; y <= topY; y++) {
                     world.setBlock(x, y, z,
-                        ArknightsBlockRegister.YuanShiBlock,
+                        oreBlock,
                         0, 2);
                 }
 
@@ -130,7 +131,7 @@ public class WorldGenYuanShiDepositTalos {
 
                 if (!corePlaced && localHeight == peakHeight && dx == cx && dz == cz) {
                     world.setBlock(x, topY, z,
-                        ArknightsBlockRegister.YuanShiMainBlock,
+                        coreBlock,
                         0, 2);
                     corePlaced = true;
                 }
@@ -146,11 +147,11 @@ public class WorldGenYuanShiDepositTalos {
 
                 for (int y = columnSurfaceY + 1; y < topY; y++) {
                     world.setBlock(x, y, z,
-                        ArknightsBlockRegister.YuanShiBlock,
+                        oreBlock,
                         0, 2);
                 }
                 world.setBlock(x, topY, z,
-                    ArknightsBlockRegister.YuanShiMainBlock,
+                    coreBlock,
                     0, 2);
             }
         }
@@ -168,7 +169,8 @@ public class WorldGenYuanShiDepositTalos {
 
                 int baseY = columnBaseY + 1;
 
-                if (world.getBlock(x, baseY, z) != ArknightsBlockRegister.YuanShiBlock) {
+                // 只在这次生成的矿块上套石壳
+                if (world.getBlock(x, baseY, z) != oreBlock) {
                     continue;
                 }
 
