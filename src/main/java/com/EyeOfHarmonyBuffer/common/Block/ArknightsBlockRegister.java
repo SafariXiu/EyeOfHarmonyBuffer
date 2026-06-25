@@ -62,13 +62,13 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(ZiJingMainBlock, "zi_jing_main_block");
 
-        ChiTongBlock = new BlockZiJing()
+        ChiTongBlock = new BlockChiTong()
             .setBlockName("chi_tong_block")
             .setBlockTextureName("eyeofharmonybuffer:Arknights/chitong_block")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(ChiTongBlock, "chi_tong_block");
 
-        ChiTongMainBlock = new BlockZiJingMain()
+        ChiTongMainBlock = new BlockChiTongMain()
             .setBlockName("chi_tong_main_block")
             .setBlockTextureName("eyeofharmonybuffer:Arknights/chitong_main_block")
             .setCreativeTab(ArknightsProject_Block);
