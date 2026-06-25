@@ -465,6 +465,12 @@ tile.ForgeOfTheSkyCore.name=§a天有烘炉核心
 EOHB_ForgeOfTheSkyCore_Tooltip_00=多方块结构§a天有洪炉§f的核心配件
 EOHB_ForgeOfTheSkyCore_Tooltip_01=§a天有洪炉，§c地生五金
 tile.fluid.precipitationacid.name=沉积酸
+tile.lan_tie_block.name=蓝铁矿脉块
+tile.lan_tie_main_block.name=蓝铁主矿脉块
+tile.zi_jing_block.name=紫晶矿脉块
+tile.zi_jing_main_block.name=紫晶主矿脉块
+tile.chi_tong_block.name=赤铜矿脉块
+tile.chi_tong_main_block.name=赤铜主矿脉块
 
 #space
 solarsystem.talosSystem=塔罗斯

@@ -465,6 +465,12 @@ tile.ForgeOfTheSkyCore.name=§aForge Of The Sky Core
 EOHB_ForgeOfTheSkyCore_Tooltip_00=Core component of the multiblock structure Forge of the Sky.
 EOHB_ForgeOfTheSkyCore_Tooltip_01=Forge of the Sky, the Earth gives birth to metals.
 tile.fluid.precipitationacid.name=Precipitation Acid
+tile.lan_tie_block.name=Blue Iron Prime Vein Block
+tile.lan_tie_main_block.name=Blue Iron Prime Main Vein Block
+tile.zi_jing_block.name=Violet Crystal Prime Vein Block
+tile.zi_jing_main_block.name=Violet Crystal Main Vein Block
+tile.chi_tong_block.name=Cuprite Prime Vein Block
+tile.chi_tong_main_block.name=Cuprite Crystal Main Vein Block
 
 #space
 solarsystem.talosSystem=Talos
