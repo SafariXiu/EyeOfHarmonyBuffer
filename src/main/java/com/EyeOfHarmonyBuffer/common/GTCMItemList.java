@@ -122,6 +122,16 @@ public enum GTCMItemList {
     QingShui,
     ChenJiSuan,
 
+    YuanShiMainBlock,
+    YuanShiBlock,
+    OverdomainErosion,
+    LanTieBlock,
+    LanTieMainBlock,
+    ZiJingBlock,
+    ZiJingMainBlock,
+    ChiTongBlock,
+    ChiTongMainBlock,
+
     //方舟-植物
     GanShi,
     GanShiZhongZi,
@@ -154,6 +164,7 @@ public enum GTCMItemList {
     ExpandedCrucibles,
     FluidPumpMK1,
     FluidPumpMK2,
+    ElectricTypeTwoMiningMachine,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

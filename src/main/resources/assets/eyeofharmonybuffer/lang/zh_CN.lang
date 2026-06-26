@@ -134,14 +134,12 @@ Tooltip_OrundumDynamo_03=§f每一颗§6至纯源石§f在消耗后都会变成�
 Tooltip_OrundumDynamo_04=§7没有§6源石§7粉尘污染！
 Tooltip_OrundumDynamo_05=§f一切§6源石§f工业的开端，§a祝你好运§f，管理员！
 NameElectricTypeOneMiningMachine=§6电力一型矿机
-Tooltip_ElectricTypeOneMiningMachine_MachineType=§6电力一型矿机
+Tooltip_ElectricTypeOneMiningMachine_MachineType=§6电力矿机
 Tooltip_ElectricTypeOneMiningMachine_Controller=§f电力一型矿机的控制器方块
 Tooltip_ElectricTypeOneMiningMachine_00=§7来自塔罗斯星球早期工业时代的基础矿机，通过§6电力§7实现对§d源石矿脉§7的自动化开采。
 Tooltip_ElectricTypeOneMiningMachine_01=§7将结构核心安放在§d塔罗斯星球§7特有的§d源石主矿脉方块§7附近，即可开始工作！
 Tooltip_ElectricTypeOneMiningMachine_02=§f机器检测范围内§c必须§f存在至少一个§d源石主矿脉方块§f，否则无法启动。
 Tooltip_ElectricTypeOneMiningMachine_03=§7检测范围为：以§6机器主方块§7为基准，向后延伸 §b1 格§7、向下延伸 §b2 格§7，覆盖 §b7×7×3§7 的方形区域。
-Tooltip_ElectricTypeOneMiningMachine_04=§7默认并行数：§b1§7，每§b10 秒§7可稳定产出§a10 个源石矿§7。
-Tooltip_ElectricTypeOneMiningMachine_05=§7可在§6主方块内部§7安装§6升级模块§7，以§a提升并行数与产量§7，是§6源石§7工业化开采的第一步。
 NamePlanter=§a种植机
 Tooltip_Planter_MachineType=§a种植机
 Tooltip_Planter_Controller=§a种植机的控制器方块§r
@@ -237,6 +235,13 @@ Tooltip_FluidPumpMK2_00=§a通电状态下可§e抽取液体§a的设备，支�
 Tooltip_FluidPumpMK2_01=§7据较不可靠消息，研发§b二型耐酸水泵§7的工程师们，曾在§b帝江号§7食堂角落小声表达过对本产品的担忧。§r
 Tooltip_FluidPumpMK2_02=§7诚然，§e沉积酸§7已被证明是一种足够安全的材料，§r§7但他们仍担心其可能与其他§6天使相关物品§7发生不可控反应。§r
 Tooltip_FluidPumpMK2_03=§a因此，为该款水泵添加了§e应急锁定模块§a。§r
+NameElectricTypeTwoMiningMachine=§b电力二型矿机
+Tooltip_ElectricTypeTwoMiningMachine_MachineType=§b电力矿机
+Tooltip_ElectricTypeTwoMiningMachine_Controller=§7电力二型矿机的§b控制器方块§r
+Tooltip_ElectricTypeTwoMiningMachine_00=§a电力一型矿机的进阶版本，拥有更§e锋利的刀头§a与§e多矿种开采§a能力。§r
+Tooltip_ElectricTypeTwoMiningMachine_01=§7将结构核心安放在§a塔罗斯星球§7特有的主矿脉方块附近，即可开始工作。§r
+Tooltip_ElectricTypeTwoMiningMachine_02=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
+Tooltip_ElectricTypeTwoMiningMachine_03=§7检测范围：以机器主方块为基准，§b向后延伸 1 格§7、§b向下延伸 2 格§7，覆盖§e7×7×3§7的方形空间。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -260,6 +265,7 @@ EOHB_Recipe_PurificationUnit=提纯机
 EOHB_Recipe_ReactorCrucible=反应池
 EOHB_Recipe_FluidPumpMK1=水泵 MK1
 EOHB_Recipe_FluidPumpMK2=水泵 MK2
+EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -497,10 +503,11 @@ EOHB_UnstableOrundumSolvent=不稳定源石溶剂
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
-GT5U.gui.text.recipe_result.NoOriginitePrimeMainVeinBlock=没有源石主矿脉块！
+GT5U.gui.text.recipe_result.NoMainVeinBlock=没有矿脉块！
 GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=检测不到水源！在控制器背后第10格、向下1格的位置必须是水源方块（静止的水）。
 GT5U.gui.text.recipe_result.UnsupportedFluid=不支持的液体！
 GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器背后第10格、向下1格的位置必须是液体源!
+GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
@@ -518,3 +525,6 @@ GT5U.nei.nuclear.heat.none=无热量
 eohb_recipe.fluidpump.water_source=需要水源
 eohb_recipe.fluidpump.precipitation_acid=需要沉积酸
 eohb_recipe.fluidpump.lava_source=需要岩浆
+eohb_recipe.PowerMiner.YuanShi_source=需要源石主矿脉块
+eohb_recipe.PowerMiner.ZiJing_source=需要紫晶主矿脉块
+eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块

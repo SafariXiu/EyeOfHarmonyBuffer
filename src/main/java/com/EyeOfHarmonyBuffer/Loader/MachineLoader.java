@@ -30,6 +30,7 @@ public class MachineLoader {
     public static ItemStack ExpandedCrucible;
     public static ItemStack FluidPumpMK1;
     public static ItemStack FluidPumpMK2;
+    public static ItemStack ElectricTypeTwoMiningMachine;
 
     private final static int MachineBlockID = 23000;
 
@@ -194,5 +195,12 @@ public class MachineLoader {
             TextLocalization.NameFluidPumpMK2
         ).getStackForm(1);
         GTCMItemList.FluidPumpMK2.set(FluidPumpMK2);
+
+        ElectricTypeTwoMiningMachine = new EOHB_ElectricTypeTwoMiningMachine(
+            MachineBlockID + 24,
+            "NameElectricTypeTwoMiningMachine",
+            TextLocalization.NameElectricTypeTwoMiningMachine
+        ).getStackForm(1);
+        GTCMItemList.ElectricTypeTwoMiningMachine.set(ElectricTypeTwoMiningMachine);
     }
 }

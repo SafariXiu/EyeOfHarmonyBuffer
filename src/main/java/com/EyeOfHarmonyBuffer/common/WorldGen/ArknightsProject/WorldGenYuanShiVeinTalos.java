@@ -12,7 +12,7 @@ public class WorldGenYuanShiVeinTalos {
 
     public void generate(World world, Random rand, int chunkX, int chunkZ) {
 
-        if (rand.nextInt(500) != 0) {
+        if (rand.nextInt(1000) != 0) {
             return;
         }
 

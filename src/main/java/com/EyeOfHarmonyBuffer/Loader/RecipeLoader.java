@@ -42,7 +42,8 @@ public class RecipeLoader {
             new PurificationUnitRecipes(),
             new ReactorCrucibleRecipes(),
             new ArknightsRecipesLoad(),
-            new FluidPumpRecipe()
+            new FluidPumpRecipe(),
+            new ElectricTypeTwoMiningMachineRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

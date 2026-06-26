@@ -31,25 +31,34 @@ import java.math.BigInteger;
 import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_Energy;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.StructureTooComplex;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_InputBus;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_MaintenanceHatch;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_OutputBus;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
-import static gregtech.api.enums.HatchElement.*;
+import static gregtech.api.enums.HatchElement.InputBus;
+import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachineBase<EOHB_ElectricTypeOneMiningMachine>
+public class EOHB_ElectricTypeTwoMiningMachine extends OrundumWirelessMultiMachineBase<EOHB_ElectricTypeTwoMiningMachine>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_ElectricTypeOneMiningMachine> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainElectricTypeOneMiningMachine";
+    private static IStructureDefinition<EOHB_ElectricTypeTwoMiningMachine> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainElectricTypeTwoMiningMachine";
     private static final int OffsetsX = 4;
     private static final int OffsetsY = 10;
     private static final int OffsetsZ = 3;
     private static final int CASING_INDEX1 = 183;
 
     private enum VeinType {
+        LANTIE(GTCMItemList.LanTieMainBlock, GTCMItemList.LanTieKuang),
         ZIJING(GTCMItemList.ZiJingMainBlock, GTCMItemList.ZiJingKuang),
         YUANSHI(GTCMItemList.YuanShiMainBlock, GTCMItemList.YuanShiKuang);
 
@@ -81,12 +90,12 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
         }
     }
 
-    public EOHB_ElectricTypeOneMiningMachine(int aID, String aName, String aNameRegional) {
+    public EOHB_ElectricTypeTwoMiningMachine(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_ElectricTypeOneMiningMachine(String aName) {
+    public EOHB_ElectricTypeTwoMiningMachine(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -119,15 +128,20 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
         long orundumCost;
 
         switch (veinType) {
+            case LANTIE:
+                duration = 200;
+                amount = 160;
+                orundumCost = 40_000L;
+                break;
             case ZIJING:
                 duration = 200;
-                amount = 16;
-                orundumCost = 5_000L;
+                amount = 160;
+                orundumCost = 10_000L;
                 break;
             case YUANSHI:
                 duration = 200;
-                amount = 16;
-                orundumCost = 5_000L;
+                amount = 160;
+                orundumCost = 10_000L;
                 break;
             default:
                 return SimpleCheckRecipeResult.ofFailure("UnsupportedMainVeinBlock");
@@ -169,7 +183,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.ElectricTypeOneMiningMachine;
+        return RecipeMaps.ElectricTypeTwoMiningMachine;
     }
 
     @Override
@@ -202,14 +216,14 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     };
 
     @Override
-    public IStructureDefinition<EOHB_ElectricTypeOneMiningMachine> getStructureDefinition() {
+    public IStructureDefinition<EOHB_ElectricTypeTwoMiningMachine> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ElectricTypeOneMiningMachine>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_ElectricTypeTwoMiningMachine>builder()
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockGlass1, 0))
                 .addElement(
                     'B',
-                    buildHatchAdder(EOHB_ElectricTypeOneMiningMachine.class)
+                    buildHatchAdder(EOHB_ElectricTypeTwoMiningMachine.class)
                         .atLeast(InputBus, OutputBus)
                         .casingIndex(CASING_INDEX1)
                         .hint(1)
@@ -226,13 +240,13 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_ElectricTypeOneMiningMachine_MachineType)
-            .addInfo(Tooltip_ElectricTypeOneMiningMachine_Controller)
+        tt.addMachineType(Tooltip_ElectricTypeTwoMiningMachine_MachineType)
+            .addInfo(Tooltip_ElectricTypeTwoMiningMachine_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_ElectricTypeOneMiningMachine_00)
-            .addInfo(Tooltip_ElectricTypeOneMiningMachine_01)
-            .addInfo(Tooltip_ElectricTypeOneMiningMachine_02)
-            .addInfo(Tooltip_ElectricTypeOneMiningMachine_03)
+            .addInfo(Tooltip_ElectricTypeTwoMiningMachine_00)
+            .addInfo(Tooltip_ElectricTypeTwoMiningMachine_01)
+            .addInfo(Tooltip_ElectricTypeTwoMiningMachine_02)
+            .addInfo(Tooltip_ElectricTypeTwoMiningMachine_03)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
@@ -246,7 +260,7 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_ElectricTypeOneMiningMachine(this.mName);
+        return new EOHB_ElectricTypeTwoMiningMachine(this.mName);
     }
 
     @Nullable

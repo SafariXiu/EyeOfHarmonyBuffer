@@ -136,8 +136,6 @@ public class TextLocalization {
     public static final String Tooltip_ElectricTypeOneMiningMachine_01;
     public static final String Tooltip_ElectricTypeOneMiningMachine_02;
     public static final String Tooltip_ElectricTypeOneMiningMachine_03;
-    public static final String Tooltip_ElectricTypeOneMiningMachine_04;
-    public static final String Tooltip_ElectricTypeOneMiningMachine_05;
 
     public static final String NamePlanter;
     public static final String Tooltip_Planter_MachineType;
@@ -249,6 +247,14 @@ public class TextLocalization {
     public static final String Tooltip_FluidPumpMK2_02;
     public static final String Tooltip_FluidPumpMK2_03;
 
+    public static final String NameElectricTypeTwoMiningMachine;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_MachineType;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_Controller;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_00;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_01;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_02;
+    public static final String Tooltip_ElectricTypeTwoMiningMachine_03;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -319,6 +325,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ReactorCrucible;
     public static final String EOHB_Recipe_FluidPumpMK1;
     public static final String EOHB_Recipe_FluidPumpMK2;
+    public static final String EOHB_Recipe_ElectricTypeTwoMiningMachine;
 
     public TextLocalization() {
     }
@@ -474,8 +481,6 @@ public class TextLocalization {
         Tooltip_ElectricTypeOneMiningMachine_01 = TextHandler.texter("Just set the structure on top of the Orundum ore veins unique to Planet Talos and it will start operating!","Tooltip_ElectricTypeOneMiningMachine_01");
         Tooltip_ElectricTypeOneMiningMachine_02 = TextHandler.texter("The machine requires at least one Originite Prime Main Vein Block within its detection range to operate.","Tooltip_ElectricTypeOneMiningMachine_02");
         Tooltip_ElectricTypeOneMiningMachine_03 = TextHandler.texter("The detection range is a 7×7×3 cubic area that starts one block behind and two blocks below the machine’s main block.","Tooltip_ElectricTypeOneMiningMachine_03");
-        Tooltip_ElectricTypeOneMiningMachine_04 = TextHandler.texter("By default, the machine operates with a single parallel line, yielding 10 Orundum ore every 10 seconds.","Tooltip_ElectricTypeOneMiningMachine_04");
-        Tooltip_ElectricTypeOneMiningMachine_05 = TextHandler.texter("","Tooltip_ElectricTypeOneMiningMachine_05");
 
         //种植机
         NamePlanter = TextHandler.texter("Planter","NamePlanter");
@@ -602,6 +607,14 @@ public class TextLocalization {
         Tooltip_FluidPumpMK2_02 = TextHandler.texter("Admittedly, Precipitation Acid has been proven to be a sufficiently safe material, yet they still worried that it might react uncontrollably with other Angel‑related substances.","Tooltip_FluidPumpMK2_02");
         Tooltip_FluidPumpMK2_03 = TextHandler.texter("Therefore, an emergency‑lock module was added to this model.","Tooltip_FluidPumpMK2_03");
 
+        NameElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type‑II Mining Machine","NameElectricTypeTwoMiningMachine");
+        Tooltip_ElectricTypeTwoMiningMachine_MachineType = TextHandler.texter("Electric Mining Machine","Tooltip_ElectricTypeTwoMiningMachine_MachineType");
+        Tooltip_ElectricTypeTwoMiningMachine_Controller = TextHandler.texter("Controller block of the Electric Type‑II Mining Machine","Tooltip_ElectricTypeTwoMiningMachine_Controller");
+        Tooltip_ElectricTypeTwoMiningMachine_00 = TextHandler.texter("An advanced version of the Electric Type‑I Mining Machine, featuring sharper drill heads and the ability to extract multiple kinds of ores.","Tooltip_ElectricTypeTwoMiningMachine_00");
+        Tooltip_ElectricTypeTwoMiningMachine_01 = TextHandler.texter("Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!","Tooltip_ElectricTypeTwoMiningMachine_01");
+        Tooltip_ElectricTypeTwoMiningMachine_02 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_ElectricTypeTwoMiningMachine_02");
+        Tooltip_ElectricTypeTwoMiningMachine_03 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_ElectricTypeTwoMiningMachine_03");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -670,5 +683,6 @@ public class TextLocalization {
         EOHB_Recipe_ReactorCrucible = TextHandler.texter("Reactor Crucible","EOHB_Recipe_ReactorCrucible");
         EOHB_Recipe_FluidPumpMK1 = TextHandler.texter("Fluid Pump MK1","EOHB_Recipe_FluidPumpMK1");
         EOHB_Recipe_FluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","EOHB_Recipe_FluidPumpMK2");
+        EOHB_Recipe_ElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type Two Mining Machine","EOHB_Recipe_ElectricTypeTwoMiningMachine");
     }
 }

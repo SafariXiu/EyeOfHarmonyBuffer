@@ -6,10 +6,10 @@ import gregtech.api.enums.GTValues;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ElectricTypeOneMiningMachine;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ElectricTypeTwoMiningMachine;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
-public class ElectricTypeOneMiningMachineRecipes implements IRecipePool {
+public class ElectricTypeTwoMiningMachineRecipes implements IRecipePool {
 
     @Override
     public void loadRecipes() {
@@ -22,11 +22,11 @@ public class ElectricTypeOneMiningMachineRecipes implements IRecipePool {
                 YuanShiKuang
             )
             .itemOutputs(
-                GTCMItemList.YuanShiKuang.get(16)
+                GTCMItemList.YuanShiKuang.get(160)
             )
-            .eut(5000)
+            .eut(10000)
             .duration(10 * SECONDS)
-            .addTo(ElectricTypeOneMiningMachine);
+            .addTo(ElectricTypeTwoMiningMachine);
 
         ItemStack ZiJingKuang = GTCMItemList.ZiJingMainBlock.get(1);
         ZiJingKuang.setStackDisplayName(StatCollector.translateToLocal("eohb_recipe.PowerMiner.ZiJing_source"));
@@ -36,10 +36,24 @@ public class ElectricTypeOneMiningMachineRecipes implements IRecipePool {
                 ZiJingKuang
             )
             .itemOutputs(
-                GTCMItemList.ZiJingKuang.get(16)
+                GTCMItemList.ZiJingKuang.get(160)
             )
-            .eut(5000)
+            .eut(10000)
             .duration(10 * SECONDS)
-            .addTo(ElectricTypeOneMiningMachine);
+            .addTo(ElectricTypeTwoMiningMachine);
+
+        ItemStack LanTieKuang = GTCMItemList.LanTieMainBlock.get(1);
+        LanTieKuang.setStackDisplayName(StatCollector.translateToLocal("eohb_recipe.PowerMiner.LanTie_source"));
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                LanTieKuang
+            )
+            .itemOutputs(
+                GTCMItemList.LanTieKuang.get(160)
+            )
+            .eut(40000)
+            .duration(10 * SECONDS)
+            .addTo(ElectricTypeTwoMiningMachine);
     }
 }
