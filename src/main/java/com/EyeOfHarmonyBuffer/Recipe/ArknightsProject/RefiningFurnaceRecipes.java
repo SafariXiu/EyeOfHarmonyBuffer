@@ -5,6 +5,9 @@ import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.Materials;
+import gregtech.api.enums.OrePrefixes;
+import gtPlusPlus.core.fluids.GTPPFluids;
+import net.minecraftforge.fluids.FluidStack;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.RefiningFurnace;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -148,6 +151,23 @@ public class RefiningFurnaceRecipes implements IRecipePool {
                 EOHBMaterialPool.Sewage.getFluidOrGas(1000)
             )
             .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(RefiningFurnace);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.ArsenicImpact.get(OrePrefixes.dust, 1)
+            )
+            .fluidInputs(
+                new FluidStack(GTPPFluids.Cryotheum, 8000)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.ArsenicImpact.get(OrePrefixes.ingot, 1)
+            )
+            .fluidOutputs(
+                new FluidStack(GTPPFluids.Pyrotheum, 8000)
+            )
+            .eut(50000)
             .duration(10 * SECONDS)
             .addTo(RefiningFurnace);
     }
