@@ -299,7 +299,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgCoreCrystal", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "ic2Capacitor", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgControllerCrystal", 1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateChevron",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateChevron",1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisUpgrade", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisBlade", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "stargateBase", 1)),
@@ -307,8 +307,8 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTUtility.copyAmountUnsafe(102400000, getModItem(AE2FluidCraft.ID, "fluid_storage.Universe", 1)),
                 GTUtility.copyAmountUnsafe(102400000, getModItem(AppliedEnergistics2.ID, "item.ItemVoidStorageCell", 1)),
                 GTUtility.copyAmountUnsafe(10240000, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.MAX, 1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateShieldingFoil",1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateFramePart",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateShieldingFoil",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateFramePart",1)),
                 GTUtility.copyAmountUnsafe(10240000, ItemList.Field_Generator_MAX.get(1))
             )
             .fluidInputs(
