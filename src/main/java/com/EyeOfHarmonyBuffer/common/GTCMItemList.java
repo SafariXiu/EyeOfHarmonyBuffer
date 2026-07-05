@@ -165,6 +165,7 @@ public enum GTCMItemList {
     FluidPumpMK1,
     FluidPumpMK2,
     ElectricTypeTwoMiningMachine,
+    HighDensityEnergyFluidGenerator,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

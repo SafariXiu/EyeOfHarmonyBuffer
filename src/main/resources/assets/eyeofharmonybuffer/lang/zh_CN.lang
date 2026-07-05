@@ -242,6 +242,16 @@ Tooltip_ElectricTypeTwoMiningMachine_00=§a电力一型矿机的进阶版本，�
 Tooltip_ElectricTypeTwoMiningMachine_01=§7将结构核心安放在§a塔罗斯星球§7特有的主矿脉方块附近，即可开始工作。§r
 Tooltip_ElectricTypeTwoMiningMachine_02=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
 Tooltip_ElectricTypeTwoMiningMachine_03=§7检测范围：以机器主方块为基准，§b向后延伸 1 格§7、§b向下延伸 2 格§7，覆盖§e7×7×3§7的方形空间。§r
+NameHighDensityEnergyFluidGenerator=§b高密度能量液体发生器
+Tooltip_HighDensityEnergyFluidGenerator_MachineType=§b高密度能量液体发生器
+Tooltip_HighDensityEnergyFluidGenerator_Controller=§7高密度能量液体发生器的§b控制器方块§r
+Tooltip_HighDensityEnergyFluidGenerator_00=§a高密度能量液体发生器是一台§e工业级§a设备。§r
+Tooltip_HighDensityEnergyFluidGenerator_01=§a专用于生产可直接使用的§e高能液体§a。§r
+Tooltip_HighDensityEnergyFluidGenerator_02=§7运行时优先消耗§6源石能量§7以维持§b泵组§7和§b控制系统§7。§r
+Tooltip_HighDensityEnergyFluidGenerator_03=§7同时，设备持续输入§eEU能量§7注入全封闭反应腔。§r
+Tooltip_HighDensityEnergyFluidGenerator_04=§7液体在反应腔中与注入能量充分接触和反应。§r
+Tooltip_HighDensityEnergyFluidGenerator_05=§7之后依次经过§e加压§7、§e加热§7与§e持续搅拌§7处理。§r
+Tooltip_HighDensityEnergyFluidGenerator_06=§a液体能级逐步提升，并最终转化为稳定的§6高能液体§a。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -266,6 +276,7 @@ EOHB_Recipe_ReactorCrucible=反应池
 EOHB_Recipe_FluidPumpMK1=水泵 MK1
 EOHB_Recipe_FluidPumpMK2=水泵 MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
+EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
 
 #item
 EOHB_Harmony=鸿蒙
@@ -528,3 +539,4 @@ eohb_recipe.fluidpump.lava_source=需要岩浆
 eohb_recipe.PowerMiner.YuanShi_source=需要源石主矿脉块
 eohb_recipe.PowerMiner.ZiJing_source=需要紫晶主矿脉块
 eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_laser_source=没有激光源！

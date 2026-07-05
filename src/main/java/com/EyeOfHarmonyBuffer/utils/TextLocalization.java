@@ -255,6 +255,17 @@ public class TextLocalization {
     public static final String Tooltip_ElectricTypeTwoMiningMachine_02;
     public static final String Tooltip_ElectricTypeTwoMiningMachine_03;
 
+    public static final String NameHighDensityEnergyFluidGenerator;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_MachineType;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_Controller;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_00;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_01;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_02;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_03;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_04;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_05;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_06;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -326,6 +337,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_FluidPumpMK1;
     public static final String EOHB_Recipe_FluidPumpMK2;
     public static final String EOHB_Recipe_ElectricTypeTwoMiningMachine;
+    public static final String EOHB_Recipe_HighDensityEnergyFluidGenerator;
 
     public TextLocalization() {
     }
@@ -607,6 +619,7 @@ public class TextLocalization {
         Tooltip_FluidPumpMK2_02 = TextHandler.texter("Admittedly, Precipitation Acid has been proven to be a sufficiently safe material, yet they still worried that it might react uncontrollably with other Angel‑related substances.","Tooltip_FluidPumpMK2_02");
         Tooltip_FluidPumpMK2_03 = TextHandler.texter("Therefore, an emergency‑lock module was added to this model.","Tooltip_FluidPumpMK2_03");
 
+        //电力二型矿机
         NameElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type‑II Mining Machine","NameElectricTypeTwoMiningMachine");
         Tooltip_ElectricTypeTwoMiningMachine_MachineType = TextHandler.texter("Electric Mining Machine","Tooltip_ElectricTypeTwoMiningMachine_MachineType");
         Tooltip_ElectricTypeTwoMiningMachine_Controller = TextHandler.texter("Controller block of the Electric Type‑II Mining Machine","Tooltip_ElectricTypeTwoMiningMachine_Controller");
@@ -614,6 +627,18 @@ public class TextLocalization {
         Tooltip_ElectricTypeTwoMiningMachine_01 = TextHandler.texter("Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!","Tooltip_ElectricTypeTwoMiningMachine_01");
         Tooltip_ElectricTypeTwoMiningMachine_02 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_ElectricTypeTwoMiningMachine_02");
         Tooltip_ElectricTypeTwoMiningMachine_03 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_ElectricTypeTwoMiningMachine_03");
+
+        //高密度能量液体发生器
+        NameHighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","NameHighDensityEnergyFluidGenerator");
+        Tooltip_HighDensityEnergyFluidGenerator_MachineType = TextHandler.texter("High-Density Energy Fluid Generator","Tooltip_HighDensityEnergyFluidGenerator_MachineType");
+        Tooltip_HighDensityEnergyFluidGenerator_Controller = TextHandler.texter("Controller block of the High-Density Energy Fluid Generator","Tooltip_HighDensityEnergyFluidGenerator_Controller");
+        Tooltip_HighDensityEnergyFluidGenerator_00 = TextHandler.texter("The High-Density Energy Fluid Generator is an industrial-grade device dedicated to the production of high-energy fluid.","Tooltip_HighDensityEnergyFluidGenerator_00");
+        Tooltip_HighDensityEnergyFluidGenerator_01 = TextHandler.texter("It is dedicated to producing high-energy fluid that can be used directly.","Tooltip_HighDensityEnergyFluidGenerator_01");
+        Tooltip_HighDensityEnergyFluidGenerator_02 = TextHandler.texter("During operation, it first consumes Orundum energy to keep the pumps and control systems stable.","Tooltip_HighDensityEnergyFluidGenerator_02");
+        Tooltip_HighDensityEnergyFluidGenerator_03 = TextHandler.texter("At the same time, EU power is continuously supplied and injected into a fully sealed reaction chamber.","Tooltip_HighDensityEnergyFluidGenerator_03");
+        Tooltip_HighDensityEnergyFluidGenerator_04 = TextHandler.texter("Inside the chamber, the fluid comes into full contact with the injected energy.","Tooltip_HighDensityEnergyFluidGenerator_04");
+        Tooltip_HighDensityEnergyFluidGenerator_05 = TextHandler.texter("It then passes through sequential stages of pressurization, heating, and continuous stirring.","Tooltip_HighDensityEnergyFluidGenerator_05");
+        Tooltip_HighDensityEnergyFluidGenerator_06 = TextHandler.texter("This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.","Tooltip_HighDensityEnergyFluidGenerator_06");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -684,5 +709,6 @@ public class TextLocalization {
         EOHB_Recipe_FluidPumpMK1 = TextHandler.texter("Fluid Pump MK1","EOHB_Recipe_FluidPumpMK1");
         EOHB_Recipe_FluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","EOHB_Recipe_FluidPumpMK2");
         EOHB_Recipe_ElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type Two Mining Machine","EOHB_Recipe_ElectricTypeTwoMiningMachine");
+        EOHB_Recipe_HighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","EOHB_Recipe_HighDensityEnergyFluidGenerator");
     }
 }

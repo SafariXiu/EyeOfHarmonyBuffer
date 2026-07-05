@@ -140,7 +140,6 @@ Tooltip_ElectricTypeOneMiningMachine_00=The Electric Type-I Mining Machine is th
 Tooltip_ElectricTypeOneMiningMachine_01=Just set the structure on top of the Orundum ore veins unique to Planet Talos and it will start operating!
 Tooltip_ElectricTypeOneMiningMachine_02=The machine requires at least one Originite Prime Main Vein Block within its detection range to operate.
 Tooltip_ElectricTypeOneMiningMachine_03=The detection range is a 7×7×3 cubic area that starts one block behind and two blocks below the machine’s main block.
-Tooltip_ElectricTypeOneMiningMachine_04=Default parallel process limit: 1
 NamePlanter=Planter
 Tooltip_Planter_MachineType=Planter
 Tooltip_Planter_Controller=Controller Block of Planter
@@ -243,7 +242,16 @@ Tooltip_ElectricTypeTwoMiningMachine_00=An advanced version of the Electric Type
 Tooltip_ElectricTypeTwoMiningMachine_01=Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!
 Tooltip_ElectricTypeTwoMiningMachine_02=At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.
 Tooltip_ElectricTypeTwoMiningMachine_03=Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.
-Tooltip_ElectricTypeTwoMiningMachine_04=Default parallel process limit: 16
+NameHighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
+Tooltip_HighDensityEnergyFluidGenerator_MachineType=High-Density Energy Fluid Generator
+Tooltip_HighDensityEnergyFluidGenerator_Controller=Controller block of the High-Density Energy Fluid Generator
+Tooltip_HighDensityEnergyFluidGenerator_00=The High-Density Energy Fluid Generator is an industrial-grade device.
+Tooltip_HighDensityEnergyFluidGenerator_01=It is dedicated to producing high-energy fluid that can be used directly.
+Tooltip_HighDensityEnergyFluidGenerator_02=During operation, it first consumes Orundum energy to keep the pumps and control systems stable
+Tooltip_HighDensityEnergyFluidGenerator_03=At the same time, EU power is continuously supplied and injected into a fully sealed reaction chamber.
+Tooltip_HighDensityEnergyFluidGenerator_04=Inside the chamber, the fluid comes into full contact with the injected energy.
+Tooltip_HighDensityEnergyFluidGenerator_05=It then passes through sequential stages of pressurization, heating, and continuous stirring.
+Tooltip_HighDensityEnergyFluidGenerator_06=This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -268,6 +276,7 @@ EOHB_Recipe_ReactorCrucible=Reactor Crucible
 EOHB_Recipe_FluidPumpMK1=Fluid Pump MK1
 EOHB_Recipe_FluidPumpMK2=Fluid Pump MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=Electric Type‑II Mining Machine
+EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
 
 #item
 EOHB_Harmony=Harmony
@@ -530,3 +539,4 @@ eohb_recipe.fluidpump.lava_source=Need lava
 eohb_recipe.PowerMiner.YuanShi_source=Need Originite Prime Main Vein Block
 eohb_recipe.PowerMiner.ZiJing_source=Need Violet Crystal Main Vein Block
 eohb_recipe.PowerMiner.LanTie_source=Need Blue Iron Prime Main Vein Block
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_laser_source=No Laser Source!
