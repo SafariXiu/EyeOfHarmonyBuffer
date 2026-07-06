@@ -17,6 +17,11 @@ EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_WirelessMode_On=无线模式已开启
 EOHB_WirelessMode_Off=无线模式已关闭
 EOHB_FuelRob_NO_Outgrowth=本燃料棒没有产出！烧完即消失
+EOHB_Waila_EUPreCycle=每轮消耗 EU
+EOHB_Waila_CurrentRunTime=当前运行时间
+EOHB_Waila_TotalLaserAmps=激光总安培数
+EOHB_Waila_MaxLaserTier=最高激光等级
+EOHB_Waila_OrundumCost=每轮消耗Orundum
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
@@ -252,6 +257,7 @@ Tooltip_HighDensityEnergyFluidGenerator_03=§7同时，设备持续输入§eEU�
 Tooltip_HighDensityEnergyFluidGenerator_04=§7液体在反应腔中与注入能量充分接触和反应。§r
 Tooltip_HighDensityEnergyFluidGenerator_05=§7之后依次经过§e加压§7、§e加热§7与§e持续搅拌§7处理。§r
 Tooltip_HighDensityEnergyFluidGenerator_06=§a液体能级逐步提升，并最终转化为稳定的§6高能液体§a。§r
+Tooltip_HighDensityEnergyFluidGenerator_07=§c每运行一个配方时，将额外从无线能量网络消耗 §e100000 EU §c！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -467,6 +473,7 @@ item.FuelRod_empty2.name=二联燃料棒（空）
 item.FuelRod_empty4.name=四联燃料棒（空）
 item.OrundumPowder.name=源石微粉
 item.OrundumSlag.name=源石渣
+item.YuanShiTongWeiSu_Alpha.name=源石同位素α
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
@@ -511,6 +518,9 @@ EOHB_LiquefiedOrundum=液化源石
 EOHB_CrudeLiquefiedOrundum=粗制源石溶液
 EOHB_HighEnergyOrundumSolvent=高能源石溶剂
 EOHB_UnstableOrundumSolvent=不稳定源石溶剂
+EOHB_ContaminatedOrundumSlurry=污染源石浆料
+EOHB_StabilizedHigh_EnergyOrundumSolvent=稳定高能源石溶剂
+EOHB_AnomalousEnergyCondensate=异常能量凝集物
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！
@@ -519,6 +529,9 @@ GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=检测不到水源！在控�
 GT5U.gui.text.recipe_result.UnsupportedFluid=不支持的液体！
 GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器背后第10格、向下1格的位置必须是液体源!
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
+
+#Recipe
+GT5U.gui.text.recipe.HighDensityEnergyFluidGeneratorInfo=每运行一个配方额外从无线电网消耗 100000 EU
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
@@ -539,4 +552,4 @@ eohb_recipe.fluidpump.lava_source=需要岩浆
 eohb_recipe.PowerMiner.YuanShi_source=需要源石主矿脉块
 eohb_recipe.PowerMiner.ZiJing_source=需要紫晶主矿脉块
 eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块
-GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_laser_source=没有激光源！
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！

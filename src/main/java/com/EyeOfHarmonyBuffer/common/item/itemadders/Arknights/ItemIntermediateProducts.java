@@ -58,6 +58,7 @@ public class ItemIntermediateProducts {
     public static Item FuelRod_empty4;
     public static Item OrundumPowder;
     public static Item OrundumSlag;
+    public static Item YuanShiTongWeiSu_Alpha;
 
     public static void initAndRegister(String modid) {
         String textureFolder = "Arknights/";

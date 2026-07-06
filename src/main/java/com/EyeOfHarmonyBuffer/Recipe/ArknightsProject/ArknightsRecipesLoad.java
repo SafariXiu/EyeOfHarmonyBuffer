@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
+import appeng.integration.modules.GT;
 import bartworks.system.material.WerkstoffLoader;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
@@ -10,8 +11,7 @@ import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.util.GTUtility;
 
-import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
-import static gregtech.api.recipe.RecipeMaps.mixerRecipes;
+import static gregtech.api.recipe.RecipeMaps.*;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 public class ArknightsRecipesLoad implements IRecipePool {
@@ -70,5 +70,62 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .eut(TierEU.RECIPE_IV)
             .duration(10 * SECONDS)
             .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiDepletedFuelRod1.get(8)
+            )
+            .itemOutputs(
+                GTCMItemList.YuanShiTongWeiSu_Alpha.get(1),
+                GTCMItemList.FuelRod_empty1.get(8)
+            )
+            .outputChances(
+                200,
+                10000
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ContaminatedOrundumSlurry.getFluidOrGas(100)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(512 * SECONDS)
+            .addTo(centrifugeRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiDepletedFuelRod2.get(4)
+            )
+            .itemOutputs(
+                GTCMItemList.YuanShiTongWeiSu_Alpha.get(1),
+                GTCMItemList.FuelRod_empty1.get(8)
+            )
+            .outputChances(
+                200,
+                10000
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ContaminatedOrundumSlurry.getFluidOrGas(100)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(512 * SECONDS)
+            .addTo(centrifugeRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiDepletedFuelRod4.get(2)
+            )
+            .itemOutputs(
+                GTCMItemList.YuanShiTongWeiSu_Alpha.get(1),
+                GTCMItemList.FuelRod_empty1.get(8)
+            )
+            .outputChances(
+                200,
+                10000
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ContaminatedOrundumSlurry.getFluidOrGas(100)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(512 * SECONDS)
+            .addTo(centrifugeRecipes);
     }
 }

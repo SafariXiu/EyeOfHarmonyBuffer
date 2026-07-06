@@ -16,6 +16,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Waila_OrundumCost;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
@@ -177,7 +178,7 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
     /** Waila 中"消耗/产出"那一行左边的标签文字。 */
     protected String getWailaCostLabel() {
-        return "Current Orundum Cost";
+        return EOHB_Waila_OrundumCost;
     }
 
     /** Waila 中显示数值后的单位文字。 */

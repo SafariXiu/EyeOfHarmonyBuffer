@@ -257,6 +257,42 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff ContaminatedOrundumSlurry = new Werkstoff(
+        new short[] { 104, 96, 72 },
+        EOHB_ContaminatedOrundumSlurry,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 19,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff StabilizedHigh_EnergyOrundumSolvent = new Werkstoff(
+        new short[] { 0, 210, 255 },
+        EOHB_StabilizedHigh_EnergyOrundumSolvent,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 20,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff AnomalousEnergyCondensate = new Werkstoff(
+        new short[] { 150, 0, 200 },
+        EOHB_AnomalousEnergyCondensate,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 21,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

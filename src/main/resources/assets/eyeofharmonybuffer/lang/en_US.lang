@@ -17,6 +17,11 @@ EOHB_Text_SeparatingLine=-----------------------------------------
 EOHB_WirelessMode_On=Wireless mode enabled.
 EOHB_WirelessMode_Off=Wireless mode disabled.
 EOHB_FuelRob_NO_Outgrowth=This fuel rod does not produce anything! It disappears upon burning.
+EOHB_Waila_EUPreCycle=EU per Cycle
+EOHB_Waila_CurrentRunTime=Current Run Time
+EOHB_Waila_TotalLaserAmps=Total Laser Amps
+EOHB_Waila_MaxLaserTier=Max Laser Tier
+EOHB_Waila_OrundumCost=Current Orundum Cost
 EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
 EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
@@ -252,6 +257,7 @@ Tooltip_HighDensityEnergyFluidGenerator_03=At the same time, EU power is continu
 Tooltip_HighDensityEnergyFluidGenerator_04=Inside the chamber, the fluid comes into full contact with the injected energy.
 Tooltip_HighDensityEnergyFluidGenerator_05=It then passes through sequential stages of pressurization, heating, and continuous stirring.
 Tooltip_HighDensityEnergyFluidGenerator_06=This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.
+Tooltip_HighDensityEnergyFluidGenerator_07=Each recipe run additionally consumes 100000 EU from the Wireless Energy network!
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -467,6 +473,7 @@ item.FuelRod_empty2.name=Dual Fuel Rod (Empty)
 item.FuelRod_empty4.name=Quad Fuel Rod (Empty)
 item.OrundumPowder.name=Orundum Powder
 item.OrundumSlag.name=Orundum Slag
+item.YuanShiTongWeiSu_Alpha.name=Originium Isotope α
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
@@ -511,6 +518,9 @@ EOHB_LiquefiedOrundum=Liquefied Orundum
 EOHB_CrudeLiquefiedOrundum=Crude Liquefied Orundum
 EOHB_HighEnergyOrundumSolvent=High-Energy Orundum Solvent
 EOHB_UnstableOrundumSolvent=Unstable Orundum Solvent
+EOHB_ContaminatedOrundumSlurry=Contaminated Orundum Slurry
+EOHB_StabilizedHigh_EnergyOrundumSolvent=Stabilized High-Energy Orundum Solvent
+EOHB_AnomalousEnergyCondensate=Anomalous Energy Condensate
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!
@@ -519,6 +529,9 @@ GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=No water source detected! A 
 GT5U.gui.text.recipe_result.UnsupportedFluid=Unsupported fluid!
 GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source block is required 10 blocks behind and 1 block below the controller
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block!
+
+#Recipe
+GT5U.gui.text.recipe.HighDensityEnergyFluidGeneratorInfo=Each recipe run additionally consumes 100000 EU from the Wireless Energy network
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
@@ -539,4 +552,4 @@ eohb_recipe.fluidpump.lava_source=Need lava
 eohb_recipe.PowerMiner.YuanShi_source=Need Originite Prime Main Vein Block
 eohb_recipe.PowerMiner.ZiJing_source=Need Violet Crystal Main Vein Block
 eohb_recipe.PowerMiner.LanTie_source=Need Blue Iron Prime Main Vein Block
-GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_laser_source=No Laser Source!
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!

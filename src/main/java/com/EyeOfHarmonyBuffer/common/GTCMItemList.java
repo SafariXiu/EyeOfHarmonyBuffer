@@ -121,6 +121,7 @@ public enum GTCMItemList {
     FuelRod_empty4,
     QingShui,
     ChenJiSuan,
+    YuanShiTongWeiSu_Alpha,
 
     YuanShiMainBlock,
     YuanShiBlock,

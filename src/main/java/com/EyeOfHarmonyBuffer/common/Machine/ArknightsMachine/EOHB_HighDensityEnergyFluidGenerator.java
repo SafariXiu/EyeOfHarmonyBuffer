@@ -2,27 +2,40 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import gregtech.api.casing.Casings;
+import gregtech.api.enums.GTValues;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gtnhlanth.common.register.LanthItemList;
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 import tectech.thing.metaTileEntity.hatch.MTEHatchDynamoTunnel;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
@@ -86,10 +99,56 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
 
     @Override
     public int getWirelessModeProcessingTime() {
-        float factor = 1.0f - this.laserTier * 0.10f;
-        factor = Math.max(factor, 0.2f);
+        int tier = this.laserTier;
 
-        return Math.round(200 * factor);
+        if (tier <= 0) {
+            return 2000;
+        }
+
+        if (tier < 1) tier = 1;
+        if (tier > 13) tier = 13;
+
+        final int baseTime = 2000;
+        final int minTime  = 20;
+
+        double n = (tier - 1) / 12.0;
+
+        double factor = 1.0 - Math.sqrt(n);
+
+        int time = (int) Math.round(
+            minTime + (baseTime - minTime) * factor
+        );
+
+        return time;
+    }
+
+    protected BigInteger getPerCycleEuCost() {
+        int parallel = getMaxParallelRecipes();
+        return BigInteger.valueOf(100_000L)
+            .multiply(BigInteger.valueOf(parallel));
+    }
+
+    @Override
+    public CheckRecipeResult wirelessModeProcessOnce() {
+        int parallel = getMaxParallelRecipes();
+
+        BigInteger extraEuCost = BigInteger.valueOf(100_000L)
+            .multiply(BigInteger.valueOf(parallel));
+
+        if (!hasEnoughWirelessEU(ownerUUID, extraEuCost)) {
+            return CheckRecipeResultRegistry.insufficientPower(safeToLong(extraEuCost));
+        }
+
+        CheckRecipeResult result = super.wirelessModeProcessOnce();
+        if (!result.wasSuccessful()) {
+            return result;
+        }
+
+        consumeWirelessEUForOwner(ownerUUID, extraEuCost);
+
+        addExtraEUToCostingText(extraEuCost);
+
+        return result;
     }
 
     @NotNull
@@ -234,36 +293,6 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
         return STRUCTURE_DEFINITION;
     }
 
-    /*@Override
-    public IStructureDefinition<EOHB_HighDensityEnergyFluidGenerator> getStructureDefinition() {
-        if(STRUCTURE_DEFINITION == null){
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_HighDensityEnergyFluidGenerator>builder()
-                .addShape(
-                    STRUCTURE_PIECE_MAIN,transpose(shapeMain)
-                )
-                .addElement(
-                    'A',
-                    buildHatchAdder(EOHB_HighDensityEnergyFluidGenerator.class)
-                        .atLeast(InputBus,OutputBus,InputHatch)
-                        .casingIndex(CASING_INDEX)
-                        .hint(1)
-                        .buildAndChain(
-                            ofBlock(sBlockCasings2,0)
-                        )
-                )
-                .addElement(
-                    'B',
-                    ofBlock(sBlockCasings2, 13)
-                )
-                .addElement(
-                    'C',
-                    ofBlock(sBlockCasings8, 7)
-                )
-                .build();
-        }
-        return STRUCTURE_DEFINITION;
-    }*/
-
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
@@ -277,6 +306,7 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_04)
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_05)
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_06)
+            .addInfo(Tooltip_HighDensityEnergyFluidGenerator_07)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
@@ -288,6 +318,70 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             .addInputHatch(add_inputHatch)
             .toolTipFinisher(ModName);
         return tt;
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack, List<String> currentTip,
+                             IWailaDataAccessor accessor, IWailaConfigHandler config) {
+
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+
+        final NBTTagCompound tag = accessor.getNBTData();
+
+        String perCycleEuText = tag.getString("perCycleEuText");
+        String euPerCycleLabel = StatCollector.translateToLocal(EOHB_Waila_EUPreCycle);
+        currentTip.add(
+            EnumChatFormatting.AQUA + euPerCycleLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + perCycleEuText
+                + EnumChatFormatting.RESET + " EU"
+        );
+
+        int runTimeTicks = tag.getInteger("wirelessRunTime");
+        String runTimeLabel = StatCollector.translateToLocal(EOHB_Waila_CurrentRunTime);
+        currentTip.add(
+            EnumChatFormatting.AQUA + runTimeLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + runTimeTicks
+                + EnumChatFormatting.RESET + " ticks"
+        );
+
+        int totalAmps = tag.getInteger("laserTotalAmps");
+        String totalAmpsLabel = StatCollector.translateToLocal(EOHB_Waila_TotalLaserAmps);
+        currentTip.add(
+            EnumChatFormatting.AQUA + totalAmpsLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + totalAmps
+        );
+
+        int tier = tag.getInteger("laserTier");
+        String tierName;
+        if (tier >= 0 && tier < GTValues.VN.length) {
+            tierName = GTValues.VN[tier];
+        } else {
+            tierName = Integer.toString(tier);
+        }
+
+        String maxTierLabel = StatCollector.translateToLocal(EOHB_Waila_MaxLaserTier);
+        currentTip.add(
+            EnumChatFormatting.AQUA + maxTierLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + tierName
+        );
+    }
+
+    @Override
+    public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag,
+                                World world, int x, int y, int z) {
+        super.getWailaNBTData(player, tile, tag, world, x, y, z);
+
+        tag.setInteger("laserTotalAmps", this.laserTotalAmps);
+        tag.setInteger("laserTier", this.laserTier);
+
+        tag.setInteger("wirelessRunTime", getWirelessModeProcessingTime());
+
+        BigInteger perCycleEu = getPerCycleEuCost();
+        tag.setString("perCycleEuText", NumberFormatUtil.formatNumber(perCycleEu));
     }
 
     @Override
@@ -305,15 +399,16 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
 
         if (this.laserSource == null) {
             this.laserSource = source;
-            this.laserSource.updateTexture(aBaseCasingIndex);
         }
+
+        source.updateTexture(aBaseCasingIndex);
 
         this.laserSourceCount++;
 
         int maxAmps = (int) source.maxAmperesOut();
         this.laserTotalAmps += maxAmps;
 
-        this.laserAmps = Math.max(1, (int) Math.cbrt(this.laserTotalAmps));
+        this.laserAmps = Math.max(1, (int) Math.sqrt(this.laserTotalAmps));
 
         int tier = (int) source.getOutputTier();
         this.laserTier = Math.max(this.laserTier, tier);

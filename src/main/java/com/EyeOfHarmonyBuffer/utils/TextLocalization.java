@@ -43,6 +43,11 @@ public class TextLocalization {
     public static final String EOHB_WirelessMode_On;
     public static final String EOHB_WirelessMode_Off;
     public static final String EOHB_FuelRob_NO_Outgrowth;
+    public static final String EOHB_Waila_EUPreCycle;
+    public static final String EOHB_Waila_CurrentRunTime;
+    public static final String EOHB_Waila_TotalLaserAmps;
+    public static final String EOHB_Waila_MaxLaserTier;
+    public static final String EOHB_Waila_OrundumCost;
 
     //机器
     public static final String NameVendingMachines;
@@ -265,6 +270,7 @@ public class TextLocalization {
     public static final String Tooltip_HighDensityEnergyFluidGenerator_04;
     public static final String Tooltip_HighDensityEnergyFluidGenerator_05;
     public static final String Tooltip_HighDensityEnergyFluidGenerator_06;
+    public static final String Tooltip_HighDensityEnergyFluidGenerator_07;
 
     //MOD
     public static final String EOHB_Harmony;
@@ -285,11 +291,12 @@ public class TextLocalization {
     public static final String EOHB_LiquidHeavyXiranite;
     public static final String EOHB_LiquefiedOrundum;
     public static final String EOHB_CrudeLiquefiedOrundum;
+    public static final String EOHB_OriginiumWasteLiquid;
     public static final String EOHB_HighEnergyOrundumSolvent;
     public static final String EOHB_UnstableOrundumSolvent;
-
-    //流体
-    public static final String EOHB_OriginiumWasteLiquid;
+    public static final String EOHB_ContaminatedOrundumSlurry;
+    public static final String EOHB_StabilizedHigh_EnergyOrundumSolvent;
+    public static final String EOHB_AnomalousEnergyCondensate;
 
     //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
@@ -373,6 +380,11 @@ public class TextLocalization {
         EOHB_WirelessMode_On = TextHandler.texter("Wireless mode enabled.","EOHB_WirelessMode_On");
         EOHB_WirelessMode_Off = TextHandler.texter("Wireless mode disabled.","EOHB_WirelessMode_Off");
         EOHB_FuelRob_NO_Outgrowth = TextHandler.texter("This fuel rod does not produce anything! It disappears upon burning.", "EOHB_FuelRob_NO_Outgrowth");
+        EOHB_Waila_EUPreCycle = TextHandler.texter("EU per Cycle", "EOHB_Waila_EUPreCycle");
+        EOHB_Waila_CurrentRunTime = TextHandler.texter("Current Run Time", "EOHB_Waila_CurrentRunTime");
+        EOHB_Waila_TotalLaserAmps = TextHandler.texter("Total Laser Amps", "EOHB_Waila_TotalLaserAmps");
+        EOHB_Waila_MaxLaserTier = TextHandler.texter("Max Laser Tier", "EOHB_Waila_MaxLaserTier");
+        EOHB_Waila_OrundumCost = TextHandler.texter("Current Orundum Cost","EOHB_Waila_OrundumCost");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
@@ -639,6 +651,7 @@ public class TextLocalization {
         Tooltip_HighDensityEnergyFluidGenerator_04 = TextHandler.texter("Inside the chamber, the fluid comes into full contact with the injected energy.","Tooltip_HighDensityEnergyFluidGenerator_04");
         Tooltip_HighDensityEnergyFluidGenerator_05 = TextHandler.texter("It then passes through sequential stages of pressurization, heating, and continuous stirring.","Tooltip_HighDensityEnergyFluidGenerator_05");
         Tooltip_HighDensityEnergyFluidGenerator_06 = TextHandler.texter("This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.","Tooltip_HighDensityEnergyFluidGenerator_06");
+        Tooltip_HighDensityEnergyFluidGenerator_07 = TextHandler.texter("Each recipe run additionally consumes 100000 EU from the Wireless Energy network","Tooltip_HighDensityEnergyFluidGenerator_07");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -685,6 +698,9 @@ public class TextLocalization {
         EOHB_CrudeLiquefiedOrundum = TextHandler.texter("Crude Liquefied Orundum","EOHB_CrudeLiquefiedOrundum");
         EOHB_HighEnergyOrundumSolvent = TextHandler.texter("High-Energy Orundum Solvent","EOHB_HighEnergyOrundumSolvent");
         EOHB_UnstableOrundumSolvent = TextHandler.texter("Unstable Orundum Solvent","EOHB_UnstableOrundumSolvent");
+        EOHB_ContaminatedOrundumSlurry = TextHandler.texter("Contaminated Orundum Slurry","EOHB_ContaminatedOrundumSlurry");
+        EOHB_StabilizedHigh_EnergyOrundumSolvent = TextHandler.texter("Stabilized High-Energy Orundum Solvent","EOHB_StabilizedHigh_EnergyOrundumSolvent");
+        EOHB_AnomalousEnergyCondensate = TextHandler.texter("Anomalous Energy Condensate","EOHB_AnomalousEnergyCondensate");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
