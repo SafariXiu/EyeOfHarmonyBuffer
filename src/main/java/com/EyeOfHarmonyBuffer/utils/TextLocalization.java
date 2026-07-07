@@ -401,18 +401,18 @@ public class TextLocalization {
         EOHB_Waila_TotalLaserAmps = TextHandler.texter("Total Laser Amps", "EOHB_Waila_TotalLaserAmps");
         EOHB_Waila_MaxLaserTier = TextHandler.texter("Max Laser Tier", "EOHB_Waila_MaxLaserTier");
         EOHB_Waila_OrundumCost = TextHandler.texter("Current Orundum Cost","EOHB_Waila_OrundumCost");
-        EOHB_MachineType_1 = TextHandler.texter("","EOHB_MachineType_1");
-        EOHB_MachineType_2 = TextHandler.texter("","EOHB_MachineType_2");
-        EOHB_MachineType_3 = TextHandler.texter("","EOHB_MachineType_3");
-        EOHB_MachineType_4 = TextHandler.texter("","EOHB_MachineType_4");
-        EOHB_MachineType_5 = TextHandler.texter("","EOHB_MachineType_5");
-        EOHB_MachineType_6 = TextHandler.texter("","EOHB_MachineType_6");
-        EOHB_MachineType_7 = TextHandler.texter("","EOHB_MachineType_7");
-        EOHB_MachineType_8 = TextHandler.texter("","EOHB_MachineType_8");
-        EOHB_MachineType_9 = TextHandler.texter("","EOHB_MachineType_9");
-        EOHB_MachineType_10 = TextHandler.texter("","EOHB_MachineType_10");
-        EOHB_MachineType_11 = TextHandler.texter("","EOHB_MachineType_11");
-        EOHB_MachineType_12 = TextHandler.texter("","EOHB_MachineType_12");
+        EOHB_MachineType_1 = TextHandler.texter("Hint Block #1","EOHB_MachineType_1");
+        EOHB_MachineType_2 = TextHandler.texter("Hint Block #2","EOHB_MachineType_2");
+        EOHB_MachineType_3 = TextHandler.texter("Hint Block #3","EOHB_MachineType_3");
+        EOHB_MachineType_4 = TextHandler.texter("Hint Block #4","EOHB_MachineType_4");
+        EOHB_MachineType_5 = TextHandler.texter("Hint Block #5","EOHB_MachineType_5");
+        EOHB_MachineType_6 = TextHandler.texter("Hint Block #6","EOHB_MachineType_6");
+        EOHB_MachineType_7 = TextHandler.texter("Hint Block #7","EOHB_MachineType_7");
+        EOHB_MachineType_8 = TextHandler.texter("Hint Block #8","EOHB_MachineType_8");
+        EOHB_MachineType_9 = TextHandler.texter("Hint Block #9","EOHB_MachineType_9");
+        EOHB_MachineType_10 = TextHandler.texter("Hint Block #10","EOHB_MachineType_10");
+        EOHB_MachineType_11 = TextHandler.texter("Hint Block #11","EOHB_MachineType_11");
+        EOHB_MachineType_12 = TextHandler.texter("Hint Block #12","EOHB_MachineType_12");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
