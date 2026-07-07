@@ -7,9 +7,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.metatileentity.implementations.MTEHatchOutput;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
 import gregtech.common.tileentities.machines.outputme.base.MTEHatchOutputMEBase;
-import gregtech.common.tileentities.machines.outputme.filter.MEFilterFluid;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.fluids.FluidStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,7 +28,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
     }
 
     @Shadow @Final
-    private MTEHatchOutputMEBase<IAEFluidStack, MEFilterFluid, FluidStack> provider;
+    private MTEHatchOutputMEBase<IAEFluidStack> provider;
 
     @Shadow
     public abstract AENetworkProxy getProxy();
