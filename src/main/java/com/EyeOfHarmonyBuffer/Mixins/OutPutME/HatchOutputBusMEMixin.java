@@ -8,8 +8,6 @@ import gregtech.api.metatileentity.implementations.MTEHatchOutputBus;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.outputme.MTEHatchOutputBusME;
 import gregtech.common.tileentities.machines.outputme.base.MTEHatchOutputMEBase;
-import gregtech.common.tileentities.machines.outputme.filter.MEFilterItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -31,7 +29,7 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
     }
 
     @Shadow @Final
-    private MTEHatchOutputMEBase<IAEItemStack, MEFilterItem, ItemStack> provider;
+    private MTEHatchOutputMEBase<IAEItemStack> provider;
 
     @Shadow
     public abstract AENetworkProxy getProxy();

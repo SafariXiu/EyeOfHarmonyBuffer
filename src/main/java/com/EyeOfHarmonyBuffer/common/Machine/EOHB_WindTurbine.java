@@ -85,7 +85,7 @@ public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable
         if(multiDefinition == null) {
             multiDefinition = StructureDefinition.<EOHB_WindTurbine>builder()
                 .addShape(
-                    mName,
+                    STRUCTURE_PIECE_MAIN,
                     transpose(
                         new String[][]{
                             {"                       ","                       ","                       ","                       ","                       ","                       ","                       ","                       ","                       ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","         DDDDD         ","                       ","                       ","                       ","                       ","                       "},
@@ -214,7 +214,7 @@ public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable
                              ItemStack aStack,
                              List<StructureError> errors) {
 
-        boolean ok = checkPiece(mName, 11, 59, 0, errors);
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, 11, 59, 0, errors);
         if (!ok) return;
 
         if (MachineWirelessMode) {
@@ -230,7 +230,7 @@ public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (mMachine) return -1;
-        return survivalBuildPiece(mName, stackSize, 11, 59, 0, elementBudget, env, false, true);
+        return survivalBuildPiece(STRUCTURE_PIECE_MAIN, stackSize, 11, 59, 0, elementBudget, env, false, true);
     }
 
     @Override

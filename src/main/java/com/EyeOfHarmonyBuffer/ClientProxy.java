@@ -54,7 +54,7 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void init(FMLInitializationEvent event) {
         super.init(event);
-        ExternalBlockTextures.register();
+        ExternalBlockTextures.registerClientTextures();
 
         ClientCommandHandler.instance.registerCommand(new CommandOpenConfig());
 
@@ -76,5 +76,6 @@ public class ClientProxy extends CommonProxy {
                 API.hideItem(new ItemStack(item, 1, fluid.meta));
             }
         }
+
     }
 }
