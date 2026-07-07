@@ -97,10 +97,8 @@ dependencies {
 
     testImplementation 'junit:junit:4.13.2'
 
-    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.7.15-GTNH:dev")
-    shadowCompile("com.github.ABKQPO:BetterQuestingAPI:1.1.2:dev") {
-        transitive = false
-    }
+    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.7.15-GTNH:dev") { transitive = false}
+    devOnlyNonPublishable("com.github.ABKQPO:BetterQuestingAPI:1.1.2:dev") { transitive = false}
 }
 
 configurations.all {
