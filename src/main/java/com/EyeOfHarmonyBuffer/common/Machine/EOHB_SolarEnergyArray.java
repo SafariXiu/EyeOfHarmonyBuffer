@@ -165,8 +165,8 @@ public class EOHB_SolarEnergyArray extends TTMultiblockBase implements IConstruc
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addDynamoHatch(add_DynamoHatch)
+            .addMaintenanceHatch("1+", EOHB_MachineType_1)
+            .addDynamoHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }

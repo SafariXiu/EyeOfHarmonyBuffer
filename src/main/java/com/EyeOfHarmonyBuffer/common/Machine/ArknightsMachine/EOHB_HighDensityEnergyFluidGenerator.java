@@ -312,10 +312,10 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputBus(add_InputBus)
-            .addOutputBus(add_OutputBus)
-            .addInputHatch(add_inputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_2)
+            .addMiscHatch("2", add_LaserSourceHatch, EOHB_MachineType_3)
             .toolTipFinisher(ModName);
         return tt;
     }

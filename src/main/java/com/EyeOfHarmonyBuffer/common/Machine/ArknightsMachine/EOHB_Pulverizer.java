@@ -144,9 +144,8 @@ public class EOHB_Pulverizer extends UpgradableOrundumWirelessMultiMachineBase<E
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputBus(add_InputBus)
-            .addOutputBus(add_OutputBus)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

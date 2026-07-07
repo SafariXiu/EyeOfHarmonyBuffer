@@ -141,9 +141,8 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputHatch(add_inputHatch)
-            .addOutputHatch(add_outputHatch)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

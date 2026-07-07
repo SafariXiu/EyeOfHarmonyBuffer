@@ -361,11 +361,10 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputHatch(add_inputHatch)
-            .addInputBus(add_InputBus)
-            .addOutputHatch(add_outputHatch)
-            .addOutputBus(add_OutputBus)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

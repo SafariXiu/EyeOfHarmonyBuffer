@@ -17,6 +17,8 @@ public class TextLocalization {
     public static final String add_inputHatch;
     public static final String add_outputHatch;
     public static final String add_DynamoHatch;
+    public static final String add_LaserSourceHatch;
+    public static final String add_LaserTargetHatch;
     public static final String add_MaintenanceHatch;
     public static final String EOHB_Text_SeparatingLine;
     public static final String EOHB_Starry_Miracle_Project;
@@ -48,6 +50,18 @@ public class TextLocalization {
     public static final String EOHB_Waila_TotalLaserAmps;
     public static final String EOHB_Waila_MaxLaserTier;
     public static final String EOHB_Waila_OrundumCost;
+    public static final String EOHB_MachineType_1;
+    public static final String EOHB_MachineType_2;
+    public static final String EOHB_MachineType_3;
+    public static final String EOHB_MachineType_4;
+    public static final String EOHB_MachineType_5;
+    public static final String EOHB_MachineType_6;
+    public static final String EOHB_MachineType_7;
+    public static final String EOHB_MachineType_8;
+    public static final String EOHB_MachineType_9;
+    public static final String EOHB_MachineType_10;
+    public static final String EOHB_MachineType_11;
+    public static final String EOHB_MachineType_12;
 
     //机器
     public static final String NameVendingMachines;
@@ -370,6 +384,8 @@ public class TextLocalization {
         add_inputHatch = TextHandler.texter("Any casing","add_inputHatch");
         add_outputHatch = TextHandler.texter("Any casing","add_outputHatch");
         add_DynamoHatch = TextHandler.texter("Any casing","add_DynamoHatch");
+        add_LaserSourceHatch = TextHandler.texter("Laser Source Hatch","add_LaserSourceHatch");
+        add_LaserTargetHatch = TextHandler.texter("Laser Target Hatch","add_LaserTargetHatch");
         add_MaintenanceHatch = TextHandler.texter("Any casing","add_MaintenanceHatch");
         EOHB_Text_SeparatingLine = TextHandler.texter("-----------------------------------------","EOHB_Text_SeparatingLine");
         EOHB_Starry_Miracle_Project = TextHandler.texter("EOHB — Starry Miracle Project","EOHB_Starry_Miracle_Project");
@@ -385,6 +401,18 @@ public class TextLocalization {
         EOHB_Waila_TotalLaserAmps = TextHandler.texter("Total Laser Amps", "EOHB_Waila_TotalLaserAmps");
         EOHB_Waila_MaxLaserTier = TextHandler.texter("Max Laser Tier", "EOHB_Waila_MaxLaserTier");
         EOHB_Waila_OrundumCost = TextHandler.texter("Current Orundum Cost","EOHB_Waila_OrundumCost");
+        EOHB_MachineType_1 = TextHandler.texter("","EOHB_MachineType_1");
+        EOHB_MachineType_2 = TextHandler.texter("","EOHB_MachineType_2");
+        EOHB_MachineType_3 = TextHandler.texter("","EOHB_MachineType_3");
+        EOHB_MachineType_4 = TextHandler.texter("","EOHB_MachineType_4");
+        EOHB_MachineType_5 = TextHandler.texter("","EOHB_MachineType_5");
+        EOHB_MachineType_6 = TextHandler.texter("","EOHB_MachineType_6");
+        EOHB_MachineType_7 = TextHandler.texter("","EOHB_MachineType_7");
+        EOHB_MachineType_8 = TextHandler.texter("","EOHB_MachineType_8");
+        EOHB_MachineType_9 = TextHandler.texter("","EOHB_MachineType_9");
+        EOHB_MachineType_10 = TextHandler.texter("","EOHB_MachineType_10");
+        EOHB_MachineType_11 = TextHandler.texter("","EOHB_MachineType_11");
+        EOHB_MachineType_12 = TextHandler.texter("","EOHB_MachineType_12");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");

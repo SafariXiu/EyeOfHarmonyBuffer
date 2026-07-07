@@ -147,7 +147,7 @@ public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase
                     buildHatchAdder(EOHB_FluidPumpMK1.class)
                         .atLeast(InputBus)
                         .casingIndex(CASING_INDEX1)
-                        .hint(2)
+                        .hint(1)
                         .buildAndChain(
                             sBlockCasings8, 7
                         )
@@ -204,9 +204,8 @@ public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputBus(add_InputBus)
-            .addOutputHatch(add_outputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_2)
             .toolTipFinisher(ModName);
         return tt;
     }

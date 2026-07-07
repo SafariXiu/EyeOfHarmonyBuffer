@@ -153,11 +153,10 @@ public class EOHB_ReactorCrucible extends UpgradableOrundumWirelessMultiMachineB
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addInputBus(add_InputBus)
-            .addInputHatch(add_inputHatch)
-            .addOutputBus(add_OutputBus)
-            .addOutputHatch(add_outputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

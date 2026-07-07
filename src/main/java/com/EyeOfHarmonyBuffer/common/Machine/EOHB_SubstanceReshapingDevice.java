@@ -293,10 +293,10 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addInputBus(add_InputBus)
-            .addInputHatch(add_inputHatch)
-            .addOutputBus(add_OutputBus)
-            .addOutputHatch(add_outputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }

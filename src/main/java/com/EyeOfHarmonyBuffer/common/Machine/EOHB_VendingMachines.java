@@ -233,8 +233,8 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .addInfo(Tooltip_VendingMachines_02)
                     .addInfo(Tooltip_VendingMachines_03)
                     .addSeparator()
-                    .addInputBus(add_InputBus,1)
-                    .addOutputBus(add_OutputBus,1)
+                    .addInputBus("1+", EOHB_MachineType_1)
+                    .addOutputBus("1+", EOHB_MachineType_1)
                     .addInfo(TextLocalization.StructureTooComplex)
                     .addInfo(TextLocalization.BLUE_PRINT_INFO)
                     .toolTipFinisher(TextLocalization.ModName);
@@ -247,8 +247,8 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .addInfo(Tooltip_VendingMachines_02)
                     .addInfo(Tooltip_VendingMachines_03)
                     .addSeparator()
-                    .addInputBus(add_InputBus,1)
-                    .addOutputBus(add_OutputBus,1)
+                    .addInputBus("1+", EOHB_MachineType_1)
+                    .addOutputBus("1+", EOHB_MachineType_1)
                     .addInfo(TextLocalization.StructureTooComplex)
                     .addInfo(TextLocalization.BLUE_PRINT_INFO)
                     .toolTipFinisher(TextLocalization.ModName);

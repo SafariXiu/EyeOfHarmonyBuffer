@@ -195,11 +195,11 @@ public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable
             .addStructureInfo(StructureInfo_WindTurbine_08)
             .addStructureInfo(StructureInfo_WindTurbine_09)
             .addStructureInfo(EOHB_Text_SeparatingLine)
-            .addTecTechHatchInfo()
+            .addSupportLaser()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addDynamoHatch(add_DynamoHatch)
+            .addMaintenanceHatch("1+", EOHB_MachineType_1)
+            .addDynamoHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }
