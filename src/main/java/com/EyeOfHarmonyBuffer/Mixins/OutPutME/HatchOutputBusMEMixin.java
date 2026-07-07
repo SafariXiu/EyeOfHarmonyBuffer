@@ -28,8 +28,7 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
         super(aID, aName, aNameRegional, aTier);
     }
 
-    @Shadow
-    @Final
+    @Shadow @Final
     private MTEHatchOutputMEBase<IAEItemStack> provider;
 
     @Shadow
@@ -46,6 +45,9 @@ public abstract class HatchOutputBusMEMixin extends MTEHatchOutputBus implements
         return constant;
     }
 
+    /**
+     * 覆写信息显示
+     */
     @Inject(method = "getInfoData", at = @At("HEAD"), cancellable = true)
     private void onGetInfoData(CallbackInfoReturnable<String[]> cir) {
         if (!MainConfig.OutPutBusMEEnable) {

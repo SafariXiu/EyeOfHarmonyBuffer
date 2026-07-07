@@ -12,6 +12,7 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTStreamUtil;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.ParallelHelper;
+import gregtech.common.misc.WirelessNetworkManager;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 import org.apache.commons.lang3.ArrayUtils;
@@ -75,12 +76,6 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
 
     @Shadow
     private long EUt;
-
-    @Shadow
-    protected abstract GTRecipe generateMagmatterRecipe();
-
-    @Shadow
-    protected abstract GTRecipe generateQuarkGluonRecipe();
 
     /**
      * @author eyeofharmonybuffer
@@ -183,22 +178,21 @@ public abstract class ExoticModuleMixin extends MTEBaseModule {
                             .valueOf(getProcessingVoltage())
                             .multiply(BigInteger.valueOf((long) recipe.mDuration * actualParallel));
 
-                        if (getUserEU(userUUID).compareTo(powerForRecipe) < 0) {
+                        if (WirelessNetworkManager.getUserEU(userUUID).compareTo(powerForRecipe) < 0) {
                             plasmaRecipe = null;
                             return CheckRecipeResultRegistry.insufficientStartupPower(powerForRecipe);
                         }
 
                         if (numberOfFluids != 0) {
-                            addFluidOutputs(
-                                Arrays.stream(randomizedFluidInput)
-                                    .map(fluid -> {
-                                        FluidStack copy = fluid.copy();
-                                        copy.amount = copy.amount / 1000;
-                                        return copy;
-                                    })
-                                    .toArray(FluidStack[]::new),
-                                mOutputHatches
-                            );
+                            FluidStack[] outputs = Arrays.stream(randomizedFluidInput)
+                                .map(fluid -> {
+                                    FluidStack copy = fluid.copy();
+                                    copy.amount /= 1000;
+                                    return copy;
+                                })
+                                .toArray(FluidStack[]::new);
+
+                            addFluidOutputs(outputs, mOutputHatches);
                         }
 
                         if (numberOfItems != 0) {

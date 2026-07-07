@@ -27,8 +27,7 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
         super(aID, aName, aNameRegional, aTier);
     }
 
-    @Shadow
-    @Final
+    @Shadow @Final
     private MTEHatchOutputMEBase<IAEFluidStack> provider;
 
     @Shadow
