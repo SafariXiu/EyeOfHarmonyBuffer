@@ -121,7 +121,7 @@ configurations.all {
         eachDependency { details ->
             if (details.requested.group == "com.github.GTNewHorizons" &&
                 details.requested.name == "GTNHLib") {
-                details.useVersion "0.11.11"
+                details.useVersion "0.11.24"
                 details.because "强制使用自定义 GTNHLib 0.11.11，屏蔽 0.10.X"
             }
         }
