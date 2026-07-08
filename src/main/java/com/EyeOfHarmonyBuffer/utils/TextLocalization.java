@@ -50,6 +50,9 @@ public class TextLocalization {
     public static final String EOHB_Waila_TotalLaserAmps;
     public static final String EOHB_Waila_MaxLaserTier;
     public static final String EOHB_Waila_OrundumCost;
+    public static final String EOHB_Waila_UpgradeBlock;
+    public static final String EOHB_Waila_UpgradeLevel;
+    public static final String EOHB_Waila_None;
     public static final String EOHB_MachineType_1;
     public static final String EOHB_MachineType_2;
     public static final String EOHB_MachineType_3;
@@ -286,6 +289,24 @@ public class TextLocalization {
     public static final String Tooltip_HighDensityEnergyFluidGenerator_06;
     public static final String Tooltip_HighDensityEnergyFluidGenerator_07;
 
+    public static final String NameIsotopeInfusionReactor;
+    public static final String Tooltip_IsotopeInfusionReactor_MachineType;
+    public static final String Tooltip_IsotopeInfusionReactor_Controller;
+    public static final String Tooltip_IsotopeInfusionReactor_00;
+    public static final String Tooltip_IsotopeInfusionReactor_01;
+    public static final String Tooltip_IsotopeInfusionReactor_02;
+    public static final String Tooltip_IsotopeInfusionReactor_03;
+    public static final String Tooltip_IsotopeInfusionReactor_04;
+    public static final String Tooltip_IsotopeInfusionReactor_05;
+    public static final String Tooltip_IsotopeInfusionReactor_06;
+    public static final String Tooltip_IsotopeInfusionReactor_07;
+    public static final String Tooltip_IsotopeInfusionReactor_08;
+    public static final String Tooltip_IsotopeInfusionReactor_09;
+    public static final String Tooltip_IsotopeInfusionReactor_10;
+    public static final String Tooltip_IsotopeInfusionReactor_11;
+    public static final String Tooltip_IsotopeInfusionReactor_12;
+    public static final String Tooltip_IsotopeInfusionReactor_13;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -311,6 +332,7 @@ public class TextLocalization {
     public static final String EOHB_ContaminatedOrundumSlurry;
     public static final String EOHB_StabilizedHigh_EnergyOrundumSolvent;
     public static final String EOHB_AnomalousEnergyCondensate;
+    public static final String EOHB_AdvancedOrundumFuelPrecursor;
 
     //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
@@ -359,6 +381,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_FluidPumpMK2;
     public static final String EOHB_Recipe_ElectricTypeTwoMiningMachine;
     public static final String EOHB_Recipe_HighDensityEnergyFluidGenerator;
+    public static final String EOHB_Recipe_IsotopeInfusionReactor;
 
     public TextLocalization() {
     }
@@ -401,6 +424,9 @@ public class TextLocalization {
         EOHB_Waila_TotalLaserAmps = TextHandler.texter("Total Laser Amps", "EOHB_Waila_TotalLaserAmps");
         EOHB_Waila_MaxLaserTier = TextHandler.texter("Max Laser Tier", "EOHB_Waila_MaxLaserTier");
         EOHB_Waila_OrundumCost = TextHandler.texter("Current Orundum Cost","EOHB_Waila_OrundumCost");
+        EOHB_Waila_UpgradeBlock = TextHandler.texter("Upgrade Block","EOHB_Waila_UpgradeBlock");
+        EOHB_Waila_UpgradeLevel = TextHandler.texter("Upgrade Block Level","EOHB_Waila_UpgradeLevel");
+        EOHB_Waila_None = TextHandler.texter("None","EOHB_Waila_None");
         EOHB_MachineType_1 = TextHandler.texter("Hint Block #1","EOHB_MachineType_1");
         EOHB_MachineType_2 = TextHandler.texter("Hint Block #2","EOHB_MachineType_2");
         EOHB_MachineType_3 = TextHandler.texter("Hint Block #3","EOHB_MachineType_3");
@@ -681,6 +707,25 @@ public class TextLocalization {
         Tooltip_HighDensityEnergyFluidGenerator_06 = TextHandler.texter("This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.","Tooltip_HighDensityEnergyFluidGenerator_06");
         Tooltip_HighDensityEnergyFluidGenerator_07 = TextHandler.texter("Each recipe run additionally consumes 100000 EU from the Wireless Energy network","Tooltip_HighDensityEnergyFluidGenerator_07");
 
+        //同位素注入反应器
+        NameIsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor", "NameIsotopeInfusionReactor");
+        Tooltip_IsotopeInfusionReactor_MachineType = TextHandler.texter("Isotope Infusion Reactor", "Tooltip_IsotopeInfusionReactor_MachineType");
+        Tooltip_IsotopeInfusionReactor_Controller = TextHandler.texter("Controller block of the Isotope Infusion Reactor", "Tooltip_IsotopeInfusionReactor_Controller");
+        Tooltip_IsotopeInfusionReactor_00 = TextHandler.texter("Insert radioactive blocks into the left radiation chamber to initialize the isotope infusion process.", "Tooltip_IsotopeInfusionReactor_00");
+        Tooltip_IsotopeInfusionReactor_01 = TextHandler.texter("The material is transferred through pipelines into the core cavity and heated to bombardment temperature.", "Tooltip_IsotopeInfusionReactor_01");
+        Tooltip_IsotopeInfusionReactor_02 = TextHandler.texter("Under high pressure, it undergoes neutron-flux treatment and finally outputs high-density liquid or solid materials from the top outlet!", "Tooltip_IsotopeInfusionReactor_02");
+        Tooltip_IsotopeInfusionReactor_03 = TextHandler.texter("Typical isotopes include Plutonium‑238, Uranium‑233, Radium, and Technetium.", "Tooltip_IsotopeInfusionReactor_03");
+        Tooltip_IsotopeInfusionReactor_04 = TextHandler.texter("At upgrade level 0, the maximum parallel recipe count is 4.", "Tooltip_IsotopeInfusionReactor_04");
+        Tooltip_IsotopeInfusionReactor_05 = TextHandler.texter("When level n ≥ 1, the parallel limit becomes 4^(n+1).", "Tooltip_IsotopeInfusionReactor_05");
+        Tooltip_IsotopeInfusionReactor_06 = TextHandler.texter("Base processing time (no upgrade): 800 ticks.", "Tooltip_IsotopeInfusionReactor_06");
+        Tooltip_IsotopeInfusionReactor_07 = TextHandler.texter("At levels 1–4, processing time shortens roughly geometrically—ensure a sufficiently strong power grid.", "Tooltip_IsotopeInfusionReactor_07");
+        Tooltip_IsotopeInfusionReactor_08 = TextHandler.texter("At upgrade level ≥ 5, wireless mode processing time is locked at 20 ticks and will not decrease further.", "Tooltip_IsotopeInfusionReactor_08");
+        Tooltip_IsotopeInfusionReactor_09 = TextHandler.texter("According to an internal lab memo, below this threshold it is usually the server, not the reactor, that melts first.", "Tooltip_IsotopeInfusionReactor_09");
+        Tooltip_IsotopeInfusionReactor_10 = TextHandler.texter("Engineers once debated enabling multi‑isotope mixing for higher efficiency.", "Tooltip_IsotopeInfusionReactor_10");
+        Tooltip_IsotopeInfusionReactor_11 = TextHandler.texter("The plan was abandoned after a joint statement from the “Demolition Team (refusing to sign)” and the “Janitorial Staff (refusing to work overtime)”—the feature remains sealed beneath a coffee stain on the blueprint.", "Tooltip_IsotopeInfusionReactor_11");
+        Tooltip_IsotopeInfusionReactor_12 = TextHandler.texter("Friendly reminder: do not drink the reactor’s output or barbecue on top of it.", "Tooltip_IsotopeInfusionReactor_12");
+        Tooltip_IsotopeInfusionReactor_13 = TextHandler.texter("If you hear the material whispering its own name, shut down the power immediately and contact your nearest Radiation Safety Office.", "Tooltip_IsotopeInfusionReactor_13");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -729,6 +774,7 @@ public class TextLocalization {
         EOHB_ContaminatedOrundumSlurry = TextHandler.texter("Contaminated Orundum Slurry","EOHB_ContaminatedOrundumSlurry");
         EOHB_StabilizedHigh_EnergyOrundumSolvent = TextHandler.texter("Stabilized High-Energy Orundum Solvent","EOHB_StabilizedHigh_EnergyOrundumSolvent");
         EOHB_AnomalousEnergyCondensate = TextHandler.texter("Anomalous Energy Condensate","EOHB_AnomalousEnergyCondensate");
+        EOHB_AdvancedOrundumFuelPrecursor = TextHandler.texter("Advanced Orundum Fuel Precursor","EOHB_AdvancedOrundumFuelPrecursor");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");
@@ -754,5 +800,6 @@ public class TextLocalization {
         EOHB_Recipe_FluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","EOHB_Recipe_FluidPumpMK2");
         EOHB_Recipe_ElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type Two Mining Machine","EOHB_Recipe_ElectricTypeTwoMiningMachine");
         EOHB_Recipe_HighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","EOHB_Recipe_HighDensityEnergyFluidGenerator");
+        EOHB_Recipe_IsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor","EOHB_Recipe_IsotopeInfusionReactor");
     }
 }

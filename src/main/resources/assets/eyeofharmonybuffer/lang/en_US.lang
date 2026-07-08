@@ -24,6 +24,9 @@ EOHB_Waila_CurrentRunTime=Current Run Time
 EOHB_Waila_TotalLaserAmps=Total Laser Amps
 EOHB_Waila_MaxLaserTier=Max Laser Tier
 EOHB_Waila_OrundumCost=Current Orundum Cost
+EOHB_Waila_UpgradeBlock=Upgrade Block
+EOHB_Waila_UpgradeLevel=Upgrade Block Level
+EOHB_Waila_None=None
 EOHB_MachineType_1=Hint Block #1
 EOHB_MachineType_2=Hint Block #2
 EOHB_MachineType_3=Hint Block #3
@@ -272,6 +275,23 @@ Tooltip_HighDensityEnergyFluidGenerator_04=Inside the chamber, the fluid comes i
 Tooltip_HighDensityEnergyFluidGenerator_05=It then passes through sequential stages of pressurization, heating, and continuous stirring.
 Tooltip_HighDensityEnergyFluidGenerator_06=This gradually raises the fluid’s energy level and converts it into a stable high-energy fluid.
 Tooltip_HighDensityEnergyFluidGenerator_07=Each recipe run additionally consumes 100000 EU from the Wireless Energy network!
+NameIsotopeInfusionReactor=Isotope Infusion Reactor
+Tooltip_IsotopeInfusionReactor_MachineType=Isotope Infusion Reactor
+Tooltip_IsotopeInfusionReactor_Controller=Controller block of the Isotope Infusion Reactor
+Tooltip_IsotopeInfusionReactor_00=Insert radioactive blocks into the left radiation chamber to initialize the isotope infusion process.
+Tooltip_IsotopeInfusionReactor_01=The material is transferred through pipelines into the core cavity and heated to bombardment temperature.
+Tooltip_IsotopeInfusionReactor_02=Under high pressure, it undergoes neutron-flux treatment and finally outputs high-density liquid or solid materials from the top outlet!
+Tooltip_IsotopeInfusionReactor_03=Typical isotopes include Plutonium‑238, Uranium‑233, Radium, and Technetium.
+Tooltip_IsotopeInfusionReactor_04=At upgrade level 0, the maximum parallel recipe count is 4.
+Tooltip_IsotopeInfusionReactor_05=When level n ≥ 1, the parallel limit becomes 4^(n+1).
+Tooltip_IsotopeInfusionReactor_06=Base processing time (no upgrade): 800 ticks.
+Tooltip_IsotopeInfusionReactor_07=At levels 1–4, processing time shortens roughly geometrically—ensure a sufficiently strong power grid.
+Tooltip_IsotopeInfusionReactor_08=At upgrade level ≥ 5, wireless mode processing time is locked at 20 ticks and will not decrease further.
+Tooltip_IsotopeInfusionReactor_09=According to an internal lab memo, below this threshold it is usually the server, not the reactor, that melts first.
+Tooltip_IsotopeInfusionReactor_10=Engineers once debated enabling multi‑isotope mixing for higher efficiency.
+Tooltip_IsotopeInfusionReactor_11=The plan was abandoned after a joint statement from the “Demolition Team (refusing to sign)” and the “Janitorial Staff (refusing to work overtime)”—the feature remains sealed beneath a coffee stain on the blueprint.
+Tooltip_IsotopeInfusionReactor_12=Friendly reminder: do not drink the reactor’s output or barbecue on top of it.
+Tooltip_IsotopeInfusionReactor_13=If you hear the material whispering its own name, shut down the power immediately and contact your nearest Radiation Safety Office.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -297,6 +317,7 @@ EOHB_Recipe_FluidPumpMK1=Fluid Pump MK1
 EOHB_Recipe_FluidPumpMK2=Fluid Pump MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=Electric Type‑II Mining Machine
 EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
+EOHB_Recipe_IsotopeInfusionReactor=Isotope Infusion Reactor
 
 #item
 EOHB_Harmony=Harmony
@@ -535,6 +556,7 @@ EOHB_UnstableOrundumSolvent=Unstable Orundum Solvent
 EOHB_ContaminatedOrundumSlurry=Contaminated Orundum Slurry
 EOHB_StabilizedHigh_EnergyOrundumSolvent=Stabilized High-Energy Orundum Solvent
 EOHB_AnomalousEnergyCondensate=Anomalous Energy Condensate
+EOHB_AdvancedOrundumFuelPrecursor=Advanced Orundum Fuel Precursor
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!

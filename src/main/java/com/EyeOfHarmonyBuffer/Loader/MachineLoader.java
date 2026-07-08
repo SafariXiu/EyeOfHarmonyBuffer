@@ -32,6 +32,7 @@ public class MachineLoader {
     public static ItemStack FluidPumpMK2;
     public static ItemStack ElectricTypeTwoMiningMachine;
     public static ItemStack HighDensityEnergyFluidGenerator;
+    public static ItemStack IsotopeInfusionReactor;
 
     private final static int MachineBlockID = 23000;
 
@@ -210,5 +211,12 @@ public class MachineLoader {
             TextLocalization.NameHighDensityEnergyFluidGenerator
         ).getStackForm(1);
         GTCMItemList.HighDensityEnergyFluidGenerator.set(HighDensityEnergyFluidGenerator);
+
+        IsotopeInfusionReactor = new EOHB_IsotopeInfusionReactor(
+            MachineBlockID + 26,
+            "NameIsotopeInfusionReactor",
+            TextLocalization.NameIsotopeInfusionReactor
+        ).getStackForm(1);
+        GTCMItemList.IsotopeInfusionReactor.set(IsotopeInfusionReactor);
     }
 }

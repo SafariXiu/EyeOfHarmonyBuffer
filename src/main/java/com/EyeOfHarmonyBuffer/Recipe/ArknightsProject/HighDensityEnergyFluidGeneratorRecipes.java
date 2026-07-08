@@ -25,7 +25,7 @@ public class HighDensityEnergyFluidGeneratorRecipes implements IRecipePool {
                 50
             )
             .eut(500000)
-            .duration(50 * SECONDS)
+            .duration(100 * SECONDS)
             .addTo(HighDensityEnergyFluidGenerator);
     }
 }

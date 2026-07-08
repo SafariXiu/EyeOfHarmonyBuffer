@@ -24,6 +24,9 @@ EOHB_Waila_CurrentRunTime=当前运行时间
 EOHB_Waila_TotalLaserAmps=激光总安培数
 EOHB_Waila_MaxLaserTier=最高激光等级
 EOHB_Waila_OrundumCost=每轮消耗Orundum
+EOHB_Waila_UpgradeBlock=升级位置方块
+EOHB_Waila_UpgradeLevel=方块等级
+EOHB_Waila_None=无
 EOHB_MachineType_1=1号提示方块
 EOHB_MachineType_2=2号提示方块
 EOHB_MachineType_3=3号提示方块
@@ -272,6 +275,23 @@ Tooltip_HighDensityEnergyFluidGenerator_04=§7液体在反应腔中与注入能�
 Tooltip_HighDensityEnergyFluidGenerator_05=§7之后依次经过§e加压§7、§e加热§7与§e持续搅拌§7处理。§r
 Tooltip_HighDensityEnergyFluidGenerator_06=§a液体能级逐步提升，并最终转化为稳定的§6高能液体§a。§r
 Tooltip_HighDensityEnergyFluidGenerator_07=§c每运行一个配方时，将额外从无线能量网络消耗 §e100000 EU §c！§r
+NameIsotopeInfusionReactor=§b同位素注入反应器
+Tooltip_IsotopeInfusionReactor_MachineType=§b同位素注入反应器
+Tooltip_IsotopeInfusionReactor_Controller=§7同位素注入反应器的§b控制器方块§r
+Tooltip_IsotopeInfusionReactor_00=§7将放射性方块置入左侧§e放射仓§7，启动同位素注入流程。§r
+Tooltip_IsotopeInfusionReactor_01=§7放射性方块经管线输送至§b核心腔体§7，并被加热至可§e轰击温度§7。§r
+Tooltip_IsotopeInfusionReactor_02=§7在§c高压§7下接受§a中子流洗礼§7，最终从顶部输出§6高密度液/固体新材料§7！§r
+Tooltip_IsotopeInfusionReactor_03=§7如 §ePlutonium‑238§7、§eUranium‑233§7、§eRadium§7、§eTechnetium §7等常见同位素均可使用。§r
+Tooltip_IsotopeInfusionReactor_04=§a无升级时（0级）最大并行配方数为 §b4§a。§r
+Tooltip_IsotopeInfusionReactor_05=§a当升级等级 n ≥ 1 时，并行上限变为 §b4^(n+1)§a。§r
+Tooltip_IsotopeInfusionReactor_06=§7未升级时基础处理时间为 §e800 tick§7。§r
+Tooltip_IsotopeInfusionReactor_07=§7升级 1～4 级时，处理时间按近似几何级数缩短，§c请准备高性能电网§7。§r
+Tooltip_IsotopeInfusionReactor_08=§7当升级等级达到 §e5 级及以上§7时，无线模式处理时间将被锁定为 §e20 tick§7，不再下降。§r
+Tooltip_IsotopeInfusionReactor_09=§c根据实验室内部备忘录，在此阈值以下，首先融化的通常是服务器，而不是反应堆本体。§r
+Tooltip_IsotopeInfusionReactor_10=§7工程师曾讨论是否允许混搭多种同位素，以进一步榨取效率。§r
+Tooltip_IsotopeInfusionReactor_11=§7最终在“§c拆弹组拒绝签字§7”与“§c清洁工拒绝加班§7”的联合声明下，该功能被永久封印在设计草图的咖啡渍下。§r
+Tooltip_IsotopeInfusionReactor_12=§e友情提示§7：请勿尝试饮用出料口的高密度产物，也不要在反应堆上烤肉。§r
+Tooltip_IsotopeInfusionReactor_13=§c若你听见材料在低声自我介绍，请立即关闭电源，并联系最近的辐射安全事务办公室。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -297,6 +317,7 @@ EOHB_Recipe_FluidPumpMK1=水泵 MK1
 EOHB_Recipe_FluidPumpMK2=水泵 MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
 EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
+EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
 
 #item
 EOHB_Harmony=鸿蒙
@@ -534,7 +555,8 @@ EOHB_HighEnergyOrundumSolvent=高能源石溶剂
 EOHB_UnstableOrundumSolvent=不稳定源石溶剂
 EOHB_ContaminatedOrundumSlurry=污染源石浆料
 EOHB_StabilizedHigh_EnergyOrundumSolvent=稳定高能源石溶剂
-EOHB_AnomalousEnergyCondensate=异常能量凝集物
+EOHB_AnomalousEnergyCondensate=异常能量凝集体
+EOHB_AdvancedOrundumFuelPrecursor=高级源石燃料前体
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！

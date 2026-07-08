@@ -44,7 +44,8 @@ public class RecipeLoader {
             new ArknightsRecipesLoad(),
             new FluidPumpRecipe(),
             new ElectricTypeTwoMiningMachineRecipes(),
-            new HighDensityEnergyFluidGeneratorRecipes()
+            new HighDensityEnergyFluidGeneratorRecipes(),
+            new IsotopeInfusionReactorRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

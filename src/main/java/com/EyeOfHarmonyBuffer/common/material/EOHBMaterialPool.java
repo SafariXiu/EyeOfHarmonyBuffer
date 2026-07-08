@@ -293,6 +293,18 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff AdvancedOrundumFuelPrecursor = new Werkstoff(
+        new short[] { 150, 0, 200 },
+        EOHB_AdvancedOrundumFuelPrecursor,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 22,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

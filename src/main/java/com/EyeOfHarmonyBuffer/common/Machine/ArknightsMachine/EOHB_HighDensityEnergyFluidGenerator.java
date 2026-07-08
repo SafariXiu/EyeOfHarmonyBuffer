@@ -44,10 +44,6 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Proje
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_UpgradeCard;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.StructureTooComplex;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_InputBus;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_MaintenanceHatch;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_OutputBus;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.add_inputHatch;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
