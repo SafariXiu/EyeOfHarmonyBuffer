@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverNetwork;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.Rvr2Loader;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplateFactory;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +24,7 @@ public final class RiverRegistry {
     private static final Logger LOGGER = LogManager.getLogger("RiverRegistry");
 
     private static Map<Long, RiverNetwork> NETWORKS_BY_SEED = Collections.emptyMap();
+    private static Map<String, RiverTemplate> TEMPLATES_BY_ID = Collections.emptyMap();
 
     private RiverRegistry() {}
 
@@ -34,17 +37,18 @@ public final class RiverRegistry {
     }
 
     private static void loadAllFromOwnJar(FMLPreInitializationEvent event) throws IOException {
-        Map<Long, RiverNetwork> result = new HashMap<Long, RiverNetwork>();
-
-        // 你的 mod jar 文件（开发环境和正式环境都适用）
         java.io.File jarFile = event.getSourceFile();
         if (jarFile == null || !jarFile.isFile()) {
             LOGGER.warn("Source file is not a jar, river networks will not be loaded automatically: {}", jarFile);
             NETWORKS_BY_SEED = Collections.emptyMap();
+            TEMPLATES_BY_ID  = Collections.emptyMap();
             return;
         }
 
         String basePath = "data/" + MODID + "/worldgen/river/";
+
+        Map<Long, RiverNetwork> networksBySeed = new HashMap<Long, RiverNetwork>();
+        Map<String, RiverTemplate> templatesById = new HashMap<String, RiverTemplate>();
 
         ZipFile zip = new ZipFile(jarFile);
         try {
@@ -66,28 +70,52 @@ public final class RiverRegistry {
                 }
 
                 BufferedInputStream buf = new BufferedInputStream(raw);
+                RiverNetwork network;
                 try {
-                    RiverNetwork network = Rvr2Loader.load(buf);
-                    long seed = network.getSeed();
-
-                    RiverNetwork previous = result.put(seed, network);
-                    if (previous != null) {
-                        LOGGER.warn("Duplicate river network for seed {}: {} and another entry, overriding", seed, name);
-                    } else {
-                        LOGGER.info("Loaded river network for seed {} from {}", seed, name);
-                    }
+                    network = Rvr2Loader.load(buf);
                 } catch (Exception ex) {
                     LOGGER.error("Error loading river network from " + name, ex);
+                    try {
+                        buf.close();
+                    } catch (IOException ignored) {}
+                    continue;
                 } finally {
-                    buf.close();
+                    try {
+                        buf.close();
+                    } catch (IOException ignored) {}
+                }
+
+                long seed = network.getSeed();
+                RiverNetwork previous = networksBySeed.put(seed, network);
+                if (previous != null) {
+                    LOGGER.warn("Duplicate river network for seed {}: {} and another entry, overriding", seed, name);
+                } else {
+                    LOGGER.info("Loaded river network for seed {} from {}", seed, name);
+                }
+
+                String fileName = name.substring(basePath.length());
+                String templateId = fileName.substring(0, fileName.length() - 4);
+
+                RiverTemplate tpl = RiverTemplateFactory.fromNetwork(network);
+                RiverTemplate prevTpl = templatesById.put(templateId, tpl);
+                if (prevTpl != null) {
+                    LOGGER.warn("Duplicate river templateId {} from {}", templateId, name);
+                } else {
+                    LOGGER.info("Created river template {} from {}", templateId, name);
                 }
             }
         } finally {
             zip.close();
         }
 
-        NETWORKS_BY_SEED = Collections.unmodifiableMap(result);
-        LOGGER.info("Loaded {} river network(s) from {}", NETWORKS_BY_SEED.size(), jarFile.getName());
+        NETWORKS_BY_SEED = Collections.unmodifiableMap(networksBySeed);
+        TEMPLATES_BY_ID  = Collections.unmodifiableMap(templatesById);
+
+        LOGGER.info("Loaded {} river network(s) and {} river template(s) from {}",
+            NETWORKS_BY_SEED.size(),
+            TEMPLATES_BY_ID.size(),
+            jarFile.getName()
+        );
     }
 
     /**
@@ -102,5 +130,13 @@ public final class RiverRegistry {
      */
     public static Map<Long, RiverNetwork> getAllNetworks() {
         return NETWORKS_BY_SEED;
+    }
+
+    public static RiverTemplate getTemplate(String id) {
+        return TEMPLATES_BY_ID.get(id);
+    }
+
+    public static java.util.Collection<String> getAllTemplateIds() {
+        return TEMPLATES_BY_ID.keySet();
     }
 }

@@ -109,23 +109,6 @@ public final class TalosRiverCarver {
                     meta[idx]   = 0;
                 }
 
-                {
-                    int y = riverBedY - 1;
-                    while (y >= 0 && y < worldHeight) {
-                        int idx = getIndex(localX, y, localZ);
-                        Block b = blocks[idx];
-
-                        if (b != Blocks.air && b != Blocks.water && b != null) {
-                            break;
-                        }
-
-                        blocks[idx] = Blocks.stone;
-                        meta[idx]   = 0;
-
-                        y--;
-                    }
-                }
-
                 for (int y = seaLevel + 1; y <= seaLevel + 32 && y < worldHeight; y++) {
                     if (y < 0) continue;
                     int idx = getIndex(localX, y, localZ);

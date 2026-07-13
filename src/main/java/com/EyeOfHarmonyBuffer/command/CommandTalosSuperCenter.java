@@ -1,23 +1,23 @@
 package com.EyeOfHarmonyBuffer.command;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.SuperCenterInfo;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.world.World;
 
-public class CommandTalosRiverNearest extends CommandBase {
+public class CommandTalosSuperCenter extends CommandBase {
 
     @Override
     public String getCommandName() {
-        return "talosRiverNearest";
+        return "talosSuperCenter";
     }
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosRiverNearest - 传送到当前超级大陆最近的河流点（基于新河网，Debug 用）";
+        return "/talosSuperCenter - 传送到当前所在超级大陆的中心点（Debug 用）";
     }
 
     @Override
@@ -35,7 +35,7 @@ public class CommandTalosRiverNearest extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
 
-        int worldSeedInt = TalosRiverSystem.getWorldSeedInt(world);
+        int worldSeedInt = TalosLandMask.getWorldSeedInt(world);
 
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
@@ -43,46 +43,42 @@ public class CommandTalosRiverNearest extends CommandBase {
         int superId = TalosLandMask.getSuperId(px, pz, worldSeedInt);
         if (superId == 0) {
             sender.addChatMessage(new ChatComponentText(
-                "当前位置 superId=0（海洋或未定义区域），无法在超级大陆河网中查找最近河流。"
+                "当前位置 superId=0（海洋或未定义区域），无法定位超级大陆中心。"
             ));
             return;
         }
 
-        TalosRiverSystem.DebugNearestRiverInfo info =
-            TalosRiverSystem.debugFindNearestRiverOnSuper(px, pz, worldSeedInt);
-
-        if (info == null || !info.hasRiver) {
+        SuperCenterInfo info = TalosLandMask.getSuperCenterAt(px, pz, worldSeedInt);
+        if (info == null) {
             sender.addChatMessage(new ChatComponentText(
                 String.format(
-                    "在当前超级大陆 (superId=%d) 附近未找到河流（可能该模板无河或距离过远）。",
+                    "在当前坐标附近无法获取超级大陆中心信息（superId=%d，可能缓存/生成异常）。",
                     superId
                 )
             ));
             return;
         }
 
-        double rx = info.nearestX;
-        double rz = info.nearestZ;
+        int centerX = info.worldX;
+        int centerZ = info.worldZ;
 
-        int blockX = (int) Math.floor(rx);
-        int blockZ = (int) Math.floor(rz);
-        int y = world.getTopSolidOrLiquidBlock(blockX, blockZ);
+        int y = world.getTopSolidOrLiquidBlock(centerX, centerZ);
         if (y <= 0) {
             y = 64;
         }
 
-        double ry = y + 2.0;
+        double tpX = centerX + 0.5;
+        double tpY = y + 2.0;
+        double tpZ = centerZ + 0.5;
 
-        player.setPositionAndUpdate(rx + 0.5, ry, rz + 0.5);
+        player.setPositionAndUpdate(tpX, tpY, tpZ);
 
         sender.addChatMessage(new ChatComponentText(
             String.format(
-                "[TalosRiver] 跳转到最近河流: superId=%d, riverId=%d, level=%d, dist=%.1f, pos=(%.1f, %.1f)",
-                superId,
-                info.riverId,
-                info.riverLevel,
-                info.distance,
-                rx, rz
+                "[TalosSuper] 跳转到超级大陆中心: superId=%d, center=(%d, ~%d, %d)",
+                info.superId,
+                centerX, y + 2,
+                centerZ
             )
         ));
     }

@@ -7,8 +7,8 @@ import java.util.List;
 
 public final class Rvr2Loader {
 
-    private static final float FLOAT_EPSILON = 1.0e-5f;
-    private static final double BBOX_EPSILON = 1.0e-3;
+    private static final float  FLOAT_EPSILON = 1.0e-5f;
+    private static final double BBOX_EPSILON  = 1.0e-3;
 
     private Rvr2Loader() {}
 
@@ -84,20 +84,20 @@ public final class Rvr2Loader {
         double actualMaxZ = Double.NEGATIVE_INFINITY;
 
         for (int e = 0; e < edgeCount; e++) {
-            int edgeId        = in.readInt();
-            int parentId      = in.readInt();
+            int edgeId = in.readInt();
+            int parentId = in.readInt();
             int parentSegment = in.readInt();
 
-            int typeCode     = in.readUnsignedByte();
+            int typeCode = in.readUnsignedByte();
             int relationCode = in.readUnsignedByte();
-            int flags        = in.readUnsignedByte();
+            int flags = in.readUnsignedByte();
             /* reserved */ in.readUnsignedByte();
 
             float visualWidthScale = in.readFloat();
-            float widthStart       = in.readFloat();
-            float widthEnd         = in.readFloat();
-            float influenceRadius  = in.readFloat();
-            float parentT          = in.readFloat();
+            float widthStart = in.readFloat();
+            float widthEnd = in.readFloat();
+            float influenceRadius = in.readFloat();
+            float parentT = in.readFloat();
 
             long pointCountUnsigned = Integer.toUnsignedLong(in.readInt());
 
@@ -125,17 +125,11 @@ public final class Rvr2Loader {
                 throw new IOException("Invalid river physical property (<=0) for edge " + edgeId);
             }
 
-            if (widthStart > 10_000.0f || widthEnd > 10_000.0f || influenceRadius > 100_000.0f) {
+            if (widthStart > 10_000.0f
+                || widthEnd > 10_000.0f
+                || influenceRadius > 100_000.0f) {
                 throw new IOException("Unreasonably large river property for edge " + edgeId);
             }
-
-            if (!Float.isFinite(parentT)
-                || parentT < -FLOAT_EPSILON
-                || parentT > 1.0f + FLOAT_EPSILON) {
-                throw new IOException("Invalid parentT for edge " + edgeId + ": " + parentT);
-            }
-
-            double tClamped = Math.max(0.0, Math.min(1.0, parentT));
 
             RiverType type;
             RiverRelation relation;
@@ -223,16 +217,26 @@ public final class Rvr2Loader {
                     throw new IOException("MAIN ROOT river must have both source and mouth, edgeId=" + edgeId);
                 }
 
+                if (!Float.isFinite(child.parentT)) {
+                    throw new IOException("Invalid parentT for ROOT edge " + edgeId + ": " + child.parentT);
+                }
+
                 if (mainRiver != null) {
                     throw new IOException("Multiple ROOT MAIN rivers found (edgeId=" + edgeId + ")");
                 }
-                mainRiver = child;
 
+                mainRiver = child;
                 continue;
             }
 
             if (parentId < 0 || parentId >= edgeId) {
                 throw new IOException("Invalid parentId " + parentId + " for edge " + edgeId + " (must be in [0, " + (edgeId - 1) + "])");
+            }
+
+            if (!Float.isFinite(child.parentT)
+                || child.parentT < -FLOAT_EPSILON
+                || child.parentT > 1.0f + FLOAT_EPSILON) {
+                throw new IOException("Invalid parentT for edge " + edgeId + ": " + child.parentT);
             }
 
             MutableEdge parent = mutableEdges.get(parentId);
@@ -249,6 +253,7 @@ public final class Rvr2Loader {
             switch (type) {
                 case MAIN:
                     throw new IOException("Non-ROOT MAIN river is not allowed (edgeId=" + edgeId + ")");
+
                 case BRANCH1:
                     if (relation == RiverRelation.INTO_PARENT) {
                         if (parent.type != RiverType.MAIN) {

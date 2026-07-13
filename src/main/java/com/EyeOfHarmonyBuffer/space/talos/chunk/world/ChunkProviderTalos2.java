@@ -5,7 +5,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.RiverDebugCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
@@ -227,17 +226,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 return pkgId;
             }
         };
-    }
-
-    @SuppressWarnings("unused")
-    private void generateDebugRivers(int chunkX, int chunkZ, Block[] blocks, byte[] meta, int worldSeedInt) {
-        RiverDebugCarver.carveFlatChunk(
-            chunkX, chunkZ,
-            worldSeedInt,
-            blocks, meta,
-            worldHeight,
-            getWaterLevel()
-        );
     }
 
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
