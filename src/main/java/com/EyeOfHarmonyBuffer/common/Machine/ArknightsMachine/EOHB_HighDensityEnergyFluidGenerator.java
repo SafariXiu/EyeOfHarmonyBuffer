@@ -44,6 +44,7 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Proje
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_UpgradeCard;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.StructureTooComplex;
+import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
@@ -67,6 +68,7 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
     private int laserTotalAmps = 0;
     private int laserAmps = 1;
     private int laserTier = 0;
+    private int lastUsedParallel = 0;
 
     public EOHB_HighDensityEnergyFluidGenerator(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -119,31 +121,69 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
     }
 
     protected BigInteger getPerCycleEuCost() {
-        int parallel = getMaxParallelRecipes();
+        int parallel = this.lastUsedParallel;
+        if (parallel <= 0) {
+            return BigInteger.ZERO;
+        }
         return BigInteger.valueOf(100_000L)
             .multiply(BigInteger.valueOf(parallel));
     }
 
     @Override
     public CheckRecipeResult wirelessModeProcessOnce() {
-        int parallel = getMaxParallelRecipes();
+
+        if (!isRecipeProcessing) startRecipeProcessing();
+        setupProcessingLogic(processingLogic);
+        setupWirelessProcessingPowerLogic(processingLogic);
+
+        CheckRecipeResult result = doCheckRecipe();
+        if (!result.wasSuccessful()) {
+            this.lastUsedParallel = 0;
+            return result;
+        }
+
+        int actualParallel = processingLogic != null ? processingLogic.getCurrentParallels() : 0;
+        if (actualParallel <= 0) {
+            this.lastUsedParallel = 0;
+            endRecipeProcessing();
+            return result;
+        }
+        this.lastUsedParallel = actualParallel;
+
+        BigInteger baseCost = BigInteger.valueOf(processingLogic.getCalculatedEut())
+            .multiply(BigInteger.valueOf(processingLogic.getDuration()));
+
+        int m = getExtraEUCostMultiplier();
+        if (m > 1) {
+            baseCost = baseCost.multiply(BigInteger.valueOf(m));
+        }
+
+        BigInteger orundumCost = convertEuCostToOrundum(baseCost);
 
         BigInteger extraEuCost = BigInteger.valueOf(100_000L)
-            .multiply(BigInteger.valueOf(parallel));
+            .multiply(BigInteger.valueOf(actualParallel));
 
         if (!hasEnoughWirelessEU(ownerUUID, extraEuCost)) {
+            endRecipeProcessing();
             return CheckRecipeResultRegistry.insufficientPower(safeToLong(extraEuCost));
         }
 
-        CheckRecipeResult result = super.wirelessModeProcessOnce();
-        if (!result.wasSuccessful()) {
-            return result;
+        if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
+            endRecipeProcessing();
+            return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
         }
 
         consumeWirelessEUForOwner(ownerUUID, extraEuCost);
 
+        this.costingEU = this.costingEU.add(orundumCost);
+        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
+
         addExtraEUToCostingText(extraEuCost);
 
+        mOutputItems = mergeArray(mOutputItems, processingLogic.getOutputItems());
+        mOutputFluids = mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+
+        endRecipeProcessing();
         return result;
     }
 
