@@ -148,7 +148,6 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             endRecipeProcessing();
             return result;
         }
-        this.lastUsedParallel = actualParallel;
 
         BigInteger baseCost = BigInteger.valueOf(processingLogic.getCalculatedEut())
             .multiply(BigInteger.valueOf(processingLogic.getDuration()));
@@ -172,6 +171,8 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             endRecipeProcessing();
             return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
         }
+
+        this.lastUsedParallel = actualParallel;
 
         consumeWirelessEUForOwner(ownerUUID, extraEuCost);
 
