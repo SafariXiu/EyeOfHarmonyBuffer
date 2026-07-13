@@ -213,7 +213,7 @@ public final class TalosRiverCarver {
                     meta[idx]   = 0;
                 }
 
-                for (int y = seaLevel + 1; y <= seaLevel + 32 && y < worldHeight; y++) {
+                for (int y = seaLevel + 1; y <= seaLevel + 64 && y < worldHeight; y++) {
                     if (y < 0) continue;
                     int idx = getIndex(localX, y, localZ);
                     blocks[idx] = Blocks.air;
