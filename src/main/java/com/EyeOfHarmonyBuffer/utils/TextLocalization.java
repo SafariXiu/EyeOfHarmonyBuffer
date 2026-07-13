@@ -53,6 +53,7 @@ public class TextLocalization {
     public static final String EOHB_Waila_UpgradeBlock;
     public static final String EOHB_Waila_UpgradeLevel;
     public static final String EOHB_Waila_None;
+    public static final String EOHB_Waila_OrundumFarallel;
     public static final String EOHB_MachineType_1;
     public static final String EOHB_MachineType_2;
     public static final String EOHB_MachineType_3;
@@ -427,6 +428,7 @@ public class TextLocalization {
         EOHB_Waila_UpgradeBlock = TextHandler.texter("Upgrade Block","EOHB_Waila_UpgradeBlock");
         EOHB_Waila_UpgradeLevel = TextHandler.texter("Upgrade Block Level","EOHB_Waila_UpgradeLevel");
         EOHB_Waila_None = TextHandler.texter("None","EOHB_Waila_None");
+        EOHB_Waila_OrundumFarallel = TextHandler.texter("Current effective parallel runs","EOHB_Waila_OrundumFarallel");
         EOHB_MachineType_1 = TextHandler.texter("Hint Block #1","EOHB_MachineType_1");
         EOHB_MachineType_2 = TextHandler.texter("Hint Block #2","EOHB_MachineType_2");
         EOHB_MachineType_3 = TextHandler.texter("Hint Block #3","EOHB_MachineType_3");

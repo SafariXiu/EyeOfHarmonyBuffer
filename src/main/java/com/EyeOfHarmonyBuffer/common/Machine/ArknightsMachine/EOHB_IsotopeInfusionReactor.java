@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import gregtech.api.GregTechAPI;
+import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.common.blocks.BlockCasings10;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -40,7 +41,6 @@ import java.util.function.Function;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_Energy;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_UpgradeCard;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_MachineType_1;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_MachineType_2;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
@@ -336,7 +336,13 @@ public class EOHB_IsotopeInfusionReactor extends OrundumWirelessMultiMachineBase
             .addInfo(Tooltip_IsotopeInfusionReactor_04)
             .addInfo(Tooltip_IsotopeInfusionReactor_05)
             .addInfo(Tooltip_IsotopeInfusionReactor_06)
-            .addInfo(EOHB_Arknights_Project_UpgradeCard)
+            .addInfo(Tooltip_IsotopeInfusionReactor_07)
+            .addInfo(Tooltip_IsotopeInfusionReactor_08)
+            .addInfo(Tooltip_IsotopeInfusionReactor_09)
+            .addInfo(Tooltip_IsotopeInfusionReactor_10)
+            .addInfo(Tooltip_IsotopeInfusionReactor_11)
+            .addInfo(Tooltip_IsotopeInfusionReactor_12)
+            .addInfo(Tooltip_IsotopeInfusionReactor_13)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
@@ -372,6 +378,8 @@ public class EOHB_IsotopeInfusionReactor extends OrundumWirelessMultiMachineBase
         tag.setInteger("upgradeTier", effectiveTier);
 
         tag.setInteger("wirelessRunTime", getWirelessModeProcessingTime());
+
+        tag.setInteger("wirelessParallel", this.lastUsedParallel);
     }
 
     @Override

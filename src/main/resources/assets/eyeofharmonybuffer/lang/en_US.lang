@@ -27,6 +27,7 @@ EOHB_Waila_OrundumCost=Current Orundum Cost
 EOHB_Waila_UpgradeBlock=Upgrade Block
 EOHB_Waila_UpgradeLevel=Upgrade Block Level
 EOHB_Waila_None=None
+EOHB_Waila_OrundumFarallel=Current number of active parallel runs
 EOHB_MachineType_1=Hint Block #1
 EOHB_MachineType_2=Hint Block #2
 EOHB_MachineType_3=Hint Block #3

@@ -11,18 +11,22 @@ import mcp.mobius.waila.api.IWailaDataAccessor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 
 import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Waila_OrundumCost;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Waila_OrundumFarallel;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
 
 public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessMultiMachineBase<T>>
     extends WirelessEnergyMultiMachineBase<T> {
+
+    protected int lastUsedParallel = 0;
 
     public OrundumWirelessMultiMachineBase(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -45,8 +49,15 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
         CheckRecipeResult result = doCheckRecipe();
         if (!result.wasSuccessful()) {
+            this.lastUsedParallel = 0;
             return result;
         }
+
+        int parallels = 0;
+        if (this.processingLogic != null) {
+            parallels = this.processingLogic.getCurrentParallels();
+        }
+        this.lastUsedParallel = Math.max(0, parallels);
 
         BigInteger baseCost = BigInteger.valueOf(processingLogic.getCalculatedEut())
             .multiply(BigInteger.valueOf(processingLogic.getDuration()));
@@ -181,6 +192,21 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         return EOHB_Waila_OrundumCost;
     }
 
+    /** Waila 中“并行数”这一行的本地化 key，默认可返回一个通用 key。 */
+    protected String getWailaParallelLabelKey() {
+        return EOHB_Waila_OrundumFarallel;
+    }
+
+    /** 是否在 Waila 中显示“当前并行数”这一行，默认：NBT 里有这个字段就显示。 */
+    protected boolean shouldShowWailaParallel(NBTTagCompound tag) {
+        return tag.hasKey("wirelessParallel");
+    }
+
+    /** 读取用于 Waila 显示的并行数，子类可覆盖自定义逻辑。 */
+    protected int getWailaParallelValue(NBTTagCompound tag) {
+        return tag.getInteger("wirelessParallel");
+    }
+
     /** Waila 中显示数值后的单位文字。 */
     protected String getWailaCostUnit() {
         return "Orundum";
@@ -208,5 +234,17 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
                 + EnumChatFormatting.RESET
                 + " "
                 + getWailaCostUnit());
+
+        if (shouldShowWailaParallel(tag)) {
+            int parallels = getWailaParallelValue(tag);
+            String label = StatCollector.translateToLocal(getWailaParallelLabelKey());
+            currentTip.add(
+                EnumChatFormatting.AQUA + label
+                    + EnumChatFormatting.RESET
+                    + ": "
+                    + EnumChatFormatting.GOLD
+                    + parallels
+            );
+        }
     }
 }

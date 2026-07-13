@@ -27,6 +27,7 @@ EOHB_Waila_OrundumCost=每轮消耗Orundum
 EOHB_Waila_UpgradeBlock=升级位置方块
 EOHB_Waila_UpgradeLevel=方块等级
 EOHB_Waila_None=无
+EOHB_Waila_OrundumFarallel=当前实际运行的并行数量
 EOHB_MachineType_1=1号提示方块
 EOHB_MachineType_2=2号提示方块
 EOHB_MachineType_3=3号提示方块

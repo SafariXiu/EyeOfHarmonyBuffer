@@ -41,7 +41,6 @@ import java.util.List;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_Energy;
-import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Arknights_Project_UpgradeCard;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.ModName;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.StructureTooComplex;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
@@ -68,7 +67,6 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
     private int laserTotalAmps = 0;
     private int laserAmps = 1;
     private int laserTier = 0;
-    private int lastUsedParallel = 0;
 
     public EOHB_HighDensityEnergyFluidGenerator(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -344,7 +342,6 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_05)
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_06)
             .addInfo(Tooltip_HighDensityEnergyFluidGenerator_07)
-            .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
@@ -419,6 +416,8 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
 
         BigInteger perCycleEu = getPerCycleEuCost();
         tag.setString("perCycleEuText", NumberFormatUtil.formatNumber(perCycleEu));
+
+        tag.setInteger("wirelessParallel", this.lastUsedParallel);
     }
 
     @Override
