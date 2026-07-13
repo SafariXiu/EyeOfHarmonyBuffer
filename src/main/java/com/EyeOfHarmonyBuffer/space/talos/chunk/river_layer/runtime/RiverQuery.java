@@ -18,6 +18,10 @@ public final class RiverQuery {
         public final boolean hasMouth;
         public final double closestX;
         public final double closestZ;
+        public final double sourceX;
+        public final double sourceZ;
+        public final double mouthX;
+        public final double mouthZ;
 
         private RiverQueryResult(boolean affected,
                                  double distanceToCenter,
@@ -31,7 +35,11 @@ public final class RiverQuery {
                                  boolean hasSource,
                                  boolean hasMouth,
                                  double closestX,
-                                 double closestZ) {
+                                 double closestZ,
+                                 double sourceX,
+                                 double sourceZ,
+                                 double mouthX,
+                                 double mouthZ) {
             this.affected = affected;
             this.distanceToCenter = distanceToCenter;
             this.riverWidth = riverWidth;
@@ -45,6 +53,10 @@ public final class RiverQuery {
             this.hasMouth = hasMouth;
             this.closestX = closestX;
             this.closestZ = closestZ;
+            this.sourceX = sourceX;
+            this.sourceZ = sourceZ;
+            this.mouthX = mouthX;
+            this.mouthZ = mouthZ;
         }
 
         public static RiverQueryResult none() {
@@ -59,10 +71,15 @@ public final class RiverQuery {
                 false,
                 false,
                 0.0,
-                0.0
+                0.0,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN
             );
         }
     }
+
 
     public static final class SegmentProjection {
         public final double distanceSquared;
@@ -204,7 +221,11 @@ public final class RiverQuery {
             bestSeg.hasSource,
             bestSeg.hasMouth,
             bestClosestX,
-            bestClosestZ
+            bestClosestZ,
+            bestSeg.sourceX,
+            bestSeg.sourceZ,
+            bestSeg.mouthX,
+            bestSeg.mouthZ
         );
     }
 }

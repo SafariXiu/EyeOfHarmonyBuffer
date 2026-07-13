@@ -22,6 +22,11 @@ public final class RiverSegment {
     public final boolean hasSource;
     public final boolean hasMouth;
 
+    public final double sourceX;
+    public final double sourceZ;
+    public final double mouthX;
+    public final double mouthZ;
+
     public RiverSegment(int edgeId,
                         int segmentIndex,
                         RiverType type,
@@ -33,7 +38,11 @@ public final class RiverSegment {
                         double edgeWidthEnd,
                         double influenceRadius,
                         boolean hasSource,
-                        boolean hasMouth) {
+                        boolean hasMouth,
+                        double sourceX,
+                        double sourceZ,
+                        double mouthX,
+                        double mouthZ) {
         this.edgeId = edgeId;
         this.segmentIndex = segmentIndex;
         this.type = type;
@@ -48,5 +57,9 @@ public final class RiverSegment {
         this.influenceRadius = influenceRadius;
         this.hasSource = hasSource;
         this.hasMouth = hasMouth;
+        this.sourceX = sourceX;
+        this.sourceZ = sourceZ;
+        this.mouthX = mouthX;
+        this.mouthZ = mouthZ;
     }
 }

@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery;
@@ -45,7 +46,7 @@ import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.River
 public final class TalosRiverSystem {
 
     private static final double SOURCE_PROGRESS_MAX = 0.04; // 上游 4% 视为源头段
-    private static final double SOURCE_RADIUS_MULT  = 2.0; // 源头影响范围 = 2 × channelRadius
+    private static final double SOURCE_RADIUS_MULT  = 2.0;  // 源头影响范围 = 2 × channelRadius
     public static double SUPERCONTINENT_RIVER_SCALE = 6.5;
 
     private TalosRiverSystem() {}
@@ -243,13 +244,13 @@ public final class TalosRiverSystem {
                                      int plateId,
                                      double nearestX,
                                      double nearestZ) {
-            this.hasRiver  = hasRiver;
-            this.distance  = distance;
-            this.riverId   = riverId;
-            this.riverLevel= riverLevel;
-            this.plateId   = plateId;
-            this.nearestX  = nearestX;
-            this.nearestZ  = nearestZ;
+            this.hasRiver   = hasRiver;
+            this.distance   = distance;
+            this.riverId    = riverId;
+            this.riverLevel = riverLevel;
+            this.plateId    = plateId;
+            this.nearestX   = nearestX;
+            this.nearestZ   = nearestZ;
         }
     }
 
@@ -318,10 +319,13 @@ public final class TalosRiverSystem {
     /**
      * 水文场采样结构：在“陆地 + 海洋”上统一表示河流影响。
      *
-     * 字段语义与旧版保持一致。
+     * 这里是**改造点之一**：在原有 distance / width / mask / riverId / riverLevel 之外，
+     * 正式把 RVR2 / RiverQuery 里的语义字段也带出来：
      *
-     * 注意：
-     *   - 若 distance == Double.MAX_VALUE 或 widthValley == 0，可认为“无河影响”。
+     *   - riverType    : MAIN / BRANCH1 / BRANCH2
+     *   - hasSource    : 是否标记有源头
+     *   - hasMouth     : 是否标记有河口
+     *   - riverProgress: 0..1，从源头（上游）到河口（下游）的归一化进度
      */
     public static final class HydroSample {
         /** 到最近河中心线的平面距离（blocks） */
@@ -339,40 +343,85 @@ public final class TalosRiverSystem {
         /** 最近河级别：0 = 主河，1.. 支流等级 */
         public final int riverLevel;
 
+        /** RVR2 中的河型：主干 / 一级支流 / 二级支流 */
+        public final RiverType riverType;
+        /** RVR2 标记：该 edge 是否有源头 */
+        public final boolean hasSource;
+        /** RVR2 标记：该 edge 是否有河口 */
+        public final boolean hasMouth;
+        /**
+         * 沿当前 edge 的进度（0..1），约定：
+         *   - 0   ≈ 上游/源头端（当 hasSource==true 时靠近源头）
+         *   - 1   ≈ 下游/河口端（当 hasMouth==true 时靠近河口）
+         */
+        public final double riverProgress;
+
+        /** 该 edge 源头点在世界坐标中的 X/Z（当 hasSource==true 时有意义） */
+        public final double sourceX;
+        public final double sourceZ;
+        /** 该 edge 河口点在世界坐标中的 X/Z（当 hasMouth==true 时有意义） */
+        public final double mouthX;
+        public final double mouthZ;
+
         public HydroSample(double distance,
                            double widthCore,
                            double widthValley,
                            double widthAvoid,
                            double mask,
                            int riverId,
-                           int riverLevel) {
-            this.distance    = distance;
-            this.widthCore   = widthCore;
-            this.widthValley = widthValley;
-            this.widthAvoid  = widthAvoid;
-            this.mask        = mask;
-            this.riverId     = riverId;
-            this.riverLevel  = riverLevel;
+                           int riverLevel,
+                           RiverType riverType,
+                           boolean hasSource,
+                           boolean hasMouth,
+                           double riverProgress,
+                           double sourceX,
+                           double sourceZ,
+                           double mouthX,
+                           double mouthZ) {
+            this.distance      = distance;
+            this.widthCore     = widthCore;
+            this.widthValley   = widthValley;
+            this.widthAvoid    = widthAvoid;
+            this.mask          = mask;
+            this.riverId       = riverId;
+            this.riverLevel    = riverLevel;
+            this.riverType     = riverType;
+            this.hasSource     = hasSource;
+            this.hasMouth      = hasMouth;
+            this.riverProgress = riverProgress;
+            this.sourceX       = sourceX;
+            this.sourceZ       = sourceZ;
+            this.mouthX        = mouthX;
+            this.mouthZ        = mouthZ;
         }
     }
 
     /**
      * 正式水文 API：在“陆地 + 海洋”上采样河场（Hydro Field）。
      *
-     * 新实现：
-     *   - 直接使用 RVR2 + RiverQuery 的结果；
-     *   - 不做 isLand 过滤，海洋上也能看到河谷延伸（方便河口/海底峡谷等逻辑）。
+     * 改造点：
+     *   - 保持方法签名不变；
+     *   - 在 HydroSample 里多带了 riverType / hasSource / hasMouth / riverProgress。
      */
     public static HydroSample sampleHydroField(int worldX, int worldZ, int worldSeedInt) {
         RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
 
         if (!r.affected) {
+            // 无河影响时，riverType 设为 null，source/mouth/progress 设为“无意义默认值”
             return new HydroSample(
                 Double.MAX_VALUE,
                 0.0, 0.0, 0.0,
                 0.0,
                 0,
-                0
+                0,
+                null,
+                false,
+                false,
+                0.0,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN
             );
         }
 
@@ -396,7 +445,15 @@ public final class TalosRiverSystem {
             avoid,
             r.terrainInfluence,
             r.edgeId,
-            riverLevel
+            riverLevel,
+            r.riverType,
+            r.hasSource,
+            r.hasMouth,
+            r.riverProgress,
+            r.sourceX,
+            r.sourceZ,
+            r.mouthX,
+            r.mouthZ
         );
     }
 

@@ -46,6 +46,14 @@ public final class RiverSystem {
             boolean hasSource = edge.hasSource();
             boolean hasMouth  = edge.hasMouth();
 
+            RiverPoint src   = pts.get(0);
+            double sourceX   = src.getX();
+            double sourceZ   = src.getZ();
+
+            RiverPoint mouth = pts.get(n - 1);
+            double mouthX    = mouth.getX();
+            double mouthZ    = mouth.getZ();
+
             for (int i = 0; i < n - 1; i++) {
                 RiverPoint a = pts.get(i);
                 RiverPoint b = pts.get(i + 1);
@@ -65,7 +73,11 @@ public final class RiverSystem {
                     edge.getWidthEnd(),
                     edge.getInfluenceRadius(),
                     hasSource,
-                    hasMouth
+                    hasMouth,
+                    sourceX,
+                    sourceZ,
+                    mouthX,
+                    mouthZ
                 );
                 segs.add(seg);
             }
