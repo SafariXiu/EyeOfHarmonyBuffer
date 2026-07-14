@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClim
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -70,12 +71,33 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     /**
-     * 极简版：
-     *  - 从 TalosBaseTerrain 取基础高度 baseHeight；
-     *  - 仍然用 LandMask 的 isLand 决定陆地 / 海洋；
-     *  - 陆地：基岩 0，下面全石头，最上面 1 层草；
-     *  - 海洋：基岩 0，海底石头，上面全是水；
-     *  - 只是在“表面 / 海底的高度”这一步用 baseHeight，而不是固定 seaLevel。
+     * 使用 TalosBaseTerrain + TalosRiverSystem 生成基础陆地/海洋高度，并填充方块。
+     *
+     * 流程概述：
+     *   1. 调用 TalosBaseTerrain.sampleBaseHeight(...) 计算「未考虑河流」的基础高度 baseHeight；
+     *   2. 对陆地区域，使用 TalosRiverTerrainModifier.applyRiverBankShaping(...)：
+     *        - 基于 TalosRiverSystem.getRiverMask(...) 的河流影响掩码；
+     *        - 只在 baseHeight 高于河面（seaLevel）时，对靠近河流的高地做「河岸压低」；
+     *        - 在 mask ∈ (0.7, 0.8) 区间内，将高度从原始地形平滑过渡到河面高度；
+     *        - 在 mask ≥ 0.8 时，直接把高度压到河面高度（形成贴河的低缓河岸）；
+     *        - 远离河流（mask ≤ 0.7）、低于河面的区域保持原始高度不变；
+     *   3. 对最终高度 h 执行 clamp 到 [1, worldHeight-2]，避免越界；
+     *   4. 按 isLand 决定填充：
+     *        - 陆地：
+     *            - y = 0 放置基岩；
+     *            - [1, h) 填充石头，y = h 顶层放草；
+     *            - 若 h < seaLevel，则 [h+1, seaLevel] 用水填充（形成内陆湖/洼地积水）；
+     *        - 海洋：
+     *            - y = 0 放置基岩；
+     *            - [1, seabedY] 填充石头（海底），seabedY = min(h, seaLevel-1)；
+     *            - [seabedY+1, seaLevel] 全部填充水；
+     *   5. DEBUG_COASTLINE 为 true 时，在陆地顶层用不同方块标记海岸权重（调试用）。
+     *
+     * 注意：
+     *   - 本方法只负责“标高 + 基础方块”的铺设；具体的河槽切割、源头湖形状、
+     *     暗河井等细节由 TalosRiverCarver.carveChunkRivers(...) 在后续单独处理。
+     *   - 河岸压低逻辑仅依赖世界坐标 (worldX, worldZ)、世界种子 int 和 seaLevel，
+     *     不在这里直接操作方块数组，保证高度场是可重现、与方块填充解耦的。
      */
     private void generateTerrainWithBaseHeightSimple(int chunkX, int chunkZ,
                                                      Block[] blocks, byte[] meta) {
@@ -97,7 +119,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     worldX, worldZ, worldSeedInt, seaLevel
                 );
 
-                int h = (int) Math.round(baseHeightD);
+                double shapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
+                    worldX, worldZ,
+                    worldSeedInt,
+                    baseHeightD,
+                    seaLevel
+                );
+
+                int h = (int) Math.round(shapedHeightD);
                 if (h < 1) {
                     h = 1;
                 } else if (h > worldHeight - 2) {
