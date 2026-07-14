@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
@@ -119,11 +120,20 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     worldX, worldZ, worldSeedInt, seaLevel
                 );
 
+                MacroPackageId macroId = macroResolver.resolveMacroPackageId(worldX, worldZ);
+                MacroPackageRegistry.RiverBankPreset bankPreset = null;
+
+                if (macroId != null) {
+                    MacroPackageRegistry.MacroPackageSpec spec = MacroPackageRegistry.get(macroId);
+                    bankPreset = spec.riverBank();
+                }
+
                 double shapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
                     worldX, worldZ,
                     worldSeedInt,
                     baseHeightD,
-                    seaLevel
+                    seaLevel,
+                    bankPreset
                 );
 
                 int h = (int) Math.round(shapedHeightD);

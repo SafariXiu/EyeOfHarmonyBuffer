@@ -43,11 +43,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.U_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    1.4,  // flatWidthFactor：洪泛平原半宽 ≈ 1.4 * coreWidth/2
-                    0.7,  // slopeSteepness：整体坡比较缓
-                    0.1,  // cliffRetainFactor：几乎不保留原始悬崖
-                    0.6,  // noiseRoughness：岸线起伏比较丰富
-                    0.2   // terraceStrength：台地感弱一点
+                    0.3,
+                    0.6
                 ))
                 .build()
         );
@@ -67,11 +64,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    1.0,  // 郊外冲沟 / 河谷，洪泛平原和 core 差不多宽
-                    0.9,  // 坡比湿热盆地略陡
-                    0.3,  // 保留一点崖感
-                    0.7,  // 草原 / 半干旱，岸线可以更破碎一点
-                    0.3   // 有一点点阶地
+                    0.4,
+                    0.7
                 ))
                 .build()
         );
@@ -92,11 +86,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.U_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    1.2,  // 比 core 再宽一圈的洪泛平原
-                    0.8,  // 坡偏缓
-                    0.2,  // 只在个别地方有一点崖
-                    0.5,  // 岸线起伏中等
-                    0.3   // 冲积平原里会有一点阶地 / 老河道痕迹
+                    0.35,
+                    0.65
                 ))
                 .build()
         );
@@ -116,11 +107,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.U_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    1.0,  // 洪泛平原刚好包 core，一圈不算很宽
-                    0.9,  // 坡略陡一点
-                    0.35, // 森林峡谷感稍强，崖感多一点
-                    0.6,  // 岸线起伏略强
-                    0.35  // 阶地感稍明显
+                    0.45,
+                    0.8
                 ))
                 .build()
         );
@@ -140,11 +128,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.6,  // 河边只有一小圈相对平的岸
-                    1.3,  // 坡明显更陡
-                    0.8,  // 多数地方保留原始峭壁
-                    0.8,  // 高原河谷，岸线起伏强
-                    0.4   // 峡谷两侧可以有一点阶地
+                    0.7,
+                    0.9
                 ))
                 .build()
         );
@@ -165,11 +150,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.8,  // 稍窄的平岸
-                    1.1,  // 坡比温带森林更陡一些
-                    0.65, // 明显保留崖感
-                    0.7,  // 冷凉地区谷坡起伏明显
-                    0.4   // 有一定阶地 / 冰缘地貌感
+                    0.55,
+                    0.85
                 ))
                 .build()
         );
@@ -189,11 +171,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.7,  // 不太宽的平岸
-                    1.0,  // 坡中等偏直
-                    0.5,  // 崖感中等
-                    0.6,  // 岸线起伏一般
-                    0.25  // 阶地感略有，但不抢戏
+                    0.6,
+                    0.9
                 ))
                 .build()
         );
@@ -213,11 +192,8 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.4,  // 非常窄的平岸
-                    1.5,  // 坡很陡
-                    0.9,  // 大部分保持悬崖 / 峡谷感
-                    0.9,  // 起伏剧烈
-                    0.3   // 偶尔有冰缘阶地
+                    0.8,
+                    0.95
                 ))
                 .build()
         );
@@ -296,13 +272,10 @@ public final class MacroPackageRegistry {
                     );
                 }
                 if (riverBank == null) {
-                    // 一个比较中性的默认河岸：适中的洪泛平原、坡度、少量崖感
+                    // 一个比较中性的默认河岸：在 0.7~0.8 区间做压低
                     riverBank = new RiverBankPreset(
-                        1.0,  // flatWidthFactor
-                        1.0,  // slopeSteepness
-                        0.4,  // cliffRetainFactor
-                        0.6,  // noiseRoughness
-                        0.3   // terraceStrength
+                        0.7,
+                        0.8
                     );
                 }
                 return new MacroPackageSpec(this);
@@ -387,17 +360,14 @@ public final class MacroPackageRegistry {
     }
 
     /**
-     * 河岸 / 河谷形态预设。
+     * 河岸 / 河谷形态预设（河岸压低阈值）。
      *
-     * 这些参数一般在「宏群系层」定义，真正落地时可以：
-     * - 先按 packageWeights(x,z) 做线性混合，得到宏观 bank 参数；
-     * - 然后在 chunk 层叠局部噪声，做出更细节的河岸形状。
+     * smoothThreshold：开始从 baseHeight 平滑过渡到河面高度的 riverMask；
+     * flatThreshold：完全压到河面高度的 riverMask；
+     * 约定 smoothThreshold < flatThreshold，riverMask 越靠近河心越大。
      */
     public record RiverBankPreset(
-        double flatWidthFactor,   // 洪泛平原半宽 / coreWidthBlocks
-        double slopeSteepness,    // 坡度强度 0.0~2.0，越大越陡
-        double cliffRetainFactor, // 保留原始崖高比例 0.0~1.0
-        double noiseRoughness,    // 岸线起伏粗糙度
-        double terraceStrength    // 河岸台地/阶地感
+        double smoothThreshold,
+        double flatThreshold
     ) {}
 }
