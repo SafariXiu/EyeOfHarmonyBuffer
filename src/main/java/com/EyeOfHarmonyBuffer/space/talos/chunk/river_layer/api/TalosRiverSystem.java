@@ -37,10 +37,6 @@ import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.River
  *    - 水文场（陆地 + 海洋统一）：
  *        sampleHydroField / getHydroRiverDistance / getHydroWidthValley / getHydroMask
  *
- * 4. 目前 RVR2 尚未包含「源头湖 / 裂隙」数据，因此：
- *    - getRiverSourceById / findNearestSource 暂时返回 null；
- *    - getMainRivers / getTributaries 暂时返回空列表；
- *    - debugFindNearestRiver 使用 RiverSegment 做几何最近点查询（不再依赖板块 polyline）。
  */
 
 public final class TalosRiverSystem {
