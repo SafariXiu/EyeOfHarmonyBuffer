@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer.client;
 
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.ISound;
+import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
@@ -101,15 +103,10 @@ public class ReactorVideoPlayer {
         if (mc.theWorld == null || mc.thePlayer == null) return;
         if (state.soundId == null || state.soundId.isEmpty()) return;
 
-        String soundName = "eyeofharmonybuffer:" + state.soundId;
-        mc.theWorld.playSound(
-            mc.thePlayer.posX,
-            mc.thePlayer.posY,
-            mc.thePlayer.posZ,
-            soundName,
-            1.0F,
-            1.0F,
-            false
-        );
+        ResourceLocation loc = new ResourceLocation("eyeofharmonybuffer", state.soundId);
+
+        ISound sound = PositionedSoundRecord.func_147673_a(loc);
+
+        mc.getSoundHandler().playSound(sound);
     }
 }
