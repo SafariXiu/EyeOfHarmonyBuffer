@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import codechicken.nei.api.API;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
+import com.EyeOfHarmonyBuffer.client.ReactorClientEventHandler;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityWindmillRenderer;
@@ -19,6 +20,7 @@ import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemYuanShi;
 import com.EyeOfHarmonyBuffer.entity.Arknights.EntityIndustrialExplosive;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -27,6 +29,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraftforge.common.MinecraftForge;
 
 import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.OverdomainErosion;
 
@@ -64,6 +67,10 @@ public class ClientProxy extends CommonProxy {
         hideDisallowedBottleFluids(ItemLoader.ZiJingZhiFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.GaoJingFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.HeTongFluidBottle);
+
+        ReactorClientEventHandler handler = new ReactorClientEventHandler();
+        FMLCommonHandler.instance().bus().register(handler);
+        MinecraftForge.EVENT_BUS.register(handler);
     }
 
     @SideOnly(Side.CLIENT)

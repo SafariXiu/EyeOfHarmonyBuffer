@@ -1,0 +1,32 @@
+{
+  "reactor.hydrogen_detonation": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/hydrogendetonation" }
+    ]
+  },
+  "reactor.nuclear_meltdown": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/nuclearmeltdown" }
+    ]
+  },
+  "reactor.power_increase": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/powerincrease" }
+    ]
+  },
+  "reactor.powerup": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/powerupsoundeffect" }
+    ]
+  },
+  "reactor.steam_explosion": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/steamexplosion" }
+    ]
+  }
+}
