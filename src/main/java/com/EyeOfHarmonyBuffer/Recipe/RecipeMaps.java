@@ -352,4 +352,22 @@ public class RecipeMaps {
         .logoPos(152, 63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.YuanShiTongWeiSu_Alpha.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> GasDiffuser = RecipeMapBuilder
+        .of(EOHB_Recipe_GasDiffuser)
+        .maxIO(4, 4, 4, 4)
+        .neiRecipeBackgroundSize(170, 185)
+        .useCustomFilterForNEI()
+        .neiSpecialInfoFormatter(new FixedStringSpecialFormatter("GT5U.gui.text.recipe.GasDiffuserInfo"))
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                4,
+                4
+            )
+        )
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20, 20)
+        .logoPos(152, 63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.DuoQi.get(1)))
+        .build();
 }

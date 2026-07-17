@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
-import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -59,6 +58,13 @@ public class ItemIntermediateProducts {
     public static Item OrundumPowder;
     public static Item OrundumSlag;
     public static Item YuanShiTongWeiSu_Alpha;
+    public static Item ZhuoTongKuai;
+    public static Item ZhuoTongLingJian;
+    public static Item ChiTongNaiYaPing;
+    public static Item ShuRangYi;
+    public static Item ShuRangYi_KuoRongYiXing;
+    public static Item ShuRangYi_KuoRongErXing;
+    public static Item FenLiXin;
 
     public static void initAndRegister(String modid) {
         String textureFolder = "Arknights/";

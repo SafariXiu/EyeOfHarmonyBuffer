@@ -126,4 +126,21 @@ public class ItemBottleBase extends Item {
         EnumBottleFluid fluid = EnumBottleFluid.fromMeta(stack.getItemDamage());
         return "item." + this.getUnlocalizedName().substring(5) + "." + fluid.name().toLowerCase();
     }
+
+    @SideOnly(Side.CLIENT)
+    public IIcon getEmptyIcon() {
+        return emptyIcon;
+    }
+
+    @SideOnly(Side.CLIENT)
+    public IIcon getFluidIcon(EnumBottleFluid fluid) {
+        if (fluid == null || fluid == EnumBottleFluid.EMPTY || fluidIcons == null) {
+            return null;
+        }
+        int idx = fluid.ordinal();
+        if (idx < 0 || idx >= fluidIcons.length) {
+            return null;
+        }
+        return fluidIcons[idx];
+    }
 }

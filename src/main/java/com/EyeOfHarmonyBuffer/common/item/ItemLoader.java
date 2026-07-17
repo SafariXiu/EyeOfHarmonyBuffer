@@ -61,6 +61,10 @@ public class ItemLoader {
     public static Item HeTongRongYe = new ItemHeTongRongYe();
     public static Item QingShui = new itemQingShui();
     public static Item ChenJiSuan = new ItemChenJiSuan();
+    public static Item DuoQi = new ItemDuoQi();
+    public static Item ShuiZhengQi = new ItemShuiZhengQi();
+    public static Item SuanQi = new ItemSuanQi();
+    public static Item XiRangQi = new ItemXiRangQi();
 
     //瓶子
     public static Item ChiTongFluidBottle;
@@ -69,6 +73,8 @@ public class ItemLoader {
     public static Item ZiJingZhiFluidBottle;
     public static Item GaoJingFluidBottle;
     public static Item HeTongFluidBottle;
+
+    public static Item ChiTongGasTank;
 
     public ItemLoader(FMLPreInitializationEvent event){
         GTCMItemList.ChengDuHeart.set(registryAndCallback(ChengDuHeart,"chengdu_heart"));
@@ -119,6 +125,10 @@ public class ItemLoader {
         GTCMItemList.HeTongRongYe.set(registryAndCallback(HeTongRongYe,"HeTongRongYe"));
         GTCMItemList.QingShui.set(registryAndCallback(QingShui,"QingShui"));
         GTCMItemList.ChenJiSuan.set(registryAndCallback(ChenJiSuan,"ChenJiSuan"));
+        GTCMItemList.DuoQi.set(registryAndCallback(DuoQi,"DuoQi"));
+        GTCMItemList.ShuiZhengQi.set(registryAndCallback(ShuiZhengQi,"ShuiZhengQi"));
+        GTCMItemList.SuanQi.set(registryAndCallback(SuanQi,"SuanQi"));
+        GTCMItemList.XiRangQi.set(registryAndCallback(XiRangQi,"XiRangQi"));
 
         EnumBottleFluid[] allFluids = EnumBottleFluid.values();
         ChiTongFluidBottle = new ItemBottleBase(
@@ -164,6 +174,18 @@ public class ItemLoader {
             "HeTongFluidBottle",
             "HeTongPing_empty"
         );
+        ChiTongGasTank = new ItemBottleBase(
+            "ChiTongGasTank",
+            "ChiTongGasTank_empty",
+            EnumBottleFluid.SUAN_QI,
+            EnumBottleFluid.QI_TAI_CHI_TONG,
+            EnumBottleFluid.QI_TAI_HE_TONG,
+            EnumBottleFluid.QI_TAI_ZHUO_TONG,
+            EnumBottleFluid.DUO_QI,
+            EnumBottleFluid.SHUI_ZHENG_QI,
+            EnumBottleFluid.XI_RANG_QI,
+            EnumBottleFluid.ZHONG_XI_RANG_QI
+        );
 
         GTCMItemList.ChiTongFluidBottle.set(registryAndCallback(ChiTongFluidBottle, "ChiTongFluidBottle", 0));
         GTCMItemList.GangZhiFluidBottle.set(registryAndCallback(GangZhiFluidBottle, "GangZhiFluidBottle", 0));
@@ -171,6 +193,7 @@ public class ItemLoader {
         GTCMItemList.ZiJingZhiFluidBottle.set(registryAndCallback(ZiJingZhiFluidBottle, "ZiJingZhiFluidBottle", 0));
         GTCMItemList.GaoJingFluidBottle.set(registryAndCallback(GaoJingFluidBottle, "GaoJingFluidBottle", 0));
         GTCMItemList.HeTongFluidBottle.set(registryAndCallback(HeTongFluidBottle, "HeTongFluidBottle", 0));
+        GTCMItemList.ChiTongGasTank.set(registryAndCallback(ChiTongGasTank, "ChiTongGasTank", 0));
 
         GTCMReactorFuelCells.init();
     }

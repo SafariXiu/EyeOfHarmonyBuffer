@@ -67,6 +67,7 @@ public class ClientProxy extends CommonProxy {
         hideDisallowedBottleFluids(ItemLoader.ZiJingZhiFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.GaoJingFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.HeTongFluidBottle);
+        hideDisallowedBottleFluids(ItemLoader.ChiTongGasTank);
 
         ReactorClientEventHandler handler = new ReactorClientEventHandler();
         FMLCommonHandler.instance().bus().register(handler);

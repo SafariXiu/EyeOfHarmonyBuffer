@@ -293,6 +293,12 @@ Tooltip_IsotopeInfusionReactor_10=Engineers once debated enabling multi‑isotop
 Tooltip_IsotopeInfusionReactor_11=The plan was abandoned after a joint statement from the “Demolition Team (refusing to sign)” and the “Janitorial Staff (refusing to work overtime)”—the feature remains sealed beneath a coffee stain on the blueprint.
 Tooltip_IsotopeInfusionReactor_12=Friendly reminder: do not drink the reactor’s output or barbecue on top of it.
 Tooltip_IsotopeInfusionReactor_13=If you hear the material whispering its own name, shut down the power immediately and contact your nearest Radiation Safety Office.
+NameGasDiffuser=Gas Diffuser
+Tooltip_GasDiffuser_MachineType=Gas Diffuser
+Tooltip_GasDiffuser_Controller=Controller block of the Gas Diffuser
+Tooltip_GasDiffuser_00=It is a device that can disperse continuously‑input gas around itself, thereby changing the surrounding environmental state.
+Tooltip_GasDiffuser_01=It only changes the surroundings during its effective operation and will not cause any harm to the actual environment.
+Tooltip_GasDiffuser_02="This thing is not for you to use as an air purifier, and please don’t pour perfume into it next time, okay?"
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -319,6 +325,7 @@ EOHB_Recipe_FluidPumpMK2=Fluid Pump MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=Electric Type‑II Mining Machine
 EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
 EOHB_Recipe_IsotopeInfusionReactor=Isotope Infusion Reactor
+EOHB_Recipe_GasDiffuser=Gas Diffuser
 
 #item
 EOHB_Harmony=Harmony
@@ -510,6 +517,25 @@ item.FuelRod_empty4.name=Quad Fuel Rod (Empty)
 item.OrundumPowder.name=Orundum Powder
 item.OrundumSlag.name=Orundum Slag
 item.YuanShiTongWeiSu_Alpha.name=Originium Isotope α
+item.ZhuoTongKuai.name=Pyrrolite
+item.ZhuoTongLingJian.name=Pyrrolite Part
+item.ChiTongNaiYaPing.name=Cuprium Canister
+item.ShuRangYi.name=Xiranite Nexus
+item.ShuRangYi_KuoRongYiXing.name=Xiranite Nexus XC-Ⅰ
+item.ShuRangYi_KuoRongErXing.name=Xiranite Nexus XC-Ⅱ
+item.FenLiXin.name=Separator Core
+item.ChiTongGasTank.suan_qi.name=Cuprium Canister-Acridgen
+item.ChiTongGasTank.shui_zheng_qi.name=Cuprium Canister-Aquagen
+item.ChiTongGasTank.duo_qi.name=Cuprium Canister-Inergen
+item.ChiTongGasTank.xi_rang_qi.name=Cuprium Canister-Xiragen
+item.ChiTongGasTank.zhong_xi_rang_qi.name=Cuprium Canister-Heavy Xiragen
+item.ChiTongGasTank.qi_tai_chi_tong.name=Cuprium Canister-Cuprium Gas
+item.ChiTongGasTank.qi_tai_he_tong.name=Cuprium Canister-Hetonite Gas
+item.ChiTongGasTank.qi_tai_zhuo_tong.name=Cuprium Canister-Pyrrolite Gas
+item.DuoQi.name=Inergen
+item.SuanQi.name=Acridgen
+item.XiRangQi.name=Xiragen
+item.ShuiZhengQi.name=Aquagen
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block
@@ -568,7 +594,7 @@ GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source 
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block!
 
 #Recipe
-GT5U.gui.text.recipe.HighDensityEnergyFluidGeneratorInfo=Each recipe run additionally consumes 100000 EU from the Wireless Energy network
+GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start

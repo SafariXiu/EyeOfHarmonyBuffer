@@ -308,6 +308,13 @@ public class TextLocalization {
     public static final String Tooltip_IsotopeInfusionReactor_12;
     public static final String Tooltip_IsotopeInfusionReactor_13;
 
+    public static final String NameGasDiffuser;
+    public static final String Tooltip_GasDiffuser_MachineType;
+    public static final String Tooltip_GasDiffuser_Controller;
+    public static final String Tooltip_GasDiffuser_00;
+    public static final String Tooltip_GasDiffuser_01;
+    public static final String Tooltip_GasDiffuser_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -383,6 +390,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_ElectricTypeTwoMiningMachine;
     public static final String EOHB_Recipe_HighDensityEnergyFluidGenerator;
     public static final String EOHB_Recipe_IsotopeInfusionReactor;
+    public static final String EOHB_Recipe_GasDiffuser;
 
     public TextLocalization() {
     }
@@ -728,6 +736,14 @@ public class TextLocalization {
         Tooltip_IsotopeInfusionReactor_12 = TextHandler.texter("Friendly reminder: do not drink the reactor’s output or barbecue on top of it.", "Tooltip_IsotopeInfusionReactor_12");
         Tooltip_IsotopeInfusionReactor_13 = TextHandler.texter("If you hear the material whispering its own name, shut down the power immediately and contact your nearest Radiation Safety Office.", "Tooltip_IsotopeInfusionReactor_13");
 
+        //气体散布机
+        NameGasDiffuser = TextHandler.texter("Gas Diffuser","NameGasDiffuser");
+        Tooltip_GasDiffuser_MachineType = TextHandler.texter("Gas Diffuser","Tooltip_GasDiffuser_MachineType");
+        Tooltip_GasDiffuser_Controller = TextHandler.texter("Controller block of the Gas Diffuser","Tooltip_GasDiffuser_Controller");
+        Tooltip_GasDiffuser_00 = TextHandler.texter("It is a device that can disperse continuously‑input gas around itself, thereby changing the surrounding environmental state.","Tooltip_GasDiffuser_00");
+        Tooltip_GasDiffuser_01 = TextHandler.texter("It only changes the surroundings during its effective operation and will not cause any harm to the actual environment.","Tooltip_GasDiffuser_01");
+        Tooltip_GasDiffuser_02 = TextHandler.texter("\"This thing is not for you to use as an air purifier, and please don’t pour perfume into it next time, okay?\"","Tooltip_GasDiffuser_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -803,5 +819,6 @@ public class TextLocalization {
         EOHB_Recipe_ElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type Two Mining Machine","EOHB_Recipe_ElectricTypeTwoMiningMachine");
         EOHB_Recipe_HighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","EOHB_Recipe_HighDensityEnergyFluidGenerator");
         EOHB_Recipe_IsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor","EOHB_Recipe_IsotopeInfusionReactor");
+        EOHB_Recipe_GasDiffuser = TextHandler.texter("Gas Diffuser","EOHB_Recipe_GasDiffuser");
     }
 }

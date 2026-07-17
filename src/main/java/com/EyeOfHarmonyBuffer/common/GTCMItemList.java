@@ -122,6 +122,17 @@ public enum GTCMItemList {
     QingShui,
     ChenJiSuan,
     YuanShiTongWeiSu_Alpha,
+    DuoQi,
+    ZhuoTongKuai,
+    ZhuoTongLingJian,
+    ChiTongGasTank,
+    ShuRangYi,
+    ShuRangYi_KuoRongYiXing,
+    ShuRangYi_KuoRongErXing,
+    FenLiXin,
+    SuanQi,
+    ShuiZhengQi,
+    XiRangQi,
 
     YuanShiMainBlock,
     YuanShiBlock,
@@ -168,6 +179,7 @@ public enum GTCMItemList {
     ElectricTypeTwoMiningMachine,
     HighDensityEnergyFluidGenerator,
     IsotopeInfusionReactor,
+    GasDiffuser,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

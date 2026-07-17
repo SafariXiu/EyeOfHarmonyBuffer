@@ -45,7 +45,8 @@ public class RecipeLoader {
             new FluidPumpRecipe(),
             new ElectricTypeTwoMiningMachineRecipes(),
             new HighDensityEnergyFluidGeneratorRecipes(),
-            new IsotopeInfusionReactorRecipes()
+            new IsotopeInfusionReactorRecipes(),
+            new GasDiffuserRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

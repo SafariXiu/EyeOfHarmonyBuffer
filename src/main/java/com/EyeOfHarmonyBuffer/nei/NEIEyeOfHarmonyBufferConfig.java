@@ -19,6 +19,18 @@ public class NEIEyeOfHarmonyBufferConfig implements IConfigureNEI {
         ItemStack ChenJiSuanStack = GTCMItemList.ChenJiSuan.get(1);
         API.hideItem(ChenJiSuanStack);
 
+        ItemStack DuoQi = GTCMItemList.DuoQi.get(1);
+        API.hideItem(DuoQi);
+
+        ItemStack XiRangQi = GTCMItemList.XiRangQi.get(1);
+        API.hideItem(XiRangQi);
+
+        ItemStack SuanQi = GTCMItemList.SuanQi.get(1);
+        API.hideItem(SuanQi);
+
+        ItemStack ShuiZhengQi = GTCMItemList.ShuiZhengQi.get(1);
+        API.hideItem(ShuiZhengQi);
+
         if (EOHBFluidBlockRegistry.precipitationAcidBlock != null) {
             API.hideItem(new ItemStack(EOHBFluidBlockRegistry.precipitationAcidBlock));
         }

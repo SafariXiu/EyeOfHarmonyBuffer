@@ -293,6 +293,12 @@ Tooltip_IsotopeInfusionReactor_10=§7工程师曾讨论是否允许混搭多种�
 Tooltip_IsotopeInfusionReactor_11=§7最终在“§c拆弹组拒绝签字§7”与“§c清洁工拒绝加班§7”的联合声明下，该功能被永久封印在设计草图的咖啡渍下。§r
 Tooltip_IsotopeInfusionReactor_12=§e友情提示§7：请勿尝试饮用出料口的高密度产物，也不要在反应堆上烤肉。§r
 Tooltip_IsotopeInfusionReactor_13=§c若你听见材料在低声自我介绍，请立即关闭电源，并联系最近的辐射安全事务办公室。§r
+NameGasDiffuser=§b气体散布机
+Tooltip_GasDiffuser_MachineType=§b气体散布机
+Tooltip_GasDiffuser_Controller=§7气体散布机的§b控制器方块§r
+Tooltip_GasDiffuser_00=§7可以将持续输入的气体§e散布§7到自身周围，从而§a改变周围环境状态§7的设备§r
+Tooltip_GasDiffuser_01=§7只在生效期间改变自身周围环境，不会对实际环境造成危害§r
+Tooltip_GasDiffuser_02=§e“这东西不是拿来给你们当空气净化器用的，下一次别往里面倒香水好吗？”
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -319,6 +325,7 @@ EOHB_Recipe_FluidPumpMK2=水泵 MK2
 EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
 EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
 EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
+EOHB_Recipe_GasDiffuser=气体散布机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -510,6 +517,25 @@ item.FuelRod_empty4.name=四联燃料棒（空）
 item.OrundumPowder.name=源石微粉
 item.OrundumSlag.name=源石渣
 item.YuanShiTongWeiSu_Alpha.name=源石同位素α
+item.ZhuoTongKuai.name=灼铜块
+item.ZhuoTongLingJian.name=灼铜零件
+item.ChiTongNaiYaPing.name=赤铜耐压瓶
+item.ShuRangYi.name=枢壤仪
+item.ShuRangYi_KuoRongYiXing.name=枢壤仪-扩容一形
+item.ShuRangYi_KuoRongErXing.name=枢壤仪-扩容二形
+item.FenLiXin.name=分离芯
+item.ChiTongGasTank.suan_qi.name=赤铜耐压瓶-酸气
+item.ChiTongGasTank.shui_zheng_qi.name=赤铜耐压瓶-水蒸气
+item.ChiTongGasTank.duo_qi.name=赤铜耐压瓶-惰气
+item.ChiTongGasTank.xi_rang_qi.name=赤铜耐压瓶-息壤气
+item.ChiTongGasTank.zhong_xi_rang_qi.name=赤铜耐压瓶-重息壤气
+item.ChiTongGasTank.qi_tai_chi_tong.name=赤铜耐压瓶-气态赤铜
+item.ChiTongGasTank.qi_tai_he_tong.name=赤铜耐压瓶-气态赫铜
+item.ChiTongGasTank.qi_tai_zhuo_tong.name=赤铜耐压瓶-气态灼铜
+item.DuoQi.name=惰气
+item.SuanQi.name=酸气
+item.XiRangQi.name=息壤气
+item.ShuiZhengQi.name=水蒸气
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
@@ -568,7 +594,7 @@ GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器�
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
 
 #Recipe
-GT5U.gui.text.recipe.HighDensityEnergyFluidGeneratorInfo=每运行一个配方额外从无线电网消耗 100000 EU
+GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
