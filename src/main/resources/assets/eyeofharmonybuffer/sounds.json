@@ -5,28 +5,10 @@
       { "name": "reactor/hydrogendetonation" }
     ]
   },
-  "reactor.nuclear_meltdown": {
+  "reactor.99999mw": {
     "category": "master",
     "sounds": [
-      { "name": "reactor/nuclearmeltdown" }
-    ]
-  },
-  "reactor.power_increase": {
-    "category": "master",
-    "sounds": [
-      { "name": "reactor/powerincrease" }
-    ]
-  },
-  "reactor.powerup": {
-    "category": "master",
-    "sounds": [
-      { "name": "reactor/powerupsoundeffect" }
-    ]
-  },
-  "reactor.steam_explosion": {
-    "category": "master",
-    "sounds": [
-      { "name": "reactor/steamexplosion" }
+      { "name": "reactor/99999mw" }
     ]
   }
 }

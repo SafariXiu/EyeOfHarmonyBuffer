@@ -15,7 +15,7 @@ public class CommandReactorVideo extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/reactorvideo <0|300|99999|stop>";
+        return "/reactorvideo <99999|hydro|stop>";
     }
 
     @Override
@@ -26,15 +26,12 @@ public class CommandReactorVideo extends CommandBase {
         }
 
         String mode = args[0].toLowerCase();
-        if (mode.equals("0")) {
-            ReactorVideoPlayer.INSTANCE.play(ReactorVideoState.POWER_0);
-            sender.addChatMessage(new ChatComponentText("播放反应堆视频: 00000MW"));
-        } else if (mode.equals("300")) {
-            ReactorVideoPlayer.INSTANCE.play(ReactorVideoState.POWER_300);
-            sender.addChatMessage(new ChatComponentText("播放反应堆视频: 00300MW"));
-        } else if (mode.equals("99999")) {
+        if (mode.equals("99999")) {
             ReactorVideoPlayer.INSTANCE.play(ReactorVideoState.POWER_99999);
             sender.addChatMessage(new ChatComponentText("播放反应堆视频: 99999MW"));
+        } else if (mode.equals("hydro") || mode.equals("hydrogen")) {
+            ReactorVideoPlayer.INSTANCE.play(ReactorVideoState.HYDROGEN_DETONATION);
+            sender.addChatMessage(new ChatComponentText("播放反应堆视频: 氢气爆炸"));
         } else if (mode.equals("stop")) {
             ReactorVideoPlayer.INSTANCE.stop();
             sender.addChatMessage(new ChatComponentText("停止播放反应堆视频"));

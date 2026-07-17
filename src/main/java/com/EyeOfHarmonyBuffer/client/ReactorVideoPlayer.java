@@ -11,56 +11,81 @@ import org.lwjgl.opengl.GL11;
 
 public class ReactorVideoPlayer {
 
-    private static final int TICKS_PER_FRAME = 1;
-
     private static final int FRAME_WIDTH = 320;
     private static final int FRAME_HEIGHT = 180;
 
-    private ReactorVideoState currentState = ReactorVideoState.POWER_0;
+    private ReactorVideoState currentState = null;
     private int currentFrameIndex = 0;
-    private int tickCounter = 0;
     private boolean playing = false;
+
+    private long startMillis = 0L;
+    private long elapsedMs = 0L;
 
     public static final ReactorVideoPlayer INSTANCE = new ReactorVideoPlayer();
 
     private ReactorVideoPlayer() {}
 
     public void play(ReactorVideoState state) {
+        if (state == null) return;
+
         this.currentState = state;
         this.currentFrameIndex = 0;
-        this.tickCounter = 0;
         this.playing = true;
 
-        playMainSoundForState(state);
+        this.startMillis = System.currentTimeMillis();
+        this.elapsedMs = 0L;
+
+        if (state.soundId != null && !state.soundId.isEmpty()) {
+            playSoundById(state.soundId);
+        }
     }
 
     public void stop() {
         this.playing = false;
+        this.currentState = null;
+    }
+
+    public boolean isPlaying() {
+        return playing;
     }
 
     public void onClientTick() {
-        if (!playing) return;
+        if (!playing || currentState == null) return;
 
-        tickCounter++;
-        if (tickCounter >= TICKS_PER_FRAME) {
-            tickCounter = 0;
-            currentFrameIndex++;
-
-            if (currentFrameIndex > currentState.maxFrameIndex) {
-                currentFrameIndex = currentState.maxFrameIndex;
-                playing = false;
-            }
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.thePlayer == null) {
+            stop();
+            return;
         }
+
+        this.elapsedMs = System.currentTimeMillis() - this.startMillis;
+
+        if (elapsedMs >= currentState.totalDurationMs) {
+            stop();
+            return;
+        }
+
+        long frameDurationMs = 1000L / currentState.fps;
+        int frame = (int)(elapsedMs / frameDurationMs);
+
+        if (frame < 0) frame = 0;
+        if (frame > currentState.maxFrameIndex) {
+            frame = currentState.maxFrameIndex;
+        }
+
+        this.currentFrameIndex = frame;
     }
 
     public void renderOnHud(Minecraft mc) {
-        if (!playing) return;
+        if (!playing || currentState == null) return;
 
         ScaledResolution res = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int sw = res.getScaledWidth();
         int sh = res.getScaledHeight();
 
         ResourceLocation tex = getCurrentFrameTexture();
+        if (tex == null) return;
+
         mc.getTextureManager().bindTexture(tex);
 
         int x = (sw - FRAME_WIDTH) / 2;
@@ -86,7 +111,18 @@ public class ReactorVideoPlayer {
     }
 
     private ResourceLocation getCurrentFrameTexture() {
-        String frameStr = String.format("%02d", currentFrameIndex);
+        if (currentState == null) return null;
+
+        int digits;
+        if (currentState.maxFrameIndex >= 100) {
+            digits = 3;
+        } else if (currentState.maxFrameIndex >= 10) {
+            digits = 2;
+        } else {
+            digits = 1;
+        }
+
+        String frameStr = String.format("%0" + digits + "d", currentFrameIndex);
 
         String path = String.format(
             "textures/gui/reactor/%s/%s%s.png",
@@ -98,15 +134,18 @@ public class ReactorVideoPlayer {
         return new ResourceLocation(EyeOfHarmonyBuffer.MODID, path);
     }
 
-    private void playMainSoundForState(ReactorVideoState state) {
+    private void playSoundById(String soundId) {
         Minecraft mc = Minecraft.getMinecraft();
+        if (mc == null) return;
+        if (soundId == null || soundId.isEmpty()) return;
         if (mc.theWorld == null || mc.thePlayer == null) return;
-        if (state.soundId == null || state.soundId.isEmpty()) return;
 
-        ResourceLocation loc = new ResourceLocation("eyeofharmonybuffer", state.soundId);
-
-        ISound sound = PositionedSoundRecord.func_147673_a(loc);
-
-        mc.getSoundHandler().playSound(sound);
+        try {
+            ResourceLocation loc = new ResourceLocation("eyeofharmonybuffer", soundId);
+            ISound sound = PositionedSoundRecord.func_147673_a(loc);
+            mc.getSoundHandler().playSound(sound);
+        } catch (java.util.ConcurrentModificationException e) {
+            e.printStackTrace();
+        }
     }
 }
