@@ -68,6 +68,8 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     private int envTicksRemaining = 0;
 
     private GasEnvironmentType currentEnvironmentType = GasEnvironmentType.NONE;
+    private GasEnvironmentType lastReportedEnv = GasEnvironmentType.NONE;
+    private boolean pendingEnvChanged = false;
 
     private static final Map<Fluid, GasEnvironmentType> FLUID_TO_ENV = new Reference2ObjectOpenHashMap<>();
 
@@ -163,21 +165,43 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
 
         if (!aBaseMetaTileEntity.isServerSide()) return;
 
+        boolean canProvideNow = mMachine && aBaseMetaTileEntity.isActive();
+
         if (envTicksRemaining > 0) {
             envTicksRemaining--;
             if (envTicksRemaining == 0 && currentEnvironmentType != GasEnvironmentType.NONE) {
-                GasEnvironmentType old = currentEnvironmentType;
                 currentEnvironmentType = GasEnvironmentType.NONE;
-
-                World w = aBaseMetaTileEntity.getWorld();
-                GasEnvironmentHelper.onProviderEnvironmentChanged(
-                    this,
-                    w,
-                    aBaseMetaTileEntity.getXCoord(),
-                    aBaseMetaTileEntity.getYCoord(),
-                    aBaseMetaTileEntity.getZCoord()
-                );
+                pendingEnvChanged = true;
             }
+        }
+
+        if (canProvideNow && pendingEnvChanged && currentEnvironmentType != lastReportedEnv) {
+            World w = aBaseMetaTileEntity.getWorld();
+            GasEnvironmentHelper.onProviderEnvironmentChanged(
+                this,
+                w,
+                aBaseMetaTileEntity.getXCoord(),
+                aBaseMetaTileEntity.getYCoord(),
+                aBaseMetaTileEntity.getZCoord()
+            );
+            lastReportedEnv = currentEnvironmentType;
+            pendingEnvChanged = false;
+        }
+
+        if (!canProvideNow && lastReportedEnv != GasEnvironmentType.NONE) {
+            World w = aBaseMetaTileEntity.getWorld();
+            currentEnvironmentType = GasEnvironmentType.NONE;
+            envTicksRemaining = 0;
+            pendingEnvChanged = false;
+
+            GasEnvironmentHelper.onProviderEnvironmentChanged(
+                this,
+                w,
+                aBaseMetaTileEntity.getXCoord(),
+                aBaseMetaTileEntity.getYCoord(),
+                aBaseMetaTileEntity.getZCoord()
+            );
+            lastReportedEnv = GasEnvironmentType.NONE;
         }
     }
 
@@ -237,14 +261,7 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         envTicksRemaining = getWirelessModeProcessingTime();
 
         if (currentEnvironmentType != oldEnv) {
-            World w = base.getWorld();
-            GasEnvironmentHelper.onProviderEnvironmentChanged(
-                this,
-                w,
-                base.getXCoord(),
-                base.getYCoord(),
-                base.getZCoord()
-            );
+            pendingEnvChanged = true;
         }
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
@@ -342,6 +359,9 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         super.saveNBTData(aNBT);
         aNBT.setString("EOHB_CurrentGasEnv",
             currentEnvironmentType == null ? GasEnvironmentType.NONE.name() : currentEnvironmentType.name());
+        aNBT.setString("EOHB_LastReportedEnv",
+            lastReportedEnv == null ? GasEnvironmentType.NONE.name() : lastReportedEnv.name());
+        aNBT.setInteger("EOHB_EnvTicksRemaining", envTicksRemaining);
     }
 
     @Override
@@ -357,6 +377,20 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         } else {
             currentEnvironmentType = GasEnvironmentType.NONE;
         }
+
+        if (aNBT.hasKey("EOHB_LastReportedEnv")) {
+            try {
+                lastReportedEnv = GasEnvironmentType
+                    .valueOf(aNBT.getString("EOHB_LastReportedEnv"));
+            } catch (IllegalArgumentException ignored) {
+                lastReportedEnv = GasEnvironmentType.NONE;
+            }
+        } else {
+            lastReportedEnv = GasEnvironmentType.NONE;
+        }
+
+        envTicksRemaining = aNBT.getInteger("EOHB_EnvTicksRemaining");
+        pendingEnvChanged = false;
     }
 
     @Override
@@ -515,13 +549,13 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         if (type == null) return "NONE";
         switch (type) {
             case ACRID:
-                return "Acrid（酸雾）";
+                return "Acrid（酸性环境）";
             case HUMID:
-                return "Humid（潮湿）";
+                return "Humid（潮湿环境）";
             case STABLE:
-                return "Stable（稳定）";
+                return "Stable（稳定环境）";
             case XRANITE:
-                return "Xranite（源石）";
+                return "Xranite（息壤环境）";
             case NONE:
             default:
                 return "无";
