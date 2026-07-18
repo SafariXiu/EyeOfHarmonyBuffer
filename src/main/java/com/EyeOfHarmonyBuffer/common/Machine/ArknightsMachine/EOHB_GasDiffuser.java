@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.IGasEnvironmentProvider;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
@@ -14,14 +16,29 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
@@ -46,6 +63,32 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     private static final int OffsetsY = 20;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
+
+    private static final int ENV_FLUID_PER_RUN = 6000;
+    private int envTicksRemaining = 0;
+
+    private GasEnvironmentType currentEnvironmentType = GasEnvironmentType.NONE;
+
+    private static final Map<Fluid, GasEnvironmentType> FLUID_TO_ENV = new Reference2ObjectOpenHashMap<>();
+
+    static {
+        FLUID_TO_ENV.put(
+            EOHBMaterialPool.Acridgen.getFluidOrGas(1).getFluid(),
+            GasEnvironmentType.ACRID
+        );
+        FLUID_TO_ENV.put(
+            EOHBMaterialPool.Aquagen.getFluidOrGas(1).getFluid(),
+            GasEnvironmentType.HUMID
+        );
+        FLUID_TO_ENV.put(
+            EOHBMaterialPool.Inergen.getFluidOrGas(1).getFluid(),
+            GasEnvironmentType.STABLE
+        );
+        FLUID_TO_ENV.put(
+            EOHBMaterialPool.Xiragen.getFluidOrGas(1).getFluid(),
+            GasEnvironmentType.XRANITE
+        );
+    }
 
     public EOHB_GasDiffuser(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -81,6 +124,130 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     @Override
     public RecipeMap<?> getRecipeMap() {
         return RecipeMaps.GasDiffuser;
+    }
+
+    @Override
+    public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
+        super.onFirstTick(aBaseMetaTileEntity);
+        if (aBaseMetaTileEntity.isServerSide()) {
+            World w = aBaseMetaTileEntity.getWorld();
+            GasEnvironmentHelper.registerProvider(
+                this,
+                w,
+                aBaseMetaTileEntity.getXCoord(),
+                aBaseMetaTileEntity.getYCoord(),
+                aBaseMetaTileEntity.getZCoord()
+            );
+        }
+    }
+
+    @Override
+    public void onRemoval() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide()) {
+            World w = base.getWorld();
+            GasEnvironmentHelper.unregisterProvider(
+                this,
+                w,
+                base.getXCoord(),
+                base.getYCoord(),
+                base.getZCoord()
+            );
+        }
+        super.onRemoval();
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+
+        if (!aBaseMetaTileEntity.isServerSide()) return;
+
+        if (envTicksRemaining > 0) {
+            envTicksRemaining--;
+            if (envTicksRemaining == 0 && currentEnvironmentType != GasEnvironmentType.NONE) {
+                GasEnvironmentType old = currentEnvironmentType;
+                currentEnvironmentType = GasEnvironmentType.NONE;
+
+                World w = aBaseMetaTileEntity.getWorld();
+                GasEnvironmentHelper.onProviderEnvironmentChanged(
+                    this,
+                    w,
+                    aBaseMetaTileEntity.getXCoord(),
+                    aBaseMetaTileEntity.getYCoord(),
+                    aBaseMetaTileEntity.getZCoord()
+                );
+            }
+        }
+    }
+
+    private GasEnvironmentType tryConsumeEnvironmentFluidForRun() {
+        List<FluidStack> stored = getStoredFluidsForColor(Optional.empty());
+        if (stored == null || stored.isEmpty()) {
+            return GasEnvironmentType.NONE;
+        }
+
+        Fluid selectedFluid = null;
+        GasEnvironmentType selectedType = GasEnvironmentType.NONE;
+
+        for (FluidStack fs : stored) {
+            if (fs == null || fs.getFluid() == null) continue;
+            GasEnvironmentType type = FLUID_TO_ENV.get(fs.getFluid());
+            if (type != null && type != GasEnvironmentType.NONE) {
+                selectedFluid = fs.getFluid();
+                selectedType = type;
+                break;
+            }
+        }
+
+        if (selectedFluid == null || selectedType == GasEnvironmentType.NONE) {
+            return GasEnvironmentType.NONE;
+        }
+
+        FluidStack req = new FluidStack(selectedFluid, ENV_FLUID_PER_RUN);
+        if (!depleteInput(req, true)) {
+            return GasEnvironmentType.NONE;
+        }
+
+        if (!depleteInput(req, false)) {
+            return GasEnvironmentType.NONE;
+        }
+
+        return selectedType;
+    }
+
+    @Override
+    public CheckRecipeResult wirelessModeProcessOnce() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.isDead()) {
+            this.lastUsedParallel = 0;
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        GasEnvironmentType envType = tryConsumeEnvironmentFluidForRun();
+        if (envType == GasEnvironmentType.NONE) {
+            this.lastUsedParallel = 0;
+            return CheckRecipeResultRegistry.NO_FUEL_FOUND;
+        }
+
+        this.lastUsedParallel = 1;
+
+        GasEnvironmentType oldEnv = currentEnvironmentType;
+        currentEnvironmentType = envType;
+        envTicksRemaining = getWirelessModeProcessingTime();
+
+        if (currentEnvironmentType != oldEnv) {
+            World w = base.getWorld();
+            GasEnvironmentHelper.onProviderEnvironmentChanged(
+                this,
+                w,
+                base.getXCoord(),
+                base.getYCoord(),
+                base.getZCoord()
+            );
+        }
+
+        return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
     @Override
@@ -171,6 +338,142 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     }
 
     @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        super.saveNBTData(aNBT);
+        aNBT.setString("EOHB_CurrentGasEnv",
+            currentEnvironmentType == null ? GasEnvironmentType.NONE.name() : currentEnvironmentType.name());
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        super.loadNBTData(aNBT);
+        if (aNBT.hasKey("EOHB_CurrentGasEnv")) {
+            try {
+                currentEnvironmentType = GasEnvironmentType
+                    .valueOf(aNBT.getString("EOHB_CurrentGasEnv"));
+            } catch (IllegalArgumentException ignored) {
+                currentEnvironmentType = GasEnvironmentType.NONE;
+            }
+        } else {
+            currentEnvironmentType = GasEnvironmentType.NONE;
+        }
+    }
+
+    @Override
+    public void getWailaNBTData(EntityPlayerMP player,
+                                TileEntity tile,
+                                NBTTagCompound tag,
+                                World world,
+                                int x, int y, int z) {
+        super.getWailaNBTData(player, tile, tag, world, x, y, z);
+
+        String inputFluidName = "";
+        String producedEnvName = GasEnvironmentType.NONE.name();
+
+        List<FluidStack> stored = getStoredFluidsForColor(Optional.empty());
+        if (stored != null) {
+            for (FluidStack fs : stored) {
+                if (fs == null || fs.getFluid() == null) continue;
+                GasEnvironmentType type = FLUID_TO_ENV.get(fs.getFluid());
+                if (type != null && type != GasEnvironmentType.NONE) {
+                    try {
+                        inputFluidName = fs.getLocalizedName();
+                    } catch (Throwable t) {
+                        inputFluidName = fs.getFluid().getName();
+                    }
+                    producedEnvName = type.name();
+                    break;
+                }
+            }
+        }
+
+        tag.setString("EOHB_InputFluidName", inputFluidName);
+        tag.setString("EOHB_ProducedEnvName", producedEnvName);
+
+        GasEnvironmentType cur = currentEnvironmentType == null
+            ? GasEnvironmentType.NONE
+            : currentEnvironmentType;
+        tag.setString("EOHB_CurrentEnvName", cur.name());
+
+        tag.setInteger("EOHB_EnvRadiusChunks", 1);
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack,
+                             List<String> currentTip,
+                             IWailaDataAccessor accessor,
+                             IWailaConfigHandler config) {
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+
+        final NBTTagCompound tag = accessor.getNBTData();
+
+        currentTip.add(EnumChatFormatting.LIGHT_PURPLE + NameGasDiffuser);
+
+        String inputFluidName = tag.getString("EOHB_InputFluidName");
+        if (inputFluidName == null || inputFluidName.isEmpty()) {
+            inputFluidName = EOHB_Waila_None;
+        }
+
+        String inputLabel = StatCollector.translateToLocal("EOHB_Waila_InputFluid");
+        currentTip.add(
+            EnumChatFormatting.AQUA + inputLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + inputFluidName
+        );
+
+        String producedEnvKey = tag.getString("EOHB_ProducedEnvName");
+        GasEnvironmentType producedEnv;
+        try {
+            producedEnv = GasEnvironmentType.valueOf(producedEnvKey);
+        } catch (IllegalArgumentException e) {
+            producedEnv = GasEnvironmentType.NONE;
+        }
+
+        String producedEnvName = getLocalizedEnvName(producedEnv);
+        String producedLabel = StatCollector.translateToLocal("EOHB_Waila_GasDiffuser_ProducedEnv");
+        currentTip.add(
+            EnumChatFormatting.AQUA + producedLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + producedEnvName
+        );
+
+        String currentEnvKey = tag.getString("EOHB_CurrentEnvName");
+        GasEnvironmentType currentEnv;
+        try {
+            currentEnv = GasEnvironmentType.valueOf(currentEnvKey);
+        } catch (IllegalArgumentException e) {
+            currentEnv = GasEnvironmentType.NONE;
+        }
+
+        String currentEnvName = getLocalizedEnvName(currentEnv);
+        String currentLabel = StatCollector.translateToLocal("EOHB_Waila_GasDiffuser_CurrentEnv");
+        currentTip.add(
+            EnumChatFormatting.AQUA + currentLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD + currentEnvName
+        );
+
+        int radiusChunks = tag.getInteger("EOHB_EnvRadiusChunks");
+        if (radiusChunks <= 0) radiusChunks = 1;
+        int diameterChunks = radiusChunks * 2 + 1;
+        int diameterBlocks = diameterChunks * 16;
+
+        String rangeLabel = StatCollector.translateToLocal("EOHB_Waila_GasDiffuser_range");
+        currentTip.add(
+            EnumChatFormatting.AQUA + rangeLabel
+                + EnumChatFormatting.RESET + ": "
+                + EnumChatFormatting.GOLD
+                + diameterChunks + "×" + diameterChunks + " 区块"
+                + EnumChatFormatting.RESET + " (" + diameterBlocks + "×" + diameterBlocks + " 方块)"
+        );
+    }
+
+    @Override
+    protected boolean shouldShowWirelessWaila(NBTTagCompound tag) {
+        return false;
+    }
+
+    @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
         return new EOHB_GasDiffuser(this.mName);
     }
@@ -208,8 +511,29 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX)};
     }
 
+    private String getLocalizedEnvName(GasEnvironmentType type) {
+        if (type == null) return "NONE";
+        switch (type) {
+            case ACRID:
+                return "Acrid（酸雾）";
+            case HUMID:
+                return "Humid（潮湿）";
+            case STABLE:
+                return "Stable（稳定）";
+            case XRANITE:
+                return "Xranite（源石）";
+            case NONE:
+            default:
+                return "无";
+        }
+    }
+
     @Override
     public GasEnvironmentType getProvidedEnvironmentType() {
-        return null;
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.isDead() || !mMachine || !base.isActive()) {
+            return GasEnvironmentType.NONE;
+        }
+        return currentEnvironmentType == null ? GasEnvironmentType.NONE : currentEnvironmentType;
     }
 }

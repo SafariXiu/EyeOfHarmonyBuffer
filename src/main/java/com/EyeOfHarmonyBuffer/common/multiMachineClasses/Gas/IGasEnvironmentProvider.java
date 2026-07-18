@@ -3,25 +3,24 @@ package com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas;
 /**
  * 环境气体提供者接口。
  * <p>
- * 实现该接口的 TileEntity/机器会在自己所在位置（以及之后你扩展的范围逻辑内）
+ * 实现该接口的 TileEntity/机器会在自己所在区块为中心的一定范围内
  * “提供”一种 {@link GasEnvironmentType} 环境，用于被其它需要环境的机器检测。
  *
- * 适合在哪些类上实现：
+ * 具体 AoE 规则由 {@link GasEnvironmentHelper} 统一管理：
  * <ul>
- *     <li>各种“发生器”、“环境控制器”、“场发生器”等主动改变周围环境的机器。</li>
- *     <li>例如：惰性/稳定化环境控制机、潮湿环境发生器、酸性阶段处理室、土壤化环境站等。</li>
+ *     <li>当前实现为：以 Provider 所在区块为中心，周围 3×3 区块都视为受其影响；</li>
+ *     <li>当多个 Provider 的 AoE 重叠时，按 {@link GasEnvironmentType#priority} 选择最终生效环境；</li>
+ *     <li>Provider 只需正确返回当前自身提供的类型，不关心范围与冲突细节。</li>
  * </ul>
  *
- * 典型使用时机：
+ * 生命周期要求：
  * <ul>
- *     <li>机器工作、消耗能量/资源时，返回对应的环境类型；</li>
- *     <li>机器停止工作、缺资源时，可以返回 {@link GasEnvironmentType#NONE}，表示此时不再提供环境。</li>
- * </ul>
- *
- * 与其它组件的关系：
- * <ul>
- *     <li>{@link GasEnvironmentHelper} 会在 {@code getEnvironmentAt} 中检查某位置是否有实现本接口的 Tile。</li>
- *     <li>{@link IGasEnvironmentConsumer} 的机器会通过 Helper 查询当前位置的环境，并与自身需求比较。</li>
+ *     <li>在 Tile 放置/第一次 Tick 时调用
+ *         {@link GasEnvironmentHelper#registerProvider(IGasEnvironmentProvider, net.minecraft.world.World, int, int, int)}；</li>
+ *     <li>在 Tile 移除/无效化时调用
+ *         {@link GasEnvironmentHelper#unregisterProvider(IGasEnvironmentProvider, net.minecraft.world.World, int, int, int)}；</li>
+ *     <li>当 {@link #getProvidedEnvironmentType()} 的返回值发生变化时，
+ *         调用 {@link GasEnvironmentHelper#onProviderEnvironmentChanged(IGasEnvironmentProvider, net.minecraft.world.World, int, int, int)}。</li>
  * </ul>
  */
 
