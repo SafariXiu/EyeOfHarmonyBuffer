@@ -368,5 +368,117 @@ public class FillingUnitRecipes implements IRecipePool {
             .eut(20000)
             .duration(10 * SECONDS)
             .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.PyrroliteGas.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_ZHUO_TONG.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.HetoniteGas.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_HE_TONG.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.CupriumGas.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_CHI_TONG.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.HeavyXiragen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.ZHONG_XI_RANG_QI.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Xiragen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.XI_RANG_QI.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Acridgen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.SUAN_QI.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Aquagen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.SHUI_ZHENG_QI.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Inergen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.DUO_QI.meta)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
     }
 }

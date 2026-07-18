@@ -133,6 +133,7 @@ public enum GTCMItemList {
     SuanQi,
     ShuiZhengQi,
     XiRangQi,
+    ChiTongNaiYaPing,
 
     YuanShiMainBlock,
     YuanShiBlock,

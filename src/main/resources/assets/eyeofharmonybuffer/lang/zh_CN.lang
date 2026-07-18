@@ -584,6 +584,14 @@ EOHB_ContaminatedOrundumSlurry=污染源石浆料
 EOHB_StabilizedHigh_EnergyOrundumSolvent=稳定高能源石溶剂
 EOHB_AnomalousEnergyCondensate=异常能量凝集体
 EOHB_AdvancedOrundumFuelPrecursor=高级源石燃料前体
+EOHB_Acridgen=酸气
+EOHB_Aquagen=水蒸气
+EOHB_Inergen=惰气
+EOHB_Xiragen=息壤气
+EOHB_HeavyXiragen=重息壤气
+EOHB_CupriumGas=气态赤铜
+EOHB_HetoniteGas=气态赫铜
+EOHB_PyrroliteGas=气态灼铜
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=奇点稳定环等级不足！

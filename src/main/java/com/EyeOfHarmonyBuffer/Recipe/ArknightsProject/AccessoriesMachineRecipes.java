@@ -76,5 +76,16 @@ public class AccessoriesMachineRecipes implements IRecipePool {
             .eut(5000)
             .duration(10 * SECONDS)
             .addTo(AccessoriesMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhuoTongKuai.get(5)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhuoTongLingJian.get(1)
+            )
+            .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(AccessoriesMachine);
     }
 }

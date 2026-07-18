@@ -584,6 +584,14 @@ EOHB_ContaminatedOrundumSlurry=Contaminated Orundum Slurry
 EOHB_StabilizedHigh_EnergyOrundumSolvent=Stabilized High-Energy Orundum Solvent
 EOHB_AnomalousEnergyCondensate=Anomalous Energy Condensate
 EOHB_AdvancedOrundumFuelPrecursor=Advanced Orundum Fuel Precursor
+EOHB_Acridgen=Acridgen
+EOHB_Aquagen=Aquagen
+EOHB_Inergen=Inergen
+EOHB_Xiragen=Xiragen
+EOHB_HeavyXiragen=Heavy Xiragen
+EOHB_CupriumGas=Cuprium Gas
+EOHB_HetoniteGas=Hetonite Gas
+EOHB_PyrroliteGas=Pyrrolite Gas
 
 #RecipeResultRegistry
 GT5U.gui.text.recipe_result.SingularityStabilizationRingCasingsLive=Singularity Stabilization Ring level insufficient!

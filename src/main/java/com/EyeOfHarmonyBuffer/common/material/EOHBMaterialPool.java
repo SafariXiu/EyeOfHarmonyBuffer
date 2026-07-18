@@ -305,6 +305,102 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff Acridgen = new Werkstoff(
+        new short[] { 255, 255, 0 },
+        EOHB_Acridgen,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 23,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff Aquagen = new Werkstoff(
+        new short[] { 128, 128, 128 },
+        EOHB_Aquagen,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 24,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff Inergen = new Werkstoff(
+        new short[] { 150, 200, 255 },
+        EOHB_Inergen,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 25,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff Xiragen = new Werkstoff(
+        new short[] { 150, 255, 150 },
+        EOHB_Xiragen,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 26,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HeavyXiragen = new Werkstoff(
+        new short[] { 0, 100, 0 },
+        EOHB_HeavyXiragen,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 27,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff CupriumGas = new Werkstoff(
+        new short[] { 255, 150, 150 },
+        EOHB_CupriumGas,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 28,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HetoniteGas = new Werkstoff(
+        new short[] { 255, 0, 0 },
+        EOHB_HetoniteGas,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 29,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff PyrroliteGas = new Werkstoff(
+        new short[] { 255, 80, 0 },
+        EOHB_PyrroliteGas,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 30,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

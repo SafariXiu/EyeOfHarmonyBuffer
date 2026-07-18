@@ -341,6 +341,14 @@ public class TextLocalization {
     public static final String EOHB_StabilizedHigh_EnergyOrundumSolvent;
     public static final String EOHB_AnomalousEnergyCondensate;
     public static final String EOHB_AdvancedOrundumFuelPrecursor;
+    public static final String EOHB_Acridgen;
+    public static final String EOHB_Aquagen;
+    public static final String EOHB_Inergen;
+    public static final String EOHB_Xiragen;
+    public static final String EOHB_HeavyXiragen;
+    public static final String EOHB_CupriumGas;
+    public static final String EOHB_HetoniteGas;
+    public static final String EOHB_PyrroliteGas;
 
     //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
@@ -793,6 +801,14 @@ public class TextLocalization {
         EOHB_StabilizedHigh_EnergyOrundumSolvent = TextHandler.texter("Stabilized High-Energy Orundum Solvent","EOHB_StabilizedHigh_EnergyOrundumSolvent");
         EOHB_AnomalousEnergyCondensate = TextHandler.texter("Anomalous Energy Condensate","EOHB_AnomalousEnergyCondensate");
         EOHB_AdvancedOrundumFuelPrecursor = TextHandler.texter("Advanced Orundum Fuel Precursor","EOHB_AdvancedOrundumFuelPrecursor");
+        EOHB_Acridgen = TextHandler.texter("Acridgen","EOHB_Acridgen");
+        EOHB_Aquagen = TextHandler.texter("Aquagen","EOHB_Aquagen");
+        EOHB_Inergen = TextHandler.texter("Inergen","EOHB_Inergen");
+        EOHB_Xiragen = TextHandler.texter("Xiragen","EOHB_Xiragen");
+        EOHB_HeavyXiragen = TextHandler.texter("Heavy Xiragen","EOHB_HeavyXiragen");
+        EOHB_CupriumGas = TextHandler.texter("Cuprium Gas","EOHB_CupriumGas");
+        EOHB_HetoniteGas = TextHandler.texter("Hetonite Gas","EOHB_HetoniteGas");
+        EOHB_PyrroliteGas = TextHandler.texter("Pyrrolite Gas","EOHB_PyrroliteGas");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");

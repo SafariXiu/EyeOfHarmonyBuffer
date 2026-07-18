@@ -160,7 +160,7 @@ public class RecipeMaps {
 
     public static final RecipeMap<RecipeMapBackend> ShapingMachine = RecipeMapBuilder
         .of(EOHB_Recipe_ShapingMachine)
-        .maxIO(1, 1, 0, 0)
+        .maxIO(1, 1, 1, 0)
         .neiRecipeBackgroundSize(170,185)
         .useCustomFilterForNEI()
         .frontend(RefiningFurnaceFrontend::new)
