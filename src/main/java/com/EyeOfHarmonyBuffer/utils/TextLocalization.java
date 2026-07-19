@@ -321,6 +321,13 @@ public class TextLocalization {
     public static final String Tooltip_GasDiffuser_01;
     public static final String Tooltip_GasDiffuser_02;
 
+    public static final String NameFluid_GasTransmutingUnit;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_MachineType;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_Controller;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_00;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_01;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -405,7 +412,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_HighDensityEnergyFluidGenerator;
     public static final String EOHB_Recipe_IsotopeInfusionReactor;
     public static final String EOHB_Recipe_GasDiffuser;
-    public static final String EOHB_Recipe_ForgeOfTheSky_Stable;
+    public static final String EOHB_Recipe_Fluid_GasTransmutingUnit;
 
     public TextLocalization() {
     }
@@ -765,6 +772,14 @@ public class TextLocalization {
         Tooltip_GasDiffuser_01 = TextHandler.texter("It only changes the surroundings during its effective operation and will not cause any harm to the actual environment.","Tooltip_GasDiffuser_01");
         Tooltip_GasDiffuser_02 = TextHandler.texter("\"This thing is not for you to use as an air purifier, and please don’t pour perfume into it next time, okay?\"","Tooltip_GasDiffuser_02");
 
+        //液气转化机
+        NameFluid_GasTransmutingUnit = TextHandler.texter("","NameFluid_GasTransmutingUnit");
+        Tooltip_Fluid_GasTransmutingUnit_MachineType = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_MachineType");
+        Tooltip_Fluid_GasTransmutingUnit_Controller = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_Controller");
+        Tooltip_Fluid_GasTransmutingUnit_00 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_00");
+        Tooltip_Fluid_GasTransmutingUnit_01 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_01");
+        Tooltip_Fluid_GasTransmutingUnit_02 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -849,6 +864,6 @@ public class TextLocalization {
         EOHB_Recipe_HighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","EOHB_Recipe_HighDensityEnergyFluidGenerator");
         EOHB_Recipe_IsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor","EOHB_Recipe_IsotopeInfusionReactor");
         EOHB_Recipe_GasDiffuser = TextHandler.texter("Gas Diffuser","EOHB_Recipe_GasDiffuser");
-        EOHB_Recipe_ForgeOfTheSky_Stable = TextHandler.texter("Forge Of TheSky-Stable","EOHB_Recipe_ForgeOfTheSky_Stable");
+        EOHB_Recipe_Fluid_GasTransmutingUnit = TextHandler.texter("Fluid-Gas Transmuting Unit","EOHB_Recipe_Fluid_GasTransmutingUnit");
     }
 }

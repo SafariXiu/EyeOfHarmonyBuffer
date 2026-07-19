@@ -303,6 +303,12 @@ Tooltip_GasDiffuser_Controller=§7气体散布机的§b控制器方块§r
 Tooltip_GasDiffuser_00=§7可以将持续输入的气体§e散布§7到自身周围，从而§a改变周围环境状态§7的设备§r
 Tooltip_GasDiffuser_01=§7只在生效期间改变自身周围环境，不会对实际环境造成危害§r
 Tooltip_GasDiffuser_02=§e“这东西不是拿来给你们当空气净化器用的，下一次别往里面倒香水好吗？”
+NameFluid_GasTransmutingUnit=§b液气转化机
+Tooltip_Fluid_GasTransmutingUnit_MachineType=§b液气转化机
+Tooltip_Fluid_GasTransmutingUnit_Controller=§7液气转化机的§b控制器方块§r
+Tooltip_Fluid_GasTransmutingUnit_00=§7通过持续输入§6液化息壤§7激活，可以将物品的形态在§e气态§7和§e液态§7之间进行转化的设备§r
+Tooltip_Fluid_GasTransmutingUnit_01=§a特殊的物态转化设备§r
+Tooltip_Fluid_GasTransmutingUnit_02=§7看似平平无奇，但其内部的各类元件，哪怕最小的§e温度检测单元§7，都是本时代§6源石技艺研究§7的最高结晶。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -330,7 +336,7 @@ EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
 EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
 EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
 EOHB_Recipe_GasDiffuser=气体散布机
-EOHB_Recipe_ForgeOfTheSky_Stable=天有洪炉-稳定环境
+EOHB_Recipe_Fluid_GasTransmutingUnit=液气转化机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -615,6 +621,7 @@ EOHB_Environment_ACRID=需要的气体环境：酸性
 EOHB_Environment_XRANITE=需要的气体环境：息壤
 EOHB_Environment_NONE=需要的气体环境：无气体
 EOHB_Environment_ANY=需要的气体环境：任意
+GT5U.gui.text.recipe.Fluid_GasTransmutingUnitInfo=需要持续通入液化息壤
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始

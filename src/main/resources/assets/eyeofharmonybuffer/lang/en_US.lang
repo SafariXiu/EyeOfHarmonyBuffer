@@ -303,6 +303,12 @@ Tooltip_GasDiffuser_Controller=Controller block of the Gas Diffuser
 Tooltip_GasDiffuser_00=It is a device that can disperse continuously‑input gas around itself, thereby changing the surrounding environmental state.
 Tooltip_GasDiffuser_01=It only changes the surroundings during its effective operation and will not cause any harm to the actual environment.
 Tooltip_GasDiffuser_02="This thing is not for you to use as an air purifier, and please don’t pour perfume into it next time, okay?"
+NameFluid_GasTransmutingUnit=Fluid-Gas Transmuting Unit
+Tooltip_Fluid_GasTransmutingUnit_MachineType=Fluid-Gas Transmuting Unit
+Tooltip_Fluid_GasTransmutingUnit_Controller=Controller block of the Fluid-Gas Transmuting Unit 
+Tooltip_Fluid_GasTransmutingUnit_00=When activated by a steady input of Liquid Xiranite, this facility can transmute fluid materials into gas, and vice versa.
+Tooltip_Fluid_GasTransmutingUnit_01=A special facility that can transmute materials into another state.
+Tooltip_Fluid_GasTransmutingUnit_02= The process may sound simple, but every single component of the facility, down to the most basic thermometer, is the pinnacle of modern Originium Arts and technology.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -330,7 +336,7 @@ EOHB_Recipe_ElectricTypeTwoMiningMachine=Electric Type‑II Mining Machine
 EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
 EOHB_Recipe_IsotopeInfusionReactor=Isotope Infusion Reactor
 EOHB_Recipe_GasDiffuser=Gas Diffuser
-EOHB_Recipe_ForgeOfTheSky_Stable=Forge Of The Sky-Stable
+EOHB_Recipe_Fluid_GasTransmutingUnit=Fluid-Gas Transmuting Unit
 
 #item
 EOHB_Harmony=Harmony
@@ -615,6 +621,7 @@ EOHB_Environment_ACRID=Required Gas Environment: Acrid
 EOHB_Environment_XRANITE=Required Gas Environment: Xranite
 EOHB_Environment_NONE=Required Gas Environment: None
 EOHB_Environment_ANY=Required Gas Environment: Any
+GT5U.gui.text.recipe.Fluid_GasTransmutingUnitInfo=Requires continuous input of Liquid Xiranite
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
