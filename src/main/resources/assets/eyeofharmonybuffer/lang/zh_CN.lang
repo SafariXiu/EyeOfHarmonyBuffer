@@ -330,6 +330,7 @@ EOHB_Recipe_ElectricTypeTwoMiningMachine=电力二型矿机
 EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
 EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
 EOHB_Recipe_GasDiffuser=气体散布机
+EOHB_Recipe_ForgeOfTheSky_Stable=天有洪炉-稳定环境
 
 #item
 EOHB_Harmony=鸿蒙
@@ -604,9 +605,16 @@ GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=检测不到水源！在控�
 GT5U.gui.text.recipe_result.UnsupportedFluid=不支持的液体！
 GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器背后第10格、向下1格的位置必须是液体源!
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
+GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=当前环境不满足本配方的气体要求
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境
+EOHB_Environment_STABLE=需要的气体环境：稳定
+EOHB_Environment_HUMID=需要的气体环境：湿润
+EOHB_Environment_ACRID=需要的气体环境：酸性
+EOHB_Environment_XRANITE=需要的气体环境：息壤
+EOHB_Environment_NONE=需要的气体环境：无气体
+EOHB_Environment_ANY=需要的气体环境：任意
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始

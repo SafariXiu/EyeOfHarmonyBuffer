@@ -66,6 +66,12 @@ public class TextLocalization {
     public static final String EOHB_MachineType_10;
     public static final String EOHB_MachineType_11;
     public static final String EOHB_MachineType_12;
+    public static final String EOHB_Environment_STABLE;
+    public static final String EOHB_Environment_HUMID;
+    public static final String EOHB_Environment_ACRID;
+    public static final String EOHB_Environment_XRANITE;
+    public static final String EOHB_Environment_NONE;
+    public static final String EOHB_Environment_ANY;
 
     //机器
     public static final String NameVendingMachines;
@@ -399,6 +405,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_HighDensityEnergyFluidGenerator;
     public static final String EOHB_Recipe_IsotopeInfusionReactor;
     public static final String EOHB_Recipe_GasDiffuser;
+    public static final String EOHB_Recipe_ForgeOfTheSky_Stable;
 
     public TextLocalization() {
     }
@@ -457,6 +464,12 @@ public class TextLocalization {
         EOHB_MachineType_10 = TextHandler.texter("Hint Block #10","EOHB_MachineType_10");
         EOHB_MachineType_11 = TextHandler.texter("Hint Block #11","EOHB_MachineType_11");
         EOHB_MachineType_12 = TextHandler.texter("Hint Block #12","EOHB_MachineType_12");
+        EOHB_Environment_STABLE = TextHandler.texter("Required Gas Environment: Stable","EOHB_Environment_STABLE");
+        EOHB_Environment_HUMID = TextHandler.texter("Required Gas Environment: Humid","EOHB_Environment_HUMID");
+        EOHB_Environment_ACRID = TextHandler.texter("Required Gas Environment: Acrid","EOHB_Environment_ACRID");
+        EOHB_Environment_XRANITE = TextHandler.texter("Required Gas Environment: Xranite","EOHB_Environment_XRANITE");
+        EOHB_Environment_NONE = TextHandler.texter("Required Gas Environment: None","EOHB_Environment_NONE");
+        EOHB_Environment_ANY = TextHandler.texter("Required Gas Environment: Any","EOHB_Environment_ANY");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
@@ -836,5 +849,6 @@ public class TextLocalization {
         EOHB_Recipe_HighDensityEnergyFluidGenerator = TextHandler.texter("High-Density Energy Fluid Generator","EOHB_Recipe_HighDensityEnergyFluidGenerator");
         EOHB_Recipe_IsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor","EOHB_Recipe_IsotopeInfusionReactor");
         EOHB_Recipe_GasDiffuser = TextHandler.texter("Gas Diffuser","EOHB_Recipe_GasDiffuser");
+        EOHB_Recipe_ForgeOfTheSky_Stable = TextHandler.texter("Forge Of TheSky-Stable","EOHB_Recipe_ForgeOfTheSky_Stable");
     }
 }

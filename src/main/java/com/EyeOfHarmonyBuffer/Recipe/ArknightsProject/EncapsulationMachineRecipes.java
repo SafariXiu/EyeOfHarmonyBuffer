@@ -134,5 +134,17 @@ public class EncapsulationMachineRecipes implements IRecipePool {
             .eut(50000)
             .duration(10 * SECONDS)
             .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1),
+                GTCMItemList.XiRang.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.FenLiXin.get(2)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
     }
 }

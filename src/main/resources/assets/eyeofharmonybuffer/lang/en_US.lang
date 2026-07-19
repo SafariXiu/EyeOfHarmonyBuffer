@@ -330,6 +330,7 @@ EOHB_Recipe_ElectricTypeTwoMiningMachine=Electric Type‑II Mining Machine
 EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
 EOHB_Recipe_IsotopeInfusionReactor=Isotope Infusion Reactor
 EOHB_Recipe_GasDiffuser=Gas Diffuser
+EOHB_Recipe_ForgeOfTheSky_Stable=Forge Of The Sky-Stable
 
 #item
 EOHB_Harmony=Harmony
@@ -604,9 +605,16 @@ GT5U.gui.text.recipe_result.NoWaterSourceBehindDown=No water source detected! A 
 GT5U.gui.text.recipe_result.UnsupportedFluid=Unsupported fluid!
 GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source block is required 10 blocks behind and 1 block below the controller
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block!
+GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=The current environment does not meet the gas requirements of this recipe
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.
+EOHB_Environment_STABLE=Required Gas Environment: Stable
+EOHB_Environment_HUMID=Required Gas Environment: Humid
+EOHB_Environment_ACRID=Required Gas Environment: Acrid
+EOHB_Environment_XRANITE=Required Gas Environment: Xranite
+EOHB_Environment_NONE=Required Gas Environment: None
+EOHB_Environment_ANY=Required Gas Environment: Any
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start
