@@ -1,20 +1,32 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvRecipeFlags;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.UpgradableOrundumWirelessMultiMachineBase;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import com.gtnewhorizons.angelica.shadow.javax.annotation.Nonnull;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
+import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.OverclockCalculator;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
@@ -50,6 +62,51 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
     public EOHB_PurificationUnit(String aName) {
         super(aName);
         setWirelessCycleNum(1);
+    }
+
+    @Override
+    protected ProcessingLogic createProcessingLogic() {
+
+        return new GTCM_ProcessingLogic() {
+
+            @NotNull
+            @Override
+            protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                GasEnvironmentType env = getCurrentEnvironment();
+
+                int mask = recipe.mSpecialValue;
+
+                if (GasEnvRecipeFlags.isEnvAllowed(mask, env)) {
+                    return CheckRecipeResultRegistry.SUCCESSFUL;
+                } else {
+                    return SimpleCheckRecipeResult.ofFailure("ForgeOfTheSky.EnvMismatch");
+                }
+            }
+
+            @NotNull
+            @Override
+            public CheckRecipeResult process() {
+
+                setEuModifier(getEuModifier());
+                setSpeedBonus(getSpeedBonus());
+                setOverclockType(
+                    isEnablePerfectOverclock()
+                        ? OverclockType.PerfectOverclock
+                        : OverclockType.NormalOverclock
+                );
+
+                return super.process();
+            }
+
+            @Nonnull
+            @Override
+            protected OverclockCalculator createOverclockCalculator(@Nonnull GTRecipe recipe) {
+                return wirelessMode
+                    ? OverclockCalculator.ofNoOverclock(recipe)
+                    : super.createOverclockCalculator(recipe);
+            }
+
+        }.setMaxParallelSupplier(this::getLimitedMaxParallel);
     }
 
     @NotNull
@@ -113,7 +170,7 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
                 .addElement(
                     'D',
                     buildHatchAdder(EOHB_PurificationUnit.class)
-                        .atLeast(InputHatch,OutputHatch)
+                        .atLeast(InputHatch, OutputHatch, InputBus)
                         .casingIndex(CASING_INDEX)
                         .hint(1)
                         .buildAndChain(
@@ -141,6 +198,7 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
+            .addInputBus("1+", EOHB_MachineType_1)
             .addInputHatch("1+", EOHB_MachineType_1)
             .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
@@ -177,5 +235,17 @@ public class EOHB_PurificationUnit extends UpgradableOrundumWirelessMultiMachine
                     .build() };
         }
         return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
+    }
+
+    private GasEnvironmentType getCurrentEnvironment() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) return GasEnvironmentType.NONE;
+
+        return GasEnvironmentHelper.getEnvironmentAt(
+            base.getWorld(),
+            base.getXCoord(),
+            base.getYCoord(),
+            base.getZCoord()
+        );
     }
 }
