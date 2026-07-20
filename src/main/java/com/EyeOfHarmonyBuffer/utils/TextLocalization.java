@@ -328,6 +328,14 @@ public class TextLocalization {
     public static final String Tooltip_Fluid_GasTransmutingUnit_01;
     public static final String Tooltip_Fluid_GasTransmutingUnit_02;
 
+    public static final String NameSolid_GasTransmutingUnit;
+    public static final String Tooltip_Solid_GasTransmutingUnit_MachineType;
+    public static final String Tooltip_Solid_GasTransmutingUnit_Controller;
+    public static final String Tooltip_Solid_GasTransmutingUnit_00;
+    public static final String Tooltip_Solid_GasTransmutingUnit_01;
+    public static final String Tooltip_Solid_GasTransmutingUnit_02;
+    public static final String Tooltip_Solid_GasTransmutingUnit_03;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -413,6 +421,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_IsotopeInfusionReactor;
     public static final String EOHB_Recipe_GasDiffuser;
     public static final String EOHB_Recipe_Fluid_GasTransmutingUnit;
+    public static final String EOHB_Recipe_Solid_GasTransmutingUnit;
 
     public TextLocalization() {
     }
@@ -780,6 +789,15 @@ public class TextLocalization {
         Tooltip_Fluid_GasTransmutingUnit_01 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_01");
         Tooltip_Fluid_GasTransmutingUnit_02 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_02");
 
+        //固气转化机
+        NameSolid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","NameSolid_GasTransmutingUnit");
+        Tooltip_Solid_GasTransmutingUnit_MachineType = TextHandler.texter("Solid-Gas Transmuting Unit","Tooltip_Solid_GasTransmutingUnit_MachineType");
+        Tooltip_Solid_GasTransmutingUnit_Controller = TextHandler.texter("Controller block of the Solid-Gas Transmuting Unit","Tooltip_Solid_GasTransmutingUnit_Controller");
+        Tooltip_Solid_GasTransmutingUnit_00 = TextHandler.texter("When activated by a steady input of Xiragen, this facility can transmute solid materials into gas, and vice versa.","Tooltip_Solid_GasTransmutingUnit_00");
+        Tooltip_Solid_GasTransmutingUnit_01 = TextHandler.texter("A special facility that can transmute materials into another state. During the design phase, the engineers accessed every","Tooltip_Solid_GasTransmutingUnit_01");
+        Tooltip_Solid_GasTransmutingUnit_02 = TextHandler.texter("entry on Originium Arts and technology in the SOW database. Successful recovery of data lost during the Aggeloi War","Tooltip_Solid_GasTransmutingUnit_02");
+        Tooltip_Solid_GasTransmutingUnit_03 = TextHandler.texter("provided crucial inspiration for the scientists today.","Tooltip_Solid_GasTransmutingUnit_03");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -865,5 +883,6 @@ public class TextLocalization {
         EOHB_Recipe_IsotopeInfusionReactor = TextHandler.texter("Isotope Infusion Reactor","EOHB_Recipe_IsotopeInfusionReactor");
         EOHB_Recipe_GasDiffuser = TextHandler.texter("Gas Diffuser","EOHB_Recipe_GasDiffuser");
         EOHB_Recipe_Fluid_GasTransmutingUnit = TextHandler.texter("Fluid-Gas Transmuting Unit","EOHB_Recipe_Fluid_GasTransmutingUnit");
+        EOHB_Recipe_Solid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","EOHB_Recipe_Solid_GasTransmutingUnit");
     }
 }

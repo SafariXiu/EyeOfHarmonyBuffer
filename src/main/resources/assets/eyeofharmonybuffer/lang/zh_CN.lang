@@ -309,6 +309,13 @@ Tooltip_Fluid_GasTransmutingUnit_Controller=§7液气转化机的§b控制器方
 Tooltip_Fluid_GasTransmutingUnit_00=§7通过持续输入§6液化息壤§7激活，可以将物品的形态在§e气态§7和§e液态§7之间进行转化的设备§r
 Tooltip_Fluid_GasTransmutingUnit_01=§a特殊的物态转化设备§r
 Tooltip_Fluid_GasTransmutingUnit_02=§7看似平平无奇，但其内部的各类元件，哪怕最小的§e温度检测单元§7，都是本时代§6源石技艺研究§7的最高结晶。§r
+NameSolid_GasTransmutingUnit=§b固气转化机
+Tooltip_Solid_GasTransmutingUnit_MachineType=§b固气转化机
+Tooltip_Solid_GasTransmutingUnit_Controller=§7固气转化机的§b控制器方块§r
+Tooltip_Solid_GasTransmutingUnit_00=§7通过持续通入§6息壤气§7激活，可以将物品的物质形态在§e气态§7和§e固态§7之间进行转化的设备§r
+Tooltip_Solid_GasTransmutingUnit_01=§a特殊的物态转化设备。§r
+Tooltip_Solid_GasTransmutingUnit_02=§7为了设计这些设备，工程师们从§bS.O.W§7的数据库中调阅了全部的§6源石技艺研究数据§7。§r
+Tooltip_Solid_GasTransmutingUnit_03=§7那些自§e天使战争§7以来丢失又被寻回的资料，极大程度上启发了如今的人们。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -337,6 +344,7 @@ EOHB_Recipe_HighDensityEnergyFluidGenerator=高密度能量液体发生器
 EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
 EOHB_Recipe_GasDiffuser=气体散布机
 EOHB_Recipe_Fluid_GasTransmutingUnit=液气转化机
+EOHB_Recipe_Solid_GasTransmutingUnit=固气转化机
 
 #item
 EOHB_Harmony=鸿蒙

@@ -309,6 +309,13 @@ Tooltip_Fluid_GasTransmutingUnit_Controller=Controller block of the Fluid-Gas Tr
 Tooltip_Fluid_GasTransmutingUnit_00=When activated by a steady input of Liquid Xiranite, this facility can transmute fluid materials into gas, and vice versa.
 Tooltip_Fluid_GasTransmutingUnit_01=A special facility that can transmute materials into another state.
 Tooltip_Fluid_GasTransmutingUnit_02= The process may sound simple, but every single component of the facility, down to the most basic thermometer, is the pinnacle of modern Originium Arts and technology.
+NameSolid_GasTransmutingUnit=Solid-Gas Transmuting Unit
+Tooltip_Solid_GasTransmutingUnit_MachineType=Solid-Gas Transmuting Unit
+Tooltip_Solid_GasTransmutingUnit_Controller=Controller block of the Solid-Gas Transmuting Unit
+Tooltip_Solid_GasTransmutingUnit_00=When activated by a steady input of Xiragen, this facility can transmute solid materials into gas, and vice versa.
+Tooltip_Solid_GasTransmutingUnit_01=A special facility that can transmute materials into another state. During the design phase, the engineers accessed every
+Tooltip_Solid_GasTransmutingUnit_02=entry on Originium Arts and technology in the SOW database. Successful recovery of data lost during the Aggeloi War
+Tooltip_Solid_GasTransmutingUnit_03=provided crucial inspiration for the scientists today.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -337,6 +344,7 @@ EOHB_Recipe_HighDensityEnergyFluidGenerator=High-Density Energy Fluid Generator
 EOHB_Recipe_IsotopeInfusionReactor=Isotope Infusion Reactor
 EOHB_Recipe_GasDiffuser=Gas Diffuser
 EOHB_Recipe_Fluid_GasTransmutingUnit=Fluid-Gas Transmuting Unit
+EOHB_Recipe_Solid_GasTransmutingUnit=Solid-Gas Transmuting Unit
 
 #item
 EOHB_Harmony=Harmony

@@ -35,6 +35,7 @@ public class MachineLoader {
     public static ItemStack IsotopeInfusionReactor;
     public static ItemStack GasDiffuser;
     public static ItemStack Fluid_GasTransmutingUnit;
+    public static ItemStack Solid_GasTransmutingUnit;
 
     private final static int MachineBlockID = 23000;
 
@@ -234,5 +235,12 @@ public class MachineLoader {
             TextLocalization.NameFluid_GasTransmutingUnit
         ).getStackForm(1);
         GTCMItemList.Fluid_GasTransmutingUnit.set(Fluid_GasTransmutingUnit);
+
+        Solid_GasTransmutingUnit = new EOHB_Solid_GasTransmutingUnit(
+            MachineBlockID + 29,
+            "NameSolid_GasTransmutingUnit",
+            TextLocalization.NameSolid_GasTransmutingUnit
+        ).getStackForm(1);
+        GTCMItemList.Solid_GasTransmutingUnit.set(Solid_GasTransmutingUnit);
     }
 }

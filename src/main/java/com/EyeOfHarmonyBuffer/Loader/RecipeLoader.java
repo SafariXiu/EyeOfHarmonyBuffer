@@ -47,7 +47,8 @@ public class RecipeLoader {
             new HighDensityEnergyFluidGeneratorRecipes(),
             new IsotopeInfusionReactorRecipes(),
             new GasDiffuserRecipes(),
-            new Fluid_GasTransmutingUnitRecipes()
+            new Fluid_GasTransmutingUnitRecipes(),
+            new Solid_GasTransmutingUnitRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

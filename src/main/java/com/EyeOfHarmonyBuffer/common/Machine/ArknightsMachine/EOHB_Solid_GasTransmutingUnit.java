@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
-import bartworks.common.loaders.ItemRegistry;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.UpgradableOrundumWirelessMultiMachineBase;
@@ -39,19 +38,19 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.StructureTooComplex;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
+import static gregtech.api.GregTechAPI.sBlockCasings2;
 import static gregtech.api.enums.HatchElement.*;
-import static gregtech.api.enums.HatchElement.OutputHatch;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMultiMachineBase<EOHB_Fluid_GasTransmutingUnit>
+public class EOHB_Solid_GasTransmutingUnit extends UpgradableOrundumWirelessMultiMachineBase<EOHB_Solid_GasTransmutingUnit>
     implements IConstructable, ISurvivalConstructable {
 
-    private static IStructureDefinition<EOHB_Fluid_GasTransmutingUnit> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainFluid_GasTransmutingUnit";
-    private static final int OffsetsX = 6;
-    private static final int OffsetsY = 14;
+    private static IStructureDefinition<EOHB_Solid_GasTransmutingUnit> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainSolid_GasTransmutingUnit";
+    private static final int OffsetsX = 7;
+    private static final int OffsetsY = 15;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 16;
     private static final int CASING_INDEX1 = 183;
@@ -62,16 +61,16 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
     private int mFluidConsumeTicker = 0;
 
     private static final net.minecraftforge.fluids.Fluid XIRANITE_FLUID =
-        EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1).getFluid();
+        EOHBMaterialPool.Xiragen.getFluidOrGas(1).getFluid();
 
     private final List<MTEHatchInput> mInputHatchesG = new ArrayList<>();
 
-    public EOHB_Fluid_GasTransmutingUnit(int aID, String aName, String aNameRegional) {
+    public EOHB_Solid_GasTransmutingUnit(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
     }
 
-    public EOHB_Fluid_GasTransmutingUnit(String aName) {
+    public EOHB_Solid_GasTransmutingUnit(String aName) {
         super(aName);
         setWirelessCycleNum(1);
     }
@@ -89,7 +88,7 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
     @NotNull
     @Override
     public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.Fluid_GasTransmutingUnit;
+        return RecipeMaps.Solid_GasTransmutingUnit;
     }
 
     @Override
@@ -212,77 +211,74 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
     }
 
     private static final String[][] shapeMain = new String[][]{
-        {"             ","             ","             ","             ","             ","     CCC     ","     CHC     ","     CCC     ","             ","             ","             ","             ","             "},
-        {"             ","             ","             ","BBBBB   BBBBB","   BBBBBBB   ","    BDBDB    ","    BB BB    ","    BDBDB    ","   BBBBBBB   ","BBBBB   BBBBB","             ","             ","             "},
-        {"             ","             ","             ","B           B"," D         D "," D   DBD   D "," D   B B   D "," D   DBD   D "," D         D ","B           B","             ","             ","             "},
-        {"             ","             ","             ","B           B"," D         D "," D   ABA   D "," DEEEB BEEED "," D   ABA   D "," D         D ","B           B","             ","             ","             "},
-        {"             "," D         D "," D         D ","BD         DB"," D         D "," D   ABA   D "," D   B B   D "," D   ABA   D "," D         D ","BD         DB"," D         D "," D         D ","             "},
-        {"             "," D         D ","CD         DC","BD         DB"," D         D "," D   ABA   D "," D   B B   D "," D   ABA   D "," D         D ","BD         DB","CD         DC"," D         D ","             "},
-        {"             "," D         D "," D         D ","BD    G    DB"," D    B    D "," D   DBD   D "," DEEEB BEEED "," D   DBD   D "," D         D ","BD         DB"," D         D "," D         D ","             "},
-        {"             ","             ","             ","B           B"," D         D "," D   DDD   D "," D  BD DB  D "," D   DDD   D "," D         D ","B           B","             ","             ","             "},
-        {"             ","             ","             ","B           B"," D   DDD   D "," D  D   D  D "," D BD   DB D "," D  D   D  D "," D   DDD   D ","B           B","             ","             ","             "},
-        {"             ","             ","             ","B    C C    B"," D  CBBBC  D "," D CB   BC D "," D BB   BB D "," D CB   BC D "," D  CBBBC  D ","B    C C    B","             ","             ","             "},
-        {"             ","             ","     FFF     ","B   DDDDD   B"," D DD   DD D "," DDD     DDD "," DDD     DDD "," DDD     DDD "," D DD   DD D ","B   DDDDD   B","     DDD     ","             ","             "},
-        {"             ","             ","     FFF     ","B   DDDDD   B"," D DD   DD D "," DDD     DDD "," DDD     DDD "," DDD     DDD "," D DD   DD D ","B   DDDDD   B","     DDD     ","             ","             "},
-        {"             ","     BBB     ","B  BBBBBBB  B","B CBBBBBBBC B","BBBBBBBBBBBBB"," BBBBBBBBBBB "," BBBBBBBBBBB "," BBBBBBBBBBB ","BBBBBBBBBBBBB","B CBBBBBBBC B","B  BBBBBBB  B","     BBB     ","             "},
-        {"CBBBBBBBBBBBC","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","CBBBBBBBBBBBC"},
-        {"CBBBBB~BBBBBC","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","BBBBBBBBBBBBB","CBBBBBBBBBBBC"}
+        {"               ","               ","               ","               ","      A A      ","     AAAAA     ","      A A      ","     AAAAA     ","      A A      ","               ","               ","               ","               "},
+        {"               ","               ","               ","               ","               ","      A A      ","               ","      A A      ","               ","               ","               ","               ","               "},
+        {"               ","               "," A           A ","AAAAAA   AAAAAA"," A  AAAAAAA  A "," A   ABABA   A "," A   AAAAA   A "," A   ABABA   A "," A  AAAAAAA  A ","AAAAAA   AAAAAA"," A           A ","               ","               "},
+        {"               ","               ","               "," A           A ","  C         C  ","  C   CAC   C  ","  C   A A   C  ","  C   CAC   C  ","  C         C  "," A           A ","               ","               ","               "},
+        {"               ","               ","               "," A           A ","  C         C  ","  CDDDCACDDDC  ","  C   A A   C  ","  CDDDCACDDDC  ","  C         C  "," A           A ","               ","               ","               "},
+        {"               "," CC         CC "," CC         CC "," CC         CC "," CC         CC "," CC   CAC   CC "," CC   A A   CC "," CC   CAC   CC "," CC         CC "," CC         CC "," CC         CC "," CC         CC ","               "},
+        {"               "," CC         CC "," BC         CB "," CC         CC "," CC         CC "," CC   CAC   CC "," CC   A A   CC "," CC   CAC   CC "," CC         CC "," CC         CC "," BC         CB "," CC         CC ","               "},
+        {"               "," CC         CC "," CC         CC "," CC    F    CC "," CC    A    CC "," CCDDDAAADDDCC "," CC   A A   CC "," CCDDDAAADDDCC "," CC         CC "," CC         CC "," CC         CC "," CC         CC ","               "},
+        {"               ","               ","               "," A           A ","  C         C  ","  C   CCC   C  ","  C  AC CA  C  ","  C   CCC   C  ","  C         C  "," A           A ","               ","               ","               "},
+        {"               ","               ","               "," A           A ","  C   CCC   C  ","  C  C   C  C  ","  C AC   CA C  ","  C  C   C  C  ","  C   CCC   C  "," A           A ","               ","               ","               "},
+        {"               ","               ","               "," A    B B    A ","  C  BAAAB  C  ","  C BA   AB C  ","  C AA   AA C  ","  C BA   AB C  ","  C  BAAAB  C  "," A    B B    A ","               ","               ","               "},
+        {"               ","               ","      GGG      "," A   CCCCC   A "," AC CC   CC CA "," ACCC     CCCA "," ACCC     CCCA "," ACCC     CCCA "," AC CC   CC CA "," A   CCCCC   A ","      CCC      ","               ","               "},
+        {"               ","               ","      GGG      "," A   CCCCC   A ","  C CC   CC C  ","  CCC     CCC  ","  CCC     CCC  ","  CCC     CCC  ","  C CC   CC C  "," A   CCCCC   A ","      CCC      ","               ","               "},
+        {"               ","      AAA      "," A  AAAAAAA  A "," A BAAAAAAAB A "," AAAAAAAAAAAAA ","  AAAAAAAAAAA  ","  AAAAAAAAAAA  ","  AAAAAAAAAAA  "," AAAAAAAAAAAAA "," A BAAAAAAAB A "," A  AAAAAAA  A ","      AAA      ","               "},
+        {" BAAAAEEEAAAAB "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," BAAAAAAAAAAAB "},
+        {" BAAAAE~EAAAAB "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," AAAAAAAAAAAAA "," BAAAAAAAAAAAB "}
     };
 
     @Override
-    public IStructureDefinition<EOHB_Fluid_GasTransmutingUnit> getStructureDefinition() {
+    public IStructureDefinition<EOHB_Solid_GasTransmutingUnit> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
-            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_Fluid_GasTransmutingUnit>builder()
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_Solid_GasTransmutingUnit>builder()
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement(
                     'A',
-                    ofBlock(ItemRegistry.bw_realglas, 0)
-                )
-                .addElement(
-                    'B',
                     ofBlock(sBlockCasings2, 0)
                 )
                 .addElement(
-                    'C',
+                    'B',
                     ofBlock(sBlockCasings2, 13)
                 )
                 .addElement(
-                    'D',
+                    'C',
                     ofBlock(sBlockCasings8, 7)
                 )
                 .addElement(
-                    'E',
+                    'D',
                     ofBlock(sBlockFrames, 305)
                 )
                 .addElement(
-                    'F',
-                    buildHatchAdder(EOHB_Fluid_GasTransmutingUnit.class)
-                        .atLeast(InputHatch)
-                        .casingIndex(CASING_INDEX1)
-                        .hint(1)
-                        .buildAndChain(
-                            ofBlock(sBlockCasings8,7)
-                        )
-                )
-                .addElement(
-                    'G',
-                    buildHatchAdder(EOHB_Fluid_GasTransmutingUnit.class)
-                        .atLeast(InputHatch)
-                        .casingIndex(CASING_INDEX)
-                        .hint(2)
-                        .adder(EOHB_Fluid_GasTransmutingUnit::addInputHatchG)
-                        .buildAndChain(
-                            ofBlock(sBlockCasings2,0)
-                        )
-                )
-                .addElement(
-                    'H',
-                    buildHatchAdder(EOHB_Fluid_GasTransmutingUnit.class)
-                        .atLeast(OutputHatch)
+                    'E',
+                    buildHatchAdder(EOHB_Solid_GasTransmutingUnit.class)
+                        .atLeast(OutputBus, OutputHatch)
                         .casingIndex(CASING_INDEX)
                         .hint(3)
                         .buildAndChain(
                             ofBlock(sBlockCasings2,0)
+                        )
+                )
+                .addElement(
+                    'F',
+                    buildHatchAdder(EOHB_Solid_GasTransmutingUnit.class)
+                        .atLeast(InputHatch)
+                        .casingIndex(CASING_INDEX)
+                        .hint(2)
+                        .adder(EOHB_Solid_GasTransmutingUnit::addInputHatchG)
+                        .buildAndChain(
+                            ofBlock(sBlockCasings2,0)
+                        )
+                )
+                .addElement(
+                    'G',
+                    buildHatchAdder(EOHB_Solid_GasTransmutingUnit.class)
+                        .atLeast(InputBus, InputHatch)
+                        .casingIndex(CASING_INDEX1)
+                        .hint(1)
+                        .buildAndChain(
+                            ofBlock(sBlockCasings8,7)
                         )
                 )
                 .build();
@@ -293,18 +289,21 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(Tooltip_Fluid_GasTransmutingUnit_MachineType)
-            .addInfo(Tooltip_Fluid_GasTransmutingUnit_Controller)
+        tt.addMachineType(Tooltip_Solid_GasTransmutingUnit_MachineType)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_Controller)
             .addInfo(EOHB_Arknights_Project)
-            .addInfo(Tooltip_Fluid_GasTransmutingUnit_00)
-            .addInfo(Tooltip_Fluid_GasTransmutingUnit_01)
-            .addInfo(Tooltip_Fluid_GasTransmutingUnit_02)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_00)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_01)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_02)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_03)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
+            .addInputBus("1+", EOHB_MachineType_1)
             .addInputHatch("2+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_3)
             .addOutputHatch("1+", EOHB_MachineType_3)
             .toolTipFinisher(ModName);
         return tt;
@@ -312,7 +311,7 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
 
     @Override
     public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
-        return new EOHB_Fluid_GasTransmutingUnit(this.mName);
+        return new EOHB_Solid_GasTransmutingUnit(this.mName);
     }
 
     @Override

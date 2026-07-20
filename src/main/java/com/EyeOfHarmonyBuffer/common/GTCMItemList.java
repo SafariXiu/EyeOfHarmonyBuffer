@@ -182,6 +182,7 @@ public enum GTCMItemList {
     IsotopeInfusionReactor,
     GasDiffuser,
     Fluid_GasTransmutingUnit,
+    Solid_GasTransmutingUnit,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,
