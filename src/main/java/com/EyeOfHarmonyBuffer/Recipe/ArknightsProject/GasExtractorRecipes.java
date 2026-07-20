@@ -37,7 +37,7 @@ public class GasExtractorRecipes implements IRecipePool {
                 XiRangQi
             )
             .fluidOutputs(
-                EOHBMaterialPool.Inergen.getFluidOrGas(6000)
+                EOHBMaterialPool.Xiragen.getFluidOrGas(6000)
             )
             .eut(0)
             .duration(10 * SECONDS)
