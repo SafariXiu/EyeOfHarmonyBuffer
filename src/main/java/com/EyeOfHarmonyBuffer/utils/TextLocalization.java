@@ -336,6 +336,13 @@ public class TextLocalization {
     public static final String Tooltip_Solid_GasTransmutingUnit_02;
     public static final String Tooltip_Solid_GasTransmutingUnit_03;
 
+    public static final String NameGasReactorGlobe;
+    public static final String Tooltip_GasReactorGlobe_MachineType;
+    public static final String Tooltip_GasReactorGlobe_Controller;
+    public static final String Tooltip_GasReactorGlobe_00;
+    public static final String Tooltip_GasReactorGlobe_01;
+    public static final String Tooltip_GasReactorGlobe_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -422,6 +429,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_GasDiffuser;
     public static final String EOHB_Recipe_Fluid_GasTransmutingUnit;
     public static final String EOHB_Recipe_Solid_GasTransmutingUnit;
+    public static final String EOHB_Recipe_GasReactorGlobe;
 
     public TextLocalization() {
     }
@@ -798,6 +806,14 @@ public class TextLocalization {
         Tooltip_Solid_GasTransmutingUnit_02 = TextHandler.texter("entry on Originium Arts and technology in the SOW database. Successful recovery of data lost during the Aggeloi War","Tooltip_Solid_GasTransmutingUnit_02");
         Tooltip_Solid_GasTransmutingUnit_03 = TextHandler.texter("provided crucial inspiration for the scientists today.","Tooltip_Solid_GasTransmutingUnit_03");
 
+        //气体反应炉
+        NameGasReactorGlobe = TextHandler.texter("","NameGasReactorGlobe");
+        Tooltip_GasReactorGlobe_MachineType = TextHandler.texter("","Tooltip_GasReactorGlobe_MachineType");
+        Tooltip_GasReactorGlobe_Controller = TextHandler.texter("","Tooltip_GasReactorGlobe_Controller");
+        Tooltip_GasReactorGlobe_00 = TextHandler.texter("","Tooltip_GasReactorGlobe_00");
+        Tooltip_GasReactorGlobe_01 = TextHandler.texter("","Tooltip_GasReactorGlobe_01");
+        Tooltip_GasReactorGlobe_02 = TextHandler.texter("","Tooltip_GasReactorGlobe_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -884,5 +900,6 @@ public class TextLocalization {
         EOHB_Recipe_GasDiffuser = TextHandler.texter("Gas Diffuser","EOHB_Recipe_GasDiffuser");
         EOHB_Recipe_Fluid_GasTransmutingUnit = TextHandler.texter("Fluid-Gas Transmuting Unit","EOHB_Recipe_Fluid_GasTransmutingUnit");
         EOHB_Recipe_Solid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","EOHB_Recipe_Solid_GasTransmutingUnit");
+        EOHB_Recipe_GasReactorGlobe = TextHandler.texter("Gas Reactor Globe","EOHB_Recipe_GasReactorGlobe");
     }
 }

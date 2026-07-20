@@ -48,7 +48,8 @@ public class RecipeLoader {
             new IsotopeInfusionReactorRecipes(),
             new GasDiffuserRecipes(),
             new Fluid_GasTransmutingUnitRecipes(),
-            new Solid_GasTransmutingUnitRecipes()
+            new Solid_GasTransmutingUnitRecipes(),
+            new GasReactorGlobeRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

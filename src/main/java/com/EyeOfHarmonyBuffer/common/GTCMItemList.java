@@ -134,6 +134,7 @@ public enum GTCMItemList {
     ShuiZhengQi,
     XiRangQi,
     ChiTongNaiYaPing,
+    QiTaiZhuoTong,
 
     YuanShiMainBlock,
     YuanShiBlock,
@@ -183,6 +184,7 @@ public enum GTCMItemList {
     GasDiffuser,
     Fluid_GasTransmutingUnit,
     Solid_GasTransmutingUnit,
+    GasReactorGlobe,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

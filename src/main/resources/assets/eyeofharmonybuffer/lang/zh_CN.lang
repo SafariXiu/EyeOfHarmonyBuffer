@@ -316,6 +316,12 @@ Tooltip_Solid_GasTransmutingUnit_00=§7通过持续通入§6息壤气§7激活�
 Tooltip_Solid_GasTransmutingUnit_01=§a特殊的物态转化设备。§r
 Tooltip_Solid_GasTransmutingUnit_02=§7为了设计这些设备，工程师们从§bS.O.W§7的数据库中调阅了全部的§6源石技艺研究数据§7。§r
 Tooltip_Solid_GasTransmutingUnit_03=§7那些自§e天使战争§7以来丢失又被寻回的资料，极大程度上启发了如今的人们。§r
+NameGasReactorGlobe=§b气体反应炉
+Tooltip_GasReactorGlobe_MachineType=§b气体反应炉
+Tooltip_GasReactorGlobe_Controller=§7气体反应炉的§b控制器方块§r
+Tooltip_GasReactorGlobe_00=§7能够进行§e气体与气体间反应§7的设备§r
+Tooltip_GasReactorGlobe_01=§e“要保证气密性，还要控制温度、湿度、同时还需要搭载分离单元......”§r
+Tooltip_GasReactorGlobe_02=§e“你们以为我在抱怨设计难度？不，我还想给它加一个自爆模块。”§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -345,6 +351,7 @@ EOHB_Recipe_IsotopeInfusionReactor=同位素注入反应器
 EOHB_Recipe_GasDiffuser=气体散布机
 EOHB_Recipe_Fluid_GasTransmutingUnit=液气转化机
 EOHB_Recipe_Solid_GasTransmutingUnit=固气转化机
+EOHB_Recipe_GasReactorGlobe=气体反应炉
 
 #item
 EOHB_Harmony=鸿蒙

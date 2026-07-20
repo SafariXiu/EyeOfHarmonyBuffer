@@ -65,6 +65,7 @@ public class ItemLoader {
     public static Item ShuiZhengQi = new ItemShuiZhengQi();
     public static Item SuanQi = new ItemSuanQi();
     public static Item XiRangQi = new ItemXiRangQi();
+    public static Item QiTaiZhuoTong = new ItemQiTaiZhuoTong();
 
     //瓶子
     public static Item ChiTongFluidBottle;
@@ -129,6 +130,7 @@ public class ItemLoader {
         GTCMItemList.ShuiZhengQi.set(registryAndCallback(ShuiZhengQi,"ShuiZhengQi"));
         GTCMItemList.SuanQi.set(registryAndCallback(SuanQi,"SuanQi"));
         GTCMItemList.XiRangQi.set(registryAndCallback(XiRangQi,"XiRangQi"));
+        GTCMItemList.QiTaiZhuoTong.set(registryAndCallback(QiTaiZhuoTong,"QiTaiZhuoTong"));
 
         EnumBottleFluid[] allFluids = EnumBottleFluid.values();
         ChiTongFluidBottle = new ItemBottleBase(

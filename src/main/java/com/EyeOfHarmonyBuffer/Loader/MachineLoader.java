@@ -36,6 +36,7 @@ public class MachineLoader {
     public static ItemStack GasDiffuser;
     public static ItemStack Fluid_GasTransmutingUnit;
     public static ItemStack Solid_GasTransmutingUnit;
+    public static ItemStack GasReactorGlobe;
 
     private final static int MachineBlockID = 23000;
 
@@ -242,5 +243,12 @@ public class MachineLoader {
             TextLocalization.NameSolid_GasTransmutingUnit
         ).getStackForm(1);
         GTCMItemList.Solid_GasTransmutingUnit.set(Solid_GasTransmutingUnit);
+
+        GasReactorGlobe = new EOHB_GasReactorGlobe(
+            MachineBlockID + 30,
+            "NameGasReactorGlobe",
+            TextLocalization.NameGasReactorGlobe
+        ).getStackForm(1);
+        GTCMItemList.GasReactorGlobe.set(GasReactorGlobe);
     }
 }
