@@ -23,7 +23,7 @@ public class GasExtractorRecipes implements IRecipePool {
                 DuoQi
             )
             .fluidOutputs(
-                EOHBMaterialPool.Inergen.getFluidOrGas(1000)
+                EOHBMaterialPool.Inergen.getFluidOrGas(6000)
             )
             .eut(0)
             .duration(10 * SECONDS)
@@ -37,7 +37,7 @@ public class GasExtractorRecipes implements IRecipePool {
                 DuoQi
             )
             .fluidOutputs(
-                EOHBMaterialPool.Inergen.getFluidOrGas(1000)
+                EOHBMaterialPool.Inergen.getFluidOrGas(6000)
             )
             .eut(0)
             .duration(10 * SECONDS)
