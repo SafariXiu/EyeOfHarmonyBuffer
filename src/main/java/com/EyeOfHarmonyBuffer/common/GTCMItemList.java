@@ -145,6 +145,8 @@ public enum GTCMItemList {
     ZiJingMainBlock,
     ChiTongBlock,
     ChiTongMainBlock,
+    DuoQiMainBlock,
+    XiRangQiMainBlock,
 
     //方舟-植物
     GanShi,
@@ -186,6 +188,7 @@ public enum GTCMItemList {
     Solid_GasTransmutingUnit,
     GasReactorGlobe,
     HydroMiningRig,
+    GasExtractor,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

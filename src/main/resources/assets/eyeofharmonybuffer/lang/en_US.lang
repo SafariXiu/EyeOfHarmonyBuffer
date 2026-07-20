@@ -330,6 +330,15 @@ Tooltip_HydroMiningRig_01=The Endfield Hydro Mining Rig features a special coati
 Tooltip_HydroMiningRig_02=Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!
 Tooltip_HydroMiningRig_03=At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.
 Tooltip_HydroMiningRig_04=Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.
+NameGasExtractor=Gas Extractor
+Tooltip_GasExtractor_MachineType=Gas Extractor
+Tooltip_GasExtractor_Controller=Controller block of the Gas Extractor
+Tooltip_GasExtractor_00=It does not require power to work.
+Tooltip_GasExtractor_01=A facility that can extract Inergen and other gases.
+Tooltip_GasExtractor_02=Those companies would never realize why Endfield Industries bought up all those vacuum cleaner patents.
+Tooltip_GasExtractor_03=Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!
+Tooltip_GasExtractor_04=At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.
+Tooltip_GasExtractor_05=Detection range: based on the machine’s main block, extending 2 blocks backward and covering a 7×7×3 cubic area downward.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -361,6 +370,7 @@ EOHB_Recipe_Fluid_GasTransmutingUnit=Fluid-Gas Transmuting Unit
 EOHB_Recipe_Solid_GasTransmutingUnit=Solid-Gas Transmuting Unit
 EOHB_Recipe_GasReactorGlobe=Gas Reactor Globe
 EOHB_Recipe_HydroMiningRig=Hydro Mining Rig
+EOHB_Recipe_GasExtractor=Gas Extractor
 
 #item
 EOHB_Harmony=Harmony
@@ -592,6 +602,8 @@ tile.zi_jing_block.name=Violet Crystal Prime Vein Block
 tile.zi_jing_main_block.name=Violet Crystal Main Vein Block
 tile.chi_tong_block.name=Cuprite Prime Vein Block
 tile.chi_tong_main_block.name=Cuprite Crystal Main Vein Block
+tile.xi_rang_qi_main_block.name=Xiragen Main Vein Block
+tile.duo_qi_main_block.name=Inergen Main Vein Block
 
 #space
 solarsystem.talosSystem=Talos
@@ -668,6 +680,8 @@ eohb_recipe.PowerMiner.YuanShi_source=Need Originite Prime Main Vein Block
 eohb_recipe.PowerMiner.ZiJing_source=Need Violet Crystal Prime Main Vein Block
 eohb_recipe.PowerMiner.LanTie_source=Need Blue Iron Prime Main Vein Block
 eohb_recipe.PowerMiner.ChiTong_source=Need Cuprite Crystal Prime Main Vein Block
+eohb_recipe.PowerMiner.DuoQi_source=Need Inergen Prime Main Vein Block
+eohb_recipe.PowerMiner.XiRangQi_source=Need Xiragen Prime Main Vein Block
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=Generates a humid atmosphere
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=Generates a stable atmosphere

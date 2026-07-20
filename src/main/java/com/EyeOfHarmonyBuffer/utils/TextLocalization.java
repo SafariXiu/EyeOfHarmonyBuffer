@@ -352,6 +352,16 @@ public class TextLocalization {
     public static final String Tooltip_HydroMiningRig_03;
     public static final String Tooltip_HydroMiningRig_04;
 
+    public static final String NameGasExtractor;
+    public static final String Tooltip_GasExtractor_MachineType;
+    public static final String Tooltip_GasExtractor_Controller;
+    public static final String Tooltip_GasExtractor_00;
+    public static final String Tooltip_GasExtractor_01;
+    public static final String Tooltip_GasExtractor_02;
+    public static final String Tooltip_GasExtractor_03;
+    public static final String Tooltip_GasExtractor_04;
+    public static final String Tooltip_GasExtractor_05;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -440,6 +450,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_Solid_GasTransmutingUnit;
     public static final String EOHB_Recipe_GasReactorGlobe;
     public static final String EOHB_Recipe_HydroMiningRig;
+    public static final String EOHB_Recipe_GasExtractor;
 
     public TextLocalization() {
     }
@@ -834,6 +845,17 @@ public class TextLocalization {
         Tooltip_HydroMiningRig_03 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_HydroMiningRig_03");
         Tooltip_HydroMiningRig_04 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_HydroMiningRig_04");
 
+        //气体收集泵
+        NameGasExtractor = TextHandler.texter("Gas Extractor","NameGasExtractor");
+        Tooltip_GasExtractor_MachineType = TextHandler.texter("Gas Extractor","Tooltip_GasExtractor_MachineType");
+        Tooltip_GasExtractor_Controller = TextHandler.texter("Controller block of the Gas Extractor","Tooltip_GasExtractor_Controller");
+        Tooltip_GasExtractor_00 = TextHandler.texter("It does not require power to work.","Tooltip_GasExtractor_00");
+        Tooltip_GasExtractor_01 = TextHandler.texter("A facility that can extract Inergen and other gases.","Tooltip_GasExtractor_01");
+        Tooltip_GasExtractor_02 = TextHandler.texter("Those companies would never realize why Endfield Industries bought up all those vacuum cleaner patents.","Tooltip_GasExtractor_02");
+        Tooltip_GasExtractor_03 = TextHandler.texter("Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!","Tooltip_GasExtractor_03");
+        Tooltip_GasExtractor_04 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_GasExtractor_04");
+        Tooltip_GasExtractor_05 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_GasExtractor_05");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -922,5 +944,6 @@ public class TextLocalization {
         EOHB_Recipe_Solid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","EOHB_Recipe_Solid_GasTransmutingUnit");
         EOHB_Recipe_GasReactorGlobe = TextHandler.texter("Gas Reactor Globe","EOHB_Recipe_GasReactorGlobe");
         EOHB_Recipe_HydroMiningRig = TextHandler.texter("Hydro Mining Rig","EOHB_Recipe_HydroMiningRig");
+        EOHB_Recipe_GasExtractor = TextHandler.texter("Gas Extractor","EOHB_Recipe_GasExtractor");
     }
 }

@@ -330,6 +330,15 @@ Tooltip_HydroMiningRig_01=§7为了抵抗潮湿环境带来的§c锈蚀风险§7
 Tooltip_HydroMiningRig_02=§7将结构核心安放在§a塔罗斯星球§7特有的§e主矿脉方块§7附近，即可开始工作。§r
 Tooltip_HydroMiningRig_03=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
 Tooltip_HydroMiningRig_04=§7检测范围：以机器主方块为基准，§b向后延伸 2 格§7、§b向下延伸 2 格§7，覆盖§e7×7×3§7的方形空间。§r
+NameGasExtractor=§b气体收集泵
+Tooltip_GasExtractor_MachineType=§b气体收集泵
+Tooltip_GasExtractor_Controller=§7气体收集泵的§b控制器方块§r
+Tooltip_GasExtractor_00=§a无需通电即可工作§r
+Tooltip_GasExtractor_01=§7可用来采集§e惰气§7等多种气体的机械设备§r
+Tooltip_GasExtractor_02=§7那些企业绝对想不到§b终末地工业§7购买§e吸尘器§7的专利是为了做什么。§r
+Tooltip_GasExtractor_03=§7将结构核心安放在§a塔罗斯星球§7特有的§e气体主矿脉方块§7附近，即可开始工作。§r
+Tooltip_GasExtractor_04=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
+Tooltip_GasExtractor_05=§7检测范围：以机器主方块为基准，§b向后延伸 2 格§7、§b向下覆盖§e7×7×3§7的方形空间。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -361,6 +370,7 @@ EOHB_Recipe_Fluid_GasTransmutingUnit=液气转化机
 EOHB_Recipe_Solid_GasTransmutingUnit=固气转化机
 EOHB_Recipe_GasReactorGlobe=气体反应炉
 EOHB_Recipe_HydroMiningRig=水驱矿机
+EOHB_Recipe_GasExtractor=气体收集泵
 
 #item
 EOHB_Harmony=鸿蒙
@@ -592,6 +602,8 @@ tile.zi_jing_block.name=紫晶矿脉块
 tile.zi_jing_main_block.name=紫晶主矿脉块
 tile.chi_tong_block.name=赤铜矿脉块
 tile.chi_tong_main_block.name=赤铜主矿脉块
+tile.xi_rang_qi_main_block.name=息壤气主矿脉块
+tile.duo_qi_main_block.name=惰气主矿脉块
 
 #space
 solarsystem.talosSystem=塔罗斯
@@ -668,6 +680,8 @@ eohb_recipe.PowerMiner.YuanShi_source=需要源石主矿脉块
 eohb_recipe.PowerMiner.ZiJing_source=需要紫晶主矿脉块
 eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块
 eohb_recipe.PowerMiner.ChiTong_source=需要赤铜主矿脉块
+eohb_recipe.PowerMiner.DuoQi_source=需要惰气主矿脉块
+eohb_recipe.PowerMiner.XiRangQi_source=需要息壤气主矿脉块
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=产生湿润环境
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=产生稳定环境

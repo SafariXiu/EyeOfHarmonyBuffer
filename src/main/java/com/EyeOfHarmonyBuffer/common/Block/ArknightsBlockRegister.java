@@ -19,6 +19,8 @@ public class ArknightsBlockRegister {
     public static Block ZiJingMainBlock;
     public static Block ChiTongBlock;
     public static Block ChiTongMainBlock;
+    public static Block DuoQiMainBlock;
+    public static Block XiRangQiMainBlock;
 
     public static void registryBlocks(){
 
@@ -84,6 +86,20 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(ChiTongMainBlock, "chi_tong_main_block");
         GTCMItemList.ChiTongMainBlock.set(new ItemStack(ChiTongMainBlock, 1, 0));
+
+        DuoQiMainBlock = new BlockDuoQiMain()
+            .setBlockName("duo_qi_main_block")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/duoqi_main_block")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(DuoQiMainBlock, "duo_qi_main_block");
+        GTCMItemList.DuoQiMainBlock.set(new ItemStack(DuoQiMainBlock, 1, 0));
+
+        XiRangQiMainBlock = new BlockXiRangQiMain()
+            .setBlockName("xi_rang_qi_main_block")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/xirangqi_main_block")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(XiRangQiMainBlock, "xi_rang_qi_main_block");
+        GTCMItemList.XiRangQiMainBlock.set(new ItemStack(XiRangQiMainBlock, 1, 0));
     }
 
     public static void registry() {

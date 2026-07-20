@@ -38,6 +38,7 @@ public class MachineLoader {
     public static ItemStack Solid_GasTransmutingUnit;
     public static ItemStack GasReactorGlobe;
     public static ItemStack HydroMiningRig;
+    public static ItemStack GasExtractor;
 
     private final static int MachineBlockID = 23000;
 
@@ -258,5 +259,12 @@ public class MachineLoader {
             TextLocalization.NameHydroMiningRig
         ).getStackForm(1);
         GTCMItemList.HydroMiningRig.set(HydroMiningRig);
+
+        GasExtractor = new EOHB_GasExtractor(
+            MachineBlockID + 32,
+            "NameGasExtractor",
+            TextLocalization.NameGasExtractor
+        ).getStackForm(1);
+        GTCMItemList.GasExtractor.set(GasExtractor);
     }
 }
