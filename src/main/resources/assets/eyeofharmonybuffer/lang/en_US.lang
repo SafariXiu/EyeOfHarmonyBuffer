@@ -659,6 +659,7 @@ EOHB_Environment_XRANITE=Required Gas Environment: Xranite
 EOHB_Environment_NONE=Required Gas Environment: None
 EOHB_Environment_ANY=Required Gas Environment: Any
 GT5U.gui.text.recipe.Fluid_GasTransmutingUnitInfo=Requires continuous input of Liquid Xiranite
+GT5U.gui.text.recipe.Solid_GasTransmutingUnit=Requires continuous input of Xiragen
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=Arknights Project - Start

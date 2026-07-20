@@ -659,6 +659,7 @@ EOHB_Environment_XRANITE=需要的气体环境：息壤
 EOHB_Environment_NONE=需要的气体环境：无气体
 EOHB_Environment_ANY=需要的气体环境：任意
 GT5U.gui.text.recipe.Fluid_GasTransmutingUnitInfo=需要持续通入液化息壤
+GT5U.gui.text.recipe.Solid_GasTransmutingUnit=需要持续通入息壤气
 
 #Task Document - Chapter
 betterquesting.questline.Ej5FZ-ibEtOkVkJmFBdAAA.name=方舟工业 - 起始
