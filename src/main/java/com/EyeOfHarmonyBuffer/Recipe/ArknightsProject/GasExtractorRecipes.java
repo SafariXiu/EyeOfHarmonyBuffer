@@ -34,7 +34,7 @@ public class GasExtractorRecipes implements IRecipePool {
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                DuoQi
+                XiRangQi
             )
             .fluidOutputs(
                 EOHBMaterialPool.Inergen.getFluidOrGas(6000)
