@@ -345,7 +345,6 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
             .addInfo(Tooltip_GasDiffuser_00)
             .addInfo(Tooltip_GasDiffuser_01)
             .addInfo(Tooltip_GasDiffuser_02)
-            .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

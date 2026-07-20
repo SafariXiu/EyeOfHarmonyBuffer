@@ -49,7 +49,8 @@ public class RecipeLoader {
             new GasDiffuserRecipes(),
             new Fluid_GasTransmutingUnitRecipes(),
             new Solid_GasTransmutingUnitRecipes(),
-            new GasReactorGlobeRecipes()
+            new GasReactorGlobeRecipes(),
+            new HydroMiningRigRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

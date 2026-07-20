@@ -185,6 +185,7 @@ public enum GTCMItemList {
     Fluid_GasTransmutingUnit,
     Solid_GasTransmutingUnit,
     GasReactorGlobe,
+    HydroMiningRig,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

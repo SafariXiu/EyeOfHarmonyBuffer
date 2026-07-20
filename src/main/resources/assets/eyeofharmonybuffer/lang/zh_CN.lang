@@ -322,6 +322,14 @@ Tooltip_GasReactorGlobe_Controller=§7气体反应炉的§b控制器方块§r
 Tooltip_GasReactorGlobe_00=§7能够进行§e气体与气体间反应§7的设备§r
 Tooltip_GasReactorGlobe_01=§e“要保证气密性，还要控制温度、湿度、同时还需要搭载分离单元......”§r
 Tooltip_GasReactorGlobe_02=§e“你们以为我在抱怨设计难度？不，我还想给它加一个自爆模块。”§r
+NameHydroMiningRig=§b水驱矿机
+Tooltip_HydroMiningRig_MachineType=§b水驱矿机
+Tooltip_HydroMiningRig_Controller=§7水驱矿机的§b控制器方块§r
+Tooltip_HydroMiningRig_00=§7用来开采§e赤铜矿灯§7等多种矿物的机械设备，可使用§b清水§7完成自供能，§a无需通电即可运作§7。§r
+Tooltip_HydroMiningRig_01=§7为了抵抗潮湿环境带来的§c锈蚀风险§7，§b终末地工业§7为水驱矿机添加了§e特殊镀层§7。§r
+Tooltip_HydroMiningRig_02=§7将结构核心安放在§a塔罗斯星球§7特有的§e主矿脉方块§7附近，即可开始工作。§r
+Tooltip_HydroMiningRig_03=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
+Tooltip_HydroMiningRig_04=§7检测范围：以机器主方块为基准，§b向后延伸 2 格§7、§b向下延伸 2 格§7，覆盖§e7×7×3§7的方形空间。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -352,6 +360,7 @@ EOHB_Recipe_GasDiffuser=气体散布机
 EOHB_Recipe_Fluid_GasTransmutingUnit=液气转化机
 EOHB_Recipe_Solid_GasTransmutingUnit=固气转化机
 EOHB_Recipe_GasReactorGlobe=气体反应炉
+EOHB_Recipe_HydroMiningRig=水驱矿机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -627,6 +636,7 @@ GT5U.gui.text.recipe_result.UnsupportedFluid=不支持的液体！
 GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器背后第10格、向下1格的位置必须是液体源!
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
 GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=当前环境不满足本配方的气体要求
+GT5U.gui.text.recipe_result.NotEnoughWater=没有足够的水！
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境
@@ -657,6 +667,7 @@ eohb_recipe.fluidpump.lava_source=需要岩浆
 eohb_recipe.PowerMiner.YuanShi_source=需要源石主矿脉块
 eohb_recipe.PowerMiner.ZiJing_source=需要紫晶主矿脉块
 eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块
+eohb_recipe.PowerMiner.ChiTong_source=需要赤铜主矿脉块
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=产生湿润环境
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=产生稳定环境

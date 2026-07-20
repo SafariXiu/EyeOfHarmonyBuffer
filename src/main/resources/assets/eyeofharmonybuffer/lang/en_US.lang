@@ -322,6 +322,14 @@ Tooltip_GasReactorGlobe_Controller=Controller block of the Gas Reactor Globe
 Tooltip_GasReactorGlobe_00=A facility for performing gas-phase reactions.
 Tooltip_GasReactorGlobe_01="The facility must be completely hermetic and include thermostats, humidity controllers, and separator modules.
 Tooltip_GasReactorGlobe_02="You think I'm complaining about design challenges? No. In fact, I'm planning to fit a self-destruct module into this contraption."
+NameHydroMiningRig=Hydro Mining Rig
+Tooltip_HydroMiningRig_MachineType=Hydro Mining Rig
+Tooltip_HydroMiningRig_Controller=Controller block of the Hydro Mining Rig
+Tooltip_HydroMiningRig_00=A mining rig for digging up various types of ore such as Cuprium Ore. This rig does not need power as it can be driven with Clean Water.
+Tooltip_HydroMiningRig_01=The Endfield Hydro Mining Rig features a special coating to minimize the riskof rusting in humid/wet environments.
+Tooltip_HydroMiningRig_02=Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!
+Tooltip_HydroMiningRig_03=At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.
+Tooltip_HydroMiningRig_04=Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -352,6 +360,7 @@ EOHB_Recipe_GasDiffuser=Gas Diffuser
 EOHB_Recipe_Fluid_GasTransmutingUnit=Fluid-Gas Transmuting Unit
 EOHB_Recipe_Solid_GasTransmutingUnit=Solid-Gas Transmuting Unit
 EOHB_Recipe_GasReactorGlobe=Gas Reactor Globe
+EOHB_Recipe_HydroMiningRig=Hydro Mining Rig
 
 #item
 EOHB_Harmony=Harmony
@@ -627,6 +636,7 @@ GT5U.gui.text.recipe_result.UnsupportedFluid=Unsupported fluid!
 GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source block is required 10 blocks behind and 1 block below the controller
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block!
 GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=The current environment does not meet the gas requirements of this recipe
+GT5U.gui.text.recipe_result.NotEnoughWater=No Enough Water!
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.
@@ -655,8 +665,9 @@ eohb_recipe.fluidpump.water_source=Need Water
 eohb_recipe.fluidpump.precipitation_acid=Need Precipitation Acid
 eohb_recipe.fluidpump.lava_source=Need lava
 eohb_recipe.PowerMiner.YuanShi_source=Need Originite Prime Main Vein Block
-eohb_recipe.PowerMiner.ZiJing_source=Need Violet Crystal Main Vein Block
+eohb_recipe.PowerMiner.ZiJing_source=Need Violet Crystal Prime Main Vein Block
 eohb_recipe.PowerMiner.LanTie_source=Need Blue Iron Prime Main Vein Block
+eohb_recipe.PowerMiner.ChiTong_source=Need Cuprite Crystal Prime Main Vein Block
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=Generates a humid atmosphere
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=Generates a stable atmosphere

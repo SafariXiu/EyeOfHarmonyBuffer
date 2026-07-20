@@ -343,6 +343,15 @@ public class TextLocalization {
     public static final String Tooltip_GasReactorGlobe_01;
     public static final String Tooltip_GasReactorGlobe_02;
 
+    public static final String NameHydroMiningRig;
+    public static final String Tooltip_HydroMiningRig_MachineType;
+    public static final String Tooltip_HydroMiningRig_Controller;
+    public static final String Tooltip_HydroMiningRig_00;
+    public static final String Tooltip_HydroMiningRig_01;
+    public static final String Tooltip_HydroMiningRig_02;
+    public static final String Tooltip_HydroMiningRig_03;
+    public static final String Tooltip_HydroMiningRig_04;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -430,6 +439,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_Fluid_GasTransmutingUnit;
     public static final String EOHB_Recipe_Solid_GasTransmutingUnit;
     public static final String EOHB_Recipe_GasReactorGlobe;
+    public static final String EOHB_Recipe_HydroMiningRig;
 
     public TextLocalization() {
     }
@@ -807,12 +817,22 @@ public class TextLocalization {
         Tooltip_Solid_GasTransmutingUnit_03 = TextHandler.texter("provided crucial inspiration for the scientists today.","Tooltip_Solid_GasTransmutingUnit_03");
 
         //气体反应炉
-        NameGasReactorGlobe = TextHandler.texter("","NameGasReactorGlobe");
-        Tooltip_GasReactorGlobe_MachineType = TextHandler.texter("","Tooltip_GasReactorGlobe_MachineType");
-        Tooltip_GasReactorGlobe_Controller = TextHandler.texter("","Tooltip_GasReactorGlobe_Controller");
-        Tooltip_GasReactorGlobe_00 = TextHandler.texter("","Tooltip_GasReactorGlobe_00");
-        Tooltip_GasReactorGlobe_01 = TextHandler.texter("","Tooltip_GasReactorGlobe_01");
-        Tooltip_GasReactorGlobe_02 = TextHandler.texter("","Tooltip_GasReactorGlobe_02");
+        NameGasReactorGlobe = TextHandler.texter("Gas Reactor Globe","NameGasReactorGlobe");
+        Tooltip_GasReactorGlobe_MachineType = TextHandler.texter("Gas Reactor Globe","Tooltip_GasReactorGlobe_MachineType");
+        Tooltip_GasReactorGlobe_Controller = TextHandler.texter("Controller block of the Gas Reactor Globe","Tooltip_GasReactorGlobe_Controller");
+        Tooltip_GasReactorGlobe_00 = TextHandler.texter("A facility for performing gas-phase reactions.","Tooltip_GasReactorGlobe_00");
+        Tooltip_GasReactorGlobe_01 = TextHandler.texter("\"The facility must be completely hermetic and include thermostats, humidity controllers, and separator modules.","Tooltip_GasReactorGlobe_01");
+        Tooltip_GasReactorGlobe_02 = TextHandler.texter("\"You think I'm complaining about design challenges? No. In fact, I'm planning to fit a self-destruct module into this contraption.\"","Tooltip_GasReactorGlobe_02");
+
+        //水驱矿机
+        NameHydroMiningRig = TextHandler.texter("Hydro Mining Rig","NameHydroMiningRig");
+        Tooltip_HydroMiningRig_MachineType = TextHandler.texter("Hydro Mining Rig","Tooltip_HydroMiningRig_MachineType");
+        Tooltip_HydroMiningRig_Controller = TextHandler.texter("Controller block of the Hydro Mining Rig","Tooltip_HydroMiningRig_Controller");
+        Tooltip_HydroMiningRig_00 = TextHandler.texter("A mining rig for digging up various types of ore such as Cuprium Ore. This rig does not need power as it can be driven with Clean Water.","Tooltip_HydroMiningRig_00");
+        Tooltip_HydroMiningRig_01 = TextHandler.texter("The Endfield Hydro Mining Rig features a special coating to minimize the riskof rusting in humid/wet environments.","Tooltip_HydroMiningRig_01");
+        Tooltip_HydroMiningRig_02 = TextHandler.texter("Place the structural core near the primary ore‑vein blocks unique to Planet Talos II to begin operation!","Tooltip_HydroMiningRig_02");
+        Tooltip_HydroMiningRig_03 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_HydroMiningRig_03");
+        Tooltip_HydroMiningRig_04 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_HydroMiningRig_04");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -901,5 +921,6 @@ public class TextLocalization {
         EOHB_Recipe_Fluid_GasTransmutingUnit = TextHandler.texter("Fluid-Gas Transmuting Unit","EOHB_Recipe_Fluid_GasTransmutingUnit");
         EOHB_Recipe_Solid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","EOHB_Recipe_Solid_GasTransmutingUnit");
         EOHB_Recipe_GasReactorGlobe = TextHandler.texter("Gas Reactor Globe","EOHB_Recipe_GasReactorGlobe");
+        EOHB_Recipe_HydroMiningRig = TextHandler.texter("Hydro Mining Rig","EOHB_Recipe_HydroMiningRig");
     }
 }
