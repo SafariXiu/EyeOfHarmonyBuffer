@@ -474,4 +474,21 @@ public class RecipeMaps {
         .logoPos(152, 63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ChiTongNaiYaPing.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> GearingUnit = RecipeMapBuilder
+        .of(EOHB_Recipe_GearingUnit)
+        .maxIO(4, 4, 4, 4)
+        .neiRecipeBackgroundSize(170, 185)
+        .useCustomFilterForNEI()
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                4,
+                4
+            )
+        )
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20, 20)
+        .logoPos(152, 63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ZiJingZhuangBeiYuanJian.get(1)))
+        .build();
 }

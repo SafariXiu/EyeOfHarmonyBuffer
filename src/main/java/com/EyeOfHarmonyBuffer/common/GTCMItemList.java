@@ -135,6 +135,13 @@ public enum GTCMItemList {
     XiRangQi,
     ChiTongNaiYaPing,
     QiTaiZhuoTong,
+    ZiJingZhuangBeiYuanJian,
+    LanTieZhuangBeiYuanJian,
+    GaoJingZhuangBeiYuanJian,
+    XiRangZhuangBeiYuanJian,
+    ChiTongZhuangBeiYuanJian,
+    HeTongZhuangBeiYuanJian,
+    ZhuoTongZhuangBeiYuanJian,
 
     YuanShiMainBlock,
     YuanShiBlock,
@@ -190,6 +197,7 @@ public enum GTCMItemList {
     HydroMiningRig,
     GasExtractor,
     SeparatingUnit,
+    GearingUnit,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

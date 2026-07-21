@@ -65,6 +65,13 @@ public class ItemIntermediateProducts {
     public static Item ShuRangYi_KuoRongYiXing;
     public static Item ShuRangYi_KuoRongErXing;
     public static Item FenLiXin;
+    public static Item ZiJingZhuangBeiYuanJian;
+    public static Item LanTieZhuangBeiYuanJian;
+    public static Item GaoJingZhuangBeiYuanJian;
+    public static Item XiRangZhuangBeiYuanJian;
+    public static Item ChiTongZhuangBeiYuanJian;
+    public static Item HeTongZhuangBeiYuanJian;
+    public static Item ZhuoTongZhuangBeiYuanJian;
 
     public static void initAndRegister(String modid) {
         String textureFolder = "Arknights/";

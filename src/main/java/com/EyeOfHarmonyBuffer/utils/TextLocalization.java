@@ -369,6 +369,12 @@ public class TextLocalization {
     public static final String Tooltip_SeparatingUnit_01;
     public static final String Tooltip_SeparatingUnit_02;
 
+    public static final String NameGearingUnit;
+    public static final String Tooltip_GearingUnit_MachineType;
+    public static final String Tooltip_GearingUnit_Controller;
+    public static final String Tooltip_GearingUnit_00;
+    public static final String Tooltip_GearingUnit_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -459,6 +465,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_HydroMiningRig;
     public static final String EOHB_Recipe_GasExtractor;
     public static final String EOHB_Recipe_SeparatingUnit;
+    public static final String EOHB_Recipe_GearingUnit;
 
     public TextLocalization() {
     }
@@ -865,12 +872,19 @@ public class TextLocalization {
         Tooltip_GasExtractor_05 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_GasExtractor_05");
 
         //拆解机
-        NameSeparatingUnit = TextHandler.texter("","NameSeparatingUnit");
-        Tooltip_SeparatingUnit_MachineType = TextHandler.texter("","Tooltip_SeparatingUnit_MachineType");
-        Tooltip_SeparatingUnit_Controller = TextHandler.texter("","Tooltip_SeparatingUnit_Controller");
-        Tooltip_SeparatingUnit_00 = TextHandler.texter("","Tooltip_SeparatingUnit_00");
-        Tooltip_SeparatingUnit_01 = TextHandler.texter("","Tooltip_SeparatingUnit_01");
-        Tooltip_SeparatingUnit_02 = TextHandler.texter("","Tooltip_SeparatingUnit_02");
+        NameSeparatingUnit = TextHandler.texter("Separating Unit","NameSeparatingUnit");
+        Tooltip_SeparatingUnit_MachineType = TextHandler.texter("Separating Unit","Tooltip_SeparatingUnit_MachineType");
+        Tooltip_SeparatingUnit_Controller = TextHandler.texter("Controller block of the Separating Unit","Tooltip_SeparatingUnit_Controller");
+        Tooltip_SeparatingUnit_00 = TextHandler.texter("A facility that physically disassembles various items.","Tooltip_SeparatingUnit_00");
+        Tooltip_SeparatingUnit_01 = TextHandler.texter("Eighty percent of those who first heard the story of the separating unit simply refused to believe this fact: ","Tooltip_SeparatingUnit_01");
+        Tooltip_SeparatingUnit_02 = TextHandler.texter("The design of this facility was inspired by large UWST disassembling stations for sawing and cutting apart Aggeloi carcasses.","Tooltip_SeparatingUnit_02");
+
+        //装备原件机
+        NameGearingUnit = TextHandler.texter("Gearing Unit","NameGearingUnit");
+        Tooltip_GearingUnit_MachineType = TextHandler.texter("Gearing Unit","Tooltip_GearingUnit_MachineType");
+        Tooltip_GearingUnit_Controller = TextHandler.texter("Controller block of the Gearing Unit","Tooltip_GearingUnit_Controller");
+        Tooltip_GearingUnit_00 = TextHandler.texter("A facility that laminates different materials together to create gear components.","Tooltip_GearingUnit_00");
+        Tooltip_GearingUnit_01 = TextHandler.texter("A top-tier piece of equipment must undergo multiple processing steps that include textile weaving and compression lamination of various fabric and lining.","Tooltip_GearingUnit_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -962,5 +976,6 @@ public class TextLocalization {
         EOHB_Recipe_HydroMiningRig = TextHandler.texter("Hydro Mining Rig","EOHB_Recipe_HydroMiningRig");
         EOHB_Recipe_GasExtractor = TextHandler.texter("Gas Extractor","EOHB_Recipe_GasExtractor");
         EOHB_Recipe_SeparatingUnit = TextHandler.texter("Separating Unit","EOHB_Recipe_SeparatingUnit");
+        EOHB_Recipe_GearingUnit = TextHandler.texter("Gearing Unit","EOHB_Recipe_GearingUnit");
     }
 }

@@ -345,6 +345,11 @@ Tooltip_SeparatingUnit_Controller=Controller block of the Separating Unit
 Tooltip_SeparatingUnit_00=A facility that physically disassembles various items.
 Tooltip_SeparatingUnit_01=Eighty percent of those who first heard the story of the separating unit simply refused to believe this fact: 
 Tooltip_SeparatingUnit_02=The design of this facility was inspired by large UWST disassembling stations for sawing and cutting apart Aggeloi carcasses.
+NameGearingUnit=Gearing Unit
+Tooltip_GearingUnit_MachineType=Gearing Unit
+Tooltip_GearingUnit_Controller=Controller block of the Gearing Unit
+Tooltip_GearingUnit_00=A facility that laminates different materials together to create gear components.
+Tooltip_GearingUnit_01=A top-tier piece of equipment must undergo multiple processing steps that include textile weaving and compression lamination of various fabric and lining.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -378,6 +383,7 @@ EOHB_Recipe_GasReactorGlobe=Gas Reactor Globe
 EOHB_Recipe_HydroMiningRig=Hydro Mining Rig
 EOHB_Recipe_GasExtractor=Gas Extractor
 EOHB_Recipe_SeparatingUnit=Separating Unit
+EOHB_Recipe_GearingUnit=Gearing Unit
 
 #item
 EOHB_Harmony=Harmony
@@ -588,6 +594,13 @@ item.DuoQi.name=Inergen
 item.SuanQi.name=Acridgen
 item.XiRangQi.name=Xiragen
 item.ShuiZhengQi.name=Aquagen
+item.ZiJingZhuangBeiYuanJian.name=Amethyst Component
+item.LanTieZhuangBeiYuanJian.name=Ferrium Component
+item.GaoJingZhuangBeiYuanJian.name=Cryston Component
+item.XiRangZhuangBeiYuanJian.name=Xiranite Component
+item.ChiTongZhuangBeiYuanJian.name=Cuprium Component
+item.HeTongZhuangBeiYuanJian.name=Hetonite Component
+item.ZhuoTongZhuangBeiYuanJian.name=Pyrrolite Component
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

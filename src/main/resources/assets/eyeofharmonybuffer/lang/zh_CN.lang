@@ -345,6 +345,11 @@ Tooltip_SeparatingUnit_Controller=§7拆解机的§b控制器方块§r
 Tooltip_SeparatingUnit_00=§7用于进行物理拆分的设备。§r
 Tooltip_SeparatingUnit_01=§7在第一次听到拆解机故事的情况下，有§e百分之八十§7的听众不愿意相信这台能够精密作业的设备。§r
 Tooltip_SeparatingUnit_02=§7其设计灵感居然会来自于§b工团§7用来锯切§b天使§7的大型拆解台。§r
+NameGearingUnit=§b装备原件机
+Tooltip_GearingUnit_MachineType=§b装备原件机
+Tooltip_GearingUnit_Controller=§7装备原件机的§b控制器方块§r
+Tooltip_GearingUnit_00=§7能够将不同材料嵌合加工成§b装备原件§7的设备。§r
+Tooltip_GearingUnit_01=§7一件足够优秀的§b装备原件§7，需要经历压嵌、编织等§e多道§7工序。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -378,6 +383,7 @@ EOHB_Recipe_GasReactorGlobe=气体反应炉
 EOHB_Recipe_HydroMiningRig=水驱矿机
 EOHB_Recipe_GasExtractor=气体收集泵
 EOHB_Recipe_SeparatingUnit=拆解机
+EOHB_Recipe_GearingUnit=装备原件机
 
 #item
 EOHB_Harmony=鸿蒙
@@ -588,6 +594,13 @@ item.DuoQi.name=惰气
 item.SuanQi.name=酸气
 item.XiRangQi.name=息壤气
 item.ShuiZhengQi.name=水蒸气
+item.ZiJingZhuangBeiYuanJian.name=紫晶装备原件
+item.LanTieZhuangBeiYuanJian.name=蓝铁装备原件
+item.GaoJingZhuangBeiYuanJian.name=高晶装备原件
+item.XiRangZhuangBeiYuanJian.name=息壤装备原件
+item.ChiTongZhuangBeiYuanJian.name=赤铜装备原件
+item.HeTongZhuangBeiYuanJian.name=赫铜装备原件
+item.ZhuoTongZhuangBeiYuanJian.name=灼铜装备原件
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块
