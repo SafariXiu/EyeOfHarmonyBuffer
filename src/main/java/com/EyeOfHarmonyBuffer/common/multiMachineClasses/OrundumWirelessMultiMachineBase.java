@@ -10,6 +10,7 @@ import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 import net.minecraft.item.ItemStack;
@@ -85,9 +86,7 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
             if (!satisfied) {
                 endRecipeProcessing();
-                return CheckRecipeResultRegistry.insufficientPower(
-                    safeToLong(orundumCost)
-                );
+                return SimpleCheckRecipeResult.ofFailure("InsufficientCompute");
             }
         }
 

@@ -669,6 +669,7 @@ GT5U.gui.text.recipe_result.NoFluidSource=没有找到液体源！在控制器�
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=不支持的矿脉块！
 GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=当前环境不满足本配方的气体要求
 GT5U.gui.text.recipe_result.NotEnoughWater=没有足够的水！
+GT5U.gui.text.recipe_result.InsufficientCompute=算力不足!
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境

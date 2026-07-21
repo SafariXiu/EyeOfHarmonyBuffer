@@ -669,6 +669,7 @@ GT5U.gui.text.recipe_result.NoFluidSource=No fluid source found! A fluid source 
 GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block!
 GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=The current environment does not meet the gas requirements of this recipe
 GT5U.gui.text.recipe_result.NotEnoughWater=No Enough Water!
+GT5U.gui.text.recipe_result.InsufficientCompute=Insufficient computing power!
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.
