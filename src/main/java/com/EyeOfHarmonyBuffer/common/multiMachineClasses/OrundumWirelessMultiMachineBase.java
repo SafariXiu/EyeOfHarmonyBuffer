@@ -1,11 +1,15 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.IWirelessComputeConsumer;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.IWirelessComputeProvider;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeHelper;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessNodeRef;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
-import gregtech.api.util.GTUtility;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 import net.minecraft.item.ItemStack;
@@ -24,9 +28,12 @@ import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
 
 public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessMultiMachineBase<T>>
-    extends WirelessEnergyMultiMachineBase<T> {
+    extends WirelessEnergyMultiMachineBase<T>
+    implements IWirelessComputeConsumer, IWirelessComputeProvider {
 
     protected int lastUsedParallel = 0;
+
+    protected WirelessNodeRef wirelessNodeRefCache;
 
     public OrundumWirelessMultiMachineBase(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -69,7 +76,23 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
         BigInteger orundumCost = convertEuCostToOrundum(baseCost);
 
+        BigInteger demand = getRequiredComputeForCurrentRecipe();
+
+        if (demand != null && demand.signum() > 0 && ownerUUID != null) {
+            WirelessComputeHelper.updateConsumer(this);
+
+            boolean satisfied = WirelessComputeHelper.isConsumerSatisfied(this);
+
+            if (!satisfied) {
+                endRecipeProcessing();
+                return CheckRecipeResultRegistry.insufficientPower(
+                    safeToLong(orundumCost)
+                );
+            }
+        }
+
         if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
+            endRecipeProcessing();
             return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
         }
 
@@ -246,5 +269,88 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
                     + parallels
             );
         }
+    }
+
+    @Override
+    public UUID getOwnerUUID() {
+        return this.ownerUUID;
+    }
+
+    /** 构造 WirelessNodeRef（玩家 + 维度 + 坐标） */
+    @Override
+    public WirelessNodeRef getWirelessNodeRef() {
+        if (wirelessNodeRefCache == null) {
+            if (ownerUUID == null || getBaseMetaTileEntity() == null) {
+                return null;
+            }
+            int dimId = getBaseMetaTileEntity().getWorld().provider.dimensionId;
+            int x = getBaseMetaTileEntity().getXCoord();
+            int y = getBaseMetaTileEntity().getYCoord();
+            int z = getBaseMetaTileEntity().getZCoord();
+
+            wirelessNodeRefCache = new WirelessNodeRef(ownerUUID, dimId, x, y, z);
+        }
+        return wirelessNodeRefCache;
+    }
+
+    /**
+     * 子类可以重写，决定“当前配方需要多少算力 D”。
+     * 默认返回 0：代表这台机器不需要无线算力。
+     */
+    protected BigInteger getRequiredComputeForCurrentRecipe() {
+        return BigInteger.ZERO;
+    }
+
+    /** 当前这次配方需要的算力需求 D，默认 0（不使用算力） */
+    @Override
+    public BigInteger getRequiredCompute() {
+        BigInteger d = getRequiredComputeForCurrentRecipe();
+        return d == null ? BigInteger.ZERO : d;
+    }
+
+    /**
+     * 子类可以重写，决定“当前状态提供多少算力 S”。
+     * 默认返回 0：代表这台机器不提供算力。
+     */
+    protected BigInteger getProvidedComputeForCurrentState() {
+        return BigInteger.ZERO;
+    }
+
+    @Override
+    public BigInteger getProvidedCompute() {
+        BigInteger s = getProvidedComputeForCurrentState();
+        return s == null ? BigInteger.ZERO : s;
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+
+        if (aBaseMetaTileEntity != null && aBaseMetaTileEntity.isServerSide()) {
+            if (ownerUUID != null) {
+                BigInteger supply = getProvidedComputeForCurrentState();
+                if (supply != null && supply.signum() > 0) {
+                    WirelessComputeHelper.updateProvider(this);
+                } else {
+                    WirelessComputeHelper.unregisterProvider(this);
+                }
+            } else {
+                WirelessComputeHelper.unregisterProvider(this);
+            }
+        }
+    }
+
+    @Override
+    public void onRemoval() {
+        super.onRemoval();
+        WirelessComputeHelper.unregisterConsumer(this);
+        WirelessComputeHelper.unregisterProvider(this);
+    }
+
+    @Override
+    public void onUnload() {
+        super.onUnload();
+        WirelessComputeHelper.unregisterConsumer(this);
+        WirelessComputeHelper.unregisterProvider(this);
     }
 }

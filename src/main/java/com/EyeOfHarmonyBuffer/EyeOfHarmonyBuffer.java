@@ -12,6 +12,7 @@ import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegist
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
 import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
@@ -108,6 +109,8 @@ public class EyeOfHarmonyBuffer {
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
+
+        cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
 
         EntityLoader.registerEntities();
 
