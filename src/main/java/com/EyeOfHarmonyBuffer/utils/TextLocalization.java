@@ -362,6 +362,13 @@ public class TextLocalization {
     public static final String Tooltip_GasExtractor_04;
     public static final String Tooltip_GasExtractor_05;
 
+    public static final String NameSeparatingUnit;
+    public static final String Tooltip_SeparatingUnit_MachineType;
+    public static final String Tooltip_SeparatingUnit_Controller;
+    public static final String Tooltip_SeparatingUnit_00;
+    public static final String Tooltip_SeparatingUnit_01;
+    public static final String Tooltip_SeparatingUnit_02;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -451,6 +458,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_GasReactorGlobe;
     public static final String EOHB_Recipe_HydroMiningRig;
     public static final String EOHB_Recipe_GasExtractor;
+    public static final String EOHB_Recipe_SeparatingUnit;
 
     public TextLocalization() {
     }
@@ -856,6 +864,14 @@ public class TextLocalization {
         Tooltip_GasExtractor_04 = TextHandler.texter("At least one corresponding primary ore‑vein block must exist within the detection range, otherwise the device cannot start.","Tooltip_GasExtractor_04");
         Tooltip_GasExtractor_05 = TextHandler.texter("Detection range: from the main block of the machine, extends 1 block backward and 2 blocks downward, covering a 7×7×3 cuboid area.","Tooltip_GasExtractor_05");
 
+        //拆解机
+        NameSeparatingUnit = TextHandler.texter("","NameSeparatingUnit");
+        Tooltip_SeparatingUnit_MachineType = TextHandler.texter("","Tooltip_SeparatingUnit_MachineType");
+        Tooltip_SeparatingUnit_Controller = TextHandler.texter("","Tooltip_SeparatingUnit_Controller");
+        Tooltip_SeparatingUnit_00 = TextHandler.texter("","Tooltip_SeparatingUnit_00");
+        Tooltip_SeparatingUnit_01 = TextHandler.texter("","Tooltip_SeparatingUnit_01");
+        Tooltip_SeparatingUnit_02 = TextHandler.texter("","Tooltip_SeparatingUnit_02");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -945,5 +961,6 @@ public class TextLocalization {
         EOHB_Recipe_GasReactorGlobe = TextHandler.texter("Gas Reactor Globe","EOHB_Recipe_GasReactorGlobe");
         EOHB_Recipe_HydroMiningRig = TextHandler.texter("Hydro Mining Rig","EOHB_Recipe_HydroMiningRig");
         EOHB_Recipe_GasExtractor = TextHandler.texter("Gas Extractor","EOHB_Recipe_GasExtractor");
+        EOHB_Recipe_SeparatingUnit = TextHandler.texter("Separating Unit","EOHB_Recipe_SeparatingUnit");
     }
 }

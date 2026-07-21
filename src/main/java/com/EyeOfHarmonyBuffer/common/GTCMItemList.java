@@ -189,6 +189,7 @@ public enum GTCMItemList {
     GasReactorGlobe,
     HydroMiningRig,
     GasExtractor,
+    SeparatingUnit,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

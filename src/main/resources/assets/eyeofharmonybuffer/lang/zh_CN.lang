@@ -339,6 +339,12 @@ Tooltip_GasExtractor_02=§7那些企业绝对想不到§b终末地工业§7购�
 Tooltip_GasExtractor_03=§7将结构核心安放在§a塔罗斯星球§7特有的§e气体主矿脉方块§7附近，即可开始工作。§r
 Tooltip_GasExtractor_04=§7检测范围内必须存在至少一个对应的§e主矿脉方块§7，否则设备无法启动。§r
 Tooltip_GasExtractor_05=§7检测范围：以机器主方块为基准，§b向后延伸 2 格§7、§b向下覆盖§e7×7×3§7的方形空间。§r
+NameSeparatingUnit=§b拆解机
+Tooltip_SeparatingUnit_MachineType=§b拆解机
+Tooltip_SeparatingUnit_Controller=§7拆解机的§b控制器方块§r
+Tooltip_SeparatingUnit_00=§7用于进行物理拆分的设备。§r
+Tooltip_SeparatingUnit_01=§7在第一次听到拆解机故事的情况下，有§e百分之八十§7的听众不愿意相信这台能够精密作业的设备。§r
+Tooltip_SeparatingUnit_02=§7其设计灵感居然会来自于§b工团§7用来锯切§b天使§7的大型拆解台。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -371,6 +377,7 @@ EOHB_Recipe_Solid_GasTransmutingUnit=固气转化机
 EOHB_Recipe_GasReactorGlobe=气体反应炉
 EOHB_Recipe_HydroMiningRig=水驱矿机
 EOHB_Recipe_GasExtractor=气体收集泵
+EOHB_Recipe_SeparatingUnit=拆解机
 
 #item
 EOHB_Harmony=鸿蒙
