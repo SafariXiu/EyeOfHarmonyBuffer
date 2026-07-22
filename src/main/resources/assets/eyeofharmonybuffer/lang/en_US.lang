@@ -350,6 +350,17 @@ Tooltip_GearingUnit_MachineType=Gearing Unit
 Tooltip_GearingUnit_Controller=Controller block of the Gearing Unit
 Tooltip_GearingUnit_00=A facility that laminates different materials together to create gear components.
 Tooltip_GearingUnit_01=A top-tier piece of equipment must undergo multiple processing steps that include textile weaving and compression lamination of various fabric and lining.
+NameLargeForce_ContainedProliferationMine=AG-07 Large Force-Contained Proliferation Mine
+Tooltip_LargeForce_ContainedProliferationMine_MachineType=AG-07 Large Force-Contained Proliferation Mine
+Tooltip_LargeForce_ContainedProliferationMine_Controller=Controller block of the AG-07 Large Force-Contained Proliferation Mine
+Tooltip_LargeForce_ContainedProliferationMine_00=Uses precision computer control and force-field containment for fast, batch-scale production of high-purity minerals.
+Tooltip_LargeForce_ContainedProliferationMine_01=Place the main ore block at the bottom-center of each of the four containers. If not placing the ore block, place the corresponding placeholder block instead. Check NEI or the blueprint for exact positions.
+Tooltip_LargeForce_ContainedProliferationMine_02=Each container only outputs its corresponding contents. Ensure each container has an output bus before operation! Check NEI or the blueprint for exact positions.
+Tooltip_LargeForce_ContainedProliferationMine_03=Once activated, each active chamber consumes 150 Internal Universe Computing Power.
+Tooltip_LargeForce_ContainedProliferationMine_04=To meet quarterly targets, the night shift secretly bumped the central computer's power by fifteen percent to see how much extra they could get.
+Tooltip_LargeForce_ContainedProliferationMine_05=Output did double, but every single ore grew into hollow tubes – completely useless for standard smelting.
+Tooltip_LargeForce_ContainedProliferationMine_06=To make it worse, those hollow tubes fit perfectly into coffee mugs – so they got repurposed as custom drinkware, and nobody complained about the yield after all.
+Tooltip_LargeForce_ContainedProliferationMine_07=The overclock feature was eventually removed, but replaced with a "morph-optimization algorithm" to control growth shapes.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -384,6 +395,7 @@ EOHB_Recipe_HydroMiningRig=Hydro Mining Rig
 EOHB_Recipe_GasExtractor=Gas Extractor
 EOHB_Recipe_SeparatingUnit=Separating Unit
 EOHB_Recipe_GearingUnit=Gearing Unit
+EOHB_Recipe_LargeForce_ContainedProliferationMine=AG-07 Large Force-Contained Proliferation Mine
 
 #item
 EOHB_Harmony=Harmony
@@ -670,6 +682,10 @@ GT5U.gui.text.recipe_result.UnsupportedMainVeinBlock=Unsupported Main Vein Block
 GT5U.gui.text.recipe_result.ForgeOfTheSky.EnvMismatch=The current environment does not meet the gas requirements of this recipe
 GT5U.gui.text.recipe_result.NotEnoughWater=No Enough Water!
 GT5U.gui.text.recipe_result.InsufficientCompute=Insufficient computing power!
+GT5U.gui.text.recipe_result.NoOutputBusForM=No output bus is connected.
+GT5U.gui.text.recipe_result.NoOutputBusForP=No output bus is connected.
+GT5U.gui.text.recipe_result.NoOutputBusForQ=No output bus is connected.
+GT5U.gui.text.recipe_result.NoOutputBusForT=No output bus is connected.
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.

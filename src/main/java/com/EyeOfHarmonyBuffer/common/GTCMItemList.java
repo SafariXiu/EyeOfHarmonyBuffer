@@ -198,6 +198,7 @@ public enum GTCMItemList {
     GasExtractor,
     SeparatingUnit,
     GearingUnit,
+    LargeForce_ContainedProliferationMine,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

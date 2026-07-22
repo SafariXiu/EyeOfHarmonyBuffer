@@ -41,6 +41,7 @@ public class MachineLoader {
     public static ItemStack GasExtractor;
     public static ItemStack SeparatingUnit;
     public static ItemStack GearingUnit;
+    public static ItemStack LargeForce_ContainedProliferationMine;
 
     private final static int MachineBlockID = 23000;
 
@@ -282,5 +283,12 @@ public class MachineLoader {
             TextLocalization.NameGearingUnit
         ).getStackForm(1);
         GTCMItemList.GearingUnit.set(GearingUnit);
+
+        LargeForce_ContainedProliferationMine = new EOHB_LargeForce_ContainedProliferationMine(
+            MachineBlockID + 35,
+            "NameLargeForce_ContainedProliferationMine",
+            TextLocalization.NameLargeForce_ContainedProliferationMine
+        ).getStackForm(1);
+        GTCMItemList.LargeForce_ContainedProliferationMine.set(LargeForce_ContainedProliferationMine);
     }
 }

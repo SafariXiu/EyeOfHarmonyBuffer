@@ -53,7 +53,8 @@ public class RecipeLoader {
             new HydroMiningRigRecipes(),
             new GasExtractorRecipes(),
             new SeparatingUnitRecipes(),
-            new GearingUnitRecipes()
+            new GearingUnitRecipes(),
+            new LargeForce_ContainedProliferationMineRecipes()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

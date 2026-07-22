@@ -375,6 +375,18 @@ public class TextLocalization {
     public static final String Tooltip_GearingUnit_00;
     public static final String Tooltip_GearingUnit_01;
 
+    public static final String NameLargeForce_ContainedProliferationMine;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_MachineType;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_Controller;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_00;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_01;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_02;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_03;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_04;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_05;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_06;
+    public static final String Tooltip_LargeForce_ContainedProliferationMine_07;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -466,6 +478,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_GasExtractor;
     public static final String EOHB_Recipe_SeparatingUnit;
     public static final String EOHB_Recipe_GearingUnit;
+    public static final String EOHB_Recipe_LargeForce_ContainedProliferationMine;
 
     public TextLocalization() {
     }
@@ -886,6 +899,19 @@ public class TextLocalization {
         Tooltip_GearingUnit_00 = TextHandler.texter("A facility that laminates different materials together to create gear components.","Tooltip_GearingUnit_00");
         Tooltip_GearingUnit_01 = TextHandler.texter("A top-tier piece of equipment must undergo multiple processing steps that include textile weaving and compression lamination of various fabric and lining.","Tooltip_GearingUnit_01");
 
+        //AG-07 大型力场约束式增殖矿场
+        NameLargeForce_ContainedProliferationMine = TextHandler.texter("","NameLargeForce_ContainedProliferationMine");
+        Tooltip_LargeForce_ContainedProliferationMine_MachineType = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_MachineType");
+        Tooltip_LargeForce_ContainedProliferationMine_Controller = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_Controller");
+        Tooltip_LargeForce_ContainedProliferationMine_00 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_00");
+        Tooltip_LargeForce_ContainedProliferationMine_01 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_01");
+        Tooltip_LargeForce_ContainedProliferationMine_02 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_02");
+        Tooltip_LargeForce_ContainedProliferationMine_03 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_03");
+        Tooltip_LargeForce_ContainedProliferationMine_04 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_04");
+        Tooltip_LargeForce_ContainedProliferationMine_05 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_05");
+        Tooltip_LargeForce_ContainedProliferationMine_06 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_06");
+        Tooltip_LargeForce_ContainedProliferationMine_07 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_07");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -977,5 +1003,6 @@ public class TextLocalization {
         EOHB_Recipe_GasExtractor = TextHandler.texter("Gas Extractor","EOHB_Recipe_GasExtractor");
         EOHB_Recipe_SeparatingUnit = TextHandler.texter("Separating Unit","EOHB_Recipe_SeparatingUnit");
         EOHB_Recipe_GearingUnit = TextHandler.texter("Gearing Unit","EOHB_Recipe_GearingUnit");
+        EOHB_Recipe_LargeForce_ContainedProliferationMine = TextHandler.texter("AG-07 Large Force-Contained Proliferation Mine","EOHB_Recipe_LargeForce_ContainedProliferationMine");
     }
 }
