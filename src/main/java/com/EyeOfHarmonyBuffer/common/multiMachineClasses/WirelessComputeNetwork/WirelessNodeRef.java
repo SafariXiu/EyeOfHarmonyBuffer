@@ -1,25 +1,17 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
-import java.util.UUID;
-
 public final class WirelessNodeRef {
 
-    private final UUID ownerUUID;
     private final int dimId;
     private final int x;
     private final int y;
     private final int z;
 
-    public WirelessNodeRef(UUID ownerUUID, int dimId, int x, int y, int z) {
-        this.ownerUUID = ownerUUID;
+    public WirelessNodeRef(int dimId, int x, int y, int z) {
         this.dimId = dimId;
         this.x = x;
         this.y = y;
         this.z = z;
-    }
-
-    public UUID getOwnerUUID() {
-        return ownerUUID;
     }
 
     public int getDimId() {
@@ -61,8 +53,7 @@ public final class WirelessNodeRef {
     @Override
     public String toString() {
         return "WirelessNodeRef{" +
-            "owner=" + ownerUUID +
-            ", dim=" + dimId +
+            "dim=" + dimId +
             ", pos=(" + x + "," + y + "," + z + ")" +
             '}';
     }

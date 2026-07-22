@@ -11,6 +11,9 @@ import java.util.UUID;
 
 public class WirelessComputeManager {
 
+    private static final WirelessNodeRef DEBUG_REF =
+        new WirelessNodeRef(Integer.MIN_VALUE, 0, 0, 0);
+
     private static final WirelessComputeManager INSTANCE = new WirelessComputeManager();
 
     public static WirelessComputeManager getInstance() {
@@ -31,9 +34,14 @@ public class WirelessComputeManager {
         return net;
     }
 
+    public WirelessComputeNetwork getNetwork(UUID ownerUUID) {
+        if (ownerUUID == null) return null;
+        return networks.get(ownerUUID);
+    }
+
     public void serverTick(World world) {
         if (world.isRemote) {
-            return; // 只在服务端跑
+            return;
         }
 
         Iterator<Map.Entry<UUID, WirelessComputeNetwork>> it = networks.entrySet().iterator();
@@ -91,14 +99,35 @@ public class WirelessComputeManager {
         return net == null ? BigInteger.ZERO : net.getTotalDemand();
     }
 
-    public NBTTagCompound writeToNBT() {
-        NBTTagCompound tag = new NBTTagCompound();
-        // 目前先留空，将来如果要跨重启保持算力状态再实现
+    public NBTTagCompound writeToNBT(NBTTagCompound tag) {
+        if (tag == null) {
+            tag = new NBTTagCompound();
+        }
+
         return tag;
     }
 
     public void readFromNBT(NBTTagCompound tag) {
         networks.clear();
-        if (tag == null) return;
+    }
+
+    public void setDebugSupply(UUID ownerUUID, BigInteger supply) {
+        if (ownerUUID == null || supply == null) return;
+        WirelessComputeNetwork net = getOrCreateNetwork(ownerUUID);
+        if (net == null) return;
+
+        if (supply.signum() <= 0) {
+            net.unregisterProvider(DEBUG_REF);
+        } else {
+            net.registerProvider(DEBUG_REF, supply);
+        }
+    }
+
+    public void clearDebugSupply(UUID ownerUUID) {
+        if (ownerUUID == null) return;
+        WirelessComputeNetwork net = networks.get(ownerUUID);
+        if (net != null) {
+            net.unregisterProvider(DEBUG_REF);
+        }
     }
 }

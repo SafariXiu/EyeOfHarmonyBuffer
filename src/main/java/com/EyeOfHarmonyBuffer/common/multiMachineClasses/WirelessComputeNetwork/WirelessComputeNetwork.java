@@ -5,6 +5,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 单个玩家的无线算力网络。
+ * key = WirelessNodeRef(维度+坐标)，不含组/联盟概念。
+ */
+
 public class WirelessComputeNetwork {
 
     private final UUID ownerUUID;
@@ -65,10 +70,18 @@ public class WirelessComputeNetwork {
         }
     }
 
+    /** 个人网络自身是否供大于需 */
     public boolean isNetworkSatisfied() {
         return totalSupply.compareTo(totalDemand) >= 0;
     }
 
+    public boolean isConsumerRegistered(WirelessNodeRef ref) {
+        return ref != null && consumers.containsKey(ref);
+    }
+
+    /**
+     * 在“只看个人网络”的语义下：该 consumer 是否存在并且网络总供给足够。
+     */
     public boolean isConsumerSatisfied(WirelessNodeRef ref) {
         if (ref == null) return false;
         if (!consumers.containsKey(ref)) {
@@ -89,6 +102,7 @@ public class WirelessComputeNetwork {
         return providers.isEmpty() && consumers.isEmpty();
     }
 
+    /** 预留将来每 tick 的更复杂逻辑 */
     public void tick() {
 
     }

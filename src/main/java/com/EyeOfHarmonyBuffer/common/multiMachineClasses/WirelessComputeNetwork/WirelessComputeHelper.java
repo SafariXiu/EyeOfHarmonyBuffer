@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
 import java.math.BigInteger;
+import java.util.Collections;
+import java.util.Set;
 import java.util.UUID;
 
 public final class WirelessComputeHelper {
@@ -37,10 +39,45 @@ public final class WirelessComputeHelper {
         WirelessComputeManager.getInstance().unregisterConsumer(owner, ref);
     }
 
-    public static boolean isConsumerSatisfied(IWirelessComputeConsumer consumer) {
+    public static boolean isConsumerSatisfiedPersonal(IWirelessComputeConsumer consumer) {
         if (consumer == null) return false;
         UUID owner = consumer.getOwnerUUID();
         WirelessNodeRef ref = consumer.getWirelessNodeRef();
         return WirelessComputeManager.getInstance().isConsumerSatisfied(owner, ref);
+    }
+
+    public static boolean isConsumerSatisfiedInGroup(IWirelessComputeConsumer consumer) {
+        if (consumer == null) return false;
+
+        UUID owner = consumer.getOwnerUUID();
+        if (owner == null) return false;
+
+        WirelessNodeRef ref = consumer.getWirelessNodeRef();
+        if (ref == null) return false;
+
+        WirelessComputeManager manager = WirelessComputeManager.getInstance();
+
+        WirelessComputeNetwork selfNet = manager.getNetwork(owner);
+        if (selfNet == null || !selfNet.isConsumerRegistered(ref)) {
+            return false;
+        }
+
+        Set<UUID> members = ComputeGroupService.INSTANCE.getGroupMembers(owner);
+        if (members == null || members.isEmpty()) {
+            members = Collections.singleton(owner);
+        }
+
+        BigInteger totalSupply = BigInteger.ZERO;
+        BigInteger totalDemand = BigInteger.ZERO;
+
+        for (UUID member : members) {
+            WirelessComputeNetwork net = manager.getNetwork(member);
+            if (net != null) {
+                totalSupply = totalSupply.add(net.getTotalSupply());
+                totalDemand = totalDemand.add(net.getTotalDemand());
+            }
+        }
+
+        return totalSupply.compareTo(totalDemand) >= 0;
     }
 }

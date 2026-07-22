@@ -168,6 +168,8 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandTalosHere());
         event.registerServerCommand(new CommandReactorVideo());
         event.registerServerCommand(new CommandGasEnvironment());
+        event.registerServerCommand(new CommandComputeGroup());
+        event.registerServerCommand(new CommandComputeDebug());
     }
 
     @Mod.EventHandler

@@ -82,7 +82,7 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         if (demand != null && demand.signum() > 0 && ownerUUID != null) {
             WirelessComputeHelper.updateConsumer(this);
 
-            boolean satisfied = WirelessComputeHelper.isConsumerSatisfied(this);
+            boolean satisfied = WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
 
             if (!satisfied) {
                 endRecipeProcessing();
@@ -286,8 +286,7 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
             int x = getBaseMetaTileEntity().getXCoord();
             int y = getBaseMetaTileEntity().getYCoord();
             int z = getBaseMetaTileEntity().getZCoord();
-
-            wirelessNodeRefCache = new WirelessNodeRef(ownerUUID, dimId, x, y, z);
+            wirelessNodeRefCache = new WirelessNodeRef(dimId, x, y, z);
         }
         return wirelessNodeRefCache;
     }
