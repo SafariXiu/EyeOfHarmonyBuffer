@@ -333,7 +333,7 @@ public class RecipeMaps {
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20, 20)
         .logoPos(152, 63)
-        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.LanTieKuang.get(1)))
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.HighDensityEnergyFluidGenerator.get(1)))
         .build();
 
     public static final RecipeMap<RecipeMapBackend> IsotopeInfusionReactor = RecipeMapBuilder
@@ -506,6 +506,6 @@ public class RecipeMaps {
         .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
         .logoSize(20, 20)
         .logoPos(152, 63)
-        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.ZiJingZhuangBeiYuanJian.get(1)))
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.LargeForce_ContainedProliferationMine.get(1)))
         .build();
 }
