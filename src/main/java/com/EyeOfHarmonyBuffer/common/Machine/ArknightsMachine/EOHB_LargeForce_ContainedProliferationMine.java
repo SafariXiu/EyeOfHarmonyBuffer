@@ -508,7 +508,7 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
                     buildHatchAdder(EOHB_LargeForce_ContainedProliferationMine.class)
                         .atLeast(OutputBus)
                         .casingIndex(((BlockCasings10) GregTechAPI.sBlockCasings10).getTextureIndex(3))
-                        .hint(2)
+                        .hint(1)
                         .adder(EOHB_LargeForce_ContainedProliferationMine::addOutputBusForP)
                         .buildAndChain(
                             ofBlock(sBlockCasings10, 3)
@@ -519,7 +519,7 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
                     buildHatchAdder(EOHB_LargeForce_ContainedProliferationMine.class)
                         .atLeast(OutputBus)
                         .casingIndex(((BlockCasings10) GregTechAPI.sBlockCasings10).getTextureIndex(3))
-                        .hint(3)
+                        .hint(1)
                         .adder(EOHB_LargeForce_ContainedProliferationMine::addOutputBusForQ)
                         .buildAndChain(
                             ofBlock(sBlockCasings10, 3)
@@ -530,7 +530,7 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
                     buildHatchAdder(EOHB_LargeForce_ContainedProliferationMine.class)
                         .atLeast(OutputBus)
                         .casingIndex(((BlockCasings10) GregTechAPI.sBlockCasings10).getTextureIndex(3))
-                        .hint(4)
+                        .hint(1)
                         .adder(EOHB_LargeForce_ContainedProliferationMine::addOutputBusForT)
                         .buildAndChain(
                             ofBlock(sBlockCasings10, 3)
@@ -560,7 +560,7 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addOutputBus("4+", EOHB_MachineType_2)
+            .addOutputBus("4+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }
