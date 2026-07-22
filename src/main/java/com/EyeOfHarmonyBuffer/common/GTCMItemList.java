@@ -199,6 +199,7 @@ public enum GTCMItemList {
     SeparatingUnit,
     GearingUnit,
     LargeForce_ContainedProliferationMine,
+    InternalizedUniverseComputingEngine,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

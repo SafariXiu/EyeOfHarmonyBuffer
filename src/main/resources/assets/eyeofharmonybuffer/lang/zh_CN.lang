@@ -361,6 +361,15 @@ Tooltip_LargeForce_ContainedProliferationMine_04=§7为了赶§e季度指标§7�
 Tooltip_LargeForce_ContainedProliferationMine_05=§7结果是矿物产量确实翻了§e一番§7，但同时它们全部长成了§c中空管状§7，完全没法用于常规冶炼。§r
 Tooltip_LargeForce_ContainedProliferationMine_06=§7更气人的是那些空心管正好能插进咖啡杯，于是它们被改成了全部门的§d定制杯具§7，产量再高也没人抱怨了。§r
 Tooltip_LargeForce_ContainedProliferationMine_07=§7最终§c超频功能§7被正式移除，但替代方案是研发了“§b矿形优化算法§7”，专门控制生长外形。§r
+NameInternalizedUniverseComputingEngine=§b内化宇宙演算机
+Tooltip_InternalizedUniverseComputingEngine_MachineType=§6源石计算机
+Tooltip_InternalizedUniverseComputingEngine_Controller=§7内化宇宙演算机的§b控制器方块§r
+Tooltip_InternalizedUniverseComputingEngine_00=§7一台提供最基础的§b源石内化宇宙算力§7的机器，从§6源石§7的内化宇宙中获取信息来提供§b算力§7。§r
+Tooltip_InternalizedUniverseComputingEngine_01=§7非常简单不是吗？只需要通电并且输入一些§6源石§7，就可以从§b内化宇宙§7中获取§e200§7点的§b算力§7。§r
+Tooltip_InternalizedUniverseComputingEngine_02=§7演算机理论上从§6源石§7里提取的是“§b宇宙本源信息§7”，但实际吐出来的东西总让人摸不着头脑。§r
+Tooltip_InternalizedUniverseComputingEngine_03=§7有一块§6源石§7产出的数据全是§e购物清单§7，上面列着“§f三斤苹果、两斤猪肉、一打鸡蛋§7”。§r
+Tooltip_InternalizedUniverseComputingEngine_04=§7另一块§6源石§7更离谱，提取结果居然是隔壁老王家狗的完整§d基因组序列§7。§r
+Tooltip_InternalizedUniverseComputingEngine_05=§7最后大家得出结论：§6源石§7里封存的并不是§b宇宙真理§7，而是这个世界所有的§e无聊日常§7。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -396,6 +405,7 @@ EOHB_Recipe_GasExtractor=气体收集泵
 EOHB_Recipe_SeparatingUnit=拆解机
 EOHB_Recipe_GearingUnit=装备原件机
 EOHB_Recipe_LargeForce_ContainedProliferationMine=AG-07-大型力场约束式增殖矿场
+EOHB_Recipe_InternalizedUniverseComputingEngine=内化宇宙演算机
 
 #item
 EOHB_Harmony=鸿蒙

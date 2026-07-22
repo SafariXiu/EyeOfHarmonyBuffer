@@ -387,6 +387,16 @@ public class TextLocalization {
     public static final String Tooltip_LargeForce_ContainedProliferationMine_06;
     public static final String Tooltip_LargeForce_ContainedProliferationMine_07;
 
+    public static final String NameInternalizedUniverseComputingEngine;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_MachineType;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_Controller;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_00;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_01;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_02;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_03;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_04;
+    public static final String Tooltip_InternalizedUniverseComputingEngine_05;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -479,6 +489,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_SeparatingUnit;
     public static final String EOHB_Recipe_GearingUnit;
     public static final String EOHB_Recipe_LargeForce_ContainedProliferationMine;
+    public static final String EOHB_Recipe_InternalizedUniverseComputingEngine;
 
     public TextLocalization() {
     }
@@ -912,6 +923,17 @@ public class TextLocalization {
         Tooltip_LargeForce_ContainedProliferationMine_06 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_06");
         Tooltip_LargeForce_ContainedProliferationMine_07 = TextHandler.texter("","Tooltip_LargeForce_ContainedProliferationMine_07");
 
+        //内化宇宙演算机
+        NameInternalizedUniverseComputingEngine = TextHandler.texter("Internalized Universe Computing Engine","NameInternalizedUniverseComputingEngine");
+        Tooltip_InternalizedUniverseComputingEngine_MachineType = TextHandler.texter("Orundum Computer","Tooltip_InternalizedUniverseComputingEngine_MachineType");
+        Tooltip_InternalizedUniverseComputingEngine_Controller = TextHandler.texter("Controller block of the Internalized Universe Computing Engine","Tooltip_InternalizedUniverseComputingEngine_Controller");
+        Tooltip_InternalizedUniverseComputingEngine_00 = TextHandler.texter("A machine that provides basic Orundum-internalized universe computing power, by retrieving information from the internalized universe within Orundum to generate computation.","Tooltip_InternalizedUniverseComputingEngine_00");
+        Tooltip_InternalizedUniverseComputingEngine_01 = TextHandler.texter("Simple, isn't it? Just supply power and feed it some Orundum, and you'll get 200 points of computing power from the internalized universe.","Tooltip_InternalizedUniverseComputingEngine_01");
+        Tooltip_InternalizedUniverseComputingEngine_02 = TextHandler.texter("In theory, the computing engine extracts \"universal fundamental information\" from Orundum, but what actually comes out is always baffling.","Tooltip_InternalizedUniverseComputingEngine_02");
+        Tooltip_InternalizedUniverseComputingEngine_03 = TextHandler.texter("One piece of Orundum output nothing but a shopping list: \"three pounds of apples, two pounds of pork, and a dozen eggs.\"","Tooltip_InternalizedUniverseComputingEngine_03");
+        Tooltip_InternalizedUniverseComputingEngine_04 = TextHandler.texter("Another piece was even more absurd — the extraction turned out to be the complete genome sequence of the neighbor's dog.","Tooltip_InternalizedUniverseComputingEngine_04");
+        Tooltip_InternalizedUniverseComputingEngine_05 = TextHandler.texter("In the end, everyone concluded that Orundum doesn't store cosmic truths — it stores all the mundane everyday life of this world.","Tooltip_InternalizedUniverseComputingEngine_05");
+
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
         EOHB_Harmony_Tooltip = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -1004,5 +1026,6 @@ public class TextLocalization {
         EOHB_Recipe_SeparatingUnit = TextHandler.texter("Separating Unit","EOHB_Recipe_SeparatingUnit");
         EOHB_Recipe_GearingUnit = TextHandler.texter("Gearing Unit","EOHB_Recipe_GearingUnit");
         EOHB_Recipe_LargeForce_ContainedProliferationMine = TextHandler.texter("AG-07 Large Force-Contained Proliferation Mine","EOHB_Recipe_LargeForce_ContainedProliferationMine");
+        EOHB_Recipe_InternalizedUniverseComputingEngine = TextHandler.texter("Internalized Universe Computing Engine","EOHB_Recipe_InternalizedUniverseComputingEngine");
     }
 }

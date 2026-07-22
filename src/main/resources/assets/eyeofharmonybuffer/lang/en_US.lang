@@ -361,6 +361,15 @@ Tooltip_LargeForce_ContainedProliferationMine_04=To meet quarterly targets, the 
 Tooltip_LargeForce_ContainedProliferationMine_05=Output did double, but every single ore grew into hollow tubes – completely useless for standard smelting.
 Tooltip_LargeForce_ContainedProliferationMine_06=To make it worse, those hollow tubes fit perfectly into coffee mugs – so they got repurposed as custom drinkware, and nobody complained about the yield after all.
 Tooltip_LargeForce_ContainedProliferationMine_07=The overclock feature was eventually removed, but replaced with a "morph-optimization algorithm" to control growth shapes.
+NameInternalizedUniverseComputingEngine=Internalized Universe Computing Engine
+Tooltip_InternalizedUniverseComputingEngine_MachineType=Orundum Computer
+Tooltip_InternalizedUniverseComputingEngine_Controller=Controller block of the Internalized Universe Computing Engine
+Tooltip_InternalizedUniverseComputingEngine_00=A machine that provides basic Orundum-internalized universe computing power, by retrieving information from the internalized universe within Orundum to generate computation.
+Tooltip_InternalizedUniverseComputingEngine_01=Simple, isn't it? Just supply power and feed it some Orundum, and you'll get 200 points of computing power from the internalized universe.
+Tooltip_InternalizedUniverseComputingEngine_02=In theory, the computing engine extracts "universal fundamental information" from Orundum, but what actually comes out is always baffling.
+Tooltip_InternalizedUniverseComputingEngine_03=One piece of Orundum output nothing but a shopping list: "three pounds of apples, two pounds of pork, and a dozen eggs."
+Tooltip_InternalizedUniverseComputingEngine_04=Another piece was even more absurd — the extraction turned out to be the complete genome sequence of the neighbor's dog.
+Tooltip_InternalizedUniverseComputingEngine_05=In the end, everyone concluded that Orundum doesn't store cosmic truths — it stores all the mundane everyday life of this world.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -396,6 +405,7 @@ EOHB_Recipe_GasExtractor=Gas Extractor
 EOHB_Recipe_SeparatingUnit=Separating Unit
 EOHB_Recipe_GearingUnit=Gearing Unit
 EOHB_Recipe_LargeForce_ContainedProliferationMine=AG-07 Large Force-Contained Proliferation Mine
+EOHB_Recipe_InternalizedUniverseComputingEngine=Internalized Universe Computing Engine
 
 #item
 EOHB_Harmony=Harmony

@@ -54,7 +54,8 @@ public class RecipeLoader {
             new GasExtractorRecipes(),
             new SeparatingUnitRecipes(),
             new GearingUnitRecipes(),
-            new LargeForce_ContainedProliferationMineRecipes()
+            new LargeForce_ContainedProliferationMineRecipes(),
+            new InternalizedUniverseComputingEngineRecipe()
         };
         for (IRecipePool recipePool : recipePools) {
             recipePool.loadRecipes();

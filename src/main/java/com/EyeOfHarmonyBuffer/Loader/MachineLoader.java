@@ -42,6 +42,7 @@ public class MachineLoader {
     public static ItemStack SeparatingUnit;
     public static ItemStack GearingUnit;
     public static ItemStack LargeForce_ContainedProliferationMine;
+    public static ItemStack InternalizedUniverseComputingEngine;
 
     private final static int MachineBlockID = 23000;
 
@@ -290,5 +291,12 @@ public class MachineLoader {
             TextLocalization.NameLargeForce_ContainedProliferationMine
         ).getStackForm(1);
         GTCMItemList.LargeForce_ContainedProliferationMine.set(LargeForce_ContainedProliferationMine);
+
+        InternalizedUniverseComputingEngine = new EOHB_InternalizedUniverseComputingEngine(
+            MachineBlockID + 36,
+            "NameInternalizedUniverseComputingEngine",
+            TextLocalization.NameInternalizedUniverseComputingEngine
+        ).getStackForm(1);
+        GTCMItemList.InternalizedUniverseComputingEngine.set(InternalizedUniverseComputingEngine);
     }
 }
