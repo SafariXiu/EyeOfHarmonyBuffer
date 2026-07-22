@@ -216,6 +216,8 @@ public enum GTCMItemList {
     SingularityStabilizationRingCasingsUMV,
     SingularityStabilizationRingCasingsUXV,
     SingularityStabilizationRingCasingsMAX,
+    XiRangWaiKeCasing,
+    ZhongXiRangWaiKeCasing,
     ForgeOfTheSkyCore;
 
 

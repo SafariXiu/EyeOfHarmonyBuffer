@@ -162,7 +162,7 @@ public class EOHB_InternalizedUniverseComputingEngine extends OrundumWirelessMul
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addOutputBus("4+", EOHB_MachineType_2)
+            .addInputBus("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

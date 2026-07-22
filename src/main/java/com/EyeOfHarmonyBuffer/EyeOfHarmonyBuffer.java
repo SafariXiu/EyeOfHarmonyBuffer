@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
+import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
@@ -127,6 +128,8 @@ public class EyeOfHarmonyBuffer {
         MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
         MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
         MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
+
+        ArknightsBlockRegister.registryCasingBlocks();
     }
 
     @Mod.EventHandler
