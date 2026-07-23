@@ -85,4 +85,75 @@ public final class TalosLandMask {
     public static WorldgenAPI.LandTile getTileForChunk(int chunkX, int chunkZ, int worldSeedInt) {
         return WorldgenAPI.getTileForChunk(chunkX, chunkZ, worldSeedInt);
     }
+
+    /**
+     * 以当前世界坐标为锚点，获取所在板块的中心信息。
+     *
+     * 典型用途：
+     *   - 作为板块“河源区域”的参考点；
+     *   - 作为板块级结构 / 裂谷 / 高原布局的中心。
+     *
+     * 返回：
+     *   - PlateCenterInfo（含 plateId, superId, centerX/Z, radius），或 null（在海上或异常）。
+     */
+    public static PlateCenterInfo getPlateCenterAt(int worldX, int worldZ, int worldSeedInt) {
+        return PlateAPI.getPlateCenterAt(worldX, worldZ, worldSeedInt);
+    }
+
+    /**
+     * 通过 plateId 获取板块中心。
+     *
+     * 注意：
+     *   - 仅当之前调用过 getPlateCenterAt(...) 使对应 plateId 已被缓存时，才会返回非 null；
+     *   - 否则返回 null。
+     *
+     * 若你有代表性坐标，推荐优先使用 getPlateCenterAt(worldX,worldZ,worldSeedInt)。
+     */
+    public static PlateCenterInfo getPlateCenter(int plateId, int worldSeedInt) {
+        return PlateAPI.getPlateCenter(plateId, worldSeedInt);
+    }
+
+    /**
+     * 以当前世界坐标为锚点，获取所在超级大陆中心信息。
+     */
+    public static SuperCenterInfo getSuperCenterAt(int worldX, int worldZ, int worldSeedInt) {
+        return PlateAPI.getSuperCenterAt(worldX, worldZ, worldSeedInt);
+    }
+
+    /**
+     * 通过 superId 获取超级大陆中心。
+     *
+     * 同 getPlateCenter 的限制：只有在该 superId 已经通过
+     * getSuperCenterAt(...) 进入缓存后才会返回非 null。
+     */
+    public static SuperCenterInfo getSuperCenter(int superId, int worldSeedInt) {
+        return PlateAPI.getSuperCenter(superId, worldSeedInt);
+    }
+
+    /**
+     * 以“当前世界坐标所在板块”为基准，返回一个“大致外缘方向”向量：
+     *   - 定义：从超级大陆中心指向板块中心的方向（归一化）。
+     *   - 可用于：
+     *       * 河流大方向（从板块腹地指向外海）；
+     *       * 板块级地形趋势（山脉走向、风向等）的辅助参考。
+     *
+     * 若在海洋上 / 无法获取，则返回 (0,1)。
+     */
+    public static Direction2D getPlateOutflowDirAt(int worldX, int worldZ, int worldSeedInt) {
+        return PlateAPI.getPlateOutflowDirectionAt(worldX, worldZ, worldSeedInt);
+    }
+
+    /**
+     * （可选）通过 plateId 直接拿外缘方向。
+     *
+     * 限制：
+     *   - 需要该 plateId 已经通过 getPlateCenterAt(...) 被缓存；
+     *   - 且对应 superId 也已通过 getSuperCenterAt(...) 缓存；
+     *   - 否则返回 (0,1)。
+     *
+     * 一般建议仍然优先使用 getPlateOutflowDirAt(worldX,worldZ,worldSeedInt)。
+     */
+    public static Direction2D getPlateOutflowDir(int plateId, int worldSeedInt) {
+        return PlateAPI.getPlateOutflowDirection(plateId, worldSeedInt);
+    }
 }

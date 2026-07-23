@@ -11,6 +11,7 @@ import java.util.Map;
  *
  * 当前只包含：
  * - RiverStylePreset：河流风格预设（宽度 + 弯曲风格）
+ * - RiverBankPreset：河岸 / 河谷形态预设（洪泛平原宽度、坡度、崖感等）
  *
  * 后续如果需要，可以在 MacroPackageSpec 里继续加：
  * - macroParams 预设
@@ -27,7 +28,6 @@ public final class MacroPackageRegistry {
             new EnumMap<>(MacroPackageId.class);
 
         // ===== 热带 / 亚热带 =====
-        // 热带雨林 + 湿热盆地：大水量、宽谷、弯曲很强，波长中等偏长
         m.put(MacroPackageId.TROPICAL_HUMID,
             MacroPackageSpec.builder(MacroPackageId.TROPICAL_HUMID)
                 .riverStyle(new RiverStylePreset(
@@ -40,10 +40,14 @@ public final class MacroPackageRegistry {
                     0.5,
                     RiverValleyType.U_SHAPED
                 ))
+                // 宽洪泛平原 + 坡很缓 → 强烈河岸压低
+                .riverBank(new RiverBankPreset(
+                    0.9   // bankIntensity
+                ))
                 .build()
         );
 
-        // 热带干燥 / 草原 / 半干旱：河道略窄一点，弯曲中等偏强
+        // 热带干燥 / 草原 / 半干旱：洪泛平原略收、坡略陡
         m.put(MacroPackageId.TROPICAL_DRY,
             MacroPackageSpec.builder(MacroPackageId.TROPICAL_DRY)
                 .riverStyle(new RiverStylePreset(
@@ -56,11 +60,14 @@ public final class MacroPackageRegistry {
                     0.5,
                     RiverValleyType.V_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.7
+                ))
                 .build()
         );
 
         // ===== 温带 =====
-        // 温带低地 / 平原：经典“大河 + 冲积平原”，宽度和弯曲都中等
+        // 温带低地 / 平原：典型大河 + 冲积平原
         m.put(MacroPackageId.TEMPERATE_LOWLAND,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_LOWLAND)
                 .riverStyle(new RiverStylePreset(
@@ -73,10 +80,13 @@ public final class MacroPackageRegistry {
                     0.5,
                     RiverValleyType.U_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.8   // 比 TROPICAL_DRY 略高一点，平原河谷更软
+                ))
                 .build()
         );
 
-        // 温带森林：和低地接近，但略多弯一点
+        // 温带森林：比低地略收、坡略陡
         m.put(MacroPackageId.TEMPERATE_FORESTED,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_FORESTED)
                 .riverStyle(new RiverStylePreset(
@@ -89,10 +99,13 @@ public final class MacroPackageRegistry {
                     0.5,
                     RiverValleyType.U_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.65
+                ))
                 .build()
         );
 
-        // 温带高原 / 中等山地：谷地更窄，弯曲中等，波长稍短（峡谷感更强）
+        // 温带高原 / 中等山地：洪泛平原很窄，多峡谷坡 / 崖
         m.put(MacroPackageId.TEMPERATE_HIGHLAND,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_HIGHLAND)
                 .riverStyle(new RiverStylePreset(
@@ -105,11 +118,14 @@ public final class MacroPackageRegistry {
                     0.55,
                     RiverValleyType.V_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.35  // 比上面明显更硬
+                ))
                 .build()
         );
 
         // ===== 凉爽 / 亚寒带 / 寒带 =====
-        // 冷针叶林 / 过渡森林：河道整体偏窄，弯曲适中
+        // 冷针叶林 / 过渡森林：比温带森林再“硬”一点
         m.put(MacroPackageId.COOL_FORESTED,
             MacroPackageSpec.builder(MacroPackageId.COOL_FORESTED)
                 .riverStyle(new RiverStylePreset(
@@ -122,10 +138,13 @@ public final class MacroPackageRegistry {
                     0.55,
                     RiverValleyType.V_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.45
+                ))
                 .build()
         );
 
-        // 亚极地冻原：河更直一些，谷地不算很宽
+        // 亚极地冻原：平岸宽度一般，坡偏直上直下
         m.put(MacroPackageId.SUBPOLAR_TUNDRA,
             MacroPackageSpec.builder(MacroPackageId.SUBPOLAR_TUNDRA)
                 .riverStyle(new RiverStylePreset(
@@ -138,10 +157,13 @@ public final class MacroPackageRegistry {
                     0.55,
                     RiverValleyType.V_SHAPED
                 ))
+                .riverBank(new RiverBankPreset(
+                    0.4
+                ))
                 .build()
         );
 
-        // 高寒山地 + 极地荒漠：峡谷窄、河很直，几乎只做大尺度方向变化
+        // 高寒山地 + 极地荒漠：洪泛平原极窄，坡很陡
         m.put(MacroPackageId.POLAR_HIGHLAND,
             MacroPackageSpec.builder(MacroPackageId.POLAR_HIGHLAND)
                 .riverStyle(new RiverStylePreset(
@@ -153,6 +175,9 @@ public final class MacroPackageRegistry {
                     14,
                     0.6,
                     RiverValleyType.V_SHAPED
+                ))
+                .riverBank(new RiverBankPreset(
+                    0.2
                 ))
                 .build()
         );
@@ -177,10 +202,12 @@ public final class MacroPackageRegistry {
 
         private final MacroPackageId id;
         private final RiverStylePreset riverStyle;
+        private final RiverBankPreset riverBank;
 
         private MacroPackageSpec(Builder b) {
             this.id = b.id;
             this.riverStyle = b.riverStyle;
+            this.riverBank = b.riverBank;
         }
 
         public MacroPackageId id() {
@@ -191,6 +218,10 @@ public final class MacroPackageRegistry {
             return riverStyle;
         }
 
+        public RiverBankPreset riverBank() {
+            return riverBank;
+        }
+
         public static Builder builder(MacroPackageId id) {
             return new Builder(id);
         }
@@ -198,6 +229,7 @@ public final class MacroPackageRegistry {
         public static final class Builder {
             private final MacroPackageId id;
             private RiverStylePreset riverStyle;
+            private RiverBankPreset riverBank;
 
             private Builder(MacroPackageId id) {
                 this.id = id;
@@ -205,6 +237,11 @@ public final class MacroPackageRegistry {
 
             public Builder riverStyle(RiverStylePreset preset) {
                 this.riverStyle = preset;
+                return this;
+            }
+
+            public Builder riverBank(RiverBankPreset preset) {
+                this.riverBank = preset;
                 return this;
             }
 
@@ -216,6 +253,12 @@ public final class MacroPackageRegistry {
                         16,
                         0.5,
                         RiverValleyType.U_SHAPED
+                    );
+                }
+                if (riverBank == null) {
+                    // 一个比较中性的默认河岸：在 0.7~0.8 区间做压低
+                    riverBank = new RiverBankPreset(
+                        0.5
                     );
                 }
                 return new MacroPackageSpec(this);
@@ -298,4 +341,20 @@ public final class MacroPackageRegistry {
                 '}';
         }
     }
+
+    /**
+     * 河岸 / 河谷形态预设（单参数版）。
+     *
+     * 设计目标：
+     *   - 对外只暴露一个连续参数 bankIntensity ∈ [0,1]：
+     *       0   = 几乎不做河岸压低（源自老 preset 中「阈值靠近 1」的那类）
+     *       1   = 河岸压低很强、洪泛平原很宽、斜坡过渡也比较宽
+     *
+     *   - 具体「平的这截有多宽」「坡有多宽」都在 TalosRiverTerrainModifier 里
+     *     用统一的公式从 bankIntensity 推导出来；这样可以保证宏群系跨越时
+     *     只要 bankIntensity 在空间是连续的，阈值和河岸形状也天然连续。
+     */
+    public record RiverBankPreset(
+        double bankIntensity
+    ) {}
 }

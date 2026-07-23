@@ -1,64 +1,49 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.RiverPolyline;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.RiverRegionLayer;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery.RiverQueryResult;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSegment;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSpatialIndex;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSystem;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplatePicker;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentAdapter;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentInfo;
 import net.minecraft.world.World;
+
+import java.util.List;
+
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery.query;
 
 /**
  * Talos 河流 / 水文骨架统一入口（Layer 3 顶层 API）。
  *
- * 使用约定（非常重要）：
+ * 新版实现要点（基于 RVR2）：
  *
- * 1. 本类提供两大类“河场视图”：
+ * 1. 不再使用 RiverRegionLayer 的程序生成骨架；
+ *    而是通过 RiverRegistry + Rvr2Loader 读取预计算的矢量河网（RiverNetwork）。
  *
- *    A) 【陆地地形场（Terrain Field）】——只在陆地上有河影响
- *       - getRiverDistance(...)
- *       - getWidthCore(...), getWidthValley(...), getWidthAvoid(...)
- *       - getRiverMask(...)
+ * 2. 运行时结构：
+ *    - RiverSystem    : 持有 RiverNetwork + RiverSegment 列表 + RiverSpatialIndex
+ *    - RiverQuery     : 对给定 worldX/Z 进行「最近河段 + 影响强度」查询
+ *    - RiverSystemRegistry : 按 worldSeedInt 缓存/管理 RiverSystem
  *
- *       语义：
- *         * 仅在 TalosLandMask.isLand(x,z) == true 的格子返回有效值；
- *         * 在海洋 / 湖面 / 非陆地区块上，distance 为 Double.MAX_VALUE，
- *           各种 width / mask 为 0，等价于“无河影响”。
+ * 3. 对外 API 语义**保持不变**：
+ *    - 陆地地形场（只在 isLand 上有值）：
+ *        getRiverDistance / getWidthCore / getWidthValley / getWidthAvoid / getRiverMask
+ *    - 水文场（陆地 + 海洋统一）：
+ *        sampleHydroField / getHydroRiverDistance / getHydroWidthValley / getHydroMask
  *
- *       适用层：
- *         * 地形雕刻层（层 5/6/7 等）：
- *             - 山体 / 高山对河道的避让（使用 widthAvoid）
- *             - 陆地河谷雕刻（使用 widthValley + mask）
- *             - 洞穴避让 / 减少河床下大洞
- *         * 一切“只想在陆地考虑河流”的系统，都应该使用这一组 API。
- *
- *    B) 【水文场（Hydro Field）】——在陆地 + 海洋上统一采样河影响
- *       - sampleHydroField(...)
- *       - getHydroRiverDistance(...), getHydroWidthValley(...), getHydroMask(...)
- *
- *       语义：
- *         * 在同一板块 (plateId != 0) 内的陆地 + 海洋格子上，
- *           都会返回“到最近河骨架的距离 + 样条宽度 + mask”；
- *         * 不做 TalosLandMask.isLand 过滤；
- *         * 在非常远离任何河的格子，distance 为 Double.MAX_VALUE，
- *           各种 width / mask 为 0。
- *
- *       适用层：
- *         * 河口 / 三角洲 / 海岸侵蚀（需要看到“河流延续入海”的效果）；
- *         * 海底河谷 / 入海沟槽 / 水体模拟；
- *         * Debug / 可视化工具（例如 RiverDebugCarver）。
- *
- * 2. 所有 Minecraft 侧代码（chunk 生成、地形、高山、洞穴、装饰等）：
- *    - 访问“陆地河谷 / 避让”时，应优先使用【陆地地形场】API；
- *    - 只有在 **明确需要海洋上的河场信息** 时，才应使用【水文场】API。
- *
- * 3. 内部实现细节（简要）：
- *    - worldSeedInt 统一从 World.getSeed() 压缩而来（与 TalosLandMask 保持一致）；
- *    - 按 worldSeedInt 缓存 RiverRegionLayer 实例；
- *    - RiverRegionLayer 负责：
- *         * 河骨架 polyline 的生成与缓存；
- *         * 最近河距离 / 宽度 / 掩码的计算；
- *         * 源头湖 / 裂隙等源头信息。
  */
 
 public final class TalosRiverSystem {
+
+    private static final double SOURCE_PROGRESS_MAX = 0.04; // 上游 4% 视为源头段
+    private static final double SOURCE_RADIUS_MULT  = 2.0;  // 源头影响范围 = 2 × channelRadius
+    public static double SUPERCONTINENT_RIVER_SCALE = 6.5;
 
     private TalosRiverSystem() {}
 
@@ -70,20 +55,54 @@ public final class TalosRiverSystem {
         return (int) (world.getSeed() & 0x7FFFFFFFL);
     }
 
-    private static final Int2ObjectOpenHashMap<RiverRegionLayer> LAYERS =
-        new Int2ObjectOpenHashMap<>();
+    /**
+     * 统一水文视角：不做 isLand 过滤，只看 RVR2 河网（现改为：按超级大陆 + 模板实例化的河网）。
+     */
+    private static RiverQueryResult queryHydro(int worldX, int worldZ, int worldSeedInt) {
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return RiverQuery.RiverQueryResult.none();
+        }
+
+        SupercontinentInfo info =
+            SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+        if (info == null) {
+            return RiverQuery.RiverQueryResult.none();
+        }
+
+        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(
+            worldSeedInt, superId
+        );
+        if (templateId == null) {
+            return RiverQuery.RiverQueryResult.none();
+        }
+
+        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
+
+        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
+            worldSeedInt,
+            info,
+            templateId,
+            scaleFactor
+        );
+
+        return query(sys.index, worldX, worldZ);
+    }
 
     /**
-     * 按 worldSeedInt 获取（或创建）对应的 RiverRegionLayer。
-     * 对外隐藏具体实现，保证所有调用者共享同一套河骨架与距离场。
+     * 陆地地形视角：在非陆地（海洋/湖面）上视为无河影响。
      */
-    private static RiverRegionLayer getLayer(int worldSeedInt) {
-        RiverRegionLayer layer = LAYERS.get(worldSeedInt);
-        if (layer == null) {
-            layer = new RiverRegionLayer(worldSeedInt);
-            LAYERS.put(worldSeedInt, layer);
+    private static RiverQueryResult queryLand(int worldX, int worldZ, int worldSeedInt) {
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        if (!r.affected) {
+            return RiverQueryResult.none();
         }
-        return layer;
+
+        if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
+            return RiverQueryResult.none();
+        }
+
+        return r;
     }
 
     /**
@@ -91,7 +110,7 @@ public final class TalosRiverSystem {
      *
      * 语义（陆地视角）：
      *   - 若当前位置在某条河的陆地影响区附近，返回到最近河骨架的距离；
-     *   - 若该点不在任何“陆地河影响区”附近，返回一个较大的值（例如 > widthAvoid 上界），
+     *   - 若该点不在任何“陆地河影响区”附近，返回一个较大的值（Double.MAX_VALUE），
      *     可视作“无河影响”。
      *
      * 注意：
@@ -99,8 +118,8 @@ public final class TalosRiverSystem {
      *     内部会直接返回 Double.MAX_VALUE。
      */
     public static double getRiverDistance(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getRiverDistance(worldX, worldZ);
+        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
+        return r.affected ? r.distanceToCenter : Double.MAX_VALUE;
     }
 
     /**
@@ -114,55 +133,58 @@ public final class TalosRiverSystem {
      *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
      */
     public static double getWidthCore(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getWidthCore(worldX, worldZ);
+        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
+        return r.affected ? r.channelRadius : 0.0;
     }
 
     /**
      * 河谷半宽（blocks，陆地视角）。
      *
-     * 用途：
-     *   - 层 6 使用该范围对地形进行 U/V/W 型谷地雕刻；
-     *   - 可配合 getRiverMask(...) 决定挖谷深度与形状。
+     * 当前策略（可以后续微调）：
+     *   - valleyRadius ≈ 3 × coreRadius
+     *   - 即在核心河道外，再预留约 2 倍核心宽度的“谷地缓冲区”。
      *
      * 注意：
      *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
      */
     public static double getWidthValley(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getWidthValley(worldX, worldZ);
+        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
+        if (!r.affected) {
+            return 0.0;
+        }
+        double core = r.channelRadius;
+        return core * 3.0;
     }
 
     /**
      * 避让半宽（blocks，陆地视角）。
      *
-     * 用途：
-     *   - 层 5 高山与层 7 洞穴在该半径内应当衰减/禁洞，给河流让出走廊；
-     *   - 通常 >= widthValley，用于“更软”的避让范围。
+     * 当前策略（可以后续微调）：
+     *   - avoidRadius ≈ 1.5 × valleyRadius
+     *   - 用于山体/洞穴更温和的“外圈避让”。
      *
      * 注意：
      *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
      */
     public static double getWidthAvoid(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getWidthAvoid(worldX, worldZ);
+        double valley = getWidthValley(worldX, worldZ, worldSeedInt);
+        return valley > 0.0 ? valley * 1.5 : 0.0;
     }
 
     /**
      * 河影响掩码（0..1，陆地视角）。
      *
+     * 新实现：
+     *   - 直接使用 RiverQuery 中的 terrainInfluence（基于 influenceRadius + smoothstep）；
+     *
      * 语义：
      *   - 0 表示不受河影响（远离河谷或在海上）；
      *   - 1 表示处于河核心/谷底；
      *   - 在 [0,1] 之间平滑衰减，主要供地形层做强度插值使用。
-     *
-     * 注意：
-     *   - 仅在陆地格子上保证有意义；
-     *   - 海洋 / 非陆地格子统一返回 0。
      */
     public static double getRiverMask(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getRiverMask(worldX, worldZ);
+        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
+        return r.affected ? r.terrainInfluence : 0.0;
     }
 
     /**
@@ -173,8 +195,8 @@ public final class TalosRiverSystem {
      *   - 不区分是否在陆地或海洋，仅基于骨架几何。
      */
     public static int getNearestRiverId(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getNearestRiverId(worldX, worldZ);
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        return r.affected ? r.edgeId : 0;
     }
 
     /**
@@ -185,62 +207,19 @@ public final class TalosRiverSystem {
      *   - 不区分陆地/海洋，仅基于骨架几何。
      */
     public static int getRiverLevel(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getRiverLevel(worldX, worldZ);
-    }
-
-    /**
-     * 返回指定超级大陆（superId）的主河 polyline 列表。
-     *
-     * 用途：
-     *   - 调试可视化或离线分析；
-     *   - 不直接用于地形 / 水文场采样。
-     */
-    public static java.util.List<RiverPolyline> getMainRivers(int superId, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getMainRivers(superId);
-    }
-
-    /**
-     * 返回所有支流 polyline（可选）。
-     *
-     * 用途：
-     *   - 调试可视化或离线分析；
-     *   - 不直接用于地形 / 水文场采样。
-     */
-    public static java.util.List<RiverPolyline> getTributaries(int superId, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getTributaries(superId);
-    }
-
-    /**
-     * 根据 riverId 获取该河的源头描述（源头湖 + 裂隙等），主要用于
-     * 源头地形雕刻或 debug。
-     */
-    public static RiverRegionLayer.RiverSourceDescriptor getRiverSourceById(int riverId, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.getSourceByRiverId(riverId);
-    }
-
-    /**
-     * 在给定世界坐标附近查找最近的河源头（只看同一板块的主河）。
-     *
-     * @param maxRadiusBlocks 最大搜索半径（blocks）；<=0 表示不限制。
-     *
-     * 用途：
-     *   - 源头附近定制地形（源头湖、裂隙等）；
-     *   - Debug / 可视化源头分布。
-     */
-    public static RiverRegionLayer.RiverSourceDescriptor findNearestSource(int worldX,
-                                                                           int worldZ,
-                                                                           double maxRadiusBlocks,
-                                                                           int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        return layer.findNearestSource(worldX, worldZ, maxRadiusBlocks);
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        if (!r.affected || r.riverType == null) {
+            return 0;
+        }
+        return switch (r.riverType) {
+            case MAIN    -> 0;
+            case BRANCH1 -> 1;
+            case BRANCH2 -> 2;
+        };
     }
 
     public static final class DebugNearestRiverInfo {
-        /** 是否在当前板块下找到了任意河段 */
+        /** 是否找到了任意河段 */
         public final boolean hasRiver;
         /** 到最近河段的几何距离（blocks） */
         public final double distance;
@@ -248,7 +227,7 @@ public final class TalosRiverSystem {
         public final int riverId;
         /** 最近河段的级别（0 主河，1.. 支流） */
         public final int riverLevel;
-        /** 当前所在板块 ID */
+        /** 当前所在板块 ID（RVR2 版本暂时恒为 0） */
         public final int plateId;
         /** 最近点在河骨架上的世界坐标 X/Z */
         public final double nearestX;
@@ -261,40 +240,88 @@ public final class TalosRiverSystem {
                                      int plateId,
                                      double nearestX,
                                      double nearestZ) {
-            this.hasRiver  = hasRiver;
-            this.distance  = distance;
-            this.riverId   = riverId;
-            this.riverLevel= riverLevel;
-            this.plateId   = plateId;
-            this.nearestX  = nearestX;
-            this.nearestZ  = nearestZ;
+            this.hasRiver   = hasRiver;
+            this.distance   = distance;
+            this.riverId    = riverId;
+            this.riverLevel = riverLevel;
+            this.plateId    = plateId;
+            this.nearestX   = nearestX;
+            this.nearestZ   = nearestZ;
         }
     }
 
     /**
-     * Debug 几何查询：在“当前板块”下找到最近河段以及最近点坐标。
+     * Debug 几何查询：在全局 RVR2 河网上找到最近河段以及最近点坐标。
      *
      * 特点：
      *   - 不做宽度 / 掩码计算；
-     *   - 不做 isLand 过滤：即使在海洋上，也会基于 polyline 几何给出最近距离；
-     *   - 主要用于调试 / 可视化，不建议直接驱动地形逻辑。
+     *   - 不做 isLand / plateId 过滤；
+     *   - 主要用于调试 / 可视化。
      */
     public static DebugNearestRiverInfo debugFindNearestRiver(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        RiverRegionLayer.NearestRiverSample s = layer.debugGetNearestRiverSample(worldX, worldZ);
+        RiverSystem sys = RiverSystemRegistry.getOrCreate(worldSeedInt);
+        RiverSpatialIndex index = sys.index;
+
+        double sampleX = worldX + 0.5;
+        double sampleZ = worldZ + 0.5;
+
+        List<RiverSegment> candidates = index.queryCell(sampleX, sampleZ);
+        if (candidates.isEmpty()) {
+            return new DebugNearestRiverInfo(false, Double.MAX_VALUE, 0, 0, 0, 0.0, 0.0);
+        }
+
+        double bestDistSq = Double.MAX_VALUE;
+        RiverSegment bestSeg = null;
+        RiverQuery.SegmentProjection bestProj = null;
+
+        for (RiverSegment s : candidates) {
+            RiverQuery.SegmentProjection p = RiverQuery.projectToSegment(
+                sampleX, sampleZ,
+                s.ax, s.az,
+                s.bx, s.bz
+            );
+            if (p.distanceSquared < bestDistSq) {
+                bestDistSq = p.distanceSquared;
+                bestSeg = s;
+                bestProj = p;
+            }
+        }
+
+        if (bestSeg == null || bestProj == null) {
+            return new DebugNearestRiverInfo(false, Double.MAX_VALUE, 0, 0, 0, 0.0, 0.0);
+        }
+
+        double dist = Math.sqrt(bestProj.distanceSquared);
+        int riverId = bestSeg.edgeId;
+        int riverLevel = switch (bestSeg.type) {
+            case MAIN    -> 0;
+            case BRANCH1 -> 1;
+            case BRANCH2 -> 2;
+        };
+
+        int plateId = 0;
+
         return new DebugNearestRiverInfo(
-            s.hasRiver, s.distance, s.riverId, s.riverLevel, s.plateId, s.nearestX, s.nearestZ
+            true,
+            dist,
+            riverId,
+            riverLevel,
+            plateId,
+            bestProj.closestX,
+            bestProj.closestZ
         );
     }
 
     /**
      * 水文场采样结构：在“陆地 + 海洋”上统一表示河流影响。
      *
-     * 字段语义等价于 RiverRegionLayer.CachedSample，但这是对外暴露的稳定结构。
+     * 这里是**改造点之一**：在原有 distance / width / mask / riverId / riverLevel 之外，
+     * 正式把 RVR2 / RiverQuery 里的语义字段也带出来：
      *
-     * 注意：
-     *   - 仅在 plateId != 0 的区域才有可能返回非无限 distance；
-     *   - 若 distance == Double.MAX_VALUE 或 widthValley == 0，可认为“无河影响”。
+     *   - riverType    : MAIN / BRANCH1 / BRANCH2
+     *   - hasSource    : 是否标记有源头
+     *   - hasMouth     : 是否标记有河口
+     *   - riverProgress: 0..1，从源头（上游）到河口（下游）的归一化进度
      */
     public static final class HydroSample {
         /** 到最近河中心线的平面距离（blocks） */
@@ -312,49 +339,309 @@ public final class TalosRiverSystem {
         /** 最近河级别：0 = 主河，1.. 支流等级 */
         public final int riverLevel;
 
+        /** RVR2 中的河型：主干 / 一级支流 / 二级支流 */
+        public final RiverType riverType;
+        /** RVR2 标记：该 edge 是否有源头 */
+        public final boolean hasSource;
+        /** RVR2 标记：该 edge 是否有河口 */
+        public final boolean hasMouth;
+        /**
+         * 沿当前 edge 的进度（0..1），约定：
+         *   - 0   ≈ 上游/源头端（当 hasSource==true 时靠近源头）
+         *   - 1   ≈ 下游/河口端（当 hasMouth==true 时靠近河口）
+         */
+        public final double riverProgress;
+
+        /** 该 edge 源头点在世界坐标中的 X/Z（当 hasSource==true 时有意义） */
+        public final double sourceX;
+        public final double sourceZ;
+        /** 该 edge 河口点在世界坐标中的 X/Z（当 hasMouth==true 时有意义） */
+        public final double mouthX;
+        public final double mouthZ;
+
         public HydroSample(double distance,
                            double widthCore,
                            double widthValley,
                            double widthAvoid,
                            double mask,
                            int riverId,
-                           int riverLevel) {
-            this.distance    = distance;
-            this.widthCore   = widthCore;
-            this.widthValley = widthValley;
-            this.widthAvoid  = widthAvoid;
-            this.mask        = mask;
-            this.riverId     = riverId;
-            this.riverLevel  = riverLevel;
+                           int riverLevel,
+                           RiverType riverType,
+                           boolean hasSource,
+                           boolean hasMouth,
+                           double riverProgress,
+                           double sourceX,
+                           double sourceZ,
+                           double mouthX,
+                           double mouthZ) {
+            this.distance      = distance;
+            this.widthCore     = widthCore;
+            this.widthValley   = widthValley;
+            this.widthAvoid    = widthAvoid;
+            this.mask          = mask;
+            this.riverId       = riverId;
+            this.riverLevel    = riverLevel;
+            this.riverType     = riverType;
+            this.hasSource     = hasSource;
+            this.hasMouth      = hasMouth;
+            this.riverProgress = riverProgress;
+            this.sourceX       = sourceX;
+            this.sourceZ       = sourceZ;
+            this.mouthX        = mouthX;
+            this.mouthZ        = mouthZ;
         }
     }
 
     /**
      * 正式水文 API：在“陆地 + 海洋”上采样河场（Hydro Field）。
      *
-     * 行为：
-     *   - 在同一板块 (plateId != 0) 内，无论是陆地还是海洋，
-     *     都会基于最近河骨架 + 宽度参数返回 distance/width/mask；
-     *   - 在远离任何河骨架或不在任何板块中的区域：
-     *       distance = Double.MAX_VALUE
-     *       widthCore/Valley/Avoid = 0
-     *       mask = 0
-     *
-     * 典型用途：
-     *   - 河口 / 三角洲 / 海岸侵蚀；
-     *   - 海底河谷 / 入海沟槽；
-     *   - 水体模拟 / Debug 可视化（如 RiverDebugCarver）。
-     *
-     * 注意：
-     *   - 若只是做“陆地河谷雕刻 / 山体 / 洞穴避让”，请使用上面的陆地地形场 API，
-     *     而不是本方法。
+     * 改造点：
+     *   - 保持方法签名不变；
+     *   - 在 HydroSample 里多带了 riverType / hasSource / hasMouth / riverProgress。
      */
     public static HydroSample sampleHydroField(int worldX, int worldZ, int worldSeedInt) {
-        RiverRegionLayer layer = getLayer(worldSeedInt);
-        RiverRegionLayer.CachedSample s = layer.sampleHydroField(worldX, worldZ);
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+
+        if (!r.affected) {
+            // 无河影响时，riverType 设为 null，source/mouth/progress 设为“无意义默认值”
+            return new HydroSample(
+                Double.MAX_VALUE,
+                0.0, 0.0, 0.0,
+                0.0,
+                0,
+                0,
+                null,
+                false,
+                false,
+                0.0,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN
+            );
+        }
+
+        double core   = r.channelRadius;
+        double valley = core * 3.0;
+        double avoid  = valley * 1.5;
+
+        int riverLevel = 0;
+        if (r.riverType != null) {
+            riverLevel = switch (r.riverType) {
+                case MAIN    -> 0;
+                case BRANCH1 -> 1;
+                case BRANCH2 -> 2;
+            };
+        }
+
         return new HydroSample(
-            s.distance, s.widthCore, s.widthValley, s.widthAvoid, s.mask,
-            s.riverId, s.riverLevel
+            r.distanceToCenter,
+            core,
+            valley,
+            avoid,
+            r.terrainInfluence,
+            r.edgeId,
+            riverLevel,
+            r.riverType,
+            r.hasSource,
+            r.hasMouth,
+            r.riverProgress,
+            r.sourceX,
+            r.sourceZ,
+            r.mouthX,
+            r.mouthZ
+        );
+    }
+
+    public static boolean isNearRiverSource(int worldX, int worldZ, int worldSeedInt) {
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        if (!r.affected || !r.hasSource) {
+            return false;
+        }
+        if (r.riverProgress > SOURCE_PROGRESS_MAX) {
+            return false;
+        }
+        if (r.distanceToCenter > r.channelRadius * SOURCE_RADIUS_MULT) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean isNearRiverMouth(int worldX, int worldZ, int worldSeedInt) {
+        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        if (!r.affected || !r.hasMouth) {
+            return false;
+        }
+        if (r.riverProgress < 1.0 - SOURCE_PROGRESS_MAX) {
+            return false;
+        }
+        if (r.distanceToCenter > r.channelRadius * SOURCE_RADIUS_MULT) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 在「当前超级大陆 + 其实例化河网」上，做一次“全局最近河段”的几何查询。
+     *
+     * 特点：
+     *   - 不再使用空间索引的影响半径裁剪；
+     *   - 直接在该超级大陆实例化后的所有 RiverSegment 上做最近点搜索；
+     *   - 只要这个超级大陆选到了合法模板，就一定能返回一条最近河。
+     *
+     * 用途：
+     *   - Debug 命令：无论你站在这个超级大陆的哪里，都能跳到“这块大陆上的某条最近河”。
+     */
+    public static DebugNearestRiverInfo debugFindNearestRiverOnSuper(int worldX, int worldZ, int worldSeedInt) {
+        System.out.println("[RiverDebug] debugFindNearestRiverOnSuper at pos=("
+            + worldX + "," + worldZ + "), seedInt=" + worldSeedInt);
+
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        System.out.println("[RiverDebug]  superId = " + superId);
+
+        if (superId == 0) {
+            System.out.println("[RiverDebug]  superId=0, return no river.");
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        }
+
+        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+        if (info == null) {
+            System.out.println("[RiverDebug]  SupercontinentInfo is null for superId=" + superId);
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        } else {
+            System.out.println("[RiverDebug]  SupercontinentInfo: center=("
+                + info.centerX + "," + info.centerZ + "), radius="
+                + info.radius + ", angleRad=" + info.angleRad);
+        }
+
+        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
+        System.out.println("[RiverDebug]  picked templateId=" + templateId);
+
+        if (templateId == null) {
+            System.out.println("[RiverDebug]  templateId is null, no river template for this superId.");
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        }
+
+        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
+        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
+            worldSeedInt,
+            info,
+            templateId,
+            scaleFactor
+        );
+
+        if (sys == null) {
+            System.out.println("[RiverDebug]  RiverSystem is null for templateId=" + templateId);
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        }
+
+        System.out.println("[RiverDebug]  RiverSystem: segments.size="
+            + (sys.segments == null ? -1 : sys.segments.size())
+            + ", bbox=(" + sys.network.getMinX() + "," + sys.network.getMinZ()
+            + ")->(" + sys.network.getMaxX() + "," + sys.network.getMaxZ() + ")");
+
+        if (sys.segments == null || sys.segments.isEmpty()) {
+            System.out.println("[RiverDebug]  segments is empty, treat as no river.");
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        }
+
+        double sampleX = worldX + 0.5;
+        double sampleZ = worldZ + 0.5;
+
+        double bestDistSq = Double.MAX_VALUE;
+        RiverSegment bestSeg = null;
+        RiverQuery.SegmentProjection bestProj = null;
+
+        // === 全局最近段搜索 ===
+        for (RiverSegment s : sys.segments) {
+            RiverQuery.SegmentProjection p = RiverQuery.projectToSegment(
+                sampleX, sampleZ,
+                s.ax, s.az,
+                s.bx, s.bz
+            );
+            if (p.distanceSquared < bestDistSq) {
+                bestDistSq = p.distanceSquared;
+                bestSeg = s;
+                bestProj = p;
+            }
+        }
+
+        if (bestSeg == null || bestProj == null) {
+            System.out.println("[RiverDebug]  bestSeg/bestProj is null after scanning segments.");
+            return new DebugNearestRiverInfo(
+                false,
+                Double.MAX_VALUE,
+                0,
+                0,
+                0,
+                0.0,
+                0.0
+            );
+        }
+
+        double dist = Math.sqrt(bestProj.distanceSquared);
+        int riverId = bestSeg.edgeId;
+        int riverLevel = switch (bestSeg.type) {
+            case MAIN    -> 0;
+            case BRANCH1 -> 1;
+            case BRANCH2 -> 2;
+        };
+
+        int plateId = 0;
+
+        System.out.println("[RiverDebug]  FOUND nearest river: riverId=" + riverId
+            + ", level=" + riverLevel
+            + ", dist=" + dist
+            + ", closest=(" + bestProj.closestX + "," + bestProj.closestZ + ")");
+
+        return new DebugNearestRiverInfo(
+            true,
+            dist,
+            riverId,
+            riverLevel,
+            plateId,
+            bestProj.closestX,
+            bestProj.closestZ
         );
     }
 
