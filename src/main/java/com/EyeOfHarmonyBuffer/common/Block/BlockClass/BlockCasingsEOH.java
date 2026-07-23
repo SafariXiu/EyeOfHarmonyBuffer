@@ -29,8 +29,8 @@ public class BlockCasingsEOH extends BlockCasingsAbstract {
     public int getTextureIndex(int meta) {
         meta = Math.max(0, Math.min(meta, 1));
 
-        int page = 16;
-        int baseSlot = 80;
+        int page = 30;
+        int baseSlot = 0;
 
         return (page << 7) | (baseSlot + meta);
     }

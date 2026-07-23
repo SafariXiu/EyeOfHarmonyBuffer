@@ -30,6 +30,7 @@ import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.registry.GameRegistry;
+import gregtech.api.util.GTUtility;
 import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
@@ -104,6 +105,7 @@ public class EyeOfHarmonyBuffer {
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
 
         TalosBiomes.init();
+        GTUtility.addTexturePage((byte) 30);
     }
 
     @Mod.EventHandler
