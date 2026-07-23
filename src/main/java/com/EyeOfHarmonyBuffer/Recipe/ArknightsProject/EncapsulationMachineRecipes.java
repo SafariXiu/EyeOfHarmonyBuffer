@@ -21,7 +21,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
                 GTCMItemList.YuanShiFenMo.get(10)
             )
             .itemOutputs(
-                GTCMItemList.DiRongLiangDianChi.get(1)
+                GTCMItemList.DiRongGuDiDianChi.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)
@@ -45,7 +45,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
                 GTCMItemList.YuanShiFenMo.get(15)
             )
             .itemOutputs(
-                GTCMItemList.ZhongRongLiangDianChi.get(1)
+                GTCMItemList.ZhongRongGuDiDianChi.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)
@@ -57,7 +57,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
                 GTCMItemList.ZhiMiYuanShiFenMo.get(15)
             )
             .itemOutputs(
-                GTCMItemList.GaoRongLiangDianChi.get(1)
+                GTCMItemList.GaoRongGuDiDianChi.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)
@@ -69,7 +69,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
                 GTCMItemList.ZhiMiYuanShiFenMo.get(15)
             )
             .itemOutputs(
-                GTCMItemList.XiRangDiRongLiangDianChi.get(1)
+                GTCMItemList.DiRongXiRangDianChi.get(1)
             )
             .eut(50000)
             .duration(10 * SECONDS)

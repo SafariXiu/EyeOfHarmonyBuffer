@@ -23,7 +23,6 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
-import gregtech.api.structure.error.StructureErrors;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -76,16 +75,22 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
     static {
         INPUT_RECIPES.put(GTCMItemList.YuanShi.get(1),
-            new InputRecipe(GTCMItemList.HeChengYu.get(1), 180, 100_000L));
+            new InputRecipe(GTCMItemList.HeChengYu.get(1), 180, 10_000L));
 
-        INPUT_RECIPES.put(GTCMItemList.DiRongLiangDianChi.get(1),
-            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 25, 500_000L));
+        INPUT_RECIPES.put(GTCMItemList.DiRongGuDiDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 25, 20_000L));
 
-        INPUT_RECIPES.put(GTCMItemList.ZhongRongLiangDianChi.get(1),
-            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 50, 1_000_000L));
+        INPUT_RECIPES.put(GTCMItemList.ZhongRongGuDiDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 50, 50_000L));
 
-        INPUT_RECIPES.put(GTCMItemList.GaoRongLiangDianChi.get(1),
-            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 200, 5_000_000L));
+        INPUT_RECIPES.put(GTCMItemList.GaoRongGuDiDianChi.get(1),
+            new InputRecipe(GTCMItemList.PoSuiYuanShi.get(1), 200, 100_000L));
+
+        INPUT_RECIPES.put(GTCMItemList.DiRongXiRangDianChi.get(1),
+            new InputRecipe(GTCMItemList.XiRang.get(1), 1, 200_000L));
+
+        INPUT_RECIPES.put(GTCMItemList.ZhongRongWuLingDianChi.get(1),
+            new InputRecipe(GTCMItemList.ZhongXiRang.get(1), 1, 500_000L));
     }
 
     public EOHB_OrundumDynamo(int aID, String aName, String aNameRegional) {
@@ -119,7 +124,9 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
     private int getParallelCount() {
         int tier = Math.max(0, this.glassTier);
-        return 1 << tier;
+
+        int cappedTier = Math.min(tier, 8);
+        return 1 << cappedTier;
     }
 
     private static class InputRecipe {
@@ -201,13 +208,17 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         int coilHeat = (int) this.getCoilLevel().getHeat();
         double baseHeat = 1800.0;
-        double coilFactor = Math.pow(coilHeat / baseHeat, 1.2);
+
+        double heatRatio = coilHeat / baseHeat;
+        double coilFactor = 1.0 + (heatRatio - 1.0) * 0.2;
+        coilFactor = Math.max(1.0, Math.min(coilFactor, 2.0));
         double glassFactor = 1.0 + (this.glassTier / (double) VoltageIndex.UHV) * 1.5;
         double effFactor = this.mOrundumEfficiency / 100.0;
 
         double totalMultiplier = coilFactor * glassFactor * effFactor * usedParallel;
 
-        BigInteger orundumGain = recipeConfig.baseOrundum.multiply(BigInteger.valueOf((long) totalMultiplier));
+        BigInteger orundumGain = recipeConfig.baseOrundum
+            .multiply(BigInteger.valueOf((long) totalMultiplier));
         this.pendingOrundum = orundumGain;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
@@ -223,12 +234,17 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         int usedParallel = Math.max(1, this.lastParallelCount);
         int coilHeat = (int) this.getCoilLevel().getHeat();
         double baseHeat = 1800.0;
-        double coilFactor = Math.pow(coilHeat / baseHeat, 1.2);
+
+        double heatRatio = coilHeat / baseHeat;
+        double coilFactor = 1.0 + (heatRatio - 1.0) * 0.2;
+        coilFactor = Math.max(1.0, Math.min(coilFactor, 2.0));
+
         double glassFactor = 1.0 + (this.glassTier / (double) VoltageIndex.UHV) * 1.5;
         double effFactor = this.mOrundumEfficiency / 100.0;
 
         double totalEnergyMul = coilFactor * glassFactor * effFactor * usedParallel;
-        BigInteger totalOrundum = this.lastRecipeConfig.baseOrundum.multiply(BigInteger.valueOf((long) totalEnergyMul));
+        BigInteger totalOrundum = this.lastRecipeConfig.baseOrundum
+            .multiply(BigInteger.valueOf((long) totalEnergyMul));
 
         if (ownerUUID != null) {
             OrundumEnergyService.changeOrundumForUser(ownerUUID, totalOrundum);
@@ -265,7 +281,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         }
 
         int baseHeat = (int) this.getCoilLevel().getHeat();
-        this.mOrundumEfficiency = 100 + (baseHeat / 1000);
+        this.mOrundumEfficiency = 105;
 
         checkHasOutputBus(errors);
         checkHasInputBus(errors);
@@ -421,7 +437,11 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         int parallelUsed = tag.getInteger("parallelUsed");
 
         double baseHeat = 1800.0;
-        double coilFactor = Math.pow(coilHeat / baseHeat, 1.2);
+
+        double heatRatio = coilHeat / baseHeat;
+        double coilFactor = 1.0 + (heatRatio - 1.0) * 0.2;
+        coilFactor = Math.max(1.0, Math.min(coilFactor, 2.0));
+
         double glassFactor = 1.0 + (glassTierValue / (double) VoltageIndex.UHV) * 1.5;
         double effBonus = effValue / 100.0;
 
@@ -536,7 +556,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
                                  int aColorIndex, boolean aActive, boolean aRedstone) {
         if (side == facing) {
-            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
+            if (aActive) return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
                     .extFacing()
@@ -545,8 +565,8 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
                     .extFacing()
                     .glow()
-                    .build() };
-            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
+                    .build()};
+            return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
                 .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
                 .extFacing()
                 .build(),
@@ -554,8 +574,8 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
                     .extFacing()
                     .glow()
-                    .build() };
+                    .build()};
         }
-        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
+        return new ITexture[]{Textures.BlockIcons.getCasingTextureForId(CASING_INDEX)};
     }
 }

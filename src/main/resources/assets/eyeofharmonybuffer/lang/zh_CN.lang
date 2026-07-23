@@ -44,6 +44,7 @@ EOHB_MachineType_9=9号提示方块
 EOHB_MachineType_10=10号提示方块
 EOHB_MachineType_11=11号提示方块
 EOHB_MachineType_12=12号提示方块
+EOHB_OutPutEnergy=当前发电量
 EOHB_Starry_Miracle_Project=§6✦ §3§o§lEOHB-----星河奇迹计划 §6✦
 EOHB_Legendary_Machine_Project=§1♢ §6§o§lEOHB-----传奇机器计划 §1♢
 EOHB_Arknights_Project=§8☰ §6§o§lEOHB-----方舟工业计划 §8☰
@@ -370,6 +371,16 @@ Tooltip_InternalizedUniverseComputingEngine_02=§7演算机理论上从§6源石
 Tooltip_InternalizedUniverseComputingEngine_03=§7有一块§6源石§7产出的数据全是§e购物清单§7，上面列着“§f三斤苹果、两斤猪肉、一打鸡蛋§7”。§r
 Tooltip_InternalizedUniverseComputingEngine_04=§7另一块§6源石§7更离谱，提取结果居然是隔壁老王家狗的完整§d基因组序列§7。§r
 Tooltip_InternalizedUniverseComputingEngine_05=§7最后大家得出结论：§6源石§7里封存的并不是§b宇宙真理§7，而是这个世界所有的§e无聊日常§7。§r
+NameXiraniteSolarPowerGenerator=§a息壤太阳能
+Tooltip_XiraniteSolarPowerGenerator_MachineType=§a息壤太阳能
+Tooltip_XiraniteSolarPowerGenerator_Controller=§7§a息壤太阳能§7的§b控制器方块§r
+Tooltip_XiraniteSolarPowerGenerator_00=§7通过将§a武陵的息壤§7添加到机器中，工程师们终于搞定了太阳能的§c能量损耗过高§7的问题。§r
+Tooltip_XiraniteSolarPowerGenerator_01=§7常态发电§e1M§7每§e100tick§7，如果提供§a息壤气态环境§7则发电提升至§e1.3倍§7。§r
+Tooltip_XiraniteSolarPowerGenerator_02=§a武陵清洁能源§7！§b祝你有个湛蓝的天空§7！§r
+Tooltip_XiraniteSolarPowerGenerator_03=§7后勤部把一台淘汰的§a息壤太阳能§7搬去给员工菜园供电，说是响应§a绿色环保§7号召，顺便省点电费。§r
+Tooltip_XiraniteSolarPowerGenerator_04=§7结果菜园里的番茄§e三天§7长到§e西瓜§7那么大，食堂阿姨炒了一锅番茄蛋汤，愣是端出了§e十锅§7的量。§r
+Tooltip_XiraniteSolarPowerGenerator_05=§b农业天师§7来看了说可能是§a息壤§7残留影响了植物生长，但后勤部不在乎，转头种起了§e经济作物§7。§r
+Tooltip_XiraniteSolarPowerGenerator_06=§7现在那片菜园被封了，门口挂着“§b科研试验区§7”的牌子，里面种的全是市场上§d最贵的香料§7。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -646,6 +657,8 @@ tile.chi_tong_block.name=赤铜矿脉块
 tile.chi_tong_main_block.name=赤铜主矿脉块
 tile.xi_rang_qi_main_block.name=息壤气主矿脉块
 tile.duo_qi_main_block.name=惰气主矿脉块
+eoh.blockcasings.0.name=息壤机械方块
+eoh.blockcasings.1.name=重息壤机械方块
 
 #space
 solarsystem.talosSystem=塔罗斯

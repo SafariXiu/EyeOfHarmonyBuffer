@@ -72,6 +72,7 @@ public class TextLocalization {
     public static final String EOHB_Environment_XRANITE;
     public static final String EOHB_Environment_NONE;
     public static final String EOHB_Environment_ANY;
+    public static final String EOHB_OutPutEnergy;
 
     //机器
     public static final String NameVendingMachines;
@@ -397,6 +398,17 @@ public class TextLocalization {
     public static final String Tooltip_InternalizedUniverseComputingEngine_04;
     public static final String Tooltip_InternalizedUniverseComputingEngine_05;
 
+    public static final String NameXiraniteSolarPowerGenerator;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_MachineType;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_Controller;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_00;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_01;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_02;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_03;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_04;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_05;
+    public static final String Tooltip_XiraniteSolarPowerGenerator_06;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -554,6 +566,7 @@ public class TextLocalization {
         EOHB_Environment_XRANITE = TextHandler.texter("Required Gas Environment: Xranite","EOHB_Environment_XRANITE");
         EOHB_Environment_NONE = TextHandler.texter("Required Gas Environment: None","EOHB_Environment_NONE");
         EOHB_Environment_ANY = TextHandler.texter("Required Gas Environment: Any","EOHB_Environment_ANY");
+        EOHB_OutPutEnergy = TextHandler.texter("Current Power Generation Capacity","EOHB_OutPutEnergy");
 
         //载入提示性文本
         EOHB_Client_PlayerJoin00 = TextHandler.texter("Welcome to use EyeOfHarmonyBuffer!","EOHB_Client_PlayerJoin00");
@@ -933,6 +946,18 @@ public class TextLocalization {
         Tooltip_InternalizedUniverseComputingEngine_03 = TextHandler.texter("One piece of Orundum output nothing but a shopping list: \"three pounds of apples, two pounds of pork, and a dozen eggs.\"","Tooltip_InternalizedUniverseComputingEngine_03");
         Tooltip_InternalizedUniverseComputingEngine_04 = TextHandler.texter("Another piece was even more absurd — the extraction turned out to be the complete genome sequence of the neighbor's dog.","Tooltip_InternalizedUniverseComputingEngine_04");
         Tooltip_InternalizedUniverseComputingEngine_05 = TextHandler.texter("In the end, everyone concluded that Orundum doesn't store cosmic truths — it stores all the mundane everyday life of this world.","Tooltip_InternalizedUniverseComputingEngine_05");
+
+        //息壤太阳能
+        NameXiraniteSolarPowerGenerator = TextHandler.texter("Xiranite Solar Power Generator","NameXiraniteSolarPowerGenerator");
+        Tooltip_XiraniteSolarPowerGenerator_MachineType = TextHandler.texter("Xiranite Solar Power Generator","Tooltip_XiraniteSolarPowerGenerator_MachineType");
+        Tooltip_XiraniteSolarPowerGenerator_Controller = TextHandler.texter("Controller block of the Xiranite Solar Power Generator","Tooltip_XiraniteSolarPowerGenerator_Controller");
+        Tooltip_XiraniteSolarPowerGenerator_00 = TextHandler.texter("By adding Xiranite from Wuling to the machine, engineers finally solved the problem of excessive energy loss in solar power generation.","Tooltip_XiraniteSolarPowerGenerator_00");
+        Tooltip_XiraniteSolarPowerGenerator_01 = TextHandler.texter("Standard output is 1M per 100 ticks. If provided with a Xiranite gas atmosphere, output increases to 1.3x.","Tooltip_XiraniteSolarPowerGenerator_01");
+        Tooltip_XiraniteSolarPowerGenerator_02 = TextHandler.texter("Wuling Clean Energy! Wishing you a clear blue sky!","Tooltip_XiraniteSolarPowerGenerator_02");
+        Tooltip_XiraniteSolarPowerGenerator_03 = TextHandler.texter("The Logistics Department moved a decommissioned Xiranite Solar Power Generator to the employee garden to power it, citing the call for green environmental protection — and also to save on electricity bills.","Tooltip_XiraniteSolarPowerGenerator_03");
+        Tooltip_XiraniteSolarPowerGenerator_04 = TextHandler.texter("As it turned out, the tomatoes in the garden tripled in size to the size of watermelons in just three days. The canteen auntie made a pot of tomato egg drop soup, and somehow managed to serve up the equivalent of ten pots.","Tooltip_XiraniteSolarPowerGenerator_04");
+        Tooltip_XiraniteSolarPowerGenerator_05 = TextHandler.texter("An Agricultural Master came to inspect and suggested that residual Xiranite might have affected plant growth. But the Logistics Department didn't care — they immediately switched to growing cash crops instead.","Tooltip_XiraniteSolarPowerGenerator_05");
+        Tooltip_XiraniteSolarPowerGenerator_06 = TextHandler.texter("Now that garden is sealed off, with a sign at the entrance reading \"Research Experimental Zone.\" Inside, they're growing the most expensive spices on the market.","Tooltip_XiraniteSolarPowerGenerator_06");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");

@@ -33,6 +33,8 @@ import java.util.Set;
 
 public final class GasEnvironmentHelper {
 
+    private static final int RADIUS_CHUNKS = 3;
+
     private GasEnvironmentHelper() {}
 
     /**
@@ -130,7 +132,7 @@ public final class GasEnvironmentHelper {
      * 当某个 Provider 的输出环境类型发生变化时调用。
      * <p>
      * 例如：机器开机/关机、切换输入流体导致环境类型改变等。
-     * 会以该 Provider 所在区块为中心，重新计算其周围 3×3 区块的环境缓存。
+     * 会以该 Provider 所在区块为中心，重新计算其周围 7×7 区块的环境缓存。
      *
      * @param provider 发生环境变化的 Provider
      * @param world    世界对象
@@ -146,8 +148,8 @@ public final class GasEnvironmentHelper {
         int providerChunkX = x >> 4;
         int providerChunkZ = z >> 4;
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -RADIUS_CHUNKS; dx <= RADIUS_CHUNKS; dx++) {
+            for (int dz = -RADIUS_CHUNKS; dz <= RADIUS_CHUNKS; dz++) {
                 int cx = providerChunkX + dx;
                 int cz = providerChunkZ + dz;
                 recomputeChunkEnvironment(dim, cx, cz);
@@ -161,7 +163,7 @@ public final class GasEnvironmentHelper {
      * 算法说明：
      * <ul>
      *     <li>一个区块可能被多个 Provider 的 AoE 覆盖；</li>
-     *     <li>我们认为：任何「以该区块为中心，半径 1（3×3）内」的 Provider，都可能影响到此区块；</li>
+     *     <li>我们认为：任何「以该区块为中心，半径 3（7×7）内」的 Provider，都可能影响到此区块；</li>
      *     <li>从这些 Provider 的 {@code getProvidedEnvironmentType()} 中选出“优先级最高”的一个作为结果；</li>
      *     <li>优先级由 {@link GasEnvironmentType#priority} 决定。</li>
      * </ul>
@@ -173,8 +175,8 @@ public final class GasEnvironmentHelper {
     private static void recomputeChunkEnvironment(int dim, int chunkX, int chunkZ) {
         GasEnvironmentType best = GasEnvironmentType.NONE;
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -RADIUS_CHUNKS; dx <= RADIUS_CHUNKS; dx++) {
+            for (int dz = -RADIUS_CHUNKS; dz <= RADIUS_CHUNKS; dz++) {
                 int pcx = chunkX + dx;
                 int pcz = chunkZ + dz;
                 long pKey = chunkKey(dim, pcx, pcz);

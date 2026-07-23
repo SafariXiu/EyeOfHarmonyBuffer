@@ -30,10 +30,10 @@ public enum GTCMItemList {
     LanTieKuang,
     YuanShiKuang,
     ZiJingKuang,
-    DiRongLiangDianChi,
-    ZhongRongLiangDianChi,
-    GaoRongLiangDianChi,
-    XiRangDiRongLiangDianChi,
+    DiRongGuDiDianChi,
+    ZhongRongGuDiDianChi,
+    GaoRongGuDiDianChi,
+    DiRongXiRangDianChi,
     PoSuiYuanShi,
     JingTiWaiKeFenMo,
     LanTieFenMo,
@@ -200,6 +200,7 @@ public enum GTCMItemList {
     GearingUnit,
     LargeForce_ContainedProliferationMine,
     InternalizedUniverseComputingEngine,
+    XiraniteSolarPowerGenerator,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

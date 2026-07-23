@@ -43,6 +43,7 @@ public class MachineLoader {
     public static ItemStack GearingUnit;
     public static ItemStack LargeForce_ContainedProliferationMine;
     public static ItemStack InternalizedUniverseComputingEngine;
+    public static ItemStack XiraniteSolarPowerGenerator;
 
     private final static int MachineBlockID = 23000;
 
@@ -298,5 +299,12 @@ public class MachineLoader {
             TextLocalization.NameInternalizedUniverseComputingEngine
         ).getStackForm(1);
         GTCMItemList.InternalizedUniverseComputingEngine.set(InternalizedUniverseComputingEngine);
+
+        XiraniteSolarPowerGenerator = new EOHB_XiraniteSolarPowerGenerator(
+            MachineBlockID + 37,
+            "NameXiraniteSolarPowerGenerator",
+            TextLocalization.NameXiraniteSolarPowerGenerator
+        ).getStackForm(1);
+        GTCMItemList.XiraniteSolarPowerGenerator.set(XiraniteSolarPowerGenerator);
     }
 }

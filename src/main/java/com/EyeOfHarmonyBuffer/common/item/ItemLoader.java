@@ -86,10 +86,10 @@ public class ItemLoader {
         GTCMItemList.LanTieKuang.set(registryAndCallback(LanTieKuang,"LanTieKuang"));
         GTCMItemList.YuanShiKuang.set(registryAndCallback(YuanShiKuang,"YuanShiKuang"));
         GTCMItemList.ZiJingKuang.set(registryAndCallback(ZiJingKuang,"ZiJingKuang"));
-        GTCMItemList.DiRongLiangDianChi.set(registryAndCallback(DiRongLiangDianChi,"DiRongLiangDianChi"));
-        GTCMItemList.ZhongRongLiangDianChi.set(registryAndCallback(ZhongRongLiangDianChi,"ZhongRongLiangDianChi"));
-        GTCMItemList.GaoRongLiangDianChi.set(registryAndCallback(GaoRongLiangDianChi,"GaoRongLiangDianChi"));
-        GTCMItemList.XiRangDiRongLiangDianChi.set(registryAndCallback(XiRangDiRongLiangDianChi,"XiRangDiRongLiangDianChi"));
+        GTCMItemList.DiRongGuDiDianChi.set(registryAndCallback(DiRongLiangDianChi,"DiRongLiangDianChi"));
+        GTCMItemList.ZhongRongGuDiDianChi.set(registryAndCallback(ZhongRongLiangDianChi,"ZhongRongLiangDianChi"));
+        GTCMItemList.GaoRongGuDiDianChi.set(registryAndCallback(GaoRongLiangDianChi,"GaoRongLiangDianChi"));
+        GTCMItemList.DiRongXiRangDianChi.set(registryAndCallback(XiRangDiRongLiangDianChi,"XiRangDiRongLiangDianChi"));
         GTCMItemList.PoSuiYuanShi.set(registryAndCallback(PoSuiYuanShi,"PoSuiYuanShi"));
         GTCMItemList.JingTiWaiKeFenMo.set(registryAndCallback(JingTiWaiKeFenMo,"JingTiWaiKeFenMo"));
         GTCMItemList.LanTieFenMo.set(registryAndCallback(LanTieFenMo,"LanTieFenMo"));

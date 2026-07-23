@@ -21,6 +21,12 @@ public class BlockCasingsEOH extends BlockCasingsAbstract {
     public static final int META_XIRANG_WAIKE = 0;
     public static final int META_ZHONG_XIRANG_WAIKE = 1;
 
+    public static final int CASING_INDEX_XIRANG =
+        (30 << 7) | BlockCasingsEOH.META_XIRANG_WAIKE;
+
+    public static final int CASING_INDEX_ZHONG_XIRANG =
+        (30 << 7) | BlockCasingsEOH.META_ZHONG_XIRANG_WAIKE;
+
     public BlockCasingsEOH() {
         super(ItemBlockCasingsEOH.class, "eoh.blockcasings", Material.iron, 2);
     }

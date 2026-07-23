@@ -22,57 +22,67 @@ public class OrundumDynamoRecipes implements IRecipePool {
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "100000")
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "10000")
             .addTo(OrundumDynamo);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.DiRongLiangDianChi.get(1)
+                GTCMItemList.DiRongGuDiDianChi.get(1)
             )
             .itemOutputs(
                 GTCMItemList.PoSuiYuanShi.get(25)
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "500000")
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "20000")
             .addTo(OrundumDynamo);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.ZhongRongLiangDianChi.get(1)
+                GTCMItemList.ZhongRongGuDiDianChi.get(1)
             )
             .itemOutputs(
                 GTCMItemList.PoSuiYuanShi.get(50)
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "1000000")
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "50000")
             .addTo(OrundumDynamo);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.GaoRongLiangDianChi.get(1)
+                GTCMItemList.GaoRongGuDiDianChi.get(1)
             )
             .itemOutputs(
                 GTCMItemList.PoSuiYuanShi.get(200)
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "5000000")
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "100000")
             .addTo(OrundumDynamo);
 
-        /*GTValues.RA.stdBuilder()
+        GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.HeChengYu.get(2)
+                GTCMItemList.DiRongXiRangDianChi.get(1)
             )
             .itemOutputs(
-                new ItemStack(Blocks.stone,64)
+                GTCMItemList.XiRang.get(1)
             )
             .eut(0)
             .duration(5 * SECONDS)
-            .metadata(NEI_OUTPUT_MIN, 32)
-            .metadata(NEI_OUTPUT_MAX, 64)
-            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "1000")
-            .addTo(OrundumDynamo);*/
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "200000")
+            .addTo(OrundumDynamo);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhongRongWuLingDianChi.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhongXiRang.get(1)
+            )
+            .eut(0)
+            .duration(5 * SECONDS)
+            .setNEIDesc(EOHB_Recipe_OrundumDynamo_Tooltip_00 + "500000")
+            .addTo(OrundumDynamo);
     }
 }
