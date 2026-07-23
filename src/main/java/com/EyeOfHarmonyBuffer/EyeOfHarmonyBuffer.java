@@ -24,6 +24,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverRegistry;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
@@ -71,6 +72,8 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+
+        RiverRegistry.onPreInit(event);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
         TextHandler.initLangMap(isInDevMode);
@@ -175,6 +178,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandGasEnvironment());
         event.registerServerCommand(new CommandComputeGroup());
         event.registerServerCommand(new CommandComputeDebug());
+        event.registerServerCommand(new CommandTalosSuperCenter());
     }
 
     @Mod.EventHandler
