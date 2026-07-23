@@ -428,7 +428,7 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
             : currentEnvironmentType;
         tag.setString("EOHB_CurrentEnvName", cur.name());
 
-        tag.setInteger("EOHB_EnvRadiusChunks", 1);
+        tag.setInteger("EOHB_EnvRadiusChunks", 3);
     }
 
     @Override

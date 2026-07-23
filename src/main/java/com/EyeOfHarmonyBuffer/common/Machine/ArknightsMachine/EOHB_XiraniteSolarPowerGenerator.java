@@ -35,7 +35,6 @@ import java.math.BigInteger;
 import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.EOHBCasing1;
-import static com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockCasingsEOH.CASING_INDEX_XIRANG;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
@@ -134,12 +133,6 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
         pendingOrundum = BigInteger.ZERO;
 
         super.endRecipeProcessing();
-    }
-
-    @NotNull
-    @Override
-    public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.InternalizedUniverseComputingEngine;
     }
 
     @Override
