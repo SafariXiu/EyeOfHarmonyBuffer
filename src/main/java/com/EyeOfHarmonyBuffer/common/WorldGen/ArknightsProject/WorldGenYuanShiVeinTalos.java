@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 
 import java.util.Random;
@@ -27,7 +28,7 @@ public class WorldGenYuanShiVeinTalos {
         Block oreBlock;
         Block coreBlock;
 
-        int type = rand.nextInt(4);
+        int type = rand.nextInt(6);
         switch (type) {
             case 0:
             default:
@@ -45,6 +46,14 @@ public class WorldGenYuanShiVeinTalos {
             case 3:
                 oreBlock = ArknightsBlockRegister.ChiTongBlock;
                 coreBlock = ArknightsBlockRegister.ChiTongMainBlock;
+                break;
+            case 4:
+                oreBlock = Blocks.stone;
+                coreBlock = ArknightsBlockRegister.XiRangQiMainBlock;
+                break;
+            case 5:
+                oreBlock = Blocks.stone;
+                coreBlock = ArknightsBlockRegister.DuoQiMainBlock;
                 break;
         }
 
