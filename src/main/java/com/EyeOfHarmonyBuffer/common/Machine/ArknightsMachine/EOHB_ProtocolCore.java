@@ -21,6 +21,7 @@ import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
@@ -118,6 +119,11 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
 
     @Override
     protected boolean shouldRequireOrundumField() {
+        return false;
+    }
+
+    @Override
+    protected boolean shouldShowWirelessWaila(NBTTagCompound tag) {
         return false;
     }
 

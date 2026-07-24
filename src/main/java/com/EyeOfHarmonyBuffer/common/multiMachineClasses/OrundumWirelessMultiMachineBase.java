@@ -37,6 +37,8 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
     protected WirelessNodeRef wirelessNodeRefCache;
 
+    protected BigInteger lastOrundumCost = BigInteger.ZERO;
+
     public OrundumWirelessMultiMachineBase(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
     }
@@ -51,11 +53,46 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     }
 
     @Override
-    public CheckRecipeResult wirelessModeProcessOnce() {
+    public final CheckRecipeResult wirelessModeProcessOnce() {
+        CheckRecipeResult pre = wirelessPreCheck();
+        if (!pre.wasSuccessful()) {
+            this.lastUsedParallel = 0;
+            return pre;
+        }
+
+        CheckRecipeResult op = doWirelessModeProcessOnce();
+        if (!op.wasSuccessful()) {
+            this.lastUsedParallel = 0;
+            return op;
+        }
+
+        CheckRecipeResult post = wirelessPostProcess(op);
+        if (!post.wasSuccessful()) {
+            this.lastUsedParallel = 0;
+            return post;
+        }
+
+        return post;
+    }
+
+    /**
+     * 通用前置：默认只做 Orundum 场检查。
+     * 子类有需要可以覆写（记得 super 或自己做场检查）。
+     */
+    protected CheckRecipeResult wirelessPreCheck() {
         if (shouldRequireOrundumField() && !isInOrundumField()) {
             return SimpleCheckRecipeResult.ofFailure("NotInOrundumField");
         }
+        return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
 
+    /**
+     * 默认实现：按原来父类的无线模式逻辑跑一遍配方，但不做算力/Orundum 扣费，
+     * 只算出并行数和 Orundum 成本并缓存，真正扣费放在 wirelessPostProcess 里做。
+     *
+     * 子类可以完全覆写这段（比如 GasDiffuser 那样根本不跑配方）。
+     */
+    protected CheckRecipeResult doWirelessModeProcessOnce() {
         if (!isRecipeProcessing) startRecipeProcessing();
         setupProcessingLogic(processingLogic);
         setupWirelessProcessingPowerLogic(processingLogic);
@@ -72,8 +109,45 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         }
         this.lastUsedParallel = Math.max(0, parallels);
 
-        BigInteger baseCost = BigInteger.valueOf(processingLogic.getCalculatedEut())
-            .multiply(BigInteger.valueOf(processingLogic.getDuration()));
+        prepareWirelessCostFromProcessingLogic();
+
+        return result;
+    }
+
+    /** 这台机器是否需要按配方消耗 Orundum（以及在 costingEUText 里累计 Orundum 成本） */
+    protected boolean usesOrundumCost() {
+        return true;
+    }
+
+    /** 这台机器是否作为无线算力 Consumer 参与算力网络（需要 D） */
+    protected boolean actsAsComputeConsumer() {
+        return true;
+    }
+
+    /**
+     * 默认根据 processingLogic 计算本次无线周期的 Orundum 成本，
+     * 结果写入 lastOrundumCost。
+     */
+    protected void prepareWirelessCostFromProcessingLogic() {
+        this.lastOrundumCost = BigInteger.ZERO;
+
+        if (!usesOrundumCost()) {
+            return;
+        }
+
+        if (processingLogic == null) {
+            return;
+        }
+
+        long eut = processingLogic.getCalculatedEut();
+        int duration = processingLogic.getDuration();
+        if (duration <= 0) {
+            return;
+        }
+
+        BigInteger baseCost = BigInteger
+            .valueOf(eut)
+            .multiply(BigInteger.valueOf(duration));
 
         int m = getExtraEUCostMultiplier();
         if (m > 1) {
@@ -81,33 +155,85 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         }
 
         BigInteger orundumCost = convertEuCostToOrundum(baseCost);
+        if (orundumCost == null) {
+            orundumCost = BigInteger.ZERO;
+        }
 
-        BigInteger demand = getRequiredComputeForCurrentRecipe();
+        this.lastOrundumCost = orundumCost.max(BigInteger.ZERO);
+    }
 
-        if (demand != null && demand.signum() > 0 && ownerUUID != null) {
-            WirelessComputeHelper.updateConsumer(this);
+    protected BigInteger getPreparedOrundumCost() {
+        return lastOrundumCost == null ? BigInteger.ZERO : lastOrundumCost;
+    }
 
-            boolean satisfied = WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
+    /**
+     * 返回本次无线周期的额外 EU 成本（以无线 EU 的形式扣）。
+     *
+     * 默认：0（不额外消耗）。
+     */
+    protected BigInteger getExtraWirelessEuCostForCycle() {
+        return BigInteger.ZERO;
+    }
 
-            if (!satisfied) {
-                endRecipeProcessing();
-                return SimpleCheckRecipeResult.ofFailure("InsufficientCompute");
+    /**
+     * 通用后置处理：
+     * - 按需检查算力并更新 Consumer；
+     * - 按需扣除 Orundum；
+     * - 按需扣除额外无线 EU；
+     * - 合并输出、结束配方处理。
+     *
+     * 子类若有极特殊需求，可以覆写（一般不需要）。
+     */
+    protected CheckRecipeResult wirelessPostProcess(CheckRecipeResult opResult) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.isDead()) {
+            endRecipeProcessing();
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        if (actsAsComputeConsumer() && ownerUUID != null) {
+            BigInteger demand = getRequiredComputeForCurrentRecipe();
+            if (demand != null && demand.signum() > 0) {
+                WirelessComputeHelper.updateConsumer(this);
+                boolean satisfied = WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
+                if (!satisfied) {
+                    endRecipeProcessing();
+                    return SimpleCheckRecipeResult.ofFailure("InsufficientCompute");
+                }
             }
         }
 
-        if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
-            endRecipeProcessing();
-            return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
+        BigInteger extraEu = getExtraWirelessEuCostForCycle();
+        if (extraEu != null && extraEu.signum() > 0 && ownerUUID != null) {
+            if (!hasEnoughWirelessEU(ownerUUID, extraEu)) {
+                endRecipeProcessing();
+                return CheckRecipeResultRegistry.insufficientPower(safeToLong(extraEu));
+            }
         }
 
-        this.costingEU = this.costingEU.add(orundumCost);
-        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
+        if (usesOrundumCost()) {
+            BigInteger orundumCost = getPreparedOrundumCost();
+            if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
+                endRecipeProcessing();
+                return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
+            }
 
-        mOutputItems = mergeArray(mOutputItems, processingLogic.getOutputItems());
-        mOutputFluids = mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+            this.costingEU = this.costingEU.add(orundumCost);
+            this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
+        }
+
+        if (extraEu != null && extraEu.signum() > 0 && ownerUUID != null) {
+            consumeWirelessEUForOwner(ownerUUID, extraEu);
+            addExtraEUToCostingText(extraEu);
+        }
+
+        if (processingLogic != null) {
+            mOutputItems = mergeArray(mOutputItems, processingLogic.getOutputItems());
+            mOutputFluids = mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+        }
 
         endRecipeProcessing();
-        return result;
+        return opResult;
     }
 
     /** EU 成本 → Orundum 成本的换算（默认 1:1） */

@@ -52,7 +52,8 @@ import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMachineBase<EOHB_HighDensityEnergyFluidGenerator>
+public class EOHB_HighDensityEnergyFluidGenerator
+    extends OrundumWirelessMultiMachineBase<EOHB_HighDensityEnergyFluidGenerator>
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_HighDensityEnergyFluidGenerator> STRUCTURE_DEFINITION = null;
@@ -128,7 +129,7 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
     }
 
     @Override
-    public CheckRecipeResult wirelessModeProcessOnce() {
+    protected CheckRecipeResult doWirelessModeProcessOnce() {
 
         if (!isRecipeProcessing) startRecipeProcessing();
         setupProcessingLogic(processingLogic);
@@ -184,6 +185,11 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
 
         endRecipeProcessing();
         return result;
+    }
+
+    @Override
+    protected CheckRecipeResult wirelessPostProcess(CheckRecipeResult opResult) {
+        return opResult;
     }
 
     @NotNull
@@ -456,7 +462,8 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
     public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
                                  int aColorIndex, boolean aActive, boolean aRedstone) {
         if (side == facing) {
-            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
+            if (aActive) return new ITexture[] {
+                Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
                     .extFacing()
@@ -465,16 +472,20 @@ public class EOHB_HighDensityEnergyFluidGenerator extends OrundumWirelessMultiMa
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
                     .extFacing()
                     .glow()
-                    .build() };
-            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
-                .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
-                .extFacing()
-                .build(),
+                    .build()
+            };
+            return new ITexture[] {
+                Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
+                    .extFacing()
+                    .build(),
                 TextureFactory.builder()
                     .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
                     .extFacing()
                     .glow()
-                    .build() };
+                    .build()
+            };
         }
         return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
     }

@@ -129,6 +129,48 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     }
 
     @Override
+    protected boolean shouldRequireOrundumField() {
+        return false;
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
+    }
+
+    @Override
+    protected boolean actsAsComputeConsumer() {
+        return false;
+    }
+
+    @Override
+    protected CheckRecipeResult doWirelessModeProcessOnce() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.isDead()) {
+            this.lastUsedParallel = 0;
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        GasEnvironmentType envType = tryConsumeEnvironmentFluidForRun();
+        if (envType == GasEnvironmentType.NONE) {
+            this.lastUsedParallel = 0;
+            return CheckRecipeResultRegistry.NO_FUEL_FOUND;
+        }
+
+        this.lastUsedParallel = 1;
+
+        GasEnvironmentType oldEnv = currentEnvironmentType;
+        currentEnvironmentType = envType;
+        envTicksRemaining = getWirelessModeProcessingTime();
+
+        if (currentEnvironmentType != oldEnv) {
+            pendingEnvChanged = true;
+        }
+
+        return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
     public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
         super.onFirstTick(aBaseMetaTileEntity);
         if (aBaseMetaTileEntity.isServerSide()) {
@@ -238,33 +280,6 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         }
 
         return selectedType;
-    }
-
-    @Override
-    public CheckRecipeResult wirelessModeProcessOnce() {
-        IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base == null || base.isDead()) {
-            this.lastUsedParallel = 0;
-            return CheckRecipeResultRegistry.NO_RECIPE;
-        }
-
-        GasEnvironmentType envType = tryConsumeEnvironmentFluidForRun();
-        if (envType == GasEnvironmentType.NONE) {
-            this.lastUsedParallel = 0;
-            return CheckRecipeResultRegistry.NO_FUEL_FOUND;
-        }
-
-        this.lastUsedParallel = 1;
-
-        GasEnvironmentType oldEnv = currentEnvironmentType;
-        currentEnvironmentType = envType;
-        envTicksRemaining = getWirelessModeProcessingTime();
-
-        if (currentEnvironmentType != oldEnv) {
-            pendingEnvChanged = true;
-        }
-
-        return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
     @Override
