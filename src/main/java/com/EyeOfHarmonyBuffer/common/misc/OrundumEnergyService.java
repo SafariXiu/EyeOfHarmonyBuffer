@@ -14,9 +14,16 @@ public class OrundumEnergyService {
         return SpaceProjectManager.getLeader(userUuid);
     }
 
+    public static UUID getTeamIdForUser(UUID userUuid) {
+        if (userUuid == null) return null;
+        UUID leader = getTeamUuidForUser(userUuid);
+        return leader != null ? leader : userUuid;
+    }
+
     public static BigInteger getOrundumForUser(UUID userUuid) {
         if (userUuid == null) return BigInteger.ZERO;
-        UUID teamId = getTeamUuidForUser(userUuid);
+        UUID teamId = getTeamIdForUser(userUuid);  // ★ 改这里
+        if (teamId == null) return BigInteger.ZERO;
         return GlobalOrundumStorage.getOrundum(teamId);
     }
 
@@ -27,7 +34,7 @@ public class OrundumEnergyService {
     public static boolean changeOrundumForUser(UUID userUuid, BigInteger delta) {
         if (userUuid == null || delta == null) return false;
 
-        UUID teamId = getTeamUuidForUser(userUuid);
+        UUID teamId = getTeamIdForUser(userUuid);
         return changeOrundumForTeam(teamId, delta);
     }
 

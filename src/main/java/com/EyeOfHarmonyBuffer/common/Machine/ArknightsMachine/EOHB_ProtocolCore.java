@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
-import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumFieldHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
@@ -14,7 +14,6 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
@@ -24,9 +23,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
@@ -53,6 +52,7 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
     private int mFieldDimId = 0;
     private int mFieldChunkX = 0;
     private int mFieldChunkZ = 0;
+    private UUID mFieldOwnerTeamId = null;
 
     private boolean shouldHaveOrundumField() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
@@ -72,19 +72,34 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
         int chunkX = base.getXCoord() >> 4;
         int chunkZ = base.getZCoord() >> 4;
 
-        OrundumFieldHelper.activateField(dimId, chunkX, chunkZ);
+        UUID owner = getOwnerUUID();
+        if (owner == null) {
+            return;
+        }
+
+        UUID teamId = OrundumEnergyService.getTeamIdForUser(owner);
+        if (teamId == null) {
+            teamId = owner;
+        }
+
+        OrundumFieldHelper.activateField(dimId, chunkX, chunkZ, teamId);
 
         mFieldRegistered = true;
         mFieldDimId = dimId;
         mFieldChunkX = chunkX;
         mFieldChunkZ = chunkZ;
+        mFieldOwnerTeamId = teamId;
     }
 
     private void unregisterOrundumFieldIfNeeded() {
         if (!mFieldRegistered) return;
 
-        OrundumFieldHelper.deactivateField(mFieldDimId, mFieldChunkX, mFieldChunkZ);
+        if (mFieldOwnerTeamId != null) {
+            OrundumFieldHelper.deactivateField(mFieldDimId, mFieldChunkX, mFieldChunkZ, mFieldOwnerTeamId);
+        }
+
         mFieldRegistered = false;
+        mFieldOwnerTeamId = null;
     }
 
     public EOHB_ProtocolCore(int aID, String aName, String aNameRegional) {

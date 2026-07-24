@@ -427,18 +427,19 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         return true;
     }
 
-    /** 当前机器是否处在任意 Orundum 场覆盖之下 */
     protected boolean isInOrundumField() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null) return false;
         World world = base.getWorld();
         if (world == null) return false;
+        if (ownerUUID == null) return false;
 
-        return OrundumFieldHelper.isPositionCovered(
+        return OrundumFieldHelper.isPositionCoveredForUser(
             world,
             base.getXCoord(),
             base.getYCoord(),
-            base.getZCoord()
+            base.getZCoord(),
+            ownerUUID
         );
     }
 
