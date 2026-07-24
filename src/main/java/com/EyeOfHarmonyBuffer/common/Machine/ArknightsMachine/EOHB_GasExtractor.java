@@ -250,7 +250,7 @@ public class EOHB_GasExtractor extends OrundumWirelessMultiMachineBase<EOHB_GasE
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addOutputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

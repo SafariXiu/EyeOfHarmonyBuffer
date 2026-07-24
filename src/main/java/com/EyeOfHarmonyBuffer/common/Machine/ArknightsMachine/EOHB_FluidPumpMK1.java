@@ -200,6 +200,7 @@ public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase
             .addInfo(EOHB_Arknights_Project)
             .addInfo(Tooltip_FluidPumpMK1_00)
             .addInfo(Tooltip_FluidPumpMK1_01)
+            .addInfo(Tooltip_FluidPumpMK1_02)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)

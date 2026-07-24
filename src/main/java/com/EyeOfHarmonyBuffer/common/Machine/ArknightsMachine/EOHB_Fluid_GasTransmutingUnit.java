@@ -299,6 +299,7 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
             .addInfo(Tooltip_Fluid_GasTransmutingUnit_00)
             .addInfo(Tooltip_Fluid_GasTransmutingUnit_01)
             .addInfo(Tooltip_Fluid_GasTransmutingUnit_02)
+            .addInfo(Tooltip_Fluid_GasTransmutingUnit_03)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()

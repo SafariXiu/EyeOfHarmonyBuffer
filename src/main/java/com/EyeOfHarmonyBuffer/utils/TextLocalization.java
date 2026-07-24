@@ -268,6 +268,7 @@ public class TextLocalization {
     public static final String Tooltip_FluidPumpMK1_Controller;
     public static final String Tooltip_FluidPumpMK1_00;
     public static final String Tooltip_FluidPumpMK1_01;
+    public static final String Tooltip_FluidPumpMK1_02;
 
     public static final String NameFluidPumpMK2;
     public static final String Tooltip_FluidPumpMK2_MachineType;
@@ -276,6 +277,7 @@ public class TextLocalization {
     public static final String Tooltip_FluidPumpMK2_01;
     public static final String Tooltip_FluidPumpMK2_02;
     public static final String Tooltip_FluidPumpMK2_03;
+    public static final String Tooltip_FluidPumpMK2_04;
 
     public static final String NameElectricTypeTwoMiningMachine;
     public static final String Tooltip_ElectricTypeTwoMiningMachine_MachineType;
@@ -328,6 +330,7 @@ public class TextLocalization {
     public static final String Tooltip_Fluid_GasTransmutingUnit_00;
     public static final String Tooltip_Fluid_GasTransmutingUnit_01;
     public static final String Tooltip_Fluid_GasTransmutingUnit_02;
+    public static final String Tooltip_Fluid_GasTransmutingUnit_03;
 
     public static final String NameSolid_GasTransmutingUnit;
     public static final String Tooltip_Solid_GasTransmutingUnit_MachineType;
@@ -336,6 +339,7 @@ public class TextLocalization {
     public static final String Tooltip_Solid_GasTransmutingUnit_01;
     public static final String Tooltip_Solid_GasTransmutingUnit_02;
     public static final String Tooltip_Solid_GasTransmutingUnit_03;
+    public static final String Tooltip_Solid_GasTransmutingUnit_04;
 
     public static final String NameGasReactorGlobe;
     public static final String Tooltip_GasReactorGlobe_MachineType;
@@ -466,6 +470,7 @@ public class TextLocalization {
     public static final String EOHB_JinCaoRuanYin_01;
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_00;
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_01;
+    public static final String EOHB_KuangMaiCaiJiZhe_Tooltip_00;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -803,6 +808,7 @@ public class TextLocalization {
         Tooltip_FluidPumpMK1_Controller = TextHandler.texter("ontroller block of the Fluid Pump MK1","Tooltip_FluidPumpMK1_Controller");
         Tooltip_FluidPumpMK1_00 = TextHandler.texter("A basic device used for extracting liquids.","Tooltip_FluidPumpMK1_00");
         Tooltip_FluidPumpMK1_01 = TextHandler.texter("The commerce division procured basic pump components, and the manufacturing base added a power-supply module—thus, a pressurized device capable of integration within industrial systems was born.","Tooltip_FluidPumpMK1_01");
+        Tooltip_FluidPumpMK1_02 = TextHandler.texter("The area beneath the pipeline structure at the rear of the machine must be a liquid source for it to operate!","Tooltip_FluidPumpMK1_02");
 
         //水泵MK2
         NameFluidPumpMK2 = TextHandler.texter("Fluid Pump MK2","NameFluidPumpMK2");
@@ -812,6 +818,7 @@ public class TextLocalization {
         Tooltip_FluidPumpMK2_01 = TextHandler.texter("According to rather unreliable reports, engineers involved in developing the Type‑II acid‑resistant pump once whispered concerns about this product in a corner of the O.M.V.DiJiang’s cafeteria.","Tooltip_FluidPumpMK2_01");
         Tooltip_FluidPumpMK2_02 = TextHandler.texter("Admittedly, Precipitation Acid has been proven to be a sufficiently safe material, yet they still worried that it might react uncontrollably with other Angel‑related substances.","Tooltip_FluidPumpMK2_02");
         Tooltip_FluidPumpMK2_03 = TextHandler.texter("Therefore, an emergency‑lock module was added to this model.","Tooltip_FluidPumpMK2_03");
+        Tooltip_FluidPumpMK2_04 = TextHandler.texter("The area beneath the pipeline structure at the rear of the machine must be a liquid source for it to operate!","Tooltip_FluidPumpMK2_04");
 
         //电力二型矿机
         NameElectricTypeTwoMiningMachine = TextHandler.texter("Electric Type‑II Mining Machine","NameElectricTypeTwoMiningMachine");
@@ -863,12 +870,13 @@ public class TextLocalization {
         Tooltip_GasDiffuser_02 = TextHandler.texter("\"This thing is not for you to use as an air purifier, and please don’t pour perfume into it next time, okay?\"","Tooltip_GasDiffuser_02");
 
         //液气转化机
-        NameFluid_GasTransmutingUnit = TextHandler.texter("","NameFluid_GasTransmutingUnit");
-        Tooltip_Fluid_GasTransmutingUnit_MachineType = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_MachineType");
-        Tooltip_Fluid_GasTransmutingUnit_Controller = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_Controller");
-        Tooltip_Fluid_GasTransmutingUnit_00 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_00");
-        Tooltip_Fluid_GasTransmutingUnit_01 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_01");
-        Tooltip_Fluid_GasTransmutingUnit_02 = TextHandler.texter("","Tooltip_Fluid_GasTransmutingUnit_02");
+        NameFluid_GasTransmutingUnit = TextHandler.texter("Fluid-Gas Transmuting Unit","NameFluid_GasTransmutingUnit");
+        Tooltip_Fluid_GasTransmutingUnit_MachineType = TextHandler.texter("Fluid-Gas Transmuting Unit","Tooltip_Fluid_GasTransmutingUnit_MachineType");
+        Tooltip_Fluid_GasTransmutingUnit_Controller = TextHandler.texter("Controller block of the Fluid-Gas Transmuting Unit","Tooltip_Fluid_GasTransmutingUnit_Controller");
+        Tooltip_Fluid_GasTransmutingUnit_00 = TextHandler.texter("When activated by a steady input of Liquid Xiranite, this facility can transmute fluid materials into gas, and vice versa.","Tooltip_Fluid_GasTransmutingUnit_00");
+        Tooltip_Fluid_GasTransmutingUnit_01 = TextHandler.texter("A special facility that can transmute materials into another state.","Tooltip_Fluid_GasTransmutingUnit_01");
+        Tooltip_Fluid_GasTransmutingUnit_02 = TextHandler.texter("The process may sound simple, but every single component of the facility, down to the most basic thermometer, is the pinnacle of modern Originium Arts and technology.","Tooltip_Fluid_GasTransmutingUnit_02");
+        Tooltip_Fluid_GasTransmutingUnit_03 = TextHandler.texter("The Liquid Xiranite input hatch is located in a dedicated input slot at the center of the machine.","Tooltip_Fluid_GasTransmutingUnit_03");
 
         //固气转化机
         NameSolid_GasTransmutingUnit = TextHandler.texter("Solid-Gas Transmuting Unit","NameSolid_GasTransmutingUnit");
@@ -878,6 +886,7 @@ public class TextLocalization {
         Tooltip_Solid_GasTransmutingUnit_01 = TextHandler.texter("A special facility that can transmute materials into another state. During the design phase, the engineers accessed every","Tooltip_Solid_GasTransmutingUnit_01");
         Tooltip_Solid_GasTransmutingUnit_02 = TextHandler.texter("entry on Originium Arts and technology in the SOW database. Successful recovery of data lost during the Aggeloi War","Tooltip_Solid_GasTransmutingUnit_02");
         Tooltip_Solid_GasTransmutingUnit_03 = TextHandler.texter("provided crucial inspiration for the scientists today.","Tooltip_Solid_GasTransmutingUnit_03");
+        Tooltip_Solid_GasTransmutingUnit_04 = TextHandler.texter("The Liquid Xiranite input hatch is located in a dedicated input slot at the center of the machine.","Tooltip_Solid_GasTransmutingUnit_04");
 
         //气体反应炉
         NameGasReactorGlobe = TextHandler.texter("Gas Reactor Globe","NameGasReactorGlobe");
@@ -987,6 +996,7 @@ public class TextLocalization {
         EOHB_JinCaoRuanYin_01 = TextHandler.texter("When your health drops below 6 points, it automatically consumes one Embroidered Soft Drink and instantly restores a certain amount of HP.","EOHB_JinCaoRuanYin_01");
         EOHB_ForgeOfTheSkyCore_Tooltip_00 = TextHandler.texter("Core component of the multiblock structure Forge of the Sky.","EOHB_ForgeOfTheSkyCore_Tooltip_00");
         EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("Forge of the Sky, the Earth gives birth to metals.","EOHB_ForgeOfTheSkyCore_Tooltip_01");
+        EOHB_KuangMaiCaiJiZhe_Tooltip_00 = TextHandler.texter("Right-click on the Prime Main Vein Block to collect the corresponding vein block.","EOHB_KuangMaiCaiJiZhe_Tooltip_00");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");

@@ -142,6 +142,7 @@ public enum GTCMItemList {
     ChiTongZhuangBeiYuanJian,
     HeTongZhuangBeiYuanJian,
     ZhuoTongZhuangBeiYuanJian,
+    KuangMaiCaiJiZhe,
 
     YuanShiMainBlock,
     YuanShiBlock,

@@ -348,7 +348,7 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
-            .addInputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }

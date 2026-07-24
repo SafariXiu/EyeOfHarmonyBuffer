@@ -296,6 +296,7 @@ public class EOHB_Solid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
             .addInfo(Tooltip_Solid_GasTransmutingUnit_01)
             .addInfo(Tooltip_Solid_GasTransmutingUnit_02)
             .addInfo(Tooltip_Solid_GasTransmutingUnit_03)
+            .addInfo(Tooltip_Solid_GasTransmutingUnit_04)
             .addInfo(EOHB_Arknights_Project_UpgradeCard)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
