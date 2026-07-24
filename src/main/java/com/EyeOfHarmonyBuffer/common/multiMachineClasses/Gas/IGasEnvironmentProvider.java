@@ -8,7 +8,7 @@ package com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas;
  *
  * 具体 AoE 规则由 {@link GasEnvironmentHelper} 统一管理：
  * <ul>
- *     <li>当前实现为：以 Provider 所在区块为中心，周围 3×3 区块都视为受其影响；</li>
+ *     <li>当前实现为：以 Provider 所在区块为中心，周围 7×7 区块都视为受其影响；</li>
  *     <li>当多个 Provider 的 AoE 重叠时，按 {@link GasEnvironmentType#priority} 选择最终生效环境；</li>
  *     <li>Provider 只需正确返回当前自身提供的类型，不关心范围与冲突细节。</li>
  * </ul>

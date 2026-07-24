@@ -14,7 +14,7 @@ import java.util.Set;
  * <ul>
  *     <li>给任意坐标提供 “当前环境气体类型” 查询；</li>
  *     <li>提供一个事件驱动的、可缓存的环境系统，避免每 Tick 大范围扫描导致卡服；</li>
- *     <li>支持以环境提供者所在区块为中心的 3×3 区块 AoE 规则。</li>
+ *     <li>支持以环境提供者所在区块为中心的 7×7 区块 AoE 规则。</li>
  * </ul>
  *
  * 核心设计：
@@ -23,7 +23,7 @@ import java.util.Set;
  *     <li>按区块记录有哪些环境提供者：{@link #PROVIDERS_BY_CHUNK}；</li>
  *     <li>当 {@link IGasEnvironmentProvider} 的输出类型发生变化时，
  *         通过 {@link #onProviderEnvironmentChanged(IGasEnvironmentProvider, net.minecraft.world.World, int, int, int)}
- *         触发对其周围 3×3 区块的缓存重算；</li>
+ *         触发对其周围 7×7 区块的缓存重算；</li>
  *     <li>环境需求者 {@link IGasEnvironmentConsumer} 只需调用
  *         {@link #getEnvironmentAt(net.minecraft.world.World, int, int, int)} 或
  *         {@link #checkConsumer(IGasEnvironmentConsumer, net.minecraft.world.World, int, int, int)}，
@@ -72,7 +72,7 @@ public final class GasEnvironmentHelper {
      * 在 Provider 所在的区块中注册该 Provider。
      * <p>
      * 建议在 Tile 的 {@code onFirstTick} / {@code validate} 等生命周期中调用。
-     * 注册后会立即对其影响范围（以其所在区块为中心 3×3 区块）做一次环境缓存重算。
+     * 注册后会立即对其影响范围（以其所在区块为中心 7×7 区块）做一次环境缓存重算。
      *
      * @param provider 实现了 {@link IGasEnvironmentProvider} 的实例
      * @param world    世界对象
@@ -100,7 +100,7 @@ public final class GasEnvironmentHelper {
      * 从 Provider 所在的区块中注销该 Provider。
      * <p>
      * 建议在 Tile 的 {@code onRemoval} / {@code invalidate} 等生命周期中调用。
-     * 注销后会对其原先影响范围（以其所在区块为中心 3×3 区块）做一次环境缓存重算。
+     * 注销后会对其原先影响范围（以其所在区块为中心 7×7 区块）做一次环境缓存重算。
      *
      * @param provider 实现了 {@link IGasEnvironmentProvider} 的实例
      * @param world    世界对象
