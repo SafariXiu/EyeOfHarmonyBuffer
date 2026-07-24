@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
+import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import net.minecraft.world.World;
 
@@ -16,6 +17,21 @@ public final class OrundumFieldHelper {
     private OrundumFieldHelper() {
     }
 
+    public static Map<Long, Map<UUID, Integer>> getInternalMapReadonly() {
+        return COVER_COUNT_BY_CHUNK_AND_TEAM;
+    }
+
+    public static void replaceInternalMap(Map<Long, ? extends Map<UUID, Integer>> newMap) {
+        COVER_COUNT_BY_CHUNK_AND_TEAM.clear();
+        if (newMap == null) return;
+
+        for (Map.Entry<Long, ? extends Map<UUID, Integer>> e : newMap.entrySet()) {
+            Long key = e.getKey();
+            Map<UUID, Integer> value = e.getValue();
+            if (key == null || value == null || value.isEmpty()) continue;
+            COVER_COUNT_BY_CHUNK_AND_TEAM.put(key, new HashMap<>(value));
+        }
+    }
 
     private static long chunkKey(int dimId, int chunkX, int chunkZ) {
         long dimPart = ((long) dimId & 0xFFFFFFFFL) << 32;
@@ -57,6 +73,15 @@ public final class OrundumFieldHelper {
                 }
             }
         }
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (activateField)");
+                e.printStackTrace();
+            }
+        }
     }
 
     public static void deactivateField(int dimId, int centerChunkX, int centerChunkZ, UUID teamId) {
@@ -91,6 +116,15 @@ public final class OrundumFieldHelper {
                 }
             }
         }
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (deactivateField)");
+                e.printStackTrace();
+            }
+        }
     }
 
     public static boolean isPositionCoveredForUser(World world, int x, int y, int z, UUID userUuid) {
@@ -119,6 +153,15 @@ public final class OrundumFieldHelper {
 
     public static void clearAll() {
         COVER_COUNT_BY_CHUNK_AND_TEAM.clear();
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (clearAll)");
+                e.printStackTrace();
+            }
+        }
     }
 
     public static int getTrackedChunkCount() {
@@ -126,5 +169,21 @@ public final class OrundumFieldHelper {
     }
 
     public static void onWorldUnload(int dimId) {
+        long dimMask = ((long) dimId & 0xFFFFFFFFL) << 32;
+
+        COVER_COUNT_BY_CHUNK_AND_TEAM.entrySet().removeIf(entry -> {
+            long key = entry.getKey();
+            long keyDimPart = key & 0xFFFFFFFF00000000L;
+            return keyDimPart == dimMask;
+        });
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (onWorldUnload)");
+                e.printStackTrace();
+            }
+        }
     }
 }
