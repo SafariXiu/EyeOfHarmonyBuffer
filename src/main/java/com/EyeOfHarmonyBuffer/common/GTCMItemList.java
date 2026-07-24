@@ -202,6 +202,7 @@ public enum GTCMItemList {
     LargeForce_ContainedProliferationMine,
     InternalizedUniverseComputingEngine,
     XiraniteSolarPowerGenerator,
+    ProtocolCore,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

@@ -385,6 +385,11 @@ Tooltip_XiraniteSolarPowerGenerator_03=§7后勤部把一台淘汰的§a息壤�
 Tooltip_XiraniteSolarPowerGenerator_04=§7结果菜园里的番茄§e三天§7长到§e西瓜§7那么大，食堂阿姨炒了一锅番茄蛋汤，愣是端出了§e十锅§7的量。§r
 Tooltip_XiraniteSolarPowerGenerator_05=§b农业天师§7来看了说可能是§a息壤§7残留影响了植物生长，但后勤部不在乎，转头种起了§e经济作物§7。§r
 Tooltip_XiraniteSolarPowerGenerator_06=§7现在那片菜园被封了，门口挂着“§b科研试验区§7”的牌子，里面种的全是市场上§d最贵的香料§7。§r
+NameProtocolCore=§b协议核心
+Tooltip_ProtocolCore_MachineType=§b协议核心
+Tooltip_ProtocolCore_Controller=§7协议核心的§b控制器方块§r
+Tooltip_ProtocolCore_00=§b终末地工业§7的至高结晶，通过其结构内部巨大的§b协议源石§7创造出巨大的§b集成工业空间§7，在其范围内可以对§b集成工业机器§7进行§e供电§7。§r
+Tooltip_ProtocolCore_01=§7协议核心的影响范围为：以§b主方块§7当前§b区块§7为准，扩展§e20×20§7区块的§b正方形范围§7。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪

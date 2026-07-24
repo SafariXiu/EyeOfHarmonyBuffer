@@ -385,6 +385,11 @@ Tooltip_XiraniteSolarPowerGenerator_03=The Logistics Department moved a decommis
 Tooltip_XiraniteSolarPowerGenerator_04=As it turned out, the tomatoes in the garden tripled in size to the size of watermelons in just three days. The canteen auntie made a pot of tomato egg drop soup, and somehow managed to serve up the equivalent of ten pots.
 Tooltip_XiraniteSolarPowerGenerator_05=An Agricultural Master came to inspect and suggested that residual Xiranite might have affected plant growth. But the Logistics Department didn't care — they immediately switched to growing cash crops instead.
 Tooltip_XiraniteSolarPowerGenerator_06=Now that garden is sealed off, with a sign at the entrance reading "Research Experimental Zone." Inside, they're growing the most expensive spices on the market.
+NameProtocolCore=Protocol Core
+Tooltip_ProtocolCore_MachineType=Protocol Core
+Tooltip_ProtocolCore_Controller=Controller block of the Protocol Core
+Tooltip_ProtocolCore_00=The supreme achievement of Endfield Industries, which creates a vast integrated industrial space through the massive Protocol Originium within its structure, and can supply power to integrated industrial machines within its range.
+Tooltip_ProtocolCore_01=The effective range of the Protocol Core is centered on the current chunk of the main block, extending to a square range of 20×20 chunks.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device

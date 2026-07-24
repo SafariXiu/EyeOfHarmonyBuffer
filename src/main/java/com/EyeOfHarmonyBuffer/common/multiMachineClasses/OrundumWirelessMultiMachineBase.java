@@ -17,6 +17,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -51,6 +52,10 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
 
     @Override
     public CheckRecipeResult wirelessModeProcessOnce() {
+        if (shouldRequireOrundumField() && !isInOrundumField()) {
+            return SimpleCheckRecipeResult.ofFailure("NotInOrundumField");
+        }
+
         if (!isRecipeProcessing) startRecipeProcessing();
         setupProcessingLogic(processingLogic);
         setupWirelessProcessingPowerLogic(processingLogic);
@@ -289,6 +294,26 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
             wirelessNodeRefCache = new WirelessNodeRef(dimId, x, y, z);
         }
         return wirelessNodeRefCache;
+    }
+
+    /** 这台机器在无线模式下是否必须处在 Orundum 场内 */
+    protected boolean shouldRequireOrundumField() {
+        return true;
+    }
+
+    /** 当前机器是否处在任意 Orundum 场覆盖之下 */
+    protected boolean isInOrundumField() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) return false;
+        World world = base.getWorld();
+        if (world == null) return false;
+
+        return OrundumFieldHelper.isPositionCovered(
+            world,
+            base.getXCoord(),
+            base.getYCoord(),
+            base.getZCoord()
+        );
     }
 
     /**

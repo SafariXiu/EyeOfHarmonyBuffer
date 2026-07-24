@@ -44,6 +44,7 @@ public class MachineLoader {
     public static ItemStack LargeForce_ContainedProliferationMine;
     public static ItemStack InternalizedUniverseComputingEngine;
     public static ItemStack XiraniteSolarPowerGenerator;
+    public static ItemStack ProtocolCore;
 
     private final static int MachineBlockID = 23000;
 
@@ -306,5 +307,12 @@ public class MachineLoader {
             TextLocalization.NameXiraniteSolarPowerGenerator
         ).getStackForm(1);
         GTCMItemList.XiraniteSolarPowerGenerator.set(XiraniteSolarPowerGenerator);
+
+        ProtocolCore = new EOHB_ProtocolCore(
+            MachineBlockID + 38,
+            "NameProtocolCore",
+            TextLocalization.NameProtocolCore
+        ).getStackForm(1);
+        GTCMItemList.ProtocolCore.set(ProtocolCore);
     }
 }

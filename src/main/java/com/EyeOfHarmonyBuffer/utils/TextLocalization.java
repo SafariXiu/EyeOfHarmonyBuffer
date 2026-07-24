@@ -413,6 +413,12 @@ public class TextLocalization {
     public static final String Tooltip_XiraniteSolarPowerGenerator_05;
     public static final String Tooltip_XiraniteSolarPowerGenerator_06;
 
+    public static final String NameProtocolCore;
+    public static final String Tooltip_ProtocolCore_MachineType;
+    public static final String Tooltip_ProtocolCore_Controller;
+    public static final String Tooltip_ProtocolCore_00;
+    public static final String Tooltip_ProtocolCore_01;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -967,6 +973,13 @@ public class TextLocalization {
         Tooltip_XiraniteSolarPowerGenerator_04 = TextHandler.texter("As it turned out, the tomatoes in the garden tripled in size to the size of watermelons in just three days. The canteen auntie made a pot of tomato egg drop soup, and somehow managed to serve up the equivalent of ten pots.","Tooltip_XiraniteSolarPowerGenerator_04");
         Tooltip_XiraniteSolarPowerGenerator_05 = TextHandler.texter("An Agricultural Master came to inspect and suggested that residual Xiranite might have affected plant growth. But the Logistics Department didn't care — they immediately switched to growing cash crops instead.","Tooltip_XiraniteSolarPowerGenerator_05");
         Tooltip_XiraniteSolarPowerGenerator_06 = TextHandler.texter("Now that garden is sealed off, with a sign at the entrance reading \"Research Experimental Zone.\" Inside, they're growing the most expensive spices on the market.","Tooltip_XiraniteSolarPowerGenerator_06");
+
+        //协议核心
+        NameProtocolCore = TextHandler.texter("","NameProtocolCore");
+        Tooltip_ProtocolCore_MachineType = TextHandler.texter("","Tooltip_ProtocolCore_MachineType");
+        Tooltip_ProtocolCore_Controller = TextHandler.texter("","Tooltip_ProtocolCore_Controller");
+        Tooltip_ProtocolCore_00 = TextHandler.texter("","Tooltip_ProtocolCore_00");
+        Tooltip_ProtocolCore_01 = TextHandler.texter("","Tooltip_ProtocolCore_01");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
