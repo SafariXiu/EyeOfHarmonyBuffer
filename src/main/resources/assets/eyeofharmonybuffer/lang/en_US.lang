@@ -389,7 +389,11 @@ NameProtocolCore=Protocol Core
 Tooltip_ProtocolCore_MachineType=Protocol Core
 Tooltip_ProtocolCore_Controller=Controller block of the Protocol Core
 Tooltip_ProtocolCore_00=The supreme achievement of Endfield Industries, which creates a vast integrated industrial space through the massive Protocol Originium within its structure, and can supply power to integrated industrial machines within its range.
-Tooltip_ProtocolCore_01=The effective range of the Protocol Core is centered on the current chunk of the main block, extending to a square range of 20×20 chunks.
+Tooltip_ProtocolCore_01=The effective range of the Protocol Core is centered on the current chunk of the main block, extending to a square range of 51×51 chunks.
+Tooltip_ProtocolCore_02=After joining a player's Originium energy network, you automatically gain the right to use machines within their Protocol Core.
+Tooltip_ProtocolCore_03=Using machines in a Protocol Core without permission will fail inspection and the machine will be unable to operate.
+Tooltip_ProtocolCore_04=Warning! Do not frequently turn the Protocol Core on and off! Doing so may cause server lag!
+Tooltip_ProtocolCore_05=The Protocol Core logic has been specially optimized — after the first startup, no further scanning operations will be performed.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -720,6 +724,7 @@ GT5U.gui.text.recipe_result.NoOutputBusForM=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForP=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForQ=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForT=No output bus is connected.
+GT5U.gui.text.recipe_result.NotInOrundumField=Not within the power supply range of the Protocol Core!
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.

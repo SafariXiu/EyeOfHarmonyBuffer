@@ -389,7 +389,11 @@ NameProtocolCore=§b协议核心
 Tooltip_ProtocolCore_MachineType=§b协议核心
 Tooltip_ProtocolCore_Controller=§7协议核心的§b控制器方块§r
 Tooltip_ProtocolCore_00=§b终末地工业§7的至高结晶，通过其结构内部巨大的§b协议源石§7创造出巨大的§b集成工业空间§7，在其范围内可以对§b集成工业机器§7进行§e供电§7。§r
-Tooltip_ProtocolCore_01=§7协议核心的影响范围为：以§b主方块§7当前§b区块§7为准，扩展§e20×20§7区块的§b正方形范围§7。§r
+Tooltip_ProtocolCore_01=§7协议核心的影响范围为：以§b主方块§7当前§b区块§7为准，扩展§e51×51§7区块的§b正方形范围§7。§r
+Tooltip_ProtocolCore_02=§7加入某玩家的§b源石能量网络§7后，自动获得在其§b协议核心§7内使用机器的§e权利§7。§r
+Tooltip_ProtocolCore_03=§7在§c没有权限§7的§b协议核心§7中使用机器§c无法通过检测并且无法使用机器§7。§r
+Tooltip_ProtocolCore_04=§c警告！§7不要频繁开关机§b协议核心§7！否则可能导致服务器卡顿！§r
+Tooltip_ProtocolCore_05=§b协议核心§7逻辑已做过特殊优化，§e只开一次机§7就不会再进行任何扫描操作！§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -720,6 +724,7 @@ GT5U.gui.text.recipe_result.NoOutputBusForM=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForP=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForQ=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForT=容器没有对应输出总线！
+GT5U.gui.text.recipe_result.NotInOrundumField=不在协议核心供电范围中！
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境

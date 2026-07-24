@@ -418,6 +418,10 @@ public class TextLocalization {
     public static final String Tooltip_ProtocolCore_Controller;
     public static final String Tooltip_ProtocolCore_00;
     public static final String Tooltip_ProtocolCore_01;
+    public static final String Tooltip_ProtocolCore_02;
+    public static final String Tooltip_ProtocolCore_03;
+    public static final String Tooltip_ProtocolCore_04;
+    public static final String Tooltip_ProtocolCore_05;
 
     //MOD
     public static final String EOHB_Harmony;
@@ -975,11 +979,15 @@ public class TextLocalization {
         Tooltip_XiraniteSolarPowerGenerator_06 = TextHandler.texter("Now that garden is sealed off, with a sign at the entrance reading \"Research Experimental Zone.\" Inside, they're growing the most expensive spices on the market.","Tooltip_XiraniteSolarPowerGenerator_06");
 
         //协议核心
-        NameProtocolCore = TextHandler.texter("","NameProtocolCore");
-        Tooltip_ProtocolCore_MachineType = TextHandler.texter("","Tooltip_ProtocolCore_MachineType");
-        Tooltip_ProtocolCore_Controller = TextHandler.texter("","Tooltip_ProtocolCore_Controller");
-        Tooltip_ProtocolCore_00 = TextHandler.texter("","Tooltip_ProtocolCore_00");
-        Tooltip_ProtocolCore_01 = TextHandler.texter("","Tooltip_ProtocolCore_01");
+        NameProtocolCore = TextHandler.texter("Protocol Core","NameProtocolCore");
+        Tooltip_ProtocolCore_MachineType = TextHandler.texter("Protocol Core","Tooltip_ProtocolCore_MachineType");
+        Tooltip_ProtocolCore_Controller = TextHandler.texter("Controller block of the Protocol Core","Tooltip_ProtocolCore_Controller");
+        Tooltip_ProtocolCore_00 = TextHandler.texter("The supreme achievement of Endfield Industries, which creates a vast integrated industrial space through the massive Protocol Originium within its structure, and can supply power to integrated industrial machines within its range.","Tooltip_ProtocolCore_00");
+        Tooltip_ProtocolCore_01 = TextHandler.texter("The effective range of the Protocol Core is centered on the current chunk of the main block, extending to a square range of 51×51 chunks.","Tooltip_ProtocolCore_01");
+        Tooltip_ProtocolCore_02 = TextHandler.texter("After joining a player's Originium energy network, you automatically gain the right to use machines within their Protocol Core.","Tooltip_ProtocolCore_02");
+        Tooltip_ProtocolCore_03 = TextHandler.texter("Using machines in a Protocol Core without permission will fail inspection and the machine will be unable to operate.","Tooltip_ProtocolCore_03");
+        Tooltip_ProtocolCore_04 = TextHandler.texter("Warning! Do not frequently turn the Protocol Core on and off! Doing so may cause server lag!","Tooltip_ProtocolCore_04");
+        Tooltip_ProtocolCore_05 = TextHandler.texter("The Protocol Core logic has been specially optimized — after the first startup, no further scanning operations will be performed.","Tooltip_ProtocolCore_05");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
