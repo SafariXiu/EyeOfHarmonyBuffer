@@ -394,6 +394,22 @@ Tooltip_ProtocolCore_02=After joining a player's Originium energy network, you a
 Tooltip_ProtocolCore_03=Using machines in a Protocol Core without permission will fail inspection and the machine will be unable to operate.
 Tooltip_ProtocolCore_04=Warning! Do not frequently turn the Protocol Core on and off! Doing so may cause server lag!
 Tooltip_ProtocolCore_05=The Protocol Core logic has been specially optimized — after the first startup, no further scanning operations will be performed.
+NameRelayTower=Relay Tower
+Tooltip_RelayTower_MachineType=Relay Tower
+Tooltip_RelayTower_Controller=Controller block of the Relay Tower
+Tooltip_RelayTower_00=A relay device capable of wired connections within 500 blocks (absolute distance) to complete power distribution.
+Tooltip_RelayTower_01=Can wirelessly supply power to Endfield devices within a small range.
+Tooltip_RelayTower_02=The Relay Tower is one of the most expensive devices in the integrated industrial system, with an overall design philosophy closer to that of the Protocol Core.
+Tooltip_RelayTower_03=Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.
+Tooltip_RelayTower_04=Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.
+NameElectricPylon=Electric Pylon
+Tooltip_ElectricPylon_MachineType=Electric Pylon
+Tooltip_ElectricPylon_Controller=Controller block of the Electric Pylon
+Tooltip_ElectricPylon_00=When powered, it can wirelessly supply power to Endfield devices within a relatively large range.
+Tooltip_ElectricPylon_01=Capable of short-distance power transmission within 100 blocks (absolute distance).
+Tooltip_ElectricPylon_02="Wireless power supply" is Endfield Industries' greatest technological breakthrough. This technology is an extension of Protocol technology and serves as the operational foundation of the entire integrated industrial system.
+Tooltip_ElectricPylon_03=Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Electric Pylon to complete the link.
+Tooltip_ElectricPylon_04=Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device

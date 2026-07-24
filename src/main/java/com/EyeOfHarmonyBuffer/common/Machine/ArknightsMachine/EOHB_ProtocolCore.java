@@ -42,7 +42,7 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_ProtocolCore> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainNetWareCore";
+    private static final String STRUCTURE_PIECE_MAIN = "mainProtocolCore";
     private static final int OffsetsX = 19;
     private static final int OffsetsY = 52;
     private static final int OffsetsZ = 3;

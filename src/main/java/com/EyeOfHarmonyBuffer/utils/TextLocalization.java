@@ -423,6 +423,24 @@ public class TextLocalization {
     public static final String Tooltip_ProtocolCore_04;
     public static final String Tooltip_ProtocolCore_05;
 
+    public static final String NameRelayTower;
+    public static final String Tooltip_RelayTower_MachineType;
+    public static final String Tooltip_RelayTower_Controller;
+    public static final String Tooltip_RelayTower_00;
+    public static final String Tooltip_RelayTower_01;
+    public static final String Tooltip_RelayTower_02;
+    public static final String Tooltip_RelayTower_03;
+    public static final String Tooltip_RelayTower_04;
+
+    public static final String NameElectricPylon;
+    public static final String Tooltip_ElectricPylon_MachineType;
+    public static final String Tooltip_ElectricPylon_Controller;
+    public static final String Tooltip_ElectricPylon_00;
+    public static final String Tooltip_ElectricPylon_01;
+    public static final String Tooltip_ElectricPylon_02;
+    public static final String Tooltip_ElectricPylon_03;
+    public static final String Tooltip_ElectricPylon_04;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -988,6 +1006,26 @@ public class TextLocalization {
         Tooltip_ProtocolCore_03 = TextHandler.texter("Using machines in a Protocol Core without permission will fail inspection and the machine will be unable to operate.","Tooltip_ProtocolCore_03");
         Tooltip_ProtocolCore_04 = TextHandler.texter("Warning! Do not frequently turn the Protocol Core on and off! Doing so may cause server lag!","Tooltip_ProtocolCore_04");
         Tooltip_ProtocolCore_05 = TextHandler.texter("The Protocol Core logic has been specially optimized — after the first startup, no further scanning operations will be performed.","Tooltip_ProtocolCore_05");
+
+        //中继器
+        NameRelayTower = TextHandler.texter("Relay Tower","NameRelayTower");
+        Tooltip_RelayTower_MachineType = TextHandler.texter("Relay Tower","Tooltip_RelayTower_MachineType");
+        Tooltip_RelayTower_Controller = TextHandler.texter("Controller block of the Relay Tower","Tooltip_RelayTower_Controller");
+        Tooltip_RelayTower_00 = TextHandler.texter("A relay device capable of wired connections within 500 blocks (absolute distance) to complete power distribution.","Tooltip_RelayTower_00");
+        Tooltip_RelayTower_01 = TextHandler.texter("Can wirelessly supply power to Endfield devices within a small range.","Tooltip_RelayTower_01");
+        Tooltip_RelayTower_02 = TextHandler.texter("The Relay Tower is one of the most expensive devices in the integrated industrial system, with an overall design philosophy closer to that of the Protocol Core.","Tooltip_RelayTower_02");
+        Tooltip_RelayTower_03 = TextHandler.texter("Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.","Tooltip_RelayTower_03");
+        Tooltip_RelayTower_04 = TextHandler.texter("Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.","Tooltip_RelayTower_04");
+
+        //供电桩
+        NameElectricPylon = TextHandler.texter("Electric Pylon","NameElectricPylon");
+        Tooltip_ElectricPylon_MachineType = TextHandler.texter("Electric Pylon","Tooltip_ElectricPylon_MachineType");
+        Tooltip_ElectricPylon_Controller = TextHandler.texter("Controller block of the Electric Pylon","Tooltip_ElectricPylon_Controller");
+        Tooltip_ElectricPylon_00 = TextHandler.texter("When powered, it can wirelessly supply power to Endfield devices within a relatively large range.","Tooltip_ElectricPylon_00");
+        Tooltip_ElectricPylon_01 = TextHandler.texter("Capable of short-distance power transmission within 100 blocks (absolute distance).","Tooltip_ElectricPylon_01");
+        Tooltip_ElectricPylon_02 = TextHandler.texter("\"Wireless power supply\" is Endfield Industries' greatest technological breakthrough. This technology is an extension of Protocol technology and serves as the operational foundation of the entire integrated industrial system.","Tooltip_ElectricPylon_02");
+        Tooltip_ElectricPylon_03 = TextHandler.texter("Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.","Tooltip_ElectricPylon_03");
+        Tooltip_ElectricPylon_04 = TextHandler.texter("Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.","Tooltip_ElectricPylon_04");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");

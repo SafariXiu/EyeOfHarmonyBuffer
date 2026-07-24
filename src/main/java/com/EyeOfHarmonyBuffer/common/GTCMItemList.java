@@ -203,6 +203,8 @@ public enum GTCMItemList {
     InternalizedUniverseComputingEngine,
     XiraniteSolarPowerGenerator,
     ProtocolCore,
+    RelayTower,
+    ElectricPylon,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,
