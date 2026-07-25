@@ -4,11 +4,38 @@ import gregtech.common.misc.spaceprojects.SpaceProjectManager;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class OrundumEnergyService {
 
     private OrundumEnergyService() {}
+
+    public interface OrundumChangeListener {
+        void onOrundumChanged(UUID teamId, BigInteger oldValue, BigInteger newValue);
+    }
+
+    private static final List<OrundumChangeListener> LISTENERS =
+        new CopyOnWriteArrayList<OrundumChangeListener>();
+
+    public static void addListener(OrundumChangeListener listener) {
+        LISTENERS.add(listener);
+    }
+
+    public static void removeListener(OrundumChangeListener listener) {
+        LISTENERS.remove(listener);
+    }
+
+    private static void notifyOrundumChanged(UUID teamId, BigInteger oldValue, BigInteger newValue) {
+        for (OrundumChangeListener l : LISTENERS) {
+            try {
+                l.onOrundumChanged(teamId, oldValue, newValue);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     private static UUID getTeamUuidForUser(UUID userUuid) {
         return SpaceProjectManager.getLeader(userUuid);
@@ -22,7 +49,7 @@ public class OrundumEnergyService {
 
     public static BigInteger getOrundumForUser(UUID userUuid) {
         if (userUuid == null) return BigInteger.ZERO;
-        UUID teamId = getTeamIdForUser(userUuid);  // ★ 改这里
+        UUID teamId = getTeamIdForUser(userUuid);
         if (teamId == null) return BigInteger.ZERO;
         return GlobalOrundumStorage.getOrundum(teamId);
     }
@@ -59,6 +86,8 @@ public class OrundumEnergyService {
                 e.printStackTrace();
             }
         }
+
+        notifyOrundumChanged(teamId, current, next);
 
         return true;
     }

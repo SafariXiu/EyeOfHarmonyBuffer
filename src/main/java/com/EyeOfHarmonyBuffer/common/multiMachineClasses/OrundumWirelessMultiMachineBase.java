@@ -189,20 +189,6 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         return result;
     }
 
-    /**
-     * 普通配方流程用的通用前置检查：
-     * - 如果这台机器需要 Orundum 场 && 不在场内 → 返回失败；
-     * - 否则返回 SUCCESSFUL。
-     *
-     * 覆写 doNormalModeCheck 的机器，在方法开头统一调用这个。
-     */
-    protected CheckRecipeResult normalModePreCheck() {
-        if (shouldRequireOrundumField() && !isInOrundumField()) {
-            return SimpleCheckRecipeResult.ofFailure("NotInOrundumField");
-        }
-        return CheckRecipeResultRegistry.SUCCESSFUL;
-    }
-
     /** 这台机器是否需要按配方消耗 Orundum（以及在 costingEUText 里累计 Orundum 成本） */
     protected boolean usesOrundumCost() {
         return true;

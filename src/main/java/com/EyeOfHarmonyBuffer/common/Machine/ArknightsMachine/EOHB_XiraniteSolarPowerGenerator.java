@@ -70,7 +70,7 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return TICKS_PER_CYCLE;
     }
 
     @Override
@@ -88,6 +88,22 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
         return 1;
     }
 
+    /**
+     * 这台是纯发电机，不按配方消耗 Orundum。
+     */
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
+    }
+
+    /**
+     * 这台机器不需要算力网络。
+     */
+    @Override
+    protected boolean actsAsComputeConsumer() {
+        return false;
+    }
+
     @Override
     @NotNull
     protected CheckRecipeResult doWirelessBusinessOnce() {
@@ -103,8 +119,11 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
             return CheckRecipeResultRegistry.NO_RECIPE;
         }
 
-        BigInteger perCycle = ORUNDUM_PER_CYCLE;
+        if (!isRecipeProcessing) {
+            startRecipeProcessing();
+        }
 
+        BigInteger perCycle = ORUNDUM_PER_CYCLE;
         GasEnvironmentType env = getCurrentEnvironment();
         if (env == GasEnvironmentType.XRANITE) {
             perCycle = perCycle
@@ -112,17 +131,22 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
                 .divide(BigInteger.TEN);
         }
 
+        pendingOrundum = perCycle;
+
         mMaxProgresstime = getWirelessModeProcessingTime();
         mProgresstime = 0;
         mEfficiency = 10000;
         mEUt = 0;
 
-        pendingOrundum = perCycle;
-
         mOutputItems = null;
         mOutputFluids = null;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected CheckRecipeResult wirelessPostProcess(CheckRecipeResult opResult) {
+        return opResult;
     }
 
     @Override
@@ -136,11 +160,6 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
         pendingOrundum = BigInteger.ZERO;
 
         super.endRecipeProcessing();
-    }
-
-    @Override
-    protected boolean usesOrundumCost() {
-        return false;
     }
 
     @Override
