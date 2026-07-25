@@ -45,6 +45,8 @@ public class MachineLoader {
     public static ItemStack InternalizedUniverseComputingEngine;
     public static ItemStack XiraniteSolarPowerGenerator;
     public static ItemStack ProtocolCore;
+    public static ItemStack RelayTower;
+    public static ItemStack ElectricPylon;
 
     private final static int MachineBlockID = 23000;
 
@@ -314,5 +316,19 @@ public class MachineLoader {
             TextLocalization.NameProtocolCore
         ).getStackForm(1);
         GTCMItemList.ProtocolCore.set(ProtocolCore);
+
+        RelayTower = new EOHB_RelayTower(
+            MachineBlockID + 39,
+            "NameRelayTower",
+            TextLocalization.NameRelayTower
+        ).getStackForm(1);
+        GTCMItemList.RelayTower.set(RelayTower);
+
+        ElectricPylon = new EOHB_ElectricPylon(
+            MachineBlockID + 40,
+            "NameElectricPylon",
+            TextLocalization.NameElectricPylon
+        ).getStackForm(1);
+        GTCMItemList.ElectricPylon.set(ElectricPylon);
     }
 }

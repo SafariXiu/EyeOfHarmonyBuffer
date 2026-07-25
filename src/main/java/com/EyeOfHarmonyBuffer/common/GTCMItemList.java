@@ -143,6 +143,7 @@ public enum GTCMItemList {
     HeTongZhuangBeiYuanJian,
     ZhuoTongZhuangBeiYuanJian,
     KuangMaiCaiJiZhe,
+    EnergyConnector,
 
     YuanShiMainBlock,
     YuanShiBlock,
@@ -203,6 +204,8 @@ public enum GTCMItemList {
     InternalizedUniverseComputingEngine,
     XiraniteSolarPowerGenerator,
     ProtocolCore,
+    RelayTower,
+    ElectricPylon,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

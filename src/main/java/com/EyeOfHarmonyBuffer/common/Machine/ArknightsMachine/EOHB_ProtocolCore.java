@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.misc.LinkNodeEntry;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumFieldHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
@@ -42,7 +43,7 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
     implements IConstructable, ISurvivalConstructable {
 
     private static IStructureDefinition<EOHB_ProtocolCore> STRUCTURE_DEFINITION = null;
-    private static final String STRUCTURE_PIECE_MAIN = "mainNetWareCore";
+    private static final String STRUCTURE_PIECE_MAIN = "mainProtocolCore";
     private static final int OffsetsX = 19;
     private static final int OffsetsY = 52;
     private static final int OffsetsZ = 3;
@@ -110,6 +111,16 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
     public EOHB_ProtocolCore(String aName) {
         super(aName);
         setWirelessCycleNum(1);
+    }
+
+    @Override
+    protected LinkNodeEntry.NodeType getOrundumLinkNodeType() {
+        return LinkNodeEntry.NodeType.PROTOCOL_CORE;
+    }
+
+    @Override
+    protected boolean isPhysicalOnlineForOrundumLink() {
+        return shouldHaveOrundumField();
     }
 
     @Override

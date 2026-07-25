@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
+import com.EyeOfHarmonyBuffer.common.misc.LinkNodeEntry;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumLinkNetworkData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.IWirelessComputeConsumer;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.IWirelessComputeProvider;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeHelper;
@@ -38,6 +40,9 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     protected WirelessNodeRef wirelessNodeRefCache;
 
     protected BigInteger lastOrundumCost = BigInteger.ZERO;
+
+    protected UUID linkNetworkNodeId = null;
+    protected boolean lastPhysicalOnlineForLink = false;
 
     public OrundumWirelessMultiMachineBase(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -487,6 +492,8 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
             } else {
                 WirelessComputeHelper.unregisterProvider(this);
             }
+
+            tickOrundumLinkNetwork(aBaseMetaTileEntity);
         }
     }
 
@@ -495,6 +502,17 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         super.onRemoval();
         WirelessComputeHelper.unregisterConsumer(this);
         WirelessComputeHelper.unregisterProvider(this);
+
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide() && linkNetworkNodeId != null) {
+            World world = base.getWorld();
+            if (world != null) {
+                OrundumLinkNetworkData data = OrundumLinkNetworkData.get(world);
+                if (data != null) {
+                    data.removeNode(linkNetworkNodeId);
+                }
+            }
+        }
     }
 
     @Override
@@ -502,5 +520,127 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         super.onUnload();
         WirelessComputeHelper.unregisterConsumer(this);
         WirelessComputeHelper.unregisterProvider(this);
+
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide() && linkNetworkNodeId != null) {
+            World world = base.getWorld();
+            if (world != null) {
+                OrundumLinkNetworkData data = OrundumLinkNetworkData.get(world);
+                if (data != null) {
+                    data.setNodeOfflineOnUnload(linkNetworkNodeId);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound nbt) {
+        super.saveNBTData(nbt);
+        if (linkNetworkNodeId != null) {
+            nbt.setString("EOHB_NetworkNodeId", linkNetworkNodeId.toString());
+        }
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound nbt) {
+        super.loadNBTData(nbt);
+        if (nbt.hasKey("EOHB_NetworkNodeId")) {
+            try {
+                linkNetworkNodeId = UUID.fromString(nbt.getString("EOHB_NetworkNodeId"));
+            } catch (IllegalArgumentException ignored) {
+                linkNetworkNodeId = null;
+            }
+        }
+    }
+
+    /**
+     * 这台机器在 Orundum 链路网络中的节点类型。
+     * 默认 null：不参与 Orundum 链路。
+     *
+     * 子类：
+     * - EOHB_ProtocolCore  -> PROTOCOL_CORE
+     * - EOHB_RelayTower    -> REPEATER
+     * - EOHB_ElectricPylon -> SUBSTATION
+     */
+    protected LinkNodeEntry.NodeType getOrundumLinkNodeType() {
+        return null;
+    }
+
+    public LinkNodeEntry.NodeType getNodeTypeForConnector() {
+        return getOrundumLinkNodeType();
+    }
+
+    /**
+     * 在链路语义下的“物理在线”条件。
+     * 默认：多方块成型 && 允许工作。
+     * 子类如有特殊需求可以重写。
+     */
+    protected boolean isPhysicalOnlineForOrundumLink() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        return mMachine && base != null && base.isAllowedToWork();
+    }
+
+    /**
+     * 每个服务器 tick 更新本机在 Orundum 链路网络中的状态：
+     * - 注册/更新节点信息；
+     * - 更新 physicalOnline；
+     */
+    protected void tickOrundumLinkNetwork(IGregTechTileEntity base) {
+        if (base == null || !base.isServerSide()) return;
+
+        LinkNodeEntry.NodeType nodeType = getOrundumLinkNodeType();
+        if (nodeType == null) return;
+
+        World world = base.getWorld();
+        if (world == null) return;
+
+        OrundumLinkNetworkData data = OrundumLinkNetworkData.get(world);
+        if (data == null) return;
+
+        if (linkNetworkNodeId == null) {
+            linkNetworkNodeId = UUID.randomUUID();
+        }
+
+        UUID owner = this.ownerUUID;
+        UUID teamId = null;
+        if (owner != null) {
+            teamId = OrundumEnergyService.getTeamIdForUser(owner);
+            if (teamId == null) {
+                teamId = owner;
+            }
+        }
+        if (teamId == null) return;
+
+        int dimId = world.provider.dimensionId;
+        int x = base.getXCoord();
+        int y = base.getYCoord();
+        int z = base.getZCoord();
+
+        data.registerOrUpdateNode(
+            linkNetworkNodeId,
+            nodeType,
+            teamId,
+            dimId,
+            x, y, z
+        );
+
+        boolean physicalOnlineNow = isPhysicalOnlineForOrundumLink();
+        if (physicalOnlineNow != lastPhysicalOnlineForLink) {
+            lastPhysicalOnlineForLink = physicalOnlineNow;
+            data.updatePhysicalOnline(linkNetworkNodeId, physicalOnlineNow);
+        }
+
+        /*System.out.println("[EOHB][Link] nodeType=" + nodeType +
+            " owner=" + owner +
+            " team=" + teamId +
+            " pos=(" + x + "," + y + "," + z + ")");*/
+    }
+
+    /**
+     * 提供给物品 / 交互逻辑使用的节点 ID。
+     * 仅用于 OrundumLinkNetwork 逻辑，不要乱改。
+     */
+    public UUID getOrundumLinkNodeId() {
+        return linkNetworkNodeId;
     }
 }
