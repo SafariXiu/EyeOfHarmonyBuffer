@@ -743,6 +743,7 @@ GT5U.gui.text.recipe_result.NoOutputBusForP=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForQ=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForT=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NotInOrundumField=不在协议核心供电范围中！
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境
@@ -777,7 +778,6 @@ eohb_recipe.PowerMiner.LanTie_source=需要蓝铁主矿脉块
 eohb_recipe.PowerMiner.ChiTong_source=需要赤铜主矿脉块
 eohb_recipe.PowerMiner.DuoQi_source=需要惰气主矿脉块
 eohb_recipe.PowerMiner.XiRangQi_source=需要息壤气主矿脉块
-GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=产生湿润环境
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=产生稳定环境
 eohb_recipe.GasDiffuser.XiRangQi_atmosphere=产生息壤环境

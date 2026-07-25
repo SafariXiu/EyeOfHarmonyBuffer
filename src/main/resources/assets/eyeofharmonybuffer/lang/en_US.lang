@@ -743,6 +743,7 @@ GT5U.gui.text.recipe_result.NoOutputBusForP=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForQ=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForT=No output bus is connected.
 GT5U.gui.text.recipe_result.NotInOrundumField=Not within the power supply range of the Protocol Core!
+GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.
@@ -777,7 +778,6 @@ eohb_recipe.PowerMiner.LanTie_source=Need Blue Iron Prime Main Vein Block
 eohb_recipe.PowerMiner.ChiTong_source=Need Cuprite Crystal Prime Main Vein Block
 eohb_recipe.PowerMiner.DuoQi_source=Need Inergen Prime Main Vein Block
 eohb_recipe.PowerMiner.XiRangQi_source=Need Xiragen Prime Main Vein Block
-GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!
 eohb_recipe.GasDiffuser.ShuiZhengQi_atmosphere=Generates a humid atmosphere
 eohb_recipe.GasDiffuser.DuoQi_atmosphere=Generates a stable atmosphere
 eohb_recipe.GasDiffuser.XiRangQi_atmosphere=Generates a xiranite atmosphere

@@ -153,7 +153,7 @@ public class EOHB_HighDensityEnergyFluidGenerator
         if (!ok) return;
 
         if (this.laserSourceCount < 2) {
-            errors.add(StructureErrors.of("GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_laser_source"));
+            errors.add(StructureErrors.of("GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources"));
             return;
         }
     }
