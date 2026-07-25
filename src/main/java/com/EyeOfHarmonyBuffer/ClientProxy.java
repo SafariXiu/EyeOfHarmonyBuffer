@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import codechicken.nei.api.API;
 import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
+import com.EyeOfHarmonyBuffer.client.OrundumConnectorHudHandler;
 import com.EyeOfHarmonyBuffer.client.ReactorClientEventHandler;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
@@ -68,6 +69,8 @@ public class ClientProxy extends CommonProxy {
         hideDisallowedBottleFluids(ItemLoader.GaoJingFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.HeTongFluidBottle);
         hideDisallowedBottleFluids(ItemLoader.ChiTongGasTank);
+
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new OrundumConnectorHudHandler());
 
         ReactorClientEventHandler handler = new ReactorClientEventHandler();
         FMLCommonHandler.instance().bus().register(handler);

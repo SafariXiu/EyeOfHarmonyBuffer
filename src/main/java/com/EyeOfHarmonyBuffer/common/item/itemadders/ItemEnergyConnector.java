@@ -22,6 +22,12 @@ import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 public class ItemEnergyConnector extends Item {
 
     private static final String TAG_PARENT_NODE_ID = "EOHB_ParentNodeId";
+    private static final String TAG_PARENT_NODE_TYPE = "EOHB_ParentNodeType";
+    private static final String TAG_PARENT_DIM = "EOHB_ParentDim";
+    private static final String TAG_PARENT_X = "EOHB_ParentX";
+    private static final String TAG_PARENT_Y = "EOHB_ParentY";
+    private static final String TAG_PARENT_Z = "EOHB_ParentZ";
+    private static final String TAG_PARENT_MAX_DIST = "EOHB_ParentMaxDist";
 
     public ItemEnergyConnector() {
         super();
@@ -89,9 +95,24 @@ public class ItemEnergyConnector extends Item {
 
         if (!tag.hasKey(TAG_PARENT_NODE_ID)) {
             tag.setString(TAG_PARENT_NODE_ID, nodeId.toString());
+            tag.setString(TAG_PARENT_NODE_TYPE, nodeType.name());
+
+            int dimId = world.provider.dimensionId;
+            int px = base.getXCoord();
+            int py = base.getYCoord();
+            int pz = base.getZCoord();
+            tag.setInteger(TAG_PARENT_DIM, dimId);
+            tag.setInteger(TAG_PARENT_X, px);
+            tag.setInteger(TAG_PARENT_Y, py);
+            tag.setInteger(TAG_PARENT_Z, pz);
+
+            int maxDistance = (nodeType == LinkNodeEntry.NodeType.SUBSTATION) ? 100 : 500;
+            tag.setInteger(TAG_PARENT_MAX_DIST, maxDistance);
+
             player.addChatMessage(new ChatComponentText(
                 String.format("已选择父节点：%s（类型：%s）", nodeId.toString(), nodeType.name())
             ));
+            player.addChatMessage(new ChatComponentText("对另一个 Orundum 设备右键以建立链路。"));
             return true;
         }
 
@@ -101,7 +122,7 @@ public class ItemEnergyConnector extends Item {
             parentId = UUID.fromString(parentIdStr);
         } catch (IllegalArgumentException e) {
             player.addChatMessage(new ChatComponentText("物品中记录的父节点 ID 无效，已清除。"));
-            tag.removeTag(TAG_PARENT_NODE_ID);
+            clearParentTag(stack);
             return true;
         }
 
@@ -115,7 +136,7 @@ public class ItemEnergyConnector extends Item {
         LinkNodeEntry parentEntry = data.getNode(parentId);
         if (parentEntry == null) {
             player.addChatMessage(new ChatComponentText("父节点已不存在或未加载，已清除。"));
-            tag.removeTag(TAG_PARENT_NODE_ID);
+            clearParentTag(stack);
             return true;
         }
 
@@ -134,7 +155,7 @@ public class ItemEnergyConnector extends Item {
                 player.addChatMessage(new ChatComponentText(
                     String.format("成功创建链路：%s -> %s，最大距离=%d。", parentId, childId, maxDistance)
                 ));
-                tag.removeTag(TAG_PARENT_NODE_ID);
+                clearParentTag(stack);
             }
             case INVALID_ID -> player.addChatMessage(new ChatComponentText("ID 无效，无法创建链路。"));
             case NODE_NOT_FOUND -> player.addChatMessage(new ChatComponentText("父节点或子节点不存在。"));
@@ -155,10 +176,7 @@ public class ItemEnergyConnector extends Item {
         if (!world.isRemote && player.isSneaking()) {
             NBTTagCompound tag = stack.getTagCompound();
             if (tag != null && tag.hasKey(TAG_PARENT_NODE_ID)) {
-                tag.removeTag(TAG_PARENT_NODE_ID);
-                if (tag.hasNoTags()) {
-                    stack.setTagCompound(null);
-                }
+                clearParentTag(stack);
                 player.addChatMessage(new ChatComponentText("已清除当前选择的父节点。"));
             } else {
                 player.addChatMessage(new ChatComponentText("当前没有已选择的父节点。"));
@@ -166,6 +184,23 @@ public class ItemEnergyConnector extends Item {
         }
 
         return stack;
+    }
+
+    private void clearParentTag(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        if (tag == null) return;
+
+        tag.removeTag(TAG_PARENT_NODE_ID);
+        tag.removeTag(TAG_PARENT_NODE_TYPE);
+        tag.removeTag(TAG_PARENT_DIM);
+        tag.removeTag(TAG_PARENT_X);
+        tag.removeTag(TAG_PARENT_Y);
+        tag.removeTag(TAG_PARENT_Z);
+        tag.removeTag(TAG_PARENT_MAX_DIST);
+
+        if (tag.hasNoTags()) {
+            stack.setTagCompound(null);
+        }
     }
 
     @Override
@@ -179,11 +214,25 @@ public class ItemEnergyConnector extends Item {
 
         NBTTagCompound tag = stack.getTagCompound();
         if (tag != null && tag.hasKey(TAG_PARENT_NODE_ID)) {
-            list.add("已选择父节点: " + tag.getString(TAG_PARENT_NODE_ID));
+            String parentId = tag.getString(TAG_PARENT_NODE_ID);
+            list.add("已选择父节点: " + parentId);
+
+            if (tag.hasKey(TAG_PARENT_NODE_TYPE)) {
+                String typeName = tag.getString(TAG_PARENT_NODE_TYPE);
+                list.add("父节点类型: " + typeName);
+            }
+
+            if (tag.hasKey(TAG_PARENT_MAX_DIST)) {
+                int maxDist = tag.getInteger(TAG_PARENT_MAX_DIST);
+                list.add("最大连接距离: " + maxDist + " 格（平面距离）");
+            }
+
             list.add("对另一个 Orundum 设备右键以建立链路。");
+            list.add("潜行+右键空气以清除当前父节点。");
         } else {
             list.add("对一个 Orundum 设备右键以选择父节点。");
             list.add("再对另一个设备右键以建立链路。");
+            list.add("潜行+右键空气以清除当前父节点。");
         }
     }
 }
