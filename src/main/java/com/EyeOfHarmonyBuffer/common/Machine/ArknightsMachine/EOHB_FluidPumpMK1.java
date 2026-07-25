@@ -70,9 +70,9 @@ public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase
         return RecipeMaps.FluidPumpMK1;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null) {
             return SimpleCheckRecipeResult.ofFailure("GT_MetaTileEntity_Null");
@@ -92,7 +92,7 @@ public class EOHB_FluidPumpMK1 extends UpgradableOrundumWirelessMultiMachineBase
             return SimpleCheckRecipeResult.ofFailure("NoWaterSourceBehindDown");
         }
 
-        return super.checkProcessing();
+        return super.doWirelessBusinessOnce();
     }
 
     @Override

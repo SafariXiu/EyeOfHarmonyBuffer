@@ -129,67 +129,8 @@ public class EOHB_HighDensityEnergyFluidGenerator
     }
 
     @Override
-    protected CheckRecipeResult doWirelessModeProcessOnce() {
-
-        if (!isRecipeProcessing) startRecipeProcessing();
-        setupProcessingLogic(processingLogic);
-        setupWirelessProcessingPowerLogic(processingLogic);
-
-        CheckRecipeResult result = doCheckRecipe();
-        if (!result.wasSuccessful()) {
-            this.lastUsedParallel = 0;
-            return result;
-        }
-
-        int actualParallel = processingLogic != null ? processingLogic.getCurrentParallels() : 0;
-        if (actualParallel <= 0) {
-            this.lastUsedParallel = 0;
-            endRecipeProcessing();
-            return result;
-        }
-
-        BigInteger baseCost = BigInteger.valueOf(processingLogic.getCalculatedEut())
-            .multiply(BigInteger.valueOf(processingLogic.getDuration()));
-
-        int m = getExtraEUCostMultiplier();
-        if (m > 1) {
-            baseCost = baseCost.multiply(BigInteger.valueOf(m));
-        }
-
-        BigInteger orundumCost = convertEuCostToOrundum(baseCost);
-
-        BigInteger extraEuCost = BigInteger.valueOf(100_000L)
-            .multiply(BigInteger.valueOf(actualParallel));
-
-        if (!hasEnoughWirelessEU(ownerUUID, extraEuCost)) {
-            endRecipeProcessing();
-            return CheckRecipeResultRegistry.insufficientPower(safeToLong(extraEuCost));
-        }
-
-        if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
-            endRecipeProcessing();
-            return CheckRecipeResultRegistry.insufficientPower(safeToLong(orundumCost));
-        }
-
-        this.lastUsedParallel = actualParallel;
-
-        consumeWirelessEUForOwner(ownerUUID, extraEuCost);
-
-        this.costingEU = this.costingEU.add(orundumCost);
-        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
-
-        addExtraEUToCostingText(extraEuCost);
-
-        mOutputItems = mergeArray(mOutputItems, processingLogic.getOutputItems());
-        mOutputFluids = mergeArray(mOutputFluids, processingLogic.getOutputFluids());
-
-        endRecipeProcessing();
-        return result;
-    }
-
-    @Override
-    protected CheckRecipeResult wirelessPostProcess(CheckRecipeResult opResult) {
-        return opResult;
+    protected BigInteger getExtraWirelessEuCostForCycle() {
+        return getPerCycleEuCost();
     }
 
     @NotNull

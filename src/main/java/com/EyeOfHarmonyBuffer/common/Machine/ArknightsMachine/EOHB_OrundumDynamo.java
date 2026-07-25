@@ -21,6 +21,7 @@ import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -141,9 +142,9 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
         }
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         List<ItemStack> inputs = getStoredInputs();
         ItemStack foundType = null;
         InputRecipe recipeConfig = null;
@@ -198,28 +199,18 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
             }
         }
 
+        if (remaining > 0) {
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
         mMaxProgresstime = TICKS_PER_CYCLE;
         mProgresstime = 0;
         mEfficiency = 10000;
+        mEUt = 0;
 
         this.lastParallelCount = usedParallel;
         this.lastInputType = foundType;
         this.lastRecipeConfig = recipeConfig;
-
-        int coilHeat = (int) this.getCoilLevel().getHeat();
-        double baseHeat = 1800.0;
-
-        double heatRatio = coilHeat / baseHeat;
-        double coilFactor = 1.0 + (heatRatio - 1.0) * 0.2;
-        coilFactor = Math.max(1.0, Math.min(coilFactor, 2.0));
-        double glassFactor = 1.0 + (this.glassTier / (double) VoltageIndex.UHV) * 1.5;
-        double effFactor = this.mOrundumEfficiency / 100.0;
-
-        double totalMultiplier = coilFactor * glassFactor * effFactor * usedParallel;
-
-        BigInteger orundumGain = recipeConfig.baseOrundum
-            .multiply(BigInteger.valueOf((long) totalMultiplier));
-        this.pendingOrundum = orundumGain;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }
@@ -262,6 +253,11 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
         pendingOrundum = BigInteger.ZERO;
         super.endRecipeProcessing();
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
     }
 
     @Override

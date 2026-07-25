@@ -144,7 +144,7 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
     }
 
     @Override
-    protected CheckRecipeResult doWirelessModeProcessOnce() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null || base.isDead()) {
             this.lastUsedParallel = 0;
@@ -166,6 +166,15 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         if (currentEnvironmentType != oldEnv) {
             pendingEnvChanged = true;
         }
+
+        mProgresstime = 0;
+        mMaxProgresstime = getWirelessModeProcessingTime();
+        mEUt = 0;
+        mEfficiency = 10000;
+        mEfficiencyIncrease = 0;
+
+        mOutputItems = null;
+        mOutputFluids = null;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }

@@ -24,7 +24,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
+import org.jetbrains.annotations.NotNull;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
@@ -153,9 +155,9 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
         return false;
     }
 
-    @Nonnull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    @NotNull
+    protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!mMachine || base == null || !base.isAllowedToWork()) {
             return CheckRecipeResultRegistry.NO_RECIPE;
@@ -171,6 +173,16 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
         mOutputFluids = null;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected BigInteger getRequiredComputeForCurrentRecipe() {
+        return BigInteger.ZERO;
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
     }
 
     @Override

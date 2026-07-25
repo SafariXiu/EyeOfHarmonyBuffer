@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessNodeRef;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
+import com.gtnewhorizons.angelica.shadow.javax.annotation.Nonnull;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -58,22 +59,81 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     }
 
     @Override
+    @Nonnull
+    public final CheckRecipeResult checkProcessing() {
+        costingEU = BigInteger.ZERO;
+        costingEUText = ZERO_STRING;
+        prepareProcessing();
+
+        if (!wirelessMode) {
+            return doNormalModeCheck();
+        }
+
+        boolean succeeded = false;
+        CheckRecipeResult finalResult = CheckRecipeResultRegistry.SUCCESSFUL;
+
+        int cycles = getWirelessCycleNum();
+        for (int i = 0; i < cycles; i++) {
+            CheckRecipeResult r = wirelessModeProcessOnce();
+            if (!r.wasSuccessful()) {
+                finalResult = r;
+                break;
+            }
+            succeeded = true;
+        }
+
+        updateSlots();
+        if (!succeeded) return finalResult;
+
+        costingEUText = NumberFormatUtil.formatNumber(costingEU);
+
+        mEfficiency = 10000;
+        mEfficiencyIncrease = 10000;
+        mMaxProgresstime = getWirelessModeProcessingTime();
+
+        return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    /**
+     * 普通（非无线）模式下的配方检查逻辑。
+     * 默认：沿用原来 WirelessEnergyMultiMachineBase 的实现。
+     *
+     * 绝大多数 Orundum 机器都是全无线，可以不用覆写。
+     * 如果以后有需要非无线的 Orundum 机子，再在子类里覆写这个方法。
+     */
+    protected CheckRecipeResult doNormalModeCheck() {
+        return super.checkProcessing();
+    }
+
+    @Override
     public final CheckRecipeResult wirelessModeProcessOnce() {
         CheckRecipeResult pre = wirelessPreCheck();
         if (!pre.wasSuccessful()) {
             this.lastUsedParallel = 0;
+            this.mOutputItems = null;
+            this.mOutputFluids = null;
+            this.mProgresstime = 0;
+            this.mMaxProgresstime = 0;
             return pre;
         }
 
-        CheckRecipeResult op = doWirelessModeProcessOnce();
+        CheckRecipeResult op = doWirelessBusinessOnce();
         if (!op.wasSuccessful()) {
             this.lastUsedParallel = 0;
+            this.mOutputItems = null;
+            this.mOutputFluids = null;
+            this.mProgresstime = 0;
+            this.mMaxProgresstime = 0;
             return op;
         }
 
         CheckRecipeResult post = wirelessPostProcess(op);
         if (!post.wasSuccessful()) {
             this.lastUsedParallel = 0;
+            this.mOutputItems = null;
+            this.mOutputFluids = null;
+            this.mProgresstime = 0;
+            this.mMaxProgresstime = 0;
             return post;
         }
 
@@ -81,8 +141,9 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     }
 
     /**
-     * 通用前置：默认只做 Orundum 场检查。
-     * 子类有需要可以覆写（记得 super 或自己做场检查）。
+     * 通用无线前置检查：
+     * - 默认：需要 Orundum 场 && 不在场内 → 失败。
+     * 子类如有特殊要求可以覆写，但请记得 super。
      */
     protected CheckRecipeResult wirelessPreCheck() {
         if (shouldRequireOrundumField() && !isInOrundumField()) {
@@ -92,12 +153,21 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
     }
 
     /**
-     * 默认实现：按原来父类的无线模式逻辑跑一遍配方，但不做算力/Orundum 扣费，
-     * 只算出并行数和 Orundum 成本并缓存，真正扣费放在 wirelessPostProcess 里做。
+     * 无线模式下一次“业务周期”的逻辑。
      *
-     * 子类可以完全覆写这段（比如 GasDiffuser 那样根本不跑配方）。
+     * 默认实现：沿用你之前的无线 EU→Orundum 计算那套：
+     * - 调用 startRecipeProcessing + setupProcessingLogic；
+     * - 用 processingLogic 跑一次配方；
+     * - 记录并行数 lastUsedParallel；
+     * - 根据 eut * duration * extraMultiplier 算出 baseCost；
+     * - 转换为 Orundum 成本写入 lastOrundumCost；
+     * - 不做真正的扣费，扣费放到 wirelessPostProcess 里。
+     *
+     * 特殊机器（矿机、发电机）可以覆写这个方法，自己：
+     * - 决定产物 / 时长 / EUt；
+     * - 决定当次 Orundum 成本（直接写 lastOrundumCost）。
      */
-    protected CheckRecipeResult doWirelessModeProcessOnce() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
         if (!isRecipeProcessing) startRecipeProcessing();
         setupProcessingLogic(processingLogic);
         setupWirelessProcessingPowerLogic(processingLogic);
@@ -117,6 +187,20 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         prepareWirelessCostFromProcessingLogic();
 
         return result;
+    }
+
+    /**
+     * 普通配方流程用的通用前置检查：
+     * - 如果这台机器需要 Orundum 场 && 不在场内 → 返回失败；
+     * - 否则返回 SUCCESSFUL。
+     *
+     * 覆写 doNormalModeCheck 的机器，在方法开头统一调用这个。
+     */
+    protected CheckRecipeResult normalModePreCheck() {
+        if (shouldRequireOrundumField() && !isInOrundumField()) {
+            return SimpleCheckRecipeResult.ofFailure("NotInOrundumField");
+        }
+        return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
     /** 这台机器是否需要按配方消耗 Orundum（以及在 costingEUText 里累计 Orundum 成本） */

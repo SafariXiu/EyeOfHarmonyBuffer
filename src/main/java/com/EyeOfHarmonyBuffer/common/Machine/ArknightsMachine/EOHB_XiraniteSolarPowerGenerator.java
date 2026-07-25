@@ -18,6 +18,7 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -87,9 +88,10 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
         return 1;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    @NotNull
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         if (!mMachine || ownerUUID == null) {
             pendingOrundum = BigInteger.ZERO;
             return CheckRecipeResultRegistry.NO_RECIPE;
@@ -110,9 +112,10 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
                 .divide(BigInteger.TEN);
         }
 
-        mMaxProgresstime = TICKS_PER_CYCLE;
+        mMaxProgresstime = getWirelessModeProcessingTime();
         mProgresstime = 0;
         mEfficiency = 10000;
+        mEUt = 0;
 
         pendingOrundum = perCycle;
 
@@ -133,6 +136,11 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
         pendingOrundum = BigInteger.ZERO;
 
         super.endRecipeProcessing();
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
     }
 
     @Override

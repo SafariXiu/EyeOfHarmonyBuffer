@@ -112,9 +112,9 @@ public class EOHB_GasExtractor extends OrundumWirelessMultiMachineBase<EOHB_GasE
         return 0;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         GasSource gasType = scanMainGasSourceAndCleanOthers();
         if (gasType == null) {
             return SimpleCheckRecipeResult.ofFailure("NoMainVeinBlock");
@@ -139,6 +139,16 @@ public class EOHB_GasExtractor extends OrundumWirelessMultiMachineBase<EOHB_GasE
         this.mEfficiency = 10000;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected boolean shouldRequireOrundumField() {
+        return false;
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
     }
 
     @Override

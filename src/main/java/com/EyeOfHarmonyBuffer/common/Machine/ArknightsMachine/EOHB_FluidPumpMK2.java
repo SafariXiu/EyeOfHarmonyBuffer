@@ -126,15 +126,9 @@ public class EOHB_FluidPumpMK2 extends UpgradableOrundumWirelessMultiMachineBase
             ));
     }
 
-    @NotNull
     @Override
-    public RecipeMap<?> getRecipeMap() {
-        return RecipeMaps.FluidPumpMK2;
-    }
+    protected CheckRecipeResult doWirelessBusinessOnce() {
 
-    @NotNull
-    @Override
-    public CheckRecipeResult checkProcessing() {
         recalcControllerUpgrades();
 
         IGregTechTileEntity base = getBaseMetaTileEntity();
@@ -172,8 +166,9 @@ public class EOHB_FluidPumpMK2 extends UpgradableOrundumWirelessMultiMachineBase
 
         this.currentConfig = cfg;
 
-        this.currentCycleOrundumCost =
-            cfg.orundumPerCycle.multiply(BigInteger.valueOf(parallel));
+        BigInteger perCycleCost = cfg.orundumPerCycle.multiply(BigInteger.valueOf(parallel));
+        this.lastOrundumCost = perCycleCost;
+        this.lastUsedParallel = parallel;
 
         this.mProgresstime = 0;
 
@@ -192,23 +187,13 @@ public class EOHB_FluidPumpMK2 extends UpgradableOrundumWirelessMultiMachineBase
             new FluidStack(fluid, totalMbPerCycle)
         };
 
-        int cycles = Math.max(1, getWirelessCycleNum());
-
-        BigInteger totalCost = this.currentCycleOrundumCost.multiply(BigInteger.valueOf(cycles));
-
-        if (!consumeOrundumForOwner(ownerUUID, totalCost)) {
-            this.mOutputFluids = null;
-            return CheckRecipeResultRegistry.insufficientPower(
-                safeToLong(totalCost)
-            );
-        }
-
-        this.costingEU = this.costingEU.add(totalCost);
-        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
-
-        this.mOutputFluids[0].amount *= cycles;
-
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @NotNull
+    @Override
+    public RecipeMap<?> getRecipeMap() {
+        return RecipeMaps.FluidPumpMK2;
     }
 
     @Override

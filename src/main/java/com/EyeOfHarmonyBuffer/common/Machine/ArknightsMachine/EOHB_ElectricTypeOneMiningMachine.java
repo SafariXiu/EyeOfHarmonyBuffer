@@ -106,9 +106,9 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
         return 0;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         VeinType veinType = scanMainVeinAndCleanOthers();
         if (veinType == null) {
             return SimpleCheckRecipeResult.ofFailure("NoMainVeinBlock");
@@ -142,12 +142,8 @@ public class EOHB_ElectricTypeOneMiningMachine extends OrundumWirelessMultiMachi
         this.mEUt = 0;
         this.mEfficiency = 10000;
 
-        if (!consumeOrundumForOwner(ownerUUID, orundumCost)) {
-            this.mOutputItems = null;
-            return CheckRecipeResultRegistry.insufficientPower(orundumCost);
-        }
-        this.costingEU = this.costingEU.add(BigInteger.valueOf(orundumCost));
-        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
+        this.lastOrundumCost = BigInteger.valueOf(orundumCost);
+        this.lastUsedParallel = 1;
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }

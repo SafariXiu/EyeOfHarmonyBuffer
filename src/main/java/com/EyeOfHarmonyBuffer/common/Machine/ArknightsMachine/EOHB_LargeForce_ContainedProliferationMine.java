@@ -242,12 +242,9 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
         return 0;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
-        this.costingEU = BigInteger.ZERO;
-        this.costingEUText = ZERO_STRING;
-
+    @NotNull
+    protected CheckRecipeResult doWirelessBusinessOnce() {
 
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null) {
@@ -293,7 +290,6 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             if (vc == null) {
                 return SimpleCheckRecipeResult.ofFailure("UnsupportedVeinType");
             }
-
             pendingOutputM = vc.output;
             totalOrundumCost += vc.orundumCost;
         }
@@ -303,7 +299,6 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             if (vc == null) {
                 return SimpleCheckRecipeResult.ofFailure("UnsupportedVeinType");
             }
-
             pendingOutputP = vc.output;
             totalOrundumCost += vc.orundumCost;
         }
@@ -313,7 +308,6 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             if (vc == null) {
                 return SimpleCheckRecipeResult.ofFailure("UnsupportedVeinType");
             }
-
             pendingOutputQ = vc.output;
             totalOrundumCost += vc.orundumCost;
         }
@@ -323,7 +317,6 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             if (vc == null) {
                 return SimpleCheckRecipeResult.ofFailure("UnsupportedVeinType");
             }
-
             pendingOutputT = vc.output;
             totalOrundumCost += vc.orundumCost;
         }
@@ -333,24 +326,7 @@ public class EOHB_LargeForce_ContainedProliferationMine extends OrundumWirelessM
             return SimpleCheckRecipeResult.ofFailure("NoOutputOrCost");
         }
 
-        BigInteger demand = getRequiredComputeForCurrentRecipe();
-        if (demand != null && demand.signum() > 0 && ownerUUID != null) {
-            WirelessComputeHelper.updateConsumer(this);
-
-            boolean satisfied = WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
-            if (!satisfied) {
-                pendingOutputM = pendingOutputP = pendingOutputQ = pendingOutputT = null;
-                return SimpleCheckRecipeResult.ofFailure("InsufficientCompute");
-            }
-        }
-
-        if (!consumeOrundumForOwner(ownerUUID, totalOrundumCost)) {
-            pendingOutputM = pendingOutputP = pendingOutputQ = pendingOutputT = null;
-            return CheckRecipeResultRegistry.insufficientPower(totalOrundumCost);
-        }
-
-        this.costingEU = this.costingEU.add(BigInteger.valueOf(totalOrundumCost));
-        this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
+        this.lastOrundumCost = BigInteger.valueOf(totalOrundumCost);
 
         this.mOutputItems = null;
         this.mOutputFluids = null;

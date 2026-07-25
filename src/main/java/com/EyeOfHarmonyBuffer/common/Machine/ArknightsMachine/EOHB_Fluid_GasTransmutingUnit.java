@@ -93,8 +93,7 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
     }
 
     @Override
-    @Nonnull
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
         if (wirelessMode) {
             if (!drainXiraniteExactly(FLUID_CONSUME_AMOUNT)) {
                 IGregTechTileEntity base = getBaseMetaTileEntity();
@@ -105,8 +104,7 @@ public class EOHB_Fluid_GasTransmutingUnit extends UpgradableOrundumWirelessMult
             }
             mFluidConsumeTicker = 0;
         }
-
-        return super.checkProcessing();
+        return super.doWirelessBusinessOnce();
     }
 
     private boolean hasEnoughXiraniteInG(int amountNeeded) {

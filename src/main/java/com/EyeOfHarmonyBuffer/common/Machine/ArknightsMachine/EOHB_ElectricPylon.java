@@ -25,6 +25,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 
@@ -199,9 +200,8 @@ public class EOHB_ElectricPylon extends OrundumWirelessMultiMachineBase<EOHB_Ele
         ensurePylonFieldState(shouldHaveField);
     }
 
-    @Nonnull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!mMachine || base == null || !base.isAllowedToWork()) {
             return CheckRecipeResultRegistry.NO_RECIPE;
@@ -216,7 +216,20 @@ public class EOHB_ElectricPylon extends OrundumWirelessMultiMachineBase<EOHB_Ele
         mOutputItems = null;
         mOutputFluids = null;
 
+        this.lastOrundumCost = BigInteger.ZERO;
+        this.lastUsedParallel = 1;
+
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
+    }
+
+    @Override
+    protected boolean actsAsComputeConsumer() {
+        return false;
     }
 
     @Override

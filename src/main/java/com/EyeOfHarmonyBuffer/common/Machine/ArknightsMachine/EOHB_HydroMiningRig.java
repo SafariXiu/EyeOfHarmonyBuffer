@@ -127,9 +127,9 @@ public class EOHB_HydroMiningRig extends OrundumWirelessMultiMachineBase<EOHB_Hy
         return 0;
     }
 
-    @NotNull
     @Override
-    public CheckRecipeResult checkProcessing() {
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
         VeinType veinType = scanMainVeinAndCleanOthers();
         if (veinType == null) {
             return SimpleCheckRecipeResult.ofFailure("NoMainVeinBlock");
@@ -172,6 +172,16 @@ public class EOHB_HydroMiningRig extends OrundumWirelessMultiMachineBase<EOHB_Hy
     @Override
     public int getMaxParallelRecipes() {
         return 1;
+    }
+
+    @Override
+    protected boolean shouldRequireOrundumField() {
+        return false;
+    }
+
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
     }
 
     @NotNull
