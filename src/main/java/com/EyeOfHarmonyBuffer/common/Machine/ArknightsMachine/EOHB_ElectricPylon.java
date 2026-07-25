@@ -1,5 +1,9 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
+import com.EyeOfHarmonyBuffer.common.misc.LinkNodeEntry;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumLinkNetworkData;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumFieldHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -18,9 +22,11 @@ import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.List;
+import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.BLUE_PRINT_INFO;
@@ -43,6 +49,8 @@ public class EOHB_ElectricPylon extends OrundumWirelessMultiMachineBase<EOHB_Ele
     private static final int OffsetsY = 24;
     private static final int OffsetsZ = 2;
     private static final int CASING_INDEX1 = 183;
+
+    private static final int PYLON_FIELD_RADIUS_CHUNKS = 5;
 
     public EOHB_ElectricPylon(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -82,6 +90,113 @@ public class EOHB_ElectricPylon extends OrundumWirelessMultiMachineBase<EOHB_Ele
     @Override
     protected boolean shouldShowWirelessWaila(NBTTagCompound tag) {
         return false;
+    }
+
+    @Override
+    protected LinkNodeEntry.NodeType getOrundumLinkNodeType() {
+        return LinkNodeEntry.NodeType.SUBSTATION;
+    }
+
+    private void ensurePylonFieldState(boolean shouldHaveField) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) return;
+        World world = base.getWorld();
+        if (world == null || world.isRemote) return;
+
+        UUID owner = getOwnerUUID();
+        if (owner == null) return;
+
+        UUID teamId = OrundumEnergyService.getTeamIdForUser(owner);
+        if (teamId == null) {
+            teamId = owner;
+        }
+
+        int dimId = world.provider.dimensionId;
+        int centerChunkX = base.getXCoord() >> 4;
+        int centerChunkZ = base.getZCoord() >> 4;
+
+        boolean fieldCurrentlyActive = OrundumFieldHelper.isFieldActiveAt(
+            dimId, centerChunkX, centerChunkZ, teamId
+        );
+
+        if (shouldHaveField && !fieldCurrentlyActive) {
+            OrundumFieldHelper.activateFieldWithRadius(
+                dimId, centerChunkX, centerChunkZ, teamId, PYLON_FIELD_RADIUS_CHUNKS
+            );
+        } else if (!shouldHaveField && fieldCurrentlyActive) {
+            OrundumFieldHelper.deactivateFieldWithRadius(
+                dimId, centerChunkX, centerChunkZ, teamId, PYLON_FIELD_RADIUS_CHUNKS
+            );
+        }
+    }
+
+    @Override
+    protected boolean isPhysicalOnlineForOrundumLink() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        return mMachine && base != null && base.isAllowedToWork();
+    }
+
+    private void forceDeactivatePylonField() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) return;
+        if (!base.isServerSide()) return;
+
+        World world = base.getWorld();
+        if (world == null) return;
+
+        UUID owner = getOwnerUUID();
+        if (owner == null) return;
+
+        UUID teamId = OrundumEnergyService.getTeamIdForUser(owner);
+        if (teamId == null) {
+            teamId = owner;
+        }
+
+        int dimId = world.provider.dimensionId;
+        int centerChunkX = base.getXCoord() >> 4;
+        int centerChunkZ = base.getZCoord() >> 4;
+
+        OrundumFieldHelper.deactivateFieldWithRadius(
+            dimId, centerChunkX, centerChunkZ, teamId, PYLON_FIELD_RADIUS_CHUNKS
+        );
+    }
+
+    @Override
+    public void onRemoval() {
+        forceDeactivatePylonField();
+        super.onRemoval();
+    }
+
+    @Override
+    public void onUnload() {
+        forceDeactivatePylonField();
+        super.onUnload();
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+
+        if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide()) {
+            return;
+        }
+
+        boolean physicalOnline = isPhysicalOnlineForOrundumLink();
+        boolean active = false;
+
+        if (linkNetworkNodeId != null) {
+            World world = aBaseMetaTileEntity.getWorld();
+            if (world != null) {
+                OrundumLinkNetworkData data = OrundumLinkNetworkData.get(world);
+                if (data != null) {
+                    active = data.isNodeNetworkActive(linkNetworkNodeId);
+                }
+            }
+        }
+
+        boolean shouldHaveField = physicalOnline && active;
+
+        ensurePylonFieldState(shouldHaveField);
     }
 
     @Nonnull

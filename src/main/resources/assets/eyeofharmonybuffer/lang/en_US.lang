@@ -665,6 +665,8 @@ item.HeTongZhuangBeiYuanJian.name=Hetonite Component
 item.ZhuoTongZhuangBeiYuanJian.name=Pyrrolite Component
 item.KuangMaiCaiJiZhe.name=Vein Collector
 EOHB_KuangMaiCaiJiZhe_Tooltip_00=Right-click on the Prime Main Vein Block to collect the corresponding vein block.
+item.EnergyConnector.name=Energy Connector
+EOHB_EnergyConnector_Tooltip_00=Right-click the machine main block to start linking, then left-click the target machine main block to complete the link.
 
 #block
 tile.yuan_shi_main_block.name=Originite Prime Main Vein Block

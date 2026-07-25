@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
+import com.EyeOfHarmonyBuffer.Events.OrundumLinkEventHandler;
 import com.EyeOfHarmonyBuffer.Loader.*;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
@@ -29,6 +30,7 @@ import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.util.GTUtility;
@@ -117,6 +119,7 @@ public class EyeOfHarmonyBuffer {
         proxy.init(event);
 
         cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
+        FMLCommonHandler.instance().bus().register(new OrundumLinkEventHandler());
 
         EntityLoader.registerEntities();
 

@@ -499,6 +499,7 @@ public class TextLocalization {
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_00;
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_01;
     public static final String EOHB_KuangMaiCaiJiZhe_Tooltip_00;
+    public static final String EOHB_EnergyConnector_Tooltip_00;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -1056,6 +1057,7 @@ public class TextLocalization {
         EOHB_ForgeOfTheSkyCore_Tooltip_00 = TextHandler.texter("Core component of the multiblock structure Forge of the Sky.","EOHB_ForgeOfTheSkyCore_Tooltip_00");
         EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("Forge of the Sky, the Earth gives birth to metals.","EOHB_ForgeOfTheSkyCore_Tooltip_01");
         EOHB_KuangMaiCaiJiZhe_Tooltip_00 = TextHandler.texter("Right-click on the Prime Main Vein Block to collect the corresponding vein block.","EOHB_KuangMaiCaiJiZhe_Tooltip_00");
+        EOHB_EnergyConnector_Tooltip_00 = TextHandler.texter("Right-click the machine main block to start linking, then left-click the target machine main block to complete the link.","EOHB_EnergyConnector_Tooltip_00");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");

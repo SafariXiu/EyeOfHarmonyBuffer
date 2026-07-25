@@ -665,6 +665,8 @@ item.HeTongZhuangBeiYuanJian.name=赫铜装备原件
 item.ZhuoTongZhuangBeiYuanJian.name=灼铜装备原件
 item.KuangMaiCaiJiZhe.name=矿脉采集者
 EOHB_KuangMaiCaiJiZhe_Tooltip_00=对主矿脉块右键以采集对应的矿脉块
+item.EnergyConnector.name=能量链接器
+EOHB_EnergyConnector_Tooltip_00=右键开始链接的机器主方块，左键链接到需要链接的机器主方块
 
 #block
 tile.yuan_shi_main_block.name=源石主矿脉块

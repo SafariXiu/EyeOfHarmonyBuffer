@@ -134,7 +134,7 @@ public final class OrundumFieldHelper {
 
         UUID teamId = OrundumEnergyService.getTeamIdForUser(userUuid);
         if (teamId == null) {
-            return false;
+            teamId = userUuid;
         }
 
         int dimId = world.provider.dimensionId;
@@ -143,6 +143,7 @@ public final class OrundumFieldHelper {
         long key = chunkKey(dimId, chunkX, chunkZ);
 
         Map<UUID, Integer> teamMap = COVER_COUNT_BY_CHUNK_AND_TEAM.get(key);
+
         if (teamMap == null || teamMap.isEmpty()) {
             return false;
         }
@@ -185,5 +186,105 @@ public final class OrundumFieldHelper {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static void activateFieldWithRadius(int dimId, int centerChunkX, int centerChunkZ, UUID teamId, int radiusChunks) {
+        if (teamId == null) {
+            return;
+        }
+        int radius = Math.max(0, radiusChunks);
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            int cx = centerChunkX + dx;
+            for (int dz = -radius; dz <= radius; dz++) {
+                int cz = centerChunkZ + dz;
+                long key = chunkKey(dimId, cx, cz);
+
+                Map<UUID, Integer> teamMap = COVER_COUNT_BY_CHUNK_AND_TEAM.get(key);
+                if (teamMap == null) {
+                    teamMap = new HashMap<>();
+                    COVER_COUNT_BY_CHUNK_AND_TEAM.put(key, teamMap);
+                }
+
+                int oldCount = teamMap.getOrDefault(teamId, 0);
+                int newCount = oldCount + 1;
+
+                if (newCount <= 0) {
+                    teamMap.remove(teamId);
+                } else {
+                    teamMap.put(teamId, newCount);
+                }
+
+                if (teamMap.isEmpty()) {
+                    COVER_COUNT_BY_CHUNK_AND_TEAM.remove(key);
+                }
+            }
+        }
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (activateFieldWithRadius)");
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void deactivateFieldWithRadius(int dimId, int centerChunkX, int centerChunkZ, UUID teamId, int radiusChunks) {
+        if (teamId == null) {
+            return;
+        }
+        int radius = Math.max(0, radiusChunks);
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            int cx = centerChunkX + dx;
+            for (int dz = -radius; dz <= radius; dz++) {
+                int cz = centerChunkZ + dz;
+                long key = chunkKey(dimId, cx, cz);
+
+                Map<UUID, Integer> teamMap = COVER_COUNT_BY_CHUNK_AND_TEAM.get(key);
+                if (teamMap == null) {
+                    continue;
+                }
+
+                int oldCount = teamMap.getOrDefault(teamId, 0);
+                int newCount = oldCount - 1;
+
+                if (newCount <= 0) {
+                    teamMap.remove(teamId);
+                } else {
+                    teamMap.put(teamId, newCount);
+                }
+
+                if (teamMap.isEmpty()) {
+                    COVER_COUNT_BY_CHUNK_AND_TEAM.remove(key);
+                }
+            }
+        }
+
+        if (GlobalOrundumWorldSavedData.INSTANCE != null) {
+            try {
+                GlobalOrundumWorldSavedData.INSTANCE.markDirty();
+            } catch (Exception e) {
+                System.out.println("[EOHB] FAILED TO MARK GlobalOrundumWorldSavedData DIRTY (deactivateFieldWithRadius)");
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static boolean isFieldActiveAt(int dimId, int chunkX, int chunkZ, UUID teamId) {
+        if (teamId == null) {
+            return false;
+        }
+        long key = chunkKey(dimId, chunkX, chunkZ);
+
+        Map<UUID, Integer> teamMap = COVER_COUNT_BY_CHUNK_AND_TEAM.get(key);
+        if (teamMap == null || teamMap.isEmpty()) {
+            return false;
+        }
+
+        Integer count = teamMap.get(teamId);
+        return count != null && count > 0;
     }
 }
