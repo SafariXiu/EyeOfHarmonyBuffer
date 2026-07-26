@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
+import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
@@ -14,10 +16,16 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private World currentWorld;
 
     private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
+    private WorldGenPrecipitationAcidLake acidLakeGen;
 
     @Override
     protected void setCurrentWorld(World world) {
         this.currentWorld = world;
+        if (acidLakeGen == null && EOHBFluidBlockRegistry.precipitationAcidBlock != null) {
+            acidLakeGen = new WorldGenPrecipitationAcidLake(
+                EOHBFluidBlockRegistry.precipitationAcidBlock
+            );
+        }
     }
 
     @Override
@@ -52,5 +60,14 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         }
 
         veinGen.generate(world, rand, chunkX, chunkZ);
+
+        if (acidLakeGen != null) {
+            if (rand.nextInt(2000) == 0) {
+                int lakeX = worldX0 + rand.nextInt(16);
+                int lakeZ = worldZ0 + rand.nextInt(16);
+
+                acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
+            }
+        }
     }
 }
