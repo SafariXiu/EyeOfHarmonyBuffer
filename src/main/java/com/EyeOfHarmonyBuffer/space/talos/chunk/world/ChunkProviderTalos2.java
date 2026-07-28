@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosCoastlineShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosSeafloorShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
@@ -128,6 +129,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     TalosLandMask.sample(worldX, worldZ, worldSeedInt);
                 boolean isLand = (landSample != null && landSample.isLand);
                 double coastWeight = (landSample != null ? landSample.coastWeight : 0.0);
+                double shelfWeight = (landSample != null ? landSample.shelfWeight : 0.0);
 
                 double baseHeightD = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel
@@ -189,8 +191,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
 
                 } else {
-                    int seabedY = Math.min(h, seaLevel - 1);
-                    if (seabedY < 1) seabedY = 1;
+                    int seabedY = TalosSeafloorShaper.computeSeabedY(
+                        seaLevel,
+                        false,              // isLand = false
+                        shelfWeight,
+                        coastShapedHeightD, // 建议传河流+海岸线后的高度场
+                        worldHeight
+                    );
 
                     for (int y = 1; y <= seabedY; y++) {
                         int idx = getIndex(localX, y, localZ);

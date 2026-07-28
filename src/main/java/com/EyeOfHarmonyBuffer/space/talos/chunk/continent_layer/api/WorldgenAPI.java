@@ -49,44 +49,43 @@ public class WorldgenAPI {
         /** 连续陆地权重 [0,1] */
         public final double landWeight;
 
-        /** 海岸带权重 [0,1] */
+        /** 海岸带权重 [0,1]（陆地一侧） */
         public final double coastWeight;
 
-        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘（仅陆地有意义） */
         public final double edgeWeight;
+
+        /** 海洋侧“近海 / 大陆架”权重 [0,1]，0=远洋，1=靠近海岸/大陆架 */
+        public final double shelfWeight;
 
         public SampleResult(boolean isLand, int plateId, int superId,
                             double landWeight, double coastWeight,
-                            double edgeWeight) {
+                            double edgeWeight, double shelfWeight) {
             this.isLand = isLand;
             this.plateId = plateId;
             this.superId = superId;
             this.landWeight = landWeight;
             this.coastWeight = coastWeight;
             this.edgeWeight = edgeWeight;
+            this.shelfWeight = shelfWeight;
         }
 
-        /** 兼容旧调用：默认陆地=1.0，海洋=0.0，海岸/边缘=0.0 */
+        /** 兼容旧调用：默认陆地=1.0，海洋=0.0，海岸/边缘/大陆架=0.0 */
         public SampleResult(boolean isLand, int plateId, int superId) {
-            this(isLand, plateId, superId, isLand ? 1.0 : 0.0, 0.0, 0.0);
+            this(isLand, plateId, superId,
+                isLand ? 1.0 : 0.0,
+                0.0,
+                0.0,
+                0.0);
         }
 
         @Override
         public String toString() {
             return String.format(
-                "Land=%s, Plate=%d, Super=%d, landW=%.3f, coastW=%.3f, edgeW=%.3f",
-                isLand, plateId, superId, landWeight, coastWeight, edgeWeight
+                "Land=%s, Plate=%d, Super=%d, landW=%.3f, coastW=%.3f, edgeW=%.3f, shelfW=%.3f",
+                isLand, plateId, superId, landWeight, coastWeight, edgeWeight, shelfWeight
             );
         }
-    }
-
-    /**
-     * 兼容旧接口：单点采样（内部调用 WorldgenCore.isLandRaw）
-     */
-    public static SampleResult samplePoint(int x, int z, int worldSeed) {
-        WorldgenCore.LandResult raw = WorldgenCore.isLandRaw(x, z, worldSeed);
-        return new SampleResult(raw.isLand, raw.plateId, raw.superId,
-            raw.landWeight, raw.coastWeight, raw.edgeWeight);
     }
 
     /**
@@ -120,20 +119,6 @@ public class WorldgenAPI {
             WorldgenCore.prepareLandContextForRect(xMin, zMin, xMax, zMax, worldSeed);
         return new SampleContext(ctx);
     }
-
-    /**
-     * 在给定 SampleContext 下，采样单个点。
-     *   - 使用同一个 LandContext，可极大减少超级大陆中心与噪声的重复计算；
-     *   - 推荐在 Chunk 内多次调用。
-     */
-    public static SampleResult samplePointWithContext(
-        int x, int z, int worldSeed, SampleContext ctx) {
-
-        WorldgenCore.LandResult raw = WorldgenCore.isLandWithContext(x, z, ctx.landContext);
-        return new SampleResult(raw.isLand, raw.plateId, raw.superId,
-            raw.landWeight, raw.coastWeight, raw.edgeWeight);
-    }
-
 
     /**
      * 每个 Tile 的边长（以方块为单位）
@@ -262,8 +247,15 @@ public class WorldgenAPI {
         WorldgenCore.LandResult raw =
             WorldgenCore.isLandRaw(x, z, worldSeed);
 
-        return new SampleResult(isLand, plateId, superId,
-            raw.landWeight, raw.coastWeight, raw.edgeWeight);
+        return new SampleResult(
+            isLand,
+            plateId,
+            superId,
+            raw.landWeight,
+            raw.coastWeight,
+            raw.edgeWeight,
+            raw.shelfWeight
+        );
     }
 
     /**

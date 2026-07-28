@@ -38,10 +38,17 @@ public class WorldgenCore {
         /** 原始骨架权重（用于 landWeight） */
         public final double landMask;
 
-        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘（仅陆地有意义） */
         public final double edgeWeight;
 
-        /** 从海陆边界往内陆的距离（单位：方块，海侧为 0） */
+        /**
+         * 与最近海岸线的“带符号距离”（单位：方块）
+         *
+         * 约定：
+         *   - inlandDist > 0 : 在陆地一侧，数值≈距离海岸线多远
+         *   - inlandDist = 0 : 正好在海岸线上
+         *   - inlandDist < 0 : 在海洋一侧，绝对值≈向外走多远
+         */
         public final double inlandDist;
 
         public LandEval(boolean isLand,
@@ -495,7 +502,8 @@ public class WorldgenCore {
         int bestCont = 0;
         int bestSuper = 0;
         double bestLandMask = 0.0;
-        double bestInlandDist = 0.0;
+
+        double bestSignedInlandAny = Double.NaN;
 
         SuperContinentCenter bestCenter = null;
 
@@ -610,23 +618,23 @@ public class WorldgenCore {
             double deltaDir = dirHash * baseR * 0.12 * smoothFactor;
 
             double effR = Math.max(50.0, baseR + deltaBig + deltaSmall + deltaDir);
+
+            double signedInland = effR - minDist;
+            if (!Double.isFinite(bestSignedInlandAny) || Math.abs(signedInland) < Math.abs(bestSignedInlandAny)) {
+                bestSignedInlandAny = signedInland;
+            }
+
             double normDist = minDist / effR;
             double v = 1.0 - normDist;
             v = v > 0 ? v * v : v * 1.5;
-
-            double inlandDist = effR - minDist;
 
             if (v > 0 && v > bestScore) {
                 bestScore = v;
                 bestCont = minCont;
                 bestSuper = superId;
                 bestLandMask = Math.min(v, 1.0);
-
-                bestInlandDist = Math.max(0.0, inlandDist);
-
                 bestCenter = c;
             }
-
         }
 
         boolean isLand = bestCont != 0;
@@ -646,7 +654,11 @@ public class WorldgenCore {
             edgeWeight = t;
         }
 
-        return new LandEval(isLand, bestCont, bestSuper, finalMask, edgeWeight, bestInlandDist);
+        if (!Double.isFinite(bestSignedInlandAny)) {
+            bestSignedInlandAny = 0.0;
+        }
+
+        return new LandEval(isLand, bestCont, bestSuper, finalMask, edgeWeight, bestSignedInlandAny);
     }
 
     public static LandContext prepareLandContextForRect(
@@ -668,8 +680,14 @@ public class WorldgenCore {
      *   - 30 < dInland < 100→ 从 1 平滑衰减到 0
      *   - dInland >= 100    → 视为内陆，coastWeight = 0
      */
-    private static double computeCoastWeightFromInlandDist(double dInland) {
+    private static double computeCoastWeightFromInlandDist(double dInlandSigned) {
         final double SCALE = 0.3;
+
+        // 只对“陆地一侧”的距离生效
+        double dInland = dInlandSigned;
+        if (dInland < 0.0) {
+            dInland = 0.0;
+        }
 
         dInland *= SCALE;
 
@@ -677,8 +695,8 @@ public class WorldgenCore {
             return 1.0;
         }
 
-        final double FULL_RANGE = 30.0;  // 0–30 格：完整海岸带
-        final double ZERO_RANGE = 100.0; // >=100 格：完全内陆
+        final double FULL_RANGE = 30.0;
+        final double ZERO_RANGE = 100.0;
 
         if (dInland <= FULL_RANGE) {
             return 1.0;
@@ -694,20 +712,86 @@ public class WorldgenCore {
         return Math.max(0.0, Math.min(1.0, s));
     }
 
+    /**
+     * 基于“从海岸线向海洋方向的距离”计算近海 / 大陆架权重：
+     *
+     * 约定：
+     *   - dSeaSigned > 0 : 在海洋一侧，值为“距海岸线的距离”
+     *   - dSeaSigned <= 0: 在海岸线或陆地一侧，统一视作 0 距离
+     */
+    private static double computeShelfWeightFromSeaDist(double dSeaSigned) {
+        double dSea = dSeaSigned;
+        if (dSea < 0.0) {
+            dSea = 0.0;
+        }
+
+        final double SCALE = 0.3;
+        dSea *= SCALE;
+
+        if (dSea <= 0.0) {
+            return 1.0;
+        }
+
+        final double FULL_SHELF = 60.0;
+        final double ZERO_SHELF = 400.0;
+
+        if (dSea <= FULL_SHELF) {
+            return 1.0;
+        }
+        if (dSea >= ZERO_SHELF) {
+            return 0.0;
+        }
+
+        double t = (dSea - FULL_SHELF) / (ZERO_SHELF - FULL_SHELF);
+
+        double s = 1.0 - (t * t * (3.0 - 2.0 * t));
+
+        return Math.max(0.0, Math.min(1.0, s));
+    }
+
     public static LandResult isLandWithContext(int x, int z, LandContext ctx) {
         if (ctx.centers.isEmpty()) {
-            return new LandResult(false, 0, 0, 0.0, 0.0, 0.0);
+            return new LandResult(false, 0, 0,
+                0.0,  // landWeight
+                0.0,  // coastWeight
+                0.0,  // edgeWeight
+                0.0   // shelfWeight
+            );
         }
+
         LandEval eval = isSuperLandAt(x, z, ctx.centers, ctx.noise);
-        if (!eval.isLand) {
-            return new LandResult(false, 0, 0, 0.0, 0.0, 0.0);
+
+        boolean isLand = eval.isLand;
+        int plateId = isLand ? eval.bestContinentId : 0;
+        int superId = isLand ? eval.bestSuperId : 0;
+
+        double signedInland = eval.inlandDist;
+
+        double landWeight = isLand ? eval.landMask : 0.0;
+        double edgeWeight = isLand ? eval.edgeWeight : 0.0;
+
+        double coastWeight = 0.0;
+        if (signedInland >= 0.0 && isLand) {
+            coastWeight = computeCoastWeightFromInlandDist(signedInland);
         }
 
-        double lw = eval.landMask;
-        double cw = computeCoastWeightFromInlandDist(eval.inlandDist);
-        double ew = eval.edgeWeight;
+        double shelfWeight;
+        if (signedInland <= 0.0) {
+            double seaDist = -signedInland;
+            shelfWeight = computeShelfWeightFromSeaDist(seaDist);
+        } else {
+            shelfWeight = 1.0;
+        }
 
-        return new LandResult(true, eval.bestContinentId, eval.bestSuperId, lw, cw, ew);
+        return new LandResult(
+            isLand,
+            plateId,
+            superId,
+            landWeight,
+            coastWeight,
+            edgeWeight,
+            shelfWeight
+        );
     }
 
     public static LandResult isLandRaw(int x, int z, int worldSeed) {
@@ -723,26 +807,29 @@ public class WorldgenCore {
         /** 连续陆地权重 [0,1] */
         public double landWeight;
 
-        /** 海岸带权重 [0,1] */
+        /** 海岸带权重 [0,1]（陆地一侧） */
         public double coastWeight;
 
-        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘 */
+        /** 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘（仅陆地有意义） */
         public double edgeWeight;
 
-        public LandResult(boolean land, int plate, int sup,
-                          double landWeight, double coastWeight,
-                          double edgeWeight) {
+        /** 海洋侧“近海 / 大陆架”权重 [0,1]，0=远洋，1=靠近海岸/大陆架 */
+        public double shelfWeight;
+
+        public LandResult(boolean land,
+                          int plate,
+                          int sup,
+                          double landWeight,
+                          double coastWeight,
+                          double edgeWeight,
+                          double shelfWeight) {
             this.isLand = land;
             this.plateId = plate;
             this.superId = sup;
             this.landWeight = landWeight;
             this.coastWeight = coastWeight;
             this.edgeWeight = edgeWeight;
-        }
-
-        /** 旧签名的兼容构造器，默认陆地点权重=1，海洋=0，无海岸/边缘权重 */
-        public LandResult(boolean land, int plate, int sup) {
-            this(land, plate, sup, land ? 1.0 : 0.0, 0.0, 0.0);
+            this.shelfWeight = shelfWeight;
         }
     }
 }

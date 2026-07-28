@@ -79,6 +79,21 @@ public final class TalosLandMask {
     }
 
     /**
+     * 海洋侧“近海 / 大陆架”权重 [0,1]，0=远洋，1=靠近海岸/大陆架。
+     *
+     * 在海洋上：
+     *   - 越靠近大陆，值越接近 1；
+     *   - 远洋区域趋近 0。
+     * 在陆地上：
+     *   - 目前 WorldgenCore 里设置为 1（你也可以改成 0），
+     *     一般只在 !isLand 分支使用。
+     */
+    public static double getShelfWeight(int worldX, int worldZ, int worldSeedInt) {
+        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
+        return r != null ? r.shelfWeight : 0.0;
+    }
+
+    /**
      * 如果你在 chunk 内需要频繁访问，可以先拿到 tile 再做本地遍历。
      * 注意：LandTile 内部数组顺序为 [z][x]。
      */
