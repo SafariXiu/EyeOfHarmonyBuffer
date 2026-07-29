@@ -1,0 +1,581 @@
+package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom;
+
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.lang.Math.*;
+
+public final class Supercontinent {
+
+    public final long worldSeed;
+    public final SupercontinentId id;
+
+    public final double centerX;
+    public final double centerZ;
+
+    public final double baseRadius;
+
+    // 半径噪声参数
+    private double thetaLongAxis;
+    private double ampAxis;
+    private List<Lobe> midLobes;
+    private int smallNoiseSegments;
+    private double[] smallNoiseValues;
+    private double smallNoiseAmp;
+
+    // 海岸多边形
+    private double[] coastX;
+    private double[] coastZ;
+
+    // 安全半径：用于 chunk 级粗判
+    /** 所有海岸线段到中心的最小距离（向内取整逻辑用） */
+    public final double innerSafeRadius;
+    /** 所有海岸顶点到中心的最大距离（向外取整逻辑用） */
+    public final double outerSafeRadius;
+
+    // 板块：逻辑种子 + 运动向量
+    private int plateCount;
+    private LogicalSeed[] plateSeeds;
+    private double[] plateMotionX;
+    private double[] plateMotionZ;
+
+    // 预生成一圈板块边界“接近度”样本（极坐标）
+    private int boundarySampleCount;
+    private double[] boundarySampleAngle;
+    private double[] boundarySampleStrength;
+
+    private static final class Lobe {
+        final double theta;
+        final double amp;
+        final double width;
+
+        Lobe(double theta, double amp, double width) {
+            this.theta = theta;
+            this.amp = amp;
+            this.width = width;
+        }
+    }
+
+    /**
+     * “逻辑”板块种子：放在 [0,1]x[0,1] 空间里，
+     * 真正距离计算时会映射到超大陆内部。
+     */
+    private static final class LogicalSeed {
+        final double u;
+        final double v;
+
+        LogicalSeed(double u, double v) {
+            this.u = u;
+            this.v = v;
+        }
+    }
+
+    // --- ctor ---
+
+    public Supercontinent(long worldSeed, int cellX, int cellZ) {
+        this.worldSeed = worldSeed;
+        this.id = new SupercontinentId(cellX, cellZ);
+
+        // 1. 基准中心 + 抖动
+        long seedCx = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x10001, cellX, cellZ);
+        long seedCz = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x10002, cellX, cellZ);
+
+        double baseCenterX = cellX * (double) TectonicConfig.SUPER_CELL_SIZE
+            + TectonicConfig.SUPER_CELL_SIZE / 2.0;
+        double baseCenterZ = cellZ * (double) TectonicConfig.SUPER_CELL_SIZE
+            + TectonicConfig.SUPER_CELL_SIZE / 2.0;
+
+        double dx = TectonicMath.randRange(seedCx, -TectonicConfig.CENTER_JITTER_MAX, TectonicConfig.CENTER_JITTER_MAX);
+        double dz = TectonicMath.randRange(seedCz, -TectonicConfig.CENTER_JITTER_MAX, TectonicConfig.CENTER_JITTER_MAX);
+
+        this.centerX = baseCenterX + dx;
+        this.centerZ = baseCenterZ + dz;
+
+        // 2. 基础半径
+        long seedRBase = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x20001, cellX, cellZ);
+        this.baseRadius = TectonicMath.randRange(seedRBase,
+            TectonicConfig.BASE_RADIUS_MIN,
+            TectonicConfig.BASE_RADIUS_MAX
+        );
+
+        // 3. R(theta) 参数
+        initRadiusParams();
+
+        // 4. 板块种子
+        initPlateSeeds();
+
+        // 5. 板块运动 & 边界强度环
+        initPlateMotions();
+        precomputeBoundaryRing();
+
+        // 6. 海岸顶点
+        precomputeCoastVertices();
+
+        // 7. 安全半径（基于规范海岸多边形）
+        double[] safe = computeSafeRadii();
+        this.innerSafeRadius = safe[0];
+        this.outerSafeRadius = safe[1];
+    }
+
+    // ---------- 半径 ----------
+
+    private void initRadiusParams() {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+
+        // 大尺度：类似椭圆长轴方向
+        long seedAxis = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x40001, cx, cz);
+        thetaLongAxis = TectonicMath.randRange(seedAxis, 0.0, 2.0 * PI);
+
+        long seedAxisAmp = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x40002, cx, cz);
+        double ampAxis01 = TectonicMath.randRange(seedAxisAmp, -1.0, 1.0);
+        ampAxis = ampAxis01 * 6000.0;
+
+        // 中尺度 lobes
+        long seedLobeCount = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50000, cx, cz);
+        double tCount = TectonicMath.randUnitDouble(seedLobeCount);
+        int lobeCount = 10 + (int) (tCount * 7.0);
+
+        midLobes = new ArrayList<Lobe>(lobeCount);
+        final double AMP_MID_MAX = 2600.0;
+        final double WIDTH_MIN = PI * 0.06;
+        final double WIDTH_MAX = PI * 0.30;
+
+        for (int i = 0; i < lobeCount; i++) {
+            long seedAng = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50001, cx, cz, i);
+            double thetaI = TectonicMath.randRange(seedAng, 0.0, 2.0 * PI);
+
+            long seedAmp = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50002, cx, cz, i);
+            double amp01 = TectonicMath.randRange(seedAmp, -1.0, 1.0);
+            double ampI = amp01 * AMP_MID_MAX;
+
+            long seedW = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50003, cx, cz, i);
+            double widthI = TectonicMath.randRange(seedW, WIDTH_MIN, WIDTH_MAX);
+
+            midLobes.add(new Lobe(thetaI, ampI, widthI));
+        }
+
+        // 小尺度噪声
+        smallNoiseSegments = 256;
+        smallNoiseValues = new double[smallNoiseSegments];
+        for (int k = 0; k < smallNoiseSegments; k++) {
+            long seedN = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x60001, cx, cz, k);
+            smallNoiseValues[k] = TectonicMath.randRange(seedN, -1.0, 1.0);
+        }
+        smallNoiseAmp = 900.0;
+    }
+
+    private double radiusAtAngle(double theta) {
+        final double TWO_PI = 2.0 * PI;
+        if (theta < 0.0 || theta >= TWO_PI) {
+            theta = theta % TWO_PI;
+            if (theta < 0.0) theta += TWO_PI;
+        }
+
+        double r = baseRadius;
+
+        // 大尺度
+        r += ampAxis * cos(2.0 * (theta - thetaLongAxis));
+
+        // 中尺度
+        for (Lobe l : midLobes) {
+            double d = theta - l.theta;
+            d = (d + PI) % (2.0 * PI) - PI;
+            double ad = abs(d);
+
+            if (ad < l.width) {
+                double t = ad / l.width;
+                double k = 0.5 * (1.0 + cos(PI * t));
+                r += l.amp * k;
+            }
+        }
+
+        // 小尺度
+        int segCount = smallNoiseSegments;
+        double pos = (theta / TWO_PI) * segCount;
+        int idx0 = (int) floor(pos);
+        double t = pos - idx0;
+        int idx1 = idx0 + 1;
+        if (idx1 >= segCount) idx1 = 0;
+
+        double v0 = smallNoiseValues[idx0];
+        double v1 = smallNoiseValues[idx1];
+        double t2 = t * t;
+        double smoothT = t2 * (3.0 - 2.0 * t);
+        double noiseVal = v0 * (1.0 - smoothT) + v1 * smoothT;
+
+        r += noiseVal * smallNoiseAmp;
+
+        if (r < TectonicConfig.MIN_RADIUS) r = TectonicConfig.MIN_RADIUS;
+        else if (r > TectonicConfig.MAX_RADIUS) r = TectonicConfig.MAX_RADIUS;
+
+        return r;
+    }
+
+    // ---------- 海岸多边形 ----------
+
+    private void precomputeCoastVertices() {
+        int n = TectonicConfig.COAST_VERTEX_COUNT;
+        coastX = new double[n];
+        coastZ = new double[n];
+
+        for (int i = 0; i < n; i++) {
+            double theta = 2.0 * PI * i / n;
+            double r = radiusAtAngle(theta);
+            coastX[i] = centerX + r * cos(theta);
+            coastZ[i] = centerZ + r * sin(theta);
+        }
+    }
+
+    /**
+     * 计算 innerSafeRadius / outerSafeRadius：
+     *
+     * outerSafeRadius = 所有海岸顶点到中心的最大距离；
+     * innerSafeRadius = 所有海岸线段到中心的最小距离。
+     */
+    private double[] computeSafeRadii() {
+        int n = coastX.length;
+        double maxR = 0.0;
+        double minDistEdge = Double.POSITIVE_INFINITY;
+
+        // 顶点半径
+        for (int i = 0; i < n; i++) {
+            double dx = coastX[i] - centerX;
+            double dz = coastZ[i] - centerZ;
+            double r = hypot(dx, dz);
+            if (r > maxR) {
+                maxR = r;
+            }
+        }
+
+        // 弦到中心的最小距离
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double ax = coastX[j];
+            double az = coastZ[j];
+            double bx = coastX[i];
+            double bz = coastZ[i];
+
+            double d = distanceToSegment(centerX, centerZ, ax, az, bx, bz);
+            if (d < minDistEdge) {
+                minDistEdge = d;
+            }
+        }
+
+        if (!Double.isFinite(minDistEdge) || minDistEdge < 0.0) {
+            minDistEdge = 0.0;
+        }
+
+        return new double[]{minDistEdge, maxR};
+    }
+
+    /**
+     * 点是否在超大陆内部（射线法）。
+     */
+    public boolean pointInside(double x, double z) {
+        int n = coastX.length;
+        boolean inside = false;
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = coastX[i];
+            double zi = coastZ[i];
+            double xj = coastX[j];
+            double zj = coastZ[j];
+
+            boolean intersect = ((zi > z) != (zj > z)) &&
+                (x < (xj - xi) * (z - zi) / (zj - zi + 1e-12) + xi);
+            if (intersect) {
+                inside = !inside;
+            }
+        }
+
+        return inside;
+    }
+
+    private static double distanceToSegment(double px, double pz,
+                                            double ax, double az,
+                                            double bx, double bz) {
+        double vx = bx - ax;
+        double vz = bz - az;
+        double wx = px - ax;
+        double wz = pz - az;
+
+        double c1 = vx * wx + vz * wz;
+        if (c1 <= 0.0) {
+            return hypot(px - ax, pz - az);
+        }
+
+        double c2 = vx * vx + vz * vz;
+        if (c2 <= c1) {
+            return hypot(px - bx, pz - bz);
+        }
+
+        double t = c1 / c2;
+        double cx = ax + t * vx;
+        double cz = az + t * vz;
+        return hypot(px - cx, pz - cz);
+    }
+
+    /**
+     * 找离 (x,z) 最近的海岸线距离（总是非负）。
+     */
+    public double distanceToCoast(double x, double z) {
+        int n = coastX.length;
+        double best = Double.POSITIVE_INFINITY;
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double ax = coastX[j];
+            double az = coastZ[j];
+            double bx = coastX[i];
+            double bz = coastZ[i];
+            double d = distanceToSegment(x, z, ax, az, bx, bz);
+            if (d < best) best = d;
+        }
+
+        return best;
+    }
+
+    /**
+     * 以超大陆中心为圆心的极坐标半径（不限制 inside/outside，只反映几何半径）。
+     */
+    public double radialDistance(double x, double z) {
+        double dx = x - centerX;
+        double dz = z - centerZ;
+        return hypot(dx, dz);
+    }
+
+    /**
+     * 径向“向中心权重”。圆心附近 1，靠近 R(theta) 外缘 0，外海负值会被 clamp。
+     */
+    public double radialCenterward(double x, double z) {
+        double dx = x - centerX;
+        double dz = z - centerZ;
+        double r = hypot(dx, dz);
+        double theta = atan2(dz, dx);
+        double rEdge = radiusAtAngle(theta);
+
+        if (r <= 0.0) {
+            return 1.0;
+        }
+
+        double t = 1.0 - r / (rEdge + 1e-9);
+        return TectonicMath.clamp(t, 0.0, 1.0);
+    }
+
+    // ---------- 板块 ----------
+
+    private void initPlateSeeds() {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+
+        long seedCount = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x70000, cx, cz);
+        int count = TectonicMath.randRangeInt(seedCount,
+            TectonicConfig.MIN_PLATE_PER_SUPER,
+            TectonicConfig.MAX_PLATE_PER_SUPER
+        );
+
+        plateCount = count;
+        plateSeeds = new LogicalSeed[plateCount];
+
+        for (int i = 0; i < plateCount; i++) {
+            long sAng = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x70001, cx, cz, i);
+            long sRad = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x70002, cx, cz, i);
+
+            double ang = TectonicMath.randRange(sAng, 0.0, 2.0 * PI);
+            double r01 = TectonicMath.randRange(sRad,
+                TectonicConfig.PLATE_SEED_RING_MIN,
+                TectonicConfig.PLATE_SEED_RING_MAX
+            );
+
+            double u = 0.5 + r01 * cos(ang) * 0.45;
+            double v = 0.5 + r01 * sin(ang) * 0.45;
+
+            u = TectonicMath.clamp(u, 0.05, 0.95);
+            v = TectonicMath.clamp(v, 0.05, 0.95);
+
+            plateSeeds[i] = new LogicalSeed(u, v);
+        }
+    }
+
+    private void initPlateMotions() {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+
+        plateMotionX = new double[plateCount];
+        plateMotionZ = new double[plateCount];
+
+        for (int i = 0; i < plateCount; i++) {
+            long sDir = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x71000, cx, cz, i);
+            long sSpd = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x71001, cx, cz, i);
+
+            double theta = TectonicMath.randRange(sDir, 0.0, 2.0 * PI);
+            double spd = TectonicMath.randRange(sSpd, 0.3, 1.0);
+
+            plateMotionX[i] = spd * cos(theta);
+            plateMotionZ[i] = spd * sin(theta);
+        }
+    }
+
+    /**
+     * 把地面坐标映射为 [0,1]^2 的“逻辑坐标”，用于板块 Voronoi。
+     */
+    private void toLogical(double x, double z, double[] outUV) {
+        double dx = x - centerX;
+        double dz = z - centerZ;
+        double r = hypot(dx, dz);
+        double theta = atan2(dz, dx);
+        double rEdge = radiusAtAngle(theta);
+
+        double u = 0.5 + (r / (rEdge + 1e-9)) * cos(theta) * 0.5;
+        double v = 0.5 + (r / (rEdge + 1e-9)) * sin(theta) * 0.5;
+
+        // 容错：远海位置也 clamp 到 [0,1]
+        u = TectonicMath.clamp(u, 0.0, 1.0);
+        v = TectonicMath.clamp(v, 0.0, 1.0);
+
+        outUV[0] = u;
+        outUV[1] = v;
+    }
+
+    /**
+     * 找最近板块 + 第二近板块，返回“当前板块 index”以及到下一板块的逻辑距离差。
+     */
+    public int findNearestPlate(double x, double z, double[] outNearestDist, double[] outSecondNearestDist) {
+        if (plateCount <= 0) {
+            if (outNearestDist != null && outNearestDist.length > 0) {
+                outNearestDist[0] = 1.0;
+            }
+            if (outSecondNearestDist != null && outSecondNearestDist.length > 0) {
+                outSecondNearestDist[0] = 1.0;
+            }
+            return 0;
+        }
+
+        double[] uv = new double[2];
+        toLogical(x, z, uv);
+        double u = uv[0];
+        double v = uv[1];
+
+        int bestIdx = 0;
+        double bestDist = Double.POSITIVE_INFINITY;
+        double secondBest = Double.POSITIVE_INFINITY;
+
+        for (int i = 0; i < plateCount; i++) {
+            LogicalSeed s = plateSeeds[i];
+            double du = u - s.u;
+            double dv = v - s.v;
+            double d2 = du * du + dv * dv;
+
+            if (d2 < bestDist) {
+                secondBest = bestDist;
+                bestDist = d2;
+                bestIdx = i;
+            } else if (d2 < secondBest) {
+                secondBest = d2;
+            }
+        }
+
+        double d1 = sqrt(bestDist);
+        double d2 = sqrt(secondBest);
+
+        if (outNearestDist != null && outNearestDist.length > 0) {
+            outNearestDist[0] = d1;
+        }
+        if (outSecondNearestDist != null && outSecondNearestDist.length > 0) {
+            outSecondNearestDist[0] = d2;
+        }
+
+        return bestIdx;
+    }
+
+    /**
+     * 返回板块 ID（如果点在外海，我们仍然给最近超大陆板块 ID；外层逻辑自己决定是否用）。
+     */
+    public PlateId getPlateIdForPoint(double x, double z) {
+        double[] d1 = new double[1];
+        double[] d2 = new double[1];
+        int idx = findNearestPlate(x, z, d1, d2);
+        return new PlateId(id, idx);
+    }
+
+    /**
+     * 预计算一圈角度样本的“边界强度”，用于快速近似板块边界带。
+     */
+    private void precomputeBoundaryRing() {
+        boundarySampleCount = 512;
+        boundarySampleAngle = new double[boundarySampleCount];
+        boundarySampleStrength = new double[boundarySampleCount];
+
+        double[] d1 = new double[1];
+        double[] d2 = new double[1];
+
+        for (int i = 0; i < boundarySampleCount; i++) {
+            double theta = 2.0 * PI * i / boundarySampleCount;
+            double r = baseRadius * 0.85; // 基本沿着大陆主体一圈
+            double x = centerX + r * cos(theta);
+            double z = centerZ + r * sin(theta);
+
+            findNearestPlate(x, z, d1, d2);
+
+            double boundaryMetric = d2[0] - d1[0];
+            double strength = 1.0 - boundaryMetric / TectonicConfig.PLATE_BOUNDARY_THRESHOLD;
+            strength = TectonicMath.clamp(strength, 0.0, 1.0);
+
+            boundarySampleAngle[i] = theta;
+            boundarySampleStrength[i] = strength;
+        }
+
+        // 简单平滑一遍
+        double[] tmp = new double[boundarySampleCount];
+        for (int i = 0; i < boundarySampleCount; i++) {
+            double sum = boundarySampleStrength[i];
+            int count = 1;
+            if (i > 0) {
+                sum += boundarySampleStrength[i - 1];
+                count++;
+            } else {
+                sum += boundarySampleStrength[boundarySampleCount - 1];
+                count++;
+            }
+            if (i < boundarySampleCount - 1) {
+                sum += boundarySampleStrength[i + 1];
+                count++;
+            } else {
+                sum += boundarySampleStrength[0];
+                count++;
+            }
+            tmp[i] = sum / count;
+        }
+        System.arraycopy(tmp, 0, boundarySampleStrength, 0, boundarySampleCount);
+    }
+
+    /**
+     * 估算板块边界权重：0 = 板块内部，1 = 强边界。
+     * 逻辑：取当前点的极角，在 boundarySampleRing 上做线性插值。
+     */
+    public double getPlateBoundaryWeight(double x, double z) {
+        if (boundarySampleCount <= 0) return 0.0;
+
+        double dx = x - centerX;
+        double dz = z - centerZ;
+        double theta = atan2(dz, dx);
+        if (theta < 0.0) theta += 2.0 * PI;
+
+        double pos = (theta / (2.0 * PI)) * boundarySampleCount;
+        int idx0 = (int) floor(pos);
+        double t = pos - idx0;
+        int idx1 = idx0 + 1;
+        if (idx1 >= boundarySampleCount) idx1 = 0;
+
+        double v0 = boundarySampleStrength[idx0];
+        double v1 = boundarySampleStrength[idx1];
+        return v0 * (1.0 - t) + v1 * t;
+    }
+}

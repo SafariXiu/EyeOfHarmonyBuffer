@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseUtil;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 import net.minecraft.world.biome.BiomeGenBase;
 
 import java.util.Random;

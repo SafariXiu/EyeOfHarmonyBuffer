@@ -47,9 +47,10 @@ public final class TalosRiverTerrainModifier {
         int worldSeedInt,
         double baseHeightD,
         double riverSurfaceY,
-        MacroPackageRegistry.RiverBankPreset bankPreset
+        MacroPackageRegistry.RiverBankPreset bankPreset,
+        boolean isLand
     ) {
-        if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
+        if (!isLand) {
             return baseHeightD;
         }
 

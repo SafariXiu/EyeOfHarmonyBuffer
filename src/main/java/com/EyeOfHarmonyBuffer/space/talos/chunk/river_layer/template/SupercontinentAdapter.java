@@ -1,8 +1,18 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.Direction2D;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.SuperCenterInfo;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+
+/**
+ * 基于 tectonic_v1 的超级大陆查询适配器。
+ *
+ * 主要用于河流模板：
+ *   - 给定 worldX/Z 和 worldSeedInt；
+ *   - 推导出当前所在超级大陆的：
+ *       * superId
+ *       * 中心坐标 (cx, cz)
+ *       * 基础半径 baseRadius
+ *       * 从中心指向当前位置的大致角度 angleRad
+ */
 
 public final class SupercontinentAdapter {
 
@@ -19,29 +29,21 @@ public final class SupercontinentAdapter {
             return null;
         }
 
-        SuperCenterInfo center = TalosLandMask.getSuperCenter(superId, worldSeedInt);
-
-        if (center == null) {
-            center = TalosLandMask.getSuperCenterAt(worldX, worldZ, worldSeedInt);
-        }
-
+        int[] center = TalosLandMask.getSuperCenterXZById(superId, worldSeedInt);
         if (center == null) {
             return null;
         }
 
-        // SuperCenterInfo 的实际字段：
-        //   public final int superId;
-        //   public final int worldX;
-        //   public final int worldZ;
-        //   public final int baseRadius;
-        double cx     = center.worldX;
-        double cz     = center.worldZ;
-        double radius = center.baseRadius;
+        double cx = center[0];
+        double cz = center[1];
 
-        Direction2D dir = TalosLandMask.getPlateOutflowDirAt(worldX, worldZ, worldSeedInt);
+        double radius = TalosLandMask.getSuperBaseRadius(superId, worldSeedInt);
+        if (radius <= 0.0) {
+            radius = 1.0;
+        }
 
-        double dx = dir.dx;
-        double dz = dir.dz;
+        double dx = worldX - cx;
+        double dz = worldZ - cz;
 
         if (dx == 0.0 && dz == 0.0) {
             dz = 1.0;
@@ -49,6 +51,6 @@ public final class SupercontinentAdapter {
 
         double angleRad = Math.atan2(dz, dx);
 
-        return new SupercontinentInfo(center.superId, cx, cz, radius, angleRad);
+        return new SupercontinentInfo(superId, cx, cz, radius, angleRad);
     }
 }

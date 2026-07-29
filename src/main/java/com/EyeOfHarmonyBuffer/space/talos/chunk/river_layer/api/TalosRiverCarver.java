@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
 import net.minecraft.block.Block;
@@ -66,12 +67,14 @@ public final class TalosRiverCarver {
         int worldX0 = chunkX * CHUNK_SIZE;
         int worldZ0 = chunkZ * CHUNK_SIZE;
 
+        final LandMask16 landMask = TalosLandMask.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
+
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
                 int worldX = worldX0 + localX;
                 int worldZ = worldZ0 + localZ;
 
-                if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
+                if (landMask == null || !landMask.get(localX, localZ)) {
                     continue;
                 }
 

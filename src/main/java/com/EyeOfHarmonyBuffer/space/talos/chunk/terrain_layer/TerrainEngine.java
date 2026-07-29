@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
@@ -26,8 +25,8 @@ public final class TerrainEngine {
     public static double sampleBaseHeight(int worldX, int worldZ,
                                           int worldSeedInt,
                                           int seaLevel) {
-        WorldgenAPI.SampleResult landSample =
-            TalosLandMask.sample(worldX, worldZ, worldSeedInt);
+        TalosLandMask.Sample landSample =
+            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt);
 
         boolean isLand      = landSample != null && landSample.isLand;
         double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
@@ -100,7 +99,7 @@ public final class TerrainEngine {
         double t;
         double sumW = w1 + w2;
         if (sumW > 0.0) {
-            t = w2 / sumW;  // t ∈ [0,1]，代表 secondary 占比
+            t = w2 / sumW;
         } else {
             t = 0.0;
         }

@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseUtil;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 
 /**
  * 第四层内部用的噪声封装。

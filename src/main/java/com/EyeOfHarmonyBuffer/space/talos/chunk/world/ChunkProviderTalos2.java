@@ -3,13 +3,9 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosCoastlineShaper;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosSeafloorShaper;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
@@ -114,6 +110,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int worldX0 = chunkX * CHUNK_SIZE;
         final int worldZ0 = chunkZ * CHUNK_SIZE;
 
+        // ① 每个 chunk 生成一次 16×16 的 LandMask16
+        final LandMask16 landMask = TalosLandMask.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
+
         double[][] blurredBank = null;
         if (USE_CHUNK_BLUR_BANK) {
             blurredBank = new double[CHUNK_SIZE][CHUNK_SIZE];
@@ -125,11 +124,19 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 final int worldX = worldX0 + localX;
                 final int worldZ = worldZ0 + localZ;
 
-                WorldgenAPI.SampleResult landSample =
-                    TalosLandMask.sample(worldX, worldZ, worldSeedInt);
-                boolean isLand = (landSample != null && landSample.isLand);
-                double coastWeight = (landSample != null ? landSample.coastWeight : 0.0);
-                double shelfWeight = (landSample != null ? landSample.shelfWeight : 0.0);
+                final boolean isLandFromMask =
+                    (landMask != null && landMask.get(localX, localZ));
+
+                TalosLandMask.Sample landSample =
+                    TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt);
+
+                final boolean isLand = isLandFromMask;
+                final double coastWeight =
+                    (landSample != null ? landSample.coastWeight : 0.0);
+                final double shelfWeight =
+                    (landSample != null ? landSample.shelfWeight : 0.0);
+
+                // === 基础高度场 + 河岸 + 海岸线 ===
 
                 double baseHeightD = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel
@@ -150,7 +157,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     worldSeedInt,
                     baseHeightD,
                     seaLevel,
-                    bankPreset
+                    bankPreset,
+                    isLand
                 );
 
                 double coastShapedHeightD = TalosCoastlineShaper.applyCoastlineShaping(
@@ -166,6 +174,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 } else if (h > worldHeight - 2) {
                     h = worldHeight - 2;
                 }
+
+                // === 方块填充 ===
 
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
@@ -195,7 +205,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         seaLevel,
                         false,              // isLand = false
                         shelfWeight,
-                        coastShapedHeightD, // 建议传河流+海岸线后的高度场
+                        coastShapedHeightD, // 传入河流+海岸线后的高度场
                         worldHeight
                     );
 
@@ -206,51 +216,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
 
                     for (int y = seabedY + 1; y <= seaLevel; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.water;
-                        meta[idx] = 0;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * 老版的“平板”海陆渲染，只保留作调试用，不再从 onChunkProvider 调用。
-     */
-    @SuppressWarnings("unused")
-    private void generateBasicLandWater(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
-        final int seaLevel = getWaterLevel();
-
-        int worldX0 = chunkX * CHUNK_SIZE;
-        int worldZ0 = chunkZ * CHUNK_SIZE;
-
-        for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-            for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-                int worldX = worldX0 + localX;
-                int worldZ = worldZ0 + localZ;
-
-                WorldgenAPI.SampleResult result =
-                    TalosLandMask.sample(worldX, worldZ, worldSeedInt);
-
-                boolean isLand = (result != null && result.isLand);
-
-                int bedrockIndex = getIndex(localX, 0, localZ);
-                blocks[bedrockIndex] = Blocks.bedrock;
-                meta[bedrockIndex] = 0;
-
-                if (isLand) {
-                    for (int y = 1; y < seaLevel; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.stone;
-                        meta[idx] = 0;
-                    }
-
-                    int topIdx = getIndex(localX, seaLevel, localZ);
-                    blocks[topIdx] = Blocks.grass;
-                    meta[topIdx] = 0;
-                } else {
-                    for (int y = 1; y <= seaLevel; y++) {
                         int idx = getIndex(localX, y, localZ);
                         blocks[idx] = Blocks.water;
                         meta[idx] = 0;

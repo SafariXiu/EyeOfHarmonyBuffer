@@ -31,6 +31,15 @@ public final class TalosLandMask {
     }
 
     /**
+     * 面向上层的完整采样接口，返回 TalosLandMask.Sample，
+     * 内部通过 WorldgenAPI.samplePointTiled 实现。
+     */
+    public static Sample sampleFull(int worldX, int worldZ, int worldSeedInt) {
+        WorldgenAPI.SampleResult r = WorldgenAPI.samplePointTiled(worldX, worldZ, worldSeedInt);
+        return (r != null) ? new Sample(r) : null;
+    }
+
+    /**
      * 方便直接拿 bool 的 isLand。
      */
     public static boolean isLand(int worldX, int worldZ, int worldSeedInt) {
@@ -79,96 +88,88 @@ public final class TalosLandMask {
     }
 
     /**
-     * 海洋侧“近海 / 大陆架”权重 [0,1]，0=远洋，1=靠近海岸/大陆架。
+     * 以当前世界坐标为锚点，获取所在超级大陆中心的整数 block 坐标。
      *
-     * 在海洋上：
-     *   - 越靠近大陆，值越接近 1；
-     *   - 远洋区域趋近 0。
-     * 在陆地上：
-     *   - 目前 WorldgenCore 里设置为 1（你也可以改成 0），
-     *     一般只在 !isLand 分支使用。
+     * @param worldX       世界方块 X
+     * @param worldZ       世界方块 Z
+     * @param worldSeedInt 由 getWorldSeedInt(world) 得到
+     * @return int[2] = {centerX, centerZ}；若当前位置不在任何超级大陆（superId=0），返回 null。
      */
-    public static double getShelfWeight(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null ? r.shelfWeight : 0.0;
+    public static int[] getSuperCenterXZAt(int worldX, int worldZ, int worldSeedInt) {
+        int superId = getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return null;
+        }
+        return WorldgenAPI.getSuperCenterXZ(superId, worldSeedInt);
     }
 
     /**
-     * 如果你在 chunk 内需要频繁访问，可以先拿到 tile 再做本地遍历。
-     * 注意：LandTile 内部数组顺序为 [z][x]。
+     * 根据 superId 和 worldSeedInt，返回该超级大陆的中心坐标。
      */
-    public static WorldgenAPI.LandTile getTileForChunk(int chunkX, int chunkZ, int worldSeedInt) {
-        return WorldgenAPI.getTileForChunk(chunkX, chunkZ, worldSeedInt);
+    public static int[] getSuperCenterXZById(int superId, int worldSeedInt) {
+        if (superId == 0) {
+            return null;
+        }
+        return WorldgenAPI.getSuperCenterXZ(superId, worldSeedInt);
     }
 
     /**
-     * 以当前世界坐标为锚点，获取所在板块的中心信息。
-     *
-     * 典型用途：
-     *   - 作为板块“河源区域”的参考点；
-     *   - 作为板块级结构 / 裂谷 / 高原布局的中心。
-     *
-     * 返回：
-     *   - PlateCenterInfo（含 plateId, superId, centerX/Z, radius），或 null（在海上或异常）。
+     * 根据 superId 和 worldSeedInt，返回该超级大陆的 baseRadius。
      */
-    public static PlateCenterInfo getPlateCenterAt(int worldX, int worldZ, int worldSeedInt) {
-        return PlateAPI.getPlateCenterAt(worldX, worldZ, worldSeedInt);
+    public static double getSuperBaseRadius(int superId, int worldSeedInt) {
+        if (superId == 0) {
+            return 0.0;
+        }
+        return WorldgenAPI.getSuperBaseRadius(superId, worldSeedInt);
     }
 
     /**
-     * 通过 plateId 获取板块中心。
+     * 3.2: TalosLandMask 包装 getLandMaskForChunk，供 ChunkProvider 使用。
      *
-     * 注意：
-     *   - 仅当之前调用过 getPlateCenterAt(...) 使对应 plateId 已被缓存时，才会返回非 null；
-     *   - 否则返回 null。
-     *
-     * 若你有代表性坐标，推荐优先使用 getPlateCenterAt(worldX,worldZ,worldSeedInt)。
+     * @param chunkX      区块坐标 X
+     * @param chunkZ      区块坐标 Z
+     * @param worldSeedInt 由 getWorldSeedInt(world) 得到
      */
-    public static PlateCenterInfo getPlateCenter(int plateId, int worldSeedInt) {
-        return PlateAPI.getPlateCenter(plateId, worldSeedInt);
+    public static LandMask16 getLandMaskForChunk(int chunkX, int chunkZ, int worldSeedInt) {
+        return WorldgenAPI.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
     }
 
     /**
-     * 以当前世界坐标为锚点，获取所在超级大陆中心信息。
+     * 3.4: cheap 的 isLand(x,z,seed) 包装。
+     *
+     * 和上面的 isLand(worldX,worldZ,seed) 的区别：
+     *   - isLand(...) 用的是带 tile 缓存 + 完整权重的 SampleResult；
+     *   - isLandCheap(...) 只做超级大陆多边形内外判定，不算权重，也不走 tile 层。
+     *
+     * 建议：
+     *   - 如果你已经有 chunk 的 LandMask16，就优先查 LandMask16；
+     *   - 只有在完全脱离 chunk 语境的零散点查询时，才直接用这个 cheap 版。
      */
-    public static SuperCenterInfo getSuperCenterAt(int worldX, int worldZ, int worldSeedInt) {
-        return PlateAPI.getSuperCenterAt(worldX, worldZ, worldSeedInt);
+    public static boolean isLandCheap(int worldX, int worldZ, int worldSeedInt) {
+        return WorldgenAPI.isLandCheap(worldX, worldZ, worldSeedInt);
     }
 
     /**
-     * 通过 superId 获取超级大陆中心。
-     *
-     * 同 getPlateCenter 的限制：只有在该 superId 已经通过
-     * getSuperCenterAt(...) 进入缓存后才会返回非 null。
+     * 面向 Minecraft 侧的采样结果封装，避免直接依赖 WorldgenAPI.SampleResult。
      */
-    public static SuperCenterInfo getSuperCenter(int superId, int worldSeedInt) {
-        return PlateAPI.getSuperCenter(superId, worldSeedInt);
-    }
+    public static final class Sample {
+        public final boolean isLand;
+        public final int plateId;
+        public final int superId;
 
-    /**
-     * 以“当前世界坐标所在板块”为基准，返回一个“大致外缘方向”向量：
-     *   - 定义：从超级大陆中心指向板块中心的方向（归一化）。
-     *   - 可用于：
-     *       * 河流大方向（从板块腹地指向外海）；
-     *       * 板块级地形趋势（山脉走向、风向等）的辅助参考。
-     *
-     * 若在海洋上 / 无法获取，则返回 (0,1)。
-     */
-    public static Direction2D getPlateOutflowDirAt(int worldX, int worldZ, int worldSeedInt) {
-        return PlateAPI.getPlateOutflowDirectionAt(worldX, worldZ, worldSeedInt);
-    }
+        public final double landWeight;
+        public final double coastWeight;
+        public final double edgeWeight;
+        public final double shelfWeight;
 
-    /**
-     * （可选）通过 plateId 直接拿外缘方向。
-     *
-     * 限制：
-     *   - 需要该 plateId 已经通过 getPlateCenterAt(...) 被缓存；
-     *   - 且对应 superId 也已通过 getSuperCenterAt(...) 缓存；
-     *   - 否则返回 (0,1)。
-     *
-     * 一般建议仍然优先使用 getPlateOutflowDirAt(worldX,worldZ,worldSeedInt)。
-     */
-    public static Direction2D getPlateOutflowDir(int plateId, int worldSeedInt) {
-        return PlateAPI.getPlateOutflowDirection(plateId, worldSeedInt);
+        private Sample(WorldgenAPI.SampleResult r) {
+            this.isLand = r.isLand;
+            this.plateId = r.plateId;
+            this.superId = r.superId;
+            this.landWeight = r.landWeight;
+            this.coastWeight = r.coastWeight;
+            this.edgeWeight = r.edgeWeight;
+            this.shelfWeight = r.shelfWeight;
+        }
     }
 }
