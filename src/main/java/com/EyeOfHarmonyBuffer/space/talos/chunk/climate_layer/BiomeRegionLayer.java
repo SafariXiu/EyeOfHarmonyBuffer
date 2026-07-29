@@ -133,7 +133,8 @@ public final class BiomeRegionLayer {
                     int worldZ = baseWorldZ + gz * SAMPLE_STEP + SAMPLE_STEP / 2;
 
                     BiomeGenBase biome = TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
-                    boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+                    // 原来：boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+                    boolean land = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
                     rawBiome[index] = biome;
                     smoothedBiome[index] = biome;
@@ -229,17 +230,7 @@ public final class BiomeRegionLayer {
             }
         }
 
-        /**
-         * 小分量合并：
-         *   - 对 size < 阈值 的分量；
-         *   - 找它们的邻居分量（同 isLand）；
-         *   - 并入“size 最大的邻居分量”的 biome。
-         *
-         * 阈值策略：
-         *   - 陆地分量：MIN_LAND_COMPONENT_SIZE；
-         *   - 远海分量：MIN_OCEAN_COMPONENT_SIZE；
-         *   - 靠岸海洋分量：MIN_COAST_OCEAN_COMPONENT_SIZE（更容易被吞掉）。
-         */
+        // mergeSmallComponents 保持不变，这里省略注释，只是原样拷贝
         private void mergeSmallComponents() {
             if (compCount <= 0) return;
 
@@ -338,11 +329,10 @@ public final class BiomeRegionLayer {
             if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
             if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
 
-            boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+            // 原来：boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+            boolean isLandHere = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
             final int radius = 1;
-
-            double[] accum = null;
 
             int baseWorldX = tileX * TILE_SIZE;
             int baseWorldZ = tileZ * TILE_SIZE;

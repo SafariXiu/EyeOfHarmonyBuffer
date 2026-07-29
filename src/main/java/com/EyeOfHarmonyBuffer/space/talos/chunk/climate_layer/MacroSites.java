@@ -102,7 +102,7 @@ public final class MacroSites {
         int ix = (int) Math.round(sx);
         int iz = (int) Math.round(sz);
 
-        boolean isLandSite = TalosLandMask.isLand(ix, iz, worldSeedInt);
+        boolean isLandSite = TalosLandMask.isLandCheap(ix, iz, worldSeedInt);
         ClimateLatitudes.Belt belt = ClimateLatitudes.getBelt(iz);
 
         List<MacroPackageId> candidates = MacroClimateConfig.getPackagesFor(isLandSite, belt);

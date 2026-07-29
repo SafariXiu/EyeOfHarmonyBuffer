@@ -106,7 +106,7 @@ public class MacroPackageLayer {
      *   - 小岛上的 block（isLandHere==true）仍然使用 landSites 的宏群系。
      */
     public MacroPackageId getMacroPackageIdAt(int x, int z) {
-        boolean isLandHere = TalosLandMask.isLand(x, z, worldSeedInt);
+        boolean isLandHere = TalosLandMask.isLandCheap(x, z, worldSeedInt);
 
         MacroSitesSeparated.Site landSite  = findLandOwnerSite(x, z);
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);
@@ -144,7 +144,7 @@ public class MacroPackageLayer {
      *   - 小岛上的 Biome 完全从陆宏包中选，岛内小块由上层 BiomeRegionLayer 再统一。
      */
     public BiomeGenBase getBiomeAt(int x, int z) {
-        boolean isLandHere = TalosLandMask.isLand(x, z, worldSeedInt);
+        boolean isLandHere = TalosLandMask.isLandCheap(x, z, worldSeedInt);
 
         MacroSitesSeparated.Site landSite  = findLandOwnerSite(x, z);
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);

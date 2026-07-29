@@ -98,7 +98,7 @@ public final class TalosRiverSystem {
             return RiverQueryResult.none();
         }
 
-        if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
+        if (!TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt)) {
             return RiverQueryResult.none();
         }
 

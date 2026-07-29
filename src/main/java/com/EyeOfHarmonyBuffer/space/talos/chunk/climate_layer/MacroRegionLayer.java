@@ -241,7 +241,7 @@ public final class MacroRegionLayer {
                     int worldZ = baseWorldZ + gz * SAMPLE_STEP + SAMPLE_STEP / 2;
 
                     MacroPackageId id = baseLayer.getMacroPackageIdAt(worldX, worldZ);
-                    boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+                    boolean land = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
                     rawPkg[index] = id;
                     smoothedPkg[index] = id;
@@ -434,7 +434,7 @@ public final class MacroRegionLayer {
             if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
             if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
 
-            boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+            boolean isLandHere = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
             final int radius = 1;
 

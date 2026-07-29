@@ -298,8 +298,6 @@ public class WorldgenAPI {
         int plateId = tile.plateId[localZ][localX];
         int superId = tile.superId[localZ][localX];
 
-        // 为了拿到连续权重，再调用一次原始采样。
-        // 这里可以进一步优化：如果需要的话，把权重也缓存进 tile。
         SampleResult raw = samplePointRaw(x, z, worldSeed);
 
         return new SampleResult(

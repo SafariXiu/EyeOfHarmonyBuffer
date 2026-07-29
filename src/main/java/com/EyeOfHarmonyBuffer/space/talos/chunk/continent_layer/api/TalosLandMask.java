@@ -40,14 +40,6 @@ public final class TalosLandMask {
     }
 
     /**
-     * 方便直接拿 bool 的 isLand。
-     */
-    public static boolean isLand(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null && r.isLand;
-    }
-
-    /**
      * 直接拿板块 ID。
      */
     public static int getPlateId(int worldX, int worldZ, int worldSeedInt) {

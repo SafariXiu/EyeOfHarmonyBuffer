@@ -47,7 +47,7 @@ public class CommandTalosHere extends CommandBase {
         double coastWeight = TalosLandMask.getCoastWeight(blockX, blockZ, worldSeedInt);
         double EdgeWeight = TalosLandMask.getEdgeWeight(blockX, blockZ, worldSeedInt);
 
-        boolean isLand = TalosLandMask.isLand(blockX, blockZ, worldSeedInt);
+        boolean isLand = TalosLandMask.isLandCheap(blockX, blockZ, worldSeedInt);
 
         String dimName = getDimensionName(world);
         String msgHeader = String.format(
