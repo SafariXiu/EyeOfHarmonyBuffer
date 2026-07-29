@@ -3,10 +3,10 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 import net.minecraft.world.World;
 
 /**
- * Talos 海陆 / 板块 掩码统一入口。
+ * Talos 海陆 / 板块 掩码的 Minecraft 侧统一入口。
  *
- * 所有 Minecraft 侧代码（chunk 生成、群系、结构、装饰等）应只通过这里访问，
- * 以保证和 ChunkProviderTalos2 / WorldChunkManagerTalos2 完全一致。
+ * 所有 Minecraft 端代码（chunk 生成、群系、结构、装饰等）应只通过这里访问，
+ * 以保证和 ChunkProviderTalos2 / WorldChunkManagerTalos2 的行为完全一致。
  */
 
 public final class TalosLandMask {
@@ -22,58 +22,49 @@ public final class TalosLandMask {
     }
 
     /**
-     * 使用 tile 缓存进行单点采样（推荐的统一接口）：
-     *   - worldX, worldZ: 世界方块坐标
-     *   - worldSeedInt: 由 getWorldSeedInt(world) 得到
+     * 单点采样的推荐入口（使用 WorldgenAPI.samplePointTiled，目前等价于 samplePointRaw）。
+     *
+     * @param worldX       世界方块坐标 X
+     * @param worldZ       世界方块坐标 Z
+     * @param worldSeedInt 由 getWorldSeedInt(world) 得到的 int 种子
      */
     public static WorldgenAPI.SampleResult sample(int worldX, int worldZ, int worldSeedInt) {
         return WorldgenAPI.samplePointTiled(worldX, worldZ, worldSeedInt);
     }
 
     /**
-     * 面向上层的完整采样接口，返回 TalosLandMask.Sample，
-     * 内部通过 WorldgenAPI.samplePointTiled 实现。
+     * 面向上层的完整采样封装，避免直接依赖 WorldgenAPI.SampleResult。
      */
     public static Sample sampleFull(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = WorldgenAPI.samplePointTiled(worldX, worldZ, worldSeedInt);
         return (r != null) ? new Sample(r) : null;
     }
 
-    /**
-     * 直接拿板块 ID。
-     */
+    /** 直接拿某点的板块 ID。 */
     public static int getPlateId(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.plateId : 0;
     }
 
-    /**
-     * 直接拿超级大陆 ID。
-     */
+    /** 直接拿某点的超级大陆 ID。 */
     public static int getSuperId(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.superId : 0;
     }
 
-    /**
-     * 连续陆地权重 [0,1]
-     */
+    /** 连续陆地权重 [0,1]。 */
     public static double getLandWeight(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.landWeight : 0.0;
     }
 
-    /**
-     * 海岸带权重 [0,1]
-     */
+    /** 海岸带权重 [0,1]。 */
     public static double getCoastWeight(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.coastWeight : 0.0;
     }
 
-    /**
-     * 宏观边缘权重 [0,1]，0=超级大陆中心，1=外缘
-     */
+    /** 宏观边缘权重 [0,1]，0 = 超级大陆中心，1 = 外缘。 */
     public static double getEdgeWeight(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.edgeWeight : 0.0;
@@ -82,10 +73,7 @@ public final class TalosLandMask {
     /**
      * 以当前世界坐标为锚点，获取所在超级大陆中心的整数 block 坐标。
      *
-     * @param worldX       世界方块 X
-     * @param worldZ       世界方块 Z
-     * @param worldSeedInt 由 getWorldSeedInt(world) 得到
-     * @return int[2] = {centerX, centerZ}；若当前位置不在任何超级大陆（superId=0），返回 null。
+     * @return int[2] = {centerX, centerZ}；若当前位置不在任何超级大陆（superId=0），返回 null
      */
     public static int[] getSuperCenterXZAt(int worldX, int worldZ, int worldSeedInt) {
         int superId = getSuperId(worldX, worldZ, worldSeedInt);
@@ -95,9 +83,7 @@ public final class TalosLandMask {
         return WorldgenAPI.getSuperCenterXZ(superId, worldSeedInt);
     }
 
-    /**
-     * 根据 superId 和 worldSeedInt，返回该超级大陆的中心坐标。
-     */
+    /** 根据 superId 和 worldSeedInt，返回该超级大陆的中心坐标。 */
     public static int[] getSuperCenterXZById(int superId, int worldSeedInt) {
         if (superId == 0) {
             return null;
@@ -105,9 +91,7 @@ public final class TalosLandMask {
         return WorldgenAPI.getSuperCenterXZ(superId, worldSeedInt);
     }
 
-    /**
-     * 根据 superId 和 worldSeedInt，返回该超级大陆的 baseRadius。
-     */
+    /** 根据 superId 和 worldSeedInt，返回该超级大陆的 baseRadius。 */
     public static double getSuperBaseRadius(int superId, int worldSeedInt) {
         if (superId == 0) {
             return 0.0;
@@ -116,10 +100,10 @@ public final class TalosLandMask {
     }
 
     /**
-     * 3.2: TalosLandMask 包装 getLandMaskForChunk，供 ChunkProvider 使用。
+     * 为某个 chunk 获取 16×16 的 LandMask16，给 ChunkProvider 使用。
      *
-     * @param chunkX      区块坐标 X
-     * @param chunkZ      区块坐标 Z
+     * @param chunkX       区块坐标 X
+     * @param chunkZ       区块坐标 Z
      * @param worldSeedInt 由 getWorldSeedInt(world) 得到
      */
     public static LandMask16 getLandMaskForChunk(int chunkX, int chunkZ, int worldSeedInt) {
@@ -129,20 +113,20 @@ public final class TalosLandMask {
     /**
      * 3.4: cheap 的 isLand(x,z,seed) 包装。
      *
-     * 和上面的 isLand(worldX,worldZ,seed) 的区别：
-     *   - isLand(...) 用的是带 tile 缓存 + 完整权重的 SampleResult；
-     *   - isLandCheap(...) 只做超级大陆多边形内外判定，不算权重，也不走 tile 层。
+     * 区别：
+     *   - 普通 sample(...)：返回完整 SampleResult，带连续权重；
+     *   - isLandCheap(...)：只看是否在超级大陆多边形内，不算权重，也不走 tile 层。
      *
      * 建议：
      *   - 如果你已经有 chunk 的 LandMask16，就优先查 LandMask16；
-     *   - 只有在完全脱离 chunk 语境的零散点查询时，才直接用这个 cheap 版。
+     *   - 完全脱离 chunk 语境的零散点查询，再用这个 cheap 版。
      */
     public static boolean isLandCheap(int worldX, int worldZ, int worldSeedInt) {
         return WorldgenAPI.isLandCheap(worldX, worldZ, worldSeedInt);
     }
 
     /**
-     * 面向 Minecraft 侧的采样结果封装，避免直接依赖 WorldgenAPI.SampleResult。
+     * Minecraft 侧使用的采样结果封装，避免直接依赖 WorldgenAPI.SampleResult。
      */
     public static final class Sample {
         public final boolean isLand;

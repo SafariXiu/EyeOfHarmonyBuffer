@@ -33,7 +33,7 @@ public final class TectonicWorld {
 
     private final long worldSeed;
 
-    /** (cellX,cellZ) → Supercontinent 的简单缓存 */
+    /** (cellX,cellZ) → Supercontinent 的缓存。 */
     private final Map<Long, Supercontinent> continentCache =
         new HashMap<Long, Supercontinent>();
 
@@ -41,10 +41,16 @@ public final class TectonicWorld {
         this.worldSeed = worldSeed;
     }
 
+    /**
+     * 将 (cellX, cellZ) 打包成 long 作为 continentCache 的 key。
+     */
     private static long packCellKey(int cellX, int cellZ) {
         return (((long) cellX) << 32) ^ (cellZ & 0xFFFFFFFFL);
     }
 
+    /**
+     * 获取指定超级单元格的 Supercontinent，不存在则构造一个并放入缓存。
+     */
     private Supercontinent getSupercontinent(int cellX, int cellZ) {
         long key = packCellKey(cellX, cellZ);
         Supercontinent sc = continentCache.get(key);
@@ -55,6 +61,9 @@ public final class TectonicWorld {
         return sc;
     }
 
+    /**
+     * 将世界 block 坐标转换为超级单元格坐标 (cellX, cellZ)。
+     */
     private int[] getCellCoords(int blockX, int blockZ) {
         int cellX = TectonicMath.floorDiv(blockX, TectonicConfig.SUPER_CELL_SIZE);
         int cellZ = TectonicMath.floorDiv(blockZ, TectonicConfig.SUPER_CELL_SIZE);
@@ -62,8 +71,8 @@ public final class TectonicWorld {
     }
 
     /**
-     * 给定点所属的大致候选 cell 列表（自身 + 八邻居）。
-     * 目前采用 3×3，后续如果要做“最近超级大陆”之类全局查询，可以扩成 5×5。
+     * 给定点所属的大致候选 cell 列表（自身 + 八邻居），用于搜索最近 Supercontinent。
+     * 目前采用 3×3，若以后需要更大范围的“全局最近大陆”搜索，可以扩成 5×5。
      */
     private void candidateCellsForPoint(int blockX, int blockZ, int[][] outCells, int[] outCount) {
         int[] cell = getCellCoords(blockX, blockZ);
@@ -82,21 +91,21 @@ public final class TectonicWorld {
     }
 
     /**
-     * 在附近若干超级单元中，找到“海岸有符号距离绝对值最小”的那个超级大陆，
-     * 并返回对应的 Supercontinent。
+     * 在附近若干超级单元中，找到“最近”的超级大陆，并返回该点相对该超大陆
+     * 的有符号海岸距离 signedCoastDistance。
      *
-     * signedCoastDistance:
-     *   - >0：当前点在该超大陆内部，数值为到海岸折线的距离；
-     *   - <0：当前点在该超大陆外部，数值为到海岸折线距离 + 负号；
-     *   - 绝对值越小，离海岸越近。
+     * 几何定义：
+     *   - 对每个候选超级大陆，计算 d = r - R(theta)；
+     *   - 选取 |d| 最小的那个作为“概念上最近”的超级大陆；
+     *   - outSignedCoastDistance[0] = 该超级大陆下的 d。
      */
     private Supercontinent findNearestSupercontinent(int blockX, int blockZ, double[] outSignedCoastDistance) {
         int[][] cells = new int[9][2];
         int[] n = new int[1];
         candidateCellsForPoint(blockX, blockZ, cells, n);
 
-        double bestAbsDist = Double.POSITIVE_INFINITY;
-        boolean bestInside = false;
+        double bestAbsSigned = Double.POSITIVE_INFINITY;
+        double bestSigned = 0.0;
         Supercontinent bestSc = null;
 
         for (int i = 0; i < n[0]; i++) {
@@ -104,19 +113,13 @@ public final class TectonicWorld {
             int cz = cells[i][1];
             Supercontinent sc = getSupercontinent(cx, cz);
 
-            double dist = sc.distanceToCoast(blockX, blockZ); // 总是非负
-            boolean inside = sc.pointInside(blockX, blockZ);
-
-            double signed = inside ? dist : -dist;
+            double signed = sc.signedCoastDistanceRadial(blockX, blockZ);
             double absSigned = Math.abs(signed);
 
-            if (absSigned < bestAbsDist) {
-                bestAbsDist = absSigned;
-                bestInside = inside;
+            if (absSigned < bestAbsSigned) {
+                bestAbsSigned = absSigned;
+                bestSigned = signed;
                 bestSc = sc;
-                if (outSignedCoastDistance != null && outSignedCoastDistance.length > 0) {
-                    outSignedCoastDistance[0] = signed;
-                }
             }
         }
 
@@ -127,10 +130,8 @@ public final class TectonicWorld {
             return null;
         }
 
-        // 重新写回“最佳”那一个的符号距离
         if (outSignedCoastDistance != null && outSignedCoastDistance.length > 0) {
-            double sign = bestInside ? 1.0 : -1.0;
-            outSignedCoastDistance[0] = sign * bestAbsDist;
+            outSignedCoastDistance[0] = bestSigned;
         }
 
         return bestSc;
@@ -147,7 +148,6 @@ public final class TectonicWorld {
         Supercontinent sc = findNearestSupercontinent(blockX, blockZ, signedCoast);
 
         if (sc == null) {
-            // 没有任何超级大陆（理论上不会发生），视为深海
             return new TectonicLandSample(
                 blockX, blockZ,
                 LandType.OCEAN,
@@ -161,16 +161,14 @@ public final class TectonicWorld {
             );
         }
 
-        boolean inside = sc.pointInside(blockX, blockZ);
+        double coastSigned = signedCoast[0];
+        boolean inside = (coastSigned <= 0.0);
         LandType landType = inside ? LandType.SUPERCONTINENT : LandType.OCEAN;
 
-        double coastSigned = signedCoast[0];
         double absCoastDist = Math.abs(coastSigned);
 
-        // 径向中心度：只在陆地上有意义
         double radial = inside ? sc.radialCenterward(blockX, blockZ) : 0.0;
 
-        // 海岸带权重（陆地侧）
         double coastBand;
         if (inside) {
             double t = 1.0 - absCoastDist / TectonicConfig.WCOAST_DEFAULT;
@@ -179,7 +177,6 @@ public final class TectonicWorld {
             coastBand = 0.0;
         }
 
-        // 大陆架带权重（海洋侧）
         double shelfBand;
         if (!inside) {
             double tShelf = 1.0 - absCoastDist / TectonicConfig.WSHELF_DEFAULT;
@@ -188,7 +185,6 @@ public final class TectonicWorld {
             shelfBand = 0.0;
         }
 
-        // 板块 ID + 边界粗权重（即 V1 文档里的“plateBoundaryProximity”的简化版）
         PlateId plateId = sc.getPlateIdForPoint(blockX, blockZ);
         double boundaryWeight = sc.getPlateBoundaryWeight(blockX, blockZ);
 
@@ -220,14 +216,12 @@ public final class TectonicWorld {
         int x1 = x0 + 15;
         int z1 = z0 + 15;
 
-        // 到 AABB 的最近点
         double nearestX = clamp(cx, x0, x1);
         double nearestZ = clamp(cz, z0, z1);
         double dxMin = nearestX - cx;
         double dzMin = nearestZ - cz;
         double minDist = Math.hypot(dxMin, dzMin);
 
-        // 四角的最大距离
         double dx0z0 = x0 - cx;
         double dz0z0 = z0 - cz;
         double dx1z0 = x1 - cx;
@@ -334,6 +328,9 @@ public final class TectonicWorld {
         return new int[]{cx, cz};
     }
 
+    /**
+     * 返回某个超级大陆的 baseRadius，id 无效时返回 0。
+     */
     public double getSuperBaseRadius(SupercontinentId id) {
         Supercontinent sc = getSupercontinentById(id);
         if (sc == null) return 0.0;
@@ -344,7 +341,7 @@ public final class TectonicWorld {
      * 仅做“是否为陆地”的快速判断：
      *   - 不计算海岸 / 大陆架权重；
      *   - 不计算板块 / 边界权重；
-     *   - 只看点是否在最近超级大陆的多边形内部。
+     *   - 只看点是否在最近超级大陆轮廓内部（signedCoastDistance <= 0）。
      */
     public boolean isLandFast(int blockX, int blockZ) {
         double[] signedCoast = new double[1];
@@ -352,6 +349,6 @@ public final class TectonicWorld {
         if (sc == null) {
             return false;
         }
-        return sc.pointInside(blockX, blockZ);
+        return signedCoast[0] <= 0.0;
     }
 }

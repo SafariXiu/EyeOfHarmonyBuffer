@@ -66,15 +66,6 @@ public class WorldgenAPI {
             this.shelfWeight = shelfWeight;
         }
 
-        /** 兼容旧调用：默认陆地=1.0，海洋=0.0，海岸/边缘/大陆架=0.0 */
-        public SampleResult(boolean isLand, int plateId, int superId) {
-            this(isLand, plateId, superId,
-                isLand ? 1.0 : 0.0,
-                0.0,
-                0.0,
-                0.0);
-        }
-
         @Override
         public String toString() {
             return String.format(
@@ -83,8 +74,6 @@ public class WorldgenAPI {
             );
         }
     }
-
-    // ---------- TectonicWorld 缓存（按 worldSeed） ----------
 
     private static final Long2ObjectOpenHashMap<TectonicWorld> TECTONIC_CACHE =
         new Long2ObjectOpenHashMap<TectonicWorld>();
@@ -98,7 +87,6 @@ public class WorldgenAPI {
         TectonicWorld tw = TECTONIC_CACHE.get(key);
         if (tw != null) return tw;
 
-        // 简单容量控制：超过一定数量直接清空（世界通常只有一个）
         if (TECTONIC_CACHE.size() > 16) {
             TECTONIC_CACHE.clear();
         }
@@ -107,8 +95,6 @@ public class WorldgenAPI {
         TECTONIC_CACHE.put(key, tw);
         return tw;
     }
-
-    // ---------- 单点原始采样（不经过 tile 缓存） ----------
 
     /**
      * 第一层原始地形采样（不带 tile 缓存）：
@@ -138,16 +124,12 @@ public class WorldgenAPI {
             plateId = pid.toInt();
         }
 
-        // landWeight：用 radialCenterward 表示“大陆腹地程度”
         double landWeight = isLand ? s.radialCenterward : 0.0;
 
-        // coastWeight：用 coastBand
         double coastWeight = isLand ? s.coastBand : 0.0;
 
-        // shelfWeight：海洋侧用 shelfBand
         double shelfWeight = !isLand ? s.shelfBand : 0.0;
 
-        // edgeWeight：中心 0，外缘 1，这里简单用 (1 - radialCenterward)
         double edgeWeight = isLand ? (1.0 - s.radialCenterward) : 0.0;
 
         return new SampleResult(
@@ -201,9 +183,9 @@ public class WorldgenAPI {
         public final int tileZ;
         public final int size;
 
-        public final boolean[][] isLand; // [size][size]
-        public final int[][] plateId;    // [size][size]
-        public final int[][] superId;    // [size][size]
+        public final boolean[][] isLand;
+        public final int[][] plateId;
+        public final int[][] superId;
 
         public LandTile(int tileX, int tileZ, int size) {
             this.tileX = tileX;
@@ -228,6 +210,7 @@ public class WorldgenAPI {
     /**
      * 根据一个世界坐标点 (x,z) 和 seed，获取或构建对应的 LandTile。
      */
+    @Deprecated
     private static LandTile getOrBuildTileForPoint(int x, int z, int worldSeed) {
         int tileX = Math.floorDiv(x, TILE_SIZE);
         int tileZ = Math.floorDiv(z, TILE_SIZE);
@@ -280,35 +263,16 @@ public class WorldgenAPI {
     }
 
     /**
-     * 使用 Tile 缓存进行单点采样：
-     *   - 若对应 tile 尚未生成，则会先构建整块 TILE_SIZE x TILE_SIZE；
-     *   - 后续相同 tile 内的 isLand / plateId / superId 查询皆为 O(1) 数组访问；
-     *   - 权重部分（landWeight / coastWeight / edgeWeight / shelfWeight）
-     *     目前仍然通过 samplePointRaw 单点算一次。
+     * 使用“轻量封装”的单点采样。
      *
-     * 以后如果发现权重查询也特别密集，可以扩展 LandTile 把权重也缓存进去。
+     * 注意：短期内为了性能，已经不再使用 256x256 的 LandTile 预计算，
+     * 直接退回到 samplePointRaw。
+     *
+     * 如果以后需要重新启用 tile 缓存，请先评估对 TectonicWorld.sampleBlock
+     * 的调用量。
      */
     public static SampleResult samplePointTiled(int x, int z, int worldSeed) {
-        LandTile tile = getOrBuildTileForPoint(x, z, worldSeed);
-
-        int localX = Math.floorMod(x, TILE_SIZE);
-        int localZ = Math.floorMod(z, TILE_SIZE);
-
-        boolean isLand = tile.isLand[localZ][localX];
-        int plateId = tile.plateId[localZ][localX];
-        int superId = tile.superId[localZ][localX];
-
-        SampleResult raw = samplePointRaw(x, z, worldSeed);
-
-        return new SampleResult(
-            isLand,
-            plateId,
-            superId,
-            raw.landWeight,
-            raw.coastWeight,
-            raw.edgeWeight,
-            raw.shelfWeight
-        );
+        return samplePointRaw(x, z, worldSeed);
     }
 
     /**
@@ -322,6 +286,7 @@ public class WorldgenAPI {
      * @return 覆盖该 chunk 左上角的 LandTile（通常 1 个 tile 足够，
      *         如果 chunk 跨 tile 边界，可以自行根据 worldX/worldZ 再调用 getOrBuildTileForPoint）
      */
+    @Deprecated
     public static LandTile getTileForChunk(int chunkX, int chunkZ, int worldSeed) {
         int worldX0 = chunkX * 16;
         int worldZ0 = chunkZ * 16;
@@ -375,8 +340,6 @@ public class WorldgenAPI {
         TectonicWorld world = getTectonicWorld(worldSeed);
         return world.buildLandMaskForChunk(chunkX, chunkZ);
     }
-
-    // ========== 3.4: cheap 的 isLand(x,z,seed) ==========
 
     /**
      * 3.4: cheap 的 isLand(x,z,seed)

@@ -5,13 +5,24 @@ public final class TalosSeafloorShaper {
     private TalosSeafloorShaper() {}
 
     /**
-     * 规则（shelfWeight: w）：
+     * 根据 shelfWeight 对海底高度做“大陆架”塑形。
      *
-     *   1) 1.0 >= w >= 0.8   → 海平面-1 逐渐过渡到 海平面-4
-     *   2) 0.8 >  w >= 0.7   → 在 海平面-4 与 海平面-16 之间插值
-     *   3) 0.7 >  w >= 0.1   → 恒定 海平面-16（大陆架）
-     *   4) 0.1 >  w >= 0.05  → 在 海平面-16 与 原始地形 之间插值
-     *   5) w <  0.05         → 原始地形（不处理）
+     * 规则（shelfWeight = w）大致为：
+     *
+     *   1) 1.0 >= w >= 0.8   → 近岸浅海：从 海平面-1 过渡到 海平面-4；
+     *   2) 0.8 >  w >= 0.7   → 由 海平面-4 过渡到 海平面-16；
+     *   3) 0.7 >  w >= 0.1   → 恒定 海平面-16（大陆架平台）；
+     *   4) 0.1 >  w >= 0.05  → 在 海平面-16 与 原始地形 之间平滑插值；
+     *   5) w <  0.05         → 保留原始地形（远洋不处理）。
+     *
+     * 对陆地 isLand=true 的位置，只做简单的“海平面以下截断”，不会抬高陆地。
+     *
+     * @param seaLevel         世界海平面 Y
+     * @param isLand           是否为陆地（为 true 时不会做海底塑形）
+     * @param shelfWeight      海洋侧大陆架权重 [0,1]
+     * @param rawTerrainHeight 原始地形高度（未考虑海平面的噪声高度）
+     * @param worldHeight      世界高度上限（用于 clamp）
+     * @return 调整后的海底 / 地表 Y 值
      */
     public static int computeSeabedY(
         int seaLevel,

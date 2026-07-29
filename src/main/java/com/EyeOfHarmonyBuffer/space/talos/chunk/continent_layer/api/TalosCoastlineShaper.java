@@ -5,12 +5,19 @@ public final class TalosCoastlineShaper {
     private TalosCoastlineShaper() {}
 
     /**
-     * 根据 coastWeight 对高度做三段式海岸压制：
-     *   - 0 < w <= 0.33: 保持原高度；
-     *   - 0.33 < w <= 0.66: 在原高度和 seaLevel 之间平滑插值；
-     *   - w > 0.66: 压到 seaLevel（只压低，不抬高）。
+     * 根据 coastWeight 对陆地高度做三段式海岸压制：
+     *
+     *   - 0    < w <= 0.33: 基本保持原高度；
+     *   - 0.33 < w <= 0.66: 在原高度和 seaLevel 之间平滑插值（渐进削低）；
+     *   - w    > 0.66     : 强行压到 seaLevel（只压低，不抬高）。
      *
      * 只作用在陆地且高于海平面的区域。
+     *
+     * @param height      原始高度
+     * @param seaLevel    海平面高度
+     * @param isLand      是否为陆地
+     * @param coastWeight 海岸带权重 [0,1]
+     * @return 调整后的高度
      */
     public static double applyCoastlineShaping(
         double height,
