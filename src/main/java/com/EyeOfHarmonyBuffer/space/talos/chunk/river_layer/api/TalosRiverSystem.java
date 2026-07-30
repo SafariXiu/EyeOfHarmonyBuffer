@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
@@ -43,7 +45,7 @@ public final class TalosRiverSystem {
 
     private static final double SOURCE_PROGRESS_MAX = 0.04; // 上游 4% 视为源头段
     private static final double SOURCE_RADIUS_MULT  = 2.0;  // 源头影响范围 = 2 × channelRadius
-    public static double SUPERCONTINENT_RIVER_SCALE = 6.5;
+    public static double SUPERCONTINENT_RIVER_SCALE = 1.5;
 
     private TalosRiverSystem() {}
 
@@ -52,7 +54,7 @@ public final class TalosRiverSystem {
      * 必须与 TalosLandMask.getWorldSeedInt 保持一致写法。
      */
     public static int getWorldSeedInt(World world) {
-        return (int) (world.getSeed() & 0x7FFFFFFFL);
+        return TalosLandMask.getWorldSeedInt(world);
     }
 
     /**
@@ -403,7 +405,6 @@ public final class TalosRiverSystem {
         RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
 
         if (!r.affected) {
-            // 无河影响时，riverType 设为 null，source/mouth/progress 设为“无意义默认值”
             return new HydroSample(
                 Double.MAX_VALUE,
                 0.0, 0.0, 0.0,
@@ -592,7 +593,6 @@ public final class TalosRiverSystem {
         RiverSegment bestSeg = null;
         RiverQuery.SegmentProjection bestProj = null;
 
-        // === 全局最近段搜索 ===
         for (RiverSegment s : sys.segments) {
             RiverQuery.SegmentProjection p = RiverQuery.projectToSegment(
                 sampleX, sampleZ,
@@ -658,5 +658,121 @@ public final class TalosRiverSystem {
     /** 水文场：河影响掩码（陆地 + 海洋统一视角）。 */
     public static double getHydroMask(int worldX, int worldZ, int worldSeedInt) {
         return sampleHydroField(worldX, worldZ, worldSeedInt).mask;
+    }
+
+    public enum EndpointKind {
+        SOURCE,
+        MOUTH
+    }
+
+    /** 对外暴露的、与实现无关的“河流端点”结构。 */
+    public static final class RiverEndpoint {
+        /** 当前超级大陆 ID */
+        public final int superId;
+        /** 对应 RVR2 edgeId（可以视作 riverId） */
+        public final int riverId;
+        /**
+         * 河级：0 = 主河，1 = 一级支流，2 = 二级支流
+         * （用来 debug 或者以后排序）
+         */
+        public final int riverLevel;
+        /** 端点类型：true=源头, false=河口 */
+        public final boolean isSource;
+        /** 端点世界坐标 */
+        public final double x;
+        public final double z;
+
+        public RiverEndpoint(int superId,
+                             int riverId,
+                             int riverLevel,
+                             boolean isSource,
+                             double x,
+                             double z) {
+            this.superId = superId;
+            this.riverId = riverId;
+            this.riverLevel = riverLevel;
+            this.isSource = isSource;
+            this.x = x;
+            this.z = z;
+        }
+    }
+
+    public static java.util.List<RiverEndpoint> listEndpointsOnCurrentSupercontinent(
+        int worldX, int worldZ,
+        int worldSeedInt,
+        java.util.EnumSet<EndpointKind> kinds
+    ) {
+        java.util.List<RiverEndpoint> result = new java.util.ArrayList<RiverEndpoint>();
+
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return result;
+        }
+
+        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+        if (info == null) {
+            return result;
+        }
+
+        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
+        if (templateId == null) {
+            return result;
+        }
+
+        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
+        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
+            worldSeedInt,
+            info,
+            templateId,
+            scaleFactor
+        );
+        if (sys == null || sys.network == null) {
+            return result;
+        }
+
+        java.util.List<RiverEdgeData> edges = sys.network.getEdges();
+        if (edges == null || edges.isEmpty()) {
+            return result;
+        }
+
+        for (RiverEdgeData e : edges) {
+            java.util.List<RiverPoint> pts = e.getPoints();
+            if (pts == null || pts.size() < 2) continue;
+
+            int riverLevel = 0;
+            if (e.getType() != null) {
+                switch (e.getType()) {
+                    case MAIN:    riverLevel = 0; break;
+                    case BRANCH1: riverLevel = 1; break;
+                    case BRANCH2: riverLevel = 2; break;
+                }
+            }
+
+            if (e.hasSource() && kinds.contains(EndpointKind.SOURCE)) {
+                RiverPoint p0 = pts.get(0);
+                result.add(new RiverEndpoint(
+                    superId,
+                    e.getId(),
+                    riverLevel,
+                    true,
+                    p0.getX(),
+                    p0.getZ()
+                ));
+            }
+
+            if (e.hasMouth() && kinds.contains(EndpointKind.MOUTH)) {
+                RiverPoint pn = pts.get(pts.size() - 1);
+                result.add(new RiverEndpoint(
+                    superId,
+                    e.getId(),
+                    riverLevel,
+                    false,
+                    pn.getX(),
+                    pn.getZ()
+                ));
+            }
+        }
+
+        return java.util.Collections.unmodifiableList(result);
     }
 }

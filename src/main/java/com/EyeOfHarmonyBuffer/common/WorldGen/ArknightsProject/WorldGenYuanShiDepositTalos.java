@@ -50,6 +50,10 @@ public class WorldGenYuanShiDepositTalos {
             }
         }
 
+        if (minY <= 64) {
+            return false;
+        }
+
         return (maxY - minY) <= 2;
     }
 

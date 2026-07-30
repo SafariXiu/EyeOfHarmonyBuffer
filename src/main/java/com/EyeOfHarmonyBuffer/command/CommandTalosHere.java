@@ -42,7 +42,6 @@ public class CommandTalosHere extends CommandBase {
         int worldSeedInt = TalosLandMask.getWorldSeedInt(world);
 
         TalosLandMask.Sample sample = TalosLandMask.sampleFull(blockX, blockZ, worldSeedInt);
-
         if (sample == null) {
             String dimName = getDimensionName(world);
             String msgHeader = String.format(

@@ -113,24 +113,21 @@ public class WorldgenAPI {
         boolean isLand = (s.landType == LandType.SUPERCONTINENT);
 
         int superId = 0;
-        if (s.supercontinentId != null) {
+        if (isLand && s.supercontinentId != null) {
             SupercontinentId sid = s.supercontinentId;
             superId = sid.toInt();
         }
 
         int plateId = 0;
-        if (s.plateId != null) {
+        if (isLand && s.plateId != null) {
             PlateId pid = s.plateId;
             plateId = pid.toInt();
         }
 
-        double landWeight = isLand ? s.radialCenterward : 0.0;
-
-        double coastWeight = isLand ? s.coastBand : 0.0;
-
-        double shelfWeight = !isLand ? s.shelfBand : 0.0;
-
-        double edgeWeight = isLand ? (1.0 - s.radialCenterward) : 0.0;
+        double landWeight  = isLand ? s.radialCenterward : 0.0;
+        double coastWeight = isLand ? s.coastBand        : 0.0;
+        double shelfWeight = !isLand ? s.shelfBand       : 0.0;
+        double edgeWeight  = isLand ? (1.0 - s.radialCenterward) : 0.0;
 
         return new SampleResult(
             isLand,
@@ -142,8 +139,6 @@ public class WorldgenAPI {
             shelfWeight
         );
     }
-
-    // ---------- Tile 级缓存结构 ----------
 
     /**
      * 每个 Tile 的边长（以方块为单位）

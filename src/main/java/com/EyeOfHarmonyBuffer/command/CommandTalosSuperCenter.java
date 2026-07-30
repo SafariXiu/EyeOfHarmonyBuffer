@@ -47,11 +47,11 @@ public class CommandTalosSuperCenter extends CommandBase {
             return;
         }
 
-        int[] center = TalosLandMask.getSuperCenterXZAt(px, pz, worldSeedInt);
+        int[] center = TalosLandMask.getSuperCenterXZById(superId, worldSeedInt);
         if (center == null) {
             sender.addChatMessage(new ChatComponentText(
                 String.format(
-                    "在当前坐标附近无法获取超级大陆中心信息（superId=%d，可能当前位置在海洋或数据异常）。",
+                    "无法获取超级大陆中心信息（superId=%d，可能数据异常）。",
                     superId
                 )
             ));
