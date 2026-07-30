@@ -74,9 +74,9 @@ public final class TalosRiverCarver {
                 int worldX = worldX0 + localX;
                 int worldZ = worldZ0 + localZ;
 
-                if (landMask == null || !landMask.get(localX, localZ)) {
+                /*if (landMask == null || !landMask.get(localX, localZ)) {.
                     continue;
-                }
+                }*/
 
                 TalosRiverSystem.HydroSample hydro =
                     TalosRiverSystem.sampleHydroField(worldX, worldZ, worldSeedInt);

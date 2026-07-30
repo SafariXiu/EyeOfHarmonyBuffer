@@ -110,7 +110,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int worldX0 = chunkX * CHUNK_SIZE;
         final int worldZ0 = chunkZ * CHUNK_SIZE;
 
-        // ① 每个 chunk 生成一次 16×16 的 LandMask16
         final LandMask16 landMask = TalosLandMask.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
 
         double[][] blurredBank = null;
@@ -135,8 +134,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     (landSample != null ? landSample.coastWeight : 0.0);
                 final double shelfWeight =
                     (landSample != null ? landSample.shelfWeight : 0.0);
-
-                // === 基础高度场 + 河岸 + 海岸线 ===
 
                 double baseHeightD = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel
@@ -175,8 +172,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     h = worldHeight - 2;
                 }
 
-                // === 方块填充 ===
-
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
                 meta[bedrockIndex] = 0;
@@ -203,9 +198,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 } else {
                     int seabedY = TalosSeafloorShaper.computeSeabedY(
                         seaLevel,
-                        false,              // isLand = false
+                        false,
                         shelfWeight,
-                        coastShapedHeightD, // 传入河流+海岸线后的高度场
+                        coastShapedHeightD,
                         worldHeight
                     );
 

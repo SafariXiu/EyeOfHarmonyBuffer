@@ -66,6 +66,14 @@ public final class SupercontinentRiverSystemRegistry {
         RiverNetwork instantiated = TemplateInstantiator.buildNetworkForSupercontinent(
             tpl, info, scaleFactor
         );
+
+        double bufferLenBlocks = 20.0;
+        RiverNetwork clipped = CoastClipper.clipNetworkAtCoast(
+            instantiated,
+            worldSeedInt,
+            bufferLenBlocks
+        );
+
         RiverSystem built = RiverSystem.buildFromNetwork(instantiated);
         SYSTEMS.put(k, built);
         return built;

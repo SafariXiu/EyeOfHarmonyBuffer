@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
+import org.jetbrains.annotations.Nullable;
 
 public final class RiverQuery {
 
@@ -133,6 +134,21 @@ public final class RiverQuery {
         return t * t * (3.0 - 2.0 * t);
     }
 
+    private static double typeWeight(@Nullable RiverType type) {
+        if (type == null) {
+            return 1.0;
+        }
+        switch (type) {
+            case MAIN:
+                return 2.0;
+            case BRANCH1:
+                return 1.2;
+            case BRANCH2:
+            default:
+                return 1.0;
+        }
+    }
+
     public static RiverQueryResult query(
         RiverSpatialIndex index,
         double worldX, double worldZ
@@ -145,15 +161,16 @@ public final class RiverQuery {
             return RiverQueryResult.none();
         }
 
-        double bestDistSq = Double.POSITIVE_INFINITY;
-        RiverSegment bestSeg = null;
-        double bestSegmentT = 0.0;
+        RiverSegment dominantSeg = null;
+        double dominantT = 0.0;
+        double dominantDistSq = Double.POSITIVE_INFINITY;
+        double dominantClosestX = 0.0;
+        double dominantClosestZ = 0.0;
+
+        double dominantScore = -1.0;
 
         double bestChannelInfluence = 0.0;
         double bestTerrainInfluence = 0.0;
-
-        double bestClosestX = 0.0;
-        double bestClosestZ = 0.0;
 
         for (RiverSegment s : candidates) {
             SegmentProjection p = projectToSegment(
@@ -162,7 +179,8 @@ public final class RiverQuery {
                 s.bx, s.bz
             );
 
-            double dist = Math.sqrt(p.distanceSquared);
+            double distSq = p.distanceSquared;
+            double dist   = Math.sqrt(distSq);
 
             double riverProgress =
                 s.progressStart + (s.progressEnd - s.progressStart) * p.segmentT;
@@ -172,6 +190,10 @@ public final class RiverQuery {
                 s.edgeWidthStart + (s.edgeWidthEnd - s.edgeWidthStart) * widthT;
             double channelRadius = riverWidth * 0.5;
 
+            if (channelRadius <= 0.0 || s.influenceRadius <= 0.0) {
+                continue;
+            }
+
             double channelValue =
                 Math.max(0.0, 1.0 - dist / channelRadius);
             channelValue = smoothstep(channelValue);
@@ -180,32 +202,45 @@ public final class RiverQuery {
                 Math.max(0.0, 1.0 - dist / s.influenceRadius);
             terrainValue = smoothstep(terrainValue);
 
-            if (terrainValue > bestTerrainInfluence) {
-                bestTerrainInfluence = terrainValue;
-            }
             if (channelValue > bestChannelInfluence) {
                 bestChannelInfluence = channelValue;
             }
+            if (terrainValue > bestTerrainInfluence) {
+                bestTerrainInfluence = terrainValue;
+            }
 
-            if (p.distanceSquared < bestDistSq) {
-                bestDistSq = p.distanceSquared;
-                bestSeg = s;
-                bestSegmentT = p.segmentT;
-                bestClosestX = p.closestX;
-                bestClosestZ = p.closestZ;
+            if (channelValue <= 0.0 && terrainValue <= 0.0) {
+                continue;
+            }
+
+            double score = channelValue * typeWeight(s.type);
+
+            if (score > dominantScore ||
+                (score == dominantScore && distSq < dominantDistSq)) {
+
+                dominantScore   = score;
+                dominantSeg     = s;
+                dominantT       = p.segmentT;
+                dominantDistSq  = distSq;
+                dominantClosestX = p.closestX;
+                dominantClosestZ = p.closestZ;
             }
         }
 
-        if (bestSeg == null) {
+        if (dominantSeg == null) {
             return RiverQueryResult.none();
         }
 
-        double bestDist = Math.sqrt(bestDistSq);
+        double bestDist = Math.sqrt(dominantDistSq);
+
         double bestProgress =
-            bestSeg.progressStart + (bestSeg.progressEnd - bestSeg.progressStart) * bestSegmentT;
+            dominantSeg.progressStart
+                + (dominantSeg.progressEnd - dominantSeg.progressStart) * dominantT;
+
         double widthT = smoothstep(bestProgress);
         double bestWidth =
-            bestSeg.edgeWidthStart + (bestSeg.edgeWidthEnd - bestSeg.edgeWidthStart) * widthT;
+            dominantSeg.edgeWidthStart
+                + (dominantSeg.edgeWidthEnd - dominantSeg.edgeWidthStart) * widthT;
         double bestRadius = bestWidth * 0.5;
 
         return new RiverQueryResult(
@@ -216,16 +251,16 @@ public final class RiverQuery {
             bestChannelInfluence,
             bestTerrainInfluence,
             bestProgress,
-            bestSeg.type,
-            bestSeg.edgeId,
-            bestSeg.hasSource,
-            bestSeg.hasMouth,
-            bestClosestX,
-            bestClosestZ,
-            bestSeg.sourceX,
-            bestSeg.sourceZ,
-            bestSeg.mouthX,
-            bestSeg.mouthZ
+            dominantSeg.type,
+            dominantSeg.edgeId,
+            dominantSeg.hasSource,
+            dominantSeg.hasMouth,
+            dominantClosestX,
+            dominantClosestZ,
+            dominantSeg.sourceX,
+            dominantSeg.sourceZ,
+            dominantSeg.mouthX,
+            dominantSeg.mouthZ
         );
     }
 }
