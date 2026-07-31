@@ -1,11 +1,53 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
+
+import java.util.EnumMap;
 
 public final class TalosRiverTerrainModifier {
 
     private TalosRiverTerrainModifier() {}
+
+    /** 宏群系 → bankIntensity 常量缓存（OCEANIC / null 固定为 0.5，不入缓存）。 */
+    private static final EnumMap<MacroPackageId, Double> BANK_INTENSITY_CACHE =
+        new EnumMap<>(MacroPackageId.class);
+
+    /**
+     * 获取某个宏群系的河岸强度 bankIntensity（0..1）。
+     *
+     * 河流层的统一出口：世界层 / 区块上下文一律从这里取，
+     * 不再直接读取 MacroPackageRegistry 内部注册表。
+     * OCEANIC / null（无配置）按中性 0.5 处理。
+     */
+    public static double bankIntensityFor(MacroPackageId macroId) {
+        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
+            return 0.5;
+        }
+
+        Double cached = BANK_INTENSITY_CACHE.get(macroId);
+        if (cached != null) {
+            return cached;
+        }
+
+        MacroPackageRegistry.RiverBankPreset bank =
+            MacroPackageRegistry.get(macroId).riverBank();
+
+        double k = (bank != null) ? bank.bankIntensity() : 0.5;
+        if (k < 0.0) k = 0.0;
+        if (k > 1.0) k = 1.0;
+
+        BANK_INTENSITY_CACHE.put(macroId, k);
+        return k;
+    }
+
+    /**
+     * 用任意强度值构造河岸预设（例如经过空间模糊后的 bankIntensity）。
+     * 世界层不再直接 new 河流层内部类型。
+     */
+    public static MacroPackageRegistry.RiverBankPreset bankPreset(double bankIntensity) {
+        return new MacroPackageRegistry.RiverBankPreset(bankIntensity);
+    }
 
     /**
      * 基于河流 mask 对基础高度做「河岸压低 + 平滑回老地形」。

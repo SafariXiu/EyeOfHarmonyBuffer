@@ -772,23 +772,7 @@ public final class TalosRiverSystem {
             return result;
         }
 
-        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
-        if (info == null) {
-            return result;
-        }
-
-        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
-        if (templateId == null) {
-            return result;
-        }
-
-        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
-        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
-            worldSeedInt,
-            info,
-            templateId,
-            scaleFactor
-        );
+        RiverSystem sys = resolveSupercontinentRiverSystem(worldX, worldZ, worldSeedInt);
         if (sys == null || sys.network == null) {
             return result;
         }
@@ -837,6 +821,36 @@ public final class TalosRiverSystem {
         }
 
         return java.util.Collections.unmodifiableList(result);
+    }
+
+    /**
+     * 解析当前超级大陆的运行时河网（superId → 超大陆信息 → 模板 → RiverSystem）。
+     * 任何一步失败返回 null，供端点 / 汇入点等列表类 API 共用。
+     */
+    private static RiverSystem resolveSupercontinentRiverSystem(
+        int worldX, int worldZ, int worldSeedInt
+    ) {
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return null;
+        }
+
+        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+        if (info == null) {
+            return null;
+        }
+
+        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
+        if (templateId == null) {
+            return null;
+        }
+
+        return SupercontinentRiverSystemRegistry.getOrCreate(
+            worldSeedInt,
+            info,
+            templateId,
+            SUPERCONTINENT_RIVER_SCALE
+        );
     }
 
     /** 河流汇入点：某条边与其父河（或主河与海）的接点。 */
@@ -897,23 +911,7 @@ public final class TalosRiverSystem {
             return result;
         }
 
-        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
-        if (info == null) {
-            return result;
-        }
-
-        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
-        if (templateId == null) {
-            return result;
-        }
-
-        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
-        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
-            worldSeedInt,
-            info,
-            templateId,
-            scaleFactor
-        );
+        RiverSystem sys = resolveSupercontinentRiverSystem(worldX, worldZ, worldSeedInt);
         if (sys == null || sys.network == null) {
             return result;
         }

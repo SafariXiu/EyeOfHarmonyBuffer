@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainEngine;
 import net.minecraft.world.World;
 
@@ -32,6 +33,26 @@ public final class TalosBaseTerrain {
                                           int worldSeedInt,
                                           int seaLevel) {
         return TerrainEngine.sampleBaseHeight(worldX, worldZ, worldSeedInt, seaLevel);
+    }
+
+    /**
+     * chunk 级上下文版本：复用调用方已经算好的 LandSample，
+     * 避免在 TerrainEngine 内部重复做一次完整海陆采样。
+     * 结果与无参版本完全一致（同一确定性函数）。
+     *
+     * @param worldX       世界 X（blocks）
+     * @param worldZ       世界 Z（blocks）
+     * @param worldSeedInt 来自 getWorldSeedInt(world)
+     * @param seaLevel     全局海平面（例如 64）
+     * @param landSample   该列已算好的海陆采样（来自 TalosLandMask.sampleFull）
+     */
+    public static double sampleBaseHeight(int worldX, int worldZ,
+                                          int worldSeedInt,
+                                          int seaLevel,
+                                          TalosLandMask.Sample landSample) {
+        return TerrainEngine.sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample
+        );
     }
 
     /**

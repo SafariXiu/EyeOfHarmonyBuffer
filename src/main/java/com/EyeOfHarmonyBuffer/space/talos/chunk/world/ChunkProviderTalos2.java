@@ -4,7 +4,6 @@ import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
@@ -30,9 +29,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final boolean DEBUG_COASTLINE = true;
     private static final boolean USE_CHUNK_BLUR_BANK = true;
-
-    private final EnumMap<MacroPackageId, Double> bankIntensityCache =
-        new EnumMap<>(MacroPackageId.class);
 
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
@@ -131,8 +127,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     bankIntensity = sampleSmoothedBankIntensity(worldX, worldZ);
                 }
 
-                MacroPackageRegistry.RiverBankPreset bankPreset =
-                    new MacroPackageRegistry.RiverBankPreset(bankIntensity);
+                var bankPreset = TalosRiverTerrainModifier.bankPreset(bankIntensity);
 
                 // 与 TalosRiverSystem.getRiverMask 语义一致：
                 // 非陆地（按逐点海陆采样判断）视为无河流影响。
@@ -364,7 +359,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     continue;
                 }
 
-                double k = getBankIntensityForMacro(macroId);
+                double k = TalosRiverTerrainModifier.bankIntensityFor(macroId);
 
                 double distSq = (double) dx * dx + (double) dz * dz;
                 double w = 1.0 / (1.0 + distSq * 0.01);
@@ -381,28 +376,4 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return weightedSum / weightSum;
     }
 
-    /**
-     * 从 MacroPackageRegistry 中获取某个宏包的 bankIntensity，并做缓存。
-     * null 宏包或缺省配置时使用中性值 0.5。
-     */
-    private double getBankIntensityForMacro(MacroPackageId macroId) {
-        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
-            return 0.5;
-        }
-
-        Double cached = bankIntensityCache.get(macroId);
-        if (cached != null) {
-            return cached;
-        }
-
-        MacroPackageRegistry.MacroPackageSpec spec = MacroPackageRegistry.get(macroId);
-        MacroPackageRegistry.RiverBankPreset bank = spec.riverBank();
-
-        double k = (bank != null) ? bank.bankIntensity() : 0.5;
-        if (k < 0.0) k = 0.0;
-        if (k > 1.0) k = 1.0;
-
-        bankIntensityCache.put(macroId, k);
-        return k;
-    }
 }

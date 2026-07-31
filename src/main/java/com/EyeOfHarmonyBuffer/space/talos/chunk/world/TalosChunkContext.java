@@ -4,11 +4,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainEngine;
-
-import java.util.EnumMap;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 
 /**
  * 单个 chunk 的世界生成「采样上下文」。
@@ -47,10 +45,6 @@ public final class TalosChunkContext {
 
     /** 每列经过 R=2 盒式模糊的河岸强度 bankIntensity（宏群系边界平滑用）。 */
     public final double[] bankIntensity;
-
-    /** 每宏群系的 bankIntensity 常量缓存。 */
-    private static final EnumMap<MacroPackageId, Double> BANK_INTENSITY_CACHE =
-        new EnumMap<>(MacroPackageId.class);
 
     private TalosChunkContext(int chunkX, int chunkZ, int worldSeedInt, int seaLevel,
                               LandMask16 landMask,
@@ -117,7 +111,7 @@ public final class TalosChunkContext {
                 int idx = localX * CHUNK_SIZE + localZ;
                 int worldX = chunkX * CHUNK_SIZE + localX;
 
-                baseHeight[idx] = TerrainEngine.sampleBaseHeight(
+                baseHeight[idx] = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel,
                     land[idx]
                 );
@@ -146,12 +140,12 @@ public final class TalosChunkContext {
                 if (innerX >= 0 && innerX < CHUNK_SIZE
                     && innerZ >= 0 && innerZ < CHUNK_SIZE) {
                     // 内部 16x16 直接读宏群系表
-                    k = bankIntensityForMacro(
+                    k = TalosRiverTerrainModifier.bankIntensityFor(
                         macroPkg[innerX * CHUNK_SIZE + innerZ]
                     );
                 } else {
                     // halo 一圈（±2）直接采样，结果与原来 20x20 全量采样一致
-                    k = bankIntensityForMacro(
+                    k = TalosRiverTerrainModifier.bankIntensityFor(
                         TalosMacroClimate.getMacroPackageId(
                             worldX, worldZ, worldSeedInt
                         )
@@ -202,29 +196,4 @@ public final class TalosChunkContext {
         }
     }
 
-    /**
-     * 宏群系 -> bankIntensity 常量，带缓存。
-     * 注意：OCEANIC 与原逻辑（resolver 返回 null）一样按 0.5 处理，
-     * 不能走 MacroPackageRegistry.get(OCEANIC)（那里没有配置会抛异常）。
-     */
-    private static double bankIntensityForMacro(MacroPackageId macroId) {
-        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
-            return 0.5;
-        }
-
-        Double cached = BANK_INTENSITY_CACHE.get(macroId);
-        if (cached != null) {
-            return cached;
-        }
-
-        MacroPackageRegistry.RiverBankPreset bank =
-            MacroPackageRegistry.get(macroId).riverBank();
-
-        double k = (bank != null) ? bank.bankIntensity() : 0.5;
-        if (k < 0.0) k = 0.0;
-        if (k > 1.0) k = 1.0;
-
-        BANK_INTENSITY_CACHE.put(macroId, k);
-        return k;
-    }
 }
