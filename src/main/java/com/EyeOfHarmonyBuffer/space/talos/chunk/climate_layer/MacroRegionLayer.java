@@ -52,8 +52,20 @@ public final class MacroRegionLayer {
 
     /** 对外主接口：获取“平滑后的”宏群系 ID。*/
     public MacroPackageId getSmoothedMacroPackageIdAt(int x, int z) {
+        return getSmoothedMacroPackageIdAt(
+            x, z, TalosLandMask.isLandCheap(x, z, worldSeedInt)
+        );
+    }
+
+    /**
+     * 已知该点 isLand 时的平滑宏群系查询。
+     * 与上面的接口结果完全一致，只是省掉内部重复的 isLandCheap 计算
+     * （调用方已经通过 chunk 级 LandSample 表拿到结果时使用）。
+     */
+    public MacroPackageId getSmoothedMacroPackageIdAt(int x, int z,
+                                                      boolean isLandHere) {
         MacroTile tile = getOrCreateTileFor(x, z);
-        return tile.getSmoothedPkgAt(x, z);
+        return tile.getSmoothedPkgAt(x, z, isLandHere);
     }
 
     /** 对外主接口：获取“平滑后的”群系 ID（基于宏群系 + 确定性子 Biome 选择）。*/
@@ -74,6 +86,25 @@ public final class MacroRegionLayer {
      */
     public TalosMacroClimate.MacroBlendSample sampleBlendAt(int worldX, int worldZ,
                                                             int maxEntries) {
+        return sampleBlendAtImpl(worldX, worldZ, maxEntries, null);
+    }
+
+    /**
+     * 带共享采样缓存的版本：同一个 chunk 内，3x3 邻域采样点高度重复，
+     * 通过外部传入的 cache 让每个唯一采样点只算一次。
+     * 结果与不带缓存的版本完全一致（同一确定性函数，只是记忆化）。
+     */
+    public TalosMacroClimate.MacroBlendSample sampleBlendAt(
+        int worldX, int worldZ, int maxEntries,
+        Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint> cache
+    ) {
+        return sampleBlendAtImpl(worldX, worldZ, maxEntries, cache);
+    }
+
+    private TalosMacroClimate.MacroBlendSample sampleBlendAtImpl(
+        int worldX, int worldZ, int maxEntries,
+        Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint> cache
+    ) {
         if (maxEntries <= 0) {
             return new TalosMacroClimate.MacroBlendSample(
                 new TalosMacroClimate.MacroBlendEntry[0]
@@ -103,7 +134,14 @@ public final class MacroRegionLayer {
                 int sampleWorldX = centerCellWorldX + dx * SAMPLE_STEP;
                 int sampleWorldZ = centerCellWorldZ + dz * SAMPLE_STEP;
 
-                MacroPackageId id = getSmoothedMacroPackageIdAt(sampleWorldX, sampleWorldZ);
+                MacroPackageId id;
+                if (cache != null) {
+                    id = TalosMacroClimate.getSmoothedPkgCached(
+                        sampleWorldX, sampleWorldZ, worldSeedInt, cache
+                    ).pkg;
+                } else {
+                    id = getSmoothedMacroPackageIdAt(sampleWorldX, sampleWorldZ);
+                }
                 if (id == null) continue;
 
                 double ddx = worldX - sampleWorldX;
@@ -122,7 +160,14 @@ public final class MacroRegionLayer {
         }
 
         if (sum <= 0.0) {
-            MacroPackageId id = getSmoothedMacroPackageIdAt(worldX, worldZ);
+            MacroPackageId id;
+            if (cache != null) {
+                id = TalosMacroClimate.getSmoothedPkgCached(
+                    worldX, worldZ, worldSeedInt, cache
+                ).pkg;
+            } else {
+                id = getSmoothedMacroPackageIdAt(worldX, worldZ);
+            }
             TalosMacroClimate.MacroBlendEntry[] entries =
                 new TalosMacroClimate.MacroBlendEntry[] {
                     new TalosMacroClimate.MacroBlendEntry(id, 1.0)
@@ -419,7 +464,8 @@ public final class MacroRegionLayer {
          *   - 选权重最大的宏群系作为结果；
          *   - 若极端情况下没有任何格子参与投票，则退回到底层 baseLayer。
          */
-        MacroPackageId getSmoothedPkgAt(int worldX, int worldZ) {
+        MacroPackageId getSmoothedPkgAt(int worldX, int worldZ,
+                                        boolean isLandHere) {
             int localX = worldToLocalInTile(worldX);
             int localZ = worldToLocalInTile(worldZ);
 
@@ -433,8 +479,6 @@ public final class MacroRegionLayer {
             if (gzCenter < 0) gzCenter = 0;
             if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
             if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
-
-            boolean isLandHere = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
             final int radius = 1;
 

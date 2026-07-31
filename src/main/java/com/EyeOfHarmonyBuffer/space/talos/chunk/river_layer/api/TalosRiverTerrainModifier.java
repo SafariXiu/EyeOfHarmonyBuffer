@@ -50,6 +50,27 @@ public final class TalosRiverTerrainModifier {
         MacroPackageRegistry.RiverBankPreset bankPreset,
         boolean isLand
     ) {
+        return applyRiverBankShaping(
+            worldX, worldZ, worldSeedInt,
+            baseHeightD, riverSurfaceY, bankPreset, isLand,
+            TalosRiverSystem.getRiverMask(worldX, worldZ, worldSeedInt)
+        );
+    }
+
+    /**
+     * chunk 级上下文版本：河流 mask 由调用方预先算好传入
+     * （来自 TalosChunkContext 的水文场，含义与 getRiverMask 完全一致），
+     * 避免每个方块重复跑整条河流查询链。
+     */
+    public static double applyRiverBankShaping(
+        int worldX, int worldZ,
+        int worldSeedInt,
+        double baseHeightD,
+        double riverSurfaceY,
+        MacroPackageRegistry.RiverBankPreset bankPreset,
+        boolean isLand,
+        double riverMask
+    ) {
         if (!isLand) {
             return baseHeightD;
         }
@@ -58,7 +79,7 @@ public final class TalosRiverTerrainModifier {
             return baseHeightD;
         }
 
-        double mask = TalosRiverSystem.getRiverMask(worldX, worldZ, worldSeedInt);
+        double mask = riverMask;
         if (mask <= 0.0) {
             return baseHeightD;
         }

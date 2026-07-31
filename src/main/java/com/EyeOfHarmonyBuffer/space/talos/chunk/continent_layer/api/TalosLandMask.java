@@ -40,6 +40,29 @@ public final class TalosLandMask {
         return (r != null) ? new Sample(r) : null;
     }
 
+    /**
+     * 为某个 chunk 一次性采样 16x16 的完整海陆结果。
+     *
+     * 数组索引约定：idx = localX * 16 + localZ（0..255）。
+     * 所有值与逐点调用 sampleFull 完全一致，只是收敛成一次遍历，
+     * 供 ChunkProviderTalos2 / TalosChunkContext 复用以避免重复采样。
+     */
+    public static Sample[] sampleChunk(int chunkX, int chunkZ, int worldSeedInt) {
+        Sample[] out = new Sample[16 * 16];
+        int worldX0 = chunkX * 16;
+        int worldZ0 = chunkZ * 16;
+
+        for (int localZ = 0; localZ < 16; localZ++) {
+            int worldZ = worldZ0 + localZ;
+            for (int localX = 0; localX < 16; localX++) {
+                int idx = localX * 16 + localZ;
+                out[idx] = sampleFull(worldX0 + localX, worldZ, worldSeedInt);
+            }
+        }
+
+        return out;
+    }
+
     /** 直接拿某点的板块 ID。 */
     public static int getPlateId(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);

@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
@@ -25,15 +26,32 @@ public final class TerrainEngine {
     public static double sampleBaseHeight(int worldX, int worldZ,
                                           int worldSeedInt,
                                           int seaLevel) {
-        TalosLandMask.Sample landSample =
-            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt);
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel,
+            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt),
+            null
+        );
+    }
+
+    /**
+     * chunk 级上下文版本：复用调用方已经算好的 LandSample，
+     * 并通过共享缓存记忆化宏群系 3x3 邻域采样。
+     * 结果与无缓存版本完全一致（同一确定性函数）。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample,
+        Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint> pkgCache
+    ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
         double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
         double  coastWeight = (landSample != null) ? landSample.coastWeight : 0.0;
 
         TalosMacroClimate.MacroBlendSample blend =
-            TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2);
+            (pkgCache != null)
+                ? TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2, pkgCache)
+                : TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2);
 
         MacroPackageId primaryId;
         MacroPackageId secondaryId;

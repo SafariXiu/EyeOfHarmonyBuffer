@@ -1,8 +1,10 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -81,6 +83,50 @@ public final class TalosMacroClimate {
     public static MacroPackageId getMacroPackageId(int worldX, int worldZ, int worldSeedInt) {
         MacroRegionLayer layer = getLayer(worldSeedInt);
         return layer.getSmoothedMacroPackageIdAt(worldX, worldZ);
+    }
+
+    /**
+     * 已知该点 isLand 时的平滑宏群系 ID。
+     * 与 getMacroPackageId 结果完全一致，只是省掉内部重复的 isLand 计算。
+     */
+    public static MacroPackageId getMacroPackageId(int worldX, int worldZ,
+                                                   int worldSeedInt,
+                                                   boolean isLandKnown) {
+        MacroRegionLayer layer = getLayer(worldSeedInt);
+        return layer.getSmoothedMacroPackageIdAt(worldX, worldZ, isLandKnown);
+    }
+
+    /** 单个宏群系采样点（含 isLand），用于 chunk 级共享缓存。 */
+    public static final class SmoothedPkgPoint {
+        public final boolean isLand;
+        public final MacroPackageId pkg;
+
+        public SmoothedPkgPoint(boolean isLand, MacroPackageId pkg) {
+            this.isLand = isLand;
+            this.pkg = pkg;
+        }
+    }
+
+    /**
+     * 带缓存地取 (worldX, worldZ) 的平滑宏群系结果。
+     * 同一个 chunk 内地形混合的 3x3 邻域采样点高度重复，记忆化后每个
+     * 唯一采样点只计算一次。结果与直接调用完全一致。
+     */
+    public static SmoothedPkgPoint getSmoothedPkgCached(
+        int worldX, int worldZ, int worldSeedInt,
+        Long2ObjectOpenHashMap<SmoothedPkgPoint> cache
+    ) {
+        long key = (((long) worldX) << 32) ^ (worldZ & 0xffffffffL);
+        SmoothedPkgPoint p = cache.get(key);
+        if (p != null) {
+            return p;
+        }
+
+        boolean land = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
+        MacroPackageId id = getMacroPackageId(worldX, worldZ, worldSeedInt, land);
+        p = new SmoothedPkgPoint(land, id);
+        cache.put(key, p);
+        return p;
     }
 
     /**
@@ -198,5 +244,20 @@ public final class TalosMacroClimate {
         }
         MacroRegionLayer layer = getLayer(worldSeedInt);
         return layer.sampleBlendAt(worldX, worldZ, maxEntries);
+    }
+
+    /**
+     * 带共享采样缓存的宏群系混合采样。
+     * 用于 chunk 级地形生成：所有列的 3x3 邻域采样共用一张缓存表。
+     */
+    public static MacroBlendSample sampleMacroBlend(
+        int worldX, int worldZ, int worldSeedInt, int maxEntries,
+        Long2ObjectOpenHashMap<SmoothedPkgPoint> cache
+    ) {
+        if (maxEntries <= 0) {
+            return new MacroBlendSample(new MacroBlendEntry[0]);
+        }
+        MacroRegionLayer layer = getLayer(worldSeedInt);
+        return layer.sampleBlendAt(worldX, worldZ, maxEntries, cache);
     }
 }

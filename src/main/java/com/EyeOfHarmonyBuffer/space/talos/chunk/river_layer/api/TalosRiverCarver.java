@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
 import net.minecraft.block.Block;
@@ -55,6 +54,44 @@ public final class TalosRiverCarver {
                                         int seaLevel,
                                         int worldHeight,
                                         MacroPackageResolver macroResolver) {
+        TalosLandMask.Sample[] land =
+            TalosLandMask.sampleChunk(chunkX, chunkZ, worldSeedInt);
+
+        TalosRiverSystem.HydroSample[] hydro =
+            TalosRiverSystem.sampleHydroFieldChunk(
+                chunkX, chunkZ, worldSeedInt, land
+            );
+
+        MacroPackageId[] macro = new MacroPackageId[16 * 16];
+        for (int localZ = 0; localZ < 16; localZ++) {
+            int worldZ = chunkZ * 16 + localZ;
+            for (int localX = 0; localX < 16; localX++) {
+                int idx = localX * 16 + localZ;
+                macro[idx] = macroResolver.resolveMacroPackageId(
+                    chunkX * 16 + localX, worldZ
+                );
+            }
+        }
+
+        carveChunkRivers(
+            chunkX, chunkZ, worldSeedInt,
+            blocks, meta, seaLevel, worldHeight,
+            hydro, macro
+        );
+    }
+
+    /**
+     * chunk 级上下文版本：水文场与宏群系表由调用方预先算好
+     * （来自 TalosChunkContext），挖掘时只读表，不再逐列重复采样。
+     * 与旧入口对同一坐标产生的结果完全一致。
+     */
+    public static void carveChunkRivers(int chunkX, int chunkZ,
+                                        int worldSeedInt,
+                                        Block[] blocks, byte[] meta,
+                                        int seaLevel,
+                                        int worldHeight,
+                                        TalosRiverSystem.HydroSample[] hydroGrid,
+                                        MacroPackageId[] macroGrid) {
 
         final int CHUNK_SIZE = 16;
 
@@ -67,19 +104,17 @@ public final class TalosRiverCarver {
         int worldX0 = chunkX * CHUNK_SIZE;
         int worldZ0 = chunkZ * CHUNK_SIZE;
 
-        final LandMask16 landMask = TalosLandMask.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
-
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
                 int worldX = worldX0 + localX;
                 int worldZ = worldZ0 + localZ;
-
-                /*if (landMask == null || !landMask.get(localX, localZ)) {.
-                    continue;
-                }*/
+                int colIndex = localX * CHUNK_SIZE + localZ;
 
                 TalosRiverSystem.HydroSample hydro =
-                    TalosRiverSystem.sampleHydroField(worldX, worldZ, worldSeedInt);
+                    (hydroGrid != null) ? hydroGrid[colIndex] : null;
+                if (hydro == null) {
+                    continue;
+                }
 
                 double dist = hydro.distance;
                 double coreWidth = hydro.widthCore;
@@ -118,8 +153,9 @@ public final class TalosRiverCarver {
                     continue;
                 }
 
-                MacroPackageId macroId = macroResolver.resolveMacroPackageId(worldX, worldZ);
-                if (macroId == null) {
+                MacroPackageId macroId =
+                    (macroGrid != null) ? macroGrid[colIndex] : null;
+                if (macroId == null || macroId == MacroPackageId.OCEANIC) {
                     continue;
                 }
 

@@ -62,12 +62,22 @@ public final class TalosRiverSystem {
      */
     private static RiverQueryResult queryHydro(int worldX, int worldZ, int worldSeedInt) {
         int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        return queryHydroForSuperId(worldX, worldZ, worldSeedInt, superId);
+    }
+
+    /**
+     * 已知 superId 的水文查询：跳过内部重复的 getSuperId 全量采样。
+     * 供 chunk 级批量采样使用（superId 直接读 LandSample 表）。
+     */
+    private static RiverQueryResult queryHydroForSuperId(
+        int worldX, int worldZ, int worldSeedInt, int superId
+    ) {
         if (superId == 0) {
             return RiverQuery.RiverQueryResult.none();
         }
 
         SupercontinentInfo info =
-            SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+            SupercontinentAdapter.getInfoAt(superId, worldX, worldZ, worldSeedInt);
         if (info == null) {
             return RiverQuery.RiverQueryResult.none();
         }
@@ -403,23 +413,66 @@ public final class TalosRiverSystem {
      */
     public static HydroSample sampleHydroField(int worldX, int worldZ, int worldSeedInt) {
         RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
+        return toHydroSample(r);
+    }
 
+    /**
+     * 为某个 chunk 一次性采样 16x16 水文场。
+     *
+     * 数组索引约定：idx = localX * 16 + localZ（0..255）。
+     * 与逐点调用 sampleHydroField 完全一致，只是 superId 直接复用
+     * 已算好的 LandSample 表，跳过每列重复的全量海陆采样。
+     */
+    public static HydroSample[] sampleHydroFieldChunk(
+        int chunkX, int chunkZ, int worldSeedInt,
+        TalosLandMask.Sample[] landSamples
+    ) {
+        HydroSample[] out = new HydroSample[16 * 16];
+
+        for (int localZ = 0; localZ < 16; localZ++) {
+            int worldZ = chunkZ * 16 + localZ;
+            for (int localX = 0; localX < 16; localX++) {
+                int idx = localX * 16 + localZ;
+                int worldX = chunkX * 16 + localX;
+
+                int superId = 0;
+                TalosLandMask.Sample s =
+                    (landSamples != null) ? landSamples[idx] : null;
+                if (s != null) {
+                    superId = s.superId;
+                }
+
+                out[idx] = toHydroSample(
+                    queryHydroForSuperId(worldX, worldZ, worldSeedInt, superId)
+                );
+            }
+        }
+
+        return out;
+    }
+
+    private static HydroSample noneHydroSample() {
+        return new HydroSample(
+            Double.MAX_VALUE,
+            0.0, 0.0, 0.0,
+            0.0,
+            0,
+            0,
+            null,
+            false,
+            false,
+            0.0,
+            Double.NaN,
+            Double.NaN,
+            Double.NaN,
+            Double.NaN
+        );
+    }
+
+    /** 把 RiverQueryResult 转成对外 HydroSample，与 sampleHydroField 的语义一致。 */
+    private static HydroSample toHydroSample(RiverQueryResult r) {
         if (!r.affected) {
-            return new HydroSample(
-                Double.MAX_VALUE,
-                0.0, 0.0, 0.0,
-                0.0,
-                0,
-                0,
-                null,
-                false,
-                false,
-                0.0,
-                Double.NaN,
-                Double.NaN,
-                Double.NaN,
-                Double.NaN
-            );
+            return noneHydroSample();
         }
 
         double core   = r.channelRadius;

@@ -7,7 +7,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -60,9 +59,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     public void onChunkProvider(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
         clearChunkBlocks(blocks, meta);
 
-        generateTerrainWithBaseHeightSimple(chunkX, chunkZ, blocks, meta);
+        TalosChunkContext ctx = TalosChunkContext.create(
+            chunkX, chunkZ, worldSeedInt, getWaterLevel()
+        );
 
-        //generateDebugRivers(chunkX, chunkZ, blocks, meta, worldSeedInt);
+        generateTerrainWithBaseHeightSimple(ctx, blocks, meta);
 
         TalosRiverCarver.carveChunkRivers(
             chunkX, chunkZ,
@@ -70,7 +71,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             blocks, meta,
             getWaterLevel(),
             worldHeight,
-            macroResolver
+            ctx.hydro,
+            ctx.macroPkg
         );
     }
 
@@ -103,31 +105,25 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      *   - 河岸压低逻辑仅依赖世界坐标 (worldX, worldZ)、世界种子 int 和 seaLevel，
      *     不在这里直接操作方块数组，保证高度场是可重现、与方块填充解耦的。
      */
-    private void generateTerrainWithBaseHeightSimple(int chunkX, int chunkZ,
+    private void generateTerrainWithBaseHeightSimple(TalosChunkContext ctx,
                                                      Block[] blocks, byte[] meta) {
-        final int seaLevel = getWaterLevel();
+        final int seaLevel = ctx.seaLevel;
 
-        final int worldX0 = chunkX * CHUNK_SIZE;
-        final int worldZ0 = chunkZ * CHUNK_SIZE;
+        final int worldX0 = ctx.chunkX * CHUNK_SIZE;
+        final int worldZ0 = ctx.chunkZ * CHUNK_SIZE;
 
-        final LandMask16 landMask = TalosLandMask.getLandMaskForChunk(chunkX, chunkZ, worldSeedInt);
-
-        double[][] blurredBank = null;
-        if (USE_CHUNK_BLUR_BANK) {
-            blurredBank = new double[CHUNK_SIZE][CHUNK_SIZE];
-            computeBlurredBankForChunk(chunkX, chunkZ, blurredBank);
-        }
+        final LandMask16 landMask = ctx.landMask;
 
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
+                final int colIndex = localX * CHUNK_SIZE + localZ;
                 final int worldX = worldX0 + localX;
                 final int worldZ = worldZ0 + localZ;
 
                 final boolean isLandFromMask =
                     (landMask != null && landMask.get(localX, localZ));
 
-                TalosLandMask.Sample landSample =
-                    TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt);
+                TalosLandMask.Sample landSample = ctx.land[colIndex];
 
                 final boolean isLand = isLandFromMask;
                 final double coastWeight =
@@ -135,13 +131,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 final double shelfWeight =
                     (landSample != null ? landSample.shelfWeight : 0.0);
 
-                double baseHeightD = TalosBaseTerrain.sampleBaseHeight(
-                    worldX, worldZ, worldSeedInt, seaLevel
-                );
+                double baseHeightD = ctx.baseHeight[colIndex];
 
                 double bankIntensity;
-                if (USE_CHUNK_BLUR_BANK && blurredBank != null) {
-                    bankIntensity = blurredBank[localX][localZ];
+                if (USE_CHUNK_BLUR_BANK) {
+                    bankIntensity = ctx.bankIntensity[colIndex];
                 } else {
                     bankIntensity = sampleSmoothedBankIntensity(worldX, worldZ);
                 }
@@ -149,13 +143,21 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 MacroPackageRegistry.RiverBankPreset bankPreset =
                     new MacroPackageRegistry.RiverBankPreset(bankIntensity);
 
+                // 与 TalosRiverSystem.getRiverMask 语义一致：
+                // 非陆地（按逐点海陆采样判断）视为无河流影响。
+                double riverMask =
+                    (landSample != null && landSample.isLand)
+                        ? ctx.hydro[colIndex].mask
+                        : 0.0;
+
                 double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
                     worldX, worldZ,
                     worldSeedInt,
                     baseHeightD,
                     seaLevel,
                     bankPreset,
-                    isLand
+                    isLand,
+                    riverMask
                 );
 
                 double coastShapedHeightD = TalosCoastlineShaper.applyCoastlineShaping(
@@ -364,91 +366,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     }
 
     /**
-     * 为当前 chunk 计算平滑后的 bankIntensity 图（带 halo，保证跨 chunk 连续）。
-     *
-     * 思路：
-     *   - 在 chunk 四周各扩一圈半径 R 的「halo」，在这个 (16+2R) x (16+2R) 网格上采样原始 bankIntensity；
-     *   - 在扩展网格上做一次 X 向 box blur，再做一次 Z 向 box blur；
-     *   - 最后只把中间的 16x16（对应当前 chunk 的区域）拷贝到 outBlurred[localX][localZ]。
-     *
-     * 这样：
-     *   - world 坐标相同的格子，在任何 chunk 中计算出来的模糊值都是一样的；
-     *   - 邻接 chunk 的公共边界不会出现 bankIntensity 的硬切。
-     */
-    private void computeBlurredBankForChunk(int chunkX, int chunkZ,
-                                            double[][] outBlurred) {
-        final int R = 2;
-
-        final int EXT_SIZE = CHUNK_SIZE + 2 * R;
-
-        double[][] rawExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int extZ = 0; extZ < EXT_SIZE; extZ++) {
-            int worldZ = chunkZ * CHUNK_SIZE + (extZ - R);
-            for (int extX = 0; extX < EXT_SIZE; extX++) {
-                int worldX = chunkX * CHUNK_SIZE + (extX - R);
-
-                MacroPackageId macroId = macroResolver.resolveMacroPackageId(worldX, worldZ);
-                double k = getBankIntensityForMacro(macroId);
-
-                rawExt[extX][extZ] = k;
-            }
-        }
-
-        double[][] tmpExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int z = 0; z < EXT_SIZE; z++) {
-            for (int x = 0; x < EXT_SIZE; x++) {
-                double sum = 0.0;
-                int count = 0;
-
-                for (int dx = -R; dx <= R; dx++) {
-                    int sx = x + dx;
-                    if (sx < 0 || sx >= EXT_SIZE) continue;
-
-                    sum += rawExt[sx][z];
-                    count++;
-                }
-
-                tmpExt[x][z] = sum / count;
-            }
-        }
-
-        double[][] blurExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int x = 0; x < EXT_SIZE; x++) {
-            for (int z = 0; z < EXT_SIZE; z++) {
-                double sum = 0.0;
-                int count = 0;
-
-                for (int dz = -R; dz <= R; dz++) {
-                    int sz = z + dz;
-                    if (sz < 0 || sz >= EXT_SIZE) continue;
-
-                    sum += tmpExt[x][sz];
-                    count++;
-                }
-
-                blurExt[x][z] = sum / count;
-            }
-        }
-
-        for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-            int extZ = localZ + R;
-            for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-                int extX = localX + R;
-
-                outBlurred[localX][localZ] = blurExt[extX][extZ];
-            }
-        }
-    }
-
-    /**
      * 从 MacroPackageRegistry 中获取某个宏包的 bankIntensity，并做缓存。
      * null 宏包或缺省配置时使用中性值 0.5。
      */
     private double getBankIntensityForMacro(MacroPackageId macroId) {
-        if (macroId == null) {
+        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
             return 0.5;
         }
 
