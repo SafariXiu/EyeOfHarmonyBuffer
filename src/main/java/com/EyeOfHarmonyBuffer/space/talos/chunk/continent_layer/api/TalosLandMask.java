@@ -123,6 +123,17 @@ public final class TalosLandMask {
     }
 
     /**
+     * 根据 superId 获取该超大陆「从中心指向最近海岸」的流出方向（弧度）。
+     * 只依赖超大陆几何、与查询位置无关，河流系统用它作为固定的向海朝向。
+     */
+    public static double getSuperOutflowAngle(int superId, int worldSeedInt) {
+        if (superId == 0) {
+            return 0.0;
+        }
+        return WorldgenAPI.getSuperNearestCoastAngle(superId, worldSeedInt);
+    }
+
+    /**
      * 为某个 chunk 获取 16×16 的 LandMask16，给 ChunkProvider 使用。
      *
      * @param chunkX       区块坐标 X

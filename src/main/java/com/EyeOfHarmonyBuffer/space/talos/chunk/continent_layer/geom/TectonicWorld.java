@@ -338,6 +338,16 @@ public final class TectonicWorld {
     }
 
     /**
+     * 返回某个超级大陆「从中心指向最近海岸」的方向（弧度）。
+     * id 无效时返回 0。
+     */
+    public double getSuperNearestCoastAngle(SupercontinentId id) {
+        Supercontinent sc = getSupercontinentById(id);
+        if (sc == null) return 0.0;
+        return sc.nearestCoastAngle();
+    }
+
+    /**
      * 仅做“是否为陆地”的快速判断：
      *   - 不计算海岸 / 大陆架权重；
      *   - 不计算板块 / 边界权重；

@@ -325,6 +325,21 @@ public class WorldgenAPI {
     }
 
     /**
+     * 根据 superId 获取该超大陆「从中心指向最近海岸」的流出方向（弧度）。
+     * 结果只依赖超大陆几何，与查询位置无关，供河流系统做固定的向海朝向。
+     */
+    public static double getSuperNearestCoastAngle(int superId, int worldSeed) {
+        if (superId == 0) {
+            return 0.0;
+        }
+
+        SupercontinentId sid = SupercontinentId.fromInt(superId);
+        TectonicWorld world = getTectonicWorld(worldSeed);
+
+        return world.getSuperNearestCoastAngle(sid);
+    }
+
+    /**
      * 3.1: 在 WorldgenAPI 暴露 getLandMaskForChunk(chunkX,chunkZ,seed)
      *
      * 注意：

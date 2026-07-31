@@ -291,6 +291,48 @@ public final class Supercontinent {
         return signedCoastDistanceRadial(x, z) <= 0.0;
     }
 
+    /**
+     * 从超大陆中心指向最近海岸点的方向（弧度，从 X 轴逆时针）。
+     *
+     * 先用预计算的海岸顶点找最小半径方向，再在附近细扫 radiusAtAngle
+     * 消除离散采样误差。结果只依赖该超大陆自身的几何，完全确定性，
+     * 与任何外部查询位置无关（河流系统用它作为固定的“向海流出方向”）。
+     */
+    public double nearestCoastAngle() {
+        if (coastX == null || coastX.length == 0) {
+            return 0.0;
+        }
+
+        int n = coastX.length;
+        double bestTheta = 0.0;
+        double bestR = Double.POSITIVE_INFINITY;
+
+        for (int i = 0; i < n; i++) {
+            double dx = coastX[i] - centerX;
+            double dz = coastZ[i] - centerZ;
+            double r = Math.hypot(dx, dz);
+            if (r < bestR) {
+                bestR = r;
+                bestTheta = Math.atan2(dz, dx);
+            }
+        }
+
+        // 在最佳顶点附近 ±半个顶点步长内细扫，取精确最小值
+        final int REFINE_SAMPLES = 128;
+        double refineSpan = 2.0 * Math.PI / n;
+        for (int k = 0; k <= REFINE_SAMPLES; k++) {
+            double theta = bestTheta - refineSpan / 2.0
+                + refineSpan * k / REFINE_SAMPLES;
+            double r = radiusAtAngle(theta);
+            if (r < bestR) {
+                bestR = r;
+                bestTheta = theta;
+            }
+        }
+
+        return bestTheta;
+    }
+
     private static double distanceToSegment(double px, double pz,
                                             double ax, double az,
                                             double bx, double bz) {

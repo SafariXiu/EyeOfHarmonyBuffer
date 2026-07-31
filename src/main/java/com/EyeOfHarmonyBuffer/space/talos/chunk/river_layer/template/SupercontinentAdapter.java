@@ -12,7 +12,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
  *       * superId
  *       * 中心坐标 (cx, cz)
  *       * 基础半径 baseRadius
- *       * 从中心指向当前位置的大致角度 angleRad
+ *       * 从中心指向最近海岸的固定方向 angleRad（与查询位置无关）
  */
 
 public final class SupercontinentAdapter {
@@ -20,8 +20,8 @@ public final class SupercontinentAdapter {
     private SupercontinentAdapter() {}
 
     /**
-     * (worldSeedInt, superId) -> {centerX, centerZ, baseRadius} 缓存。
-     * 中心与半径只依赖 superId，同一超大陆内所有方块共用，不必每列重算。
+     * (worldSeedInt, superId) -> {centerX, centerZ, baseRadius, outflowAngle} 缓存。
+     * 中心、半径与流出方向都只依赖 superId，同一超大陆内所有方块共用。
      */
     private static final Long2ObjectOpenHashMap<double[]> CENTER_RADIUS_CACHE =
         new Long2ObjectOpenHashMap<double[]>();
@@ -42,7 +42,9 @@ public final class SupercontinentAdapter {
 
     /**
      * 已知 superId 时的查询：跳过内部重复的 getSuperId 全量采样。
-     * 中心 / 半径按 (seed, superId) 缓存，只有角度仍按点计算（代价极低）。
+     * 中心 / 半径 / 流出方向全部按 (seed, superId) 缓存，
+     * 角度是「指向最近海岸」的固定方向，不再依赖查询位置——
+     * 这样每个超级大陆的河网朝向在任何会话 / 任何重建中完全一致。
      */
     public static SupercontinentInfo getInfoAt(int superId,
                                                int worldX, int worldZ,
@@ -64,7 +66,10 @@ public final class SupercontinentAdapter {
                 radius = 1.0;
             }
 
-            cr = new double[] { center[0], center[1], radius };
+            double outflowAngle =
+                TalosLandMask.getSuperOutflowAngle(superId, worldSeedInt);
+
+            cr = new double[] { center[0], center[1], radius, outflowAngle };
             if (CENTER_RADIUS_CACHE.size() > 2048) {
                 CENTER_RADIUS_CACHE.clear();
             }
@@ -74,15 +79,7 @@ public final class SupercontinentAdapter {
         double cx = cr[0];
         double cz = cr[1];
         double radius = cr[2];
-
-        double dx = worldX - cx;
-        double dz = worldZ - cz;
-
-        if (dx == 0.0 && dz == 0.0) {
-            dz = 1.0;
-        }
-
-        double angleRad = Math.atan2(dz, dx);
+        double angleRad = cr[3];
 
         return new SupercontinentInfo(superId, cx, cz, radius, angleRad);
     }
