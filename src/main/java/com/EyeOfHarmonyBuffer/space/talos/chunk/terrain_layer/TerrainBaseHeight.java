@@ -11,6 +11,20 @@ public final class TerrainBaseHeight {
 
     private TerrainBaseHeight() {}
 
+    /**
+     * 共享大陆骨架（仅陆地宏群系）。
+     *
+     * 所有陆地 preset 都叠加这同一个低频场（同种子 / 同频率 / 同振幅），
+     * 因此宏群系边界两侧的 h1 / h2 包含完全相同的分量，
+     * 做 lerp 混合时这一部分原样穿过边界，最大尺度的起伏天然衔接，
+     * 从根上消除"两侧大陆骨架不同导致的对不上"的接缝。
+     *
+     * 海洋 preset（oceanDepthMax > 0）不叠加，海底维持原样。
+     */
+    private static final double CONTINENTAL_FREQ = 1.0 / 8000.0;
+    private static final double CONTINENTAL_AMP = 12.0;
+    private static final int CONTINENTAL_OCTAVES = 2;
+
     public static double computeBaseHeightCore(int worldX, int worldZ,
                                                int worldSeedInt,
                                                BaseTerrainProfile profile) {
@@ -20,6 +34,15 @@ public final class TerrainBaseHeight {
         long seed = (long) worldSeedInt;
 
         double h = profile.baseHeight;
+
+        // 共享大陆骨架：所有陆地宏群系使用同一低频场
+        if (profile.oceanDepthMax <= 0.0) {
+            h += fbm2D(seed ^ 0xABCDEF01L,
+                x, z,
+                CONTINENTAL_FREQ,
+                CONTINENTAL_AMP,
+                CONTINENTAL_OCTAVES);
+        }
 
         // 低频：大陆级盆地 / 高原
         h += fbm2D(seed ^ 0x1234ABCDL,

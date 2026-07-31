@@ -7,7 +7,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMas
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainEngine;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import java.util.EnumMap;
 
@@ -93,11 +92,6 @@ public final class TalosChunkContext {
     }
 
     private void build() {
-        // 宏群系邻域采样缓存：同一个 chunk 内地形混合需要的 3x3 采样点大量重复，
-        // 用这张表把每列的 9 次宏群系采样收敛成每个唯一采样点只算一次。
-        Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint> blendCache =
-            new Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint>();
-
         for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
             int worldZ = chunkZ * CHUNK_SIZE + localZ;
             for (int localX = 0; localX < CHUNK_SIZE; localX++) {
@@ -125,7 +119,7 @@ public final class TalosChunkContext {
 
                 baseHeight[idx] = TerrainEngine.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel,
-                    land[idx], blendCache
+                    land[idx]
                 );
             }
         }

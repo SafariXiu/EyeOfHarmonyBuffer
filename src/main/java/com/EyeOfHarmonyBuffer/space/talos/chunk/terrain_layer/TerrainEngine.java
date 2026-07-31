@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
@@ -28,20 +27,17 @@ public final class TerrainEngine {
                                           int seaLevel) {
         return sampleBaseHeight(
             worldX, worldZ, worldSeedInt, seaLevel,
-            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt),
-            null
+            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt)
         );
     }
 
     /**
-     * chunk 级上下文版本：复用调用方已经算好的 LandSample，
-     * 并通过共享缓存记忆化宏群系 3x3 邻域采样。
+     * chunk 级上下文版本：复用调用方已经算好的 LandSample。
      * 结果与无缓存版本完全一致（同一确定性函数）。
      */
     public static double sampleBaseHeight(
         int worldX, int worldZ, int worldSeedInt, int seaLevel,
-        TalosLandMask.Sample landSample,
-        Long2ObjectOpenHashMap<TalosMacroClimate.SmoothedPkgPoint> pkgCache
+        TalosLandMask.Sample landSample
     ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
@@ -49,9 +45,9 @@ public final class TerrainEngine {
         double  coastWeight = (landSample != null) ? landSample.coastWeight : 0.0;
 
         TalosMacroClimate.MacroBlendSample blend =
-            (pkgCache != null)
-                ? TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2, pkgCache)
-                : TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2);
+            TalosMacroClimate.sampleMacroBlend(
+                worldX, worldZ, worldSeedInt, 2, isLand
+            );
 
         MacroPackageId primaryId;
         MacroPackageId secondaryId;
@@ -126,70 +122,11 @@ public final class TerrainEngine {
 
         double h = lerp(h1, h2, t);
 
-        if (primaryId != secondaryId) {
-            h = applyMacroBoundarySmooth(h, h1, h2, t);
-        }
-
         if (primaryId == MacroPackageId.OCEANIC) {
             h = applyOceanDepthLimit(h, profile1, seaLevel);
         }
 
         h = applyCoastSmooth(h, coastWeight, seaLevel, isLand);
-
-        return h;
-    }
-
-    /**
-     * 宏群系边界的额外平滑（加强版）：
-     *   - 放大“边界带宽度”，只要 t 落在比较宽的区间，就适度往两侧平均高度拉；
-     *   - 高度差越大，越倾向于在边界把这条“断层”抹弯，而不是保留一条很直的台阶线。
-     */
-    private static double applyMacroBoundarySmooth(double h,
-                                                   double h1,
-                                                   double h2,
-                                                   double t) {
-        final double center = 0.5;
-
-        final double innerBand = 0.15;
-        final double outerBand = 0.45;
-
-        double d = Math.abs(t - center);
-        if (d >= outerBand) {
-            return h;
-        }
-
-        double wRegion;
-        if (d <= innerBand) {
-            wRegion = 1.0;
-        } else {
-            double u = (d - innerBand) / (outerBand - innerBand); // 0..1
-            // 1 - smoothstep(0,1,u)
-            wRegion = 1.0 - (u * u * (3.0 - 2.0 * u));
-        }
-
-        double mid = 0.5 * (h1 + h2);
-
-        final double baseStrength = 0.7;
-        double blend = baseStrength * wRegion;
-
-        h = lerp(h, mid, blend);
-
-        double diff = Math.abs(h1 - h2);
-        if (diff > 6.0) {
-            double cliffFactor;
-            if (diff >= 24.0) {
-                cliffFactor = 1.0;
-            } else {
-                double v = (diff - 6.0) / (24.0 - 6.0);
-                cliffFactor = v * v * (3.0 - 2.0 * v);
-            }
-
-            double extraStrength = 0.5 * wRegion * cliffFactor;
-
-            if (extraStrength > 0.0) {
-                h = lerp(h, mid, extraStrength);
-            }
-        }
 
         return h;
     }
