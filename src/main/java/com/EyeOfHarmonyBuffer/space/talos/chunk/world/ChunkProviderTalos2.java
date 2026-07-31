@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
@@ -64,16 +65,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         );
 
         generateTerrainWithBaseHeightSimple(ctx, blocks, meta);
-
-        TalosRiverCarver.carveChunkRivers(
-            chunkX, chunkZ,
-            worldSeedInt,
-            blocks, meta,
-            getWaterLevel(),
-            worldHeight,
-            ctx.hydro,
-            ctx.macroPkg
-        );
     }
 
     /**
@@ -167,7 +158,24 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     coastWeight
                 );
 
-                int h = (int) Math.round(coastShapedHeightD);
+                // 河谷雕刻（高度场版）：在填充方块前把河谷做进高度场，
+                // 河道两侧自然成坡。阶段 A 仅对陆地列生效，海洋一侧保持原样。
+                double channelShapedHeightD;
+                if (isLand) {
+                    channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
+                        worldX, worldZ,
+                        coastShapedHeightD,
+                        seaLevel,
+                        ctx.hydro[colIndex],
+                        ctx.macroPkg[colIndex]
+                    );
+                } else {
+                    channelShapedHeightD = coastShapedHeightD;
+                }
+
+                boolean riverCarved = channelShapedHeightD < coastShapedHeightD - 0.01;
+
+                int h = (int) Math.round(channelShapedHeightD);
                 if (h < 1) {
                     h = 1;
                 } else if (h > worldHeight - 2) {
@@ -185,16 +193,24 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         meta[idx] = 0;
                     }
 
-                    int topIndex = getIndex(localX, h, localZ);
-                    blocks[topIndex] = Blocks.grass;
-                    meta[topIndex] = 0;
-
                     if (h < seaLevel) {
-                        for (int y = h + 1; y <= seaLevel; y++) {
+                        int waterStart = riverCarved ? h : h + 1;
+
+                        if (!riverCarved) {
+                            int topIndex = getIndex(localX, h, localZ);
+                            blocks[topIndex] = Blocks.grass;
+                            meta[topIndex] = 0;
+                        }
+
+                        for (int y = waterStart; y <= seaLevel; y++) {
                             int idx = getIndex(localX, y, localZ);
                             blocks[idx] = Blocks.water;
                             meta[idx] = 0;
                         }
+                    } else {
+                        int topIndex = getIndex(localX, h, localZ);
+                        blocks[topIndex] = Blocks.grass;
+                        meta[topIndex] = 0;
                     }
 
                 } else {
