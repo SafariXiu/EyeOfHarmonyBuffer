@@ -71,6 +71,18 @@ public final class TalosRiverProfile {
 
         double riverBedYd = computeRiverBedY(baseHeightD, seaLevel, hydro, macroId);
 
+        // 纵向深度倍率：湖泊段 / 入海口 / 源头按 progress 平滑缩放河床深度
+        double depthScale = hydro.depthScale;
+        if (depthScale < 0.0) {
+            depthScale = 0.0;
+        } else if (depthScale > 1.0) {
+            depthScale = 1.0;
+        }
+        double depthAbove = seaLevel - riverBedYd;
+        if (depthAbove > 0.0) {
+            riverBedYd = seaLevel - depthAbove * depthScale;
+        }
+
         if (inSourceLake && hydro.hasSource && !Double.isNaN(sx) && !Double.isNaN(sz)) {
             if (radialFromSource > 0.0001) {
                 double theta = Math.atan2(dzs, dxs); // [-pi, pi]

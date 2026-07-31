@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverRelation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
@@ -346,6 +347,11 @@ public final class TalosRiverSystem {
         public final double widthAvoid;
         /** 河影响掩码（0..1，从 valley 边缘到谷底） */
         public final double mask;
+        /**
+         * 沿河纵向深度倍率（0..1，来自 RiverNetworkProfile）。
+         * 1 = 标准深度；入海口 / 源头会低于 1。
+         */
+        public final double depthScale;
         /** 最近河 ID（主河/支流） */
         public final int riverId;
         /** 最近河级别：0 = 主河，1.. 支流等级 */
@@ -376,6 +382,7 @@ public final class TalosRiverSystem {
                            double widthValley,
                            double widthAvoid,
                            double mask,
+                           double depthScale,
                            int riverId,
                            int riverLevel,
                            RiverType riverType,
@@ -391,6 +398,7 @@ public final class TalosRiverSystem {
             this.widthValley   = widthValley;
             this.widthAvoid    = widthAvoid;
             this.mask          = mask;
+            this.depthScale    = depthScale;
             this.riverId       = riverId;
             this.riverLevel    = riverLevel;
             this.riverType     = riverType;
@@ -456,6 +464,7 @@ public final class TalosRiverSystem {
             Double.MAX_VALUE,
             0.0, 0.0, 0.0,
             0.0,
+            1.0,
             0,
             0,
             null,
@@ -494,6 +503,7 @@ public final class TalosRiverSystem {
             valley,
             avoid,
             r.terrainInfluence,
+            r.depthScale,
             r.edgeId,
             riverLevel,
             r.riverType,
@@ -824,6 +834,154 @@ public final class TalosRiverSystem {
                     pn.getZ()
                 ));
             }
+        }
+
+        return java.util.Collections.unmodifiableList(result);
+    }
+
+    /** 河流汇入点：某条边与其父河（或主河与海）的接点。 */
+    public static final class RiverConfluence {
+        /** 当前超级大陆 ID */
+        public final int superId;
+        /** 汇入点的边 ID（主河为 0，一级支流 / 二级支流为其 edgeId） */
+        public final int riverId;
+        /** 父河边 ID（主河与海的接点时为 -1） */
+        public final int parentRiverId;
+        /** 级别：0 = 主河（入海口），1 = 一级支流，2 = 二级支流 */
+        public final int riverLevel;
+        /** true = 下游分流点（接点在支流起点）；false = 汇入点 / 入海口（接点在支流终点） */
+        public final boolean fromParent;
+        /** 接点世界坐标 X/Z */
+        public final double x;
+        public final double z;
+
+        public RiverConfluence(int superId,
+                               int riverId,
+                               int parentRiverId,
+                               int riverLevel,
+                               boolean fromParent,
+                               double x,
+                               double z) {
+            this.superId = superId;
+            this.riverId = riverId;
+            this.parentRiverId = parentRiverId;
+            this.riverLevel = riverLevel;
+            this.fromParent = fromParent;
+            this.x = x;
+            this.z = z;
+        }
+    }
+
+    /**
+     * 列出当前超级大陆上指定级别河流的所有汇入点。
+     *
+     * 语义：
+     *   - level = 0：主河与海的接点（入海口，即主河折线末端）；
+     *   - level = 1：一级支流与主河的接点；
+     *   - level = 2：二级支流与一级支流的接点。
+     *   - level < 0 表示不过滤。
+     *
+     * 汇入 / 分流都算接点：INTO_PARENT 的接点在支流终点，
+     * FROM_PARENT（下游分流）的接点在支流起点。
+     * 数据来自运行时（截断后）的河网，位置与地图实际一致。
+     */
+    public static java.util.List<RiverConfluence> listConfluencesOnCurrentSupercontinent(
+        int worldX, int worldZ,
+        int worldSeedInt,
+        int level
+    ) {
+        java.util.List<RiverConfluence> result = new java.util.ArrayList<RiverConfluence>();
+
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return result;
+        }
+
+        SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
+        if (info == null) {
+            return result;
+        }
+
+        String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
+        if (templateId == null) {
+            return result;
+        }
+
+        double scaleFactor = SUPERCONTINENT_RIVER_SCALE;
+        RiverSystem sys = SupercontinentRiverSystemRegistry.getOrCreate(
+            worldSeedInt,
+            info,
+            templateId,
+            scaleFactor
+        );
+        if (sys == null || sys.network == null) {
+            return result;
+        }
+
+        java.util.List<RiverEdgeData> edges = sys.network.getEdges();
+        if (edges == null || edges.isEmpty()) {
+            return result;
+        }
+
+        for (RiverEdgeData e : edges) {
+            java.util.List<RiverPoint> pts = e.getPoints();
+            if (pts == null || pts.size() < 2) {
+                continue;
+            }
+
+            int riverLevel = 0;
+            if (e.getType() != null) {
+                switch (e.getType()) {
+                    case MAIN:    riverLevel = 0; break;
+                    case BRANCH1: riverLevel = 1; break;
+                    case BRANCH2: riverLevel = 2; break;
+                }
+            }
+
+            if (level >= 0 && riverLevel != level) {
+                continue;
+            }
+
+            RiverRelation rel = e.getRelation();
+            double jx;
+            double jz;
+            int parentId;
+            boolean fromParent;
+
+            if (rel == RiverRelation.ROOT) {
+                // 主河：接点 = 入海口（折线末端）
+                RiverPoint pn = pts.get(pts.size() - 1);
+                jx = pn.getX();
+                jz = pn.getZ();
+                parentId = -1;
+                fromParent = false;
+            } else if (rel == RiverRelation.INTO_PARENT) {
+                // 汇入支流：接点 = 支流终点
+                RiverPoint pn = pts.get(pts.size() - 1);
+                jx = pn.getX();
+                jz = pn.getZ();
+                parentId = e.getParentId();
+                fromParent = false;
+            } else if (rel == RiverRelation.FROM_PARENT) {
+                // 下游分流：接点 = 支流起点（从父河分出）
+                RiverPoint p0 = pts.get(0);
+                jx = p0.getX();
+                jz = p0.getZ();
+                parentId = e.getParentId();
+                fromParent = true;
+            } else {
+                continue;
+            }
+
+            result.add(new RiverConfluence(
+                superId,
+                e.getId(),
+                parentId,
+                riverLevel,
+                fromParent,
+                jx,
+                jz
+            ));
         }
 
         return java.util.Collections.unmodifiableList(result);

@@ -22,6 +22,14 @@ public final class RiverSystem {
     }
 
     public static RiverSystem buildFromNetwork(RiverNetwork network) {
+        return buildFromNetwork(
+            network,
+            RiverNetworkProfile.build(network)
+        );
+    }
+
+    private static RiverSystem buildFromNetwork(RiverNetwork network,
+                                                RiverNetworkProfile profile) {
         List<RiverSegment> segs = new ArrayList<>();
 
         for (RiverEdgeData edge : network.getEdges()) {
@@ -61,6 +69,21 @@ public final class RiverSystem {
                 double progressStart = cumulative[i]     / totalLength;
                 double progressEnd   = cumulative[i + 1] / totalLength;
 
+                double depthScaleStart = 1.0;
+                double depthScaleEnd   = 1.0;
+                double widthStart      = edge.getWidthStart();
+                double widthEnd        = edge.getWidthEnd();
+                double influenceRadius = edge.getInfluenceRadius();
+                if (profile != null) {
+                    depthScaleStart = profile.scaleAt(edge.getId(), progressStart);
+                    depthScaleEnd   = profile.scaleAt(edge.getId(), progressEnd);
+                    widthStart      = profile.widthStartAt(edge.getId());
+                    widthEnd        = profile.widthEndAt(edge.getId());
+                    influenceRadius = profile.influenceAt(
+                        edge.getId(), progressStart, progressEnd
+                    );
+                }
+
                 RiverSegment seg = new RiverSegment(
                     edge.getId(),
                     i,
@@ -69,9 +92,11 @@ public final class RiverSystem {
                     b.getX(), b.getZ(),
                     progressStart,
                     progressEnd,
-                    edge.getWidthStart(),
-                    edge.getWidthEnd(),
-                    edge.getInfluenceRadius(),
+                    widthStart,
+                    widthEnd,
+                    influenceRadius,
+                    depthScaleStart,
+                    depthScaleEnd,
                     hasSource,
                     hasMouth,
                     sourceX,

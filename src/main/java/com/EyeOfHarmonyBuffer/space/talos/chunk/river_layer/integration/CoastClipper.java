@@ -25,6 +25,9 @@ public final class CoastClipper {
 
     private CoastClipper() {}
 
+    /** 截断时在「第一次入海点」之后继续保留的弧长（blocks）。 */
+    public static final double DEFAULT_BUFFER_BLOCKS = 20.0;
+
     public static RiverNetwork clipNetworkAtCoast(
         RiverNetwork original,
         int worldSeedInt,

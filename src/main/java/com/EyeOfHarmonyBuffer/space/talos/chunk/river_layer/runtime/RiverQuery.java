@@ -12,6 +12,8 @@ public final class RiverQuery {
         public final double channelRadius; // 半径
         public final double channelInfluence;
         public final double terrainInfluence;
+        /** 沿河纵向深度倍率（0..1，来自 RiverNetworkProfile）。 */
+        public final double depthScale;
         public final double riverProgress; // 0..1
         public final RiverType riverType;
         public final int edgeId;
@@ -30,6 +32,7 @@ public final class RiverQuery {
                                  double channelRadius,
                                  double channelInfluence,
                                  double terrainInfluence,
+                                 double depthScale,
                                  double riverProgress,
                                  RiverType riverType,
                                  int edgeId,
@@ -47,6 +50,7 @@ public final class RiverQuery {
             this.channelRadius = channelRadius;
             this.channelInfluence = channelInfluence;
             this.terrainInfluence = terrainInfluence;
+            this.depthScale = depthScale;
             this.riverProgress = riverProgress;
             this.riverType = riverType;
             this.edgeId = edgeId;
@@ -66,6 +70,7 @@ public final class RiverQuery {
                 Double.POSITIVE_INFINITY,
                 0.0, 0.0,
                 0.0, 0.0,
+                1.0,
                 0.0,
                 null,
                 -1,
@@ -243,6 +248,10 @@ public final class RiverQuery {
                 + (dominantSeg.edgeWidthEnd - dominantSeg.edgeWidthStart) * widthT;
         double bestRadius = bestWidth * 0.5;
 
+        double bestDepthScale =
+            dominantSeg.depthScaleStart
+                + (dominantSeg.depthScaleEnd - dominantSeg.depthScaleStart) * dominantT;
+
         return new RiverQueryResult(
             true,
             bestDist,
@@ -250,6 +259,7 @@ public final class RiverQuery {
             bestRadius,
             bestChannelInfluence,
             bestTerrainInfluence,
+            bestDepthScale,
             bestProgress,
             dominantSeg.type,
             dominantSeg.edgeId,

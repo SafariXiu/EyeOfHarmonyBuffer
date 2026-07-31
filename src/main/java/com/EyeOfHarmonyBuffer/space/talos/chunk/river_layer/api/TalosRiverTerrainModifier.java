@@ -12,7 +12,7 @@ public final class TalosRiverTerrainModifier {
      *
      * 新版规则（riverMask ∈ [0, 1]，越靠近河道中心值越大）：
      *   - 仅在 isLand == true 时生效；
-     *   - 仅在 baseHeight > riverSurfaceY 时改，保护河道和洼地；
+     *   - 双向收敛：高地压低、低地抬升到河面，形成连续的河岸 / 洪泛平原；
      *   - 使用 MacroPackageRegistry.RiverBankPreset 中的单参数：
      *       bankIntensity ∈ [0,1]，表示当前宏群系的「河岸压低强度」：
      *         0 = 几乎不做河岸压低；
@@ -72,10 +72,6 @@ public final class TalosRiverTerrainModifier {
         double riverMask
     ) {
         if (!isLand) {
-            return baseHeightD;
-        }
-
-        if (baseHeightD <= riverSurfaceY) {
             return baseHeightD;
         }
 
