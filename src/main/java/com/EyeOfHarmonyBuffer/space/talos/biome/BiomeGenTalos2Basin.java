@@ -22,6 +22,9 @@ public class BiomeGenTalos2Basin extends TalosBiomeBase {
         this.basinMin = 66.0D;
         this.basinMax = 82.0D;
 
+        this.heightBias = 0.30;
+        this.heightScale = 0.40;
+
         // ===== 树：湿地橡树，密度中等 =====
         this.treeStyle.perChunk = 1.5;
         this.treeStyle.woodBlock = Blocks.log;

@@ -22,6 +22,9 @@ public class BiomeGenTalos2Plains extends TalosBiomeBase {
         this.plainMin = 70.0D;
         this.plainMax = 96.0D;
 
+        this.heightBias = 0.45;
+        this.heightScale = 0.55;
+
         // ===== 树：普通橡树，疏密适中 =====
         this.treeStyle.perChunk = 0.6;
         this.treeStyle.woodBlock = Blocks.log;

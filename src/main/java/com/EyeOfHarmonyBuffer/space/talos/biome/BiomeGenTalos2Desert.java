@@ -24,6 +24,9 @@ public class BiomeGenTalos2Desert extends TalosBiomeBase {
         this.desertMin = 72.0D;
         this.desertMax = 98.0D;
 
+        this.heightBias = 0.45;
+        this.heightScale = 0.40;
+
         Block[] sandy = new Block[] {
             Blocks.sand, Blocks.sandstone, Blocks.stone, Blocks.gravel,
             Blocks.grass, Blocks.dirt

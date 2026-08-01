@@ -145,6 +145,21 @@ public final class TalosMacroClimate {
         int chunkX, int chunkZ, int worldSeedInt,
         TalosLandMask.Sample[] landSamples
     ) {
+        return getBiomeChunk(
+            chunkX, chunkZ, worldSeedInt, landSamples, null, null
+        );
+    }
+
+    /**
+     * chunk 级采样：一次输出最终平滑群系表 + 每列权重混合的
+     * 高度调制参数（heightBias / heightScale，与 getBiomeChunk 同一趟计算）。
+     * biasOut / scaleOut 可为 null（不需要时）。
+     */
+    public static BiomeGenBase[] getBiomeChunk(
+        int chunkX, int chunkZ, int worldSeedInt,
+        TalosLandMask.Sample[] landSamples,
+        double[] biasOut, double[] scaleOut
+    ) {
         BiomeGenBase[] out = new BiomeGenBase[16 * 16];
         BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
 
@@ -161,7 +176,15 @@ public final class TalosMacroClimate {
                     isLand = s.isLand;
                 }
 
-                out[idx] = layer.getSmoothedBiomeAt(worldX, worldZ, isLand);
+                BiomeRegionLayer.SmoothedSample sample =
+                    layer.getSmoothedSampleAt(worldX, worldZ, isLand);
+                out[idx] = sample.biome;
+                if (biasOut != null) {
+                    biasOut[idx] = sample.bias;
+                }
+                if (scaleOut != null) {
+                    scaleOut[idx] = sample.scale;
+                }
             }
         }
 

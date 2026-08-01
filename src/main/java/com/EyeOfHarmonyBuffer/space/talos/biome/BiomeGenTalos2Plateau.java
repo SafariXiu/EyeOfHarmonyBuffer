@@ -22,6 +22,9 @@ public class BiomeGenTalos2Plateau extends TalosBiomeBase {
         this.plateauMin = 92.0D;
         this.plateauMax = 124.0D;
 
+        this.heightBias = 0.62;
+        this.heightScale = 0.45;
+
         // ===== 树：稀疏橡树 =====
         this.treeStyle.perChunk = 0.4;
         this.treeStyle.woodBlock = Blocks.log;

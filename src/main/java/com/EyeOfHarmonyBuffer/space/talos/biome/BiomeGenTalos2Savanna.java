@@ -17,6 +17,9 @@ public class BiomeGenTalos2Savanna extends TalosBiomeBase {
         this.rootHeight = 0.10F;
         this.heightVariation = 0.05F;
 
+        this.heightBias = 0.45;
+        this.heightScale = 0.50;
+
         this.treeStyle.perChunk = 0.1;
         this.treeStyle.woodBlock = Blocks.log2;
         this.treeStyle.woodMeta = 0;

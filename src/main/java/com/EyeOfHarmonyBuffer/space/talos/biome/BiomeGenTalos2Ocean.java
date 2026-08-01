@@ -20,6 +20,8 @@ public class BiomeGenTalos2Ocean extends TalosBiomeBase {
         this.deepMin     = 16.0D;
         this.deepMax     = 46.0D;
 
+        this.heightBias = 0.35;
+        this.heightScale = 0.60;
     }
 
     @Override

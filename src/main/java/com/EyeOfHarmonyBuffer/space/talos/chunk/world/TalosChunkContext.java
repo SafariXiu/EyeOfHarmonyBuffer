@@ -47,6 +47,10 @@ public final class TalosChunkContext {
     /** 每列「未考虑河流」的基础地形高度。 */
     public final double[] baseHeight;
 
+    /** 每列按群系权重混合的高度调制参数（供基础高度采样使用）。 */
+    public final double[] heightBias;
+    public final double[] heightScale;
+
     /** 每列经过 R=2 盒式模糊的河岸强度 bankIntensity（宏群系边界平滑用）。 */
     public final double[] bankIntensity;
 
@@ -63,6 +67,8 @@ public final class TalosChunkContext {
         this.biomes = new BiomeGenBase[CHUNK_SIZE * CHUNK_SIZE];
         this.hydro = new TalosRiverSystem.HydroSample[CHUNK_SIZE * CHUNK_SIZE];
         this.baseHeight = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.heightBias = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.heightScale = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.bankIntensity = new double[CHUNK_SIZE * CHUNK_SIZE];
     }
 
@@ -106,9 +112,11 @@ public final class TalosChunkContext {
             }
         }
 
-        // 群系表：与群系管理器输出完全一致的最终平滑群系
+        // 群系表 + 每列权重混合的高度调制参数（同一趟计算，
+        // 与宏群系混合同样的权重平滑，边界自然过渡、无断崖）
         BiomeGenBase[] biomeGrid = TalosMacroClimate.getBiomeChunk(
-            chunkX, chunkZ, worldSeedInt, land
+            chunkX, chunkZ, worldSeedInt, land,
+            heightBias, heightScale
         );
         System.arraycopy(biomeGrid, 0, biomes, 0, biomeGrid.length);
 
@@ -124,7 +132,8 @@ public final class TalosChunkContext {
 
                 baseHeight[idx] = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel,
-                    land[idx]
+                    land[idx],
+                    heightBias[idx], heightScale[idx]
                 );
             }
         }

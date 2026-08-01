@@ -17,6 +17,9 @@ public class BiomeGenTalos2SubpolarTundra extends TalosBiomeBase {
         this.rootHeight = 0.02F;
         this.heightVariation = 0.02F;
 
+        this.heightBias = 0.35;
+        this.heightScale = 0.40;
+
         // ===== 树：极稀疏矮云杉 =====
         this.treeStyle.perChunk = 0.1;
         this.treeStyle.woodBlock = Blocks.log;

@@ -17,6 +17,9 @@ public class BiomeGenTalos2TemperateForest extends TalosBiomeBase {
         this.rootHeight = 0.10F;
         this.heightVariation = 0.16F;
 
+        this.heightBias = 0.50;
+        this.heightScale = 0.55;
+
         // ===== 树：茂密橡树 =====
         this.treeStyle.perChunk = 3.0;
         this.treeStyle.woodBlock = Blocks.log;

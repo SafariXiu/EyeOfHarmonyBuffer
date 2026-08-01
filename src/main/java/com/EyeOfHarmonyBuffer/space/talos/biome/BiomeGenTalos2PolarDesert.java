@@ -18,6 +18,9 @@ public class BiomeGenTalos2PolarDesert extends TalosBiomeBase {
         this.rootHeight = 0.0F;
         this.heightVariation = 0.04F;
 
+        this.heightBias = 0.15;
+        this.heightScale = 0.20;
+
         Block[] frozen = new Block[] {
             Blocks.snow, Blocks.packed_ice, Blocks.stone, Blocks.gravel
         };

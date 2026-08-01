@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMas
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.clamp;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.lerp;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.smoothstep;
 
@@ -27,7 +28,8 @@ public final class TerrainEngine {
                                           int seaLevel) {
         return sampleBaseHeight(
             worldX, worldZ, worldSeedInt, seaLevel,
-            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt)
+            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt),
+            0.5, 1.0
         );
     }
 
@@ -38,6 +40,21 @@ public final class TerrainEngine {
     public static double sampleBaseHeight(
         int worldX, int worldZ, int worldSeedInt, int seaLevel,
         TalosLandMask.Sample landSample
+    ) {
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            0.5, 1.0
+        );
+    }
+
+    /**
+     * 群系级高度调制：宏包带内做 bias/scale 微调。
+     * 平滑后的参数由调用方（TalosChunkContext）传入。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample,
+        double biomeBias, double biomeScale
     ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
@@ -121,6 +138,19 @@ public final class TerrainEngine {
         t = smoothstep(0.2, 0.8, t);
 
         double h = lerp(h1, h2, t);
+
+        // 群系调制：在宏包混合带 [lo, hi] 内调整相对位置。
+        // 宏包带始终是硬边界，调制不会越出带外。
+        if (biomeBias != 0.5 || biomeScale != 1.0) {
+            double lo = lerp(profile1.minHeight, profile2.minHeight, t);
+            double hi = lerp(profile1.maxHeight, profile2.maxHeight, t);
+
+            double tt = (hi > lo) ? (h - lo) / (hi - lo) : 0.5;
+            tt = clamp(tt, 0.0, 1.0);
+            tt = clamp(biomeBias + (tt - 0.5) * biomeScale, 0.0, 1.0);
+
+            h = lo + (hi - lo) * smoothstep(0.0, 1.0, tt);
+        }
 
         if (primaryId == MacroPackageId.OCEANIC) {
             h = applyOceanDepthLimit(h, profile1, seaLevel);

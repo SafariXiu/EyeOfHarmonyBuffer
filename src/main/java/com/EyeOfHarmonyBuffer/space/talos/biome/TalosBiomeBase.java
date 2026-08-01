@@ -193,6 +193,16 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase {
     public final java.util.List<GroundPatchConfig> groundPatches =
         new java.util.ArrayList<GroundPatchConfig>();
 
+    /**
+     * 群系级高度调制（在宏包高度带内做小调整）：
+     *   heightBias  0~1：0 = 贴带底，1 = 贴带顶，0.5 = 居中；
+     *   heightScale    ：噪声围绕 bias 的散布比例（0 = 几乎平坦，1 = 用满整带）。
+     * 群系边界处会做「差距感知平滑」：bias 差小的群系平滑过渡，
+     * bias 差大的边界保留为风味断崖。
+     */
+    public double heightBias = 0.5;
+    public double heightScale = 1.0;
+
     public TalosBiomeBase(int id) {
         super(id);
     }

@@ -20,6 +20,8 @@ public class BiomeGenTalos2Shelf extends TalosBiomeBase {
         this.shelfTopMin = 52.0D;
         this.shelfTopMax = 58.0D;
 
+        this.heightBias = 0.80;
+        this.heightScale = 0.25;
     }
 
     @Override

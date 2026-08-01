@@ -18,6 +18,9 @@ public class BiomeGenTalos2Alpine extends TalosBiomeBase {
         this.rootHeight = 1.1F;
         this.heightVariation = 0.7F;
 
+        this.heightBias = 0.68;
+        this.heightScale = 0.50;
+
         Block[] rocky = new Block[] {
             Blocks.snow, Blocks.stone, Blocks.gravel, Blocks.grass, Blocks.dirt
         };

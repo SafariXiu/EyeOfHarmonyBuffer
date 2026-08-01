@@ -23,6 +23,9 @@ public class BiomeGenTalos2Mountains extends TalosBiomeBase {
         this.mountainMin = 110.0D;
         this.mountainMax = 200.0D;
 
+        this.heightBias = 0.72;
+        this.heightScale = 0.60;
+
         Block[] rocky = new Block[] {
             Blocks.stone, Blocks.gravel, Blocks.grass, Blocks.dirt
         };

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -112,6 +113,28 @@ public final class BiomeRegionLayer {
         if (local < 0) local = 0;
         if (local >= TILE_SIZE) local = TILE_SIZE - 1;
         return local;
+    }
+
+    /**
+     * 单点平滑查询结果：最佳群系 + 按群系权重混合的高度调制参数。
+     * 调制参数与宏群系混合一样按权重平滑，边界处自然过渡、无断崖。
+     */
+    public static final class SmoothedSample {
+        public final BiomeGenBase biome;
+        public final double bias;
+        public final double scale;
+
+        public SmoothedSample(BiomeGenBase biome, double bias, double scale) {
+            this.biome = biome;
+            this.bias = bias;
+            this.scale = scale;
+        }
+    }
+
+    /** 对 (x,z) 做平滑查询：最佳群系 + 权重混合的高度调制参数。 */
+    public SmoothedSample getSmoothedSampleAt(int x, int z, boolean isLandHere) {
+        BiomeTile tile = getOrCreateTileFor(x, z);
+        return tile.getSmoothedSample(x, z, isLandHere);
     }
 
     private final class BiomeTile {
@@ -345,6 +368,11 @@ public final class BiomeRegionLayer {
         /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验 + 多格插值）。*/
         BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ,
                                         boolean isLandHere) {
+            return getSmoothedSample(worldX, worldZ, isLandHere).biome;
+        }
+
+        SmoothedSample getSmoothedSample(int worldX, int worldZ,
+                                         boolean isLandHere) {
             // 域扭曲：让 Voronoi / 子块直线边界变成有机曲线
             double[] warp = ClimateDomainWarp.warp(worldX, worldZ, worldSeedInt);
             double wx = warp[0];
@@ -394,7 +422,11 @@ public final class BiomeRegionLayer {
             }
 
             if (weightMap.isEmpty()) {
-                return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
+                BiomeGenBase raw = TalosMacroClimate.getRawBiome(
+                    worldX, worldZ, worldSeedInt
+                );
+                return new SmoothedSample(raw,
+                    heightBiasOf(raw), heightScaleOf(raw));
             }
 
             BiomeGenBase bestBiome = null;
@@ -407,11 +439,39 @@ public final class BiomeRegionLayer {
                 }
             }
 
-            if (bestBiome != null) {
-                return bestBiome;
+            if (bestBiome == null) {
+                BiomeGenBase raw = TalosMacroClimate.getRawBiome(
+                    worldX, worldZ, worldSeedInt
+                );
+                return new SmoothedSample(raw,
+                    heightBiasOf(raw), heightScaleOf(raw));
             }
 
-            return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
+            // 高度调制参数按群系权重混合（与宏群系混合同一思路）
+            double wSum = 0.0;
+            double bSum = 0.0;
+            double sSum = 0.0;
+            for (java.util.Map.Entry<BiomeGenBase, Double> e : weightMap.entrySet()) {
+                double w = e.getValue();
+                BiomeGenBase b = e.getKey();
+                bSum += heightBiasOf(b) * w;
+                sSum += heightScaleOf(b) * w;
+                wSum += w;
+            }
+
+            double bias = (wSum > 0.0) ? bSum / wSum : 0.5;
+            double scale = (wSum > 0.0) ? sSum / wSum : 1.0;
+            return new SmoothedSample(bestBiome, bias, scale);
+        }
+
+        private static double heightBiasOf(BiomeGenBase b) {
+            return (b instanceof TalosBiomeBase)
+                ? ((TalosBiomeBase) b).heightBias : 0.5;
+        }
+
+        private static double heightScaleOf(BiomeGenBase b) {
+            return (b instanceof TalosBiomeBase)
+                ? ((TalosBiomeBase) b).heightScale : 1.0;
         }
     }
 }

@@ -17,6 +17,9 @@ public class BiomeGenTalos2WarmSteppe extends TalosBiomeBase {
         this.rootHeight = 0.08F;
         this.heightVariation = 0.04F;
 
+        this.heightBias = 0.42;
+        this.heightScale = 0.45;
+
         // ===== 树：稀疏歪橡树（旱地感） =====
         this.treeStyle.perChunk = 0.2;
         this.treeStyle.woodBlock = Blocks.log;

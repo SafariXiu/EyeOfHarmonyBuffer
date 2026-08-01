@@ -51,7 +51,25 @@ public final class TalosBaseTerrain {
                                           int seaLevel,
                                           TalosLandMask.Sample landSample) {
         return TerrainEngine.sampleBaseHeight(
-            worldX, worldZ, worldSeedInt, seaLevel, landSample
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            0.5, 1.0
+        );
+    }
+
+    /**
+     * chunk 级上下文版本 + 群系高度调制：
+     * biomeBias / biomeScale 为群系级调制参数（由调用方从群系配置读取，
+     * 建议传入经过空间平滑的参数场，避免群系边界出现台阶）。
+     */
+    public static double sampleBaseHeight(int worldX, int worldZ,
+                                          int worldSeedInt,
+                                          int seaLevel,
+                                          TalosLandMask.Sample landSample,
+                                          double biomeBias,
+                                          double biomeScale) {
+        return TerrainEngine.sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            biomeBias, biomeScale
         );
     }
 

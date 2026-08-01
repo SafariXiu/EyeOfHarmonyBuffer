@@ -17,6 +17,9 @@ public class BiomeGenTalos2TropicalRain extends TalosBiomeBase {
         this.rootHeight = 0.12F;
         this.heightVariation = 0.18F;
 
+        this.heightBias = 0.42;
+        this.heightScale = 0.50;
+
         // ===== 树：2×2 巨型丛林树 =====
         this.treeStyle.perChunk = 1.5;
         this.treeStyle.woodBlock = Blocks.log;
