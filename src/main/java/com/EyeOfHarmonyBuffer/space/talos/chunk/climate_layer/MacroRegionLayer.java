@@ -95,16 +95,21 @@ public final class MacroRegionLayer {
                                   boolean isLandHere, double[] accum) {
         java.util.Arrays.fill(accum, 0.0);
 
-        int cellX0 = Math.floorDiv(worldX - SAMPLE_STEP / 2, SAMPLE_STEP);
-        int cellZ0 = Math.floorDiv(worldZ - SAMPLE_STEP / 2, SAMPLE_STEP);
+        // 域扭曲：让 Voronoi 直线边界变成有机曲线（确定性，两轴各一次噪声）
+        double[] warp = ClimateDomainWarp.warp(worldX, worldZ, worldSeedInt);
+        double wx = warp[0];
+        double wz = warp[1];
+
+        int cellX0 = (int) Math.floor((wx - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
+        int cellZ0 = (int) Math.floor((wz - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
 
         for (int dz = -BLEND_RADIUS_CELLS; dz <= BLEND_RADIUS_CELLS; dz++) {
             int cellWorldZ = SAMPLE_STEP * (cellZ0 + dz) + SAMPLE_STEP / 2;
-            double ddz = worldZ - cellWorldZ;
+            double ddz = wz - cellWorldZ;
 
             for (int dx = -BLEND_RADIUS_CELLS; dx <= BLEND_RADIUS_CELLS; dx++) {
                 int cellWorldX = SAMPLE_STEP * (cellX0 + dx) + SAMPLE_STEP / 2;
-                double ddx = worldX - cellWorldX;
+                double ddx = wx - cellWorldX;
 
                 double dist = Math.sqrt(ddx * ddx + ddz * ddz);
                 double w = blendKernel(dist);

@@ -31,6 +31,24 @@ public final class BiomeRegionLayer {
     /** 网格尺寸 = TILE_SIZE / SAMPLE_STEP。*/
     public static final int GRID_SIZE = TILE_SIZE / SAMPLE_STEP; // 1024/64 = 16
 
+    /** 块级投票的核半径（以 64 格采样格为单位）：2 格 = 128 blocks。 */
+    private static final int BLEND_RADIUS_CELLS = 2;
+
+    private static final double BLEND_RADIUS_BLOCKS =
+        BLEND_RADIUS_CELLS * SAMPLE_STEP;
+
+    /**
+     * 连续混合核：w = (1 - d/R)^2，窗口边缘权重为 0，
+     * 采样窗口增删格子时不会在 64 格网格 / 1024 格 tile 边界产生跳变。
+     */
+    private static double blendKernel(double distBlocks) {
+        if (distBlocks >= BLEND_RADIUS_BLOCKS) {
+            return 0.0;
+        }
+        double t = 1.0 - distBlocks / BLEND_RADIUS_BLOCKS;
+        return t * t;
+    }
+
     /** 连通分量里“最小保留格子数”的基础阈值。*/
     public static final int MIN_LAND_COMPONENT_SIZE = 4; // 陆地
     public static final int MIN_OCEAN_COMPONENT_SIZE = 4; // 远离海岸的海洋
@@ -327,53 +345,48 @@ public final class BiomeRegionLayer {
         /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验 + 多格插值）。*/
         BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ,
                                         boolean isLandHere) {
-            int localX = worldToLocalInTile(worldX);
-            int localZ = worldToLocalInTile(worldZ);
+            // 域扭曲：让 Voronoi / 子块直线边界变成有机曲线
+            double[] warp = ClimateDomainWarp.warp(worldX, worldZ, worldSeedInt);
+            double wx = warp[0];
+            double wz = warp[1];
 
-            double gx = (double) localX / SAMPLE_STEP;
-            double gz = (double) localZ / SAMPLE_STEP;
-
-            int gxCenter = (int) Math.floor(gx);
-            int gzCenter = (int) Math.floor(gz);
-
-            if (gxCenter < 0) gxCenter = 0;
-            if (gzCenter < 0) gzCenter = 0;
-            if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
-            if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
-
-            final int radius = 1;
-
-            int baseWorldX = tileX * TILE_SIZE;
-            int baseWorldZ = tileZ * TILE_SIZE;
+            int cellX0 = (int) Math.floor((wx - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
+            int cellZ0 = (int) Math.floor((wz - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
 
             java.util.IdentityHashMap<BiomeGenBase, Double> weightMap = new java.util.IdentityHashMap<>();
 
-            for (int dz = -radius; dz <= radius; dz++) {
-                int gzN = gzCenter + dz;
-                if (gzN < 0 || gzN >= GRID_SIZE) continue;
+            for (int dz = -BLEND_RADIUS_CELLS; dz <= BLEND_RADIUS_CELLS; dz++) {
+                int cellWorldZ = SAMPLE_STEP * (cellZ0 + dz) + SAMPLE_STEP / 2;
+                double ddz = wz - cellWorldZ;
 
-                for (int dx = -radius; dx <= radius; dx++) {
-                    int gxN = gxCenter + dx;
-                    if (gxN < 0 || gxN >= GRID_SIZE) continue;
+                for (int dx = -BLEND_RADIUS_CELLS; dx <= BLEND_RADIUS_CELLS; dx++) {
+                    int cellWorldX = SAMPLE_STEP * (cellX0 + dx) + SAMPLE_STEP / 2;
+                    double ddx = wx - cellWorldX;
 
-                    int index = idx(gxN, gzN);
-
-                    if (isLand[index] != isLandHere) continue;
-
-                    BiomeGenBase b = smoothedBiome[index];
-                    if (b == null) {
-                        b = rawBiome[index];
+                    double dist = Math.sqrt(ddx * ddx + ddz * ddz);
+                    double w = blendKernel(dist);
+                    if (w <= 0.0) {
+                        continue;
                     }
-                    if (b == null) continue;
 
-                    int cellWorldX = baseWorldX + gxN * SAMPLE_STEP + SAMPLE_STEP / 2;
-                    int cellWorldZ = baseWorldZ + gzN * SAMPLE_STEP + SAMPLE_STEP / 2;
+                    // 跨 tile 解析：从该采样格真正所属的 tile 读取，不再截断
+                    BiomeTile tile = getOrCreateTileFor(cellWorldX, cellWorldZ);
+                    int localX = worldToLocalInTile(cellWorldX);
+                    int localZ = worldToLocalInTile(cellWorldZ);
+                    int index = (localZ / SAMPLE_STEP) * GRID_SIZE
+                        + (localX / SAMPLE_STEP);
 
-                    double ddx = worldX - cellWorldX;
-                    double ddz = worldZ - cellWorldZ;
-                    double dist2 = ddx * ddx + ddz * ddz;
+                    if (tile.isLand[index] != isLandHere) {
+                        continue;
+                    }
 
-                    double w = 1.0 / (dist2 + 1.0);
+                    BiomeGenBase b = tile.smoothedBiome[index];
+                    if (b == null) {
+                        b = tile.rawBiome[index];
+                    }
+                    if (b == null) {
+                        continue;
+                    }
 
                     Double old = weightMap.get(b);
                     weightMap.put(b, (old == null ? 0.0 : old) + w);
