@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMas
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
+import net.minecraft.world.biome.BiomeGenBase;
 
 /**
  * 单个 chunk 的世界生成「采样上下文」。
@@ -37,6 +38,9 @@ public final class TalosChunkContext {
     /** 每列平滑后的宏群系 ID（OCEANIC 表示海洋宏群系）。 */
     public final MacroPackageId[] macroPkg;
 
+    /** 每列最终（平滑后）的群系，供地表 / 装饰逻辑按群系查配置。 */
+    public final BiomeGenBase[] biomes;
+
     /** 每列水文场（河流距离 / 宽度 / mask / 源口坐标等）。 */
     public TalosRiverSystem.HydroSample[] hydro;
 
@@ -56,6 +60,7 @@ public final class TalosChunkContext {
         this.landMask = landMask;
         this.land = land;
         this.macroPkg = new MacroPackageId[CHUNK_SIZE * CHUNK_SIZE];
+        this.biomes = new BiomeGenBase[CHUNK_SIZE * CHUNK_SIZE];
         this.hydro = new TalosRiverSystem.HydroSample[CHUNK_SIZE * CHUNK_SIZE];
         this.baseHeight = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.bankIntensity = new double[CHUNK_SIZE * CHUNK_SIZE];
@@ -100,6 +105,12 @@ public final class TalosChunkContext {
                 );
             }
         }
+
+        // 群系表：与群系管理器输出完全一致的最终平滑群系
+        BiomeGenBase[] biomeGrid = TalosMacroClimate.getBiomeChunk(
+            chunkX, chunkZ, worldSeedInt, land
+        );
+        System.arraycopy(biomeGrid, 0, biomes, 0, biomeGrid.length);
 
         hydro = TalosRiverSystem.sampleHydroFieldChunk(
             chunkX, chunkZ, worldSeedInt, land

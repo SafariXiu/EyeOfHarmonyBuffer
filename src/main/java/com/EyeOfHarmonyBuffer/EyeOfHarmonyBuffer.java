@@ -22,6 +22,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverRegistry;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
@@ -105,6 +106,7 @@ public class EyeOfHarmonyBuffer {
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
 
         TalosBiomes.init();
+        TalosSurfaceRegistry.init();
     }
 
     @Mod.EventHandler

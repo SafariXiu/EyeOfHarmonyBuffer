@@ -1,12 +1,15 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -182,30 +185,52 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 meta[bedrockIndex] = 0;
 
                 if (isLand) {
-                    for (int y = 1; y < h; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.stone;
-                        meta[idx] = 0;
+                    TalosSurfaceProfile profile =
+                        TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
+
+                    // 随机袋：按列哈希命中时，把顶部 pocketDepth 格替换为随机袋方块
+                    boolean pocketHere = profile.pocketBlock != null
+                        && profile.pocketDepth > 0
+                        && NoiseUtil.hash2(worldX, worldZ, worldSeedInt ^ 0x5A17C0DE)
+                            < profile.pocketChance;
+
+                    if (riverCarved) {
+                        // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
+                        for (int y = 1; y < h; y++) {
+                            putBlock(blocks, meta, localX, y, localZ,
+                                profile.deepBlock);
+                        }
+                    } else {
+                        int surfaceStart = h - profile.surfaceDepth + 1;
+                        int fillerStart = surfaceStart - profile.fillerDepth;
+
+                        for (int y = 1; y < h; y++) {
+                            BlockMetaPair pair;
+                            if (y < fillerStart) {
+                                pair = profile.deepBlock;
+                            } else if (y < surfaceStart) {
+                                pair = profile.fillerBlock;
+                            } else {
+                                pair = profile.surfaceBlock;
+                            }
+                            if (pocketHere && y >= h - profile.pocketDepth + 1) {
+                                pair = profile.pocketBlock;
+                            }
+                            putBlock(blocks, meta, localX, y, localZ, pair);
+                        }
+
+                        putBlock(blocks, meta, localX, h, localZ,
+                            pocketHere ? profile.pocketBlock : profile.surfaceBlock);
                     }
 
                     if (h < seaLevel) {
                         int waterStart = riverCarved ? h : h + 1;
-
-                        if (!riverCarved) {
-                            int topIndex = getIndex(localX, h, localZ);
-                            blocks[topIndex] = Blocks.grass;
-                            meta[topIndex] = 0;
-                        }
 
                         for (int y = waterStart; y <= seaLevel; y++) {
                             int idx = getIndex(localX, y, localZ);
                             blocks[idx] = Blocks.water;
                             meta[idx] = 0;
                         }
-                    } else {
-                        int topIndex = getIndex(localX, h, localZ);
-                        blocks[topIndex] = Blocks.grass;
-                        meta[topIndex] = 0;
                     }
 
                 } else {
@@ -257,6 +282,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private int getIndex(int x, int y, int z) {
         return (x * CHUNK_SIZE + z) * worldHeight + y;
+    }
+
+    private void putBlock(Block[] blocks, byte[] meta, int x, int y, int z,
+                          BlockMetaPair pair) {
+        if (pair == null) {
+            return;
+        }
+        int idx = getIndex(x, y, z);
+        blocks[idx] = pair.getBlock();
+        meta[idx] = pair.getMetadata();
     }
 
     @Override

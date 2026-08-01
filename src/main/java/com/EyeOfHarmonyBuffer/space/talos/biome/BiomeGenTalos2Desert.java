@@ -1,17 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
 import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
-import net.minecraft.init.Blocks;
 
 public class BiomeGenTalos2Desert extends GSBiomeGenBase {
 
     public double desertMin;
     public double desertMax;
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
 
     public BiomeGenTalos2Desert(int id) {
         super(id);
@@ -29,9 +23,6 @@ public class BiomeGenTalos2Desert extends GSBiomeGenBase {
         this.desertMin = 72.0D;
         this.desertMax = 98.0D;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.sand, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.sand, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.sandstone, (byte) 0);
     }
 
     @Override

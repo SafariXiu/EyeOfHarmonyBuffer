@@ -1,17 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
 import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
-import net.minecraft.init.Blocks;
 
 public class BiomeGenTalos2Ocean extends GSBiomeGenBase {
 
     public double deepMin;
     public double deepMax;
-
-    public BlockMetaPair bottomBlock;
-    public BlockMetaPair shelfBlock;
-    public BlockMetaPair deepBlock;
 
     public BiomeGenTalos2Ocean(int id) {
         super(id);
@@ -28,9 +22,6 @@ public class BiomeGenTalos2Ocean extends GSBiomeGenBase {
         this.deepMin     = 16.0D;
         this.deepMax     = 46.0D;
 
-        this.bottomBlock = new BlockMetaPair(Blocks.stone, (byte) 0);
-        this.shelfBlock  = new BlockMetaPair(Blocks.stone, (byte) 0);
-        this.deepBlock   = new BlockMetaPair(Blocks.stone, (byte) 0);
     }
 
     @Override

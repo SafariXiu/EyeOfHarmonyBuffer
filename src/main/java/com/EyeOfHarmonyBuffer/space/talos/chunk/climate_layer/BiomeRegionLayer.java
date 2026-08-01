@@ -49,8 +49,19 @@ public final class BiomeRegionLayer {
 
     /** 对外主接口：获取“平滑后的” Biome。*/
     public BiomeGenBase getSmoothedBiomeAt(int x, int z) {
+        return getSmoothedBiomeAt(
+            x, z, TalosLandMask.isLandCheap(x, z, worldSeedInt)
+        );
+    }
+
+    /**
+     * 已知该点 isLand 时的平滑群系查询。
+     * 与上面的接口结果完全一致，只是省掉内部重复的 isLandCheap 计算
+     * （chunk 级群系表用 LandSample 表直接传入）。
+     */
+    public BiomeGenBase getSmoothedBiomeAt(int x, int z, boolean isLandHere) {
         BiomeTile tile = getOrCreateTileFor(x, z);
-        return tile.getSmoothedBiomeAt(x, z);
+        return tile.getSmoothedBiomeAt(x, z, isLandHere);
     }
 
     private static long packTile(int tx, int tz) {
@@ -314,7 +325,8 @@ public final class BiomeRegionLayer {
         }
 
         /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验 + 多格插值）。*/
-        BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ) {
+        BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ,
+                                        boolean isLandHere) {
             int localX = worldToLocalInTile(worldX);
             int localZ = worldToLocalInTile(worldZ);
 
@@ -328,9 +340,6 @@ public final class BiomeRegionLayer {
             if (gzCenter < 0) gzCenter = 0;
             if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
             if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
-
-            // 原来：boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
-            boolean isLandHere = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
             final int radius = 1;
 

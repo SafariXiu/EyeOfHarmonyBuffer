@@ -124,6 +124,51 @@ public final class TalosMacroClimate {
     }
 
     /**
+     * 已知该点 isLand 时的平滑群系查询，省掉内部重复的 isLandCheap。
+     * 结果与 getBiome(...) 完全一致。
+     */
+    public static BiomeGenBase getBiome(int worldX, int worldZ,
+                                        int worldSeedInt,
+                                        boolean isLandKnown) {
+        BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
+        return layer.getSmoothedBiomeAt(worldX, worldZ, isLandKnown);
+    }
+
+    /**
+     * 为某个 chunk 一次性采样 16×16 的「最终平滑群系」表。
+     *
+     * 数组索引约定：idx = localX * 16 + localZ（0..255）。
+     * 与逐点调用 getBiome 完全一致（同一确定性函数），只是 superId 侧的
+     * isLand 直接复用 LandSample 表，供地形生成器按群系查地表配置。
+     */
+    public static BiomeGenBase[] getBiomeChunk(
+        int chunkX, int chunkZ, int worldSeedInt,
+        TalosLandMask.Sample[] landSamples
+    ) {
+        BiomeGenBase[] out = new BiomeGenBase[16 * 16];
+        BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
+
+        for (int localZ = 0; localZ < 16; localZ++) {
+            int worldZ = chunkZ * 16 + localZ;
+            for (int localX = 0; localX < 16; localX++) {
+                int idx = localX * 16 + localZ;
+                int worldX = chunkX * 16 + localX;
+
+                boolean isLand = false;
+                TalosLandMask.Sample s =
+                    (landSamples != null) ? landSamples[idx] : null;
+                if (s != null) {
+                    isLand = s.isLand;
+                }
+
+                out[idx] = layer.getSmoothedBiomeAt(worldX, worldZ, isLand);
+            }
+        }
+
+        return out;
+    }
+
+    /**
      * 返回当前 Z 所在的纬度带（TROPIC / SUBTROPIC / TEMPERATE / SUBPOLAR / POLAR）。
      * 注意：只和 worldZ 有关，与 worldSeedInt 无关，这里只是顺手放在统一入口。
      */
