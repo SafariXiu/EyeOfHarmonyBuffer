@@ -16,7 +16,7 @@ public class CommandTalosSuperCenter extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosSuperCenter - 传送到当前所在超级大陆的中心点（Debug 用）";
+        return "/talosSuperCenter - 传送到当前所在超级大陆（主/次级均可）的中心点（Debug 用）";
     }
 
     @Override
@@ -72,9 +72,13 @@ public class CommandTalosSuperCenter extends CommandBase {
 
         player.setPositionAndUpdate(tpX, tpY, tpZ);
 
+        String mainSub = TalosLandMask.isMainSupercontinent(superId)
+            ? "主大陆" : "次级大陆";
+
         sender.addChatMessage(new ChatComponentText(
             String.format(
-                "[TalosSuper] 跳转到超级大陆中心: superId=%d, center=(%d, ~%d, %d)",
+                "[TalosSuper] 跳转到%s中心: superId=%d, center=(%d, ~%d, %d)",
+                mainSub,
                 superId,
                 centerX, y + 2,
                 centerZ

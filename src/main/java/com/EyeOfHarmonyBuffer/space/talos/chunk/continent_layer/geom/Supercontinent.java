@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPlacement;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
 
@@ -32,6 +33,14 @@ public final class Supercontinent {
     public final double centerZ;
 
     public final double baseRadius;
+
+    /** 海岸线半径钳制下限（主大陆 17000 / 次级 12000）。 */
+    private final double minRadius;
+    /** 海岸线半径钳制上限（主大陆 25000 / 次级 17000）。 */
+    private final double maxRadius;
+
+    /** 形状振幅等比缩放系数：baseRadius / MAIN_REFERENCE_RADIUS。 */
+    private final double shapeScale;
 
     private double thetaLongAxis;
     private double ampAxis;
@@ -82,28 +91,35 @@ public final class Supercontinent {
     }
 
     public Supercontinent(long worldSeed, int cellX, int cellZ) {
+        this(worldSeed, cellX, cellZ,
+            SupercontinentPlacement.rawPlacement(
+                cellX, cellZ, (int) (worldSeed & 0x7FFFFFFFL)
+            )
+        );
+    }
+
+    /**
+     * 按布点规则构造超级大陆：中心、半径范围、主/次级特性全部来自 Placement。
+     * 调用方必须保证 placement.exists == true（TectonicWorld 只对存在格调用）。
+     */
+    public Supercontinent(long worldSeed, int cellX, int cellZ,
+                          SupercontinentPlacement.Placement placement) {
         this.worldSeed = worldSeed;
         this.id = new SupercontinentId(cellX, cellZ);
-
-        long seedCx = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x10001, cellX, cellZ);
-        long seedCz = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x10002, cellX, cellZ);
-
-        double baseCenterX = cellX * (double) TectonicConfig.SUPER_CELL_SIZE
-            + TectonicConfig.SUPER_CELL_SIZE / 2.0;
-        double baseCenterZ = cellZ * (double) TectonicConfig.SUPER_CELL_SIZE
-            + TectonicConfig.SUPER_CELL_SIZE / 2.0;
-
-        double dx = TectonicMath.randRange(seedCx, -TectonicConfig.CENTER_JITTER_MAX, TectonicConfig.CENTER_JITTER_MAX);
-        double dz = TectonicMath.randRange(seedCz, -TectonicConfig.CENTER_JITTER_MAX, TectonicConfig.CENTER_JITTER_MAX);
-
-        this.centerX = baseCenterX + dx;
-        this.centerZ = baseCenterZ + dz;
+        this.minRadius = placement.clampMinRadius;
+        this.maxRadius = placement.clampMaxRadius;
+        this.centerX = placement.centerX;
+        this.centerZ = placement.centerZ;
 
         long seedRBase = TectonicMath.hashInts((int) (worldSeed & 0xFFFFFFFFL), 0x20001, cellX, cellZ);
-        this.baseRadius = TectonicMath.randRange(seedRBase,
-            TectonicConfig.BASE_RADIUS_MIN,
-            TectonicConfig.BASE_RADIUS_MAX
+        this.baseRadius = TectonicMath.randRange(
+            seedRBase,
+            placement.baseRadiusMin,
+            placement.baseRadiusMax
         );
+
+        // 形状振幅按半径等比缩放：次级大陆观感与主大陆统一（同款 lobe / 噪声风格）
+        this.shapeScale = baseRadius / TectonicConfig.MAIN_REFERENCE_RADIUS;
 
         initRadiusParams();
 
@@ -129,7 +145,7 @@ public final class Supercontinent {
 
         long seedAxisAmp = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x40002, cx, cz);
         double ampAxis01 = TectonicMath.randRange(seedAxisAmp, -1.0, 1.0);
-        ampAxis = ampAxis01 * 6000.0;
+        ampAxis = ampAxis01 * 6000.0 * shapeScale;
 
         long seedLobeCount = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50000, cx, cz);
         double tCount = TectonicMath.randUnitDouble(seedLobeCount);
@@ -146,7 +162,7 @@ public final class Supercontinent {
 
             long seedAmp = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50002, cx, cz, i);
             double amp01 = TectonicMath.randRange(seedAmp, -1.0, 1.0);
-            double ampI = amp01 * AMP_MID_MAX;
+            double ampI = amp01 * AMP_MID_MAX * shapeScale;
 
             long seedW = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x50003, cx, cz, i);
             double widthI = TectonicMath.randRange(seedW, WIDTH_MIN, WIDTH_MAX);
@@ -160,7 +176,7 @@ public final class Supercontinent {
             long seedN = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x60001, cx, cz, k);
             smallNoiseValues[k] = TectonicMath.randRange(seedN, -1.0, 1.0);
         }
-        smallNoiseAmp = 900.0;
+        smallNoiseAmp = 900.0 * shapeScale;
     }
 
     double radiusAtAngle(double theta) {
@@ -201,8 +217,8 @@ public final class Supercontinent {
 
         r += noiseVal * smallNoiseAmp;
 
-        if (r < TectonicConfig.MIN_RADIUS) r = TectonicConfig.MIN_RADIUS;
-        else if (r > TectonicConfig.MAX_RADIUS) r = TectonicConfig.MAX_RADIUS;
+        if (r < minRadius) r = minRadius;
+        else if (r > maxRadius) r = maxRadius;
 
         return r;
     }

@@ -10,17 +10,18 @@ public final class SupercontinentId {
     }
 
     public int toInt() {
-        int x16 = cellX & 0xFFFF;
-        int z16 = cellZ & 0xFFFF;
-        int id = (x16 << 16) | z16;
+        int x17 = cellX & 0x1FFFF;
+        int z17 = cellZ & 0x1FFFF;
+        int id = (x17 << 17) | z17;
         return id != 0 ? id : 1;
     }
 
     public static SupercontinentId fromInt(int id) {
-        int x16 = (id >>> 16) & 0xFFFF;
-        int z16 = id & 0xFFFF;
-        int cellX = (short) x16;
-        int cellZ = (short) z16;
+        int x17 = (id >>> 17) & 0x1FFFF;
+        int z17 = id & 0x1FFFF;
+        // 17 位有符号扩展：覆盖 ±65536 个格点（40000 格距下为 ±26.2 亿格块）
+        int cellX = (x17 << 15) >> 15;
+        int cellZ = (z17 << 15) >> 15;
         return new SupercontinentId(cellX, cellZ);
     }
 }

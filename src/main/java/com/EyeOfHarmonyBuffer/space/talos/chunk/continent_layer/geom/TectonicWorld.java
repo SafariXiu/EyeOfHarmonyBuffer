@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPlacement;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
@@ -9,6 +10,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,6 +40,10 @@ public final class TectonicWorld {
     private final Map<Long, Supercontinent> continentCache =
         new HashMap<Long, Supercontinent>();
 
+    /** (cellX,cellZ) → 有效放置信息缓存（含“不存在”的格点）。 */
+    private final Map<Long, SupercontinentPlacement.Placement> placementCache =
+        new HashMap<Long, SupercontinentPlacement.Placement>();
+
     public TectonicWorld(long worldSeed) {
         this.worldSeed = worldSeed;
     }
@@ -49,30 +56,85 @@ public final class TectonicWorld {
     }
 
     /**
-     * 获取指定超级单元格的 Supercontinent，不存在则构造一个并放入缓存。
+     * 获取指定布点格的 Supercontinent。
+     * 该格不存在大陆（次级格概率缺失 / 分离检查不通过）时返回 null，
+     * 并将“不存在”也缓存在 continentCache 中，避免重复判定。
      */
     private Supercontinent getSupercontinent(int cellX, int cellZ) {
         long key = packCellKey(cellX, cellZ);
-        Supercontinent sc = continentCache.get(key);
-        if (sc != null) return sc;
+        if (continentCache.containsKey(key)) {
+            return continentCache.get(key);
+        }
 
-        sc = new Supercontinent(worldSeed, cellX, cellZ);
+        SupercontinentPlacement.Placement p = placementAt(cellX, cellZ);
+        if (p == null || !p.exists) {
+            continentCache.put(key, null);
+            return null;
+        }
+
+        Supercontinent sc = new Supercontinent(worldSeed, cellX, cellZ, p);
         continentCache.put(key, sc);
         return sc;
+    }
+
+    /**
+     * 获取某布点格的有效放置信息（含“不存在”），带缓存。
+     * 公开给 WorldgenAPI / 指令层做超级格大陆列举。
+     */
+    public SupercontinentPlacement.Placement placementAt(int cellX, int cellZ) {
+        long key = packCellKey(cellX, cellZ);
+        SupercontinentPlacement.Placement p = placementCache.get(key);
+        if (p != null) {
+            return p;
+        }
+
+        if (placementCache.size() > 16384) {
+            placementCache.clear();
+        }
+
+        p = SupercontinentPlacement.effectivePlacement(
+            cellX, cellZ, (int) (worldSeed & 0x7FFFFFFFL)
+        );
+        placementCache.put(key, p);
+        return p;
+    }
+
+    /**
+     * 列出某个超级格（2×2 布点格）内的所有大陆放置信息。
+     * 主大陆位于 (奇,奇) 象限，其余象限为可能存在的次级大陆。
+     */
+    public List<SupercontinentPlacement.Placement> placementsInSupercell(
+        int superCellX, int superCellZ
+    ) {
+        List<SupercontinentPlacement.Placement> out =
+            new ArrayList<SupercontinentPlacement.Placement>(4);
+
+        for (int qx = 0; qx < 2; qx++) {
+            for (int qz = 0; qz < 2; qz++) {
+                int cellX = superCellX * 2 + qx;
+                int cellZ = superCellZ * 2 + qz;
+                SupercontinentPlacement.Placement p = placementAt(cellX, cellZ);
+                if (p != null && p.exists) {
+                    out.add(p);
+                }
+            }
+        }
+
+        return out;
     }
 
     /**
      * 将世界 block 坐标转换为超级单元格坐标 (cellX, cellZ)。
      */
     private int[] getCellCoords(int blockX, int blockZ) {
-        int cellX = TectonicMath.floorDiv(blockX, TectonicConfig.SUPER_CELL_SIZE);
-        int cellZ = TectonicMath.floorDiv(blockZ, TectonicConfig.SUPER_CELL_SIZE);
+        int cellX = TectonicMath.floorDiv(blockX, TectonicConfig.PLACEMENT_CELL_SIZE);
+        int cellZ = TectonicMath.floorDiv(blockZ, TectonicConfig.PLACEMENT_CELL_SIZE);
         return new int[]{cellX, cellZ};
     }
 
     /**
      * 给定点所属的大致候选 cell 列表（自身 + 八邻居），用于搜索最近 Supercontinent。
-     * 目前采用 3×3，若以后需要更大范围的“全局最近大陆”搜索，可以扩成 5×5。
+     * 布点格网为 40000，候选范围取 5×5（物理范围 ±80000，与原 3×3 超级格一致）。
      */
     private void candidateCellsForPoint(int blockX, int blockZ, int[][] outCells, int[] outCount) {
         int[] cell = getCellCoords(blockX, blockZ);
@@ -80,8 +142,8 @@ public final class TectonicWorld {
         int cz = cell[1];
 
         int idx = 0;
-        for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) {
                 outCells[idx][0] = cx + dx;
                 outCells[idx][1] = cz + dz;
                 idx++;
@@ -100,7 +162,7 @@ public final class TectonicWorld {
      *   - outSignedCoastDistance[0] = 该超级大陆下的 d。
      */
     private Supercontinent findNearestSupercontinent(int blockX, int blockZ, double[] outSignedCoastDistance) {
-        int[][] cells = new int[9][2];
+        int[][] cells = new int[25][2];
         int[] n = new int[1];
         candidateCellsForPoint(blockX, blockZ, cells, n);
 
@@ -112,6 +174,9 @@ public final class TectonicWorld {
             int cx = cells[i][0];
             int cz = cells[i][1];
             Supercontinent sc = getSupercontinent(cx, cz);
+            if (sc == null) {
+                continue;
+            }
 
             double signed = sc.signedCoastDistanceRadial(blockX, blockZ);
             double absSigned = Math.abs(signed);

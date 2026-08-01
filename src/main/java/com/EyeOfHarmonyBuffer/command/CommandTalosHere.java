@@ -74,9 +74,18 @@ public class CommandTalosHere extends CommandBase {
             dimName, world.provider.dimensionId, blockX, blockY, blockZ, worldSeedInt
         );
 
+        String mainSubLabel = "";
+        if (superId != 0) {
+            mainSubLabel = TalosLandMask.isMainSupercontinent(superId)
+                ? "主大陆" : "次级大陆";
+        }
+
         String msgIds = String.format(
-            "超级大陆ID: %d, 板块ID: %d, isLand: %s",
-            superId, plateId, isLand ? "true" : "false"
+            "超级大陆ID: %d (%s), 板块ID: %d, isLand: %s",
+            superId,
+            mainSubLabel.isEmpty() ? "无" : mainSubLabel,
+            plateId,
+            isLand ? "true" : "false"
         );
 
         String msgWeights = String.format(

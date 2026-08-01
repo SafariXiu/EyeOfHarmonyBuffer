@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPlacement;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom.TectonicWorld;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
@@ -12,7 +13,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
  * 类名：WorldgenAPI
  * 来源：原 Python worldgen_api.py 精简版（仅核心采样接口） + Java 高性能扩展
  * 功能：
- *   - 对内暴露可供 Minecraft 世界生成器调用的核心接口；
+ *   - 海陆分布层内部的引擎级接口（仅限本层内部 / TalosLandMask 使用）；
  *   - 第一层输出：
  *       * 海陆布尔值 isLand
  *       * 板块ID plateId
@@ -22,6 +23,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
  *       * Tile 级缓存（按固定 TILE_SIZE 预计算一整块海陆布尔 + ID）；
  *   - 注意：
  *       * 这里已经完全切换到 tectonic_v1，不再调用旧的 WorldgenCore。
+ *       * 外部代码（指令、世界生成、其它层）一律不要直接调用本类，
+ *         请使用公开入口 TalosLandMask。
  * =====================================================
  */
 
@@ -337,6 +340,52 @@ public class WorldgenAPI {
         TectonicWorld world = getTectonicWorld(worldSeed);
 
         return world.getSuperNearestCoastAngle(sid);
+    }
+
+    /**
+     * 判断某个 superId 是否为主大陆（false = 次级大陆或无效 ID）。
+     * 规则：主大陆固定占 (奇, 奇) 布点格。
+     */
+    public static boolean isMainSupercontinent(int superId) {
+        if (superId == 0) {
+            return false;
+        }
+        SupercontinentId sid = SupercontinentId.fromInt(superId);
+        return SupercontinentPlacement.isMainCell(sid.cellX, sid.cellZ);
+    }
+
+    /**
+     * 列出某个超级格（80k × 80k，即 2×2 布点格）内的所有大陆：
+     * 1 个主大陆（永远存在）+ 可能存在的次级大陆。
+     */
+    public static java.util.List<TalosLandMask.SupercellContinentInfo> listSupercellContinents(
+        int superCellX, int superCellZ, int worldSeed
+    ) {
+        TectonicWorld world = getTectonicWorld(worldSeed);
+        java.util.List<TalosLandMask.SupercellContinentInfo> out =
+            new java.util.ArrayList<TalosLandMask.SupercellContinentInfo>();
+
+        for (int qx = 0; qx < 2; qx++) {
+            for (int qz = 0; qz < 2; qz++) {
+                int cellX = superCellX * 2 + qx;
+                int cellZ = superCellZ * 2 + qz;
+
+                SupercontinentPlacement.Placement p = world.placementAt(cellX, cellZ);
+                if (p == null || !p.exists) {
+                    continue;
+                }
+
+                SupercontinentId sid = new SupercontinentId(cellX, cellZ);
+                out.add(new TalosLandMask.SupercellContinentInfo(
+                    sid.toInt(),
+                    p.isMain,
+                    (int) Math.round(p.centerX),
+                    (int) Math.round(p.centerZ)
+                ));
+            }
+        }
+
+        return out;
     }
 
     /**

@@ -170,6 +170,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandTalosRiverSource());
         event.registerServerCommand(new CommandTalosRiverMouth());
         event.registerServerCommand(new CommandTalosRiverConfluence());
+        event.registerServerCommand(new CommandTalosContinent());
     }
 
     @Mod.EventHandler

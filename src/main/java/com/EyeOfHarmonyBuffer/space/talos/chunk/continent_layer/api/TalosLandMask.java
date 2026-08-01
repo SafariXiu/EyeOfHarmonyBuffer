@@ -134,6 +134,40 @@ public final class TalosLandMask {
     }
 
     /**
+     * 判断某个 superId 是否为主大陆（false = 次级大陆或无效 ID）。
+     * 主大陆固定占 (奇, 奇) 布点格。
+     */
+    public static boolean isMainSupercontinent(int superId) {
+        return WorldgenAPI.isMainSupercontinent(superId);
+    }
+
+    /** 某个超级格内单个大陆的简要信息（供指令 / 调试层使用）。 */
+    public static final class SupercellContinentInfo {
+        public final int superId;
+        public final boolean isMain;
+        public final int centerX;
+        public final int centerZ;
+
+        public SupercellContinentInfo(int superId, boolean isMain,
+                                      int centerX, int centerZ) {
+            this.superId = superId;
+            this.isMain = isMain;
+            this.centerX = centerX;
+            this.centerZ = centerZ;
+        }
+    }
+
+    /**
+     * 列出某个超级格（80k × 80k）内的所有大陆：
+     * 1 个主大陆（永远存在）+ 可能存在的次级大陆。
+     */
+    public static java.util.List<SupercellContinentInfo> listSupercellContinents(
+        int superCellX, int superCellZ, int worldSeedInt
+    ) {
+        return WorldgenAPI.listSupercellContinents(superCellX, superCellZ, worldSeedInt);
+    }
+
+    /**
      * 为某个 chunk 获取 16×16 的 LandMask16，给 ChunkProvider 使用。
      *
      * @param chunkX       区块坐标 X
