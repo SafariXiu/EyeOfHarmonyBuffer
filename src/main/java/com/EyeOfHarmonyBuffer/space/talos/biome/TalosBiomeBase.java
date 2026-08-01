@@ -72,6 +72,8 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase {
         public int depth = 2;
         /** 岸格铺沙概率 0~1。 */
         public double rimSandChance = 0.5;
+        /** 允许落点的地表方块（默认草/泥土）。 */
+        public Block[] groundBlocks = {Blocks.grass, Blocks.dirt};
 
         public PondConfig() {}
 
@@ -91,6 +93,8 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase {
         public int footprint = 5;
         public int minHeight = 2;
         public int maxHeight = 5;
+        /** 允许落点的地表方块（默认草/泥土）。 */
+        public Block[] groundBlocks = {Blocks.grass, Blocks.dirt};
 
         public RockConfig() {}
 
@@ -159,6 +163,8 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase {
         public double leafDensity = 1.0;
         /** 树干歪斜概率 0~1：1 = 必然在中途横向错开 1 格。 */
         public double leanChance = 0.0;
+        /** 允许落点的地表方块（默认草/泥土）。 */
+        public Block[] groundBlocks = {Blocks.grass, Blocks.dirt};
     }
 
     /** 树（结构 / 方块 / 数量）。 */

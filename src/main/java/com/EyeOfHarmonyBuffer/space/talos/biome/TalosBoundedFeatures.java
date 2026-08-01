@@ -433,7 +433,7 @@ public final class TalosBoundedFeatures {
             if (y <= 0 || y >= 250) {
                 return false;
             }
-            if (isWater(lx, y, lz) || !topIs(lx, lz, Blocks.grass, Blocks.dirt)) {
+            if (isWater(lx, y, lz) || !topIs(lx, lz, this.style.groundBlocks)) {
                 return false;
             }
 
@@ -554,19 +554,15 @@ public final class TalosBoundedFeatures {
      * 或落在坡度过大的地形上时整片放弃。
      */
     public static final class Pond extends Base {
-        private final int radius;
-        private final int depth;
-        private final double rimSandChance;
+        private final TalosBiomeBase.PondConfig config;
 
-        public Pond(int radius, int depth, double rimSandChance) {
-            this.radius = radius;
-            this.depth = depth;
-            this.rimSandChance = rimSandChance;
+        public Pond(TalosBiomeBase.PondConfig config) {
+            this.config = config;
         }
 
         @Override
         protected boolean generateAt(int lx, int lz) {
-            int r = this.radius;
+            int r = this.config.radius;
             if (!canWriteArea(lx, lz, r + 1)) {
                 return false;
             }
@@ -574,7 +570,7 @@ public final class TalosBoundedFeatures {
             if (y <= 3 || y >= 253) {
                 return false;
             }
-            if (isWater(lx, y, lz) || !topIs(lx, lz, Blocks.grass, Blocks.dirt)) {
+            if (isWater(lx, y, lz) || !topIs(lx, lz, this.config.groundBlocks)) {
                 return false;
             }
 
@@ -610,7 +606,7 @@ public final class TalosBoundedFeatures {
                 return false;
             }
 
-            int bed = y - this.depth; // 水底 = 中心地表下 depth 格
+            int bed = y - this.config.depth; // 水底 = 中心地表下 depth 格
 
             // 不规则形状：圆形 + 每格随机扰动，中心必留
             boolean[][] blob = new boolean[2 * r + 1][2 * r + 1];
@@ -667,7 +663,7 @@ public final class TalosBoundedFeatures {
                             }
                         }
                     }
-                    if (!nearWater || this.rand.nextDouble() >= this.rimSandChance) {
+                    if (!nearWater || this.rand.nextDouble() >= this.config.rimSandChance) {
                         continue;
                     }
                     int wx = centerX + dx;
@@ -709,7 +705,7 @@ public final class TalosBoundedFeatures {
             if (y <= 1 || y >= 248) {
                 return false;
             }
-            if (isWater(lx, y, lz) || !topIs(lx, lz, Blocks.grass, Blocks.dirt)) {
+            if (isWater(lx, y, lz) || !topIs(lx, lz, this.config.groundBlocks)) {
                 return false;
             }
 

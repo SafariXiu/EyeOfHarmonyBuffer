@@ -99,9 +99,7 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         scatter(world, rand, chunk, this.waterlily, biome.waterlily.perChunk);
         scatter(world, rand, chunk, this.shrub, biome.shrubs.perChunk);
         scatter(world, rand, chunk,
-            new TalosBoundedFeatures.Pond(
-                biome.pond.radius, biome.pond.depth, biome.pond.rimSandChance),
-            biome.pond.perChunk);
+            new TalosBoundedFeatures.Pond(biome.pond), biome.pond.perChunk);
         scatter(world, rand, chunk,
             new TalosBoundedFeatures.Rock(biome.rocks), biome.rocks.perChunk);
         scatter(world, rand, chunk, this.boulder, biome.boulders.perChunk);
