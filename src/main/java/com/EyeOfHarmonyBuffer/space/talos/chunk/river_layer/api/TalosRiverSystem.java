@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverRelation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery;
@@ -15,6 +16,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplatePicker;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentAdapter;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentInfo;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -49,6 +51,14 @@ public final class TalosRiverSystem {
     public static double SUPERCONTINENT_RIVER_SCALE = 1.5;
 
     private TalosRiverSystem() {}
+
+    /**
+     * 预初始化：从本模组 jar 加载内置河网数据（RVR2）。
+     * Minecraft 侧统一通过本 API 调用，不要直接使用内部 RiverRegistry。
+     */
+    public static void onPreInit(FMLPreInitializationEvent event) {
+        RiverRegistry.onPreInit(event);
+    }
 
     /**
      * 将 World.getSeed() 压成 int，用于河流系统。

@@ -3,7 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;

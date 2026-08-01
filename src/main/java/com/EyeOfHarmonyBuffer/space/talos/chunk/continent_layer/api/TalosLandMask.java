@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
 import net.minecraft.world.World;
 
 /**
@@ -12,6 +13,20 @@ import net.minecraft.world.World;
 public final class TalosLandMask {
 
     private TalosLandMask() {}
+
+    /** 超级格边长（blocks），与内部 TectonicConfig.SUPER_CELL_SIZE 保持一致。 */
+    public static final int SUPER_CELL_SIZE = TectonicConfig.SUPER_CELL_SIZE;
+
+    /**
+     * 世界坐标所在的超级格索引（返回 {superCellX, superCellZ}，格坐标而非世界坐标）。
+     * 外部层（指令等）请使用本 API，不要直接读取 TectonicConfig。
+     */
+    public static int[] getSuperCellXZAt(int worldX, int worldZ) {
+        return new int[] {
+            Math.floorDiv(worldX, SUPER_CELL_SIZE),
+            Math.floorDiv(worldZ, SUPER_CELL_SIZE)
+        };
+    }
 
     /**
      * 将 World.getSeed() 压成 int，用于 WorldgenAPI。

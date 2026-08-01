@@ -2,7 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
+import com.EyeOfHarmonyBuffer.space.talos.biome.api.TalosHeightModProvider;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -465,13 +465,13 @@ public final class BiomeRegionLayer {
         }
 
         private static double heightBiasOf(BiomeGenBase b) {
-            return (b instanceof TalosBiomeBase)
-                ? ((TalosBiomeBase) b).heightBias : 0.5;
+            return (b instanceof TalosHeightModProvider)
+                ? ((TalosHeightModProvider) b).getHeightBias() : 0.5;
         }
 
         private static double heightScaleOf(BiomeGenBase b) {
-            return (b instanceof TalosBiomeBase)
-                ? ((TalosBiomeBase) b).heightScale : 1.0;
+            return (b instanceof TalosHeightModProvider)
+                ? ((TalosHeightModProvider) b).getHeightScale() : 1.0;
         }
     }
 }

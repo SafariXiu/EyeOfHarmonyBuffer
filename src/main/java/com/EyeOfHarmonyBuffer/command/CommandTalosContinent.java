@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -59,8 +58,9 @@ public class CommandTalosContinent extends CommandBase {
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
 
-        int superCellX = Math.floorDiv(px, TectonicConfig.SUPER_CELL_SIZE);
-        int superCellZ = Math.floorDiv(pz, TectonicConfig.SUPER_CELL_SIZE);
+        int[] superCell = TalosLandMask.getSuperCellXZAt(px, pz);
+        int superCellX = superCell[0];
+        int superCellZ = superCell[1];
 
         List<TalosLandMask.SupercellContinentInfo> continents =
             TalosLandMask.listSupercellContinents(superCellX, superCellZ, worldSeedInt);

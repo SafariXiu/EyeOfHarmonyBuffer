@@ -1,8 +1,11 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api;
 
 /**
  * 宏群系 ID：一组地形/气候非常接近的具体群系的集合。
  * 每个宏群系内 ≤ 3 个 Biome。
+ *
+ * 气候层公共 API 类型：被地形层 / 河流层等通过本 API 包引用，
+ * 外部层不应直接使用气候层内部实现。
  */
 
 public enum MacroPackageId {

@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
 import galaxyspace.core.world.GSBiomeGenBase;
+import com.EyeOfHarmonyBuffer.space.talos.biome.api.TalosHeightModProvider;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -21,7 +22,8 @@ import java.util.Random;
  * 所有配置里的 perChunk 都是「每区块尝试次数」，支持小数概率：
  * 1.0 = 每区块一次；0.5 = 平均每两个区块一次；0.25 = 平均每四个区块一次。
  */
-public abstract class TalosBiomeBase extends GSBiomeGenBase {
+public abstract class TalosBiomeBase extends GSBiomeGenBase
+    implements TalosHeightModProvider {
 
     /**
      * 简单特征配置：只有数量（枯灌木 / 仙人掌 / 甘蔗 / 睡莲 / 灌木 / 2×2 巨石等）。
@@ -202,6 +204,16 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase {
      */
     public double heightBias = 0.5;
     public double heightScale = 1.0;
+
+    @Override
+    public double getHeightBias() {
+        return this.heightBias;
+    }
+
+    @Override
+    public double getHeightScale() {
+        return this.heightScale;
+    }
 
     public TalosBiomeBase(int id) {
         super(id);
