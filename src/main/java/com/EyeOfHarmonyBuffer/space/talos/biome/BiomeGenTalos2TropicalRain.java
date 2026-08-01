@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
+import net.minecraft.init.Blocks;
+
 public class BiomeGenTalos2TropicalRain extends TalosBiomeBase {
 
     public BiomeGenTalos2TropicalRain(int id) {
@@ -15,6 +17,29 @@ public class BiomeGenTalos2TropicalRain extends TalosBiomeBase {
         this.rootHeight = 0.12F;
         this.heightVariation = 0.18F;
 
+        // ===== 树：2×2 巨型丛林树 =====
+        this.treeStyle.perChunk = 1.5;
+        this.treeStyle.woodBlock = Blocks.log;
+        this.treeStyle.woodMeta = 3;
+        this.treeStyle.leafBlock = Blocks.leaves;
+        this.treeStyle.leafMeta = 3;
+        this.treeStyle.trunkMin = 10;
+        this.treeStyle.trunkMax = 17;
+        this.treeStyle.shape = TreeShape.JUNGLE;
+        this.treeStyle.canopyRadius = 4;
+        this.treeStyle.leafDensity = 0.95;
+        this.treeStyle.leanChance = 0.0;
+
+        this.grass = new GrassConfig(15, 1);
+        this.flowers = new FlowerConfig(4, Blocks.red_flower);
+        this.shrubs = new SimpleConfig(2);
+        this.reeds = new SimpleConfig(2);
+        this.waterlily = new SimpleConfig(2);
+        this.pond = new PondConfig(0.08, 5, 2, 0.5);
+        this.rocks = new RockConfig(0.3, Blocks.stone, 5, 2, 5);
+        this.boulders = new SimpleConfig(0.2);
+
+        this.groundPatches.add(new GroundPatchConfig(2, Blocks.dirt, 0, 2, 0.5));
     }
 
     @Override

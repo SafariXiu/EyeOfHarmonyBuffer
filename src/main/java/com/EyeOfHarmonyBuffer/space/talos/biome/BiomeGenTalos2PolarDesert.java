@@ -1,5 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
+
 public class BiomeGenTalos2PolarDesert extends TalosBiomeBase {
 
     public BiomeGenTalos2PolarDesert(int id) {
@@ -15,6 +18,17 @@ public class BiomeGenTalos2PolarDesert extends TalosBiomeBase {
         this.rootHeight = 0.0F;
         this.heightVariation = 0.04F;
 
+        Block[] frozen = new Block[] {
+            Blocks.snow, Blocks.packed_ice, Blocks.stone, Blocks.gravel
+        };
+
+        // 极地荒漠：无树无草，只有冰原上的石头
+        this.rocks = new RockConfig(0.6, Blocks.stone, 5, 2, 5);
+        this.rocks.groundBlocks = frozen;
+        this.boulders = new SimpleConfig(0.5);
+
+        this.groundPatches.add(new GroundPatchConfig(1.2, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.stone, 0, 2, 0.3));
     }
 
     @Override

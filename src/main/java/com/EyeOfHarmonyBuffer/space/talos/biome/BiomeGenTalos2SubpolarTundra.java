@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
+import net.minecraft.init.Blocks;
+
 public class BiomeGenTalos2SubpolarTundra extends TalosBiomeBase {
 
     public BiomeGenTalos2SubpolarTundra(int id) {
@@ -15,6 +17,28 @@ public class BiomeGenTalos2SubpolarTundra extends TalosBiomeBase {
         this.rootHeight = 0.02F;
         this.heightVariation = 0.02F;
 
+        // ===== 树：极稀疏矮云杉 =====
+        this.treeStyle.perChunk = 0.1;
+        this.treeStyle.woodBlock = Blocks.log;
+        this.treeStyle.woodMeta = 1;
+        this.treeStyle.leafBlock = Blocks.leaves;
+        this.treeStyle.leafMeta = 1;
+        this.treeStyle.trunkMin = 3;
+        this.treeStyle.trunkMax = 5;
+        this.treeStyle.shape = TreeShape.CONE;
+        this.treeStyle.canopyRadius = 2;
+        this.treeStyle.leafDensity = 0.7;
+        this.treeStyle.leanChance = 0.3;
+
+        // 冻原：苔藓/蕨类 + 融水塘
+        this.grass = new GrassConfig(12, 2);
+        this.flowers = new FlowerConfig(0.5, Blocks.red_flower);
+        this.pond = new PondConfig(0.06, 5, 2, 0.5);
+        this.rocks = new RockConfig(0.5, Blocks.stone, 5, 2, 5);
+        this.boulders = new SimpleConfig(0.5);
+
+        this.groundPatches.add(new GroundPatchConfig(1.5, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.dirt, 0, 2, 0.4));
     }
 
     @Override
