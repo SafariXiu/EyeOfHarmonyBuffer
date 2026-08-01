@@ -1,8 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-
-public class BiomeGenTalos2Plains extends GSBiomeGenBase {
+public class BiomeGenTalos2Plains extends TalosBiomeBase {
 
     public double plainMin;
     public double plainMax;

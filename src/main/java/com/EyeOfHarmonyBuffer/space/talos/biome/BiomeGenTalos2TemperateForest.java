@@ -1,8 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-
-public class BiomeGenTalos2TemperateForest extends GSBiomeGenBase {
+public class BiomeGenTalos2TemperateForest extends TalosBiomeBase {
 
     public BiomeGenTalos2TemperateForest(int id) {
         super(id);
