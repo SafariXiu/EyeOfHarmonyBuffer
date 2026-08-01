@@ -33,57 +33,74 @@ public final class TerrainBaseHeight {
         double z = worldZ;
         long seed = (long) worldSeedInt;
 
-        double h = profile.baseHeight;
+        double raw = 0.0;
+        double totalAmp = 0.0;
 
         // 共享大陆骨架：所有陆地宏群系使用同一低频场
         if (profile.oceanDepthMax <= 0.0) {
-            h += fbm2D(seed ^ 0xABCDEF01L,
+            raw += fbm2D(seed ^ 0xABCDEF01L,
                 x, z,
                 CONTINENTAL_FREQ,
                 CONTINENTAL_AMP,
                 CONTINENTAL_OCTAVES);
+            totalAmp += octaveSum(CONTINENTAL_AMP, CONTINENTAL_OCTAVES);
         }
 
         // 低频：大陆级盆地 / 高原
-        h += fbm2D(seed ^ 0x1234ABCDL,
+        raw += fbm2D(seed ^ 0x1234ABCDL,
             x, z,
             profile.lowFreq,
             profile.lowAmp,
             profile.lowOctaves);
+        totalAmp += octaveSum(profile.lowAmp, profile.lowOctaves);
 
         // 中频：丘陵 / 台地
-        h += fbm2D(seed ^ 0x5678EF01L,
+        raw += fbm2D(seed ^ 0x5678EF01L,
             x, z,
             profile.midFreq,
             profile.midAmp,
             profile.midOctaves);
+        totalAmp += octaveSum(profile.midAmp, profile.midOctaves);
 
         // 高频：小起伏 / 岩面
-        h += fbm2D(seed ^ 0x9ABCDEFFL,
+        raw += fbm2D(seed ^ 0x9ABCDEFFL,
             x, z,
             profile.highFreq,
             profile.highAmp,
             profile.highOctaves);
+        totalAmp += octaveSum(profile.highAmp, profile.highOctaves);
 
-        // 台地 / 高原修饰
-        h = applyPlateau(h, profile);
+        // 归一化到 [0,1]：噪声只负责"形状"，绝对高度由 minHeight/maxHeight 决定
+        double t = 0.5;
+        if (totalAmp > 0.0) {
+            t = raw / totalAmp * 0.5 + 0.5;
+        }
+        t = clamp(t, 0.0, 1.0);
 
-        return h;
-    }
-
-    private static double applyPlateau(double h, BaseTerrainProfile profile) {
+        // 台地 / 高原修饰（带内操作：把偏高部分向带中心拉拢）
         double s = profile.plateauStrength;
-        if (s <= 0.0) {
-            return h;
+        if (s > 0.0) {
+            double p = smoothstep(0.2, 0.8, t);
+            t = lerp(t, 0.5, p * s);
+            t = clamp(t, 0.0, 1.0);
         }
 
-        double hNorm = h / 256.0;
-        hNorm = clamp(hNorm, 0.0, 1.0);
+        double lo = profile.minHeight;
+        double hi = profile.maxHeight;
+        if (hi <= lo) {
+            hi = lo + 1.0;
+        }
 
-        double t = smoothstep(0.2, 0.8, hNorm);
-        double plateauNorm = lerp(hNorm, 0.5, t * s);
+        // smoothstep 让分布向带中部集中，两端可达但不常驻
+        return lo + (hi - lo) * smoothstep(0.0, 1.0, t);
+    }
 
-        return plateauNorm * 256.0;
+    /** FBM 各层振幅的等比和（层间振幅折半）：amp * (2 - 0.5^(oct-1))。 */
+    private static double octaveSum(double amp, int octaves) {
+        if (octaves <= 0) {
+            return 0.0;
+        }
+        return amp * (2.0 - Math.pow(0.5, octaves - 1));
     }
 
     /**

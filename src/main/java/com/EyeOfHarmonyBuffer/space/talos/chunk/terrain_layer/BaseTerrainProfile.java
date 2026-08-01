@@ -6,7 +6,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
 public final class BaseTerrainProfile {
 
-    public double baseHeight;
+    public double minHeight;
+    public double maxHeight;
 
     public double lowFreq;
     public double lowAmp;
@@ -26,7 +27,8 @@ public final class BaseTerrainProfile {
 
     public static BaseTerrainProfile fromPreset(BaseTerrainPreset p) {
         BaseTerrainProfile r = new BaseTerrainProfile();
-        r.baseHeight      = p.baseHeight;
+        r.minHeight       = p.minHeight;
+        r.maxHeight       = p.maxHeight;
         r.lowFreq         = p.lowFreq;
         r.lowAmp          = p.lowAmp;
         r.lowOctaves      = p.lowOctaves;
