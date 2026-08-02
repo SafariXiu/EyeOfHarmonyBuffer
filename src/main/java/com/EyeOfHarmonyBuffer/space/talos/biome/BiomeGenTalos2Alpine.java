@@ -21,30 +21,16 @@ public class BiomeGenTalos2Alpine extends TalosBiomeBase {
         this.heightBias = 0.68;
         this.heightScale = 0.50;
 
-        Block[] rocky = new Block[] {
-            Blocks.snow, Blocks.stone, Blocks.gravel, Blocks.grass, Blocks.dirt
+        Block[] frozen = new Block[] {
+            Blocks.snow, Blocks.packed_ice, Blocks.stone, Blocks.gravel
         };
 
-        this.treeStyle.perChunk = 0.3;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 1;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 1;
-        this.treeStyle.trunkMin = 3;
-        this.treeStyle.trunkMax = 5;
-        this.treeStyle.shape = TreeShape.CONE;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.7;
-        this.treeStyle.leanChance = 0.3;
-        this.treeStyle.groundBlocks = rocky;
+        this.rocks = new RockConfig(0.1, Blocks.stone, 5, 2, 5);
+        this.rocks.groundBlocks = frozen;
+        this.boulders = new SimpleConfig(0.5);
 
-        this.rocks = new RockConfig(1.0, Blocks.stone, 5, 2, 5);
-        this.rocks.groundBlocks = rocky;
-        this.boulders = new SimpleConfig(0.8);
-
-        this.groundPatches.add(new GroundPatchConfig(1.5, Blocks.gravel, 0, 2, 0.5));
-        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.stone, 0, 2, 0.4));
-        this.groundPatches.add(new GroundPatchConfig(0.5, Blocks.dirt, 0, 2, 0.3));
+        /*this.groundPatches.add(new GroundPatchConfig(1.2, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.stone, 0, 2, 0.3));*/
     }
 
     @Override

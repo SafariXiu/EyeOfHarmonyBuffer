@@ -27,61 +27,56 @@ public final class TalosSurfaceRegistry {
     private static final TalosSurfaceProfile DEFAULT = new TalosSurfaceProfile(
         GRASS, 1,
         DIRT, 3,
-        STONE,
-        null, 0, 0.0
+        STONE
     );
 
     /** 在 TalosBiomes.init() 之后调用，为所有陆生群系注册地表规格。 */
     public static void init() {
         register(TalosBiomes.TALOS_PLAINS, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 3, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 3, STONE));
         register(TalosBiomes.TALOS_TEMPERATE_STEPPE, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 3, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 3, STONE));
         register(TalosBiomes.TALOS_TEMPERATE_FOREST, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 4, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 4, STONE));
         register(TalosBiomes.TALOS_COOL_FOREST, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 4, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 4, STONE));
         register(TalosBiomes.TALOS_SAVANNA, new TalosSurfaceProfile(
-            new BlockMetaPair(Blocks.grass, (byte) 1), 1, DIRT, 3, STONE, null, 0, 0.0));
+            new BlockMetaPair(Blocks.grass, (byte) 1), 1, DIRT, 3, STONE));
         register(TalosBiomes.TALOS_WARM_STEPPE, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 3, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 3, STONE));
         register(TalosBiomes.TALOS_TROPICAL_RAIN, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 4, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 4, STONE));
         register(TalosBiomes.TALOS_BASIN, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 4, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 4, STONE));
 
         // 沙漠：表层沙 → 砂岩 → 石头
         register(TalosBiomes.TALOS_DESERT, new TalosSurfaceProfile(
             new BlockMetaPair(Blocks.sand, (byte) 0), 3,
             new BlockMetaPair(Blocks.sandstone, (byte) 0), 4,
-            STONE,
-            null, 0, 0.0));
+            STONE));
 
         // 高原：草皮下面直接是石头
         register(TalosBiomes.TALOS_PLATEAU, new TalosSurfaceProfile(
-            GRASS, 1, STONE, 4, STONE, null, 0, 0.0));
+            GRASS, 1, STONE, 4, STONE));
 
-        // 高山：表面大量石头 + 随机砾石袋
+        // 高山：表面大量石头
         register(TalosBiomes.TALOS_MOUNTAINS, new TalosSurfaceProfile(
-            STONE, 2, STONE, 4, STONE,
-            new BlockMetaPair(Blocks.gravel, (byte) 0), 3, 0.25));
+            STONE, 2, STONE, 4, STONE));
 
-        // 高山雪原：雪皮 + 石头 + 少量砾石
+        // 高山雪原：雪皮 + 浮冰 + 石头
         register(TalosBiomes.TALOS_ALPINE, new TalosSurfaceProfile(
             new BlockMetaPair(Blocks.snow, (byte) 0), 1,
-            STONE, 4, STONE,
-            new BlockMetaPair(Blocks.gravel, (byte) 0), 3, 0.20));
+            new BlockMetaPair(Blocks.packed_ice, (byte) 0), 3,
+            STONE));
 
-        // 极地荒漠：雪 → 浮冰 → 石头
+        // 极地荒漠：雪皮 + 石头
         register(TalosBiomes.TALOS_POLAR_DESERT, new TalosSurfaceProfile(
             new BlockMetaPair(Blocks.snow, (byte) 0), 1,
-            new BlockMetaPair(Blocks.packed_ice, (byte) 0), 3,
-            STONE,
-            null, 0, 0.0));
+            STONE, 4, STONE));
 
         // 亚极地冻原
         register(TalosBiomes.TALOS_SUBPOLAR_TUNDRA, new TalosSurfaceProfile(
-            GRASS, 1, DIRT, 3, STONE, null, 0, 0.0));
+            GRASS, 1, DIRT, 3, STONE));
     }
 
     public static void register(BiomeGenBase biome, TalosSurfaceProfile profile) {

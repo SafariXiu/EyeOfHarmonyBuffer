@@ -10,7 +10,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -202,12 +201,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     TalosSurfaceProfile profile =
                         TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
 
-                    // 随机袋：按列哈希命中时，把顶部 pocketDepth 格替换为随机袋方块
-                    boolean pocketHere = profile.pocketBlock != null
-                        && profile.pocketDepth > 0
-                        && NoiseUtil.hash2(worldX, worldZ, worldSeedInt ^ 0x5A17C0DE)
-                            < profile.pocketChance;
-
                     if (riverCarved) {
                         // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
                         for (int y = 1; y < h; y++) {
@@ -227,14 +220,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                             } else {
                                 pair = profile.surfaceBlock;
                             }
-                            if (pocketHere && y >= h - profile.pocketDepth + 1) {
-                                pair = profile.pocketBlock;
-                            }
                             putBlock(blocks, meta, localX, y, localZ, pair);
                         }
 
                         putBlock(blocks, meta, localX, h, localZ,
-                            pocketHere ? profile.pocketBlock : profile.surfaceBlock);
+                            profile.surfaceBlock);
                     }
 
                     if (h < seaLevel) {

@@ -46,6 +46,7 @@ public class BiomeGenTalos2Plateau extends TalosBiomeBase {
 
         this.groundPatches.add(new GroundPatchConfig(2, Blocks.dirt, 0, 2, 0.5));
         this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.snow, 0, 2, 0.35));
     }
 
     @Override
