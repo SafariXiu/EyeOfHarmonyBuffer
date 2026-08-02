@@ -73,11 +73,12 @@ public final class TectonicConfig {
 
     /**
      * 裂谷悬崖风格化：外崖面开始受塑形的强度。
-     * 强度每 0.01 ≈ 0.22×超级大陆直径 × 0.01 格（半径 1.4w 的大陆约为 62 格），
-     * 0.197~0.2 即约 18 格宽的悬崖面（悬崖顶部到底部的横向距离）。
-     * 注意：宽度随大陆半径缩放，大/小大陆上会略有出入。
+     * 在构造风格层平滑场驱动下，过窄的带（0.197~0.2）会把落差集中成
+     * 一道陡墙，并与宏包高度过渡叠加成“两堵平行墙”。
+     * 0.12~0.2 覆盖带外大部分过渡区：在小大陆上换算成实际宽度也不至于
+     * 挤成墙（0.08 强度 × 大陆半径系数 ≈ 100 格以上）。
      */
-    public static final double RIFT_CLIFF_START_STRENGTH = 0.197;
+    public static final double RIFT_CLIFF_START_STRENGTH = 0.12;
 
     /** 裂谷崖缘平台结束 / 内缘缓坡开始强度。 */
     public static final double RIFT_TALUS_START_STRENGTH = 0.45;

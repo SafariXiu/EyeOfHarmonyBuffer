@@ -7,8 +7,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
  * 板块边界地形塑形（海陆分布层 API）。
  *
  * 目前实现分离带的「裂谷悬崖」风格化，沿强度轴分段：
- *   - 强度 &lt; 0.197：外侧原始地形，不受影响；
- *   - 0.197 ~ 0.2：外崖面——从原始高度下落到崖缘，下落带锯齿噪声与两层岩架，
+ *   - 强度 &lt; 0.12：外侧原始地形，不受影响；
+ *   - 0.12 ~ 0.2：外崖面——从原始高度均匀下落到崖缘，下落带锯齿噪声与两层岩架，
  *     靠近崖缘一侧最陡（现实悬崖的观感）；
  *   - 0.2 ~ 0.45：崖缘平台——崖唇上卷 + 参差崖线，向内缘缓坡过渡；
  *   - 0.45 ~ 0.75：倒石堆——凸曲线从崖脚落到谷底，带碎石起伏；
@@ -66,12 +66,13 @@ public final class TalosPlateBoundaryShaper {
 
         double target;
         if (strength < rimStrength) {
-            // 外崖面：t=0 原样地形，t=1 崖缘；下落集中在靠崖缘一侧
+            // 外崖面：t=0 原样地形，t=1 崖缘；
+            // 下落用均匀 smoothstep 铺开，避免小落差在窄带上集中成墙
             double t = TectonicMath.clamp(
                 (strength - TectonicConfig.RIFT_CLIFF_START_STRENGTH)
                     / (rimStrength - TectonicConfig.RIFT_CLIFF_START_STRENGTH),
                 0.0, 1.0);
-            double drop = Math.pow(t, 1.5);
+            double drop = smoothstep(0.0, 1.0, t);
             target = height + (rimY - height) * drop;
 
             // 崖面凹凸：下落中段最强，两端收敛到 0，保证与外侧 / 崖缘连续

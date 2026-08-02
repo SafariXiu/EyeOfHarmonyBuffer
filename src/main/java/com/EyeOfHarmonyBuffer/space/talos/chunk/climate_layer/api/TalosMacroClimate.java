@@ -46,10 +46,15 @@ public final class TalosMacroClimate {
     private static final Int2ObjectOpenHashMap<BiomeRegionLayer> BIOME_LAYERS =
         new Int2ObjectOpenHashMap<>();
 
+    /** 按 worldSeedInt 缓存构造风格层（网格级板块边界决策）。 */
+    private static final Int2ObjectOpenHashMap<TectonicStyleLayer> TECTONIC_LAYERS =
+        new Int2ObjectOpenHashMap<>();
+
     private static MacroRegionLayer getLayer(int worldSeedInt) {
         MacroRegionLayer layer = LAYERS.get(worldSeedInt);
         if (layer == null) {
-            layer = new MacroRegionLayer(worldSeedInt);
+            layer = new MacroRegionLayer(
+                worldSeedInt, getTectonicLayer(worldSeedInt));
             LAYERS.put(worldSeedInt, layer);
         }
         return layer;
@@ -58,8 +63,18 @@ public final class TalosMacroClimate {
     private static MacroPackageLayer getBaseLayer(int worldSeedInt) {
         MacroPackageLayer layer = BASE_LAYERS.get(worldSeedInt);
         if (layer == null) {
-            layer = new MacroPackageLayer(worldSeedInt);
+            layer = new MacroPackageLayer(
+                worldSeedInt, getTectonicLayer(worldSeedInt));
             BASE_LAYERS.put(worldSeedInt, layer);
+        }
+        return layer;
+    }
+
+    private static TectonicStyleLayer getTectonicLayer(int worldSeedInt) {
+        TectonicStyleLayer layer = TECTONIC_LAYERS.get(worldSeedInt);
+        if (layer == null) {
+            layer = new TectonicStyleLayer(worldSeedInt);
+            TECTONIC_LAYERS.put(worldSeedInt, layer);
         }
         return layer;
     }
@@ -91,6 +106,26 @@ public final class TalosMacroClimate {
                                                    boolean isLandKnown) {
         MacroRegionLayer layer = getLayer(worldSeedInt);
         return layer.getSmoothedMacroPackageIdAt(worldX, worldZ, isLandKnown);
+    }
+
+    /** 构造风格查询结果：主导风格 + 平滑后的 DIVERGENT 强度。 */
+    public static final class TectonicStyleSample {
+        public final TectonicStyle style;
+        public final double smoothedDivergence;
+
+        public TectonicStyleSample(TectonicStyle style, double smoothedDivergence) {
+            this.style = style;
+            this.smoothedDivergence = smoothedDivergence;
+        }
+    }
+
+    /** 查询 (x,z) 的构造风格（网格级平滑后的结果，群系覆盖与地形塑形共用）。 */
+    public static TectonicStyleSample getTectonicStyleSample(
+        int worldX, int worldZ, int worldSeedInt
+    ) {
+        TectonicStyleLayer.Sample s = getTectonicLayer(worldSeedInt)
+            .sampleAt(worldX, worldZ);
+        return new TectonicStyleSample(s.style, s.smoothedDivergence);
     }
 
     /**

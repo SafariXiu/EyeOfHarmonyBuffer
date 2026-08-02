@@ -147,13 +147,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 );
 
                 // 板块边界塑形：分离带 → 风格化裂谷悬崖（外崖面 + 崖缘 + 倒石堆 + 谷底）
-                // 多板块交汇处优先取缝合线级 DIVERGENT 的最大强度：
-                // 只要存在分离影响，就照常塑形（外崖面在 0.197~0.2 之间下落），
-                // 与宏包 / 群系层面的分离带排他保持一致。
-                double riftStrength = (landSample != null)
-                    ? TalosLandMask.maxBoundaryStrength(
-                        PlateBoundaryState.DIVERGENT, landSample)
-                    : 0.0;
+                // 强度来自网格级构造风格层（与群系/宏包覆盖同源），
+                // 外崖面 0.12~0.2 的下落与带边缘过渡都由平滑场驱动。
+                TalosMacroClimate.TectonicStyleSample tectonic = TalosMacroClimate
+                    .getTectonicStyleSample(worldX, worldZ, worldSeedInt);
+                double riftStrength = tectonic.smoothedDivergence;
                 PlateBoundaryState riftState = (riftStrength > 0.0)
                     ? PlateBoundaryState.DIVERGENT
                     : (landSample != null ? landSample.plateBoundaryState : null);

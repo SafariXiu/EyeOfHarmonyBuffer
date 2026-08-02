@@ -47,9 +47,9 @@ public final class MacroRegionLayer {
 
     private final Long2ObjectOpenHashMap<MacroTile> tileCache = new Long2ObjectOpenHashMap<>();
 
-    public MacroRegionLayer(int worldSeedInt) {
+    public MacroRegionLayer(int worldSeedInt, TectonicStyleLayer tectonicStyles) {
         this.worldSeedInt = worldSeedInt;
-        this.baseLayer = new MacroPackageLayer(worldSeedInt);
+        this.baseLayer = new MacroPackageLayer(worldSeedInt, tectonicStyles);
     }
 
     /** 对外主接口：获取“平滑后的”宏群系 ID。*/
