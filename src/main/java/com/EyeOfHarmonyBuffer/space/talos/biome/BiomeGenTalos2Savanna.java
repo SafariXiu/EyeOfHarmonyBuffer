@@ -21,16 +21,7 @@ public class BiomeGenTalos2Savanna extends TalosBiomeBase {
         this.heightScale = 0.50;
 
         this.treeStyle.perChunk = 0.1;
-        this.treeStyle.woodBlock = Blocks.log2;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves2;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 4;
-        this.treeStyle.trunkMax = 6;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.55;
-        this.treeStyle.leanChance = 1.0;
+        this.treeBlueprint = TalosTreeBlueprints.SAVANNA_ACACIA;
 
         this.grass = new GrassConfig(45, 1);
         this.deadBush = new SimpleConfig(12);

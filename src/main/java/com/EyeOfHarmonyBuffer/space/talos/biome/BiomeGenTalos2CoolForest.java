@@ -22,16 +22,7 @@ public class BiomeGenTalos2CoolForest extends TalosBiomeBase {
 
         // ===== 树：茂密云杉 =====
         this.treeStyle.perChunk = 3.0;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 1;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 1;
-        this.treeStyle.trunkMin = 5;
-        this.treeStyle.trunkMax = 8;
-        this.treeStyle.shape = TreeShape.CONE;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.9;
-        this.treeStyle.leanChance = 0.2;
+        this.treeBlueprint = TalosTreeBlueprints.SPRUCE_TOWER;
 
         // 林下以蕨类为主（meta 2）
         this.grass = new GrassConfig(10, 2);

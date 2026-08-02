@@ -22,16 +22,7 @@ public class BiomeGenTalos2WarmSteppe extends TalosBiomeBase {
 
         // ===== 树：稀疏歪橡树（旱地感） =====
         this.treeStyle.perChunk = 0.2;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 4;
-        this.treeStyle.trunkMax = 6;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.6;
-        this.treeStyle.leanChance = 0.6;
+        this.treeBlueprint = TalosTreeBlueprints.WARM_STEPPE_TREE;
 
         this.grass = new GrassConfig(30, 1);
         this.deadBush = new SimpleConfig(6);

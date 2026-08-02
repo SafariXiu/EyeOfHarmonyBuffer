@@ -22,16 +22,7 @@ public class BiomeGenTalos2SubpolarTundra extends TalosBiomeBase {
 
         // ===== 树：极稀疏矮云杉 =====
         this.treeStyle.perChunk = 0.1;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 1;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 1;
-        this.treeStyle.trunkMin = 3;
-        this.treeStyle.trunkMax = 5;
-        this.treeStyle.shape = TreeShape.CONE;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.7;
-        this.treeStyle.leanChance = 0.3;
+        this.treeBlueprint = TalosTreeBlueprints.TUNDRA_PINE;
 
         // 冻原：苔藓/蕨类 + 融水塘
         this.grass = new GrassConfig(12, 2);

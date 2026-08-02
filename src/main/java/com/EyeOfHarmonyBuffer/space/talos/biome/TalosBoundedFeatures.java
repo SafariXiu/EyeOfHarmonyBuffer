@@ -598,6 +598,230 @@ public final class TalosBoundedFeatures {
     }
 
     /**
+     * 蓝图树（方案 2）：按 TreeBlueprint 生成。
+     *
+     * 结构：歪斜/粗壮树干 → 树枝（木块 + 枝梢叶）→ 多层树冠（可带半径扰动）
+     *       → 主干顶部封盖 → 可选藤蔓。
+     * 所有写入仍走 Base 的安全路径：跨区块只写未填充邻块、不透明方块先抬高度图。
+     */
+    public static final class BlueprintTree extends Base {
+
+        private static final int[][] DIRS = {
+            {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+        };
+
+        private final TalosBiomeBase.TreeBlueprint bp;
+
+        public BlueprintTree(TalosBiomeBase.TreeBlueprint bp) {
+            this.bp = bp;
+        }
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            int maxR = maxCanopyRadius() + Math.max(0, this.bp.branches.length);
+            if (!canWriteArea(lx, lz, maxR)) {
+                return false;
+            }
+            int y = height(lx, lz);
+            if (y <= 1 || y >= 250) {
+                return false;
+            }
+            if (isWater(lx, y, lz) || !topIs(lx, lz, this.bp.groundBlocks)) {
+                return false;
+            }
+
+            int trunk = this.bp.trunkMin
+                + this.rand.nextInt(this.bp.trunkMax - this.bp.trunkMin + 1);
+            int topY = y + trunk;
+
+            boolean lean = !this.bp.wideTrunk
+                && this.bp.leanChance > 0.0
+                && this.rand.nextDouble() < this.bp.leanChance;
+            int dirX = 0;
+            int dirZ = 0;
+            int leanAt = trunk;
+            if (lean) {
+                switch (this.rand.nextInt(4)) {
+                    case 0: dirX = 1; break;
+                    case 1: dirX = -1; break;
+                    case 2: dirZ = 1; break;
+                    default: dirZ = -1; break;
+                }
+                leanAt = 1 + this.rand.nextInt(Math.max(1, trunk - 1));
+                // 歪向河道 / 水体时改为直生，避免树干悬在水面上方
+                int cy = height(lx + dirX, lz + dirZ);
+                if (cy <= 0 || isWaterWorld(
+                        this.chunkX * 16 + lx + dirX, cy,
+                        this.chunkZ * 16 + lz + dirZ)) {
+                    lean = false;
+                    dirX = 0;
+                    dirZ = 0;
+                }
+            }
+
+            if (this.bp.wideTrunk) {
+                // 2×2 主干：4 列都必须是非水体且高度接近
+                for (int dz = 0; dz <= 1; dz++) {
+                    for (int dx = 0; dx <= 1; dx++) {
+                        if (dx == 0 && dz == 0) {
+                            continue;
+                        }
+                        int cy = height(lx + dx, lz + dz);
+                        if (cy <= 0
+                            || isWaterWorld(
+                                this.chunkX * 16 + lx + dx, cy,
+                                this.chunkZ * 16 + lz + dz)
+                            || Math.abs(cy - y) > 2) {
+                            return false;
+                        }
+                    }
+                }
+                for (int i = 1; i <= trunk; i++) {
+                    int yy = y + i;
+                    setBlock(lx, yy, lz, this.bp.woodBlock, this.bp.woodMeta);
+                    setBlock(lx + 1, yy, lz, this.bp.woodBlock, this.bp.woodMeta);
+                    setBlock(lx, yy, lz + 1, this.bp.woodBlock, this.bp.woodMeta);
+                    setBlock(lx + 1, yy, lz + 1, this.bp.woodBlock, this.bp.woodMeta);
+                }
+            } else {
+                for (int i = 1; i <= trunk; i++) {
+                    int ox = (i > leanAt) ? dirX : 0;
+                    int oz = (i > leanAt) ? dirZ : 0;
+                    setBlock(lx + ox, y + i, lz + oz,
+                        this.bp.woodBlock, this.bp.woodMeta);
+                }
+            }
+
+            int topX = lx + (lean ? dirX : 0);
+            int topZ = lz + (lean ? dirZ : 0);
+
+            // 树枝：从树干上部斜伸出去，枝梢带两片叶子
+            TalosBiomeBase.TreeBlueprint.BranchSpec br = this.bp.branches;
+            if (br.chance > 0.0 && br.count > 0
+                && this.rand.nextDouble() < br.chance) {
+                for (int b = 0; b < br.count; b++) {
+                    int below = br.startBelow
+                        + this.rand.nextInt(Math.max(1, trunk - br.startBelow + 1));
+                    int baseY = topY - below;
+                    if (baseY <= y) {
+                        continue;
+                    }
+                    int[] d = DIRS[this.rand.nextInt(DIRS.length)];
+                    // 沿对角线逐步抬升：每一格高度都放木块，
+                    // 保证枝干连续、不出现悬空分段（rise > 1 时尤其重要）。
+                    int steps = br.length * br.rise;
+                    for (int s = 1; s <= steps; s++) {
+                        int step = (s + br.rise - 1) / br.rise;
+                        setBlock(topX + d[0] * step, baseY + s,
+                            topZ + d[1] * step,
+                            this.bp.woodBlock, this.bp.woodMeta);
+                    }
+                    int tipX = topX + d[0] * br.length;
+                    int tipZ = topZ + d[1] * br.length;
+                    int tipY = baseY + steps;
+                    placeLeaf(tipX, tipY, tipZ);
+                    placeLeaf(tipX, tipY + 1, tipZ);
+                }
+            }
+
+            // 多层树冠：每层按半径铺圆盘，jitter 扰动轮廓
+            int lowestY = Integer.MAX_VALUE;
+            int lowestR = 0;
+            for (TalosBiomeBase.TreeBlueprint.CanopyLayer layer : this.bp.layers) {
+                int cy = topY + layer.yOffset;
+                int r = layer.radius;
+                for (int dz = -r; dz <= r; dz++) {
+                    for (int dx = -r; dx <= r; dx++) {
+                        if (dx == 0 && dz == 0 && layer.skipCenter) {
+                            continue;
+                        }
+                        double dist = Math.sqrt(dx * dx + dz * dz);
+                        if (this.bp.jitter > 0.0) {
+                            dist += (this.rand.nextDouble() - 0.5) * 2.0 * this.bp.jitter;
+                        }
+                        if (dist > r) {
+                            continue;
+                        }
+                        placeLeaf(topX + dx, cy, topZ + dz);
+                    }
+                }
+                if (cy < lowestY) {
+                    lowestY = cy;
+                    lowestR = r;
+                }
+            }
+
+            // 顶部封盖：主干正上方补树叶，避免原木顶面裸露
+            if (this.bp.wideTrunk) {
+                for (int dz = 0; dz <= 1; dz++) {
+                    for (int dx = 0; dx <= 1; dx++) {
+                        placeLeaf(topX + dx, topY + 1, topZ + dz);
+                        placeLeaf(topX + dx, topY + 2, topZ + dz);
+                    }
+                }
+            } else {
+                placeLeaf(topX, topY + 1, topZ);
+                placeLeaf(topX, topY + 2, topZ);
+            }
+
+            // 藤蔓：从最低树冠层下缘垂下 1~3 格
+            if (this.bp.vines && lowestY < topY) {
+                int meta = 1 << this.rand.nextInt(4);
+                for (int dz = -lowestR; dz <= lowestR; dz++) {
+                    for (int dx = -lowestR; dx <= lowestR; dx++) {
+                        if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) {
+                            continue; // 避开主干
+                        }
+                        if (dx * dx + dz * dz > lowestR * lowestR + 1) {
+                            continue;
+                        }
+                        if (this.rand.nextDouble() >= this.bp.vineChance) {
+                            continue;
+                        }
+                        int vx = topX + dx;
+                        int vz = topZ + dz;
+                        int vy = lowestY - 1;
+                        if (!isAirWorld(vx, vy, vz)) {
+                            continue;
+                        }
+                        int len = 1 + this.rand.nextInt(3);
+                        for (int i = 0; i < len; i++) {
+                            if (!isAirWorld(vx, vy - i, vz)) {
+                                break;
+                            }
+                            setBlock(vx - this.chunkX * 16, vy - i,
+                                vz - this.chunkZ * 16, Blocks.vine, meta);
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        private void placeLeaf(int x, int y, int z) {
+            if (this.rand.nextDouble() > this.bp.leafDensity) {
+                return;
+            }
+            setBlock(x, y, z, this.bp.leafBlock, this.bp.leafMeta | 4);
+        }
+
+        private int maxCanopyRadius() {
+            int max = 0;
+            for (TalosBiomeBase.TreeBlueprint.CanopyLayer layer : this.bp.layers) {
+                if (layer.radius > max) {
+                    max = layer.radius;
+                }
+            }
+            return max;
+        }
+
+        private boolean isAirWorld(int x, int y, int z) {
+            return this.world.getBlock(x, y, z) == Blocks.air;
+        }
+    }
+
+    /**
      * 小水洼：约 10×10 的不规则水体 + 外围随机沙岸。
      * 水底挖到中心地表下 2 格并铺沙，水面比四周低 1 格；
      * 与区块边界冲突（邻区块不可写）、靠近河流/河岸平滑区、

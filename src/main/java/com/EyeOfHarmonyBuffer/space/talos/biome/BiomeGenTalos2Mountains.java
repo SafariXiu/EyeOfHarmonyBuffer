@@ -32,17 +32,7 @@ public class BiomeGenTalos2Mountains extends TalosBiomeBase {
 
         // ===== 树：稀疏矮云杉（石缝里也能长） =====
         this.treeStyle.perChunk = 0.2;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 1;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 1;
-        this.treeStyle.trunkMin = 3;
-        this.treeStyle.trunkMax = 5;
-        this.treeStyle.shape = TreeShape.CONE;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.6;
-        this.treeStyle.leanChance = 0.3;
-        this.treeStyle.groundBlocks = rocky;
+        this.treeBlueprint = TalosTreeBlueprints.MOUNTAIN_SPRUCE;
 
         // 石山：不生长草，多石头
         this.rocks = new RockConfig(1.2, Blocks.stone, 5, 2, 5);

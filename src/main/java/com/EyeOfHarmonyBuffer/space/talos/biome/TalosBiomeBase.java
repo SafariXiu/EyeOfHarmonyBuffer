@@ -169,8 +169,67 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase
         public Block[] groundBlocks = {Blocks.grass, Blocks.dirt};
     }
 
+    /**
+     * 树木蓝图（方案 2）：用“树干 + 树枝 + 多层树冠 + 藤蔓”描述一棵树的样貌。
+     * 非空时 BiomeDecoratorTalos2 优先使用蓝图生成器，替代简单的 TreeStyle。
+     * 蓝图集中定义在 TalosTreeBlueprints，群系只负责挂载。
+     */
+    public static final class TreeBlueprint {
+        public Block woodBlock = Blocks.log;
+        public int woodMeta = 0;
+        public Block leafBlock = Blocks.leaves;
+        public int leafMeta = 0;
+        /** 允许落点的地表方块（默认草/泥土）。 */
+        public Block[] groundBlocks = {Blocks.grass, Blocks.dirt};
+        /** 树干高度范围（不含树冠）。 */
+        public int trunkMin = 4;
+        public int trunkMax = 6;
+        /** 2×2 粗主干（雨林巨树）。 */
+        public boolean wideTrunk = false;
+        /** 树干歪斜概率 0~1（粗主干不歪斜）。 */
+        public double leanChance = 0.0;
+        /** 树叶密度 0~1。 */
+        public double leafDensity = 0.85;
+        /** 树冠层：相对树顶的 y 偏移（0 = 树顶，负数为往下）。 */
+        public CanopyLayer[] layers = new CanopyLayer[0];
+        /** 树枝。 */
+        public BranchSpec branches = new BranchSpec();
+        /** 树冠半径扰动 0~1：越大轮廓越不规则。 */
+        public double jitter = 0.0;
+        /** 是否挂藤蔓（雨林用）。 */
+        public boolean vines = false;
+        public double vineChance = 0.0;
+
+        public static final class CanopyLayer {
+            public final int yOffset;
+            public final int radius;
+            public final boolean skipCenter;
+
+            public CanopyLayer(int yOffset, int radius, boolean skipCenter) {
+                this.yOffset = yOffset;
+                this.radius = radius;
+                this.skipCenter = skipCenter;
+            }
+        }
+
+        public static final class BranchSpec {
+            /** 出现概率 0~1（每棵树一次判定）。 */
+            public double chance = 0.0;
+            /** 树枝数量。 */
+            public int count = 2;
+            /** 枝长（格）。 */
+            public int length = 2;
+            /** 每格抬升。 */
+            public int rise = 1;
+            /** 枝干最低位置（距树顶向下多少格）。 */
+            public int startBelow = 3;
+        }
+    }
+
     /** 树（结构 / 方块 / 数量）。 */
     public TreeStyle treeStyle = new TreeStyle();
+    /** 树木蓝图（方案 2）：非空时优先于 treeStyle 使用。 */
+    public TreeBlueprint treeBlueprint = null;
     /** 高草 / 蕨。 */
     public GrassConfig grass = new GrassConfig();
     /** 花。 */

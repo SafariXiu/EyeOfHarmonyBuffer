@@ -22,16 +22,7 @@ public class BiomeGenTalos2TemperateSteppe extends TalosBiomeBase {
 
         // ===== 树：稀疏散布橡树 =====
         this.treeStyle.perChunk = 0.2;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 4;
-        this.treeStyle.trunkMax = 6;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.8;
-        this.treeStyle.leanChance = 0.6;
+        this.treeBlueprint = TalosTreeBlueprints.STEPPE_TREE;
 
         this.grass = new GrassConfig(35, 1);
         this.flowers = new FlowerConfig(1, Blocks.red_flower);

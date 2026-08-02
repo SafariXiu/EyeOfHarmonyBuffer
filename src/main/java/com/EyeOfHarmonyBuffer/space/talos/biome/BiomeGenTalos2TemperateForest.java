@@ -22,16 +22,7 @@ public class BiomeGenTalos2TemperateForest extends TalosBiomeBase {
 
         // ===== 树：茂密橡树 =====
         this.treeStyle.perChunk = 3.0;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 5;
-        this.treeStyle.trunkMax = 7;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.95;
-        this.treeStyle.leanChance = 0.4;
+        this.treeBlueprint = TalosTreeBlueprints.FOREST_OAK;
 
         this.grass = new GrassConfig(18, 1);
         this.flowers = new FlowerConfig(3, Blocks.red_flower);

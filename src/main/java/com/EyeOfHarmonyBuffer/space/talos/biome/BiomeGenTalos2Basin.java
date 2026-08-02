@@ -27,16 +27,7 @@ public class BiomeGenTalos2Basin extends TalosBiomeBase {
 
         // ===== 树：湿地橡树，密度中等 =====
         this.treeStyle.perChunk = 1.5;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 4;
-        this.treeStyle.trunkMax = 6;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.85;
-        this.treeStyle.leanChance = 0.4;
+        this.treeBlueprint = TalosTreeBlueprints.BASIN_TREE;
 
         // 沼泽盆地：多水、多芦苇睡莲
         this.grass = new GrassConfig(20, 1);

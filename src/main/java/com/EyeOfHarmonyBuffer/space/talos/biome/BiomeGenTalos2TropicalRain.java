@@ -22,16 +22,7 @@ public class BiomeGenTalos2TropicalRain extends TalosBiomeBase {
 
         // ===== 树：2×2 巨型丛林树 =====
         this.treeStyle.perChunk = 1.5;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 3;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 3;
-        this.treeStyle.trunkMin = 10;
-        this.treeStyle.trunkMax = 17;
-        this.treeStyle.shape = TreeShape.JUNGLE;
-        this.treeStyle.canopyRadius = 4;
-        this.treeStyle.leafDensity = 0.95;
-        this.treeStyle.leanChance = 0.0;
+        this.treeBlueprint = TalosTreeBlueprints.RAINFOREST_GIANT;
 
         this.grass = new GrassConfig(15, 1);
         this.flowers = new FlowerConfig(4, Blocks.red_flower);

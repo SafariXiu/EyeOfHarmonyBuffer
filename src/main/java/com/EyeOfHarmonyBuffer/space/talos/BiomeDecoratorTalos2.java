@@ -111,8 +111,11 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         }
     }
 
-    /** 树木完全由群系的 TreeStyle 决定（形状 / 方块 / 密度）。 */
+    /** 树木：群系挂了蓝图就用蓝图生成器，否则退回简单 TreeStyle。 */
     private TalosBoundedFeature treeFor(TalosBiomeBase biome) {
+        if (biome.treeBlueprint != null) {
+            return new TalosBoundedFeatures.BlueprintTree(biome.treeBlueprint);
+        }
         return new TalosBoundedFeatures.Tree(biome.treeStyle);
     }
 

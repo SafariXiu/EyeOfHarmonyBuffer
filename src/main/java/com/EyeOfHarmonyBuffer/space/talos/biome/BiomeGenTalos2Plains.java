@@ -27,16 +27,7 @@ public class BiomeGenTalos2Plains extends TalosBiomeBase {
 
         // ===== 树：普通橡树，疏密适中 =====
         this.treeStyle.perChunk = 0.6;
-        this.treeStyle.woodBlock = Blocks.log;
-        this.treeStyle.woodMeta = 0;
-        this.treeStyle.leafBlock = Blocks.leaves;
-        this.treeStyle.leafMeta = 0;
-        this.treeStyle.trunkMin = 4;
-        this.treeStyle.trunkMax = 6;
-        this.treeStyle.shape = TreeShape.ROUND;
-        this.treeStyle.canopyRadius = 2;
-        this.treeStyle.leafDensity = 0.9;
-        this.treeStyle.leanChance = 0.5;
+        this.treeBlueprint = TalosTreeBlueprints.PLAINS_OAK;
 
         this.grass = new GrassConfig(30, 1);
         this.flowers = new FlowerConfig(2, Blocks.red_flower);
