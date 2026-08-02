@@ -10,7 +10,7 @@ import java.util.Map;
  * 每个 MacroPackageId 对应的一组「宏群系配置」。
  *
  * 当前只包含：
- * - RiverStylePreset：河流风格预设（宽度 + 弯曲风格）
+ * - RiverStylePreset：河流风格预设（深度 + 谷型）
  * - RiverBankPreset：河岸 / 河谷形态预设（洪泛平原宽度、坡度、崖感等）
  *
  * 后续如果需要，可以在 MacroPackageSpec 里继续加：
@@ -31,11 +31,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.TROPICAL_HUMID,
             MacroPackageSpec.builder(MacroPackageId.TROPICAL_HUMID)
                 .riverStyle(new RiverStylePreset(
-                    56,
-                    320,
-                    460,
-                    0.9,
-                    1200,
                     22,
                     0.5,
                     RiverValleyType.U_SHAPED
@@ -51,11 +46,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.TROPICAL_DRY,
             MacroPackageSpec.builder(MacroPackageId.TROPICAL_DRY)
                 .riverStyle(new RiverStylePreset(
-                    40,
-                    260,
-                    380,
-                    0.7,
-                    1100,
                     18,
                     0.5,
                     RiverValleyType.V_SHAPED
@@ -71,11 +61,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.TEMPERATE_LOWLAND,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_LOWLAND)
                 .riverStyle(new RiverStylePreset(
-                    40,
-                    240,
-                    360,
-                    0.6,
-                    1000,
                     18,
                     0.5,
                     RiverValleyType.U_SHAPED
@@ -90,11 +75,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.TEMPERATE_FORESTED,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_FORESTED)
                 .riverStyle(new RiverStylePreset(
-                    36,
-                    230,
-                    340,
-                    0.65,
-                    950,
                     18,
                     0.5,
                     RiverValleyType.U_SHAPED
@@ -109,11 +89,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.TEMPERATE_HIGHLAND,
             MacroPackageSpec.builder(MacroPackageId.TEMPERATE_HIGHLAND)
                 .riverStyle(new RiverStylePreset(
-                    28,
-                    190,
-                    300,
-                    0.5,
-                    800,
                     16,
                     0.55,
                     RiverValleyType.V_SHAPED
@@ -129,11 +104,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.COOL_FORESTED,
             MacroPackageSpec.builder(MacroPackageId.COOL_FORESTED)
                 .riverStyle(new RiverStylePreset(
-                    28,
-                    180,
-                    280,
-                    0.45,
-                    850,
                     16,
                     0.55,
                     RiverValleyType.V_SHAPED
@@ -148,11 +118,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.SUBPOLAR_TUNDRA,
             MacroPackageSpec.builder(MacroPackageId.SUBPOLAR_TUNDRA)
                 .riverStyle(new RiverStylePreset(
-                    24,
-                    160,
-                    260,
-                    0.35,
-                    900,
                     16,
                     0.55,
                     RiverValleyType.V_SHAPED
@@ -167,11 +132,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.POLAR_HIGHLAND,
             MacroPackageSpec.builder(MacroPackageId.POLAR_HIGHLAND)
                 .riverStyle(new RiverStylePreset(
-                    20,
-                    140,
-                    240,
-                    0.2,
-                    900,
                     14,
                     0.6,
                     RiverValleyType.V_SHAPED
@@ -188,11 +148,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.RIFT_TROPICAL,
             MacroPackageSpec.builder(MacroPackageId.RIFT_TROPICAL)
                 .riverStyle(new RiverStylePreset(
-                    24,
-                    140,
-                    240,
-                    0.3,
-                    700,
                     8,
                     0.6,
                     RiverValleyType.V_SHAPED
@@ -206,11 +161,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.RIFT_TEMPERATE,
             MacroPackageSpec.builder(MacroPackageId.RIFT_TEMPERATE)
                 .riverStyle(new RiverStylePreset(
-                    24,
-                    140,
-                    240,
-                    0.3,
-                    700,
                     8,
                     0.6,
                     RiverValleyType.V_SHAPED
@@ -224,11 +174,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.RIFT_POLAR,
             MacroPackageSpec.builder(MacroPackageId.RIFT_POLAR)
                 .riverStyle(new RiverStylePreset(
-                    24,
-                    140,
-                    240,
-                    0.3,
-                    700,
                     8,
                     0.6,
                     RiverValleyType.V_SHAPED
@@ -243,11 +188,6 @@ public final class MacroPackageRegistry {
         m.put(MacroPackageId.MOUNTAIN_PEAK,
             MacroPackageSpec.builder(MacroPackageId.MOUNTAIN_PEAK)
                 .riverStyle(new RiverStylePreset(
-                    16,
-                    120,
-                    220,
-                    0.15,
-                    800,
                     10,
                     0.6,
                     RiverValleyType.V_SHAPED
@@ -324,8 +264,6 @@ public final class MacroPackageRegistry {
             public MacroPackageSpec build() {
                 if (riverStyle == null) {
                     riverStyle = new RiverStylePreset(
-                        32, 200, 300,
-                        0.5, 900,
                         16,
                         0.5,
                         RiverValleyType.U_SHAPED
@@ -350,32 +288,9 @@ public final class MacroPackageRegistry {
     /**
      * 单个宏群系的河流风格预设。
      *
-     * 注意：
-     * - 这些是「宏观基值」，真正落地时可以在层2 再叠一点噪声，
-     *   然后按 packageWeights(x,z) 做线性混合，得到最终的 RiverStyleParams(x,z)。
+     * 注意：河道宽度 / 弯曲由 .rvr 河网模板决定，宏包只控制深度与谷型。
      */
     public static final class RiverStylePreset {
-
-        /** 河道核心（真正装水的部分）目标宽度（blocks，整条河的大致标尺） */
-        public final int coreWidthBlocks;
-
-        /** 河谷总体宽度（从谷底到两侧山脚的半宽标尺） */
-        public final int valleyWidthBlocks;
-
-        /** 山体/洞穴等需要避让的宽度（比 valley 更宽） */
-        public final int avoidWidthBlocks;
-
-        /**
-         * 弯曲强度：0 = 完全不 meander（除了功能性寻路），
-         * 1 = 极强 meander。
-         */
-        public final double meanderStrength;
-
-        /**
-         * 典型弯曲波长（blocks），控制「S 型」弯道的大致尺度。
-         */
-        public final int meanderWavelengthBlocks;
-
         /** 主河典型最大下挖深度（blocks） */
         public final int baseDepthBlocks;
 
@@ -385,19 +300,9 @@ public final class MacroPackageRegistry {
         /** 河谷类型  */
         public final RiverValleyType riverValleyType;
 
-        public RiverStylePreset(int coreWidthBlocks,
-                                int valleyWidthBlocks,
-                                int avoidWidthBlocks,
-                                double meanderStrength,
-                                int meanderWavelengthBlocks,
-                                int baseDepthBlocks,
+        public RiverStylePreset(int baseDepthBlocks,
                                 double tributaryDepthScale,
                                 RiverValleyType riverValleyType) {
-            this.coreWidthBlocks = coreWidthBlocks;
-            this.valleyWidthBlocks = valleyWidthBlocks;
-            this.avoidWidthBlocks = avoidWidthBlocks;
-            this.meanderStrength = meanderStrength;
-            this.meanderWavelengthBlocks = meanderWavelengthBlocks;
             this.baseDepthBlocks = baseDepthBlocks;
             this.tributaryDepthScale = tributaryDepthScale;
             this.riverValleyType = riverValleyType;
@@ -406,12 +311,7 @@ public final class MacroPackageRegistry {
         @Override
         public String toString() {
             return "RiverStylePreset{" +
-                "core=" + coreWidthBlocks +
-                ", valley=" + valleyWidthBlocks +
-                ", avoid=" + avoidWidthBlocks +
-                ", meanderStrength=" + meanderStrength +
-                ", wavelength=" + meanderWavelengthBlocks +
-                ", baseDepth=" + baseDepthBlocks +
+                "baseDepth=" + baseDepthBlocks +
                 ", tribScale=" + tributaryDepthScale +
                 ", riverValleyTypes=" + riverValleyType +
                 '}';

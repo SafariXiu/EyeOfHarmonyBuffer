@@ -10,8 +10,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
  *   h = min(h, 河床目标Y)
  *
  * 河床剖面（V / U 型深度因子）与源头湖 / 暗河井逻辑全部连续，
- * 因此河谷两侧天然形成缓坡，不再需要旧 TalosRiverCarver 那种
- * "事后垂直切方块 + 灌水 + 清空空气"的硬切操作。
+ * 因此河谷两侧天然形成缓坡，不再需要事后垂直切方块 + 灌水的硬切操作。
  *
  * 阶段 A 仅处理陆地列（海洋一侧保持原样，入海口问题由阶段 B 的
  * 纵向深度剖面统一解决）。

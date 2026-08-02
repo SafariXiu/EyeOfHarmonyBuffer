@@ -7,7 +7,7 @@ public final class TalosRiverProfile {
 
     private TalosRiverProfile() {}
 
-    // 源头湖 / 暗河井参数（与旧 TalosRiverCarver 保持一致）
+    // 源头湖 / 暗河井参数
     private static final double BASE_LAKE_RADIUS = 48.0;
     private static final double LAKE_RADIUS_PREFACTOR = 1.5;
     private static final double LAKE_CENTER_MIN_DEPTH = 16.0;
@@ -24,8 +24,8 @@ public final class TalosRiverProfile {
      *
      * 与 computeRiverBedY 的区别：
      *   - 在 computeRiverBedY 基础上叠加源头湖的湖盆与暗河井深度；
-     *   - 带与旧 TalosRiverCarver 一致的雕刻门槛：只在河谷内或源头湖
-     *     范围内下挖，其它位置返回 baseHeightD（原高度）；
+     *   - 雕刻门槛：只在河谷内或源头湖范围内下挖，
+     *     其它位置返回 baseHeightD（原高度）；
      *   - 返回值为"河床目标 Y"，调用方用 min(height, bedY) 落地，
      *     从而让河谷两侧自然成坡，而不是事后垂直切方块。
      */

@@ -9,7 +9,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClim
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -32,8 +31,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final int worldSeedInt;
 
-    private final TalosRiverCarver.MacroPackageResolver macroResolver;
-
     private static final boolean DEBUG_COASTLINE = true;
     private static final boolean USE_CHUNK_BLUR_BANK = true;
 
@@ -41,7 +38,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         super(world, seed, flag);
         this.world = world;
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
-        this.macroResolver = createMacroResolver();
         this.worldHeight = world.getActualHeight();
     }
 
@@ -95,8 +91,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      *   5. DEBUG_COASTLINE 为 true 时，在陆地顶层用不同方块标记海岸权重（调试用）。
      *
      * 注意：
-     *   - 本方法只负责“标高 + 基础方块”的铺设；具体的河槽切割、源头湖形状、
-     *     暗河井等细节由 TalosRiverCarver.carveChunkRivers(...) 在后续单独处理。
+     *   - 本方法只负责“标高 + 基础方块”的铺设；源头湖 / 暗河井等细节
+     *     已并入高度场雕刻（TalosRiverProfile.computeChannelBedY）。
      *   - 河岸压低逻辑仅依赖世界坐标 (worldX, worldZ)、世界种子 int 和 seaLevel，
      *     不在这里直接操作方块数组，保证高度场是可重现、与方块填充解耦的。
      */
@@ -282,21 +278,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    private TalosRiverCarver.MacroPackageResolver createMacroResolver() {
-        return new TalosRiverCarver.MacroPackageResolver() {
-            @Override
-            public MacroPackageId resolveMacroPackageId(int worldX, int worldZ) {
-                MacroPackageId pkgId = TalosMacroClimate.getMacroPackageId(worldX, worldZ, worldSeedInt);
-
-                if (pkgId == MacroPackageId.OCEANIC) {
-                    return null;
-                }
-
-                return pkgId;
-            }
-        };
-    }
-
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
         for (int i = 0; i < blocks.length; i++) {
             blocks[i] = null;
@@ -430,8 +411,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int sx = worldX + dx;
                 int sz = worldZ + dz;
 
-                MacroPackageId macroId = macroResolver.resolveMacroPackageId(sx, sz);
-                if (macroId == null) {
+                MacroPackageId macroId = TalosMacroClimate.getMacroPackageId(
+                    sx, sz, worldSeedInt
+                );
+                if (macroId == MacroPackageId.OCEANIC) {
                     continue;
                 }
 

@@ -6,12 +6,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverRelation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.RiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration.SupercontinentRiverSystemRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery.RiverQueryResult;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSegment;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSpatialIndex;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplatePicker;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentAdapter;
@@ -34,7 +32,6 @@ import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.River
  * 2. 运行时结构：
  *    - RiverSystem    : 持有 RiverNetwork + RiverSegment 列表 + RiverSpatialIndex
  *    - RiverQuery     : 对给定 worldX/Z 进行「最近河段 + 影响强度」查询
- *    - RiverSystemRegistry : 按 worldSeedInt 缓存/管理 RiverSystem
  *
  * 3. 对外 API 语义**保持不变**：
  *    - 陆地地形场（只在 isLand 上有值）：
@@ -274,68 +271,6 @@ public final class TalosRiverSystem {
     }
 
     /**
-     * Debug 几何查询：在全局 RVR2 河网上找到最近河段以及最近点坐标。
-     *
-     * 特点：
-     *   - 不做宽度 / 掩码计算；
-     *   - 不做 isLand / plateId 过滤；
-     *   - 主要用于调试 / 可视化。
-     */
-    public static DebugNearestRiverInfo debugFindNearestRiver(int worldX, int worldZ, int worldSeedInt) {
-        RiverSystem sys = RiverSystemRegistry.getOrCreate(worldSeedInt);
-        RiverSpatialIndex index = sys.index;
-
-        double sampleX = worldX + 0.5;
-        double sampleZ = worldZ + 0.5;
-
-        List<RiverSegment> candidates = index.queryCell(sampleX, sampleZ);
-        if (candidates.isEmpty()) {
-            return new DebugNearestRiverInfo(false, Double.MAX_VALUE, 0, 0, 0, 0.0, 0.0);
-        }
-
-        double bestDistSq = Double.MAX_VALUE;
-        RiverSegment bestSeg = null;
-        RiverQuery.SegmentProjection bestProj = null;
-
-        for (RiverSegment s : candidates) {
-            RiverQuery.SegmentProjection p = RiverQuery.projectToSegment(
-                sampleX, sampleZ,
-                s.ax, s.az,
-                s.bx, s.bz
-            );
-            if (p.distanceSquared < bestDistSq) {
-                bestDistSq = p.distanceSquared;
-                bestSeg = s;
-                bestProj = p;
-            }
-        }
-
-        if (bestSeg == null || bestProj == null) {
-            return new DebugNearestRiverInfo(false, Double.MAX_VALUE, 0, 0, 0, 0.0, 0.0);
-        }
-
-        double dist = Math.sqrt(bestProj.distanceSquared);
-        int riverId = bestSeg.edgeId;
-        int riverLevel = switch (bestSeg.type) {
-            case MAIN    -> 0;
-            case BRANCH1 -> 1;
-            case BRANCH2 -> 2;
-        };
-
-        int plateId = 0;
-
-        return new DebugNearestRiverInfo(
-            true,
-            dist,
-            riverId,
-            riverLevel,
-            plateId,
-            bestProj.closestX,
-            bestProj.closestZ
-        );
-    }
-
-    /**
      * 水文场采样结构：在“陆地 + 海洋”上统一表示河流影响。
      *
      * 这里是**改造点之一**：在原有 distance / width / mask / riverId / riverLevel 之外，
@@ -567,14 +502,9 @@ public final class TalosRiverSystem {
      *   - Debug 命令：无论你站在这个超级大陆的哪里，都能跳到“这块大陆上的某条最近河”。
      */
     public static DebugNearestRiverInfo debugFindNearestRiverOnSuper(int worldX, int worldZ, int worldSeedInt) {
-        System.out.println("[RiverDebug] debugFindNearestRiverOnSuper at pos=("
-            + worldX + "," + worldZ + "), seedInt=" + worldSeedInt);
-
         int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
-        System.out.println("[RiverDebug]  superId = " + superId);
 
         if (superId == 0) {
-            System.out.println("[RiverDebug]  superId=0, return no river.");
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -588,7 +518,6 @@ public final class TalosRiverSystem {
 
         SupercontinentInfo info = SupercontinentAdapter.getInfoAt(worldX, worldZ, worldSeedInt);
         if (info == null) {
-            System.out.println("[RiverDebug]  SupercontinentInfo is null for superId=" + superId);
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -598,17 +527,11 @@ public final class TalosRiverSystem {
                 0.0,
                 0.0
             );
-        } else {
-            System.out.println("[RiverDebug]  SupercontinentInfo: center=("
-                + info.centerX + "," + info.centerZ + "), radius="
-                + info.radius + ", angleRad=" + info.angleRad);
         }
 
         String templateId = RiverTemplatePicker.pickTemplateIdForSupercontinent(worldSeedInt, superId);
-        System.out.println("[RiverDebug]  picked templateId=" + templateId);
 
         if (templateId == null) {
-            System.out.println("[RiverDebug]  templateId is null, no river template for this superId.");
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -629,7 +552,6 @@ public final class TalosRiverSystem {
         );
 
         if (sys == null) {
-            System.out.println("[RiverDebug]  RiverSystem is null for templateId=" + templateId);
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -641,13 +563,7 @@ public final class TalosRiverSystem {
             );
         }
 
-        System.out.println("[RiverDebug]  RiverSystem: segments.size="
-            + (sys.segments == null ? -1 : sys.segments.size())
-            + ", bbox=(" + sys.network.getMinX() + "," + sys.network.getMinZ()
-            + ")->(" + sys.network.getMaxX() + "," + sys.network.getMaxZ() + ")");
-
         if (sys.segments == null || sys.segments.isEmpty()) {
-            System.out.println("[RiverDebug]  segments is empty, treat as no river.");
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -680,7 +596,6 @@ public final class TalosRiverSystem {
         }
 
         if (bestSeg == null || bestProj == null) {
-            System.out.println("[RiverDebug]  bestSeg/bestProj is null after scanning segments.");
             return new DebugNearestRiverInfo(
                 false,
                 Double.MAX_VALUE,
@@ -701,11 +616,6 @@ public final class TalosRiverSystem {
         };
 
         int plateId = 0;
-
-        System.out.println("[RiverDebug]  FOUND nearest river: riverId=" + riverId
-            + ", level=" + riverLevel
-            + ", dist=" + dist
-            + ", closest=(" + bestProj.closestX + "," + bestProj.closestZ + ")");
 
         return new DebugNearestRiverInfo(
             true,
