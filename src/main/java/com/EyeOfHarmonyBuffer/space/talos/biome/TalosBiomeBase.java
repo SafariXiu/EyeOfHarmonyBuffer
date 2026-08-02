@@ -223,6 +223,8 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase
             public int rise = 1;
             /** 枝干最低位置（距树顶向下多少格）。 */
             public int startBelow = 3;
+            /** 枝梢树冠半径（0 = 只放两片叶子）。 */
+            public int tipRadius = 0;
         }
     }
 
@@ -232,10 +234,16 @@ public abstract class TalosBiomeBase extends GSBiomeGenBase
     public TreeBlueprint treeBlueprint = null;
     /** 高草 / 蕨。 */
     public GrassConfig grass = new GrassConfig();
+    /** 蕨（meta 2，雨林 / 阴暗群系用）。 */
+    public GrassConfig ferns = new GrassConfig();
     /** 花。 */
     public FlowerConfig flowers = new FlowerConfig();
     /** 枯灌木。 */
     public SimpleConfig deadBush = new SimpleConfig();
+    /** 蘑菇（棕 / 红）。 */
+    public SimpleConfig mushrooms = new SimpleConfig();
+    /** 倒木（横在地上的原木，雨林类群系用）。 */
+    public SimpleConfig fallenLogs = new SimpleConfig();
     /** 仙人掌。 */
     public SimpleConfig cactus = new SimpleConfig();
     /** 甘蔗。 */

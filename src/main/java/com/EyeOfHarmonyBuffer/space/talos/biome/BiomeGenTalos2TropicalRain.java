@@ -20,20 +20,26 @@ public class BiomeGenTalos2TropicalRain extends TalosBiomeBase {
         this.heightBias = 0.42;
         this.heightScale = 0.50;
 
-        // ===== 树：2×2 巨型丛林树 =====
-        this.treeStyle.perChunk = 1.5;
+        // ===== 树：2×2 巨型丛林树（30~40 格高，带树冠大分支） =====
+        this.treeStyle.perChunk = 3.0;
         this.treeBlueprint = TalosTreeBlueprints.RAINFOREST_GIANT;
 
+        // ===== 地貌装饰：高草 + 蕨混生、蘑菇、潮湿地面 =====
         this.grass = new GrassConfig(15, 1);
-        this.flowers = new FlowerConfig(4, Blocks.red_flower);
-        this.shrubs = new SimpleConfig(2);
+        this.ferns = new GrassConfig(18, 2);
+        this.flowers = new FlowerConfig(2, Blocks.red_flower);
+        this.shrubs = new SimpleConfig(3);
+        this.mushrooms = new SimpleConfig(2.5);
         this.reeds = new SimpleConfig(2);
-        this.waterlily = new SimpleConfig(2);
-        this.pond = new PondConfig(0.08, 5, 2, 0.5);
-        this.rocks = new RockConfig(0.3, Blocks.stone, 5, 2, 5);
-        this.boulders = new SimpleConfig(0.2);
+        this.waterlily = new SimpleConfig(3);
+        this.pond = new PondConfig(0.12, 5, 2, 0.5);
+        this.fallenLogs = new SimpleConfig(0.8);
+        this.rocks = new RockConfig(0.2, Blocks.mossy_cobblestone, 5, 2, 5);
+        this.boulders = new SimpleConfig(0.15);
 
-        this.groundPatches.add(new GroundPatchConfig(2, Blocks.dirt, 0, 2, 0.5));
+        this.groundPatches.add(new GroundPatchConfig(1.5, Blocks.dirt, 0, 2, 0.5));
+        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(0.6, Blocks.clay, 0, 2, 0.4));
     }
 
     @Override

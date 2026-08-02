@@ -105,12 +105,12 @@ public final class TalosTreeBlueprints {
             layer(0, 1, true), layer(-1, 2, true), layer(-2, 1, true));
 
     // ===== 热带 / 盆地 =====
-    /** 热带雨林巨树：2×2 高主干 + 大树枝 + 巨大树冠 + 藤蔓。 */
+    /** 热带雨林巨树：2×2 主干 15~20 格 + 带树冠的大分支 + 巨大树冠 + 藤蔓。 */
     public static final TalosBiomeBase.TreeBlueprint RAINFOREST_GIANT = vines(branches(
-        tree(Blocks.log, 3, Blocks.leaves, 3, 12, 18, 0.0, 0.95, 0.2,
-            layer(-1, 4, true), layer(0, 4, true), layer(1, 4, true),
+        tree(Blocks.log, 3, Blocks.leaves, 3, 15, 20, 0.0, 0.90, 0.2,
+            layer(-1, 5, true), layer(0, 5, true), layer(1, 4, true),
             layer(2, 3, true)),
-        0.8, 3, 3, 2),
+        0.9, 3, 4, 1),
         0.35);
 
     /** 湿热带盆地雨林树：中等主干 + 圆冠 + 少量藤蔓。 */
@@ -132,5 +132,9 @@ public final class TalosTreeBlueprints {
         MOUNTAIN_SPRUCE.groundBlocks = new Block[] {
             Blocks.stone, Blocks.gravel, Blocks.grass, Blocks.dirt
         };
+        RAINFOREST_GIANT.wideTrunk = true;
+        RAINFOREST_GIANT.branches.tipRadius = 2;
+        RAINFOREST_GIANT.branches.startBelow = 6;
+        RAINFOREST_GIANT.vineChance = 0.65;
     }
 }

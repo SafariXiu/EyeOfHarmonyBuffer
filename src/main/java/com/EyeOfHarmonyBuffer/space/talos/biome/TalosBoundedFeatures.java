@@ -237,6 +237,28 @@ public final class TalosBoundedFeatures {
                 || b == Blocks.mycelium || b == Blocks.hardened_clay
                 || b == Blocks.stained_hardened_clay;
         }
+
+        protected final boolean isAirWorld(int x, int y, int z) {
+            return this.world.getBlock(x, y, z) == Blocks.air;
+        }
+
+        /**
+         * 原版式藤蔓：第一格必须贴着实心方块（meta 指向它），
+         * 下方同 meta 垂成一串。参数为区块内局部坐标（可越界 ±1 区块）。
+         */
+        protected final void placeVineChain(int lx, int vy, int lz, int meta, int len) {
+            int wx = this.chunkX * 16 + lx;
+            int wz = this.chunkZ * 16 + lz;
+            if (!isAirWorld(wx, vy, wz)) {
+                return;
+            }
+            for (int k = 0; k < len; k++) {
+                if (!isAirWorld(wx, vy - k, wz)) {
+                    break;
+                }
+                setBlock(lx, vy - k, lz, Blocks.vine, meta);
+            }
+        }
     }
 
     /** 高草（meta 1）或蕨（meta 2）：优先生成 2 格高的双株草，空间不足退化为单格。 */
@@ -308,6 +330,30 @@ public final class TalosBoundedFeatures {
                 return false;
             }
             setBlock(lx, y + 1, lz, Blocks.deadbush, 0);
+            return true;
+        }
+    }
+
+    /** 蘑菇：棕蘑菇为主、红蘑菇少量，长在草 / 泥土上。 */
+    public static final class Mushroom extends Base {
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            int y = height(lx, lz);
+            if (y <= 0 || y >= 255) {
+                return false;
+            }
+            if (isWater(lx, y, lz)
+                || !topIs(lx, lz, Blocks.grass, Blocks.dirt)) {
+                return false;
+            }
+            if (getBlock(lx, y + 1, lz) != Blocks.air) {
+                return false;
+            }
+            Block mushroom = (this.rand.nextInt(5) == 0)
+                ? Blocks.red_mushroom
+                : Blocks.brown_mushroom;
+            setBlock(lx, y + 1, lz, mushroom, 0);
             return true;
         }
     }
@@ -619,9 +665,16 @@ public final class TalosBoundedFeatures {
 
         @Override
         protected boolean generateAt(int lx, int lz) {
-            int maxR = maxCanopyRadius() + Math.max(0, this.bp.branches.length);
-            if (!canWriteArea(lx, lz, maxR)) {
-                return false;
+            // 只要求主干落点可写：
+            // 树冠 / 分支写不进已填充邻块时由 setBlock 自动跳过，
+            // 避免“靠区块边缘就整棵放弃”导致巨树密度上不去。
+            int trunkW = this.bp.wideTrunk ? 2 : 1;
+            for (int dz = 0; dz < trunkW; dz++) {
+                for (int dx = 0; dx < trunkW; dx++) {
+                    if (!canWrite(lx + dx, lz + dz)) {
+                        return false;
+                    }
+                }
             }
             int y = height(lx, lz);
             if (y <= 1 || y >= 250) {
@@ -634,6 +687,9 @@ public final class TalosBoundedFeatures {
             int trunk = this.bp.trunkMin
                 + this.rand.nextInt(this.bp.trunkMax - this.bp.trunkMin + 1);
             int topY = y + trunk;
+            if (topY + 3 >= 255) {
+                return false; // 巨树高度越界时整棵放弃
+            }
 
             boolean lean = !this.bp.wideTrunk
                 && this.bp.leanChance > 0.0
@@ -672,7 +728,7 @@ public final class TalosBoundedFeatures {
                             || isWaterWorld(
                                 this.chunkX * 16 + lx + dx, cy,
                                 this.chunkZ * 16 + lz + dz)
-                            || Math.abs(cy - y) > 2) {
+                            || Math.abs(cy - y) > 4) {
                             return false;
                         }
                     }
@@ -717,17 +773,53 @@ public final class TalosBoundedFeatures {
                             topZ + d[1] * step,
                             this.bp.woodBlock, this.bp.woodMeta);
                     }
+                    // 枝干侧面垂藤（meta 指向枝干木块，保证支撑）
+                    if (this.bp.vines
+                        && this.rand.nextDouble() < this.bp.vineChance) {
+                        int midS = Math.max(1, steps / 2);
+                        int midStep = (midS + br.rise - 1) / br.rise;
+                        int bx = topX + d[0] * midStep;
+                        int bz = topZ + d[1] * midStep;
+                        int by = baseY + midS;
+                        int px = 0;
+                        int pz = 0;
+                        switch (this.rand.nextInt(4)) {
+                            case 0: px = 1; break;
+                            case 1: px = -1; break;
+                            case 2: pz = 1; break;
+                            default: pz = -1; break;
+                        }
+                        int meta = (px == 1) ? 2 : (px == -1) ? 8
+                            : (pz == 1) ? 4 : 1;
+                        placeVineChain(bx + px, by, bz + pz, meta,
+                            1 + this.rand.nextInt(2));
+                    }
                     int tipX = topX + d[0] * br.length;
                     int tipZ = topZ + d[1] * br.length;
                     int tipY = baseY + steps;
-                    placeLeaf(tipX, tipY, tipZ);
-                    placeLeaf(tipX, tipY + 1, tipZ);
+                    if (br.tipRadius > 0) {
+                        // 枝梢自带小树冠
+                        int r = br.tipRadius;
+                        for (int dy = -1; dy <= 0; dy++) {
+                            for (int dz = -r; dz <= r; dz++) {
+                                for (int dx = -r; dx <= r; dx++) {
+                                    double dist = Math.sqrt(dx * dx + dz * dz);
+                                    if (dist > r + 0.5) {
+                                        continue;
+                                    }
+                                    placeLeaf(tipX + dx, tipY + dy, tipZ + dz);
+                                }
+                            }
+                        }
+                        placeLeaf(tipX, tipY + 1, tipZ);
+                    } else {
+                        placeLeaf(tipX, tipY, tipZ);
+                        placeLeaf(tipX, tipY + 1, tipZ);
+                    }
                 }
             }
 
             // 多层树冠：每层按半径铺圆盘，jitter 扰动轮廓
-            int lowestY = Integer.MAX_VALUE;
-            int lowestR = 0;
             for (TalosBiomeBase.TreeBlueprint.CanopyLayer layer : this.bp.layers) {
                 int cy = topY + layer.yOffset;
                 int r = layer.radius;
@@ -746,10 +838,6 @@ public final class TalosBoundedFeatures {
                         placeLeaf(topX + dx, cy, topZ + dz);
                     }
                 }
-                if (cy < lowestY) {
-                    lowestY = cy;
-                    lowestR = r;
-                }
             }
 
             // 顶部封盖：主干正上方补树叶，避免原木顶面裸露
@@ -765,35 +853,53 @@ public final class TalosBoundedFeatures {
                 placeLeaf(topX, topY + 2, topZ);
             }
 
-            // 藤蔓：从最低树冠层下缘垂下 1~3 格
-            if (this.bp.vines && lowestY < topY) {
-                int meta = 1 << this.rand.nextInt(4);
-                for (int dz = -lowestR; dz <= lowestR; dz++) {
-                    for (int dx = -lowestR; dx <= lowestR; dx++) {
-                        if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) {
-                            continue; // 避开主干
-                        }
-                        if (dx * dx + dz * dz > lowestR * lowestR + 1) {
-                            continue;
-                        }
-                        if (this.rand.nextDouble() >= this.bp.vineChance) {
-                            continue;
-                        }
-                        int vx = topX + dx;
-                        int vz = topZ + dz;
-                        int vy = lowestY - 1;
-                        if (!isAirWorld(vx, vy, vz)) {
-                            continue;
-                        }
-                        int len = 1 + this.rand.nextInt(3);
-                        for (int i = 0; i < len; i++) {
-                            if (!isAirWorld(vx, vy - i, vz)) {
-                                break;
-                            }
-                            setBlock(vx - this.chunkX * 16, vy - i,
-                                vz - this.chunkZ * 16, Blocks.vine, meta);
-                        }
+            // 主干垂藤（原版挂法）：贴在 2×2 主干侧面，meta 指向主干，向下垂 1~3 格。
+            // 1.7.10 藤蔓有支撑判定：meta 对应方向必须是实心方块（或上方同 meta 的藤蔓），
+            // 否则会被邻居更新清掉——挂在树叶下 / meta 随机的藤蔓都会消失。
+            if (this.bp.vines && this.bp.wideTrunk) {
+                for (int i = 1; i < trunk; i++) {
+                    if (this.rand.nextDouble() >= this.bp.vineChance) {
+                        continue;
                     }
+                    int side = this.rand.nextInt(4);
+                    int sx = 0;
+                    int sz = 0;
+                    int meta;
+                    switch (side) {
+                        case 0: // 西侧列 → 朝东贴主干（meta 8）
+                            sx = -1;
+                            sz = this.rand.nextInt(2);
+                            meta = 8;
+                            break;
+                        case 1: // 东侧列 → 朝西（meta 2）
+                            sx = 2;
+                            sz = this.rand.nextInt(2);
+                            meta = 2;
+                            break;
+                        case 2: // 北侧行 → 朝南（meta 1）
+                            sx = this.rand.nextInt(2);
+                            sz = -1;
+                            meta = 1;
+                            break;
+                        default: // 南侧行 → 朝北（meta 4）
+                            sx = this.rand.nextInt(2);
+                            sz = 1;
+                            meta = 4;
+                            break;
+                    }
+                    int vx = lx + sx;
+                    int vz = lz + sz;
+                    placeVineChain(vx, y + i, vz, meta, 3 + this.rand.nextInt(4));
+                }
+                // 主干顶部挂几条长藤，垂过树冠裙边，非常显眼
+                for (int j = 0; j < 4; j++) {
+                    int side = this.rand.nextInt(4);
+                    int sx = (side == 0) ? -1 : (side == 1) ? 2 : 0;
+                    int sz = (side == 2) ? -1 : (side == 3) ? 2 : 0;
+                    int meta = (side == 0) ? 8 : (side == 1) ? 2
+                        : (side == 2) ? 1 : 4;
+                    placeVineChain(lx + sx, topY - 2, lz + sz, meta,
+                        5 + this.rand.nextInt(4));
                 }
             }
             return true;
@@ -804,20 +910,6 @@ public final class TalosBoundedFeatures {
                 return;
             }
             setBlock(x, y, z, this.bp.leafBlock, this.bp.leafMeta | 4);
-        }
-
-        private int maxCanopyRadius() {
-            int max = 0;
-            for (TalosBiomeBase.TreeBlueprint.CanopyLayer layer : this.bp.layers) {
-                if (layer.radius > max) {
-                    max = layer.radius;
-                }
-            }
-            return max;
-        }
-
-        private boolean isAirWorld(int x, int y, int z) {
-            return this.world.getBlock(x, y, z) == Blocks.air;
         }
     }
 
@@ -1141,6 +1233,87 @@ public final class TalosBoundedFeatures {
             if (this.rand.nextInt(3) != 0) {
                 setBlock(lx, y + 1, lz, Blocks.cobblestone, 0);
                 setBlock(lx + 1, y + 1, lz + 1, Blocks.cobblestone, 0);
+            }
+            return true;
+        }
+    }
+
+    /**
+     * 倒木：横在地上的 3~5 格丛林原木（雨林专属结构），
+     * 侧面按概率挂短藤；地形太陡、落在水里或非真实地表时整根放弃。
+     */
+    public static final class FallenLog extends Base {
+
+        /** 丛林原木：meta 3 = 丛林木，|4 = 东西向，|8 = 南北向。 */
+        private static final int JUNGLE_X_AXIS = 3 | 4;
+        private static final int JUNGLE_Z_AXIS = 3 | 8;
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            boolean axisX = this.rand.nextBoolean();
+            int len = 3 + this.rand.nextInt(3); // 3~5 格
+            int cx = this.chunkX * 16 + lx;
+            int cz = this.chunkZ * 16 + lz;
+
+            // 预检每段：地表必须存在、非水、真实地表，且高度差 ≤ 2
+            int[] sy = new int[len];
+            int base = Integer.MAX_VALUE;
+            for (int i = 0; i < len; i++) {
+                int wx = axisX ? cx + i : cx;
+                int wz = axisX ? cz : cz + i;
+                int h = surfaceYWorld(wx, wz);
+                if (h <= 0 || isWaterWorld(wx, h, wz)
+                    || !isGroundSurface(wx, h, wz)) {
+                    return false;
+                }
+                sy[i] = h;
+                if (h < base) {
+                    base = h;
+                }
+            }
+            for (int i = 0; i < len; i++) {
+                if (Math.abs(sy[i] - base) > 2) {
+                    return false;
+                }
+            }
+
+            int meta = axisX ? JUNGLE_X_AXIS : JUNGLE_Z_AXIS;
+            for (int i = 0; i < len; i++) {
+                int wx = axisX ? cx + i : cx;
+                int wz = axisX ? cz : cz + i;
+                int y = sy[i] + 1;
+                if (y >= 255) {
+                    return false;
+                }
+                setBlock(wx - this.chunkX * 16, y, wz - this.chunkZ * 16,
+                    Blocks.log, meta);
+            }
+
+            // 侧面挂藤：贴原木（meta 指向原木），垂 1~3 格
+            if (this.rand.nextDouble() < 0.7) {
+                for (int i = 0; i < len; i++) {
+                    if (this.rand.nextDouble() >= 0.45) {
+                        continue;
+                    }
+                    int wx = axisX ? cx + i : cx;
+                    int wz = axisX ? cz : cz + i;
+                    int y = sy[i] + 1;
+                    int side = this.rand.nextBoolean() ? 1 : -1;
+                    int lx2;
+                    int lz2;
+                    int vineMeta;
+                    if (axisX) {
+                        lx2 = wx - this.chunkX * 16;
+                        lz2 = wz - this.chunkZ * 16 + side;
+                        vineMeta = (side == 1) ? 4 : 1; // 南侧朝北 / 北侧朝南
+                    } else {
+                        lx2 = wx - this.chunkX * 16 + side;
+                        lz2 = wz - this.chunkZ * 16;
+                        vineMeta = (side == 1) ? 2 : 8; // 东侧朝西 / 西侧朝东
+                    }
+                    placeVineChain(lx2, y, lz2, vineMeta,
+                        1 + this.rand.nextInt(3));
+                }
             }
             return true;
         }

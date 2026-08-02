@@ -30,6 +30,8 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
 
     private final TalosBoundedFeatures.DeadBush deadBush = new TalosBoundedFeatures.DeadBush();
+    private final TalosBoundedFeatures.Mushroom mushroom = new TalosBoundedFeatures.Mushroom();
+    private final TalosBoundedFeatures.FallenLog fallenLog = new TalosBoundedFeatures.FallenLog();
     private final TalosBoundedFeatures.Cactus cactus = new TalosBoundedFeatures.Cactus();
     private final TalosBoundedFeatures.Reed reed = new TalosBoundedFeatures.Reed();
     private final TalosBoundedFeatures.Waterlily waterlily = new TalosBoundedFeatures.Waterlily();
@@ -92,14 +94,18 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         scatter(world, rand, chunk,
             new TalosBoundedFeatures.Grass(biome.grass.meta), biome.grass.perChunk);
         scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Grass(biome.ferns.meta), biome.ferns.perChunk);
+        scatter(world, rand, chunk,
             new TalosBoundedFeatures.Flower(biome.flowers.flower), biome.flowers.perChunk);
         scatter(world, rand, chunk, this.deadBush, biome.deadBush.perChunk);
+        scatter(world, rand, chunk, this.mushroom, biome.mushrooms.perChunk);
         scatter(world, rand, chunk, this.cactus, biome.cactus.perChunk);
         scatter(world, rand, chunk, this.reed, biome.reeds.perChunk);
         scatter(world, rand, chunk, this.waterlily, biome.waterlily.perChunk);
         scatter(world, rand, chunk, this.shrub, biome.shrubs.perChunk);
         scatter(world, rand, chunk,
             new TalosBoundedFeatures.Pond(biome.pond), biome.pond.perChunk);
+        scatter(world, rand, chunk, this.fallenLog, biome.fallenLogs.perChunk);
         scatter(world, rand, chunk,
             new TalosBoundedFeatures.Rock(biome.rocks), biome.rocks.perChunk);
         scatter(world, rand, chunk, this.boulder, biome.boulders.perChunk);

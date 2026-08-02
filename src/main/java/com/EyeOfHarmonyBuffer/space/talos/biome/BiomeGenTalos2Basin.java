@@ -36,6 +36,7 @@ public class BiomeGenTalos2Basin extends TalosBiomeBase {
         this.waterlily = new SimpleConfig(3);
         this.shrubs = new SimpleConfig(1);
         this.pond = new PondConfig(0.15, 5, 2, 0.5);
+        this.fallenLogs = new SimpleConfig(0.6);
         this.rocks = new RockConfig(0.15, Blocks.stone, 5, 2, 5);
         this.boulders = new SimpleConfig(0.2);
 
