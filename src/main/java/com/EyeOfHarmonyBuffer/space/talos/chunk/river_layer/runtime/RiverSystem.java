@@ -9,6 +9,12 @@ import java.util.List;
 
 public final class RiverSystem {
 
+    /**
+     * 源头湖扩展影响半径：必须覆盖最大的湖盆 + 岸 + 外坡
+     * （默认预设 48×1.3 + 24 + 48 ≈ 134；留余量取 150）。
+     */
+    private static final double SOURCE_LAKE_EXTRA_INFLUENCE = 150.0;
+
     public final RiverNetwork network;
     public final List<RiverSegment> segments;
     public final RiverSpatialIndex index;
@@ -82,6 +88,11 @@ public final class RiverSystem {
                     influenceRadius = profile.influenceAt(
                         edge.getId(), progressStart, progressEnd
                     );
+                }
+                // 源头湖扩展：源头段的影响半径必须覆盖湖盆 + 岸 + 外坡，
+                // 否则湖外围超出河段影响范围的方向查不到源头水文，不会雕刻。
+                if (hasSource && influenceRadius < SOURCE_LAKE_EXTRA_INFLUENCE) {
+                    influenceRadius = SOURCE_LAKE_EXTRA_INFLUENCE;
                 }
 
                 RiverSegment seg = new RiverSegment(

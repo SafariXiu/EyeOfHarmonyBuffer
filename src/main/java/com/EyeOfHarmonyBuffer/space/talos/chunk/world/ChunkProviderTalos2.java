@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
@@ -214,11 +215,23 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     TalosSurfaceProfile profile =
                         TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
 
+                    // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）
+                    int topSolidY = riverCarved ? h - 1 : h;
+                    BlockMetaPair lakeMat = TalosRiverSystem.getLakeSurfaceMaterial(
+                        topSolidY, seaLevel, worldX, worldZ,
+                        ctx.hydro[colIndex], ctx.macroPkg[colIndex]
+                    );
+
                     if (riverCarved) {
                         // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
                         for (int y = 1; y < h; y++) {
                             putBlock(blocks, meta, localX, y, localZ,
                                 profile.deepBlock);
+                        }
+                        // 源头湖：湖床顶两格换成滩涂 / 干岸方块
+                        if (lakeMat != null && h >= 2) {
+                            putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
+                            putBlock(blocks, meta, localX, h - 2, localZ, lakeMat);
                         }
                     } else {
                         int surfaceStart = h - profile.surfaceDepth + 1;
@@ -238,6 +251,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
                         putBlock(blocks, meta, localX, h, localZ,
                             profile.surfaceBlock);
+                        if (lakeMat != null) {
+                            putBlock(blocks, meta, localX, h, localZ, lakeMat);
+                            if (h >= 2) {
+                                putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
+                            }
+                        }
                     }
 
                     if (h < seaLevel) {

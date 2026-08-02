@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
+import net.minecraft.init.Blocks;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -21,6 +23,17 @@ import java.util.Map;
 
 public final class MacroPackageRegistry {
 
+    private static final BlockMetaPair SAND = new BlockMetaPair(Blocks.sand, (byte) 0);
+    private static final BlockMetaPair DIRT = new BlockMetaPair(Blocks.dirt, (byte) 0);
+    private static final BlockMetaPair GRAVEL = new BlockMetaPair(Blocks.gravel, (byte) 0);
+
+    /** 默认源头湖预设（未配置时使用，保持旧版湖盆观感并新增岸边/滩涂）。 */
+    private static final SourceLakePreset DEFAULT_SOURCE_LAKE = new SourceLakePreset(
+        48.0, 16.0, 32.0, 0.18, 0.18,
+        24.0, 1.5, 48.0,
+        SAND, DIRT
+    );
+
     private static final Map<MacroPackageId, MacroPackageSpec> SPECS;
 
     static {
@@ -34,6 +47,12 @@ public final class MacroPackageRegistry {
                     22,
                     0.5,
                     RiverValleyType.U_SHAPED
+                ))
+                // 湿润热带：更宽的湖岸滩涂
+                .sourceLake(new SourceLakePreset(
+                    48.0, 16.0, 32.0, 0.18, 0.18,
+                    32.0, 1.5, 48.0,
+                    SAND, DIRT
                 ))
                 // 宽洪泛平原 + 坡很缓 → 强烈河岸压低
                 .riverBank(new RiverBankPreset(
@@ -136,6 +155,12 @@ public final class MacroPackageRegistry {
                     0.6,
                     RiverValleyType.V_SHAPED
                 ))
+                // 高寒：砾石岸 + 窄滩
+                .sourceLake(new SourceLakePreset(
+                    40.0, 12.0, 28.0, 0.18, 0.15,
+                    16.0, 1.5, 40.0,
+                    GRAVEL, GRAVEL
+                ))
                 .riverBank(new RiverBankPreset(
                     0.2
                 ))
@@ -152,6 +177,12 @@ public final class MacroPackageRegistry {
                     0.6,
                     RiverValleyType.V_SHAPED
                 ))
+                // 裂谷：湖更小更浅
+                .sourceLake(new SourceLakePreset(
+                    28.0, 10.0, 20.0, 0.18, 0.18,
+                    14.0, 1.0, 28.0,
+                    SAND, DIRT
+                ))
                 .riverBank(new RiverBankPreset(
                     0.6
                 ))
@@ -165,6 +196,11 @@ public final class MacroPackageRegistry {
                     0.6,
                     RiverValleyType.V_SHAPED
                 ))
+                .sourceLake(new SourceLakePreset(
+                    28.0, 10.0, 20.0, 0.18, 0.18,
+                    14.0, 1.0, 28.0,
+                    SAND, DIRT
+                ))
                 .riverBank(new RiverBankPreset(
                     0.55
                 ))
@@ -177,6 +213,11 @@ public final class MacroPackageRegistry {
                     8,
                     0.6,
                     RiverValleyType.V_SHAPED
+                ))
+                .sourceLake(new SourceLakePreset(
+                    28.0, 10.0, 20.0, 0.18, 0.18,
+                    14.0, 1.0, 28.0,
+                    GRAVEL, GRAVEL
                 ))
                 .riverBank(new RiverBankPreset(
                     0.45
@@ -219,11 +260,13 @@ public final class MacroPackageRegistry {
         private final MacroPackageId id;
         private final RiverStylePreset riverStyle;
         private final RiverBankPreset riverBank;
+        private final SourceLakePreset sourceLake;
 
         private MacroPackageSpec(Builder b) {
             this.id = b.id;
             this.riverStyle = b.riverStyle;
             this.riverBank = b.riverBank;
+            this.sourceLake = b.sourceLake;
         }
 
         public MacroPackageId id() {
@@ -238,6 +281,10 @@ public final class MacroPackageRegistry {
             return riverBank;
         }
 
+        public SourceLakePreset sourceLake() {
+            return sourceLake;
+        }
+
         public static Builder builder(MacroPackageId id) {
             return new Builder(id);
         }
@@ -246,6 +293,7 @@ public final class MacroPackageRegistry {
             private final MacroPackageId id;
             private RiverStylePreset riverStyle;
             private RiverBankPreset riverBank;
+            private SourceLakePreset sourceLake;
 
             private Builder(MacroPackageId id) {
                 this.id = id;
@@ -258,6 +306,11 @@ public final class MacroPackageRegistry {
 
             public Builder riverBank(RiverBankPreset preset) {
                 this.riverBank = preset;
+                return this;
+            }
+
+            public Builder sourceLake(SourceLakePreset preset) {
+                this.sourceLake = preset;
                 return this;
             }
 
@@ -275,8 +328,58 @@ public final class MacroPackageRegistry {
                         0.5
                     );
                 }
+                if (sourceLake == null) {
+                    sourceLake = DEFAULT_SOURCE_LAKE;
+                }
                 return new MacroPackageSpec(this);
             }
+        }
+    }
+
+    /**
+     * 源头湖预设：湖盆 + 岸边（干岸）+ 滩涂（浅水底）+ 外坡。
+     * 参数可按宏群系调；未配置时使用 DEFAULT_SOURCE_LAKE。
+     */
+    public static final class SourceLakePreset {
+        /** 湖盆基准半径（blocks）。 */
+        public final double baseRadius;
+        /** 湖心最深深度（blocks，水面以下）。 */
+        public final double centerDepth;
+        /** 暗河井深度（blocks，湖心再向下）。 */
+        public final double undergroundExtraDepth;
+        /** 暗河井半径因子（相对 baseRadius）。 */
+        public final double shaftRadiusFactor;
+        /** 湖岸不规则扰动幅度（0~1，0.18 ≈ 旧版观感）。 */
+        public final double irregularityAmp;
+        /** 干岸宽度（blocks，从水边向外）。 */
+        public final double beachWidth;
+        /** 干岸高出水面的高度（blocks）。 */
+        public final double beachHeight;
+        /** 干岸外缘回到原地形的过渡宽度（blocks）。 */
+        public final double outerSlopeWidth;
+        /** 干岸方块（默认沙）。 */
+        public final BlockMetaPair shoreBlock;
+        /** 滩涂 / 浅水底方块（默认泥土）。 */
+        public final BlockMetaPair mudBlock;
+
+        public SourceLakePreset(double baseRadius, double centerDepth,
+                                double undergroundExtraDepth,
+                                double shaftRadiusFactor,
+                                double irregularityAmp,
+                                double beachWidth, double beachHeight,
+                                double outerSlopeWidth,
+                                BlockMetaPair shoreBlock,
+                                BlockMetaPair mudBlock) {
+            this.baseRadius = baseRadius;
+            this.centerDepth = centerDepth;
+            this.undergroundExtraDepth = undergroundExtraDepth;
+            this.shaftRadiusFactor = shaftRadiusFactor;
+            this.irregularityAmp = irregularityAmp;
+            this.beachWidth = beachWidth;
+            this.beachHeight = beachHeight;
+            this.outerSlopeWidth = outerSlopeWidth;
+            this.shoreBlock = shoreBlock;
+            this.mudBlock = mudBlock;
         }
     }
 

@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverRelation;
@@ -15,6 +17,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTempla
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentAdapter;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentInfo;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -137,6 +140,22 @@ public final class TalosRiverSystem {
     public static double getRiverMask(int worldX, int worldZ, int worldSeedInt) {
         RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
         return r.affected ? r.terrainInfluence : 0.0;
+    }
+
+    /**
+     * 源头湖岸 / 滩涂方块：
+     *   - 湖区（水边 + 干岸）内、顶部实体方块在浅水带 → 滩涂方块；
+     *   - 在干岸带 → 干岸方块；
+     *   - 其余返回 null（保持原地表）。
+     * 方块类型由宏群系预设决定（SourceLakePreset）。
+     */
+    public static BlockMetaPair getLakeSurfaceMaterial(
+        int surfaceY, int seaLevel, int worldX, int worldZ,
+        HydroSample hydro, MacroPackageId macroId
+    ) {
+        return TalosRiverProfile.lakeSurfaceMaterial(
+            surfaceY, seaLevel, worldX, worldZ, hydro, macroId
+        );
     }
 
     public static final class DebugNearestRiverInfo {
