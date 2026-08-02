@@ -20,7 +20,6 @@ import net.minecraft.world.biome.BiomeGenBase;
  *       * 平滑后的宏群系 ID（小块吞并后，来自 MacroRegionLayer）；
  *       * 原始 Biome（MacroPackageLayer + SubPatch 直接输出）；
  *       * 平滑后的 Biome（在上述基础上再做一次小块吞并，来自 BiomeRegionLayer）；
- *       * 当前纬度带 Belt 以及带内插值 t。
  */
 
 public final class TalosMacroClimate {
@@ -29,10 +28,10 @@ public final class TalosMacroClimate {
 
     /**
      * 将 World.getSeed() 压成 int，用于宏气候系统。
-     * 建议和 TalosLandMask.getWorldSeedInt 保持一致写法。
+     * 统一委托海陆层 API，避免各处写法漂移。
      */
     public static int getWorldSeedInt(World world) {
-        return (int) (world.getSeed() & 0x7FFFFFFFL);
+        return TalosLandMask.getWorldSeedInt(world);
     }
 
     /** 按 worldSeedInt 缓存宏群系平滑层。 */
@@ -189,31 +188,6 @@ public final class TalosMacroClimate {
         }
 
         return out;
-    }
-
-    /**
-     * 返回当前 Z 所在的纬度带（TROPIC / SUBTROPIC / TEMPERATE / SUBPOLAR / POLAR）。
-     * 注意：只和 worldZ 有关，与 worldSeedInt 无关，这里只是顺手放在统一入口。
-     */
-    public static ClimateLatitudes.Belt getLatitudeBelt(int worldZ) {
-        return ClimateLatitudes.getBelt(worldZ);
-    }
-
-    /**
-     * 返回当前 Z 在所在纬度带内的插值参数 t ∈ [0,1]。
-     *   t = 0 : 靠近该带“内侧边界”（更接近热带一侧）；
-     *   t = 1 : 靠近该带“外侧边界”（更接近寒带一侧）。
-     */
-    public static double getLatitudeBeltT(int worldZ) {
-        return ClimateLatitudes.computeBeltT(worldZ);
-    }
-
-    /**
-     * 返回当前 Z 到最近“热带中线”的绝对距离 d ∈ [0, MAX_D]，
-     * 可用于更细的温度 / 湿度插值。
-     */
-    public static int getDistanceToLatitudeCenter(int worldZ) {
-        return ClimateLatitudes.getDistanceToCenter(worldZ);
     }
 
     /**

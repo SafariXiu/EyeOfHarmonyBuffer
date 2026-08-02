@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 
 /**
  * 板块边界地形塑形（海陆分布层 API）。

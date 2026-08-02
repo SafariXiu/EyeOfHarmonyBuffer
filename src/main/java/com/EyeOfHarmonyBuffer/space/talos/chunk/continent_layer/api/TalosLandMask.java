@@ -1,8 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.WorldgenAPI;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import net.minecraft.world.World;
 
 /**
@@ -43,13 +43,9 @@ public final class TalosLandMask {
     }
 
     /**
-     * 单点采样的推荐入口（使用 WorldgenAPI.samplePointTiled，目前等价于 samplePointRaw）。
-     *
-     * @param worldX       世界方块坐标 X
-     * @param worldZ       世界方块坐标 Z
-     * @param worldSeedInt 由 getWorldSeedInt(world) 得到的 int 种子
+     * 内部采样（不对外暴露 WorldgenAPI.SampleResult）。
      */
-    public static WorldgenAPI.SampleResult sample(int worldX, int worldZ, int worldSeedInt) {
+    private static WorldgenAPI.SampleResult sample(int worldX, int worldZ, int worldSeedInt) {
         return WorldgenAPI.samplePointTiled(worldX, worldZ, worldSeedInt);
     }
 
@@ -84,12 +80,6 @@ public final class TalosLandMask {
         return out;
     }
 
-    /** 直接拿某点的板块 ID。 */
-    public static int getPlateId(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null ? r.plateId : 0;
-    }
-
     /**
      * 返回采样点中指定板块边界状态（缝合线级）的最大强度；没有该状态时返回 0。
      *
@@ -113,24 +103,6 @@ public final class TalosLandMask {
     public static int getSuperId(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
         return r != null ? r.superId : 0;
-    }
-
-    /** 连续陆地权重 [0,1]。 */
-    public static double getLandWeight(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null ? r.landWeight : 0.0;
-    }
-
-    /** 海岸带权重 [0,1]。 */
-    public static double getCoastWeight(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null ? r.coastWeight : 0.0;
-    }
-
-    /** 宏观边缘权重 [0,1]，0 = 超级大陆中心，1 = 外缘。 */
-    public static double getEdgeWeight(int worldX, int worldZ, int worldSeedInt) {
-        WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);
-        return r != null ? r.edgeWeight : 0.0;
     }
 
     /**

@@ -33,11 +33,9 @@ import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.River
  *    - RiverSystem    : 持有 RiverNetwork + RiverSegment 列表 + RiverSpatialIndex
  *    - RiverQuery     : 对给定 worldX/Z 进行「最近河段 + 影响强度」查询
  *
- * 3. 对外 API 语义**保持不变**：
- *    - 陆地地形场（只在 isLand 上有值）：
- *        getRiverDistance / getWidthCore / getWidthValley / getWidthAvoid / getRiverMask
- *    - 水文场（陆地 + 海洋统一）：
- *        sampleHydroField / getHydroRiverDistance / getHydroWidthValley / getHydroMask
+ * 3. 对外 API：
+ *    - 陆地地形场（只在 isLand 上有值）：getRiverMask
+ *    - 水文场（陆地 + 海洋统一）：sampleHydroField / sampleHydroFieldChunk
  *
  */
 
@@ -126,72 +124,6 @@ public final class TalosRiverSystem {
     }
 
     /**
-     * 到最近河中心线的平面距离（blocks）。
-     *
-     * 语义（陆地视角）：
-     *   - 若当前位置在某条河的陆地影响区附近，返回到最近河骨架的距离；
-     *   - 若该点不在任何“陆地河影响区”附近，返回一个较大的值（Double.MAX_VALUE），
-     *     可视作“无河影响”。
-     *
-     * 注意：
-     *   - 在 TalosLandMask.isLand(...) == false 的格子（海洋 / 湖面），
-     *     内部会直接返回 Double.MAX_VALUE。
-     */
-    public static double getRiverDistance(int worldX, int worldZ, int worldSeedInt) {
-        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
-        return r.affected ? r.distanceToCenter : Double.MAX_VALUE;
-    }
-
-    /**
-     * 河道核心半宽（blocks，陆地视角）。
-     *
-     * 用途：
-     *   - 层 6 在该范围内应保证水体/河床，不得露干；
-     *   - 也可用于区分“河床核心”与“河谷侧翼”。
-     *
-     * 注意：
-     *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
-     */
-    public static double getWidthCore(int worldX, int worldZ, int worldSeedInt) {
-        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
-        return r.affected ? r.channelRadius : 0.0;
-    }
-
-    /**
-     * 河谷半宽（blocks，陆地视角）。
-     *
-     * 当前策略（可以后续微调）：
-     *   - valleyRadius ≈ 3 × coreRadius
-     *   - 即在核心河道外，再预留约 2 倍核心宽度的“谷地缓冲区”。
-     *
-     * 注意：
-     *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
-     */
-    public static double getWidthValley(int worldX, int worldZ, int worldSeedInt) {
-        RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
-        if (!r.affected) {
-            return 0.0;
-        }
-        double core = r.channelRadius;
-        return core * 3.0;
-    }
-
-    /**
-     * 避让半宽（blocks，陆地视角）。
-     *
-     * 当前策略（可以后续微调）：
-     *   - avoidRadius ≈ 1.5 × valleyRadius
-     *   - 用于山体/洞穴更温和的“外圈避让”。
-     *
-     * 注意：
-     *   - 仅在陆地格子上保证有意义；海洋格子上将返回 0。
-     */
-    public static double getWidthAvoid(int worldX, int worldZ, int worldSeedInt) {
-        double valley = getWidthValley(worldX, worldZ, worldSeedInt);
-        return valley > 0.0 ? valley * 1.5 : 0.0;
-    }
-
-    /**
      * 河影响掩码（0..1，陆地视角）。
      *
      * 新实现：
@@ -205,37 +137,6 @@ public final class TalosRiverSystem {
     public static double getRiverMask(int worldX, int worldZ, int worldSeedInt) {
         RiverQueryResult r = queryLand(worldX, worldZ, worldSeedInt);
         return r.affected ? r.terrainInfluence : 0.0;
-    }
-
-    /**
-     * 最近河段的 ID（主河/支流），主要用于 debug 或离线分析。
-     *
-     * 注意：
-     *   - 若当前位置远离任何河骨架，返回 0。
-     *   - 不区分是否在陆地或海洋，仅基于骨架几何。
-     */
-    public static int getNearestRiverId(int worldX, int worldZ, int worldSeedInt) {
-        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
-        return r.affected ? r.edgeId : 0;
-    }
-
-    /**
-     * 最近河的级别：0 = 主河，1 = 一级支流，2 = 二级支流 ...
-     *
-     * 注意：
-     *   - 若当前位置远离任何河骨架，返回 0；
-     *   - 不区分陆地/海洋，仅基于骨架几何。
-     */
-    public static int getRiverLevel(int worldX, int worldZ, int worldSeedInt) {
-        RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
-        if (!r.affected || r.riverType == null) {
-            return 0;
-        }
-        return switch (r.riverType) {
-            case MAIN    -> 0;
-            case BRANCH1 -> 1;
-            case BRANCH2 -> 2;
-        };
     }
 
     public static final class DebugNearestRiverInfo {
@@ -626,21 +527,6 @@ public final class TalosRiverSystem {
             bestProj.closestX,
             bestProj.closestZ
         );
-    }
-
-    /** 水文场：到最近河中心线的距离（陆地 + 海洋统一视角）。 */
-    public static double getHydroRiverDistance(int worldX, int worldZ, int worldSeedInt) {
-        return sampleHydroField(worldX, worldZ, worldSeedInt).distance;
-    }
-
-    /** 水文场：河谷半宽（陆地 + 海洋统一视角）。 */
-    public static double getHydroWidthValley(int worldX, int worldZ, int worldSeedInt) {
-        return sampleHydroField(worldX, worldZ, worldSeedInt).widthValley;
-    }
-
-    /** 水文场：河影响掩码（陆地 + 海洋统一视角）。 */
-    public static double getHydroMask(int worldX, int worldZ, int worldSeedInt) {
-        return sampleHydroField(worldX, worldZ, worldSeedInt).mask;
     }
 
     public enum EndpointKind {

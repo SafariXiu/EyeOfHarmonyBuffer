@@ -1,12 +1,14 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPlacement;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom.TectonicWorld;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 

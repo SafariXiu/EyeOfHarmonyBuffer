@@ -15,10 +15,10 @@ public final class TalosBaseTerrain {
     private TalosBaseTerrain() {}
 
     /**
-     * 与 TalosLandMask / TalosMacroClimate 一致的 worldSeedInt 计算。
+     * 与 TalosLandMask 一致的 worldSeedInt 计算（统一委托海陆层 API）。
      */
     public static int getWorldSeedInt(World world) {
-        return (int) (world.getSeed() & 0x7FFFFFFFL);
+        return TalosLandMask.getWorldSeedInt(world);
     }
 
     /**
@@ -73,28 +73,4 @@ public final class TalosBaseTerrain {
         );
     }
 
-    /**
-     * 预留 chunk 级上下文接口（目前内部仍然是 stateless 的，可以后扩展做缓存）。
-     */
-    public static final class SampleContext {
-        public final int worldSeedInt;
-        public final int seaLevel;
-        public final int chunkX;
-        public final int chunkZ;
-
-        public SampleContext(int worldSeedInt, int seaLevel,
-                             int chunkX, int chunkZ) {
-            this.worldSeedInt = worldSeedInt;
-            this.seaLevel = seaLevel;
-            this.chunkX = chunkX;
-            this.chunkZ = chunkZ;
-        }
-    }
-
-    public static double sampleBaseHeightWithContext(int worldX, int worldZ,
-                                                     SampleContext ctx) {
-        return TerrainEngine.sampleBaseHeight(worldX, worldZ,
-            ctx.worldSeedInt,
-            ctx.seaLevel);
-    }
 }

@@ -1,7 +1,10 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample;
+package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
 /**
  * 板块边界类型（按相邻两板块运动向量在缝合线法向上的相对分量分类）。
+ *
+ * 这是海陆分布层对外 API 的一部分：命令 / 气候层 / 地形层
+ * 一律从 api 包引用，不再触碰内部 sample 包。
  */
 public enum PlateBoundaryState {
     /** 挤压：两板块相对运动在法向上相互靠近（汇聚）。 */

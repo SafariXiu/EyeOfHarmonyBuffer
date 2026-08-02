@@ -4,7 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 import net.minecraft.world.biome.BiomeGenBase;
 
 /**

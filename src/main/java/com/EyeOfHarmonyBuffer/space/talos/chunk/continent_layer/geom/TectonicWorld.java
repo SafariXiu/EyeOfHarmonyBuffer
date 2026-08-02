@@ -6,9 +6,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPl
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 
 import java.util.HashMap;

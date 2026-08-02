@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 
 /**
  * tectonic_v1 的点级采样结果（构造层）。
