@@ -198,11 +198,11 @@ public final class TerrainMacroPresetRegistry {
             )
         );
 
-        // ===== 裂谷 / 峡谷（板块分离带注入，低高度带） =====
+        // ===== 裂谷 / 峡谷（板块分离带注入，干裂谷：不低于海平面） =====
         m.put(MacroPackageId.RIFT_TROPICAL,
             new BaseTerrainPreset(
-                54.0,           // minHeight
-                88.0,           // maxHeight
+                64.0,           // minHeight（不再低于海平面）
+                92.0,           // maxHeight
                 1.0 / 1400.0,
                 10.0,
                 2,
@@ -219,8 +219,8 @@ public final class TerrainMacroPresetRegistry {
 
         m.put(MacroPackageId.RIFT_TEMPERATE,
             new BaseTerrainPreset(
-                54.0,
-                84.0,
+                64.0,
+                88.0,
                 1.0 / 1500.0,
                 10.0,
                 2,
@@ -237,8 +237,8 @@ public final class TerrainMacroPresetRegistry {
 
         m.put(MacroPackageId.RIFT_POLAR,
             new BaseTerrainPreset(
-                54.0,
-                80.0,
+                64.0,
+                84.0,
                 1.0 / 1700.0,
                 9.0,
                 2,

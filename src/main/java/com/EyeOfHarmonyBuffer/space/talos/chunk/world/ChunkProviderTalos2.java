@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
@@ -143,30 +144,49 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         ? ctx.hydro[colIndex].mask
                         : 0.0;
 
-                double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
-                    worldX, worldZ,
-                    worldSeedInt,
-                    baseHeightD,
-                    seaLevel,
-                    bankPreset,
-                    isLand,
-                    riverMask
-                );
-
                 double coastShapedHeightD = TalosCoastlineShaper.applyCoastlineShaping(
-                    riverShapedHeightD,
+                    baseHeightD,
                     seaLevel,
                     isLand,
                     coastWeight
                 );
 
-                // 板块边界塑形：分离带 → 裂谷压高（0.2 硬切 + 内部软压）
+                // 板块边界塑形：分离带 → 风格化裂谷悬崖（外崖面 + 崖缘 + 倒石堆 + 谷底）
+                // 多板块交汇处优先取缝合线级 DIVERGENT 的最大强度：
+                // 只要存在分离影响，就照常塑形（外崖面在 0.197~0.2 之间下落），
+                // 与宏包 / 群系层面的分离带排他保持一致。
+                double riftStrength = (landSample != null)
+                    ? TalosLandMask.maxBoundaryStrength(
+                        PlateBoundaryState.DIVERGENT, landSample)
+                    : 0.0;
+                PlateBoundaryState riftState = (riftStrength > 0.0)
+                    ? PlateBoundaryState.DIVERGENT
+                    : (landSample != null ? landSample.plateBoundaryState : null);
+                double riftWeight =
+                    (riftState == PlateBoundaryState.DIVERGENT)
+                        ? riftStrength
+                        : (landSample != null ? landSample.plateBoundaryWeight : 0.0);
                 double riftShapedHeightD = TalosPlateBoundaryShaper.applyRiftShaping(
                     coastShapedHeightD,
                     seaLevel,
                     isLand,
-                    (landSample != null) ? landSample.plateBoundaryState : null,
-                    (landSample != null) ? landSample.plateBoundaryWeight : 0.0
+                    riftState,
+                    riftWeight,
+                    worldX,
+                    worldZ,
+                    worldSeedInt
+                );
+
+                // 河岸塑形放在裂谷塑形之后：泛洪平原必须作用在最终地形上，
+                // 否则裂谷压高会把它重新抬回谷底高度（裂谷里的河因此没有泛洪平原）。
+                double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
+                    worldX, worldZ,
+                    worldSeedInt,
+                    riftShapedHeightD,
+                    seaLevel,
+                    bankPreset,
+                    isLand,
+                    riverMask
                 );
 
                 // 河谷雕刻（高度场版）：在填充方块前把河谷做进高度场，
@@ -175,16 +195,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 if (isLand) {
                     channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
                         worldX, worldZ,
-                        riftShapedHeightD,
+                        riverShapedHeightD,
                         seaLevel,
                         ctx.hydro[colIndex],
                         ctx.macroPkg[colIndex]
                     );
                 } else {
-                    channelShapedHeightD = riftShapedHeightD;
+                    channelShapedHeightD = riverShapedHeightD;
                 }
 
-                boolean riverCarved = channelShapedHeightD < riftShapedHeightD - 0.01;
+                boolean riverCarved = channelShapedHeightD < riverShapedHeightD - 0.01;
 
                 int h = (int) Math.round(channelShapedHeightD);
                 if (h < 1) {

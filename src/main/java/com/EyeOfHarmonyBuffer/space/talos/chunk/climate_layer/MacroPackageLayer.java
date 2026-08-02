@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import net.minecraft.world.biome.BiomeGenBase;
 
 /**
@@ -203,7 +204,9 @@ public class MacroPackageLayer {
      *   - 挤压带外缘（0.2 ≤ 强度 ≤ 0.5）：高原 / 山脉低频混合；
      *   - 挤压带核心（0.5 &lt; 强度 &lt; 0.7）：全部为高山（山脉），形成连续山脊；
      *   - 挤压带主峰（强度 ≥ 0.7）：全部为最高峰群系（高山雪峰），形成最高主峰带；
-     *   - 分离带：对应纬度峡谷变体的低频连贯群系。
+     *   - 分离带：对应纬度峡谷变体的低频连贯群系；
+     *   - 分离带排他：只要缝合线中存在强度 ≥ 阈值的 DIVERGENT 影响，
+     *     就优先整带覆盖为裂谷（即使挤压影响更强），防止山脉侵入裂谷。
      * 不满足覆盖条件时返回 null。
      */
     private BiomeGenBase plateBoundaryBiomeOverride(int x, int z,
@@ -215,6 +218,15 @@ public class MacroPackageLayer {
         TalosLandMask.Sample s = TalosLandMask.sampleFull(x, z, worldSeedInt);
         if (s == null || !s.isLand) {
             return null;
+        }
+
+        // 分离带排他：DIVERGENT 缝合线影响进入阈值即整带覆盖为裂谷
+        double divergent = TalosLandMask.maxBoundaryStrength(
+            PlateBoundaryState.DIVERGENT, s);
+        if (divergent >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
+            return MacroPackageDefs.pickCoherentBiome(
+                riftVariantAt(z), x, z, worldSeedInt
+            );
         }
 
         double w = s.plateBoundaryWeight;
@@ -247,6 +259,8 @@ public class MacroPackageLayer {
      *   - 挤压（CONVERGENT）+ 强度 ≥ 0.7 → 最高峰宏包（MOUNTAIN_PEAK）；
      *   - 挤压（CONVERGENT）+ 强度 ≥ 阈值 → 高山宏包（TEMPERATE_HIGHLAND）；
      *   - 分离（DIVERGENT）+ 强度 ≥ 阈值 → 按纬度带选择峡谷宏包变体；
+     *   - 分离带排他：只要缝合线中存在强度 ≥ 阈值的 DIVERGENT 影响，
+     *     就优先覆盖为裂谷宏包，防止多板块交汇处山脉侵入裂谷带。
      * 其余状态不覆盖。返回覆盖后的宏包，不满足条件时返回 null。
      */
     private MacroPackageId plateBoundaryOverride(int x, int z, MacroPackageId landPkg) {
@@ -258,6 +272,14 @@ public class MacroPackageLayer {
         if (s == null || !s.isLand) {
             return null;
         }
+
+        // 分离带排他：DIVERGENT 缝合线影响进入阈值即整带覆盖为裂谷
+        double divergent = TalosLandMask.maxBoundaryStrength(
+            PlateBoundaryState.DIVERGENT, s);
+        if (divergent >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
+            return riftVariantAt(z);
+        }
+
         if (s.plateBoundaryWeight < TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
             return null;
         }

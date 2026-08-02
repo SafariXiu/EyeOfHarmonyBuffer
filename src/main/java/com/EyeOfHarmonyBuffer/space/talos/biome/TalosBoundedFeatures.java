@@ -224,6 +224,19 @@ public final class TalosBoundedFeatures {
             }
             return false;
         }
+
+        /**
+         * 常见真实地表方块：树干 / 高草 / 植物等“假地表”不算，
+         * 防止结构（石头 / 巨石 / 斑块）生成在树木顶部。
+         */
+        protected final boolean isGroundSurface(int worldX, int y, int worldZ) {
+            Block b = this.world.getBlock(worldX, y, worldZ);
+            return b == Blocks.grass || b == Blocks.dirt || b == Blocks.stone
+                || b == Blocks.sand || b == Blocks.sandstone || b == Blocks.gravel
+                || b == Blocks.snow || b == Blocks.packed_ice || b == Blocks.clay
+                || b == Blocks.mycelium || b == Blocks.hardened_clay
+                || b == Blocks.stained_hardened_clay;
+        }
     }
 
     /** 高草（meta 1）或蕨（meta 2）：优先生成 2 格高的双株草，空间不足退化为单格。 */
@@ -437,6 +450,26 @@ public final class TalosBoundedFeatures {
                 return false;
             }
 
+            // 2×2 主干：4 列都必须是非水体且高度接近，
+            // 否则其余 3 格主干会悬在河道 / 陡坡上方。
+            if (this.style.shape == TalosBiomeBase.TreeShape.JUNGLE) {
+                for (int dz = 0; dz <= 1; dz++) {
+                    for (int dx = 0; dx <= 1; dx++) {
+                        if (dx == 0 && dz == 0) {
+                            continue;
+                        }
+                        int cy = height(lx + dx, lz + dz);
+                        if (cy <= 0
+                            || isWaterWorld(
+                                this.chunkX * 16 + lx + dx, cy,
+                                this.chunkZ * 16 + lz + dz)
+                            || Math.abs(cy - y) > 2) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
             int trunk = this.style.trunkMin
                 + this.rand.nextInt(this.style.trunkMax - this.style.trunkMin + 1);
             int topY = y + trunk;
@@ -452,6 +485,16 @@ public final class TalosBoundedFeatures {
                     default: dirZ = -1; break;
                 }
                 leanAt = 1 + this.rand.nextInt(Math.max(1, trunk - 1));
+                // 歪向河道 / 水体时改为直生：
+                // 否则上半截树干会横移到水面上方，形成悬空“假地表”。
+                int cy = height(lx + dirX, lz + dirZ);
+                if (cy <= 0 || isWaterWorld(
+                        this.chunkX * 16 + lx + dirX, cy,
+                        this.chunkZ * 16 + lz + dirZ)) {
+                    lean = false;
+                    dirX = 0;
+                    dirZ = 0;
+                }
             }
 
             // 主干（可选中途横向错开 1 格，形成原版那种歪树）
@@ -501,6 +544,13 @@ public final class TalosBoundedFeatures {
                         int r = (dy == -2 || dy == 2)
                             ? this.style.canopyRadius - 1 : this.style.canopyRadius;
                         leafLayer(topX, topY + dy, topZ, r, false, r * r + 2, true);
+                    }
+                    // 顶部封盖：2×2 主干正上方补树叶，避免原木顶面裸露
+                    for (int dz = 0; dz <= 1; dz++) {
+                        for (int dx = 0; dx <= 1; dx++) {
+                            placeLeaf(topX + dx, topY + 1, topZ + dz);
+                            placeLeaf(topX + dx, topY + 2, topZ + dz);
+                        }
                     }
                     break;
                 }
@@ -751,6 +801,11 @@ public final class TalosBoundedFeatures {
                     if (isWaterWorld(wx, sy, wz)) {
                         continue;
                     }
+                    // 该列“地表”必须是真实地表方块，
+                    // 否则石头会落在树干 / 高草等假地表上
+                    if (!isGroundSurface(wx, sy, wz)) {
+                        continue;
+                    }
                     for (int i = 0; i < h; i++) {
                         setBlock(wx - this.chunkX * 16, sy + i, wz - this.chunkZ * 16,
                             this.config.block, 0);
@@ -777,6 +832,14 @@ public final class TalosBoundedFeatures {
 
         @Override
         protected boolean generateAt(int lx, int lz) {
+            // 河道 / 洪泛平原带内不放地表斑块：
+            // 河面附近容易扫描到歪斜树干等“假地表”，导致斑块悬空。
+            if (TalosRiverSystem.getRiverMask(
+                    this.chunkX * 16 + lx,
+                    this.chunkZ * 16 + lz,
+                    TalosRiverSystem.getWorldSeedInt(this.world)) > 0.7) {
+                return false;
+            }
             boolean any = false;
             for (int dz = -this.radius; dz <= this.radius; dz++) {
                 for (int dx = -this.radius; dx <= this.radius; dx++) {
@@ -792,7 +855,15 @@ public final class TalosBoundedFeatures {
                     if (py <= 0) {
                         continue;
                     }
-                    if (isWater(px, py, pz)) {
+                    int wx = this.chunkX * 16 + px;
+                    int wz = this.chunkZ * 16 + pz;
+                    // 必须用世界坐标查水：本地 isWater 对区块外坐标一律返回空气，
+                    // 会让跨到河道里的斑块漏判，把方块放在水面上。
+                    if (isWaterWorld(wx, py, wz)) {
+                        continue;
+                    }
+                    // 只替换真实地表方块，防止落在树干 / 高草 / 植物等假地表上
+                    if (!isGroundSurface(wx, py, wz)) {
                         continue;
                     }
                     setBlock(px, py, pz, this.block, this.meta);
@@ -816,8 +887,28 @@ public final class TalosBoundedFeatures {
             if (y <= 0) {
                 return false;
             }
-            if (isWater(lx, y, lz)) {
+            int wx0 = this.chunkX * 16 + lx;
+            int wz0 = this.chunkZ * 16 + lz;
+            if (isWaterWorld(wx0, y, wz0) || !isGroundSurface(wx0, y, wz0)) {
                 return false;
+            }
+            // 2×2 足迹的其余 3 列也必须是非水体且高度接近，
+            // 否则巨石会悬在河道上方。
+            for (int dz = 0; dz <= 1; dz++) {
+                for (int dx = 0; dx <= 1; dx++) {
+                    if (dx == 0 && dz == 0) {
+                        continue;
+                    }
+                    int wx = this.chunkX * 16 + lx + dx;
+                    int wz = this.chunkZ * 16 + lz + dz;
+                    int cy = height(lx + dx, lz + dz);
+                    if (cy <= 0
+                        || isWaterWorld(wx, cy, wz)
+                        || !isGroundSurface(wx, cy, wz)
+                        || Math.abs(cy - y) > 2) {
+                        return false;
+                    }
+                }
             }
             setBlock(lx, y, lz, Blocks.cobblestone, 0);
             setBlock(lx + 1, y, lz, Blocks.cobblestone, 0);

@@ -90,6 +90,25 @@ public final class TalosLandMask {
         return r != null ? r.plateId : 0;
     }
 
+    /**
+     * 返回采样点中指定板块边界状态（缝合线级）的最大强度；没有该状态时返回 0。
+     *
+     * 用于多板块交汇处：即使该状态不是主导状态，只要其强度进入阈值，
+     * 也应参与风格化（例如分离带对高山群系做排他）。
+     */
+    public static double maxBoundaryStrength(PlateBoundaryState state, Sample s) {
+        if (s == null || s.plateBoundaryInfluences == null) {
+            return 0.0;
+        }
+        double max = 0.0;
+        for (PlateBoundaryInfluence inf : s.plateBoundaryInfluences) {
+            if (inf.state == state && inf.strength > max) {
+                max = inf.strength;
+            }
+        }
+        return max;
+    }
+
     /** 直接拿某点的超级大陆 ID。 */
     public static int getSuperId(int worldX, int worldZ, int worldSeedInt) {
         WorldgenAPI.SampleResult r = sample(worldX, worldZ, worldSeedInt);

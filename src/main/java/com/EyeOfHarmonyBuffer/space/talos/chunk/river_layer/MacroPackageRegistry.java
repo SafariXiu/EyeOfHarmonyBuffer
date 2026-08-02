@@ -182,7 +182,9 @@ public final class MacroPackageRegistry {
                 .build()
         );
 
-        // ===== 裂谷 / 峡谷：窄 V 型浅河 + 陡峭河岸 =====
+        // ===== 裂谷 / 峡谷：窄 V 型浅河 + 干裂谷河岸泛洪平原 =====
+        // 裂谷谷底现在是干燥的（高于海平面），给河道配上可见的泛洪平原，
+        // 让河在谷底有自己的平缓河岸带；纬度越低泛洪平原越宽。
         m.put(MacroPackageId.RIFT_TROPICAL,
             MacroPackageSpec.builder(MacroPackageId.RIFT_TROPICAL)
                 .riverStyle(new RiverStylePreset(
@@ -196,7 +198,7 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.2
+                    0.6
                 ))
                 .build()
         );
@@ -214,7 +216,7 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.2
+                    0.55
                 ))
                 .build()
         );
@@ -232,7 +234,7 @@ public final class MacroPackageRegistry {
                     RiverValleyType.V_SHAPED
                 ))
                 .riverBank(new RiverBankPreset(
-                    0.2
+                    0.45
                 ))
                 .build()
         );

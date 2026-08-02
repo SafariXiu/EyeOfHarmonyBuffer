@@ -62,11 +62,58 @@ public final class TectonicConfig {
     /** 裂谷边缘平台高于海平面的格数（硬切后的台地高度）。 */
     public static final int RIFT_EDGE_ABOVE_SEA = 1;
 
-    /** 裂谷谷底低于海平面的格数（缝合线正下方最深处）。 */
-    public static final int RIFT_FLOOR_BELOW_SEA = 9;
+    /**
+     * 裂谷谷底相对海平面的格数（负数 = 高于海平面）。
+     * 干裂谷：谷底保持在水面之上，避免整个裂谷被淹成湖。
+     */
+    public static final int RIFT_FLOOR_BELOW_SEA = -3;
 
     /** 裂谷塑形混合系数（1 = 完全按裂谷剖面，越小保留越多原始地形）。 */
     public static final double RIFT_BLEND = 0.85;
+
+    /**
+     * 裂谷悬崖风格化：外崖面开始受塑形的强度。
+     * 强度每 0.01 ≈ 0.22×超级大陆直径 × 0.01 格（半径 1.4w 的大陆约为 62 格），
+     * 0.197~0.2 即约 18 格宽的悬崖面（悬崖顶部到底部的横向距离）。
+     * 注意：宽度随大陆半径缩放，大/小大陆上会略有出入。
+     */
+    public static final double RIFT_CLIFF_START_STRENGTH = 0.197;
+
+    /** 裂谷崖缘平台结束 / 内缘缓坡开始强度。 */
+    public static final double RIFT_TALUS_START_STRENGTH = 0.45;
+
+    /** 裂谷倒石堆结束 / 谷底开始强度。 */
+    public static final double RIFT_FLOOR_START_STRENGTH = 0.75;
+
+    /** 崖缘平台上卷格数（崖唇）。 */
+    public static final double RIFT_RIM_UPLIFT = 7.0;
+
+    /** 倒石堆顶部高于谷底的格数。 */
+    public static final double RIFT_TALUS_HEIGHT = 4.0;
+
+    /** 崖顶锯齿噪声幅度（格）。 */
+    public static final double RIFT_RIM_NOISE_AMP = 4.0;
+
+    /** 崖面凹凸噪声幅度（格）。 */
+    public static final double RIFT_CLIFF_NOISE_AMP = 5.0;
+
+    /** 倒石堆碎石起伏幅度（格）。 */
+    public static final double RIFT_TALUS_NOISE_AMP = 2.5;
+
+    /** 谷底起伏幅度（格）。 */
+    public static final double RIFT_FLOOR_NOISE_AMP = 1.5;
+
+    /** 岩架高度（格）：崖面下落途中的台阶。 */
+    public static final double RIFT_LEDGE_HEIGHT = 2.0;
+
+    /** 崖线主噪声尺度（格）。 */
+    public static final double RIFT_NOISE_SCALE_RIM = 96.0;
+
+    /** 崖面噪声尺度（格）。 */
+    public static final double RIFT_NOISE_SCALE_FACE = 28.0;
+
+    /** 细节噪声尺度（格）。 */
+    public static final double RIFT_NOISE_SCALE_DETAIL = 12.0;
 
     public static final double SHELF_MAX_DISTANCE = 12000.0;
 
