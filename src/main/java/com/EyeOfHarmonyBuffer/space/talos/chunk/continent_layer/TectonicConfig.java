@@ -47,6 +47,27 @@ public final class TectonicConfig {
 
     public static final double PLATE_BOUNDARY_THRESHOLD = 0.22;
 
+    /** 板块相对运动速度低于该值判定为静止（板块运动向量速度范围 0.3~1.0）。 */
+    public static final double PLATE_INACTIVE_RELATIVE_SPEED = 0.25;
+
+    /** 切向分量超过法向分量的该倍数时判定为走滑。 */
+    public static final double PLATE_TRANSFORM_TANGENT_RATIO = 2.0;
+
+    /** 板块混合数量：采样时考虑最近 N 块板块（含最近者），产生 N-1 条缝合线影响。 */
+    public static final int PLATE_BLEND_COUNT = 3;
+
+    /** 板块边界风格化 / 覆盖的最小强度（0.2 以外不生效，宏包覆盖与裂谷塑形共用）。 */
+    public static final double PLATE_BOUNDARY_MIN_STRENGTH = 0.2;
+
+    /** 裂谷边缘平台高于海平面的格数（硬切后的台地高度）。 */
+    public static final int RIFT_EDGE_ABOVE_SEA = 1;
+
+    /** 裂谷谷底低于海平面的格数（缝合线正下方最深处）。 */
+    public static final int RIFT_FLOOR_BELOW_SEA = 9;
+
+    /** 裂谷塑形混合系数（1 = 完全按裂谷剖面，越小保留越多原始地形）。 */
+    public static final double RIFT_BLEND = 0.85;
+
     public static final double SHELF_MAX_DISTANCE = 12000.0;
 
     private TectonicConfig() {}

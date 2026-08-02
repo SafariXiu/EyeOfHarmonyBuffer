@@ -7,6 +7,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 
 import java.util.HashMap;
@@ -222,6 +224,9 @@ public final class TectonicWorld {
                 0.0,
                 0.0,
                 0.0,
+                0.0,
+                PlateBoundaryState.INACTIVE,
+                new PlateBoundaryInfluence[0],
                 0.0
             );
         }
@@ -250,8 +255,26 @@ public final class TectonicWorld {
             shelfBand = 0.0;
         }
 
-        PlateId plateId = sc.getPlateIdForPoint(blockX, blockZ);
-        double boundaryWeight = sc.getPlateBoundaryWeight(blockX, blockZ);
+        // 一次板块查询拿到最近 k 块板块，派生 plateId / 强度 / 状态 / 混合 / 挤压度
+        int k = TectonicConfig.PLATE_BLEND_COUNT;
+        int[] plateIdx = new int[k];
+        double[] plateDist = new double[k];
+        int n = sc.findNearestPlates(blockX, blockZ, k, plateIdx, plateDist);
+
+        int nearest = (n > 0) ? plateIdx[0] : 0;
+        PlateId plateId = new PlateId(sc.id, nearest);
+
+        double boundaryWeight = 0.0;
+        PlateBoundaryState boundaryState = PlateBoundaryState.INACTIVE;
+        PlateBoundaryInfluence[] influences = new PlateBoundaryInfluence[0];
+        if (n >= 2) {
+            boundaryWeight = sc.plateBoundaryStrength(plateDist[0], plateDist[1]);
+            boundaryState = (boundaryWeight > 0.0)
+                ? sc.getPlateBoundaryState(plateIdx[0], plateIdx[1])
+                : PlateBoundaryState.INACTIVE;
+            influences = sc.plateBoundaryInfluences(plateIdx, plateDist, n);
+        }
+        double compression = sc.plateCompression(influences);
 
         SupercontinentId sid = sc.id;
 
@@ -265,7 +288,10 @@ public final class TectonicWorld {
             radial,
             coastBand,
             shelfBand,
-            boundaryWeight
+            boundaryWeight,
+            boundaryState,
+            influences,
+            compression
         );
     }
 

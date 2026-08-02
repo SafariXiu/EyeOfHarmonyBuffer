@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -20,6 +21,12 @@ import net.minecraft.world.biome.BiomeGenBase;
  */
 
 public class MacroPackageLayer {
+
+    /** 挤压带核心强度阈值：超过该值时全部选高山（山脉），形成连续山脊。 */
+    private static final double CONVERGENT_MOUNTAIN_STRENGTH = 0.5;
+
+    /** 挤压带最高峰强度阈值：大于等于该值时全部选最高峰群系。 */
+    private static final double CONVERGENT_PEAK_STRENGTH = 0.7;
 
     private final int worldSeedInt;
 
@@ -113,17 +120,19 @@ public class MacroPackageLayer {
         MacroSitesSeparated.Site landSite  = findLandOwnerSite(x, z);
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);
 
+        MacroPackageId result;
         if (isLandHere) {
-            if (landSite != null && landSite.pkgId != null) {
-                return landSite.pkgId;
-            }
-            return MacroPackageId.TEMPERATE_LOWLAND;
+            result = (landSite != null && landSite.pkgId != null)
+                ? landSite.pkgId
+                : MacroPackageId.TEMPERATE_LOWLAND;
         } else {
-            if (oceanSite != null && oceanSite.pkgId != null) {
-                return oceanSite.pkgId;
-            }
-            return MacroPackageId.OCEANIC;
+            result = (oceanSite != null && oceanSite.pkgId != null)
+                ? oceanSite.pkgId
+                : MacroPackageId.OCEANIC;
         }
+
+        MacroPackageId overridden = plateBoundaryOverride(x, z, result);
+        return (overridden != null) ? overridden : result;
     }
 
     /**
@@ -152,6 +161,15 @@ public class MacroPackageLayer {
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);
 
         if (isLandHere) {
+            MacroPackageId baseId = (landSite != null && landSite.pkgId != null)
+                ? landSite.pkgId
+                : MacroPackageId.TEMPERATE_LOWLAND;
+
+            BiomeGenBase boundaryBiome = plateBoundaryBiomeOverride(x, z, baseId);
+            if (boundaryBiome != null) {
+                return boundaryBiome;
+            }
+
             if (landSite != null) {
                 BiomeGenBase biome = pickBiomeFromSite(landSite, x, z);
                 if (biome != null) {
@@ -177,6 +195,98 @@ public class MacroPackageLayer {
                 return list[0];
             }
             return null;
+        }
+    }
+
+    /**
+     * 板块边界对群系选择的覆盖（宏包覆盖的细化）：
+     *   - 挤压带外缘（0.2 ≤ 强度 ≤ 0.5）：高原 / 山脉低频混合；
+     *   - 挤压带核心（0.5 &lt; 强度 &lt; 0.7）：全部为高山（山脉），形成连续山脊；
+     *   - 挤压带主峰（强度 ≥ 0.7）：全部为最高峰群系（高山雪峰），形成最高主峰带；
+     *   - 分离带：对应纬度峡谷变体的低频连贯群系。
+     * 不满足覆盖条件时返回 null。
+     */
+    private BiomeGenBase plateBoundaryBiomeOverride(int x, int z,
+                                                    MacroPackageId landPkg) {
+        if (landPkg == null || landPkg == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        TalosLandMask.Sample s = TalosLandMask.sampleFull(x, z, worldSeedInt);
+        if (s == null || !s.isLand) {
+            return null;
+        }
+
+        double w = s.plateBoundaryWeight;
+        if (w < TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
+            return null;
+        }
+
+        switch (s.plateBoundaryState) {
+            case CONVERGENT:
+                if (w >= CONVERGENT_PEAK_STRENGTH) {
+                    return TalosBiomes.TALOS_ALPINE;
+                }
+                if (w > CONVERGENT_MOUNTAIN_STRENGTH) {
+                    return TalosBiomes.TALOS_MOUNTAINS;
+                }
+                return MacroPackageDefs.pickCoherentBiome(
+                    MacroPackageId.TEMPERATE_HIGHLAND, x, z, worldSeedInt
+                );
+            case DIVERGENT:
+                return MacroPackageDefs.pickCoherentBiome(
+                    riftVariantAt(z), x, z, worldSeedInt
+                );
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 板块边界对陆地宏包的覆盖：
+     *   - 挤压（CONVERGENT）+ 强度 ≥ 0.7 → 最高峰宏包（MOUNTAIN_PEAK）；
+     *   - 挤压（CONVERGENT）+ 强度 ≥ 阈值 → 高山宏包（TEMPERATE_HIGHLAND）；
+     *   - 分离（DIVERGENT）+ 强度 ≥ 阈值 → 按纬度带选择峡谷宏包变体；
+     * 其余状态不覆盖。返回覆盖后的宏包，不满足条件时返回 null。
+     */
+    private MacroPackageId plateBoundaryOverride(int x, int z, MacroPackageId landPkg) {
+        if (landPkg == null || landPkg == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        TalosLandMask.Sample s = TalosLandMask.sampleFull(x, z, worldSeedInt);
+        if (s == null || !s.isLand) {
+            return null;
+        }
+        if (s.plateBoundaryWeight < TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
+            return null;
+        }
+
+        switch (s.plateBoundaryState) {
+            case CONVERGENT:
+                if (s.plateBoundaryWeight >= CONVERGENT_PEAK_STRENGTH) {
+                    return MacroPackageId.MOUNTAIN_PEAK;
+                }
+                return MacroPackageId.TEMPERATE_HIGHLAND;
+            case DIVERGENT:
+                return riftVariantAt(z);
+            default:
+                return null;
+        }
+    }
+
+    /** 按纬度带选择峡谷宏包变体。 */
+    private MacroPackageId riftVariantAt(int z) {
+        switch (ClimateLatitudes.getBelt(z)) {
+            case TROPIC:
+            case SUBTROPIC:
+                return MacroPackageId.RIFT_TROPICAL;
+            case TEMPERATE:
+                return MacroPackageId.RIFT_TEMPERATE;
+            case SUBPOLAR:
+            case POLAR:
+            default:
+                return MacroPackageId.RIFT_POLAR;
         }
     }
 

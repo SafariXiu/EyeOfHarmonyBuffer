@@ -182,6 +182,80 @@ public final class MacroPackageRegistry {
                 .build()
         );
 
+        // ===== 裂谷 / 峡谷：窄 V 型浅河 + 陡峭河岸 =====
+        m.put(MacroPackageId.RIFT_TROPICAL,
+            MacroPackageSpec.builder(MacroPackageId.RIFT_TROPICAL)
+                .riverStyle(new RiverStylePreset(
+                    24,
+                    140,
+                    240,
+                    0.3,
+                    700,
+                    8,
+                    0.6,
+                    RiverValleyType.V_SHAPED
+                ))
+                .riverBank(new RiverBankPreset(
+                    0.2
+                ))
+                .build()
+        );
+
+        m.put(MacroPackageId.RIFT_TEMPERATE,
+            MacroPackageSpec.builder(MacroPackageId.RIFT_TEMPERATE)
+                .riverStyle(new RiverStylePreset(
+                    24,
+                    140,
+                    240,
+                    0.3,
+                    700,
+                    8,
+                    0.6,
+                    RiverValleyType.V_SHAPED
+                ))
+                .riverBank(new RiverBankPreset(
+                    0.2
+                ))
+                .build()
+        );
+
+        m.put(MacroPackageId.RIFT_POLAR,
+            MacroPackageSpec.builder(MacroPackageId.RIFT_POLAR)
+                .riverStyle(new RiverStylePreset(
+                    24,
+                    140,
+                    240,
+                    0.3,
+                    700,
+                    8,
+                    0.6,
+                    RiverValleyType.V_SHAPED
+                ))
+                .riverBank(new RiverBankPreset(
+                    0.2
+                ))
+                .build()
+        );
+
+        // ===== 最高峰：几乎无河，极窄极陡 =====
+        m.put(MacroPackageId.MOUNTAIN_PEAK,
+            MacroPackageSpec.builder(MacroPackageId.MOUNTAIN_PEAK)
+                .riverStyle(new RiverStylePreset(
+                    16,
+                    120,
+                    220,
+                    0.15,
+                    800,
+                    10,
+                    0.6,
+                    RiverValleyType.V_SHAPED
+                ))
+                .riverBank(new RiverBankPreset(
+                    0.15
+                ))
+                .build()
+        );
+
         SPECS = Collections.unmodifiableMap(m);
     }
 

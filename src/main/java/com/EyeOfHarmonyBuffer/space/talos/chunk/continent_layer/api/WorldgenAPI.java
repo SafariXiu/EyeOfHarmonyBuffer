@@ -5,6 +5,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.geom.TectonicWor
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
@@ -57,9 +59,25 @@ public class WorldgenAPI {
         /** 海洋侧“近海 / 大陆架”权重 [0,1]，0=远洋，1=靠近海岸/大陆架 */
         public final double shelfWeight;
 
+        /** 板块边界接近程度 [0,1]（0=板块内部，1=缝合线上）。 */
+        public final double plateBoundaryWeight;
+
+        /** 当前缝合线的板块边界状态（挤压/分离/走滑/静止）。 */
+        public final PlateBoundaryState plateBoundaryState;
+
+        /** 多板块混合：附近所有有效缝合线的影响列表（状态 + 强度）。 */
+        public final PlateBoundaryInfluence[] plateBoundaryInfluences;
+
+        /** 连续挤压度 [-1,1]：各缝合线按强度加权混合。 */
+        public final double plateCompression;
+
         public SampleResult(boolean isLand, int plateId, int superId,
                             double landWeight, double coastWeight,
-                            double edgeWeight, double shelfWeight) {
+                            double edgeWeight, double shelfWeight,
+                            double plateBoundaryWeight,
+                            PlateBoundaryState plateBoundaryState,
+                            PlateBoundaryInfluence[] plateBoundaryInfluences,
+                            double plateCompression) {
             this.isLand = isLand;
             this.plateId = plateId;
             this.superId = superId;
@@ -67,6 +85,10 @@ public class WorldgenAPI {
             this.coastWeight = coastWeight;
             this.edgeWeight = edgeWeight;
             this.shelfWeight = shelfWeight;
+            this.plateBoundaryWeight = plateBoundaryWeight;
+            this.plateBoundaryState = plateBoundaryState;
+            this.plateBoundaryInfluences = plateBoundaryInfluences;
+            this.plateCompression = plateCompression;
         }
 
         @Override
@@ -139,7 +161,11 @@ public class WorldgenAPI {
             landWeight,
             coastWeight,
             edgeWeight,
-            shelfWeight
+            shelfWeight,
+            s.plateBoundaryWeight,
+            s.plateBoundaryState,
+            s.plateBoundaryInfluences,
+            s.plateCompression
         );
     }
 

@@ -37,6 +37,15 @@ public final class TectonicLandSample {
     /** 板块边界接近程度（0 = 板块内部，1 = 强烈边界上）。 */
     public final double plateBoundaryWeight;
 
+    /** 当前缝合线的板块边界状态（挤压 / 分离 / 走滑 / 静止）。 */
+    public final PlateBoundaryState plateBoundaryState;
+
+    /** 多板块混合：附近所有有效缝合线的影响列表（状态 + 强度）。 */
+    public final PlateBoundaryInfluence[] plateBoundaryInfluences;
+
+    /** 连续挤压度 [-1,1]：各缝合线按强度加权混合。 */
+    public final double plateCompression;
+
     public TectonicLandSample(
         int blockX,
         int blockZ,
@@ -47,7 +56,10 @@ public final class TectonicLandSample {
         double radialCenterward,
         double coastBand,
         double shelfBand,
-        double plateBoundaryWeight
+        double plateBoundaryWeight,
+        PlateBoundaryState plateBoundaryState,
+        PlateBoundaryInfluence[] plateBoundaryInfluences,
+        double plateCompression
     ) {
         this.blockX = blockX;
         this.blockZ = blockZ;
@@ -59,5 +71,8 @@ public final class TectonicLandSample {
         this.coastBand = coastBand;
         this.shelfBand = shelfBand;
         this.plateBoundaryWeight = plateBoundaryWeight;
+        this.plateBoundaryState = plateBoundaryState;
+        this.plateBoundaryInfluences = plateBoundaryInfluences;
+        this.plateCompression = plateCompression;
     }
 }

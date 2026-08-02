@@ -1,6 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicConfig;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 import net.minecraft.world.World;
 
 /**
@@ -16,6 +18,10 @@ public final class TalosLandMask {
 
     /** 超级格边长（blocks），与内部 TectonicConfig.SUPER_CELL_SIZE 保持一致。 */
     public static final int SUPER_CELL_SIZE = TectonicConfig.SUPER_CELL_SIZE;
+
+    /** 板块边界风格化 / 覆盖的最小强度（与 TectonicConfig 同源）。 */
+    public static final double PLATE_BOUNDARY_MIN_STRENGTH =
+        TectonicConfig.PLATE_BOUNDARY_MIN_STRENGTH;
 
     /**
      * 世界坐标所在的超级格索引（返回 {superCellX, superCellZ}，格坐标而非世界坐标）。
@@ -220,6 +226,10 @@ public final class TalosLandMask {
         public final double coastWeight;
         public final double edgeWeight;
         public final double shelfWeight;
+        public final double plateBoundaryWeight;
+        public final PlateBoundaryState plateBoundaryState;
+        public final PlateBoundaryInfluence[] plateBoundaryInfluences;
+        public final double plateCompression;
 
         private Sample(WorldgenAPI.SampleResult r) {
             this.isLand = r.isLand;
@@ -229,6 +239,10 @@ public final class TalosLandMask {
             this.coastWeight = r.coastWeight;
             this.edgeWeight = r.edgeWeight;
             this.shelfWeight = r.shelfWeight;
+            this.plateBoundaryWeight = r.plateBoundaryWeight;
+            this.plateBoundaryState = r.plateBoundaryState;
+            this.plateBoundaryInfluences = r.plateBoundaryInfluences;
+            this.plateCompression = r.plateCompression;
         }
     }
 }

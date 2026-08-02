@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
@@ -17,6 +18,8 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 
 import java.util.*;
@@ -25,6 +28,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final int CHUNK_SIZE = 16;
     private final int worldHeight;
+    private final World world;
 
     private final int worldSeedInt;
 
@@ -35,6 +39,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
+        this.world = world;
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
         this.macroResolver = createMacroResolver();
         this.worldHeight = world.getActualHeight();
@@ -156,22 +161,31 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     coastWeight
                 );
 
+                // 板块边界塑形：分离带 → 裂谷压高（0.2 硬切 + 内部软压）
+                double riftShapedHeightD = TalosPlateBoundaryShaper.applyRiftShaping(
+                    coastShapedHeightD,
+                    seaLevel,
+                    isLand,
+                    (landSample != null) ? landSample.plateBoundaryState : null,
+                    (landSample != null) ? landSample.plateBoundaryWeight : 0.0
+                );
+
                 // 河谷雕刻（高度场版）：在填充方块前把河谷做进高度场，
                 // 河道两侧自然成坡。阶段 A 仅对陆地列生效，海洋一侧保持原样。
                 double channelShapedHeightD;
                 if (isLand) {
                     channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
                         worldX, worldZ,
-                        coastShapedHeightD,
+                        riftShapedHeightD,
                         seaLevel,
                         ctx.hydro[colIndex],
                         ctx.macroPkg[colIndex]
                     );
                 } else {
-                    channelShapedHeightD = coastShapedHeightD;
+                    channelShapedHeightD = riftShapedHeightD;
                 }
 
-                boolean riverCarved = channelShapedHeightD < coastShapedHeightD - 0.01;
+                boolean riverCarved = channelShapedHeightD < riftShapedHeightD - 0.01;
 
                 int h = (int) Math.round(channelShapedHeightD);
                 if (h < 1) {
@@ -296,6 +310,23 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     @Override
     public void onPopulate(IChunkProvider provider, int x, int z) {
+        // 装饰阶段放置了大量方块，但放置走的是轻量光照路径（不逐块重算光照），
+        // 而 1.7.10 的延迟补光队列可能赶不上区块发送给客户端。
+        // 这里在区块发出前同步补一次全区块天光 / 光照重算，消除新地面的伪影。
+        Chunk chunk = this.world.getChunkFromChunkCoords(x, z);
+        if (chunk == null || chunk.isEmpty()) {
+            return;
+        }
+
+        BiomeGenBase biome = this.world.getBiomeGenForCoords(
+            x * 16 + 8, z * 16 + 8
+        );
+        if (biome == TalosBiomes.TALOS_OCEAN || biome == TalosBiomes.TALOS_SHELF) {
+            return; // 海洋 / 陆架没有装饰，不需要重算
+        }
+
+        chunk.generateSkylightMap();
+        chunk.func_150809_p();
     }
 
     @Override

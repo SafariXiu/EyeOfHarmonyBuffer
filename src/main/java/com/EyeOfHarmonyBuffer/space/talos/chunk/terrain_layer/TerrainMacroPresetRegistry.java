@@ -198,6 +198,80 @@ public final class TerrainMacroPresetRegistry {
             )
         );
 
+        // ===== 裂谷 / 峡谷（板块分离带注入，低高度带） =====
+        m.put(MacroPackageId.RIFT_TROPICAL,
+            new BaseTerrainPreset(
+                54.0,           // minHeight
+                88.0,           // maxHeight
+                1.0 / 1400.0,
+                10.0,
+                2,
+                1.0 / 400.0,
+                6.0,
+                2,
+                1.0 / 96.0,
+                2.0,
+                1,
+                0.1,
+                0.0
+            )
+        );
+
+        m.put(MacroPackageId.RIFT_TEMPERATE,
+            new BaseTerrainPreset(
+                54.0,
+                84.0,
+                1.0 / 1500.0,
+                10.0,
+                2,
+                1.0 / 350.0,
+                6.0,
+                2,
+                1.0 / 96.0,
+                2.0,
+                1,
+                0.1,
+                0.0
+            )
+        );
+
+        m.put(MacroPackageId.RIFT_POLAR,
+            new BaseTerrainPreset(
+                54.0,
+                80.0,
+                1.0 / 1700.0,
+                9.0,
+                2,
+                1.0 / 400.0,
+                5.0,
+                2,
+                1.0 / 96.0,
+                2.0,
+                1,
+                0.05,
+                0.0
+            )
+        );
+
+        // ===== 最高峰（挤压带核心注入）：顶到世界高度，高频细节强调山脊破碎感 =====
+        m.put(MacroPackageId.MOUNTAIN_PEAK,
+            new BaseTerrainPreset(
+                110.0,          // minHeight（峰带谷底也远高于普通山脉）
+                256.0,          // maxHeight（顶到世界高度）
+                1.0 / 1400.0,
+                16.0,
+                2,
+                1.0 / 260.0,
+                12.0,
+                2,
+                1.0 / 72.0,
+                6.0,
+                1,
+                0.15,
+                0.0
+            )
+        );
+
         PRESETS = Collections.unmodifiableMap(m);
     }
 

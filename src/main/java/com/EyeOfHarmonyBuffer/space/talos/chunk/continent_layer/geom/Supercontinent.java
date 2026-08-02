@@ -5,6 +5,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.SupercontinentPlacement;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.PlateId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.ids.SupercontinentId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,10 +61,6 @@ public final class Supercontinent {
     private LogicalSeed[] plateSeeds;
     private double[] plateMotionX;
     private double[] plateMotionZ;
-
-    private int boundarySampleCount;
-    private double[] boundarySampleAngle;
-    private double[] boundarySampleStrength;
 
     private static final class Lobe {
         final double theta;
@@ -126,7 +124,6 @@ public final class Supercontinent {
         initPlateSeeds();
 
         initPlateMotions();
-        precomputeBoundaryRing();
 
         precomputeCoastVertices();
 
@@ -490,12 +487,25 @@ public final class Supercontinent {
      * 找最近板块 + 第二近板块，返回“当前板块 index”以及到下一板块的逻辑距离差。
      */
     public int findNearestPlate(double x, double z, double[] outNearestDist, double[] outSecondNearestDist) {
+        return findNearestPlate(x, z, outNearestDist, outSecondNearestDist, null);
+    }
+
+    /**
+     * 找最近板块 + 第二近板块，返回“当前板块 index”以及到下一板块的逻辑距离差。
+     * 若需要第二个板块的索引（用于边界状态判定），传入 outSecondIdx。
+     */
+    public int findNearestPlate(double x, double z,
+                                double[] outNearestDist, double[] outSecondNearestDist,
+                                int[] outSecondIdx) {
         if (plateCount <= 0) {
             if (outNearestDist != null && outNearestDist.length > 0) {
                 outNearestDist[0] = 1.0;
             }
             if (outSecondNearestDist != null && outSecondNearestDist.length > 0) {
                 outSecondNearestDist[0] = 1.0;
+            }
+            if (outSecondIdx != null && outSecondIdx.length > 0) {
+                outSecondIdx[0] = -1;
             }
             return 0;
         }
@@ -506,6 +516,7 @@ public final class Supercontinent {
         double v = uv[1];
 
         int bestIdx = 0;
+        int secondIdx = -1;
         double bestDist = Double.POSITIVE_INFINITY;
         double secondBest = Double.POSITIVE_INFINITY;
 
@@ -516,10 +527,12 @@ public final class Supercontinent {
             double d2 = du * du + dv * dv;
 
             if (d2 < bestDist) {
+                secondIdx = bestIdx;
                 secondBest = bestDist;
                 bestDist = d2;
                 bestIdx = i;
             } else if (d2 < secondBest) {
+                secondIdx = i;
                 secondBest = d2;
             }
         }
@@ -533,90 +546,220 @@ public final class Supercontinent {
         if (outSecondNearestDist != null && outSecondNearestDist.length > 0) {
             outSecondNearestDist[0] = d2;
         }
+        if (outSecondIdx != null && outSecondIdx.length > 0) {
+            outSecondIdx[0] = secondIdx;
+        }
 
         return bestIdx;
+    }
+
+    /**
+     * 找最近的 k 块板块（按逻辑距离升序），填充 outIdx / outDist 并返回实际数量。
+     * k 会被 clamp 到 [1, plateCount]；plateCount <= 0 时返回 0。
+     */
+    public int findNearestPlates(double x, double z, int k,
+                                 int[] outIdx, double[] outDist) {
+        if (plateCount <= 0) {
+            return 0;
+        }
+        if (k < 1) {
+            k = 1;
+        }
+        if (k > plateCount) {
+            k = plateCount;
+        }
+
+        double[] uv = new double[2];
+        toLogical(x, z, uv);
+        double u = uv[0];
+        double v = uv[1];
+
+        int filled = 0;
+        for (int i = 0; i < plateCount; i++) {
+            LogicalSeed s = plateSeeds[i];
+            double du = u - s.u;
+            double dv = v - s.v;
+            double d = Math.sqrt(du * du + dv * dv);
+
+            int pos = filled;
+            if (pos >= k) {
+                // 数组已满：不比当前最差的好则丢弃
+                if (d >= outDist[k - 1]) {
+                    continue;
+                }
+                pos = k - 1;
+            }
+            while (pos > 0 && outDist[pos - 1] > d) {
+                outDist[pos] = outDist[pos - 1];
+                outIdx[pos] = outIdx[pos - 1];
+                pos--;
+            }
+            outDist[pos] = d;
+            outIdx[pos] = i;
+            if (filled < k) {
+                filled++;
+            }
+        }
+        return filled;
+    }
+
+    /**
+     * 由已排序的最近板块表生成缝合线影响列表（多板块混合）：
+     * 每条影响 = (最近板块, 第 i 近板块) 的状态 + 强度，只保留强度 > 0 的缝合线。
+     */
+    public PlateBoundaryInfluence[] plateBoundaryInfluences(int[] idx,
+                                                            double[] dist,
+                                                            int count) {
+        if (count < 2 || idx == null || dist == null) {
+            return new PlateBoundaryInfluence[0];
+        }
+        java.util.List<PlateBoundaryInfluence> out =
+            new java.util.ArrayList<PlateBoundaryInfluence>(count - 1);
+        for (int i = 1; i < count; i++) {
+            double strength = plateBoundaryStrength(dist[0], dist[i]);
+            if (strength <= 0.0) {
+                continue;
+            }
+            out.add(new PlateBoundaryInfluence(
+                getPlateBoundaryState(idx[0], idx[i]), strength
+            ));
+        }
+        return out.toArray(new PlateBoundaryInfluence[out.size()]);
+    }
+
+    /**
+     * 连续「挤压度」[-1,1]：各缝合线影响按强度加权混合
+     * （挤压 +1 / 分离 -1 / 走滑、静止 0）；无有效缝合线时为 0。
+     */
+    public double plateCompression(PlateBoundaryInfluence[] influences) {
+        double wSum = 0.0;
+        double cSum = 0.0;
+        if (influences != null) {
+            for (PlateBoundaryInfluence inf : influences) {
+                wSum += inf.strength;
+                cSum += inf.strength * inf.state.compressionAxis();
+            }
+        }
+        return (wSum > 0.0) ? cSum / wSum : 0.0;
+    }
+
+    /**
+     * 返回板块 ID（如果点在外海，也会返回最近超级大陆的某个板块）。
+     * 同时可带回该点的最近 / 次近板块距离（d1 / d2，归一化逻辑距离），
+     * 供边界强度计算复用，避免重复查询。
+     */
+    public PlateId getPlateIdForPoint(double x, double z,
+                                      double[] outD1, double[] outD2) {
+        return getPlateIdForPoint(x, z, outD1, outD2, null);
+    }
+
+    /**
+     * 返回板块 ID，同时带回最近 / 次近板块距离与次近板块索引
+     * （供边界强度与边界状态判定复用，避免重复查询）。
+     */
+    public PlateId getPlateIdForPoint(double x, double z,
+                                      double[] outD1, double[] outD2,
+                                      int[] outSecondIdx) {
+        int idx = findNearestPlate(x, z, outD1, outD2, outSecondIdx);
+        return new PlateId(id, idx);
     }
 
     /**
      * 返回板块 ID（如果点在外海，也会返回最近超级大陆的某个板块）。
      */
     public PlateId getPlateIdForPoint(double x, double z) {
-        double[] d1 = new double[1];
-        double[] d2 = new double[1];
-        int idx = findNearestPlate(x, z, d1, d2);
-        return new PlateId(id, idx);
+        return getPlateIdForPoint(x, z, new double[1], new double[1]);
+    }
+
+    /** 板块种子在逻辑空间的位置 → 世界坐标（用于缝合线法向）。 */
+    private void seedWorldPosition(int idx, double[] out) {
+        LogicalSeed s = plateSeeds[idx];
+        double du = s.u - 0.5;
+        double dv = s.v - 0.5;
+        double theta = Math.atan2(dv, du);
+        double ratio = 2.0 * Math.hypot(du, dv); // r / R(theta)
+        double r = ratio * radiusAtAngle(theta);
+        out[0] = centerX + r * Math.cos(theta);
+        out[1] = centerZ + r * Math.sin(theta);
     }
 
     /**
-     * 预计算一圈角度样本的“板块边界强度”，用于快速近似板块边界带。
+     * 两个板块之间的边界状态：
+     *   - 相对运动在缝合线法向（两板块种子连线）上相互靠近 → 挤压；
+     *   - 相互远离 → 分离；
+     *   - 切向分量主导 → 走滑；
+     *   - 相对速度低于阈值 → 静止。
      */
-    private void precomputeBoundaryRing() {
-        boundarySampleCount = 512;
-        boundarySampleAngle = new double[boundarySampleCount];
-        boundarySampleStrength = new double[boundarySampleCount];
+    public PlateBoundaryState getPlateBoundaryState(int plateA, int plateB) {
+        if (plateA < 0 || plateB < 0
+            || plateA >= plateCount || plateB >= plateCount
+            || plateA == plateB) {
+            return PlateBoundaryState.INACTIVE;
+        }
 
+        double[] pa = new double[2];
+        double[] pb = new double[2];
+        seedWorldPosition(plateA, pa);
+        seedWorldPosition(plateB, pb);
+
+        double nx = pb[0] - pa[0];
+        double nz = pb[1] - pa[1];
+        double nl = Math.hypot(nx, nz);
+        if (nl <= 1e-9) {
+            return PlateBoundaryState.INACTIVE;
+        }
+        nx /= nl;
+        nz /= nl;
+
+        double vrx = plateMotionX[plateB] - plateMotionX[plateA];
+        double vrz = plateMotionZ[plateB] - plateMotionZ[plateA];
+        double vRel = Math.hypot(vrx, vrz);
+
+        if (vRel < TectonicConfig.PLATE_INACTIVE_RELATIVE_SPEED) {
+            return PlateBoundaryState.INACTIVE;
+        }
+
+        double normal = vrx * nx + vrz * nz;
+        double tangent = Math.abs(vrx * nz - vrz * nx);
+
+        if (tangent > TectonicConfig.PLATE_TRANSFORM_TANGENT_RATIO * Math.abs(normal)) {
+            return PlateBoundaryState.TRANSFORM;
+        }
+        return (normal < 0.0)
+            ? PlateBoundaryState.CONVERGENT
+            : PlateBoundaryState.DIVERGENT;
+    }
+
+    /** 当前点所在缝合线的边界状态（取最近 / 次近板块对）。 */
+    public PlateBoundaryState getPlateBoundaryStateAt(double x, double z) {
+        int[] second = new int[1];
         double[] d1 = new double[1];
         double[] d2 = new double[1];
-
-        for (int i = 0; i < boundarySampleCount; i++) {
-            double theta = 2.0 * PI * i / boundarySampleCount;
-            double r = baseRadius * 0.85;
-            double x = centerX + r * cos(theta);
-            double z = centerZ + r * sin(theta);
-
-            findNearestPlate(x, z, d1, d2);
-
-            double boundaryMetric = d2[0] - d1[0];
-            double strength = 1.0 - boundaryMetric / TectonicConfig.PLATE_BOUNDARY_THRESHOLD;
-            strength = TectonicMath.clamp(strength, 0.0, 1.0);
-
-            boundarySampleAngle[i] = theta;
-            boundarySampleStrength[i] = strength;
-        }
-
-        double[] tmp = new double[boundarySampleCount];
-        for (int i = 0; i < boundarySampleCount; i++) {
-            double sum = boundarySampleStrength[i];
-            int count = 1;
-            if (i > 0) {
-                sum += boundarySampleStrength[i - 1];
-                count++;
-            } else {
-                sum += boundarySampleStrength[boundarySampleCount - 1];
-                count++;
-            }
-            if (i < boundarySampleCount - 1) {
-                sum += boundarySampleStrength[i + 1];
-                count++;
-            } else {
-                sum += boundarySampleStrength[0];
-                count++;
-            }
-            tmp[i] = sum / count;
-        }
-        System.arraycopy(tmp, 0, boundarySampleStrength, 0, boundarySampleCount);
+        int best = findNearestPlate(x, z, d1, d2, second);
+        return getPlateBoundaryState(best, second[0]);
     }
 
     /**
-     * 估算板块边界权重：0 = 板块内部，1 = 强边界。
-     * 实现：取当前点的极角，在预计算的环上线性插值。
+     * 由最近 / 次近板块距离计算板块边界强度（距离级）：
+     *   metric = d2 - d1（Voronoi 中该值即“到板块边界的有符号距离”的度量）
+     *   strength = 1 - metric / PLATE_BOUNDARY_THRESHOLD
+     * 0 = 板块内部，1 = 恰好位于缝合线上，随到边界的真实距离连续衰减。
+     */
+    public double plateBoundaryStrength(double d1, double d2) {
+        double metric = d2 - d1;
+        double strength = 1.0 - metric / TectonicConfig.PLATE_BOUNDARY_THRESHOLD;
+        return TectonicMath.clamp(strength, 0.0, 1.0);
+    }
+
+    /**
+     * 当前点的板块边界权重：0 = 板块内部，1 = 强缝合线。
+     * 直接基于该点最近的板块 Voronoi 距离计算（距离级，随径向位置精确变化），
+     * 不再是旧版“0.85 半径环上按角度插值”的近似。
      */
     public double getPlateBoundaryWeight(double x, double z) {
-        if (boundarySampleCount <= 0) return 0.0;
-
-        double dx = x - centerX;
-        double dz = z - centerZ;
-        double theta = atan2(dz, dx);
-        if (theta < 0.0) theta += 2.0 * PI;
-
-        double pos = (theta / (2.0 * PI)) * boundarySampleCount;
-        int idx0 = (int) floor(pos);
-        double t = pos - idx0;
-        int idx1 = idx0 + 1;
-        if (idx1 >= boundarySampleCount) idx1 = 0;
-
-        double v0 = boundarySampleStrength[idx0];
-        double v1 = boundarySampleStrength[idx1];
-        return v0 * (1.0 - t) + v1 * t;
+        double[] d1 = new double[1];
+        double[] d2 = new double[1];
+        findNearestPlate(x, z, d1, d2);
+        return plateBoundaryStrength(d1[0], d2[0]);
     }
 }

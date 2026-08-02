@@ -63,6 +63,25 @@ public class CommandTalosHere extends CommandBase {
         double coastWeight = sample.coastWeight;
         double edgeWeight  = sample.edgeWeight;
         double shelfWeight = sample.shelfWeight;
+        double plateBoundaryWeight = sample.plateBoundaryWeight;
+        String plateBoundaryState = String.valueOf(sample.plateBoundaryState);
+        double plateCompression = sample.plateCompression;
+
+        StringBuilder mix = new StringBuilder();
+        if (sample.plateBoundaryInfluences != null) {
+            for (int i = 0; i < sample.plateBoundaryInfluences.length; i++) {
+                if (i > 0) {
+                    mix.append(", ");
+                }
+                mix.append(sample.plateBoundaryInfluences[i].state)
+                   .append("(")
+                   .append(String.format("%.3f", sample.plateBoundaryInfluences[i].strength))
+                   .append(")");
+            }
+        }
+        if (mix.length() == 0) {
+            mix.append("无");
+        }
 
         int[] superCenter = TalosLandMask.getSuperCenterXZAt(blockX, blockZ, worldSeedInt);
         double superBaseRadius = TalosLandMask.getSuperBaseRadius(superId, worldSeedInt);
@@ -89,9 +108,11 @@ public class CommandTalosHere extends CommandBase {
         );
 
         String msgWeights = String.format(
-            "landWeight: %.3f, coastWeight: %.3f, edgeWeight: %.3f, shelfWeight: %.3f",
-            landWeight, coastWeight, edgeWeight, shelfWeight
+            "landWeight: %.3f, coastWeight: %.3f, edgeWeight: %.3f, shelfWeight: %.3f, plateBoundary: %s(%.3f), 挤压度: %+.3f",
+            landWeight, coastWeight, edgeWeight, shelfWeight,
+            plateBoundaryState, plateBoundaryWeight, plateCompression
         );
+        String msgMix = "板块混合: " + mix;
 
         String msgSuper;
         if (superId == 0 || superCenter == null) {
@@ -106,6 +127,7 @@ public class CommandTalosHere extends CommandBase {
         sender.addChatMessage(new ChatComponentText(msgHeader));
         sender.addChatMessage(new ChatComponentText(msgIds));
         sender.addChatMessage(new ChatComponentText(msgWeights));
+        sender.addChatMessage(new ChatComponentText(msgMix));
         sender.addChatMessage(new ChatComponentText(msgSuper));
     }
 
