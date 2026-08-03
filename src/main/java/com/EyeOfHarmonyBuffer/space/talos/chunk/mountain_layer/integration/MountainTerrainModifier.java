@@ -13,6 +13,9 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration;
  * v4：峰/谷高度按「山带类型」决定（1=HIGHLAND 2=MOUNTAINS 3=PEAK），
  * 不再依赖所在宏群系——构造带常常横穿非山地宏包，按宏包门控会导致
  * 整条带被跳过、地形全平。
+ *
+ * v5：峰顶通过 MountainHeightProfile 与 Y 轴上限解耦——
+ * 256 高度下行为不变，未来突破 Y 轴后峰顶自动按比例抬升。
  */
 public final class MountainTerrainModifier {
 
@@ -22,12 +25,13 @@ public final class MountainTerrainModifier {
                                              int seaLevel,
                                              double elevation01,
                                              double mask01,
-                                             int beltKind) {
+                                             int beltKind,
+                                             MountainHeightProfile profile) {
         if (mask01 <= 0.0 || beltKind <= 0) {
             return baseHeight;
         }
-        double valley = valleyForKind(beltKind);
-        double peak = peakForKind(beltKind);
+        double valley = profile.valleyForKind(beltKind);
+        double peak = profile.peakForKind(beltKind);
         if (valley <= 0.0) {
             return baseHeight;
         }
@@ -37,30 +41,6 @@ public final class MountainTerrainModifier {
         // 边缘混合用 smoothstep：过渡更柔和，避免硬切/凸出
         double t = smoothstep01(mask01);
         return baseHeight + (ridgeH - baseHeight) * t;
-    }
-
-    /** 山带类型的谷底高度（blocks，海平面 64 之上）。 */
-    private static double valleyForKind(int kind) {
-        switch (kind) {
-            case 3: // PEAK
-                return 90.0;
-            case 2: // MOUNTAINS
-                return 78.0;
-            default: // 1 = HIGHLAND
-                return 68.0;
-        }
-    }
-
-    /** 山带类型的峰顶高度（blocks）。 */
-    private static double peakForKind(int kind) {
-        switch (kind) {
-            case 3:
-                return 252.0;
-            case 2:
-                return 240.0;
-            default:
-                return 216.0;
-        }
     }
 
     private static double clamp01(double v) {

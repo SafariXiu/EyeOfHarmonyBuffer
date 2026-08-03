@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainTerrainModifier;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainHeightProfile;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
@@ -32,6 +33,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final int worldSeedInt;
 
+    /** 山地高度配置：与 Y 轴上限解耦（256 高度下行为不变）。 */
+    private final MountainHeightProfile mountainHeight;
+
     private static final boolean DEBUG_COASTLINE = true;
     private static final boolean USE_CHUNK_BLUR_BANK = true;
 
@@ -40,6 +44,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         this.world = world;
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
         this.worldHeight = world.getActualHeight();
+        this.mountainHeight = MountainHeightProfile.ofWorldHeight(worldHeight);
     }
 
     @Override
@@ -180,7 +185,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         seaLevel,
                         ctx.mountainElevation01[colIndex],
                         ctx.mountainMask01[colIndex],
-                        ctx.mountainKind[colIndex]
+                        ctx.mountainKind[colIndex],
+                        mountainHeight
                     );
 
                 // 河岸塑形放在裂谷塑形之后：泛洪平原必须作用在最终地形上，
