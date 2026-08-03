@@ -38,32 +38,8 @@ public final class MountainBelt {
     public final double maxX;
     public final double maxZ;
 
-    /** 条带类型：0=HIGHLAND，1=MOUNTAINS，2=PEAK（群系归属用）。 */
+    /** 条带类型：1=HIGHLAND，2=MOUNTAINS，3=PEAK（群系归属用）。 */
     public final int kind;
-
-    public MountainBelt(long beltId, double cellBlocks,
-                        int gridW, int gridH,
-                        float[] height01, float[] cellMask,
-                        double centerX, double centerZ, double angleRad,
-                        double halfLength, double halfWidth,
-                        double minX, double minZ, double maxX, double maxZ) {
-        this.beltId = beltId;
-        this.cellBlocks = cellBlocks;
-        this.gridW = gridW;
-        this.gridH = gridH;
-        this.elevation01 = height01;
-        this.cellMask = cellMask;
-        this.centerX = centerX;
-        this.centerZ = centerZ;
-        this.angleRad = angleRad;
-        this.halfLength = halfLength;
-        this.halfWidth = halfWidth;
-        this.minX = minX;
-        this.minZ = minZ;
-        this.maxX = maxX;
-        this.maxZ = maxZ;
-        this.kind = 0;
-    }
 
     public MountainBelt(long beltId, double cellBlocks,
                         int gridW, int gridH,
@@ -88,20 +64,6 @@ public final class MountainBelt {
         this.maxX = maxX;
         this.maxZ = maxZ;
         this.kind = kind;
-    }
-
-    /**
-     * 查询 (worldX, worldZ) 处的结构高度 01（含单元格蒙版）。
-     * 山带之外返回 0。
-     */
-    public double sample01(double worldX, double worldZ) {
-        double elev = sampleElevation01(worldX, worldZ);
-        if (elev <= 0.0) {
-            return 0.0;
-        }
-        double mask = sampleMask01(worldX, worldZ);
-        double result = elev * mask;
-        return result > 0.0 ? result : 0.0;
     }
 
     /** 连续高程 01（不带蒙版；山带矩形外为 0）。 */

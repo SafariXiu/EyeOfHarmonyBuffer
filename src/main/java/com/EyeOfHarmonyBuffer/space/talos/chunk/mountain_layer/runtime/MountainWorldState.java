@@ -37,6 +37,13 @@ public final class MountainWorldState {
     /** 山带蒙版模糊半径（格）：拉宽边缘过渡带（约 5~6 格 ≈ 350~450 blocks）。 */
     private static final double MASK_BLUR_RADIUS = 3.5;
 
+    /**
+     * 过渡带邻域查询半径（格）：高斯核支撑 ±ceil(2×半径) + 网格 1 格余量 + 安全 1 格。
+     * 蒙版 > 0 的点必然距某分量格很近，无需遍历全部山带。
+     */
+    private static final int MASK_FALLBACK_REACH_CELLS =
+        (int) Math.ceil(MASK_BLUR_RADIUS * 2.0) + 2;
+
     public final int worldSeedInt;
 
     /** 世界 64 格 -> beltId。 */
@@ -72,12 +79,6 @@ public final class MountainWorldState {
     // 对外查询
     // ------------------------------------------------------------
 
-    /** 查询 (worldX, worldZ) 的山地结构高度 01（0 = 无山）。 */
-    public double sampleMountainHeight01(int worldX, int worldZ) {
-        MountainBelt belt = beltAt(worldX, worldZ);
-        return belt != null ? belt.sample01(worldX, worldZ) : 0.0;
-    }
-
     /** 查询所在山带；未索引时同步兜底发现（首个区块可能小卡，后台预构建消除）。 */
     public MountainBelt beltAt(int worldX, int worldZ) {
         int cellX = Math.floorDiv(worldX, CELL_BLOCKS);
@@ -94,21 +95,24 @@ public final class MountainWorldState {
         // 模糊蒙版里（蒙版过渡带约 350~450 block）。
         // 不能在这里返回 null，否则 mask 会在 64 格边界（=区块边界）
         // 从 ~0.6 直接跳 0，造成严格区块对齐的硬切。
-        for (MountainBelt b : belts.values()) {
-            if (worldX >= b.minX && worldX <= b.maxX
-                && worldZ >= b.minZ && worldZ <= b.maxZ) {
-                if (b.sampleMask01(worldX, worldZ) > 0.001) {
+        // 只查邻域：高斯核支撑有限，蒙版 > 0 的点必然距某分量格很近，
+        // 不必全量遍历 belts（山带数量会随会话增长）。
+        for (int dz = -MASK_FALLBACK_REACH_CELLS; dz <= MASK_FALLBACK_REACH_CELLS; dz++) {
+            for (int dx = -MASK_FALLBACK_REACH_CELLS; dx <= MASK_FALLBACK_REACH_CELLS; dx++) {
+                Long nid = beltIndex.get(cellKey(cellX + dx, cellZ + dz));
+                if (nid == null) {
+                    continue;
+                }
+                MountainBelt b = belts.get(nid);
+                if (b != null
+                    && worldX >= b.minX && worldX <= b.maxX
+                    && worldZ >= b.minZ && worldZ <= b.maxZ
+                    && b.sampleMask01(worldX, worldZ) > 0.001) {
                     return b;
                 }
             }
         }
         return ensureBeltAtCell(cellX, cellZ);
-    }
-
-    /** 仅取山带蒙版（群系归属用；带外 0）。 */
-    public double sampleMask01(int worldX, int worldZ) {
-        MountainBelt belt = beltAt(worldX, worldZ);
-        return belt != null ? belt.sampleMask01(worldX, worldZ) : 0.0;
     }
 
     // ------------------------------------------------------------
@@ -447,7 +451,6 @@ public final class MountainWorldState {
         );
 
         long seed = beltId ^ (worldSeedInt * 0x9E3779B97F4A7C15L);
-        long buildT0 = System.nanoTime();
         DlaMountainGenerator.Result r = DlaMountainGenerator.generate(
             gridW, gridH, seed,
             DLA_TARGET_FILL,
@@ -486,11 +489,6 @@ public final class MountainWorldState {
         // 拉宽边缘过渡带：蒙版模糊（约 200~256 blocks）
         float[] blurredMask = DlaMountainGenerator.blur01(
             mask, gridW, gridH, MASK_BLUR_RADIUS
-        );
-        System.out.printf(
-            "[MOUNTAIN] belt %d grid=%dx%d cells=%d built in %.1f ms%n",
-            beltId, gridW, gridH, cells.length,
-            (System.nanoTime() - buildT0) / 1e6
         );
 
         return new MountainBelt(

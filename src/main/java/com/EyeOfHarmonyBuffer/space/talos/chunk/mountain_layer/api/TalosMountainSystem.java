@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 山地层统一入口（与河流层的 TalosRiverSystem 同构）。
  *
  * 地形生成只通过这里查询：
- *   - sampleMountainHeight01(worldX, worldZ, worldSeedInt)：结构高度 01；
+ *   - sampleMountain(worldX, worldZ, worldSeedInt)：连续高程 + 蒙版 + 类型；
  *   - 世界加载时启动后台预构建，卸载时停止并释放缓存。
  */
 public final class TalosMountainSystem {
@@ -37,18 +37,6 @@ public final class TalosMountainSystem {
         return System.getProperty(
             "talos.mountain.enabled", "true"
         ).equalsIgnoreCase("true");
-    }
-
-    /** 地形查询：山地结构高度 01（0 = 无山）。 */
-    public static double sampleMountainHeight01(int worldX, int worldZ,
-                                                int worldSeedInt) {
-        if (!isEnabled()) {
-            return 0.0;
-        }
-        MountainWorldState state = STATES.get(worldSeedInt);
-        return state != null
-            ? state.sampleMountainHeight01(worldX, worldZ)
-            : 0.0;
     }
 
     /** 一次取回连续高程 + 山带蒙版（地形修饰器需要分开使用）。 */
@@ -160,18 +148,6 @@ public final class TalosMountainSystem {
             lines.add("  尚未构建任何山带（后台预构建可能在工作中）");
         }
         return lines;
-    }
-
-    /** 山带蒙版（群系归属用）。 */
-    public static double sampleMountainMask01(int worldX, int worldZ,
-                                              int worldSeedInt) {
-        if (!isEnabled()) {
-            return 0.0;
-        }
-        MountainWorldState state = STATES.get(worldSeedInt);
-        return state != null
-            ? state.sampleMask01(worldX, worldZ)
-            : 0.0;
     }
 
     /**
