@@ -27,7 +27,9 @@ import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.MountainLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.MountainLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainBiomeOverrideProvider;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
@@ -133,6 +135,10 @@ public class EyeOfHarmonyBuffer {
         // 山地层：WorldEvent 走 Forge 总线，WorldTickEvent 走 FML 总线
         MinecraftForge.EVENT_BUS.register(new MountainLifecycleHandler());
         FMLCommonHandler.instance().bus().register(new MountainLifecycleHandler());
+        // 群系覆盖钩子（依赖倒置：气候层只认接口，实现由组合根注册）
+        TalosMacroClimate.setBiomeOverrideProvider(
+            new MountainBiomeOverrideProvider()
+        );
 
         ExampleQuestRegistration.registerAll();
 

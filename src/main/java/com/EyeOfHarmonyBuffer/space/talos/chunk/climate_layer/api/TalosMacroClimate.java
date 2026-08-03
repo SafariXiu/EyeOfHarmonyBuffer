@@ -50,6 +50,23 @@ public final class TalosMacroClimate {
     private static final Int2ObjectOpenHashMap<TectonicStyleLayer> TECTONIC_LAYERS =
         new Int2ObjectOpenHashMap<>();
 
+    /** 群系覆盖钩子（组合根注册；气候层内部只调用接口，不依赖实现）。 */
+    private static volatile BiomeOverrideProvider biomeOverrideProvider;
+
+    /** 由组合根注册群系覆盖实现（如山地层）。 */
+    public static void setBiomeOverrideProvider(BiomeOverrideProvider provider) {
+        biomeOverrideProvider = provider;
+    }
+
+    /** 询问已注册的覆盖实现；没有注册或不需要覆盖时返回 null。 */
+    public static BiomeGenBase getBiomeOverride(int worldX, int worldZ,
+                                                int worldSeedInt) {
+        BiomeOverrideProvider provider = biomeOverrideProvider;
+        return provider != null
+            ? provider.overrideBiome(worldX, worldZ, worldSeedInt)
+            : null;
+    }
+
     private static MacroRegionLayer getLayer(int worldSeedInt) {
         MacroRegionLayer layer = LAYERS.get(worldSeedInt);
         if (layer == null) {

@@ -90,6 +90,78 @@ public final class TalosMountainSystem {
         return STATES.get(worldSeedInt);
     }
 
+    /** 调试汇总（/talmountain 用，只经 api 暴露，指令不摸 runtime）。 */
+    public static java.util.List<String> debugSummary(int worldX, int worldZ,
+                                                      int worldSeedInt) {
+        java.util.ArrayList<String> lines = new java.util.ArrayList<String>();
+        if (!isEnabled()) {
+            lines.add("[TALMOUNTAIN] 山地系统已禁用 (talos.mountain.enabled=false)");
+            return lines;
+        }
+        MountainWorldState state = STATES.get(worldSeedInt);
+        if (state == null) {
+            lines.add("[TALMOUNTAIN] 山地状态不存在：WorldEvent.Load 未触发，"
+                + "或当前维度不是 Talos（seed=" + worldSeedInt + "）");
+            return lines;
+        }
+
+        int tier = state.debugStyleTier(worldX, worldZ);
+        MountainBelt belt = state.beltAt(worldX, worldZ);
+        lines.add(String.format(
+            "[TALMOUNTAIN] pos=(%d,%d) seed=%d styleTier=%d",
+            worldX, worldZ, worldSeedInt, tier
+        ));
+
+        if (belt != null) {
+            lines.add(String.format(
+                "  山带 id=%d kind=%d grid=%dx%d mask=%.3f elev=%.3f "
+                    + "center=(%.0f,%.0f) len=%.0f wid=%.0f",
+                belt.beltId,
+                belt.kind,
+                belt.gridW,
+                belt.gridH,
+                belt.sampleMask01(worldX, worldZ),
+                belt.sampleElevation01(worldX, worldZ),
+                belt.centerX,
+                belt.centerZ,
+                belt.halfLength * 2.0,
+                belt.halfWidth * 2.0
+            ));
+        } else {
+            lines.add("  当前位置不在任何已构建山带内");
+        }
+
+        lines.add(String.format(
+            "  缓存: belts=%d indexedCells=%d styleCache=%d scannedTiles=%d",
+            state.debugBeltCount(),
+            state.debugIndexedCellCount(),
+            state.debugStyleCacheSize(),
+            state.debugScannedTileCount()
+        ));
+
+        java.util.List<MountainBelt> belts = state.debugBelts();
+        if (!belts.isEmpty()) {
+            lines.add("  已构建山带 " + belts.size() + " 条:");
+            int shown = 0;
+            for (MountainBelt b : belts) {
+                if (shown >= 6) {
+                    lines.add("    ...");
+                    break;
+                }
+                lines.add(String.format(
+                    "    id=%d kind=%d grid=%dx%d center=(%.0f,%.0f) len=%.0f wid=%.0f",
+                    b.beltId, b.kind, b.gridW, b.gridH,
+                    b.centerX, b.centerZ,
+                    b.halfLength * 2.0, b.halfWidth * 2.0
+                ));
+                shown++;
+            }
+        } else {
+            lines.add("  尚未构建任何山带（后台预构建可能在工作中）");
+        }
+        return lines;
+    }
+
     /** 山带蒙版（群系归属用）。 */
     public static double sampleMountainMask01(int worldX, int worldZ,
                                               int worldSeedInt) {

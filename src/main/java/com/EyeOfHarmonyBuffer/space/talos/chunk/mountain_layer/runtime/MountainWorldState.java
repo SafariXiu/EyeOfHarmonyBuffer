@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.runtime;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosTectonicStyles;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -268,32 +267,8 @@ public final class MountainWorldState {
     private int computeStyleTier(int cellX, int cellZ) {
         int worldX = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
         int worldZ = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
-        TalosLandMask.Sample s = TalosLandMask.sampleFull(
-            worldX, worldZ, worldSeedInt
-        );
-        if (s == null || !s.isLand) {
-            return 0;
-        }
-        double div = TalosLandMask.maxBoundaryStrength(
-            PlateBoundaryState.DIVERGENT, s
-        );
-        if (div >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
-            return 0; // 裂谷
-        }
-        if (s.plateBoundaryState != PlateBoundaryState.CONVERGENT) {
-            return 0;
-        }
-        double w = s.plateBoundaryWeight;
-        if (w >= 0.7) {
-            return 3; // PEAK
-        }
-        if (w > 0.5) {
-            return 2; // MOUNTAINS
-        }
-        if (w >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
-            return 1; // HIGHLAND
-        }
-        return 0;
+        // 风格判定唯一来源在 climate_layer.api，避免与 TectonicStyleLayer 漂移
+        return TalosTectonicStyles.tierAt(worldX, worldZ, worldSeedInt);
     }
 
     private static final class ComponentResult {

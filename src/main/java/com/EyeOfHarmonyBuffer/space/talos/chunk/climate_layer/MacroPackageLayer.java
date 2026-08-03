@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.api.TalosMountainSystem;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
@@ -169,11 +169,11 @@ public class MacroPackageLayer {
                 return boundaryBiome;
             }
 
-            // 群系归属跟山带走：DLA 山带核心内直接给山地群系
-            BiomeGenBase mountainBiome = TalosMountainSystem
-                .getMountainBiomeOverride(x, z, worldSeedInt);
-            if (mountainBiome != null) {
-                return mountainBiome;
+            // 群系覆盖钩子（组合根注册的山地层实现；气候层不依赖山地层）
+            BiomeGenBase overrideBiome = TalosMacroClimate
+                .getBiomeOverride(x, z, worldSeedInt);
+            if (overrideBiome != null) {
+                return overrideBiome;
             }
 
             if (landSite != null) {
