@@ -28,6 +28,10 @@ import java.util.Random;
  */
 public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
+    /** 河床装饰：水下乱石堆每区块尝试次数 / 水下枯木概率。 */
+    private static final double RIVERBED_ROCK_PER_CHUNK = 2.0;
+    private static final double RIVERBED_LOG_PER_CHUNK = 1.0;
+
     private World currentWorld;
 
     private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
@@ -41,6 +45,10 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private final TalosBoundedFeatures.Waterlily waterlily = new TalosBoundedFeatures.Waterlily();
     private final TalosBoundedFeatures.Shrub shrub = new TalosBoundedFeatures.Shrub();
     private final TalosBoundedFeatures.Boulder boulder = new TalosBoundedFeatures.Boulder();
+    private final TalosBoundedFeatures.RiverRockPile riverRock =
+        new TalosBoundedFeatures.RiverRockPile();
+    private final TalosBoundedFeatures.RiverDeadLog riverLog =
+        new TalosBoundedFeatures.RiverDeadLog();
 
     @Override
     protected void setCurrentWorld(World world) {
@@ -99,6 +107,10 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
                 acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
             }
         }
+
+        // 河床装饰：水下乱石堆 + 水下枯木（特征内部只放河道内）
+        scatter(world, rand, chunk, this.riverRock, RIVERBED_ROCK_PER_CHUNK);
+        scatter(world, rand, chunk, this.riverLog, RIVERBED_LOG_PER_CHUNK);
 
         decorateBiomeFeatures(
             world, rand, chunk, (TalosBiomeBase) biome

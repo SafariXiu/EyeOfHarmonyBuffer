@@ -8,6 +8,10 @@ public final class TalosRiverProfile {
 
     private TalosRiverProfile() {}
 
+    /** 河床微起伏：低频噪声尺度与幅度（格）。 */
+    private static final double RIVERBED_RELIEF_SCALE = 24.0;
+    private static final double RIVERBED_RELIEF_AMP = 1.5;
+
     /**
      * 高度场雕刻用的完整河床目标高度（含源头湖 / 暗河井）。
      *
@@ -19,6 +23,7 @@ public final class TalosRiverProfile {
      *     从而让河谷两侧自然成坡，而不是事后垂直切方块。
      */
     public static double computeChannelBedY(int worldX, int worldZ,
+                                            int worldSeedInt,
                                             double baseHeightD,
                                             int seaLevel,
                                             TalosRiverSystem.HydroSample hydro,
@@ -73,6 +78,28 @@ public final class TalosRiverProfile {
         double depthAbove = seaLevel - riverBedYd;
         if (depthAbove > 0.0) {
             riverBedYd = seaLevel - depthAbove * depthScale;
+        }
+
+        // 原语义：床面不低于海平面则该列不雕刻（河谷最外圈 / 入海口边缘）。
+        // 必须先于微起伏判断，否则起伏 + 下方钳制会把原本不挖的列也挖成 1 格深。
+        if (riverBedYd >= seaLevel) {
+            return baseHeightD;
+        }
+
+        // 河床微起伏：±1.5 格低频噪声。
+        // 只作用于全深河段（depthScale≈1）；入海口 / 源头抬升 ramp 内完全归零，
+        // 避免 floor 取整把平滑斜坡打成台阶（入海口硬切）。
+        double relief = (valueNoise(
+            worldX, worldZ, worldSeedInt,
+            RIVERBED_RELIEF_SCALE, 0x3C1A9E77) - 0.5)
+            * 2.0 * RIVERBED_RELIEF_AMP;
+        double reliefScale = smoothstep01((depthScale - 0.92) / 0.08);
+        riverBedYd += relief * reliefScale;
+        if (riverBedYd > seaLevel - 1.0) {
+            riverBedYd = seaLevel - 1.0;
+        }
+        if (riverBedYd < 1.0) {
+            riverBedYd = 1.0;
         }
 
         if (inLakeZone && lakePreset != null) {

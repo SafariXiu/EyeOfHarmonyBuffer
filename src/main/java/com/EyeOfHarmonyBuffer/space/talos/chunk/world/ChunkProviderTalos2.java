@@ -189,6 +189,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 if (isLand) {
                     channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
                         worldX, worldZ,
+                        worldSeedInt,
                         riverShapedHeightD,
                         seaLevel,
                         ctx.hydro[colIndex],
