@@ -90,6 +90,12 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
         veinGen.generate(world, rand, chunkX, chunkZ);
 
+        if (acidLakeGen != null && rand.nextInt(2000) == 0) {
+            int lakeX = worldX0 + rand.nextInt(16);
+            int lakeZ = worldZ0 + rand.nextInt(16);
+            acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
+        }
+
         decorateBiomeFeatures(
             world, rand, chunk, (TalosBiomeBase) biome
         );
@@ -142,15 +148,6 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         for (int i = 0; i < n; i++) {
             feature.generate(world, rand, chunk,
                 rand.nextInt(16), rand.nextInt(16));
-        }
-
-        if (acidLakeGen != null) {
-            if (rand.nextInt(2000) == 0) {
-                int lakeX = worldX0 + rand.nextInt(16);
-                int lakeZ = worldZ0 + rand.nextInt(16);
-
-                acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
-            }
         }
     }
 }
