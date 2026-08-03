@@ -11,7 +11,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.LandType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.PlateBoundaryInfluence;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +40,11 @@ public final class TectonicWorld {
 
     /** (cellX,cellZ) → Supercontinent 的缓存。 */
     private final Map<Long, Supercontinent> continentCache =
-        new HashMap<Long, Supercontinent>();
+        new ConcurrentHashMap<Long, Supercontinent>();
 
     /** (cellX,cellZ) → 有效放置信息缓存（含“不存在”的格点）。 */
     private final Map<Long, SupercontinentPlacement.Placement> placementCache =
-        new HashMap<Long, SupercontinentPlacement.Placement>();
+        new ConcurrentHashMap<Long, SupercontinentPlacement.Placement>();
 
     public TectonicWorld(long worldSeed) {
         this.worldSeed = worldSeed;
@@ -64,19 +64,22 @@ public final class TectonicWorld {
      */
     private Supercontinent getSupercontinent(int cellX, int cellZ) {
         long key = packCellKey(cellX, cellZ);
-        if (continentCache.containsKey(key)) {
-            return continentCache.get(key);
+        Supercontinent cached = continentCache.get(key);
+        if (cached != null) {
+            return cached;
         }
 
+        // 注意：ConcurrentHashMap 不允许 null 值，因此“不存在”不再写入
+        // continentCache；不存在的大陆由 placementCache（已缓存 Placement）
+        // 兜底，成本可忽略。
         SupercontinentPlacement.Placement p = placementAt(cellX, cellZ);
         if (p == null || !p.exists) {
-            continentCache.put(key, null);
             return null;
         }
 
         Supercontinent sc = new Supercontinent(worldSeed, cellX, cellZ, p);
-        continentCache.put(key, sc);
-        return sc;
+        Supercontinent prev = continentCache.putIfAbsent(key, sc);
+        return prev != null ? prev : sc;
     }
 
     /**

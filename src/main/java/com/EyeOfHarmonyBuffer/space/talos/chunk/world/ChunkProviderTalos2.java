@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
@@ -171,12 +172,23 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     worldSeedInt
                 );
 
+                // 山脉抬升：构造挤压带（HIGHLAND/MOUNTAINS/PEAK）上的 DLA 山脊。
+                // 放在裂谷之后、河岸之前；河流最后下切，穿山而过。
+                double mountainShapedHeightD =
+                    MountainTerrainModifier.applyMountainUplift(
+                        riftShapedHeightD,
+                        seaLevel,
+                        ctx.mountainElevation01[colIndex],
+                        ctx.mountainMask01[colIndex],
+                        ctx.mountainKind[colIndex]
+                    );
+
                 // 河岸塑形放在裂谷塑形之后：泛洪平原必须作用在最终地形上，
                 // 否则裂谷压高会把它重新抬回谷底高度（裂谷里的河因此没有泛洪平原）。
                 double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
                     worldX, worldZ,
                     worldSeedInt,
-                    riftShapedHeightD,
+                    mountainShapedHeightD,
                     seaLevel,
                     bankPreset,
                     isLand,

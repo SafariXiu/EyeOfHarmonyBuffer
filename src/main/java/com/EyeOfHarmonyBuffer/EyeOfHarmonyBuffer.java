@@ -27,6 +27,7 @@ import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.MountainLifecycleHandler;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
@@ -129,6 +130,9 @@ public class EyeOfHarmonyBuffer {
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
+        // 山地层：WorldEvent 走 Forge 总线，WorldTickEvent 走 FML 总线
+        MinecraftForge.EVENT_BUS.register(new MountainLifecycleHandler());
+        FMLCommonHandler.instance().bus().register(new MountainLifecycleHandler());
 
         ExampleQuestRegistration.registerAll();
 
@@ -190,6 +194,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandTalosContinent());
         event.registerServerCommand(new CommandTalosBiome());
         event.registerServerCommand(new CommandTalosBoundary());
+        event.registerServerCommand(new CommandTalosMountain());
     }
 
     @Mod.EventHandler

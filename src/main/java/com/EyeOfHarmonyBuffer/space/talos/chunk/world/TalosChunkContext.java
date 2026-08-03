@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.LandMask16;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.api.TalosMountainSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
@@ -54,6 +55,15 @@ public final class TalosChunkContext {
     /** 每列经过 R=2 盒式模糊的河岸强度 bankIntensity（宏群系边界平滑用）。 */
     public final double[] bankIntensity;
 
+    /** 每列连续高程 01（DLA 全权接管；不带蒙版）。 */
+    public final double[] mountainElevation01;
+
+    /** 每列山带蒙版 0~1（带内 1，带外 0，边缘软过渡）。 */
+    public final double[] mountainMask01;
+
+    /** 每列山带类型（0=非山地，1=HIGHLAND，2=MOUNTAINS，3=PEAK）。 */
+    public final int[] mountainKind;
+
     private TalosChunkContext(int chunkX, int chunkZ, int worldSeedInt, int seaLevel,
                               LandMask16 landMask,
                               TalosLandMask.Sample[] land) {
@@ -70,6 +80,9 @@ public final class TalosChunkContext {
         this.heightBias = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.heightScale = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.bankIntensity = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.mountainElevation01 = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.mountainMask01 = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.mountainKind = new int[CHUNK_SIZE * CHUNK_SIZE];
     }
 
     /**
@@ -135,6 +148,14 @@ public final class TalosChunkContext {
                     land[idx],
                     heightBias[idx], heightScale[idx]
                 );
+
+                TalosMountainSystem.MountainSample mountain =
+                    TalosMountainSystem.sampleMountain(
+                        worldX, worldZ, worldSeedInt
+                    );
+                mountainElevation01[idx] = mountain.elevation01;
+                mountainMask01[idx] = mountain.mask01;
+                mountainKind[idx] = mountain.kind;
             }
         }
 
