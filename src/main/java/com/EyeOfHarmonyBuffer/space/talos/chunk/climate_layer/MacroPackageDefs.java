@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseUtil;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 import net.minecraft.world.biome.BiomeGenBase;
 
 import java.util.Random;
@@ -72,6 +74,32 @@ public final class MacroPackageDefs {
                     TalosBiomes.TALOS_POLAR_DESERT
                 };
 
+            // ===== 裂谷 / 峡谷（板块分离带注入，只放低群系） =====
+            case RIFT_TROPICAL:
+                return new BiomeGenBase[] {
+                    TalosBiomes.TALOS_TROPICAL_RAIN,
+                    TalosBiomes.TALOS_BASIN
+                };
+
+            case RIFT_TEMPERATE:
+                return new BiomeGenBase[] {
+                    TalosBiomes.TALOS_PLAINS,
+                    TalosBiomes.TALOS_TEMPERATE_STEPPE,
+                    TalosBiomes.TALOS_TEMPERATE_FOREST
+                };
+
+            case RIFT_POLAR:
+                return new BiomeGenBase[] {
+                    TalosBiomes.TALOS_SUBPOLAR_TUNDRA,
+                    TalosBiomes.TALOS_COOL_FOREST
+                };
+
+            // ===== 最高峰（挤压带核心注入，只含地形最高的群系） =====
+            case MOUNTAIN_PEAK:
+                return new BiomeGenBase[] {
+                    TalosBiomes.TALOS_ALPINE
+                };
+
             default:
                 return new BiomeGenBase[] { TalosBiomes.TALOS_PLAINS };
         }
@@ -100,6 +128,38 @@ public final class MacroPackageDefs {
         int seed = worldSeedInt ^ (id.ordinal() * 7347);
         double r = NoiseUtil.hash2(x, z, seed);
         int idx = (int) (r * list.length);
+        if (idx < 0) {
+            idx = 0;
+        }
+        if (idx >= list.length) {
+            idx = list.length - 1;
+        }
+        return list[idx];
+    }
+
+    /**
+     * 低频连贯的确定性 biome 选择：用于板块边界覆盖等"整带注入"场景。
+     *
+     * 与 pickDeterministicBiome 的区别：后者逐点哈希，会产生细碎斑块；
+     * 这里使用 4096 格尺度的 Value Noise，让群系补丁大小与宏细胞 / 正常
+     * 子块尺度一致（几千格一块），避免边界带内群系"普遍偏小"。
+     */
+    public static BiomeGenBase pickCoherentBiome(MacroPackageId id,
+                                                 int x, int z,
+                                                 int worldSeedInt) {
+        BiomeGenBase[] list = getBiomes(id);
+        if (list == null || list.length == 0) {
+            return TalosBiomes.TALOS_PLAINS;
+        }
+        if (list.length == 1) {
+            return list[0];
+        }
+
+        int seed = worldSeedInt ^ (id.ordinal() * 7347);
+        double n = NoiseUtil.coreNoise2D(
+            x / 4096.0, z / 4096.0, seed
+        ); // [0,1)
+        int idx = (int) (n * list.length);
         if (idx < 0) {
             idx = 0;
         }

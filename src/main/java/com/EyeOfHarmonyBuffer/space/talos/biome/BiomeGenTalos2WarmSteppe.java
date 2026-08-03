@@ -1,14 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import net.minecraft.init.Blocks;
 
-public class BiomeGenTalos2WarmSteppe extends GSBiomeGenBase {
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
+public class BiomeGenTalos2WarmSteppe extends TalosBiomeBase {
 
     public BiomeGenTalos2WarmSteppe(int id) {
         super(id);
@@ -23,9 +17,22 @@ public class BiomeGenTalos2WarmSteppe extends GSBiomeGenBase {
         this.rootHeight = 0.08F;
         this.heightVariation = 0.04F;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.grass, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.dirt, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.stone, (byte) 0);
+        this.heightBias = 0.42;
+        this.heightScale = 0.45;
+
+        // ===== 树：稀疏歪橡树（旱地感） =====
+        this.treeStyle.perChunk = 0.2;
+        this.treeBlueprint = TalosTreeBlueprints.WARM_STEPPE_TREE;
+
+        this.grass = new GrassConfig(30, 1);
+        this.deadBush = new SimpleConfig(6);
+        this.flowers = new FlowerConfig(1, Blocks.red_flower);
+        this.pond = new PondConfig(0.06, 5, 2, 0.5);
+        this.rocks = new RockConfig(0.2, Blocks.stone, 5, 2, 5);
+        this.boulders = new SimpleConfig(0.2);
+
+        this.groundPatches.add(new GroundPatchConfig(2, Blocks.dirt, 0, 2, 0.6));
+        this.groundPatches.add(new GroundPatchConfig(0.5, Blocks.gravel, 0, 2, 0.3));
     }
 
     @Override

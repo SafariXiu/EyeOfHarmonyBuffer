@@ -1,17 +1,12 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
-public class BiomeGenTalos2Desert extends GSBiomeGenBase {
+public class BiomeGenTalos2Desert extends TalosBiomeBase {
 
     public double desertMin;
     public double desertMax;
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
 
     public BiomeGenTalos2Desert(int id) {
         super(id);
@@ -29,9 +24,25 @@ public class BiomeGenTalos2Desert extends GSBiomeGenBase {
         this.desertMin = 72.0D;
         this.desertMax = 98.0D;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.sand, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.sand, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.sandstone, (byte) 0);
+        this.heightBias = 0.45;
+        this.heightScale = 0.40;
+
+        Block[] sandy = new Block[] {
+            Blocks.sand, Blocks.sandstone, Blocks.stone, Blocks.gravel,
+            Blocks.grass, Blocks.dirt
+        };
+
+        // 沙漠不长树、不长草，只有仙人掌与枯灌木
+        this.cactus = new SimpleConfig(2);
+        this.deadBush = new SimpleConfig(4);
+
+        this.rocks = new RockConfig(0.5, Blocks.stone, 5, 2, 5);
+        this.rocks.groundBlocks = sandy;
+        this.boulders = new SimpleConfig(0.3);
+
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.gravel, 0, 2, 0.3));
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.sandstone, 0, 2, 0.3));
+        this.groundPatches.add(new GroundPatchConfig(0.5, Blocks.dirt, 0, 2, 0.3));
     }
 
     @Override

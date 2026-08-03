@@ -3,12 +3,18 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 /**
  * 宏群系级的基础地形 preset。
  * 每个 MacroPackageId（包括 OCEANIC）对应一份。
+ *
+ * 高度控制模型：噪声只负责「形状」，最终高度被锁定在
+ * [minHeight, maxHeight] 高度带内（宏包做大限制，群系级微调留待后续）。
  */
 
 public final class BaseTerrainPreset {
 
-    /** 平均高度（不含河谷/高山），例如陆地 60~90，海洋略低于 seaLevel。 */
-    public final double baseHeight;
+    /** 高度带下限（陆地不应低于海平面时，至少给 64）。 */
+    public final double minHeight;
+
+    /** 高度带上限（山地可直接顶到 256）。 */
+    public final double maxHeight;
 
     /** 低频：大陆级 / 盆地级起伏（1~2 层）。 */
     public final double lowFreq;
@@ -31,14 +37,16 @@ public final class BaseTerrainPreset {
     /** 海床最大下切深度控制（只对 OCEANIC 有意义，其它包可为 0）。 */
     public final double oceanDepthMax;
 
-    public BaseTerrainPreset(double baseHeight,
+    public BaseTerrainPreset(double minHeight,
+                             double maxHeight,
                              double lowFreq,  double lowAmp,  int lowOctaves,
                              double midFreq,  double midAmp,  int midOctaves,
                              double highFreq, double highAmp, int highOctaves,
                              double plateauStrength,
                              double oceanDepthMax) {
 
-        this.baseHeight      = baseHeight;
+        this.minHeight       = minHeight;
+        this.maxHeight       = maxHeight;
         this.lowFreq         = lowFreq;
         this.lowAmp          = lowAmp;
         this.lowOctaves      = lowOctaves;

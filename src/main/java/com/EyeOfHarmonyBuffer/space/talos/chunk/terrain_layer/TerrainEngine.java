@@ -1,12 +1,12 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.applyOceanDepthLimit;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight.computeBaseHeightCore;
+import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.clamp;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.lerp;
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.smoothstep;
 
@@ -26,15 +26,45 @@ public final class TerrainEngine {
     public static double sampleBaseHeight(int worldX, int worldZ,
                                           int worldSeedInt,
                                           int seaLevel) {
-        WorldgenAPI.SampleResult landSample =
-            TalosLandMask.sample(worldX, worldZ, worldSeedInt);
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel,
+            TalosLandMask.sampleFull(worldX, worldZ, worldSeedInt),
+            0.5, 1.0
+        );
+    }
+
+    /**
+     * chunk 级上下文版本：复用调用方已经算好的 LandSample。
+     * 结果与无缓存版本完全一致（同一确定性函数）。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample
+    ) {
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            0.5, 1.0
+        );
+    }
+
+    /**
+     * 群系级高度调制：宏包带内做 bias/scale 微调。
+     * 平滑后的参数由调用方（TalosChunkContext）传入。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample,
+        double biomeBias, double biomeScale
+    ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
         double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
         double  coastWeight = (landSample != null) ? landSample.coastWeight : 0.0;
 
         TalosMacroClimate.MacroBlendSample blend =
-            TalosMacroClimate.sampleMacroBlend(worldX, worldZ, worldSeedInt, 2);
+            TalosMacroClimate.sampleMacroBlend(
+                worldX, worldZ, worldSeedInt, 2, isLand
+            );
 
         MacroPackageId primaryId;
         MacroPackageId secondaryId;
@@ -100,7 +130,7 @@ public final class TerrainEngine {
         double t;
         double sumW = w1 + w2;
         if (sumW > 0.0) {
-            t = w2 / sumW;  // t ∈ [0,1]，代表 secondary 占比
+            t = w2 / sumW;
         } else {
             t = 0.0;
         }
@@ -109,8 +139,17 @@ public final class TerrainEngine {
 
         double h = lerp(h1, h2, t);
 
-        if (primaryId != secondaryId) {
-            h = applyMacroBoundarySmooth(h, h1, h2, t);
+        // 群系调制：在宏包混合带 [lo, hi] 内调整相对位置。
+        // 宏包带始终是硬边界，调制不会越出带外。
+        if (biomeBias != 0.5 || biomeScale != 1.0) {
+            double lo = lerp(profile1.minHeight, profile2.minHeight, t);
+            double hi = lerp(profile1.maxHeight, profile2.maxHeight, t);
+
+            double tt = (hi > lo) ? (h - lo) / (hi - lo) : 0.5;
+            tt = clamp(tt, 0.0, 1.0);
+            tt = clamp(biomeBias + (tt - 0.5) * biomeScale, 0.0, 1.0);
+
+            h = lo + (hi - lo) * smoothstep(0.0, 1.0, tt);
         }
 
         if (primaryId == MacroPackageId.OCEANIC) {
@@ -118,61 +157,6 @@ public final class TerrainEngine {
         }
 
         h = applyCoastSmooth(h, coastWeight, seaLevel, isLand);
-
-        return h;
-    }
-
-    /**
-     * 宏群系边界的额外平滑（加强版）：
-     *   - 放大“边界带宽度”，只要 t 落在比较宽的区间，就适度往两侧平均高度拉；
-     *   - 高度差越大，越倾向于在边界把这条“断层”抹弯，而不是保留一条很直的台阶线。
-     */
-    private static double applyMacroBoundarySmooth(double h,
-                                                   double h1,
-                                                   double h2,
-                                                   double t) {
-        final double center = 0.5;
-
-        final double innerBand = 0.15;
-        final double outerBand = 0.45;
-
-        double d = Math.abs(t - center);
-        if (d >= outerBand) {
-            return h;
-        }
-
-        double wRegion;
-        if (d <= innerBand) {
-            wRegion = 1.0;
-        } else {
-            double u = (d - innerBand) / (outerBand - innerBand); // 0..1
-            // 1 - smoothstep(0,1,u)
-            wRegion = 1.0 - (u * u * (3.0 - 2.0 * u));
-        }
-
-        double mid = 0.5 * (h1 + h2);
-
-        final double baseStrength = 0.7;
-        double blend = baseStrength * wRegion;
-
-        h = lerp(h, mid, blend);
-
-        double diff = Math.abs(h1 - h2);
-        if (diff > 6.0) {
-            double cliffFactor;
-            if (diff >= 24.0) {
-                cliffFactor = 1.0;
-            } else {
-                double v = (diff - 6.0) / (24.0 - 6.0);
-                cliffFactor = v * v * (3.0 - 2.0 * v);
-            }
-
-            double extraStrength = 0.5 * wRegion * cliffFactor;
-
-            if (extraStrength > 0.0) {
-                h = lerp(h, mid, extraStrength);
-            }
-        }
 
         return h;
     }

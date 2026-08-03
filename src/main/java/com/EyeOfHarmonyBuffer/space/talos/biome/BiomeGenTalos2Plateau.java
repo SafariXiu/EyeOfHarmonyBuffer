@@ -1,17 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import net.minecraft.init.Blocks;
 
-public class BiomeGenTalos2Plateau extends GSBiomeGenBase {
+public class BiomeGenTalos2Plateau extends TalosBiomeBase {
 
     public double plateauMin;
     public double plateauMax;
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
 
     public BiomeGenTalos2Plateau(int id) {
         super(id);
@@ -28,9 +22,22 @@ public class BiomeGenTalos2Plateau extends GSBiomeGenBase {
         this.plateauMin = 92.0D;
         this.plateauMax = 124.0D;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.grass, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.dirt, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.stone, (byte) 0);
+        this.heightBias = 0.62;
+        this.heightScale = 0.45;
+
+        // ===== 树：稀疏橡树 =====
+        this.treeStyle.perChunk = 0.4;
+        this.treeBlueprint = TalosTreeBlueprints.PLATEAU_OAK;
+
+        this.grass = new GrassConfig(25, 1);
+        this.deadBush = new SimpleConfig(2);
+        this.pond = new PondConfig(0.05, 5, 2, 0.5);
+        this.rocks = new RockConfig(0.5, Blocks.stone, 5, 2, 5);
+        this.boulders = new SimpleConfig(0.4);
+
+        this.groundPatches.add(new GroundPatchConfig(2, Blocks.dirt, 0, 2, 0.5));
+        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(1.0, Blocks.snow, 0, 2, 0.35));
     }
 
     @Override

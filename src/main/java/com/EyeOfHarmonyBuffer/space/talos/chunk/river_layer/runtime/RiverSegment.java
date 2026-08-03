@@ -19,6 +19,11 @@ public final class RiverSegment {
 
     public final double influenceRadius;
 
+    /** 该线段起点的纵向深度倍率（来自 RiverNetworkProfile）。 */
+    public final double depthScaleStart;
+    /** 该线段终点的纵向深度倍率。 */
+    public final double depthScaleEnd;
+
     public final boolean hasSource;
     public final boolean hasMouth;
 
@@ -37,6 +42,8 @@ public final class RiverSegment {
                         double edgeWidthStart,
                         double edgeWidthEnd,
                         double influenceRadius,
+                        double depthScaleStart,
+                        double depthScaleEnd,
                         boolean hasSource,
                         boolean hasMouth,
                         double sourceX,
@@ -55,6 +62,8 @@ public final class RiverSegment {
         this.edgeWidthStart = edgeWidthStart;
         this.edgeWidthEnd = edgeWidthEnd;
         this.influenceRadius = influenceRadius;
+        this.depthScaleStart = depthScaleStart;
+        this.depthScaleEnd = depthScaleEnd;
         this.hasSource = hasSource;
         this.hasMouth = hasMouth;
         this.sourceX = sourceX;

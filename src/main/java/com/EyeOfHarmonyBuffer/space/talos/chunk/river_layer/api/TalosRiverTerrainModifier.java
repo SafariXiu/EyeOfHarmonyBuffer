@@ -1,18 +1,60 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
+
+import java.util.EnumMap;
 
 public final class TalosRiverTerrainModifier {
 
     private TalosRiverTerrainModifier() {}
+
+    /** 宏群系 → bankIntensity 常量缓存（OCEANIC / null 固定为 0.5，不入缓存）。 */
+    private static final EnumMap<MacroPackageId, Double> BANK_INTENSITY_CACHE =
+        new EnumMap<>(MacroPackageId.class);
+
+    /**
+     * 获取某个宏群系的河岸强度 bankIntensity（0..1）。
+     *
+     * 河流层的统一出口：世界层 / 区块上下文一律从这里取，
+     * 不再直接读取 MacroPackageRegistry 内部注册表。
+     * OCEANIC / null（无配置）按中性 0.5 处理。
+     */
+    public static double bankIntensityFor(MacroPackageId macroId) {
+        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
+            return 0.5;
+        }
+
+        Double cached = BANK_INTENSITY_CACHE.get(macroId);
+        if (cached != null) {
+            return cached;
+        }
+
+        MacroPackageRegistry.RiverBankPreset bank =
+            MacroPackageRegistry.get(macroId).riverBank();
+
+        double k = (bank != null) ? bank.bankIntensity() : 0.5;
+        if (k < 0.0) k = 0.0;
+        if (k > 1.0) k = 1.0;
+
+        BANK_INTENSITY_CACHE.put(macroId, k);
+        return k;
+    }
+
+    /**
+     * 用任意强度值构造河岸预设（例如经过空间模糊后的 bankIntensity）。
+     * 世界层不再直接 new 河流层内部类型。
+     */
+    public static MacroPackageRegistry.RiverBankPreset bankPreset(double bankIntensity) {
+        return new MacroPackageRegistry.RiverBankPreset(bankIntensity);
+    }
 
     /**
      * 基于河流 mask 对基础高度做「河岸压低 + 平滑回老地形」。
      *
      * 新版规则（riverMask ∈ [0, 1]，越靠近河道中心值越大）：
      *   - 仅在 isLand == true 时生效；
-     *   - 仅在 baseHeight > riverSurfaceY 时改，保护河道和洼地；
+     *   - 双向收敛：高地压低、低地抬升到河面，形成连续的河岸 / 洪泛平原；
      *   - 使用 MacroPackageRegistry.RiverBankPreset 中的单参数：
      *       bankIntensity ∈ [0,1]，表示当前宏群系的「河岸压低强度」：
      *         0 = 几乎不做河岸压低；
@@ -47,17 +89,35 @@ public final class TalosRiverTerrainModifier {
         int worldSeedInt,
         double baseHeightD,
         double riverSurfaceY,
-        MacroPackageRegistry.RiverBankPreset bankPreset
+        MacroPackageRegistry.RiverBankPreset bankPreset,
+        boolean isLand
     ) {
-        if (!TalosLandMask.isLand(worldX, worldZ, worldSeedInt)) {
+        return applyRiverBankShaping(
+            worldX, worldZ, worldSeedInt,
+            baseHeightD, riverSurfaceY, bankPreset, isLand,
+            TalosRiverSystem.getRiverMask(worldX, worldZ, worldSeedInt)
+        );
+    }
+
+    /**
+     * chunk 级上下文版本：河流 mask 由调用方预先算好传入
+     * （来自 TalosChunkContext 的水文场，含义与 getRiverMask 完全一致），
+     * 避免每个方块重复跑整条河流查询链。
+     */
+    public static double applyRiverBankShaping(
+        int worldX, int worldZ,
+        int worldSeedInt,
+        double baseHeightD,
+        double riverSurfaceY,
+        MacroPackageRegistry.RiverBankPreset bankPreset,
+        boolean isLand,
+        double riverMask
+    ) {
+        if (!isLand) {
             return baseHeightD;
         }
 
-        if (baseHeightD <= riverSurfaceY) {
-            return baseHeightD;
-        }
-
-        double mask = TalosRiverSystem.getRiverMask(worldX, worldZ, worldSeedInt);
+        double mask = riverMask;
         if (mask <= 0.0) {
             return baseHeightD;
         }

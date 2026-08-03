@@ -5,7 +5,7 @@ import java.util.List;
 public final class RiverTemplate {
     public static final double WORLD_SIZE = 100000.0;
 
-    public final long seed;               // RVR2 里的 seed
+    public final long seed; // RVR2 里的 seed
     public final List<TemplateEdge> edges;
 
     public RiverTemplate(long seed, List<TemplateEdge> edges) {

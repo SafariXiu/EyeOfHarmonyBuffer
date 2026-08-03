@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.biome.api.TalosHeightModProvider;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -31,6 +32,24 @@ public final class BiomeRegionLayer {
     /** 网格尺寸 = TILE_SIZE / SAMPLE_STEP。*/
     public static final int GRID_SIZE = TILE_SIZE / SAMPLE_STEP; // 1024/64 = 16
 
+    /** 块级投票的核半径（以 64 格采样格为单位）：2 格 = 128 blocks。 */
+    private static final int BLEND_RADIUS_CELLS = 2;
+
+    private static final double BLEND_RADIUS_BLOCKS =
+        BLEND_RADIUS_CELLS * SAMPLE_STEP;
+
+    /**
+     * 连续混合核：w = (1 - d/R)^2，窗口边缘权重为 0，
+     * 采样窗口增删格子时不会在 64 格网格 / 1024 格 tile 边界产生跳变。
+     */
+    private static double blendKernel(double distBlocks) {
+        if (distBlocks >= BLEND_RADIUS_BLOCKS) {
+            return 0.0;
+        }
+        double t = 1.0 - distBlocks / BLEND_RADIUS_BLOCKS;
+        return t * t;
+    }
+
     /** 连通分量里“最小保留格子数”的基础阈值。*/
     public static final int MIN_LAND_COMPONENT_SIZE = 4; // 陆地
     public static final int MIN_OCEAN_COMPONENT_SIZE = 4; // 远离海岸的海洋
@@ -49,8 +68,19 @@ public final class BiomeRegionLayer {
 
     /** 对外主接口：获取“平滑后的” Biome。*/
     public BiomeGenBase getSmoothedBiomeAt(int x, int z) {
+        return getSmoothedBiomeAt(
+            x, z, TalosLandMask.isLandCheap(x, z, worldSeedInt)
+        );
+    }
+
+    /**
+     * 已知该点 isLand 时的平滑群系查询。
+     * 与上面的接口结果完全一致，只是省掉内部重复的 isLandCheap 计算
+     * （chunk 级群系表用 LandSample 表直接传入）。
+     */
+    public BiomeGenBase getSmoothedBiomeAt(int x, int z, boolean isLandHere) {
         BiomeTile tile = getOrCreateTileFor(x, z);
-        return tile.getSmoothedBiomeAt(x, z);
+        return tile.getSmoothedBiomeAt(x, z, isLandHere);
     }
 
     private static long packTile(int tx, int tz) {
@@ -83,6 +113,28 @@ public final class BiomeRegionLayer {
         if (local < 0) local = 0;
         if (local >= TILE_SIZE) local = TILE_SIZE - 1;
         return local;
+    }
+
+    /**
+     * 单点平滑查询结果：最佳群系 + 按群系权重混合的高度调制参数。
+     * 调制参数与宏群系混合一样按权重平滑，边界处自然过渡、无断崖。
+     */
+    public static final class SmoothedSample {
+        public final BiomeGenBase biome;
+        public final double bias;
+        public final double scale;
+
+        public SmoothedSample(BiomeGenBase biome, double bias, double scale) {
+            this.biome = biome;
+            this.bias = bias;
+            this.scale = scale;
+        }
+    }
+
+    /** 对 (x,z) 做平滑查询：最佳群系 + 权重混合的高度调制参数。 */
+    public SmoothedSample getSmoothedSampleAt(int x, int z, boolean isLandHere) {
+        BiomeTile tile = getOrCreateTileFor(x, z);
+        return tile.getSmoothedSample(x, z, isLandHere);
     }
 
     private final class BiomeTile {
@@ -133,7 +185,8 @@ public final class BiomeRegionLayer {
                     int worldZ = baseWorldZ + gz * SAMPLE_STEP + SAMPLE_STEP / 2;
 
                     BiomeGenBase biome = TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
-                    boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+                    // 原来：boolean land = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
+                    boolean land = TalosLandMask.isLandCheap(worldX, worldZ, worldSeedInt);
 
                     rawBiome[index] = biome;
                     smoothedBiome[index] = biome;
@@ -229,17 +282,7 @@ public final class BiomeRegionLayer {
             }
         }
 
-        /**
-         * 小分量合并：
-         *   - 对 size < 阈值 的分量；
-         *   - 找它们的邻居分量（同 isLand）；
-         *   - 并入“size 最大的邻居分量”的 biome。
-         *
-         * 阈值策略：
-         *   - 陆地分量：MIN_LAND_COMPONENT_SIZE；
-         *   - 远海分量：MIN_OCEAN_COMPONENT_SIZE；
-         *   - 靠岸海洋分量：MIN_COAST_OCEAN_COMPONENT_SIZE（更容易被吞掉）。
-         */
+        // mergeSmallComponents 保持不变，这里省略注释，只是原样拷贝
         private void mergeSmallComponents() {
             if (compCount <= 0) return;
 
@@ -323,58 +366,55 @@ public final class BiomeRegionLayer {
         }
 
         /** 获取该 tile 中 (worldX,worldZ) 对应位置的平滑后 Biome（带 block 级海陆校验 + 多格插值）。*/
-        BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ) {
-            int localX = worldToLocalInTile(worldX);
-            int localZ = worldToLocalInTile(worldZ);
+        BiomeGenBase getSmoothedBiomeAt(int worldX, int worldZ,
+                                        boolean isLandHere) {
+            return getSmoothedSample(worldX, worldZ, isLandHere).biome;
+        }
 
-            double gx = (double) localX / SAMPLE_STEP;
-            double gz = (double) localZ / SAMPLE_STEP;
+        SmoothedSample getSmoothedSample(int worldX, int worldZ,
+                                         boolean isLandHere) {
+            // 域扭曲：让 Voronoi / 子块直线边界变成有机曲线
+            double[] warp = ClimateDomainWarp.warp(worldX, worldZ, worldSeedInt);
+            double wx = warp[0];
+            double wz = warp[1];
 
-            int gxCenter = (int) Math.floor(gx);
-            int gzCenter = (int) Math.floor(gz);
-
-            if (gxCenter < 0) gxCenter = 0;
-            if (gzCenter < 0) gzCenter = 0;
-            if (gxCenter >= GRID_SIZE) gxCenter = GRID_SIZE - 1;
-            if (gzCenter >= GRID_SIZE) gzCenter = GRID_SIZE - 1;
-
-            boolean isLandHere = TalosLandMask.isLand(worldX, worldZ, worldSeedInt);
-
-            final int radius = 1;
-
-            double[] accum = null;
-
-            int baseWorldX = tileX * TILE_SIZE;
-            int baseWorldZ = tileZ * TILE_SIZE;
+            int cellX0 = (int) Math.floor((wx - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
+            int cellZ0 = (int) Math.floor((wz - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
 
             java.util.IdentityHashMap<BiomeGenBase, Double> weightMap = new java.util.IdentityHashMap<>();
 
-            for (int dz = -radius; dz <= radius; dz++) {
-                int gzN = gzCenter + dz;
-                if (gzN < 0 || gzN >= GRID_SIZE) continue;
+            for (int dz = -BLEND_RADIUS_CELLS; dz <= BLEND_RADIUS_CELLS; dz++) {
+                int cellWorldZ = SAMPLE_STEP * (cellZ0 + dz) + SAMPLE_STEP / 2;
+                double ddz = wz - cellWorldZ;
 
-                for (int dx = -radius; dx <= radius; dx++) {
-                    int gxN = gxCenter + dx;
-                    if (gxN < 0 || gxN >= GRID_SIZE) continue;
+                for (int dx = -BLEND_RADIUS_CELLS; dx <= BLEND_RADIUS_CELLS; dx++) {
+                    int cellWorldX = SAMPLE_STEP * (cellX0 + dx) + SAMPLE_STEP / 2;
+                    double ddx = wx - cellWorldX;
 
-                    int index = idx(gxN, gzN);
-
-                    if (isLand[index] != isLandHere) continue;
-
-                    BiomeGenBase b = smoothedBiome[index];
-                    if (b == null) {
-                        b = rawBiome[index];
+                    double dist = Math.sqrt(ddx * ddx + ddz * ddz);
+                    double w = blendKernel(dist);
+                    if (w <= 0.0) {
+                        continue;
                     }
-                    if (b == null) continue;
 
-                    int cellWorldX = baseWorldX + gxN * SAMPLE_STEP + SAMPLE_STEP / 2;
-                    int cellWorldZ = baseWorldZ + gzN * SAMPLE_STEP + SAMPLE_STEP / 2;
+                    // 跨 tile 解析：从该采样格真正所属的 tile 读取，不再截断
+                    BiomeTile tile = getOrCreateTileFor(cellWorldX, cellWorldZ);
+                    int localX = worldToLocalInTile(cellWorldX);
+                    int localZ = worldToLocalInTile(cellWorldZ);
+                    int index = (localZ / SAMPLE_STEP) * GRID_SIZE
+                        + (localX / SAMPLE_STEP);
 
-                    double ddx = worldX - cellWorldX;
-                    double ddz = worldZ - cellWorldZ;
-                    double dist2 = ddx * ddx + ddz * ddz;
+                    if (tile.isLand[index] != isLandHere) {
+                        continue;
+                    }
 
-                    double w = 1.0 / (dist2 + 1.0);
+                    BiomeGenBase b = tile.smoothedBiome[index];
+                    if (b == null) {
+                        b = tile.rawBiome[index];
+                    }
+                    if (b == null) {
+                        continue;
+                    }
 
                     Double old = weightMap.get(b);
                     weightMap.put(b, (old == null ? 0.0 : old) + w);
@@ -382,7 +422,11 @@ public final class BiomeRegionLayer {
             }
 
             if (weightMap.isEmpty()) {
-                return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
+                BiomeGenBase raw = TalosMacroClimate.getRawBiome(
+                    worldX, worldZ, worldSeedInt
+                );
+                return new SmoothedSample(raw,
+                    heightBiasOf(raw), heightScaleOf(raw));
             }
 
             BiomeGenBase bestBiome = null;
@@ -395,11 +439,39 @@ public final class BiomeRegionLayer {
                 }
             }
 
-            if (bestBiome != null) {
-                return bestBiome;
+            if (bestBiome == null) {
+                BiomeGenBase raw = TalosMacroClimate.getRawBiome(
+                    worldX, worldZ, worldSeedInt
+                );
+                return new SmoothedSample(raw,
+                    heightBiasOf(raw), heightScaleOf(raw));
             }
 
-            return TalosMacroClimate.getRawBiome(worldX, worldZ, worldSeedInt);
+            // 高度调制参数按群系权重混合（与宏群系混合同一思路）
+            double wSum = 0.0;
+            double bSum = 0.0;
+            double sSum = 0.0;
+            for (java.util.Map.Entry<BiomeGenBase, Double> e : weightMap.entrySet()) {
+                double w = e.getValue();
+                BiomeGenBase b = e.getKey();
+                bSum += heightBiasOf(b) * w;
+                sSum += heightScaleOf(b) * w;
+                wSum += w;
+            }
+
+            double bias = (wSum > 0.0) ? bSum / wSum : 0.5;
+            double scale = (wSum > 0.0) ? sSum / wSum : 1.0;
+            return new SmoothedSample(bestBiome, bias, scale);
+        }
+
+        private static double heightBiasOf(BiomeGenBase b) {
+            return (b instanceof TalosHeightModProvider)
+                ? ((TalosHeightModProvider) b).getHeightBias() : 0.5;
+        }
+
+        private static double heightScaleOf(BiomeGenBase b) {
+            return (b instanceof TalosHeightModProvider)
+                ? ((TalosHeightModProvider) b).getHeightScale() : 1.0;
         }
     }
 }

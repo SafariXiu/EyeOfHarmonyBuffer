@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.SuperCenterInfo;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -17,7 +16,7 @@ public class CommandTalosSuperCenter extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosSuperCenter - 传送到当前所在超级大陆的中心点（Debug 用）";
+        return "/talosSuperCenter - 传送到当前所在超级大陆（主/次级均可）的中心点（Debug 用）";
     }
 
     @Override
@@ -48,19 +47,19 @@ public class CommandTalosSuperCenter extends CommandBase {
             return;
         }
 
-        SuperCenterInfo info = TalosLandMask.getSuperCenterAt(px, pz, worldSeedInt);
-        if (info == null) {
+        int[] center = TalosLandMask.getSuperCenterXZById(superId, worldSeedInt);
+        if (center == null) {
             sender.addChatMessage(new ChatComponentText(
                 String.format(
-                    "在当前坐标附近无法获取超级大陆中心信息（superId=%d，可能缓存/生成异常）。",
+                    "无法获取超级大陆中心信息（superId=%d，可能数据异常）。",
                     superId
                 )
             ));
             return;
         }
 
-        int centerX = info.worldX;
-        int centerZ = info.worldZ;
+        int centerX = center[0];
+        int centerZ = center[1];
 
         int y = world.getTopSolidOrLiquidBlock(centerX, centerZ);
         if (y <= 0) {
@@ -73,10 +72,14 @@ public class CommandTalosSuperCenter extends CommandBase {
 
         player.setPositionAndUpdate(tpX, tpY, tpZ);
 
+        String mainSub = TalosLandMask.isMainSupercontinent(superId)
+            ? "主大陆" : "次级大陆";
+
         sender.addChatMessage(new ChatComponentText(
             String.format(
-                "[TalosSuper] 跳转到超级大陆中心: superId=%d, center=(%d, ~%d, %d)",
-                info.superId,
+                "[TalosSuper] 跳转到%s中心: superId=%d, center=(%d, ~%d, %d)",
+                mainSub,
+                superId,
                 centerX, y + 2,
                 centerZ
             )

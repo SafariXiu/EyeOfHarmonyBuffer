@@ -1,6 +1,10 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TectonicStyle;
 import net.minecraft.world.biome.BiomeGenBase;
 
 /**
@@ -20,14 +24,17 @@ import net.minecraft.world.biome.BiomeGenBase;
 public class MacroPackageLayer {
 
     private final int worldSeedInt;
+    /** 网格级构造风格层（板块边界决策的唯一来源）。 */
+    private final TectonicStyleLayer tectonicStyles;
 
     /** 陆地 Worley 站点图（只负责陆宏群系候选及其子块）。 */
     private final MacroSitesSeparated landSites;
     /** 海洋 Worley 站点图（只负责海宏群系候选及其子块）。 */
     private final MacroSitesSeparated oceanSites;
 
-    public MacroPackageLayer(int worldSeedInt) {
+    public MacroPackageLayer(int worldSeedInt, TectonicStyleLayer tectonicStyles) {
         this.worldSeedInt = worldSeedInt;
+        this.tectonicStyles = tectonicStyles;
         this.landSites  = new MacroSitesSeparated(worldSeedInt, true,  0x1234ABCD);
         this.oceanSites = new MacroSitesSeparated(worldSeedInt, false, 0x5678EF90);
     }
@@ -106,22 +113,24 @@ public class MacroPackageLayer {
      *   - 小岛上的 block（isLandHere==true）仍然使用 landSites 的宏群系。
      */
     public MacroPackageId getMacroPackageIdAt(int x, int z) {
-        boolean isLandHere = TalosLandMask.isLand(x, z, worldSeedInt);
+        boolean isLandHere = TalosLandMask.isLandCheap(x, z, worldSeedInt);
 
         MacroSitesSeparated.Site landSite  = findLandOwnerSite(x, z);
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);
 
+        MacroPackageId result;
         if (isLandHere) {
-            if (landSite != null && landSite.pkgId != null) {
-                return landSite.pkgId;
-            }
-            return MacroPackageId.TEMPERATE_LOWLAND;
+            result = (landSite != null && landSite.pkgId != null)
+                ? landSite.pkgId
+                : MacroPackageId.TEMPERATE_LOWLAND;
         } else {
-            if (oceanSite != null && oceanSite.pkgId != null) {
-                return oceanSite.pkgId;
-            }
-            return MacroPackageId.OCEANIC;
+            result = (oceanSite != null && oceanSite.pkgId != null)
+                ? oceanSite.pkgId
+                : MacroPackageId.OCEANIC;
         }
+
+        MacroPackageId overridden = plateBoundaryOverride(x, z, result);
+        return (overridden != null) ? overridden : result;
     }
 
     /**
@@ -144,12 +153,21 @@ public class MacroPackageLayer {
      *   - 小岛上的 Biome 完全从陆宏包中选，岛内小块由上层 BiomeRegionLayer 再统一。
      */
     public BiomeGenBase getBiomeAt(int x, int z) {
-        boolean isLandHere = TalosLandMask.isLand(x, z, worldSeedInt);
+        boolean isLandHere = TalosLandMask.isLandCheap(x, z, worldSeedInt);
 
         MacroSitesSeparated.Site landSite  = findLandOwnerSite(x, z);
         MacroSitesSeparated.Site oceanSite = findOceanOwnerSite(x, z);
 
         if (isLandHere) {
+            MacroPackageId baseId = (landSite != null && landSite.pkgId != null)
+                ? landSite.pkgId
+                : MacroPackageId.TEMPERATE_LOWLAND;
+
+            BiomeGenBase boundaryBiome = plateBoundaryBiomeOverride(x, z, baseId);
+            if (boundaryBiome != null) {
+                return boundaryBiome;
+            }
+
             if (landSite != null) {
                 BiomeGenBase biome = pickBiomeFromSite(landSite, x, z);
                 if (biome != null) {
@@ -175,6 +193,89 @@ public class MacroPackageLayer {
                 return list[0];
             }
             return null;
+        }
+    }
+
+    /**
+     * 板块边界对群系选择的覆盖：
+     * 读取网格级构造风格（TectonicStyleLayer），按风格返回对应群系：
+     *   - RIFT → 纬度裂谷变体；HIGHLAND → 高原/山脉混合；
+     *   - MOUNTAINS → 高山；PEAK → 最高峰；NONE → 不覆盖。
+     * 判定规则与阈值已全部收敛到风格层，这里不再逐点采样。
+     */
+    private BiomeGenBase plateBoundaryBiomeOverride(int x, int z,
+                                                    MacroPackageId landPkg) {
+        if (landPkg == null || landPkg == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        TalosLandMask.Sample s = TalosLandMask.sampleFull(x, z, worldSeedInt);
+        if (s == null || !s.isLand) {
+            return null;
+        }
+
+        TectonicStyle style = this.tectonicStyles.sampleAt(x, z).style;
+        switch (style) {
+            case RIFT:
+                return MacroPackageDefs.pickCoherentBiome(
+                    riftVariantAt(z), x, z, worldSeedInt
+                );
+            case MOUNTAINS:
+                return TalosBiomes.TALOS_MOUNTAINS;
+            case PEAK:
+                return TalosBiomes.TALOS_ALPINE;
+            case HIGHLAND:
+                return MacroPackageDefs.pickCoherentBiome(
+                    MacroPackageId.TEMPERATE_HIGHLAND, x, z, worldSeedInt
+                );
+            case NONE:
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 板块边界对陆地宏包的覆盖：
+     * 读取网格级构造风格：RIFT → 裂谷变体；PEAK → MOUNTAIN_PEAK；
+     * HIGHLAND / MOUNTAINS → TEMPERATE_HIGHLAND；NONE → 不覆盖。
+     */
+    private MacroPackageId plateBoundaryOverride(int x, int z, MacroPackageId landPkg) {
+        if (landPkg == null || landPkg == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        TalosLandMask.Sample s = TalosLandMask.sampleFull(x, z, worldSeedInt);
+        if (s == null || !s.isLand) {
+            return null;
+        }
+
+        TectonicStyle style = this.tectonicStyles.sampleAt(x, z).style;
+        switch (style) {
+            case RIFT:
+                return riftVariantAt(z);
+            case PEAK:
+                return MacroPackageId.MOUNTAIN_PEAK;
+            case HIGHLAND:
+            case MOUNTAINS:
+                return MacroPackageId.TEMPERATE_HIGHLAND;
+            case NONE:
+            default:
+                return null;
+        }
+    }
+
+    /** 按纬度带选择峡谷宏包变体。 */
+    private MacroPackageId riftVariantAt(int z) {
+        switch (ClimateLatitudes.getBelt(z)) {
+            case TROPIC:
+            case SUBTROPIC:
+                return MacroPackageId.RIFT_TROPICAL;
+            case TEMPERATE:
+                return MacroPackageId.RIFT_TEMPERATE;
+            case SUBPOLAR:
+            case POLAR:
+            default:
+                return MacroPackageId.RIFT_POLAR;
         }
     }
 

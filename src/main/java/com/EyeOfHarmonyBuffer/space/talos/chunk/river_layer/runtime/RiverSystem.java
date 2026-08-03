@@ -9,6 +9,12 @@ import java.util.List;
 
 public final class RiverSystem {
 
+    /**
+     * 源头湖扩展影响半径：必须覆盖最大的湖盆 + 岸 + 外坡
+     * （默认预设 48×1.3 + 24 + 48 ≈ 134；留余量取 150）。
+     */
+    private static final double SOURCE_LAKE_EXTRA_INFLUENCE = 150.0;
+
     public final RiverNetwork network;
     public final List<RiverSegment> segments;
     public final RiverSpatialIndex index;
@@ -22,6 +28,14 @@ public final class RiverSystem {
     }
 
     public static RiverSystem buildFromNetwork(RiverNetwork network) {
+        return buildFromNetwork(
+            network,
+            RiverNetworkProfile.build(network)
+        );
+    }
+
+    private static RiverSystem buildFromNetwork(RiverNetwork network,
+                                                RiverNetworkProfile profile) {
         List<RiverSegment> segs = new ArrayList<>();
 
         for (RiverEdgeData edge : network.getEdges()) {
@@ -61,6 +75,26 @@ public final class RiverSystem {
                 double progressStart = cumulative[i]     / totalLength;
                 double progressEnd   = cumulative[i + 1] / totalLength;
 
+                double depthScaleStart = 1.0;
+                double depthScaleEnd   = 1.0;
+                double widthStart      = edge.getWidthStart();
+                double widthEnd        = edge.getWidthEnd();
+                double influenceRadius = edge.getInfluenceRadius();
+                if (profile != null) {
+                    depthScaleStart = profile.scaleAt(edge.getId(), progressStart);
+                    depthScaleEnd   = profile.scaleAt(edge.getId(), progressEnd);
+                    widthStart      = profile.widthStartAt(edge.getId());
+                    widthEnd        = profile.widthEndAt(edge.getId());
+                    influenceRadius = profile.influenceAt(
+                        edge.getId(), progressStart, progressEnd
+                    );
+                }
+                // 源头湖扩展：源头段的影响半径必须覆盖湖盆 + 岸 + 外坡，
+                // 否则湖外围超出河段影响范围的方向查不到源头水文，不会雕刻。
+                if (hasSource && influenceRadius < SOURCE_LAKE_EXTRA_INFLUENCE) {
+                    influenceRadius = SOURCE_LAKE_EXTRA_INFLUENCE;
+                }
+
                 RiverSegment seg = new RiverSegment(
                     edge.getId(),
                     i,
@@ -69,9 +103,11 @@ public final class RiverSystem {
                     b.getX(), b.getZ(),
                     progressStart,
                     progressEnd,
-                    edge.getWidthStart(),
-                    edge.getWidthEnd(),
-                    edge.getInfluenceRadius(),
+                    widthStart,
+                    widthEnd,
+                    influenceRadius,
+                    depthScaleStart,
+                    depthScaleEnd,
                     hasSource,
                     hasMouth,
                     sourceX,

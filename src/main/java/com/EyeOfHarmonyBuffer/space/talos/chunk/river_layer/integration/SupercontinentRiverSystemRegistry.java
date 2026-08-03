@@ -66,7 +66,20 @@ public final class SupercontinentRiverSystemRegistry {
         RiverNetwork instantiated = TemplateInstantiator.buildNetworkForSupercontinent(
             tpl, info, scaleFactor
         );
-        RiverSystem built = RiverSystem.buildFromNetwork(instantiated);
+
+        double bufferLenBlocks = CoastClipper.DEFAULT_BUFFER_BLOCKS;
+        RiverNetwork clipped = CoastClipper.clipNetworkAtCoast(
+            instantiated,
+            worldSeedInt,
+            bufferLenBlocks
+        );
+
+        // 以「截断后」的河网构建运行时系统：
+        //   - 河网只保留到「第一次入海 + buffer」处，出海后的河段不再参与
+        //     河岸塑形 / 河谷雕刻 / 指令查询；
+        //   - 因此 hasMouth 的端点就是地图上实际的截断河口，
+        //     /talosRiverMouth 会直接 TP 到截断位置。
+        RiverSystem built = RiverSystem.buildFromNetwork(clipped);
         SYSTEMS.put(k, built);
         return built;
     }

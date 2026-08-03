@@ -1,15 +1,15 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.WorldgenAPI;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverCarver;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -17,6 +17,8 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 
 import java.util.*;
@@ -25,21 +27,17 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static final int CHUNK_SIZE = 16;
     private final int worldHeight;
+    private final World world;
 
     private final int worldSeedInt;
-
-    private final TalosRiverCarver.MacroPackageResolver macroResolver;
 
     private static final boolean DEBUG_COASTLINE = true;
     private static final boolean USE_CHUNK_BLUR_BANK = true;
 
-    private final EnumMap<MacroPackageId, Double> bankIntensityCache =
-        new EnumMap<>(MacroPackageId.class);
-
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
+        this.world = world;
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
-        this.macroResolver = createMacroResolver();
         this.worldHeight = world.getActualHeight();
     }
 
@@ -62,18 +60,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     public void onChunkProvider(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
         clearChunkBlocks(blocks, meta);
 
-        generateTerrainWithBaseHeightSimple(chunkX, chunkZ, blocks, meta);
-
-        //generateDebugRivers(chunkX, chunkZ, blocks, meta, worldSeedInt);
-
-        TalosRiverCarver.carveChunkRivers(
-            chunkX, chunkZ,
-            worldSeedInt,
-            blocks, meta,
-            getWaterLevel(),
-            worldHeight,
-            macroResolver
+        TalosChunkContext ctx = TalosChunkContext.create(
+            chunkX, chunkZ, worldSeedInt, getWaterLevel()
         );
+
+        generateTerrainWithBaseHeightSimple(ctx, blocks, meta);
     }
 
     /**
@@ -100,82 +91,178 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      *   5. DEBUG_COASTLINE 为 true 时，在陆地顶层用不同方块标记海岸权重（调试用）。
      *
      * 注意：
-     *   - 本方法只负责“标高 + 基础方块”的铺设；具体的河槽切割、源头湖形状、
-     *     暗河井等细节由 TalosRiverCarver.carveChunkRivers(...) 在后续单独处理。
+     *   - 本方法只负责“标高 + 基础方块”的铺设；源头湖 / 暗河井等细节
+     *     已并入高度场雕刻（TalosRiverProfile.computeChannelBedY）。
      *   - 河岸压低逻辑仅依赖世界坐标 (worldX, worldZ)、世界种子 int 和 seaLevel，
      *     不在这里直接操作方块数组，保证高度场是可重现、与方块填充解耦的。
      */
-    private void generateTerrainWithBaseHeightSimple(int chunkX, int chunkZ,
+    private void generateTerrainWithBaseHeightSimple(TalosChunkContext ctx,
                                                      Block[] blocks, byte[] meta) {
-        final int seaLevel = getWaterLevel();
+        final int seaLevel = ctx.seaLevel;
 
-        final int worldX0 = chunkX * CHUNK_SIZE;
-        final int worldZ0 = chunkZ * CHUNK_SIZE;
+        final int worldX0 = ctx.chunkX * CHUNK_SIZE;
+        final int worldZ0 = ctx.chunkZ * CHUNK_SIZE;
 
-        double[][] blurredBank = null;
-        if (USE_CHUNK_BLUR_BANK) {
-            blurredBank = new double[CHUNK_SIZE][CHUNK_SIZE];
-            computeBlurredBankForChunk(chunkX, chunkZ, blurredBank);
-        }
+        final LandMask16 landMask = ctx.landMask;
 
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
+                final int colIndex = localX * CHUNK_SIZE + localZ;
                 final int worldX = worldX0 + localX;
                 final int worldZ = worldZ0 + localZ;
 
-                WorldgenAPI.SampleResult landSample =
-                    TalosLandMask.sample(worldX, worldZ, worldSeedInt);
-                boolean isLand = (landSample != null && landSample.isLand);
+                final boolean isLandFromMask =
+                    (landMask != null && landMask.get(localX, localZ));
 
-                double baseHeightD = TalosBaseTerrain.sampleBaseHeight(
-                    worldX, worldZ, worldSeedInt, seaLevel
-                );
+                TalosLandMask.Sample landSample = ctx.land[colIndex];
+
+                final boolean isLand = isLandFromMask;
+                final double coastWeight =
+                    (landSample != null ? landSample.coastWeight : 0.0);
+                final double shelfWeight =
+                    (landSample != null ? landSample.shelfWeight : 0.0);
+
+                double baseHeightD = ctx.baseHeight[colIndex];
 
                 double bankIntensity;
-                if (USE_CHUNK_BLUR_BANK && blurredBank != null) {
-                    bankIntensity = blurredBank[localX][localZ];
+                if (USE_CHUNK_BLUR_BANK) {
+                    bankIntensity = ctx.bankIntensity[colIndex];
                 } else {
                     bankIntensity = sampleSmoothedBankIntensity(worldX, worldZ);
                 }
 
-                MacroPackageRegistry.RiverBankPreset bankPreset =
-                    new MacroPackageRegistry.RiverBankPreset(bankIntensity);
+                var bankPreset = TalosRiverTerrainModifier.bankPreset(bankIntensity);
 
-                double shapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
-                    worldX, worldZ,
-                    worldSeedInt,
+                // 与 TalosRiverSystem.getRiverMask 语义一致：
+                // 非陆地（按逐点海陆采样判断）视为无河流影响。
+                double riverMask =
+                    (landSample != null && landSample.isLand)
+                        ? ctx.hydro[colIndex].mask
+                        : 0.0;
+
+                double coastShapedHeightD = TalosCoastlineShaper.applyCoastlineShaping(
                     baseHeightD,
                     seaLevel,
-                    bankPreset
+                    isLand,
+                    coastWeight
                 );
 
-                int h = (int) Math.round(shapedHeightD);
+                // 板块边界塑形：分离带 → 风格化裂谷悬崖（外崖面 + 崖缘 + 倒石堆 + 谷底）
+                // 强度来自网格级构造风格层（与群系/宏包覆盖同源），
+                // 外崖面 0.12~0.2 的下落与带边缘过渡都由平滑场驱动。
+                TalosMacroClimate.TectonicStyleSample tectonic = TalosMacroClimate
+                    .getTectonicStyleSample(worldX, worldZ, worldSeedInt);
+                double riftStrength = tectonic.smoothedDivergence;
+                PlateBoundaryState riftState = (riftStrength > 0.0)
+                    ? PlateBoundaryState.DIVERGENT
+                    : (landSample != null ? landSample.plateBoundaryState : null);
+                double riftWeight =
+                    (riftState == PlateBoundaryState.DIVERGENT)
+                        ? riftStrength
+                        : (landSample != null ? landSample.plateBoundaryWeight : 0.0);
+                double riftShapedHeightD = TalosPlateBoundaryShaper.applyRiftShaping(
+                    coastShapedHeightD,
+                    seaLevel,
+                    isLand,
+                    riftState,
+                    riftWeight,
+                    worldX,
+                    worldZ,
+                    worldSeedInt
+                );
+
+                // 河岸塑形放在裂谷塑形之后：泛洪平原必须作用在最终地形上，
+                // 否则裂谷压高会把它重新抬回谷底高度（裂谷里的河因此没有泛洪平原）。
+                double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
+                    worldX, worldZ,
+                    worldSeedInt,
+                    riftShapedHeightD,
+                    seaLevel,
+                    bankPreset,
+                    isLand,
+                    riverMask
+                );
+
+                // 河谷雕刻（高度场版）：在填充方块前把河谷做进高度场，
+                // 河道两侧自然成坡。阶段 A 仅对陆地列生效，海洋一侧保持原样。
+                double channelShapedHeightD;
+                if (isLand) {
+                    channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
+                        worldX, worldZ,
+                        riverShapedHeightD,
+                        seaLevel,
+                        ctx.hydro[colIndex],
+                        ctx.macroPkg[colIndex]
+                    );
+                } else {
+                    channelShapedHeightD = riverShapedHeightD;
+                }
+
+                boolean riverCarved = channelShapedHeightD < riverShapedHeightD - 0.01;
+
+                int h = (int) Math.round(channelShapedHeightD);
                 if (h < 1) {
                     h = 1;
                 } else if (h > worldHeight - 2) {
                     h = worldHeight - 2;
                 }
 
-                // 基岩
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
                 meta[bedrockIndex] = 0;
 
                 if (isLand) {
-                    // 陆地：石头 + 草
-                    for (int y = 1; y < h; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.stone;
-                        meta[idx] = 0;
+                    TalosSurfaceProfile profile =
+                        TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
+
+                    // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）
+                    int topSolidY = riverCarved ? h - 1 : h;
+                    BlockMetaPair lakeMat = TalosRiverSystem.getLakeSurfaceMaterial(
+                        topSolidY, seaLevel, worldX, worldZ,
+                        ctx.hydro[colIndex], ctx.macroPkg[colIndex]
+                    );
+
+                    if (riverCarved) {
+                        // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
+                        for (int y = 1; y < h; y++) {
+                            putBlock(blocks, meta, localX, y, localZ,
+                                profile.deepBlock);
+                        }
+                        // 源头湖：湖床顶两格换成滩涂 / 干岸方块
+                        if (lakeMat != null && h >= 2) {
+                            putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
+                            putBlock(blocks, meta, localX, h - 2, localZ, lakeMat);
+                        }
+                    } else {
+                        int surfaceStart = h - profile.surfaceDepth + 1;
+                        int fillerStart = surfaceStart - profile.fillerDepth;
+
+                        for (int y = 1; y < h; y++) {
+                            BlockMetaPair pair;
+                            if (y < fillerStart) {
+                                pair = profile.deepBlock;
+                            } else if (y < surfaceStart) {
+                                pair = profile.fillerBlock;
+                            } else {
+                                pair = profile.surfaceBlock;
+                            }
+                            putBlock(blocks, meta, localX, y, localZ, pair);
+                        }
+
+                        putBlock(blocks, meta, localX, h, localZ,
+                            profile.surfaceBlock);
+                        if (lakeMat != null) {
+                            putBlock(blocks, meta, localX, h, localZ, lakeMat);
+                            if (h >= 2) {
+                                putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
+                            }
+                        }
                     }
 
-                    int topIndex = getIndex(localX, h, localZ);
-                    blocks[topIndex] = Blocks.grass;
-                    meta[topIndex] = 0;
-
-                    // 陆地但低于海平面的地方，补水
                     if (h < seaLevel) {
-                        for (int y = h + 1; y <= seaLevel; y++) {
+                        int waterStart = riverCarved ? h : h + 1;
+
+                        for (int y = waterStart; y <= seaLevel; y++) {
                             int idx = getIndex(localX, y, localZ);
                             blocks[idx] = Blocks.water;
                             meta[idx] = 0;
@@ -183,9 +270,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
 
                 } else {
-                    // 海底 + 水
-                    int seabedY = Math.min(h, seaLevel - 1);
-                    if (seabedY < 1) seabedY = 1;
+                    int seabedY = TalosSeafloorShaper.computeSeabedY(
+                        seaLevel,
+                        false,
+                        shelfWeight,
+                        coastShapedHeightD,
+                        worldHeight
+                    );
 
                     for (int y = 1; y <= seabedY; y++) {
                         int idx = getIndex(localX, y, localZ);
@@ -199,85 +290,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         meta[idx] = 0;
                     }
                 }
-
-                if (DEBUG_COASTLINE && landSample != null && landSample.isLand) {
-                    double coastW = landSample.coastWeight;
-                    if (coastW > 0.0) {
-                        int topY = Math.min(h, worldHeight - 1);
-                        int idx = getIndex(localX, topY, localZ);
-
-                        if (coastW > 0.66) {
-                            blocks[idx] = Blocks.gold_block;
-                        } else if (coastW > 0.33) {
-                            blocks[idx] = Blocks.iron_block;
-                        } else {
-                            blocks[idx] = Blocks.sand;
-                        }
-                        meta[idx] = 0;
-                    }
-                }
             }
         }
-    }
-
-    /**
-     * 老版的“平板”海陆渲染，只保留作调试用，不再从 onChunkProvider 调用。
-     */
-    @SuppressWarnings("unused")
-    private void generateBasicLandWater(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
-        final int seaLevel = getWaterLevel();
-
-        int worldX0 = chunkX * CHUNK_SIZE;
-        int worldZ0 = chunkZ * CHUNK_SIZE;
-
-        for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-            for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-                int worldX = worldX0 + localX;
-                int worldZ = worldZ0 + localZ;
-
-                WorldgenAPI.SampleResult result =
-                    TalosLandMask.sample(worldX, worldZ, worldSeedInt);
-
-                boolean isLand = (result != null && result.isLand);
-
-                int bedrockIndex = getIndex(localX, 0, localZ);
-                blocks[bedrockIndex] = Blocks.bedrock;
-                meta[bedrockIndex] = 0;
-
-                if (isLand) {
-                    for (int y = 1; y < seaLevel; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.stone;
-                        meta[idx] = 0;
-                    }
-
-                    int topIdx = getIndex(localX, seaLevel, localZ);
-                    blocks[topIdx] = Blocks.grass;
-                    meta[topIdx] = 0;
-                } else {
-                    for (int y = 1; y <= seaLevel; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.water;
-                        meta[idx] = 0;
-                    }
-                }
-            }
-        }
-    }
-
-    private TalosRiverCarver.MacroPackageResolver createMacroResolver() {
-        return new TalosRiverCarver.MacroPackageResolver() {
-            @Override
-            public MacroPackageId resolveMacroPackageId(int worldX, int worldZ) {
-                MacroPackageId pkgId = TalosMacroClimate.getMacroPackageId(worldX, worldZ, worldSeedInt);
-
-                if (pkgId == MacroPackageId.OCEANIC) {
-                    return null;
-                }
-
-                return pkgId;
-            }
-        };
     }
 
     private void clearChunkBlocks(Block[] blocks, byte[] meta) {
@@ -291,8 +305,35 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return (x * CHUNK_SIZE + z) * worldHeight + y;
     }
 
+    private void putBlock(Block[] blocks, byte[] meta, int x, int y, int z,
+                          BlockMetaPair pair) {
+        if (pair == null) {
+            return;
+        }
+        int idx = getIndex(x, y, z);
+        blocks[idx] = pair.getBlock();
+        meta[idx] = pair.getMetadata();
+    }
+
     @Override
     public void onPopulate(IChunkProvider provider, int x, int z) {
+        // 装饰阶段放置了大量方块，但放置走的是轻量光照路径（不逐块重算光照），
+        // 而 1.7.10 的延迟补光队列可能赶不上区块发送给客户端。
+        // 这里在区块发出前同步补一次全区块天光 / 光照重算，消除新地面的伪影。
+        Chunk chunk = this.world.getChunkFromChunkCoords(x, z);
+        if (chunk == null || chunk.isEmpty()) {
+            return;
+        }
+
+        BiomeGenBase biome = this.world.getBiomeGenForCoords(
+            x * 16 + 8, z * 16 + 8
+        );
+        if (biome == TalosBiomes.TALOS_OCEAN || biome == TalosBiomes.TALOS_SHELF) {
+            return; // 海洋 / 陆架没有装饰，不需要重算
+        }
+
+        chunk.generateSkylightMap();
+        chunk.func_150809_p();
     }
 
     @Override
@@ -386,12 +427,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 int sx = worldX + dx;
                 int sz = worldZ + dz;
 
-                MacroPackageId macroId = macroResolver.resolveMacroPackageId(sx, sz);
-                if (macroId == null) {
+                MacroPackageId macroId = TalosMacroClimate.getMacroPackageId(
+                    sx, sz, worldSeedInt
+                );
+                if (macroId == MacroPackageId.OCEANIC) {
                     continue;
                 }
 
-                double k = getBankIntensityForMacro(macroId);
+                double k = TalosRiverTerrainModifier.bankIntensityFor(macroId);
 
                 double distSq = (double) dx * dx + (double) dz * dz;
                 double w = 1.0 / (1.0 + distSq * 0.01);
@@ -408,108 +451,4 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return weightedSum / weightSum;
     }
 
-    /**
-     * 为当前 chunk 计算平滑后的 bankIntensity 图（带 halo，保证跨 chunk 连续）。
-     *
-     * 思路：
-     *   - 在 chunk 四周各扩一圈半径 R 的「halo」，在这个 (16+2R) x (16+2R) 网格上采样原始 bankIntensity；
-     *   - 在扩展网格上做一次 X 向 box blur，再做一次 Z 向 box blur；
-     *   - 最后只把中间的 16x16（对应当前 chunk 的区域）拷贝到 outBlurred[localX][localZ]。
-     *
-     * 这样：
-     *   - world 坐标相同的格子，在任何 chunk 中计算出来的模糊值都是一样的；
-     *   - 邻接 chunk 的公共边界不会出现 bankIntensity 的硬切。
-     */
-    private void computeBlurredBankForChunk(int chunkX, int chunkZ,
-                                            double[][] outBlurred) {
-        final int R = 2;
-
-        final int EXT_SIZE = CHUNK_SIZE + 2 * R;
-
-        double[][] rawExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int extZ = 0; extZ < EXT_SIZE; extZ++) {
-            int worldZ = chunkZ * CHUNK_SIZE + (extZ - R);
-            for (int extX = 0; extX < EXT_SIZE; extX++) {
-                int worldX = chunkX * CHUNK_SIZE + (extX - R);
-
-                MacroPackageId macroId = macroResolver.resolveMacroPackageId(worldX, worldZ);
-                double k = getBankIntensityForMacro(macroId);
-
-                rawExt[extX][extZ] = k;
-            }
-        }
-
-        double[][] tmpExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int z = 0; z < EXT_SIZE; z++) {
-            for (int x = 0; x < EXT_SIZE; x++) {
-                double sum = 0.0;
-                int count = 0;
-
-                for (int dx = -R; dx <= R; dx++) {
-                    int sx = x + dx;
-                    if (sx < 0 || sx >= EXT_SIZE) continue;
-
-                    sum += rawExt[sx][z];
-                    count++;
-                }
-
-                tmpExt[x][z] = sum / count;
-            }
-        }
-
-        double[][] blurExt = new double[EXT_SIZE][EXT_SIZE];
-
-        for (int x = 0; x < EXT_SIZE; x++) {
-            for (int z = 0; z < EXT_SIZE; z++) {
-                double sum = 0.0;
-                int count = 0;
-
-                for (int dz = -R; dz <= R; dz++) {
-                    int sz = z + dz;
-                    if (sz < 0 || sz >= EXT_SIZE) continue;
-
-                    sum += tmpExt[x][sz];
-                    count++;
-                }
-
-                blurExt[x][z] = sum / count;
-            }
-        }
-
-        for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-            int extZ = localZ + R;
-            for (int localX = 0; localX < CHUNK_SIZE; localX++) {
-                int extX = localX + R;
-
-                outBlurred[localX][localZ] = blurExt[extX][extZ];
-            }
-        }
-    }
-
-    /**
-     * 从 MacroPackageRegistry 中获取某个宏包的 bankIntensity，并做缓存。
-     * null 宏包或缺省配置时使用中性值 0.5。
-     */
-    private double getBankIntensityForMacro(MacroPackageId macroId) {
-        if (macroId == null) {
-            return 0.5;
-        }
-
-        Double cached = bankIntensityCache.get(macroId);
-        if (cached != null) {
-            return cached;
-        }
-
-        MacroPackageRegistry.MacroPackageSpec spec = MacroPackageRegistry.get(macroId);
-        MacroPackageRegistry.RiverBankPreset bank = spec.riverBank();
-
-        double k = (bank != null) ? bank.bankIntensity() : 0.5;
-        if (k < 0.0) k = 0.0;
-        if (k > 1.0) k = 1.0;
-
-        bankIntensityCache.put(macroId, k);
-        return k;
-    }
 }

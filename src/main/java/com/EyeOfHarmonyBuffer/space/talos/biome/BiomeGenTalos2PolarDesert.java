@@ -1,14 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
-public class BiomeGenTalos2PolarDesert extends GSBiomeGenBase {
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
+public class BiomeGenTalos2PolarDesert extends TalosBiomeBase {
 
     public BiomeGenTalos2PolarDesert(int id) {
         super(id);
@@ -23,9 +18,20 @@ public class BiomeGenTalos2PolarDesert extends GSBiomeGenBase {
         this.rootHeight = 0.0F;
         this.heightVariation = 0.04F;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.snow, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.packed_ice, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.stone, (byte) 0);
+        this.heightBias = 0.15;
+        this.heightScale = 0.20;
+
+        Block[] frozen = new Block[] {
+            Blocks.snow, Blocks.packed_ice, Blocks.stone, Blocks.gravel
+        };
+
+        // 极地荒漠：无树无草，只有冰原上的石头
+        this.rocks = new RockConfig(0.6, Blocks.stone, 5, 2, 5);
+        this.rocks.groundBlocks = frozen;
+        this.boulders = new SimpleConfig(0.5);
+
+        this.groundPatches.add(new GroundPatchConfig(1.2, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.stone, 0, 2, 0.3));
     }
 
     @Override

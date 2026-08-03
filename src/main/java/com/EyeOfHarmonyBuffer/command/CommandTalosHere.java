@@ -41,27 +41,94 @@ public class CommandTalosHere extends CommandBase {
 
         int worldSeedInt = TalosLandMask.getWorldSeedInt(world);
 
-        int superId = TalosLandMask.getSuperId(blockX, blockZ, worldSeedInt);
-        int plateId = TalosLandMask.getPlateId(blockX, blockZ, worldSeedInt);
-        double landWeight = TalosLandMask.getLandWeight(blockX, blockZ, worldSeedInt);
-        double coastWeight = TalosLandMask.getCoastWeight(blockX, blockZ, worldSeedInt);
-        double EdgeWeight = TalosLandMask.getEdgeWeight(blockX, blockZ, worldSeedInt);
+        TalosLandMask.Sample sample = TalosLandMask.sampleFull(blockX, blockZ, worldSeedInt);
+        if (sample == null) {
+            String dimName = getDimensionName(world);
+            String msgHeader = String.format(
+                "[Talos] 维度: %s (id=%d), 坐标: (%d, %d, %d)",
+                dimName, world.provider.dimensionId, blockX, blockY, blockZ
+            );
+            sender.addChatMessage(new ChatComponentText(msgHeader));
+            sender.addChatMessage(new ChatComponentText(
+                "[Talos] 无法获取采样结果（sampleFull 返回 null）"
+            ));
+            return;
+        }
 
-        boolean isLand = TalosLandMask.isLand(blockX, blockZ, worldSeedInt);
+        boolean isLand = sample.isLand;
+        int plateId = sample.plateId;
+        int superId = sample.superId;
+
+        double landWeight  = sample.landWeight;
+        double coastWeight = sample.coastWeight;
+        double edgeWeight  = sample.edgeWeight;
+        double shelfWeight = sample.shelfWeight;
+        double plateBoundaryWeight = sample.plateBoundaryWeight;
+        String plateBoundaryState = String.valueOf(sample.plateBoundaryState);
+        double plateCompression = sample.plateCompression;
+
+        StringBuilder mix = new StringBuilder();
+        if (sample.plateBoundaryInfluences != null) {
+            for (int i = 0; i < sample.plateBoundaryInfluences.length; i++) {
+                if (i > 0) {
+                    mix.append(", ");
+                }
+                mix.append(sample.plateBoundaryInfluences[i].state)
+                   .append("(")
+                   .append(String.format("%.3f", sample.plateBoundaryInfluences[i].strength))
+                   .append(")");
+            }
+        }
+        if (mix.length() == 0) {
+            mix.append("无");
+        }
+
+        int[] superCenter = TalosLandMask.getSuperCenterXZAt(blockX, blockZ, worldSeedInt);
+        double superBaseRadius = TalosLandMask.getSuperBaseRadius(superId, worldSeedInt);
 
         String dimName = getDimensionName(world);
+
         String msgHeader = String.format(
-            "[Talos] 维度: %s (id=%d), 坐标: (%d, %d, %d)",
-            dimName, world.provider.dimensionId, blockX, blockY, blockZ
+            "[Talos] 维度: %s (id=%d), 坐标: (%d, %d, %d), worldSeedInt: %d",
+            dimName, world.provider.dimensionId, blockX, blockY, blockZ, worldSeedInt
         );
 
-        String msgBody = String.format(
-            "超级大陆ID: %d, 板块ID: %d, isLand: %s, landWeight: %.3f, coastWeight: %.3f, EdgeWeight: %.3f",
-            superId, plateId, isLand ? "true" : "false", landWeight, coastWeight, EdgeWeight
+        String mainSubLabel = "";
+        if (superId != 0) {
+            mainSubLabel = TalosLandMask.isMainSupercontinent(superId)
+                ? "主大陆" : "次级大陆";
+        }
+
+        String msgIds = String.format(
+            "超级大陆ID: %d (%s), 板块ID: %d, isLand: %s",
+            superId,
+            mainSubLabel.isEmpty() ? "无" : mainSubLabel,
+            plateId,
+            isLand ? "true" : "false"
         );
+
+        String msgWeights = String.format(
+            "landWeight: %.3f, coastWeight: %.3f, edgeWeight: %.3f, shelfWeight: %.3f, plateBoundary: %s(%.3f), 挤压度: %+.3f",
+            landWeight, coastWeight, edgeWeight, shelfWeight,
+            plateBoundaryState, plateBoundaryWeight, plateCompression
+        );
+        String msgMix = "板块混合: " + mix;
+
+        String msgSuper;
+        if (superId == 0 || superCenter == null) {
+            msgSuper = "当前位置不在任何超级大陆内 (superId=0)";
+        } else {
+            msgSuper = String.format(
+                "超级大陆中心: (%d, %d), baseRadius: %.1f",
+                superCenter[0], superCenter[1], superBaseRadius
+            );
+        }
 
         sender.addChatMessage(new ChatComponentText(msgHeader));
-        sender.addChatMessage(new ChatComponentText(msgBody));
+        sender.addChatMessage(new ChatComponentText(msgIds));
+        sender.addChatMessage(new ChatComponentText(msgWeights));
+        sender.addChatMessage(new ChatComponentText(msgMix));
+        sender.addChatMessage(new ChatComponentText(msgSuper));
     }
 
     private String getDimensionName(World world) {

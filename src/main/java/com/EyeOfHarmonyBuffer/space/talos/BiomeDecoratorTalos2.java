@@ -3,20 +3,43 @@ package com.EyeOfHarmonyBuffer.space.talos;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeature;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeatures;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.Chunk;
 
 import java.util.Random;
 
+/**
+ * Talos2 装饰器。
+ *
+ * 装饰配置直接挂在每个群系类上（TalosBiomeBase 里每个特征一个配置对象），
+ * 这里按「区块中心群系」读取配置并执行：
+ *   - 每个 16×16 区块只使用中心群系的一套配置（原版风格，不做逐点群系判定）；
+ *   - 特征读取只在当前区块内，写入允许跨到已加载的相邻区块（±1 区块），
+ *     与原版一致：populate 阶段 3×3 邻域已生成，跨区块写入不会触发连锁生成；
+ *   - 树冠等大特征可平滑跨过区块边界，不再被裁掉。
+ */
 public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
     private World currentWorld;
 
     private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
     private WorldGenPrecipitationAcidLake acidLakeGen;
+
+    private final TalosBoundedFeatures.DeadBush deadBush = new TalosBoundedFeatures.DeadBush();
+    private final TalosBoundedFeatures.Mushroom mushroom = new TalosBoundedFeatures.Mushroom();
+    private final TalosBoundedFeatures.FallenLog fallenLog = new TalosBoundedFeatures.FallenLog();
+    private final TalosBoundedFeatures.Cactus cactus = new TalosBoundedFeatures.Cactus();
+    private final TalosBoundedFeatures.Reed reed = new TalosBoundedFeatures.Reed();
+    private final TalosBoundedFeatures.Waterlily waterlily = new TalosBoundedFeatures.Waterlily();
+    private final TalosBoundedFeatures.Shrub shrub = new TalosBoundedFeatures.Shrub();
+    private final TalosBoundedFeatures.Boulder boulder = new TalosBoundedFeatures.Boulder();
 
     @Override
     protected void setCurrentWorld(World world) {
@@ -59,7 +82,67 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             return;
         }
 
+        if (!(biome instanceof TalosBiomeBase)) {
+            return;
+        }
+
+        final Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
+
         veinGen.generate(world, rand, chunkX, chunkZ);
+
+        decorateBiomeFeatures(
+            world, rand, chunk, (TalosBiomeBase) biome
+        );
+    }
+
+    /** 按群系配置逐项撒点（count = 每区块尝试次数，支持小数概率）。 */
+    private void decorateBiomeFeatures(World world, Random rand,
+                                       Chunk chunk, TalosBiomeBase biome) {
+        scatter(world, rand, chunk, treeFor(biome), biome.treeStyle.perChunk);
+        scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Grass(biome.grass.meta), biome.grass.perChunk);
+        scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Grass(biome.ferns.meta), biome.ferns.perChunk);
+        scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Flower(biome.flowers.flower), biome.flowers.perChunk);
+        scatter(world, rand, chunk, this.deadBush, biome.deadBush.perChunk);
+        scatter(world, rand, chunk, this.mushroom, biome.mushrooms.perChunk);
+        scatter(world, rand, chunk, this.cactus, biome.cactus.perChunk);
+        scatter(world, rand, chunk, this.reed, biome.reeds.perChunk);
+        scatter(world, rand, chunk, this.waterlily, biome.waterlily.perChunk);
+        scatter(world, rand, chunk, this.shrub, biome.shrubs.perChunk);
+        scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Pond(biome.pond), biome.pond.perChunk);
+        scatter(world, rand, chunk, this.fallenLog, biome.fallenLogs.perChunk);
+        scatter(world, rand, chunk,
+            new TalosBoundedFeatures.Rock(biome.rocks), biome.rocks.perChunk);
+        scatter(world, rand, chunk, this.boulder, biome.boulders.perChunk);
+        for (TalosBiomeBase.GroundPatchConfig patch : biome.groundPatches) {
+            scatter(world, rand, chunk,
+                new TalosBoundedFeatures.GroundPatch(
+                    patch.block, patch.meta, patch.radius, patch.fillChance),
+                patch.perChunk);
+        }
+    }
+
+    /** 树木：群系挂了蓝图就用蓝图生成器，否则退回简单 TreeStyle。 */
+    private TalosBoundedFeature treeFor(TalosBiomeBase biome) {
+        if (biome.treeBlueprint != null) {
+            return new TalosBoundedFeatures.BlueprintTree(biome.treeBlueprint);
+        }
+        return new TalosBoundedFeatures.Tree(biome.treeStyle);
+    }
+
+    private static void scatter(World world, Random rand, Chunk chunk,
+                                TalosBoundedFeature feature, double count) {
+        int n = (int) count;
+        if (rand.nextDouble() < count - n) {
+            n++;
+        }
+        for (int i = 0; i < n; i++) {
+            feature.generate(world, rand, chunk,
+                rand.nextInt(16), rand.nextInt(16));
+        }
 
         if (acidLakeGen != null) {
             if (rand.nextInt(2000) == 0) {

@@ -1,14 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
-import galaxyspace.core.world.GSBiomeGenBase;
-import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
-public class BiomeGenTalos2Alpine extends GSBiomeGenBase {
-
-    public BlockMetaPair surfaceBlock;
-    public BlockMetaPair fillerBlock;
-    public BlockMetaPair stoneBlock;
+public class BiomeGenTalos2Alpine extends TalosBiomeBase {
 
     public BiomeGenTalos2Alpine(int id) {
         super(id);
@@ -23,9 +18,19 @@ public class BiomeGenTalos2Alpine extends GSBiomeGenBase {
         this.rootHeight = 1.1F;
         this.heightVariation = 0.7F;
 
-        this.surfaceBlock = new BlockMetaPair(Blocks.snow, (byte) 0);
-        this.fillerBlock  = new BlockMetaPair(Blocks.stone, (byte) 0);
-        this.stoneBlock   = new BlockMetaPair(Blocks.stone, (byte) 0);
+        this.heightBias = 0.68;
+        this.heightScale = 0.50;
+
+        Block[] frozen = new Block[] {
+            Blocks.snow, Blocks.packed_ice, Blocks.stone, Blocks.gravel
+        };
+
+        this.rocks = new RockConfig(0.1, Blocks.stone, 5, 2, 5);
+        this.rocks.groundBlocks = frozen;
+        this.boulders = new SimpleConfig(0.5);
+
+        /*this.groundPatches.add(new GroundPatchConfig(1.2, Blocks.gravel, 0, 2, 0.4));
+        this.groundPatches.add(new GroundPatchConfig(0.8, Blocks.stone, 0, 2, 0.3));*/
     }
 
     @Override

@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseUtil;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.NoiseUtil;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -102,7 +104,7 @@ public final class MacroSites {
         int ix = (int) Math.round(sx);
         int iz = (int) Math.round(sz);
 
-        boolean isLandSite = TalosLandMask.isLand(ix, iz, worldSeedInt);
+        boolean isLandSite = TalosLandMask.isLandCheap(ix, iz, worldSeedInt);
         ClimateLatitudes.Belt belt = ClimateLatitudes.getBelt(iz);
 
         List<MacroPackageId> candidates = MacroClimateConfig.getPackagesFor(isLandSite, belt);
