@@ -232,6 +232,21 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         if (lakeMat != null && h >= 2) {
                             putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
                             putBlock(blocks, meta, localX, h - 2, localZ, lakeMat);
+                        } else if (h >= 2) {
+                            // 河道：床顶铺斑块底料（砂砾 / 沙 / 黏土等，宏群系预设）
+                            TalosRiverSystem.RiverbedMaterial rb =
+                                TalosRiverSystem.getRiverbedMaterialAt(
+                                    worldX, worldZ, worldSeedInt,
+                                    ctx.macroPkg[colIndex]
+                                );
+                            if (rb != null) {
+                                int top = h - 1;
+                                int n = Math.min(rb.depth, top);
+                                for (int i = 0; i < n; i++) {
+                                    putBlock(blocks, meta, localX, top - i,
+                                        localZ, rb.block);
+                                }
+                            }
                         }
                     } else {
                         int surfaceStart = h - profile.surfaceDepth + 1;

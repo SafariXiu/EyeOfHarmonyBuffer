@@ -259,6 +259,87 @@ public final class TalosRiverProfile {
         return x ^ (x >>> 31);
     }
 
+    /**
+     * 河床底料：按宏群系预设 + 低频确定性噪声选择大块材料斑块，
+     * 返回方块与铺设深度；非河流宏包返回 null。
+     */
+    public static TalosRiverSystem.RiverbedMaterial riverbedMaterialAt(
+        int worldX, int worldZ, int worldSeedInt, MacroPackageId macroId
+    ) {
+        if (macroId == null || macroId == MacroPackageId.OCEANIC) {
+            return null;
+        }
+
+        MacroPackageRegistry.RiverbedPreset preset =
+            MacroPackageRegistry.get(macroId).riverbed();
+        if (preset == null || preset.blocks == null || preset.blocks.length == 0
+            || preset.weights == null || preset.weights.length != preset.blocks.length) {
+            return null;
+        }
+
+        double n = valueNoise(
+            worldX, worldZ, worldSeedInt, preset.patchScale, 0x51AB3C2D);
+
+        double total = 0.0;
+        for (double w : preset.weights) {
+            total += Math.max(0.0, w);
+        }
+        if (total <= 0.0) {
+            return null;
+        }
+
+        double pick = n * total;
+        double acc = 0.0;
+        BlockMetaPair block = preset.blocks[preset.blocks.length - 1];
+        for (int i = 0; i < preset.blocks.length; i++) {
+            acc += Math.max(0.0, preset.weights[i]);
+            if (pick < acc) {
+                block = preset.blocks[i];
+                break;
+            }
+        }
+
+        int span = preset.depthMax - preset.depthMin + 1;
+        int depth = preset.depthMin
+            + (int) (hash01(worldX, worldZ, worldSeedInt, 0x77AA55EE) * span);
+        if (depth > preset.depthMax) {
+            depth = preset.depthMax;
+        }
+
+        return new TalosRiverSystem.RiverbedMaterial(block, depth);
+    }
+
+    /** 确定性低频值噪声，返回 [0,1]，用于材料斑块选择。 */
+    private static double valueNoise(int x, int z, int seed,
+                                     double scale, int salt) {
+        double sx = x / scale;
+        double sz = z / scale;
+        int x0 = (int) Math.floor(sx);
+        int z0 = (int) Math.floor(sz);
+        double fx = sx - x0;
+        double fz = sz - z0;
+        double u = fx * fx * (3.0 - 2.0 * fx);
+        double v = fz * fz * (3.0 - 2.0 * fz);
+
+        double a = hash01(x0, z0, seed, salt);
+        double b = hash01(x0 + 1, z0, seed, salt);
+        double c = hash01(x0, z0 + 1, seed, salt);
+        double d = hash01(x0 + 1, z0 + 1, seed, salt);
+        double e = a + (b - a) * u;
+        double f = c + (d - c) * u;
+        return e + (f - e) * v;
+    }
+
+    private static double hash01(int x, int z, int seed, int salt) {
+        long h = 0x9E3779B97F4A7C15L;
+        h ^= mix64(x + 0x9E3779B97F4A7C15L);
+        h ^= mix64(z + 0xBF58476D1CE4E5B9L);
+        h ^= mix64(seed + 0x94D049BB133111EBL);
+        h ^= mix64(salt);
+        h = mix64(h);
+        return (h >>> 11) / (double) (1L << 53);
+    }
+
     public static double computeRiverBedY(double baseHeight,
                                           int seaLevel,
                                           TalosRiverSystem.HydroSample hydro,

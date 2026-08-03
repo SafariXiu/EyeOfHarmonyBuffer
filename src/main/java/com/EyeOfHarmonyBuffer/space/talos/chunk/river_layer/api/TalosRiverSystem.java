@@ -158,6 +158,29 @@ public final class TalosRiverSystem {
         );
     }
 
+    /** 河床底料：方块 + 铺设深度（格）。 */
+    public static final class RiverbedMaterial {
+        public final BlockMetaPair block;
+        public final int depth;
+
+        public RiverbedMaterial(BlockMetaPair block, int depth) {
+            this.block = block;
+            this.depth = depth;
+        }
+    }
+
+    /**
+     * 河床斑块底料：按宏群系预设 + 低频确定性噪声选择大块材料
+     * （砂砾 / 沙子 / 黏土等），只用于河道列。
+     */
+    public static RiverbedMaterial getRiverbedMaterialAt(
+        int worldX, int worldZ, int worldSeedInt, MacroPackageId macroId
+    ) {
+        return TalosRiverProfile.riverbedMaterialAt(
+            worldX, worldZ, worldSeedInt, macroId
+        );
+    }
+
     public static final class DebugNearestRiverInfo {
         /** 是否找到了任意河段 */
         public final boolean hasRiver;
