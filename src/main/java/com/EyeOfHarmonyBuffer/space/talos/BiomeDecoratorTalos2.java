@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeature;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeatures;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -93,12 +94,27 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         if (acidLakeGen != null && rand.nextInt(2000) == 0) {
             int lakeX = worldX0 + rand.nextInt(16);
             int lakeZ = worldZ0 + rand.nextInt(16);
-            acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
+            // 完全避开河道影响：整片湖的足迹上河流 mask 必须全为 0
+            if (isFullyOutsideRiver(lakeX, lakeZ, worldSeedInt)) {
+                acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
+            }
         }
 
         decorateBiomeFeatures(
             world, rand, chunk, (TalosBiomeBase) biome
         );
+    }
+
+    /** 酸雨湖避让河流：覆盖范围内的河流 mask 必须全部等于 0。 */
+    private boolean isFullyOutsideRiver(int x, int z, int worldSeedInt) {
+        for (int dz = -8; dz <= 8; dz += 4) {
+            for (int dx = -8; dx <= 8; dx += 4) {
+                if (TalosRiverSystem.getRiverMask(x + dx, z + dz, worldSeedInt) > 0.0) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** 按群系配置逐项撒点（count = 每区块尝试次数，支持小数概率）。 */
