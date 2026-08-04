@@ -1,12 +1,16 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import net.minecraft.world.biome.BiomeGenBase;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 洞穴网络生成器（纯函数，无状态、无随机流）。
@@ -40,6 +44,7 @@ public final class CaveGenerator {
     private static final int SALT_EDGE_JITTER = 0x7A;
     private static final int SALT_EDGE_RADIUS = 0x8B;
     private static final int SALT_COLLAPSE = 0x9C;
+    private static final int SALT_MEGA_HALL = 0xA1;
 
     /** 大厅出现概率（原 22%，巨型大厅更稀有）。 */
     private static final double CHAMBER_CHANCE = 0.10;
@@ -52,6 +57,30 @@ public final class CaveGenerator {
     /** 大厅中心 Y 上限：避免巨型空腔顶到地表。 */
     private static final float CHAMBER_MAX_CENTER_Y = 78.0f;
 
+    /** 洞厅超级格边长（blocks）：每个洞厅独占一个区域，避免重叠。 */
+    public static final int MEGA_HALL_CELL_BLOCKS = 4096;
+    /** 洞厅生成概率：每个 4096×4096 超级格约 0.5%。 */
+    public static final double MEGA_HALL_CHANCE = 0.005;
+    /** 洞厅水平半径范围：直径约 1000~1800 格。 */
+    public static final double MEGA_HALL_RADIUS_XZ_MIN = 500.0;
+    public static final double MEGA_HALL_RADIUS_XZ_MAX = 900.0;
+    /** 洞厅垂直半径范围：总高约 48~58 格，配合中心保证底部≥5、顶部≤64。 */
+    public static final double MEGA_HALL_RADIUS_Y_MIN = 24.0;
+    public static final double MEGA_HALL_RADIUS_Y_MAX = 29.0;
+    /** 洞厅中心 Y 范围（配合半径钳制在 5~64 内）。 */
+    public static final double MEGA_HALL_CENTER_Y_MIN = 34.0;
+    public static final double MEGA_HALL_CENTER_Y_MAX = 35.0;
+    /** 洞厅垂直硬边界：底不低于 5，顶不高于 64。 */
+    public static final int MEGA_HALL_MIN_Y = 5;
+    public static final int MEGA_HALL_MAX_Y = 64;
+    /** 洞厅中心距超级格边缘的最小距离（保证整厅落在本格内）。 */
+    private static final double MEGA_HALL_MARGIN = 1000.0;
+
+    private static final Object NO_MEGA_HALL = new Object();
+    private static final ConcurrentHashMap<Long, Object> MEGA_HALL_CACHE =
+        new ConcurrentHashMap<Long, Object>();
+    private static final int MEGA_HALL_CACHE_LIMIT = 8192;
+
     private CaveGenerator() {}
 
     // ------------------------------------------------------------
@@ -61,6 +90,12 @@ public final class CaveGenerator {
     /** 生成某个 256 格单元的全部节点（确定性）。 */
     public static List<CaveNode> nodesForCell(int cellX, int cellZ, long seed) {
         List<CaveNode> nodes = new ArrayList<CaveNode>();
+        int hallSuperX = Math.floorDiv(
+            cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        int hallSuperZ = Math.floorDiv(
+            cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        CaveMegaHall megaHall = megaHallForSupercell(
+            hallSuperX, hallSuperZ, seed);
         boolean backbone = isBackboneCell(cellX, cellZ);
 
         if (backbone) {
@@ -110,7 +145,6 @@ public final class CaveGenerator {
                     y = maxCy;
                 }
             }
-
             nodes.add(new CaveNode(
                 nodeId(seed, cellX, cellZ, i + 1),
                 cellX, cellZ, x, y, z,
@@ -171,7 +205,169 @@ public final class CaveGenerator {
             ));
         }
 
+        // 洞厅优先：清掉洞厅范围内的其他所有节点，只留洞厅自己的超级节点
+        if (megaHall != null) {
+            List<CaveNode> kept = new ArrayList<CaveNode>(nodes.size());
+            for (CaveNode n : nodes) {
+                if (!nodeInsideMegaHall(n, megaHall)) {
+                    kept.add(n);
+                }
+            }
+            nodes = kept;
+        }
+
+        // 洞厅：中心所在单元挂一个超级节点，用于连接主干网
+        CaveNode mega = megaHallNodeForCell(cellX, cellZ, seed);
+        if (mega != null) {
+            nodes.add(mega);
+        }
+
         return nodes;
+    }
+
+    /** 查询某个 4096 超级格是否有洞厅（带缓存，确定性）。 */
+    public static CaveMegaHall megaHallForSupercell(int superX, int superZ,
+                                                    long seed) {
+        long key = megaHallKey(seed, superX, superZ);
+        Object cached = MEGA_HALL_CACHE.get(key);
+        if (cached != null) {
+            return cached == NO_MEGA_HALL ? null : (CaveMegaHall) cached;
+        }
+        if (MEGA_HALL_CACHE.size() > MEGA_HALL_CACHE_LIMIT) {
+            MEGA_HALL_CACHE.clear();
+        }
+
+        CaveMegaHall hall = computeMegaHall(superX, superZ, seed);
+        MEGA_HALL_CACHE.put(key, hall != null ? hall : NO_MEGA_HALL);
+        return hall;
+    }
+
+    /** 坐标是否落在某个洞厅内（用于标签查询）。 */
+    public static CaveMegaHall megaHallAt(int worldX, int worldZ, long seed) {
+        int superX = Math.floorDiv(worldX, MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(worldZ, MEGA_HALL_CELL_BLOCKS);
+        CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
+        if (hall != null
+            && hall.insideHorizontal(worldX + 0.5, worldZ + 0.5)) {
+            return hall;
+        }
+        return null;
+    }
+
+    /** 收集与某区块相交的洞厅（洞厅被限制在超级格内部，只需查本格）。 */
+    private static void collectMegaHallsForChunk(int chunkX, int chunkZ,
+                                                 long seed,
+                                                 List<CaveMegaHall> out) {
+        int superX = Math.floorDiv(
+            chunkX * 16, MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            chunkZ * 16, MEGA_HALL_CELL_BLOCKS);
+        CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
+        if (hall != null && hall.intersectsChunk(chunkX, chunkZ)) {
+            out.add(hall);
+        }
+    }
+
+    /** 释放洞厅缓存（世界卸载时调用）。 */
+    public static void clearMegaHallCache() {
+        MEGA_HALL_CACHE.clear();
+    }
+
+    private static CaveMegaHall computeMegaHall(int superX, int superZ,
+                                                long seed) {
+        if (CaveMath.hash01(
+                superX, superZ, 0, seed, SALT_MEGA_HALL
+            ) >= MEGA_HALL_CHANCE) {
+            return null;
+        }
+        double cx = superX * MEGA_HALL_CELL_BLOCKS + CaveMath.hashRange(
+            superX, superZ, 1, seed, SALT_MEGA_HALL,
+            MEGA_HALL_MARGIN,
+            MEGA_HALL_CELL_BLOCKS - MEGA_HALL_MARGIN);
+        double cz = superZ * MEGA_HALL_CELL_BLOCKS + CaveMath.hashRange(
+            superX, superZ, 2, seed, SALT_MEGA_HALL,
+            MEGA_HALL_MARGIN,
+            MEGA_HALL_CELL_BLOCKS - MEGA_HALL_MARGIN);
+        double rx = CaveMath.hashRange(
+            superX, superZ, 3, seed, SALT_MEGA_HALL,
+            MEGA_HALL_RADIUS_XZ_MIN, MEGA_HALL_RADIUS_XZ_MAX);
+        double rz = CaveMath.hashRange(
+            superX, superZ, 4, seed, SALT_MEGA_HALL,
+            MEGA_HALL_RADIUS_XZ_MIN, MEGA_HALL_RADIUS_XZ_MAX);
+        double ry = CaveMath.hashRange(
+            superX, superZ, 5, seed, SALT_MEGA_HALL,
+            MEGA_HALL_RADIUS_Y_MIN, MEGA_HALL_RADIUS_Y_MAX);
+        double cy = CaveMath.hashRange(
+            superX, superZ, 6, seed, SALT_MEGA_HALL,
+            MEGA_HALL_CENTER_Y_MIN, MEGA_HALL_CENTER_Y_MAX);
+        // 硬性钳制：洞厅整体落在 5~64 之间
+        if (cy - ry < MEGA_HALL_MIN_Y) {
+            cy = MEGA_HALL_MIN_Y + ry;
+        }
+        if (cy + ry > MEGA_HALL_MAX_Y) {
+            cy = MEGA_HALL_MAX_Y - ry;
+        }
+
+        // 群系限制：中心 + 四角都必须是 Alpine / Polar Desert
+        if (!allowedMegaHallBiome((int) cx, (int) cz, (int) seed)
+            || !allowedMegaHallBiome(
+                (int) (cx - rx * 0.8), (int) (cz - rz * 0.8), (int) seed)
+            || !allowedMegaHallBiome(
+                (int) (cx + rx * 0.8), (int) (cz - rz * 0.8), (int) seed)
+            || !allowedMegaHallBiome(
+                (int) (cx - rx * 0.8), (int) (cz + rz * 0.8), (int) seed)
+            || !allowedMegaHallBiome(
+                (int) (cx + rx * 0.8), (int) (cz + rz * 0.8), (int) seed)) {
+            return null;
+        }
+        return new CaveMegaHall(cx, cy, cz, rx, ry, rz, seed);
+    }
+
+    private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
+        BiomeGenBase biome = TalosMacroClimate.getBiome(wx, wz, seed);
+        return biome == TalosBiomes.TALOS_ALPINE
+            || biome == TalosBiomes.TALOS_POLAR_DESERT;
+    }
+
+    /** 洞厅中心所在单元对应的网络节点；其他单元返回 null。 */
+    private static CaveNode megaHallNodeForCell(int cellX, int cellZ,
+                                                long seed) {
+        int superX = Math.floorDiv(
+            cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
+        if (hall == null) {
+            return null;
+        }
+        int hcX = Math.floorDiv((int) Math.floor(hall.cx), CELL_BLOCKS);
+        int hcZ = Math.floorDiv((int) Math.floor(hall.cz), CELL_BLOCKS);
+        if (hcX != cellX || hcZ != cellZ) {
+            return null;
+        }
+        return new CaveNode(
+            nodeId(seed, cellX, cellZ, 0xFFFF),
+            cellX, cellZ,
+            (float) hall.cx, (float) hall.cy, (float) hall.cz,
+            CaveNode.KIND_MEGA_HALL, CaveNode.BAND_MID,
+            (float) hall.rx, (float) hall.ry, (float) hall.rz,
+            0, 0
+        );
+    }
+
+    /** 节点是否落在洞厅范围内（含边缘 4 格禁装饰带）。 */
+    private static boolean nodeInsideMegaHall(CaveNode node,
+                                              CaveMegaHall hall) {
+        return hall.nearHorizontal(node.x, node.z, 4.0)
+            && node.y >= hall.minY - 4.0
+            && node.y <= hall.maxY + 4.0;
+    }
+
+    private static long megaHallKey(long seed, int superX, int superZ) {
+        long h = seed;
+        h = CaveMath.mix64(h ^ (superX * 0x9E3779B97F4A7C15L));
+        h = CaveMath.mix64(h ^ (superZ * 0xBF58476D1CE4E5B9L));
+        return h;
     }
 
     private static boolean isBackboneCell(int cellX, int cellZ) {
@@ -325,6 +521,9 @@ public final class CaveGenerator {
     }
 
     private static double baseRadius(int ka, int kb) {
+        if (ka == CaveNode.KIND_MEGA_HALL || kb == CaveNode.KIND_MEGA_HALL) {
+            return 10.0;
+        }
         if (ka == CaveNode.KIND_SHAFT || kb == CaveNode.KIND_SHAFT) {
             return 3.4;
         }
@@ -402,6 +601,7 @@ public final class CaveGenerator {
         List<CaveSegment> segments = new ArrayList<CaveSegment>();
         List<CaveChamber> chambers = new ArrayList<CaveChamber>();
         List<CaveEntrance> entrances = new ArrayList<CaveEntrance>();
+        List<CaveMegaHall> megaHalls = new ArrayList<CaveMegaHall>(1);
         List<CaveTag> tags = CaveFlavorRegistry.tagsForCell(
             cellX, cellZ, seed
         );
@@ -464,7 +664,15 @@ public final class CaveGenerator {
             }
         }
 
-        return new CaveChunkData(segments, chambers, entrances, tags);
+        // 洞厅：只查本区块所在超级格（洞厅被限制在超级格内部）
+        collectMegaHallsForChunk(chunkX, chunkZ, seed, megaHalls);
+        if (!megaHalls.isEmpty() && !tags.contains(CaveTag.MEGA_HALL)) {
+            tags.add(CaveTag.MEGA_HALL);
+        }
+
+        return new CaveChunkData(
+            segments, chambers, entrances, megaHalls, tags
+        );
     }
 
     /** 某单元出发的全部线段（不跨单元去重；缓存用）。 */
@@ -506,6 +714,11 @@ public final class CaveGenerator {
             return;
         }
 
+        if (node.kind == CaveNode.KIND_MEGA_HALL) {
+            connectMegaHall(node, seed, nodeCache, out);
+            return;
+        }
+
         // 普通 / 大厅 / 入口 / 天坑：连接 5×5 邻域最近节点（优先跨单元）
         CaveNode first = nearestNode(node, seed, nodeCache, -1);
         if (first != null) {
@@ -528,13 +741,24 @@ public final class CaveGenerator {
     private static CaveNode nearestNode(CaveNode node, long seed,
                                         Map<Long, List<CaveNode>> nodeCache,
                                         long excludeId) {
+        return nearestNode(node, seed, nodeCache, excludeId, 2);
+    }
+
+    private static CaveNode nearestNode(CaveNode node, long seed,
+                                        Map<Long, List<CaveNode>> nodeCache,
+                                        long excludeId, int radius) {
         CaveNode best = null;
         double bestD = Double.POSITIVE_INFINITY;
-        for (int dz = -2; dz <= 2; dz++) {
-            for (int dx = -2; dx <= 2; dx++) {
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
                 for (CaveNode n : nodesOf(
                     node.cellX + dx, node.cellZ + dz, seed, nodeCache)) {
                     if (n.id == node.id || n.id == excludeId) {
+                        continue;
+                    }
+                    // 洞厅不互相连接，避免两个洞厅之间拉一条超长通道
+                    if (node.kind == CaveNode.KIND_MEGA_HALL
+                        && n.kind == CaveNode.KIND_MEGA_HALL) {
                         continue;
                     }
                     double d = distSq(node, n);
@@ -553,8 +777,8 @@ public final class CaveGenerator {
         if (best.cellX == node.cellX && best.cellZ == node.cellZ) {
             CaveNode other = null;
             double od = Double.POSITIVE_INFINITY;
-            for (int dz = -2; dz <= 2; dz++) {
-                for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dx = -radius; dx <= radius; dx++) {
                     int nx = node.cellX + dx;
                     int nz = node.cellZ + dz;
                     if (nx == node.cellX && nz == node.cellZ) {
@@ -562,6 +786,10 @@ public final class CaveGenerator {
                     }
                     for (CaveNode n : nodesOf(nx, nz, seed, nodeCache)) {
                         if (n.id == node.id || n.id == excludeId) {
+                            continue;
+                        }
+                        if (node.kind == CaveNode.KIND_MEGA_HALL
+                            && n.kind == CaveNode.KIND_MEGA_HALL) {
                             continue;
                         }
                         double d = distSq(node, n);
@@ -578,6 +806,26 @@ public final class CaveGenerator {
             }
         }
         return best;
+    }
+
+    /** 洞厅连主干网：在 ±4 单元内找最近的 3 个节点开通道。 */
+    private static void connectMegaHall(CaveNode node, long seed,
+                                        Map<Long, List<CaveNode>> nodeCache,
+                                        List<CaveSegment> out) {
+        CaveNode first = nearestNode(node, seed, nodeCache, -1, 4);
+        if (first != null) {
+            out.add(buildSegment(node, first, seed));
+        }
+        CaveNode second = nearestNode(node, seed, nodeCache,
+            first != null ? first.id : -1, 4);
+        if (second != null) {
+            out.add(buildSegment(node, second, seed));
+        }
+        CaveNode third = nearestNode(node, seed, nodeCache,
+            second != null ? second.id : (first != null ? first.id : -1), 4);
+        if (third != null) {
+            out.add(buildSegment(node, third, seed));
+        }
     }
 
     private static double distSq(CaveNode a, CaveNode b) {

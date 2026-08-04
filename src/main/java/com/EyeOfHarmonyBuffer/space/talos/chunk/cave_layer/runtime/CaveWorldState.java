@@ -47,6 +47,7 @@ public final class CaveWorldState {
     public void clear() {
         nodeCache.clear();
         edgeCache.clear();
+        CaveGenerator.clearMegaHallCache();
     }
 
     private void trimCache() {

@@ -6,6 +6,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveWorldState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
@@ -71,11 +73,17 @@ public final class TalosCaveSystem {
             disabled.add(CaveTag.DEFAULT);
             return disabled;
         }
-        return CaveFlavorRegistry.tagsForCell(
+        java.util.List<CaveTag> tags = CaveFlavorRegistry.tagsForCell(
             Math.floorDiv(worldX, 256),
             Math.floorDiv(worldZ, 256),
             worldSeedInt
         );
+        if (CaveGenerator.megaHallAt(
+                worldX, worldZ, worldSeedInt) != null
+            && !tags.contains(CaveTag.MEGA_HALL)) {
+            tags.add(CaveTag.MEGA_HALL);
+        }
+        return tags;
     }
 
     /**
@@ -202,6 +210,61 @@ public final class TalosCaveSystem {
     }
 
     /**
+     * 调试 / 传送用：列出玩家附近 radiusSuperCells×radiusSuperCells
+     * 个 4096 超级格内的洞厅（洞厅本身极稀有）。
+     */
+    public static java.util.List<CaveMegaHall> debugMegaHallsNear(
+        int worldX, int worldZ, int worldSeedInt, int radiusSuperCells
+    ) {
+        java.util.ArrayList<CaveMegaHall> out =
+            new java.util.ArrayList<CaveMegaHall>();
+        int superX = Math.floorDiv(
+            worldX, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            worldZ, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
+        for (int dz = -radiusSuperCells; dz <= radiusSuperCells; dz++) {
+            for (int dx = -radiusSuperCells; dx <= radiusSuperCells; dx++) {
+                CaveMegaHall hall = CaveGenerator.megaHallForSupercell(
+                    superX + dx, superZ + dz, worldSeedInt);
+                if (hall != null) {
+                    out.add(hall);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 向外逐圈扫描 maxSuperCells 个 4096 超级格，返回命中的所有洞厅。
+     * 洞厅极稀有，默认给 64 格（约 26 万格范围）足够覆盖大片大陆。
+     */
+    public static java.util.List<CaveMegaHall> findMegaHallsNear(
+        int worldX, int worldZ, int worldSeedInt, int maxSuperCells
+    ) {
+        java.util.ArrayList<CaveMegaHall> out =
+            new java.util.ArrayList<CaveMegaHall>();
+        int superX = Math.floorDiv(
+            worldX, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            worldZ, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
+        for (int r = 0; r <= maxSuperCells; r++) {
+            for (int dz = -r; dz <= r; dz++) {
+                for (int dx = -r; dx <= r; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                        continue;
+                    }
+                    CaveMegaHall hall = CaveGenerator.megaHallForSupercell(
+                        superX + dx, superZ + dz, worldSeedInt);
+                    if (hall != null) {
+                        out.add(hall);
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
      * 地标（入口 / 大厅）所在列是否真的会被雕刻：
      * 陆地列，且不在河道 / 湖体内。海平面与高度按 Talos 当前世界参数。
      */
@@ -244,6 +307,13 @@ public final class TalosCaveSystem {
             data.segments.size(), data.chambers.size(), data.entrances.size()
         ));
         lines.add("  区域标签: " + data.tags);
+        if (!data.megaHalls.isEmpty()) {
+            CaveMegaHall mh = data.megaHalls.get(0);
+            lines.add(String.format(
+                "  洞厅: %d 个，中心=(%.0f,%.0f) 半径=%.0f×%.0f×%.0f",
+                data.megaHalls.size(), mh.cx, mh.cz, mh.rx, mh.ry, mh.rz
+            ));
+        }
 
         List<CaveNode> nodes = state.nodesForCell(cellX, cellZ);
         int entrance = 0;

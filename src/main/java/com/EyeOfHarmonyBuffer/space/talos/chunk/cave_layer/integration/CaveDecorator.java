@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -146,7 +147,8 @@ public final class CaveDecorator {
                     }
 
                     if (collapsed
-                        && !insideAnyChamber(wx, lo + 0.5, wz, data)) {
+                        && !insideAnyChamber(wx, lo + 0.5, wz, data)
+                        && !insideAnyMegaHall(wx, lo + 0.5, wz, data)) {
                         // C. 塌方：下半部填碎石，顶部至少留 1 格
                         int fill = lo + Math.max(1, (h * 2) / 5);
                         if (fill >= hi) {
@@ -182,6 +184,7 @@ public final class CaveDecorator {
                     // 而是替换地板下方一格的原生方块，表面保持平整。
                     double fr = CaveMath.hash01(wx, wz, 1, seed, SALT_FLOOR);
                     if (!puddle && lo > 1
+                        && !insideAnyMegaHall(wx, lo + 0.5, wz, data)
                         && !isWater(blocks[base + lo - 1])) {
                         if (fr < 0.08) {
                             setBlock(blocks, meta, base + lo - 1, Blocks.gravel);
@@ -198,6 +201,8 @@ public final class CaveDecorator {
                             // 大厅内不用石笋区的小结构，改用大厅专属大石笋/钟乳石
                             && !insideAnyChamber(wx, lo + 0.5, wz, data)
                             && !insideAnyChamber(wx, hi + 0.5, wz, data)
+                            && !insideAnyMegaHall(wx, lo + 0.5, wz, data)
+                            && !insideAnyMegaHall(wx, hi + 0.5, wz, data)
                             && CaveMath.hash01(
                                 wx, wz, 2, seed, SALT_SPIKE
                             ) < SPIKE_IN_ZONE_CHANCE) {
@@ -294,6 +299,12 @@ public final class CaveDecorator {
 
         // G. 大厅装饰：湖中石笋（有湖时）+ 干地大石笋 + 顶部大钟乳石。
         for (CaveChamber ch : data.chambers) {
+            // 洞厅内部 / 边缘的大厅不再装饰，避免混进洞厅
+            if (insideAnyMegaHall(
+                    (int) Math.floor(ch.cx), ch.cy,
+                    (int) Math.floor(ch.cz), data)) {
+                continue;
+            }
             decorateChamberStructures(
                 ch, x0, z0, blocks, meta, worldHeight, seed
             );
@@ -401,6 +412,10 @@ public final class CaveDecorator {
                 if (lo - 1 >= 1 && isWater(blocks[base + lo - 1])) {
                     continue;
                 }
+                if (insideAnyMegaHall(
+                    worldX, lo + 0.5, worldZ, data)) {
+                    continue;
+                }
                 return lo;
             }
         }
@@ -414,6 +429,19 @@ public final class CaveDecorator {
             if (ch.inside(
                 worldX + 0.5, worldY, worldZ + 0.5, 0.0
             )) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 该点是否位于洞厅内或洞厅边缘禁装饰带内（外扩 4 格）。 */
+    private static boolean insideAnyMegaHall(int worldX, double worldY,
+                                             int worldZ, CaveChunkData data) {
+        for (CaveMegaHall hall : data.megaHalls) {
+            if (hall.nearHorizontal(worldX + 0.5, worldZ + 0.5, 4.0)
+                && worldY >= hall.minY - 4.0
+                && worldY <= hall.maxY + 4.0) {
                 return true;
             }
         }

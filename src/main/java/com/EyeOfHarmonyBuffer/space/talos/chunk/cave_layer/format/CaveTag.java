@@ -6,7 +6,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format;
  */
 public enum CaveTag {
     DEFAULT("default", "普通洞穴"),
-    SPIKE_ZONE("spike_zone", "石笋区");
+    SPIKE_ZONE("spike_zone", "石笋区"),
+    MEGA_HALL("mega_hall", "洞厅");
 
     public final String id;
     public final String displayName;

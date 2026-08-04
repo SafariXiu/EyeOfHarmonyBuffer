@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
@@ -34,6 +35,13 @@ public final class CaveCarver {
     public static final int SURFACE_CAP = 3;
     /** 地下湖石头壳厚度：水体外面再包几层石头。 */
     private static final int LAKE_SHELL_THICKNESS = 2;
+    /** 水体保护厚度：河床 / 海床下方至少保留的实心层（防止沙层悬空）。 */
+    private static final int WATER_PROTECT_BUFFER = 10;
+    /** 河流保护掩码阈值：放宽后河岸两侧也会被包住。 */
+    private static final double RIVER_PROTECT_MASK = 0.35;
+    /** 洞厅底部湖/地中频噪声尺度与盐。 */
+    private static final double MEGA_HALL_LAKE_SCALE = 48.0;
+    private static final int MEGA_HALL_LAKE_SALT = 0xB2;
 
     private static final int NOISE_SALT = 0xC0FFEE;
 
@@ -60,6 +68,14 @@ public final class CaveCarver {
             double e = seg.sampleExcess(worldX, worldY, worldZ, wall);
             if (e > best) {
                 best = e;
+            }
+        }
+        for (CaveMegaHall hall : data.megaHalls) {
+            int[] span = new int[2];
+            if (hall.verticalSpan(
+                    worldX, worldZ, (int) Math.floor(hall.maxY), span)
+                && worldY >= span[0] && worldY <= span[1]) {
+                return 1.0;
             }
         }
         for (CaveChamber ch : data.chambers) {
@@ -97,11 +113,26 @@ public final class CaveCarver {
             return;
         }
 
-        boolean waterProtected = riverMask > 0.7 || body != null;
+        boolean waterProtected =
+            riverMask > RIVER_PROTECT_MASK || body != null;
         int maxY = waterProtected
-            ? topSolidY - 2
+            ? topSolidY - WATER_PROTECT_BUFFER
             : topSolidY - SURFACE_CAP;
         if (maxY < 1) {
+            return;
+        }
+
+        // 洞厅快速雕刻：整列按几何直接填，不走逐格噪声
+        for (CaveMegaHall hall : data.megaHalls) {
+            if (hall.isPillarColumn(worldX, worldZ)) {
+                return; // 巨型石柱整列保留
+            }
+            int[] span = new int[2];
+            if (!hall.verticalSpan(worldX, worldZ, maxY, span)) {
+                continue;
+            }
+            carveMegaHallColumn(hall, worldX, worldZ, span[0], span[1],
+                localX, localZ, blocks, meta, worldHeight, seed);
             return;
         }
 
@@ -229,6 +260,31 @@ public final class CaveCarver {
             } else if (excess > 0.0 && !lakeWater) {
                 setAir(blocks, meta, localX, localZ, y, worldHeight);
             }
+        }
+    }
+
+    /** 洞厅整列快速填充：底部中频噪声分出干地与湖泊。 */
+    private static void carveMegaHallColumn(CaveMegaHall hall,
+                                            int worldX, int worldZ,
+                                            int yMin, int yMax,
+                                            int localX, int localZ,
+                                            net.minecraft.block.Block[] blocks,
+                                            byte[] meta,
+                                            int worldHeight, long seed) {
+        double n = CaveMath.valueNoise3D(
+            worldX, 0, worldZ, seed,
+            MEGA_HALL_LAKE_SCALE, MEGA_HALL_LAKE_SALT);
+        int raised = (int) (n * 5.0);
+        // 洞厅底平面 + 中频噪声；只在靠近椭球边缘时被 yMin 约束。
+        int baseFloor = (int) Math.floor(hall.cy - hall.ry) + 1;
+        int floorY = Math.max(baseFloor + raised, yMin);
+        if (floorY > yMax) {
+            floorY = yMax;
+        }
+
+        // 先不填湖：只保留噪声抬升的地面，等噪声和原始地形调好再加水。
+        for (int y = floorY; y <= yMax; y++) {
+            setAir(blocks, meta, localX, localZ, y, worldHeight);
         }
     }
 

@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import net.minecraft.command.CommandBase;
@@ -27,7 +28,7 @@ public class CommandTalosCave extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talcave [tp|tpchamber] [index] - 查看洞穴状态 / 传送到最近的入口或大厅";
+        return "/talcave [tp|tpchamber|tphall] [index] - 查看洞穴状态 / 传送到最近的入口、大厅或洞厅";
     }
 
     @Override
@@ -53,6 +54,10 @@ public class CommandTalosCave extends CommandBase {
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("tpchamber")) {
             tpToEntrance(player, world, seed, px, pz, args, true);
+            return;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("tphall")) {
+            tpToMegaHall(player, world, seed, px, pz, args);
             return;
         }
 
@@ -144,6 +149,73 @@ public class CommandTalosCave extends CommandBase {
             "[TALCAVE] 跳转到%s #%d/%d: pos=(%d,%d) 井底Y=%d 地表≈%.0f",
             e.sinkhole ? "天坑" : "入口",
             index, sorted.size(), e.x, e.z, e.y, surface
+        )));
+    }
+
+    private void tpToMegaHall(EntityPlayerMP player, World world, int seed,
+                              int px, int pz, String[] args) {
+        int index = 1;
+        if (args.length >= 2) {
+            try {
+                index = Integer.parseInt(args[1]);
+            } catch (NumberFormatException ex) {
+                player.addChatMessage(new ChatComponentText(
+                    "序号参数无效: " + args[1] + "（1 为最近）"
+                ));
+                return;
+            }
+            if (index < 1) {
+                player.addChatMessage(new ChatComponentText("序号从 1 开始。"));
+                return;
+            }
+        }
+
+        List<CaveMegaHall> halls = TalosCaveSystem.findMegaHallsNear(
+            px, pz, seed, 64
+        );
+        if (halls.isEmpty()) {
+            player.addChatMessage(new ChatComponentText(
+                "扫描 65×65 个超级格（约 26 万格范围）未找到洞厅。"
+                    + "洞厅只在 Alpine / Polar Desert 生成，且极稀有。"
+            ));
+            return;
+        }
+        List<CaveMegaHall> sorted = new ArrayList<CaveMegaHall>(halls);
+        java.util.Collections.sort(sorted, (a, b) -> Double.compare(
+            distSq(a.cx, a.cz, player.posX, player.posZ),
+            distSq(b.cx, b.cz, player.posX, player.posZ)
+        ));
+        if (index > sorted.size()) {
+            player.addChatMessage(new ChatComponentText(
+                "序号 " + index + " 超出范围：附近洞厅共 " + sorted.size() + " 个。"
+            ));
+            return;
+        }
+        CaveMegaHall hall = sorted.get(index - 1);
+        double tx = hall.cx;
+        double tz = hall.cz;
+        if (hall.isPillarColumn((int) hall.cx, (int) hall.cz)) {
+            boolean found = false;
+            for (int dz = -3; dz <= 3 && !found; dz++) {
+                for (int dx = -3; dx <= 3 && !found; dx++) {
+                    if (dx == 0 && dz == 0) {
+                        continue;
+                    }
+                    if (!hall.isPillarColumn(
+                        (int) hall.cx + dx, (int) hall.cz + dz)) {
+                        tx = hall.cx + dx;
+                        tz = hall.cz + dz;
+                        found = true;
+                    }
+                }
+            }
+        }
+        player.setPositionAndUpdate(tx + 0.5, hall.cy + 1.0, tz + 0.5);
+        double dist = Math.sqrt(distSq(
+            tx, tz, player.posX, player.posZ));
+        player.addChatMessage(new ChatComponentText(String.format(
+            "[TALCAVE] 跳转到洞厅 #%d/%d: 距离≈%.0f 中心=(%.0f,%.0f) 半径=%.0f×%.0f×%.0f",
+            index, sorted.size(), dist, tx, tz, hall.rx, hall.ry, hall.rz
         )));
     }
 

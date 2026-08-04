@@ -10,16 +10,20 @@ public final class CaveChunkData {
     public final List<CaveSegment> segments;
     public final List<CaveChamber> chambers;
     public final List<CaveEntrance> entrances;
+    /** 与当前区块相交的洞厅（通常为空）。 */
+    public final List<CaveMegaHall> megaHalls;
     /** 本区块所在 256 格单元命中的区域风格标签。 */
     public final List<CaveTag> tags;
 
     public CaveChunkData(List<CaveSegment> segments,
                          List<CaveChamber> chambers,
                          List<CaveEntrance> entrances,
+                         List<CaveMegaHall> megaHalls,
                          List<CaveTag> tags) {
         this.segments = segments;
         this.chambers = chambers;
         this.entrances = entrances;
+        this.megaHalls = megaHalls;
         this.tags = tags;
     }
 }
