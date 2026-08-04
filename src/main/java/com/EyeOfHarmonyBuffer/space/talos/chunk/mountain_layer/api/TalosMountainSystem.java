@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainHeightProfile;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.runtime.MountainBelt;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.runtime.MountainPrebuildService;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.runtime.MountainWorldState;
@@ -70,6 +72,23 @@ public final class TalosMountainSystem {
             belt.sampleElevation01(worldX, worldZ),
             belt.sampleMask01(worldX, worldZ),
             belt.kind
+        );
+    }
+
+    /**
+     * 地形链统一入口：山脉抬升（最终高度场使用）。
+     * worldHeight 用于峰顶随世界高度解耦（见 MountainHeightProfile）；
+     * 山地系统禁用 / 未构建时 elevation/mask 为 0，本方法等效于不抬升。
+     */
+    public static double applyMountainUplift(double baseHeight,
+                                             int seaLevel,
+                                             double elevation01,
+                                             double mask01,
+                                             int beltKind,
+                                             int worldHeight) {
+        return MountainTerrainModifier.applyMountainUplift(
+            baseHeight, seaLevel, elevation01, mask01, beltKind,
+            MountainHeightProfile.ofWorldHeight(worldHeight)
         );
     }
 

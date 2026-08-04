@@ -6,10 +6,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSegment
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverBodyIndex;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSpatialIndex;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosBaseTerrain;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.RiverTemplate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.SupercontinentInfo;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.TemplateInstantiator;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import java.util.ArrayList;
@@ -111,11 +111,15 @@ public final class SupercontinentRiverSystemRegistry {
 
         List<RiverBodyData> kept = new ArrayList<RiverBodyData>();
         for (RiverBodyData b : bodies) {
-            double h = TalosBaseTerrain.sampleBaseHeight(
+            // 用「不含水文的高度链」而不是基础高度：山脉抬升 / 裂谷都会改变
+            // 实际地表，按基础高度过滤会在高山里留下幽灵水体（或误删低地湖）。
+            // 不用完整最终高度：河流系统构建时查水文会与水体过滤互相递归。
+            double h = TalosTerrainHeights.samplePreRiverHeight(
                 (int) Math.floor(b.getCenterX()),
                 (int) Math.floor(b.getCenterZ()),
                 worldSeedInt,
-                SEA_LEVEL
+                SEA_LEVEL,
+                256
             );
             if (h > MAX_BODY_CENTER_HEIGHT) {
                 continue;

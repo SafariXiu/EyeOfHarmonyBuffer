@@ -185,6 +185,30 @@ public final class TalosMacroClimate {
         return layer.getSmoothedBiomeAt(worldX, worldZ, isLandKnown);
     }
 
+    /** 群系级高度调制参数（与 getBiomeChunk 输出的 bias/scale 同一来源）。 */
+    public static final class HeightModulation {
+        public final double bias;
+        public final double scale;
+
+        public HeightModulation(double bias, double scale) {
+            this.bias = bias;
+            this.scale = scale;
+        }
+    }
+
+    /**
+     * 逐点取群系级高度调制参数；与 getBiomeChunk 的 biasOut/scaleOut 完全一致，
+     * 供「最终高度场」的稀疏查询复用（保证逐点与区块批量同口径）。
+     */
+    public static HeightModulation getHeightModulationAt(
+        int worldX, int worldZ, int worldSeedInt, boolean isLandKnown
+    ) {
+        BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
+        BiomeRegionLayer.SmoothedSample sample =
+            layer.getSmoothedSampleAt(worldX, worldZ, isLandKnown);
+        return new HeightModulation(sample.bias, sample.scale);
+    }
+
     /**
      * 为某个 chunk 一次性采样 16×16 的「最终平滑群系」表。
      *

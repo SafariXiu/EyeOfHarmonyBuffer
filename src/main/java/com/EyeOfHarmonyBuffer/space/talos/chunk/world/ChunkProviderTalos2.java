@@ -4,14 +4,9 @@ import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainTerrainModifier;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainHeightProfile;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -33,18 +28,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final int worldSeedInt;
 
-    /** 山地高度配置：与 Y 轴上限解耦（256 高度下行为不变）。 */
-    private final MountainHeightProfile mountainHeight;
-
     private static final boolean DEBUG_COASTLINE = true;
-    private static final boolean USE_CHUNK_BLUR_BANK = true;
 
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.world = world;
         this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
         this.worldHeight = world.getActualHeight();
-        this.mountainHeight = MountainHeightProfile.ofWorldHeight(worldHeight);
     }
 
     @Override
@@ -67,40 +57,25 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         clearChunkBlocks(blocks, meta);
 
         TalosChunkContext ctx = TalosChunkContext.create(
-            chunkX, chunkZ, worldSeedInt, getWaterLevel()
+            chunkX, chunkZ, worldSeedInt, getWaterLevel(), worldHeight
         );
 
         generateTerrainWithBaseHeightSimple(ctx, blocks, meta);
     }
 
     /**
-     * 使用 TalosBaseTerrain + TalosRiverSystem 生成基础陆地/海洋高度，并填充方块。
+     * 使用统一最终高度场（TalosTerrainHeights）生成基础陆地/海洋高度，并填充方块。
      *
      * 流程概述：
-     *   1. 调用 TalosBaseTerrain.sampleBaseHeight(...) 计算「未考虑河流」的基础高度 baseHeight；
-     *   2. 对陆地区域，使用 TalosRiverTerrainModifier.applyRiverBankShaping(...)：
-     *        - 基于 TalosRiverSystem.getRiverMask(...) 的河流影响掩码；
-     *        - 只在 baseHeight 高于河面（seaLevel）时，对靠近河流的高地做「河岸压低」；
-     *        - 在 mask ∈ (0.7, 0.8) 区间内，将高度从原始地形平滑过渡到河面高度；
-     *        - 在 mask ≥ 0.8 时，直接把高度压到河面高度（形成贴河的低缓河岸）；
-     *        - 远离河流（mask ≤ 0.7）、低于河面的区域保持原始高度不变；
-     *   3. 对最终高度 h 执行 clamp 到 [1, worldHeight-2]，避免越界；
-     *   4. 按 isLand 决定填充：
-     *        - 陆地：
-     *            - y = 0 放置基岩；
-     *            - [1, h) 填充石头，y = h 顶层放草；
-     *            - 若 h < seaLevel，则 [h+1, seaLevel] 用水填充（形成内陆湖/洼地积水）；
-     *        - 海洋：
-     *            - y = 0 放置基岩；
-     *            - [1, seabedY] 填充石头（海底），seabedY = min(h, seaLevel-1)；
-     *            - [seabedY+1, seaLevel] 全部填充水；
-     *   5. DEBUG_COASTLINE 为 true 时，在陆地顶层用不同方块标记海岸权重（调试用）。
+     *   1. 每列经 TalosTerrainHeights.sampleColumn(...) 取最终高度：
+     *        基础高度 → 海岸塑形 → 裂谷塑形 → 山脉抬升 → 河岸/泛洪平原 → 河谷下切；
+     *   2. 对最终高度 h 执行 clamp 到 [1, worldHeight-2]，避免越界；
+     *   3. 按 isLand 决定填充：
+     *        - 陆地：基岩 + [1, h) 石头 + 顶层方块；低于海平面的列灌水；
+     *        - 海洋：基岩 + [1, seabedY] 石头 + [seabedY+1, seaLevel] 水。
      *
-     * 注意：
-     *   - 本方法只负责“标高 + 基础方块”的铺设；源头湖 / 暗河井等细节
-     *     已并入高度场雕刻（TalosRiverProfile.computeChannelBedY）。
-     *   - 河岸压低逻辑仅依赖世界坐标 (worldX, worldZ)、世界种子 int 和 seaLevel，
-     *     不在这里直接操作方块数组，保证高度场是可重现、与方块填充解耦的。
+     * 注意：高度链实现只存在于 terrain_layer.api.TalosTerrainHeights，
+     * 本方法不重复任何塑形逻辑，只做方块铺设。
      */
     private void generateTerrainWithBaseHeightSimple(TalosChunkContext ctx,
                                                      Block[] blocks, byte[] meta) {
@@ -123,99 +98,15 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 TalosLandMask.Sample landSample = ctx.land[colIndex];
 
                 final boolean isLand = isLandFromMask;
-                final double coastWeight =
-                    (landSample != null ? landSample.coastWeight : 0.0);
                 final double shelfWeight =
                     (landSample != null ? landSample.shelfWeight : 0.0);
 
-                double baseHeightD = ctx.baseHeight[colIndex];
-
-                double bankIntensity;
-                if (USE_CHUNK_BLUR_BANK) {
-                    bankIntensity = ctx.bankIntensity[colIndex];
-                } else {
-                    bankIntensity = sampleSmoothedBankIntensity(worldX, worldZ);
-                }
-
-                var bankPreset = TalosRiverTerrainModifier.bankPreset(bankIntensity);
-
-                // 与 TalosRiverSystem.getRiverMask 语义一致：
-                // 非陆地（按逐点海陆采样判断）视为无河流影响。
-                double riverMask =
-                    (landSample != null && landSample.isLand)
-                        ? ctx.hydro[colIndex].mask
-                        : 0.0;
-
-                double coastShapedHeightD = TalosCoastlineShaper.applyCoastlineShaping(
-                    baseHeightD,
-                    seaLevel,
-                    isLand,
-                    coastWeight
-                );
-
-                // 板块边界塑形：分离带 → 风格化裂谷悬崖（外崖面 + 崖缘 + 倒石堆 + 谷底）
-                // 强度来自网格级构造风格层（与群系/宏包覆盖同源），
-                // 外崖面 0.12~0.2 的下落与带边缘过渡都由平滑场驱动。
-                TalosMacroClimate.TectonicStyleSample tectonic = TalosMacroClimate
-                    .getTectonicStyleSample(worldX, worldZ, worldSeedInt);
-                double riftStrength = tectonic.smoothedDivergence;
-                PlateBoundaryState riftState = (riftStrength > 0.0)
-                    ? PlateBoundaryState.DIVERGENT
-                    : (landSample != null ? landSample.plateBoundaryState : null);
-                double riftWeight =
-                    (riftState == PlateBoundaryState.DIVERGENT)
-                        ? riftStrength
-                        : (landSample != null ? landSample.plateBoundaryWeight : 0.0);
-                double riftShapedHeightD = TalosPlateBoundaryShaper.applyRiftShaping(
-                    coastShapedHeightD,
-                    seaLevel,
-                    isLand,
-                    riftState,
-                    riftWeight,
-                    worldX,
-                    worldZ,
-                    worldSeedInt
-                );
-
-                // 山脉抬升：构造挤压带（HIGHLAND/MOUNTAINS/PEAK）上的 DLA 山脊。
-                // 放在裂谷之后、河岸之前；河流最后下切，穿山而过。
-                double mountainShapedHeightD =
-                    MountainTerrainModifier.applyMountainUplift(
-                        riftShapedHeightD,
-                        seaLevel,
-                        ctx.mountainElevation01[colIndex],
-                        ctx.mountainMask01[colIndex],
-                        ctx.mountainKind[colIndex],
-                        mountainHeight
-                    );
-
-                // 河岸塑形放在裂谷塑形之后：泛洪平原必须作用在最终地形上，
-                // 否则裂谷压高会把它重新抬回谷底高度（裂谷里的河因此没有泛洪平原）。
-                double riverShapedHeightD = TalosRiverTerrainModifier.applyRiverBankShaping(
-                    worldX, worldZ,
-                    worldSeedInt,
-                    mountainShapedHeightD,
-                    seaLevel,
-                    bankPreset,
-                    isLand,
-                    riverMask
-                );
-
-                // 河谷雕刻（高度场版）：在填充方块前把河谷做进高度场，
-                // 河道两侧自然成坡。阶段 A 仅对陆地列生效，海洋一侧保持原样。
-                double channelShapedHeightD;
-                if (isLand) {
-                    channelShapedHeightD = TalosRiverChannelShaper.applyRiverChannelShaping(
-                        worldX, worldZ,
-                        worldSeedInt,
-                        riverShapedHeightD,
-                        seaLevel,
-                        ctx.hydro[colIndex],
-                        ctx.macroPkg[colIndex]
-                    );
-                } else {
-                    channelShapedHeightD = riverShapedHeightD;
-                }
+                // 最终高度场统一出口：基础 → 海岸 → 裂谷 → 山脉 → 河岸 → 河谷下切。
+                TalosTerrainHeights.TerrainHeightSample ts =
+                    TalosTerrainHeights.sampleColumn(ctx.terrainInputs(colIndex));
+                double coastShapedHeightD = ts.coastD;
+                double riverShapedHeightD = ts.preRiverD;
+                double channelShapedHeightD = ts.surfaceD;
 
                 boolean riverCarved = channelShapedHeightD < riverShapedHeightD - 0.01;
 
@@ -441,52 +332,6 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     @Override
     protected boolean enableBiomeGenBaseBlock() {
         return false;
-    }
-
-    /**
-     * 在 (worldX, worldZ) 附近对 bankIntensity 做一个简单的空间平滑，
-     * 以减弱宏包交界处的硬切感。
-     *
-     * 做法：
-     *   - 以当前格子为中心，在一个固定采样半径内（例如 16 或 24 blocks），
-     *     采样若干个点的宏包，并取它们的 riverBank().bankIntensity()；
-     *   - 使用距离权重（越近权重越大）做加权平均；
-     *   - 若周围都没有有效宏包，则回退到一个中性值 0.5。
-     */
-    private double sampleSmoothedBankIntensity(int worldX, int worldZ) {
-        final int SAMPLE_STEP = 1;
-        final int SAMPLE_RADIUS = 6;
-
-        double weightedSum = 0.0;
-        double weightSum = 0.0;
-
-        for (int dz = -SAMPLE_RADIUS; dz <= SAMPLE_RADIUS; dz += SAMPLE_STEP) {
-            for (int dx = -SAMPLE_RADIUS; dx <= SAMPLE_RADIUS; dx += SAMPLE_STEP) {
-                int sx = worldX + dx;
-                int sz = worldZ + dz;
-
-                MacroPackageId macroId = TalosMacroClimate.getMacroPackageId(
-                    sx, sz, worldSeedInt
-                );
-                if (macroId == MacroPackageId.OCEANIC) {
-                    continue;
-                }
-
-                double k = TalosRiverTerrainModifier.bankIntensityFor(macroId);
-
-                double distSq = (double) dx * dx + (double) dz * dz;
-                double w = 1.0 / (1.0 + distSq * 0.01);
-
-                weightedSum += k * w;
-                weightSum   += w;
-            }
-        }
-
-        if (weightSum <= 0.0) {
-            return 0.5;
-        }
-
-        return weightedSum / weightSum;
     }
 
 }

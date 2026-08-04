@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.MacroPackageRegistry;
 
 import java.util.EnumMap;
@@ -47,6 +48,25 @@ public final class TalosRiverTerrainModifier {
      */
     public static MacroPackageRegistry.RiverBankPreset bankPreset(double bankIntensity) {
         return new MacroPackageRegistry.RiverBankPreset(bankIntensity);
+    }
+
+    /**
+     * 逐点河岸强度（与 TalosChunkContext 的 R=2 盒式模糊同一规则）：
+     * 以 (worldX, worldZ) 为中心取 5×5 邻域宏群系的 bankIntensity 平均值。
+     * 供「最终高度场」稀疏查询复用，保证逐点与区块批量同口径。
+     */
+    public static double smoothedBankIntensityAt(int worldX, int worldZ,
+                                                 int worldSeedInt) {
+        double sum = 0.0;
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
+                    worldX + dx, worldZ + dz, worldSeedInt
+                );
+                sum += bankIntensityFor(macro);
+            }
+        }
+        return sum / 25.0;
     }
 
     /**
