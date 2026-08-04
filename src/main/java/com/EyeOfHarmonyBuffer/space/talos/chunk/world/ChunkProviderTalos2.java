@@ -5,6 +5,9 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
@@ -85,6 +88,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         final int worldZ0 = ctx.chunkZ * CHUNK_SIZE;
 
         final LandMask16 landMask = ctx.landMask;
+
+        // 洞穴数据：每区块取一次（系统未启用时返回 null，直接跳过雕刻）
+        CaveChunkData caveData = TalosCaveSystem.dataForChunk(
+            ctx.chunkX, ctx.chunkZ, worldSeedInt
+        );
 
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
@@ -198,6 +206,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         }
                     }
 
+                    // 洞穴雕刻：方块填充完成后进行。
+                    // 地表封层 / 入口竖井 / 水体避让规则都在 CaveCarver 内。
+                    if (caveData != null) {
+                        CaveCarver.carveColumn(
+                            worldX, worldZ, localX, localZ,
+                            topSolidY, seaLevel, ts.riverMask, ts.body,
+                            caveData, blocks, meta, worldHeight, worldSeedInt
+                        );
+                    }
+
                 } else {
                     int seabedY = TalosSeafloorShaper.computeSeabedY(
                         seaLevel,
@@ -217,6 +235,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         int idx = getIndex(localX, y, localZ);
                         blocks[idx] = Blocks.water;
                         meta[idx] = 0;
+                    }
+
+                    // 海床下方也雕刻洞穴（含近海平滑带）：
+                    // 按海床高度 + 2 格缓冲，网络在海陆交界处连续且不挖穿海床。
+                    if (caveData != null && seabedY > 1) {
+                        CaveCarver.carveColumn(
+                            worldX, worldZ, localX, localZ,
+                            seabedY, seaLevel, 1.0, null,
+                            caveData, blocks, meta, worldHeight, worldSeedInt
+                        );
                     }
                 }
             }
