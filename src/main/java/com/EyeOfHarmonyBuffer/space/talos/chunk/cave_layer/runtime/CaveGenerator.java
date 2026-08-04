@@ -37,6 +37,7 @@ public final class CaveGenerator {
     private static final int SALT_SHAFT = 0x6F;
     private static final int SALT_EDGE_JITTER = 0x7A;
     private static final int SALT_EDGE_RADIUS = 0x8B;
+    private static final int SALT_COLLAPSE = 0x9C;
 
     private CaveGenerator() {}
 
@@ -226,6 +227,8 @@ public final class CaveGenerator {
 
         double baseR = baseRadius(a.kind, b.kind);
         long edgeId = edgeId(a.id, b.id);
+        boolean collapsed = CaveMath.hash01(
+            edgeId, 0, 0, seed, SALT_COLLAPSE) < 0.10;
 
         // 垂直抖动基向量（与 AB 垂直）
         double abx = bx - ax, aby = by - ay, abz = bz - az;
@@ -285,6 +288,7 @@ public final class CaveGenerator {
         }
         return new CaveSegment(
             edgeId,
+            collapsed,
             xs, ys, zs, rs,
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin
@@ -399,7 +403,8 @@ public final class CaveGenerator {
                         if (node.kind == CaveNode.KIND_CHAMBER) {
                             CaveChamber ch = new CaveChamber(
                                 node.x, node.y, node.z,
-                                node.chamberRx, node.chamberRy, node.chamberRz
+                                node.chamberRx, node.chamberRy, node.chamberRz,
+                                node.id
                             );
                             if (ch.maxX >= x0 && ch.minX <= x0 + 16
                                 && ch.maxZ >= z0 && ch.minZ <= z0 + 16) {

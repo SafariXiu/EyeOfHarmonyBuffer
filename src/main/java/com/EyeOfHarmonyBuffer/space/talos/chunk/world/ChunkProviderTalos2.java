@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveDecorator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
@@ -248,6 +249,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     }
                 }
             }
+        }
+
+        // 洞穴风格化：雕刻完成后整块装饰（洞底铺层 / 钟乳石 / 塌方 / 入口碎石环）
+        if (caveData != null) {
+            CaveDecorator.decorateChunk(
+                ctx.chunkX, ctx.chunkZ, worldSeedInt,
+                blocks, meta, worldHeight, caveData
+            );
         }
     }
 

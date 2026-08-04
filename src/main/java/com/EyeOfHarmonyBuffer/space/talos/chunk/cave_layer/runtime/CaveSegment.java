@@ -9,6 +9,9 @@ public final class CaveSegment {
     /** 边 ID（去重用，由两端节点 ID 派生）。 */
     public final long edgeId;
 
+    /** 塌方段：通道下半部会被碎石填充，只留顶部爬行缝隙。 */
+    public final boolean collapsed;
+
     /** 折线顶点数。 */
     public final int n;
     public final float[] xs;
@@ -25,10 +28,12 @@ public final class CaveSegment {
     public final float maxZ;
 
     public CaveSegment(long edgeId,
+                       boolean collapsed,
                        float[] xs, float[] ys, float[] zs, float[] rs,
                        float minX, float minY, float minZ,
                        float maxX, float maxY, float maxZ) {
         this.edgeId = edgeId;
+        this.collapsed = collapsed;
         this.n = xs.length;
         this.xs = xs;
         this.ys = ys;

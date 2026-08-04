@@ -169,7 +169,8 @@ public final class TalosCaveSystem {
                     }
                     out.add(new CaveChamber(
                         n.x, n.y, n.z,
-                        n.chamberRx, n.chamberRy, n.chamberRz
+                        n.chamberRx, n.chamberRy, n.chamberRz,
+                        n.id
                     ));
                 }
             }
