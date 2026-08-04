@@ -5,7 +5,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
 import java.util.List;
 
 public final class RiverQuery {
@@ -124,9 +123,6 @@ public final class RiverQuery {
         }
     }
 
-    private static final RiverBodyIndex EMPTY_BODY_INDEX =
-        RiverBodyIndex.build(Collections.<RiverBodyData>emptyList(), RiverBodyIndex.CELL_SIZE);
-
     private RiverQuery() {}
 
     public static SegmentProjection projectToSegment(
@@ -177,14 +173,6 @@ public final class RiverQuery {
             default:
                 return 1.0;
         }
-    }
-
-    /** 兼容入口：不含水体索引（只查河道）。 */
-    public static RiverQueryResult query(
-        RiverSpatialIndex index,
-        double worldX, double worldZ
-    ) {
-        return query(index, EMPTY_BODY_INDEX, worldX, worldZ);
     }
 
     public static RiverQueryResult query(

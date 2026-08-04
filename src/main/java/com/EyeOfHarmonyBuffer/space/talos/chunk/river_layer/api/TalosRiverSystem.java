@@ -46,7 +46,7 @@ public final class TalosRiverSystem {
 
     private static final double SOURCE_PROGRESS_MAX = 0.04; // 上游 4% 视为源头段
     private static final double SOURCE_RADIUS_MULT  = 2.0;  // 源头影响范围 = 2 × channelRadius
-    public static double SUPERCONTINENT_RIVER_SCALE = 2.5;
+    private static final double SUPERCONTINENT_RIVER_SCALE = 2.5;
 
     private TalosRiverSystem() {}
 
@@ -323,6 +323,20 @@ public final class TalosRiverSystem {
     public static HydroSample sampleHydroField(int worldX, int worldZ, int worldSeedInt) {
         RiverQueryResult r = queryHydro(worldX, worldZ, worldSeedInt);
         return toHydroSample(r);
+    }
+
+    /**
+     * 河床装饰（水下乱石 / 枯木）是否允许生成在该水文列：
+     * 河流影响较强，或落在湖类水体（独立湖 / 穿河湖 / 牛轭湖）内；
+     * 湿地保留沼泽泥底，不放这类装饰。
+     */
+    public static boolean isRiverbedDecorationAllowed(HydroSample hydro) {
+        if (hydro == null) {
+            return false;
+        }
+        boolean lakeBed = hydro.body != null
+            && hydro.body.getType() != RiverBodyType.WETLAND;
+        return lakeBed || hydro.mask > 0.7;
     }
 
     /**

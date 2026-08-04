@@ -361,7 +361,7 @@ public final class TalosRiverProfile {
         WaterBodySmoothingContext ctx = new WaterBodySmoothingContext(
             body, rx, rz, r,
             worldX, worldZ, worldSeedInt,
-            distToEdge, l[0],
+            distToEdge,
             waterLevel, seaLevel, baseHeightD, hydro,
             riverBedYd, relief, cutWidth
         );

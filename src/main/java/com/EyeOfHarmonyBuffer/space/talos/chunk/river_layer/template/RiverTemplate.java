@@ -9,10 +9,6 @@ public final class RiverTemplate {
     public final List<TemplateEdge> edges;
     public final List<TemplateBody> bodies;
 
-    public RiverTemplate(long seed, List<TemplateEdge> edges) {
-        this(seed, edges, java.util.Collections.<TemplateBody>emptyList());
-    }
-
     public RiverTemplate(long seed,
                          List<TemplateEdge> edges,
                          List<TemplateBody> bodies) {

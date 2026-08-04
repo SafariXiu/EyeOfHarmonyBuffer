@@ -1,9 +1,6 @@
 package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyType;
 import net.minecraft.command.CommandBase;
@@ -154,22 +151,12 @@ public class CommandTalosRiverBody extends CommandBase {
 
         player.setPositionAndUpdate(target.centerX + 0.5, y + 2.0, target.centerZ + 0.5);
 
-        // 临时诊断：跳转点用游戏内同一查询链采样水文，并让雕刻函数算一个床面
-        TalosRiverSystem.HydroSample h =
-            TalosRiverSystem.sampleHydroField(blockX, blockZ, worldSeedInt);
-        MacroPackageId macro =
-            TalosMacroClimate.getMacroPackageId(blockX, blockZ, worldSeedInt);
-        double bedY = TalosRiverProfile.computeChannelBedY(
-            blockX, blockZ, worldSeedInt, 70.0, 64, h, macro
-        );
-
         String attach = target.parentRiverId >= 0
             ? "挂河#" + target.parentRiverId : "独立";
         sender.addChatMessage(new ChatComponentText(
             String.format(
                 "[TalosRiver] 跳转到%s #%d/%d: bodyId=%d (%s), 半轴=%.0f×%.0f, "
-                    + "深度=%.1f, dist=%.1f, pos=(%.1f, %.1f)"
-                    + " [Debug] hydro.body=%s mask=%.2f dist=%.1f macro=%s bedY(base70)=%.1f",
+                    + "深度=%.1f, dist=%.1f, pos=(%.1f, %.1f)",
                 typeLabel(target.type),
                 index,
                 filtered.size(),
@@ -180,12 +167,7 @@ public class CommandTalosRiverBody extends CommandBase {
                 target.maxDepthBlocks,
                 dist,
                 target.centerX,
-                target.centerZ,
-                h.body != null ? h.body.getType().name() : "null",
-                h.mask,
-                h.distance,
-                macro,
-                bedY
+                target.centerZ
             )
         ));
     }

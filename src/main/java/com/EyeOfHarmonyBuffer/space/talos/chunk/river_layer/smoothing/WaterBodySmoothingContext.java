@@ -18,8 +18,6 @@ public final class WaterBodySmoothingContext {
     public final int worldSeedInt;
     /** 到真实轮廓的最短距离（blocks，轮廓内部点）。 */
     public final double distToEdge;
-    /** 旋转后的局部 X（沿水体朝向）。 */
-    public final double localX;
     /** 水面高度（海平面 + 水位偏移）。 */
     public final double waterLevel;
     public final int seaLevel;
@@ -41,7 +39,6 @@ public final class WaterBodySmoothingContext {
                                      int worldZ,
                                      int worldSeedInt,
                                      double distToEdge,
-                                     double localX,
                                      double waterLevel,
                                      int seaLevel,
                                      double baseHeightD,
@@ -57,7 +54,6 @@ public final class WaterBodySmoothingContext {
         this.worldZ = worldZ;
         this.worldSeedInt = worldSeedInt;
         this.distToEdge = distToEdge;
-        this.localX = localX;
         this.waterLevel = waterLevel;
         this.seaLevel = seaLevel;
         this.baseHeightD = baseHeightD;
