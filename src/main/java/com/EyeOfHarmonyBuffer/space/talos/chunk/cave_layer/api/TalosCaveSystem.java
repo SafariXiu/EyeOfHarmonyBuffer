@@ -210,31 +210,6 @@ public final class TalosCaveSystem {
     }
 
     /**
-     * 调试 / 传送用：列出玩家附近 radiusSuperCells×radiusSuperCells
-     * 个 4096 超级格内的洞厅（洞厅本身极稀有）。
-     */
-    public static java.util.List<CaveMegaHall> debugMegaHallsNear(
-        int worldX, int worldZ, int worldSeedInt, int radiusSuperCells
-    ) {
-        java.util.ArrayList<CaveMegaHall> out =
-            new java.util.ArrayList<CaveMegaHall>();
-        int superX = Math.floorDiv(
-            worldX, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
-        int superZ = Math.floorDiv(
-            worldZ, CaveGenerator.MEGA_HALL_CELL_BLOCKS);
-        for (int dz = -radiusSuperCells; dz <= radiusSuperCells; dz++) {
-            for (int dx = -radiusSuperCells; dx <= radiusSuperCells; dx++) {
-                CaveMegaHall hall = CaveGenerator.megaHallForSupercell(
-                    superX + dx, superZ + dz, worldSeedInt);
-                if (hall != null) {
-                    out.add(hall);
-                }
-            }
-        }
-        return out;
-    }
-
-    /**
      * 向外逐圈扫描 maxSuperCells 个 4096 超级格，返回命中的所有洞厅。
      * 洞厅极稀有，默认给 64 格（约 26 万格范围）足够覆盖大片大陆。
      */
