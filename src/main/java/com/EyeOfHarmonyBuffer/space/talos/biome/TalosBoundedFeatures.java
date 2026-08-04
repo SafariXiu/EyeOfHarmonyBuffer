@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.biome;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyType;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -273,7 +274,14 @@ public final class TalosBoundedFeatures {
             int seed = TalosRiverSystem.getWorldSeedInt(this.world);
             TalosRiverSystem.HydroSample hydro =
                 TalosRiverSystem.sampleHydroField(worldX, worldZ, seed);
-            if (hydro == null || hydro.mask <= 0.7) {
+            if (hydro == null) {
+                return false;
+            }
+            // 湖类水体（独立湖 / 穿河湖 / 牛轭湖）按河道逻辑放河床装饰；
+            // 湿地保留沼泽泥底，不放在“河道”判断里。
+            boolean lakeBed = hydro.body != null
+                && hydro.body.getType() != RiverBodyType.WETLAND;
+            if (!lakeBed && hydro.mask <= 0.7) {
                 return false;
             }
             MacroPackageId macro = TalosMacroClimate.getMacroPackageId(

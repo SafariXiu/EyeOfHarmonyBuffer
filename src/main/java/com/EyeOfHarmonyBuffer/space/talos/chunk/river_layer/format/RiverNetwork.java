@@ -16,6 +16,7 @@ public final class RiverNetwork {
     private final long seed;
 
     private final List<RiverEdgeData> edges;
+    private final List<RiverBodyData> bodies;
 
     public RiverNetwork(
         int version,
@@ -27,6 +28,30 @@ public final class RiverNetwork {
         long seed,
         List<RiverEdgeData> edges
     ) {
+        this(
+            version,
+            coordinateScale,
+            minX,
+            minZ,
+            maxX,
+            maxZ,
+            seed,
+            edges,
+            Collections.<RiverBodyData>emptyList()
+        );
+    }
+
+    public RiverNetwork(
+        int version,
+        int coordinateScale,
+        double minX,
+        double minZ,
+        double maxX,
+        double maxZ,
+        long seed,
+        List<RiverEdgeData> edges,
+        List<RiverBodyData> bodies
+    ) {
         this.version = version;
         this.coordinateScale = coordinateScale;
         this.minX = minX;
@@ -35,6 +60,7 @@ public final class RiverNetwork {
         this.maxZ = maxZ;
         this.seed = seed;
         this.edges = Collections.unmodifiableList(edges);
+        this.bodies = Collections.unmodifiableList(bodies);
     }
 
     public int getVersion() { return version; }
@@ -45,4 +71,5 @@ public final class RiverNetwork {
     public double getMaxZ() { return maxZ; }
     public long getSeed() { return seed; }
     public List<RiverEdgeData> getEdges() { return edges; }
+    public List<RiverBodyData> getBodies() { return bodies; }
 }

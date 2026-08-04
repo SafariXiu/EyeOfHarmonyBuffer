@@ -3,6 +3,8 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.TalosRiverProfile;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverRelation;
@@ -19,8 +21,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.template.Supercontin
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import net.minecraft.world.World;
-
-import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime.RiverQuery.query;
 
@@ -46,7 +46,7 @@ public final class TalosRiverSystem {
 
     private static final double SOURCE_PROGRESS_MAX = 0.04; // 上游 4% 视为源头段
     private static final double SOURCE_RADIUS_MULT  = 2.0;  // 源头影响范围 = 2 × channelRadius
-    public static double SUPERCONTINENT_RIVER_SCALE = 1.5;
+    public static double SUPERCONTINENT_RIVER_SCALE = 2.5;
 
     private TalosRiverSystem() {}
 
@@ -107,7 +107,7 @@ public final class TalosRiverSystem {
             scaleFactor
         );
 
-        return query(sys.index, worldX, worldZ);
+        return query(sys.index, sys.bodyIndex, worldX, worldZ);
     }
 
     /**
@@ -265,6 +265,13 @@ public final class TalosRiverSystem {
         public final double mouthX;
         public final double mouthZ;
 
+        /** 命中的水体（湖 / 湿地 / 穿河湖 / 牛轭湖），无则 null。 */
+        public final RiverBodyData body;
+        /** 到水体轮廓的近似距离（内部为 0）。 */
+        public final double bodyDistance;
+        /** 水体影响 0..1（内部 1，向外衰减）。 */
+        public final double bodyMask;
+
         public HydroSample(double distance,
                            double widthCore,
                            double widthValley,
@@ -280,7 +287,10 @@ public final class TalosRiverSystem {
                            double sourceX,
                            double sourceZ,
                            double mouthX,
-                           double mouthZ) {
+                           double mouthZ,
+                           RiverBodyData body,
+                           double bodyDistance,
+                           double bodyMask) {
             this.distance      = distance;
             this.widthCore     = widthCore;
             this.widthValley   = widthValley;
@@ -297,6 +307,9 @@ public final class TalosRiverSystem {
             this.sourceZ       = sourceZ;
             this.mouthX        = mouthX;
             this.mouthZ        = mouthZ;
+            this.body          = body;
+            this.bodyDistance  = bodyDistance;
+            this.bodyMask      = bodyMask;
         }
     }
 
@@ -362,7 +375,10 @@ public final class TalosRiverSystem {
             Double.NaN,
             Double.NaN,
             Double.NaN,
-            Double.NaN
+            Double.NaN,
+            null,
+            Double.POSITIVE_INFINITY,
+            0.0
         );
     }
 
@@ -401,7 +417,10 @@ public final class TalosRiverSystem {
             r.sourceX,
             r.sourceZ,
             r.mouthX,
-            r.mouthZ
+            r.mouthZ,
+            r.body,
+            r.bodyDistance,
+            r.bodyMask
         );
     }
 
@@ -827,6 +846,93 @@ public final class TalosRiverSystem {
                 fromParent,
                 jx,
                 jz
+            ));
+        }
+
+        return java.util.Collections.unmodifiableList(result);
+    }
+
+    /** 水体（湖 / 湿地 / 穿河湖 / 牛轭湖）的调试定位信息。 */
+    public static final class RiverBodyInfo {
+        /** 当前超级大陆 ID */
+        public final int superId;
+        /** 水体 ID（模板内序号；Java 合成水体可能为 -1） */
+        public final int bodyId;
+        /** 水体类型 */
+        public final RiverBodyType type;
+        /** 挂载的河（穿河湖 / 牛轭湖），独立水体为 -1 */
+        public final int parentRiverId;
+        /** 水体中心世界坐标 X/Z */
+        public final double centerX;
+        public final double centerZ;
+        /** 椭圆半轴（blocks） */
+        public final double radiusX;
+        public final double radiusZ;
+        /** 最大深度（blocks，水面以下） */
+        public final double maxDepthBlocks;
+        /** 水面相对海平面的偏移（blocks） */
+        public final double waterLevelOffset;
+
+        public RiverBodyInfo(int superId,
+                             int bodyId,
+                             RiverBodyType type,
+                             int parentRiverId,
+                             double centerX,
+                             double centerZ,
+                             double radiusX,
+                             double radiusZ,
+                             double maxDepthBlocks,
+                             double waterLevelOffset) {
+            this.superId = superId;
+            this.bodyId = bodyId;
+            this.type = type;
+            this.parentRiverId = parentRiverId;
+            this.centerX = centerX;
+            this.centerZ = centerZ;
+            this.radiusX = radiusX;
+            this.radiusZ = radiusZ;
+            this.maxDepthBlocks = maxDepthBlocks;
+            this.waterLevelOffset = waterLevelOffset;
+        }
+    }
+
+    /**
+     * 列出当前超级大陆实例化（海岸裁剪后）河网中的所有水体。
+     * 用于调试定位：湖 / 湿地 / 穿河湖 / 牛轭湖。
+     */
+    public static java.util.List<RiverBodyInfo> listBodiesOnCurrentSupercontinent(
+        int worldX, int worldZ,
+        int worldSeedInt
+    ) {
+        java.util.List<RiverBodyInfo> result = new java.util.ArrayList<RiverBodyInfo>();
+
+        int superId = TalosLandMask.getSuperId(worldX, worldZ, worldSeedInt);
+        if (superId == 0) {
+            return result;
+        }
+
+        RiverSystem sys = resolveSupercontinentRiverSystem(worldX, worldZ, worldSeedInt);
+        if (sys == null || sys.network == null) {
+            return result;
+        }
+
+        java.util.List<RiverBodyData> bodies = sys.network.getBodies();
+        if (bodies == null || bodies.isEmpty()) {
+            return result;
+        }
+
+        for (RiverBodyData b : bodies) {
+            result.add(new RiverBodyInfo(
+                superId,
+                b.getId(),
+                b.getType(),
+                b.getParentEdgeId(),
+                b.getCenterX(),
+                b.getCenterZ(),
+                b.getRadiusX(),
+                b.getRadiusZ(),
+                b.getMaxDepthBlocks(),
+                b.getWaterLevelOffset()
             ));
         }
 

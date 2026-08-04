@@ -121,7 +121,15 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private boolean isFullyOutsideRiver(int x, int z, int worldSeedInt) {
         for (int dz = -8; dz <= 8; dz += 4) {
             for (int dx = -8; dx <= 8; dx += 4) {
-                if (TalosRiverSystem.getRiverMask(x + dx, z + dz, worldSeedInt) > 0.0) {
+                TalosRiverSystem.HydroSample hydro =
+                    TalosRiverSystem.sampleHydroField(
+                        x + dx, z + dz, worldSeedInt
+                    );
+                if (hydro == null) {
+                    continue;
+                }
+                // 河流影响或任何水体（湖 / 湿地 / 穿河湖 / 牛轭湖）都算占用
+                if (hydro.mask > 0.0 || hydro.body != null) {
                     return false;
                 }
             }

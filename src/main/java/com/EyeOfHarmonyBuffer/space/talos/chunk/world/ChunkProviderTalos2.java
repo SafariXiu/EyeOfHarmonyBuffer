@@ -225,6 +225,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 } else if (h > worldHeight - 2) {
                     h = worldHeight - 2;
                 }
+                // 只有真正低于水面的列才走“挖成河床/湖床”的填充；
+                // 高于水面的岸滩、外坡和湿地干丘走正常地表（草/泥土），
+                // 岸滩方块由 lakeMat 单独铺。
+                boolean underwaterCarved = riverCarved && h < seaLevel;
 
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
@@ -235,13 +239,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
 
                     // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）
-                    int topSolidY = riverCarved ? h - 1 : h;
+                    int topSolidY = underwaterCarved ? h - 1 : h;
                     BlockMetaPair lakeMat = TalosRiverSystem.getLakeSurfaceMaterial(
                         topSolidY, seaLevel, worldX, worldZ,
                         ctx.hydro[colIndex], ctx.macroPkg[colIndex]
                     );
 
-                    if (riverCarved) {
+                    if (underwaterCarved) {
                         // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
                         for (int y = 1; y < h; y++) {
                             putBlock(blocks, meta, localX, y, localZ,

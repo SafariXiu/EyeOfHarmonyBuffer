@@ -32,22 +32,60 @@ public final class Rvr2Loader {
         List<RiverPoint> points = new ArrayList<RiverPoint>();
     }
 
+    private static final class MutableBody {
+        int id;
+        RiverBodyType type;
+        int parentEdgeId;
+        float tStart;
+        float tEnd;
+        double centerX;
+        double centerZ;
+        double radiusX;
+        double radiusZ;
+        float rotation;
+        float maxDepthBlocks;
+        float waterLevelOffset;
+        List<RiverPoint> outline = new ArrayList<RiverPoint>();
+    }
+
     public static RiverNetwork load(InputStream rawInput) throws IOException {
         DataInputStream in = new DataInputStream(new BufferedInputStream(rawInput));
 
         byte[] magic = new byte[4];
         in.readFully(magic);
 
-        if (magic[0] != 'R' || magic[1] != 'V' || magic[2] != 'R' || magic[3] != '2') {
-            throw new IOException("Invalid RVR2 magic.");
+        boolean rvr3;
+        if (magic[0] == 'R' && magic[1] == 'V' && magic[2] == 'R' && magic[3] == '2') {
+            rvr3 = false;
+        } else if (magic[0] == 'R' && magic[1] == 'V' && magic[2] == 'R' && magic[3] == '3') {
+            rvr3 = true;
+        } else {
+            throw new IOException("Invalid RVR magic.");
         }
 
         int version = in.readUnsignedShort();
-        if (version != 2) {
-            throw new IOException("Unsupported RVR2 version: " + version);
+        int coordinateScale = in.readUnsignedShort();
+        int minXFixed = in.readInt();
+        int minZFixed = in.readInt();
+        int maxXFixed = in.readInt();
+        int maxZFixed = in.readInt();
+        long seed = in.readLong();
+        long edgeCountUnsigned = Integer.toUnsignedLong(in.readInt());
+        long bodyCountUnsigned = 0L;
+        if (rvr3) {
+            bodyCountUnsigned = Integer.toUnsignedLong(in.readInt());
         }
 
-        int coordinateScale = in.readUnsignedShort();
+        if (rvr3) {
+            if (version != 3) {
+                throw new IOException("Unsupported RVR3 version: " + version);
+            }
+        } else {
+            if (version != 2) {
+                throw new IOException("Unsupported RVR2 version: " + version);
+            }
+        }
+
         if (coordinateScale <= 0) {
             throw new IOException("Invalid coordinate scale: " + coordinateScale);
         }
@@ -55,18 +93,15 @@ public final class Rvr2Loader {
             throw new IOException("Unsupported coordinateScale (expected 16): " + coordinateScale);
         }
 
-        int minXFixed = in.readInt();
-        int minZFixed = in.readInt();
-        int maxXFixed = in.readInt();
-        int maxZFixed = in.readInt();
-
-        long seed = in.readLong();
-
-        long edgeCountUnsigned = Integer.toUnsignedLong(in.readInt());
         if (edgeCountUnsigned == 0L || edgeCountUnsigned > 1_000_000L) {
             throw new IOException("Invalid edge count: " + edgeCountUnsigned);
         }
         int edgeCount = (int) edgeCountUnsigned;
+
+        if (bodyCountUnsigned > 100_000L) {
+            throw new IOException("Invalid body count: " + bodyCountUnsigned);
+        }
+        int bodyCount = (int) bodyCountUnsigned;
 
         double scaleD = (double) coordinateScale;
         double minX = minXFixed / scaleD;
@@ -180,6 +215,92 @@ public final class Rvr2Loader {
             mutableEdges.add(me);
         }
 
+        List<MutableBody> mutableBodies = new ArrayList<MutableBody>(bodyCount);
+
+        for (int b = 0; b < bodyCount; b++) {
+            int bodyId = in.readInt();
+            int typeCode = in.readUnsignedByte();
+            /* flags */ in.readUnsignedByte();
+            int parentEdgeId = in.readInt();
+            float tStart = in.readFloat();
+            float tEnd = in.readFloat();
+            int centerXFixed = in.readInt();
+            int centerZFixed = in.readInt();
+            int radiusXFixed = in.readInt();
+            int radiusZFixed = in.readInt();
+            float rotation = in.readFloat();
+            float maxDepthBlocks = in.readFloat();
+            float waterLevelOffset = in.readFloat();
+            long outlineCountUnsigned = Integer.toUnsignedLong(in.readInt());
+
+            if (bodyId != b) {
+                throw new IOException("Non-sequential body ID: " + bodyId);
+            }
+
+            RiverBodyType type;
+            try {
+                type = RiverBodyType.fromCode(typeCode);
+            } catch (IllegalArgumentException ex) {
+                throw new IOException("Invalid body type code " + typeCode + " for body " + bodyId, ex);
+            }
+
+            if (outlineCountUnsigned < 3L || outlineCountUnsigned > 1_000_000L) {
+                throw new IOException("Invalid outline point count: " + outlineCountUnsigned);
+            }
+            int outlineCount = (int) outlineCountUnsigned;
+
+            if (!Float.isFinite(tStart)
+                || !Float.isFinite(tEnd)
+                || !Float.isFinite(rotation)
+                || !Float.isFinite(maxDepthBlocks)
+                || !Float.isFinite(waterLevelOffset)) {
+                throw new IOException("Non-finite body property for body " + bodyId);
+            }
+
+            if (radiusXFixed <= 0 || radiusZFixed <= 0) {
+                throw new IOException("Invalid body radius for body " + bodyId);
+            }
+            if (maxDepthBlocks <= 0.0f) {
+                throw new IOException("Invalid body depth for body " + bodyId);
+            }
+
+            MutableBody mb = new MutableBody();
+            mb.id = bodyId;
+            mb.type = type;
+            mb.parentEdgeId = parentEdgeId;
+            mb.tStart = tStart;
+            mb.tEnd = tEnd;
+            mb.centerX = centerXFixed / scaleD;
+            mb.centerZ = centerZFixed / scaleD;
+            mb.radiusX = radiusXFixed / scaleD;
+            mb.radiusZ = radiusZFixed / scaleD;
+            mb.rotation = rotation;
+            mb.maxDepthBlocks = maxDepthBlocks;
+            mb.waterLevelOffset = waterLevelOffset;
+
+            if (mb.centerX < actualMinX) actualMinX = mb.centerX;
+            if (mb.centerX > actualMaxX) actualMaxX = mb.centerX;
+            if (mb.centerZ < actualMinZ) actualMinZ = mb.centerZ;
+            if (mb.centerZ > actualMaxZ) actualMaxZ = mb.centerZ;
+
+            for (int p = 0; p < outlineCount; p++) {
+                int fixedX = in.readInt();
+                int fixedZ = in.readInt();
+
+                double x = fixedX / scaleD;
+                double z = fixedZ / scaleD;
+
+                if (x < actualMinX) actualMinX = x;
+                if (x > actualMaxX) actualMaxX = x;
+                if (z < actualMinZ) actualMinZ = z;
+                if (z > actualMaxZ) actualMaxZ = z;
+
+                mb.outline.add(new RiverPoint(x, z));
+            }
+
+            mutableBodies.add(mb);
+        }
+
         if (!withinEpsilon(actualMinX, minX, BBOX_EPSILON)
             || !withinEpsilon(actualMinZ, minZ, BBOX_EPSILON)
             || !withinEpsilon(actualMaxX, maxX, BBOX_EPSILON)
@@ -191,7 +312,37 @@ public final class Rvr2Loader {
             );
         }
 
-        MutableEdge mainRiver = null;
+        // 水体语义校验
+        for (MutableBody mb : mutableBodies) {
+            if (mb.type.isStandalone()) {
+                if (mb.parentEdgeId != -1) {
+                    throw new IOException(
+                        "Standalone water body must have parentEdgeId=-1, body=" + mb.id
+                    );
+                }
+                if (Math.abs(mb.tStart + 1.0f) > FLOAT_EPSILON
+                    || Math.abs(mb.tEnd + 1.0f) > FLOAT_EPSILON) {
+                    throw new IOException(
+                        "Standalone water body must have tStart=tEnd=-1, body=" + mb.id
+                    );
+                }
+            } else {
+                if (mb.parentEdgeId < 0 || mb.parentEdgeId >= edgeCount) {
+                    throw new IOException(
+                        "Invalid parent edge " + mb.parentEdgeId + " for body " + mb.id
+                    );
+                }
+                if (mb.tStart < -FLOAT_EPSILON
+                    || mb.tEnd < mb.tStart - FLOAT_EPSILON
+                    || mb.tEnd > 1.0f + FLOAT_EPSILON) {
+                    throw new IOException(
+                        "Invalid body progress range for body " + mb.id
+                    );
+                }
+            }
+        }
+
+        int rootCount = 0;
 
         for (int i = 0; i < edgeCount; i++) {
             MutableEdge child = mutableEdges.get(i);
@@ -213,19 +364,21 @@ public final class Rvr2Loader {
                     throw new IOException("ROOT edge must be MAIN river, edgeId=" + edgeId);
                 }
 
-                if (!hasSource || !hasMouth) {
-                    throw new IOException("MAIN ROOT river must have both source and mouth, edgeId=" + edgeId);
+                if (!hasSource) {
+                    throw new IOException("MAIN ROOT river must have a source, edgeId=" + edgeId);
+                }
+
+                if (!hasMouth && !endsInWaterBody(child, mutableBodies)) {
+                    throw new IOException(
+                        "MAIN ROOT river without mouth must end inside a lake/wetland body, edgeId=" + edgeId
+                    );
                 }
 
                 if (!Float.isFinite(child.parentT)) {
                     throw new IOException("Invalid parentT for ROOT edge " + edgeId + ": " + child.parentT);
                 }
 
-                if (mainRiver != null) {
-                    throw new IOException("Multiple ROOT MAIN rivers found (edgeId=" + edgeId + ")");
-                }
-
-                mainRiver = child;
+                rootCount++;
                 continue;
             }
 
@@ -306,14 +459,14 @@ public final class Rvr2Loader {
             }
         }
 
-        if (mainRiver == null) {
+        if (rootCount == 0) {
             throw new IOException("No ROOT MAIN river found in network.");
         }
 
         try {
             int extra = in.read();
             if (extra != -1) {
-                throw new IOException("Trailing data detected after RVR2 content.");
+                throw new IOException("Trailing data detected after RVR content.");
             }
         } catch (EOFException ignored) {
         }
@@ -341,7 +494,29 @@ public final class Rvr2Loader {
             edges.add(edgeData);
         }
 
-        List<RiverEdgeData> immutableEdges = Collections.unmodifiableList(edges);
+        List<RiverBodyData> bodies = new ArrayList<RiverBodyData>(bodyCount);
+        for (int i = 0; i < bodyCount; i++) {
+            MutableBody mb = mutableBodies.get(i);
+            List<RiverPoint> immutableOutline =
+                Collections.unmodifiableList(new ArrayList<RiverPoint>(mb.outline));
+
+            RiverBodyData bodyData = new RiverBodyData(
+                mb.id,
+                mb.type,
+                mb.parentEdgeId,
+                mb.tStart,
+                mb.tEnd,
+                mb.centerX,
+                mb.centerZ,
+                mb.radiusX,
+                mb.radiusZ,
+                mb.rotation,
+                mb.maxDepthBlocks,
+                mb.waterLevelOffset,
+                immutableOutline
+            );
+            bodies.add(bodyData);
+        }
 
         return new RiverNetwork(
             version,
@@ -351,8 +526,49 @@ public final class Rvr2Loader {
             maxX,
             maxZ,
             seed,
-            immutableEdges
+            Collections.unmodifiableList(edges),
+            Collections.unmodifiableList(bodies)
         );
+    }
+
+    private static boolean endsInWaterBody(MutableEdge edge, List<MutableBody> bodies) {
+        List<RiverPoint> pts = edge.points;
+        if (pts.isEmpty()) {
+            return false;
+        }
+
+        RiverPoint end = pts.get(pts.size() - 1);
+
+        for (MutableBody body : bodies) {
+            if (body.type == RiverBodyType.LAKE || body.type == RiverBodyType.WETLAND) {
+                if (pointInPolygon(end.getX(), end.getZ(), body.outline)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean pointInPolygon(double px, double pz, List<RiverPoint> polygon) {
+        boolean inside = false;
+        int n = polygon.size();
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = polygon.get(i).getX();
+            double yi = polygon.get(i).getZ();
+            double xj = polygon.get(j).getX();
+            double yj = polygon.get(j).getZ();
+
+            if ((yi > pz) != (yj > pz)) {
+                double xIntersect = (xj - xi) * (pz - yi) / (yj - yi) + xi;
+                if (px < xIntersect) {
+                    inside = !inside;
+                }
+            }
+        }
+
+        return inside;
     }
 
     private static boolean withinEpsilon(double value, double target, double eps) {

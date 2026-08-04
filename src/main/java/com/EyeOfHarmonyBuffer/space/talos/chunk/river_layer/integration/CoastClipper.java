@@ -1,13 +1,16 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.integration;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverEdgeData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverNetwork;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 在超级大陆实例化后的 RiverNetwork 上，
@@ -40,6 +43,7 @@ public final class CoastClipper {
         }
 
         List<RiverEdgeData> clippedEdges = new ArrayList<RiverEdgeData>(originalEdges.size());
+        Set<Integer> keptEdgeIds = new HashSet<Integer>();
 
         double minX = Double.POSITIVE_INFINITY;
         double minZ = Double.POSITIVE_INFINITY;
@@ -94,9 +98,35 @@ public final class CoastClipper {
             );
 
             clippedEdges.add(clipped);
+            keptEdgeIds.add(e.getId());
         }
 
-        if (clippedEdges.isEmpty()) {
+        // 水体过滤：
+        //   - 中心落在海里的水体直接丢弃；
+        //   - 挂河水体（穿河湖 / 牛轭湖）的宿主河若被完全裁掉，也一并丢弃。
+        List<RiverBodyData> clippedBodies = new ArrayList<RiverBodyData>();
+        for (RiverBodyData b : original.getBodies()) {
+            if (!isLand(b.getCenterX(), b.getCenterZ(), worldSeedInt)) {
+                continue;
+            }
+            if (!b.getType().isStandalone()
+                && !keptEdgeIds.contains(b.getParentEdgeId())) {
+                continue;
+            }
+
+            for (RiverPoint p : b.getOutline()) {
+                double x = p.getX();
+                double z = p.getZ();
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (z < minZ) minZ = z;
+                if (z > maxZ) maxZ = z;
+            }
+
+            clippedBodies.add(b);
+        }
+
+        if (clippedEdges.isEmpty() && clippedBodies.isEmpty()) {
             return new RiverNetwork(
                 original.getVersion(),
                 original.getCoordinateScale(),
@@ -105,6 +135,7 @@ public final class CoastClipper {
                 original.getMaxX(),
                 original.getMaxZ(),
                 original.getSeed(),
+                Collections.emptyList(),
                 Collections.emptyList()
             );
         }
@@ -124,7 +155,8 @@ public final class CoastClipper {
             maxX,
             maxZ,
             original.getSeed(),
-            Collections.unmodifiableList(clippedEdges)
+            Collections.unmodifiableList(clippedEdges),
+            Collections.unmodifiableList(clippedBodies)
         );
     }
 

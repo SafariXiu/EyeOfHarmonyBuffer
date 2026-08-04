@@ -18,13 +18,16 @@ public final class RiverSystem {
     public final RiverNetwork network;
     public final List<RiverSegment> segments;
     public final RiverSpatialIndex index;
+    public final RiverBodyIndex bodyIndex;
 
     public RiverSystem(RiverNetwork network,
                        List<RiverSegment> segments,
-                       RiverSpatialIndex index) {
+                       RiverSpatialIndex index,
+                       RiverBodyIndex bodyIndex) {
         this.network = network;
         this.segments = java.util.Collections.unmodifiableList(new ArrayList<>(segments));
         this.index = index;
+        this.bodyIndex = bodyIndex;
     }
 
     public static RiverSystem buildFromNetwork(RiverNetwork network) {
@@ -120,6 +123,9 @@ public final class RiverSystem {
         }
 
         RiverSpatialIndex idx = RiverSpatialIndex.build(segs, RiverSpatialIndex.CELL_SIZE);
-        return new RiverSystem(network, segs, idx);
+        RiverBodyIndex bodyIdx = RiverBodyIndex.build(
+            network.getBodies(), RiverBodyIndex.CELL_SIZE
+        );
+        return new RiverSystem(network, segs, idx, bodyIdx);
     }
 }
