@@ -22,6 +22,13 @@ public final class CaveChamber {
     public final float maxY;
     public final float maxZ;
 
+    /** 大厅底部是否有地下湖。 */
+    public final boolean hasLake;
+    /** 湖面 Y（hasLake 时有效）：湖只填充大厅底部。 */
+    public final float lakeSurfaceY;
+    /** 湖床 Y（hasLake 时有效）：第一个水体方块层，其下方保留实体湖床。 */
+    public final int lakeBedY;
+
     public CaveChamber(float cx, float cy, float cz,
                        float rx, float ry, float rz,
                        long seed) {
@@ -38,10 +45,10 @@ public final class CaveChamber {
         this.minZ = cz - this.rz;
         this.maxZ = cz + this.rz;
 
-        // 大空间生成 1~2 根石柱（确定性）
+        // 大空间生成 2~4 根石柱（确定性）
         if (ry >= 7.0 && rx * rz >= 80.0) {
-            int n = CaveMath.hash01((long) cx, (long) cy, (long) cz,
-                seed, 0x51) < 0.5 ? 1 : 2;
+            int n = 2 + (int) (CaveMath.hash01(
+                (long) cx, (long) cy, (long) cz, seed, 0x51) * 3.0);
             this.pillarCount = n;
             this.pillarX = new float[n];
             this.pillarZ = new float[n];
@@ -59,6 +66,19 @@ public final class CaveChamber {
             this.pillarCount = 0;
             this.pillarX = new float[0];
             this.pillarZ = new float[0];
+        }
+
+        // 地下湖：约 20% 的巨型大厅底部有湖，水深 6~10 格。
+        this.hasLake = ry >= 10.0 && CaveMath.hash01(
+            (long) cx, (long) cy, (long) cz, seed, 0x54) < 0.20;
+        if (this.hasLake) {
+            float depth = 6.0f + (float) (CaveMath.hash01(
+                (long) cx, (long) cy, (long) cz, seed, 0x55) * 5.0);
+            this.lakeSurfaceY = (float) (cy - ry) + depth;
+            this.lakeBedY = (int) Math.floor(cy - ry) + 1;
+        } else {
+            this.lakeSurfaceY = -1.0f;
+            this.lakeBedY = -1;
         }
     }
 

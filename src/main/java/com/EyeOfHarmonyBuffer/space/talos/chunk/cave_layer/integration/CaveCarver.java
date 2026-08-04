@@ -32,6 +32,8 @@ public final class CaveCarver {
     public static final double WALL_AMP = 1.3;
     /** 地表保留厚度（blocks）：默认不挖穿顶部。 */
     public static final int SURFACE_CAP = 3;
+    /** 地下湖石头壳厚度：水体外面再包几层石头。 */
+    private static final int LAKE_SHELL_THICKNESS = 2;
 
     private static final int NOISE_SALT = 0xC0FFEE;
 
@@ -61,6 +63,10 @@ public final class CaveCarver {
             }
         }
         for (CaveChamber ch : data.chambers) {
+            // 带湖大厅的湖床以下是实体，不算空腔
+            if (ch.hasLake && worldY < ch.lakeBedY) {
+                continue;
+            }
             if (ch.inside(worldX + 0.5, worldY + 0.5, worldZ + 0.5, wall)) {
                 return 1.0;
             }
@@ -132,8 +138,12 @@ public final class CaveCarver {
             }
         }
         for (CaveChamber ch : data.chambers) {
-            if (worldX + 0.5 >= ch.minX && worldX + 0.5 <= ch.maxX
-                && worldZ + 0.5 >= ch.minZ && worldZ + 0.5 <= ch.maxZ) {
+            // 带湖大厅向外多扩几格，方便给湖边铺厚石头壳
+            double pad = ch.hasLake ? LAKE_SHELL_THICKNESS : 0.0;
+            if (worldX + 0.5 >= ch.minX - pad
+                && worldX + 0.5 <= ch.maxX + pad
+                && worldZ + 0.5 >= ch.minZ - pad
+                && worldZ + 0.5 <= ch.maxZ + pad) {
                 chamberNear = true;
                 break;
             }
@@ -147,6 +157,9 @@ public final class CaveCarver {
                 worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
                 * 2.0 * WALL_AMP;
             double excess = Double.NEGATIVE_INFINITY;
+            boolean lakeWater = false;
+            boolean lakeSealed = false;
+            boolean lakeHandled = false;
 
             if (near != null) {
                 for (CaveSegment seg : near) {
@@ -159,8 +172,51 @@ public final class CaveCarver {
                     }
                 }
             }
-            if (chamberNear) {
+
+            // 地下湖：先铺石头壳（湖底 + 同一层四邻），再放水。
+            for (CaveChamber ch : data.chambers) {
+                if (!ch.hasLake || y < ch.lakeBedY
+                    || y + 0.5 > ch.lakeSurfaceY) {
+                    continue;
+                }
+                if (ch.inside(
+                    worldX + 0.5, y + 0.5, worldZ + 0.5, wall
+                )) {
+                    // 湖心：湖床下方若是空的，先补几层石头封底，再放水
+                    for (int d = 1; d <= LAKE_SHELL_THICKNESS; d++) {
+                        int by = y - d;
+                        if (by < 1) {
+                            break;
+                        }
+                        int byIdx = (localX * 16 + localZ)
+                            * worldHeight + by;
+                        if (isAir(blocks[byIdx])) {
+                            setStone(blocks, meta, localX, localZ,
+                                by, worldHeight);
+                        } else {
+                            break;
+                        }
+                    }
+                    setWater(blocks, meta, localX, localZ, y, worldHeight);
+                    lakeWater = true;
+                    lakeHandled = true;
+                    break;
+                }
+                // 不在水里：同一层四邻有水的就铺石头封边
+                if (isNearLakeWater(ch, worldX, y, worldZ, wall)) {
+                    setStone(blocks, meta, localX, localZ, y, worldHeight);
+                    lakeSealed = true;
+                    lakeHandled = true;
+                    break;
+                }
+            }
+
+            if (!lakeHandled && chamberNear) {
                 for (CaveChamber ch : data.chambers) {
+                    // 湖床以下保留实体，不参与普通挖空
+                    if (ch.hasLake && y < ch.lakeBedY) {
+                        continue;
+                    }
                     if (ch.inside(worldX + 0.5, y + 0.5, worldZ + 0.5, wall)) {
                         excess = 1.0;
                         break;
@@ -168,10 +224,37 @@ public final class CaveCarver {
                 }
             }
 
-            if (excess > 0.0) {
+            if (lakeSealed) {
+                // 湖边石头壳已经放好
+            } else if (excess > 0.0 && !lakeWater) {
                 setAir(blocks, meta, localX, localZ, y, worldHeight);
             }
         }
+    }
+
+    /** 当前方块同一层是否在湖心水体的石头壳范围内。 */
+    private static boolean isNearLakeWater(CaveChamber ch,
+                                           int worldX, int worldY, int worldZ,
+                                           double wall) {
+        for (int dz = -LAKE_SHELL_THICKNESS;
+             dz <= LAKE_SHELL_THICKNESS; dz++) {
+            for (int dx = -LAKE_SHELL_THICKNESS;
+                 dx <= LAKE_SHELL_THICKNESS; dx++) {
+                if (dx == 0 && dz == 0) {
+                    continue;
+                }
+                if (Math.abs(dx) + Math.abs(dz) > LAKE_SHELL_THICKNESS) {
+                    continue;
+                }
+                if (ch.inside(
+                    worldX + dx + 0.5, worldY + 0.5,
+                    worldZ + dz + 0.5, wall
+                )) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static void setAir(net.minecraft.block.Block[] blocks, byte[] meta,
@@ -182,5 +265,33 @@ public final class CaveCarver {
         int idx = (localX * 16 + localZ) * worldHeight + y;
         blocks[idx] = Blocks.air;
         meta[idx] = 0;
+    }
+
+    private static void setWater(net.minecraft.block.Block[] blocks,
+                                 byte[] meta,
+                                 int localX, int localZ, int y,
+                                 int worldHeight) {
+        if (y <= 0 || y >= worldHeight) {
+            return;
+        }
+        int idx = (localX * 16 + localZ) * worldHeight + y;
+        blocks[idx] = Blocks.water;
+        meta[idx] = 0;
+    }
+
+    private static void setStone(net.minecraft.block.Block[] blocks,
+                                 byte[] meta,
+                                 int localX, int localZ, int y,
+                                 int worldHeight) {
+        if (y <= 0 || y >= worldHeight) {
+            return;
+        }
+        int idx = (localX * 16 + localZ) * worldHeight + y;
+        blocks[idx] = Blocks.stone;
+        meta[idx] = 0;
+    }
+
+    private static boolean isAir(net.minecraft.block.Block block) {
+        return block == null || block == Blocks.air;
     }
 }

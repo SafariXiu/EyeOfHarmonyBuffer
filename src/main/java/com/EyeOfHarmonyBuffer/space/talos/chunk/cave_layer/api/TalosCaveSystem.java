@@ -1,9 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveWorldState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
@@ -53,6 +55,27 @@ public final class TalosCaveSystem {
         }
         CaveWorldState state = stateFor(worldSeedInt);
         return state != null ? state.dataForChunk(chunkX, chunkZ) : null;
+    }
+
+    /**
+     * 查询某坐标所在的洞穴区域标签（256 格单元级，纯函数，不依赖缓存）。
+     * 没有特殊风味时返回 [DEFAULT]；后续新风味洞穴会出现在这个列表里。
+     * 外部层联动请使用本方法，不要直接调用内部注册表。
+     */
+    public static java.util.List<CaveTag> tagsAt(
+        int worldX, int worldZ, int worldSeedInt
+    ) {
+        if (!isEnabled()) {
+            java.util.ArrayList<CaveTag> disabled =
+                new java.util.ArrayList<CaveTag>(1);
+            disabled.add(CaveTag.DEFAULT);
+            return disabled;
+        }
+        return CaveFlavorRegistry.tagsForCell(
+            Math.floorDiv(worldX, 256),
+            Math.floorDiv(worldZ, 256),
+            worldSeedInt
+        );
     }
 
     /**
@@ -220,6 +243,7 @@ public final class TalosCaveSystem {
             "  当前区块: 通道=%d 大厅=%d 入口=%d",
             data.segments.size(), data.chambers.size(), data.entrances.size()
         ));
+        lines.add("  区域标签: " + data.tags);
 
         List<CaveNode> nodes = state.nodesForCell(cellX, cellZ);
         int entrance = 0;

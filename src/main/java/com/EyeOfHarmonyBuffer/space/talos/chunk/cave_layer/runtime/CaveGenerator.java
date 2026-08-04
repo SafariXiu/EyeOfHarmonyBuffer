@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +41,17 @@ public final class CaveGenerator {
     private static final int SALT_EDGE_RADIUS = 0x8B;
     private static final int SALT_COLLAPSE = 0x9C;
 
+    /** 大厅出现概率（原 22%，巨型大厅更稀有）。 */
+    private static final double CHAMBER_CHANCE = 0.10;
+    /** 大厅水平半轴范围（blocks）：直径约 52~88，覆盖约 3~5 个区块。 */
+    private static final double CHAMBER_RADIUS_XZ_MIN = 26.0;
+    private static final double CHAMBER_RADIUS_XZ_MAX = 44.0;
+    /** 大厅垂直半轴范围（blocks）：总高约 28~34 格。 */
+    private static final double CHAMBER_RADIUS_Y_MIN = 14.0;
+    private static final double CHAMBER_RADIUS_Y_MAX = 17.0;
+    /** 大厅中心 Y 上限：避免巨型空腔顶到地表。 */
+    private static final float CHAMBER_MAX_CENTER_Y = 78.0f;
+
     private CaveGenerator() {}
 
     // ------------------------------------------------------------
@@ -73,17 +86,30 @@ public final class CaveGenerator {
                 cellX, cellZ, i * 3 + 0, seed, SALT_NODE_POS, 24.0, 232.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, i * 3 + 1, seed, SALT_NODE_POS, 24.0, 232.0);
-            float y = (float) bandY(band, cellX, cellZ, i, seed);
-
             boolean chamber = CaveMath.hash01(
-                cellX, cellZ, i, seed, SALT_CHAMBER) < 0.22;
+                cellX, cellZ, i, seed, SALT_CHAMBER) < CHAMBER_CHANCE;
             int kind = chamber ? CaveNode.KIND_CHAMBER : CaveNode.KIND_NORMAL;
             float crx = chamber ? (float) CaveMath.hashRange(
-                cellX, cellZ, i, seed, SALT_CHAMBER, 8.0, 18.0) : 0;
+                cellX, cellZ, i, seed, SALT_CHAMBER,
+                CHAMBER_RADIUS_XZ_MIN, CHAMBER_RADIUS_XZ_MAX) : 0;
             float cry = chamber ? (float) CaveMath.hashRange(
-                cellX, cellZ, i + 100, seed, SALT_CHAMBER, 6.0, 13.0) : 0;
+                cellX, cellZ, i + 100, seed, SALT_CHAMBER,
+                CHAMBER_RADIUS_Y_MIN, CHAMBER_RADIUS_Y_MAX) : 0;
             float crz = chamber ? (float) CaveMath.hashRange(
-                cellX, cellZ, i + 200, seed, SALT_CHAMBER, 8.0, 18.0) : 0;
+                cellX, cellZ, i + 200, seed, SALT_CHAMBER,
+                CHAMBER_RADIUS_XZ_MIN, CHAMBER_RADIUS_XZ_MAX) : 0;
+
+            float y = (float) bandY(band, cellX, cellZ, i, seed);
+            if (chamber) {
+                // 巨型大厅必须整体落在可用高度内，避免挖穿基岩或顶到地表。
+                float minCy = cry + 4.0f;
+                float maxCy = CHAMBER_MAX_CENTER_Y - cry;
+                if (y < minCy) {
+                    y = minCy;
+                } else if (y > maxCy) {
+                    y = maxCy;
+                }
+            }
 
             nodes.add(new CaveNode(
                 nodeId(seed, cellX, cellZ, i + 1),
@@ -227,8 +253,11 @@ public final class CaveGenerator {
 
         double baseR = baseRadius(a.kind, b.kind);
         long edgeId = edgeId(a.id, b.id);
-        boolean collapsed = CaveMath.hash01(
-            edgeId, 0, 0, seed, SALT_COLLAPSE) < 0.10;
+        // 连接大厅的通道不允许塌方，避免巨型空腔被碎石填掉。
+        boolean collapsed = a.kind != CaveNode.KIND_CHAMBER
+            && b.kind != CaveNode.KIND_CHAMBER
+            && CaveMath.hash01(
+                edgeId, 0, 0, seed, SALT_COLLAPSE) < 0.10;
 
         // 垂直抖动基向量（与 AB 垂直）
         double abx = bx - ax, aby = by - ay, abz = bz - az;
@@ -373,6 +402,9 @@ public final class CaveGenerator {
         List<CaveSegment> segments = new ArrayList<CaveSegment>();
         List<CaveChamber> chambers = new ArrayList<CaveChamber>();
         List<CaveEntrance> entrances = new ArrayList<CaveEntrance>();
+        List<CaveTag> tags = CaveFlavorRegistry.tagsForCell(
+            cellX, cellZ, seed
+        );
         Set<Long> seenEdges = new HashSet<Long>();
 
         for (int dz = -SEGMENT_REACH_CELLS; dz <= SEGMENT_REACH_CELLS; dz++) {
@@ -432,7 +464,7 @@ public final class CaveGenerator {
             }
         }
 
-        return new CaveChunkData(segments, chambers, entrances);
+        return new CaveChunkData(segments, chambers, entrances, tags);
     }
 
     /** 某单元出发的全部线段（不跨单元去重；缓存用）。 */

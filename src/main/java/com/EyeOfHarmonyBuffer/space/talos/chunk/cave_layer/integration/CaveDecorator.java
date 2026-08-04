@@ -1,7 +1,10 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import net.minecraft.block.Block;
@@ -20,13 +23,10 @@ public final class CaveDecorator {
 
     private static final int SALT_FLOOR = 0x11;
     private static final int SALT_SPIKE = 0x22;
-    private static final int SALT_SPIKE_ZONE = 0x25;
     private static final int SALT_PUDDLE = 0x26;
     private static final int SALT_RUBBLE = 0x33;
     private static final int SALT_ENTRANCE = 0x44;
 
-    /** 石笋集中带：约 10% 的 256 格单元会成为石笋区。 */
-    private static final double SPIKE_ZONE_CHANCE = 0.10;
     /** 石笋区内单列生成概率。 */
     private static final double SPIKE_IN_ZONE_CHANCE = 0.18;
 
@@ -71,9 +71,9 @@ public final class CaveDecorator {
             // 整个水洼必须落在同一个石笋区，避免只填一半。
             int cellX = Math.floorDiv(chunkX * 16 + puddleCx, 256);
             int cellZ = Math.floorDiv(chunkZ * 16 + puddleCz, 256);
-            if (CaveMath.hash01(
-                    cellX, cellZ, 0, seed, SALT_SPIKE_ZONE
-                ) < SPIKE_ZONE_CHANCE) {
+            if (CaveFlavorRegistry.hasTag(
+                    CaveTag.SPIKE_ZONE, cellX, cellZ, seed
+                )) {
                 // 在候选范围内找真正最低的洞底，水只出现在这里。
                 for (int lz = 0; lz < 16; lz++) {
                     for (int lx = 0; lx < 16; lx++) {
@@ -145,7 +145,8 @@ public final class CaveDecorator {
                         continue;
                     }
 
-                    if (collapsed) {
+                    if (collapsed
+                        && !insideAnyChamber(wx, lo + 0.5, wz, data)) {
                         // C. 塌方：下半部填碎石，顶部至少留 1 格
                         int fill = lo + Math.max(1, (h * 2) / 5);
                         if (fill >= hi) {
@@ -163,9 +164,9 @@ public final class CaveDecorator {
                     // 石笋区（256 格单元级），带外不生成石笋 / 水洼
                     int cellX = Math.floorDiv(wx, 256);
                     int cellZ = Math.floorDiv(wz, 256);
-                    boolean spikeZone = CaveMath.hash01(
-                        cellX, cellZ, 0, seed, SALT_SPIKE_ZONE
-                    ) < SPIKE_ZONE_CHANCE;
+                    boolean spikeZone = CaveFlavorRegistry.hasTag(
+                        CaveTag.SPIKE_ZONE, cellX, cellZ, seed
+                    );
 
                     // 小水洼：只在整片区域最低的洞底替换地板为水，
                     // 水面统一在同一高度，不会在墙壁 / 高台上挖水。
@@ -180,7 +181,8 @@ public final class CaveDecorator {
                     // A. 洞底材质替换：不在地板上垫新方块（会凸起显乱），
                     // 而是替换地板下方一格的原生方块，表面保持平整。
                     double fr = CaveMath.hash01(wx, wz, 1, seed, SALT_FLOOR);
-                    if (!puddle && lo > 1) {
+                    if (!puddle && lo > 1
+                        && !isWater(blocks[base + lo - 1])) {
                         if (fr < 0.08) {
                             setBlock(blocks, meta, base + lo - 1, Blocks.gravel);
                         } else if (fr < 0.12) {
@@ -193,6 +195,9 @@ public final class CaveDecorator {
                     // 形成 3×3 ~ 5×5 的大结构；带外完全不生成。
                     if (h >= 4) {
                         if (spikeZone
+                            // 大厅内不用石笋区的小结构，改用大厅专属大石笋/钟乳石
+                            && !insideAnyChamber(wx, lo + 0.5, wz, data)
+                            && !insideAnyChamber(wx, hi + 0.5, wz, data)
                             && CaveMath.hash01(
                                 wx, wz, 2, seed, SALT_SPIKE
                             ) < SPIKE_IN_ZONE_CHANCE) {
@@ -228,7 +233,8 @@ public final class CaveDecorator {
                             } else if (!stalactite
                                 && !puddle
                                 && lo - 1 >= 1
-                                && !isAir(blocks[base + lo - 1])) {
+                                && !isAir(blocks[base + lo - 1])
+                                && !isWater(blocks[base + lo - 1])) {
                                 for (int k = 0; k < len; k++) {
                                     setBlock(blocks, meta, base + lo + k,
                                         (k == len - 1) ? Blocks.cobblestone : sb);
@@ -286,6 +292,13 @@ public final class CaveDecorator {
             }
         }
 
+        // G. 大厅装饰：湖中石笋（有湖时）+ 干地大石笋 + 顶部大钟乳石。
+        for (CaveChamber ch : data.chambers) {
+            decorateChamberStructures(
+                ch, x0, z0, blocks, meta, worldHeight, seed
+            );
+        }
+
         // F. 入口井口碎石环
         for (CaveEntrance e : data.entrances) {
             int rOuter = e.radius + 1;
@@ -326,6 +339,10 @@ public final class CaveDecorator {
     /** 未初始化（null）与空气都视为空气：区块填充后地表以上方块是 null。 */
     private static boolean isAir(Block block) {
         return block == null || block == Blocks.air;
+    }
+
+    private static boolean isWater(Block block) {
+        return block == Blocks.water || block == Blocks.flowing_water;
     }
 
     private static boolean isEntranceColumn(int worldX, int worldZ,
@@ -380,10 +397,188 @@ public final class CaveDecorator {
             }
             int hi = y - 1;
             if (hi - lo + 1 >= 3 && !collapsed) {
+                // 湖面上方的空气段不算洞底，水洼不落在湖里
+                if (lo - 1 >= 1 && isWater(blocks[base + lo - 1])) {
+                    continue;
+                }
                 return lo;
             }
         }
         return -1;
+    }
+
+    /** 该点（方块中心坐标）是否位于某个大厅空腔内。 */
+    private static boolean insideAnyChamber(int worldX, double worldY,
+                                            int worldZ, CaveChunkData data) {
+        for (CaveChamber ch : data.chambers) {
+            if (ch.inside(
+                worldX + 0.5, worldY, worldZ + 0.5, 0.0
+            )) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 大厅装饰：湖中 3~5 根大石笋（仅限有湖大厅）、干地 2~4 根大石笋、
+     * 顶部 3~5 根大钟乳石。结构都是底部 3×3 逐渐收窄到 1×1 的锥形。
+     */
+    private static void decorateChamberStructures(CaveChamber ch,
+                                                  int x0, int z0,
+                                                  Block[] blocks, byte[] meta,
+                                                  int worldHeight, long seed) {
+        int lakeSurface = (int) Math.floor(ch.lakeSurfaceY);
+
+        // 湖中大石笋：从湖床长出，可露出水面 1~4 格
+        int spikeCount = 3 + (int) (CaveMath.hash01(
+            (long) ch.cx, (long) ch.cy, (long) ch.cz,
+            seed, 0x61) * 3.0);
+        for (int i = 0; i < spikeCount; i++) {
+            int wx = chamberSpireCenterX(ch, i, 0x62, seed);
+            int wz = chamberSpireCenterZ(ch, i, 0x63, seed);
+            if (!ch.inside(wx + 0.5, ch.lakeBedY + 0.5, wz + 0.5, 0.0)) {
+                continue;
+            }
+            int len = 6 + (int) (CaveMath.hash01(
+                (long) ch.cx, (long) ch.cz, i, seed, 0x64) * 7.0);
+            int start = ch.lakeBedY;
+            int end = Math.min(start + len - 1, lakeSurface + 4);
+            placeChamberSpire(wx, wz, start, end, true,
+                x0, z0, blocks, meta, worldHeight, seed,
+                (long) ch.cx, (long) ch.cz, 0x70 + i);
+        }
+
+        // 干地大石笋：长在湖面以上的大厅坡地上
+        int dryCount = 2 + (int) (CaveMath.hash01(
+            (long) ch.cx, (long) ch.cy, (long) ch.cz,
+            seed, 0x71) * 3.0);
+        for (int i = 0; i < dryCount; i++) {
+            int wx = chamberSpireCenterX(ch, i, 0x72, seed);
+            int wz = chamberSpireCenterZ(ch, i, 0x73, seed);
+            double nx = (wx + 0.5 - ch.cx) / ch.rx;
+            double nz = (wz + 0.5 - ch.cz) / ch.rz;
+            double d2 = nx * nx + nz * nz;
+            if (d2 >= 1.0) {
+                continue;
+            }
+            double ryLocal = ch.ry * Math.sqrt(Math.max(0.0, 1.0 - d2));
+            double floorY = ch.cy - ryLocal;
+            double ceilingY = ch.cy + ryLocal;
+            if (floorY <= ch.lakeSurfaceY + 0.5) {
+                continue; // 在水里或紧贴湖边
+            }
+            int len = 6 + (int) (CaveMath.hash01(
+                (long) ch.cx, (long) ch.cz, i, seed, 0x74) * 7.0);
+            int start = (int) Math.ceil(floorY - 0.5);
+            int maxY = (int) Math.floor(ceilingY - 0.5);
+            int end = Math.min(start + len - 1, maxY - 1);
+            if (end < start) {
+                continue;
+            }
+            placeChamberSpire(wx, wz, start, end, true,
+                x0, z0, blocks, meta, worldHeight, seed,
+                (long) ch.cx, (long) ch.cz, 0x75 + i);
+        }
+
+        // 顶部大钟乳石：从天花板垂下，底部停在湖面 / 地面之上
+        int ceilingCount = 3 + (int) (CaveMath.hash01(
+            (long) ch.cx, (long) ch.cy, (long) ch.cz,
+            seed, 0x65) * 3.0);
+        for (int i = 0; i < ceilingCount; i++) {
+            int wx = chamberSpireCenterX(ch, i, 0x66, seed);
+            int wz = chamberSpireCenterZ(ch, i, 0x67, seed);
+            double nx = (wx + 0.5 - ch.cx) / ch.rx;
+            double nz = (wz + 0.5 - ch.cz) / ch.rz;
+            double d2 = nx * nx + nz * nz;
+            if (d2 >= 1.0) {
+                continue;
+            }
+            double ryLocal = ch.ry * Math.sqrt(Math.max(0.0, 1.0 - d2));
+            double ceilingY = ch.cy + ryLocal;
+            double floorY = ch.cy - ryLocal;
+            int len = 6 + (int) (CaveMath.hash01(
+                (long) ch.cx, (long) ch.cz, i, seed, 0x68) * 7.0);
+            int start = (int) Math.floor(ceilingY - 0.5);
+            int floorTop = (int) Math.ceil(floorY - 0.5);
+            int minEnd = (floorY <= ch.lakeSurfaceY + 0.5)
+                ? lakeSurface + 1 : floorTop + 1;
+            int end = Math.max(start - len + 1, minEnd);
+            if (end > start) {
+                continue;
+            }
+            placeChamberSpire(wx, wz, start, end, false,
+                x0, z0, blocks, meta, worldHeight, seed,
+                (long) ch.cx, (long) ch.cz, 0x69 + i);
+        }
+    }
+
+    /** 大厅石笋 / 钟乳石中心 X（确定性偏移）。 */
+    private static int chamberSpireCenterX(CaveChamber ch, int i,
+                                           int salt, long seed) {
+        double dx = (CaveMath.hash01(
+            (long) ch.cx, (long) ch.cy, i, seed, salt) - 0.5)
+            * 2.0 * ch.rx * 0.55;
+        return (int) Math.floor(ch.cx + dx + 0.5);
+    }
+
+    /** 大厅石笋 / 钟乳石中心 Z（确定性偏移）。 */
+    private static int chamberSpireCenterZ(CaveChamber ch, int i,
+                                           int salt, long seed) {
+        double dz = (CaveMath.hash01(
+            (long) ch.cx, (long) ch.cz, i, seed, salt) - 0.5)
+            * 2.0 * ch.rz * 0.55;
+        return (int) Math.floor(ch.cz + dz + 0.5);
+    }
+
+    /**
+     * 放置一根锥形石柱：底部 3×3 → 中部 2×2 → 顶部 1×1，
+     * 尖端用圆石。逐块判断是否在当前区块，跨区块也完整。
+     */
+    private static void placeChamberSpire(int centerX, int centerZ,
+                                          int yStart, int yEnd,
+                                          boolean upward,
+                                          int x0, int z0,
+                                          Block[] blocks, byte[] meta,
+                                          int worldHeight, long seed,
+                                          long sx, long sz, int salt) {
+        int len = Math.abs(yEnd - yStart) + 1;
+        for (int k = 0; k < len; k++) {
+            int y = upward ? yStart + k : yStart - k;
+            if (y <= 0 || y >= worldHeight) {
+                continue;
+            }
+            double t = (double) k / (len - 1);
+            int minDx, maxDx, minDz, maxDz;
+            if (t < 0.30) {
+                minDx = -1; maxDx = 1;
+                minDz = -1; maxDz = 1;
+            } else if (t < 0.60) {
+                int off = CaveMath.hash01(
+                    sx, sz, k, seed, salt) < 0.5 ? 0 : -1;
+                minDx = off; maxDx = off + 1;
+                minDz = off; maxDz = off + 1;
+            } else {
+                minDx = 0; maxDx = 0;
+                minDz = 0; maxDz = 0;
+            }
+            boolean tipLayer = (k == len - 1);
+            for (int dz = minDz; dz <= maxDz; dz++) {
+                for (int dx = minDx; dx <= maxDx; dx++) {
+                    int wx = centerX + dx;
+                    int wz = centerZ + dz;
+                    if (wx < x0 || wx >= x0 + 16
+                        || wz < z0 || wz >= z0 + 16) {
+                        continue;
+                    }
+                    int idx = ((wx & 15) * 16 + (wz & 15))
+                        * worldHeight + y;
+                    blocks[idx] = (tipLayer && dx == 0 && dz == 0)
+                        ? Blocks.cobblestone : Blocks.stone;
+                    meta[idx] = 0;
+                }
+            }
+        }
     }
 
     private static void setBlock(Block[] blocks, byte[] meta,
