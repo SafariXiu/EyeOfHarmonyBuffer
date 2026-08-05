@@ -11,6 +11,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
  *   - SINKHOLE  天坑节点（小入口）
  *   - SHAFT     竖井节点（与同格 MID 节点垂直连接）
  *   - MEGA_HALL 洞厅节点（上千格巨型空腔，连接主干网）
+ *   - AQUIFER_* 含水网络节点（暗河）
  */
 public final class CaveNode {
 
@@ -21,6 +22,9 @@ public final class CaveNode {
     public static final int KIND_SINKHOLE = 4;
     public static final int KIND_SHAFT = 5;
     public static final int KIND_MEGA_HALL = 6;
+    public static final int KIND_AQUIFER_FULL = 7;
+    public static final int KIND_AQUIFER_HALF = 8;
+    public static final int KIND_AQUIFER_DEAD = 9;
 
     /** 深度带：UPPER / MID / DEEP。 */
     public static final int BAND_UPPER = 0;

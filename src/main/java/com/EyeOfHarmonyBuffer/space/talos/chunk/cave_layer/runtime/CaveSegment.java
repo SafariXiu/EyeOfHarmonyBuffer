@@ -12,6 +12,16 @@ public final class CaveSegment {
     /** 塌方段：通道下半部会被碎石填充，只留顶部爬行缝隙。 */
     public final boolean collapsed;
 
+    /** 是否为暗河段（含水网络）。 */
+    public final boolean aquifer;
+    /** 全淹没：整段通道都填水；否则半淹没（到 waterLevelY 为止）。 */
+    public final boolean fullySubmerged;
+    /** 半淹没时的水面高度（全淹没时也可用于对齐参考）。 */
+    public final int waterLevelY;
+
+    /** 含水-湖泊连接管：允许凿穿大厅湖外壳 / 洞厅湖底进入湖体。 */
+    public final boolean piercesLakeShell;
+
     /** 折线顶点数。 */
     public final int n;
     public final float[] xs;
@@ -32,8 +42,24 @@ public final class CaveSegment {
                        float[] xs, float[] ys, float[] zs, float[] rs,
                        float minX, float minY, float minZ,
                        float maxX, float maxY, float maxZ) {
+        this(edgeId, collapsed, xs, ys, zs, rs,
+            minX, minY, minZ, maxX, maxY, maxZ,
+            false, false, 0, false);
+    }
+
+    public CaveSegment(long edgeId,
+                       boolean collapsed,
+                       float[] xs, float[] ys, float[] zs, float[] rs,
+                       float minX, float minY, float minZ,
+                       float maxX, float maxY, float maxZ,
+                       boolean aquifer, boolean fullySubmerged,
+                       int waterLevelY, boolean piercesLakeShell) {
         this.edgeId = edgeId;
         this.collapsed = collapsed;
+        this.aquifer = aquifer;
+        this.fullySubmerged = fullySubmerged;
+        this.waterLevelY = waterLevelY;
+        this.piercesLakeShell = piercesLakeShell;
         this.n = xs.length;
         this.xs = xs;
         this.ys = ys;

@@ -45,6 +45,9 @@ public final class CaveGenerator {
     private static final int SALT_EDGE_RADIUS = 0x8B;
     private static final int SALT_COLLAPSE = 0x9C;
     private static final int SALT_MEGA_HALL = 0xA1;
+    private static final int SALT_AQUIFER = 0xB3;
+    private static final int SALT_AQUIFER_DRY = 0xC4;
+    private static final int SALT_LAKE_PIPE = 0xD5;
 
     /** 大厅出现概率（原 22%，巨型大厅更稀有）。 */
     private static final double CHAMBER_CHANCE = 0.10;
@@ -76,8 +79,49 @@ public final class CaveGenerator {
     /** 洞厅中心距超级格边缘的最小距离（保证整厅落在本格内）。 */
     private static final double MEGA_HALL_MARGIN = 1000.0;
 
+    /** 含水网络参数。 */
+    private static final double AQUIFER_BASIN_CHANCE = 0.40;
+    private static final int AQUIFER_FULL_COUNT = 4;
+    private static final int AQUIFER_HALF_COUNT = 3;
+    private static final int AQUIFER_DEAD_COUNT = 2;
+    private static final double AQUIFER_WATER_MIN = 20.0;
+    private static final double AQUIFER_WATER_MAX = 40.0;
+    private static final int AQUIFER_CROSS_RADIUS = 2;
+    private static final int AQUIFER_LOCAL_RADIUS = 1;
+    private static final int AQUIFER_DRY_RADIUS = 3;
+    /** 半水节点单独接干洞的概率（单元内另有兜底保证至少一个）。 */
+    private static final double AQUIFER_HALF_DRY_CHANCE = 0.5;
+    /** 同单元三个半水节点的最小水平间距（blocks）。 */
+    private static final double AQUIFER_HALF_MIN_DIST = 48.0;
+    /** 半水节点找位次数的上限，超过后使用固定分散布局兜底。 */
+    private static final int AQUIFER_HALF_POS_ATTEMPTS = 24;
+    /** 含水盆地步长（单元）：每 2 个 256 单元一个盆地锚点。 */
+    private static final int AQUIFER_BACKBONE_STEP = 2;
+    /** 含水-湖泊连接管半径（blocks）。 */
+    private static final double AQUIFER_LAKE_PIPE_RADIUS = 5.0;
+    /** 找全水节点接湖的搜索半径（单元）。 */
+    private static final int AQUIFER_LAKE_RADIUS = 4;
+    /** 洞厅湖接入列要求的地面高度上限：低于该值才保证接入点在水下。 */
+    private static final int MEGA_HALL_LAKE_MAX_FLOOR = 12;
+    /** 洞厅湖接入点 Y：水面以下 2 格。 */
+    private static final int MEGA_HALL_LAKE_PIPE_Y = 13;
+    /** 洞厅湖接入点扫描步长（blocks）。 */
+    private static final int MEGA_HALL_LAKE_SCAN_STEP = 32;
+    /** 大厅湖连接管扫描半径（单元）：覆盖最远全水节点到大厅的管道长度。 */
+    private static final int LAKE_PIPE_SCAN_RADIUS = 5;
+    /** 干洞上层带下限：盆地 / 禁干带内只允许该高度以上的干洞。 */
+    public static final int DRY_UPPER_MIN_Y = 46;
+
     private static final Object NO_MEGA_HALL = new Object();
     private static final ConcurrentHashMap<Long, Object> MEGA_HALL_CACHE =
+        new ConcurrentHashMap<Long, Object>();
+    /** 洞厅湖接入点缓存（洞厅极稀有，扫描一次后复用）。 */
+    private static final Object NO_LAKE_CELL = new Object();
+    private static final ConcurrentHashMap<Long, Object> MEGA_HALL_LAKE_CACHE =
+        new ConcurrentHashMap<Long, Object>();
+    /** 大厅湖 / 洞厅湖连接管缓存（同一管只构建一次）。 */
+    private static final Object NO_LAKE_PIPE = new Object();
+    private static final ConcurrentHashMap<Long, Object> LAKE_PIPE_CACHE =
         new ConcurrentHashMap<Long, Object>();
     private static final int MEGA_HALL_CACHE_LIMIT = 8192;
 
@@ -96,6 +140,8 @@ public final class CaveGenerator {
             cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
         CaveMegaHall megaHall = megaHallForSupercell(
             hallSuperX, hallSuperZ, seed);
+        // 浅层限制单元：含水盆地 + 盆地外圈 1 格禁干带，只允许上层干洞。
+        boolean shallowOnly = isShallowOnlyCell(cellX, cellZ, seed);
         boolean backbone = isBackboneCell(cellX, cellZ);
 
         if (backbone) {
@@ -104,8 +150,11 @@ public final class CaveGenerator {
                 cellX, cellZ, 0, seed, SALT_NODE_POS, 96.0, 160.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, 1, seed, SALT_NODE_POS, 96.0, 160.0);
-            float y = (float) CaveMath.hashRange(
-                cellX, cellZ, 2, seed, SALT_NODE_POS, 26.0, 46.0);
+            float y = shallowOnly
+                ? (float) CaveMath.hashRange(
+                    cellX, cellZ, 2, seed, SALT_NODE_POS, 50.0, 57.0)
+                : (float) CaveMath.hashRange(
+                    cellX, cellZ, 2, seed, SALT_NODE_POS, 26.0, 46.0);
             nodes.add(new CaveNode(
                 id, cellX, cellZ, x, y, z,
                 CaveNode.KIND_BACKBONE, CaveNode.BAND_MID,
@@ -117,6 +166,10 @@ public final class CaveGenerator {
         int detailCount = detailCount(cellX, cellZ, seed);
         for (int i = 0; i < detailCount; i++) {
             int band = pickBand(cellX, cellZ, i, seed);
+            // 浅层限制单元内干洞只留上层，深层/中层让给暗河和禁干带。
+            if (shallowOnly && band != CaveNode.BAND_UPPER) {
+                continue;
+            }
             float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, i * 3 + 0, seed, SALT_NODE_POS, 24.0, 232.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
@@ -134,6 +187,22 @@ public final class CaveGenerator {
                 cellX, cellZ, i + 200, seed, SALT_CHAMBER,
                 CHAMBER_RADIUS_XZ_MIN, CHAMBER_RADIUS_XZ_MAX) : 0;
 
+            if (shallowOnly) {
+                // 浅层限制单元内不生成大厅，避免巨大干室探进暗河/禁干带。
+                chamber = false;
+                kind = CaveNode.KIND_NORMAL;
+                crx = 0;
+                cry = 0;
+                crz = 0;
+            } else if (chamber && chamberCrossesShallow(
+                    x, z, crx, crz, seed)) {
+                // 大厅空腔会横向探进盆地/禁干带：降级为普通分支。
+                chamber = false;
+                kind = CaveNode.KIND_NORMAL;
+                crx = 0;
+                cry = 0;
+                crz = 0;
+            }
             float y = (float) bandY(band, cellX, cellZ, i, seed);
             if (chamber) {
                 // 巨型大厅必须整体落在可用高度内，避免挖穿基岩或顶到地表。
@@ -160,7 +229,10 @@ public final class CaveGenerator {
                 break;
             }
         }
-        if (mid != null
+        // 浅层限制单元不生成竖井；竖井列贴近浅层限制单元时也跳过。
+        if (!shallowOnly
+            && mid != null
+            && !columnNearShallow(mid.x, mid.z, 6.0, seed)
             && CaveMath.hash01(cellX, cellZ, 77, seed, SALT_SHAFT) < 0.10) {
             int idx = nodes.size();
             float y = (float) CaveMath.hashRange(
@@ -271,6 +343,8 @@ public final class CaveGenerator {
     /** 释放洞厅缓存（世界卸载时调用）。 */
     public static void clearMegaHallCache() {
         MEGA_HALL_CACHE.clear();
+        MEGA_HALL_LAKE_CACHE.clear();
+        LAKE_PIPE_CACHE.clear();
     }
 
     private static CaveMegaHall computeMegaHall(int superX, int superZ,
@@ -370,6 +444,874 @@ public final class CaveGenerator {
         return h;
     }
 
+    // ------------------------------------------------------------
+    // ------------------------------------------------------------
+    // 含水网络（暗河）：第二阶段，干洞网络完成后独立生成
+    // ------------------------------------------------------------
+
+    private static boolean isAquiferKind(int kind) {
+        return kind == CaveNode.KIND_AQUIFER_FULL
+            || kind == CaveNode.KIND_AQUIFER_HALF
+            || kind == CaveNode.KIND_AQUIFER_DEAD;
+    }
+
+    private static boolean isAquiferBackboneCell(int cellX, int cellZ) {
+        return Math.floorMod(cellX, AQUIFER_BACKBONE_STEP) == 0
+            && Math.floorMod(cellZ, AQUIFER_BACKBONE_STEP) == 0;
+    }
+
+    /** 某 256 格单元的水面高度（20~45）。 */
+    public static int aquiferWaterLevel(int cellX, int cellZ, long seed) {
+        int bx = Math.floorDiv(cellX, AQUIFER_BACKBONE_STEP);
+        int bz = Math.floorDiv(cellZ, AQUIFER_BACKBONE_STEP);
+        return (int) Math.round(AQUIFER_WATER_MIN + CaveMath.hash01(
+            bx, bz, 0, seed, SALT_AQUIFER)
+            * (AQUIFER_WATER_MAX - AQUIFER_WATER_MIN));
+    }
+
+    /** 某 256 单元是否属于含水盆地（雕刻器硬隔离兜底也会用到）。 */
+    public static boolean basinHasAquifer(int cellX, int cellZ, long seed) {
+        int bx = Math.floorDiv(cellX, AQUIFER_BACKBONE_STEP);
+        int bz = Math.floorDiv(cellZ, AQUIFER_BACKBONE_STEP);
+        return CaveMath.hash01(bx, bz, 1, seed, SALT_AQUIFER)
+            < AQUIFER_BASIN_CHANCE;
+    }
+
+    /**
+     * 浅层限制单元：含水盆地本身 + 盆地外圈 1 格禁干带。
+     * 这些单元内只允许上层干洞（DRY_UPPER_MIN_Y 以上）。
+     */
+    public static boolean isShallowOnlyCell(int cellX, int cellZ, long seed) {
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (basinHasAquifer(cellX + dx, cellZ + dz, seed)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 大厅水平包围盒是否碰到任何浅层限制单元（盆地 / 禁干带）。 */
+    private static boolean chamberCrossesShallow(
+        double x, double z, double rx, double rz, long seed
+    ) {
+        int minCX = Math.floorDiv((int) Math.floor(x - rx), CELL_BLOCKS);
+        int maxCX = Math.floorDiv((int) Math.floor(x + rx), CELL_BLOCKS);
+        int minCZ = Math.floorDiv((int) Math.floor(z - rz), CELL_BLOCKS);
+        int maxCZ = Math.floorDiv((int) Math.floor(z + rz), CELL_BLOCKS);
+        for (int cz = minCZ; cz <= maxCZ; cz++) {
+            for (int cx = minCX; cx <= maxCX; cx++) {
+                if (isShallowOnlyCell(cx, cz, seed)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 列（x,z）是否在 margin 范围内贴近某个浅层限制单元。 */
+    private static boolean columnNearShallow(double x, double z,
+                                             double margin, long seed) {
+        int cx = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
+        int cz = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int nx = cx + dx;
+                int nz = cz + dz;
+                if (!isShallowOnlyCell(nx, nz, seed)) {
+                    continue;
+                }
+                double cellMinX = nx * CELL_BLOCKS;
+                double cellMaxX = cellMinX + CELL_BLOCKS;
+                double cellMinZ = nz * CELL_BLOCKS;
+                double cellMaxZ = cellMinZ + CELL_BLOCKS;
+                double closestX = Math.max(cellMinX, Math.min(x, cellMaxX));
+                double closestZ = Math.max(cellMinZ, Math.min(z, cellMaxZ));
+                double d = Math.sqrt(
+                    (x - closestX) * (x - closestX)
+                        + (z - closestZ) * (z - closestZ));
+                if (d <= margin) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 生成某单元的含水节点（带缓存），并对干洞节点 / 线段做避让。 */
+    private static List<CaveNode> aquiferNodesForCell(
+        int cellX, int cellZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache
+    ) {
+        long key = cellKey(cellX, cellZ);
+        List<CaveNode> cached = aquiferNodeCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        List<CaveNode> out = computeAquiferNodes(
+            cellX, cellZ, seed, nodeCache, edgeCache);
+        List<CaveNode> prev = aquiferNodeCache.putIfAbsent(key, out);
+        return prev != null ? prev : out;
+    }
+
+    private static List<CaveNode> computeAquiferNodes(
+        int cellX, int cellZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache
+    ) {
+        List<CaveNode> out = new ArrayList<CaveNode>();
+        // 只有盆地锚点单元（每 2 个 256 单元）才生成含水节点
+        if (!isAquiferBackboneCell(cellX, cellZ)) {
+            return out;
+        }
+        int wl = aquiferWaterLevel(cellX, cellZ, seed);
+        int idx = 0;
+        // 骨干锚点：每个盆地固定一个，放在深层底部（y=6），
+        // 低于干洞 DEEP 带，保证水网全局连通且不与干洞抢层。
+        out.add(new CaveNode(
+            nodeId(seed, cellX, cellZ, 0x2FFF),
+            cellX, cellZ,
+            cellX * CELL_BLOCKS + 128.0f,
+            6.0f,
+            cellZ * CELL_BLOCKS + 128.0f,
+            CaveNode.KIND_AQUIFER_FULL, CaveNode.BAND_DEEP,
+            0, 0, 0, 0, 0));
+        if (!basinHasAquifer(cellX, cellZ, seed)) {
+            return out;
+        }
+        for (int i = 0; i < AQUIFER_FULL_COUNT; i++) {
+            float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 0, seed, SALT_AQUIFER, 24.0, 232.0);
+            float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 1, seed, SALT_AQUIFER, 24.0, 232.0);
+            float y = (float) (wl - 3 - CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 2, seed, SALT_AQUIFER, 1.0, 8.0));
+            out.add(new CaveNode(
+                nodeId(seed, cellX, cellZ, 0x2000 + idx),
+                cellX, cellZ, x, y, z,
+                CaveNode.KIND_AQUIFER_FULL, CaveNode.BAND_DEEP,
+                0, 0, 0, 0, 0));
+            idx++;
+        }
+        List<double[]> halfPositions =
+            new ArrayList<double[]>(AQUIFER_HALF_COUNT);
+        for (int i = 0; i < AQUIFER_HALF_COUNT; i++) {
+            double hx = 0;
+            double hz = 0;
+            boolean placed = false;
+            for (int attempt = 0;
+                 attempt < AQUIFER_HALF_POS_ATTEMPTS; attempt++) {
+                double cx = cellX * CELL_BLOCKS + CaveMath.hashRange(
+                    cellX, cellZ, idx * 3 + 0 + attempt * 64,
+                    seed, SALT_AQUIFER, 24.0, 232.0);
+                double cz = cellZ * CELL_BLOCKS + CaveMath.hashRange(
+                    cellX, cellZ, idx * 3 + 1 + attempt * 64,
+                    seed, SALT_AQUIFER, 24.0, 232.0);
+                boolean ok = true;
+                for (double[] p : halfPositions) {
+                    double dx = cx - p[0];
+                    double dz = cz - p[1];
+                    if (dx * dx + dz * dz
+                        < AQUIFER_HALF_MIN_DIST * AQUIFER_HALF_MIN_DIST) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    hx = cx;
+                    hz = cz;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                hx = cellX * CELL_BLOCKS + 40.0 + i * 72.0;
+                hz = cellZ * CELL_BLOCKS + 40.0 + (i % 2) * 140.0;
+            }
+            halfPositions.add(new double[] {hx, hz});
+            float y = (float) (wl + 2 + CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 2, seed, SALT_AQUIFER, 1.0, 6.0));
+            out.add(new CaveNode(
+                nodeId(seed, cellX, cellZ, 0x2000 + idx),
+                cellX, cellZ, (float) hx, y, (float) hz,
+                CaveNode.KIND_AQUIFER_HALF, CaveNode.BAND_MID,
+                0, 0, 0, 0, 0));
+            idx++;
+        }
+        for (int i = 0; i < AQUIFER_DEAD_COUNT; i++) {
+            float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 0, seed, SALT_AQUIFER, 24.0, 232.0);
+            float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
+                cellX, cellZ, idx * 3 + 1, seed, SALT_AQUIFER, 24.0, 232.0);
+            boolean below = CaveMath.hash01(
+                cellX, cellZ, idx * 3 + 2, seed, SALT_AQUIFER) < 0.5;
+            float y = below
+                ? (float) (wl - 2 - CaveMath.hashRange(
+                    cellX, cellZ, idx * 3 + 2, seed, SALT_AQUIFER, 1.0, 6.0))
+                : (float) (wl + 2 + CaveMath.hashRange(
+                    cellX, cellZ, idx * 3 + 2, seed, SALT_AQUIFER, 1.0, 6.0));
+            out.add(new CaveNode(
+                nodeId(seed, cellX, cellZ, 0x2000 + idx),
+                cellX, cellZ, x, y, z,
+                CaveNode.KIND_AQUIFER_DEAD,
+                below ? CaveNode.BAND_DEEP : CaveNode.BAND_MID,
+                0, 0, 0, 0, 0));
+            idx++;
+        }
+        return out;
+    }
+
+    /** 含水候选点是否离干洞节点 / 干洞线段太近。 */
+    /** 调试/传送用：列出附近单元的全部含水节点（不做避让过滤）。 */
+    public static List<CaveNode> debugAquiferNodesNear(
+        int worldX, int worldZ, long seed, int radiusCells
+    ) {
+        List<CaveNode> out = new ArrayList<CaveNode>();
+        int ccx = Math.floorDiv(worldX, 256);
+        int ccz = Math.floorDiv(worldZ, 256);
+        for (int r = 0; r <= radiusCells; r++) {
+            for (int dz = -r; dz <= r; dz++) {
+                for (int dx = -r; dx <= r; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                        continue;
+                    }
+                    out.addAll(computeAquiferNodes(
+                        ccx + dx, ccz + dz, seed, null, null));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** 某单元含水节点的连接（局部），并接干洞。 */
+    private static List<CaveSegment> aquiferSegmentsForCell(
+        int cellX, int cellZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        Map<Long, List<CaveSegment>> aquiferEdgeCache
+    ) {
+        long key = cellKey(cellX, cellZ);
+        List<CaveSegment> cached = aquiferEdgeCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        List<CaveSegment> out = new ArrayList<CaveSegment>();
+        List<CaveNode> nodes = aquiferNodesForCell(
+            cellX, cellZ, seed, nodeCache, edgeCache, aquiferNodeCache);
+        Set<Long> dryLinkedHalfIds = new HashSet<Long>();
+        for (CaveNode node : nodes) {
+            connectAquiferNode(
+                node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                out, dryLinkedHalfIds);
+        }
+        // 单元兜底：至少一个半水节点接干洞，避免出现没有干湿接口的盆地。
+        boolean anyHalfLinked = false;
+        for (CaveNode node : nodes) {
+            if (node.kind == CaveNode.KIND_AQUIFER_HALF
+                && dryLinkedHalfIds.contains(node.id)) {
+                anyHalfLinked = true;
+                break;
+            }
+        }
+        if (!anyHalfLinked) {
+            int halfCount = 0;
+            for (CaveNode node : nodes) {
+                if (node.kind == CaveNode.KIND_AQUIFER_HALF) {
+                    halfCount++;
+                }
+            }
+            if (halfCount > 0) {
+                int pick = (int) (CaveMath.hash01(
+                    cellX, cellZ, 11, seed, SALT_AQUIFER_DRY) * halfCount);
+                int cur = 0;
+                CaveNode guaranteed = null;
+                for (CaveNode node : nodes) {
+                    if (node.kind == CaveNode.KIND_AQUIFER_HALF) {
+                        if (cur == pick) {
+                            guaranteed = node;
+                            break;
+                        }
+                        cur++;
+                    }
+                }
+                if (guaranteed != null) {
+                    CaveNode dry = nearestDryNode(
+                        guaranteed, seed, nodeCache, AQUIFER_DRY_RADIUS);
+                    if (dry != null) {
+                        CaveSegment seg = buildSegment(
+                            guaranteed, dry, seed);
+                        if (seg != null) {
+                            out.add(seg);
+                        }
+                    }
+                }
+            }
+        }
+        List<CaveSegment> prev = aquiferEdgeCache.putIfAbsent(key, out);
+        return prev != null ? prev : out;
+    }
+
+    /** 收集与某区块相交的含水-湖泊连接管（大厅湖 / 洞厅湖）。 */
+    private static void collectLakePipesForChunk(
+        int chunkX, int chunkZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        List<CaveSegment> out, Set<Long> seenEdges
+    ) {
+        int cellX = chunkX >> 4;
+        int cellZ = chunkZ >> 4;
+        int x0 = chunkX * 16;
+        int z0 = chunkZ * 16;
+        // 带湖大厅：连接管最长约 4 单元，扫描 ±5 单元保证覆盖。
+        for (int dz = -LAKE_PIPE_SCAN_RADIUS;
+             dz <= LAKE_PIPE_SCAN_RADIUS; dz++) {
+            for (int dx = -LAKE_PIPE_SCAN_RADIUS;
+                 dx <= LAKE_PIPE_SCAN_RADIUS; dx++) {
+                for (CaveNode node : nodesOf(
+                    cellX + dx, cellZ + dz, seed, nodeCache)) {
+                    if (node.kind != CaveNode.KIND_CHAMBER) {
+                        continue;
+                    }
+                    CaveChamber ch = new CaveChamber(
+                        node.x, node.y, node.z,
+                        node.chamberRx, node.chamberRy, node.chamberRz,
+                        node.id);
+                    if (!ch.hasLake) {
+                        continue;
+                    }
+                    CaveSegment pipe = lakePipeForChamber(
+                        node, ch, seed,
+                        nodeCache, edgeCache, aquiferNodeCache);
+                    if (pipe == null) {
+                        continue;
+                    }
+                    if (pipe.maxX >= x0 && pipe.minX <= x0 + 16
+                        && pipe.maxZ >= z0 && pipe.minZ <= z0 + 16
+                        && seenEdges.add(pipe.edgeId)) {
+                        out.add(pipe);
+                    }
+                }
+            }
+        }
+        // 洞厅湖：管道可能伸出洞厅超级格，查周围 3×3 超级格。
+        int superX = Math.floorDiv(chunkX * 16, MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(chunkZ * 16, MEGA_HALL_CELL_BLOCKS);
+        for (int sz = -1; sz <= 1; sz++) {
+            for (int sx = -1; sx <= 1; sx++) {
+                CaveMegaHall hall = megaHallForSupercell(
+                    superX + sx, superZ + sz, seed);
+                if (hall == null) {
+                    continue;
+                }
+                CaveSegment pipe = lakePipeForHall(
+                    hall, seed, nodeCache, edgeCache, aquiferNodeCache);
+                if (pipe == null) {
+                    continue;
+                }
+                if (pipe.maxX >= x0 && pipe.minX <= x0 + 16
+                    && pipe.maxZ >= z0 && pipe.minZ <= z0 + 16
+                    && seenEdges.add(pipe.edgeId)) {
+                    out.add(pipe);
+                }
+            }
+        }
+    }
+
+    /** 带湖大厅的连接管（缓存：同一大厅只构建一次）。 */
+    private static CaveSegment lakePipeForChamber(
+        CaveNode node, CaveChamber ch, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache
+    ) {
+        long key = CaveMath.mix64(node.id ^ seed);
+        Object cached = LAKE_PIPE_CACHE.get(key);
+        if (cached != null) {
+            return cached == NO_LAKE_PIPE ? null : (CaveSegment) cached;
+        }
+        CaveSegment pipe = null;
+        double[] target = chamberLakeTarget(ch);
+        if (target != null) {
+            CaveNode full = nearestFullNodeForLake(
+                target[0], target[1], target[2], seed,
+                nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_LAKE_RADIUS, ch, null);
+            if (full != null) {
+                pipe = buildLakePipe(
+                    full, target[0], target[1], target[2], seed,
+                    SALT_LAKE_PIPE, AQUIFER_LAKE_PIPE_RADIUS,
+                    (int) ch.lakeSurfaceY, true);
+            }
+        }
+        LAKE_PIPE_CACHE.put(key, pipe != null ? pipe : NO_LAKE_PIPE);
+        return pipe;
+    }
+
+    /** 洞厅湖的连接管（缓存：每个洞厅只构建一次）。 */
+    private static CaveSegment lakePipeForHall(
+        CaveMegaHall hall, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache
+    ) {
+        int superX = Math.floorDiv(
+            (int) Math.floor(hall.cx), MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            (int) Math.floor(hall.cz), MEGA_HALL_CELL_BLOCKS);
+        long key = megaHallKey(seed, superX, superZ);
+        Object cached = LAKE_PIPE_CACHE.get(key);
+        if (cached != null) {
+            return cached == NO_LAKE_PIPE ? null : (CaveSegment) cached;
+        }
+        CaveSegment pipe = null;
+        double[] lake = megaHallLakeCell(hall, seed);
+        if (lake != null) {
+            CaveNode full = nearestFullNodeForLake(
+                lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
+                nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_LAKE_RADIUS, null, hall);
+            if (full != null) {
+                pipe = buildLakePipe(
+                    full, lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
+                    SALT_LAKE_PIPE + 1, AQUIFER_LAKE_PIPE_RADIUS,
+                    CaveMegaHall.LAKE_WATER_LEVEL, true);
+            }
+        }
+        LAKE_PIPE_CACHE.put(key, pipe != null ? pipe : NO_LAKE_PIPE);
+        return pipe;
+    }
+
+    /** 大厅湖内的接入点：湖床上方 1 格，避开石柱。 */
+    private static double[] chamberLakeTarget(CaveChamber ch) {
+        int y = ch.lakeBedY + 1;
+        double[][] candidates = new double[][] {
+            {ch.cx, y, ch.cz},
+            {ch.cx + ch.rx * 0.35, y, ch.cz},
+            {ch.cx - ch.rx * 0.35, y, ch.cz},
+            {ch.cx, y, ch.cz + ch.rz * 0.35},
+            {ch.cx, y, ch.cz - ch.rz * 0.35},
+            {ch.cx + ch.rx * 0.25, y, ch.cz + ch.rz * 0.25},
+        };
+        for (double[] c : candidates) {
+            if (ch.inside(c[0] + 0.5, c[1] + 0.5, c[2] + 0.5, 0.0)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    /** 找离目标最近的全水节点（可排除位于大厅 / 洞厅内部的节点）。 */
+    private static CaveNode nearestFullNodeForLake(
+        double x, double y, double z, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        int radius, CaveChamber rejectChamber, CaveMegaHall rejectHall
+    ) {
+        int ccx = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
+        int ccz = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
+        CaveNode best = null;
+        double bestD = Double.POSITIVE_INFINITY;
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (CaveNode n : aquiferNodesForCell(
+                    ccx + dx, ccz + dz, seed,
+                    nodeCache, edgeCache, aquiferNodeCache)) {
+                    if (n.kind != CaveNode.KIND_AQUIFER_FULL) {
+                        continue;
+                    }
+                    if (rejectChamber != null
+                        && rejectChamber.inside(
+                            n.x + 0.5, n.y + 0.5, n.z + 0.5, 0.0)) {
+                        continue;
+                    }
+                    if (rejectHall != null
+                        && nodeInsideMegaHall(n, rejectHall)) {
+                        continue;
+                    }
+                    double dxp = n.x - x;
+                    double dyp = n.y - y;
+                    double dzp = n.z - z;
+                    double d = dxp * dxp + dyp * dyp + dzp * dzp;
+                    if (d < bestD - 1.0e-9
+                        || (Math.abs(d - bestD) <= 1.0e-9
+                            && n.id < best.id)) {
+                        best = n;
+                        bestD = d;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    /** 洞厅湖接入点：洞厅内地面最深的非石柱列（带缓存）。 */
+    private static double[] megaHallLakeCell(CaveMegaHall hall, long seed) {
+        int superX = Math.floorDiv(
+            (int) Math.floor(hall.cx), MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            (int) Math.floor(hall.cz), MEGA_HALL_CELL_BLOCKS);
+        long key = megaHallKey(seed, superX, superZ);
+        Object cached = MEGA_HALL_LAKE_CACHE.get(key);
+        if (cached != null) {
+            return cached == NO_LAKE_CELL ? null : (double[]) cached;
+        }
+        double[] found = scanMegaHallLakeCell(hall, seed);
+        MEGA_HALL_LAKE_CACHE.put(key, found != null ? found : NO_LAKE_CELL);
+        return found;
+    }
+
+    private static double[] scanMegaHallLakeCell(CaveMegaHall hall,
+                                                 long seed) {
+        int minX = (int) Math.floor(hall.minX);
+        int maxX = (int) Math.ceil(hall.maxX);
+        int minZ = (int) Math.floor(hall.minZ);
+        int maxZ = (int) Math.ceil(hall.maxZ);
+        int step = MEGA_HALL_LAKE_SCAN_STEP;
+        double bestX = Double.NaN;
+        double bestZ = Double.NaN;
+        double bestFloor = Double.POSITIVE_INFINITY;
+        int[] span = new int[2];
+        for (int z = minZ; z <= maxZ; z += step) {
+            for (int x = minX; x <= maxX; x += step) {
+                if (!hall.insideHorizontal(x + 0.5, z + 0.5)) {
+                    continue;
+                }
+                if (hall.isPillarColumn(x, z)) {
+                    continue;
+                }
+                if (!hall.verticalSpan(
+                        x, z, (int) Math.ceil(hall.maxY), span)) {
+                    continue;
+                }
+                if (span[0] > MEGA_HALL_LAKE_PIPE_Y
+                    || span[1] < MEGA_HALL_LAKE_PIPE_Y + 6) {
+                    continue;
+                }
+                int fy = hall.floorY(x, z);
+                if (fy <= MEGA_HALL_LAKE_MAX_FLOOR && fy < bestFloor) {
+                    bestX = x;
+                    bestZ = z;
+                    bestFloor = fy;
+                }
+            }
+        }
+        if (Double.isNaN(bestX)) {
+            return null;
+        }
+        return new double[] {bestX, bestZ};
+    }
+
+    /** U 形含水连接管：下潜 → 水平接近 → 抬升进入湖体。 */
+    private static CaveSegment buildLakePipe(
+        CaveNode from, double tx, double ty, double tz,
+        long seed, int salt, double radius,
+        int waterLevelY, boolean pierceShell
+    ) {
+        double lowY = Math.max(3.0, Math.min(from.y, ty) - 7.0);
+        long targetHash = CaveMath.mix64(
+            Double.doubleToLongBits(tx)
+                ^ Double.doubleToLongBits(ty * 1.0e6)
+                ^ Double.doubleToLongBits(tz)
+                ^ salt);
+        long pipeEdge = edgeId(from.id, targetHash);
+        int n = 7;
+        float[] xs = new float[n];
+        float[] ys = new float[n];
+        float[] zs = new float[n];
+        float[] rs = new float[n];
+        float maxR = 0;
+        xs[0] = (float) from.x;
+        ys[0] = (float) from.y;
+        zs[0] = (float) from.z;
+        for (int i = 1; i < n - 1; i++) {
+            double t = (double) i / (n - 1);
+            double px = from.x + (tx - from.x) * t;
+            double pz = from.z + (tz - from.z) * t;
+            double jx = (CaveMath.hash01(
+                pipeEdge, i, 0, seed, salt) - 0.5) * 10.0;
+            double jz = (CaveMath.hash01(
+                pipeEdge, i, 1, seed, salt) - 0.5) * 10.0;
+            double py = lowY;
+            double rise = (t - 0.5) / 0.5;
+            if (rise > 0) {
+                py = lowY + (ty - lowY) * rise;
+            }
+            py += (CaveMath.hash01(
+                pipeEdge, i, 2, seed, salt) - 0.5) * 1.5;
+            if (py < 2.0) {
+                py = 2.0;
+            }
+            xs[i] = (float) (px + jx);
+            ys[i] = (float) py;
+            zs[i] = (float) (pz + jz);
+            double r = radius * (0.85 + 0.3 * CaveMath.hash01(
+                pipeEdge, i, 3, seed, salt));
+            rs[i] = (float) r;
+            if (r > maxR) {
+                maxR = (float) r;
+            }
+        }
+        xs[n - 1] = (float) tx;
+        ys[n - 1] = (float) ty;
+        zs[n - 1] = (float) tz;
+        rs[0] = (float) (radius * (0.85 + 0.3 * CaveMath.hash01(
+            pipeEdge, 0, 3, seed, salt)));
+        rs[n - 1] = (float) (radius * (0.85 + 0.3 * CaveMath.hash01(
+            pipeEdge, n - 1, 3, seed, salt)));
+        maxR = Math.max(maxR, Math.max(rs[0], rs[n - 1]));
+
+        float margin = maxR + 3.0f;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        float maxZ = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            minX = Math.min(minX, xs[i]);
+            maxX = Math.max(maxX, xs[i]);
+            minY = Math.min(minY, ys[i]);
+            maxY = Math.max(maxY, ys[i]);
+            minZ = Math.min(minZ, zs[i]);
+            maxZ = Math.max(maxZ, zs[i]);
+        }
+        return new CaveSegment(
+            pipeEdge, false,
+            xs, ys, zs, rs,
+            minX - margin, minY - margin, minZ - margin,
+            maxX + margin, maxY + margin, maxZ + margin,
+            true, false, waterLevelY, pierceShell
+        );
+    }
+
+    /** 收集与某区块相交的含水线段（含跨单元长管）。 */
+    private static void collectAquiferSegmentsForChunk(
+        int chunkX, int chunkZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        Map<Long, List<CaveSegment>> aquiferEdgeCache,
+        List<CaveSegment> out, Set<Long> seenEdges
+    ) {
+        int cellX = chunkX >> 4;
+        int cellZ = chunkZ >> 4;
+        int x0 = chunkX * 16;
+        int z0 = chunkZ * 16;
+        for (int dz = -AQUIFER_CROSS_RADIUS; dz <= AQUIFER_CROSS_RADIUS; dz++) {
+            for (int dx = -AQUIFER_CROSS_RADIUS; dx <= AQUIFER_CROSS_RADIUS; dx++) {
+                for (CaveSegment seg : aquiferSegmentsForCell(
+                    cellX + dx, cellZ + dz, seed,
+                    nodeCache, edgeCache, aquiferNodeCache,
+                    aquiferEdgeCache)) {
+                    if (seenEdges.add(seg.edgeId)
+                        && seg.maxX >= x0 && seg.minX <= x0 + 16
+                        && seg.maxZ >= z0 && seg.minZ <= z0 + 16) {
+                        out.add(seg);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void connectAquiferNode(
+        CaveNode node, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        List<CaveSegment> out,
+        Set<Long> dryLinkedHalfIds
+    ) {
+        if (node.kind == CaveNode.KIND_AQUIFER_DEAD) {
+            CaveNode target = nearestAquiferNode(
+                node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_LOCAL_RADIUS, -1, true, false);
+            if (target == null) {
+                target = nearestAquiferNode(
+                    node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                    AQUIFER_CROSS_RADIUS, -1, false, false);
+            }
+            if (target == null) {
+                target = nearestAquiferNode(
+                    node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                    AQUIFER_CROSS_RADIUS, -1, true, false);
+            }
+            if (target == null) {
+                target = nearestDryNode(
+                    node, seed, nodeCache, AQUIFER_DRY_RADIUS);
+            }
+            if (target != null) {
+                out.add(buildSegment(node, target, seed));
+            }
+            return;
+        }
+        if (node.kind == CaveNode.KIND_AQUIFER_FULL) {
+            CaveNode t1 = nearestAquiferNode(
+                node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_CROSS_RADIUS, -1, false, false);
+            if (t1 == null) {
+                t1 = nearestAquiferNode(
+                    node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                    AQUIFER_CROSS_RADIUS, -1, true, false);
+            }
+            if (t1 == null) {
+                // 实在没有含水邻居时接干洞，避免孤立封闭
+                t1 = nearestDryNode(
+                    node, seed, nodeCache, AQUIFER_DRY_RADIUS);
+            }
+            if (t1 != null) {
+                out.add(buildSegment(node, t1, seed));
+            }
+            CaveNode t2 = nearestAquiferNode(
+                node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_CROSS_RADIUS,
+                t1 != null ? t1.id : -1, false, false);
+            if (t2 != null) {
+                out.add(buildSegment(node, t2, seed));
+            }
+            // 骨干锚点：向右 / 向下连相邻锚点，保证全局连通
+            if (node.id == nodeId(
+                    seed, node.cellX, node.cellZ, 0x2FFF)) {
+                for (int d = 0; d < 2; d++) {
+                    int nx = node.cellX
+                        + (d == 0 ? AQUIFER_BACKBONE_STEP : 0);
+                    int nz = node.cellZ
+                        + (d == 0 ? 0 : AQUIFER_BACKBONE_STEP);
+                    if (!isAquiferBackboneCell(nx, nz)) {
+                        continue;
+                    }
+                    CaveNode target = aquiferBackboneNodeOf(
+                        nx, nz, seed, nodeCache, edgeCache,
+                        aquiferNodeCache);
+                    if (target != null && target.id != node.id) {
+                        out.add(buildSegment(node, target, seed));
+                    }
+                }
+            }
+            return;
+        }
+        // 半水：只在同单元内连水位以下的全水节点，让通道下半段真正见水
+        CaveNode target = nearestAquiferNode(
+            node, seed, nodeCache, edgeCache, aquiferNodeCache,
+            AQUIFER_LOCAL_RADIUS, -1, false, true);
+        if (target == null) {
+            target = nearestAquiferNode(
+                node, seed, nodeCache, edgeCache, aquiferNodeCache,
+                AQUIFER_LOCAL_RADIUS, -1, true, true);
+        }
+        boolean linkedDry = false;
+        if (target != null) {
+            out.add(buildSegment(node, target, seed));
+        } else {
+            // 实在没有含水邻居时也保证接上干洞，避免孤立封闭节点
+            CaveNode dry = nearestDryNode(
+                node, seed, nodeCache, AQUIFER_DRY_RADIUS);
+            if (dry != null) {
+                out.add(buildSegment(node, dry, seed));
+                dryLinkedHalfIds.add(node.id);
+                linkedDry = true;
+            }
+        }
+        // 干湿接口：按概率额外接一个干洞节点（单元兜底在调用方处理）
+        if (!linkedDry
+            && CaveMath.hash01(
+                node.cellX, node.cellZ, node.id, seed, SALT_AQUIFER_DRY)
+                < AQUIFER_HALF_DRY_CHANCE) {
+            CaveNode dry = nearestDryNode(
+                node, seed, nodeCache, AQUIFER_DRY_RADIUS);
+            if (dry != null) {
+                out.add(buildSegment(node, dry, seed));
+                dryLinkedHalfIds.add(node.id);
+            }
+        }
+    }
+
+    private static CaveNode nearestAquiferNode(
+        CaveNode node, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        int radius, long excludeId, boolean allowAnyKind,
+        boolean sameCellOnly
+    ) {
+        CaveNode best = null;
+        double bestD = Double.POSITIVE_INFINITY;
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (CaveNode n : aquiferNodesForCell(
+                    node.cellX + dx, node.cellZ + dz, seed,
+                    nodeCache, edgeCache, aquiferNodeCache)) {
+                    if (n.id == node.id || n.id == excludeId) {
+                        continue;
+                    }
+                    if (sameCellOnly
+                        && (n.cellX != node.cellX || n.cellZ != node.cellZ)) {
+                        continue;
+                    }
+                    if (!allowAnyKind
+                        && n.kind != CaveNode.KIND_AQUIFER_FULL) {
+                        continue;
+                    }
+                    double d = distSq(node, n);
+                    if (d < bestD - 1.0e-9
+                        || (Math.abs(d - bestD) <= 1.0e-9
+                            && n.id < best.id)) {
+                        best = n;
+                        bestD = d;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static CaveNode aquiferBackboneNodeOf(
+        int cellX, int cellZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache
+    ) {
+        long id = nodeId(seed, cellX, cellZ, 0x2FFF);
+        for (CaveNode n : aquiferNodesForCell(
+            cellX, cellZ, seed, nodeCache, edgeCache, aquiferNodeCache)) {
+            if (n.id == id) {
+                return n;
+            }
+        }
+        return null;
+    }
+
+    private static CaveNode nearestDryNode(
+        CaveNode node, long seed,
+        Map<Long, List<CaveNode>> nodeCache, int radius
+    ) {
+        CaveNode best = null;
+        double bestD = Double.POSITIVE_INFINITY;
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (CaveNode n : nodesOf(
+                    node.cellX + dx, node.cellZ + dz, seed, nodeCache)) {
+                    if (n.id == node.id || isAquiferKind(n.kind)) {
+                        continue;
+                    }
+                    if (n.kind == CaveNode.KIND_MEGA_HALL) {
+                        continue;
+                    }
+                    double d = distSq(node, n);
+                    if (d < bestD - 1.0e-9
+                        || (Math.abs(d - bestD) <= 1.0e-9
+                            && n.id < best.id)) {
+                        best = n;
+                        bestD = d;
+                    }
+                }
+            }
+        }
+        return best;
+    }
     private static boolean isBackboneCell(int cellX, int cellZ) {
         return Math.floorMod(cellX, BACKBONE_STEP) == 0
             && Math.floorMod(cellZ, BACKBONE_STEP) == 0;
@@ -377,16 +1319,16 @@ public final class CaveGenerator {
 
     private static int detailCount(int cellX, int cellZ, long seed) {
         double r = CaveMath.hash01(cellX, cellZ, 0, seed, SALT_DETAIL_COUNT);
-        if (r < 0.02) {
+        if (r < 0.05) {
             return 0;
         }
-        if (r < 0.12) {
+        if (r < 0.25) {
             return 1;
         }
-        if (r < 0.40) {
+        if (r < 0.55) {
             return 2;
         }
-        if (r < 0.75) {
+        if (r < 0.85) {
             return 3;
         }
         return 4;
@@ -452,6 +1394,8 @@ public final class CaveGenerator {
         // 连接大厅的通道不允许塌方，避免巨型空腔被碎石填掉。
         boolean collapsed = a.kind != CaveNode.KIND_CHAMBER
             && b.kind != CaveNode.KIND_CHAMBER
+            && !isAquiferKind(a.kind)
+            && !isAquiferKind(b.kind)
             && CaveMath.hash01(
                 edgeId, 0, 0, seed, SALT_COLLAPSE) < 0.10;
 
@@ -511,16 +1455,93 @@ public final class CaveGenerator {
             minZ = Math.min(minZ, zs[i]);
             maxZ = Math.max(maxZ, zs[i]);
         }
+        boolean aquifer = isAquiferKind(a.kind) || isAquiferKind(b.kind);
+        boolean fullySubmerged = false;
+        int waterLevelY = 0;
+        if (aquifer) {
+            int wa = aquiferWaterLevel(a.cellX, a.cellZ, seed);
+            int wb = aquiferWaterLevel(b.cellX, b.cellZ, seed);
+            waterLevelY = Math.min(wa, wb);
+            boolean fa = a.kind == CaveNode.KIND_AQUIFER_FULL
+                || (a.kind == CaveNode.KIND_AQUIFER_DEAD && a.y < wa - 1);
+            boolean fb = b.kind == CaveNode.KIND_AQUIFER_FULL
+                || (b.kind == CaveNode.KIND_AQUIFER_DEAD && b.y < wb - 1);
+            // 只有两端都是全水节点才全淹没；
+            // 半水节点不跨单元，避免两侧水面高度不一致穿帮。
+            fullySubmerged = fa && fb;
+        }
+        // 路径级检查：干洞线段在盆地 / 禁干带内下探到上层带以下时拒绝。
+        // 洞厅连接除外（洞厅本身贯通深层）。
+        if (!aquifer
+            && a.kind != CaveNode.KIND_MEGA_HALL
+            && b.kind != CaveNode.KIND_MEGA_HALL
+            && dipsIntoShallowZone(xs, ys, zs, rs, seed)) {
+            return null;
+        }
         return new CaveSegment(
             edgeId,
             collapsed,
             xs, ys, zs, rs,
             minX - margin, minY - margin, minZ - margin,
-            maxX + margin, maxY + margin, maxZ + margin
+            maxX + margin, maxY + margin, maxZ + margin,
+            aquifer, fullySubmerged, waterLevelY, false
         );
     }
 
+    /**
+     * 路径级检查：干洞折线（含隧道半径）是否在盆地 / 禁干带内
+     * 下探到上层带（DRY_UPPER_MIN_Y）以下。
+     */
+    private static boolean dipsIntoShallowZone(float[] xs, float[] ys,
+                                               float[] zs, float[] rs,
+                                               long seed) {
+        for (int i = 0; i < xs.length - 1; i++) {
+            double len = Math.sqrt(
+                (xs[i + 1] - xs[i]) * (xs[i + 1] - xs[i])
+                    + (ys[i + 1] - ys[i]) * (ys[i + 1] - ys[i])
+                    + (zs[i + 1] - zs[i]) * (zs[i + 1] - zs[i]));
+            int samples = Math.max(2, (int) (len / 8.0) + 1);
+            for (int k = 0; k <= samples; k++) {
+                double t = (double) k / samples;
+                double x = xs[i] + (xs[i + 1] - xs[i]) * t;
+                double y = ys[i] + (ys[i + 1] - ys[i]) * t;
+                double z = zs[i] + (zs[i + 1] - zs[i]) * t;
+                int cellX = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
+                int cellZ = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
+                double r = rs[i] + (rs[i + 1] - rs[i]) * t;
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int nx = cellX + dx;
+                        int nz = cellZ + dz;
+                        if (!isShallowOnlyCell(nx, nz, seed)) {
+                            continue;
+                        }
+                        double cellMinX = nx * CELL_BLOCKS;
+                        double cellMaxX = cellMinX + CELL_BLOCKS;
+                        double cellMinZ = nz * CELL_BLOCKS;
+                        double cellMaxZ = cellMinZ + CELL_BLOCKS;
+                        double closestX = Math.max(
+                            cellMinX, Math.min(x, cellMaxX));
+                        double closestZ = Math.max(
+                            cellMinZ, Math.min(z, cellMaxZ));
+                        double d = Math.sqrt(
+                            (x - closestX) * (x - closestX)
+                                + (z - closestZ) * (z - closestZ));
+                        if (d <= r + 1.5
+                            && y - r - 1.5 < DRY_UPPER_MIN_Y) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     private static double baseRadius(int ka, int kb) {
+        if (isAquiferKind(ka) || isAquiferKind(kb)) {
+            return 6.0;
+        }
         if (ka == CaveNode.KIND_MEGA_HALL || kb == CaveNode.KIND_MEGA_HALL) {
             return 10.0;
         }
@@ -592,7 +1613,9 @@ public final class CaveGenerator {
     public static CaveChunkData buildChunkData(int chunkX, int chunkZ,
                                                long seed,
                                                Map<Long, List<CaveNode>> nodeCache,
-                                               Map<Long, List<CaveSegment>> edgeCache) {
+                                               Map<Long, List<CaveSegment>> edgeCache,
+                                               Map<Long, List<CaveNode>> aquiferNodeCache,
+                                               Map<Long, List<CaveSegment>> aquiferEdgeCache) {
         int cellX = chunkX >> 4;
         int cellZ = chunkZ >> 4;
         int x0 = chunkX * 16;
@@ -664,6 +1687,18 @@ public final class CaveGenerator {
             }
         }
 
+        // 含水网络（第二阶段）：干洞已完整，生成暗河并避让干洞
+        collectAquiferSegmentsForChunk(
+            chunkX, chunkZ, seed,
+            nodeCache, edgeCache, aquiferNodeCache, aquiferEdgeCache,
+            segments, seenEdges);
+
+        // 含水-湖泊连接管：大厅湖 / 洞厅湖（独立收集，保证长管全覆盖）
+        collectLakePipesForChunk(
+            chunkX, chunkZ, seed,
+            nodeCache, edgeCache, aquiferNodeCache,
+            segments, seenEdges);
+
         // 洞厅：只查本区块所在超级格（洞厅被限制在超级格内部）
         collectMegaHallsForChunk(chunkX, chunkZ, seed, megaHalls);
         if (!megaHalls.isEmpty() && !tags.contains(CaveTag.MEGA_HALL)) {
@@ -699,7 +1734,10 @@ public final class CaveGenerator {
                 }
                 CaveNode target = backboneNodeOf(nx, nz, seed, nodeCache);
                 if (target != null) {
-                    out.add(buildSegment(node, target, seed));
+                    CaveSegment seg = buildSegment(node, target, seed);
+                    if (seg != null) {
+                        out.add(seg);
+                    }
                 }
             }
             return;
@@ -709,7 +1747,10 @@ public final class CaveGenerator {
             CaveNode twin = findNodeById(node.twinId, node.cellX, node.cellZ,
                 seed, nodeCache);
             if (twin != null) {
-                out.add(buildSegment(node, twin, seed));
+                CaveSegment seg = buildSegment(node, twin, seed);
+                if (seg != null) {
+                    out.add(seg);
+                }
             }
             return;
         }
@@ -722,19 +1763,28 @@ public final class CaveGenerator {
         // 普通 / 大厅 / 入口 / 天坑：连接 5×5 邻域最近节点（优先跨单元）
         CaveNode first = nearestNode(node, seed, nodeCache, -1);
         if (first != null) {
-            out.add(buildSegment(node, first, seed));
+            CaveSegment seg = buildSegment(node, first, seed);
+            if (seg != null) {
+                out.add(seg);
+            }
         }
         // 第二条支路：连接次近节点，形成分支网络
         CaveNode second = nearestNode(node, seed, nodeCache,
             first != null ? first.id : -1);
         if (second != null) {
-            out.add(buildSegment(node, second, seed));
+            CaveSegment seg = buildSegment(node, second, seed);
+            if (seg != null) {
+                out.add(seg);
+            }
         }
         // 第三条支路：进一步增加通道覆盖
         CaveNode third = nearestNode(node, seed, nodeCache,
             second != null ? second.id : (first != null ? first.id : -1));
         if (third != null) {
-            out.add(buildSegment(node, third, seed));
+            CaveSegment seg = buildSegment(node, third, seed);
+            if (seg != null) {
+                out.add(seg);
+            }
         }
     }
 
@@ -756,9 +1806,12 @@ public final class CaveGenerator {
                     if (n.id == node.id || n.id == excludeId) {
                         continue;
                     }
-                    // 洞厅不互相连接，避免两个洞厅之间拉一条超长通道
-                    if (node.kind == CaveNode.KIND_MEGA_HALL
-                        && n.kind == CaveNode.KIND_MEGA_HALL) {
+                    if (isAquiferKind(n.kind)) {
+                        continue;
+                    }
+                    // 普通干节点不直接连洞厅超级节点（洞厅由 mouth 专门连接），
+                    // 避免干洞为接洞厅而斜穿含水盆地。
+                    if (n.kind == CaveNode.KIND_MEGA_HALL) {
                         continue;
                     }
                     double d = distSq(node, n);
@@ -788,8 +1841,10 @@ public final class CaveGenerator {
                         if (n.id == node.id || n.id == excludeId) {
                             continue;
                         }
-                        if (node.kind == CaveNode.KIND_MEGA_HALL
-                            && n.kind == CaveNode.KIND_MEGA_HALL) {
+                        if (isAquiferKind(n.kind)) {
+                            continue;
+                        }
+                        if (n.kind == CaveNode.KIND_MEGA_HALL) {
                             continue;
                         }
                         double d = distSq(node, n);
@@ -842,7 +1897,10 @@ public final class CaveGenerator {
                     (float) mx, (float) hall.cy, (float) mz,
                     CaveNode.KIND_MEGA_HALL, CaveNode.BAND_MID,
                     0, 0, 0, 0, 0);
-                out.add(buildSegment(mouth, target, seed));
+                CaveSegment seg = buildSegment(mouth, target, seed);
+                if (seg != null) {
+                    out.add(seg);
+                }
                 exclude = target.id;
             }
         }
@@ -863,6 +1921,9 @@ public final class CaveGenerator {
                 for (CaveNode n : nodesOf(
                     node.cellX + dx, node.cellZ + dz, seed, nodeCache)) {
                     if (n.id == node.id || n.id == excludeId) {
+                        continue;
+                    }
+                    if (isAquiferKind(n.kind)) {
                         continue;
                     }
                     if (n.kind == CaveNode.KIND_MEGA_HALL) {

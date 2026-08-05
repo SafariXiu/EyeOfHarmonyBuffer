@@ -240,6 +240,48 @@ public final class TalosCaveSystem {
     }
 
     /**
+     * 向外逐圈扫描 radiusCells 个 256 格单元，返回指定类型的节点。
+     * kinds 为 null 表示全部节点。
+     */
+    public static java.util.List<CaveNode> debugNodesNear(
+        int worldX, int worldZ, int worldSeedInt, int radiusCells,
+        java.util.Set<Integer> kinds
+    ) {
+        java.util.ArrayList<CaveNode> out =
+            new java.util.ArrayList<CaveNode>();
+        CaveWorldState state = stateFor(worldSeedInt);
+        int ccx = Math.floorDiv(worldX, 256);
+        int ccz = Math.floorDiv(worldZ, 256);
+        for (int r = 0; r <= radiusCells; r++) {
+            for (int dz = -r; dz <= r; dz++) {
+                for (int dx = -r; dx <= r; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                        continue;
+                    }
+                    for (CaveNode n : state.nodesForCell(
+                        ccx + dx, ccz + dz)) {
+                        if (kinds == null || kinds.contains(n.kind)) {
+                            out.add(n);
+                        }
+                    }
+                }
+            }
+        }
+        if (kinds == null
+            || kinds.contains(CaveNode.KIND_AQUIFER_FULL)
+            || kinds.contains(CaveNode.KIND_AQUIFER_HALF)
+            || kinds.contains(CaveNode.KIND_AQUIFER_DEAD)) {
+            for (CaveNode n : CaveGenerator.debugAquiferNodesNear(
+                worldX, worldZ, worldSeedInt, radiusCells)) {
+                if (kinds == null || kinds.contains(n.kind)) {
+                    out.add(n);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
      * 地标（入口 / 大厅）所在列是否真的会被雕刻：
      * 陆地列，且不在河道 / 湖体内。海平面与高度按 Talos 当前世界参数。
      */

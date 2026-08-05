@@ -148,7 +148,9 @@ public final class CaveDecorator {
 
                     if (collapsed
                         && !insideAnyChamber(wx, lo + 0.5, wz, data)
-                        && !insideAnyMegaHall(wx, lo + 0.5, wz, data)) {
+                        && !insideAnyMegaHall(wx, lo + 0.5, wz, data)
+                        && !(lo - 1 >= 1
+                            && isWater(blocks[base + lo - 1]))) {
                         // C. 塌方：下半部填碎石，顶部至少留 1 格
                         int fill = lo + Math.max(1, (h * 2) / 5);
                         if (fill >= hi) {

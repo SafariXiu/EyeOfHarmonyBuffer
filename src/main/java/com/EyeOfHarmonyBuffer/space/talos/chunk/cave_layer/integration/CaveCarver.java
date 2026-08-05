@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
@@ -40,32 +41,6 @@ public final class CaveCarver {
     private static final int WATER_PROTECT_BUFFER = 10;
     /** 河流保护掩码阈值：放宽后河岸两侧也会被包住。 */
     private static final double RIVER_PROTECT_MASK = 0.35;
-    /** 洞厅底部地形噪声：单层大尺度、大幅度，靠幅度自然拔高高区。 */
-    private static final double FLOOR_NOISE_SCALE = 140.0;
-    private static final double FLOOR_NOISE_AMP = 30.0;
-    private static final int FLOOR_NOISE_SALT = 0xC3;
-    /** 域扭曲：把噪声坐标揉弯，消除直线切线。 */
-    private static final double FLOOR_WARP_AMP = 60.0;
-    private static final double FLOOR_WARP_SCALE = 300.0;
-    private static final int FLOOR_WARP_SALT = 0xD1;
-    /** 水面基准：低处灌水到 y=15。 */
-    private static final int FLOOR_WATER_LEVEL = 15;
-    /** 平台阈值：噪声超过该值直接切高台（约覆盖 1/4 区域）。 */
-    private static final double PLATEAU_THRESHOLD = 0.15;
-    /** 平台过渡带宽：阈值前这段做陡坡，而不是硬切。 */
-    private static final double PLATEAU_BLEND = 0.12;
-    /** 噪声梯度超过该值时保留硬崖，不铺陡坡。 */
-    private static final double PLATEAU_HARD_GRADIENT = 0.06;
-    private static final int PLATEAU_GRADIENT_STEP = 4;
-    /** 高平台基准高度与起伏。 */
-    private static final int PLATEAU_BASE = 32;
-    private static final double PLATEAU_AMP = 6.0;
-    private static final double PLATEAU_SCALE = 600.0;
-    private static final int PLATEAU_SALT = 0xC6;
-    /** 底部高频风格化噪声：小幅、较缓起伏，只留自然粗糙感。 */
-    private static final double FLOOR_DETAIL_SCALE = 32.0;
-    private static final double FLOOR_DETAIL_AMP = 1.5;
-    private static final int FLOOR_DETAIL_SALT = 0xC7;
 
     private static final int NOISE_SALT = 0xC0FFEE;
 
@@ -154,6 +129,12 @@ public final class CaveCarver {
             }
             carveMegaHallColumn(hall, worldX, worldZ, span[1],
                 localX, localZ, blocks, meta, worldHeight, seed);
+            // 湖连接管：允许在洞厅内继续雕刻，从湖底/侧壁穿进湖体
+            if (!hall.isPillarColumn(worldX, worldZ)) {
+                carveLakePipesThroughMegaHall(
+                    worldX, worldZ, maxY,
+                    localX, localZ, blocks, meta, worldHeight, seed, data);
+            }
             return;
         }
 
@@ -204,6 +185,10 @@ public final class CaveCarver {
             return;
         }
 
+        // 干湿隔离兜底：盆地 / 禁干带的列，干洞段只能在上层带（46+）雕刻。
+        boolean columnShallow = CaveGenerator.isShallowOnlyCell(
+            Math.floorDiv(worldX, 256), Math.floorDiv(worldZ, 256), seed);
+
         for (int y = 1; y <= maxY; y++) {
             double wall = (CaveMath.valueNoise3D(
                 worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
@@ -212,6 +197,11 @@ public final class CaveCarver {
             boolean lakeWater = false;
             boolean lakeSealed = false;
             boolean lakeHandled = false;
+            CaveSegment bestSeg = null;
+            CaveSegment bestAquiferSeg = null;
+            double bestAquiferExcess = Double.NEGATIVE_INFINITY;
+            CaveSegment bestPierceSeg = null;
+            double bestPierceExcess = Double.NEGATIVE_INFINITY;
 
             if (near != null) {
                 for (CaveSegment seg : near) {
@@ -221,12 +211,24 @@ public final class CaveCarver {
                     double e = seg.sampleExcess(worldX, y, worldZ, wall);
                     if (e > excess) {
                         excess = e;
+                        bestSeg = seg;
+                    }
+                    if (seg.aquifer && e > bestAquiferExcess) {
+                        bestAquiferSeg = seg;
+                        bestAquiferExcess = e;
+                    }
+                    if (seg.piercesLakeShell && e > bestPierceExcess) {
+                        bestPierceSeg = seg;
+                        bestPierceExcess = e;
                     }
                 }
             }
 
             // 地下湖：先铺石头壳（湖底 + 同一层四邻），再放水。
             for (CaveChamber ch : data.chambers) {
+                if (columnShallow) {
+                    break;
+                }
                 if (!ch.hasLake || y < ch.lakeBedY
                     || y + 0.5 > ch.lakeSurfaceY) {
                     continue;
@@ -256,14 +258,21 @@ public final class CaveCarver {
                 }
                 // 不在水里：同一层四邻有水的就铺石头封边
                 if (isNearLakeWater(ch, worldX, y, worldZ, wall)) {
-                    setStone(blocks, meta, localX, localZ, y, worldHeight);
-                    lakeSealed = true;
+                    // 含水连接管从这列穿过时不再封边，让管道凿穿外壳接进湖里。
+                    if (bestPierceSeg != null
+                        && bestPierceSeg == bestSeg
+                        && bestPierceExcess > 0.0) {
+                        lakeHandled = true;
+                    } else {
+                        setStone(blocks, meta, localX, localZ, y, worldHeight);
+                        lakeSealed = true;
+                    }
                     lakeHandled = true;
                     break;
                 }
             }
 
-            if (!lakeHandled && chamberNear) {
+            if (!lakeHandled && chamberNear && !columnShallow) {
                 for (CaveChamber ch : data.chambers) {
                     // 湖床以下保留实体，不参与普通挖空
                     if (ch.hasLake && y < ch.lakeBedY) {
@@ -279,7 +288,22 @@ public final class CaveCarver {
             if (lakeSealed) {
                 // 湖边石头壳已经放好
             } else if (excess > 0.0 && !lakeWater) {
-                setAir(blocks, meta, localX, localZ, y, worldHeight);
+                CaveSegment waterSeg = bestAquiferSeg != null
+                    && bestAquiferExcess > 0.0
+                    ? bestAquiferSeg : bestSeg;
+                if (waterSeg != null && waterSeg.aquifer) {
+                    if (waterSeg.fullySubmerged
+                        || y <= waterSeg.waterLevelY) {
+                        setWater(blocks, meta, localX, localZ, y,
+                            worldHeight);
+                    } else {
+                        setAir(blocks, meta, localX, localZ, y,
+                            worldHeight);
+                    }
+                } else if (!columnShallow
+                    || y >= CaveGenerator.DRY_UPPER_MIN_Y) {
+                    setAir(blocks, meta, localX, localZ, y, worldHeight);
+                }
             }
         }
     }
@@ -299,50 +323,7 @@ public final class CaveCarver {
         setStone(blocks, meta, localX, localZ, 1, worldHeight);
 
         // 底部地形：分层柏林（3 层 fBm），水面基准 y=15。
-        double wx2 = worldX + FLOOR_WARP_AMP * CaveMath.perlin3D(
-            worldX / FLOOR_WARP_SCALE, 0.4, worldZ / FLOOR_WARP_SCALE,
-            seed, FLOOR_WARP_SALT);
-        double wz2 = worldZ + FLOOR_WARP_AMP * CaveMath.perlin3D(
-            worldX / FLOOR_WARP_SCALE, 0.5, worldZ / FLOOR_WARP_SCALE,
-            seed, FLOOR_WARP_SALT + 1);
-        double n = CaveMath.fbm3D(
-            wx2 / FLOOR_NOISE_SCALE, 0.1, wz2 / FLOOR_NOISE_SCALE,
-            seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
-        int offset = (int) Math.round(n * FLOOR_NOISE_AMP);
-        int lowY = FLOOR_WATER_LEVEL + offset;
-        int floorY = lowY;
-        // 阈值前做一段 smoothstep 陡坡，越过阈值后进入高平台。
-        if (n >= PLATEAU_THRESHOLD - PLATEAU_BLEND) {
-            double pn = CaveMath.perlin3D(
-                worldX / PLATEAU_SCALE, 0.2, worldZ / PLATEAU_SCALE,
-                seed, PLATEAU_SALT) * 2.0;
-            int plateauY = PLATEAU_BASE + (int) Math.round(pn * PLATEAU_AMP);
-            if (n >= PLATEAU_THRESHOLD) {
-                floorY = plateauY;
-            } else {
-                double nRight = CaveMath.fbm3D(
-                    (wx2 + PLATEAU_GRADIENT_STEP) / FLOOR_NOISE_SCALE,
-                    0.1, wz2 / FLOOR_NOISE_SCALE,
-                    seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
-                if (Math.abs(nRight - n) > PLATEAU_HARD_GRADIENT) {
-                    // 噪声跳变剧烈：保留硬崖。
-                    floorY = lowY;
-                } else {
-                    double t = (n - (PLATEAU_THRESHOLD - PLATEAU_BLEND))
-                        / PLATEAU_BLEND;
-                    double s = t * t * (3.0 - 2.0 * t);
-                    floorY = (int) Math.round(lowY + (plateauY - lowY) * s);
-                }
-            }
-        }
-        // 高频风格化：小幅快速起伏，作用在整个底部（含湖盆与平台）。
-        double dn = CaveMath.perlin3D(
-            worldX / FLOOR_DETAIL_SCALE, 0.3, worldZ / FLOOR_DETAIL_SCALE,
-            seed, FLOOR_DETAIL_SALT) * 2.0;
-        floorY += (int) Math.round(dn * FLOOR_DETAIL_AMP);
-        if (floorY < 2) {
-            floorY = 2;
-        }
+        int floorY = hall.floorY(worldX, worldZ);
         if (floorY > yMax) {
             floorY = Math.max(2, yMax - 1);
         }
@@ -355,9 +336,9 @@ public final class CaveCarver {
             return;
         }
 
-        if (floorY < FLOOR_WATER_LEVEL) {
+        if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
             // 压到 15 以下的区域挖成盆地并灌水，水面统一在 y=15。
-            int surface = Math.min(FLOOR_WATER_LEVEL, yMax);
+            int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
             for (int y = floorY; y <= surface; y++) {
                 setWater(blocks, meta, localX, localZ, y, worldHeight);
             }
@@ -369,6 +350,41 @@ public final class CaveCarver {
             // 避免岸边 y=15 被挖成空气缝。
             for (int y = floorY + 1; y <= yMax; y++) {
                 setAir(blocks, meta, localX, localZ, y, worldHeight);
+            }
+        }
+    }
+
+    /** 洞厅列内补刻含水-湖连接管：穿过洞厅湖底/侧壁进入湖体。 */
+    private static void carveLakePipesThroughMegaHall(
+        int worldX, int worldZ, int maxY,
+        int localX, int localZ,
+        net.minecraft.block.Block[] blocks, byte[] meta,
+        int worldHeight, long seed, CaveChunkData data
+    ) {
+        for (CaveSegment seg : data.segments) {
+            if (!seg.piercesLakeShell) {
+                continue;
+            }
+            if (worldX < seg.minX || worldX > seg.maxX
+                || worldZ < seg.minZ || worldZ > seg.maxZ) {
+                continue;
+            }
+            int yMin = Math.max(1, (int) Math.ceil(seg.minY));
+            int yMax = Math.min(maxY, (int) Math.floor(seg.maxY));
+            for (int y = yMin; y <= yMax; y++) {
+                double wall = (CaveMath.valueNoise3D(
+                    worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
+                    * 2.0 * WALL_AMP;
+                double e = seg.sampleExcess(worldX, y, worldZ, wall);
+                if (e > 0.0) {
+                    if (seg.fullySubmerged || y <= seg.waterLevelY) {
+                        setWater(blocks, meta, localX, localZ, y,
+                            worldHeight);
+                    } else {
+                        setAir(blocks, meta, localX, localZ, y,
+                            worldHeight);
+                    }
+                }
             }
         }
     }
@@ -407,8 +423,8 @@ public final class CaveCarver {
             double dist = Math.sqrt(dx * dx + dz * dz);
             if (dist >= r) {
                 // 柱体之外：恢复该列的正常洞厅地形（噪声地面/水面）。
-                if (floorY < FLOOR_WATER_LEVEL) {
-                    int surface = Math.min(FLOOR_WATER_LEVEL, yMax);
+                if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
+                    int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
                     if (y <= surface) {
                         setWater(blocks, meta, localX, localZ, y, worldHeight);
                     } else {

@@ -18,6 +18,32 @@ public final class CaveMegaHall {
     private static final double CEIL_NOISE_SCALE = 42.0;
     private static final double CEIL_NOISE_AMP = 8.0;
     private static final int CEIL_NOISE_SALT = 0xC2;
+    /** 洞厅湖水面基准：低处灌水到该高度。 */
+    public static final int LAKE_WATER_LEVEL = 15;
+    /** 洞厅底部地形噪声：单层大尺度、大幅度，靠幅度自然拔高高区。 */
+    private static final double FLOOR_NOISE_SCALE = 140.0;
+    private static final double FLOOR_NOISE_AMP = 30.0;
+    private static final int FLOOR_NOISE_SALT = 0xC3;
+    /** 域扭曲：把噪声坐标揉弯，消除直线切线。 */
+    private static final double FLOOR_WARP_AMP = 60.0;
+    private static final double FLOOR_WARP_SCALE = 300.0;
+    private static final int FLOOR_WARP_SALT = 0xD1;
+    /** 平台阈值：噪声超过该值直接切高台（约覆盖 1/4 区域）。 */
+    private static final double PLATEAU_THRESHOLD = 0.15;
+    /** 平台过渡带宽：阈值前这段做陡坡，而不是硬切。 */
+    private static final double PLATEAU_BLEND = 0.12;
+    /** 噪声梯度超过该值时保留硬崖，不铺陡坡。 */
+    private static final double PLATEAU_HARD_GRADIENT = 0.06;
+    private static final int PLATEAU_GRADIENT_STEP = 4;
+    /** 高平台基准高度与起伏。 */
+    private static final int PLATEAU_BASE = 32;
+    private static final double PLATEAU_AMP = 6.0;
+    private static final double PLATEAU_SCALE = 600.0;
+    private static final int PLATEAU_SALT = 0xC6;
+    /** 底部高频风格化噪声：小幅、较缓起伏，只留自然粗糙感。 */
+    private static final double FLOOR_DETAIL_SCALE = 32.0;
+    private static final double FLOOR_DETAIL_AMP = 1.5;
+    private static final int FLOOR_DETAIL_SALT = 0xC7;
 
     public final long seed;
     public final double cx;
@@ -210,6 +236,58 @@ public final class CaveMegaHall {
         out[0] = yMin;
         out[1] = yMax;
         return true;
+    }
+
+    /**
+     * 洞厅该列的地面高度（不含石柱、不做顶部钳制）。
+     * 雕刻器用它生成底部地形；暗河接入点也用它在洞厅内找水下位置。
+     */
+    public int floorY(int worldX, int worldZ) {
+        double wx2 = worldX + FLOOR_WARP_AMP * CaveMath.perlin3D(
+            worldX / FLOOR_WARP_SCALE, 0.4, worldZ / FLOOR_WARP_SCALE,
+            seed, FLOOR_WARP_SALT);
+        double wz2 = worldZ + FLOOR_WARP_AMP * CaveMath.perlin3D(
+            worldX / FLOOR_WARP_SCALE, 0.5, worldZ / FLOOR_WARP_SCALE,
+            seed, FLOOR_WARP_SALT + 1);
+        double n = CaveMath.fbm3D(
+            wx2 / FLOOR_NOISE_SCALE, 0.1, wz2 / FLOOR_NOISE_SCALE,
+            seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
+        int offset = (int) Math.round(n * FLOOR_NOISE_AMP);
+        int lowY = LAKE_WATER_LEVEL + offset;
+        int floorY = lowY;
+        // 阈值前做一段 smoothstep 陡坡，越过阈值后进入高平台。
+        if (n >= PLATEAU_THRESHOLD - PLATEAU_BLEND) {
+            double pn = CaveMath.perlin3D(
+                worldX / PLATEAU_SCALE, 0.2, worldZ / PLATEAU_SCALE,
+                seed, PLATEAU_SALT) * 2.0;
+            int plateauY = PLATEAU_BASE + (int) Math.round(pn * PLATEAU_AMP);
+            if (n >= PLATEAU_THRESHOLD) {
+                floorY = plateauY;
+            } else {
+                double nRight = CaveMath.fbm3D(
+                    (wx2 + PLATEAU_GRADIENT_STEP) / FLOOR_NOISE_SCALE,
+                    0.1, wz2 / FLOOR_NOISE_SCALE,
+                    seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
+                if (Math.abs(nRight - n) > PLATEAU_HARD_GRADIENT) {
+                    // 噪声跳变剧烈：保留硬崖。
+                    floorY = lowY;
+                } else {
+                    double t = (n - (PLATEAU_THRESHOLD - PLATEAU_BLEND))
+                        / PLATEAU_BLEND;
+                    double s = t * t * (3.0 - 2.0 * t);
+                    floorY = (int) Math.round(lowY + (plateauY - lowY) * s);
+                }
+            }
+        }
+        // 高频风格化：小幅快速起伏，作用在整个底部（含湖盆与平台）。
+        double dn = CaveMath.perlin3D(
+            worldX / FLOOR_DETAIL_SCALE, 0.3, worldZ / FLOOR_DETAIL_SCALE,
+            seed, FLOOR_DETAIL_SALT) * 2.0;
+        floorY += (int) Math.round(dn * FLOOR_DETAIL_AMP);
+        if (floorY < 2) {
+            floorY = 2;
+        }
+        return floorY;
     }
 
     /** 带噪声扰动的水平形状值（<1 表示在该洞厅内）。 */

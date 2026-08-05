@@ -23,6 +23,14 @@ public final class CaveWorldState {
     private final ConcurrentHashMap<Long, List<CaveSegment>> edgeCache =
         new ConcurrentHashMap<Long, List<CaveSegment>>();
 
+    /** 单元 → 该单元含水节点（第二阶段独立缓存）。 */
+    private final ConcurrentHashMap<Long, List<CaveNode>> aquiferNodeCache =
+        new ConcurrentHashMap<Long, List<CaveNode>>();
+
+    /** 单元 → 该单元含水线段（第二阶段独立缓存）。 */
+    private final ConcurrentHashMap<Long, List<CaveSegment>> aquiferEdgeCache =
+        new ConcurrentHashMap<Long, List<CaveSegment>>();
+
     public CaveWorldState(int worldSeedInt) {
         this.worldSeedInt = worldSeedInt;
     }
@@ -31,7 +39,8 @@ public final class CaveWorldState {
     public CaveChunkData dataForChunk(int chunkX, int chunkZ) {
         trimCache();
         return CaveGenerator.buildChunkData(
-            chunkX, chunkZ, worldSeedInt, nodeCache, edgeCache
+            chunkX, chunkZ, worldSeedInt,
+            nodeCache, edgeCache, aquiferNodeCache, aquiferEdgeCache
         );
     }
 
@@ -47,6 +56,8 @@ public final class CaveWorldState {
     public void clear() {
         nodeCache.clear();
         edgeCache.clear();
+        aquiferNodeCache.clear();
+        aquiferEdgeCache.clear();
         CaveGenerator.clearMegaHallCache();
     }
 
@@ -54,6 +65,8 @@ public final class CaveWorldState {
         if (nodeCache.size() > NODE_CACHE_LIMIT) {
             nodeCache.clear();
             edgeCache.clear();
+            aquiferNodeCache.clear();
+            aquiferEdgeCache.clear();
         }
     }
 }
