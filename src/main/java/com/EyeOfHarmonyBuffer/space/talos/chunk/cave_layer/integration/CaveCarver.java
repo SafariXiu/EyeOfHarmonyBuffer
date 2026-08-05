@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
 import ganymedes01.etfuturum.ModBlocks;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
 import java.util.ArrayList;
@@ -245,8 +246,8 @@ public final class CaveCarver {
                         int byIdx = (localX * 16 + localZ)
                             * worldHeight + by;
                         if (isAir(blocks[byIdx])) {
-                            setStone(blocks, meta, localX, localZ,
-                                by, worldHeight);
+                            setRock(blocks, meta, localX, localZ,
+                                by, worldHeight, worldX, by, worldZ, seed);
                         } else {
                             break;
                         }
@@ -264,7 +265,8 @@ public final class CaveCarver {
                         && bestPierceExcess > 0.0) {
                         lakeHandled = true;
                     } else {
-                        setStone(blocks, meta, localX, localZ, y, worldHeight);
+                        setRock(blocks, meta, localX, localZ, y,
+                            worldHeight, worldX, y, worldZ, seed);
                         lakeSealed = true;
                     }
                     lakeHandled = true;
@@ -320,7 +322,8 @@ public final class CaveCarver {
             return;
         }
         // 强制 y=1 保留石头层，避免基岩漏出。
-        setStone(blocks, meta, localX, localZ, 1, worldHeight);
+        setRock(blocks, meta, localX, localZ, 1,
+            worldHeight, worldX, 1, worldZ, seed);
 
         // 底部地形：分层柏林（3 层 fBm），水面基准 y=15。
         int floorY = hall.floorY(worldX, worldZ);
@@ -438,13 +441,7 @@ public final class CaveCarver {
             } else {
                 int idx = (localX * 16 + localZ) * worldHeight + y;
                 byte v = CaveMath.rockVariant3D(worldX, y, worldZ, seed);
-                if (v == 0) {
-                    blocks[idx] = Blocks.stone;
-                    meta[idx] = 0;
-                } else {
-                    blocks[idx] = ModBlocks.STONE.get();
-                    meta[idx] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
-                }
+                putRockVariant(blocks, meta, idx, v);
             }
         }
     }
@@ -525,16 +522,38 @@ public final class CaveCarver {
         meta[idx] = 0;
     }
 
-    private static void setStone(net.minecraft.block.Block[] blocks,
-                                 byte[] meta,
-                                 int localX, int localZ, int y,
-                                 int worldHeight) {
+    /** 填充大块岩性石头：普通石头为主，花岗岩/闪长岩/安山岩为辅。 */
+    private static void setRock(net.minecraft.block.Block[] blocks,
+                                byte[] meta,
+                                int localX, int localZ, int y,
+                                int worldHeight,
+                                int wx, int wy, int wz, long seed) {
         if (y <= 0 || y >= worldHeight) {
             return;
         }
         int idx = (localX * 16 + localZ) * worldHeight + y;
-        blocks[idx] = Blocks.stone;
-        meta[idx] = 0;
+        byte v = CaveMath.rockVariant3D(wx, wy, wz, seed);
+        putRockVariant(blocks, meta, idx, v);
+    }
+
+    /** 按岩性编码写方块：浅层四种 / 深层深板岩、凝灰岩。 */
+    private static void putRockVariant(net.minecraft.block.Block[] blocks,
+                                       byte[] meta, int idx, byte v) {
+        if (v == 4) {
+            Block b = ModBlocks.DEEPSLATE.get();
+            blocks[idx] = b != null ? b : Blocks.stone;
+            meta[idx] = 0;
+        } else if (v == 5) {
+            Block b = ModBlocks.TUFF.get();
+            blocks[idx] = b != null ? b : Blocks.stone;
+            meta[idx] = 0;
+        } else if (v == 0) {
+            blocks[idx] = Blocks.stone;
+            meta[idx] = 0;
+        } else {
+            blocks[idx] = ModBlocks.STONE.get();
+            meta[idx] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
+        }
     }
 
     private static boolean isAir(net.minecraft.block.Block block) {

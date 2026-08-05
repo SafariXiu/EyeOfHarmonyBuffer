@@ -365,6 +365,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private static BlockMetaPair rockPairFor(int wx, int wy, int wz, int seed) {
         switch (CaveMath.rockVariant3D(wx, wy, wz, seed)) {
+            case 4:
+                return efrRockPair(ModBlocks.DEEPSLATE);
+            case 5:
+                return efrRockPair(ModBlocks.TUFF);
             case 1:
                 return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 1);
             case 2:
@@ -374,6 +378,15 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             default:
                 return new BlockMetaPair(Blocks.stone, (byte) 0);
         }
+    }
+
+    /** EFR 方块可能因配置未启用而为 null，此时回退普通石头。 */
+    private static BlockMetaPair efrRockPair(ModBlocks mb) {
+        Block b = mb.get();
+        if (b == null) {
+            b = Blocks.stone;
+        }
+        return new BlockMetaPair(b, (byte) 0);
     }
 
     @Override

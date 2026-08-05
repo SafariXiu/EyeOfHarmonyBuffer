@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorReg
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
+import ganymedes01.etfuturum.ModBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
@@ -224,9 +225,6 @@ public final class CaveDecorator {
                                     wx, wz, 7, seed, SALT_SPIKE) * 2.0); // 4~5
                             }
                             len = Math.min(len, h - 2);
-                            Block sb = CaveMath.hash01(
-                                wx, wz, 8, seed, SALT_SPIKE) < 0.25
-                                ? Blocks.mossy_cobblestone : Blocks.stone;
 
                             // 附件校验：钟乳石必须挂在实际实体天花板下、
                             // 石笋必须立在实际实体地板上，避免出现悬浮柱。
@@ -234,8 +232,14 @@ public final class CaveDecorator {
                                 && hi + 1 <= top
                                 && !isAir(blocks[base + hi + 1])) {
                                 for (int k = 0; k < len; k++) {
-                                    setBlock(blocks, meta, base + hi - k,
-                                        (k == len - 1) ? Blocks.cobblestone : sb);
+                                    if (k == len - 1) {
+                                        setBlock(blocks, meta,
+                                            base + hi - k, Blocks.cobblestone);
+                                    } else {
+                                        setRockBlock(blocks, meta,
+                                            base + hi - k,
+                                            wx, hi - k, wz, seed);
+                                    }
                                 }
                             } else if (!stalactite
                                 && !puddle
@@ -243,8 +247,14 @@ public final class CaveDecorator {
                                 && !isAir(blocks[base + lo - 1])
                                 && !isWater(blocks[base + lo - 1])) {
                                 for (int k = 0; k < len; k++) {
-                                    setBlock(blocks, meta, base + lo + k,
-                                        (k == len - 1) ? Blocks.cobblestone : sb);
+                                    if (k == len - 1) {
+                                        setBlock(blocks, meta,
+                                            base + lo + k, Blocks.cobblestone);
+                                    } else {
+                                        setRockBlock(blocks, meta,
+                                            base + lo + k,
+                                            wx, lo + k, wz, seed);
+                                    }
                                 }
                             }
                         }
@@ -265,7 +275,8 @@ public final class CaveDecorator {
                     }
                     int base = (lx * 16 + lz) * worldHeight;
                     if (yBase >= 1) {
-                        setBlock(blocks, meta, base + yBase, Blocks.stone);
+                        setRockBlock(blocks, meta, base + yBase,
+                            x0 + lx, yBase, z0 + lz, seed);
                     }
                     for (int dz = -1; dz <= 1; dz++) {
                         for (int dx = -1; dx <= 1; dx++) {
@@ -286,12 +297,12 @@ public final class CaveDecorator {
                             }
                             int nb = (nx * 16 + nz) * worldHeight;
                             if (yWater >= 1) {
-                                setBlock(blocks, meta, nb + yWater,
-                                    Blocks.stone);
+                                setRockBlock(blocks, meta, nb + yWater,
+                                    x0 + nx, yWater, z0 + nz, seed);
                             }
                             if (yBase >= 1) {
-                                setBlock(blocks, meta, nb + yBase,
-                                    Blocks.stone);
+                                setRockBlock(blocks, meta, nb + yBase,
+                                    x0 + nx, yBase, z0 + nz, seed);
                             }
                         }
                     }
@@ -340,23 +351,28 @@ public final class CaveDecorator {
             int y = idx % worldHeight;
             if (lx > 0) {
                 tail = fillShellNeighbor(idx - 16 * worldHeight,
-                    d + 1, queue, dist, tail, blocks, meta);
+                    d + 1, queue, dist, tail, blocks, meta,
+                    x0, z0, worldHeight, seed);
             }
             if (lx < 15) {
                 tail = fillShellNeighbor(idx + 16 * worldHeight,
-                    d + 1, queue, dist, tail, blocks, meta);
+                    d + 1, queue, dist, tail, blocks, meta,
+                    x0, z0, worldHeight, seed);
             }
             if (lz > 0) {
                 tail = fillShellNeighbor(idx - worldHeight,
-                    d + 1, queue, dist, tail, blocks, meta);
+                    d + 1, queue, dist, tail, blocks, meta,
+                    x0, z0, worldHeight, seed);
             }
             if (lz < 15) {
                 tail = fillShellNeighbor(idx + worldHeight,
-                    d + 1, queue, dist, tail, blocks, meta);
+                    d + 1, queue, dist, tail, blocks, meta,
+                    x0, z0, worldHeight, seed);
             }
             if (y > 1) {
                 tail = fillShellNeighbor(idx - 1,
-                    d + 1, queue, dist, tail, blocks, meta);
+                    d + 1, queue, dist, tail, blocks, meta,
+                    x0, z0, worldHeight, seed);
             }
         }
 
@@ -406,15 +422,20 @@ public final class CaveDecorator {
         return block == Blocks.water || block == Blocks.flowing_water;
     }
 
-    /** 把水体外围一格空气变成石头并入队，用于向外扩层。 */
+    /** 把水体外围一格空气变成大块岩性石头并入队，用于向外扩层。 */
     private static int fillShellNeighbor(int idx, int nd,
                                          int[] queue, byte[] dist, int tail,
-                                         Block[] blocks, byte[] meta) {
+                                         Block[] blocks, byte[] meta,
+                                         int x0, int z0, int worldHeight,
+                                         long seed) {
         if (dist[idx] != 0 || !isAir(blocks[idx])) {
             return tail;
         }
-        blocks[idx] = Blocks.stone;
-        meta[idx] = 0;
+        int flat = idx / worldHeight;
+        int lx = flat / 16;
+        int lz = flat % 16;
+        int wy = idx % worldHeight;
+        setRockBlock(blocks, meta, idx, x0 + lx, wy, z0 + lz, seed);
         dist[idx] = (byte) nd;
         queue[tail++] = idx;
         return tail;
@@ -665,9 +686,12 @@ public final class CaveDecorator {
                     }
                     int idx = ((wx & 15) * 16 + (wz & 15))
                         * worldHeight + y;
-                    blocks[idx] = (tipLayer && dx == 0 && dz == 0)
-                        ? Blocks.cobblestone : Blocks.stone;
-                    meta[idx] = 0;
+                    if (tipLayer && dx == 0 && dz == 0) {
+                        blocks[idx] = Blocks.cobblestone;
+                        meta[idx] = 0;
+                    } else {
+                        setRockBlock(blocks, meta, idx, wx, y, wz, seed);
+                    }
                 }
             }
         }
@@ -677,5 +701,27 @@ public final class CaveDecorator {
                                  int index, Block block) {
         blocks[index] = block;
         meta[index] = 0;
+    }
+
+    /** 放置大块岩性石头：普通石头为主，花岗岩/闪长岩/安山岩为辅。 */
+    private static void setRockBlock(Block[] blocks, byte[] meta,
+                                     int index,
+                                     int wx, int wy, int wz, long seed) {
+        byte v = CaveMath.rockVariant3D(wx, wy, wz, seed);
+        if (v == 4) {
+            Block b = ModBlocks.DEEPSLATE.get();
+            blocks[index] = b != null ? b : Blocks.stone;
+            meta[index] = 0;
+        } else if (v == 5) {
+            Block b = ModBlocks.TUFF.get();
+            blocks[index] = b != null ? b : Blocks.stone;
+            meta[index] = 0;
+        } else if (v == 0) {
+            blocks[index] = Blocks.stone;
+            meta[index] = 0;
+        } else {
+            blocks[index] = ModBlocks.STONE.get();
+            meta[index] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
+        }
     }
 }

@@ -134,13 +134,19 @@ public final class CaveMath {
     }
 
     /**
-     * 大块岩性：低频 fBm 分 4 档，普通石头为主（约七成），
-     * 其余三种为辅。0=石头，1=花岗岩，2=闪长岩，3=安山岩。
+     * 大块岩性：低频 fBm 分档。
+     * y<=30 为深层：4=深板岩（约七成），5=凝灰岩（约三成）；
+     * y>30 为浅层：0=石头（约七成），1=花岗岩，2=闪长岩，3=安山岩。
      */
+    public static final int DEEP_ROCK_MAX_Y = 30;
+
     public static byte rockVariant3D(int wx, int wy, int wz, long seed) {
         double n = fbm3D(
             wx / 240.0, wy / 240.0, wz / 240.0,
             seed, 0xCC, 2, 2.0, 0.5);
+        if (wy <= DEEP_ROCK_MAX_Y) {
+            return (byte) (n < 0.3 ? 4 : 5);
+        }
         if (n < -0.13) {
             return 1;
         }
