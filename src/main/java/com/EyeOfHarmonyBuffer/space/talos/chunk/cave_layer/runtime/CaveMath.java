@@ -74,6 +74,94 @@ public final class CaveMath {
     }
 
     /**
+     * 3D Perlin 噪声，返回约 [-1,1]。
+     * 梯度由哈希决定，连续、可复现，适合做地形。
+     */
+    public static double perlin3D(double x, double y, double z,
+                                  long seed, int salt) {
+        int x0 = (int) Math.floor(x);
+        int y0 = (int) Math.floor(y);
+        int z0 = (int) Math.floor(z);
+        double fx = x - x0;
+        double fy = y - y0;
+        double fz = z - z0;
+        double u = fx * fx * (3.0 - 2.0 * fx);
+        double v = fy * fy * (3.0 - 2.0 * fy);
+        double w = fz * fz * (3.0 - 2.0 * fz);
+
+        double n000 = perlinGrad(x0, y0, z0, fx, fy, fz, seed, salt);
+        double n100 = perlinGrad(x0 + 1, y0, z0,
+            fx - 1.0, fy, fz, seed, salt);
+        double n010 = perlinGrad(x0, y0 + 1, z0,
+            fx, fy - 1.0, fz, seed, salt);
+        double n110 = perlinGrad(x0 + 1, y0 + 1, z0,
+            fx - 1.0, fy - 1.0, fz, seed, salt);
+        double n001 = perlinGrad(x0, y0, z0 + 1,
+            fx, fy, fz - 1.0, seed, salt);
+        double n101 = perlinGrad(x0 + 1, y0, z0 + 1,
+            fx - 1.0, fy, fz - 1.0, seed, salt);
+        double n011 = perlinGrad(x0, y0 + 1, z0 + 1,
+            fx, fy - 1.0, fz - 1.0, seed, salt);
+        double n111 = perlinGrad(x0 + 1, y0 + 1, z0 + 1,
+            fx - 1.0, fy - 1.0, fz - 1.0, seed, salt);
+
+        double x00 = n000 + (n100 - n000) * u;
+        double x10 = n010 + (n110 - n010) * u;
+        double x01 = n001 + (n101 - n001) * u;
+        double x11 = n011 + (n111 - n011) * u;
+        double y0v = x00 + (x10 - x00) * v;
+        double y1v = x01 + (x11 - x01) * v;
+        return y0v + (y1v - y0v) * w;
+    }
+
+    /** 分形柏林（fBm）：多层 Perlin 叠加，输出连续且分布更自然。 */
+    public static double fbm3D(double x, double y, double z,
+                               long seed, int salt, int octaves,
+                               double lacunarity, double gain) {
+        double sum = 0.0;
+        double amp = 1.0;
+        double freq = 1.0;
+        double norm = 0.0;
+        for (int i = 0; i < octaves; i++) {
+            sum += amp * perlin3D(
+                x * freq, y * freq, z * freq,
+                seed, salt + i * 131);
+            norm += amp;
+            amp *= gain;
+            freq *= lacunarity;
+        }
+        return sum / norm;
+    }
+
+    private static double perlinGrad(int ix, int iy, int iz,
+                                     double dx, double dy, double dz,
+                                     long seed, int salt) {
+        // 预生成的非轴向随机单位向量表：每次哈希只查一次，速度翻倍。
+        double h = hash01(ix, iy, iz, seed, salt);
+        int idx = (int) (h * PERLIN_GRADS.length);
+        if (idx >= PERLIN_GRADS.length) {
+            idx = PERLIN_GRADS.length - 1;
+        }
+        double[] g = PERLIN_GRADS[idx];
+        return g[0] * dx + g[1] * dy + g[2] * dz;
+    }
+
+    private static final double[][] PERLIN_GRADS = buildPerlinGrads();
+
+    private static double[][] buildPerlinGrads() {
+        double[][] g = new double[32][3];
+        for (int i = 0; i < 32; i++) {
+            double theta = i * 0.6180339887498949 * 2.0 * Math.PI;
+            double phi = Math.acos(1.0 - 2.0 * (i + 0.5) / 32.0);
+            double sp = Math.sin(phi);
+            g[i][0] = sp * Math.cos(theta);
+            g[i][1] = sp * Math.sin(theta);
+            g[i][2] = Math.cos(phi);
+        }
+        return g;
+    }
+
+    /**
      * 3D 点到线段最近距离。
      *
      * @param outT 长度为 1 的数组，返回最近点参数 t ∈ [0,1]（半径插值用）

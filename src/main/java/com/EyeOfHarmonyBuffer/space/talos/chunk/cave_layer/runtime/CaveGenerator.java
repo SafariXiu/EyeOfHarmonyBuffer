@@ -812,20 +812,66 @@ public final class CaveGenerator {
     private static void connectMegaHall(CaveNode node, long seed,
                                         Map<Long, List<CaveNode>> nodeCache,
                                         List<CaveSegment> out) {
-        CaveNode first = nearestNode(node, seed, nodeCache, -1, 4);
-        if (first != null) {
-            out.add(buildSegment(node, first, seed));
+        int superX = Math.floorDiv(
+            node.cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            node.cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
+        if (hall == null) {
+            return;
         }
-        CaveNode second = nearestNode(node, seed, nodeCache,
-            first != null ? first.id : -1, 4);
-        if (second != null) {
-            out.add(buildSegment(node, second, seed));
+        long exclude = -1;
+        for (int i = 0; i < 3; i++) {
+            CaveNode target = nearestNodeInDirection(
+                node, seed, nodeCache, hall.mouthAngle[i], 4, exclude);
+            if (target != null) {
+                out.add(buildSegment(node, target, seed));
+                exclude = target.id;
+            }
         }
-        CaveNode third = nearestNode(node, seed, nodeCache,
-            second != null ? second.id : (first != null ? first.id : -1), 4);
-        if (third != null) {
-            out.add(buildSegment(node, third, seed));
+    }
+
+    /** 在指定方向（60° 锥形）内找最近的节点，让洞厅通道对准预设口。 */
+    private static CaveNode nearestNodeInDirection(
+        CaveNode node, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        double angle, int radius, long excludeId
+    ) {
+        double dirX = Math.cos(angle);
+        double dirZ = Math.sin(angle);
+        CaveNode best = null;
+        double bestD = Double.POSITIVE_INFINITY;
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (CaveNode n : nodesOf(
+                    node.cellX + dx, node.cellZ + dz, seed, nodeCache)) {
+                    if (n.id == node.id || n.id == excludeId) {
+                        continue;
+                    }
+                    if (n.kind == CaveNode.KIND_MEGA_HALL) {
+                        continue;
+                    }
+                    double vx = n.x - node.x;
+                    double vz = n.z - node.z;
+                    double len = Math.sqrt(vx * vx + vz * vz);
+                    if (len < 1.0e-6) {
+                        continue;
+                    }
+                    double dot = (vx * dirX + vz * dirZ) / len;
+                    if (dot < 0.5) {
+                        continue;
+                    }
+                    double d = distSq(node, n);
+                    if (d < bestD - 1.0e-9
+                        || (Math.abs(d - bestD) <= 1.0e-9
+                            && n.id < best.id)) {
+                        best = n;
+                        bestD = d;
+                    }
+                }
+            }
         }
+        return best;
     }
 
     private static double distSq(CaveNode a, CaveNode b) {

@@ -33,6 +33,8 @@ public final class CaveMegaHall {
     public final double maxY;
     public final double minZ;
     public final double maxZ;
+    /** 洞厅与洞穴之间的通道方向（3 个，角度制弧度）。 */
+    public final double[] mouthAngle;
 
     public final int pillarCount;
     public final double[] pillarX;
@@ -56,17 +58,31 @@ public final class CaveMegaHall {
         this.minZ = cz - this.rz;
         this.maxZ = cz + this.rz;
 
-        this.pillarHalf = 5 + (int) (CaveMath.hash01(
-            (long) cx, (long) cy, (long) cz, seed, 0x91) * 4.0);
-        int n = 3 + (int) (CaveMath.hash01(
-            (long) cx, (long) cy, (long) cz, seed, 0x92) * 4.0);
+        this.mouthAngle = new double[3];
+        double base = CaveMath.hash01(
+            (long) cx, (long) cy, (long) cz, seed, 0xD1) * 360.0;
+        for (int i = 0; i < 3; i++) {
+            double jitter = (CaveMath.hash01(
+                (long) cx, (long) cz, i, seed, 0xD2) - 0.5) * 40.0;
+            this.mouthAngle[i] = Math.toRadians(base + i * 120.0 + jitter);
+        }
+
+        // 基础半径 30~38（直径约 60~76）。
+        this.pillarHalf = 30 + (int) (CaveMath.hash01(
+            (long) cx, (long) cy, (long) cz, seed, 0x91) * 9.0);
+        int n = 12 + (int) (CaveMath.hash01(
+            (long) cx, (long) cy, (long) cz, seed, 0x92) * 5.0);
         this.pillarCount = n;
         this.pillarX = new double[n];
         this.pillarZ = new double[n];
+        double minDist = pillarHalf * 3.0;
+        double minDistSq = minDist * minDist;
+        int placed = 0;
         for (int i = 0; i < n; i++) {
             double dx;
             double dz;
-            for (int attempt = 0; attempt < 8; attempt++) {
+            boolean ok = false;
+            for (int attempt = 0; attempt < 24 && !ok; attempt++) {
                 dx = (CaveMath.hash01(
                     (long) cx, (long) cy, i * 2 + attempt,
                     seed, 0x93) - 0.5) * 2.0 * rx * 0.65;
@@ -74,14 +90,33 @@ public final class CaveMegaHall {
                     (long) cx, (long) cz, i * 2 + attempt,
                     seed, 0x94) - 0.5) * 2.0 * rz * 0.65;
                 if (dx * dx / (rx * rx) + dz * dz / (rz * rz) < 0.81) {
-                    this.pillarX[i] = cx + dx;
-                    this.pillarZ[i] = cz + dz;
-                    break;
+                    double px = cx + dx;
+                    double pz = cz + dz;
+                    boolean far = true;
+                    for (int j = 0; j < placed; j++) {
+                        double ddx = px - pillarX[j];
+                        double ddz = pz - pillarZ[j];
+                        if (ddx * ddx + ddz * ddz < minDistSq) {
+                            far = false;
+                            break;
+                        }
+                    }
+                    if (far) {
+                        this.pillarX[i] = px;
+                        this.pillarZ[i] = pz;
+                        placed++;
+                        ok = true;
+                    }
                 }
-                if (attempt == 7) {
-                    this.pillarX[i] = cx;
-                    this.pillarZ[i] = cz;
-                }
+            }
+            if (!ok) {
+                // 兜底：按角度放在 0.55 半径处，避免全部堆到中心。
+                double a = i * (2.0 * Math.PI / n)
+                    + CaveMath.hash01(
+                        (long) cx, (long) cz, i, seed, 0x95) * 0.5;
+                this.pillarX[i] = cx + Math.cos(a) * rx * 0.55;
+                this.pillarZ[i] = cz + Math.sin(a) * rz * 0.55;
+                placed++;
             }
         }
     }
@@ -106,13 +141,25 @@ public final class CaveMegaHall {
 
     /** 该列是否属于巨型石柱（整列不挖）。 */
     public boolean isPillarColumn(int wx, int wz) {
+        return pillarIndex(wx, wz) >= 0;
+    }
+
+    /** 返回该列所属石柱的索引；不在任何柱内返回 -1。 */
+    public int pillarIndex(int wx, int wz) {
+        // 圆形判定：只处理可能落在柱体/外扩半径内的列，避免方形压地形。
+        double reach = pillarHalf * 2.2;
+        int best = -1;
+        double bestD = Double.POSITIVE_INFINITY;
         for (int i = 0; i < pillarCount; i++) {
-            if (Math.abs(wx - pillarX[i]) <= pillarHalf
-                && Math.abs(wz - pillarZ[i]) <= pillarHalf) {
-                return true;
+            double dx = wx + 0.5 - pillarX[i];
+            double dz = wz + 0.5 - pillarZ[i];
+            double d = dx * dx + dz * dz;
+            if (d <= reach * reach && d < bestD) {
+                best = i;
+                bestD = d;
             }
         }
-        return false;
+        return best;
     }
 
     /**
@@ -130,9 +177,10 @@ public final class CaveMegaHall {
         double b = cy + ryLocal;
         // 天花板噪声：让顶部起伏，地面保持原有中频噪声
         double ceilNoise = CEIL_NOISE_AMP * (
-            CaveMath.valueNoise3D(
-                wx, 1, wz, seed, CEIL_NOISE_SCALE, CEIL_NOISE_SALT
-            ) - 0.5) * 2.0;
+            CaveMath.perlin3D(
+                wx / CEIL_NOISE_SCALE, 0.1, wz / CEIL_NOISE_SCALE,
+                seed, CEIL_NOISE_SALT
+            ));
         b += ceilNoise;
         int yMin = (int) Math.floor(a - 0.5) + 1;
         int yMax = (int) Math.ceil(b - 0.5) - 1;
@@ -161,16 +209,18 @@ public final class CaveMegaHall {
 
     private double shapeFactorX(int wx, int wz) {
         return 1.0 + SHAPE_NOISE_AMP * (
-            CaveMath.valueNoise3D(
-                wx, 3, wz, seed, SHAPE_NOISE_SCALE, SHAPE_NOISE_SALT
-            ) - 0.5) * 2.0;
+            CaveMath.perlin3D(
+                wx / SHAPE_NOISE_SCALE, 0.05, wz / SHAPE_NOISE_SCALE,
+                seed, SHAPE_NOISE_SALT
+            ));
     }
 
     private double shapeFactorZ(int wx, int wz) {
         return 1.0 + SHAPE_NOISE_AMP * (
-            CaveMath.valueNoise3D(
-                wx, 7, wz, seed, SHAPE_NOISE_SCALE, SHAPE_NOISE_SALT
-            ) - 0.5) * 2.0;
+            CaveMath.perlin3D(
+                wx / SHAPE_NOISE_SCALE, 0.07, wz / SHAPE_NOISE_SCALE,
+                seed, SHAPE_NOISE_SALT + 1
+            ));
     }
 
     private static double shapeH(double dx, double dz) {
