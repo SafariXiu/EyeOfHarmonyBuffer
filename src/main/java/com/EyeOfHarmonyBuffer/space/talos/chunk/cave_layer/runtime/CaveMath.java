@@ -133,6 +133,26 @@ public final class CaveMath {
         return sum / norm;
     }
 
+    /**
+     * 大块岩性：低频 fBm 分 4 档，普通石头为主（约七成），
+     * 其余三种为辅。0=石头，1=花岗岩，2=闪长岩，3=安山岩。
+     */
+    public static byte rockVariant3D(int wx, int wy, int wz, long seed) {
+        double n = fbm3D(
+            wx / 240.0, wy / 240.0, wz / 240.0,
+            seed, 0xCC, 2, 2.0, 0.5);
+        if (n < -0.13) {
+            return 1;
+        }
+        if (n < -0.04) {
+            return 2;
+        }
+        if (n > 0.13) {
+            return 3;
+        }
+        return 0;
+    }
+
     private static double perlinGrad(int ix, int iy, int iz,
                                      double dx, double dy, double dz,
                                      long seed, int salt) {

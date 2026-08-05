@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
+import ganymedes01.etfuturum.ModBlocks;
 import net.minecraft.init.Blocks;
 
 import java.util.ArrayList;
@@ -419,7 +420,15 @@ public final class CaveCarver {
                     // y == floorY：保留实体地面
                 }
             } else {
-                setStone(blocks, meta, localX, localZ, y, worldHeight);
+                int idx = (localX * 16 + localZ) * worldHeight + y;
+                byte v = CaveMath.rockVariant3D(worldX, y, worldZ, seed);
+                if (v == 0) {
+                    blocks[idx] = Blocks.stone;
+                    meta[idx] = 0;
+                } else {
+                    blocks[idx] = ModBlocks.STONE.get();
+                    meta[idx] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
+                }
             }
         }
     }

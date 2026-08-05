@@ -9,8 +9,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveDecorator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import ganymedes01.etfuturum.ModBlocks;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
@@ -149,7 +151,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
                         for (int y = 1; y < h; y++) {
                             putBlock(blocks, meta, localX, y, localZ,
-                                profile.deepBlock);
+                                rockPair(profile.deepBlock,
+                                    worldX, y, worldZ, worldSeedInt));
                         }
                         // 源头湖：湖床顶两格换成滩涂 / 干岸方块
                         if (lakeMat != null && h >= 2) {
@@ -178,7 +181,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         for (int y = 1; y < h; y++) {
                             BlockMetaPair pair;
                             if (y < fillerStart) {
-                                pair = profile.deepBlock;
+                                pair = rockPair(profile.deepBlock,
+                                    worldX, y, worldZ, worldSeedInt);
                             } else if (y < surfaceStart) {
                                 pair = profile.fillerBlock;
                             } else {
@@ -228,8 +232,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
                     for (int y = 1; y <= seabedY; y++) {
                         int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.stone;
-                        meta[idx] = 0;
+                        putRock(blocks, meta, idx,
+                            worldX, y, worldZ, worldSeedInt);
                     }
 
                     for (int y = seabedY + 1; y <= seaLevel; y++) {
@@ -340,6 +344,36 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     @Override
     public boolean canGenerateIceBlock() {
         return false;
+    }
+
+    /** 深部石头换成大块岩性（花岗岩/闪长岩/安山岩/石头）。 */
+    private static BlockMetaPair rockPair(BlockMetaPair pair,
+                                          int wx, int wy, int wz, int seed) {
+        if (pair != null && pair.getBlock() == Blocks.stone
+            && pair.getMetadata() == 0) {
+            return rockPairFor(wx, wy, wz, seed);
+        }
+        return pair;
+    }
+
+    private static void putRock(net.minecraft.block.Block[] blocks, byte[] meta,
+                                int idx, int wx, int wy, int wz, int seed) {
+        BlockMetaPair p = rockPairFor(wx, wy, wz, seed);
+        blocks[idx] = p.getBlock();
+        meta[idx] = p.getMetadata();
+    }
+
+    private static BlockMetaPair rockPairFor(int wx, int wy, int wz, int seed) {
+        switch (CaveMath.rockVariant3D(wx, wy, wz, seed)) {
+            case 1:
+                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 1);
+            case 2:
+                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 3);
+            case 3:
+                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 5);
+            default:
+                return new BlockMetaPair(Blocks.stone, (byte) 0);
+        }
     }
 
     @Override
