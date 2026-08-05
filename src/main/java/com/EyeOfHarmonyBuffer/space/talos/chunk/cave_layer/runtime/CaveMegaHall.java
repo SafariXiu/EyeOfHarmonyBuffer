@@ -126,6 +126,20 @@ public final class CaveMegaHall {
         return noisyShapeH((int) Math.floor(wx), (int) Math.floor(wz)) < 1.0;
     }
 
+    /** 第 i 个通道口在洞厅边界上的坐标（x, z）。 */
+    public double[] mouthPoint(int i) {
+        double a = mouthAngle[i];
+        double c = Math.cos(a);
+        double s = Math.sin(a);
+        double p = SHAPE_P;
+        double denom = Math.pow(
+            Math.pow(Math.abs(c) / rx, p)
+                + Math.pow(Math.abs(s) / rz, p),
+            1.0 / p);
+        double r = 1.0 / denom;
+        return new double[] {cx + c * r, cz + s * r};
+    }
+
     /** 是否在洞厅水平范围附近（含 margin 格的外扩带）。 */
     public boolean nearHorizontal(double wx, double wz, double margin) {
         int ix = (int) Math.floor(wx);

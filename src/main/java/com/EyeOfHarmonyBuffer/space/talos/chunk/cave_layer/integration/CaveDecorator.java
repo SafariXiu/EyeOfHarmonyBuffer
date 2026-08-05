@@ -310,6 +310,54 @@ public final class CaveDecorator {
             );
         }
 
+        // 水体支撑兜底：给水体底部和侧面包 3 层石头壳，防止悬空 / 侧漏。
+        int cellCount = 16 * 16 * worldHeight;
+        int[] queue = new int[cellCount];
+        byte[] dist = new byte[cellCount];
+        int head = 0;
+        int tail = 0;
+        for (int lz = 0; lz < 16; lz++) {
+            for (int lx = 0; lx < 16; lx++) {
+                int base = (lx * 16 + lz) * worldHeight;
+                for (int y = 1; y < worldHeight; y++) {
+                    if (isWater(blocks[base + y])) {
+                        queue[tail++] = base + y;
+                    }
+                }
+            }
+        }
+        while (head < tail) {
+            int idx = queue[head++];
+            int d = dist[idx];
+            if (d >= 3) {
+                continue;
+            }
+            int flat = idx / worldHeight;
+            int lx = flat / 16;
+            int lz = flat % 16;
+            int y = idx % worldHeight;
+            if (lx > 0) {
+                tail = fillShellNeighbor(idx - 16 * worldHeight,
+                    d + 1, queue, dist, tail, blocks, meta);
+            }
+            if (lx < 15) {
+                tail = fillShellNeighbor(idx + 16 * worldHeight,
+                    d + 1, queue, dist, tail, blocks, meta);
+            }
+            if (lz > 0) {
+                tail = fillShellNeighbor(idx - worldHeight,
+                    d + 1, queue, dist, tail, blocks, meta);
+            }
+            if (lz < 15) {
+                tail = fillShellNeighbor(idx + worldHeight,
+                    d + 1, queue, dist, tail, blocks, meta);
+            }
+            if (y > 1) {
+                tail = fillShellNeighbor(idx - 1,
+                    d + 1, queue, dist, tail, blocks, meta);
+            }
+        }
+
         // F. 入口井口碎石环
         for (CaveEntrance e : data.entrances) {
             int rOuter = e.radius + 1;
@@ -354,6 +402,20 @@ public final class CaveDecorator {
 
     private static boolean isWater(Block block) {
         return block == Blocks.water || block == Blocks.flowing_water;
+    }
+
+    /** 把水体外围一格空气变成石头并入队，用于向外扩层。 */
+    private static int fillShellNeighbor(int idx, int nd,
+                                         int[] queue, byte[] dist, int tail,
+                                         Block[] blocks, byte[] meta) {
+        if (dist[idx] != 0 || !isAir(blocks[idx])) {
+            return tail;
+        }
+        blocks[idx] = Blocks.stone;
+        meta[idx] = 0;
+        dist[idx] = (byte) nd;
+        queue[tail++] = idx;
+        return tail;
     }
 
     private static boolean isEntranceColumn(int worldX, int worldZ,

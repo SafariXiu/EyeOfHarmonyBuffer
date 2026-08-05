@@ -823,9 +823,26 @@ public final class CaveGenerator {
         long exclude = -1;
         for (int i = 0; i < 3; i++) {
             CaveNode target = nearestNodeInDirection(
-                node, seed, nodeCache, hall.mouthAngle[i], 4, exclude);
+                node, seed, nodeCache, hall.mouthAngle[i], 4, exclude, 24.0);
+            if (target == null) {
+                // 实在找不到高节点时再退回任意节点，保证连通。
+                target = nearestNodeInDirection(
+                    node, seed, nodeCache, hall.mouthAngle[i], 4, exclude,
+                    Double.NEGATIVE_INFINITY);
+            }
             if (target != null) {
-                out.add(buildSegment(node, target, seed));
+                // 通道从洞厅边界上的口部出发，而不是从中心出发，
+                // 避免隧道与洞厅壁相切 / 错位。
+                double[] mp = hall.mouthPoint(i);
+                double mx = hall.cx + (mp[0] - hall.cx) * 0.92;
+                double mz = hall.cz + (mp[1] - hall.cz) * 0.92;
+                CaveNode mouth = new CaveNode(
+                    nodeId(seed, node.cellX, node.cellZ, 0xFFFE - i),
+                    node.cellX, node.cellZ,
+                    (float) mx, (float) hall.cy, (float) mz,
+                    CaveNode.KIND_MEGA_HALL, CaveNode.BAND_MID,
+                    0, 0, 0, 0, 0);
+                out.add(buildSegment(mouth, target, seed));
                 exclude = target.id;
             }
         }
@@ -835,7 +852,7 @@ public final class CaveGenerator {
     private static CaveNode nearestNodeInDirection(
         CaveNode node, long seed,
         Map<Long, List<CaveNode>> nodeCache,
-        double angle, int radius, long excludeId
+        double angle, int radius, long excludeId, double minY
     ) {
         double dirX = Math.cos(angle);
         double dirZ = Math.sin(angle);
@@ -849,6 +866,9 @@ public final class CaveGenerator {
                         continue;
                     }
                     if (n.kind == CaveNode.KIND_MEGA_HALL) {
+                        continue;
+                    }
+                    if (n.y < minY) {
                         continue;
                     }
                     double vx = n.x - node.x;
