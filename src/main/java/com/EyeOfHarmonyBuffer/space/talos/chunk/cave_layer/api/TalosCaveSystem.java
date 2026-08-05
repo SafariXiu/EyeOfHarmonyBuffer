@@ -131,13 +131,6 @@ public final class TalosCaveSystem {
         }
     }
 
-    /** 调试：取某 256 格单元的节点列表（不缓存，纯函数）。 */
-    public static java.util.List<CaveNode> debugNodesForCell(
-        int cellX, int cellZ, int worldSeedInt
-    ) {
-        return stateFor(worldSeedInt).nodesForCell(cellX, cellZ);
-    }
-
     /**
      * 调试 / 传送用：列出玩家周围 radiusCells×radiusCells 个单元内的所有入口。
      * 入口是稀疏地标（约每 256 格单元一个），只查当前区块基本找不到。

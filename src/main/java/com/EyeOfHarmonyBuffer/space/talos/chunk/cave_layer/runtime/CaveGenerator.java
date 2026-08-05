@@ -123,7 +123,11 @@ public final class CaveGenerator {
     private static final Object NO_LAKE_PIPE = new Object();
     private static final ConcurrentHashMap<Long, Object> LAKE_PIPE_CACHE =
         new ConcurrentHashMap<Long, Object>();
+    /** 浅层限制单元缓存：线段检查会按采样点反复查询，避免重复哈希。 */
+    private static final ConcurrentHashMap<Long, Boolean> SHALLOW_CELL_CACHE =
+        new ConcurrentHashMap<Long, Boolean>();
     private static final int MEGA_HALL_CACHE_LIMIT = 8192;
+    private static final int SHALLOW_CELL_CACHE_LIMIT = 200_000;
 
     private CaveGenerator() {}
 
@@ -345,6 +349,7 @@ public final class CaveGenerator {
         MEGA_HALL_CACHE.clear();
         MEGA_HALL_LAKE_CACHE.clear();
         LAKE_PIPE_CACHE.clear();
+        SHALLOW_CELL_CACHE.clear();
     }
 
     private static CaveMegaHall computeMegaHall(int superX, int superZ,
@@ -482,14 +487,28 @@ public final class CaveGenerator {
      * 这些单元内只允许上层干洞（DRY_UPPER_MIN_Y 以上）。
      */
     public static boolean isShallowOnlyCell(int cellX, int cellZ, long seed) {
+        long key = cellKey(cellX, cellZ) ^ CaveMath.mix64(seed);
+        Boolean cached = SHALLOW_CELL_CACHE.get(key);
+        if (cached != null) {
+            return cached.booleanValue();
+        }
+        if (SHALLOW_CELL_CACHE.size() > SHALLOW_CELL_CACHE_LIMIT) {
+            SHALLOW_CELL_CACHE.clear();
+        }
+        boolean result = false;
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
                 if (basinHasAquifer(cellX + dx, cellZ + dz, seed)) {
-                    return true;
+                    result = true;
+                    break;
                 }
             }
+            if (result) {
+                break;
+            }
         }
-        return false;
+        SHALLOW_CELL_CACHE.put(key, Boolean.valueOf(result));
+        return result;
     }
 
     /** 大厅水平包围盒是否碰到任何浅层限制单元（盆地 / 禁干带）。 */
@@ -664,7 +683,6 @@ public final class CaveGenerator {
         return out;
     }
 
-    /** 含水候选点是否离干洞节点 / 干洞线段太近。 */
     /** 调试/传送用：列出附近单元的全部含水节点（不做避让过滤）。 */
     public static List<CaveNode> debugAquiferNodesNear(
         int worldX, int worldZ, long seed, int radiusCells

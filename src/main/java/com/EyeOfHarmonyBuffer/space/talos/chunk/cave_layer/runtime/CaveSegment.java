@@ -41,16 +41,6 @@ public final class CaveSegment {
                        boolean collapsed,
                        float[] xs, float[] ys, float[] zs, float[] rs,
                        float minX, float minY, float minZ,
-                       float maxX, float maxY, float maxZ) {
-        this(edgeId, collapsed, xs, ys, zs, rs,
-            minX, minY, minZ, maxX, maxY, maxZ,
-            false, false, 0, false);
-    }
-
-    public CaveSegment(long edgeId,
-                       boolean collapsed,
-                       float[] xs, float[] ys, float[] zs, float[] rs,
-                       float minX, float minY, float minZ,
                        float maxX, float maxY, float maxZ,
                        boolean aquifer, boolean fullySubmerged,
                        int waterLevelY, boolean piercesLakeShell) {
