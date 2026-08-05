@@ -187,8 +187,13 @@ public final class CaveCarver {
         }
 
         // 干湿隔离兜底：盆地 / 禁干带的列，干洞段只能在上层带（46+）雕刻。
-        boolean columnShallow = CaveGenerator.isShallowOnlyCell(
-            Math.floorDiv(worldX, 256), Math.floorDiv(worldZ, 256), seed);
+        // 洞厅专属区例外：该区域内干洞可全深度雕刻。
+        int shallowCellX = Math.floorDiv(worldX, 256);
+        int shallowCellZ = Math.floorDiv(worldZ, 256);
+        boolean columnShallow = !CaveGenerator.isHallZoneCell(
+            shallowCellX, shallowCellZ, seed)
+            && CaveGenerator.isShallowOnlyCell(
+                shallowCellX, shallowCellZ, seed);
 
         for (int y = 1; y <= maxY; y++) {
             double wall = (CaveMath.valueNoise3D(

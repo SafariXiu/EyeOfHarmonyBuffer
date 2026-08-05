@@ -59,9 +59,6 @@ public final class CaveMegaHall {
     public final double maxY;
     public final double minZ;
     public final double maxZ;
-    /** 洞厅与洞穴之间的通道方向（3 个，角度制弧度）。 */
-    public final double[] mouthAngle;
-
     public final int pillarCount;
     public final double[] pillarX;
     public final double[] pillarZ;
@@ -83,15 +80,6 @@ public final class CaveMegaHall {
         this.maxY = cy + this.ry;
         this.minZ = cz - this.rz;
         this.maxZ = cz + this.rz;
-
-        this.mouthAngle = new double[3];
-        double base = CaveMath.hash01(
-            (long) cx, (long) cy, (long) cz, seed, 0xD1) * 360.0;
-        for (int i = 0; i < 3; i++) {
-            double jitter = (CaveMath.hash01(
-                (long) cx, (long) cz, i, seed, 0xD2) - 0.5) * 40.0;
-            this.mouthAngle[i] = Math.toRadians(base + i * 120.0 + jitter);
-        }
 
         // 基础半径 30~38（直径约 60~76）。
         this.pillarHalf = 30 + (int) (CaveMath.hash01(
@@ -150,20 +138,6 @@ public final class CaveMegaHall {
     /** 水平投影是否在该洞厅内。 */
     public boolean insideHorizontal(double wx, double wz) {
         return noisyShapeH((int) Math.floor(wx), (int) Math.floor(wz)) < 1.0;
-    }
-
-    /** 第 i 个通道口在洞厅边界上的坐标（x, z）。 */
-    public double[] mouthPoint(int i) {
-        double a = mouthAngle[i];
-        double c = Math.cos(a);
-        double s = Math.sin(a);
-        double p = SHAPE_P;
-        double denom = Math.pow(
-            Math.pow(Math.abs(c) / rx, p)
-                + Math.pow(Math.abs(s) / rz, p),
-            1.0 / p);
-        double r = 1.0 / denom;
-        return new double[] {cx + c * r, cz + s * r};
     }
 
     /** 是否在洞厅水平范围附近（含 margin 格的外扩带）。 */

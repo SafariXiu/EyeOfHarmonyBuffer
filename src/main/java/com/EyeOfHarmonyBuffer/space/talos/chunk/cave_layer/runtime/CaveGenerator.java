@@ -78,6 +78,8 @@ public final class CaveGenerator {
     public static final int MEGA_HALL_MAX_Y = 64;
     /** 洞厅中心距超级格边缘的最小距离（保证整厅落在本格内）。 */
     private static final double MEGA_HALL_MARGIN = 1000.0;
+    /** 洞厅专属区外扩（blocks）：区域内干洞全深度、含水网络不生成。 */
+    public static final double HALL_ZONE_MARGIN = 2.0 * CELL_BLOCKS;
 
     /** 含水网络参数。 */
     private static final double AQUIFER_BASIN_CHANCE = 0.40;
@@ -101,6 +103,8 @@ public final class CaveGenerator {
     private static final double AQUIFER_LAKE_PIPE_RADIUS = 5.0;
     /** 找全水节点接湖的搜索半径（单元）。 */
     private static final int AQUIFER_LAKE_RADIUS = 4;
+    /** 洞厅湖找全水节点的半径（单元）：洞厅专属区清空水网，需扩大到区外。 */
+    private static final int HALL_LAKE_FULL_RADIUS = 7;
     /** 洞厅湖接入列要求的地面高度上限：低于该值才保证接入点在水下。 */
     private static final int MEGA_HALL_LAKE_MAX_FLOOR = 12;
     /** 洞厅湖接入点 Y：水面以下 2 格。 */
@@ -126,8 +130,12 @@ public final class CaveGenerator {
     /** 浅层限制单元缓存：线段检查会按采样点反复查询，避免重复哈希。 */
     private static final ConcurrentHashMap<Long, Boolean> SHALLOW_CELL_CACHE =
         new ConcurrentHashMap<Long, Boolean>();
+    /** 洞厅专属区单元缓存。 */
+    private static final ConcurrentHashMap<Long, Boolean> HALL_ZONE_CELL_CACHE =
+        new ConcurrentHashMap<Long, Boolean>();
     private static final int MEGA_HALL_CACHE_LIMIT = 8192;
     private static final int SHALLOW_CELL_CACHE_LIMIT = 200_000;
+    private static final int HALL_ZONE_CELL_CACHE_LIMIT = 200_000;
 
     private CaveGenerator() {}
 
@@ -145,7 +153,10 @@ public final class CaveGenerator {
         CaveMegaHall megaHall = megaHallForSupercell(
             hallSuperX, hallSuperZ, seed);
         // 浅层限制单元：含水盆地 + 盆地外圈 1 格禁干带，只允许上层干洞。
-        boolean shallowOnly = isShallowOnlyCell(cellX, cellZ, seed);
+        // 洞厅专属区内不受此限制，干洞恢复全深度。
+        boolean hallZone = isHallZoneCell(cellX, cellZ, seed);
+        boolean shallowOnly = !hallZone
+            && isShallowOnlyCell(cellX, cellZ, seed);
         boolean backbone = isBackboneCell(cellX, cellZ);
 
         if (backbone) {
@@ -350,6 +361,7 @@ public final class CaveGenerator {
         MEGA_HALL_LAKE_CACHE.clear();
         LAKE_PIPE_CACHE.clear();
         SHALLOW_CELL_CACHE.clear();
+        HALL_ZONE_CELL_CACHE.clear();
     }
 
     private static CaveMegaHall computeMegaHall(int superX, int superZ,
@@ -511,6 +523,44 @@ public final class CaveGenerator {
         return result;
     }
 
+    /** 某 256 单元是否落在洞厅专属区内（包围盒外扩 HALL_ZONE_MARGIN）。 */
+    public static boolean isHallZoneCell(int cellX, int cellZ, long seed) {
+        long key = cellKey(cellX, cellZ) ^ CaveMath.mix64(seed);
+        Boolean cached = HALL_ZONE_CELL_CACHE.get(key);
+        if (cached != null) {
+            return cached.booleanValue();
+        }
+        if (HALL_ZONE_CELL_CACHE.size() > HALL_ZONE_CELL_CACHE_LIMIT) {
+            HALL_ZONE_CELL_CACHE.clear();
+        }
+        boolean result = false;
+        int superX = Math.floorDiv(
+            cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
+        double x0 = cellX * CELL_BLOCKS;
+        double x1 = x0 + CELL_BLOCKS;
+        double z0 = cellZ * CELL_BLOCKS;
+        double z1 = z0 + CELL_BLOCKS;
+        for (int sz = -1; sz <= 1 && !result; sz++) {
+            for (int sx = -1; sx <= 1 && !result; sx++) {
+                CaveMegaHall hall = megaHallForSupercell(
+                    superX + sx, superZ + sz, seed);
+                if (hall == null) {
+                    continue;
+                }
+                if (x1 >= hall.minX - HALL_ZONE_MARGIN
+                    && x0 <= hall.maxX + HALL_ZONE_MARGIN
+                    && z1 >= hall.minZ - HALL_ZONE_MARGIN
+                    && z0 <= hall.maxZ + HALL_ZONE_MARGIN) {
+                    result = true;
+                }
+            }
+        }
+        HALL_ZONE_CELL_CACHE.put(key, Boolean.valueOf(result));
+        return result;
+    }
+
     /** 大厅水平包围盒是否碰到任何浅层限制单元（盆地 / 禁干带）。 */
     private static boolean chamberCrossesShallow(
         double x, double z, double rx, double rz, long seed
@@ -584,6 +634,10 @@ public final class CaveGenerator {
         List<CaveNode> out = new ArrayList<CaveNode>();
         // 只有盆地锚点单元（每 2 个 256 单元）才生成含水节点
         if (!isAquiferBackboneCell(cellX, cellZ)) {
+            return out;
+        }
+        // 洞厅专属区内不生成含水网络，把空间让给干洞与洞厅本体。
+        if (isHallZoneCell(cellX, cellZ, seed)) {
             return out;
         }
         int wl = aquiferWaterLevel(cellX, cellZ, seed);
@@ -892,7 +946,7 @@ public final class CaveGenerator {
             CaveNode full = nearestFullNodeForLake(
                 lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
                 nodeCache, edgeCache, aquiferNodeCache,
-                AQUIFER_LAKE_RADIUS, null, hall);
+                HALL_LAKE_FULL_RADIUS, null, hall);
             if (full != null) {
                 pipe = buildLakePipe(
                     full, lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
@@ -1162,7 +1216,7 @@ public final class CaveGenerator {
                     node, seed, nodeCache, AQUIFER_DRY_RADIUS);
             }
             if (target != null) {
-                out.add(buildSegment(node, target, seed));
+                addSegment(out, buildSegment(node, target, seed));
             }
             return;
         }
@@ -1181,14 +1235,14 @@ public final class CaveGenerator {
                     node, seed, nodeCache, AQUIFER_DRY_RADIUS);
             }
             if (t1 != null) {
-                out.add(buildSegment(node, t1, seed));
+                addSegment(out, buildSegment(node, t1, seed));
             }
             CaveNode t2 = nearestAquiferNode(
                 node, seed, nodeCache, edgeCache, aquiferNodeCache,
                 AQUIFER_CROSS_RADIUS,
                 t1 != null ? t1.id : -1, false, false);
             if (t2 != null) {
-                out.add(buildSegment(node, t2, seed));
+                addSegment(out, buildSegment(node, t2, seed));
             }
             // 骨干锚点：向右 / 向下连相邻锚点，保证全局连通
             if (node.id == nodeId(
@@ -1205,7 +1259,7 @@ public final class CaveGenerator {
                         nx, nz, seed, nodeCache, edgeCache,
                         aquiferNodeCache);
                     if (target != null && target.id != node.id) {
-                        out.add(buildSegment(node, target, seed));
+                        addSegment(out, buildSegment(node, target, seed));
                     }
                 }
             }
@@ -1222,13 +1276,13 @@ public final class CaveGenerator {
         }
         boolean linkedDry = false;
         if (target != null) {
-            out.add(buildSegment(node, target, seed));
+            addSegment(out, buildSegment(node, target, seed));
         } else {
             // 实在没有含水邻居时也保证接上干洞，避免孤立封闭节点
             CaveNode dry = nearestDryNode(
                 node, seed, nodeCache, AQUIFER_DRY_RADIUS);
             if (dry != null) {
-                out.add(buildSegment(node, dry, seed));
+                addSegment(out, buildSegment(node, dry, seed));
                 dryLinkedHalfIds.add(node.id);
                 linkedDry = true;
             }
@@ -1241,9 +1295,16 @@ public final class CaveGenerator {
             CaveNode dry = nearestDryNode(
                 node, seed, nodeCache, AQUIFER_DRY_RADIUS);
             if (dry != null) {
-                out.add(buildSegment(node, dry, seed));
+                addSegment(out, buildSegment(node, dry, seed));
                 dryLinkedHalfIds.add(node.id);
             }
+        }
+    }
+
+    /** 只有非 null 的线段才加入列表（buildSegment 可能因避让检查返回 null）。 */
+    private static void addSegment(List<CaveSegment> out, CaveSegment seg) {
+        if (seg != null) {
+            out.add(seg);
         }
     }
 
@@ -1488,6 +1549,12 @@ public final class CaveGenerator {
             // 半水节点不跨单元，避免两侧水面高度不一致穿帮。
             fullySubmerged = fa && fb;
         }
+        // 全避让：普通线段（干洞 / 含水）不得穿过洞厅体积，洞厅连接除外。
+        if (a.kind != CaveNode.KIND_MEGA_HALL
+            && b.kind != CaveNode.KIND_MEGA_HALL
+            && crossesMegaHall(xs, ys, zs, rs, seed)) {
+            return null;
+        }
         // 路径级检查：干洞线段在盆地 / 禁干带内下探到上层带以下时拒绝。
         // 洞厅连接除外（洞厅本身贯通深层）。
         if (!aquifer
@@ -1504,6 +1571,76 @@ public final class CaveGenerator {
             maxX + margin, maxY + margin, maxZ + margin,
             aquifer, fullySubmerged, waterLevelY, false
         );
+    }
+
+    /** 线段（含半径）是否穿过任何洞厅体积（洞厅连接除外）。 */
+    private static boolean crossesMegaHall(float[] xs, float[] ys,
+                                           float[] zs, float[] rs,
+                                           long seed) {
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        for (int i = 0; i < xs.length; i++) {
+            minX = Math.min(minX, (int) Math.floor(xs[i]));
+            maxX = Math.max(maxX, (int) Math.floor(xs[i]));
+            minZ = Math.min(minZ, (int) Math.floor(zs[i]));
+            maxZ = Math.max(maxZ, (int) Math.floor(zs[i]));
+        }
+        int minSX = Math.floorDiv(minX, MEGA_HALL_CELL_BLOCKS);
+        int maxSX = Math.floorDiv(maxX, MEGA_HALL_CELL_BLOCKS);
+        int minSZ = Math.floorDiv(minZ, MEGA_HALL_CELL_BLOCKS);
+        int maxSZ = Math.floorDiv(maxZ, MEGA_HALL_CELL_BLOCKS);
+        for (int sz = minSZ; sz <= maxSZ; sz++) {
+            for (int sx = minSX; sx <= maxSX; sx++) {
+                CaveMegaHall hall = megaHallForSupercell(sx, sz, seed);
+                if (hall == null) {
+                    continue;
+                }
+                if (maxX < hall.minX - 16 || minX > hall.maxX + 16
+                    || maxZ < hall.minZ - 16 || minZ > hall.maxZ + 16) {
+                    continue;
+                }
+                if (segmentIntersectsHall(xs, ys, zs, rs, hall, seed)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 圆盘判定：采样点中心或边界点落入洞厅形状即视为穿过（不漏光）。 */
+    private static boolean segmentIntersectsHall(float[] xs, float[] ys,
+                                                 float[] zs, float[] rs,
+                                                 CaveMegaHall hall,
+                                                 long seed) {
+        for (int i = 0; i < xs.length - 1; i++) {
+            double len = Math.sqrt(
+                (xs[i + 1] - xs[i]) * (xs[i + 1] - xs[i])
+                    + (ys[i + 1] - ys[i]) * (ys[i + 1] - ys[i])
+                    + (zs[i + 1] - zs[i]) * (zs[i + 1] - zs[i]));
+            int samples = Math.max(2, (int) (len / 8.0) + 1);
+            for (int k = 0; k <= samples; k++) {
+                double t = (double) k / samples;
+                double x = xs[i] + (xs[i + 1] - xs[i]) * t;
+                double y = ys[i] + (ys[i + 1] - ys[i]) * t;
+                double z = zs[i] + (zs[i + 1] - zs[i]) * t;
+                if (y < hall.minY - 4.0 || y > hall.maxY + 4.0) {
+                    continue;
+                }
+                double r = rs[i] + (rs[i + 1] - rs[i]) * t;
+                if (hall.insideHorizontal(x, z)) {
+                    return true;
+                }
+                double reach = r + 3.0;
+                for (int dir = 0; dir < 12; dir++) {
+                    double a = dir * (2.0 * Math.PI / 12);
+                    if (hall.insideHorizontal(
+                        x + Math.cos(a) * reach, z + Math.sin(a) * reach)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -1531,6 +1668,9 @@ public final class CaveGenerator {
                     for (int dx = -1; dx <= 1; dx++) {
                         int nx = cellX + dx;
                         int nz = cellZ + dz;
+                        if (isHallZoneCell(nx, nz, seed)) {
+                            continue;
+                        }
                         if (!isShallowOnlyCell(nx, nz, seed)) {
                             continue;
                         }
@@ -1773,35 +1913,26 @@ public final class CaveGenerator {
             return;
         }
 
-        if (node.kind == CaveNode.KIND_MEGA_HALL) {
-            connectMegaHall(node, seed, nodeCache, out);
-            return;
-        }
-
-        // 普通 / 大厅 / 入口 / 天坑：连接 5×5 邻域最近节点（优先跨单元）
-        CaveNode first = nearestNode(node, seed, nodeCache, -1);
-        if (first != null) {
-            CaveSegment seg = buildSegment(node, first, seed);
-            if (seg != null) {
-                out.add(seg);
+        // 普通 / 大厅 / 入口 / 天坑 / 洞厅：连接邻域最近节点（优先跨单元）。
+        // 被盆地/禁干带/洞厅避让检查拒绝的候选直接跳过并继续找下一个。
+        // 洞厅是超大节点，搜索半径放宽到 4 单元；其余节点保持 2 单元，成本低。
+        int radius = node.kind == CaveNode.KIND_MEGA_HALL ? 4 : 2;
+        int maxLinks = node.isEntranceLike() ? 2 : 3;
+        int maxTries = node.isEntranceLike() ? 8 : 6;
+        long exclude = -1;
+        int added = 0;
+        for (int i = 0; i < maxTries && added < maxLinks; i++) {
+            CaveNode target = nearestNode(
+                node, seed, nodeCache, exclude, radius,
+                node.kind == CaveNode.KIND_MEGA_HALL);
+            if (target == null) {
+                break;
             }
-        }
-        // 第二条支路：连接次近节点，形成分支网络
-        CaveNode second = nearestNode(node, seed, nodeCache,
-            first != null ? first.id : -1);
-        if (second != null) {
-            CaveSegment seg = buildSegment(node, second, seed);
+            exclude = target.id;
+            CaveSegment seg = buildSegment(node, target, seed);
             if (seg != null) {
                 out.add(seg);
-            }
-        }
-        // 第三条支路：进一步增加通道覆盖
-        CaveNode third = nearestNode(node, seed, nodeCache,
-            second != null ? second.id : (first != null ? first.id : -1));
-        if (third != null) {
-            CaveSegment seg = buildSegment(node, third, seed);
-            if (seg != null) {
-                out.add(seg);
+                added++;
             }
         }
     }
@@ -1809,12 +1940,19 @@ public final class CaveGenerator {
     private static CaveNode nearestNode(CaveNode node, long seed,
                                         Map<Long, List<CaveNode>> nodeCache,
                                         long excludeId) {
-        return nearestNode(node, seed, nodeCache, excludeId, 2);
+        return nearestNode(node, seed, nodeCache, excludeId, 2, false);
     }
 
     private static CaveNode nearestNode(CaveNode node, long seed,
                                         Map<Long, List<CaveNode>> nodeCache,
                                         long excludeId, int radius) {
+        return nearestNode(node, seed, nodeCache, excludeId, radius, false);
+    }
+
+    private static CaveNode nearestNode(CaveNode node, long seed,
+                                        Map<Long, List<CaveNode>> nodeCache,
+                                        long excludeId, int radius,
+                                        boolean preferLowY) {
         CaveNode best = null;
         double bestD = Double.POSITIVE_INFINITY;
         for (int dz = -radius; dz <= radius; dz++) {
@@ -1827,12 +1965,10 @@ public final class CaveGenerator {
                     if (isAquiferKind(n.kind)) {
                         continue;
                     }
-                    // 普通干节点不直接连洞厅超级节点（洞厅由 mouth 专门连接），
-                    // 避免干洞为接洞厅而斜穿含水盆地。
-                    if (n.kind == CaveNode.KIND_MEGA_HALL) {
-                        continue;
-                    }
                     double d = distSq(node, n);
+                    if (preferLowY && n.y > DRY_UPPER_MIN_Y) {
+                        d += 90000.0;
+                    }
                     if (d < bestD - 1.0e-9
                         || (Math.abs(d - bestD) <= 1.0e-9 && n.id < best.id)) {
                         best = n;
@@ -1862,10 +1998,10 @@ public final class CaveGenerator {
                         if (isAquiferKind(n.kind)) {
                             continue;
                         }
-                        if (n.kind == CaveNode.KIND_MEGA_HALL) {
-                            continue;
-                        }
                         double d = distSq(node, n);
+                        if (preferLowY && n.y > DRY_UPPER_MIN_Y) {
+                            d += 90000.0;
+                        }
                         if (d < od - 1.0e-9
                             || (Math.abs(d - od) <= 1.0e-9 && n.id < other.id)) {
                             other = n;
@@ -1876,98 +2012,6 @@ public final class CaveGenerator {
             }
             if (other != null) {
                 return other;
-            }
-        }
-        return best;
-    }
-
-    /** 洞厅连主干网：在 ±4 单元内找最近的 3 个节点开通道。 */
-    private static void connectMegaHall(CaveNode node, long seed,
-                                        Map<Long, List<CaveNode>> nodeCache,
-                                        List<CaveSegment> out) {
-        int superX = Math.floorDiv(
-            node.cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
-        int superZ = Math.floorDiv(
-            node.cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
-        CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
-        if (hall == null) {
-            return;
-        }
-        long exclude = -1;
-        for (int i = 0; i < 3; i++) {
-            CaveNode target = nearestNodeInDirection(
-                node, seed, nodeCache, hall.mouthAngle[i], 4, exclude, 24.0);
-            if (target == null) {
-                // 实在找不到高节点时再退回任意节点，保证连通。
-                target = nearestNodeInDirection(
-                    node, seed, nodeCache, hall.mouthAngle[i], 4, exclude,
-                    Double.NEGATIVE_INFINITY);
-            }
-            if (target != null) {
-                // 通道从洞厅边界上的口部出发，而不是从中心出发，
-                // 避免隧道与洞厅壁相切 / 错位。
-                double[] mp = hall.mouthPoint(i);
-                double mx = hall.cx + (mp[0] - hall.cx) * 0.92;
-                double mz = hall.cz + (mp[1] - hall.cz) * 0.92;
-                CaveNode mouth = new CaveNode(
-                    nodeId(seed, node.cellX, node.cellZ, 0xFFFE - i),
-                    node.cellX, node.cellZ,
-                    (float) mx, (float) hall.cy, (float) mz,
-                    CaveNode.KIND_MEGA_HALL, CaveNode.BAND_MID,
-                    0, 0, 0, 0, 0);
-                CaveSegment seg = buildSegment(mouth, target, seed);
-                if (seg != null) {
-                    out.add(seg);
-                }
-                exclude = target.id;
-            }
-        }
-    }
-
-    /** 在指定方向（60° 锥形）内找最近的节点，让洞厅通道对准预设口。 */
-    private static CaveNode nearestNodeInDirection(
-        CaveNode node, long seed,
-        Map<Long, List<CaveNode>> nodeCache,
-        double angle, int radius, long excludeId, double minY
-    ) {
-        double dirX = Math.cos(angle);
-        double dirZ = Math.sin(angle);
-        CaveNode best = null;
-        double bestD = Double.POSITIVE_INFINITY;
-        for (int dz = -radius; dz <= radius; dz++) {
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (CaveNode n : nodesOf(
-                    node.cellX + dx, node.cellZ + dz, seed, nodeCache)) {
-                    if (n.id == node.id || n.id == excludeId) {
-                        continue;
-                    }
-                    if (isAquiferKind(n.kind)) {
-                        continue;
-                    }
-                    if (n.kind == CaveNode.KIND_MEGA_HALL) {
-                        continue;
-                    }
-                    if (n.y < minY) {
-                        continue;
-                    }
-                    double vx = n.x - node.x;
-                    double vz = n.z - node.z;
-                    double len = Math.sqrt(vx * vx + vz * vz);
-                    if (len < 1.0e-6) {
-                        continue;
-                    }
-                    double dot = (vx * dirX + vz * dirZ) / len;
-                    if (dot < 0.5) {
-                        continue;
-                    }
-                    double d = distSq(node, n);
-                    if (d < bestD - 1.0e-9
-                        || (Math.abs(d - bestD) <= 1.0e-9
-                            && n.id < best.id)) {
-                        best = n;
-                        bestD = d;
-                    }
-                }
             }
         }
         return best;
