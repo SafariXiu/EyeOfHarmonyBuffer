@@ -21,6 +21,11 @@ public final class CaveSegment {
 
     /** 含水-湖泊连接管：允许凿穿大厅湖外壳 / 洞厅湖底进入湖体。 */
     public final boolean piercesLakeShell;
+    /** 湖连接管远端点（接全水节点的那头）水平坐标。 */
+    public final float pipeFarX;
+    public final float pipeFarZ;
+    /** 湖连接管目标湖面高度（大厅湖 / 洞厅湖）。 */
+    public final int lakeSurfaceY;
 
     /** 折线顶点数。 */
     public final int n;
@@ -43,13 +48,17 @@ public final class CaveSegment {
                        float minX, float minY, float minZ,
                        float maxX, float maxY, float maxZ,
                        boolean aquifer, boolean fullySubmerged,
-                       int waterLevelY, boolean piercesLakeShell) {
+                       int waterLevelY, boolean piercesLakeShell,
+                       float pipeFarX, float pipeFarZ, int lakeSurfaceY) {
         this.edgeId = edgeId;
         this.collapsed = collapsed;
         this.aquifer = aquifer;
         this.fullySubmerged = fullySubmerged;
         this.waterLevelY = waterLevelY;
         this.piercesLakeShell = piercesLakeShell;
+        this.pipeFarX = pipeFarX;
+        this.pipeFarZ = pipeFarZ;
+        this.lakeSurfaceY = lakeSurfaceY;
         this.n = xs.length;
         this.xs = xs;
         this.ys = ys;

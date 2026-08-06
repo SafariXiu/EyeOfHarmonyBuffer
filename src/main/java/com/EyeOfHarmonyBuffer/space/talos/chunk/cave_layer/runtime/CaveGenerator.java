@@ -914,10 +914,14 @@ public final class CaveGenerator {
                 nodeCache, edgeCache, aquiferNodeCache,
                 AQUIFER_LAKE_RADIUS, ch, null);
             if (full != null) {
+                // 管道水位取湖面与全水节点深度的较高值，保证两端都水淹，
+                // 避免管道在接全水节点的那头变成干隧道。
+                int pipeWater = Math.max(
+                    (int) ch.lakeSurfaceY, (int) full.y + 2);
                 pipe = buildLakePipe(
                     full, target[0], target[1], target[2], seed,
                     SALT_LAKE_PIPE, AQUIFER_LAKE_PIPE_RADIUS,
-                    (int) ch.lakeSurfaceY, true);
+                    pipeWater, true, (int) ch.lakeSurfaceY);
             }
         }
         LAKE_PIPE_CACHE.put(key, pipe != null ? pipe : NO_LAKE_PIPE);
@@ -948,10 +952,13 @@ public final class CaveGenerator {
                 nodeCache, edgeCache, aquiferNodeCache,
                 HALL_LAKE_FULL_RADIUS, null, hall);
             if (full != null) {
+                // 同上：水位取洞厅湖面与全水节点深度的较高值，整管水淹。
+                int pipeWater = Math.max(
+                    CaveMegaHall.LAKE_WATER_LEVEL, (int) full.y + 2);
                 pipe = buildLakePipe(
                     full, lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
                     SALT_LAKE_PIPE + 1, AQUIFER_LAKE_PIPE_RADIUS,
-                    CaveMegaHall.LAKE_WATER_LEVEL, true);
+                    pipeWater, true, CaveMegaHall.LAKE_WATER_LEVEL);
             }
         }
         LAKE_PIPE_CACHE.put(key, pipe != null ? pipe : NO_LAKE_PIPE);
@@ -1083,7 +1090,7 @@ public final class CaveGenerator {
     private static CaveSegment buildLakePipe(
         CaveNode from, double tx, double ty, double tz,
         long seed, int salt, double radius,
-        int waterLevelY, boolean pierceShell
+        int waterLevelY, boolean pierceShell, int lakeSurfaceY
     ) {
         double lowY = Math.max(3.0, Math.min(from.y, ty) - 7.0);
         long targetHash = CaveMath.mix64(
@@ -1156,7 +1163,8 @@ public final class CaveGenerator {
             xs, ys, zs, rs,
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin,
-            true, false, waterLevelY, pierceShell
+            true, false, waterLevelY, pierceShell,
+            (float) from.x, (float) from.z, lakeSurfaceY
         );
     }
 
@@ -1569,7 +1577,8 @@ public final class CaveGenerator {
             xs, ys, zs, rs,
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin,
-            aquifer, fullySubmerged, waterLevelY, false
+            aquifer, fullySubmerged, waterLevelY, false,
+            0f, 0f, 0
         );
     }
 

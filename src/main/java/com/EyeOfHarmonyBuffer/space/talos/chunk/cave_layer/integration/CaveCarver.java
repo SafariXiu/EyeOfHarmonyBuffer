@@ -299,8 +299,19 @@ public final class CaveCarver {
                     && bestAquiferExcess > 0.0
                     ? bestAquiferSeg : bestSeg;
                 if (waterSeg != null && waterSeg.aquifer) {
+                    int waterLevel = waterSeg.waterLevelY;
+                    if (waterSeg.piercesLakeShell) {
+                        // 湖连接管：远离接全水节点的那头时，水线压到目标湖面，
+                        // 避免管道半径把水带高；远端点附近保持满水接暗河。
+                        double dxp = worldX - waterSeg.pipeFarX;
+                        double dzp = worldZ - waterSeg.pipeFarZ;
+                        if (dxp * dxp + dzp * dzp > 80.0 * 80.0) {
+                            waterLevel = Math.min(
+                                waterLevel, waterSeg.lakeSurfaceY);
+                        }
+                    }
                     if (waterSeg.fullySubmerged
-                        || y <= waterSeg.waterLevelY) {
+                        || y <= waterLevel) {
                         setWater(blocks, meta, localX, localZ, y,
                             worldHeight);
                     } else {
@@ -385,7 +396,10 @@ public final class CaveCarver {
                     * 2.0 * WALL_AMP;
                 double e = seg.sampleExcess(worldX, y, worldZ, wall);
                 if (e > 0.0) {
-                    if (seg.fullySubmerged || y <= seg.waterLevelY) {
+                    // 洞厅内湖连接管水线强制压到洞厅湖面，避免水漫过湖。
+                    int wl = Math.min(
+                        seg.waterLevelY, seg.lakeSurfaceY);
+                    if (seg.fullySubmerged || y <= wl) {
                         setWater(blocks, meta, localX, localZ, y,
                             worldHeight);
                     } else {
