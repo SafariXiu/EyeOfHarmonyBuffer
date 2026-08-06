@@ -404,6 +404,9 @@ public final class CaveDecorator {
                     if (top <= 0) {
                         continue;
                     }
+                    if (isWater(blocks[base + top])) {
+                        continue; // 河/海表面不铺碎石环，避免把水面换成砂砾/原石
+                    }
                     Block mat = CaveMath.hash01(
                         wx, wz, 10, seed, SALT_ENTRANCE) < 0.5
                         ? Blocks.gravel : Blocks.cobblestone;

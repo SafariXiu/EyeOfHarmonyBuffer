@@ -227,13 +227,45 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         false,
                         shelfWeight,
                         coastShapedHeightD,
+                        worldX,
+                        worldZ,
+                        worldSeedInt,
                         worldHeight
                     );
 
+                    TalosSeafloorShaper.SeafloorFill sf =
+                        TalosSeafloorShaper.computeSeafloorFill(
+                            shelfWeight, worldX, worldZ, worldSeedInt);
+                    TalosSeafloorShaper.SeafloorMaterial surfaceMat =
+                        TalosSeafloorShaper.SeafloorMaterial.ROCK;
+                    TalosSeafloorShaper.SeafloorMaterial fillerMat =
+                        TalosSeafloorShaper.SeafloorMaterial.ROCK;
+                    int surfaceDepth = 0;
+                    int fillerDepth = 0;
+                    if (sf != null) {
+                        surfaceMat = sf.surface;
+                        fillerMat = sf.filler;
+                        surfaceDepth = Math.min(sf.surfaceDepth, seabedY);
+                        fillerDepth = Math.min(
+                            sf.fillerDepth, seabedY - surfaceDepth);
+                    }
+                    int fillerTop = seabedY - surfaceDepth;
+                    int fillerBottom = fillerTop - fillerDepth + 1;
+
                     for (int y = 1; y <= seabedY; y++) {
                         int idx = getIndex(localX, y, localZ);
-                        putRock(blocks, meta, idx,
-                            worldX, y, worldZ, worldSeedInt);
+                        BlockMetaPair pair = null;
+                        if (y > fillerTop) {
+                            pair = seafloorPair(surfaceMat);
+                        } else if (y >= fillerBottom) {
+                            pair = seafloorPair(fillerMat);
+                        }
+                        if (pair != null) {
+                            putBlock(blocks, meta, localX, y, localZ, pair);
+                        } else {
+                            putRock(blocks, meta, idx,
+                                worldX, y, worldZ, worldSeedInt);
+                        }
                     }
 
                     for (int y = seabedY + 1; y <= seaLevel; y++) {
@@ -387,6 +419,28 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             b = Blocks.stone;
         }
         return new BlockMetaPair(b, (byte) 0);
+    }
+
+    private static final BlockMetaPair SEAFLOOR_SAND =
+        new BlockMetaPair(Blocks.sand, (byte) 0);
+    private static final BlockMetaPair SEAFLOOR_GRAVEL =
+        new BlockMetaPair(Blocks.gravel, (byte) 0);
+    private static final BlockMetaPair SEAFLOOR_CLAY =
+        new BlockMetaPair(Blocks.clay, (byte) 0);
+
+    /** 海床材质 -> 方块；ROCK 返回 null（保持深层岩石变体）。 */
+    private static BlockMetaPair seafloorPair(
+        TalosSeafloorShaper.SeafloorMaterial m) {
+        switch (m) {
+            case SAND:
+                return SEAFLOOR_SAND;
+            case GRAVEL:
+                return SEAFLOOR_GRAVEL;
+            case CLAY:
+                return SEAFLOOR_CLAY;
+            default:
+                return null;
+        }
     }
 
     @Override

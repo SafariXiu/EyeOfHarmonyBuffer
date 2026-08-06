@@ -1429,7 +1429,8 @@ public final class TalosBoundedFeatures {
                         continue; // 不在河道 / 太浅的列不落石
                     }
                     int dist = Math.max(Math.abs(dx - hw), Math.abs(dz - hd));
-                    int h = 2 + this.rand.nextInt(Math.max(1, 4 - dist));
+                    // 低矮乱石：中心 1~2 格、边缘 1 格，保证大部分水柱仍是水
+                    int h = (dist <= 1 && this.rand.nextBoolean()) ? 2 : 1;
                     int topLimit = surface - 1 - pb;
                     if (h > topLimit) {
                         h = topLimit;
