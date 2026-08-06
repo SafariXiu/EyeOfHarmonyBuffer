@@ -89,9 +89,6 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
         final int worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
         final BiomeGenBase biome = TalosMacroClimate.getBiome(centerX, centerZ, worldSeedInt);
-        final MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
-            centerX, centerZ, worldSeedInt);
-
         if (biome == TalosBiomes.TALOS_OCEAN ||
             biome == TalosBiomes.TALOS_SHELF) {
             return;
@@ -100,6 +97,9 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         if (!(biome instanceof TalosBiomeBase)) {
             return;
         }
+
+        final MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
+            centerX, centerZ, worldSeedInt);
 
         final Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
 
@@ -126,7 +126,7 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         );
     }
 
-    /** 资源植物按宏包撒点：每约 800 区块触发一簇，每簇只撒一种植物。 */
+    /** 资源植物按宏包撒点：每约 500 区块触发一簇，每簇只撒一种植物。 */
     private void scatterResourcePlants(World world, Random rand, Chunk chunk,
                                        MacroPackageId macro) {
         ResourceClusterDef[] defs = resourcePlantsFor(macro);

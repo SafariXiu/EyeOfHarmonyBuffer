@@ -1238,7 +1238,7 @@ public final class TalosBoundedFeatures {
 
     /**
      * 资源植物簇（砂叶 / 锦草 / 芽针等 BlockBush 类）：
-     * 每约 800 个区块触发一次，在 1~2 区块见方的区域内生成 10~20 株同种植物。
+     * 每约 500 个区块触发一次，在 1~2 区块见方的区域内生成 10~20 株同种植物。
      * 区域中心偏向当前区块内部；跨到相邻区块的列只在邻居可写时参与，
      * 避免“看起来放了一簇实际被截断一半”。高低差超过 5 或合法落点不足整簇放弃。
      */
@@ -1606,41 +1606,4 @@ public final class TalosBoundedFeatures {
         }
     }
 
-    /** 砾石斑：在表面铺一片砾石（半径可配）；边缘被裁掉一部分（风味）。 */
-    public static final class Gravel extends Base {
-        private final int radius;
-
-        public Gravel(int radius) {
-            this.radius = radius;
-        }
-
-        @Override
-        protected boolean generateAt(int lx, int lz) {
-            boolean any = false;
-            for (int dz = -this.radius; dz <= this.radius; dz++) {
-                for (int dx = -this.radius; dx <= this.radius; dx++) {
-                    if (dx * dx + dz * dz > this.radius * this.radius) {
-                        continue;
-                    }
-                    int px = lx + dx;
-                    int pz = lz + dz;
-                    int py = height(px, pz);
-                    if (py <= 0) {
-                        continue;
-                    }
-                    if (isWater(px, py, pz)) {
-                        continue;
-                    }
-                    int wx2 = this.chunkX * 16 + px;
-                    int wz2 = this.chunkZ * 16 + pz;
-                    if (!isGroundSurface(wx2, py, wz2)) {
-                        continue;
-                    }
-                    setBlock(px, py, pz, Blocks.gravel, 0);
-                    any = true;
-                }
-            }
-            return any;
-        }
-    }
 }

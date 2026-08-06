@@ -56,6 +56,25 @@ public final class TerrainEngine {
         TalosLandMask.Sample landSample,
         double biomeBias, double biomeScale
     ) {
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            biomeBias, biomeScale,
+            TalosMacroClimate.getTectonicStyleSample(
+                worldX, worldZ, worldSeedInt).smoothedDivergence
+        );
+    }
+
+    /**
+     * 群系级高度调制 + 已缓存的构造风格 DIVERGENT 强度：
+     * 由 TalosChunkContext / TalosTerrainHeights 传入，基础岩面淡出
+     * 与裂谷塑形共用同一份采样，避免重复查询。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample,
+        double biomeBias, double biomeScale,
+        double smoothedDivergence
+    ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
         double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
@@ -158,9 +177,8 @@ public final class TerrainEngine {
             if (cliffAmp > 0.0) {
                 // 裂谷区已有自己的岩面噪声，基础岩面噪声在分离带内淡出，
                 // 避免两套独立起伏叠在一起变成混乱台阶。
-                double riftFade = 1.0 - smoothstep(0.0, 0.08,
-                    TalosMacroClimate.getTectonicStyleSample(
-                        worldX, worldZ, worldSeedInt).smoothedDivergence);
+                double riftFade = 1.0
+                    - smoothstep(0.0, 0.08, smoothedDivergence);
                 if (riftFade > 0.0) {
                     double cliffScale =
                         lerp(profile1.cliffScale, profile2.cliffScale, t);

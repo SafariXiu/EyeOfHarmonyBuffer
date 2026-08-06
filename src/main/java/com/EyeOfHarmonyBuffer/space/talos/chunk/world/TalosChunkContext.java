@@ -57,6 +57,9 @@ public final class TalosChunkContext {
     /** 每列经过 R=2 盒式模糊的河岸强度 bankIntensity（宏群系边界平滑用）。 */
     public final double[] bankIntensity;
 
+    /** 每列构造风格平滑 DIVERGENT 强度（基础岩面淡出与裂谷塑形共用）。 */
+    public final double[] smoothedDivergence;
+
     /** 每列连续高程 01（DLA 全权接管；不带蒙版）。 */
     public final double[] mountainElevation01;
 
@@ -84,6 +87,7 @@ public final class TalosChunkContext {
         this.heightBias = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.heightScale = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.bankIntensity = new double[CHUNK_SIZE * CHUNK_SIZE];
+        this.smoothedDivergence = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.mountainElevation01 = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.mountainMask01 = new double[CHUNK_SIZE * CHUNK_SIZE];
         this.mountainKind = new int[CHUNK_SIZE * CHUNK_SIZE];
@@ -134,6 +138,7 @@ public final class TalosChunkContext {
             land[colIndex],
             baseHeight[colIndex],
             bankIntensity[colIndex],
+            smoothedDivergence[colIndex],
             hydro[colIndex],
             macroPkg[colIndex],
             mountainElevation01[colIndex],
@@ -176,10 +181,14 @@ public final class TalosChunkContext {
                 int idx = localX * CHUNK_SIZE + localZ;
                 int worldX = chunkX * CHUNK_SIZE + localX;
 
+                smoothedDivergence[idx] = TalosMacroClimate
+                    .getTectonicStyleSample(worldX, worldZ, worldSeedInt)
+                    .smoothedDivergence;
                 baseHeight[idx] = TalosBaseTerrain.sampleBaseHeight(
                     worldX, worldZ, worldSeedInt, seaLevel,
                     land[idx],
-                    heightBias[idx], heightScale[idx]
+                    heightBias[idx], heightScale[idx],
+                    smoothedDivergence[idx]
                 );
 
                 TalosMountainSystem.MountainSample mountain =

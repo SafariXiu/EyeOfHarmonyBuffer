@@ -57,6 +57,8 @@ public final class TalosTerrainHeights {
         public final TalosLandMask.Sample landSample;
         public final double baseHeightD;
         public final double bankIntensity;
+        /** 每列缓存的构造风格平滑 DIVERGENT 强度（基础岩面淡出与裂谷塑形共用）。 */
+        public final double smoothedDivergence;
         /** 水文采样；sampleColumn 要求非 null（samplePreRiverHeight 可传 null）。 */
         public final TalosRiverSystem.HydroSample hydro;
         public final MacroPackageId macroId;
@@ -73,6 +75,7 @@ public final class TalosTerrainHeights {
                                    TalosLandMask.Sample landSample,
                                    double baseHeightD,
                                    double bankIntensity,
+                                   double smoothedDivergence,
                                    TalosRiverSystem.HydroSample hydro,
                                    MacroPackageId macroId,
                                    double mountainElevation01,
@@ -87,6 +90,7 @@ public final class TalosTerrainHeights {
             this.landSample = landSample;
             this.baseHeightD = baseHeightD;
             this.bankIntensity = bankIntensity;
+            this.smoothedDivergence = smoothedDivergence;
             this.hydro = hydro;
             this.macroId = macroId;
             this.mountainElevation01 = mountainElevation01;
@@ -149,8 +153,12 @@ public final class TalosTerrainHeights {
             TalosMacroClimate.getHeightModulationAt(
                 worldX, worldZ, worldSeedInt, isLand
             );
+        double smoothedDivergence = TalosMacroClimate
+            .getTectonicStyleSample(worldX, worldZ, worldSeedInt)
+            .smoothedDivergence;
         double base = TalosBaseTerrain.sampleBaseHeight(
-            worldX, worldZ, worldSeedInt, seaLevel, land, mod.bias, mod.scale
+            worldX, worldZ, worldSeedInt, seaLevel, land,
+            mod.bias, mod.scale, smoothedDivergence
         );
         double bank = TalosRiverTerrainModifier.smoothedBankIntensityAt(
             worldX, worldZ, worldSeedInt
@@ -162,7 +170,7 @@ public final class TalosTerrainHeights {
 
         return sampleColumn(new TerrainColumnInputs(
             worldX, worldZ, worldSeedInt, seaLevel, worldHeight,
-            isLand, land, base, bank, hydro, macro,
+            isLand, land, base, bank, smoothedDivergence, hydro, macro,
             mountain.elevation01, mountain.mask01, mountain.kind
         ));
     }
@@ -192,15 +200,19 @@ public final class TalosTerrainHeights {
             TalosMacroClimate.getHeightModulationAt(
                 worldX, worldZ, worldSeedInt, isLand
             );
+        double smoothedDivergence = TalosMacroClimate
+            .getTectonicStyleSample(worldX, worldZ, worldSeedInt)
+            .smoothedDivergence;
         double base = TalosBaseTerrain.sampleBaseHeight(
-            worldX, worldZ, worldSeedInt, seaLevel, land, mod.bias, mod.scale
+            worldX, worldZ, worldSeedInt, seaLevel, land,
+            mod.bias, mod.scale, smoothedDivergence
         );
         TalosMountainSystem.MountainSample mountain =
             TalosMountainSystem.sampleMountain(worldX, worldZ, worldSeedInt);
 
         return preRiverShaped(new TerrainColumnInputs(
             worldX, worldZ, worldSeedInt, seaLevel, worldHeight,
-            isLand, land, base, 0.5, null, macro,
+            isLand, land, base, 0.5, smoothedDivergence, null, macro,
             mountain.elevation01, mountain.mask01, mountain.kind
         ));
     }
@@ -250,11 +262,7 @@ public final class TalosTerrainHeights {
     private static double preRiverShaped(TerrainColumnInputs in) {
         double coast = coastShaped(in);
 
-        TalosMacroClimate.TectonicStyleSample tectonic =
-            TalosMacroClimate.getTectonicStyleSample(
-                in.worldX, in.worldZ, in.worldSeedInt
-            );
-        double riftStrength = tectonic.smoothedDivergence;
+        double riftStrength = in.smoothedDivergence;
         PlateBoundaryState riftState = (riftStrength > 0.0)
             ? PlateBoundaryState.DIVERGENT
             : (in.landSample != null
