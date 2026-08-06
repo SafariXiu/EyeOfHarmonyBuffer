@@ -1,15 +1,19 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.ResourceClusterDef;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeature;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeatures;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
+import net.minecraft.block.Block;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -85,6 +89,8 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
         final int worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
         final BiomeGenBase biome = TalosMacroClimate.getBiome(centerX, centerZ, worldSeedInt);
+        final MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
+            centerX, centerZ, worldSeedInt);
 
         if (biome == TalosBiomes.TALOS_OCEAN ||
             biome == TalosBiomes.TALOS_SHELF) {
@@ -112,9 +118,58 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         scatter(world, rand, chunk, this.riverRock, RIVERBED_ROCK_PER_CHUNK);
         scatter(world, rand, chunk, this.riverLog, RIVERBED_LOG_PER_CHUNK);
 
+        // 资源植物簇：先于群系地表装饰放置，避免被后续装饰挤占
+        scatterResourcePlants(world, rand, chunk, macro);
+
         decorateBiomeFeatures(
             world, rand, chunk, (TalosBiomeBase) biome
         );
+    }
+
+    /** 资源植物按宏包撒点：每约 800 区块触发一簇，每簇只撒一种植物。 */
+    private void scatterResourcePlants(World world, Random rand, Chunk chunk,
+                                       MacroPackageId macro) {
+        ResourceClusterDef[] defs = resourcePlantsFor(macro);
+        if (defs == null) {
+            return;
+        }
+        ResourceClusterDef def = defs[rand.nextInt(defs.length)];
+        Block block = BlockIntermediateResources.getBlock(def);
+        if (block == null) {
+            return;
+        }
+        new TalosBoundedFeatures.ResourcePlantCluster(
+            block, def.validGround).generate(world, rand, chunk, 8, 8);
+    }
+
+    /** 宏包 -> 资源植物列表（用户拍板的最终分组）。 */
+    private static ResourceClusterDef[] resourcePlantsFor(MacroPackageId macro) {
+        switch (macro) {
+            case TROPICAL_HUMID:
+            case RIFT_TROPICAL:
+                return new ResourceClusterDef[] {
+                    ResourceClusterDef.JIN_CAO,
+                    ResourceClusterDef.YA_ZHEN
+                };
+            case TEMPERATE_LOWLAND:
+            case TEMPERATE_FORESTED:
+            case COOL_FORESTED:
+            case RIFT_TEMPERATE:
+                return new ResourceClusterDef[] {
+                    ResourceClusterDef.QIAO_HUA,
+                    ResourceClusterDef.GAN_SHI
+                };
+            case TEMPERATE_HIGHLAND:
+                return new ResourceClusterDef[] {
+                    ResourceClusterDef.SHA_YE
+                };
+            case TROPICAL_DRY:
+                return new ResourceClusterDef[] {
+                    ResourceClusterDef.TONG_HUA_GUAN_MU
+                };
+            default:
+                return null;
+        }
     }
 
     /** 酸雨湖避让河流：覆盖范围内的河流 mask 必须全部等于 0。 */

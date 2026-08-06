@@ -155,7 +155,8 @@ public class WorldGenPrecipitationAcidLake {
         double outer = 1.6D;
 
         int wallTopY = groundY + 1;
-        int wallBottomY = globalBottomY;
+        // 围栏比湖底最深处再往下兜 1 格，确保与湖底/原地形完全接合
+        int wallBottomY = globalBottomY - 1;
 
         if (wallBottomY < 1) wallBottomY = 1;
 
@@ -176,12 +177,8 @@ public class WorldGenPrecipitationAcidLake {
                 }
 
                 for (int y = wallBottomY; y <= wallTopY; y++) {
-                    Block b = world.getBlock(x, y, z);
-
-                    if (b == fluidBlock) {
-                        continue;
-                    }
-
+                    // 不再跳过酸液方块：湖边缘的酸液会被围栏整体封死，
+                    // 避免水面下方第二层从围栏缺口漏出来。
                     world.setBlock(x, y, z, Blocks.stone, 0, 2);
                 }
             }

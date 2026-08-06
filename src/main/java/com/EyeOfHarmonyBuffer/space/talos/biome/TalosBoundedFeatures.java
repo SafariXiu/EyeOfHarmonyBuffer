@@ -1040,6 +1040,9 @@ public final class TalosBoundedFeatures {
                     if (isWaterWorld(wx, sy, wz)) {
                         continue; // 别把河面/湖面挖掉
                     }
+                    if (!isGroundSurface(wx, sy, wz)) {
+                        continue; // 树干/高草等假地表不挖，避免水洼吃树
+                    }
                     for (int yy = bed + 1; yy <= sy; yy++) {
                         setBlock(wx - this.chunkX * 16, yy, wz - this.chunkZ * 16,
                             Blocks.air, 0);
@@ -1080,6 +1083,9 @@ public final class TalosBoundedFeatures {
                     }
                     if (isWaterWorld(wx, sy, wz)) {
                         continue;
+                    }
+                    if (!isGroundSurface(wx, sy, wz)) {
+                        continue; // 沙岸只铺在真实地表上，不上树
                     }
                     setBlock(wx - this.chunkX * 16, sy, wz - this.chunkZ * 16,
                         Blocks.sand, 0);
@@ -1227,6 +1233,110 @@ public final class TalosBoundedFeatures {
                 }
             }
             return any;
+        }
+    }
+
+    /**
+     * 资源植物簇（砂叶 / 锦草 / 芽针等 BlockBush 类）：
+     * 每约 800 个区块触发一次，在 1~2 区块见方的区域内生成 10~20 株同种植物。
+     * 区域中心偏向当前区块内部；跨到相邻区块的列只在邻居可写时参与，
+     * 避免“看起来放了一簇实际被截断一半”。高低差超过 5 或合法落点不足整簇放弃。
+     */
+    public static final class ResourcePlantCluster extends Base {
+        private static final double CLUSTER_CHANCE = 1.0 / 500.0;
+        private static final int MIN_PLANTS = 10;
+        private static final int MAX_PLANTS = 20;
+        private static final int MAX_HEIGHT_DIFF = 5;
+
+        private final Block block;
+        private final java.util.Set<Block> validGround;
+
+        public ResourcePlantCluster(Block block,
+                                    java.util.Set<Block> validGround) {
+            this.block = block;
+            this.validGround = validGround;
+        }
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            if (this.rand.nextDouble() >= CLUSTER_CHANCE) {
+                return false;
+            }
+
+            // 区域半宽：8（1 区块）或 16（2 区块）
+            int half = this.rand.nextBoolean() ? 8 : 16;
+            // 中心偏向当前区块内部，减少跨区块截断
+            int cx = 7 + this.rand.nextInt(2);
+            int cz = 7 + this.rand.nextInt(2);
+            int worldSeedInt = TalosRiverSystem.getWorldSeedInt(this.world);
+
+            java.util.ArrayList<int[]> candidates =
+                new java.util.ArrayList<int[]>();
+            int hMin = Integer.MAX_VALUE;
+            int hMax = Integer.MIN_VALUE;
+            for (int dz = -half; dz <= half; dz++) {
+                for (int dx = -half; dx <= half; dx++) {
+                    int localX = cx + dx;
+                    int localZ = cz + dz;
+                    if (!canWrite(localX, localZ)) {
+                        continue; // 邻区块已填充：不读不写，避免截断/方块更新风暴
+                    }
+                    int wx = this.chunkX * 16 + localX;
+                    int wz = this.chunkZ * 16 + localZ;
+                    int sy = surfaceYWorld(wx, wz);
+                    if (sy <= 0 || sy >= 255) {
+                        continue;
+                    }
+                    if (isWaterWorld(wx, sy, wz)
+                        || !isGroundSurface(wx, sy, wz)
+                        || !validGround.contains(
+                            this.world.getBlock(wx, sy, wz))) {
+                        continue;
+                    }
+                    if (this.world.getBlock(wx, sy + 1, wz) != Blocks.air) {
+                        continue;
+                    }
+                    candidates.add(new int[]{localX, sy + 1, localZ});
+                    if (sy < hMin) {
+                        hMin = sy;
+                    }
+                    if (sy > hMax) {
+                        hMax = sy;
+                    }
+                }
+            }
+
+            if (candidates.size() < MIN_PLANTS
+                || hMax - hMin > MAX_HEIGHT_DIFF) {
+                return false;
+            }
+
+            // 洗牌，只取目标数量
+            for (int i = candidates.size() - 1; i > 0; i--) {
+                int j = this.rand.nextInt(i + 1);
+                int[] tmp = candidates.get(i);
+                candidates.set(i, candidates.get(j));
+                candidates.set(j, tmp);
+            }
+
+            int target = MIN_PLANTS
+                + this.rand.nextInt(MAX_PLANTS - MIN_PLANTS + 1);
+            int placed = 0;
+            for (int[] c : candidates) {
+                if (placed >= target) {
+                    break;
+                }
+                int wx = this.chunkX * 16 + c[0];
+                int wz = this.chunkZ * 16 + c[2];
+                // 河道 / 洪泛平原带内不生成
+                if (TalosRiverSystem.getRiverMask(
+                        wx, wz, worldSeedInt) > 0.7) {
+                    continue;
+                }
+                setBlock(c[0], c[1], c[2], this.block, 0);
+                placed++;
+            }
+            return placed > 0;
         }
     }
 
@@ -1519,6 +1629,11 @@ public final class TalosBoundedFeatures {
                         continue;
                     }
                     if (isWater(px, py, pz)) {
+                        continue;
+                    }
+                    int wx2 = this.chunkX * 16 + px;
+                    int wz2 = this.chunkZ * 16 + pz;
+                    if (!isGroundSurface(wx2, py, wz2)) {
                         continue;
                     }
                     setBlock(px, py, pz, Blocks.gravel, 0);
