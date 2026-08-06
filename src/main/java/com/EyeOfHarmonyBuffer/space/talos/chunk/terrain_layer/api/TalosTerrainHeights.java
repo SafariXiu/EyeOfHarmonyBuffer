@@ -11,6 +11,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChanne
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath;
 
 /**
  * 最终高度场（地形链统一出口）。
@@ -262,16 +263,23 @@ public final class TalosTerrainHeights {
             ? riftStrength
             : (in.landSample != null
                 ? in.landSample.plateBoundaryWeight : 0.0);
+        // 海岸衰减：分离带与山脉抬升在靠海一侧逐渐收束，避免板块边界把海岸线抬成“墙”。
+        // coastWeight 1=贴海、0.5≈128 格内、0=内陆；平滑带与海岸塑形同源。
+        double coastWeight = (in.landSample != null)
+            ? in.landSample.coastWeight : 0.0;
+        double coastFade = 1.0 - TerrainMath.smoothstep(0.5, 1.0, coastWeight);
+        riftWeight *= coastFade;
         double rift = TalosPlateBoundaryShaper.applyRiftShaping(
             coast, in.seaLevel, in.isLand, riftState, riftWeight,
             in.worldX, in.worldZ, in.worldSeedInt
         );
 
-        return TalosMountainSystem.applyMountainUplift(
+        double uplifted = TalosMountainSystem.applyMountainUplift(
             rift, in.seaLevel,
             in.mountainElevation01, in.mountainMask01, in.mountainKind,
             in.worldHeight
         );
+        return TerrainMath.lerp(rift, uplifted, coastFade);
     }
 
     private static double coastShaped(TerrainColumnInputs in) {
