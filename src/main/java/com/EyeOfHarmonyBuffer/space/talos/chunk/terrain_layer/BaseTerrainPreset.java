@@ -37,13 +37,29 @@ public final class BaseTerrainPreset {
     /** 海床最大下切深度控制（只对 OCEANIC 有意义，其它包可为 0）。 */
     public final double oceanDepthMax;
 
+    /** 岩面噪声主幅度（blocks）：0 = 不叠加。 */
+    public final double cliffAmp;
+
+    /** 岩面噪声主波长（blocks）：越大起伏越舒缓。 */
+    public final double cliffScale;
+
+    /** 台阶化强度 [0,1]：0 = 连续起伏，1 = 明显台地/岩架。 */
+    public final double terrace;
+
+    /** 岩面细节噪声幅度（blocks）。 */
+    public final double detailAmp;
+
     public BaseTerrainPreset(double minHeight,
                              double maxHeight,
                              double lowFreq,  double lowAmp,  int lowOctaves,
                              double midFreq,  double midAmp,  int midOctaves,
                              double highFreq, double highAmp, int highOctaves,
                              double plateauStrength,
-                             double oceanDepthMax) {
+                             double oceanDepthMax,
+                             double cliffAmp,
+                             double cliffScale,
+                             double terrace,
+                             double detailAmp) {
 
         this.minHeight       = minHeight;
         this.maxHeight       = maxHeight;
@@ -58,5 +74,9 @@ public final class BaseTerrainPreset {
         this.highOctaves     = highOctaves;
         this.plateauStrength = plateauStrength;
         this.oceanDepthMax   = oceanDepthMax;
+        this.cliffAmp        = cliffAmp;
+        this.cliffScale      = cliffScale;
+        this.terrace         = terrace;
+        this.detailAmp       = detailAmp;
     }
 }

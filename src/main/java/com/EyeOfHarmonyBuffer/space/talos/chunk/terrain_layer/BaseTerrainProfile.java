@@ -25,6 +25,11 @@ public final class BaseTerrainProfile {
 
     public double oceanDepthMax;
 
+    public double cliffAmp;
+    public double cliffScale;
+    public double terrace;
+    public double detailAmp;
+
     public static BaseTerrainProfile fromPreset(BaseTerrainPreset p) {
         BaseTerrainProfile r = new BaseTerrainProfile();
         r.minHeight       = p.minHeight;
@@ -40,6 +45,10 @@ public final class BaseTerrainProfile {
         r.highOctaves     = p.highOctaves;
         r.plateauStrength = p.plateauStrength;
         r.oceanDepthMax   = p.oceanDepthMax;
+        r.cliffAmp        = p.cliffAmp;
+        r.cliffScale      = p.cliffScale;
+        r.terrace         = p.terrace;
+        r.detailAmp       = p.detailAmp;
         return r;
     }
 }
