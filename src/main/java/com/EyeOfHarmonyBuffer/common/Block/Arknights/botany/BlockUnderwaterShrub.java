@@ -1,11 +1,9 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights.botany;
 
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
-import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBush;
 import net.minecraft.block.material.Material;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.util.AxisAlignedBB;
@@ -21,29 +19,12 @@ import java.util.Random;
  */
 public final class BlockUnderwaterShrub extends BlockBush {
 
-    private static BlockUnderwaterShrub instance;
-
-    private BlockUnderwaterShrub() {
+    public BlockUnderwaterShrub() {
         super(Material.water);
-        setBlockName("UnderwaterShrub");
-        setBlockTextureName("eyeofharmonybuffer:Arknights/TongHuaGuanMu");
-        setCreativeTab(CreativeTabs.tabDecorations);
         setHardness(0.2F);
         setStepSound(soundTypeGrass);
         setBlockBounds(0.2F, 0.0F, 0.2F, 0.8F, 0.7F, 0.8F);
         setTickRandomly(true);
-    }
-
-    public static BlockUnderwaterShrub register(String modid) {
-        if (instance == null) {
-            instance = new BlockUnderwaterShrub();
-            GameRegistry.registerBlock(instance, "UnderwaterShrub");
-        }
-        return instance;
-    }
-
-    public static Block getRegistered() {
-        return instance;
     }
 
     @Override

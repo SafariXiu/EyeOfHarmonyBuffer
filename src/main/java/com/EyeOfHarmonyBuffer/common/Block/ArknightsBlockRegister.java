@@ -22,6 +22,7 @@ public class ArknightsBlockRegister {
     public static Block ChiTongMainBlock;
     public static Block DuoQiMainBlock;
     public static Block XiRangQiMainBlock;
+    public static Block CleanGlass;
 
     public static BlockCasingsEOH EOHBCasing1;
 
@@ -103,6 +104,12 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(XiRangQiMainBlock, "xi_rang_qi_main_block");
         GTCMItemList.XiRangQiMainBlock.set(new ItemStack(XiRangQiMainBlock, 1, 0));
+
+        CleanGlass = new BlockCleanGlass()
+            .setBlockName("CleanGlass")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(CleanGlass, "CleanGlass");
+        GTCMItemList.CleanGlass.set(new ItemStack(CleanGlass, 1, 0));
     }
 
     public static void registryCasingBlocks() {

@@ -1,12 +1,10 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights;
 
-import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.BlockBreakable;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
@@ -27,30 +25,14 @@ import net.minecraft.world.IBlockAccess;
  */
 public final class BlockCleanGlass extends BlockBreakable {
 
-    private static BlockCleanGlass instance;
-
     @SideOnly(Side.CLIENT)
     private IIcon[] connectionIcons;
 
-    private BlockCleanGlass() {
+    public BlockCleanGlass() {
         super("eyeofharmonybuffer:Arknights/CleanGlass", Material.glass, false);
-        setBlockName("CleanGlass");
-        setCreativeTab(CreativeTabs.tabBlock);
         setHardness(0.3F);
         setStepSound(soundTypeGlass);
         setLightOpacity(0);
-    }
-
-    public static BlockCleanGlass register(String modid) {
-        if (instance == null) {
-            instance = new BlockCleanGlass();
-            GameRegistry.registerBlock(instance, "CleanGlass");
-        }
-        return instance;
-    }
-
-    public static BlockCleanGlass getRegistered() {
-        return instance;
     }
 
     @Override
