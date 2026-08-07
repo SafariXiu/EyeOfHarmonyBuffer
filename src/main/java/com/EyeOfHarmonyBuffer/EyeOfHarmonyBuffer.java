@@ -10,6 +10,7 @@ import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockUnderwaterShrub;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
@@ -111,6 +112,7 @@ public class EyeOfHarmonyBuffer {
 
         ItemIntermediateProducts.initAndRegister(MODID);
         BlockIntermediateResources.registerAll(MODID);
+        BlockUnderwaterShrub.register(MODID);
 
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
 

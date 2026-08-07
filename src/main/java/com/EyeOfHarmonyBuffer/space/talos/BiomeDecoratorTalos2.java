@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.ResourceClusterDef;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockUnderwaterShrub;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
@@ -14,6 +15,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClim
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -124,6 +126,36 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         decorateBiomeFeatures(
             world, rand, chunk, (TalosBiomeBase) biome
         );
+    }
+
+    /**
+     * 【已封存】实验性水下植物：水柱至少 2 格深时，在河/海底上方一格放一株。
+     * 当前不参与世界生成，需要时恢复调用即可。
+     */
+    private void scatterUnderwaterShrub(World world, Random rand, Chunk chunk) {
+        Block block = BlockUnderwaterShrub.getRegistered();
+        if (block == null) {
+            return;
+        }
+        for (int i = 0; i < 8; i++) {
+            int wx = chunk.xPosition * 16 + rand.nextInt(16);
+            int wz = chunk.zPosition * 16 + rand.nextInt(16);
+            int top = 255;
+            while (top > 1 && world.getBlock(wx, top, wz) != Blocks.water) {
+                top--;
+            }
+            if (top <= 1) {
+                continue;
+            }
+            int bed = top;
+            while (bed > 1 && world.getBlock(wx, bed, wz) == Blocks.water) {
+                bed--;
+            }
+            if (top - bed < 2) {
+                continue; // 至少 2 格深
+            }
+            world.setBlock(wx, bed + 1, wz, block, 0, 2);
+        }
     }
 
     /** 资源植物按宏包撒点：每约 500 区块触发一簇，每簇只撒一种植物。 */
