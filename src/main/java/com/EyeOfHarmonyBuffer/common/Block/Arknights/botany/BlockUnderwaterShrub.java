@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights.botany;
 
-import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBush;
 import net.minecraft.block.material.Material;
@@ -75,7 +75,7 @@ public final class BlockUnderwaterShrub extends BlockBush {
 
     @Override
     public Item getItemDropped(int meta, Random rand, int fortune) {
-        Item seed = ItemIntermediateProducts.TongHuaShuZhong;
+        Item seed = GTCMItemList.TongHuaShuZhong.getItem();
         return seed != null ? seed : Item.getItemFromBlock(this);
     }
 }

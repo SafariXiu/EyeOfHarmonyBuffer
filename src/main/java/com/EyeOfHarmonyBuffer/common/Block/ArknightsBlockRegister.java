@@ -16,7 +16,7 @@ public class ArknightsBlockRegister {
     public static Block OverdomainErosion;
     public static Block LanTieBlock;
     public static Block LanTieMainBlock;
-    public static Block ZiJinghBlock;
+    public static Block ZiJingBlock;
     public static Block ZiJingMainBlock;
     public static Block ChiTongBlock;
     public static Block ChiTongMainBlock;
@@ -63,12 +63,12 @@ public class ArknightsBlockRegister {
         GameRegistry.registerBlock(LanTieMainBlock, "lan_tie_main_block");
         GTCMItemList.LanTieMainBlock.set(new ItemStack(LanTieMainBlock, 1, 0));
 
-        ZiJinghBlock = new BlockZiJing()
+        ZiJingBlock = new BlockZiJing()
             .setBlockName("zi_jing_block")
             .setBlockTextureName("eyeofharmonybuffer:Arknights/zijing_block")
             .setCreativeTab(ArknightsProject_Block);
-        GameRegistry.registerBlock(ZiJinghBlock, "zi_jing_block");
-        GTCMItemList.ZiJingBlock.set(new ItemStack(ZiJinghBlock, 1, 0));
+        GameRegistry.registerBlock(ZiJingBlock, "zi_jing_block");
+        GTCMItemList.ZiJingBlock.set(new ItemStack(ZiJingBlock, 1, 0));
 
         ZiJingMainBlock = new BlockZiJingMain()
             .setBlockName("zi_jing_main_block")

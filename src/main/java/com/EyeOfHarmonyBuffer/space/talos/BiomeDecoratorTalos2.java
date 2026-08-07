@@ -1,8 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
-import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.ResourceClusterDef;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
@@ -135,7 +135,7 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             return;
         }
         ResourceClusterDef def = defs[rand.nextInt(defs.length)];
-        Block block = BlockIntermediateResources.getBlock(def);
+        Block block = GTCMItemList.valueOf(def.blockName).getBlock();
         if (block == null) {
             return;
         }

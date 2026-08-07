@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.client;
 
 import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.creativetab.CreativeTabs;
@@ -8,8 +9,6 @@ import net.minecraft.item.Item;
 import com.EyeOfHarmonyBuffer.common.item.items.BasicItems;
 
 import java.util.List;
-
-import static com.EyeOfHarmonyBuffer.common.item.ItemLoader.YuanShi;
 
 public class EOHBCreativeTabs {
 
@@ -84,7 +83,7 @@ public class EOHBCreativeTabs {
         @Override
         @SideOnly(Side.CLIENT)
         public Item getTabIconItem() {
-            return YuanShi;
+            return GTCMItemList.YuanShi.getItem();
         }
     };
 }

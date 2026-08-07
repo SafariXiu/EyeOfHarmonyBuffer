@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject;
 
-import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -32,28 +32,28 @@ public class WorldGenYuanShiVeinTalos {
         switch (type) {
             case 0:
             default:
-                oreBlock = ArknightsBlockRegister.YuanShiBlock;
-                coreBlock = ArknightsBlockRegister.YuanShiMainBlock;
+                oreBlock = GTCMItemList.YuanShiBlock.getBlock();
+                coreBlock = GTCMItemList.YuanShiMainBlock.getBlock();
                 break;
             case 1:
-                oreBlock = ArknightsBlockRegister.LanTieBlock;
-                coreBlock = ArknightsBlockRegister.LanTieMainBlock;
+                oreBlock = GTCMItemList.LanTieBlock.getBlock();
+                coreBlock = GTCMItemList.LanTieMainBlock.getBlock();
                 break;
             case 2:
-                oreBlock = ArknightsBlockRegister.ZiJinghBlock;
-                coreBlock = ArknightsBlockRegister.ZiJingMainBlock;
+                oreBlock = GTCMItemList.ZiJingBlock.getBlock();
+                coreBlock = GTCMItemList.ZiJingMainBlock.getBlock();
                 break;
             case 3:
-                oreBlock = ArknightsBlockRegister.ChiTongBlock;
-                coreBlock = ArknightsBlockRegister.ChiTongMainBlock;
+                oreBlock = GTCMItemList.ChiTongBlock.getBlock();
+                coreBlock = GTCMItemList.ChiTongMainBlock.getBlock();
                 break;
             case 4:
                 oreBlock = Blocks.stone;
-                coreBlock = ArknightsBlockRegister.XiRangQiMainBlock;
+                coreBlock = GTCMItemList.XiRangQiMainBlock.getBlock();
                 break;
             case 5:
                 oreBlock = Blocks.stone;
-                coreBlock = ArknightsBlockRegister.DuoQiMainBlock;
+                coreBlock = GTCMItemList.DuoQiMainBlock.getBlock();
                 break;
         }
 

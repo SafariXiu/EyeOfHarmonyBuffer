@@ -1,11 +1,10 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights;
 
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.world.IBlockAccess;
-
-import static com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts.ChiTongKuang;
 
 public class BlockChiTong extends Block {
 
@@ -48,7 +47,7 @@ public class BlockChiTong extends Block {
 
     @Override
     public Item getItemDropped(int meta, java.util.Random random, int fortune) {
-        return ChiTongKuang;
+        return GTCMItemList.ChiTongKuang.getItem();
     }
 
     @Override

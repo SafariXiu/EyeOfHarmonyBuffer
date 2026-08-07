@@ -14,7 +14,7 @@ import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCor
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
-import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemBottleBase;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemUnactivatedYuanShi;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemYuanShi;
@@ -32,8 +32,6 @@ import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.common.MinecraftForge;
 
-import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.OverdomainErosion;
-
 public class ClientProxy extends CommonProxy {
 
     @Override
@@ -45,9 +43,9 @@ public class ClientProxy extends CommonProxy {
         MinecraftForgeClient.registerItemRenderer(ItemYuanShi.instance,new ItemYuanShiRenderer());
         MinecraftForgeClient.registerItemRenderer(ItemUnactivatedYuanShi.instance,new ItemUnactivatedYuanShiRenderer());
 
-        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle(OverdomainErosion));
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle(GTCMItemList.OverdomainErosion.getBlock()));
 
-        RenderingRegistry.registerEntityRenderingHandler(EntityIndustrialExplosive.class, new RenderSnowball(ItemLoader.GongYeBaoZhaWu));
+        RenderingRegistry.registerEntityRenderingHandler(EntityIndustrialExplosive.class, new RenderSnowball(GTCMItemList.GongYeBaoZhaWu.getItem()));
     }
 
     @Override
@@ -62,13 +60,13 @@ public class ClientProxy extends CommonProxy {
 
         ClientCommandHandler.instance.registerCommand(new CommandOpenConfig());
 
-        hideDisallowedBottleFluids(ItemLoader.ChiTongFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.GangZhiFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.LanTieFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.ZiJingZhiFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.GaoJingFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.HeTongFluidBottle);
-        hideDisallowedBottleFluids(ItemLoader.ChiTongGasTank);
+        hideDisallowedBottleFluids(GTCMItemList.ChiTongFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.GangZhiFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.LanTieFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.ZiJingZhiFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.GaoJingFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.HeTongFluidBottle.getItem());
+        hideDisallowedBottleFluids(GTCMItemList.ChiTongGasTank.getItem());
 
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new OrundumConnectorHudHandler());
 

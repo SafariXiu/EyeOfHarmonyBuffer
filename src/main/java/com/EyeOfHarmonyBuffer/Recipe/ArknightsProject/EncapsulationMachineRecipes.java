@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
-import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import net.minecraft.item.ItemStack;
@@ -90,7 +89,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TieZhiLingJian.get(10),
-                new ItemStack(ItemLoader.LanTieFluidBottle, 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .itemOutputs(
                 GTCMItemList.YaZhenZhenJi.get(1)
@@ -102,7 +101,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ChiTongLingJian.get(10),
-                new ItemStack(ItemLoader.ChiTongFluidBottle, 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ChiTongFluidBottle.getItem(), 5, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .itemOutputs(
                 GTCMItemList.YouZhiYaZhenZhenJi.get(1)
@@ -114,7 +113,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ChiTongLingJian.get(10),
-                new ItemStack(ItemLoader.LanTieFluidBottle, 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .itemOutputs(
                 GTCMItemList.JinCaoRuanYin.get(1)
@@ -126,7 +125,7 @@ public class EncapsulationMachineRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ChiTongLingJian.get(10),
-                new ItemStack(ItemLoader.ChiTongFluidBottle, 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ChiTongFluidBottle.getItem(), 5, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .itemOutputs(
                 GTCMItemList.YouZhiJinCaoRuanYin.get(1)
