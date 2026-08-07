@@ -16,6 +16,7 @@ import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosio
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
+import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.TalosOreVeinRegister;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
 import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
@@ -160,6 +161,8 @@ public class EyeOfHarmonyBuffer {
     public void postInit(FMLPostInitializationEvent event) {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
+
+        TalosOreVeinRegister.register();
 
         RecipeLoader.loadRecipes();
         RecipeLoader.registerRecipes();
