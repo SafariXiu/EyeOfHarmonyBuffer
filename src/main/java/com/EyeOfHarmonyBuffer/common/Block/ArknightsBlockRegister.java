@@ -16,12 +16,13 @@ public class ArknightsBlockRegister {
     public static Block OverdomainErosion;
     public static Block LanTieBlock;
     public static Block LanTieMainBlock;
-    public static Block ZiJinghBlock;
+    public static Block ZiJingBlock;
     public static Block ZiJingMainBlock;
     public static Block ChiTongBlock;
     public static Block ChiTongMainBlock;
     public static Block DuoQiMainBlock;
     public static Block XiRangQiMainBlock;
+    public static Block CleanGlass;
 
     public static BlockCasingsEOH EOHBCasing1;
 
@@ -62,12 +63,12 @@ public class ArknightsBlockRegister {
         GameRegistry.registerBlock(LanTieMainBlock, "lan_tie_main_block");
         GTCMItemList.LanTieMainBlock.set(new ItemStack(LanTieMainBlock, 1, 0));
 
-        ZiJinghBlock = new BlockZiJing()
+        ZiJingBlock = new BlockZiJing()
             .setBlockName("zi_jing_block")
             .setBlockTextureName("eyeofharmonybuffer:Arknights/zijing_block")
             .setCreativeTab(ArknightsProject_Block);
-        GameRegistry.registerBlock(ZiJinghBlock, "zi_jing_block");
-        GTCMItemList.ZiJingBlock.set(new ItemStack(ZiJinghBlock, 1, 0));
+        GameRegistry.registerBlock(ZiJingBlock, "zi_jing_block");
+        GTCMItemList.ZiJingBlock.set(new ItemStack(ZiJingBlock, 1, 0));
 
         ZiJingMainBlock = new BlockZiJingMain()
             .setBlockName("zi_jing_main_block")
@@ -103,6 +104,12 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(XiRangQiMainBlock, "xi_rang_qi_main_block");
         GTCMItemList.XiRangQiMainBlock.set(new ItemStack(XiRangQiMainBlock, 1, 0));
+
+        CleanGlass = new BlockCleanGlass()
+            .setBlockName("CleanGlass")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(CleanGlass, "CleanGlass");
+        GTCMItemList.CleanGlass.set(new ItemStack(CleanGlass, 1, 0));
     }
 
     public static void registryCasingBlocks() {

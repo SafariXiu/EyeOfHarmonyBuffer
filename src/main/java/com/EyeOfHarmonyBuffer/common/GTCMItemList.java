@@ -156,6 +156,7 @@ public enum GTCMItemList {
     ChiTongMainBlock,
     DuoQiMainBlock,
     XiRangQiMainBlock,
+    CleanGlass,
 
     //方舟-植物
     GanShi,

@@ -50,6 +50,23 @@ public final class TalosMacroClimate {
     private static final Int2ObjectOpenHashMap<TectonicStyleLayer> TECTONIC_LAYERS =
         new Int2ObjectOpenHashMap<>();
 
+    /** 群系覆盖钩子（组合根注册；气候层内部只调用接口，不依赖实现）。 */
+    private static volatile BiomeOverrideProvider biomeOverrideProvider;
+
+    /** 由组合根注册群系覆盖实现（如山地层）。 */
+    public static void setBiomeOverrideProvider(BiomeOverrideProvider provider) {
+        biomeOverrideProvider = provider;
+    }
+
+    /** 询问已注册的覆盖实现；没有注册或不需要覆盖时返回 null。 */
+    public static BiomeGenBase getBiomeOverride(int worldX, int worldZ,
+                                                int worldSeedInt) {
+        BiomeOverrideProvider provider = biomeOverrideProvider;
+        return provider != null
+            ? provider.overrideBiome(worldX, worldZ, worldSeedInt)
+            : null;
+    }
+
     private static MacroRegionLayer getLayer(int worldSeedInt) {
         MacroRegionLayer layer = LAYERS.get(worldSeedInt);
         if (layer == null) {
@@ -166,6 +183,30 @@ public final class TalosMacroClimate {
                                         boolean isLandKnown) {
         BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
         return layer.getSmoothedBiomeAt(worldX, worldZ, isLandKnown);
+    }
+
+    /** 群系级高度调制参数（与 getBiomeChunk 输出的 bias/scale 同一来源）。 */
+    public static final class HeightModulation {
+        public final double bias;
+        public final double scale;
+
+        public HeightModulation(double bias, double scale) {
+            this.bias = bias;
+            this.scale = scale;
+        }
+    }
+
+    /**
+     * 逐点取群系级高度调制参数；与 getBiomeChunk 的 biasOut/scaleOut 完全一致，
+     * 供「最终高度场」的稀疏查询复用（保证逐点与区块批量同口径）。
+     */
+    public static HeightModulation getHeightModulationAt(
+        int worldX, int worldZ, int worldSeedInt, boolean isLandKnown
+    ) {
+        BiomeRegionLayer layer = getBiomeLayer(worldSeedInt);
+        BiomeRegionLayer.SmoothedSample sample =
+            layer.getSmoothedSampleAt(worldX, worldZ, isLandKnown);
+        return new HeightModulation(sample.bias, sample.scale);
     }
 
     /**

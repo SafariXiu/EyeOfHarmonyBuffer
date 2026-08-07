@@ -32,6 +32,7 @@ public final class TalosRiverChannelShaper {
      */
     public static double applyRiverChannelShaping(
         int worldX, int worldZ,
+        int worldSeedInt,
         double heightD,
         int seaLevel,
         TalosRiverSystem.HydroSample hydro,
@@ -42,7 +43,8 @@ public final class TalosRiverChannelShaper {
         }
 
         double bedY = TalosRiverProfile.computeChannelBedY(
-            worldX, worldZ, heightD, seaLevel, hydro, macroId
+            worldX, worldZ, worldSeedInt,
+            heightD, seaLevel, hydro, macroId
         );
 
         if (bedY >= heightD) {

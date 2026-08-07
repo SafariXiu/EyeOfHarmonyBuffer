@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
-import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
@@ -97,7 +96,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 Materials.Water.getFluid(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.LanTieFluidBottle, 1, EnumBottleFluid.QING_SHUI.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 1, EnumBottleFluid.QING_SHUI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -111,7 +110,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.JinCaoSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.LanTieFluidBottle, 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -125,7 +124,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.YaZhenSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.LanTieFluidBottle, 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -139,7 +138,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.LanTieFluidBottle, 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -153,7 +152,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.LiquidHeavyXiranite.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.LanTieFluidBottle, 1, EnumBottleFluid.YE_HUA_ZHONG_XI_RANG.meta)
+                new ItemStack(GTCMItemList.LanTieFluidBottle.getItem(), 1, EnumBottleFluid.YE_HUA_ZHONG_XI_RANG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -167,7 +166,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 Materials.Water.getFluid(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ZiJingZhiFluidBottle, 1, EnumBottleFluid.QING_SHUI.meta)
+                new ItemStack(GTCMItemList.ZiJingZhiFluidBottle.getItem(), 1, EnumBottleFluid.QING_SHUI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -181,7 +180,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.JinCaoSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ZiJingZhiFluidBottle, 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ZiJingZhiFluidBottle.getItem(), 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -195,7 +194,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.YaZhenSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ZiJingZhiFluidBottle, 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ZiJingZhiFluidBottle.getItem(), 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -209,7 +208,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ZiJingZhiFluidBottle, 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
+                new ItemStack(GTCMItemList.ZiJingZhiFluidBottle.getItem(), 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -223,7 +222,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 Materials.Water.getFluid(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GangZhiFluidBottle, 1, EnumBottleFluid.QING_SHUI.meta)
+                new ItemStack(GTCMItemList.GangZhiFluidBottle.getItem(), 1, EnumBottleFluid.QING_SHUI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -237,7 +236,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.JinCaoSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GangZhiFluidBottle, 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.GangZhiFluidBottle.getItem(), 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -251,7 +250,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.YaZhenSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GangZhiFluidBottle, 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.GangZhiFluidBottle.getItem(), 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -265,7 +264,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GangZhiFluidBottle, 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
+                new ItemStack(GTCMItemList.GangZhiFluidBottle.getItem(), 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -279,7 +278,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 Materials.Water.getFluid(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GaoJingFluidBottle, 1, EnumBottleFluid.QING_SHUI.meta)
+                new ItemStack(GTCMItemList.GaoJingFluidBottle.getItem(), 1, EnumBottleFluid.QING_SHUI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -293,7 +292,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.JinCaoSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GaoJingFluidBottle, 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.GaoJingFluidBottle.getItem(), 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -307,7 +306,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.YaZhenSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GaoJingFluidBottle, 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.GaoJingFluidBottle.getItem(), 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -321,7 +320,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.GaoJingFluidBottle, 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
+                new ItemStack(GTCMItemList.GaoJingFluidBottle.getItem(), 1, EnumBottleFluid.YE_HUA_XI_RANG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -335,7 +334,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.YaZhenSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongFluidBottle, 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ChiTongFluidBottle.getItem(), 1, EnumBottleFluid.YA_ZHEN_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -349,7 +348,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.JinCaoSolution.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongFluidBottle, 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
+                new ItemStack(GTCMItemList.ChiTongFluidBottle.getItem(), 1, EnumBottleFluid.JIN_CAO_RONG_YE.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -377,7 +376,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.PyrroliteGas.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_ZHUO_TONG.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.QI_TAI_ZHUO_TONG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -391,7 +390,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.HetoniteGas.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_HE_TONG.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.QI_TAI_HE_TONG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -405,7 +404,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.CupriumGas.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.QI_TAI_CHI_TONG.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.QI_TAI_CHI_TONG.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -419,7 +418,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.HeavyXiragen.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.ZHONG_XI_RANG_QI.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.ZHONG_XI_RANG_QI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -433,7 +432,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.Xiragen.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.XI_RANG_QI.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.XI_RANG_QI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -447,7 +446,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.Acridgen.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.SUAN_QI.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.SUAN_QI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -461,7 +460,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.Aquagen.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.SHUI_ZHENG_QI.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.SHUI_ZHENG_QI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)
@@ -475,7 +474,7 @@ public class FillingUnitRecipes implements IRecipePool {
                 EOHBMaterialPool.Inergen.getFluidOrGas(1000)
             )
             .itemOutputs(
-                new ItemStack(ItemLoader.ChiTongGasTank, 1, EnumBottleFluid.DUO_QI.meta)
+                new ItemStack(GTCMItemList.ChiTongGasTank.getItem(), 1, EnumBottleFluid.DUO_QI.meta)
             )
             .eut(20000)
             .duration(10 * SECONDS)

@@ -35,7 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import java.math.BigInteger;
 import java.util.List;
 
-import static com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister.EOHBCasing1;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
@@ -225,7 +225,7 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
                 )
                 .addElement(
                     'B',
-                    ofBlock(EOHBCasing1, 0)
+                    ofBlock(GTCMItemList.XiRangWaiKeCasing.getBlock(), 0)
                 )
                 .addElement(
                     'C',

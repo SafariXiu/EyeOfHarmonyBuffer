@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
@@ -166,6 +167,13 @@ public class MacroPackageLayer {
             BiomeGenBase boundaryBiome = plateBoundaryBiomeOverride(x, z, baseId);
             if (boundaryBiome != null) {
                 return boundaryBiome;
+            }
+
+            // 群系覆盖钩子（组合根注册的山地层实现；气候层不依赖山地层）
+            BiomeGenBase overrideBiome = TalosMacroClimate
+                .getBiomeOverride(x, z, worldSeedInt);
+            if (overrideBiome != null) {
+                return overrideBiome;
             }
 
             if (landSite != null) {

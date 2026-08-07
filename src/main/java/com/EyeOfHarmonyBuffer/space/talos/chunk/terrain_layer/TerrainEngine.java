@@ -56,6 +56,25 @@ public final class TerrainEngine {
         TalosLandMask.Sample landSample,
         double biomeBias, double biomeScale
     ) {
+        return sampleBaseHeight(
+            worldX, worldZ, worldSeedInt, seaLevel, landSample,
+            biomeBias, biomeScale,
+            TalosMacroClimate.getTectonicStyleSample(
+                worldX, worldZ, worldSeedInt).smoothedDivergence
+        );
+    }
+
+    /**
+     * 群系级高度调制 + 已缓存的构造风格 DIVERGENT 强度：
+     * 由 TalosChunkContext / TalosTerrainHeights 传入，基础岩面淡出
+     * 与裂谷塑形共用同一份采样，避免重复查询。
+     */
+    public static double sampleBaseHeight(
+        int worldX, int worldZ, int worldSeedInt, int seaLevel,
+        TalosLandMask.Sample landSample,
+        double biomeBias, double biomeScale,
+        double smoothedDivergence
+    ) {
 
         boolean isLand      = landSample != null && landSample.isLand;
         double  landWeight  = (landSample != null) ? landSample.landWeight  : 0.0;
@@ -152,12 +171,58 @@ public final class TerrainEngine {
             h = lo + (hi - lo) * smoothstep(0.0, 1.0, tt);
         }
 
+        // 岩面噪声：按宏包参数叠加（低档台阶化），跨宏包边界用同一 t 混合。
+        if (isLand) {
+            double cliffAmp = lerp(profile1.cliffAmp, profile2.cliffAmp, t);
+            if (cliffAmp > 0.0) {
+                // 裂谷区已有自己的岩面噪声，基础岩面噪声在分离带内淡出，
+                // 避免两套独立起伏叠在一起变成混乱台阶。
+                double riftFade = 1.0
+                    - smoothstep(0.0, 0.08, smoothedDivergence);
+                if (riftFade > 0.0) {
+                    double cliffScale =
+                        lerp(profile1.cliffScale, profile2.cliffScale, t);
+                    double terrace =
+                        lerp(profile1.terrace, profile2.terrace, t);
+                    double detailAmp =
+                        lerp(profile1.detailAmp, profile2.detailAmp, t);
+                    h += cliffNoise(worldX, worldZ, worldSeedInt,
+                        cliffAmp, cliffScale, terrace, detailAmp) * riftFade;
+                }
+            }
+        }
+
         if (primaryId == MacroPackageId.OCEANIC) {
             h = applyOceanDepthLimit(h, profile1, seaLevel);
         }
 
         h = applyCoastSmooth(h, coastWeight, seaLevel, isLand);
 
+        return h;
+    }
+
+    /**
+     * 岩面噪声：主噪声（可低档台阶化）+ 小尺度细节。
+     * 同一全局噪声场，宏包只调幅度/尺度，边界两侧形状连续。
+     */
+    private static double cliffNoise(int worldX, int worldZ, int worldSeedInt,
+                                     double amp, double scale,
+                                     double terrace, double detailAmp) {
+        double n = TerrainNoise.fbm2D(worldSeedInt ^ 0x6A09E667L,
+            worldX, worldZ, 1.0 / scale, 1.0, 1);
+
+        if (terrace > 0.0) {
+            // 低档台阶化：把噪声向离散台阶轻微拉拢
+            double k = 1.0 + 3.0 * terrace;
+            double stepped = Math.round(n * k) / k;
+            n = n + (stepped - n) * terrace;
+        }
+
+        double h = n * amp;
+        if (detailAmp > 0.0) {
+            h += TerrainNoise.fbm2D(worldSeedInt ^ 0xBB67AE85L,
+                worldX, worldZ, 1.0 / 14.0, 1.0, 1) * detailAmp;
+        }
         return h;
     }
 

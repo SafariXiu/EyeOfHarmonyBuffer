@@ -12,6 +12,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundar
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.sample.TectonicLandSample;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * =====================================================
  * 类名：WorldgenAPI
@@ -102,8 +104,13 @@ public class WorldgenAPI {
         }
     }
 
-    private static final Long2ObjectOpenHashMap<TectonicWorld> TECTONIC_CACHE =
-        new Long2ObjectOpenHashMap<TectonicWorld>();
+    /**
+     * TectonicWorld 缓存。
+     * 使用并发容器：山地层后台预构建线程会与主线程并发采样，
+     * 普通 HashMap 在多线程读写下不安全。
+     */
+    private static final ConcurrentHashMap<Long, TectonicWorld> TECTONIC_CACHE =
+        new ConcurrentHashMap<Long, TectonicWorld>();
 
     /**
      * 获取或创建一个 TectonicWorld。
@@ -112,15 +119,17 @@ public class WorldgenAPI {
     private static TectonicWorld getTectonicWorld(int worldSeed) {
         long key = worldSeed & 0xFFFFFFFFL;
         TectonicWorld tw = TECTONIC_CACHE.get(key);
-        if (tw != null) return tw;
+        if (tw != null) {
+            return tw;
+        }
 
         if (TECTONIC_CACHE.size() > 16) {
             TECTONIC_CACHE.clear();
         }
 
         tw = new TectonicWorld(worldSeed);
-        TECTONIC_CACHE.put(key, tw);
-        return tw;
+        TectonicWorld prev = TECTONIC_CACHE.putIfAbsent(key, tw);
+        return prev != null ? prev : tw;
     }
 
     /**

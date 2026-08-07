@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.biome;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -243,6 +245,44 @@ public final class TalosBoundedFeatures {
         }
 
         /**
+         * 河床顶 Y（世界坐标）：从水面向下扫过水 / 空气，
+         * 返回第一个实体方块；表面不是水或无法读取时返回 -1。
+         */
+        protected final int riverbedTopYWorld(int worldX, int worldZ) {
+            int y = surfaceYWorld(worldX, worldZ);
+            if (y <= 0 || !isWaterWorld(worldX, y, worldZ)) {
+                return -1;
+            }
+            while (y > 0) {
+                Block b = this.world.getBlock(worldX, y, worldZ);
+                if (b != Blocks.water && b != Blocks.flowing_water
+                    && b != Blocks.air) {
+                    return y;
+                }
+                y--;
+            }
+            return -1;
+        }
+
+        /**
+         * 河床特征通用前置检查：河道内（mask > 0.7）且不在源头湖岸 / 滩涂区。
+         * @param surfaceY 水面 Y（即海平面）
+         */
+        protected final boolean canPlaceOnRiverbed(int worldX, int worldZ,
+                                                   int bedTopY, int surfaceY) {
+            int seed = TalosRiverSystem.getWorldSeedInt(this.world);
+            TalosRiverSystem.HydroSample hydro =
+                TalosRiverSystem.sampleHydroField(worldX, worldZ, seed);
+            if (!TalosRiverSystem.isRiverbedDecorationAllowed(hydro)) {
+                return false;
+            }
+            MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
+                worldX, worldZ, seed);
+            return TalosRiverSystem.getLakeSurfaceMaterial(
+                bedTopY, surfaceY, worldX, worldZ, hydro, macro) == null;
+        }
+
+        /**
          * 原版式藤蔓：第一格必须贴着实心方块（meta 指向它），
          * 下方同 meta 垂成一串。参数为区块内局部坐标（可越界 ±1 区块）。
          */
@@ -326,7 +366,8 @@ public final class TalosBoundedFeatures {
                 return false;
             }
             if (isWater(lx, y, lz)
-                || !topIs(lx, lz, Blocks.grass, Blocks.dirt, Blocks.sand)) {
+                || !topIs(lx, lz, Blocks.sand,
+                    Blocks.hardened_clay, Blocks.stained_hardened_clay)) {
                 return false;
             }
             setBlock(lx, y + 1, lz, Blocks.deadbush, 0);
@@ -1000,6 +1041,9 @@ public final class TalosBoundedFeatures {
                     if (isWaterWorld(wx, sy, wz)) {
                         continue; // 别把河面/湖面挖掉
                     }
+                    if (!isGroundSurface(wx, sy, wz)) {
+                        continue; // 树干/高草等假地表不挖，避免水洼吃树
+                    }
                     for (int yy = bed + 1; yy <= sy; yy++) {
                         setBlock(wx - this.chunkX * 16, yy, wz - this.chunkZ * 16,
                             Blocks.air, 0);
@@ -1040,6 +1084,9 @@ public final class TalosBoundedFeatures {
                     }
                     if (isWaterWorld(wx, sy, wz)) {
                         continue;
+                    }
+                    if (!isGroundSurface(wx, sy, wz)) {
+                        continue; // 沙岸只铺在真实地表上，不上树
                     }
                     setBlock(wx - this.chunkX * 16, sy, wz - this.chunkZ * 16,
                         Blocks.sand, 0);
@@ -1190,6 +1237,110 @@ public final class TalosBoundedFeatures {
         }
     }
 
+    /**
+     * 资源植物簇（砂叶 / 锦草 / 芽针等 BlockBush 类）：
+     * 每约 500 个区块触发一次，在 1~2 区块见方的区域内生成 10~20 株同种植物。
+     * 区域中心偏向当前区块内部；跨到相邻区块的列只在邻居可写时参与，
+     * 避免“看起来放了一簇实际被截断一半”。高低差超过 5 或合法落点不足整簇放弃。
+     */
+    public static final class ResourcePlantCluster extends Base {
+        private static final double CLUSTER_CHANCE = 1.0 / 500.0;
+        private static final int MIN_PLANTS = 10;
+        private static final int MAX_PLANTS = 20;
+        private static final int MAX_HEIGHT_DIFF = 5;
+
+        private final Block block;
+        private final java.util.Set<Block> validGround;
+
+        public ResourcePlantCluster(Block block,
+                                    java.util.Set<Block> validGround) {
+            this.block = block;
+            this.validGround = validGround;
+        }
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            if (this.rand.nextDouble() >= CLUSTER_CHANCE) {
+                return false;
+            }
+
+            // 区域半宽：8（1 区块）或 16（2 区块）
+            int half = this.rand.nextBoolean() ? 8 : 16;
+            // 中心偏向当前区块内部，减少跨区块截断
+            int cx = 7 + this.rand.nextInt(2);
+            int cz = 7 + this.rand.nextInt(2);
+            int worldSeedInt = TalosRiverSystem.getWorldSeedInt(this.world);
+
+            java.util.ArrayList<int[]> candidates =
+                new java.util.ArrayList<int[]>();
+            int hMin = Integer.MAX_VALUE;
+            int hMax = Integer.MIN_VALUE;
+            for (int dz = -half; dz <= half; dz++) {
+                for (int dx = -half; dx <= half; dx++) {
+                    int localX = cx + dx;
+                    int localZ = cz + dz;
+                    if (!canWrite(localX, localZ)) {
+                        continue; // 邻区块已填充：不读不写，避免截断/方块更新风暴
+                    }
+                    int wx = this.chunkX * 16 + localX;
+                    int wz = this.chunkZ * 16 + localZ;
+                    int sy = surfaceYWorld(wx, wz);
+                    if (sy <= 0 || sy >= 255) {
+                        continue;
+                    }
+                    if (isWaterWorld(wx, sy, wz)
+                        || !isGroundSurface(wx, sy, wz)
+                        || !validGround.contains(
+                            this.world.getBlock(wx, sy, wz))) {
+                        continue;
+                    }
+                    if (this.world.getBlock(wx, sy + 1, wz) != Blocks.air) {
+                        continue;
+                    }
+                    candidates.add(new int[]{localX, sy + 1, localZ});
+                    if (sy < hMin) {
+                        hMin = sy;
+                    }
+                    if (sy > hMax) {
+                        hMax = sy;
+                    }
+                }
+            }
+
+            if (candidates.size() < MIN_PLANTS
+                || hMax - hMin > MAX_HEIGHT_DIFF) {
+                return false;
+            }
+
+            // 洗牌，只取目标数量
+            for (int i = candidates.size() - 1; i > 0; i--) {
+                int j = this.rand.nextInt(i + 1);
+                int[] tmp = candidates.get(i);
+                candidates.set(i, candidates.get(j));
+                candidates.set(j, tmp);
+            }
+
+            int target = MIN_PLANTS
+                + this.rand.nextInt(MAX_PLANTS - MIN_PLANTS + 1);
+            int placed = 0;
+            for (int[] c : candidates) {
+                if (placed >= target) {
+                    break;
+                }
+                int wx = this.chunkX * 16 + c[0];
+                int wz = this.chunkZ * 16 + c[2];
+                // 河道 / 洪泛平原带内不生成
+                if (TalosRiverSystem.getRiverMask(
+                        wx, wz, worldSeedInt) > 0.7) {
+                    continue;
+                }
+                setBlock(c[0], c[1], c[2], this.block, 0);
+                placed++;
+            }
+            return placed > 0;
+        }
+    }
+
     /** 巨石：2×2 底座 + 偶尔补块（邻区块可写时完整放置，否则放弃）。 */
     public static final class Boulder extends Base {
 
@@ -1319,36 +1470,141 @@ public final class TalosBoundedFeatures {
         }
     }
 
-    /** 砾石斑：在表面铺一片砾石（半径可配）；边缘被裁掉一部分（风味）。 */
-    public static final class Gravel extends Base {
-        private final int radius;
-
-        public Gravel(int radius) {
-            this.radius = radius;
-        }
+    /**
+     * 水下乱石堆：河底 3×3~5×5 的大型不规则石块（多个圆形子块叠加成团块），
+     * 中心高、边缘矮，整体没入水中。
+     * 只在河道内、至少 2 格深水、且不在源头湖岸 / 滩涂区放置。
+     */
+    public static final class RiverRockPile extends Base {
 
         @Override
         protected boolean generateAt(int lx, int lz) {
-            boolean any = false;
-            for (int dz = -this.radius; dz <= this.radius; dz++) {
-                for (int dx = -this.radius; dx <= this.radius; dx++) {
-                    if (dx * dx + dz * dz > this.radius * this.radius) {
-                        continue;
+            int wx = this.chunkX * 16 + lx;
+            int wz = this.chunkZ * 16 + lz;
+            int surface = surfaceYWorld(wx, wz);
+            if (surface <= 0 || !isWaterWorld(wx, surface, wz)) {
+                return false;
+            }
+            int bed = riverbedTopYWorld(wx, wz);
+            if (bed <= 0 || bed > surface - 2) {
+                return false; // 至少 2 格深水
+            }
+            if (!canPlaceOnRiverbed(wx, wz, bed, surface)) {
+                return false;
+            }
+
+            // 占地面积：宽 / 深各 3~5 格（3×3、3×4、4×5、5×5…）
+            int w = 3 + this.rand.nextInt(3);
+            int d = 3 + this.rand.nextInt(3);
+            if (!canWriteArea(lx, lz, Math.max(w, d) / 2)) {
+                return false;
+            }
+
+            // 不规则团块：2~3 个随机圆形子块叠加（和陆地大型石头同一套）
+            boolean[][] cell = new boolean[w][d];
+            int blobs = 2 + this.rand.nextInt(2);
+            for (int b = 0; b < blobs; b++) {
+                int bx = this.rand.nextInt(w);
+                int bz = this.rand.nextInt(d);
+                int br = 1 + this.rand.nextInt(2);
+                for (int dz = -br; dz <= br; dz++) {
+                    for (int dx = -br; dx <= br; dx++) {
+                        if (dx * dx + dz * dz > br * br + 1) {
+                            continue;
+                        }
+                        int px = bx + dx;
+                        int pz = bz + dz;
+                        if (px >= 0 && px < w && pz >= 0 && pz < d) {
+                            cell[px][pz] = true;
+                        }
                     }
-                    int px = lx + dx;
-                    int pz = lz + dz;
-                    int py = height(px, pz);
-                    if (py <= 0) {
-                        continue;
-                    }
-                    if (isWater(px, py, pz)) {
-                        continue;
-                    }
-                    setBlock(px, py, pz, Blocks.gravel, 0);
-                    any = true;
                 }
             }
-            return any;
+
+            // 落石：每列随机高度（中心倾向更高，但顶部参差），
+            // 高度按水深截断，整块没入水中；不在河道内的列直接跳过。
+            Block rock = this.rand.nextBoolean()
+                ? Blocks.cobblestone : Blocks.stone;
+            int hw = w / 2;
+            int hd = d / 2;
+            int placed = 0;
+            for (int dz = 0; dz < d; dz++) {
+                for (int dx = 0; dx < w; dx++) {
+                    if (!cell[dx][dz]) {
+                        continue;
+                    }
+                    int px = wx + dx - hw;
+                    int pz = wz + dz - hd;
+                    int pb = riverbedTopYWorld(px, pz);
+                    if (pb <= 0 || pb > surface - 2) {
+                        continue; // 不在河道 / 太浅的列不落石
+                    }
+                    int dist = Math.max(Math.abs(dx - hw), Math.abs(dz - hd));
+                    // 低矮乱石：中心 1~2 格、边缘 1 格，保证大部分水柱仍是水
+                    int h = (dist <= 1 && this.rand.nextBoolean()) ? 2 : 1;
+                    int topLimit = surface - 1 - pb;
+                    if (h > topLimit) {
+                        h = topLimit;
+                    }
+                    if (h <= 0) {
+                        continue;
+                    }
+                    for (int i = 0; i < h; i++) {
+                        setBlock(px - this.chunkX * 16, pb + i,
+                            pz - this.chunkZ * 16, rock, 0);
+                    }
+                    placed++;
+                }
+            }
+            return placed > 0;
         }
     }
+
+    /**
+     * 水下枯木：横在河底的 2~4 格原木（无藤蔓，水下枯木）。
+     * 只在河道内、至少 2 格深水、且不在源头湖岸 / 滩涂区放置。
+     */
+    public static final class RiverDeadLog extends Base {
+
+        @Override
+        protected boolean generateAt(int lx, int lz) {
+            int wx = this.chunkX * 16 + lx;
+            int wz = this.chunkZ * 16 + lz;
+            int surface = surfaceYWorld(wx, wz);
+            if (surface <= 0 || !isWaterWorld(wx, surface, wz)) {
+                return false;
+            }
+            int bed = riverbedTopYWorld(wx, wz);
+            if (bed <= 0 || bed > surface - 2) {
+                return false; // 至少 2 格深水
+            }
+            if (!canPlaceOnRiverbed(wx, wz, bed, surface)) {
+                return false;
+            }
+
+            boolean axisX = this.rand.nextBoolean();
+            int len = 2 + this.rand.nextInt(3); // 2~4 格
+            int meta = axisX ? 4 : 8; // 原木横轴
+
+            int[] beds = new int[len];
+            for (int i = 0; i < len; i++) {
+                int px = axisX ? wx + i : wx;
+                int pz = axisX ? wz : wz + i;
+                int pb = riverbedTopYWorld(px, pz);
+                if (pb <= 0 || pb > surface - 2 || Math.abs(pb - bed) > 1) {
+                    return false; // 整段检查，河床落差太大放弃
+                }
+                beds[i] = pb;
+            }
+
+            for (int i = 0; i < len; i++) {
+                int px = axisX ? wx + i : wx;
+                int pz = axisX ? wz : wz + i;
+                setBlock(px - this.chunkX * 16, beds[i] + 1,
+                    pz - this.chunkZ * 16, Blocks.log, meta);
+            }
+            return true;
+        }
+    }
+
 }

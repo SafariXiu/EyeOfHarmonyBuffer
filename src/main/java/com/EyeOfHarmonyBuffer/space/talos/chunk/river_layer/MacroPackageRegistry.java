@@ -26,12 +26,22 @@ public final class MacroPackageRegistry {
     private static final BlockMetaPair SAND = new BlockMetaPair(Blocks.sand, (byte) 0);
     private static final BlockMetaPair DIRT = new BlockMetaPair(Blocks.dirt, (byte) 0);
     private static final BlockMetaPair GRAVEL = new BlockMetaPair(Blocks.gravel, (byte) 0);
+    private static final BlockMetaPair CLAY = new BlockMetaPair(Blocks.clay, (byte) 0);
+    private static final BlockMetaPair PACKED_ICE =
+        new BlockMetaPair(Blocks.packed_ice, (byte) 0);
 
     /** 默认源头湖预设（未配置时使用，保持旧版湖盆观感并新增岸边/滩涂）。 */
     private static final SourceLakePreset DEFAULT_SOURCE_LAKE = new SourceLakePreset(
         48.0, 16.0, 32.0, 0.18, 0.18,
         24.0, 1.5, 48.0,
         SAND, DIRT
+    );
+
+    /** 默认河床底料：砂砾 50% / 沙子 30% / 黏土 20%，深 1~3 格，斑块尺度 48 格。 */
+    private static final RiverbedPreset DEFAULT_RIVERBED = new RiverbedPreset(
+        new BlockMetaPair[] { GRAVEL, SAND, CLAY },
+        new double[] { 0.5, 0.3, 0.2 },
+        1, 3, 48.0
     );
 
     private static final Map<MacroPackageId, MacroPackageSpec> SPECS;
@@ -58,6 +68,12 @@ public final class MacroPackageRegistry {
                 .riverBank(new RiverBankPreset(
                     0.9   // bankIntensity
                 ))
+                // 湿润热带：沙/砂砾混合河底
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { SAND, GRAVEL, CLAY },
+                    new double[] { 0.4, 0.4, 0.2 },
+                    1, 3, 48.0
+                ))
                 .build()
         );
 
@@ -71,6 +87,12 @@ public final class MacroPackageRegistry {
                 ))
                 .riverBank(new RiverBankPreset(
                     0.7
+                ))
+                // 干燥带：沙质河底
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { SAND, GRAVEL },
+                    new double[] { 0.7, 0.3 },
+                    1, 3, 48.0
                 ))
                 .build()
         );
@@ -114,6 +136,12 @@ public final class MacroPackageRegistry {
                 ))
                 .riverBank(new RiverBankPreset(
                     0.35  // 比上面明显更硬
+                ))
+                // 山地：砂砾为主的河底
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { GRAVEL, CLAY },
+                    new double[] { 0.7, 0.3 },
+                    1, 3, 48.0
                 ))
                 .build()
         );
@@ -164,6 +192,12 @@ public final class MacroPackageRegistry {
                 .riverBank(new RiverBankPreset(
                     0.2
                 ))
+                // 高寒：砂砾 + 浮冰河底
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { GRAVEL, PACKED_ICE },
+                    new double[] { 0.7, 0.3 },
+                    1, 3, 48.0
+                ))
                 .build()
         );
 
@@ -186,6 +220,12 @@ public final class MacroPackageRegistry {
                 .riverBank(new RiverBankPreset(
                     0.6
                 ))
+                // 裂谷：砂砾河底
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { GRAVEL, SAND },
+                    new double[] { 0.6, 0.4 },
+                    1, 3, 48.0
+                ))
                 .build()
         );
 
@@ -204,6 +244,11 @@ public final class MacroPackageRegistry {
                 .riverBank(new RiverBankPreset(
                     0.55
                 ))
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { GRAVEL, SAND },
+                    new double[] { 0.6, 0.4 },
+                    1, 3, 48.0
+                ))
                 .build()
         );
 
@@ -221,6 +266,12 @@ public final class MacroPackageRegistry {
                 ))
                 .riverBank(new RiverBankPreset(
                     0.45
+                ))
+                // 极地裂谷：砂砾 + 浮冰
+                .riverbed(new RiverbedPreset(
+                    new BlockMetaPair[] { GRAVEL, PACKED_ICE },
+                    new double[] { 0.8, 0.2 },
+                    1, 3, 48.0
                 ))
                 .build()
         );
@@ -261,12 +312,14 @@ public final class MacroPackageRegistry {
         private final RiverStylePreset riverStyle;
         private final RiverBankPreset riverBank;
         private final SourceLakePreset sourceLake;
+        private final RiverbedPreset riverbed;
 
         private MacroPackageSpec(Builder b) {
             this.id = b.id;
             this.riverStyle = b.riverStyle;
             this.riverBank = b.riverBank;
             this.sourceLake = b.sourceLake;
+            this.riverbed = b.riverbed;
         }
 
         public MacroPackageId id() {
@@ -285,6 +338,10 @@ public final class MacroPackageRegistry {
             return sourceLake;
         }
 
+        public RiverbedPreset riverbed() {
+            return riverbed;
+        }
+
         public static Builder builder(MacroPackageId id) {
             return new Builder(id);
         }
@@ -294,6 +351,7 @@ public final class MacroPackageRegistry {
             private RiverStylePreset riverStyle;
             private RiverBankPreset riverBank;
             private SourceLakePreset sourceLake;
+            private RiverbedPreset riverbed;
 
             private Builder(MacroPackageId id) {
                 this.id = id;
@@ -314,6 +372,11 @@ public final class MacroPackageRegistry {
                 return this;
             }
 
+            public Builder riverbed(RiverbedPreset preset) {
+                this.riverbed = preset;
+                return this;
+            }
+
             public MacroPackageSpec build() {
                 if (riverStyle == null) {
                     riverStyle = new RiverStylePreset(
@@ -331,8 +394,37 @@ public final class MacroPackageRegistry {
                 if (sourceLake == null) {
                     sourceLake = DEFAULT_SOURCE_LAKE;
                 }
+                if (riverbed == null) {
+                    riverbed = DEFAULT_RIVERBED;
+                }
                 return new MacroPackageSpec(this);
             }
+        }
+    }
+
+    /**
+     * 河床底料预设：用低频确定性噪声把河床分成大块材料斑块
+     * （砂砾 / 沙子 / 黏土等），斑块内同一种方块，铺床顶向下 depth 格。
+     */
+    public static final class RiverbedPreset {
+        /** 候选方块（与 weights 一一对应）。 */
+        public final BlockMetaPair[] blocks;
+        /** 材料权重（和 blocks 等长，不需要归一化）。 */
+        public final double[] weights;
+        /** 底料最小深度（格）。 */
+        public final int depthMin;
+        /** 底料最大深度（格）。 */
+        public final int depthMax;
+        /** 斑块尺度（blocks，越大块越完整）。 */
+        public final double patchScale;
+
+        public RiverbedPreset(BlockMetaPair[] blocks, double[] weights,
+                              int depthMin, int depthMax, double patchScale) {
+            this.blocks = blocks;
+            this.weights = weights;
+            this.depthMin = depthMin;
+            this.depthMax = depthMax;
+            this.patchScale = patchScale;
         }
     }
 

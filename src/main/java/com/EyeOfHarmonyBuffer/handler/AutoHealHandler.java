@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.handler;
 
-import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -29,11 +29,11 @@ public class AutoHealHandler {
     }
 
     private static final RegenItemConfig[] REGEN_ITEMS = new RegenItemConfig[] {
-        new RegenItemConfig(ItemLoader.YouZhiYaZhenZhenJi, 20 * 20, 4),
-        new RegenItemConfig(ItemLoader.YaZhenZhenJi, 20 * 10, 3),
-        new RegenItemConfig(ItemLoader.JingXuanGanShiGuanTou,20 * 10,2),
-        new RegenItemConfig(ItemLoader.YouZhiGanShiGuanTou,10 * 10,2),
-        new RegenItemConfig(ItemLoader.GanShiGuanTou,10 * 10,1),
+        new RegenItemConfig(GTCMItemList.YouZhiYaZhenZhenJi.getItem(), 20 * 20, 4),
+        new RegenItemConfig(GTCMItemList.YaZhenZhenJi.getItem(), 20 * 10, 3),
+        new RegenItemConfig(GTCMItemList.JingXuanGanShiGuanTou.getItem(),20 * 10,2),
+        new RegenItemConfig(GTCMItemList.YouZhiGanShiGuanTou.getItem(),10 * 10,2),
+        new RegenItemConfig(GTCMItemList.GanShiGuanTou.getItem(),10 * 10,1),
     };
 
     @SubscribeEvent

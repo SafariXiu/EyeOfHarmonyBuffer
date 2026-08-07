@@ -36,7 +36,11 @@ public final class TerrainMacroPresetRegistry {
                 0.0,            // highAmp
                 0,              // highOctaves
                 0.0,            // plateauStrength
-                64.0            // oceanDepthMax：最深约 seaLevel - 64
+                64.0,            // oceanDepthMax：最深约 seaLevel - 64
+                0.0,            // cliffAmp
+                1.0,            // cliffScale
+                 0.0,            // terrace
+                 0.0             // detailAmp
             )
         );
 
@@ -57,7 +61,11 @@ public final class TerrainMacroPresetRegistry {
                 3.0,            // highAmp
                 1,              // highOctaves
                 0.1,            // plateauStrength
-                0.0             // oceanDepthMax（陆地不用）
+                0.0,             // oceanDepthMax（陆地不用）
+                2.5,            // cliffAmp
+                48.0,            // cliffScale
+                 0.3,            // terrace
+                 0.8             // detailAmp
             )
         );
 
@@ -76,7 +84,11 @@ public final class TerrainMacroPresetRegistry {
                 4.0,
                 1,
                 0.35,           // plateau 较明显（台地感）
-                0.0
+                0.0,
+                3.5,            // cliffAmp
+                56.0,            // cliffScale
+                 0.5,            // terrace
+                 1.0             // detailAmp
             )
         );
 
@@ -97,7 +109,11 @@ public final class TerrainMacroPresetRegistry {
                 3.0,
                 1,
                 0.15,
-                0.0
+                0.0,
+                1.5,            // cliffAmp
+                64.0,            // cliffScale
+                 0.2,            // terrace
+                 0.5             // detailAmp
             )
         );
 
@@ -116,7 +132,11 @@ public final class TerrainMacroPresetRegistry {
                 4.0,
                 1,
                 0.2,
-                0.0
+                0.0,
+                3.0,            // cliffAmp
+                48.0,            // cliffScale
+                 0.35,            // terrace
+                 0.8             // detailAmp
             )
         );
 
@@ -135,7 +155,11 @@ public final class TerrainMacroPresetRegistry {
                 5.0,
                 1,
                 0.35,
-                0.0
+                0.0,
+                5.0,            // cliffAmp
+                48.0,            // cliffScale
+                 0.5,            // terrace
+                 1.5             // detailAmp
             )
         );
 
@@ -156,7 +180,11 @@ public final class TerrainMacroPresetRegistry {
                 3.0,
                 1,
                 0.2,
-                0.0
+                0.0,
+                3.5,            // cliffAmp
+                56.0,            // cliffScale
+                 0.4,            // terrace
+                 1.0             // detailAmp
             )
         );
 
@@ -175,7 +203,11 @@ public final class TerrainMacroPresetRegistry {
                 2.0,
                 1,
                 0.05,
-                0.0
+                0.0,
+                2.0,            // cliffAmp
+                72.0,            // cliffScale
+                 0.25,            // terrace
+                 0.5             // detailAmp
             )
         );
 
@@ -194,7 +226,11 @@ public final class TerrainMacroPresetRegistry {
                 5.0,
                 1,
                 0.4,
-                0.0
+                0.0,
+                6.0,            // cliffAmp
+                40.0,            // cliffScale
+                 0.5,            // terrace
+                 1.5             // detailAmp
             )
         );
 
@@ -213,7 +249,11 @@ public final class TerrainMacroPresetRegistry {
                 2.0,
                 1,
                 0.1,
-                0.0
+                0.0,
+                2.0,            // cliffAmp
+                48.0,            // cliffScale
+                 0.4,            // terrace
+                 1.0             // detailAmp
             )
         );
 
@@ -231,7 +271,11 @@ public final class TerrainMacroPresetRegistry {
                 2.0,
                 1,
                 0.1,
-                0.0
+                0.0,
+                2.0,            // cliffAmp
+                48.0,            // cliffScale
+                 0.4,            // terrace
+                 1.0             // detailAmp
             )
         );
 
@@ -249,7 +293,11 @@ public final class TerrainMacroPresetRegistry {
                 2.0,
                 1,
                 0.05,
-                0.0
+                0.0,
+                2.0,            // cliffAmp
+                48.0,            // cliffScale
+                 0.4,            // terrace
+                 1.0             // detailAmp
             )
         );
 
@@ -268,7 +316,11 @@ public final class TerrainMacroPresetRegistry {
                 6.0,
                 1,
                 0.15,
-                0.0
+                0.0,
+                0.0,            // cliffAmp
+                1.0,            // cliffScale
+                 0.0,            // terrace
+                 0.0             // detailAmp
             )
         );
 
@@ -289,7 +341,11 @@ public final class TerrainMacroPresetRegistry {
                     1.0 / 320.0,  8.0,  2,
                     1.0 / 96.0,   3.0,  1,
                     0.15,
-                    0.0
+                    0.0,
+                    1.5,            // cliffAmp
+                    64.0,            // cliffScale
+                 0.2,            // terrace
+                 0.5             // detailAmp
                 )
             );
         }

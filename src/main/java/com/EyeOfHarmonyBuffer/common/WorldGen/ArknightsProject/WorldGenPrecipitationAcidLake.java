@@ -24,12 +24,9 @@ public class WorldGenPrecipitationAcidLake {
             return;
         }
 
-        Block top = world.getBlock(baseX, groundY, baseZ);
-        if (top != Blocks.grass && top != Blocks.stone) {
-            return;
-        }
-
-        if (!isAreaFlatEnough(world, baseX, groundY, baseZ, 7, 3)) {
+        // 地形检查与矿脉（WorldGenYuanShiDepositTalos）一致：
+        // 覆盖范围地表必须是草/石头、全部高于海平面、高度差 ≤ 2
+        if (!isAreaSuitable(world, baseX, baseZ)) {
             return;
         }
 
@@ -46,25 +43,36 @@ public class WorldGenPrecipitationAcidLake {
         return y - 1;
     }
 
-    private boolean isAreaFlatEnough(World world, int centerX, int centerY, int centerZ,
-                                     int radius, int maxDiff) {
+    /** 与矿脉一致的落点检查：13×13 范围（覆盖湖体 + 石墙）。 */
+    private boolean isAreaSuitable(World world, int centerX, int centerZ) {
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
 
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
+        for (int dx = -6; dx <= 6; dx++) {
+            for (int dz = -6; dz <= 6; dz++) {
                 int x = centerX + dx;
                 int z = centerZ + dz;
 
                 int y = findGroundY(world, x, z);
-                if (y <= 0) return false;
+                if (y <= 0) {
+                    return false;
+                }
+
+                Block top = world.getBlock(x, y, z);
+                if (top != Blocks.grass && top != Blocks.stone) {
+                    return false;
+                }
 
                 if (y < minY) minY = y;
                 if (y > maxY) maxY = y;
             }
         }
 
-        return (maxY - minY) <= maxDiff;
+        if (minY <= 64) {
+            return false;
+        }
+
+        return (maxY - minY) <= 2;
     }
 
     private void generateLakeShape(World world, Random rand,
@@ -147,7 +155,8 @@ public class WorldGenPrecipitationAcidLake {
         double outer = 1.6D;
 
         int wallTopY = groundY + 1;
-        int wallBottomY = globalBottomY;
+        // 围栏比湖底最深处再往下兜 1 格，确保与湖底/原地形完全接合
+        int wallBottomY = globalBottomY - 1;
 
         if (wallBottomY < 1) wallBottomY = 1;
 
@@ -168,12 +177,8 @@ public class WorldGenPrecipitationAcidLake {
                 }
 
                 for (int y = wallBottomY; y <= wallTopY; y++) {
-                    Block b = world.getBlock(x, y, z);
-
-                    if (b == fluidBlock) {
-                        continue;
-                    }
-
+                    // 不再跳过酸液方块：湖边缘的酸液会被围栏整体封死，
+                    // 避免水面下方第二层从围栏缺口漏出来。
                     world.setBlock(x, y, z, Blocks.stone, 0, 2);
                 }
             }

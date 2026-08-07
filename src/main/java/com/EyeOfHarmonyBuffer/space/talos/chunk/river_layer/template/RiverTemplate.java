@@ -7,9 +7,13 @@ public final class RiverTemplate {
 
     public final long seed; // RVR2 里的 seed
     public final List<TemplateEdge> edges;
+    public final List<TemplateBody> bodies;
 
-    public RiverTemplate(long seed, List<TemplateEdge> edges) {
+    public RiverTemplate(long seed,
+                         List<TemplateEdge> edges,
+                         List<TemplateBody> bodies) {
         this.seed = seed;
         this.edges = java.util.Collections.unmodifiableList(edges);
+        this.bodies = java.util.Collections.unmodifiableList(bodies);
     }
 }

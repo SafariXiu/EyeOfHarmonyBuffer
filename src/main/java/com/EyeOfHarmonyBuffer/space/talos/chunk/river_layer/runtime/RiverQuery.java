@@ -1,7 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.runtime;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverPoint;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverType;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public final class RiverQuery {
 
@@ -26,6 +30,13 @@ public final class RiverQuery {
         public final double mouthX;
         public final double mouthZ;
 
+        /** 命中的水体（独立湖 / 湿地 / 穿河湖 / 牛轭湖），无则 null。 */
+        public final RiverBodyData body;
+        /** 到水体轮廓的距离：内部为 0，外部为到椭圆轮廓的近似距离。 */
+        public final double bodyDistance;
+        /** 水体影响 0..1：内部 1，向外随距离衰减。 */
+        public final double bodyMask;
+
         private RiverQueryResult(boolean affected,
                                  double distanceToCenter,
                                  double riverWidth,
@@ -43,7 +54,10 @@ public final class RiverQuery {
                                  double sourceX,
                                  double sourceZ,
                                  double mouthX,
-                                 double mouthZ) {
+                                 double mouthZ,
+                                 RiverBodyData body,
+                                 double bodyDistance,
+                                 double bodyMask) {
             this.affected = affected;
             this.distanceToCenter = distanceToCenter;
             this.riverWidth = riverWidth;
@@ -62,6 +76,9 @@ public final class RiverQuery {
             this.sourceZ = sourceZ;
             this.mouthX = mouthX;
             this.mouthZ = mouthZ;
+            this.body = body;
+            this.bodyDistance = bodyDistance;
+            this.bodyMask = bodyMask;
         }
 
         public static RiverQueryResult none() {
@@ -81,11 +98,13 @@ public final class RiverQuery {
                 Double.NaN,
                 Double.NaN,
                 Double.NaN,
-                Double.NaN
+                Double.NaN,
+                null,
+                Double.POSITIVE_INFINITY,
+                0.0
             );
         }
     }
-
 
     public static final class SegmentProjection {
         public final double distanceSquared;
@@ -103,6 +122,8 @@ public final class RiverQuery {
             this.closestZ = closestZ;
         }
     }
+
+    private RiverQuery() {}
 
     public static SegmentProjection projectToSegment(
         double px, double pz,
@@ -156,13 +177,14 @@ public final class RiverQuery {
 
     public static RiverQueryResult query(
         RiverSpatialIndex index,
+        RiverBodyIndex bodyIndex,
         double worldX, double worldZ
     ) {
         double sampleX = worldX + 0.5;
         double sampleZ = worldZ + 0.5;
 
         var candidates = index.queryCell(sampleX, sampleZ);
-        if (candidates.isEmpty()) {
+        if (candidates.isEmpty() && bodyIndex == null) {
             return RiverQueryResult.none();
         }
 
@@ -232,8 +254,58 @@ public final class RiverQuery {
             }
         }
 
-        if (dominantSeg == null) {
+        RiverBodyData bestBody = null;
+        double bestBodyDist = Double.POSITIVE_INFINITY;
+        double bestBodyMask = 0.0;
+
+        if (bodyIndex != null) {
+            List<RiverBodyData> bodyCandidates = bodyIndex.queryCell(sampleX, sampleZ);
+            for (RiverBodyData b : bodyCandidates) {
+                BodyHit hit = bodyHit(b, sampleX, sampleZ);
+                if (hit.mask > bestBodyMask
+                    || (hit.mask == bestBodyMask && hit.distance < bestBodyDist)) {
+                    bestBody = b;
+                    bestBodyDist = hit.distance;
+                    bestBodyMask = hit.mask;
+                }
+            }
+        }
+
+        boolean hasBody = bestBody != null;
+
+        if (dominantSeg == null && !hasBody) {
             return RiverQueryResult.none();
+        }
+
+        // 水体不参与河岸压平：河岸塑形只跟河道走，
+        // 湖/湿地自己的岸滩和外坡由水体雕刻接管（避免把湖周围压出硬切）。
+        double terrainInfluence = bestTerrainInfluence;
+
+        if (dominantSeg == null) {
+            // 只有水体、没有河道：返回水体专属结果
+            return new RiverQueryResult(
+                true,
+                bestBodyDist,
+                0.0,
+                0.0,
+                0.0,
+                terrainInfluence,
+                1.0,
+                0.0,
+                null,
+                -1,
+                false,
+                false,
+                bestBody.getCenterX(),
+                bestBody.getCenterZ(),
+                Double.NaN,
+                Double.NaN,
+                Double.NaN,
+                Double.NaN,
+                bestBody,
+                bestBodyDist,
+                bestBodyMask
+            );
         }
 
         double bestDist = Math.sqrt(dominantDistSq);
@@ -258,7 +330,7 @@ public final class RiverQuery {
             bestWidth,
             bestRadius,
             bestChannelInfluence,
-            bestTerrainInfluence,
+            terrainInfluence,
             bestDepthScale,
             bestProgress,
             dominantSeg.type,
@@ -270,7 +342,93 @@ public final class RiverQuery {
             dominantSeg.sourceX,
             dominantSeg.sourceZ,
             dominantSeg.mouthX,
-            dominantSeg.mouthZ
+            dominantSeg.mouthZ,
+            bestBody,
+            bestBodyDist,
+            bestBodyMask
         );
+    }
+
+    private static final class BodyHit {
+        final double distance;
+        final double mask;
+
+        BodyHit(double distance, double mask) {
+            this.distance = distance;
+            this.mask = mask;
+        }
+    }
+
+    private static BodyHit bodyHit(RiverBodyData body, double sampleX, double sampleZ) {
+        if (pointInPolygon(sampleX, sampleZ, body.getOutline())) {
+            return new BodyHit(0.0, 1.0);
+        }
+
+        // 用「到真实轮廓的最短距离」做衰减，而不是椭圆近似：
+        // 不规则轮廓的岸滩列如果按椭圆算，掩码可能在部分方向提前归零，
+        // 水体直接不被命中，沙圈/砂砾圈就会断成一段一段。
+        double dist = distanceToPolygonOutline(
+            sampleX, sampleZ, body.getOutline()
+        );
+        double mask = 1.0 - dist / RiverBodyIndex.SHORE_MARGIN;
+        if (mask < 0.0) mask = 0.0;
+        if (mask > 1.0) mask = 1.0;
+        return new BodyHit(dist, mask);
+    }
+
+    private static double distanceToPolygonOutline(
+        double px, double pz, List<RiverPoint> polygon
+    ) {
+        int n = polygon.size();
+        double best = Double.POSITIVE_INFINITY;
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            RiverPoint a = polygon.get(j);
+            RiverPoint b = polygon.get(i);
+            double abx = b.getX() - a.getX();
+            double abz = b.getZ() - a.getZ();
+            double lenSq = abx * abx + abz * abz;
+
+            double t;
+            if (lenSq <= 1.0e-12) {
+                t = 0.0;
+            } else {
+                t = ((px - a.getX()) * abx + (pz - a.getZ()) * abz) / lenSq;
+                if (t < 0.0) t = 0.0;
+                else if (t > 1.0) t = 1.0;
+            }
+
+            double cx = a.getX() + abx * t;
+            double cz = a.getZ() + abz * t;
+            double dx = px - cx;
+            double dz = pz - cz;
+            double d2 = dx * dx + dz * dz;
+            if (d2 < best) {
+                best = d2;
+            }
+        }
+
+        return Math.sqrt(best);
+    }
+
+    public static boolean pointInPolygon(double px, double pz, List<RiverPoint> polygon) {
+        boolean inside = false;
+        int n = polygon.size();
+
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = polygon.get(i).getX();
+            double yi = polygon.get(i).getZ();
+            double xj = polygon.get(j).getX();
+            double yj = polygon.get(j).getZ();
+
+            if ((yi > pz) != (yj > pz)) {
+                double xIntersect = (xj - xi) * (pz - yi) / (yj - yi) + xi;
+                if (px < xIntersect) {
+                    inside = !inside;
+                }
+            }
+        }
+
+        return inside;
     }
 }

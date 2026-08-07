@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.handler;
 
-import com.EyeOfHarmonyBuffer.common.item.ItemLoader;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -25,11 +25,11 @@ public class AutoInstantHealHandler {
     }
 
     private static final InstantHealItemConfig[] INSTANT_HEAL_ITEMS = new InstantHealItemConfig[] {
-        new InstantHealItemConfig(ItemLoader.YouZhiJinCaoRuanYin, 20.0F),
-        new InstantHealItemConfig(ItemLoader.JinCaoRuanYin, 16.0F),
-        new InstantHealItemConfig(ItemLoader.JingXuanQiaoYuJiaoNang, 12F),
-        new InstantHealItemConfig(ItemLoader.YouZhiQiaoYuJiaoNang, 8F),
-        new InstantHealItemConfig(ItemLoader.QiaoYuJiaoNang, 4F),
+        new InstantHealItemConfig(GTCMItemList.YouZhiJinCaoRuanYin.getItem(), 20.0F),
+        new InstantHealItemConfig(GTCMItemList.JinCaoRuanYin.getItem(), 16.0F),
+        new InstantHealItemConfig(GTCMItemList.JingXuanQiaoYuJiaoNang.getItem(), 12F),
+        new InstantHealItemConfig(GTCMItemList.YouZhiQiaoYuJiaoNang.getItem(), 8F),
+        new InstantHealItemConfig(GTCMItemList.QiaoYuJiaoNang.getItem(), 4F),
     };
 
     @SubscribeEvent

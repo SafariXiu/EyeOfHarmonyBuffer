@@ -55,6 +55,16 @@ public final class RiverNetworkProfile {
     /** 洪泛平原随河宽额外增加的宽度系数（三角洲式扩张）。 */
     private static final double FLOODPLAIN_RING_PER_WIDTH = 1.0;
 
+    /**
+     * 河道最小宽度（blocks）。
+     *
+     * 模板里最小支流的源头宽度可能只有 1~2 格，经过大陆缩放后更窄；
+     * 1 格宽的斜向河道在逐列雕刻时会变成不连续的“楼梯”断点，
+     * 穿过源头湖干岸环时尤其明显。这里统一把宽度钳到 4 格以上，
+     * 保证最细的支流源头也能保持连续（视觉上仍然是小河）。
+     */
+    private static final double MIN_RIVER_WIDTH_BLOCKS = 4.0;
+
     /** 单条边的剖面信息。 */
     private static final class EdgeEntry {
         final int edgeId;
@@ -67,11 +77,13 @@ public final class RiverNetworkProfile {
         final double parentScaleAtJunction;
         /** 是否为 FROM_PARENT（下游分流入海支流）。 */
         final boolean fromParent;
+        /** 整条水流链最终是否真正入海；内流河（无入海口）为 false。 */
+        final boolean mouthChain;
         /** 接点一致后的有效宽度端点（查询时按 smoothstep(progress) 插值）。 */
         final double widthStart;
         final double widthEnd;
         EdgeEntry(int edgeId, double length, double tailMouth, double headSource,
-                  double parentScaleAtJunction, boolean fromParent,
+                  double parentScaleAtJunction, boolean fromParent, boolean mouthChain,
                   double widthStart, double widthEnd) {
             this.edgeId = edgeId;
             this.length = length;
@@ -79,6 +91,7 @@ public final class RiverNetworkProfile {
             this.headSource = headSource;
             this.parentScaleAtJunction = parentScaleAtJunction;
             this.fromParent = fromParent;
+            this.mouthChain = mouthChain;
             this.widthStart = widthStart;
             this.widthEnd = widthEnd;
         }
@@ -130,8 +143,9 @@ public final class RiverNetworkProfile {
             double head = 0.0;
             double parentScaleAtJunction = 1.0;
             boolean fromParent = false;
-            double widthStart = e.getWidthStart();
-            double widthEnd = e.getWidthEnd();
+            boolean mouthChain = e.hasMouth();
+            double widthStart = Math.max(e.getWidthStart(), MIN_RIVER_WIDTH_BLOCKS);
+            double widthEnd = Math.max(e.getWidthEnd(), MIN_RIVER_WIDTH_BLOCKS);
 
             RiverRelation rel = e.getRelation();
             if (rel == RiverRelation.INTO_PARENT || rel == RiverRelation.FROM_PARENT) {
@@ -157,11 +171,14 @@ public final class RiverNetworkProfile {
                             tail = parentDistMouth;
                             // 汇入点宽度与父河一致
                             widthEnd = parentWidthAtJp;
+                            // 汇入支流继承父河链的「是否真正入海」
+                            mouthChain = pe.mouthChain;
                         } else {
                             head = parentDistSource;
                             parentScaleAtJunction =
                                 mouthFactor(parentDistMouth) * sourceFactor(parentDistSource);
                             fromParent = true;
+                            mouthChain = e.hasMouth();
                             // 分叉点宽度与父河一致
                             widthStart = parentWidthAtJp;
                         }
@@ -170,7 +187,7 @@ public final class RiverNetworkProfile {
             }
 
             entries.put(id, new EdgeEntry(
-                id, len, tail, head, parentScaleAtJunction, fromParent,
+                id, len, tail, head, parentScaleAtJunction, fromParent, mouthChain,
                 widthStart, widthEnd
             ));
         }
@@ -197,6 +214,11 @@ public final class RiverNetworkProfile {
 
         double dMouth = en.length * (1.0 - progress) + en.tailMouth;
         double dSource = en.length * progress + en.headSource;
+        if (!en.mouthChain) {
+            // 内流河：终点在终端湖 / 湿地，不做入海口抬升，
+            // 保持河深直到汇入水体，由水体雕刻接管。
+            return sourceFactor(dSource);
+        }
         return mouthFactor(dMouth) * sourceFactor(dSource);
     }
 

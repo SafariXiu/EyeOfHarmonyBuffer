@@ -8,6 +8,7 @@ import com.EyeOfHarmonyBuffer.Loader.*;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
+import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
@@ -27,6 +28,9 @@ import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
+import com.EyeOfHarmonyBuffer.space.talos.MountainLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainBiomeOverrideProvider;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
@@ -129,6 +133,15 @@ public class EyeOfHarmonyBuffer {
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
+        // 洞穴层：世界加载 / 卸载时维护节点缓存
+        MinecraftForge.EVENT_BUS.register(new CaveLifecycleHandler());
+        // 山地层：WorldEvent 走 Forge 总线，WorldTickEvent 走 FML 总线
+        MinecraftForge.EVENT_BUS.register(new MountainLifecycleHandler());
+        FMLCommonHandler.instance().bus().register(new MountainLifecycleHandler());
+        // 群系覆盖钩子（依赖倒置：气候层只认接口，实现由组合根注册）
+        TalosMacroClimate.setBiomeOverrideProvider(
+            new MountainBiomeOverrideProvider()
+        );
 
         ExampleQuestRegistration.registerAll();
 
@@ -187,9 +200,12 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandTalosRiverSource());
         event.registerServerCommand(new CommandTalosRiverMouth());
         event.registerServerCommand(new CommandTalosRiverConfluence());
+        event.registerServerCommand(new CommandTalosRiverBody());
         event.registerServerCommand(new CommandTalosContinent());
         event.registerServerCommand(new CommandTalosBiome());
         event.registerServerCommand(new CommandTalosBoundary());
+        event.registerServerCommand(new CommandTalosMountain());
+        event.registerServerCommand(new CommandTalosCave());
     }
 
     @Mod.EventHandler

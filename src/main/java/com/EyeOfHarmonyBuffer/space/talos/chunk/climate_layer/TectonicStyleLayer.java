@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TectonicStyle;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosTectonicStyles;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -194,25 +195,12 @@ public final class TectonicStyleLayer {
                     TalosLandMask.Sample s = TalosLandMask.sampleFull(
                         worldX, worldZ, worldSeedInt);
 
-                    TectonicStyle style = TectonicStyle.NONE;
+                    TectonicStyle style = TalosTectonicStyles.styleFromSample(s);
                     double div = 0.0;
                     boolean land = s != null && s.isLand;
                     if (land) {
                         div = TalosLandMask.maxBoundaryStrength(
                             PlateBoundaryState.DIVERGENT, s);
-                        if (div >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
-                            style = TectonicStyle.RIFT;
-                        } else if (s.plateBoundaryState
-                            == PlateBoundaryState.CONVERGENT) {
-                            double w = s.plateBoundaryWeight;
-                            if (w >= 0.7) {
-                                style = TectonicStyle.PEAK;
-                            } else if (w > 0.5) {
-                                style = TectonicStyle.MOUNTAINS;
-                            } else if (w >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
-                                style = TectonicStyle.HIGHLAND;
-                            }
-                        }
                     }
 
                     rawStyle[index] = style;
