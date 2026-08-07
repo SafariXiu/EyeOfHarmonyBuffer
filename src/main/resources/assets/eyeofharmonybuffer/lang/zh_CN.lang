@@ -678,6 +678,7 @@ tile.ShaYe.name=砂叶
 tile.TongHuaGuanMu.name=酮化灌木
 tile.YaZhen.name=芽针
 tile.UnderwaterShrub.name=水下酮化灌木（实验）
+tile.CleanGlass.name=干净玻璃（实验）
 tile.overdomain_erosion.name=§4超域侵蚀
 tile.ForgeOfTheSkyCore.name=§a天有烘炉核心
 EOHB_ForgeOfTheSkyCore_Tooltip_00=多方块结构§a天有洪炉§f的核心配件
