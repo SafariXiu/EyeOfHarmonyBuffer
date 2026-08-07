@@ -57,6 +57,9 @@ public final class TalosRiverProfile {
         double sampleX = worldX + 0.5;
         double sampleZ = worldZ + 0.5;
         double radialFromSource = 0.0;
+        double waterR = 0.0;
+        double beachR = 0.0;
+        double slopeR = 0.0;
 
         if (hydro.hasSource && !Double.isNaN(sx) && !Double.isNaN(sz)) {
             double dxs = sampleX - sx;
@@ -64,9 +67,22 @@ public final class TalosRiverProfile {
             radialFromSource = Math.sqrt(dxs * dxs + dzs * dzs);
 
             if (lakePreset != null) {
-                double maxInfluenceR = lakePreset.baseRadius * 1.30
-                    + lakePreset.beachWidth + lakePreset.outerSlopeWidth;
-                if (radialFromSource <= maxInfluenceR) {
+                // 湖域判定与湖盆剖面共用同一个角噪声半径，
+                // 避免“固定完美圆 > 实际不规则外坡”留下一圈无人管辖的环形水道。
+                double theta = Math.atan2(sampleZ - sz, sampleX - sx);
+                double ampScale = lakePreset.irregularityAmp / 0.18;
+                double radiusFactor = 1.0
+                    + ampScale * 0.12 * angularPerturbation(
+                        theta, (long) sx, (long) sz);
+                double minFactor = 1.0 - 0.12 * ampScale;
+                double maxFactor = 1.0 + 0.12 * ampScale;
+                if (radiusFactor < minFactor) radiusFactor = minFactor;
+                if (radiusFactor > maxFactor) radiusFactor = maxFactor;
+
+                waterR = lakePreset.baseRadius * radiusFactor;
+                beachR = waterR + lakePreset.beachWidth;
+                slopeR = beachR + lakePreset.outerSlopeWidth;
+                if (radialFromSource <= slopeR) {
                     inLakeZone = true;
                 }
             }
@@ -144,22 +160,6 @@ public final class TalosRiverProfile {
         double riverCutWidth = Math.max(hydro.widthCore, hydro.widthValley);
 
         if (inLakeZone && lakePreset != null) {
-            double theta = Math.atan2(sampleZ - sz, sampleX - sx);
-
-            // 确定性角噪声：有机不规则，但每个方向都有完整湖体（无缩瓣盲区）
-            double ampScale = lakePreset.irregularityAmp / 0.18;
-            double radiusFactor = 1.0
-                + ampScale * 0.12 * angularPerturbation(
-                    theta, (long) sx, (long) sz);
-            double minFactor = 1.0 - 0.12 * ampScale;
-            double maxFactor = 1.0 + 0.12 * ampScale;
-            if (radiusFactor < minFactor) radiusFactor = minFactor;
-            if (radiusFactor > maxFactor) radiusFactor = maxFactor;
-
-            double waterR = lakePreset.baseRadius * radiusFactor;
-            double beachR = waterR + lakePreset.beachWidth;
-            double slopeR = beachR + lakePreset.outerSlopeWidth;
-
             if (radialFromSource <= waterR) {
                 // 湖盆：抛物线深挖（最深 centerDepth）+ 暗河井
                 double rNorm = radialFromSource / waterR;
