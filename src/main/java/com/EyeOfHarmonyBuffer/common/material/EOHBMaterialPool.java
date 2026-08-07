@@ -401,6 +401,18 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff HighEnergyGas = new Werkstoff(
+        new short[] { 255, 200, 100 },
+        EOHB_HighEnergyGas,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 31,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override

@@ -475,6 +475,7 @@ public class TextLocalization {
     public static final String EOHB_CupriumGas;
     public static final String EOHB_HetoniteGas;
     public static final String EOHB_PyrroliteGas;
+    public static final String EOHB_HighEnergyGas;
 
     //物品
     public static final String EOHB_ChengDuHeart_Tooltip_00;
@@ -1087,6 +1088,7 @@ public class TextLocalization {
         EOHB_CupriumGas = TextHandler.texter("Cuprium Gas","EOHB_CupriumGas");
         EOHB_HetoniteGas = TextHandler.texter("Hetonite Gas","EOHB_HetoniteGas");
         EOHB_PyrroliteGas = TextHandler.texter("Pyrrolite Gas","EOHB_PyrroliteGas");
+        EOHB_HighEnergyGas = TextHandler.texter("High-Energy Gas","EOHB_HighEnergyGas");
 
         //配方池
         EOHB_Recipe_SubstanceReshapingDevice = TextHandler.texter("Substance Reshaping Device","EOHB_Recipe_SubstanceReshapingDevice");

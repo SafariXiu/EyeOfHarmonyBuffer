@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.TalosUndergroundFluidRegister;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
@@ -182,6 +183,7 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void completeInit(FMLServerStartingEvent event) {
+        TalosUndergroundFluidRegister.register();
         new LazyStaticsInitLoader().initStaticsOnCompleteInit();
     }
 
