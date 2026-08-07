@@ -14,7 +14,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClim
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import net.minecraft.block.Block;
-import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -36,6 +35,9 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     /** 河床装饰：水下乱石堆每区块尝试次数 / 水下枯木概率。 */
     private static final double RIVERBED_ROCK_PER_CHUNK = 2.0;
     private static final double RIVERBED_LOG_PER_CHUNK = 1.0;
+
+    private static final WorldGenYuanShiDoubleConeCluster CRYSTAL_CLUSTER_GEN =
+        new WorldGenYuanShiDoubleConeCluster();
 
     private World currentWorld;
 
@@ -84,6 +86,10 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
         final int chunkX = worldX0 / 16;
         final int chunkZ = worldZ0 / 16;
+
+        // 晶簇切片必须在海洋/群系提前返回之前执行：
+        // 跨到海洋或群系边缘的区块也要补自己的切片，否则晶簇会在边界被截断。
+        CRYSTAL_CLUSTER_GEN.generate(world, rand, chunkX, chunkZ);
 
         final int centerX = worldX0 + 8;
         final int centerZ = worldZ0 + 8;
