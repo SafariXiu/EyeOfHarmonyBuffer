@@ -366,7 +366,8 @@ public final class TalosBoundedFeatures {
                 return false;
             }
             if (isWater(lx, y, lz)
-                || !topIs(lx, lz, Blocks.grass, Blocks.dirt, Blocks.sand)) {
+                || !topIs(lx, lz, Blocks.sand,
+                    Blocks.hardened_clay, Blocks.stained_hardened_clay)) {
                 return false;
             }
             setBlock(lx, y + 1, lz, Blocks.deadbush, 0);
