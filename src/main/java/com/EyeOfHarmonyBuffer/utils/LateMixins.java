@@ -66,6 +66,7 @@ public class LateMixins implements ILateMixinLoader {
             "GodOfForgeModuleMixin.SmeltingModuleMixin",
             "GT.DimensionDefTalos2Mixin",
             "GT.GTUtilityMixin",
+            "GT.StoneTypeTalosMixin",
             "HIPCompressorMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverParallelMixin",
             "IndustrialLaserEngraver.IndustrialLaserEngraverSpeedMixin",

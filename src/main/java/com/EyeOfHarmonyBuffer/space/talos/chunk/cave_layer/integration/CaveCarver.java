@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
 import ganymedes01.etfuturum.ModBlocks;
+import gregtech.api.GregTechAPI;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
@@ -567,11 +568,21 @@ public final class CaveCarver {
             blocks[idx] = b != null ? b : Blocks.stone;
             meta[idx] = 0;
         } else if (v == 0) {
-            blocks[idx] = Blocks.stone;
+            // 玄武岩
+            blocks[idx] = GregTechAPI.sBlockStones;
+            meta[idx] = 8;
+        } else if (v == 1) {
+            // 黑花岗岩
+            blocks[idx] = GregTechAPI.sBlockGranites;
             meta[idx] = 0;
+        } else if (v == 2) {
+            // 红花岗岩
+            blocks[idx] = GregTechAPI.sBlockGranites;
+            meta[idx] = 8;
         } else {
-            blocks[idx] = ModBlocks.STONE.get();
-            meta[idx] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
+            // 大理石
+            blocks[idx] = GregTechAPI.sBlockStones;
+            meta[idx] = 0;
         }
     }
 

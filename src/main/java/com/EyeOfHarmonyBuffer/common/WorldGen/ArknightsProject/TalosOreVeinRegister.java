@@ -2,7 +2,7 @@ package com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject;
 
 import java.util.Collections;
 
-import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
+import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
 import gregtech.api.enums.StoneType;
 import gregtech.api.interfaces.IOreMaterial;
 import gregtech.common.OreMixBuilder;
@@ -38,7 +38,7 @@ public final class TalosOreVeinRegister {
         // 轻锰矿：最常见，浅层
         registerVein(
             "ore.mix.talos.qingmengkuang",
-            EOHBMaterialPool.QingMengKuang,
+            EOHBGTMaterials.QingMengKuang,
             110,
             20, 100,
             5, 28);
@@ -46,7 +46,7 @@ public final class TalosOreVeinRegister {
         // 异铁：中等，较深
         registerVein(
             "ore.mix.talos.yitie",
-            EOHBMaterialPool.YiTie,
+            EOHBGTMaterials.YiTie,
             80,
             10, 70,
             4, 24);
@@ -54,7 +54,7 @@ public final class TalosOreVeinRegister {
         // 转质盐：稀有，中高层
         registerVein(
             "ore.mix.talos.zhuanzhiyan",
-            EOHBMaterialPool.ZhuanZhiYan,
+            EOHBGTMaterials.ZhuanZhiYan,
             50,
             40, 130,
             3, 20);

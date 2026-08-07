@@ -9,6 +9,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
 import ganymedes01.etfuturum.ModBlocks;
+import gregtech.api.GregTechAPI;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
@@ -720,11 +721,21 @@ public final class CaveDecorator {
             blocks[index] = b != null ? b : Blocks.stone;
             meta[index] = 0;
         } else if (v == 0) {
-            blocks[index] = Blocks.stone;
+            // 玄武岩
+            blocks[index] = GregTechAPI.sBlockStones;
+            meta[index] = 8;
+        } else if (v == 1) {
+            // 黑花岗岩
+            blocks[index] = GregTechAPI.sBlockGranites;
             meta[index] = 0;
+        } else if (v == 2) {
+            // 红花岗岩
+            blocks[index] = GregTechAPI.sBlockGranites;
+            meta[index] = 8;
         } else {
-            blocks[index] = ModBlocks.STONE.get();
-            meta[index] = (byte) (v == 1 ? 1 : (v == 2 ? 3 : 5));
+            // 大理石
+            blocks[index] = GregTechAPI.sBlockStones;
+            meta[index] = 0;
         }
     }
 }

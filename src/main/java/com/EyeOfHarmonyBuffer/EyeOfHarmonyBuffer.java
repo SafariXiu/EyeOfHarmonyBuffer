@@ -16,6 +16,7 @@ import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosio
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
+import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.TalosOreVeinRegister;
 import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
@@ -39,6 +40,7 @@ import com.EyeOfHarmonyBuffer.utils.TextHandler;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.registry.GameRegistry;
+import gregtech.api.enums.Materials;
 import gregtech.api.util.GTUtility;
 import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.Launch;
@@ -70,6 +72,10 @@ public class EyeOfHarmonyBuffer {
     public final GemErgodic gemErgodic = new GemErgodic();
 
     public static final String MODID = "eyeofharmonybuffer";
+
+    static {
+        Materials.add(new EOHBGTMaterials());
+    }
 
     @Mod.Instance(EyeOfHarmonyBuffer.MODID)
     public static EyeOfHarmonyBuffer instance;

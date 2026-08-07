@@ -14,6 +14,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import ganymedes01.etfuturum.ModBlocks;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
+import gregtech.api.GregTechAPI;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
@@ -378,7 +379,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return false;
     }
 
-    /** 深部石头换成大块岩性（花岗岩/闪长岩/安山岩/石头）。 */
+    /** 深部石头换成 GT 原生岩性（黑/红花岗岩、大理石、玄武岩），保证矿脉变体矿石可生成。 */
     private static BlockMetaPair rockPair(BlockMetaPair pair,
                                           int wx, int wy, int wz, int seed) {
         if (pair != null && pair.getBlock() == Blocks.stone
@@ -402,13 +403,17 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             case 5:
                 return efrRockPair(ModBlocks.TUFF);
             case 1:
-                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 1);
+                // 黑花岗岩
+                return new BlockMetaPair(GregTechAPI.sBlockGranites, (byte) 0);
             case 2:
-                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 3);
+                // 红花岗岩
+                return new BlockMetaPair(GregTechAPI.sBlockGranites, (byte) 8);
             case 3:
-                return new BlockMetaPair(ModBlocks.STONE.get(), (byte) 5);
+                // 大理石
+                return new BlockMetaPair(GregTechAPI.sBlockStones, (byte) 0);
             default:
-                return new BlockMetaPair(Blocks.stone, (byte) 0);
+                // 玄武岩
+                return new BlockMetaPair(GregTechAPI.sBlockStones, (byte) 8);
         }
     }
 

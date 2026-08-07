@@ -401,39 +401,6 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
-    public static final Werkstoff YiTie = new Werkstoff(
-        new short[] { 96, 108, 120 },
-        "YiTie",
-        "",
-        new Werkstoff.Stats(),
-        Werkstoff.Types.MATERIAL,
-        new Werkstoff.GenerationFeatures(),
-        OFFSET_ID + 31,
-        TextureSet.SET_METALLIC
-    );
-
-    public static final Werkstoff QingMengKuang = new Werkstoff(
-        new short[] { 116, 96, 138 },
-        "QingMengKuang",
-        "",
-        new Werkstoff.Stats(),
-        Werkstoff.Types.MATERIAL,
-        new Werkstoff.GenerationFeatures(),
-        OFFSET_ID + 32,
-        TextureSet.SET_SHINY
-    );
-
-    public static final Werkstoff ZhuanZhiYan = new Werkstoff(
-        new short[] { 230, 228, 218 },
-        "ZhuanZhiYan",
-        "",
-        new Werkstoff.Stats(),
-        Werkstoff.Types.MATERIAL,
-        new Werkstoff.GenerationFeatures(),
-        OFFSET_ID + 33,
-        TextureSet.SET_FINE
-    );
-
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override
