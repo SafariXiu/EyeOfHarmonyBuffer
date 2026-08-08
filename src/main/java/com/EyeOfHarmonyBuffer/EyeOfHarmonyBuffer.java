@@ -14,6 +14,7 @@ import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateRes
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
@@ -117,7 +118,7 @@ public class EyeOfHarmonyBuffer {
             MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
         }
 
-        ItemIntermediateProducts.initAndRegister(MODID);
+        ItemIntermediateProducts.initAndRegister(MODID, ItemArknightsTooltips.getTooltips());
         BlockIntermediateResources.registerAll(MODID);
 
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");

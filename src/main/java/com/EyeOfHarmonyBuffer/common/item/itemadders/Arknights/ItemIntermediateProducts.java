@@ -6,6 +6,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
@@ -146,13 +147,33 @@ public class ItemIntermediateProducts {
     public static Item ZhuanZhiYanJuKuai;
 
     public static void initAndRegister(String modid) {
+        initAndRegister(modid, null);
+    }
+
+    /**
+     * @param modid    模组 ID
+     * @param tooltips 物品名 -> Tooltip 行数组（可选，null 表示不添加 Tooltip）
+     */
+    public static void initAndRegister(String modid, Map<String, String[]> tooltips) {
         String textureFolder = "Arknights/";
 
         try {
             for (Field field : ItemIntermediateProducts.class.getDeclaredFields()) {
                 if (Item.class.isAssignableFrom(field.getType())) {
                     String name = field.getName();
-                    Item item = (Item) field.getType().newInstance();
+                    Item item;
+                    if (field.getType() == Item.class) {
+                        item = new ItemEOHBBatch();
+                    } else {
+                        item = (Item) field.getType().newInstance();
+                    }
+
+                    if (item instanceof ItemEOHBBatch batch && tooltips != null) {
+                        String[] lines = tooltips.get(name);
+                        if (lines != null && lines.length > 0) {
+                            batch.setTooltipLines(lines);
+                        }
+                    }
 
                     item.setUnlocalizedName(name)
                         .setTextureName(modid + ":" + textureFolder + name)

@@ -501,6 +501,80 @@ public class TextLocalization {
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_01;
     public static final String EOHB_KuangMaiCaiJiZhe_Tooltip_00;
     public static final String EOHB_EnergyConnector_Tooltip_00;
+    //粥本家批量物品 Tooltip（双语文案见 en_US.lang / zh_CN.lang）
+    public static final String[] EOHB_ArknightsItem_LongGu;
+    public static final String[] EOHB_ArknightsItem_Tan;
+    public static final String[] EOHB_ArknightsItem_TanSu;
+    public static final String[] EOHB_ArknightsItem_TanSuZu;
+    public static final String[] EOHB_ArknightsItem_JiChuJiaGuJianCai;
+    public static final String[] EOHB_ArknightsItem_JinJieJiaGuJianCai;
+    public static final String[] EOHB_ArknightsItem_GaoJiJiaGuJianCai;
+    public static final String[] EOHB_ArknightsItem_YuanShiSuiPian;
+    public static final String[] EOHB_ArknightsItem_ChiJin;
+    public static final String[] EOHB_ArknightsItem_JiQiaoGaiYao_Juan1;
+    public static final String[] EOHB_ArknightsItem_JiQiaoGaiYao_Juan2;
+    public static final String[] EOHB_ArknightsItem_JiQiaoGaiYao_Juan3;
+    public static final String[] EOHB_ArknightsItem_NiuZhuanChun;
+    public static final String[] EOHB_ArknightsItem_BaiMaChun;
+    public static final String[] EOHB_ArknightsItem_ShuangJiNaMiPian;
+    public static final String[] EOHB_ArknightsItem_PoSunZhuangZhi;
+    public static final String[] EOHB_ArknightsItem_ZhuangZhi;
+    public static final String[] EOHB_ArknightsItem_QuanXinZhuangZhi;
+    public static final String[] EOHB_ArknightsItem_GaiLiangZhuangZhi;
+    public static final String[] EOHB_ArknightsItem_HuaHeQieXiaoYe;
+    public static final String[] EOHB_ArknightsItem_DianJiDanYuan;
+    public static final String[] EOHB_ArknightsItem_JuNengDongLiDanYuan;
+    public static final String[] EOHB_ArknightsItem_D32Gang;
+    public static final String[] EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi;
+    public static final String[] EOHB_ArknightsItem_YuanYan;
+    public static final String[] EOHB_ArknightsItem_GuYuanYan;
+    public static final String[] EOHB_ArknightsItem_GuYuanYanZu;
+    public static final String[] EOHB_ArknightsItem_TiChunYuanYan;
+    public static final String[] EOHB_ArknightsItem_HuanTingJuZhi;
+    public static final String[] EOHB_ArknightsItem_HuanTingYuZhiTi;
+    public static final String[] EOHB_ArknightsItem_ChiHeJin;
+    public static final String[] EOHB_ArknightsItem_ChiHeJinKuai;
+    public static final String[] EOHB_ArknightsItem_YiTieSuiPian;
+    public static final String[] EOHB_ArknightsItem_YiTie;
+    public static final String[] EOHB_ArknightsItem_YiTieZu;
+    public static final String[] EOHB_ArknightsItem_YiTieKuai;
+    public static final String[] EOHB_ArknightsItem_LeiNingJieHe;
+    public static final String[] EOHB_ArknightsItem_ShuangTong;
+    public static final String[] EOHB_ArknightsItem_TongNingJi;
+    public static final String[] EOHB_ArknightsItem_TongNingJiZu;
+    public static final String[] EOHB_ArknightsItem_TongZhenLie;
+    public static final String[] EOHB_ArknightsItem_QingMengKuang;
+    public static final String[] EOHB_ArknightsItem_SanShuiMengKuang;
+    public static final String[] EOHB_ArknightsItem_JingTiYuanJian;
+    public static final String[] EOHB_ArknightsItem_JingTiDianLu;
+    public static final String[] EOHB_ArknightsItem_JingTiDianZiDanYuan;
+    public static final String[] EOHB_ArknightsItem_YanMoShi;
+    public static final String[] EOHB_ArknightsItem_WuShuiYanMoShi;
+    public static final String[] EOHB_ArknightsItem_NingJiao;
+    public static final String[] EOHB_ArknightsItem_JuHeNingJiao;
+    public static final String[] EOHB_ArknightsItem_QieXiaoYuanYe;
+    public static final String[] EOHB_ArknightsItem_JuHeJi;
+    public static final String[] EOHB_ArknightsItem_ShouXingQuGuangTi;
+    public static final String[] EOHB_ArknightsItem_RMA70_12;
+    public static final String[] EOHB_ArknightsItem_RMA70_24;
+    public static final String[] EOHB_ArknightsItem_JingLianRongJi;
+    public static final String[] EOHB_ArknightsItem_ZhiYuanLiao;
+    public static final String[] EOHB_ArknightsItem_JuSuanZhi;
+    public static final String[] EOHB_ArknightsItem_JuSuanZhiZu;
+    public static final String[] EOHB_ArknightsItem_JuSuanZhiKuai;
+    public static final String[] EOHB_ArknightsItem_ShaoJieHeNingJing;
+    public static final String[] EOHB_ArknightsItem_BanZiRanRongJi;
+    public static final String[] EOHB_ArknightsItem_DaiTang;
+    public static final String[] EOHB_ArknightsItem_Tang;
+    public static final String[] EOHB_ArknightsItem_TangZu;
+    public static final String[] EOHB_ArknightsItem_TangJuKuai;
+    public static final String[] EOHB_ArknightsItem_HeSuXianWei;
+    public static final String[] EOHB_ArknightsItem_GuHuaXianWeiBan;
+    public static final String[] EOHB_ArknightsItem_YeHuaGaoNengQiTi;
+    public static final String[] EOHB_ArknightsItem_YeHuaMiXiJuTi;
+    public static final String[] EOHB_ArknightsItem_ZhuanZhiYanZu;
+    public static final String[] EOHB_ArknightsItem_ZhuanZhiYanJuKuai;
+
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -1059,6 +1133,485 @@ public class TextLocalization {
         EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("Forge of the Sky, the Earth gives birth to metals.","EOHB_ForgeOfTheSkyCore_Tooltip_01");
         EOHB_KuangMaiCaiJiZhe_Tooltip_00 = TextHandler.texter("Right-click on the Prime Main Vein Block to collect the corresponding vein block.","EOHB_KuangMaiCaiJiZhe_Tooltip_00");
         EOHB_EnergyConnector_Tooltip_00 = TextHandler.texter("Right-click the machine main block to start linking, then left-click the target machine main block to complete the link.","EOHB_EnergyConnector_Tooltip_00");
+        EOHB_ArknightsItem_LongGu = new String[] {
+            TextHandler.texter("A delicate artificial component used as the core material of Base construction.", "EOHB_ArknightsItem_LongGu_00"),
+            TextHandler.texter("The foundation of the entire construction operation at", "EOHB_ArknightsItem_LongGu_01"),
+            TextHandler.texter("Rhodes Island. Although this giant, complicated component", "EOHB_ArknightsItem_LongGu_02"),
+            TextHandler.texter("must be custom made or ordered, for some reason, Rhodes", "EOHB_ArknightsItem_LongGu_03"),
+            TextHandler.texter("Island often uses it to build special facilities.", "EOHB_ArknightsItem_LongGu_04")
+        };
+        EOHB_ArknightsItem_Tan = new String[] {
+            TextHandler.texter("A carbon stick used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_Tan_00"),
+            TextHandler.texter("One of the necessary industrial materials, it", "EOHB_ArknightsItem_Tan_01"),
+            TextHandler.texter("can be used to produce a variety of polymers.", "EOHB_ArknightsItem_Tan_02")
+        };
+        EOHB_ArknightsItem_TanSu = new String[] {
+            TextHandler.texter("A carbon brick used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_TanSu_00"),
+            TextHandler.texter("Light and highly pure, it possesses excellent workability,", "EOHB_ArknightsItem_TanSu_01"),
+            TextHandler.texter("and is instrumental to the success of our operations.", "EOHB_ArknightsItem_TanSu_02")
+        };
+        EOHB_ArknightsItem_TanSuZu = new String[] {
+            TextHandler.texter("A pack of carbon bricks used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_TanSuZu_00"),
+            TextHandler.texter("A large number of carbon bricks. Every one of them has a burning soul for modern industry.", "EOHB_ArknightsItem_TanSuZu_01")
+        };
+        EOHB_ArknightsItem_JiChuJiaGuJianCai = new String[] {
+            TextHandler.texter("A basic construction material used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_JiChuJiaGuJianCai_00"),
+            TextHandler.texter("Room modification causes irreversible damage to load bearing parts if not handled properly. Please", "EOHB_ArknightsItem_JiChuJiaGuJianCai_01"),
+            TextHandler.texter("use building materials before commencing modification", "EOHB_ArknightsItem_JiChuJiaGuJianCai_02"),
+            TextHandler.texter("in order to guarantee the integrity of the room.", "EOHB_ArknightsItem_JiChuJiaGuJianCai_03")
+        };
+        EOHB_ArknightsItem_JinJieJiaGuJianCai = new String[] {
+            TextHandler.texter("A strengthened construction material used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_JinJieJiaGuJianCai_00"),
+            TextHandler.texter("Before conducting modifications to rooms with poor", "EOHB_ArknightsItem_JinJieJiaGuJianCai_01"),
+            TextHandler.texter("structural integrity, please use this building", "EOHB_ArknightsItem_JinJieJiaGuJianCai_02"),
+            TextHandler.texter("material for maintenance to ensure the safety of", "EOHB_ArknightsItem_JinJieJiaGuJianCai_03"),
+            TextHandler.texter("the work site. Only then will you be ready to begin.", "EOHB_ArknightsItem_JinJieJiaGuJianCai_04")
+        };
+        EOHB_ArknightsItem_GaoJiJiaGuJianCai = new String[] {
+            TextHandler.texter("An advanced construction material used for the facility development of Rhodes Island.", "EOHB_ArknightsItem_GaoJiJiaGuJianCai_00"),
+            TextHandler.texter("Please do not waste time with stress tests on rooms", "EOHB_ArknightsItem_GaoJiJiaGuJianCai_01"),
+            TextHandler.texter("strengthened by this material! None of the currently employed", "EOHB_ArknightsItem_GaoJiJiaGuJianCai_02"),
+            TextHandler.texter("demolition methods can damage the structural integrity of", "EOHB_ArknightsItem_GaoJiJiaGuJianCai_03"),
+            TextHandler.texter("these rooms, but they may be dangerous to the experimenters.", "EOHB_ArknightsItem_GaoJiJiaGuJianCai_04")
+        };
+        EOHB_ArknightsItem_YuanShiSuiPian = new String[] {
+            TextHandler.texter("An Originium shard collected from polluted regions. Can be used to produce Orundum.", "EOHB_ArknightsItem_YuanShiSuiPian_00"),
+            TextHandler.texter("An Originium shard collected from heavily contaminated", "EOHB_ArknightsItem_YuanShiSuiPian_01"),
+            TextHandler.texter("regions. Anyone who touches it has a high chance to get", "EOHB_ArknightsItem_YuanShiSuiPian_02"),
+            TextHandler.texter("infected and even mutate. Therefore, it is a hazardous", "EOHB_ArknightsItem_YuanShiSuiPian_03"),
+            TextHandler.texter("material as indicated in the Columbia CDC toxicity database.", "EOHB_ArknightsItem_YuanShiSuiPian_04")
+        };
+        EOHB_ArknightsItem_ChiJin = new String[] {
+            TextHandler.texter("A refined gold bar. Can be exchanged for a lot of LMD.", "EOHB_ArknightsItem_ChiJin_00"),
+            TextHandler.texter("How much ore does it take to", "EOHB_ArknightsItem_ChiJin_01"),
+            TextHandler.texter("make such valuable gold bars?", "EOHB_ArknightsItem_ChiJin_02"),
+            TextHandler.texter("It doesn't matter. What matters is that they're yours.", "EOHB_ArknightsItem_ChiJin_03")
+        };
+        EOHB_ArknightsItem_JiQiaoGaiYao_Juan1 = new String[] {
+            TextHandler.texter("A book that records basic tactics. Can be used to upgrade Operator skills.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan1_00"),
+            TextHandler.texter("It records entry-level skills needed by Operators. Even", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan1_01"),
+            TextHandler.texter("a dummy could master the techniques after a bit of study.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan1_02")
+        };
+        EOHB_ArknightsItem_JiQiaoGaiYao_Juan2 = new String[] {
+            TextHandler.texter("A book that records intermediate tactics. Can be used to upgrade Operator skills.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan2_00"),
+            TextHandler.texter("It records junior skills needed by Operators.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan2_01"),
+            TextHandler.texter("It takes some time and effort to master them.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan2_02")
+        };
+        EOHB_ArknightsItem_JiQiaoGaiYao_Juan3 = new String[] {
+            TextHandler.texter("A book that records advanced tactics. Can be used to upgrade Operator skills.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan3_00"),
+            TextHandler.texter("It records high level skills needed by Operators. It takes", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan3_01"),
+            TextHandler.texter("a depth of experience in relevant fields to understand them.", "EOHB_ArknightsItem_JiQiaoGaiYao_Juan3_02")
+        };
+        EOHB_ArknightsItem_NiuZhuanChun = new String[] {
+            TextHandler.texter("A flaky organic compound. Can be used for a variety", "EOHB_ArknightsItem_NiuZhuanChun_00"),
+            TextHandler.texter("of upgrades and for production in the Factory.", "EOHB_ArknightsItem_NiuZhuanChun_01"),
+            TextHandler.texter("An outstanding chemical mediator. When in use, it often changes", "EOHB_ArknightsItem_NiuZhuanChun_02"),
+            TextHandler.texter("between two forms to store and release other materials. When", "EOHB_ArknightsItem_NiuZhuanChun_03"),
+            TextHandler.texter("it becomes liquid, some of its properties are the same as those", "EOHB_ArknightsItem_NiuZhuanChun_04"),
+            TextHandler.texter("of alcohol, which often leaves our Engineer Operators tipsy.", "EOHB_ArknightsItem_NiuZhuanChun_05")
+        };
+        EOHB_ArknightsItem_BaiMaChun = new String[] {
+            TextHandler.texter("A flaky organic compound. Can be used for a variety", "EOHB_ArknightsItem_BaiMaChun_00"),
+            TextHandler.texter("of upgrades and the synthesis of Bipolar Nanoflake.", "EOHB_ArknightsItem_BaiMaChun_01"),
+            TextHandler.texter("A product made from Loxic Kohl after fine processing. It was named after the company that discovered its", "EOHB_ArknightsItem_BaiMaChun_02"),
+            TextHandler.texter("production method. Experiments show that it tends to", "EOHB_ArknightsItem_BaiMaChun_03"),
+            TextHandler.texter("transform to a higher structure in abnormal environments.", "EOHB_ArknightsItem_BaiMaChun_04")
+        };
+        EOHB_ArknightsItem_ShuangJiNaMiPian = new String[] {
+            TextHandler.texter("The brainchild of modern science and industry. Can be used for high level upgrades.", "EOHB_ArknightsItem_ShuangJiNaMiPian_00"),
+            TextHandler.texter("A device that is sensitive to Originium within a", "EOHB_ArknightsItem_ShuangJiNaMiPian_01"),
+            TextHandler.texter("certain range. It can significantly improve the", "EOHB_ArknightsItem_ShuangJiNaMiPian_02"),
+            TextHandler.texter("sensitivity of nearby weapons and equipment to", "EOHB_ArknightsItem_ShuangJiNaMiPian_03"),
+            TextHandler.texter("Originium, making them near vessels for Originium Arts.", "EOHB_ArknightsItem_ShuangJiNaMiPian_04")
+        };
+        EOHB_ArknightsItem_PoSunZhuangZhi = new String[] {
+            TextHandler.texter("A damaged mechanical device captured from Reunion. Can be used", "EOHB_ArknightsItem_PoSunZhuangZhi_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_PoSunZhuangZhi_01"),
+            TextHandler.texter("A broken device that was embedded in", "EOHB_ArknightsItem_PoSunZhuangZhi_02"),
+            TextHandler.texter("the enemy's weapons and armor. It got", "EOHB_ArknightsItem_PoSunZhuangZhi_03"),
+            TextHandler.texter("damaged during a fierce fight, but the", "EOHB_ArknightsItem_PoSunZhuangZhi_04"),
+            TextHandler.texter("components inside are still valuable.", "EOHB_ArknightsItem_PoSunZhuangZhi_05")
+        };
+        EOHB_ArknightsItem_ZhuangZhi = new String[] {
+            TextHandler.texter("An ordinary mechanical device captured from Reunion. Can be used", "EOHB_ArknightsItem_ZhuangZhi_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_ZhuangZhi_01"),
+            TextHandler.texter("A set of devices that are relatively complete", "EOHB_ArknightsItem_ZhuangZhi_02"),
+            TextHandler.texter("with numerous valuable components. To make", "EOHB_ArknightsItem_ZhuangZhi_03"),
+            TextHandler.texter("it portable and practical, almost every bit of space around the motherboard is in use.", "EOHB_ArknightsItem_ZhuangZhi_04")
+        };
+        EOHB_ArknightsItem_QuanXinZhuangZhi = new String[] {
+            TextHandler.texter("A brand new mechanical device captured from Reunion. Can be used", "EOHB_ArknightsItem_QuanXinZhuangZhi_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_QuanXinZhuangZhi_01"),
+            TextHandler.texter("A set of brand new devices. By reproducing the", "EOHB_ArknightsItem_QuanXinZhuangZhi_02"),
+            TextHandler.texter("structure of devices of the same type, the lack of space", "EOHB_ArknightsItem_QuanXinZhuangZhi_03"),
+            TextHandler.texter("around the motherboard has been solved. The energy consumption, of course, has also become higher.", "EOHB_ArknightsItem_QuanXinZhuangZhi_04")
+        };
+        EOHB_ArknightsItem_GaiLiangZhuangZhi = new String[] {
+            TextHandler.texter("An advanced mechanical device captured from Reunion. Can be used", "EOHB_ArknightsItem_GaiLiangZhuangZhi_00"),
+            TextHandler.texter("for a variety of upgrades and the synthesis of Bipolar Nanoflake.", "EOHB_ArknightsItem_GaiLiangZhuangZhi_01"),
+            TextHandler.texter("After undergoing a large number of private modifications,", "EOHB_ArknightsItem_GaiLiangZhuangZhi_02"),
+            TextHandler.texter("these devices have greatly expanded capacity, which improves", "EOHB_ArknightsItem_GaiLiangZhuangZhi_03"),
+            TextHandler.texter("performance at the cost of stability. From this, one can feel the dedication and perseverance from the makers.", "EOHB_ArknightsItem_GaiLiangZhuangZhi_04")
+        };
+        EOHB_ArknightsItem_HuaHeQieXiaoYe = new String[] {
+            TextHandler.texter("An industrial agent necessary for metal processing. Can be used for a variety of upgrades.", "EOHB_ArknightsItem_HuaHeQieXiaoYe_00"),
+            TextHandler.texter("Provides lubrication and heat resistance during the refining process, which can", "EOHB_ArknightsItem_HuaHeQieXiaoYe_01"),
+            TextHandler.texter("further increase the rate at which metal products meet final quality specifications.", "EOHB_ArknightsItem_HuaHeQieXiaoYe_02")
+        };
+        EOHB_ArknightsItem_DianJiDanYuan = new String[] {
+            TextHandler.texter("An industrial material with high electrical stability and corrosion resistance. Used in a", "EOHB_ArknightsItem_DianJiDanYuan_00"),
+            TextHandler.texter("variety of strengthening situations, and is often a material for Factory Station synthesis.", "EOHB_ArknightsItem_DianJiDanYuan_01"),
+            TextHandler.texter("Electrodes made of special materials.", "EOHB_ArknightsItem_DianJiDanYuan_02"),
+            TextHandler.texter("They do not participate in electrolytic", "EOHB_ArknightsItem_DianJiDanYuan_03"),
+            TextHandler.texter("reactions and hold great value in smelting and purification processes.", "EOHB_ArknightsItem_DianJiDanYuan_04")
+        };
+        EOHB_ArknightsItem_JuNengDongLiDanYuan = new String[] {
+            TextHandler.texter("A power output device with specialized design and material", "EOHB_ArknightsItem_JuNengDongLiDanYuan_00"),
+            TextHandler.texter("improvements. Can be used in a variety of strengthening situations.", "EOHB_ArknightsItem_JuNengDongLiDanYuan_01"),
+            TextHandler.texter("A comprehensive improvement over previously", "EOHB_ArknightsItem_JuNengDongLiDanYuan_02"),
+            TextHandler.texter("confiscated devices. The new hydraulic unit greatly", "EOHB_ArknightsItem_JuNengDongLiDanYuan_03"),
+            TextHandler.texter("reduces the failure rate while maintaining performance, significantly improving productivity.", "EOHB_ArknightsItem_JuNengDongLiDanYuan_04")
+        };
+        EOHB_ArknightsItem_D32Gang = new String[] {
+            TextHandler.texter("An artificial metal that doesn't exist in", "EOHB_ArknightsItem_D32Gang_00"),
+            TextHandler.texter("nature. Can be used for high level upgrades.", "EOHB_ArknightsItem_D32Gang_01"),
+            TextHandler.texter("This material can deliver Originium Arts smoothly and its amazing hardness makes", "EOHB_ArknightsItem_D32Gang_02"),
+            TextHandler.texter("it impossible to penetrate. It will set a new standard for weapon materials.", "EOHB_ArknightsItem_D32Gang_03")
+        };
+        EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi = new String[] {
+            TextHandler.texter("A product of cutting-edge research on luminescent materials. Can be used for high level upgrades.", "EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi_00"),
+            TextHandler.texter("A new material still in the experimental stage. Not", "EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi_01"),
+            TextHandler.texter("only can it output large amounts of energy, but it can", "EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi_02"),
+            TextHandler.texter("also adapt to Originium Arts. This may indicate the", "EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi_03"),
+            TextHandler.texter("future development of this optically protective material.", "EOHB_ArknightsItem_ZhongXiangWeiDuiYingTi_04")
+        };
+        EOHB_ArknightsItem_YuanYan = new String[] {
+            TextHandler.texter("A rock mined from the ground. Can be used for a", "EOHB_ArknightsItem_YuanYan_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_YuanYan_01"),
+            TextHandler.texter("Rich in organics, it is commonly seen in regions where Originium has", "EOHB_ArknightsItem_YuanYan_02"),
+            TextHandler.texter("completely volatilized. Compared to Originium, it is easier to exploit.", "EOHB_ArknightsItem_YuanYan_03")
+        };
+        EOHB_ArknightsItem_GuYuanYan = new String[] {
+            TextHandler.texter("A rock cube mined from the ground. Can be used for a", "EOHB_ArknightsItem_GuYuanYan_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_GuYuanYan_01"),
+            TextHandler.texter("With numerous micropores, it is often used in the interlayer of", "EOHB_ArknightsItem_GuYuanYan_02"),
+            TextHandler.texter("armors as an adsorbent of the breakdown product of Originium gas.", "EOHB_ArknightsItem_GuYuanYan_03")
+        };
+        EOHB_ArknightsItem_GuYuanYanZu = new String[] {
+            TextHandler.texter("A conglomerate rock mined from the ground. Can be used for", "EOHB_ArknightsItem_GuYuanYanZu_00"),
+            TextHandler.texter("a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_GuYuanYanZu_01"),
+            TextHandler.texter("Compressed from Orirock Cubes, it can be formed naturally.", "EOHB_ArknightsItem_GuYuanYanZu_02"),
+            TextHandler.texter("It is a fragile material, but industrial technology has", "EOHB_ArknightsItem_GuYuanYanZu_03"),
+            TextHandler.texter("made it possible to produce complete Orirock Clusters now.", "EOHB_ArknightsItem_GuYuanYanZu_04"),
+            TextHandler.texter("People often mistake it for an ordinary cluster of rocks.", "EOHB_ArknightsItem_GuYuanYanZu_05")
+        };
+        EOHB_ArknightsItem_TiChunYuanYan = new String[] {
+            TextHandler.texter("A refined matter produced with Orirock Cluster. Can be used for a", "EOHB_ArknightsItem_TiChunYuanYan_00"),
+            TextHandler.texter("variety of upgrades and the synthesis of Polymerization Preparation.", "EOHB_ArknightsItem_TiChunYuanYan_01"),
+            TextHandler.texter("This Orirock looks different from the raw material after the", "EOHB_ArknightsItem_TiChunYuanYan_02"),
+            TextHandler.texter("refinement process. It costs much more than other processing", "EOHB_ArknightsItem_TiChunYuanYan_03"),
+            TextHandler.texter("methods. Anyone who has seen the smooth cutting surface will be", "EOHB_ArknightsItem_TiChunYuanYan_04"),
+            TextHandler.texter("amazed. That must be the charm of combining nature with industry.", "EOHB_ArknightsItem_TiChunYuanYan_05")
+        };
+        EOHB_ArknightsItem_HuanTingJuZhi = new String[] {
+            TextHandler.texter("A superlatively heat- and chemical-resistant industrial", "EOHB_ArknightsItem_HuanTingJuZhi_00"),
+            TextHandler.texter("material. Used in a variety of strengthening projects.", "EOHB_ArknightsItem_HuanTingJuZhi_01"),
+            TextHandler.texter("A novel transparent material born from the laboratory.", "EOHB_ArknightsItem_HuanTingJuZhi_02"),
+            TextHandler.texter("Its high luminous transmittance and phenomenal", "EOHB_ArknightsItem_HuanTingJuZhi_03"),
+            TextHandler.texter("durability in all aspects promise to make it an excellent substitute for many conventional materials.", "EOHB_ArknightsItem_HuanTingJuZhi_04")
+        };
+        EOHB_ArknightsItem_HuanTingYuZhiTi = new String[] {
+            TextHandler.texter("A prefabricated industrial intermediate composed of multiple", "EOHB_ArknightsItem_HuanTingYuZhiTi_00"),
+            TextHandler.texter("first-rate materials. Used in a variety of strengthening projects.", "EOHB_ArknightsItem_HuanTingYuZhiTi_01"),
+            TextHandler.texter("An industrial product arrived at through the introduction of several", "EOHB_ArknightsItem_HuanTingYuZhiTi_02"),
+            TextHandler.texter("excellent materials into the synthesis process, preserving luminous", "EOHB_ArknightsItem_HuanTingYuZhiTi_03"),
+            TextHandler.texter("transmittance while vastly increasing strength and shock resistance. Prospects are high for its wide adoption in the field of defense.", "EOHB_ArknightsItem_HuanTingYuZhiTi_04")
+        };
+        EOHB_ArknightsItem_ChiHeJin = new String[] {
+            TextHandler.texter("A special alloy with a high melting point, commonly used in the electronics industry.", "EOHB_ArknightsItem_ChiHeJin_00"),
+            TextHandler.texter("Can be used for a variety of upgrades and for synthesis projects in Factories.", "EOHB_ArknightsItem_ChiHeJin_01"),
+            TextHandler.texter("An alloy smelted from several rare Terran metals.", "EOHB_ArknightsItem_ChiHeJin_02"),
+            TextHandler.texter("Used to manufacture rare electronic components and", "EOHB_ArknightsItem_ChiHeJin_03"),
+            TextHandler.texter("circuit boards, it has become an indispensable material in the cutting-edge electronics industry.", "EOHB_ArknightsItem_ChiHeJin_04")
+        };
+        EOHB_ArknightsItem_ChiHeJinKuai = new String[] {
+            TextHandler.texter("A rarely-produced alloy with a high melting point, commonly used in", "EOHB_ArknightsItem_ChiHeJinKuai_00"),
+            TextHandler.texter("the electronics industry. Can be used for a variety of upgrades.", "EOHB_ArknightsItem_ChiHeJinKuai_01"),
+            TextHandler.texter("A product derived from further processing of incandescent alloy. After", "EOHB_ArknightsItem_ChiHeJinKuai_02"),
+            TextHandler.texter("complicated industrial processing, the stability of its solid-liquid hybridization", "EOHB_ArknightsItem_ChiHeJinKuai_03"),
+            TextHandler.texter("state at certain temperatures has been preserved. As a result, it has an", "EOHB_ArknightsItem_ChiHeJinKuai_04"),
+            TextHandler.texter("irreplaceable role in product development in the cutting-edge electronics industry.", "EOHB_ArknightsItem_ChiHeJinKuai_05")
+        };
+        EOHB_ArknightsItem_YiTieSuiPian = new String[] {
+            TextHandler.texter("A common industrial material. Can be used for a", "EOHB_ArknightsItem_YiTieSuiPian_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_YiTieSuiPian_01"),
+            TextHandler.texter("A byproduct of massive metal processing.", "EOHB_ArknightsItem_YiTieSuiPian_02"),
+            TextHandler.texter("Its high plasticity and oxidation", "EOHB_ArknightsItem_YiTieSuiPian_03"),
+            TextHandler.texter("resistance make it a common material of smelting and phased processing.", "EOHB_ArknightsItem_YiTieSuiPian_04")
+        };
+        EOHB_ArknightsItem_YiTie = new String[] {
+            TextHandler.texter("A rare industrial material. Can be used for a variety", "EOHB_ArknightsItem_YiTie_00"),
+            TextHandler.texter("of upgrades and for production in the Factory.", "EOHB_ArknightsItem_YiTie_01"),
+            TextHandler.texter("In a small number of inerting processes, Oriron Shards may have phase changed and polymerized", "EOHB_ArknightsItem_YiTie_02"),
+            TextHandler.texter("into Oriron. It is generally thought that Oriron", "EOHB_ArknightsItem_YiTie_03"),
+            TextHandler.texter("is relatively stable when it reaches this level.", "EOHB_ArknightsItem_YiTie_04")
+        };
+        EOHB_ArknightsItem_YiTieZu = new String[] {
+            TextHandler.texter("A precious industrial material. Can be used for a", "EOHB_ArknightsItem_YiTieZu_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_YiTieZu_01"),
+            TextHandler.texter("During the processing, influenced by very few unartificial factors, multiple Orirons may", "EOHB_ArknightsItem_YiTieZu_02"),
+            TextHandler.texter("merge into this form by chance. Its hardness has decreased but its purity has increased.", "EOHB_ArknightsItem_YiTieZu_03")
+        };
+        EOHB_ArknightsItem_YiTieKuai = new String[] {
+            TextHandler.texter("An expensive industrial material. Can be used for a variety", "EOHB_ArknightsItem_YiTieKuai_00"),
+            TextHandler.texter("of upgrades and the synthesis of Polymerization Preparation.", "EOHB_ArknightsItem_YiTieKuai_01"),
+            TextHandler.texter("An Oriron block fused with multiple Oriron Clusters under extremely harsh conditions. As the", "EOHB_ArknightsItem_YiTieKuai_02"),
+            TextHandler.texter("most stable and rarest form of Oriron, it can be", "EOHB_ArknightsItem_YiTieKuai_03"),
+            TextHandler.texter("used in all manners of industrial production.", "EOHB_ArknightsItem_YiTieKuai_04")
+        };
+        EOHB_ArknightsItem_LeiNingJieHe = new String[] {
+            TextHandler.texter("A lab-made synthetic particle, boasting powerful adsorption", "EOHB_ArknightsItem_LeiNingJieHe_00"),
+            TextHandler.texter("properties. Can be used in a variety of strengthening projects.", "EOHB_ArknightsItem_LeiNingJieHe_01"),
+            TextHandler.texter("A particle that can adsorb many different materials.", "EOHB_ArknightsItem_LeiNingJieHe_02"),
+            TextHandler.texter("At first, it was only used in cheap adsorbents,", "EOHB_ArknightsItem_LeiNingJieHe_03"),
+            TextHandler.texter("but has since become a cutting-edge material thanks", "EOHB_ArknightsItem_LeiNingJieHe_04"),
+            TextHandler.texter("to its strong universal coagulative properties.", "EOHB_ArknightsItem_LeiNingJieHe_05")
+        };
+        EOHB_ArknightsItem_ShuangTong = new String[] {
+            TextHandler.texter("A very small amount of industrial organic compound. Can be used", "EOHB_ArknightsItem_ShuangTong_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_ShuangTong_01"),
+            TextHandler.texter("A very small amount of Diketon. After", "EOHB_ArknightsItem_ShuangTong_02"),
+            TextHandler.texter("reprocessing, Engineer Operators use", "EOHB_ArknightsItem_ShuangTong_03"),
+            TextHandler.texter("solidification during chemical combination", "EOHB_ArknightsItem_ShuangTong_04"),
+            TextHandler.texter("to bond other stable structures.", "EOHB_ArknightsItem_ShuangTong_05")
+        };
+        EOHB_ArknightsItem_TongNingJi = new String[] {
+            TextHandler.texter("A small amount of industrial organic compound. Can be used", "EOHB_ArknightsItem_TongNingJi_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_TongNingJi_01"),
+            TextHandler.texter("A small amount of Polyketon preparation produced through a", "EOHB_ArknightsItem_TongNingJi_02"),
+            TextHandler.texter("special process. Its closed molecular structure has changed", "EOHB_ArknightsItem_TongNingJi_03"),
+            TextHandler.texter("much complicated processing into simple chemical reactions.", "EOHB_ArknightsItem_TongNingJi_04"),
+            TextHandler.texter("Of course, certain technical support is still needed.", "EOHB_ArknightsItem_TongNingJi_05")
+        };
+        EOHB_ArknightsItem_TongNingJiZu = new String[] {
+            TextHandler.texter("A modest amount of industrial organic compound. Can be used", "EOHB_ArknightsItem_TongNingJiZu_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_TongNingJiZu_01"),
+            TextHandler.texter("A modest amount of Aketon preparation produced through", "EOHB_ArknightsItem_TongNingJiZu_02"),
+            TextHandler.texter("further dehydrocarbon processing. The preparation reacts", "EOHB_ArknightsItem_TongNingJiZu_03"),
+            TextHandler.texter("with the non-oxygen molecules in the air, so Engineer", "EOHB_ArknightsItem_TongNingJiZu_04"),
+            TextHandler.texter("Operators must be careful during processing to avoid waste.", "EOHB_ArknightsItem_TongNingJiZu_05")
+        };
+        EOHB_ArknightsItem_TongZhenLie = new String[] {
+            TextHandler.texter("A large amount of industrial organic compound. Can be used for a", "EOHB_ArknightsItem_TongZhenLie_00"),
+            TextHandler.texter("variety of upgrades and the synthesis of Polymerization Preparation.", "EOHB_ArknightsItem_TongZhenLie_01"),
+            TextHandler.texter("A large amount of unstable Keton preparation. As one of the advanced industrial materials,", "EOHB_ArknightsItem_TongZhenLie_02"),
+            TextHandler.texter("it is closely monitored by our Engineer Operators. Please be careful when handling.", "EOHB_ArknightsItem_TongZhenLie_03")
+        };
+        EOHB_ArknightsItem_QingMengKuang = new String[] {
+            TextHandler.texter("A metal ore used for metallurgy. Can be used for a", "EOHB_ArknightsItem_QingMengKuang_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_QingMengKuang_01"),
+            TextHandler.texter("A metal that is used to produce a catalyst", "EOHB_ArknightsItem_QingMengKuang_02"),
+            TextHandler.texter("widely used in industries. As the reprocessing", "EOHB_ArknightsItem_QingMengKuang_03"),
+            TextHandler.texter("is complicated, accidents caused by nonstandard techniques do happen from time to time.", "EOHB_ArknightsItem_QingMengKuang_04")
+        };
+        EOHB_ArknightsItem_SanShuiMengKuang = new String[] {
+            TextHandler.texter("A metal ore used for metallurgy. Can be used for a", "EOHB_ArknightsItem_SanShuiMengKuang_00"),
+            TextHandler.texter("variety of upgrades and the synthesis of D32 Steel.", "EOHB_ArknightsItem_SanShuiMengKuang_01"),
+            TextHandler.texter("A precious metal which few companies are willing to use to produce industrial catalysts. The catalyst made from it, however, has an extremely", "EOHB_ArknightsItem_SanShuiMengKuang_02"),
+            TextHandler.texter("long service life. It can be used repeatedly and even stripped and recycled,", "EOHB_ArknightsItem_SanShuiMengKuang_03"),
+            TextHandler.texter("but the complicated processes have forced many companies to give up.", "EOHB_ArknightsItem_SanShuiMengKuang_04")
+        };
+        EOHB_ArknightsItem_JingTiYuanJian = new String[] {
+            TextHandler.texter("An important Originium industry material. Can be used for a variety of upgrades.", "EOHB_ArknightsItem_JingTiYuanJian_00"),
+            TextHandler.texter("Can be manufactured and assembled into more advanced Originium electric components.", "EOHB_ArknightsItem_JingTiYuanJian_01"),
+            TextHandler.texter("A raw industrial material made with the outer shell of an Originium crystal.", "EOHB_ArknightsItem_JingTiYuanJian_02"),
+            TextHandler.texter("A fundamental product in the modern Originium electronics industry.", "EOHB_ArknightsItem_JingTiYuanJian_03")
+        };
+        EOHB_ArknightsItem_JingTiDianLu = new String[] {
+            TextHandler.texter("An important Originium industry material. Can be used for a variety of", "EOHB_ArknightsItem_JingTiDianLu_00"),
+            TextHandler.texter("upgrades. A fundamental part of manufacturing Originium crystal assemblies.", "EOHB_ArknightsItem_JingTiDianLu_01"),
+            TextHandler.texter("A core product in the modern Originium electronics industry. Found inside electronic goods far and wide throughout", "EOHB_ArknightsItem_JingTiDianLu_02"),
+            TextHandler.texter("Terra's nations. The mass application of crystalline circuitry", "EOHB_ArknightsItem_JingTiDianLu_03"),
+            TextHandler.texter("is one more reminder of Terra's industrial modernization.", "EOHB_ArknightsItem_JingTiDianLu_04")
+        };
+        EOHB_ArknightsItem_JingTiDianZiDanYuan = new String[] {
+            TextHandler.texter("An expensive Originium industry product. Can be used for major upgrades.", "EOHB_ArknightsItem_JingTiDianZiDanYuan_00"),
+            TextHandler.texter("A crystallization of Terra's Originium technology. A symbol of Terra's industrial modernization. From", "EOHB_ArknightsItem_JingTiDianZiDanYuan_01"),
+            TextHandler.texter("Originium Casting units to intercity network servers,", "EOHB_ArknightsItem_JingTiDianZiDanYuan_02"),
+            TextHandler.texter("their making all starts with inventions like these.", "EOHB_ArknightsItem_JingTiDianZiDanYuan_03")
+        };
+        EOHB_ArknightsItem_YanMoShi = new String[] {
+            TextHandler.texter("A grindstone used to process weapon parts. Can be used for", "EOHB_ArknightsItem_YanMoShi_00"),
+            TextHandler.texter("a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_YanMoShi_01"),
+            TextHandler.texter("An important tool in component", "EOHB_ArknightsItem_YanMoShi_02"),
+            TextHandler.texter("processing. It has stable", "EOHB_ArknightsItem_YanMoShi_03"),
+            TextHandler.texter("properties, and will never explode, powderize, or crack.", "EOHB_ArknightsItem_YanMoShi_04")
+        };
+        EOHB_ArknightsItem_WuShuiYanMoShi = new String[] {
+            TextHandler.texter("An advanced grindstone used in the finish machining of weapon parts.", "EOHB_ArknightsItem_WuShuiYanMoShi_00"),
+            TextHandler.texter("Can be used for a variety of upgrades", "EOHB_ArknightsItem_WuShuiYanMoShi_01"),
+            TextHandler.texter("and the synthesis of D32 Steel.", "EOHB_ArknightsItem_WuShuiYanMoShi_02"),
+            TextHandler.texter("Compared to normal Grindstone, this tool has an even", "EOHB_ArknightsItem_WuShuiYanMoShi_03"),
+            TextHandler.texter("more stable structure. It is highly non-reactive.", "EOHB_ArknightsItem_WuShuiYanMoShi_04")
+        };
+        EOHB_ArknightsItem_NingJiao = new String[] {
+            TextHandler.texter("A high-strength plastic material suitable. Can be used for a", "EOHB_ArknightsItem_NingJiao_00"),
+            TextHandler.texter("variety of upgrades and for synthesis projects in Factories.", "EOHB_ArknightsItem_NingJiao_01"),
+            TextHandler.texter("An artificial material serendipitously born in the", "EOHB_ArknightsItem_NingJiao_02"),
+            TextHandler.texter("laboratory. It has excellent resistance to extreme", "EOHB_ArknightsItem_NingJiao_03"),
+            TextHandler.texter("temperatures, is lightweight, and is easy to process, making it ideal for use in high-tech projects.", "EOHB_ArknightsItem_NingJiao_04")
+        };
+        EOHB_ArknightsItem_JuHeNingJiao = new String[] {
+            TextHandler.texter("An extremely high-strength plastic material. Can be used for a variety of upgrades.", "EOHB_ArknightsItem_JuHeNingJiao_00"),
+            TextHandler.texter("An artificial material created from a large number of", "EOHB_ArknightsItem_JuHeNingJiao_01"),
+            TextHandler.texter("experiments using coagulating gel as a base material. It", "EOHB_ArknightsItem_JuHeNingJiao_02"),
+            TextHandler.texter("can maintain its stability even in high-pressure", "EOHB_ArknightsItem_JuHeNingJiao_03"),
+            TextHandler.texter("environments, playing a key role in some high-tech projects.", "EOHB_ArknightsItem_JuHeNingJiao_04")
+        };
+        EOHB_ArknightsItem_QieXiaoYuanYe = new String[] {
+            TextHandler.texter("A stock solution prepared from a variety of active solvents. Can be used for high level upgrades.", "EOHB_ArknightsItem_QieXiaoYuanYe_00"),
+            TextHandler.texter("A biologically stable stock solution. Precautions should", "EOHB_ArknightsItem_QieXiaoYuanYe_01"),
+            TextHandler.texter("be taken to avoid cross-contamination during storage.", "EOHB_ArknightsItem_QieXiaoYuanYe_02")
+        };
+        EOHB_ArknightsItem_JuHeJi = new String[] {
+            TextHandler.texter("A complicated liquid industrial product. Can be used for high level upgrades.", "EOHB_ArknightsItem_JuHeJi_00"),
+            TextHandler.texter("A material commonly used as an isolation coating for delicate equipment. Its", "EOHB_ArknightsItem_JuHeJi_01"),
+            TextHandler.texter("bonding effect is strong enough to interrupt the volatilization of Originium.", "EOHB_ArknightsItem_JuHeJi_02")
+        };
+        EOHB_ArknightsItem_ShouXingQuGuangTi = new String[] {
+            TextHandler.texter("A specialized material that displays useful optical qualities", "EOHB_ArknightsItem_ShouXingQuGuangTi_00"),
+            TextHandler.texter("and other physical traits. Can be used for high level upgrades.", "EOHB_ArknightsItem_ShouXingQuGuangTi_01"),
+            TextHandler.texter("An optical material that boasts both physical", "EOHB_ArknightsItem_ShouXingQuGuangTi_02"),
+            TextHandler.texter("durability and astonishing Originium Arts resistance,", "EOHB_ArknightsItem_ShouXingQuGuangTi_03"),
+            TextHandler.texter("currently used in studies regarding optical protection. Other uses are still being tested.", "EOHB_ArknightsItem_ShouXingQuGuangTi_04")
+        };
+        EOHB_ArknightsItem_RMA70_12 = new String[] {
+            TextHandler.texter("A sensitive mineral with high conductivity. Can be used for", "EOHB_ArknightsItem_RMA70_12_00"),
+            TextHandler.texter("a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_RMA70_12_01"),
+            TextHandler.texter("A mineral whose natural form is a", "EOHB_ArknightsItem_RMA70_12_02"),
+            TextHandler.texter("complicated polyhedron. Its value", "EOHB_ArknightsItem_RMA70_12_03"),
+            TextHandler.texter("for Originium Arts was known long before its industrial value.", "EOHB_ArknightsItem_RMA70_12_04")
+        };
+        EOHB_ArknightsItem_RMA70_24 = new String[] {
+            TextHandler.texter("A highly sensitive mineral with", "EOHB_ArknightsItem_RMA70_24_00"),
+            TextHandler.texter("outstanding conductivity. Can be", "EOHB_ArknightsItem_RMA70_24_01"),
+            TextHandler.texter("used for a variety of upgrades and the synthesis of D32 Steel.", "EOHB_ArknightsItem_RMA70_24_02"),
+            TextHandler.texter("A mineral whose natural form is a", "EOHB_ArknightsItem_RMA70_24_03"),
+            TextHandler.texter("complicated polyhedron. Found in 1024, it", "EOHB_ArknightsItem_RMA70_24_04"),
+            TextHandler.texter("shows great industrial value that other", "EOHB_ArknightsItem_RMA70_24_05"),
+            TextHandler.texter("minerals used for Originium Arts lack.", "EOHB_ArknightsItem_RMA70_24_06")
+        };
+        EOHB_ArknightsItem_JingLianRongJi = new String[] {
+            TextHandler.texter("A special coating made from a specific formulation process. Can be used for high level upgrades.", "EOHB_ArknightsItem_JingLianRongJi_00"),
+            TextHandler.texter("A coating held together by high-molecule polymers. In addition to its baseline protective capabilities,", "EOHB_ArknightsItem_JingLianRongJi_01"),
+            TextHandler.texter("it has also gained other special characteristics, of which heat resistance is but one of many.", "EOHB_ArknightsItem_JingLianRongJi_02")
+        };
+        EOHB_ArknightsItem_ZhiYuanLiao = new String[] {
+            TextHandler.texter("Ester used in industrial production. Can be used for a", "EOHB_ArknightsItem_ZhiYuanLiao_00"),
+            TextHandler.texter("variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_ZhiYuanLiao_01"),
+            TextHandler.texter("One of the most important materials in modern industry. Its appearance has lead to the development", "EOHB_ArknightsItem_ZhiYuanLiao_02"),
+            TextHandler.texter("of many modern products. This one, of course, is", "EOHB_ArknightsItem_ZhiYuanLiao_03"),
+            TextHandler.texter("only a raw material that has practical application.", "EOHB_ArknightsItem_ZhiYuanLiao_04")
+        };
+        EOHB_ArknightsItem_JuSuanZhi = new String[] {
+            TextHandler.texter("A small amount of polyester used in industrial production. Can be", "EOHB_ArknightsItem_JuSuanZhi_00"),
+            TextHandler.texter("used for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_JuSuanZhi_01"),
+            TextHandler.texter("Although its is lacking in potency, it can still be used to produce some basic", "EOHB_ArknightsItem_JuSuanZhi_02"),
+            TextHandler.texter("materials we need. It is also a common", "EOHB_ArknightsItem_JuSuanZhi_03"),
+            TextHandler.texter("ingredient in some sustained-release drugs.", "EOHB_ArknightsItem_JuSuanZhi_04")
+        };
+        EOHB_ArknightsItem_JuSuanZhiZu = new String[] {
+            TextHandler.texter("A pack of polyester used in industrial production. Can be used", "EOHB_ArknightsItem_JuSuanZhiZu_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_JuSuanZhiZu_01"),
+            TextHandler.texter("After a series of processes, it meets the standards and general needs of most", "EOHB_ArknightsItem_JuSuanZhiZu_02"),
+            TextHandler.texter("products on the market. It can also be", "EOHB_ArknightsItem_JuSuanZhiZu_03"),
+            TextHandler.texter("used to process some special materials.", "EOHB_ArknightsItem_JuSuanZhiZu_04")
+        };
+        EOHB_ArknightsItem_JuSuanZhiKuai = new String[] {
+            TextHandler.texter("A lump of polyester used in industrial production. Can be used", "EOHB_ArknightsItem_JuSuanZhiKuai_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_JuSuanZhiKuai_01"),
+            TextHandler.texter("A refined material. As a product, it is mostly sold to organizations and research institutions that", "EOHB_ArknightsItem_JuSuanZhiKuai_02"),
+            TextHandler.texter("have extremely high raw material needs. It may become", "EOHB_ArknightsItem_JuSuanZhiKuai_03"),
+            TextHandler.texter("the basis of the next generation of materials.", "EOHB_ArknightsItem_JuSuanZhiKuai_04")
+        };
+        EOHB_ArknightsItem_ShaoJieHeNingJing = new String[] {
+            TextHandler.texter("A product of modern technology that requires the ultimate in industrial craft. Used in advanced strengthening projects.", "EOHB_ArknightsItem_ShaoJieHeNingJing_00"),
+            TextHandler.texter("A material that possesses a molecular recognitive capacity under specific high-temperature conditions. Can selectively adsorb Originium when used as a", "EOHB_ArknightsItem_ShaoJieHeNingJing_01"),
+            TextHandler.texter("reagent, allowing for precise handling of Originium materials, lower Originium", "EOHB_ArknightsItem_ShaoJieHeNingJing_02"),
+            TextHandler.texter("device energy consumption, and the opening of further new possibilities.", "EOHB_ArknightsItem_ShaoJieHeNingJing_03")
+        };
+        EOHB_ArknightsItem_BanZiRanRongJi = new String[] {
+            TextHandler.texter("An active solvent with excellent physical characteristics, and good", "EOHB_ArknightsItem_BanZiRanRongJi_00"),
+            TextHandler.texter("resistance to acids and bases. Can be used in a variety of upgrades.", "EOHB_ArknightsItem_BanZiRanRongJi_01"),
+            TextHandler.texter("The product of a traditional solvent undergoing a modernization", "EOHB_ArknightsItem_BanZiRanRongJi_02"),
+            TextHandler.texter("process, it demonstrates remarkably enhanced properties.", "EOHB_ArknightsItem_BanZiRanRongJi_03")
+        };
+        EOHB_ArknightsItem_DaiTang = new String[] {
+            TextHandler.texter("Cheap sugar substitute produced by assembly line. Can be used", "EOHB_ArknightsItem_DaiTang_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_DaiTang_01"),
+            TextHandler.texter("It's slightly sweet and possibly edible. It is", "EOHB_ArknightsItem_DaiTang_02"),
+            TextHandler.texter("also commonly used in chemical manufacturing.", "EOHB_ArknightsItem_DaiTang_03")
+        };
+        EOHB_ArknightsItem_Tang = new String[] {
+            TextHandler.texter("A small amount of sugar produced by assembly line. Can be used", "EOHB_ArknightsItem_Tang_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_Tang_01"),
+            TextHandler.texter("A more expensive sugar made from natural", "EOHB_ArknightsItem_Tang_02"),
+            TextHandler.texter("materials. Ahh, this taste... will", "EOHB_ArknightsItem_Tang_03"),
+            TextHandler.texter("surely put one in a great mood. However, it's not for casual snacking.", "EOHB_ArknightsItem_Tang_04")
+        };
+        EOHB_ArknightsItem_TangZu = new String[] {
+            TextHandler.texter("A decent amount of sugar produced by assembly line. Can be used", "EOHB_ArknightsItem_TangZu_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_TangZu_01"),
+            TextHandler.texter("A calorie-rich sugar pack that's highly sought", "EOHB_ArknightsItem_TangZu_02"),
+            TextHandler.texter("after. Its weight never seems to meet the standards", "EOHB_ArknightsItem_TangZu_03"),
+            TextHandler.texter("set for chemical manufacturing. The production line employees may have something to do with it.", "EOHB_ArknightsItem_TangZu_04")
+        };
+        EOHB_ArknightsItem_TangJuKuai = new String[] {
+            TextHandler.texter("A large amount of sugar produced by assembly line. Can be used", "EOHB_ArknightsItem_TangJuKuai_00"),
+            TextHandler.texter("for a variety of upgrades and for production in the Factory.", "EOHB_ArknightsItem_TangJuKuai_01"),
+            TextHandler.texter("A nice, finely processed sugar lump", "EOHB_ArknightsItem_TangJuKuai_02"),
+            TextHandler.texter("commonly used for potion production. Do", "EOHB_ArknightsItem_TangJuKuai_03"),
+            TextHandler.texter("not taste test it! This is not food and is not to be sold as food! EVER!", "EOHB_ArknightsItem_TangJuKuai_04")
+        };
+        EOHB_ArknightsItem_HeSuXianWei = new String[] {
+            TextHandler.texter("A specialized fiber bundle, possessing high tensile strength and", "EOHB_ArknightsItem_HeSuXianWei_00"),
+            TextHandler.texter("elastic modulus. Used in a variety of strengthening projects.", "EOHB_ArknightsItem_HeSuXianWei_01"),
+            TextHandler.texter("A derived product in Originium engineering, widely used in industrial fields due to its exceptional", "EOHB_ArknightsItem_HeSuXianWei_02"),
+            TextHandler.texter("functionality. In recent years, its unique appearance has", "EOHB_ArknightsItem_HeSuXianWei_03"),
+            TextHandler.texter("also drawn keen interest from those working in design.", "EOHB_ArknightsItem_HeSuXianWei_04")
+        };
+        EOHB_ArknightsItem_GuHuaXianWeiBan = new String[] {
+            TextHandler.texter("A specialized fiber board, solidified in a mold. Used in a variety of strengthening projects.", "EOHB_ArknightsItem_GuHuaXianWeiBan_00"),
+            TextHandler.texter("A compound fiber board crafted through bespoke manufacturing. Exhibits outstanding functionality, both physically", "EOHB_ArknightsItem_GuHuaXianWeiBan_01"),
+            TextHandler.texter("and chemically, coupled with a rarely-seen ease of processing.", "EOHB_ArknightsItem_GuHuaXianWeiBan_02"),
+            TextHandler.texter("An irreplaceable part of many an industrial workflow.", "EOHB_ArknightsItem_GuHuaXianWeiBan_03")
+        };
+        EOHB_ArknightsItem_YeHuaGaoNengQiTi = new String[] {
+            TextHandler.texter("Liquefied gas stored in specially made metal containers. Can be used in a variety", "EOHB_ArknightsItem_YeHuaGaoNengQiTi_00"),
+            TextHandler.texter("of strengthening situations, and is often a material for Factory Station synthesis.", "EOHB_ArknightsItem_YeHuaGaoNengQiTi_01"),
+            TextHandler.texter("A highly active, highly flammable gas product. It burns at extremely high temperatures and can", "EOHB_ArknightsItem_YeHuaGaoNengQiTi_02"),
+            TextHandler.texter("melt most metal materials, making it widely used", "EOHB_ArknightsItem_YeHuaGaoNengQiTi_03"),
+            TextHandler.texter("in industrial welding and catalytic reactions.", "EOHB_ArknightsItem_YeHuaGaoNengQiTi_04")
+        };
+        EOHB_ArknightsItem_YeHuaMiXiJuTi = new String[] {
+            TextHandler.texter("An organic compound obtained through a complex synthesis", "EOHB_ArknightsItem_YeHuaMiXiJuTi_00"),
+            TextHandler.texter("process. Can be used in a variety of strengthening situations.", "EOHB_ArknightsItem_YeHuaMiXiJuTi_01"),
+            TextHandler.texter("An ether preparation obtained by passivating ketone", "EOHB_ArknightsItem_YeHuaMiXiJuTi_02"),
+            TextHandler.texter("preparations. It is relatively stable and does", "EOHB_ArknightsItem_YeHuaMiXiJuTi_03"),
+            TextHandler.texter("not react with active metal materials, making it widely used in various industrial processes.", "EOHB_ArknightsItem_YeHuaMiXiJuTi_04")
+        };
+        EOHB_ArknightsItem_ZhuanZhiYanZu = new String[] {
+            TextHandler.texter("A compound crystallization that has undergone low-tolerance refinement. Can be used in a variety of strengthening projects.", "EOHB_ArknightsItem_ZhuanZhiYanZu_00"),
+            TextHandler.texter("The surface of this material has mutable characteristics, realizing results that were originally", "EOHB_ArknightsItem_ZhuanZhiYanZu_01"),
+            TextHandler.texter("nearly impossible. CAUTION: industrial salt is not to be eaten under any circumstances.", "EOHB_ArknightsItem_ZhuanZhiYanZu_02")
+        };
+        EOHB_ArknightsItem_ZhuanZhiYanJuKuai = new String[] {
+            TextHandler.texter("A compound crystal mass that has undergone high-tolerance refinement. Used in a variety", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_00"),
+            TextHandler.texter("of strengthening projects, and is a common material in synthetic items at factories.", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_01"),
+            TextHandler.texter("A stable crystalline body, manufactured as a crystal blend within saturated", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_02"),
+            TextHandler.texter("solutions. Can provide materials with a diverse array of capabilities.", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_03")
+        };
+
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");
