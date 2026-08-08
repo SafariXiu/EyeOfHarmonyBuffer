@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
-import appeng.integration.modules.GT;
 import bartworks.system.material.WerkstoffLoader;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
@@ -171,5 +170,38 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(50 * SECONDS)
             .metadata(COIL_HEAT, 4500)
             .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTieZu.get(1)
+            )
+            .fluidOutputs(
+                EOHBGTMaterials.YiTie.getMolten(144)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(2 * SECONDS)
+            .addTo(fluidExtractionRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhuanZhiYanZu.get(1)
+            )
+            .fluidOutputs(
+                EOHBGTMaterials.ZhuanZhiYan.getMolten(144)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(2 * SECONDS)
+            .addTo(fluidExtractionRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.QingMengKuang.get(1)
+            )
+            .fluidOutputs(
+                EOHBGTMaterials.QingMengKuang.getMolten(144)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(2 * SECONDS)
+            .addTo(fluidExtractionRecipes);
     }
 }
