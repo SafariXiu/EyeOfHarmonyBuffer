@@ -679,6 +679,7 @@ tile.TongHuaGuanMu.name=Ketone Bush
 tile.YaZhen.name=YaZhen
 tile.UnderwaterShrub.name=Underwater Shrub (Experimental)
 tile.CleanGlass.name=Underwater Pure Glass
+tile.CleanGlassGlow.name=Glowing Underwater Pure Glass
 tile.overdomain_erosion.name=Overdomain Erosion
 tile.ForgeOfTheSkyCore.name=§aForge Of The Sky Core
 EOHB_ForgeOfTheSkyCore_Tooltip_00=Core component of the multiblock structure Forge of the Sky.

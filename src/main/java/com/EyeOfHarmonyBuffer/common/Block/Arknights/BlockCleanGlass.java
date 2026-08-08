@@ -23,7 +23,7 @@ import net.minecraft.world.IBlockAccess;
  * 面的世界方向 -> 贴图边 的映射由 RenderBlocks 各面 UV 顶点顺序推导得出
  * （注意 vanilla 的北面(side=2)和东面(side=5)贴图是水平镜像的）。
  */
-public final class BlockCleanGlass extends BlockBreakable {
+public class BlockCleanGlass extends BlockBreakable {
 
     @SideOnly(Side.CLIENT)
     private IIcon[] connectionIcons;

@@ -3,16 +3,19 @@ package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 import appeng.integration.modules.GT;
 import bartworks.system.material.WerkstoffLoader;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
+import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 
 import static gregtech.api.recipe.RecipeMaps.*;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
+import static gregtech.api.util.GTRecipeConstants.COIL_HEAT;
 
 public class ArknightsRecipesLoad implements IRecipePool {
 
@@ -127,5 +130,46 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .eut(TierEU.RECIPE_IV)
             .duration(512 * SECONDS)
             .addTo(centrifugeRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, EOHBGTMaterials.YiTie, 1)
+            )
+            .itemOutputs(
+                GTCMItemList.YiTie.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(50 * SECONDS)
+            .metadata(COIL_HEAT, 4500)
+            .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, EOHBGTMaterials.ZhuanZhiYan, 32)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(64000)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhuanZhiYanZu.get(16)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(60 * SECONDS)
+            .addTo(autoclaveRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, EOHBGTMaterials.QingMengKuang, 8)
+            )
+            .itemOutputs(
+                GTCMItemList.QingMengKuang.get(1)
+            )
+            .fluidInputs(
+                Materials.SulfuricAcid.getFluid(2000)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(50 * SECONDS)
+            .metadata(COIL_HEAT, 4500)
+            .addTo(blastFurnaceRecipes);
     }
 }
