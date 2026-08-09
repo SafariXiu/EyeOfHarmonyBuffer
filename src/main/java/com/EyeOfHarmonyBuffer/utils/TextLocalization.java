@@ -456,6 +456,12 @@ public class TextLocalization {
     public static final String EOHB_XirconEffluent;
     public static final String EOHB_Sewage;
     public static final String EOHB_YaZhenSolution;
+    public static final String EOHB_TangZhi;
+    public static final String EOHB_TongJiRongYe;
+    public static final String EOHB_TangMi;
+    public static final String EOHB_TongJiJuHeWu;
+    public static final String EOHB_FuHeTangJiang;
+    public static final String EOHB_FuHeTongJiang;
     public static final String EOHB_LiquidXiranite;
     public static final String EOHB_LiquidHeavyXiranite;
     public static final String EOHB_LiquefiedOrundum;
@@ -1623,6 +1629,12 @@ public class TextLocalization {
         EOHB_XirconEffluent = TextHandler.texter("Xircon Effluent","EOHB_XirconEffluent");
         EOHB_Sewage = TextHandler.texter("Sewage","EOHB_Sewage");
         EOHB_YaZhenSolution = TextHandler.texter("YaZhen Solution","EOHB_YaZhenSolution");
+        EOHB_TangZhi = TextHandler.texter("Sugar Syrup","EOHB_TangZhi");
+        EOHB_TongJiRongYe = TextHandler.texter("Ketone Solution","EOHB_TongJiRongYe");
+        EOHB_TangMi = TextHandler.texter("Sugar Molasses","EOHB_TangMi");
+        EOHB_TongJiJuHeWu = TextHandler.texter("Ketone Polymer","EOHB_TongJiJuHeWu");
+        EOHB_FuHeTangJiang = TextHandler.texter("Compound Sugar Syrup","EOHB_FuHeTangJiang");
+        EOHB_FuHeTongJiang = TextHandler.texter("Compound Ketone Slurry","EOHB_FuHeTongJiang");
         EOHB_LiquidXiranite = TextHandler.texter("Liquid Xiranite","EOHB_LiquidXiranite");
         EOHB_LiquidHeavyXiranite = TextHandler.texter("Liquid Heavy Xiranite","EOHB_LiquidHeavyXiranite");
         EOHB_LiquefiedOrundum = TextHandler.texter("Liquefied Orundum","EOHB_LiquefiedOrundum");

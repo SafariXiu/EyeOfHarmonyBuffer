@@ -413,6 +413,77 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff TangZhi = new Werkstoff(
+        new short[] { 240, 200, 140 },
+        EOHB_TangZhi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 32,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff TongJiRongYe = new Werkstoff(
+        new short[] { 150, 190, 220 },
+        EOHB_TongJiRongYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 33,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff TangMi = new Werkstoff(
+        new short[] { 200, 150, 80 },
+        EOHB_TangMi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 34,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff TongJiJuHeWu = new Werkstoff(
+        new short[] { 160, 170, 190 },
+        EOHB_TongJiJuHeWu,
+        new Werkstoff.Stats(),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .onlyDust(),
+        OFFSET_ID + 35,
+        TextureSet.SET_SHINY
+    );
+
+    public static final Werkstoff FuHeTangJiang = new Werkstoff(
+        new short[] { 230, 170, 90 },
+        EOHB_FuHeTangJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 36,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff FuHeTongJiang = new Werkstoff(
+        new short[] { 130, 160, 210 },
+        EOHB_FuHeTongJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 37,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override
