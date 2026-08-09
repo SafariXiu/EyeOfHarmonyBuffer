@@ -499,6 +499,7 @@ public class TextLocalization {
     public static final String EOHB_FangSiYe;
     public static final String EOHB_JingZhiFangSiYe;
     public static final String EOHB_NongSuoFangSiYe;
+    public static final String EOHB_CuZhiQieXiaoYe;
     public static final String EOHB_LiquidXiranite;
     public static final String EOHB_LiquidHeavyXiranite;
     public static final String EOHB_LiquefiedOrundum;
@@ -1709,6 +1710,7 @@ public class TextLocalization {
         EOHB_FangSiYe = TextHandler.texter("Spinning Solution","EOHB_FangSiYe");
         EOHB_JingZhiFangSiYe = TextHandler.texter("Refined Spinning Solution","EOHB_JingZhiFangSiYe");
         EOHB_NongSuoFangSiYe = TextHandler.texter("Concentrated Spinning Solution","EOHB_NongSuoFangSiYe");
+        EOHB_CuZhiQieXiaoYe = TextHandler.texter("Raw Cutting Fluid","EOHB_CuZhiQieXiaoYe");
         EOHB_LiquidXiranite = TextHandler.texter("Liquid Xiranite","EOHB_LiquidXiranite");
         EOHB_LiquidHeavyXiranite = TextHandler.texter("Liquid Heavy Xiranite","EOHB_LiquidHeavyXiranite");
         EOHB_LiquefiedOrundum = TextHandler.texter("Liquefied Orundum","EOHB_LiquefiedOrundum");

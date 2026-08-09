@@ -1090,18 +1090,16 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 EOHBMaterialPool.RuHuaJi.getFluidOrGas(1000),
                 Materials.Water.getFluid(4000)
             )
-            .itemOutputs(
-                GTCMItemList.QieXiaoYuanYe.get(4)
+            .fluidOutputs(
+                EOHBMaterialPool.CuZhiQieXiaoYe.getFluidOrGas(4000)
             )
             .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
         GTValues.RA.stdBuilder()
-            .itemInputs(
-                GTCMItemList.QieXiaoYuanYe.get(4)
-            )
             .fluidInputs(
+                EOHBMaterialPool.CuZhiQieXiaoYe.getFluidOrGas(4000),
                 Materials.AceticAcid.getFluid(1000)
             )
             .fluidOutputs(

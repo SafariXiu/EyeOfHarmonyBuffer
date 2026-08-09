@@ -924,6 +924,18 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff CuZhiQieXiaoYe = new Werkstoff(
+        new short[] { 190, 205, 220 },
+        EOHB_CuZhiQieXiaoYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 75,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override
