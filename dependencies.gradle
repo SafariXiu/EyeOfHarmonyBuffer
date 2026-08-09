@@ -40,6 +40,7 @@ dependencies {
     }
 
     implementation('com.github.GTNewHorizons:AE2FluidCraft-Rework:1.5.95-gtnh:dev')
+    implementation('com.github.GTNewHorizons:AppleCore:3.3.11:dev')
     implementation('com.github.GTNewHorizons:Avaritia:1.97:dev')
     implementation('com.github.GTNewHorizons:Avaritiaddons:1.9.4-GTNH:dev')
     implementation('com.github.GTNewHorizons:Binnie:2.6.34:dev')

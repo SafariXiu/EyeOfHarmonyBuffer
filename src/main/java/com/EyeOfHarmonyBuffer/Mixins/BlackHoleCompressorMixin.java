@@ -133,6 +133,8 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
 
         float powerModifier = parseFloatConfig(powerModifierStr, 0.7F);
         float timeModifier = parseFloatConfig(timeModifierStr, 0.2F);
+        // 防止配置为 0 导致耗时归零（mMaxProgresstime=0 会让机器不产出并出现 9.2E/s 显示）
+        timeModifier = Math.max(0.05F, timeModifier);
 
         ProcessingLogic logic = cir.getReturnValue();
         if(MainConfig.BlackHoleCompressorPowerConsumptionModificationEnabled){

@@ -46,10 +46,9 @@ public abstract class ManufacturingCenterMixin extends GTPPMultiBlockBase<TST_Ma
                 @NotNull
                 @Override
                 protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                    return new OverclockCalculator()
-                        //.setSpeedBoost(100.0) // 速度提升 100 倍
-                        .setParallel(Integer.MAX_VALUE) // 最大并行数
-                        .setEUt(0); // 不耗电
+                    return OverclockCalculator.ofNoOverclock(recipe)
+                        .setParallel(Integer.MAX_VALUE)
+                        .setEUtDiscount(0.0); // 不耗电
                 }
 
                 @NotNull

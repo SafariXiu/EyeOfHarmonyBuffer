@@ -118,20 +118,15 @@ public class MonkeyShitRecipes implements IRecipePool {
                 recipeFluidOutputs[i] = out;
             }
 
-            int[] inputChances = new int[recipeInputs.length];
-            int[] outputChances = new int[recipeOutputs.length];
-            int[] fluidInputChances = new int[fluidInputs.length];
-            int[] fluidOutputChances = new int[recipeFluidOutputs.length];
-
             GTRecipe recipe = new GTRecipe(
                 false,
                 recipeInputs,
                 recipeOutputs,
                 null,
-                inputChances,
-                outputChances,
-                fluidInputChances,
-                fluidOutputChances,
+                null,
+                null,
+                null,
+                null,
                 fluidInputs,
                 recipeFluidOutputs,
                 duration,
