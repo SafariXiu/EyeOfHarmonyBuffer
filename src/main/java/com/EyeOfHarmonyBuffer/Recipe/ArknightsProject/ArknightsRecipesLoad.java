@@ -1334,17 +1334,5 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .eut(50000)
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
-
-        GTValues.RA.stdBuilder()
-            .itemInputs(
-                GTCMItemList.YuanShiKuang.get(8),
-                new ItemStack(Blocks.stone, 1)
-            )
-            .itemOutputs(
-                GTCMItemList.YuanShiBlock.get(1)
-            )
-            .eut(TierEU.RECIPE_IV)
-            .duration(30 * SECONDS)
-            .addTo(assemblerRecipes);
     }
 }
