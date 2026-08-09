@@ -64,7 +64,7 @@ public abstract class LightningSpireMixin extends TT_MultiMachineBase_EM impleme
                     GTCM_LightningSpire instance = (GTCM_LightningSpire) (Object) this;
                     lightOnWorld();
 
-                    instance.mMaxProgresstime = MainConfig.LightningSpireTime;
+                    instance.mMaxProgresstime = Math.max(1, MainConfig.LightningSpireTime);
 
                     instance.updateSlots();
 

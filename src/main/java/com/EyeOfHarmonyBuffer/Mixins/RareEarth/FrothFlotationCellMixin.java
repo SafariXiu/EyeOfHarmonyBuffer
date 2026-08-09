@@ -85,10 +85,10 @@ public abstract class FrothFlotationCellMixin extends MTEExtendedPowerMultiBlock
                 @NotNull
                 @Override
                 protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                    return new OverclockCalculator()
+                    return OverclockCalculator.ofNoOverclock(recipe)
                         //.setSpeedBoost(100.0) // 速度提升 100 倍
                         .setParallel(Integer.MAX_VALUE) // 最大并行数
-                        .setEUt(0); // 不耗电
+                        .setEUtDiscount(0.0); // 不耗电
                 }
 
                 @NotNull
