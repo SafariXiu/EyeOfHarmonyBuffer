@@ -323,7 +323,7 @@ public class RecipeMaps {
         .maxIO(4, 4, 4, 4)
         .neiRecipeBackgroundSize(170, 185)
         .useCustomFilterForNEI()
-        //.neiSpecialInfoFormatter(new FixedStringSpecialFormatter("GT5U.gui.text.recipe.HighDensityEnergyFluidGeneratorInfo"))
+
         .frontend((uiProps, neiProps) ->
             new GeneralFrontend(uiProps, neiProps,
                 4,

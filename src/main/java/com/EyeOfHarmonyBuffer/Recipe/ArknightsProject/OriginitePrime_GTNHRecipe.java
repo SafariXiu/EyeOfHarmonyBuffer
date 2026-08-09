@@ -20,7 +20,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        //粉碎
         GTValues.RA.stdBuilder()
             .itemInputs(
             GTCMItemList.YuanShiKuang.get(1)
@@ -32,7 +31,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(maceratorRecipes);
 
-        //筛选
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YuanShiFenMo.get(32)
@@ -45,7 +43,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(sifterRecipes);
 
-        //化学反应
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.HanZaYuanShiFenMo.get(24),
@@ -64,7 +61,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        //搅拌
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ChunJingYuanShiFenMo.get(8),
@@ -81,7 +77,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
             .duration(200 * SECONDS)
             .addTo(mixerRecipes);
 
-        //高压釜
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YuanShiJingHe.get(1),
@@ -97,7 +92,6 @@ public class OriginitePrime_GTNHRecipe implements IRecipePool {
             .duration(200 * SECONDS)
             .addTo(autoclaveRecipes);
 
-        //高炉
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.UnactivatedYuanShi.get(1),

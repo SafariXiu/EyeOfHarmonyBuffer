@@ -114,7 +114,6 @@ public final class MachineBlockRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        //工业交易箱
         if(MachineLoaderConfig.VendingMachines){
             GTValues.RA.stdBuilder()
                 .itemInputs(
@@ -130,7 +129,6 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //大型风力发电机
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Block_Plascrete.get(64),
@@ -144,7 +142,6 @@ public final class MachineBlockRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //大型太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.plateDense, Materials.SiliconSG,16),
@@ -164,7 +161,6 @@ public final class MachineBlockRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //物质重塑仪
         if(!isSubstanceReshapingDeviceEnabled()){
             GTValues.RA.stdBuilder()
                 .metadata(RESEARCH_ITEM, Controller_ElementalDuplicator.get(1))
@@ -218,7 +214,6 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //奇点稳定环
         Tier[] tiers = Tier.values();
 
         for (int i = 0; i < tiers.length; i++) {
@@ -287,7 +282,6 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .addTo(AssemblyLine);
         }
 
-        //奇点稳定环MAX
         GTValues.RA.stdBuilder()
             .metadata(RESEARCH_ITEM, GTCMItemList.SingularityStabilizationRingCasingsUXV.get(1))
             .metadata(SCANNING, new Scanning(500 * MINUTES, TierEU.RECIPE_UEV))

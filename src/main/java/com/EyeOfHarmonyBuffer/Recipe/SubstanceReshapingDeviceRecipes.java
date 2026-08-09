@@ -29,15 +29,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        /*
-          1号：只有流体输出
-          2号：只有物品输出
-          3号：物品流体输出都有
-          其他均为特殊输出
-          Value的起始值是1对应LV，往后依次+1
-         */
-
-        //橡胶
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -54,7 +45,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(1)
             .addTo(SubstanceReshapingDevice);
 
-        //铂
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -73,7 +63,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
-        //独居石
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -97,7 +86,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(5)
             .addTo(SubstanceReshapingDevice);
 
-        //硅
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -112,7 +100,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(2)
             .addTo(SubstanceReshapingDevice);
 
-        //钨
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -127,7 +114,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //钛
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -143,7 +129,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //氡
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -161,7 +146,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //硅岩
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -181,7 +165,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(6)
             .addTo(SubstanceReshapingDevice);
 
-        //干细胞
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
@@ -206,7 +189,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(7)
             .addTo(SubstanceReshapingDevice);
 
-        //液态空气
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1)
@@ -231,7 +213,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //海藻提取物
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
@@ -252,7 +233,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(8)
             .addTo(SubstanceReshapingDevice);
 
-        //各种乙烯？
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -271,7 +251,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
-        //QFT特殊材料
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(4)
@@ -290,7 +269,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
-        //催化剂
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1)
@@ -312,7 +290,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(10)
             .addTo(SubstanceReshapingDevice);
 
-        //鸿蒙
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(4)
@@ -334,7 +311,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(11)
             .addTo(SubstanceReshapingDevice);
 
-        //一些奇怪的东西......
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(24),
@@ -356,7 +332,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(14)
             .addTo(SubstanceReshapingDevice);
 
-        //无尽之类的
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -376,7 +351,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
-        //电路板
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),

@@ -44,17 +44,7 @@ public final class AssemblerRecipes implements IRecipePool {
         }
 
         List<ItemStack> materials = Arrays.asList(
-            new ItemStack(Blocks.stonebrick, 1, 0), // 普通石砖
-            new ItemStack(Blocks.stonebrick, 1, 1), // 青苔石砖
-            new ItemStack(Blocks.stonebrick, 1, 2), // 裂石砖
-            new ItemStack(Blocks.brick_block, 1, 0), // 砖块
-            new ItemStack(Blocks.sandstone, 1, 2), // 雕刻砂岩
-            new ItemStack(Blocks.sandstone, 1, 1), // 浮雕砂岩
-            new ItemStack(Blocks.nether_brick, 1, 0), // 下界砖
-            new ItemStack(Blocks.stonebrick, 1, 3), // 浮雕石砖
-            new ItemStack(Blocks.quartz_block, 1, 0), // 石英
-            new ItemStack(Blocks.quartz_block, 1, 1), // 浮雕石英
-            new ItemStack(Blocks.quartz_block, 1, 2) // 平滑石英
+
         );
 
         List<Integer> farmBlockValues = Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
@@ -72,7 +62,6 @@ public final class AssemblerRecipes implements IRecipePool {
             farmBlocks.add(farmBlock);
         }
 
-        //农场方块
         for (int i = 0; i < materials.size(); i++) {
             ItemStack input = materials.get(i);
             int farmBlockValue = farmBlockValues.get(i);
@@ -99,7 +88,6 @@ public final class AssemblerRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //农场齿轮箱
         for (int i = 0; i < farmBlocks.size(); i++) {
             ItemStack input = farmBlocks.get(i);
 
@@ -127,7 +115,6 @@ public final class AssemblerRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //农场出货箱
         for (int i = 0; i < farmBlocks.size(); i++) {
             ItemStack input = farmBlocks.get(i);
 
@@ -155,7 +142,6 @@ public final class AssemblerRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //农场水阀
         for (int i = 0; i < farmBlocks.size(); i++) {
             ItemStack input = farmBlocks.get(i);
 
@@ -183,7 +169,6 @@ public final class AssemblerRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //农场控制盒
         for (int i = 0; i < farmBlocks.size(); i++) {
             ItemStack input = farmBlocks.get(i);
             input.stackSize = 2;
@@ -211,7 +196,6 @@ public final class AssemblerRecipes implements IRecipePool {
                 .addTo(assemblerRecipes);
         }
 
-        //满电双足飞龙通量电容器
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(DraconicEvolution.ID, "draconiumFluxCapacitor",1,0)
@@ -223,7 +207,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(4 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //满电谐振电容库
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(EnderIO.ID, "blockCapBank",1,3)
@@ -235,7 +218,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(2 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //2空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
@@ -249,7 +231,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //16空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
@@ -263,7 +244,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //128空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
@@ -277,7 +257,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //福鲁伊克斯珍珠
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.gem, Materials.EnderPearl,1),
@@ -291,7 +270,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //福鲁伊克斯珍珠
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.gem, Materials.EnderPearl,1),
@@ -305,7 +283,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(20 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //HV变压器
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Hull_HV.get(1),
@@ -320,7 +297,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //标定框架
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.screw,Materials.Steel,4),
@@ -339,7 +315,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //红石灯
         GTValues.RA.stdBuilder()
             .itemInputs(
                 new ItemStack(Blocks.glowstone,1),
@@ -353,7 +328,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //Z-逻辑控制器
         GTValues.RA.stdBuilder()
             .itemInputs(
                 new ItemStack(Items.skull, 1, 2),
@@ -368,7 +342,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //压缩太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(NewHorizonsCoreMod.ID,"ReinforcedAluminiumIronPlate",1,0),
@@ -381,7 +354,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //2级压缩太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(NewHorizonsCoreMod.ID,"IrradiantReinforcedTitaniumPlate",1,0),
@@ -394,7 +366,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //红色按钮
         GTValues.RA.stdBuilder()
             .itemInputs(
                 new ItemStack(Blocks.stone_button,1),
@@ -407,7 +378,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //充能龙块
         GTValues.RA.stdBuilder()
             .itemInputs(
                 getModItem(DraconicEvolution.ID, "draconium",1,0)
@@ -419,7 +389,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //超级箱1
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Automation_ChestBuffer_LV.get(1),
@@ -434,7 +403,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //低压缓存器
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Hull_LV.get(1),
@@ -449,7 +417,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //超级缸1
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Casing_Tank_1.get(1),
@@ -465,7 +432,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //量子缸1
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Casing_Tank_6.get(1),
@@ -481,7 +447,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //量子箱1
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Automation_ChestBuffer_LuV.get(1),
@@ -496,7 +461,6 @@ public final class AssemblerRecipes implements IRecipePool {
             .duration(5 * SECONDS)
             .addTo(assemblerRecipes);
 
-        //剧差压缓存器
         GTValues.RA.stdBuilder()
             .itemInputs(
                 ItemList.Hull_LuV.get(1),

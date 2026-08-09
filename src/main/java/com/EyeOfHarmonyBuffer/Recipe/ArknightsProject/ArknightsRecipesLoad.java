@@ -19,12 +19,13 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.EncapsulationMachine;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.FillingUnit;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.Fluid_GasTransmutingUnit;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.GasReactorGlobe;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.Pulverizer;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.PurificationUnit;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ReactorCrucible;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.RefiningFurnace;
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.SeparatingUnit;
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ShapingMachine;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Environment_NONE;
 import static gregtech.api.recipe.RecipeMaps.*;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -251,7 +252,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.GuYuanYanZu.get(1)
             )
-            .eut(TierEU.RECIPE_LuV)
+            .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
@@ -265,11 +266,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.TiChunYuanYan.get(1)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 装置：破损装置修复（主配方）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.PoSunZhuangZhi.get(1),
@@ -284,7 +284,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
 
-        // 装置：独立生产（不需要破损装置）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.GuYuanYan.get(4),
@@ -300,7 +299,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(45 * SECONDS)
             .addTo(assemblerRecipes);
 
-        // 全新装置
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ZhuangZhi.get(1),
@@ -308,7 +306,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 ItemList.Electric_Motor_HV.get(1),
                 ItemList.Electric_Piston_HV.get(1),
                 ItemList.Sensor_HV.get(1),
-                NHItemList.CircuitLuV.get(1)
+                NHItemList.CircuitEV.get(1)
             )
             .fluidInputs(
                 Materials.RubberSilicone.getFluid(2000)
@@ -316,19 +314,18 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.QuanXinZhuangZhi.get(1)
             )
-            .eut(TierEU.RECIPE_LuV)
+            .eut(TierEU.RECIPE_IV)
             .duration(45 * SECONDS)
             .addTo(assemblerRecipes);
 
-        // 改量装置
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.QuanXinZhuangZhi.get(1),
                 GTCMItemList.GuYuanYanZu.get(4),
-                ItemList.Electric_Motor_ZPM.get(1),
-                ItemList.Robot_Arm_ZPM.get(1),
-                ItemList.Field_Generator_ZPM.get(1),
-                NHItemList.CircuitUHV.get(1)
+                ItemList.Electric_Motor_IV.get(1),
+                ItemList.Robot_Arm_IV.get(1),
+                ItemList.Field_Generator_IV.get(1),
+                NHItemList.CircuitIV.get(1)
             )
             .fluidInputs(
                 Materials.RubberSilicone.getFluid(4000)
@@ -336,11 +333,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.GaiLiangZhuangZhi.get(1)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(assemblerRecipes);
 
-        // 糖汁：甘蔗压榨（粉碎机）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 new ItemStack(Items.reeds, 8)
@@ -348,11 +344,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.TangZhi.getFluidOrGas(4000)
             )
-            .eut(5000)
-            .duration(10 * SECONDS)
-            .addTo(Pulverizer);
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(extractorRecipes);
 
-        // 代糖：碳粉 + 乙酸合成甜味剂（精炼炉）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 16)
@@ -366,26 +361,21 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 Materials.CarbonDioxide.getGas(500)
             )
-            .eut(5000)
+            .eut(50000)
             .duration(10 * SECONDS)
-            .addTo(RefiningFurnace);
+            .addTo(ReactorCrucible);
 
-        // 糖：糖汁净化结晶（净化单元）
         GTValues.RA.stdBuilder()
             .fluidInputs(
-                EOHBMaterialPool.TangZhi.getFluidOrGas(4000),
-                Materials.Water.getFluid(1000)
+                EOHBMaterialPool.TangZhi.getFluidOrGas(4000)
             )
             .itemOutputs(
                 GTCMItemList.Tang.get(2)
             )
-            .eut(50000)
-            .duration(10 * SECONDS)
-            .specialValue(GasEnvRecipeFlags.NONE)
-            .setNEIDesc(EOHB_Environment_NONE)
-            .addTo(PurificationUnit);
+            .eut(TierEU.RECIPE_IV)
+            .duration(40 * SECONDS)
+            .addTo(vacuumFreezerRecipes);
 
-        // 糖溶液：糖溶解（分离单元）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.Tang.get(2)
@@ -396,11 +386,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.TangRongYe.getFluidOrGas(2000)
             )
-            .eut(20000)
-            .duration(10 * SECONDS)
-            .addTo(SeparatingUnit);
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(mixerRecipes);
 
-        // 发酵糖浆：糖溶液发酵（发酵机）
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.TangRongYe.getFluidOrGas(3000)
@@ -408,11 +397,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.FaJiaoTangJiang.getFluidOrGas(3000)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(fermentingRecipes);
 
-        // 糖组：发酵糖浆蒸馏浓缩（蒸馏塔）
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.FaJiaoTangJiang.getFluidOrGas(3000)
@@ -423,11 +411,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 Materials.Ethanol.getFluid(1000)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(distillationTowerRecipes);
 
-        // 复合糖浆：糖组 + 酮凝集组 + 代糖复合液
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TangZu.get(2),
@@ -440,11 +427,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.FuHeTangJiang.getFluidOrGas(4000)
             )
-            .eut(TierEU.RECIPE_UIV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 糖聚块：复合糖浆真空结晶
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.FuHeTangJiang.getFluidOrGas(4000)
@@ -452,11 +438,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.TangJuKuai.get(1)
             )
-            .eut(TierEU.RECIPE_UIV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(vacuumFreezerRecipes);
 
-        // 双酮：乙酸脱羧合成
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 2)
@@ -474,7 +459,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 酮基溶液：双酮溶于乙醇（分离单元）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ShuangTong.get(2)
@@ -485,11 +469,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.TongJiRongYe.getFluidOrGas(2000)
             )
-            .eut(20000)
-            .duration(10 * SECONDS)
-            .addTo(SeparatingUnit);
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(mixerRecipes);
 
-        // 酮凝集：酮基溶液封装胶体化（封装机）
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.TongJiRongYe.getFluidOrGas(2000),
@@ -498,11 +481,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.TongNingJi.get(1)
             )
-            .eut(50000)
-            .duration(10 * SECONDS)
-            .addTo(EncapsulationMachine);
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
 
-        // 酮基聚合物：酮凝集聚合（LCR）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TongNingJi.get(4),
@@ -514,11 +496,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 EOHBMaterialPool.TongJiJuHeWu.get(OrePrefixes.dust, 4)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(45 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 酮凝集组：酮基聚合物封装（封装机）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 EOHBMaterialPool.TongJiJuHeWu.get(OrePrefixes.dust, 4)
@@ -531,9 +512,8 @@ public class ArknightsRecipesLoad implements IRecipePool {
             )
             .eut(50000)
             .duration(10 * SECONDS)
-            .addTo(EncapsulationMachine);
+            .addTo(ReactorCrucible);
 
-        // 酮阵列：酮凝集组 + 糖组液固反应（反应池）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TongNingJiZu.get(2),
@@ -550,7 +530,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
 
-        // 酯原料：乙醇 + 乙酸酯化
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 Materials.Ethanol.getFluid(1000),
@@ -566,7 +545,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 聚酸酯：酯原料聚合（反应池）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.ZhiYuanLiao.get(2)
@@ -581,7 +559,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
 
-        // 聚酯熔浆：聚酸酯缩聚酯交换
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.JuSuanZhi.get(2),
@@ -595,11 +572,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 EOHBMaterialPool.JuZhiRongJiang.getFluidOrGas(3000),
                 Materials.Water.getFluid(500)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(45 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 聚酸酯组：聚酯熔浆塑形（塑形机）
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.JuZhiRongJiang.getFluidOrGas(3000)
@@ -607,11 +583,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.JuSuanZhiZu.get(1)
             )
-            .eut(10000)
+            .eut(50000)
             .duration(10 * SECONDS)
-            .addTo(ShapingMachine);
+            .addTo(ReactorCrucible);
 
-        // 复合聚酯浆：聚酸酯组 + 糖组复合液
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.JuSuanZhiZu.get(2),
@@ -623,23 +598,24 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.FuHeJuZhiJiang.getFluidOrGas(4000)
             )
-            .eut(TierEU.RECIPE_UIV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 聚酸酯块：复合聚酯浆塑形（塑形机）
         GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 2)
+            )
             .fluidInputs(
                 EOHBMaterialPool.FuHeJuZhiJiang.getFluidOrGas(4000)
             )
             .itemOutputs(
                 GTCMItemList.JuSuanZhiKuai.get(1)
             )
-            .eut(10000)
+            .eut(50000)
             .duration(10 * SECONDS)
-            .addTo(ShapingMachine);
+            .addTo(ReactorCrucible);
 
-        // 异铁：异铁碎片精炼（精炼炉，捷径）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YiTieSuiPian.get(4)
@@ -654,7 +630,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(RefiningFurnace);
 
-        // 异铁浆：异铁酸浸精炼
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YiTie.get(4)
@@ -665,11 +640,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.YiTieJiang.getFluidOrGas(3000)
             )
-            .eut(TierEU.RECIPE_UHV)
+            .eut(TierEU.RECIPE_IV)
             .duration(45 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 异铁组：异铁浆反应析出（反应池/扩容反应池）
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.YiTieJiang.getFluidOrGas(3000)
@@ -681,7 +655,6 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
 
-        // 复合异铁浆：异铁组 + 酮凝集组复合浆
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.YiTieZu.get(2),
@@ -693,11 +666,10 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .fluidOutputs(
                 EOHBMaterialPool.FuHeYiTieJiang.getFluidOrGas(4000)
             )
-            .eut(TierEU.RECIPE_UIV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 异铁块：复合异铁浆真空冷却成型
         GTValues.RA.stdBuilder()
             .fluidInputs(
                 EOHBMaterialPool.FuHeYiTieJiang.getFluidOrGas(4000)
@@ -705,9 +677,665 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .itemOutputs(
                 GTCMItemList.YiTieKuai.get(1)
             )
-            .eut(TierEU.RECIPE_UIV)
+            .eut(TierEU.RECIPE_IV)
             .duration(60 * SECONDS)
             .addTo(vacuumFreezerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Platinum, 2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Iridium, 1)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.BoYiFen.get(OrePrefixes.dust, 3)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.BoYiFen.get(OrePrefixes.dust, 3),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Titanium, 4)
+            )
+            .fluidInputs(
+                Materials.HydrochloricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.DianJiJiang.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.DianJiJiang.getFluidOrGas(4000),
+                Materials.HydrofluoricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingZhiDianJiJiang.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.ingot, Materials.Titanium, 2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JingZhiDianJiJiang.getFluidOrGas(4000)
+            )
+            .itemOutputs(
+                GTCMItemList.DianJiDanYuan.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .metadata(COIL_HEAT, 4500)
+            .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JingTiWaiKe.get(2),
+                GTCMItemList.YuanShiFenMo.get(4)
+            )
+            .fluidInputs(
+                Materials.HydrofluoricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingTiJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Circuit_Silicon_Wafer.get(2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JingTiJiang.getFluidOrGas(2000),
+                Materials.HydrofluoricAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ShiKeJingTiJiang.getFluidOrGas(2000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Platinum, 1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.ShiKeJingTiJiang.getFluidOrGas(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.DuBoJingTiJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.DuBoJingTiJiang.getFluidOrGas(2000),
+                Materials.RubberSilicone.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.JingTiYuanJian.get(2)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(EncapsulationMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTie.get(2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Titanium, 2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Tungsten, 2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Platinum, 1)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.ChiHeJinPeiLiao.get(OrePrefixes.dust, 4)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(mixerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.ChiHeJinPeiLiao.get(OrePrefixes.dust, 4)
+            )
+            .fluidInputs(
+                Materials.HydrofluoricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ChiHeJinJiang.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.ChiHeJinJiang.getFluidOrGas(4000),
+                Materials.Nitrogen.getGas(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingLianChiHeJinJiang.getFluidOrGas(4000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTie.get(4)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JingLianChiHeJinJiang.getFluidOrGas(4000)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiHeJin.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .metadata(COIL_HEAT, 4500)
+            .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                Materials.Acetylene.getGas(2000),
+                Materials.Oxygen.getGas(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.HighEnergyGas.getFluidOrGas(2000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .specialValue(GasEnvRecipeFlags.NONE)
+            .setNEIDesc(EOHB_Environment_NONE)
+            .addTo(GasReactorGlobe);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.HighEnergyGas.getFluidOrGas(2000),
+                Materials.Nitrogen.getGas(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.WenDingGaoNengQiTi.getFluidOrGas(2000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .specialValue(GasEnvRecipeFlags.NONE)
+            .setNEIDesc(EOHB_Environment_NONE)
+            .addTo(GasReactorGlobe);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.WenDingGaoNengQiTi.getFluidOrGas(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.GaoNengYeTi.getFluidOrGas(2000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(Fluid_GasTransmutingUnit);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.GaoNengYeTi.getFluidOrGas(1000)
+            )
+            .itemInputs(
+                GTCMItemList.GangZhiPing.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.YeHuaGaoNengQiTi.get(1)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                Materials.Benzene.getFluid(2000),
+                Materials.Ethylene.getGas(2000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.HuanTingDanTi.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiFenMo.get(4)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.HuanTingDanTi.getFluidOrGas(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.HuanTingJuHeWu.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.HuanTingJuHeWu.getFluidOrGas(2000)
+            )
+            .itemOutputs(
+                GTCMItemList.HuanTingJuZhi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhiYuanLiao.get(2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.TongJiRongYe.getFluidOrGas(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.NingJiaoQianTi.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.NingJiaoQianTi.getFluidOrGas(2000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JiaoLianNingJiao.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.JiaoLianNingJiao.getFluidOrGas(2000)
+            )
+            .itemOutputs(
+                GTCMItemList.NingJiao.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ShuangTong.get(2)
+            )
+            .fluidInputs(
+                Materials.Ethanol.getFluid(2000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.NiuZhuanChunJiang.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.NiuZhuanChunJiang.getFluidOrGas(3000),
+                Materials.Water.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ChunHuaNiuZhuanChunJiang.getFluidOrGas(2500)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .specialValue(GasEnvRecipeFlags.NONE)
+            .setNEIDesc(EOHB_Environment_NONE)
+            .addTo(PurificationUnit);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.ChunHuaNiuZhuanChunJiang.getFluidOrGas(2500)
+            )
+            .itemOutputs(
+                GTCMItemList.NiuZhuanChun.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(vacuumFreezerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhiYuanLiao.get(4)
+            )
+            .fluidInputs(
+                Materials.Ethanol.getFluid(2000),
+                Materials.Water.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.ChuanTongRongJi.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.ChuanTongRongJi.getFluidOrGas(4000),
+                Materials.Benzene.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.GaiXingRongJi.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaiXingRongJi.getFluidOrGas(4000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.NaiSuanJianRongJi.getFluidOrGas(4000)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.NaiSuanJianRongJi.getFluidOrGas(4000)
+            )
+            .itemInputs(
+                GTCMItemList.GangZhiPing.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.BanZiRanRongJi.get(2)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                Materials.Glycerol.getFluid(1000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.RuHuaJi.getFluidOrGas(1000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhiYuanLiao.get(4)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.RuHuaJi.getFluidOrGas(1000),
+                Materials.Water.getFluid(4000)
+            )
+            .itemOutputs(
+                GTCMItemList.QieXiaoYuanYe.get(4)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.QieXiaoYuanYe.get(4)
+            )
+            .fluidInputs(
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingZhiQieXiaoYe.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.JingZhiQieXiaoYe.getFluidOrGas(2000)
+            )
+            .itemInputs(
+                GTCMItemList.LanTiePing.get(1)
+            )
+            .itemOutputs(
+                GTCMItemList.HuaHeQieXiaoYe.get(1)
+            )
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(FillingUnit);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 4)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(1000)
+            )
+            .itemOutputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.ActivatedCarbon, 4)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.ActivatedCarbon, 4),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Silicon, 4)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.XiFuJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.XiFuJiang.getFluidOrGas(2000),
+                EOHBMaterialPool.TongJiRongYe.getFluidOrGas(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.NingJieJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.NingJieJiang.getFluidOrGas(2000)
+            )
+            .itemOutputs(
+                GTCMItemList.LeiNingJieHe.get(2)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(vacuumFreezerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Aluminiumoxide, 4)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.GangYuFen.get(OrePrefixes.dust, 2)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .metadata(COIL_HEAT, 3000)
+            .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.GangYuFen.get(OrePrefixes.dust, 2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Borax, 2),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Graphite, 2)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.YanMoJiang.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.YanMoJiang.getFluidOrGas(3000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingZhiYanMoJiang.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Graphite, 2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JingZhiYanMoJiang.getFluidOrGas(3000)
+            )
+            .itemOutputs(
+                GTCMItemList.YanMoShi.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .metadata(COIL_HEAT, 4500)
+            .addTo(blastFurnaceRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.QingMengKuang.get(2)
+            )
+            .itemOutputs(
+                EOHBMaterialPool.MengKuangJingFen.get(OrePrefixes.dust, 4)
+            )
+            .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(Pulverizer);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                EOHBMaterialPool.MengKuangJingFen.get(OrePrefixes.dust, 4),
+                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Manganese, 2)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.KuangWuJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(mixerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.KuangWuJiang.getFluidOrGas(2000),
+                Materials.SulfuricAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingZhiKuangWuJiang.getFluidOrGas(2000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.TongNingJiZu.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JingZhiKuangWuJiang.getFluidOrGas(2000),
+                Materials.Acetone.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.RMA70_12.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiFenMo.get(4)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.JuZhiRongJiang.getFluidOrGas(2000),
+                EOHBMaterialPool.HuanTingJuHeWu.getFluidOrGas(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.FangSiYe.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.FangSiYe.getFluidOrGas(3000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JingZhiFangSiYe.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.JingZhiFangSiYe.getFluidOrGas(3000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.NongSuoFangSiYe.getFluidOrGas(2500)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .specialValue(GasEnvRecipeFlags.NONE)
+            .setNEIDesc(EOHB_Environment_NONE)
+            .addTo(PurificationUnit);
+
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.NongSuoFangSiYe.getFluidOrGas(2500),
+                Materials.SulfuricAcid.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.HeSuXianWei.get(3)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
 
         GTValues.RA.stdBuilder()
             .itemInputs(

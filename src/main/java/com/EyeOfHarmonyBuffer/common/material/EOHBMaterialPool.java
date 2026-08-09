@@ -532,6 +532,398 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
+    public static final Werkstoff BoYiFen = new Werkstoff(
+        new short[] { 200, 205, 210 },
+        EOHB_BoYiFen,
+        new Werkstoff.Stats(),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .onlyDust(),
+        OFFSET_ID + 42,
+        TextureSet.SET_SHINY
+    );
+
+    public static final Werkstoff DianJiJiang = new Werkstoff(
+        new short[] { 170, 175, 180 },
+        EOHB_DianJiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 43,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingZhiDianJiJiang = new Werkstoff(
+        new short[] { 150, 155, 165 },
+        EOHB_JingZhiDianJiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 44,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingTiJiang = new Werkstoff(
+        new short[] { 190, 120, 200 },
+        EOHB_JingTiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 45,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff ShiKeJingTiJiang = new Werkstoff(
+        new short[] { 180, 140, 210 },
+        EOHB_ShiKeJingTiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 46,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff DuBoJingTiJiang = new Werkstoff(
+        new short[] { 210, 180, 230 },
+        EOHB_DuBoJingTiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 47,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff ChiHeJinPeiLiao = new Werkstoff(
+        new short[] { 230, 90, 40 },
+        EOHB_ChiHeJinPeiLiao,
+        new Werkstoff.Stats(),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .onlyDust(),
+        OFFSET_ID + 48,
+        TextureSet.SET_SHINY
+    );
+
+    public static final Werkstoff ChiHeJinJiang = new Werkstoff(
+        new short[] { 220, 100, 50 },
+        EOHB_ChiHeJinJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 49,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingLianChiHeJinJiang = new Werkstoff(
+        new short[] { 240, 130, 80 },
+        EOHB_JingLianChiHeJinJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 50,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff WenDingGaoNengQiTi = new Werkstoff(
+        new short[] { 255, 230, 150 },
+        EOHB_WenDingGaoNengQiTi,
+        new Werkstoff.Stats().setGas(true),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 51,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff GaoNengYeTi = new Werkstoff(
+        new short[] { 255, 200, 80 },
+        EOHB_GaoNengYeTi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 52,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff NingJiaoQianTi = new Werkstoff(
+        new short[] { 200, 230, 220 },
+        EOHB_NingJiaoQianTi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 53,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JiaoLianNingJiao = new Werkstoff(
+        new short[] { 180, 220, 200 },
+        EOHB_JiaoLianNingJiao,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 54,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff NiuZhuanChunJiang = new Werkstoff(
+        new short[] { 170, 220, 160 },
+        EOHB_NiuZhuanChunJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 55,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff ChunHuaNiuZhuanChunJiang = new Werkstoff(
+        new short[] { 190, 235, 175 },
+        EOHB_ChunHuaNiuZhuanChunJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 56,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff ChuanTongRongJi = new Werkstoff(
+        new short[] { 210, 200, 180 },
+        EOHB_ChuanTongRongJi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 57,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff GaiXingRongJi = new Werkstoff(
+        new short[] { 190, 170, 160 },
+        EOHB_GaiXingRongJi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 58,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff NaiSuanJianRongJi = new Werkstoff(
+        new short[] { 200, 160, 140 },
+        EOHB_NaiSuanJianRongJi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 59,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff RuHuaJi = new Werkstoff(
+        new short[] { 235, 230, 200 },
+        EOHB_RuHuaJi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 60,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingZhiQieXiaoYe = new Werkstoff(
+        new short[] { 180, 210, 230 },
+        EOHB_JingZhiQieXiaoYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 61,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff XiFuJiang = new Werkstoff(
+        new short[] { 150, 150, 150 },
+        EOHB_XiFuJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 62,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff NingJieJiang = new Werkstoff(
+        new short[] { 130, 130, 140 },
+        EOHB_NingJieJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 63,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HuanTingDanTi = new Werkstoff(
+        new short[] { 200, 220, 235 },
+        EOHB_HuanTingDanTi,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 64,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff HuanTingJuHeWu = new Werkstoff(
+        new short[] { 180, 200, 220 },
+        EOHB_HuanTingJuHeWu,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 65,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff GangYuFen = new Werkstoff(
+        new short[] { 235, 120, 130 },
+        EOHB_GangYuFen,
+        new Werkstoff.Stats(),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .onlyDust(),
+        OFFSET_ID + 66,
+        TextureSet.SET_SHINY
+    );
+
+    public static final Werkstoff MengKuangJingFen = new Werkstoff(
+        new short[] { 150, 150, 170 },
+        EOHB_MengKuangJingFen,
+        new Werkstoff.Stats(),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .onlyDust(),
+        OFFSET_ID + 67,
+        TextureSet.SET_SHINY
+    );
+
+    public static final Werkstoff YanMoJiang = new Werkstoff(
+        new short[] { 200, 190, 180 },
+        EOHB_YanMoJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 68,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingZhiYanMoJiang = new Werkstoff(
+        new short[] { 210, 200, 190 },
+        EOHB_JingZhiYanMoJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 69,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff KuangWuJiang = new Werkstoff(
+        new short[] { 120, 130, 150 },
+        EOHB_KuangWuJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 70,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingZhiKuangWuJiang = new Werkstoff(
+        new short[] { 140, 150, 170 },
+        EOHB_JingZhiKuangWuJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 71,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff FangSiYe = new Werkstoff(
+        new short[] { 220, 210, 190 },
+        EOHB_FangSiYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 72,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JingZhiFangSiYe = new Werkstoff(
+        new short[] { 230, 220, 200 },
+        EOHB_JingZhiFangSiYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 73,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff NongSuoFangSiYe = new Werkstoff(
+        new short[] { 240, 230, 205 },
+        EOHB_NongSuoFangSiYe,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 74,
+        TextureSet.SET_FLUID
+    );
+
     public static Werkstoff.GenerationFeatures gf = new Werkstoff.GenerationFeatures();
 
     @Override
