@@ -47,7 +47,7 @@ EOHB_MachineType_12=Hint Block #12
 EOHB_OutPutEnergy=Current Power Generation Capacity
 EOHB_Starry_Miracle_Project=§6♢ §3§o§lEOHB — Starry Miracle Project §6✦
 EOHB_Legendary_Machine_Project=§6♢ §3§o§lEOHB-Legendary Machine Project §6♢
-EOHB_Arknights_Project=§8☰ §6§o§l=EOHB — Arknights Project §8☰
+EOHB_Arknights_Project=§8☰ §6§o§lEOHB — Arknights Project §8☰
 EOHB_Arknights_Project_Energy=This machine runs on Orundum energy!
 EOHB_Arknights_Project_UpgradeCard=This machine can be upgraded by upgrading the chips!
 EOHB_Client_PlayerJoin00=Welcome to use EyeOfHarmonyBuffer!
@@ -410,6 +410,14 @@ Tooltip_ElectricPylon_01=Capable of short-distance power transmission within 100
 Tooltip_ElectricPylon_02="Wireless power supply" is Endfield Industries' greatest technological breakthrough. This technology is an extension of Protocol technology and serves as the operational foundation of the entire integrated industrial system.
 Tooltip_ElectricPylon_03=Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Electric Pylon to complete the link.
 Tooltip_ElectricPylon_04=Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.
+NameXirangAssembler=Xirang Assembler
+Tooltip_XirangAssembler_MachineType=Xirang Assembler
+Tooltip_XirangAssembler_Controller=Controller block of the Xirang Assembler
+Tooltip_XirangAssembler_00=A high-precision assembly machine that performs fine assembling inside an active Xirang gas environment--the "final pair of hands" of the production line.
+Tooltip_XirangAssembler_01=Only operates in an active Xirang gas atmosphere; the living soil gas acts as the precision assembly medium, and allegedly doubles as "seasoning" for the parts.
+Tooltip_XirangAssembler_02=R&D first tried ordinary air and the yield rate stayed stuck at 40%%. A Wuling master craftsman happened to pass by, took one sniff of the workshop, and said: "The parts need to steep in Xirang gas first."
+Tooltip_XirangAssembler_03=After switching to Xirang gas, the yield rate shot up to 99.8%%. Now the entire workshop smells faintly of fresh soil, and the workers swear the finished parts really do come out... smoother.
+Tooltip_XirangAssembler_04=The canteen auntie later moved her rice cooker into the workshop, insisting that rice steamed in this atmosphere tastes extra fragrant. Wuling production line--every inch of soil counts.
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=Substance Reshaping Device
@@ -446,6 +454,7 @@ EOHB_Recipe_SeparatingUnit=Separating Unit
 EOHB_Recipe_GearingUnit=Gearing Unit
 EOHB_Recipe_LargeForce_ContainedProliferationMine=AG-07 Large Force-Contained Proliferation Mine
 EOHB_Recipe_InternalizedUniverseComputingEngine=Internalized Universe Computing Engine
+EOHB_Recipe_XirangAssembler=Xirang Assembler
 
 #item
 EOHB_Harmony=Harmony
@@ -793,6 +802,12 @@ GT5U.gui.text.recipe_result.NoOutputBusForQ=No output bus is connected.
 GT5U.gui.text.recipe_result.NoOutputBusForT=No output bus is connected.
 GT5U.gui.text.recipe_result.NotInOrundumField=Not within the power supply range of the Protocol Core!
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=Need Two Laser Source!
+GT5U.gui.text.recipe_result.EOHB_Environment_STABLE=Required Gas Environment: Stable
+GT5U.gui.text.recipe_result.EOHB_Environment_HUMID=Required Gas Environment: Humid
+GT5U.gui.text.recipe_result.EOHB_Environment_ACRID=Required Gas Environment: Acrid
+GT5U.gui.text.recipe_result.EOHB_Environment_XRANITE=Required Gas Environment: Xranite
+GT5U.gui.text.recipe_result.EOHB_Environment_NONE=Required Gas Environment: None
+GT5U.gui.text.recipe_result.EOHB_Environment_ANY=Required Gas Environment: Any
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=Generate a gas atmosphere corresponding to the input liquid.

@@ -413,6 +413,15 @@ public class TextLocalization {
     public static final String Tooltip_XiraniteSolarPowerGenerator_05;
     public static final String Tooltip_XiraniteSolarPowerGenerator_06;
 
+    public static final String NameXirangAssembler;
+    public static final String Tooltip_XirangAssembler_MachineType;
+    public static final String Tooltip_XirangAssembler_Controller;
+    public static final String Tooltip_XirangAssembler_00;
+    public static final String Tooltip_XirangAssembler_01;
+    public static final String Tooltip_XirangAssembler_02;
+    public static final String Tooltip_XirangAssembler_03;
+    public static final String Tooltip_XirangAssembler_04;
+
     public static final String NameProtocolCore;
     public static final String Tooltip_ProtocolCore_MachineType;
     public static final String Tooltip_ProtocolCore_Controller;
@@ -656,6 +665,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_GearingUnit;
     public static final String EOHB_Recipe_LargeForce_ContainedProliferationMine;
     public static final String EOHB_Recipe_InternalizedUniverseComputingEngine;
+    public static final String EOHB_Recipe_XirangAssembler;
 
     public TextLocalization() {
     }
@@ -1147,6 +1157,16 @@ public class TextLocalization {
         Tooltip_ElectricPylon_02 = TextHandler.texter("\"Wireless power supply\" is Endfield Industries' greatest technological breakthrough. This technology is an extension of Protocol technology and serves as the operational foundation of the entire integrated industrial system.","Tooltip_ElectricPylon_02");
         Tooltip_ElectricPylon_03 = TextHandler.texter("Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.","Tooltip_ElectricPylon_03");
         Tooltip_ElectricPylon_04 = TextHandler.texter("Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.","Tooltip_ElectricPylon_04");
+
+        //息壤装配器
+        NameXirangAssembler = TextHandler.texter("Xirang Assembler","NameXirangAssembler");
+        Tooltip_XirangAssembler_MachineType = TextHandler.texter("Xirang Assembler","Tooltip_XirangAssembler_MachineType");
+        Tooltip_XirangAssembler_Controller = TextHandler.texter("Controller block of the Xirang Assembler","Tooltip_XirangAssembler_Controller");
+        Tooltip_XirangAssembler_00 = TextHandler.texter("A high-precision assembly machine that performs fine assembling inside an active Xirang gas environment--the \"final pair of hands\" of the production line.","Tooltip_XirangAssembler_00");
+        Tooltip_XirangAssembler_01 = TextHandler.texter("Only operates in an active Xirang gas atmosphere; the living soil gas acts as the precision assembly medium, and allegedly doubles as \"seasoning\" for the parts.","Tooltip_XirangAssembler_01");
+        Tooltip_XirangAssembler_02 = TextHandler.texter("R&D first tried ordinary air and the yield rate stayed stuck at 40%%. A Wuling master craftsman happened to pass by, took one sniff of the workshop, and said: \"The parts need to steep in Xirang gas first.\"","Tooltip_XirangAssembler_02");
+        Tooltip_XirangAssembler_03 = TextHandler.texter("After switching to Xirang gas, the yield rate shot up to 99.8%%. Now the entire workshop smells faintly of fresh soil, and the workers swear the finished parts really do come out... smoother.","Tooltip_XirangAssembler_03");
+        Tooltip_XirangAssembler_04 = TextHandler.texter("The canteen auntie later moved her rice cooker into the workshop, insisting that rice steamed in this atmosphere tastes extra fragrant. Wuling production line--every inch of soil counts.","Tooltip_XirangAssembler_04");
 
         //物品
         EOHB_Harmony = TextHandler.texter("Harmony","EOHB_Harmony");
@@ -1768,5 +1788,6 @@ public class TextLocalization {
         EOHB_Recipe_GearingUnit = TextHandler.texter("Gearing Unit","EOHB_Recipe_GearingUnit");
         EOHB_Recipe_LargeForce_ContainedProliferationMine = TextHandler.texter("AG-07 Large Force-Contained Proliferation Mine","EOHB_Recipe_LargeForce_ContainedProliferationMine");
         EOHB_Recipe_InternalizedUniverseComputingEngine = TextHandler.texter("Internalized Universe Computing Engine","EOHB_Recipe_InternalizedUniverseComputingEngine");
+        EOHB_Recipe_XirangAssembler = TextHandler.texter("Xirang Assembler","EOHB_Recipe_XirangAssembler");
     }
 }

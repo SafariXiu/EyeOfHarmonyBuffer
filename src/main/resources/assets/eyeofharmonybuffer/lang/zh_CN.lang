@@ -410,6 +410,14 @@ Tooltip_ElectricPylon_01=§7可以进行§e100 block§7（§e绝对距离§7）�
 Tooltip_ElectricPylon_02=§7“§e无线供电§7”是§b终末地工业§7最大的§b技术突破§7，这项技术基于§b协议技术§7进行了扩展，是整套§b集成工业系统§7的运转基础。§r
 Tooltip_ElectricPylon_03=§7使用§b能量连接器§7右键控制器方块开始链接，左键另一个§b中继器§7/§b供电桩§7完成链接。§r
 Tooltip_ElectricPylon_04=§7从§b协议核心§7/§b次级核心§7中同样需要使用§b能量连接器§7进行链接。§r
+NameXirangAssembler=§a息壤装配器
+Tooltip_XirangAssembler_MachineType=§a息壤装配器
+Tooltip_XirangAssembler_Controller=§7息壤装配器的§b控制器方块§r
+Tooltip_XirangAssembler_00=§a在§e息壤气活跃区域§a内进行高精度组装的专用机器，产线上的“§b最后一双手§a”。§r
+Tooltip_XirangAssembler_01=§7必须在§a息壤气环境§7中才能启动：活跃的息壤气不仅是精密组装的加工介质，据说还能顺便给零件“§e养一养§7”。§r
+Tooltip_XirangAssembler_02=§7研发部最初试着用普通空气组装，良品率死死卡在§e40%%§7。一位路过的武陵老匠人闻了闻车间，只丢下一句话：“§b零件得先搁息壤气里泡一泡。§7”§r
+Tooltip_XirangAssembler_03=§7换成息壤气后，良品率直接飙到§e99.8%%§7。如今整座车间都飘着淡淡的土腥味，工人们都说组出来的零件确实不一样——§e手感顺了。§r
+Tooltip_XirangAssembler_04=§7后来食堂阿姨把电饭煲也搬进了车间，说在这种环境里焖出来的饭格外香。§a武陵产线，寸土寸金。§r
 
 #RecipeMap
 EOHB_Recipe_SubstanceReshapingDevice=物质重塑仪
@@ -446,6 +454,7 @@ EOHB_Recipe_SeparatingUnit=拆解机
 EOHB_Recipe_GearingUnit=装备原件机
 EOHB_Recipe_LargeForce_ContainedProliferationMine=AG-07-大型力场约束式增殖矿场
 EOHB_Recipe_InternalizedUniverseComputingEngine=内化宇宙演算机
+EOHB_Recipe_XirangAssembler=息壤装配器
 
 #item
 EOHB_Harmony=鸿蒙
@@ -758,17 +767,6 @@ EOHB_JingZhiFangSiYe=精制纺丝液
 EOHB_NongSuoFangSiYe=浓缩纺丝液
 EOHB_CuZhiQieXiaoYe=粗切削液
 EOHB_GaoJieJingLianYe=高阶精炼液
-EOHB_NingJiaoQianTi=凝胶前体
-EOHB_JiaoLianNingJiao=交联凝胶
-EOHB_NiuZhuanChunJiang=扭转醇浆
-EOHB_ChunHuaNiuZhuanChunJiang=纯化扭转醇浆
-EOHB_ChuanTongRongJi=传统溶剂
-EOHB_GaiXingRongJi=改性溶剂
-EOHB_NaiSuanJianRongJi=耐酸碱溶剂
-EOHB_RuHuaJi=乳化剂
-EOHB_JingZhiQieXiaoYe=精制切削液
-EOHB_XiFuJiang=吸附浆
-EOHB_NingJieJiang=凝结浆
 EOHB_LiquidXiranite=液化息壤
 EOHB_LiquidHeavyXiranite=液化重息壤
 EOHB_LiquefiedOrundum=液化源石
@@ -804,6 +802,12 @@ GT5U.gui.text.recipe_result.NoOutputBusForQ=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NoOutputBusForT=容器没有对应输出总线！
 GT5U.gui.text.recipe_result.NotInOrundumField=不在协议核心供电范围中！
 GT5U.gui.text.structure_error.highdensityenergyfluidgenerator.need_two_laser_sources=需要2个激光源！
+GT5U.gui.text.recipe_result.EOHB_Environment_STABLE=需要的气体环境：稳定
+GT5U.gui.text.recipe_result.EOHB_Environment_HUMID=需要的气体环境：湿润
+GT5U.gui.text.recipe_result.EOHB_Environment_ACRID=需要的气体环境：酸性
+GT5U.gui.text.recipe_result.EOHB_Environment_XRANITE=需要的气体环境：息壤
+GT5U.gui.text.recipe_result.EOHB_Environment_NONE=需要的气体环境：无气体
+GT5U.gui.text.recipe_result.EOHB_Environment_ANY=需要的气体环境：任意
 
 #Recipe
 GT5U.gui.text.recipe.GasDiffuserInfo=产生输入液体对应的气体环境

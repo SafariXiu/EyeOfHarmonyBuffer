@@ -47,6 +47,7 @@ public class MachineLoader {
     public static ItemStack ProtocolCore;
     public static ItemStack RelayTower;
     public static ItemStack ElectricPylon;
+    public static ItemStack XirangAssembler;
 
     private final static int MachineBlockID = 23000;
 
@@ -330,5 +331,12 @@ public class MachineLoader {
             TextLocalization.NameElectricPylon
         ).getStackForm(1);
         GTCMItemList.ElectricPylon.set(ElectricPylon);
+
+        XirangAssembler = new EOHB_XirangAssembler(
+            MachineBlockID + 41,
+            "NameXirangAssembler",
+            TextLocalization.NameXirangAssembler
+        ).getStackForm(1);
+        GTCMItemList.XirangAssembler.set(XirangAssembler);
     }
 }

@@ -525,4 +525,21 @@ public class RecipeMaps {
         .logoPos(152, 63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.InternalizedUniverseComputingEngine.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> XirangAssembler = RecipeMapBuilder
+        .of(EOHB_Recipe_XirangAssembler)
+        .maxIO(4, 4, 4, 4)
+        .neiRecipeBackgroundSize(170, 185)
+        .useCustomFilterForNEI()
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                4,
+                4
+            )
+        )
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20, 20)
+        .logoPos(152, 63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.JingTiDianLu.get(1)))
+        .build();
 }

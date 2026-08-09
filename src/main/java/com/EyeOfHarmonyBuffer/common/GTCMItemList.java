@@ -209,6 +209,7 @@ public enum GTCMItemList {
     ProtocolCore,
     RelayTower,
     ElectricPylon,
+    XirangAssembler,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,
