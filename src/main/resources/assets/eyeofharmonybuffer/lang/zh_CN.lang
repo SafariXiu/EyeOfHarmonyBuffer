@@ -695,6 +695,7 @@ tile.xi_rang_qi_main_block.name=息壤气主矿脉块
 tile.duo_qi_main_block.name=惰气主矿脉块
 eoh.blockcasings.0.name=息壤机械方块
 eoh.blockcasings.1.name=重息壤机械方块
+tile.xie_yi_yuan_shi.name=§3协议源石块
 
 #space
 solarsystem.talosSystem=塔罗斯

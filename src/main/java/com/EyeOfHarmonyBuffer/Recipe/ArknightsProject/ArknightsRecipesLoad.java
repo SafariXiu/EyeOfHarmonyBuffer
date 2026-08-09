@@ -11,6 +11,8 @@ import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
 
 import static gregtech.api.recipe.RecipeMaps.*;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -215,5 +217,28 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
             .addTo(mixerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanYan.get(64)
+            )
+            .itemOutputs(
+                GTCMItemList.GuYuanYan.get(4)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YuanShiKuang.get(8),
+                new ItemStack(Blocks.stone, 1)
+            )
+            .itemOutputs(
+                GTCMItemList.YuanShiBlock.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }

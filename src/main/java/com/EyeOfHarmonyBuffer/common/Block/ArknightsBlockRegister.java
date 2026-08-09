@@ -24,6 +24,7 @@ public class ArknightsBlockRegister {
     public static Block XiRangQiMainBlock;
     public static Block CleanGlass;
     public static Block CleanGlassGlow;
+    public static Block XieYiYuanShi;
 
     public static BlockCasingsEOH EOHBCasing1;
 
@@ -117,6 +118,13 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(CleanGlassGlow, "CleanGlassGlow");
         GTCMItemList.CleanGlassGlow.set(new ItemStack(CleanGlassGlow, 1, 0));
+
+        XieYiYuanShi = new BlockXieYiYuanShi()
+            .setBlockName("xie_yi_yuan_shi")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/xieyiyuanshi_block")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(XieYiYuanShi, "xie_yi_yuan_shi");
+        GTCMItemList.XieYiYuanShi.set(new ItemStack(XieYiYuanShi, 1, 0));
     }
 
     public static void registryCasingBlocks() {

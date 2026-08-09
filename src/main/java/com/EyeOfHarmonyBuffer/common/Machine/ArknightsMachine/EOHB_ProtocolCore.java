@@ -321,7 +321,7 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
                 )
                 .addElement(
                     'E',
-                    ofBlock(GTCMItemList.YuanShiBlock.getBlock(), 0)
+                    ofBlock(GTCMItemList.XieYiYuanShi.getBlock(), 0)
                 )
                 .build();
         }

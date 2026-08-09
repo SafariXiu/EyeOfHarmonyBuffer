@@ -695,6 +695,7 @@ tile.xi_rang_qi_main_block.name=Xiragen Main Vein Block
 tile.duo_qi_main_block.name=Inergen Main Vein Block
 eoh.blockcasings.0.name=Xiranite Mechanical Block
 eoh.blockcasings.1.name=Heavy Xiranite Mechanical Block
+tile.xie_yi_yuan_shi.name=Protocol Originite Block
 
 #space
 solarsystem.talosSystem=Talos
