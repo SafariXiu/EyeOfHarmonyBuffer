@@ -203,5 +203,17 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .eut(TierEU.RECIPE_EV)
             .duration(2 * SECONDS)
             .addTo(fluidExtractionRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.DiChunYuanShiFenMo.get(16),
+                Materials.Stone.getDust(48)
+            )
+            .itemOutputs(
+                GTCMItemList.GuYuanYan.get(64)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(mixerRecipes);
     }
 }

@@ -104,7 +104,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return TICKS_PER_CYCLE;
     }
 
     @Override
@@ -297,7 +297,7 @@ public class EOHB_OrundumDynamo extends OrundumWirelessMultiMachineBase<EOHB_Oru
 
     @Override
     public int getMaxParallelRecipes() {
-        return 0;
+        return getParallelCount();
     }
 
     protected static final String[][] shapeMain = new String[][]{

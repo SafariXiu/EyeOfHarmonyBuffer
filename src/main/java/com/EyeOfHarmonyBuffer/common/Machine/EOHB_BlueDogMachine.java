@@ -149,12 +149,12 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
 
     @Override
     public int getMaxParallelRecipes() {
-        return 0;
+        return Integer.MAX_VALUE;
     }
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return 10;
     }
 
     @Override
@@ -282,8 +282,9 @@ public class EOHB_BlueDogMachine extends WirelessEnergyMultiMachineBase<EOHB_Blu
             @NotNull
             @Override
             protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                return new OverclockCalculator()
-                    .setParallel(Integer.MAX_VALUE);
+                return OverclockCalculator.ofNoOverclock(recipe)
+                    .setParallel(Integer.MAX_VALUE)
+                    .setEUtDiscount(0.0);
             }
 
             @NotNull

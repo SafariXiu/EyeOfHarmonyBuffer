@@ -61,7 +61,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return 10;
     }
 
     @Override
@@ -76,7 +76,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
 
     @Override
     public int getMaxParallelRecipes() {
-        return 0;
+        return Integer.MAX_VALUE;
     }
 
     @NotNull
@@ -97,7 +97,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
             @NotNull
             @Override
             protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                return new OverclockCalculator()
+                return OverclockCalculator.ofNoOverclock(recipe)
                     .setParallel(Integer.MAX_VALUE);
             }
 
