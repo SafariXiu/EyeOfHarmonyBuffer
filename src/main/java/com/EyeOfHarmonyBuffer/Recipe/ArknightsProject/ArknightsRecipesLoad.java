@@ -19,11 +19,12 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.EncapsulationMachine;
-import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.FillingUnit;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.Pulverizer;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.PurificationUnit;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ReactorCrucible;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.RefiningFurnace;
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.SeparatingUnit;
+import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ShapingMachine;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.EOHB_Environment_NONE;
 import static gregtech.api.recipe.RecipeMaps.*;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -348,7 +349,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 EOHBMaterialPool.TangZhi.getFluidOrGas(4000)
             )
             .eut(5000)
-            .duration(30 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(Pulverizer);
 
         // 代糖：碳粉 + 乙酸合成甜味剂（精炼炉）
@@ -366,7 +367,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 Materials.CarbonDioxide.getGas(500)
             )
             .eut(5000)
-            .duration(30 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(RefiningFurnace);
 
         // 糖：糖汁净化结晶（净化单元）
@@ -379,47 +380,59 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 GTCMItemList.Tang.get(2)
             )
             .eut(50000)
-            .duration(40 * SECONDS)
+            .duration(10 * SECONDS)
             .specialValue(GasEnvRecipeFlags.NONE)
             .setNEIDesc(EOHB_Environment_NONE)
             .addTo(PurificationUnit);
 
-        // 糖蜜：糖 + 代糖浓缩糖浆
+        // 糖溶液：糖溶解（分离单元）
         GTValues.RA.stdBuilder()
             .itemInputs(
-                GTCMItemList.Tang.get(2),
-                GTCMItemList.DaiTang.get(2)
+                GTCMItemList.Tang.get(2)
             )
             .fluidInputs(
-                Materials.Water.getFluid(2000)
+                Materials.Water.getFluid(1000)
             )
             .fluidOutputs(
-                EOHBMaterialPool.TangMi.getFluidOrGas(3000)
+                EOHBMaterialPool.TangRongYe.getFluidOrGas(2000)
             )
-            .eut(TierEU.RECIPE_UHV)
-            .duration(45 * SECONDS)
-            .addTo(multiblockChemicalReactorRecipes);
+            .eut(20000)
+            .duration(10 * SECONDS)
+            .addTo(SeparatingUnit);
 
-        // 糖组：糖蜜灌装成型（灌装单元）
+        // 发酵糖浆：糖溶液发酵（发酵机）
         GTValues.RA.stdBuilder()
             .fluidInputs(
-                EOHBMaterialPool.TangMi.getFluidOrGas(3000)
+                EOHBMaterialPool.TangRongYe.getFluidOrGas(3000)
             )
-            .itemInputs(
-                GTOreDictUnificator.get(OrePrefixes.dust, Materials.Carbon, 8)
+            .fluidOutputs(
+                EOHBMaterialPool.FaJiaoTangJiang.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_UHV)
+            .duration(60 * SECONDS)
+            .addTo(fermentingRecipes);
+
+        // 糖组：发酵糖浆蒸馏浓缩（蒸馏塔）
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.FaJiaoTangJiang.getFluidOrGas(3000)
             )
             .itemOutputs(
                 GTCMItemList.TangZu.get(1)
             )
-            .eut(20000)
-            .duration(45 * SECONDS)
-            .addTo(FillingUnit);
+            .fluidOutputs(
+                Materials.Ethanol.getFluid(1000)
+            )
+            .eut(TierEU.RECIPE_UHV)
+            .duration(60 * SECONDS)
+            .addTo(distillationTowerRecipes);
 
-        // 复合糖浆：糖组 + 酮凝集组复合液
+        // 复合糖浆：糖组 + 酮凝集组 + 代糖复合液
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TangZu.get(2),
-                GTCMItemList.TongNingJiZu.get(1)
+                GTCMItemList.TongNingJiZu.get(1),
+                GTCMItemList.DaiTang.get(2)
             )
             .fluidInputs(
                 Materials.Ethanol.getFluid(2000)
@@ -473,7 +486,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 EOHBMaterialPool.TongJiRongYe.getFluidOrGas(2000)
             )
             .eut(20000)
-            .duration(30 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(SeparatingUnit);
 
         // 酮凝集：酮基溶液封装胶体化（封装机）
@@ -486,7 +499,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 GTCMItemList.TongNingJi.get(1)
             )
             .eut(50000)
-            .duration(30 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(EncapsulationMachine);
 
         // 酮基聚合物：酮凝集聚合（LCR）
@@ -517,32 +530,180 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 GTCMItemList.TongNingJiZu.get(1)
             )
             .eut(50000)
-            .duration(45 * SECONDS)
+            .duration(10 * SECONDS)
             .addTo(EncapsulationMachine);
 
-        // 复合酮浆：酮凝集组 + 糖组复合液
+        // 酮阵列：酮凝集组 + 糖组液固反应（反应池）
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTCMItemList.TongNingJiZu.get(2),
                 GTCMItemList.TangZu.get(1)
             )
             .fluidInputs(
-                Materials.Acetone.getFluid(2000)
+                Materials.Acetone.getFluid(2000),
+                Materials.Water.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.TongZhenLie.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        // 酯原料：乙醇 + 乙酸酯化
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                Materials.Ethanol.getFluid(1000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhiYuanLiao.get(2)
             )
             .fluidOutputs(
-                EOHBMaterialPool.FuHeTongJiang.getFluidOrGas(4000)
+                Materials.Water.getFluid(1000)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        // 聚酸酯：酯原料聚合（反应池）
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.ZhiYuanLiao.get(2)
+            )
+            .fluidInputs(
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.JuSuanZhi.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        // 聚酯熔浆：聚酸酯缩聚酯交换
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JuSuanZhi.get(2),
+                GTCMItemList.ZhiYuanLiao.get(2)
+            )
+            .fluidInputs(
+                Materials.Ethanol.getFluid(2000),
+                Materials.AceticAcid.getFluid(1000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.JuZhiRongJiang.getFluidOrGas(3000),
+                Materials.Water.getFluid(500)
+            )
+            .eut(TierEU.RECIPE_UHV)
+            .duration(45 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        // 聚酸酯组：聚酯熔浆塑形（塑形机）
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.JuZhiRongJiang.getFluidOrGas(3000)
+            )
+            .itemOutputs(
+                GTCMItemList.JuSuanZhiZu.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
+
+        // 复合聚酯浆：聚酸酯组 + 糖组复合液
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JuSuanZhiZu.get(2),
+                GTCMItemList.TangZu.get(1)
+            )
+            .fluidInputs(
+                Materials.AceticAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.FuHeJuZhiJiang.getFluidOrGas(4000)
             )
             .eut(TierEU.RECIPE_UIV)
             .duration(60 * SECONDS)
             .addTo(multiblockChemicalReactorRecipes);
 
-        // 酮阵列：复合酮浆真空结晶
+        // 聚酸酯块：复合聚酯浆塑形（塑形机）
         GTValues.RA.stdBuilder()
             .fluidInputs(
-                EOHBMaterialPool.FuHeTongJiang.getFluidOrGas(4000)
+                EOHBMaterialPool.FuHeJuZhiJiang.getFluidOrGas(4000)
             )
             .itemOutputs(
-                GTCMItemList.TongZhenLie.get(1)
+                GTCMItemList.JuSuanZhiKuai.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
+
+        // 异铁：异铁碎片精炼（精炼炉，捷径）
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTieSuiPian.get(4)
+            )
+            .fluidInputs(
+                Materials.SulfuricAcid.getFluid(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.YiTie.get(1)
+            )
+            .eut(5000)
+            .duration(10 * SECONDS)
+            .addTo(RefiningFurnace);
+
+        // 异铁浆：异铁酸浸精炼
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTie.get(4)
+            )
+            .fluidInputs(
+                Materials.SulfuricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.YiTieJiang.getFluidOrGas(3000)
+            )
+            .eut(TierEU.RECIPE_UHV)
+            .duration(45 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        // 异铁组：异铁浆反应析出（反应池/扩容反应池）
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.YiTieJiang.getFluidOrGas(3000)
+            )
+            .itemOutputs(
+                GTCMItemList.YiTieZu.get(1)
+            )
+            .eut(50000)
+            .duration(10 * SECONDS)
+            .addTo(ReactorCrucible);
+
+        // 复合异铁浆：异铁组 + 酮凝集组复合浆
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTieZu.get(2),
+                GTCMItemList.TongNingJiZu.get(1)
+            )
+            .fluidInputs(
+                Materials.SulfuricAcid.getFluid(2000)
+            )
+            .fluidOutputs(
+                EOHBMaterialPool.FuHeYiTieJiang.getFluidOrGas(4000)
+            )
+            .eut(TierEU.RECIPE_UIV)
+            .duration(60 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        // 异铁块：复合异铁浆真空冷却成型
+        GTValues.RA.stdBuilder()
+            .fluidInputs(
+                EOHBMaterialPool.FuHeYiTieJiang.getFluidOrGas(4000)
+            )
+            .itemOutputs(
+                GTCMItemList.YiTieKuai.get(1)
             )
             .eut(TierEU.RECIPE_UIV)
             .duration(60 * SECONDS)

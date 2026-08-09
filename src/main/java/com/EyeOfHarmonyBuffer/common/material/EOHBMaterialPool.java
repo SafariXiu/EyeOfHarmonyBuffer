@@ -437,9 +437,9 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
-    public static final Werkstoff TangMi = new Werkstoff(
-        new short[] { 200, 150, 80 },
-        EOHB_TangMi,
+    public static final Werkstoff FaJiaoTangJiang = new Werkstoff(
+        new short[] { 180, 140, 60 },
+        EOHB_FaJiaoTangJiang,
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -472,15 +472,63 @@ public class EOHBMaterialPool implements Runnable{
         TextureSet.SET_FLUID
     );
 
-    public static final Werkstoff FuHeTongJiang = new Werkstoff(
-        new short[] { 130, 160, 210 },
-        EOHB_FuHeTongJiang,
+    public static final Werkstoff TangRongYe = new Werkstoff(
+        new short[] { 250, 240, 200 },
+        EOHB_TangRongYe,
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
             .disable()
             .addCells(),
         OFFSET_ID + 37,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff JuZhiRongJiang = new Werkstoff(
+        new short[] { 220, 190, 130 },
+        EOHB_JuZhiRongJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 38,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff FuHeJuZhiJiang = new Werkstoff(
+        new short[] { 200, 170, 110 },
+        EOHB_FuHeJuZhiJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 39,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff YiTieJiang = new Werkstoff(
+        new short[] { 130, 140, 150 },
+        EOHB_YiTieJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 40,
+        TextureSet.SET_FLUID
+    );
+
+    public static final Werkstoff FuHeYiTieJiang = new Werkstoff(
+        new short[] { 100, 110, 120 },
+        EOHB_FuHeYiTieJiang,
+        new Werkstoff.Stats().setGas(false),
+        Werkstoff.Types.MATERIAL,
+        new Werkstoff.GenerationFeatures()
+            .disable()
+            .addCells(),
+        OFFSET_ID + 41,
         TextureSet.SET_FLUID
     );
 
