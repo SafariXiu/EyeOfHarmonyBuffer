@@ -346,7 +346,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
             )
             .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
-            .addTo(extractorRecipes);
+            .addTo(fluidExtractionRecipes);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
