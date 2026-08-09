@@ -240,7 +240,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
             )
             .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
-            .addTo(assemblerRecipes);
+            .addTo(compressorRecipes);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
