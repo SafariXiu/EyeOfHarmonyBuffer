@@ -1259,3 +1259,5 @@ EOHB_ArknightsItem_ZhuanZhiYanJuKuai_03=solutions. Can provide materials with a 
 EOHB_ArknightsItem_ZhuanZhiYanZu_00=A compound crystallization that has undergone low-tolerance refinement. Can be used in a variety of strengthening projects.
 EOHB_ArknightsItem_ZhuanZhiYanZu_01=The surface of this material has mutable characteristics, realizing results that were originally
 EOHB_ArknightsItem_ZhuanZhiYanZu_02=nearly impossible. CAUTION: industrial salt is not to be eaten under any circumstances.
+EOHB.nei.byproduct.title=Byproduct (rolled per recipe)
+EOHB.nei.byproduct.totalChance=Total chance

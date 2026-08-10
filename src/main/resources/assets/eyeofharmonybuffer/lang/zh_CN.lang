@@ -1259,3 +1259,5 @@ EOHB_ArknightsItem_ZhuanZhiYanJuKuai_03=可为材料提供多种功能。
 EOHB_ArknightsItem_ZhuanZhiYanZu_00=经过粗炼处理的化合物结晶。可用于多种强化场合。
 EOHB_ArknightsItem_ZhuanZhiYanZu_01=可改变材料表面的性质，实现原本难以获得的效果。
 EOHB_ArknightsItem_ZhuanZhiYanZu_02=注意为工业用盐，绝对不可以食用。
+EOHB.nei.byproduct.title=副产物（每份独立判定）
+EOHB.nei.byproduct.totalChance=总概率

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Recipe;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.RecipeMap.MonkeyShitFrontend;
+import com.EyeOfHarmonyBuffer.common.byproduct.ByproductFrontend;
 import com.EyeOfHarmonyBuffer.utils.FixedStringSpecialFormatter;
 import com.EyeOfHarmonyBuffer.utils.SimpleStringSpecialFormatter;
 import com.gtnewhorizons.modularui.api.drawable.UITexture;
@@ -532,7 +533,7 @@ public class RecipeMaps {
         .neiRecipeBackgroundSize(170, 185)
         .useCustomFilterForNEI()
         .frontend((uiProps, neiProps) ->
-            new GeneralFrontend(uiProps, neiProps,
+            new ByproductFrontend(uiProps, neiProps,
                 16,
                 4
             )

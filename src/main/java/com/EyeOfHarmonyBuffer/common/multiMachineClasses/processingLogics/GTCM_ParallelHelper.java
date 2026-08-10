@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics;
 
+import com.EyeOfHarmonyBuffer.common.byproduct.ByproductTable;
 import com.EyeOfHarmonyBuffer.utils.Utils;
 
 import com.EyeOfHarmonyBuffer.utils.rewrites.EOHB_ItemID;
@@ -383,6 +384,31 @@ public class GTCM_ParallelHelper extends ParallelHelper {
 
             this.itemOutputs = (ItemStack[])toOutput.toArray(new ItemStack[0]);
         }
+        this.appendByproducts();
+    }
+
+    /**
+     * 若当前配方携带副产物表，则每份并行产物独立判定一次副产物，
+     * 命中的副产物追加到物品输出中。其他配方不受影响。
+     */
+    protected void appendByproducts() {
+        if (!(this.recipe.mSpecialItems instanceof ByproductTable)) {
+            return;
+        }
+
+        ByproductTable table = (ByproductTable) this.recipe.mSpecialItems;
+        ArrayList<ItemStack> outputs = new ArrayList();
+        if (this.itemOutputs != null) {
+            Collections.addAll(outputs, this.itemOutputs);
+        }
+
+        for (int i = 0; i < this.currentParallel; ++i) {
+            ItemStack byproduct = table.roll();
+            if (byproduct != null) {
+                outputs.add(byproduct);
+            }
+        }
+        this.itemOutputs = (ItemStack[])outputs.toArray(new ItemStack[0]);
     }
 
     protected void calculateFluidOutputs() {

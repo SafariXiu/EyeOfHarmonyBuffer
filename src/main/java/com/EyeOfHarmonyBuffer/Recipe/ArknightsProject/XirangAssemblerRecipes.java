@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import bartworks.system.material.WerkstoffLoader;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.byproduct.ByproductTable;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
@@ -16,6 +17,28 @@ import static gregtech.api.recipe.RecipeMaps.multiblockChemicalReactorRecipes;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 public class XirangAssemblerRecipes implements IRecipePool {
+
+    /** 息壤装配器副产物池：全部三级材料，权重均等。 */
+    private static final ByproductTable XIRANG_BYPRODUCTS = new ByproductTable(ByproductTable.DEFAULT_TOTAL_CHANCE)
+        .add(GTCMItemList.GuYuanYanZu.get(1), 1)
+        .add(GTCMItemList.YiTieZu.get(1), 1)
+        .add(GTCMItemList.TongNingJiZu.get(1), 1)
+        .add(GTCMItemList.TangZu.get(1), 1)
+        .add(GTCMItemList.JuSuanZhiZu.get(1), 1)
+        .add(GTCMItemList.QuanXinZhuangZhi.get(1), 1)
+        .add(GTCMItemList.NiuZhuanChun.get(1), 1)
+        .add(GTCMItemList.QingMengKuang.get(1), 1)
+        .add(GTCMItemList.YanMoShi.get(1), 1)
+        .add(GTCMItemList.RMA70_12.get(1), 1)
+        .add(GTCMItemList.NingJiao.get(1), 1)
+        .add(GTCMItemList.ChiHeJin.get(1), 1)
+        .add(GTCMItemList.HuaHeQieXiaoYe.get(1), 1)
+        .add(GTCMItemList.JingTiYuanJian.get(1), 1)
+        .add(GTCMItemList.BanZiRanRongJi.get(1), 1)
+        .add(GTCMItemList.ZhuanZhiYanZu.get(1), 1)
+        .add(GTCMItemList.HeSuXianWei.get(1), 1)
+        .add(GTCMItemList.HuanTingJuZhi.get(1), 1)
+        .add(GTCMItemList.LeiNingJieHe.get(1), 1);
 
     @Override
     public void loadRecipes() {
@@ -39,7 +62,8 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
-            .addTo(multiblockChemicalReactorRecipes);
+            .special(XIRANG_BYPRODUCTS)
+            .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -62,6 +86,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -83,6 +108,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -105,6 +131,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -127,6 +154,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -149,6 +177,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -213,6 +242,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -233,6 +263,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -253,6 +284,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -274,6 +306,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -295,6 +328,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -316,6 +350,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
 
         GTValues.RA.stdBuilder()
@@ -337,6 +372,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
+            .special(XIRANG_BYPRODUCTS)
             .addTo(XirangAssembler);
     }
 }
