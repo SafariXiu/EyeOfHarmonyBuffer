@@ -42,6 +42,7 @@ public class RecipeLoader {
             new PurificationUnitRecipes(),
             new ReactorCrucibleRecipes(),
             new ArknightsRecipesLoad(),
+            new XirangAssemblerRecipes(),
             new FluidPumpRecipe(),
             new ElectricTypeTwoMiningMachineRecipes(),
             new HighDensityEnergyFluidGeneratorRecipes(),
