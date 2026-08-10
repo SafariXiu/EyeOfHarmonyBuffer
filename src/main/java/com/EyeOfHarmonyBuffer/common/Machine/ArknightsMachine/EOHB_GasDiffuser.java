@@ -226,7 +226,7 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
             }
         }
 
-        if (canProvideNow && pendingEnvChanged && currentEnvironmentType != lastReportedEnv) {
+        if (canProvideNow && pendingEnvChanged) {
             World w = aBaseMetaTileEntity.getWorld();
             GasEnvironmentHelper.onProviderEnvironmentChanged(
                 this,
@@ -239,7 +239,24 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
             pendingEnvChanged = false;
         }
 
-        if (!canProvideNow && lastReportedEnv != GasEnvironmentType.NONE) {
+        // 缓存自愈兜底：机器正常提供环境时周期性重报一次，
+        // 防止重进存档/区块重载等场景下缓存长期未同步。
+        if (canProvideNow && currentEnvironmentType != GasEnvironmentType.NONE && aTick % 100 == 0) {
+            World w = aBaseMetaTileEntity.getWorld();
+            GasEnvironmentHelper.onProviderEnvironmentChanged(
+                this,
+                w,
+                aBaseMetaTileEntity.getXCoord(),
+                aBaseMetaTileEntity.getYCoord(),
+                aBaseMetaTileEntity.getZCoord()
+            );
+            lastReportedEnv = currentEnvironmentType;
+        }
+
+        // 仅在机器真正停止时清空恢复的环境状态。
+        // 重进存档后结构检查有约 100 tick 延迟，期间 mMachine 为 false 但机器仍在运行，
+        // 若此时清空会把 NBT 恢复的环境状态误删，导致后续无法重新上报。
+        if (!canProvideNow && lastReportedEnv != GasEnvironmentType.NONE && !aBaseMetaTileEntity.isActive()) {
             World w = aBaseMetaTileEntity.getWorld();
             currentEnvironmentType = GasEnvironmentType.NONE;
             envTicksRemaining = 0;
@@ -413,7 +430,28 @@ public class EOHB_GasDiffuser extends OrundumWirelessMultiMachineBase<EOHB_GasDi
         }
 
         envTicksRemaining = aNBT.getInteger("EOHB_EnvTicksRemaining");
-        pendingEnvChanged = false;
+        // 重进存档后强制重新上报一次：
+        // onFirstTick 注册提供者时结构检查/激活状态尚未恢复，当时的缓存重算结果不可靠。
+        pendingEnvChanged = currentEnvironmentType != GasEnvironmentType.NONE
+            || lastReportedEnv != GasEnvironmentType.NONE;
+    }
+
+    @Override
+    public void onUnload() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide()) {
+            World w = base.getWorld();
+            if (w != null) {
+                GasEnvironmentHelper.unregisterProvider(
+                    this,
+                    w,
+                    base.getXCoord(),
+                    base.getYCoord(),
+                    base.getZCoord()
+                );
+            }
+        }
+        super.onUnload();
     }
 
     @Override
