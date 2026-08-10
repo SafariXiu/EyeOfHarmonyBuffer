@@ -1352,5 +1352,38 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(ReactorCrucible);
 
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Casing_SolidSteel.get(1),
+                GTCMItemList.XiRang.get(16),
+                GTCMItemList.JuSuanZhiZu.get(8)
+            )
+            .itemOutputs(
+                GTCMItemList.XiRangWaiKeCasing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.LiquidXiranite.getFluidOrGas(1000)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(10 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                ItemList.Casing_Advanced_Iridium.get(1),
+                GTCMItemList.ZhongXiRang.get(16),
+                GTCMItemList.RangJing.get(8),
+                GTCMItemList.YiTieKuai.get(8)
+            )
+            .itemOutputs(
+                GTCMItemList.ZhongXiRangWaiKeCasing.get(1)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.LiquidHeavyXiranite.getFluidOrGas(1000)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(10 * SECONDS)
+            .addTo(assemblerRecipes);
+
     }
 }
