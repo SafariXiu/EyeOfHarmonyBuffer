@@ -12,7 +12,7 @@ import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
 import com.EyeOfHarmonyBuffer.space.talos.TalosUndergroundFluidRegister;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
-import com.EyeOfHarmonyBuffer.common.Block.ArknightsBlockRegister;
+import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
@@ -164,7 +164,7 @@ public class EyeOfHarmonyBuffer {
         MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
         ArknightsMobDropRegister.registerDrops();
 
-        ArknightsBlockRegister.registryCasingBlocks();
+        EOHBMachineBlocks.registerCasings();
     }
 
     @Mod.EventHandler

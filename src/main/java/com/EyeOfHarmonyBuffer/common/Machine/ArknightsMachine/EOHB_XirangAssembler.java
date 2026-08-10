@@ -1,8 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
-import bartworks.common.loaders.ItemRegistry;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
-import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.IGasEnvironmentConsumer;
@@ -183,11 +182,11 @@ public class EOHB_XirangAssembler extends UpgradableOrundumWirelessMultiMachineB
                 )
                 .addElement(
                     'A',
-                    ofBlock(GTCMItemList.XiRangWaiKeCasing.getBlock(), 0)
+                    ofBlock(EOHBMachineBlocks.sBlockCasingsEOH, 0)
                 )
                 .addElement(
                     'B',
-                    ofBlock(GTCMItemList.ZhongXiRangWaiKeCasing.getBlock(), 0)
+                    ofBlock(EOHBMachineBlocks.sBlockCasingsEOH, 1)
                 )
                 .addElement(
                     'C',

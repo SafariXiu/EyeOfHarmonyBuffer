@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import bartworks.common.loaders.ItemRegistry;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
@@ -225,7 +226,7 @@ public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachin
                 )
                 .addElement(
                     'B',
-                    ofBlock(GTCMItemList.XiRangWaiKeCasing.getBlock(), 0)
+                    ofBlock(EOHBMachineBlocks.sBlockCasingsEOH, 0)
                 )
                 .addElement(
                     'C',

@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.*;
-import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockCasingsEOH;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
@@ -25,8 +24,6 @@ public class ArknightsBlockRegister {
     public static Block CleanGlass;
     public static Block CleanGlassGlow;
     public static Block XieYiYuanShi;
-
-    public static BlockCasingsEOH EOHBCasing1;
 
     public static void registryBlocks(){
 
@@ -125,18 +122,6 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(XieYiYuanShi, "xie_yi_yuan_shi");
         GTCMItemList.XieYiYuanShi.set(new ItemStack(XieYiYuanShi, 1, 0));
-    }
-
-    public static void registryCasingBlocks() {
-        EOHBCasing1 = new BlockCasingsEOH();
-
-        GTCMItemList.XiRangWaiKeCasing.set(
-            new ItemStack(EOHBCasing1, 1, BlockCasingsEOH.META_XIRANG_WAIKE)
-        );
-
-        GTCMItemList.ZhongXiRangWaiKeCasing.set(
-            new ItemStack(EOHBCasing1, 1, BlockCasingsEOH.META_ZHONG_XIRANG_WAIKE)
-        );
     }
 
     public static void registry() {
