@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import bartworks.system.material.WerkstoffLoader;
-import com.dreammaster.item.NHItemList;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
@@ -267,7 +266,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 GTCMItemList.PoSunZhuangZhi.get(1),
                 GTCMItemList.GuYuanYan.get(3),
                 ItemList.Electric_Motor_LV.get(1),
-                NHItemList.CircuitLV.get(1)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.LV, 1)
             )
             .itemOutputs(
                 GTCMItemList.ZhuangZhi.get(1)
@@ -281,7 +280,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 GTCMItemList.GuYuanYan.get(4),
                 ItemList.Electric_Motor_MV.get(1),
                 ItemList.Electric_Pump_MV.get(1),
-                NHItemList.CircuitLV.get(1),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.LV, 1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 2)
             )
             .itemOutputs(
@@ -298,7 +297,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 ItemList.Electric_Motor_HV.get(1),
                 ItemList.Electric_Piston_HV.get(1),
                 ItemList.Sensor_HV.get(1),
-                NHItemList.CircuitEV.get(1)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 1)
             )
             .fluidInputs(
                 Materials.RubberSilicone.getFluid(2000)
@@ -317,7 +316,7 @@ public class ArknightsRecipesLoad implements IRecipePool {
                 ItemList.Electric_Motor_IV.get(1),
                 ItemList.Robot_Arm_IV.get(1),
                 ItemList.Field_Generator_IV.get(1),
-                NHItemList.CircuitIV.get(1)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 1)
             )
             .fluidInputs(
                 Materials.RubberSilicone.getFluid(4000)

@@ -3,8 +3,11 @@ package com.EyeOfHarmonyBuffer.Recipe;
 import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
+import com.dreammaster.item.NHItemList;
+import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
+import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.recipe.Scanning;
 import gtPlusPlus.core.material.MaterialMisc;
@@ -40,20 +43,20 @@ public final class MachineBlockRecipes implements IRecipePool {
     private static final Map<Tier, ItemStack> CIRCUIT_MAP = new EnumMap<>(Tier.class);
 
     static {
-        CIRCUIT_MAP.put(Tier.LV,  CircuitLV.get(1));
-        CIRCUIT_MAP.put(Tier.MV,  CircuitMV.get(1));
-        CIRCUIT_MAP.put(Tier.HV,  CircuitHV.get(1));
-        CIRCUIT_MAP.put(Tier.EV,  CircuitEV.get(1));
-        CIRCUIT_MAP.put(Tier.IV,  CircuitIV.get(1));
-        CIRCUIT_MAP.put(Tier.LuV, CircuitLuV.get(1));
-        CIRCUIT_MAP.put(Tier.ZPM, CircuitZPM.get(1));
-        CIRCUIT_MAP.put(Tier.UV,  CircuitUV.get(1));
-        CIRCUIT_MAP.put(Tier.UHV, CircuitUHV.get(1));
-        CIRCUIT_MAP.put(Tier.UEV, CircuitUEV.get(1));
-        CIRCUIT_MAP.put(Tier.UIV, CircuitUIV.get(1));
-        CIRCUIT_MAP.put(Tier.UMV, CircuitUMV.get(1));
-        CIRCUIT_MAP.put(Tier.UXV, CircuitUXV.get(1));
-        CIRCUIT_MAP.put(Tier.MAX, CircuitMAX.get(1));
+        CIRCUIT_MAP.put(Tier.LV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.LV, 1));
+        CIRCUIT_MAP.put(Tier.MV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.MV, 1));
+        CIRCUIT_MAP.put(Tier.HV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.HV, 1));
+        CIRCUIT_MAP.put(Tier.EV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 1));
+        CIRCUIT_MAP.put(Tier.IV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 1));
+        CIRCUIT_MAP.put(Tier.LuV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.LuV, 1));
+        CIRCUIT_MAP.put(Tier.ZPM, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.ZPM, 1));
+        CIRCUIT_MAP.put(Tier.UV,  GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UV, 1));
+        CIRCUIT_MAP.put(Tier.UHV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UHV, 1));
+        CIRCUIT_MAP.put(Tier.UEV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UEV, 1));
+        CIRCUIT_MAP.put(Tier.UIV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UIV, 1));
+        CIRCUIT_MAP.put(Tier.UMV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UMV, 1));
+        CIRCUIT_MAP.put(Tier.UXV, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UXV, 1));
+        CIRCUIT_MAP.put(Tier.MAX, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.MAX, 1));
     }
 
     private static final Map<Tier, ItemStack> SINGULARITY_CASINGS_MAP = new EnumMap<>(Tier.class);
@@ -118,7 +121,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             GTValues.RA.stdBuilder()
                 .itemInputs(
                     getModItem(IndustrialCraft2.ID,"blockPersonal",64,1),
-                    CircuitEV.get(16),
+                    GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                     getModItem(GTPlusPlus.ID, "gtplusplus.blockcasings.3",16,2)
                 )
                 .itemOutputs(
@@ -133,7 +136,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 ItemList.Block_Plascrete.get(64),
                 ItemList.Electric_Motor_HV.get(64),
-                CircuitHV.get(1)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.HV, 1)
             )
             .itemOutputs(
                 GTCMItemList.WindTurbines.get(1)
@@ -348,6 +351,34 @@ public final class MachineBlockRecipes implements IRecipePool {
             .duration(200 * SECONDS)
             .eut(TierEU.RECIPE_EV)
             .addTo(AssemblyLine);
+
+        GTModHandler.addCraftingRecipe(
+            GTCMItemList.ElectricTypeOneMiningMachines.get(1),
+            GTModHandler.RecipeBits.BUFFERED | GTModHandler.RecipeBits.NOT_REMOVABLE,
+            new Object[] {
+            "DED",
+            "CAC",
+            "BBB",
+            'A', GTCMItemList.YuanShi.get(1),
+            'B', ItemList.Casing_Advanced_Iridium.get(1),
+            'C', "circuitData",
+            'D', ItemList.Conveyor_Module_EV.get(1),
+            'E', ItemList.Electric_Motor_EV.get(1)
+            });
+
+        GTModHandler.addCraftingRecipe(
+            GTCMItemList.OrundumDynamos.get(1),
+            GTModHandler.RecipeBits.BUFFERED | GTModHandler.RecipeBits.NOT_REMOVABLE,
+            new Object[] {
+            "DED",
+            "CAC",
+            "BBB",
+            'A', GTCMItemList.YuanShi.get(1),
+            'B', ItemList.Casing_SolidSteel.get(1),
+            'C', "circuitData",
+            'D', ItemList.Electric_Piston_EV.get(1),
+            'E', GTCMItemList.YiTie.get(1)
+            });
 
     }
 }

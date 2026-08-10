@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.Recipe.ArknightsProject;
 
 import bartworks.system.material.WerkstoffLoader;
-import com.dreammaster.item.NHItemList;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
@@ -51,7 +50,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
                 GTCMItemList.GangZhiLingJian.get(128),
                 GTCMItemList.ZhiMiJingTiFenMo.get(128),
                 GTCMItemList.TongHuaGuanMuFenMo.get(128),
-                NHItemList.CircuitUV.get(8)
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UV, 8)
             )
             .fluidInputs(
                 EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
