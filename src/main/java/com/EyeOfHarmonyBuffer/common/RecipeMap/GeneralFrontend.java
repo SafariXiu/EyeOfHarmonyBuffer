@@ -46,13 +46,12 @@ public class GeneralFrontend extends RecipeMapFrontend {
         return (maxItemOutputs + xDirMaxCount - 1) / xDirMaxCount;
     }
 
-    private int getItemRows() {
-        return Math.max(getInputRows(), getOutputRows());
+    private int getInputFluidBaseY() {
+        return yOrigin + getInputRows() * rowStepY;
     }
 
-    private int getFluidBaseY() {
-        int itemRows = getItemRows();
-        return yOrigin + itemRows * rowStepY;
+    private int getOutputFluidBaseY() {
+        return yOrigin + getOutputRows() * rowStepY;
     }
 
     @Override
@@ -67,14 +66,12 @@ public class GeneralFrontend extends RecipeMapFrontend {
 
     @Override
     public List<Pos2d> getFluidInputPositions(int fluidInputCount) {
-        int fluidBaseY = getFluidBaseY();
-        return UIHelper.getGridPositions(fluidInputCount, 5, fluidBaseY, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidInputCount, 5, getInputFluidBaseY(), xDirMaxCount);
     }
 
     @Override
     public List<Pos2d> getFluidOutputPositions(int fluidOutputCount) {
-        int fluidBaseY = getFluidBaseY();
-        return UIHelper.getGridPositions(fluidOutputCount, 100, fluidBaseY, xDirMaxCount);
+        return UIHelper.getGridPositions(fluidOutputCount, 100, getOutputFluidBaseY(), xDirMaxCount);
     }
 
     @Override

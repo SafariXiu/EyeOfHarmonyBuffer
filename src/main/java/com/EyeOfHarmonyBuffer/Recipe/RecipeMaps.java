@@ -528,12 +528,12 @@ public class RecipeMaps {
 
     public static final RecipeMap<RecipeMapBackend> XirangAssembler = RecipeMapBuilder
         .of(EOHB_Recipe_XirangAssembler)
-        .maxIO(4, 4, 4, 4)
+        .maxIO(16, 4, 4, 4)
         .neiRecipeBackgroundSize(170, 185)
         .useCustomFilterForNEI()
         .frontend((uiProps, neiProps) ->
             new GeneralFrontend(uiProps, neiProps,
-                4,
+                16,
                 4
             )
         )

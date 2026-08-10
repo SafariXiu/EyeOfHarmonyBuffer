@@ -53,6 +53,7 @@ import net.minecraftforge.common.config.Configuration;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
@@ -62,7 +63,7 @@ import org.apache.logging.log4j.Logger;
 @Mod(
     modid = EyeOfHarmonyBuffer.MODID,
     name = "EyeOfHarmonyBuffer",
-    dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
+    dependencies = "required-after:gtnhintergalactic;required-after:gregtech;after:gregtech_nh;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
     public static Configuration config;
@@ -174,13 +175,16 @@ public class EyeOfHarmonyBuffer {
 
         TalosOreVeinRegister.register();
 
+        EOHBFluidBlockRegistry.registerFluidBlocks();
+    }
+
+    @Mod.EventHandler
+    // 在所有 mod 的 postInit 完成之后加载配方，确保依赖其他 mod 后期注册的物品（如 BartWorks 的 Wrap）已就绪
+    public void loadComplete(FMLLoadCompleteEvent event) {
         RecipeLoader.loadRecipes();
         RecipeLoader.registerRecipes();
         AssemblyLineRecipesLoad.RecipeLoad();
-        EOHBFluidBlockRegistry.registerFluidBlocks();
-
         new SpaceModuleRecipeLoader().run();
-
         RemoverRecipe.run();
     }
 
