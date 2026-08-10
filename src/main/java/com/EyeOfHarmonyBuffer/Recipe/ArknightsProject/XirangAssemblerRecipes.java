@@ -9,9 +9,11 @@ import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
+import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.XirangAssembler;
+import static gregtech.api.recipe.RecipeMaps.multiblockChemicalReactorRecipes;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 public class XirangAssemblerRecipes implements IRecipePool {
@@ -38,7 +40,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
-            .addTo(XirangAssembler);
+            .addTo(multiblockChemicalReactorRecipes);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -169,7 +171,7 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .eut(500000)
             .duration(10 * SECONDS)
-            .addTo(XirangAssembler);
+            .addTo(multiblockChemicalReactorRecipes);
 
         GTValues.RA.stdBuilder()
             .itemInputs(
@@ -187,6 +189,152 @@ public class XirangAssemblerRecipes implements IRecipePool {
             )
             .itemOutputs(
                 GTCMItemList.JingLianRongJi.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(multiblockChemicalReactorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JingTiYuanJian.get(32),
+                GTCMItemList.NingJiao.get(16),
+                GTCMItemList.ChiHeJin.get(16),
+                ItemList.Circuit_Chip_ILC.get(32),
+                ItemList.Circuit_Chip_Ram.get(32),
+                GTCMItemList.MiZhiJingTi.get(128),
+                GTCMItemList.GaoJingLingJian.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.NaiSuanJianRongJi.getFluidOrGas(32000),
+                EOHBMaterialPool.ShiKeJingTiJiang.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.JingTiDianLu.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YiTieZu.get(16),
+                GTCMItemList.NingJiao.get(16),
+                GTCMItemList.ChiHeJin.get(16),
+                GTCMItemList.GaoJingXianWei.get(128),
+                GTCMItemList.WenDingTanKuai.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.JiaoLianNingJiao.getFluidOrGas(16000),
+                EOHBMaterialPool.NingJiaoQianTi.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.JuHeNingJiao.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.NiuZhuanChun.get(16),
+                GTCMItemList.TangZu.get(16),
+                GTCMItemList.RMA70_12.get(16),
+                GTCMItemList.GaoJingXianWei.get(128),
+                GTCMItemList.WenDingTanKuai.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.ChunHuaNiuZhuanChunJiang.getFluidOrGas(16000),
+                EOHBMaterialPool.NaiSuanJianRongJi.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.BaiMaChun.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.QuanXinZhuangZhi.get(16),
+                GTCMItemList.YanMoShi.get(16),
+                GTCMItemList.ChiHeJin.get(16),
+                EOHBMaterialPool.ChiHeJinPeiLiao.get(OrePrefixes.dust, 128),
+                GTCMItemList.GangZhiLingJian.get(128),
+                GTCMItemList.WenDingTanKuai.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.JingLianChiHeJinJiang.getFluidOrGas(16000),
+                EOHBMaterialPool.GaoNengYeTi.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiHeJinKuai.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.RMA70_12.get(16),
+                GTCMItemList.GuYuanYanZu.get(32),
+                GTCMItemList.TongNingJiZu.get(16),
+                GTCMItemList.MiZhiJingTi.get(128),
+                GTCMItemList.GaoJingLingJian.get(128),
+                GTCMItemList.WenDingTanKuai.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.JingZhiKuangWuJiang.getFluidOrGas(16000),
+                EOHBMaterialPool.ShiKeJingTiJiang.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.RMA70_24.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.QingMengKuang.get(32),
+                GTCMItemList.JuSuanZhiZu.get(16),
+                GTCMItemList.NiuZhuanChun.get(16),
+                EOHBMaterialPool.MengKuangJingFen.get(OrePrefixes.dust, 128),
+                GTCMItemList.ZhiMiLanTieFenMo.get(128),
+                GTCMItemList.GangZhiLingJian.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.JingZhiKuangWuJiang.getFluidOrGas(16000),
+                EOHBMaterialPool.NaiSuanJianRongJi.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.SanShuiMengKuang.get(8)
+            )
+            .eut(500000)
+            .duration(10 * SECONDS)
+            .addTo(XirangAssembler);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.YanMoShi.get(16),
+                GTCMItemList.YiTieZu.get(16),
+                GTCMItemList.QuanXinZhuangZhi.get(16),
+                GTCMItemList.XiMoQiaoHuaFenMo.get(128),
+                GTCMItemList.GangZhiLingJian.get(128),
+                GTCMItemList.GaoJingLingJian.get(128)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.GaoJieJingLianYe.getFluidOrGas(8000),
+                EOHBMaterialPool.JingZhiYanMoJiang.getFluidOrGas(16000),
+                EOHBMaterialPool.ShiKeJingTiJiang.getFluidOrGas(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.WuShuiYanMoShi.get(8)
             )
             .eut(500000)
             .duration(10 * SECONDS)

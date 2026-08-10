@@ -14,7 +14,6 @@ import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
-import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
@@ -778,9 +777,12 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .addTo(multiblockChemicalReactorRecipes);
 
         GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.GaoJingLingJian.get(1)
+            )
             .fluidInputs(
                 EOHBMaterialPool.DuBoJingTiJiang.getFluidOrGas(2000),
-                Materials.RubberSilicone.getFluid(1000)
+                Materials.RubberSilicone.getMolten(1000)
             )
             .itemOutputs(
                 GTCMItemList.JingTiYuanJian.get(2)
