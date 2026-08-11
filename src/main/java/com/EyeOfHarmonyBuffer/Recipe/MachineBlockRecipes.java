@@ -630,7 +630,8 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTCMItemList.HuaHeQieXiaoYe.get(64),
                 GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 GTCMItemList.TangZu.get(64),
-                GTCMItemList.ZiJingXianWei.get(64)
+                GTCMItemList.ZiJingXianWei.get(64),
+                GTCMItemList.YuanShi.get(16)
             )
             .fluidInputs(
                 Materials.Lubricant.getFluid(8000)
