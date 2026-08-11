@@ -1476,5 +1476,22 @@ public class ArknightsRecipesLoad implements IRecipePool {
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
 
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinCao.get(64),
+                GTCMItemList.YaZhen.get(64),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Iridium, 16),
+                GTCMItemList.WenDingTanKuai.get(128)
+            )
+            .fluidInputs(
+                Materials.Water.getFluid(32000)
+            )
+            .itemOutputs(
+                GTCMItemList.ForgeOfTheSkyCore.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(300 * SECONDS)
+            .addTo(assemblerRecipes);
+
     }
 }

@@ -495,7 +495,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTCMItemList.YanMoShi.get(64),
                 GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
                 GTCMItemList.GangKuai.get(64),
-                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.TanKuai.get(64),
                 GTCMItemList.ShaYeFenMo.get(64),
                 GTCMItemList.YuanShi.get(16)
             )
@@ -640,6 +640,126 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTCMItemList.GearingUnit.get(1)
             )
             .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.XiRang.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.QingMengKuang.get(64),
+                GTCMItemList.ZhiYuanLiao.get(64),
+                GTCMItemList.MiZhiJingTi.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.XirangAssembler.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.QieXiaoYuanYe.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.TongZhenLie.get(64),
+                GTCMItemList.JuSuanZhiKuai.get(64),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.PurificationUnits.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.JuHeNingJiao.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.YeHuaMiXiJuTi.get(64),
+                GTCMItemList.BaiMaChun.get(64),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.GasReactorGlobe.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.ChiHeJinKuai.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.GaoJingXianWei.get(64),
+                GTCMItemList.HeTongKuai.get(64),
+                GTCMItemList.HuanTingYuZhiTi.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.GasExtractor.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.QuanXinZhuangZhi.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.QingMengKuang.get(64),
+                GTCMItemList.ZiJingXianWei.get(64),
+                GTCMItemList.GuYuanYanZu.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.ElectricTypeTwoMiningMachine.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.YiTieKuai.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.RMA70_12.get(64),
+                GTCMItemList.MiZhiJingTi.get(64),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.HydroMiningRig.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
     }
