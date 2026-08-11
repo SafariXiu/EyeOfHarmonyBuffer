@@ -20,6 +20,7 @@ import java.util.*;
 
 import static com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool.EOHBCatalyst;
 import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
+import static com.EyeOfHarmonyBuffer.utils.Utils.max;
 import static com.EyeOfHarmonyBuffer.utils.WriteOnceOnly.isSubstanceReshapingDeviceEnabled;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
@@ -601,6 +602,43 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTCMItemList.ForgeOfTheSkys.get(1)
             )
             .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.TanSu.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.LanTiePing.get(64),
+                GTCMItemList.ZiJingZhiPing.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.SeparatingUnit.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.HuaHeQieXiaoYe.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.TangZu.get(64),
+                GTCMItemList.ZiJingXianWei.get(64)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.GearingUnit.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
     }
