@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.OrePrefixes;
+import gregtech.api.util.GTUtility;
 
 import static com.EyeOfHarmonyBuffer.Recipe.RecipeMaps.ShapingMachine;
 import static gregtech.api.util.GTRecipeBuilder.SECONDS;
@@ -59,6 +60,22 @@ public class ShapingMachineRecipes implements IRecipePool {
 
         GTValues.RA.stdBuilder()
             .itemInputs(
+                GTUtility.getIntegratedCircuit(1),
+                GTCMItemList.ChiTongKuai.get(2)
+            )
+            .fluidInputs(
+                EOHBMaterialPool.Inergen.getFluidOrGas(1000)
+            )
+            .itemOutputs(
+                GTCMItemList.ChiTongNaiYaPing.get(1)
+            )
+            .eut(10000)
+            .duration(10 * SECONDS)
+            .addTo(ShapingMachine);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTUtility.getIntegratedCircuit(2),
                 GTCMItemList.ChiTongKuai.get(2)
             )
             .itemOutputs(
@@ -90,18 +107,5 @@ public class ShapingMachineRecipes implements IRecipePool {
             .duration(10 * SECONDS)
             .addTo(ShapingMachine);
 
-        GTValues.RA.stdBuilder()
-            .itemInputs(
-                GTCMItemList.ChiTongKuai.get(2)
-            )
-            .fluidInputs(
-                EOHBMaterialPool.Inergen.getFluidOrGas(1000)
-            )
-            .itemOutputs(
-                GTCMItemList.ChiTongNaiYaPing.get(1)
-            )
-            .eut(10000)
-            .duration(10 * SECONDS)
-            .addTo(ShapingMachine);
     }
 }

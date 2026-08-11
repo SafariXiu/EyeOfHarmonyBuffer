@@ -25,8 +25,7 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.*;
-import static gregtech.api.enums.HatchElement.InputBus;
-import static gregtech.api.enums.HatchElement.OutputBus;
+import static gregtech.api.enums.HatchElement.*;
 import static gregtech.api.enums.Textures.BlockIcons.*;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
@@ -98,7 +97,7 @@ public class EOHB_ShapingMachine extends UpgradableOrundumWirelessMultiMachineBa
                 .addElement(
                     'A',
                     buildHatchAdder(EOHB_ShapingMachine.class)
-                        .atLeast(InputBus,OutputBus)
+                        .atLeast(InputBus, OutputBus, InputHatch)
                         .casingIndex(CASING_INDEX)
                         .hint(1)
                         .buildAndChain(
@@ -134,6 +133,7 @@ public class EOHB_ShapingMachine extends UpgradableOrundumWirelessMultiMachineBa
             .addInfo(BLUE_PRINT_INFO)
             .addInputBus("1+", EOHB_MachineType_1)
             .addOutputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(ModName);
         return tt;
     }
