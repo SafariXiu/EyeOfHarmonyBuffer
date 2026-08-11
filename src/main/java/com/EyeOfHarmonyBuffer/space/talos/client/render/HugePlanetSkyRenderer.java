@@ -119,8 +119,10 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
         float planetPitch = 0F;
         float spin = (world.getWorldTime() % 24000L) / 24000.0F * 360.0F;
 
-        double planetSize = 200.0D;
-        double planetDist = -190.0D;
+        // 球体网格渲染：平面贴图四角容易超出天空盒远裁剪面，换成球体后，
+        // 可见前半球的最远点（地平线 √(D²-R²)）始终远小于远裁剪面。
+        double planetRadius = 210.0D;
+        double planetDist = -475.0D;
 
         {
             GL11.glPushMatrix();
@@ -147,18 +149,46 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
 
             GL11.glColor4f(finalR, finalG, finalB, 1.0F);
 
-            Tessellator tess1 = Tessellator.instance;
-            tess1.startDrawingQuads();
-            tess1.addVertexWithUV(-planetSize,  planetSize, planetDist, 0.0D, 0.0D);
-            tess1.addVertexWithUV( planetSize,  planetSize, planetDist, 1.0D, 0.0D);
-            tess1.addVertexWithUV( planetSize, -planetSize, planetDist, 1.0D, 1.0D);
-            tess1.addVertexWithUV(-planetSize, -planetSize, planetDist, 0.0D, 1.0D);
-            tess1.draw();
+            GL11.glEnable(GL11.GL_CULL_FACE);
+            GL11.glCullFace(GL11.GL_BACK);
+            drawPlanetSphere(planetRadius, planetDist);
+            GL11.glCullFace(GL11.GL_BACK);
+            GL11.glDisable(GL11.GL_CULL_FACE);
 
             GL11.glPopMatrix();
         }
 
         GL11.glPopMatrix();
         GL11.glPopAttrib();;
+    }
+
+    /** 绘制行星球体：贴图是圆盘图，按正交投影映射（u=x/r, v=-y/r）避免两极拉伸。 */
+    private static void drawPlanetSphere(double radius, double dist) {
+        int lonSeg = 32;
+        int latSeg = 16;
+        Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
+        for (int j = 0; j < latSeg; j++) {
+            double phi0 = Math.PI * (j / (double) latSeg) - Math.PI / 2.0D;
+            double phi1 = Math.PI * ((j + 1) / (double) latSeg) - Math.PI / 2.0D;
+            for (int i = 0; i < lonSeg; i++) {
+                double theta0 = Math.PI * 2.0D * i / lonSeg;
+                double theta1 = Math.PI * 2.0D * (i + 1) / lonSeg;
+                addPlanetVertex(tess, radius, dist, phi0, theta0);
+                addPlanetVertex(tess, radius, dist, phi0, theta1);
+                addPlanetVertex(tess, radius, dist, phi1, theta1);
+                addPlanetVertex(tess, radius, dist, phi1, theta0);
+            }
+        }
+        tess.draw();
+    }
+
+    private static void addPlanetVertex(Tessellator tess, double radius, double dist, double phi, double theta) {
+        double x = radius * Math.cos(phi) * Math.cos(theta);
+        double y = radius * Math.cos(phi) * Math.sin(theta);
+        double z = dist + radius * Math.sin(phi);
+        double u = x / radius * 0.5D + 0.5D;
+        double v = -y / radius * 0.5D + 0.5D;
+        tess.addVertexWithUV(x, y, z, u, v);
     }
 }
