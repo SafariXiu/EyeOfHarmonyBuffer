@@ -42,7 +42,7 @@ public class ItemIntermediateProducts {
     public static Item LanTiePing;
     public static Item XiMoGanShiFenMo;
     public static Item XiMoQiaoHuaFenMo;
-    public static Item XiYiYuanShi;
+    public static Item XieYiYuanShi;
     public static Item ChiTongFenMo;
     public static Item ChiTongKuai;
     public static Item ChiTongLingJian;

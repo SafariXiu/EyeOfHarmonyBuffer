@@ -380,5 +380,16 @@ public final class MachineBlockRecipes implements IRecipePool {
             'E', GTCMItemList.YiTie.get(1)
             });
 
+        GTModHandler.addCraftingRecipe(
+            GTCMItemList.ProtocolCore.get(1),
+            GTModHandler.RecipeBits.BUFFERED | GTModHandler.RecipeBits.NOT_REMOVABLE,
+            new Object[]{
+                "...",
+                ".A.",
+                "...",
+                'A', GTCMItemList.XieYiYuanShi.get(1)
+            }
+        );
+
     }
 }

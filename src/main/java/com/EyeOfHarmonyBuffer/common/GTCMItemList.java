@@ -79,7 +79,7 @@ public enum GTCMItemList {
     LanTiePing,
     XiMoGanShiFenMo,
     XiMoQiaoHuaFenMo,
-    XiYiYuanShi,
+    XieYiYuanShi,
     GongYeBaoZhaWu,
     YaZhenZhenJi,
     JinCaoRuanYin,
@@ -158,7 +158,7 @@ public enum GTCMItemList {
     XiRangQiMainBlock,
     CleanGlass,
     CleanGlassGlow,
-    XieYiYuanShi,
+    XieYiYuanShiKuai,
 
     //方舟-植物
     GanShi,
