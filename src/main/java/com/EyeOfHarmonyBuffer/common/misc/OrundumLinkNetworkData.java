@@ -3,20 +3,26 @@ package com.EyeOfHarmonyBuffer.common.misc;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraftforge.event.world.WorldEvent;
 
-import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OrundumLinkNetworkData extends WorldSavedData {
 
-    public static OrundumLinkNetworkData INSTANCE;
-
     private static final String DATA_NAME = "EOHB_OrundumLinkNetwork";
-    private static final String LINK_NBT_TAG = "EOHB_OrundumLink_MapNBTTag";
+    /** 新格式：节点 / 邻接表 / 上游关系。 */
+    private static final String LINK_NBT_NODES_TAG = "EOHB_OrundumLink_Nodes";
+    private static final String LINK_NBT_ADJACENCY_TAG = "EOHB_OrundumLink_Adjacency";
+    private static final String LINK_NBT_UPSTREAM_TAG = "EOHB_OrundumLink_Upstream";
+
+    /** 按维度缓存各维度实例（WorldSavedData 本身按维度存储，静态单例在多维度下会互相覆盖）。 */
+    private static final Map<Integer, OrundumLinkNetworkData> INSTANCES = new ConcurrentHashMap<>();
 
     /**
      * 所有节点：
@@ -55,7 +61,7 @@ public class OrundumLinkNetworkData extends WorldSavedData {
         }
 
         if (world.isRemote) {
-            return INSTANCE;
+            return INSTANCES.get(world.provider.dimensionId);
         }
 
         MapStorage storage = world.mapStorage;
@@ -73,17 +79,19 @@ public class OrundumLinkNetworkData extends WorldSavedData {
             System.out.println("[EOHB] Created new OrundumLink network data.");
         }
 
-        INSTANCE = data;
+        INSTANCES.put(world.provider.dimensionId, data);
         return data;
     }
 
     private static void loadInstance(World world) {
         MapStorage storage = world.mapStorage;
-        INSTANCE = (OrundumLinkNetworkData) storage.loadData(OrundumLinkNetworkData.class, DATA_NAME);
-        if (INSTANCE == null) {
-            INSTANCE = new OrundumLinkNetworkData();
-            storage.setData(DATA_NAME, INSTANCE);
+        OrundumLinkNetworkData data =
+            (OrundumLinkNetworkData) storage.loadData(OrundumLinkNetworkData.class, DATA_NAME);
+        if (data == null) {
+            data = new OrundumLinkNetworkData();
+            storage.setData(DATA_NAME, data);
         }
+        INSTANCES.put(world.provider.dimensionId, data);
     }
 
     public void tick(World world) {
@@ -320,67 +328,114 @@ public class OrundumLinkNetworkData extends WorldSavedData {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void readFromNBT(NBTTagCompound nbt) {
         nodes.clear();
         adjacency.clear();
         upstreamOf.clear();
 
-        if (!nbt.hasKey(LINK_NBT_TAG)) {
+        if (!nbt.hasKey(LINK_NBT_NODES_TAG, 9)) {
             System.out.println("[EOHB] No OrundumLink NBT tag found, starting empty link network.");
+            networkDirty = true;
             return;
         }
 
-        try {
-            byte[] ba = nbt.getByteArray(LINK_NBT_TAG);
-            InputStream bais = new ByteArrayInputStream(ba);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            Object data = ois.readObject();
-
-            if (data instanceof OrundumLinkNetworkPersist persist) {
-                nodes.putAll(persist.nodes);
-                adjacency.putAll(persist.adjacency);
-                upstreamOf.putAll(persist.upstreamOf);
-                System.out.println("[EOHB] Loaded OrundumLink network. Nodes=" + nodes.size());
-            } else {
-                System.out.println("[EOHB] Unexpected data type for OrundumLink: " + data.getClass());
+        NBTTagList nodeList = nbt.getTagList(LINK_NBT_NODES_TAG, 10);
+        for (int i = 0; i < nodeList.tagCount(); i++) {
+            NBTTagCompound c = nodeList.getCompoundTagAt(i);
+            try {
+                LinkNodeEntry e = new LinkNodeEntry();
+                e.nodeId = UUID.fromString(c.getString("Id"));
+                e.type = LinkNodeEntry.NodeType.valueOf(c.getString("Type"));
+                String team = c.getString("Team");
+                e.teamId = team.isEmpty() ? null : UUID.fromString(team);
+                e.dimId = c.getInteger("Dim");
+                e.x = c.getInteger("X");
+                e.y = c.getInteger("Y");
+                e.z = c.getInteger("Z");
+                e.physicalOnline = c.getBoolean("PhysicalOnline");
+                e.networkActive = c.getBoolean("NetworkActive");
+                nodes.put(e.nodeId, e);
+            } catch (IllegalArgumentException ignored) {
             }
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println(LINK_NBT_TAG + " LOAD FAILED");
-            e.printStackTrace();
         }
 
+        if (nbt.hasKey(LINK_NBT_ADJACENCY_TAG, 9)) {
+            NBTTagList adjList = nbt.getTagList(LINK_NBT_ADJACENCY_TAG, 10);
+            for (int i = 0; i < adjList.tagCount(); i++) {
+                NBTTagCompound c = adjList.getCompoundTagAt(i);
+                try {
+                    UUID parent = UUID.fromString(c.getString("Parent"));
+                    List<UUID> children = new ArrayList<>();
+                    NBTTagList childList = c.getTagList("Children", 8);
+                    for (int j = 0; j < childList.tagCount(); j++) {
+                        try {
+                            children.add(UUID.fromString(childList.getStringTagAt(j)));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                    adjacency.put(parent, children);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+
+        if (nbt.hasKey(LINK_NBT_UPSTREAM_TAG, 9)) {
+            NBTTagList upList = nbt.getTagList(LINK_NBT_UPSTREAM_TAG, 10);
+            for (int i = 0; i < upList.tagCount(); i++) {
+                NBTTagCompound c = upList.getCompoundTagAt(i);
+                try {
+                    UUID child = UUID.fromString(c.getString("Child"));
+                    UUID parent = UUID.fromString(c.getString("Parent"));
+                    upstreamOf.put(child, parent);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+
+        System.out.println("[EOHB] Loaded OrundumLink network. Nodes=" + nodes.size());
         networkDirty = true;
     }
 
     @Override
     public void writeToNBT(NBTTagCompound nbt) {
-        try {
-            OrundumLinkNetworkPersist persist = new OrundumLinkNetworkPersist();
-            persist.nodes.putAll(this.nodes);
-            persist.adjacency.putAll(this.adjacency);
-            persist.upstreamOf.putAll(this.upstreamOf);
-
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(persist);
-            oos.flush();
-
-            byte[] data = bos.toByteArray();
-            nbt.setByteArray(LINK_NBT_TAG, data);
-
-            System.out.println("[EOHB] Saving OrundumLink network. Nodes=" + nodes.size());
-        } catch (IOException e) {
-            System.out.println(LINK_NBT_TAG + " SAVE FAILED");
-            e.printStackTrace();
+        NBTTagList nodeList = new NBTTagList();
+        for (LinkNodeEntry e : nodes.values()) {
+            NBTTagCompound c = new NBTTagCompound();
+            c.setString("Id", e.nodeId.toString());
+            c.setString("Type", e.type == null ? LinkNodeEntry.NodeType.REPEATER.name() : e.type.name());
+            c.setString("Team", e.teamId == null ? "" : e.teamId.toString());
+            c.setInteger("Dim", e.dimId);
+            c.setInteger("X", e.x);
+            c.setInteger("Y", e.y);
+            c.setInteger("Z", e.z);
+            c.setBoolean("PhysicalOnline", e.physicalOnline);
+            c.setBoolean("NetworkActive", e.networkActive);
+            nodeList.appendTag(c);
         }
-    }
+        nbt.setTag(LINK_NBT_NODES_TAG, nodeList);
 
-    public static class OrundumLinkNetworkPersist implements Serializable {
-        private static final long serialVersionUID = 1L;
+        NBTTagList adjList = new NBTTagList();
+        for (Map.Entry<UUID, List<UUID>> entry : adjacency.entrySet()) {
+            NBTTagCompound c = new NBTTagCompound();
+            c.setString("Parent", entry.getKey().toString());
+            NBTTagList childList = new NBTTagList();
+            for (UUID child : entry.getValue()) {
+                childList.appendTag(new NBTTagString(child.toString()));
+            }
+            c.setTag("Children", childList);
+            adjList.appendTag(c);
+        }
+        nbt.setTag(LINK_NBT_ADJACENCY_TAG, adjList);
 
-        public final HashMap<UUID, LinkNodeEntry> nodes = new HashMap<>();
-        public final HashMap<UUID, List<UUID>> adjacency = new HashMap<>();
-        public final HashMap<UUID, UUID> upstreamOf = new HashMap<>();
+        NBTTagList upList = new NBTTagList();
+        for (Map.Entry<UUID, UUID> entry : upstreamOf.entrySet()) {
+            NBTTagCompound c = new NBTTagCompound();
+            c.setString("Child", entry.getKey().toString());
+            c.setString("Parent", entry.getValue().toString());
+            upList.appendTag(c);
+        }
+        nbt.setTag(LINK_NBT_UPSTREAM_TAG, upList);
+
+        System.out.println("[EOHB] Saving OrundumLink network. Nodes=" + nodes.size());
     }
 }

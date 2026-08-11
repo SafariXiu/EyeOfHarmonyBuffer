@@ -3,12 +3,12 @@ package com.EyeOfHarmonyBuffer.common.misc;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumFieldHelper;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraftforge.event.world.WorldEvent;
 
-import java.io.*;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +19,8 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
     public static GlobalOrundumWorldSavedData INSTANCE;
 
     private static final String DATA_NAME = "EOHB_OrundumWorldSavedData";
-    private static final String ORUNDUM_NBT_TAG = "EOHB_GlobalOrundum_MapNBTTag";
-    private static final String FIELD_NBT_TAG = "EOHB_OrundumField_MapNBTTag";
+    /** NBTTagList 存 {UUID, Value}。 */
+    private static final String ORUNDUM_NBT_LIST_TAG = "EOHB_GlobalOrundum_List";
 
     private static void loadInstance(World world) {
 
@@ -51,98 +51,51 @@ public class GlobalOrundumWorldSavedData extends WorldSavedData {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void readFromNBT(NBTTagCompound nbt) {
 
-        try {
-            if (!nbt.hasKey(ORUNDUM_NBT_TAG)) {
-                System.out.println("[EOHB] No Orundum NBT tag found, starting empty.");
-            } else {
-                byte[] ba = nbt.getByteArray(ORUNDUM_NBT_TAG);
-                InputStream byteArrayInputStream = new ByteArrayInputStream(ba);
-                ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-                Object data = objectInputStream.readObject();
+        HashMap<UUID, BigInteger> targetMap = GlobalOrundumStorage.getInternalMap();
+        targetMap.clear();
 
-                HashMap<Object, BigInteger> hashData = (HashMap<Object, BigInteger>) data;
-
-                HashMap<UUID, BigInteger> targetMap = GlobalOrundumStorage.getInternalMap();
-                targetMap.clear();
-
-                for (Map.Entry<Object, BigInteger> entry : hashData.entrySet()) {
-                    try {
-                        UUID teamId = UUID.fromString(entry.getKey().toString());
-                        BigInteger value = entry.getValue();
-                        if (value != null) {
-                            targetMap.put(teamId, value);
-                        }
-                    } catch (RuntimeException ignored) {
+        if (nbt.hasKey(ORUNDUM_NBT_LIST_TAG, 9)) {
+            NBTTagList list = nbt.getTagList(ORUNDUM_NBT_LIST_TAG, 10);
+            for (int i = 0; i < list.tagCount(); i++) {
+                NBTTagCompound entry = list.getCompoundTagAt(i);
+                try {
+                    UUID teamId = UUID.fromString(entry.getString("UUID"));
+                    BigInteger value = new BigInteger(entry.getString("Value"));
+                    if (value != null) {
+                        targetMap.put(teamId, value);
                     }
+                } catch (RuntimeException ignored) {
                 }
-
-                System.out.println("[EOHB] Loaded Orundum entries: " + targetMap.size());
             }
-        } catch (IOException | ClassNotFoundException exception) {
-            System.out.println(ORUNDUM_NBT_TAG + " LOAD FAILED");
-            exception.printStackTrace();
+            System.out.println("[EOHB] Loaded Orundum entries (NBT list): " + targetMap.size());
+        } else {
+            System.out.println("[EOHB] No Orundum NBT tag found, starting empty.");
         }
 
-        try {
-            if (!nbt.hasKey(FIELD_NBT_TAG)) {
-                System.out.println("[EOHB] No OrundumField NBT tag found, starting empty field map.");
-                OrundumFieldHelper.clearAll();
-                return;
-            }
-
-            byte[] ba = nbt.getByteArray(FIELD_NBT_TAG);
-            InputStream bais = new ByteArrayInputStream(ba);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            Object data = ois.readObject();
-
-            HashMap<Long, HashMap<UUID, Integer>> loaded =
-                (HashMap<Long, HashMap<UUID, Integer>>) data;
-
-            OrundumFieldHelper.replaceInternalMap(loaded);
-            System.out.println("[EOHB] Loaded OrundumField chunks: " + OrundumFieldHelper.getTrackedChunkCount());
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println(FIELD_NBT_TAG + " LOAD FAILED");
-            e.printStackTrace();
-            OrundumFieldHelper.clearAll();
-        }
+        // 场计数不持久化：每次加载后清空，由各协议核心/供电塔/中继塔在成型后重新注册。
+        // 这样能避免旧的“内存标记 + 持久化计数”在重进存档时重复累加，且能自愈已污染的存档。
+        OrundumFieldHelper.clearAll();
     }
 
     @Override
     public void writeToNBT(NBTTagCompound nbt) {
 
-        try {
-            HashMap<UUID, BigInteger> map = GlobalOrundumStorage.getInternalMap();
-            System.out.println("[EOHB] Saving Orundum entries: " + map.size());
+        HashMap<UUID, BigInteger> map = GlobalOrundumStorage.getInternalMap();
+        System.out.println("[EOHB] Saving Orundum entries: " + map.size());
 
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-            objectOutputStream.writeObject(map);
-            objectOutputStream.flush();
-
-            byte[] data = byteArrayOutputStream.toByteArray();
-            nbt.setByteArray(ORUNDUM_NBT_TAG, data);
-        } catch (IOException exception) {
-            System.out.println(ORUNDUM_NBT_TAG + " SAVE FAILED");
-            exception.printStackTrace();
+        NBTTagList list = new NBTTagList();
+        for (Map.Entry<UUID, BigInteger> entry : map.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) continue;
+            NBTTagCompound compound = new NBTTagCompound();
+            compound.setString("UUID", entry.getKey().toString());
+            compound.setString("Value", entry.getValue().toString());
+            list.appendTag(compound);
         }
+        nbt.setTag(ORUNDUM_NBT_LIST_TAG, list);
 
-        try {
-            Map<Long, Map<UUID, Integer>> fieldMap = OrundumFieldHelper.getInternalMapReadonly();
-            System.out.println("[EOHB] Saving OrundumField chunks: " + fieldMap.size());
-
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(fieldMap);
-            oos.flush();
-
-            byte[] data = bos.toByteArray();
-            nbt.setByteArray(FIELD_NBT_TAG, data);
-        } catch (IOException e) {
-            System.out.println(FIELD_NBT_TAG + " SAVE FAILED");
-            e.printStackTrace();
-        }
+        // 场计数由机器在运行时重建，不再写入存档
+        nbt.removeTag("EOHB_OrundumField_MapNBTTag");
     }
 }

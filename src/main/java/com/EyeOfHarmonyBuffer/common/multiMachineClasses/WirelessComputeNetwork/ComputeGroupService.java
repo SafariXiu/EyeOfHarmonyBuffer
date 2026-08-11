@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
+import com.EyeOfHarmonyBuffer.common.worlddata.WirelessAndGroupWorldData;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTTagString;
@@ -17,7 +18,20 @@ public class ComputeGroupService {
 
     private final Map<UUID, Set<UUID>> pendingInvites = new HashMap<UUID, Set<UUID>>();
 
+    /** 组数据落盘目标；由 WirelessAndGroupWorldData 在加载/创建时挂接。 */
+    private WirelessAndGroupWorldData dirtyTarget;
+
     private ComputeGroupService() {}
+
+    public void attachWorldData(WirelessAndGroupWorldData data) {
+        this.dirtyTarget = data;
+    }
+
+    private void markDirty() {
+        if (dirtyTarget != null) {
+            dirtyTarget.markDirty();
+        }
+    }
 
     public Set<UUID> getGroupMembers(UUID playerUuid) {
         if (playerUuid == null) return Collections.emptySet();
@@ -54,6 +68,7 @@ public class ComputeGroupService {
         ComputeGroup group = new ComputeGroup(groupId, creator, name);
         groups.put(groupId, group);
         playerToGroup.put(creator, groupId);
+        markDirty();
         return group;
     }
 
@@ -73,6 +88,7 @@ public class ComputeGroupService {
             pendingInvites.put(target, invites);
         }
         invites.add(group.id);
+        markDirty();
         return true;
     }
 
@@ -99,6 +115,7 @@ public class ComputeGroupService {
         if (invites.isEmpty()) {
             pendingInvites.remove(player);
         }
+        markDirty();
         return true;
     }
 
@@ -112,6 +129,7 @@ public class ComputeGroupService {
         if (invites.isEmpty()) {
             pendingInvites.remove(player);
         }
+        markDirty();
         return true;
     }
 
@@ -130,6 +148,7 @@ public class ComputeGroupService {
 
         group.members.remove(target);
         playerToGroup.remove(target);
+        markDirty();
         return true;
     }
 
@@ -144,6 +163,7 @@ public class ComputeGroupService {
         } else {
             group.members.remove(player);
             playerToGroup.remove(player);
+            markDirty();
             return true;
         }
     }
@@ -154,6 +174,7 @@ public class ComputeGroupService {
         for (UUID member : group.members) {
             playerToGroup.remove(member);
         }
+        markDirty();
         return true;
     }
 
