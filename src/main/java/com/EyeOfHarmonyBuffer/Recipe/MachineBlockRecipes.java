@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.Recipe;
 import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
-import com.dreammaster.item.NHItemList;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.*;
 import gregtech.api.util.GTOreDictUnificator;
@@ -22,7 +21,6 @@ import java.util.*;
 import static com.EyeOfHarmonyBuffer.common.material.EOHBMaterialPool.EOHBCatalyst;
 import static com.EyeOfHarmonyBuffer.utils.Utils.copyAmount;
 import static com.EyeOfHarmonyBuffer.utils.WriteOnceOnly.isSubstanceReshapingDeviceEnabled;
-import static com.dreammaster.item.NHItemList.*;
 import static gregtech.api.enums.Mods.*;
 import static gregtech.api.recipe.RecipeMaps.assemblerRecipes;
 import static gregtech.api.util.GTModHandler.getModItem;
@@ -395,7 +393,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JiChuJiaGuJianCai.get(8),
                 GTCMItemList.QuanXinZhuangZhi.get(8),
-                CircuitEV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 ItemList.Shape_Empty.get(64),
                 GTCMItemList.JingTiWaiKe.get(64),
                 GTCMItemList.ZiJingXianWei.get(64),
@@ -415,7 +413,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JiChuJiaGuJianCai.get(8),
                 GTCMItemList.GuYuanYanZu.get(64),
-                CircuitEV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 GTCMItemList.ZhiYuanLiao.get(64),
                 GTCMItemList.YuanShiKuang.get(64),
                 GTCMItemList.YuanShi.get(16)
@@ -434,7 +432,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JiChuJiaGuJianCai.get(8),
                 GTCMItemList.QuanXinZhuangZhi.get(8),
-                CircuitEV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 GTCMItemList.TangZu.get(64),
                 ItemList.Shape_Empty.get(64),
                 GTCMItemList.ZiJingXianWei.get(64),
@@ -454,7 +452,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JiChuJiaGuJianCai.get(8),
                 GTCMItemList.YanMoShi.get(8),
-                CircuitEV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 GTCMItemList.GuYuanYanZu.get(64),
                 GTCMItemList.QuanXinZhuangZhi.get(64),
                 GTCMItemList.JingTiWaiKe.get(64),
@@ -474,7 +472,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JiChuJiaGuJianCai.get(8),
                 GTCMItemList.YiTieZu.get(64),
-                CircuitEV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
                 GTCMItemList.GuYuanYanZu.get(64),
                 GTCMItemList.ZiJingZhiPing.get(64),
                 GTCMItemList.JingTiWaiKe.get(64),
@@ -494,19 +492,115 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 GTCMItemList.JinJieJiaGuJianCai.get(8),
                 GTCMItemList.YanMoShi.get(64),
-                CircuitIV.get(16),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
                 GTCMItemList.GangKuai.get(64),
                 GTCMItemList.WenDingTanKuai.get(64),
                 GTCMItemList.ShaYeFenMo.get(64),
                 GTCMItemList.YuanShi.get(16)
             )
             .fluidInputs(
-                Materials.Lubricant.getFluid(8000)
+                Materials.Lubricant.getFluid(16000)
             )
             .itemOutputs(
                 GTCMItemList.Grinders.get(1)
             )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.TongNingJi.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.ZhuanZhiYanZu.get(64),
+                GTCMItemList.DianJiDanYuan.get(64),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.ReactorCrucibles.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.TangZu.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.QuanXinZhuangZhi.get(16),
+                GTCMItemList.TanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.Planters.get(1)
+            )
             .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.QiaoHuaZhongZi.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.QuanXinZhuangZhi.get(16),
+                GTCMItemList.TanKuai.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.SeedCollectingMachines.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.QuanXinZhuangZhi.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.EV, 16),
+                GTCMItemList.LanTiePing.get(64),
+                GTCMItemList.ZiJingZhiPing.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.FillingUnits.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.NingJiao.get(64),
+                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.IV, 16),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.JingTiYuanJian.get(16),
+                GTCMItemList.TangJuKuai.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.ForgeOfTheSkys.get(1)
+            )
+            .eut(TierEU.RECIPE_IV)
             .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
     }
