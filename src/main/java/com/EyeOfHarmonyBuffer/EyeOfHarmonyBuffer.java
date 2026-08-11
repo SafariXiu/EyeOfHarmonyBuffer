@@ -16,6 +16,7 @@ import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
 import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
@@ -135,6 +136,8 @@ public class EyeOfHarmonyBuffer {
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
 
+        DysonSphereNetwork.init();
+
         cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
         FMLCommonHandler.instance().bus().register(new OrundumLinkEventHandler());
 
@@ -214,6 +217,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandGasEnvironment());
         event.registerServerCommand(new CommandComputeGroup());
         event.registerServerCommand(new CommandComputeDebug());
+        event.registerServerCommand(new CommandDysonSphere());
         event.registerServerCommand(new CommandTalosSuperCenter());
         event.registerServerCommand(new CommandTalosRiverSource());
         event.registerServerCommand(new CommandTalosRiverMouth());

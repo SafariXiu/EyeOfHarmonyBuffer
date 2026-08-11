@@ -112,6 +112,9 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
             GL11.glPopMatrix();
         }
 
+        // 戴森球：叠加在太阳/光晕之上，随进度遮蔽恒星
+        DysonSphereRenderer.render(world, partialTicks);
+
         float planetYaw = 180.0F;
         float planetPitch = 0F;
         float spin = (world.getWorldTime() % 24000L) / 24000.0F * 360.0F;
