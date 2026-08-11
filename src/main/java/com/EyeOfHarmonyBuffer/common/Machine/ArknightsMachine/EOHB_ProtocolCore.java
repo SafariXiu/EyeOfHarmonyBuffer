@@ -340,6 +340,8 @@ public class EOHB_ProtocolCore extends OrundumWirelessMultiMachineBase<EOHB_Prot
             .addInfo(Tooltip_ProtocolCore_03)
             .addInfo(Tooltip_ProtocolCore_04)
             .addInfo(Tooltip_ProtocolCore_05)
+            .addInfo(Tooltip_ProtocolCore_06)
+            .addInfo(Tooltip_ProtocolCore_07)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)

@@ -431,6 +431,8 @@ public class TextLocalization {
     public static final String Tooltip_ProtocolCore_03;
     public static final String Tooltip_ProtocolCore_04;
     public static final String Tooltip_ProtocolCore_05;
+    public static final String Tooltip_ProtocolCore_06;
+    public static final String Tooltip_ProtocolCore_07;
 
     public static final String NameRelayTower;
     public static final String Tooltip_RelayTower_MachineType;
@@ -440,6 +442,8 @@ public class TextLocalization {
     public static final String Tooltip_RelayTower_02;
     public static final String Tooltip_RelayTower_03;
     public static final String Tooltip_RelayTower_04;
+    public static final String Tooltip_RelayTower_05;
+    public static final String Tooltip_RelayTower_06;
 
     public static final String NameElectricPylon;
     public static final String Tooltip_ElectricPylon_MachineType;
@@ -449,6 +453,8 @@ public class TextLocalization {
     public static final String Tooltip_ElectricPylon_02;
     public static final String Tooltip_ElectricPylon_03;
     public static final String Tooltip_ElectricPylon_04;
+    public static final String Tooltip_ElectricPylon_05;
+    public static final String Tooltip_ElectricPylon_06;
 
     //MOD
     public static final String EOHB_Harmony;
@@ -1140,6 +1146,9 @@ public class TextLocalization {
 
         //中继器
         NameRelayTower = TextHandler.texter("Relay Tower","NameRelayTower");
+        Tooltip_ProtocolCore_06 = TextHandler.texter("If this machine only acts as a relay node and does not supply any field to machines, its chunk does not need to be loaded and the link will stay active.","Tooltip_ProtocolCore_06");
+        Tooltip_ProtocolCore_07 = TextHandler.texter("If this machine needs to provide a field to machines, its chunk must remain loaded (e.g. via a chunkloader); otherwise the field will disappear.","Tooltip_ProtocolCore_07");
+
         Tooltip_RelayTower_MachineType = TextHandler.texter("Relay Tower","Tooltip_RelayTower_MachineType");
         Tooltip_RelayTower_Controller = TextHandler.texter("Controller block of the Relay Tower","Tooltip_RelayTower_Controller");
         Tooltip_RelayTower_00 = TextHandler.texter("A relay device capable of wired connections within 500 blocks (absolute distance) to complete power distribution.","Tooltip_RelayTower_00");
@@ -1147,6 +1156,8 @@ public class TextLocalization {
         Tooltip_RelayTower_02 = TextHandler.texter("The Relay Tower is one of the most expensive devices in the integrated industrial system, with an overall design philosophy closer to that of the Protocol Core.","Tooltip_RelayTower_02");
         Tooltip_RelayTower_03 = TextHandler.texter("Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.","Tooltip_RelayTower_03");
         Tooltip_RelayTower_04 = TextHandler.texter("Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.","Tooltip_RelayTower_04");
+        Tooltip_RelayTower_05 = TextHandler.texter("If this machine only acts as a relay node and does not supply any field to machines, its chunk does not need to be loaded and the link will stay active.","Tooltip_RelayTower_05");
+        Tooltip_RelayTower_06 = TextHandler.texter("If this machine needs to provide a field to machines, its chunk must remain loaded (e.g. via a chunkloader); otherwise the field will disappear.","Tooltip_RelayTower_06");
 
         //供电桩
         NameElectricPylon = TextHandler.texter("Electric Pylon","NameElectricPylon");
@@ -1157,6 +1168,8 @@ public class TextLocalization {
         Tooltip_ElectricPylon_02 = TextHandler.texter("\"Wireless power supply\" is Endfield Industries' greatest technological breakthrough. This technology is an extension of Protocol technology and serves as the operational foundation of the entire integrated industrial system.","Tooltip_ElectricPylon_02");
         Tooltip_ElectricPylon_03 = TextHandler.texter("Use an Energy Connector and right-click the controller block to start linking, then left-click another Relay Tower / Power Post to complete the link.","Tooltip_ElectricPylon_03");
         Tooltip_ElectricPylon_04 = TextHandler.texter("Linking from a Protocol Core / Secondary Core also requires the use of an Energy Connector.","Tooltip_ElectricPylon_04");
+        Tooltip_ElectricPylon_05 = TextHandler.texter("If this machine only acts as a relay node and does not supply any field to machines, its chunk does not need to be loaded and the link will stay active.","Tooltip_ElectricPylon_05");
+        Tooltip_ElectricPylon_06 = TextHandler.texter("If this machine needs to provide a field to machines, its chunk must remain loaded (e.g. via a chunkloader); otherwise the field will disappear.","Tooltip_ElectricPylon_06");
 
         //息壤装配器
         NameXirangAssembler = TextHandler.texter("Xirang Assembler","NameXirangAssembler");

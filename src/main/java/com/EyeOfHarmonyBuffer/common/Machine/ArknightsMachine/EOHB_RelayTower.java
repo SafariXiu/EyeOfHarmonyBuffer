@@ -331,6 +331,8 @@ public class EOHB_RelayTower extends OrundumWirelessMultiMachineBase<EOHB_RelayT
             .addInfo(Tooltip_RelayTower_02)
             .addInfo(Tooltip_RelayTower_03)
             .addInfo(Tooltip_RelayTower_04)
+            .addInfo(Tooltip_RelayTower_05)
+            .addInfo(Tooltip_RelayTower_06)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)

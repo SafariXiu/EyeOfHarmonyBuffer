@@ -321,6 +321,8 @@ public class EOHB_ElectricPylon extends OrundumWirelessMultiMachineBase<EOHB_Ele
             .addInfo(Tooltip_ElectricPylon_02)
             .addInfo(Tooltip_ElectricPylon_03)
             .addInfo(Tooltip_ElectricPylon_04)
+            .addInfo(Tooltip_ElectricPylon_05)
+            .addInfo(Tooltip_ElectricPylon_06)
             .addInfo(EOHB_Arknights_Project_Energy)
             .addSeparator()
             .addInfo(StructureTooComplex)
