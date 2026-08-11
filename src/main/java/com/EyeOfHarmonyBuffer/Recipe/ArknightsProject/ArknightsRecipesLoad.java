@@ -11,6 +11,7 @@ import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
+import gregtech.api.objects.OreDictItemStack;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import net.minecraft.init.Items;
@@ -1382,6 +1383,97 @@ public class ArknightsRecipesLoad implements IRecipePool {
             )
             .eut(TierEU.RECIPE_EV)
             .duration(10 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                Materials.Carbon.getDust(16)
+            )
+            .itemOutputs(
+                GTCMItemList.Tan.get(1)
+            )
+            .eut(TierEU.RECIPE_LV)
+            .duration(5 * SECONDS)
+            .addTo(compressorRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.Tan.get(4),
+                Materials.Carbon.getDust(64)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.TanSu.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.TanSu.get(16),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 8)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.TanSuZu.get(1)
+            )
+            .eut(TierEU.RECIPE_LuV)
+            .duration(60 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.Tan.get(16),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 8),
+                new OreDictItemStack("ringAnyRubber", 64)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(1),
+                GTCMItemList.TanSu.get(64),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.TungstenSteel, 8),
+                new OreDictItemStack("ringAnyRubber", 64)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(16000)
+            )
+            .itemOutputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(1)
+            )
+            .eut(TierEU.RECIPE_LuV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(1),
+                GTCMItemList.TanSuZu.get(64),
+                GTOreDictUnificator.get(OrePrefixes.plate, Materials.Neutronium, 8),
+                new OreDictItemStack("ringAnyRubber", 64)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(64000)
+            )
+            .itemOutputs(
+                GTCMItemList.GaoJiJiaGuJianCai.get(1)
+            )
+            .eut(TierEU.RECIPE_UHV)
+            .duration(30 * SECONDS)
             .addTo(assemblerRecipes);
 
     }

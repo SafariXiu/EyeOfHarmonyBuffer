@@ -391,5 +391,123 @@ public final class MachineBlockRecipes implements IRecipePool {
             }
         );
 
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.QuanXinZhuangZhi.get(8),
+                CircuitEV.get(16),
+                ItemList.Shape_Empty.get(64),
+                GTCMItemList.JingTiWaiKe.get(64),
+                GTCMItemList.ZiJingXianWei.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.ShapingMachines.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.GuYuanYanZu.get(64),
+                CircuitEV.get(16),
+                GTCMItemList.ZhiYuanLiao.get(64),
+                GTCMItemList.YuanShiKuang.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.RefiningFurnaces.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.QuanXinZhuangZhi.get(8),
+                CircuitEV.get(16),
+                GTCMItemList.TangZu.get(64),
+                ItemList.Shape_Empty.get(64),
+                GTCMItemList.ZiJingXianWei.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.AccessoriesMachines.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.YanMoShi.get(8),
+                CircuitEV.get(16),
+                GTCMItemList.GuYuanYanZu.get(64),
+                GTCMItemList.QuanXinZhuangZhi.get(64),
+                GTCMItemList.JingTiWaiKe.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.Pulverizers.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JiChuJiaGuJianCai.get(8),
+                GTCMItemList.YiTieZu.get(64),
+                CircuitEV.get(16),
+                GTCMItemList.GuYuanYanZu.get(64),
+                GTCMItemList.ZiJingZhiPing.get(64),
+                GTCMItemList.JingTiWaiKe.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.EncapsulationMachines.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
+
+        GTValues.RA.stdBuilder()
+            .itemInputs(
+                GTCMItemList.JinJieJiaGuJianCai.get(8),
+                GTCMItemList.YanMoShi.get(64),
+                CircuitIV.get(16),
+                GTCMItemList.GangKuai.get(64),
+                GTCMItemList.WenDingTanKuai.get(64),
+                GTCMItemList.ShaYeFenMo.get(64),
+                GTCMItemList.YuanShi.get(16)
+            )
+            .fluidInputs(
+                Materials.Lubricant.getFluid(8000)
+            )
+            .itemOutputs(
+                GTCMItemList.Grinders.get(1)
+            )
+            .eut(TierEU.RECIPE_EV)
+            .duration(30 * SECONDS)
+            .addTo(assemblerRecipes);
     }
 }
