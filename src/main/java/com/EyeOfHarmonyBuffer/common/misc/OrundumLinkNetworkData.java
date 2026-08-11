@@ -188,14 +188,6 @@ public class OrundumLinkNetworkData extends WorldSavedData {
     }
 
     /**
-     * 只在区块卸载时调用（可选）。
-     * 简化方案：可以直接调用 updatePhysicalOnline(nodeId, false)。
-     */
-    public void setNodeOfflineOnUnload(UUID nodeId) {
-        updatePhysicalOnline(nodeId, false);
-    }
-
-    /**
      * 供电站 / 中继器 / Core 查询自己是否网络激活
      */
     public boolean isNodeNetworkActive(UUID nodeId) {

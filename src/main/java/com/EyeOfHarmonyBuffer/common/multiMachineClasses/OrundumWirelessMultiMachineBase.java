@@ -590,17 +590,6 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         super.onUnload();
         WirelessComputeHelper.unregisterConsumer(this);
         WirelessComputeHelper.unregisterProvider(this);
-
-        IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base != null && base.isServerSide() && linkNetworkNodeId != null) {
-            World world = base.getWorld();
-            if (world != null) {
-                OrundumLinkNetworkData data = OrundumLinkNetworkData.get(world);
-                if (data != null) {
-                    data.setNodeOfflineOnUnload(linkNetworkNodeId);
-                }
-            }
-        }
     }
 
     @Override
