@@ -137,6 +137,7 @@ P = cloudCount × 2^41 + pasteCount × 2^79
 /dyson cloud <数量>          # 直接设云数量（0-50000）
 /dyson frame <数量>          # 直接设框架数量（0-500000）
 /dyson paste <数量>          # 直接设贴片数量（0-2000000）
+/dyson complete             # 触发本队完工流程（广播、败者清零、永久锁死）
 /dyson reset                # 重置
 ```
 

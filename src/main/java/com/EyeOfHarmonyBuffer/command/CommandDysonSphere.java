@@ -22,6 +22,7 @@ import java.util.UUID;
  * /dyson cloud &lt;数量&gt;             - 直接设置戴森云数量（0-50000）
  * /dyson frame &lt;数量&gt;             - 直接设置框架数量（0-500000）
  * /dyson paste &lt;数量&gt;             - 直接设置贴片数量（0-2000000）
+ * /dyson complete                 - 触发本队完工流程（广播、败者清零、永久锁死）
  * /dyson reset                    - 重置为未开始（清空全部队伍）
  * </pre>
  */
@@ -36,14 +37,14 @@ public class CommandDysonSphere extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/dyson <stage|cloud|frame|paste|reset>";
+        return "/dyson <stage|cloud|frame|paste|complete|reset>";
     }
 
     @SuppressWarnings("rawtypes")
     @Override
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "stage", "cloud", "frame", "paste", "reset");
+            return getListOfStringsMatchingLastWord(args, "stage", "cloud", "frame", "paste", "complete", "reset");
         }
         if (args.length == 2 && "stage".equals(args[0])) {
             return getListOfStringsMatchingLastWord(args, "1", "2", "3", "4", "5");
@@ -179,6 +180,14 @@ public class CommandDysonSphere extends CommandBase {
                 DysonSphereSystem.resetAll(sender.getEntityWorld());
                 sendInfo(sender, "戴森球状态已重置（全部队伍与完工状态清空）。");
                 return;
+            case "complete":
+                if (data.isCompleted()) {
+                    sendError(sender, "戴森球已完工（永久锁死），可用 /dyson reset 重置测试。");
+                    return;
+                }
+                DysonSphereSystem.debugComplete(sender.getEntityWorld(), teamId, teamName);
+                sendInfo(sender, "已触发完工：本队成为占领者，败者清零，全服永久锁死。");
+                return;
             default:
                 sendUsage(sender);
                 return;
@@ -198,7 +207,7 @@ public class CommandDysonSphere extends CommandBase {
     private void sendUsage(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(
             EnumChatFormatting.YELLOW
-                + "用法: /dyson stage <1-5> | /dyson cloud <数量> | /dyson frame <数量> | /dyson paste <数量> | /dyson reset"));
+                + "用法: /dyson stage <1-5> | /dyson cloud <数量> | /dyson frame <数量> | /dyson paste <数量> | /dyson complete | /dyson reset"));
     }
 
     private void sendInfo(ICommandSender sender, String msg) {

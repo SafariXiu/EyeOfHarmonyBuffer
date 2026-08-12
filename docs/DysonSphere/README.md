@@ -48,6 +48,7 @@
 | 完工（2,000,000） | 32 |
 
 - 激活规则：控制器定期重算，超出激活数的模块被 `disconnect()`；后 12 槽**只在完工后启用**。
+- **主方块 GUI**：终端区域实时显示本队云 / 框架 / 贴片与组件库存，便于监控。
 
 ## 四、模块体系
 
@@ -134,6 +135,7 @@
 | `DysonSphereSystem.addModules(world, teamId, teamName, cloudDelta, frameDelta)` | 发射模块推进本队云/框架 |
 | `DysonSphereSystem.addComponents(...)` / `consumeComponents(...)` | 制造入账 / 发射出账队伍虚拟组件库存 |
 | `DysonSphereWorldData.getTeam(teamId)` | 读本队 cloud/frame/paste |
+| `DysonSphereSystem.getTeamCloudCount/FrameCount/PasteCount/CloudComponents/FrameComponents(world, teamId)` | 对外查询本队数据 |
 | `DysonSphereSystem.settleDaily(world)` | 每日结算（由每日处理器触发） |
 | `OrundumEnergyService` / `addEUToGlobalEnergyMap` | 能量出入两本账 |
 | `WirelessComputeHelper.updateConsumer(...)` | 声明核心/模块算力需求 |

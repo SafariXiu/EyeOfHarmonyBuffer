@@ -18,12 +18,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.utils.Color;
+import com.cleanroommc.modularui.value.sync.IntSyncValue;
+import com.cleanroommc.modularui.value.sync.LongSyncValue;
+import com.cleanroommc.modularui.value.sync.PanelSyncManager;
+import com.cleanroommc.modularui.widget.ParentWidget;
+import com.cleanroommc.modularui.widgets.TextWidget;
+import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
@@ -49,6 +60,7 @@ import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.api.util.shutdown.SimpleShutDownReason;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
 /**
  * 戴森核心：每队一台的模块化巨构枢纽。
@@ -125,6 +137,114 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
     public static boolean isOwnerCoreRegistered(UUID ownerUUID) {
         return ownerUUID != null && CORE_BY_OWNER.containsKey(ownerUUID);
+    }
+
+    /** 本队进度（GUI 与对外查询共用）。 */
+    public DysonTeamProgress getTeamProgress() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) {
+            return null;
+        }
+        DysonSphereWorldData data = DysonSphereWorldData.get(base.getWorld());
+        if (data == null) {
+            return null;
+        }
+        return data.getTeam(getTeamId());
+    }
+
+    public int getTeamCloudCount() {
+        DysonTeamProgress team = getTeamProgress();
+        return team == null ? 0 : team.cloudCount;
+    }
+
+    public int getTeamFrameCount() {
+        DysonTeamProgress team = getTeamProgress();
+        return team == null ? 0 : team.frameCount;
+    }
+
+    public int getTeamPasteCount() {
+        DysonTeamProgress team = getTeamProgress();
+        return team == null ? 0 : team.pasteCount;
+    }
+
+    public long getTeamCloudComponents() {
+        DysonTeamProgress team = getTeamProgress();
+        return team == null ? 0 : team.cloudComponents;
+    }
+
+    public long getTeamFrameComponents() {
+        DysonTeamProgress team = getTeamProgress();
+        return team == null ? 0 : team.frameComponents;
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new DysonCoreGui(this);
+    }
+
+    /** 核心专属 GUI（MODUI2）：终端左下角实时显示本队云/框架/贴片与组件库存。 */
+    protected static class DysonCoreGui extends MTEMultiBlockBaseGui<DysonCore> {
+
+        private IntSyncValue cloudSyncer;
+        private IntSyncValue frameSyncer;
+        private IntSyncValue pasteSyncer;
+        private LongSyncValue cloudComponentsSyncer;
+        private LongSyncValue frameComponentsSyncer;
+
+        public DysonCoreGui(DysonCore multiblock) {
+            super(multiblock);
+        }
+
+        @Override
+        protected void registerSyncValues(PanelSyncManager syncManager) {
+            super.registerSyncValues(syncManager);
+            cloudSyncer = new IntSyncValue(multiblock::getTeamCloudCount);
+            frameSyncer = new IntSyncValue(multiblock::getTeamFrameCount);
+            pasteSyncer = new IntSyncValue(multiblock::getTeamPasteCount);
+            cloudComponentsSyncer = new LongSyncValue(multiblock::getTeamCloudComponents);
+            frameComponentsSyncer = new LongSyncValue(multiblock::getTeamFrameComponents);
+            syncManager.syncValue("dysonCloud", cloudSyncer);
+            syncManager.syncValue("dysonFrame", frameSyncer);
+            syncManager.syncValue("dysonPaste", pasteSyncer);
+            syncManager.syncValue("dysonCloudComponents", cloudComponentsSyncer);
+            syncManager.syncValue("dysonFrameComponents", frameComponentsSyncer);
+        }
+
+        @Override
+        protected ParentWidget<?> createTerminalParentWidget(ModularPanel panel, PanelSyncManager syncManager) {
+            ParentWidget<?> parent = super.createTerminalParentWidget(panel, syncManager);
+            // 与终端右下角列一致：自由子控件用 leftRel/bottomRel 相对定位
+            parent.child(createDysonStatsColumn().leftRel(0, 4, 0).bottomRel(0, 4, 0));
+            return parent;
+        }
+
+        protected Flow createDysonStatsColumn() {
+            return Flow.column()
+                .width(120)
+                .crossAxisAlignment(Alignment.CrossAxis.START)
+                .coverChildrenHeight(0)
+                .child(makeStat("云", () -> String.valueOf(cloudSyncer.getValue())))
+                .child(makeStat("框架", () -> String.valueOf(frameSyncer.getValue())))
+                .child(makeStat("贴片", () -> String.valueOf(pasteSyncer.getValue())))
+                .child(
+                    makeStat(
+                        "组件",
+                        () -> "云 "
+                            + cloudComponentsSyncer.getValue()
+                            + " / 框架 "
+                            + frameComponentsSyncer.getValue()));
+        }
+
+        private TextWidget<?> makeStat(String label, Supplier<String> textSupplier) {
+            return new TextWidget<>(
+                IKey.dynamic(
+                    () -> EnumChatFormatting.AQUA
+                        + label
+                        + ": "
+                        + EnumChatFormatting.GOLD
+                        + textSupplier.get()))
+                    .color(Color.WHITE.main);
+        }
     }
 
     @Override

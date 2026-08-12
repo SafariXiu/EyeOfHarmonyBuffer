@@ -118,6 +118,43 @@ public final class DysonSphereSystem {
         return true;
     }
 
+    // region 对外数据接口
+
+    public static int getTeamCloudCount(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? 0 : team.cloudCount;
+    }
+
+    public static int getTeamFrameCount(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? 0 : team.frameCount;
+    }
+
+    public static int getTeamPasteCount(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? 0 : team.pasteCount;
+    }
+
+    public static long getTeamCloudComponents(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? 0 : team.cloudComponents;
+    }
+
+    public static long getTeamFrameComponents(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? 0 : team.frameComponents;
+    }
+
+    private static DysonTeamProgress getTeamForQuery(World world, UUID teamId) {
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        if (data == null || teamId == null) {
+            return null;
+        }
+        return data.getTeam(teamId);
+    }
+
+    // endregion
+
     /**
      * 每日结算（每 MC 天一次，按队独立）：先贴片、后掉落、再完工判定。
      */
@@ -219,6 +256,27 @@ public final class DysonSphereSystem {
         data.clearAllTeams();
         data.clearCompletion();
         syncToAll(world);
+    }
+
+    /**
+     * 调试入口：把某队贴片/框架推满并触发完整完工流程（广播、败者清零、永久锁死）。
+     * 轨道云保持不变，便于继续测试完工后的每日掉落。
+     */
+    public static void debugComplete(World world, UUID teamId, String teamName) {
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        if (data == null || teamId == null || data.isCompleted()) {
+            return;
+        }
+        DysonTeamProgress team = data.getTeam(teamId);
+        int cloud = team == null ? 0 : team.cloudCount;
+        setTeamCounters(
+            world,
+            teamId,
+            teamName,
+            cloud,
+            DysonSphereState.FRAME_COMPLETE,
+            DysonSphereState.PASTE_COMPLETE);
+        complete(world, teamId, teamName);
     }
 
     /** 把当前状态广播给所有在线玩家（服务端）。 */
