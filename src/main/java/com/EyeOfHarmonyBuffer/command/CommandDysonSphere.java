@@ -1,9 +1,8 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
-import com.EyeOfHarmonyBuffer.common.dyson.PacketDysonSphereState;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
@@ -65,8 +64,6 @@ public class CommandDysonSphere extends CommandBase {
         }
 
         String sub = args[0];
-        int newStage = data.getStage();
-        float newProgress = data.getProgress();
         int newCloud = data.getCloudCount();
         int newFrame = data.getFrameCount();
         String owner = data.getOwnerName();
@@ -77,17 +74,18 @@ public class CommandDysonSphere extends CommandBase {
                     sendError(sender, "用法: /dyson stage <1-5> [progress]");
                     return;
                 }
+                int stageArg;
                 try {
-                    newStage = Integer.parseInt(args[1]);
+                    stageArg = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
                     sendError(sender, "阶段必须是 1-5 的整数。");
                     return;
                 }
-                if (newStage < 1 || newStage > 5) {
+                if (stageArg < 1 || stageArg > 5) {
                     sendError(sender, "阶段必须是 1-5 的整数。");
                     return;
                 }
-                switch (newStage) {
+                switch (stageArg) {
                     case 1:
                         newCloud = 10_000;
                         newFrame = 0;
@@ -140,8 +138,6 @@ public class CommandDysonSphere extends CommandBase {
                 break;
             }
             case "reset":
-                newStage = DysonSphereState.STAGE_NONE;
-                newProgress = 0.0F;
                 newCloud = 0;
                 newFrame = 0;
                 owner = "";
@@ -151,17 +147,13 @@ public class CommandDysonSphere extends CommandBase {
                 return;
         }
 
-        newProgress = Math.max(
-            (float) newCloud / DysonSphereState.CLOUD_CAP,
-            (float) newFrame / DysonSphereState.FRAME_COMPLETE);
-
-        data.setState(newStage, newProgress, newCloud, newFrame, owner);
-        DysonSphereNetwork.INSTANCE.sendToAll(
-            new PacketDysonSphereState(newStage, newProgress, newCloud, newFrame, owner));
-
-        sendInfo(sender, "戴森球状态已更新: 云=" + newCloud + " 框架=" + newFrame
-            + " 阶段=" + newStage
-            + (owner.isEmpty() ? "" : " 归属=" + owner));
+        DysonSphereSystem.update(sender.getEntityWorld(), newCloud, newFrame, owner);
+        DysonSphereWorldData updated = DysonSphereWorldData.get(sender.getEntityWorld());
+        if (updated != null) {
+            sendInfo(sender, "戴森球状态已更新: 云=" + updated.getCloudCount() + " 框架=" + updated.getFrameCount()
+                + " 阶段=" + updated.getStage()
+                + (updated.getOwnerName().isEmpty() ? "" : " 归属=" + updated.getOwnerName()));
+        }
     }
 
     private void sendUsage(ICommandSender sender) {

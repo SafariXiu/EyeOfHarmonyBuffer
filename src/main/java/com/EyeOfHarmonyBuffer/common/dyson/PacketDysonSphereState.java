@@ -4,6 +4,7 @@ import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 
 /** 服务端 -> 客户端：同步戴森球阶段/进度/归属。 */
 public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketDysonSphereState, IMessage> {
@@ -48,10 +49,16 @@ public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketD
     }
 
     @Override
-    public IMessage onMessage(PacketDysonSphereState message, MessageContext ctx) {
+    public IMessage onMessage(final PacketDysonSphereState message, MessageContext ctx) {
         if (ctx.side.isClient()) {
-            DysonSphereState.apply(
-                message.stage, message.progress, message.cloudCount, message.frameCount, message.ownerName);
+            // 网络 IO 线程只搬运，状态写入切回渲染主线程，避免和天空盒渲染竞争
+            Minecraft.getMinecraft().func_152344_a(new Runnable() {
+                @Override
+                public void run() {
+                    DysonSphereState.apply(
+                        message.stage, message.progress, message.cloudCount, message.frameCount, message.ownerName);
+                }
+            });
         }
         return null;
     }

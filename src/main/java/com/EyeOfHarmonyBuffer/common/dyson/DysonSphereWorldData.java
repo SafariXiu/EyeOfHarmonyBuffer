@@ -1,15 +1,19 @@
 package com.EyeOfHarmonyBuffer.common.dyson;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.storage.MapStorage;
+
+import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 
 /**
  * 戴森球进度存档（服务端）。
  * <p>
- * 全局唯一，绑定主世界存储。当前先存阶段/进度/归属，
- * 后续接入发射机系统时再扩展组件数量、建造者队伍等字段。
+ * 全局唯一，统一绑定塔罗斯 2（{@link RegisterDimensions#ID_TALOS2_DIM}）存档，
+ * 无论在哪个维度调用都取同一份数据。
  */
 public class DysonSphereWorldData extends WorldSavedData {
 
@@ -35,7 +39,17 @@ public class DysonSphereWorldData extends WorldSavedData {
             return INSTANCE;
         }
 
-        MapStorage storage = world.mapStorage;
+        // 统一绑定塔罗斯 2：机器/指令无论从哪个维度调用，都读写同一份存档
+        World target = world;
+        if (world.provider.dimensionId != RegisterDimensions.ID_TALOS2_DIM) {
+            WorldServer talos = MinecraftServer.getServer().worldServerForDimension(RegisterDimensions.ID_TALOS2_DIM);
+            if (talos == null) {
+                return INSTANCE;
+            }
+            target = talos;
+        }
+
+        MapStorage storage = target.mapStorage;
         if (storage == null) {
             return INSTANCE;
         }

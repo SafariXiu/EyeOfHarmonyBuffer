@@ -144,17 +144,19 @@
 | --- | --- |
 | `common/dyson/DysonSphereState.java` | 客户端/服务端共享状态缓存（stage / progress / ownerName） |
 | | 已扩展：`cloudCount` / `frameCount` 双数量驱动 |
-| `common/dyson/DysonSphereWorldData.java` | 服务端存档（WorldSavedData，绑主世界） |
-| `common/dyson/PacketDysonSphereState.java` | 服务端 → 客户端同步包 |
+| `common/dyson/DysonSphereWorldData.java` | 服务端存档（WorldSavedData，统一绑定塔罗斯 2，ID 14001） |
+| `common/dyson/DysonSphereSystem.java` | 服务端统一入口：改状态（数值变化才广播）、登录/全服同步 |
+| `common/dyson/DysonSphereSyncHandler.java` | 玩家登录时把当前状态单独同步给该玩家 |
+| `common/dyson/PacketDysonSphereState.java` | 服务端 → 客户端同步包（客户端切回渲染主线程写入） |
 | `common/dyson/DysonSphereNetwork.java` | 网络通道（EOHB\|DysonSphere） |
 | `command/CommandDysonSphere.java` | `/dyson stage <1-5>`、`/dyson cloud <数量>`、`/dyson frame <数量>`、`/dyson reset` |
 
-后续系统接入：发射机写 `DysonSphereWorldData.setState(...)` 并广播，
-渲染层读取 `DysonSphereState` 自动更新，无需改动。
+后续系统接入：发射机/接收机只需调用 `DysonSphereSystem.update(world, cloud, frame, owner)`，
+阶段/进度由服务端统一推导并广播；玩家登录自动同步，渲染层读取 `DysonSphereState` 无需改动。
 
 ## 八、待办 / 后话
 
-- [ ] 云/框架数量字段接入 `DysonSphereWorldData`（当前只有 stage/progress 占位）。
+- [x] 云/框架数量字段接入 `DysonSphereWorldData` + 统一更新/登录同步接口。
 - [ ] 三台机器的结构（Blockbench 导出）与注册。
 - [ ] 占领判定、完工广播、进度清零、禁止再建。
 - [ ] 戴森云独立发电 + 不定时掉落组件。
