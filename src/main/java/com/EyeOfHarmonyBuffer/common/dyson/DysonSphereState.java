@@ -68,6 +68,39 @@ public final class DysonSphereState {
         return frameCount;
     }
 
+    /**
+     * 天空变暗系数（0 = 正常，1 = 完全遮蔽）：随框架数量连续变化，
+     * 框架越多，恒星被封锁得越多，塔罗斯的天空越暗。
+     */
+    public static float getSkyDarkness() {
+        if (frameCount <= 0) {
+            return 0.0F;
+        }
+        if (frameCount < FRAME_MIN) {
+            return lerp(frameCount, 0, FRAME_MIN, 0.0F, 0.12F);
+        }
+        if (frameCount < FRAME_STAGE_2) {
+            return lerp(frameCount, FRAME_MIN, FRAME_STAGE_2, 0.12F, 0.32F);
+        }
+        if (frameCount < FRAME_STAGE_3) {
+            return lerp(frameCount, FRAME_STAGE_2, FRAME_STAGE_3, 0.32F, 0.55F);
+        }
+        if (frameCount < FRAME_COMPLETE) {
+            return lerp(frameCount, FRAME_STAGE_3, FRAME_COMPLETE, 0.55F, 0.85F);
+        }
+        return 0.85F;
+    }
+
+    private static float lerp(float value, float min, float max, float minOut, float maxOut) {
+        if (value <= min) {
+            return minOut;
+        }
+        if (value >= max) {
+            return maxOut;
+        }
+        return minOut + (value - min) / (max - min) * (maxOut - minOut);
+    }
+
     public static String getOwnerName() {
         return ownerName;
     }

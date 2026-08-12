@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import net.minecraft.client.multiplayer.WorldClient;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import org.lwjgl.BufferUtils;
 
 /**
  * 戴森球球层动画（天空盒内，球心跟随太阳）。
@@ -38,8 +40,14 @@ public final class DysonSphereRenderer {
     private static final double FRAME_THICKNESS = 2.5D;
     /** 棱的厚度（约为面板厚度的三分之一，细梁观感）。 */
     private static final double BEAM_THICKNESS = 0.8D;
-    /** 节点板外移量：与面板/棱的外表面平齐，让节点盖在最外层且深度遮挡正确。 */
-    private static final double NODE_OUTER_OFFSET = BEAM_THICKNESS * 0.5D;
+    /** 节点板外移量：略大于面板外表面，避免共面 z-fighting，让节点盖在最外层。 */
+    private static final double NODE_OUTER_OFFSET = BEAM_THICKNESS * 0.5D + 0.04D;
+    /** 棱的径向微偏移：略大于面板外表面，避免共面 z-fighting。 */
+    private static final double BEAM_RADIAL_OFFSET = 0.02D;
+    /** 棱上能量光点的移动速度（每 tick 沿棱前进的比例）。 */
+    private static final double BEAM_ENERGY_SPEED = 0.02D;
+    /** 棱上能量光点沿棱方向的半长。 */
+    private static final double BEAM_ENERGY_HALF_LEN = 2.0D;
     /**
      * 前半球裁剪（框架/云环等透明结构）：
      * 硬边界取球体自身轮廓线（dot = -R²/D）再向外放宽一点，宁可裁得保守一点、
@@ -52,8 +60,8 @@ public final class DysonSphereRenderer {
     /** 云环边缘虚化带宽度（与半径同尺度）。 */
     private static final double CLOUD_EDGE_FADE = 8.0D;
     private static final double CLOUD_FRONT_CLIP = RING_RADIUS * RING_RADIUS / SUN_DISTANCE + CLOUD_EDGE_FADE;
-    /** 每个环上的云组件数量（满密度时）。 */
-    private static final int COMPONENTS_PER_RING = 160;
+    /** 每个环上的云组件数量（满密度时，批量渲染所以可以拉高）。 */
+    private static final int COMPONENTS_PER_RING = 1000;
     /** 环带半宽：组件在 RING_RADIUS ± 该值范围内漂浮。 */
     private static final double RING_WIDTH = 2.8D;
     /** 环带半高：组件在环平面上下 ± 该值范围内漂浮，形成立体环体。 */
@@ -68,6 +76,10 @@ public final class DysonSphereRenderer {
     private static double animTime = 0.0D;
     /** 上一次渲染时记录的世界 tick，用于计算增量。 */
     private static long lastAnimTick = Long.MIN_VALUE;
+    /** 当前帧的暖色强度（0=正午冷色，1=晨昏暖色），用于天空染色。 */
+    private static float tintWarmth = 0.0F;
+    /** 云片径向渐变贴图（程序生成）。 */
+    private static int cloudGlowTexture = -1;
 
     /** 三个环的平面法线（球体局部坐标）：赤道、与赤道成 30°、与赤道成 120°。 */
     private static final double[][] RING_NORMALS = {
@@ -341,6 +353,9 @@ public final class DysonSphereRenderer {
         float cel = world.getCelestialAngle(partialTicks);
         float angle = cel * 360.0F + 180.0F - 10.0F;
         double rad = Math.toRadians(angle);
+        // 天空染色：太阳越高越冷，靠近地平线（晨昏）越暖
+        double sunHeight = -Math.cos(rad);
+        tintWarmth = (float) Math.max(0.0D, 1.0D - Math.abs(sunHeight));
         double coreX = SUN_DISTANCE * Math.sin(rad);
         double coreY = -SUN_DISTANCE * Math.cos(rad);
 
@@ -367,13 +382,13 @@ public final class DysonSphereRenderer {
         GL11.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glDepthMask(true);
 
-        drawFrame(frameCoverage, frameCount);
+        drawFrame(frameCoverage, frameCount, worldTime);
         if (cloudRings > 0 && cloudDensity > 0.0F) {
             drawCloudRings(worldTime, cloudRings, cloudDensity);
         }
         if (completed) {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
-            drawCompletedGlow();
+            drawCompletedGlow(worldTime);
         }
 
         GL11.glDepthMask(false);
@@ -487,6 +502,11 @@ public final class DysonSphereRenderer {
         return (float) ((dot - limit) / fade);
     }
 
+    /** 按当前暖度把冷色基色向暖色混合。 */
+    private static float warmMix(float cold, float warm) {
+        return cold + (warm - cold) * tintWarmth;
+    }
+
     /**
      * 框架：正二十面体面板结构（戴森球计划风格）。
      * 测地线细分后带厚度的三角面板拼成球壳，顶点处为正五/六边形节点
@@ -497,7 +517,7 @@ public final class DysonSphereRenderer {
      * - 棱/节点层：框架数量小于 5 万时为“从节点向外生长”的搭建过程，5 万后棱全部铺完；
      * - 面板层：仅 5 万后开始，按覆盖率随机填充。
      */
-    private static void drawFrame(float coverage, int frameCount) {
+    private static void drawFrame(float coverage, int frameCount, double animTime) {
         boolean[] nodeShown = new boolean[ICO_VERTICES.length];
 
         // 棱数量：<5万按生长比例，≥5万全部铺完
@@ -534,31 +554,35 @@ public final class DysonSphereRenderer {
         }
         visiblePanels.sort((a, b) -> Float.compare(panelDepth(b), panelDepth(a)));
         if (!visiblePanels.isEmpty()) {
-            GL11.glDepthMask(true);
-            GL11.glBegin(GL11.GL_TRIANGLES);
             for (int f : visiblePanels) {
                 float alpha = panelAlpha(f);
-                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
+                GL11.glDepthMask(true);
+                GL11.glColor4f(
+                    warmMix(0.16F, 0.26F), warmMix(0.21F, 0.23F), warmMix(0.34F, 0.26F),
+                    1.0F * alpha);
+                GL11.glBegin(GL11.GL_TRIANGLES);
                 emitPanelTriangle(f, true);
-            }
-            GL11.glEnd();
-            GL11.glBegin(GL11.GL_TRIANGLES);
-            for (int f : visiblePanels) {
-                float alpha = panelAlpha(f);
-                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
+                GL11.glEnd();
+                GL11.glBegin(GL11.GL_TRIANGLES);
                 emitPanelTriangle(f, false);
-            }
-            GL11.glEnd();
-            GL11.glBegin(GL11.GL_QUADS);
-            for (int f : visiblePanels) {
-                float alpha = panelAlpha(f);
-                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
+                GL11.glEnd();
+                GL11.glBegin(GL11.GL_QUADS);
                 emitPanelEdges(f);
+                GL11.glEnd();
+                // 高科技线条：中点三角 + 中心发光点（加法混合）
+                GL11.glDepthMask(false);
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+                GL11.glBegin(GL11.GL_LINES);
+                emitPanelLines(f, alpha);
+                GL11.glEnd();
+                GL11.glBegin(GL11.GL_QUADS);
+                emitPanelCoreDot(f, alpha);
+                GL11.glEnd();
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
-            GL11.glEnd();
         }
 
-        // 棱层（不写深度，靠面板深度做遮挡）：辉光 + 实体梁 + 中心亮条纹
+        // 棱层（不写深度，靠面板深度做遮挡）：辉光 + 实体梁 + 中心亮条纹 + 能量光点
         GL11.glDepthMask(false);
         List<Integer> visibleBeams = new ArrayList<>();
         for (int i = 0; i < edgeCount; i++) {
@@ -584,6 +608,50 @@ public final class DysonSphereRenderer {
             GL11.glBegin(GL11.GL_LINES);
             emitBeamCoreLine(seg);
             GL11.glEnd();
+
+            // 能量流动光点：从 15 万起（面板铺设过半）棱上才有流动能量特效
+            if (frameCount >= DysonSphereState.FRAME_STAGE_2) {
+                double phase = (e * 0.618033988749895D) % 1.0D;
+                double t = (animTime * BEAM_ENERGY_SPEED + phase) % 1.0D;
+                double px = seg.x0 + (seg.x1 - seg.x0) * t;
+                double py = seg.y0 + (seg.y1 - seg.y0) * t;
+                double pz = seg.z0 + (seg.z1 - seg.z0) * t;
+                double dx = seg.x1 - seg.x0;
+                double dy = seg.y1 - seg.y0;
+                double dz = seg.z1 - seg.z0;
+                double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                double tx = dx / len;
+                double ty = dy / len;
+                double tz = dz / len;
+                double hl = BEAM_ENERGY_HALF_LEN;
+                BeamSeg pulse = new BeamSeg();
+                pulse.x0 = px - tx * hl;
+                pulse.y0 = py - ty * hl;
+                pulse.z0 = pz - tz * hl;
+                pulse.x1 = px + tx * hl;
+                pulse.y1 = py + ty * hl;
+                pulse.z1 = pz + tz * hl;
+                pulse.alpha = seg.alpha;
+
+                // 外圈柔光：宽而淡，让光斑在远处也能被注意到
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+                GL11.glBegin(GL11.GL_QUADS);
+                GL11.glColor4f(0.30F, 0.60F, 1.0F, 0.25F * pulse.alpha);
+                emitBeamBox(pulse, BEAM_THICKNESS * 1.5D);
+                GL11.glEnd();
+                // 亮核：窄而亮，保持清晰的流动感
+                GL11.glBegin(GL11.GL_QUADS);
+                GL11.glColor4f(0.70F, 0.90F, 1.0F, 0.95F * pulse.alpha);
+                emitBeamBox(pulse, BEAM_THICKNESS * 0.55D);
+                GL11.glEnd();
+                GL11.glBegin(GL11.GL_LINES);
+                GL11.glColor4f(0.85F, 0.98F, 1.0F, 1.0F * pulse.alpha);
+                GL11.glVertex3d(pulse.x0, pulse.y0, pulse.z0);
+                GL11.glVertex3d(pulse.x1, pulse.y1, pulse.z1);
+                GL11.glEnd();
+                GL11.glLineWidth(1.5F);
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            }
         }
 
         // 节点层（最上，不写深度，按深度从远到近绘制）：光源面板 + 内缩辉光 + 亮边
@@ -616,12 +684,13 @@ public final class DysonSphereRenderer {
         double[] p1 = ICO_VERTICES[b];
 
         BeamSeg s = new BeamSeg();
-        s.x0 = p0[0] * RADIUS;
-        s.y0 = p0[1] * RADIUS;
-        s.z0 = p0[2] * RADIUS;
-        s.x1 = p1[0] * RADIUS;
-        s.y1 = p1[1] * RADIUS;
-        s.z1 = p1[2] * RADIUS;
+        double r = RADIUS + BEAM_RADIAL_OFFSET;
+        s.x0 = p0[0] * r;
+        s.y0 = p0[1] * r;
+        s.z0 = p0[2] * r;
+        s.x1 = p1[0] * r;
+        s.y1 = p1[1] * r;
+        s.z1 = p1[2] * r;
 
         double limit = -FRAME_FRONT_CLIP;
         float d0 = dotLocal((float) s.x0, (float) s.y0, (float) s.z0);
@@ -658,7 +727,9 @@ public final class DysonSphereRenderer {
 
     /** 输出棱的实体梁（细而暗），假定 GL_QUADS 已开始。 */
     private static void emitStraightBeam(BeamSeg s) {
-        GL11.glColor4f(0.20F, 0.26F, 0.42F, 1.0F * s.alpha);
+        GL11.glColor4f(
+            warmMix(0.20F, 0.32F), warmMix(0.26F, 0.28F), warmMix(0.42F, 0.30F),
+            1.0F * s.alpha);
         emitBeamBox(s, BEAM_THICKNESS * 0.5D);
     }
 
@@ -747,6 +818,58 @@ public final class DysonSphereRenderer {
                 b[0] * RADIUS - n[0] * h, b[1] * RADIUS - n[1] * h, b[2] * RADIUS - n[2] * h,
                 a[0] * RADIUS - n[0] * h, a[1] * RADIUS - n[1] * h, a[2] * RADIUS - n[2] * h);
         }
+    }
+
+    /** 输出面板内部的中点三角线条（加法混合），假定 GL_LINES 已开始。 */
+    private static void emitPanelLines(int f, float alpha) {
+        int[] face = ICO_FACES[f];
+        double[] n = ICO_FACE_NORMALS[f];
+        double h = NODE_OUTER_OFFSET;
+        double[][] p = new double[3][3];
+        for (int k = 0; k < 3; k++) {
+            double[] a = ICO_VERTICES[face[k]];
+            double[] b = ICO_VERTICES[face[(k + 1) % 3]];
+            p[k][0] = (a[0] + b[0]) * 0.5D * RADIUS + n[0] * h;
+            p[k][1] = (a[1] + b[1]) * 0.5D * RADIUS + n[1] * h;
+            p[k][2] = (a[2] + b[2]) * 0.5D * RADIUS + n[2] * h;
+        }
+        GL11.glColor4f(0.55F, 0.75F, 1.0F, 0.70F * alpha);
+        for (int k = 0; k < 3; k++) {
+            GL11.glVertex3d(p[k][0], p[k][1], p[k][2]);
+            GL11.glVertex3d(p[(k + 1) % 3][0], p[(k + 1) % 3][1], p[(k + 1) % 3][2]);
+        }
+    }
+
+    /** 输出面板中心的发光菱形点（加法混合），假定 GL_QUADS 已开始。 */
+    private static void emitPanelCoreDot(int f, float alpha) {
+        int[] face = ICO_FACES[f];
+        double[] n = ICO_FACE_NORMALS[f];
+        double h = NODE_OUTER_OFFSET;
+        double[] va = ICO_VERTICES[face[0]];
+        double[] vb = ICO_VERTICES[face[1]];
+        double[] vc = ICO_VERTICES[face[2]];
+        double cx = (va[0] + vb[0] + vc[0]) / 3.0D * RADIUS + n[0] * h;
+        double cy = (va[1] + vb[1] + vc[1]) / 3.0D * RADIUS + n[1] * h;
+        double cz = (va[2] + vb[2] + vc[2]) / 3.0D * RADIUS + n[2] * h;
+
+        double ux = vb[0] - va[0];
+        double uy = vb[1] - va[1];
+        double uz = vb[2] - va[2];
+        double uLen = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        ux /= uLen;
+        uy /= uLen;
+        uz /= uLen;
+        double vx = n[1] * uz - n[2] * uy;
+        double vy = n[2] * ux - n[0] * uz;
+        double vz = n[0] * uy - n[1] * ux;
+
+        double s = 0.45D;
+        GL11.glColor4f(0.70F, 0.85F, 1.0F, 0.90F * alpha);
+        quad(
+            cx + ux * s, cy + uy * s, cz + uz * s,
+            cx + vx * s, cy + vy * s, cz + vz * s,
+            cx - ux * s, cy - uy * s, cz - uz * s,
+            cx - vx * s, cy - vy * s, cz - vz * s);
     }
 
     /** 节点中心在视线方向上的深度（越大越靠近玩家）。 */
@@ -862,11 +985,17 @@ public final class DysonSphereRenderer {
         for (int k = 0; k < poly.size(); k++) {
             float[] p0 = poly.get(k);
             float[] p1 = poly.get((k + 1) % poly.size());
-            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * centerAlpha);
+            GL11.glColor4f(
+                warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
+                1.0F * centerAlpha);
             GL11.glVertex3d(cx, cy, cz);
-            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * p0[3]);
+            GL11.glColor4f(
+                warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
+                1.0F * p0[3]);
             GL11.glVertex3d(p0[0], p0[1], p0[2]);
-            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * p1[3]);
+            GL11.glColor4f(
+                warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
+                1.0F * p1[3]);
             GL11.glVertex3d(p1[0], p1[1], p1[2]);
         }
     }
@@ -927,20 +1056,20 @@ public final class DysonSphereRenderer {
             float ab = clipAlpha(db, limit, FRAME_EDGE_FADE);
             if (da < limit) {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.0F);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * ab);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             } else if (db < limit) {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * aa);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa);
                 GL11.glVertex3d(a[0], a[1], a[2]);
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.0F);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
             } else {
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * aa);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa);
                 GL11.glVertex3d(a[0], a[1], a[2]);
-                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * ab);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             }
         }
@@ -959,8 +1088,7 @@ public final class DysonSphereRenderer {
 
     /**
      * 戴森云：围绕恒星的星环结构。
-     * 每个环画内外两条轨道线 + 环带内漂浮的云组件；
-     * 组件在环的径向宽度内随机分布，按“远 → 近”排序绘制形成前后遮挡，
+     * 环带内漂浮的云组件使用径向渐变贴图绘制成柔和光斑，按“远 → 近”排序，
      * 公转到背向玩家的一侧时隐藏（被恒星/球壳遮挡）。
      */
     private static void drawCloudRings(double animTime, int ringCount, float density) {
@@ -1007,37 +1135,84 @@ public final class DysonSphereRenderer {
 
                 double len = def[2];
                 double width = def[6];
+                // 渐变光斑比矩形看起来小，放大一点补偿
+                double spriteScale = 1.35D;
 
                 CloudPiece piece = new CloudPiece();
                 piece.cx = cx;
                 piece.cy = cy;
                 piece.cz = cz;
-                piece.tx = tx * len;
-                piece.ty = ty * len;
-                piece.tz = tz * len;
-                piece.nx = nwx * width;
-                piece.ny = nwy * width;
-                piece.nz = nwz * width;
+                piece.tx = tx * len * spriteScale;
+                piece.ty = ty * len * spriteScale;
+                piece.tz = tz * len * spriteScale;
+                piece.nx = nwx * width * spriteScale;
+                piece.ny = nwy * width * spriteScale;
+                piece.nz = nwz * width * spriteScale;
                 piece.alpha = 0.55F * def[3];
+                piece.phase = def[1];
                 piece.depth = dotLocal((float) cx, (float) cy, (float) cz);
                 pieces.add(piece);
             }
         }
 
+        ensureCloudGlowTexture();
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, cloudGlowTexture);
         Collections.sort(pieces, (a, b) -> Float.compare(b.depth, a.depth));
+        // 批量提交：所有光斑在同一个 GL_QUADS 块内按远近顺序连续绘制
+        GL11.glBegin(GL11.GL_QUADS);
         for (CloudPiece piece : pieces) {
             float fade = clipAlpha(piece.depth, -CLOUD_FRONT_CLIP, CLOUD_EDGE_FADE);
             if (fade <= 0.0F) {
                 continue;
             }
-            GL11.glColor4f(0.95F, 0.93F, 0.85F, piece.alpha * fade);
-            GL11.glBegin(GL11.GL_QUADS);
+            // 慢速呼吸 + 晨昏暖色
+            float breathe = 0.85F + 0.15F * (float) Math.sin(animTime * 0.015D + piece.phase * 0.1D);
+            float alpha = piece.alpha * fade * breathe;
+            GL11.glColor4f(
+                warmMix(0.95F, 1.00F), warmMix(0.93F, 0.90F), warmMix(0.85F, 0.72F),
+                alpha);
+            GL11.glTexCoord2d(0.0D, 0.0D);
             GL11.glVertex3d(piece.cx + piece.tx + piece.nx, piece.cy + piece.ty + piece.ny, piece.cz + piece.tz + piece.nz);
+            GL11.glTexCoord2d(1.0D, 0.0D);
             GL11.glVertex3d(piece.cx - piece.tx + piece.nx, piece.cy - piece.ty + piece.ny, piece.cz - piece.tz + piece.nz);
+            GL11.glTexCoord2d(1.0D, 1.0D);
             GL11.glVertex3d(piece.cx - piece.tx - piece.nx, piece.cy - piece.ty - piece.ny, piece.cz - piece.tz - piece.nz);
+            GL11.glTexCoord2d(0.0D, 1.0D);
             GL11.glVertex3d(piece.cx + piece.tx - piece.nx, piece.cy + piece.ty - piece.ny, piece.cz + piece.tz - piece.nz);
-            GL11.glEnd();
         }
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+    }
+
+    /** 生成云片用的径向渐变贴图（白色，中心不透明、边缘透明）。 */
+    private static void ensureCloudGlowTexture() {
+        if (cloudGlowTexture != -1) {
+            return;
+        }
+        int size = 32;
+        ByteBuffer buf = BufferUtils.createByteBuffer(size * size * 4);
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                double dx = (x + 0.5D) / size * 2.0D - 1.0D;
+                double dy = (y + 0.5D) / size * 2.0D - 1.0D;
+                double d = Math.sqrt(dx * dx + dy * dy);
+                double a = Math.max(0.0D, 1.0D - d);
+                a = a * a;
+                buf.put((byte) 255);
+                buf.put((byte) 255);
+                buf.put((byte) 255);
+                buf.put((byte) (int) (a * 255.0D));
+            }
+        }
+        buf.flip();
+        cloudGlowTexture = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, cloudGlowTexture);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
     }
 
     /** 单个云组件（含绘制所需几何与深度）。 */
@@ -1047,6 +1222,7 @@ public final class DysonSphereRenderer {
         double nx, ny, nz;
         float alpha;
         float depth;
+        float phase;
     }
 
     /** 棱的可见段（裁剪后）与虚化透明度。 */
@@ -1063,10 +1239,25 @@ public final class DysonSphereRenderer {
         };
     }
 
-    /** 完工：保留铺满面板的测地线框架外观，只在外面叠一圈幽蓝光晕作为完工标识。 */
-    private static void drawCompletedGlow() {
-        GL11.glColor4f(0.15F, 0.45F, 0.95F, 0.18F);
-        drawSphereQuads(RADIUS * 1.06D, 18, 9);
+    /** 完工：保留铺满面板的测地线框架外观，在外围叠一圈向外渐隐的幽蓝光晕作为完工标识。 */
+    private static void drawCompletedGlow(double animTime) {
+        double pulse = 0.5D + 0.5D * Math.sin(animTime * 0.01D);
+        float breathe = (float) (0.75D + 0.25D * pulse);
+        double inner = RADIUS * 1.04D;
+        double outer = RADIUS * 1.6D;
+        int layers = 16;
+        // 从外到内绘制：外层几乎透明，越靠近球壳越亮，形成柔和的向外渐隐
+        for (int i = layers - 1; i >= 0; i--) {
+            double t = i / (double) (layers - 1);
+            double r = inner + (outer - inner) * t;
+            // 二次衰减：光晕紧贴球壳处最亮，向外平滑归零
+            float alpha = (float) (0.09D * (1.0D - t) * (1.0D - t) * breathe);
+            if (alpha <= 0.001F) {
+                continue;
+            }
+            GL11.glColor4f(0.15F, 0.45F, 0.95F, alpha);
+            drawSphereQuads(r, 20 + (int) (t * 8), 10 + (int) (t * 4));
+        }
     }
 
     private static void drawSphereQuads(double radius, int lonSeg, int latSeg) {

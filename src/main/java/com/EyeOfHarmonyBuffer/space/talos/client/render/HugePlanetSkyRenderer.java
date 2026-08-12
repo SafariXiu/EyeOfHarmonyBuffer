@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.client.render;
 
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import com.EyeOfHarmonyBuffer.space.talos.WorldProviderTalos2;
 import micdoodle8.mods.galacticraft.api.vector.Vector3;
 import net.minecraft.client.Minecraft;
@@ -112,6 +113,31 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
             GL11.glPopMatrix();
         }
 
+        // 戴森球阴影：框架越完整，恒星被封锁得越多，天空整体变暗
+        float darkness = DysonSphereState.getSkyDarkness();
+        if (darkness > 0.0F) {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            // 用 NDC 全屏四边形铺阴影：不受相机朝向/视锥/FOV 影响，任何方向都完整覆盖
+            GL11.glMatrixMode(GL11.GL_PROJECTION);
+            GL11.glPushMatrix();
+            GL11.glLoadIdentity();
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+            GL11.glPushMatrix();
+            GL11.glLoadIdentity();
+            GL11.glColor4f(0.0F, 0.02F, 0.06F, darkness);
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glVertex3f(-1.0F, -1.0F, 0.9F);
+            GL11.glVertex3f( 1.0F, -1.0F, 0.9F);
+            GL11.glVertex3f( 1.0F,  1.0F, 0.9F);
+            GL11.glVertex3f(-1.0F,  1.0F, 0.9F);
+            GL11.glEnd();
+            GL11.glPopMatrix();
+            GL11.glMatrixMode(GL11.GL_PROJECTION);
+            GL11.glPopMatrix();
+            GL11.glMatrixMode(GL11.GL_MODELVIEW);
+            GL11.glColor4f(1F, 1F, 1F, 1F);
+        }
+
         // 戴森球：叠加在太阳/光晕之上，随进度遮蔽恒星
         // 纯色几何需要关闭贴图/光照/雾，否则会被继承的世界状态染成黑色
         GL11.glDisable(GL11.GL_TEXTURE_2D);
@@ -149,6 +175,12 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
             float finalR = planetBaseR * (1.0F - fogStrength) + sr * fogStrength;
             float finalG = planetBaseG * (1.0F - fogStrength) + sg * fogStrength;
             float finalB = planetBaseB * (1.0F - fogStrength) + sb * fogStrength;
+
+            // 气态行星随天空变暗一起变暗（45% 幅度），保持整体日食氛围
+            float dim = 1.0F - 0.45F * darkness;
+            finalR *= dim;
+            finalG *= dim;
+            finalB *= dim;
 
             GL11.glColor4f(finalR, finalG, finalB, 1.0F);
 
