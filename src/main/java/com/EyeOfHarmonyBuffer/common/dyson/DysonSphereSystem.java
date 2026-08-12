@@ -78,6 +78,47 @@ public final class DysonSphereSystem {
     }
 
     /**
+     * 制造模块入口：把组件计入队伍虚拟库存。
+     */
+    public static boolean addComponents(World world, UUID teamId, String teamName,
+                                        long cloudAmount, long frameAmount) {
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        if (data == null || teamId == null) {
+            return false;
+        }
+        DysonTeamProgress team = data.getOrCreateTeam(teamId, teamName);
+        if (cloudAmount > 0) {
+            team.cloudComponents += cloudAmount;
+        }
+        if (frameAmount > 0) {
+            team.frameComponents += frameAmount;
+        }
+        data.markDirty();
+        return true;
+    }
+
+    /**
+     * 发射模块入口：从队伍虚拟库存扣组件。库存不足时一笔不扣。
+     */
+    public static boolean consumeComponents(World world, UUID teamId, long cloudAmount, long frameAmount) {
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        if (data == null || teamId == null) {
+            return false;
+        }
+        DysonTeamProgress team = data.getTeam(teamId);
+        if (team == null) {
+            return false;
+        }
+        if (team.cloudComponents < cloudAmount || team.frameComponents < frameAmount) {
+            return false;
+        }
+        team.cloudComponents -= cloudAmount;
+        team.frameComponents -= frameAmount;
+        data.markDirty();
+        return true;
+    }
+
+    /**
      * 每日结算（每 MC 天一次，按队独立）：先贴片、后掉落、再完工判定。
      */
     public static void settleDaily(World world) {

@@ -1267,3 +1267,5 @@ EOHB_ArknightsItem_ZhuanZhiYanZu_01=The surface of this material has mutable cha
 EOHB_ArknightsItem_ZhuanZhiYanZu_02=nearly impossible. CAUTION: industrial salt is not to be eaten under any circumstances.
 EOHB.nei.byproduct.title=Byproduct (rolled per recipe)
 EOHB.nei.byproduct.totalChance=Total chance
+item.DysonCloudComponent.name=Dyson Cloud Component
+item.DysonFrameComponent.name=Dyson Frame Component

@@ -218,6 +218,8 @@ public class DysonSphereWorldData extends WorldSavedData {
                 team.cloudCount = c.getInteger("Cloud");
                 team.frameCount = c.getInteger("Frame");
                 team.pasteCount = c.getInteger("Paste");
+                team.cloudComponents = c.getLong("CloudComponents");
+                team.frameComponents = c.getLong("FrameComponents");
                 team.firstLaunchTick = c.getLong("FirstLaunchTick");
                 teams.put(teamId, team);
             } catch (IllegalArgumentException ignored) {
@@ -248,6 +250,8 @@ public class DysonSphereWorldData extends WorldSavedData {
             c.setInteger("Cloud", team.cloudCount);
             c.setInteger("Frame", team.frameCount);
             c.setInteger("Paste", team.pasteCount);
+            c.setLong("CloudComponents", team.cloudComponents);
+            c.setLong("FrameComponents", team.frameComponents);
             c.setLong("FirstLaunchTick", team.firstLaunchTick);
             c.setString("Name", team.teamName == null ? "" : team.teamName);
             teamList.appendTag(c);

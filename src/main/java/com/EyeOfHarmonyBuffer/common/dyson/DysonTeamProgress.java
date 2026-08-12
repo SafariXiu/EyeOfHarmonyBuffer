@@ -13,6 +13,10 @@ public class DysonTeamProgress {
     public int frameCount;
     public int pasteCount;
 
+    /** 虚拟组件库存：制造模块入账、发射模块出账（不再流转实体物品）。 */
+    public long cloudComponents;
+    public long frameComponents;
+
     /** 首次发射的世界时间（领先者并列时按先到者排序）。 */
     public long firstLaunchTick;
 

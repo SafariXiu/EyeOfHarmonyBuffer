@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.Loader;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.Machine.*;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.*;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.*;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.item.ItemStack;
 
@@ -48,6 +49,10 @@ public class MachineLoader {
     public static ItemStack RelayTower;
     public static ItemStack ElectricPylon;
     public static ItemStack XirangAssembler;
+    public static ItemStack DysonCore;
+    public static ItemStack DysonManufacturingModule;
+    public static ItemStack DysonLaunchModule;
+    public static ItemStack DysonReceiverModule;
 
     private final static int MachineBlockID = 23000;
 
@@ -338,5 +343,33 @@ public class MachineLoader {
             TextLocalization.NameXirangAssembler
         ).getStackForm(1);
         GTCMItemList.XirangAssembler.set(XirangAssembler);
+
+        DysonCore = new DysonCore(
+            MachineBlockID + 42,
+            "NameDysonCore",
+            "戴森核心"
+        ).getStackForm(1);
+        GTCMItemList.DysonCore.set(DysonCore);
+
+        DysonManufacturingModule = new DysonManufacturingModule(
+            MachineBlockID + 43,
+            "NameDysonManufacturingModule",
+            "戴森制造模块"
+        ).getStackForm(1);
+        GTCMItemList.DysonManufacturingModule.set(DysonManufacturingModule);
+
+        DysonLaunchModule = new DysonLaunchModule(
+            MachineBlockID + 44,
+            "NameDysonLaunchModule",
+            "戴森发射模块"
+        ).getStackForm(1);
+        GTCMItemList.DysonLaunchModule.set(DysonLaunchModule);
+
+        DysonReceiverModule = new DysonReceiverModule(
+            MachineBlockID + 45,
+            "NameDysonReceiverModule",
+            "戴森接收模块"
+        ).getStackForm(1);
+        GTCMItemList.DysonReceiverModule.set(DysonReceiverModule);
     }
 }

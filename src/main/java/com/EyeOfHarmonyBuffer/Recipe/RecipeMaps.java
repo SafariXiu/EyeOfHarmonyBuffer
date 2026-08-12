@@ -548,4 +548,21 @@ public class RecipeMaps {
         .logoPos(152, 63)
         .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.JingTiDianLu.get(1)))
         .build();
+
+    public static final RecipeMap<RecipeMapBackend> DysonManufacturing = RecipeMapBuilder
+        .of("EOHB_DysonManufacturing")
+        .maxIO(2, 1, 1, 0)
+        .neiRecipeBackgroundSize(170, 185)
+        .useCustomFilterForNEI()
+        .frontend((uiProps, neiProps) ->
+            new GeneralFrontend(uiProps, neiProps,
+                2,
+                1
+            )
+        )
+        .logo(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
+        .logoSize(20, 20)
+        .logoPos(152, 63)
+        .neiHandlerInfo(builder -> builder.setDisplayStack(GTCMItemList.DysonCloudComponent.get(1)))
+        .build();
 }

@@ -135,6 +135,10 @@ public class ItemLoader {
         GTCMItemList.QiTaiZhuoTong.set(registryAndCallback(QiTaiZhuoTong,"QiTaiZhuoTong"));
         GTCMItemList.KuangMaiCaiJiZhe.set(registryAndCallback(KuangMaiCaiJiZhe,"KuangMaiCaiJiZhe"));
         GTCMItemList.EnergyConnector.set(registryAndCallback(EnergyConnector,"EnergyConnector"));
+        GTCMItemList.DysonCloudComponent.set(
+            registryAndCallback(new ItemDysonCloudComponent(), "DysonCloudComponent"));
+        GTCMItemList.DysonFrameComponent.set(
+            registryAndCallback(new ItemDysonFrameComponent(), "DysonFrameComponent"));
 
         EnumBottleFluid[] allFluids = EnumBottleFluid.values();
         ChiTongFluidBottle = new ItemBottleBase(

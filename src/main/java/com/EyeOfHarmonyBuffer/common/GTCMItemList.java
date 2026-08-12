@@ -211,6 +211,14 @@ public enum GTCMItemList {
     ElectricPylon,
     XirangAssembler,
 
+    //戴森球
+    DysonCore,
+    DysonManufacturingModule,
+    DysonLaunchModule,
+    DysonReceiverModule,
+    DysonCloudComponent,
+    DysonFrameComponent,
+
     //机器结构方块
     SingularityStabilizationRingCasingsLV,
     SingularityStabilizationRingCasingsMV,

@@ -1267,3 +1267,5 @@ EOHB_ArknightsItem_ZhuanZhiYanZu_01=可改变材料表面的性质，实现原�
 EOHB_ArknightsItem_ZhuanZhiYanZu_02=注意为工业用盐，绝对不可以食用。
 EOHB.nei.byproduct.title=副产物（每份独立判定）
 EOHB.nei.byproduct.totalChance=总概率
+item.DysonCloudComponent.name=戴森云组件
+item.DysonFrameComponent.name=戴森框架组件

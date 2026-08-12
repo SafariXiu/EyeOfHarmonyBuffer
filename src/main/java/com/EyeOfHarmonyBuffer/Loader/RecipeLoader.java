@@ -56,6 +56,7 @@ public class RecipeLoader {
             new SeparatingUnitRecipes(),
             new GearingUnitRecipes(),
             new LargeForce_ContainedProliferationMineRecipes(),
+            new DysonManufacturingRecipes(),
             new InternalizedUniverseComputingEngineRecipe()
         };
         for (IRecipePool recipePool : recipePools) {
