@@ -52,8 +52,6 @@ public final class DysonSphereRenderer {
     /** 云环边缘虚化带宽度（与半径同尺度）。 */
     private static final double CLOUD_EDGE_FADE = 8.0D;
     private static final double CLOUD_FRONT_CLIP = RING_RADIUS * RING_RADIUS / SUN_DISTANCE + CLOUD_EDGE_FADE;
-    /** 完工球壳是实心的，可见边界仍是球体自身轮廓线 dot = -R²/D。 */
-    private static final double SHELL_FRONT_CLIP = RADIUS * RADIUS / SUN_DISTANCE;
     /** 每个环上的云组件数量（满密度时）。 */
     private static final int COMPONENTS_PER_RING = 160;
     /** 环带半宽：组件在 RING_RADIUS ± 该值范围内漂浮。 */
@@ -375,7 +373,7 @@ public final class DysonSphereRenderer {
         }
         if (completed) {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
-            drawCompletedShell();
+            drawCompletedGlow();
         }
 
         GL11.glDepthMask(false);
@@ -540,27 +538,27 @@ public final class DysonSphereRenderer {
             GL11.glBegin(GL11.GL_TRIANGLES);
             for (int f : visiblePanels) {
                 float alpha = panelAlpha(f);
-                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
                 emitPanelTriangle(f, true);
             }
             GL11.glEnd();
             GL11.glBegin(GL11.GL_TRIANGLES);
             for (int f : visiblePanels) {
                 float alpha = panelAlpha(f);
-                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
                 emitPanelTriangle(f, false);
             }
             GL11.glEnd();
             GL11.glBegin(GL11.GL_QUADS);
             for (int f : visiblePanels) {
                 float alpha = panelAlpha(f);
-                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                GL11.glColor4f(0.16F, 0.21F, 0.34F, 1.0F * alpha);
                 emitPanelEdges(f);
             }
             GL11.glEnd();
         }
 
-        // 棱层（不写深度，靠面板深度做遮挡）
+        // 棱层（不写深度，靠面板深度做遮挡）：辉光 + 实体梁 + 中心亮条纹
         GL11.glDepthMask(false);
         List<Integer> visibleBeams = new ArrayList<>();
         for (int i = 0; i < edgeCount; i++) {
@@ -570,15 +568,25 @@ public final class DysonSphereRenderer {
             }
         }
         visibleBeams.sort((a, b) -> Float.compare(beamDepth(b), beamDepth(a)));
-        if (!visibleBeams.isEmpty()) {
-            GL11.glBegin(GL11.GL_QUADS);
-            for (int e : visibleBeams) {
-                emitStraightBeam(ICO_EDGES[e][0], ICO_EDGES[e][1]);
+        for (int e : visibleBeams) {
+            BeamSeg seg = clipBeam(ICO_EDGES[e][0], ICO_EDGES[e][1]);
+            if (seg == null) {
+                continue;
             }
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            GL11.glBegin(GL11.GL_QUADS);
+            emitBeamGlow(seg);
+            GL11.glEnd();
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glBegin(GL11.GL_QUADS);
+            emitStraightBeam(seg);
+            GL11.glEnd();
+            GL11.glBegin(GL11.GL_LINES);
+            emitBeamCoreLine(seg);
             GL11.glEnd();
         }
 
-        // 节点层（最上，不写深度，按深度从远到近绘制）
+        // 节点层（最上，不写深度，按深度从远到近绘制）：光源面板 + 内缩辉光 + 亮边
         List<Integer> visibleNodes = new ArrayList<>();
         for (int i = 0; i < ICO_VERTICES.length; i++) {
             if (nodeShown[i] && nodeAlpha(i) > 0.0F) {
@@ -587,59 +595,85 @@ public final class DysonSphereRenderer {
         }
         visibleNodes.sort((a, b) -> Float.compare(nodeDepth(b), nodeDepth(a)));
         GL11.glLineWidth(1.5F);
-        GL11.glBegin(GL11.GL_TRIANGLES);
         for (int i : visibleNodes) {
+            GL11.glBegin(GL11.GL_TRIANGLES);
             emitNodeFaces(i);
-        }
-        GL11.glEnd();
-        GL11.glBegin(GL11.GL_LINES);
-        for (int i : visibleNodes) {
+            GL11.glEnd();
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            emitNodeGlow(i);
+            GL11.glEnd();
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glBegin(GL11.GL_LINES);
             emitNodeEdges(i);
+            GL11.glEnd();
         }
-        GL11.glEnd();
     }
 
-    /** 输出一条棱：两点之间的直线方形截面梁（假定 GL_QUADS 已开始）。 */
-    private static void emitStraightBeam(int a, int b) {
+    /** 计算棱的可见段（按前半球裁剪），完全不可见时返回 null。 */
+    private static BeamSeg clipBeam(int a, int b) {
         double[] p0 = ICO_VERTICES[a];
         double[] p1 = ICO_VERTICES[b];
 
-        double x0 = p0[0] * RADIUS;
-        double y0 = p0[1] * RADIUS;
-        double z0 = p0[2] * RADIUS;
-        double x1 = p1[0] * RADIUS;
-        double y1 = p1[1] * RADIUS;
-        double z1 = p1[2] * RADIUS;
+        BeamSeg s = new BeamSeg();
+        s.x0 = p0[0] * RADIUS;
+        s.y0 = p0[1] * RADIUS;
+        s.z0 = p0[2] * RADIUS;
+        s.x1 = p1[0] * RADIUS;
+        s.y1 = p1[1] * RADIUS;
+        s.z1 = p1[2] * RADIUS;
 
         double limit = -FRAME_FRONT_CLIP;
-        float d0 = dotLocal((float) x0, (float) y0, (float) z0);
-        float d1 = dotLocal((float) x1, (float) y1, (float) z1);
+        float d0 = dotLocal((float) s.x0, (float) s.y0, (float) s.z0);
+        float d1 = dotLocal((float) s.x1, (float) s.y1, (float) s.z1);
         if (d0 < limit && d1 < limit) {
-            return;
+            return null;
         }
         if (d0 < limit) {
             double t = (limit - d0) / (d1 - d0);
-            x0 += (x1 - x0) * t;
-            y0 += (y1 - y0) * t;
-            z0 += (z1 - z0) * t;
+            s.x0 += (s.x1 - s.x0) * t;
+            s.y0 += (s.y1 - s.y0) * t;
+            s.z0 += (s.z1 - s.z0) * t;
         } else if (d1 < limit) {
             double t = (limit - d0) / (d1 - d0);
-            x1 = x0 + (x1 - x0) * t;
-            y1 = y0 + (y1 - y0) * t;
-            z1 = z0 + (z1 - z0) * t;
+            s.x1 = s.x0 + (s.x1 - s.x0) * t;
+            s.y1 = s.y0 + (s.y1 - s.y0) * t;
+            s.z1 = s.z0 + (s.z1 - s.z0) * t;
         }
 
-        float avgDot = (dotLocal((float) x0, (float) y0, (float) z0)
-            + dotLocal((float) x1, (float) y1, (float) z1)) * 0.5F;
-        float alpha = clipAlpha(avgDot, limit, FRAME_EDGE_FADE);
-        if (alpha <= 0.0F) {
-            return;
+        float avgDot = (dotLocal((float) s.x0, (float) s.y0, (float) s.z0)
+            + dotLocal((float) s.x1, (float) s.y1, (float) s.z1)) * 0.5F;
+        s.alpha = clipAlpha(avgDot, limit, FRAME_EDGE_FADE);
+        if (s.alpha <= 0.0F) {
+            return null;
         }
-        GL11.glColor4f(0.58F, 0.62F, 0.78F, 0.85F * alpha);
+        return s;
+    }
 
-        double dx = x1 - x0;
-        double dy = y1 - y0;
-        double dz = z1 - z0;
+    /** 输出棱的辉光层（宽而淡，配合加法混合），假定 GL_QUADS 已开始。 */
+    private static void emitBeamGlow(BeamSeg s) {
+        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.14F * s.alpha);
+        emitBeamBox(s, BEAM_THICKNESS * 1.8D);
+    }
+
+    /** 输出棱的实体梁（细而暗），假定 GL_QUADS 已开始。 */
+    private static void emitStraightBeam(BeamSeg s) {
+        GL11.glColor4f(0.20F, 0.26F, 0.42F, 1.0F * s.alpha);
+        emitBeamBox(s, BEAM_THICKNESS * 0.5D);
+    }
+
+    /** 输出棱中心亮条纹，假定 GL_LINES 已开始。 */
+    private static void emitBeamCoreLine(BeamSeg s) {
+        GL11.glColor4f(0.72F, 0.86F, 1.0F, 0.85F * s.alpha);
+        GL11.glVertex3d(s.x0, s.y0, s.z0);
+        GL11.glVertex3d(s.x1, s.y1, s.z1);
+    }
+
+    /** 输出一段方形截面梁（假定 GL_QUADS 已开始）。 */
+    private static void emitBeamBox(BeamSeg s, double thickness) {
+        double dx = s.x1 - s.x0;
+        double dy = s.y1 - s.y0;
+        double dz = s.z1 - s.z0;
         double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double tx = dx / len;
         double ty = dy / len;
@@ -661,27 +695,27 @@ public final class DysonSphereRenderer {
         double by = tz * ax - tx * az;
         double bz = tx * ay - ty * ax;
 
-        double h = BEAM_THICKNESS * 0.5D;
+        double h = thickness * 0.5D;
         quad(
-            x0 + ax * h + bx * h, y0 + ay * h + by * h, z0 + az * h + bz * h,
-            x1 + ax * h + bx * h, y1 + ay * h + by * h, z1 + az * h + bz * h,
-            x1 + ax * h - bx * h, y1 + ay * h - by * h, z1 + az * h - bz * h,
-            x0 + ax * h - bx * h, y0 + ay * h - by * h, z0 + az * h - bz * h);
+            s.x0 + ax * h + bx * h, s.y0 + ay * h + by * h, s.z0 + az * h + bz * h,
+            s.x1 + ax * h + bx * h, s.y1 + ay * h + by * h, s.z1 + az * h + bz * h,
+            s.x1 + ax * h - bx * h, s.y1 + ay * h - by * h, s.z1 + az * h - bz * h,
+            s.x0 + ax * h - bx * h, s.y0 + ay * h - by * h, s.z0 + az * h - bz * h);
         quad(
-            x0 + ax * h + bx * h, y0 + ay * h + by * h, z0 + az * h + bz * h,
-            x0 - ax * h + bx * h, y0 - ay * h + by * h, z0 - az * h + bz * h,
-            x1 - ax * h + bx * h, y1 - ay * h + by * h, z1 - az * h + bz * h,
-            x1 + ax * h + bx * h, y1 + ay * h + by * h, z1 + az * h + bz * h);
+            s.x0 + ax * h + bx * h, s.y0 + ay * h + by * h, s.z0 + az * h + bz * h,
+            s.x0 - ax * h + bx * h, s.y0 - ay * h + by * h, s.z0 - az * h + bz * h,
+            s.x1 - ax * h + bx * h, s.y1 - ay * h + by * h, s.z1 - az * h + bz * h,
+            s.x1 + ax * h + bx * h, s.y1 + ay * h + by * h, s.z1 + az * h + bz * h);
         quad(
-            x0 - ax * h + bx * h, y0 - ay * h + by * h, z0 - az * h + bz * h,
-            x1 - ax * h + bx * h, y1 - ay * h + by * h, z1 - az * h + bz * h,
-            x1 - ax * h - bx * h, y1 - ay * h - by * h, z1 - az * h - bz * h,
-            x0 - ax * h - bx * h, y0 - ay * h - by * h, z0 - az * h - bz * h);
+            s.x0 - ax * h + bx * h, s.y0 - ay * h + by * h, s.z0 - az * h + bz * h,
+            s.x1 - ax * h + bx * h, s.y1 - ay * h + by * h, s.z1 - az * h + bz * h,
+            s.x1 - ax * h - bx * h, s.y1 - ay * h - by * h, s.z1 - az * h - bz * h,
+            s.x0 - ax * h - bx * h, s.y0 - ay * h - by * h, s.z0 - az * h - bz * h);
         quad(
-            x0 - ax * h - bx * h, y0 - ay * h - by * h, z0 - az * h - bz * h,
-            x0 + ax * h - bx * h, y0 + ay * h - by * h, z0 + az * h - bz * h,
-            x1 + ax * h - bx * h, y1 + ay * h - by * h, z1 + az * h - bz * h,
-            x1 - ax * h - bx * h, y1 - ay * h - by * h, z1 - az * h - bz * h);
+            s.x0 - ax * h - bx * h, s.y0 - ay * h - by * h, s.z0 - az * h - bz * h,
+            s.x0 + ax * h - bx * h, s.y0 + ay * h - by * h, s.z0 + az * h - bz * h,
+            s.x1 + ax * h - bx * h, s.y1 + ay * h - by * h, s.z1 + az * h - bz * h,
+            s.x1 - ax * h - bx * h, s.y1 - ay * h - by * h, s.z1 - az * h - bz * h);
     }
 
     /** 输出一块面板的外/内表面三角形（厚度与棱一致，保证边缘严格对齐）。 */
@@ -756,6 +790,11 @@ public final class DysonSphereRenderer {
 
     /** 节点正多边形第 k 个角（切平面上）。 */
     private static double[] nodeCorner(int index, int k) {
+        return nodeCorner(index, k, 1.0D);
+    }
+
+    /** 节点正多边形第 k 个角（切平面上），scale 用于辉光外扩。 */
+    private static double[] nodeCorner(int index, int k, double scale) {
         double[] n = ICO_VERTICES[index];
         double ux;
         double uy = 0.0D;
@@ -776,7 +815,7 @@ public final class DysonSphereRenderer {
         double vz = n[0] * uy - n[1] * ux;
 
         int sides = nodeSides(index);
-        double radius = FRAME_THICKNESS / (2.0D * Math.sin(Math.PI / sides));
+        double radius = FRAME_THICKNESS / (2.0D * Math.sin(Math.PI / sides)) * scale;
         double a = Math.PI * 2.0D * k / sides;
         double outer = RADIUS + NODE_OUTER_OFFSET;
         return new double[] {
@@ -784,6 +823,24 @@ public final class DysonSphereRenderer {
             n[1] * outer + radius * (Math.cos(a) * uy + Math.sin(a) * vy),
             n[2] * outer + radius * (Math.cos(a) * uz + Math.sin(a) * vz)
         };
+    }
+
+    /** 输出节点的大面积辉光（配合加法混合），假定 GL_TRIANGLES 已开始。 */
+    private static void emitNodeGlow(int index) {
+        int sides = nodeSides(index);
+        double[] c = ICO_VERTICES[index];
+        double outer = RADIUS + NODE_OUTER_OFFSET;
+        double cx = c[0] * outer;
+        double cy = c[1] * outer;
+        double cz = c[2] * outer;
+        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.20F * nodeAlpha(index));
+        for (int k = 0; k < sides; k++) {
+            double[] p0 = nodeCorner(index, k, 0.7D);
+            double[] p1 = nodeCorner(index, (k + 1) % sides, 0.7D);
+            GL11.glVertex3d(cx, cy, cz);
+            GL11.glVertex3d(p0[0], p0[1], p0[2]);
+            GL11.glVertex3d(p1[0], p1[1], p1[2]);
+        }
     }
 
     /** 输出节点面板的可见部分（按裁剪面裁边并做顶点级虚化，假定 GL_TRIANGLES 已开始）。 */
@@ -805,11 +862,11 @@ public final class DysonSphereRenderer {
         for (int k = 0; k < poly.size(); k++) {
             float[] p0 = poly.get(k);
             float[] p1 = poly.get((k + 1) % poly.size());
-            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * centerAlpha);
+            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * centerAlpha);
             GL11.glVertex3d(cx, cy, cz);
-            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * p0[3]);
+            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * p0[3]);
             GL11.glVertex3d(p0[0], p0[1], p0[2]);
-            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * p1[3]);
+            GL11.glColor4f(0.38F, 0.52F, 0.80F, 1.0F * p1[3]);
             GL11.glVertex3d(p1[0], p1[1], p1[2]);
         }
     }
@@ -870,20 +927,20 @@ public final class DysonSphereRenderer {
             float ab = clipAlpha(db, limit, FRAME_EDGE_FADE);
             if (da < limit) {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.0F);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * ab);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * ab);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             } else if (db < limit) {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * aa);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * aa);
                 GL11.glVertex3d(a[0], a[1], a[2]);
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.0F);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
             } else {
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * aa);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * aa);
                 GL11.glVertex3d(a[0], a[1], a[2]);
-                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * ab);
+                GL11.glColor4f(0.62F, 0.72F, 0.92F, 0.9F * ab);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             }
         }
@@ -992,6 +1049,12 @@ public final class DysonSphereRenderer {
         float depth;
     }
 
+    /** 棱的可见段（裁剪后）与虚化透明度。 */
+    private static final class BeamSeg {
+        double x0, y0, z0, x1, y1, z1;
+        float alpha;
+    }
+
     private static double[] cross(double[] a, double[] b) {
         return new double[] {
             a[1] * b[2] - a[2] * b[1],
@@ -1000,83 +1063,10 @@ public final class DysonSphereRenderer {
         };
     }
 
-    /** 完工：深蓝黑前半球壳完全遮蔽太阳，缝隙亮蓝光，外围一层幽蓝光晕。 */
-    private static void drawCompletedShell() {
-        GL11.glColor4f(0.09F, 0.21F, 0.45F, 0.97F);
-        drawSphereQuads(RADIUS, 24, 12);
-
-        // 缝隙：先铺一层宽而淡的辉光，再画一层细亮芯
-        GL11.glLineWidth(4.0F);
-        GL11.glColor4f(0.20F, 0.60F, 1.0F, 0.25F);
-        for (int i = 0; i < 8; i++) {
-            drawLonCircle(360.0D * i / 8.0D + 11.25D, RADIUS + 0.05D);
-        }
-        for (int i = 0; i < 3; i++) {
-            drawLatCircle(-60.0D + 60.0D * i, RADIUS + 0.05D);
-        }
-        GL11.glLineWidth(2.0F);
-        GL11.glColor4f(0.35F, 0.80F, 1.0F, 0.95F);
-        for (int i = 0; i < 8; i++) {
-            drawLonCircle(360.0D * i / 8.0D + 11.25D, RADIUS + 0.05D);
-        }
-        for (int i = 0; i < 3; i++) {
-            drawLatCircle(-60.0D + 60.0D * i, RADIUS + 0.05D);
-        }
-
+    /** 完工：保留铺满面板的测地线框架外观，只在外面叠一圈幽蓝光晕作为完工标识。 */
+    private static void drawCompletedGlow() {
         GL11.glColor4f(0.15F, 0.45F, 0.95F, 0.18F);
         drawSphereQuads(RADIUS * 1.06D, 18, 9);
-    }
-
-    private static void drawLatCircle(double lat, double radius) {
-        double rad = Math.toRadians(lat);
-        double y = radius * Math.sin(rad);
-        double r = radius * Math.cos(rad);
-
-        GL11.glBegin(GL11.GL_LINES);
-        for (int i = 0; i < 48; i++) {
-            double a0 = Math.PI * 2.0D * i / 48.0D;
-            double a1 = Math.PI * 2.0D * (i + 1) / 48.0D;
-            lineSeg(
-                r * Math.cos(a0), y, r * Math.sin(a0),
-                r * Math.cos(a1), y, r * Math.sin(a1));
-        }
-        GL11.glEnd();
-    }
-
-    private static void drawLonCircle(double lon, double radius) {
-        double rad = Math.toRadians(lon);
-        double cx = Math.cos(rad);
-        double sz = Math.sin(rad);
-
-        GL11.glBegin(GL11.GL_LINES);
-        for (int i = 0; i < 48; i++) {
-            double a0 = Math.PI * 2.0D * i / 48.0D;
-            double a1 = Math.PI * 2.0D * (i + 1) / 48.0D;
-            lineSeg(
-                radius * cx * Math.sin(a0), radius * Math.cos(a0), radius * sz * Math.sin(a0),
-                radius * cx * Math.sin(a1), radius * Math.cos(a1), radius * sz * Math.sin(a1));
-        }
-        GL11.glEnd();
-    }
-
-    /** 画一条线段，仅保留朝向玩家的前半球部分（背面被恒星遮挡）。 */
-    private static void lineSeg(double x0, double y0, double z0, double x1, double y1, double z1) {
-        float s0 = dotLocal((float) x0, (float) y0, (float) z0);
-        float s1 = dotLocal((float) x1, (float) y1, (float) z1);
-        float limit = (float) -SHELL_FRONT_CLIP;
-
-        if (s0 >= limit && s1 >= limit) {
-            GL11.glVertex3d(x0, y0, z0);
-            GL11.glVertex3d(x1, y1, z1);
-        } else if (s0 >= limit) {
-            double t = (limit - s0) / (s1 - s0);
-            GL11.glVertex3d(x0, y0, z0);
-            GL11.glVertex3d(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, z0 + (z1 - z0) * t);
-        } else if (s1 >= limit) {
-            double t = (limit - s0) / (s1 - s0);
-            GL11.glVertex3d(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, z0 + (z1 - z0) * t);
-            GL11.glVertex3d(x1, y1, z1);
-        }
     }
 
     private static void drawSphereQuads(double radius, int lonSeg, int latSeg) {
