@@ -4,7 +4,6 @@ import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import net.minecraft.client.multiplayer.WorldClient;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import org.lwjgl.BufferUtils;
 
 /**
  * 戴森球球层动画（天空盒内，球心跟随太阳）。
@@ -78,9 +76,6 @@ public final class DysonSphereRenderer {
     private static long lastAnimTick = Long.MIN_VALUE;
     /** 当前帧的暖色强度（0=正午冷色，1=晨昏暖色），用于天空染色。 */
     private static float tintWarmth = 0.0F;
-    /** 云片径向渐变贴图（程序生成）。 */
-    private static int cloudGlowTexture = -1;
-
     /** 三个环的平面法线（球体局部坐标）：赤道、与赤道成 30°、与赤道成 120°。 */
     private static final double[][] RING_NORMALS = {
         {0.0D, 1.0D, 0.0D},
@@ -293,7 +288,7 @@ public final class DysonSphereRenderer {
         return new double[] {nx, ny, nz};
     }
 
-    /** 环组件静态定义：[环][组件]{径向偏移, 相位, 尺寸, 透明度系数, 上下偏移, 倾斜角, 厚度}。 */
+    /** 环组件静态定义：[环][组件]{径向偏移, 相位, 尺寸, 透明度系数(预留), 上下偏移, 倾斜角(预留), 厚度}。 */
     private static final float[][][] RING_COMPONENTS = new float[3][COMPONENTS_PER_RING][7];
 
     static {
@@ -1105,102 +1100,92 @@ public final class DysonSphereRenderer {
                 double cy = radius * (cos * u[1] + sin * v[1]) + n[1] * def[4];
                 double cz = radius * (cos * u[2] + sin * v[2]) + n[2] * def[4];
 
-                // 沿环切线的方向
+                // 镜片法线：严格指向戴森球中心（恒星），用该片实际位置归一化
+                double cl = Math.sqrt(cx * cx + cy * cy + cz * cz);
+                double rx = cx / cl;
+                double ry = cy / cl;
+                double rz = cz / cl;
+
+                // 长轴：沿环切线方向，投影到镜片平面（与法线严格垂直）
                 double tx = -sin * u[0] + cos * v[0];
                 double ty = -sin * u[1] + cos * v[1];
                 double tz = -sin * u[2] + cos * v[2];
+                double tDotR = tx * rx + ty * ry + tz * rz;
+                double ax = tx - rx * tDotR;
+                double ay = ty - ry * tDotR;
+                double az = tz - rz * tDotR;
+                double aLen = Math.sqrt(ax * ax + ay * ay + az * az);
+                ax /= aLen;
+                ay /= aLen;
+                az /= aLen;
 
-                // 径向 = 切线 × 法线；扁片法线绕切线轴倾斜，朝向更多样
-                double rx = ty * n[2] - tz * n[1];
-                double ry = tz * n[0] - tx * n[2];
-                double rz = tx * n[1] - ty * n[0];
-                double tilt = def[5];
-                double tiltCos = Math.cos(tilt);
-                double tiltSin = Math.sin(tilt);
-                double nwx = n[0] * tiltCos + rx * tiltSin;
-                double nwy = n[1] * tiltCos + ry * tiltSin;
-                double nwz = n[2] * tiltCos + rz * tiltSin;
+                // 短轴 = 法线 × 长轴，构成镜片平面
+                double bx = ry * az - rz * ay;
+                double by = rz * ax - rx * az;
+                double bz = rx * ay - ry * ax;
 
                 double len = def[2];
                 double width = def[6];
-                // 渐变光斑比矩形看起来小，放大一点补偿
                 double spriteScale = 1.35D;
 
                 CloudPiece piece = new CloudPiece();
                 piece.cx = cx;
                 piece.cy = cy;
                 piece.cz = cz;
-                piece.tx = tx * len * spriteScale;
-                piece.ty = ty * len * spriteScale;
-                piece.tz = tz * len * spriteScale;
-                piece.nx = nwx * width * spriteScale;
-                piece.ny = nwy * width * spriteScale;
-                piece.nz = nwz * width * spriteScale;
-                piece.alpha = 0.55F * def[3];
-                piece.phase = def[1];
+                // 保存单位轴（长轴沿切线、短轴在镜面平面内），尺寸单独存半径
+                piece.tx = ax;
+                piece.ty = ay;
+                piece.tz = az;
+                piece.nx = bx;
+                piece.ny = by;
+                piece.nz = bz;
+                piece.hexR = (float) ((len + width) * 0.5D * spriteScale);
+                piece.alpha = 1.0F;
                 piece.depth = dotLocal((float) cx, (float) cy, (float) cz);
                 pieces.add(piece);
             }
         }
 
-        ensureCloudGlowTexture();
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, cloudGlowTexture);
         Collections.sort(pieces, (a, b) -> Float.compare(b.depth, a.depth));
-        // 批量提交：所有光斑在同一个 GL_QUADS 块内按远近顺序连续绘制
-        GL11.glBegin(GL11.GL_QUADS);
+        // 六边形镜片：外圈深蓝 + 内部浅蓝小六边形，不透明，按远近批量绘制
+        GL11.glBegin(GL11.GL_TRIANGLES);
         for (CloudPiece piece : pieces) {
             float fade = clipAlpha(piece.depth, -CLOUD_FRONT_CLIP, CLOUD_EDGE_FADE);
             if (fade <= 0.0F) {
                 continue;
             }
-            // 慢速呼吸 + 晨昏暖色
-            float breathe = 0.85F + 0.15F * (float) Math.sin(animTime * 0.015D + piece.phase * 0.1D);
-            float alpha = piece.alpha * fade * breathe;
+            float alpha = piece.alpha * fade;
             GL11.glColor4f(
-                warmMix(0.95F, 1.00F), warmMix(0.93F, 0.90F), warmMix(0.85F, 0.72F),
+                warmMix(0.10F, 0.20F), warmMix(0.22F, 0.26F), warmMix(0.48F, 0.40F),
                 alpha);
-            GL11.glTexCoord2d(0.0D, 0.0D);
-            GL11.glVertex3d(piece.cx + piece.tx + piece.nx, piece.cy + piece.ty + piece.ny, piece.cz + piece.tz + piece.nz);
-            GL11.glTexCoord2d(1.0D, 0.0D);
-            GL11.glVertex3d(piece.cx - piece.tx + piece.nx, piece.cy - piece.ty + piece.ny, piece.cz - piece.tz + piece.nz);
-            GL11.glTexCoord2d(1.0D, 1.0D);
-            GL11.glVertex3d(piece.cx - piece.tx - piece.nx, piece.cy - piece.ty - piece.ny, piece.cz - piece.tz - piece.nz);
-            GL11.glTexCoord2d(0.0D, 1.0D);
-            GL11.glVertex3d(piece.cx + piece.tx - piece.nx, piece.cy + piece.ty - piece.ny, piece.cz + piece.tz - piece.nz);
+            emitCloudHexagon(piece, piece.hexR);
+            GL11.glColor4f(
+                warmMix(0.55F, 0.80F), warmMix(0.80F, 0.88F), warmMix(1.00F, 0.98F),
+                alpha);
+            emitCloudHexagon(piece, piece.hexR * 0.55F);
         }
         GL11.glEnd();
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
 
-    /** 生成云片用的径向渐变贴图（白色，中心不透明、边缘透明）。 */
-    private static void ensureCloudGlowTexture() {
-        if (cloudGlowTexture != -1) {
-            return;
+    /** 在镜片平面内发射一个正六边形（长轴为 0° 参考方向），假定 GL_TRIANGLES 已开始。 */
+    private static void emitCloudHexagon(CloudPiece piece, double radius) {
+        for (int k = 0; k < 6; k++) {
+            double a0 = Math.PI / 3.0D * k;
+            double a1 = Math.PI / 3.0D * (k + 1);
+            double c0 = Math.cos(a0);
+            double s0 = Math.sin(a0);
+            double c1 = Math.cos(a1);
+            double s1 = Math.sin(a1);
+            GL11.glVertex3d(piece.cx, piece.cy, piece.cz);
+            GL11.glVertex3d(
+                piece.cx + (c0 * piece.tx + s0 * piece.nx) * radius,
+                piece.cy + (c0 * piece.ty + s0 * piece.ny) * radius,
+                piece.cz + (c0 * piece.tz + s0 * piece.nz) * radius);
+            GL11.glVertex3d(
+                piece.cx + (c1 * piece.tx + s1 * piece.nx) * radius,
+                piece.cy + (c1 * piece.ty + s1 * piece.ny) * radius,
+                piece.cz + (c1 * piece.tz + s1 * piece.nz) * radius);
         }
-        int size = 32;
-        ByteBuffer buf = BufferUtils.createByteBuffer(size * size * 4);
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                double dx = (x + 0.5D) / size * 2.0D - 1.0D;
-                double dy = (y + 0.5D) / size * 2.0D - 1.0D;
-                double d = Math.sqrt(dx * dx + dy * dy);
-                double a = Math.max(0.0D, 1.0D - d);
-                a = a * a;
-                buf.put((byte) 255);
-                buf.put((byte) 255);
-                buf.put((byte) 255);
-                buf.put((byte) (int) (a * 255.0D));
-            }
-        }
-        buf.flip();
-        cloudGlowTexture = GL11.glGenTextures();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, cloudGlowTexture);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
     }
 
     /** 单个云组件（含绘制所需几何与深度）。 */
@@ -1208,9 +1193,9 @@ public final class DysonSphereRenderer {
         double cx, cy, cz;
         double tx, ty, tz;
         double nx, ny, nz;
+        float hexR;
         float alpha;
         float depth;
-        float phase;
     }
 
     /** 棱的可见段（裁剪后）与虚化透明度。 */

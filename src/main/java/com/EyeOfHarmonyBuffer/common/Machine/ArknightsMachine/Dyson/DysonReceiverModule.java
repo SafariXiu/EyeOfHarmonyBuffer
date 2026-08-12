@@ -4,18 +4,34 @@ import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.sBlockCasings8;
+import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import com.cleanroommc.modularui.api.IPanelHandler;
+import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.widget.IWidget;
+import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.value.sync.IntSyncValue;
+import com.cleanroommc.modularui.value.sync.PanelSyncManager;
+import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.TextWidget;
+import com.cleanroommc.modularui.widgets.layout.Flow;
+import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -32,6 +48,7 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
 /**
  * 接收模块：每 1 秒按本队功率结算一次（云 × 2^41 + 贴片 × 2^79，完工后 10^200），
@@ -47,6 +64,9 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 183;
 
+    /** 产出拆分：给 Orundum 的百分比（0~100），其余进无线 EU。 */
+    private int orundumSharePercent = 100;
+
     public DysonReceiverModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
@@ -55,6 +75,14 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     public DysonReceiverModule(String aName) {
         super(aName);
         setWirelessCycleNum(1);
+    }
+
+    public int getOrundumSharePercent() {
+        return orundumSharePercent;
+    }
+
+    public void setOrundumSharePercent(int value) {
+        orundumSharePercent = Math.max(0, Math.min(100, value));
     }
 
     @Override
@@ -109,6 +137,126 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     @Override
     protected BigInteger getWirelessGain() {
         return pendingGain;
+    }
+
+    @Override
+    protected void creditGain(BigInteger total) {
+        if (total == null || total.signum() <= 0 || ownerUUID == null) {
+            return;
+        }
+        int oruPct = Math.max(0, Math.min(100, orundumSharePercent));
+        BigInteger orundum = total.multiply(BigInteger.valueOf(oruPct)).divide(BigInteger.valueOf(100L));
+        BigInteger eu = total.subtract(orundum);
+        if (orundum.signum() > 0) {
+            produceOrundumForOwner(ownerUUID, orundum);
+        }
+        if (eu.signum() > 0) {
+            produceWirelessEUForOwner(ownerUUID, eu);
+        }
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new ReceiverGui(this);
+    }
+
+    /** 接收模块专属 GUI（MODUI2）：在右侧按钮列追加“产出拆分”按钮。 */
+    protected static class ReceiverGui extends MTEMultiBlockBaseGui<DysonReceiverModule> {
+
+        public ReceiverGui(DysonReceiverModule multiblock) {
+            super(multiblock);
+        }
+
+        @Override
+        protected Flow createButtonColumn(ModularPanel panel, PanelSyncManager syncManager) {
+            return super.createButtonColumn(panel, syncManager)
+                .child(createSplitConfigButton(panel, syncManager));
+        }
+
+        protected IWidget createSplitConfigButton(ModularPanel panel, PanelSyncManager syncManager) {
+            IPanelHandler splitPanel = syncManager.syncedPanel(
+                "dysonSplit",
+                true,
+                (panelSyncManager, _) -> openSplitConfigPanel(panelSyncManager, panel));
+            return new ButtonWidget<>()
+                .size(18, 18)
+                .child(
+                    new TextWidget<>(IKey.str("%"))
+                        .size(18, 18)
+                        .textAlign(Alignment.Center))
+                .onMousePressed(d -> {
+                    if (!splitPanel.isPanelOpen()) {
+                        splitPanel.openPanel();
+                    } else {
+                        splitPanel.closePanel();
+                    }
+                    return true;
+                })
+                .tooltipBuilder(t -> t.addLine(IKey.str("配置 Orundum / EU 产出拆分")))
+                .tooltipShowUpTimer(TOOLTIP_DELAY);
+        }
+
+        protected ModularPanel openSplitConfigPanel(PanelSyncManager syncManager, ModularPanel parent) {
+            IntSyncValue shareSyncer = new IntSyncValue(
+                multiblock::getOrundumSharePercent,
+                multiblock::setOrundumSharePercent).allowC2S();
+            return new ModularPanel("dysonSplit").relative(parent)
+                .leftRel(1)
+                .topRel(0)
+                .size(150, 78)
+                .child(
+                    Flow.column()
+                        .full()
+                        .padding(4)
+                        .child(new TextWidget<>(IKey.str("Orundum 产出占比 (0-100)")))
+                        .child(
+                            new TextFieldWidget()
+                                .value(shareSyncer)
+                                .setTextAlignment(Alignment.Center)
+                                .numbersInt(() -> 0, () -> 100)
+                                .size(70, 14)
+                                .marginBottom(4))
+                        .child(
+                            new TextWidget<>(
+                                IKey.dynamic(
+                                    () -> EnumChatFormatting.AQUA
+                                        + "EU: "
+                                        + (100 - multiblock.getOrundumSharePercent())
+                                        + "%"))));
+        }
+    }
+
+    @Override
+    public String[] getInfoData() {
+        String[] origin = super.getInfoData();
+        ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
+        lines.add(
+            EnumChatFormatting.AQUA + "产出拆分: Orundum "
+                + EnumChatFormatting.GOLD
+                + orundumSharePercent
+                + "%"
+                + EnumChatFormatting.AQUA
+                + " / EU "
+                + EnumChatFormatting.GOLD
+                + (100 - orundumSharePercent)
+                + "%");
+        return lines.toArray(new String[0]);
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        aNBT.setInteger("OrundumSharePercent", orundumSharePercent);
+        super.saveNBTData(aNBT);
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        if (aNBT.hasKey("OrundumSharePercent")) {
+            orundumSharePercent = Math.max(0, Math.min(100, aNBT.getInteger("OrundumSharePercent")));
+        } else {
+            orundumSharePercent = 100;
+        }
+        super.loadNBTData(aNBT);
     }
 
     private static final String[][] shapeMain = new String[][] {

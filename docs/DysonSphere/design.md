@@ -86,11 +86,12 @@ P = cloudCount × 2^41 + pasteCount × 2^79
 ### 戴森云环（渲染）
 
 - 环半径远大于球壳（`RING_RADIUS = 56`，球壳 `RADIUS = 29`，太阳距离 `SUN_DISTANCE = 100`），类似星环。
-- 每个环：若干云组件扁片沿环绕恒星公转；组件转到背向玩家一侧时隐藏。
+- 每个环：若干云组件镜片沿环绕恒星公转；组件转到背向玩家一侧时隐藏。
 - 三环朝向：赤道环 → 与赤道成 30° → 与赤道成 120°。
 - 各环公转速度不同，带相位偏移；速度倍率当前为原速的 **20%**（`CLOUD_SPEED_MULTIPLIER = 0.2`）。
 - **环体（立体）**：组件径向漂浮 ±2.8、上下（环法线方向）漂浮 ±2.2（`RING_HALF_HEIGHT`），
-  每片绕切线轴随机倾斜 ±34°、厚度 0.35~0.75，按“远 → 近”排序绘制形成前后遮挡。
+  每片为不透明六边形镜面：法线严格指向恒星/戴森球中心，外圈深蓝、
+  内部一个较小的浅蓝六边形，尺寸 0.35~0.75，按“远 → 近”排序绘制形成前后遮挡。
 - 所有旋转角度使用**连续世界时间**（不取模），避免游戏午夜时间回零导致跳变闪烁。
 
 ## 五·补充：云/框架/贴片三参数驱动渲染
@@ -174,16 +175,16 @@ P = cloudCount × 2^41 + pasteCount × 2^79
 
 | 文件 | 作用 |
 | --- | --- |
-| `common/dyson/DysonSphereState.java` | 客户端/服务端共享状态缓存（stage / progress / ownerName） |
-| | 已扩展：`cloudCount` / `frameCount` 双数量驱动；待扩展 `pasteCount` |
-| `common/dyson/DysonSphereWorldData.java` | 服务端存档（WorldSavedData，统一绑定塔罗斯 2，ID 14001）；待改为按队伍三计数器 |
-| `common/dyson/DysonSphereSystem.java` | 服务端统一入口：改状态（数值变化才广播）、登录/全服同步；待重构为队伍级接口 + 每日结算 + 完工判定 |
-| `common/dyson/DysonSphereSyncHandler.java` | 玩家登录时把当前状态单独同步给该玩家 |
-| `common/dyson/PacketDysonSphereState.java` | 服务端 → 客户端同步包（客户端切回渲染主线程写入）；待加 `pasteCount` |
+| `common/dyson/DysonSphereState.java` | 客户端/服务端共享状态缓存（stage / progress / ownerName，含云/框架/贴片三参数） |
+| `common/dyson/DysonSphereWorldData.java` | 服务端存档：按队伍三计数器 + 组件虚拟库存 + 完工标志 + 领先者推导（绑定塔罗斯 2，ID 14001） |
+| `common/dyson/DysonSphereSystem.java` | 服务端统一入口：`addModules / addComponents / consumeComponents / settleDaily / complete` 与状态同步 |
+| `common/dyson/DysonSphereDailyHandler.java` | 每 MC 天触发每日结算（先贴片、后掉落、再完工判定） |
+| `common/dyson/DysonSphereSyncHandler.java` | 玩家登录时同步当前状态 |
+| `common/dyson/PacketDysonSphereState.java` | 服务端 → 客户端同步包（含 `pasteCount`） |
 | `common/dyson/DysonSphereNetwork.java` | 网络通道（EOHB\|DysonSphere） |
-| `command/CommandDysonSphere.java` | `/dyson stage/cloud/frame/reset`；待加 `/dyson paste` |
+| `command/CommandDysonSphere.java` | `/dyson stage/cloud/frame/paste/reset` |
 
-后续系统接入：发射机/接收机只需调用 `DysonSphereSystem` 的队伍级接口，领先者状态由服务端统一推导并广播；玩家登录自动同步，渲染层读取 `DysonSphereState`。
+机器侧通过 `DysonSphereSystem.addModules / addComponents / consumeComponents` 接入；领先者状态由服务端统一推导并广播，玩家登录自动同步，渲染层读取 `DysonSphereState`。
 
 ## 八、待办 / 后话
 
@@ -192,9 +193,10 @@ P = cloudCount × 2^41 + pasteCount × 2^79
 - [x] 世界数据改为**按队伍三计数器**（云/框架/贴片）+ 完工标志 + 领先者推导。
 - [x] `DysonSphereSystem` 重构：`addModules(teamId, cloudDelta, frameDelta)`、每日结算（贴片优先 → 掉落 → 完工判定）、完工广播/清零/永久锁死。
 - [x] 每日结算处理器（每 MC 天触发，128:1 贴片 + 10~64 掉落）。
-- [ ] 发电结算：云 2^41/片、贴片 2^79/片、完工 10^200/tick；入账走 Orundum（接收模块专属结算待单独设计）。
-- [ ] 三台机器（组件制造机、发射机、接收机）的结构与注册、逻辑。
-- [ ] 组件物品（戴森云组件、框架组件）与配方链。
+- [x] 模块能量结算：制造/发射全额入 Orundum（1 EU ≡ 1 Orundum）；接收模块为占位实现。
+- [x] 接收模块专属结算：按 Orundum 占比（0~100，GUI 配置，默认 100）拆无线 EU 与 Orundum 两本账。
+- [x] 机器系统：核心 + 模块基类 + 制造/发射/接收三模块（结构为占位，后续接入最终多方块）。
+- [x] 组件物品（戴森云组件、框架组件）与占位配方链。
 - [x] 渲染三参数化：State/Packet 加 `pasteCount`，完工球壳触发改为贴片满，天空变暗改为 max(框架率, 贴片率)。
 - [x] `/dyson paste` 指令与五阶段预设更新。
 - [x] 占领者提示、全服公告文案。

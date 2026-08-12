@@ -199,7 +199,7 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         // 收入
         BigInteger gain = getWirelessGain();
         if (gain != null && gain.signum() > 0) {
-            creditOrundumPower(gain);
+            creditGain(gain);
             this.costingEU = this.costingEU.add(gain);
         }
         this.costingEUText = NumberFormatUtil.formatNumber(this.costingEU);
@@ -264,6 +264,11 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             return;
         }
         produceOrundumForOwner(ownerUUID, total);
+    }
+
+    /** 产出入账钩子：默认全走 Orundum，接收模块覆写为按百分比拆分 EU/Orundum。 */
+    protected void creditGain(BigInteger total) {
+        creditOrundumPower(total);
     }
 
     @Override
