@@ -17,6 +17,7 @@ import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosio
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereDailyHandler;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSyncHandler;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
@@ -139,6 +140,7 @@ public class EyeOfHarmonyBuffer {
 
         DysonSphereNetwork.init();
         FMLCommonHandler.instance().bus().register(new DysonSphereSyncHandler());
+        FMLCommonHandler.instance().bus().register(new DysonSphereDailyHandler());
 
         cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
         FMLCommonHandler.instance().bus().register(new OrundumLinkEventHandler());

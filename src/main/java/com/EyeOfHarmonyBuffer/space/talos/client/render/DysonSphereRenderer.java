@@ -316,36 +316,24 @@ public final class DysonSphereRenderer {
     public static void render(WorldClient world, float partialTicks) {
         int cloudCount = DysonSphereState.getCloudCount();
         int frameCount = DysonSphereState.getFrameCount();
-        boolean completed = frameCount >= DysonSphereState.FRAME_COMPLETE;
+        int pasteCount = DysonSphereState.getPasteCount();
+        float pasteCoverage = DysonSphereState.getPasteCoverage();
+        boolean completed = pasteCount >= DysonSphereState.PASTE_COMPLETE;
 
-        // 戴森云：环数/密度由可见云数量驱动；超过 3 万的部分视为已向框架转换，不再显示在环上
+        // 戴森云：环数/密度由可见云数量驱动；超过 3 万的部分不显示在环上（仍在轨道池等待每日贴片）
         int visibleCloud = Math.min(cloudCount, DysonSphereState.CLOUD_LEVEL_3);
         int cloudRings = visibleCloud >= 20_000 ? 3 : visibleCloud >= 10_000 ? 2 : visibleCloud > 0 ? 1 : 0;
         float cloudDensity = cloudRings == 0
             ? 0.0F
             : visibleCloud / (float) DysonSphereState.CLOUD_LEVEL_3;
 
-        // 框架填充率：5万=20%、15万=50%、30万=80%、50万=100%
-        float frameCoverage;
-        if (frameCount >= DysonSphereState.FRAME_COMPLETE) {
-            frameCoverage = 1.0F;
-        } else if (frameCount >= DysonSphereState.FRAME_STAGE_3) {
-            frameCoverage = 0.8F;
-        } else if (frameCount >= DysonSphereState.FRAME_STAGE_2) {
-            frameCoverage = 0.5F;
-        } else if (frameCount >= DysonSphereState.FRAME_MIN) {
-            frameCoverage = 0.2F;
-        } else {
-            frameCoverage = 0.0F;
-        }
-
-        // 完工后云不再显示（剩余云按后续设计慢慢掉落）
+        // 完工（贴片打满）后云环不再显示（剩余轨道云按每日掉落慢慢消失）
         if (completed) {
             cloudRings = 0;
             cloudDensity = 0.0F;
         }
 
-        if (frameCoverage <= 0.0F && frameCount <= 0 && cloudRings <= 0) {
+        if (frameCount <= 0 && pasteCount <= 0 && cloudRings <= 0) {
             return;
         }
 
@@ -382,7 +370,7 @@ public final class DysonSphereRenderer {
         GL11.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glDepthMask(true);
 
-        drawFrame(frameCoverage, frameCount, worldTime);
+        drawFrame(pasteCoverage, frameCount, worldTime);
         if (cloudRings > 0 && cloudDensity > 0.0F) {
             drawCloudRings(worldTime, cloudRings, cloudDensity);
         }
@@ -515,9 +503,9 @@ public final class DysonSphereRenderer {
     /**
      * 框架双层渲染：
      * - 棱/节点层：框架数量小于 5 万时为“从节点向外生长”的搭建过程，5 万后棱全部铺完；
-     * - 面板层：仅 5 万后开始，按覆盖率随机填充。
+     * - 面板层：贴片覆盖率决定面板铺满比例，贴片满即完工。
      */
-    private static void drawFrame(float coverage, int frameCount, double animTime) {
+    private static void drawFrame(float pasteCoverage, int frameCount, double animTime) {
         boolean[] nodeShown = new boolean[ICO_VERTICES.length];
 
         // 棱数量：<5万按生长比例，≥5万全部铺完
@@ -530,10 +518,10 @@ public final class DysonSphereRenderer {
             nodeShown[ICO_EDGES[e][1]] = true;
         }
 
-        // 面板只做节点标记（可见性/虚化在绘制时按面中心计算）
+        // 面板（贴片）只做节点标记（可见性/虚化在绘制时按面中心计算）
         int faceCount = 0;
-        if (frameCount >= DysonSphereState.FRAME_MIN) {
-            faceCount = (int) Math.round(ICO_FACES.length * coverage);
+        if (frameCount > 0) {
+            faceCount = (int) Math.round(ICO_FACES.length * pasteCoverage);
             for (int i = 0; i < faceCount; i++) {
                 int f = PANEL_ORDER[i];
                 int[] face = ICO_FACES[f];
@@ -609,8 +597,8 @@ public final class DysonSphereRenderer {
             emitBeamCoreLine(seg);
             GL11.glEnd();
 
-            // 能量流动光点：从 15 万起（面板铺设过半）棱上才有流动能量特效
-            if (frameCount >= DysonSphereState.FRAME_STAGE_2) {
+            // 能量流动光点：贴片覆盖过半（面板铺设过半）棱上才有流动能量特效
+            if (pasteCoverage >= 0.5F) {
                 double phase = (e * 0.618033988749895D) % 1.0D;
                 double t = (animTime * BEAM_ENERGY_SPEED + phase) % 1.0D;
                 double px = seg.x0 + (seg.x1 - seg.x0) * t;

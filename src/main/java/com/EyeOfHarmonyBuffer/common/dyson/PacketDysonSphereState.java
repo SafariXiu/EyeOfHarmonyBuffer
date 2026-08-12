@@ -13,15 +13,18 @@ public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketD
     private float progress;
     private int cloudCount;
     private int frameCount;
+    private int pasteCount;
     private String ownerName;
 
     public PacketDysonSphereState() {}
 
-    public PacketDysonSphereState(int stage, float progress, int cloudCount, int frameCount, String ownerName) {
+    public PacketDysonSphereState(int stage, float progress, int cloudCount, int frameCount,
+                                  int pasteCount, String ownerName) {
         this.stage = stage;
         this.progress = progress;
         this.cloudCount = cloudCount;
         this.frameCount = frameCount;
+        this.pasteCount = pasteCount;
         this.ownerName = ownerName == null ? "" : ownerName;
     }
 
@@ -31,6 +34,7 @@ public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketD
         buf.writeFloat(progress);
         buf.writeInt(cloudCount);
         buf.writeInt(frameCount);
+        buf.writeInt(pasteCount);
         byte[] nameBytes = ownerName.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         buf.writeShort(nameBytes.length);
         buf.writeBytes(nameBytes);
@@ -42,6 +46,7 @@ public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketD
         progress = buf.readFloat();
         cloudCount = buf.readInt();
         frameCount = buf.readInt();
+        pasteCount = buf.readInt();
         int len = buf.readShort();
         byte[] nameBytes = new byte[len];
         buf.readBytes(nameBytes);
@@ -56,7 +61,8 @@ public class PacketDysonSphereState implements IMessage, IMessageHandler<PacketD
                 @Override
                 public void run() {
                     DysonSphereState.apply(
-                        message.stage, message.progress, message.cloudCount, message.frameCount, message.ownerName);
+                        message.stage, message.progress, message.cloudCount, message.frameCount,
+                        message.pasteCount, message.ownerName);
                 }
             });
         }
