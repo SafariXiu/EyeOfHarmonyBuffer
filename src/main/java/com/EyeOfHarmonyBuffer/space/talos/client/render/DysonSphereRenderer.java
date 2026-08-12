@@ -38,6 +38,8 @@ public final class DysonSphereRenderer {
     private static final double FRAME_THICKNESS = 2.5D;
     /** 棱的厚度（约为面板厚度的三分之一，细梁观感）。 */
     private static final double BEAM_THICKNESS = 0.8D;
+    /** 节点板外移量：与面板/棱的外表面平齐，让节点盖在最外层且深度遮挡正确。 */
+    private static final double NODE_OUTER_OFFSET = BEAM_THICKNESS * 0.5D;
     /**
      * 前半球裁剪（框架/云环等透明结构）：
      * 硬边界取球体自身轮廓线（dot = -R²/D）再向外放宽一点，宁可裁得保守一点、
@@ -362,14 +364,22 @@ public final class DysonSphereRenderer {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_CULL_FACE);
 
+        // 开启深度测试：前面不透明的面板会真正挡住后面的结构
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        GL11.glDepthMask(true);
+
         drawFrame(frameCoverage, frameCount);
         if (cloudRings > 0 && cloudDensity > 0.0F) {
             drawCloudRings(worldTime, cloudRings, cloudDensity);
         }
         if (completed) {
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
             drawCompletedShell();
         }
 
+        GL11.glDepthMask(false);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glPopMatrix();
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glLineWidth(1.0F);
@@ -515,80 +525,76 @@ public final class DysonSphereRenderer {
             }
         }
 
-        // 棱：沿球面大圆弧的方形截面梁
-        if (edgeCount > 0) {
+        // 固定层级：面板最底 → 棱中间 → 节点最上；每层内部按深度从远到近
+        // 面板写深度（挡住背面），棱/节点不写深度（只做叠加）
+        List<Integer> visiblePanels = new ArrayList<>();
+        for (int i = 0; i < faceCount; i++) {
+            int f = PANEL_ORDER[i];
+            if (panelAlpha(f) > 0.0F) {
+                visiblePanels.add(f);
+            }
+        }
+        visiblePanels.sort((a, b) -> Float.compare(panelDepth(b), panelDepth(a)));
+        if (!visiblePanels.isEmpty()) {
+            GL11.glDepthMask(true);
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            for (int f : visiblePanels) {
+                float alpha = panelAlpha(f);
+                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                emitPanelTriangle(f, true);
+            }
+            GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            for (int f : visiblePanels) {
+                float alpha = panelAlpha(f);
+                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                emitPanelTriangle(f, false);
+            }
+            GL11.glEnd();
             GL11.glBegin(GL11.GL_QUADS);
-            for (int i = 0; i < edgeCount; i++) {
-                emitStraightBeam(ICO_EDGES[EDGE_ORDER[i]][0], ICO_EDGES[EDGE_ORDER[i]][1]);
+            for (int f : visiblePanels) {
+                float alpha = panelAlpha(f);
+                GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
+                emitPanelEdges(f);
             }
             GL11.glEnd();
         }
 
-        // 节点：正五/六边形连接块
-        GL11.glBegin(GL11.GL_TRIANGLES);
+        // 棱层（不写深度，靠面板深度做遮挡）
+        GL11.glDepthMask(false);
+        List<Integer> visibleBeams = new ArrayList<>();
+        for (int i = 0; i < edgeCount; i++) {
+            int e = EDGE_ORDER[i];
+            if (clipAlpha(beamDepth(e), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE) > 0.0F) {
+                visibleBeams.add(e);
+            }
+        }
+        visibleBeams.sort((a, b) -> Float.compare(beamDepth(b), beamDepth(a)));
+        if (!visibleBeams.isEmpty()) {
+            GL11.glBegin(GL11.GL_QUADS);
+            for (int e : visibleBeams) {
+                emitStraightBeam(ICO_EDGES[e][0], ICO_EDGES[e][1]);
+            }
+            GL11.glEnd();
+        }
+
+        // 节点层（最上，不写深度，按深度从远到近绘制）
+        List<Integer> visibleNodes = new ArrayList<>();
         for (int i = 0; i < ICO_VERTICES.length; i++) {
-            if (!nodeShown[i]) {
-                continue;
+            if (nodeShown[i] && nodeAlpha(i) > 0.0F) {
+                visibleNodes.add(i);
             }
-            float alpha = nodeAlpha(i);
-            if (alpha <= 0.0F) {
-                continue;
-            }
-            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * alpha);
+        }
+        visibleNodes.sort((a, b) -> Float.compare(nodeDepth(b), nodeDepth(a)));
+        GL11.glLineWidth(1.5F);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        for (int i : visibleNodes) {
             emitNodeFaces(i);
         }
         GL11.glEnd();
-        GL11.glLineWidth(1.5F);
         GL11.glBegin(GL11.GL_LINES);
-        for (int i = 0; i < ICO_VERTICES.length; i++) {
-            if (!nodeShown[i]) {
-                continue;
-            }
-            float alpha = nodeAlpha(i);
-            if (alpha <= 0.0F) {
-                continue;
-            }
-            GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * alpha);
+        for (int i : visibleNodes) {
             emitNodeEdges(i);
-        }
-        GL11.glEnd();
-
-        if (faceCount <= 0) {
-            return;
-        }
-
-        // 面板层：外表面 / 内表面 / 侧边
-        GL11.glBegin(GL11.GL_TRIANGLES);
-        for (int i = 0; i < faceCount; i++) {
-            int f = PANEL_ORDER[i];
-            float alpha = panelAlpha(f);
-            if (alpha <= 0.0F) {
-                continue;
-            }
-            GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
-            emitPanelTriangle(f, true);
-        }
-        GL11.glEnd();
-        GL11.glBegin(GL11.GL_TRIANGLES);
-        for (int i = 0; i < faceCount; i++) {
-            int f = PANEL_ORDER[i];
-            float alpha = panelAlpha(f);
-            if (alpha <= 0.0F) {
-                continue;
-            }
-            GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
-            emitPanelTriangle(f, false);
-        }
-        GL11.glEnd();
-        GL11.glBegin(GL11.GL_QUADS);
-        for (int i = 0; i < faceCount; i++) {
-            int f = PANEL_ORDER[i];
-            float alpha = panelAlpha(f);
-            if (alpha <= 0.0F) {
-                continue;
-            }
-            GL11.glColor4f(0.42F, 0.48F, 0.66F, 0.88F * alpha);
-            emitPanelEdges(f);
         }
         GL11.glEnd();
     }
@@ -678,11 +684,11 @@ public final class DysonSphereRenderer {
             x1 - ax * h - bx * h, y1 - ay * h - by * h, z1 - az * h - bz * h);
     }
 
-    /** 输出一块面板的外/内表面三角形（假定 GL_TRIANGLES 已开始）。 */
+    /** 输出一块面板的外/内表面三角形（厚度与棱一致，保证边缘严格对齐）。 */
     private static void emitPanelTriangle(int f, boolean outer) {
         int[] face = ICO_FACES[f];
         double[] n = ICO_FACE_NORMALS[f];
-        double h = FRAME_THICKNESS * 0.5D;
+        double h = BEAM_THICKNESS * 0.5D;
         double sign = outer ? h : -h;
         for (int k = 0; k < 3; k++) {
             double[] v = ICO_VERTICES[face[k]];
@@ -693,11 +699,11 @@ public final class DysonSphereRenderer {
         }
     }
 
-    /** 输出一块面板的三条侧边（假定 GL_QUADS 已开始）。 */
+    /** 输出一块面板的三条侧边（厚度与棱一致，保证边缘严格对齐）。 */
     private static void emitPanelEdges(int f) {
         int[] face = ICO_FACES[f];
         double[] n = ICO_FACE_NORMALS[f];
-        double h = FRAME_THICKNESS * 0.5D;
+        double h = BEAM_THICKNESS * 0.5D;
         for (int k = 0; k < 3; k++) {
             double[] a = ICO_VERTICES[face[k]];
             double[] b = ICO_VERTICES[face[(k + 1) % 3]];
@@ -709,16 +715,25 @@ public final class DysonSphereRenderer {
         }
     }
 
+    /** 节点中心在视线方向上的深度（越大越靠近玩家）。 */
+    private static float nodeDepth(int index) {
+        double[] v = ICO_VERTICES[index];
+        return dotLocal((float) (v[0] * RADIUS), (float) (v[1] * RADIUS), (float) (v[2] * RADIUS));
+    }
+
     /** 节点中心的虚化透明度。 */
     private static float nodeAlpha(int index) {
-        double[] v = ICO_VERTICES[index];
-        return clipAlpha(
-            dotLocal((float) (v[0] * RADIUS), (float) (v[1] * RADIUS), (float) (v[2] * RADIUS)),
-            -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
+        return clipAlpha(nodeDepth(index), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
+    }
+
+    /** 棱中心在视线方向上的深度（两个端点深度平均）。 */
+    private static float beamDepth(int edge) {
+        int[] e = ICO_EDGES[edge];
+        return (nodeDepth(e[0]) + nodeDepth(e[1])) * 0.5F;
     }
 
     /** 面板中心的虚化透明度。 */
-    private static float panelAlpha(int f) {
+    private static float panelDepth(int f) {
         int[] face = ICO_FACES[f];
         double[] va = ICO_VERTICES[face[0]];
         double[] vb = ICO_VERTICES[face[1]];
@@ -726,7 +741,12 @@ public final class DysonSphereRenderer {
         double mx = (va[0] + vb[0] + vc[0]) / 3.0D * RADIUS;
         double my = (va[1] + vb[1] + vc[1]) / 3.0D * RADIUS;
         double mz = (va[2] + vb[2] + vc[2]) / 3.0D * RADIUS;
-        return clipAlpha(dotLocal((float) mx, (float) my, (float) mz), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
+        return dotLocal((float) mx, (float) my, (float) mz);
+    }
+
+    /** 面板中心的虚化透明度。 */
+    private static float panelAlpha(int f) {
+        return clipAlpha(panelDepth(f), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
     }
 
     /** 节点边数：原正二十面体 12 个顶点为五边形，细分新增顶点为六边形。 */
@@ -758,37 +778,114 @@ public final class DysonSphereRenderer {
         int sides = nodeSides(index);
         double radius = FRAME_THICKNESS / (2.0D * Math.sin(Math.PI / sides));
         double a = Math.PI * 2.0D * k / sides;
+        double outer = RADIUS + NODE_OUTER_OFFSET;
         return new double[] {
-            n[0] * RADIUS + radius * (Math.cos(a) * ux + Math.sin(a) * vx),
-            n[1] * RADIUS + radius * (Math.cos(a) * uy + Math.sin(a) * vy),
-            n[2] * RADIUS + radius * (Math.cos(a) * uz + Math.sin(a) * vz)
+            n[0] * outer + radius * (Math.cos(a) * ux + Math.sin(a) * vx),
+            n[1] * outer + radius * (Math.cos(a) * uy + Math.sin(a) * vy),
+            n[2] * outer + radius * (Math.cos(a) * uz + Math.sin(a) * vz)
         };
     }
 
-    /** 输出节点面板三角形（假定 GL_TRIANGLES 已开始）。 */
+    /** 输出节点面板的可见部分（按裁剪面裁边并做顶点级虚化，假定 GL_TRIANGLES 已开始）。 */
     private static void emitNodeFaces(int index) {
-        int sides = nodeSides(index);
         double[] c = ICO_VERTICES[index];
-        double cx = c[0] * RADIUS;
-        double cy = c[1] * RADIUS;
-        double cz = c[2] * RADIUS;
-        for (int k = 0; k < sides; k++) {
-            double[] p0 = nodeCorner(index, k);
-            double[] p1 = nodeCorner(index, (k + 1) % sides);
+        double outer = RADIUS + NODE_OUTER_OFFSET;
+        double cx = c[0] * outer;
+        double cy = c[1] * outer;
+        double cz = c[2] * outer;
+        float centerAlpha = clipAlpha(dotLocal((float) cx, (float) cy, (float) cz), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
+        if (centerAlpha <= 0.0F) {
+            return;
+        }
+
+        List<float[]> poly = clippedNodePolygon(index);
+        if (poly.size() < 3) {
+            return;
+        }
+        for (int k = 0; k < poly.size(); k++) {
+            float[] p0 = poly.get(k);
+            float[] p1 = poly.get((k + 1) % poly.size());
+            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * centerAlpha);
             GL11.glVertex3d(cx, cy, cz);
+            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * p0[3]);
             GL11.glVertex3d(p0[0], p0[1], p0[2]);
+            GL11.glColor4f(0.32F, 0.38F, 0.55F, 0.92F * p1[3]);
             GL11.glVertex3d(p1[0], p1[1], p1[2]);
         }
     }
 
-    /** 输出节点边线（假定 GL_LINES 已开始）。 */
+    /** 把节点正多边形按前半球裁剪面裁出可见轮廓，返回 {x,y,z,alpha} 点列。 */
+    private static List<float[]> clippedNodePolygon(int index) {
+        int sides = nodeSides(index);
+        double limit = -FRAME_FRONT_CLIP;
+        List<float[]> out = new ArrayList<>();
+        double[] prev = nodeCorner(index, sides - 1);
+        float prevDot = dotLocal((float) prev[0], (float) prev[1], (float) prev[2]);
+        for (int k = 0; k < sides; k++) {
+            double[] cur = nodeCorner(index, k);
+            float curDot = dotLocal((float) cur[0], (float) cur[1], (float) cur[2]);
+            boolean prevIn = prevDot >= limit;
+            boolean curIn = curDot >= limit;
+            if (curIn) {
+                if (!prevIn) {
+                    out.add(intersectNodePoint(prev, cur, prevDot, curDot, limit));
+                }
+                out.add(new float[] {
+                    (float) cur[0], (float) cur[1], (float) cur[2],
+                    clipAlpha(curDot, limit, FRAME_EDGE_FADE)
+                });
+            } else if (prevIn) {
+                out.add(intersectNodePoint(prev, cur, prevDot, curDot, limit));
+            }
+            prev = cur;
+            prevDot = curDot;
+        }
+        return out;
+    }
+
+    /** 线段与裁剪面的交点（交点处 alpha = 0，用于边缘虚化）。 */
+    private static float[] intersectNodePoint(double[] a, double[] b, float da, float db, double limit) {
+        double t = (da - limit) / (da - db);
+        return new float[] {
+            (float) (a[0] + (b[0] - a[0]) * t),
+            (float) (a[1] + (b[1] - a[1]) * t),
+            (float) (a[2] + (b[2] - a[2]) * t),
+            0.0F
+        };
+    }
+
+    /** 输出节点边线（按裁剪面裁边并做顶点级虚化，假定 GL_LINES 已开始）。 */
     private static void emitNodeEdges(int index) {
         int sides = nodeSides(index);
+        double limit = -FRAME_FRONT_CLIP;
         for (int k = 0; k < sides; k++) {
-            double[] p0 = nodeCorner(index, k);
-            double[] p1 = nodeCorner(index, (k + 1) % sides);
-            GL11.glVertex3d(p0[0], p0[1], p0[2]);
-            GL11.glVertex3d(p1[0], p1[1], p1[2]);
+            double[] a = nodeCorner(index, k);
+            double[] b = nodeCorner(index, (k + 1) % sides);
+            float da = dotLocal((float) a[0], (float) a[1], (float) a[2]);
+            float db = dotLocal((float) b[0], (float) b[1], (float) b[2]);
+            if (da < limit && db < limit) {
+                continue;
+            }
+            float aa = clipAlpha(da, limit, FRAME_EDGE_FADE);
+            float ab = clipAlpha(db, limit, FRAME_EDGE_FADE);
+            if (da < limit) {
+                float[] p = intersectNodePoint(a, b, da, db, limit);
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.0F);
+                GL11.glVertex3d(p[0], p[1], p[2]);
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * ab);
+                GL11.glVertex3d(b[0], b[1], b[2]);
+            } else if (db < limit) {
+                float[] p = intersectNodePoint(a, b, da, db, limit);
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * aa);
+                GL11.glVertex3d(a[0], a[1], a[2]);
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.0F);
+                GL11.glVertex3d(p[0], p[1], p[2]);
+            } else {
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * aa);
+                GL11.glVertex3d(a[0], a[1], a[2]);
+                GL11.glColor4f(0.70F, 0.78F, 0.95F, 0.9F * ab);
+                GL11.glVertex3d(b[0], b[1], b[2]);
+            }
         }
     }
 
@@ -905,11 +1002,20 @@ public final class DysonSphereRenderer {
 
     /** 完工：深蓝黑前半球壳完全遮蔽太阳，缝隙亮蓝光，外围一层幽蓝光晕。 */
     private static void drawCompletedShell() {
-        GL11.glColor4f(0.03F, 0.05F, 0.12F, 0.96F);
+        GL11.glColor4f(0.09F, 0.21F, 0.45F, 0.97F);
         drawSphereQuads(RADIUS, 24, 12);
 
+        // 缝隙：先铺一层宽而淡的辉光，再画一层细亮芯
+        GL11.glLineWidth(4.0F);
+        GL11.glColor4f(0.20F, 0.60F, 1.0F, 0.25F);
+        for (int i = 0; i < 8; i++) {
+            drawLonCircle(360.0D * i / 8.0D + 11.25D, RADIUS + 0.05D);
+        }
+        for (int i = 0; i < 3; i++) {
+            drawLatCircle(-60.0D + 60.0D * i, RADIUS + 0.05D);
+        }
         GL11.glLineWidth(2.0F);
-        GL11.glColor4f(0.20F, 0.65F, 1.0F, 0.75F);
+        GL11.glColor4f(0.35F, 0.80F, 1.0F, 0.95F);
         for (int i = 0; i < 8; i++) {
             drawLonCircle(360.0D * i / 8.0D + 11.25D, RADIUS + 0.05D);
         }
@@ -917,7 +1023,7 @@ public final class DysonSphereRenderer {
             drawLatCircle(-60.0D + 60.0D * i, RADIUS + 0.05D);
         }
 
-        GL11.glColor4f(0.10F, 0.30F, 0.70F, 0.10F);
+        GL11.glColor4f(0.15F, 0.45F, 0.95F, 0.18F);
         drawSphereQuads(RADIUS * 1.06D, 18, 9);
     }
 

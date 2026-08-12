@@ -28,8 +28,8 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         GL11.glPushMatrix();
 
-        //GL11.glDisable(GL11.GL_FOG);
-        //GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_FOG);
+        GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(false);
@@ -113,7 +113,10 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
         }
 
         // 戴森球：叠加在太阳/光晕之上，随进度遮蔽恒星
+        // 纯色几何需要关闭贴图/光照/雾，否则会被继承的世界状态染成黑色
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
         DysonSphereRenderer.render(world, partialTicks);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
 
         float planetYaw = 180.0F;
         float planetPitch = 0F;
@@ -159,6 +162,12 @@ public class HugePlanetSkyRenderer extends IRenderHandler {
         }
 
         GL11.glPopMatrix();
+
+        // 戴森球写入的深度只用于自身前后遮挡，画完必须清掉，否则会挡住之后绘制的地形
+        GL11.glDepthMask(true);
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glDepthMask(false);
+
         GL11.glPopAttrib();;
     }
 
