@@ -1269,3 +1269,4 @@ EOHB.nei.byproduct.title=副产物（每份独立判定）
 EOHB.nei.byproduct.totalChance=总概率
 item.DysonCloudComponent.name=戴森云组件
 item.DysonFrameComponent.name=戴森框架组件
+GT5U.gui.text.shutdown_reason.dyson_duplicate_core=该玩家已有一台核心

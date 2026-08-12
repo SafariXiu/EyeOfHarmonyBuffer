@@ -101,11 +101,6 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     }
 
     @Override
-    protected boolean shouldRequireOrundumField() {
-        return false;
-    }
-
-    @Override
     protected boolean usesOrundumCost() {
         return false;
     }

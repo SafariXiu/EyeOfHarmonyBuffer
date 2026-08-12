@@ -14,7 +14,9 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.item.ItemStack;
@@ -45,6 +47,8 @@ import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.api.util.shutdown.ShutDownReason;
+import gregtech.api.util.shutdown.SimpleShutDownReason;
 
 /**
  * 戴森核心：每队一台的模块化巨构枢纽。
@@ -62,7 +66,17 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     private static final int OffsetsZ = 1;
     private static final int CASING_INDEX = 183;
 
+    /** 每位玩家一台核心的注册表（服务端运行时，按 ownerUUID）。 */
+    private static final Map<UUID, DysonCore> CORE_BY_OWNER = new HashMap<>();
+
+    /** 重复核心的停机原因（文案在语言文件 GT5U.gui.text.shutdown_reason.dyson_duplicate_core）。 */
+    private static final ShutDownReason DUPLICATE_CORE_REASON =
+        SimpleShutDownReason.ofNormal("dyson_duplicate_core");
+
     public final ArrayList<DysonModuleBase<?>> moduleHatches = new ArrayList<>();
+
+    /** 本机因该玩家已存在另一台核心而被停机。 */
+    private boolean duplicateRejected = false;
 
     public DysonCore(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -95,11 +109,6 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     }
 
     @Override
-    protected boolean shouldRequireOrundumField() {
-        return false;
-    }
-
-    @Override
     protected boolean usesOrundumCost() {
         return false;
     }
@@ -112,6 +121,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     protected UUID getTeamId() {
         UUID resolved = OrundumEnergyService.getTeamIdForUser(ownerUUID);
         return resolved != null ? resolved : ownerUUID;
+    }
+
+    public static boolean isOwnerCoreRegistered(UUID ownerUUID) {
+        return ownerUUID != null && CORE_BY_OWNER.containsKey(ownerUUID);
     }
 
     @Override
@@ -147,6 +160,24 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         if (!DysonMachineConfig.isInTalos(aBaseMetaTileEntity.getWorld())) {
             disconnectAll();
             return;
+        }
+
+        // 每人一台：注册/校验唯一核心
+        UUID owner = ownerUUID;
+        if (mMachine && owner != null) {
+            DysonCore existing = CORE_BY_OWNER.get(owner);
+            if (existing == null) {
+                CORE_BY_OWNER.put(owner, this);
+                duplicateRejected = false;
+            } else if (existing != this) {
+                duplicateRejected = true;
+                disableWorking();
+                stopMachine(DUPLICATE_CORE_REASON);
+                disconnectAll();
+                return;
+            }
+        } else if (owner != null && CORE_BY_OWNER.get(owner) == this) {
+            CORE_BY_OWNER.remove(owner);
         }
 
         // 核心算力门控：不足则全部模块断开
@@ -209,6 +240,15 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     }
 
     @Override
+    public void onRemoval() {
+        UUID owner = ownerUUID;
+        if (owner != null && CORE_BY_OWNER.get(owner) == this) {
+            CORE_BY_OWNER.remove(owner);
+        }
+        super.onRemoval();
+    }
+
+    @Override
     public String[] getInfoData() {
         String[] origin = super.getInfoData();
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
@@ -246,6 +286,11 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                     + " / 框架 "
                     + EnumChatFormatting.GOLD
                     + team.frameComponents);
+        }
+
+        if (duplicateRejected) {
+            lines.add(
+                EnumChatFormatting.RED + "该玩家已有一台核心，本机已停机");
         }
 
         if (base != null && base.isServerSide()) {
@@ -390,7 +435,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType("戴森核心")
-            .addInfo("每队限一台的戴森球巨构枢纽")
+            .addInfo("每位玩家限一台的戴森球巨构枢纽")
+            .addInfo("核心与模块必须在 Orundum 供电场内工作")
             .addInfo("最多挂载 32 个模块（占位结构，贴片数解锁槽位）")
             .addInfo("核心消耗 1,000,000 算力")
             .addSeparator()

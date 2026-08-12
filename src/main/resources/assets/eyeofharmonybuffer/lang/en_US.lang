@@ -1269,3 +1269,4 @@ EOHB.nei.byproduct.title=Byproduct (rolled per recipe)
 EOHB.nei.byproduct.totalChance=Total chance
 item.DysonCloudComponent.name=Dyson Cloud Component
 item.DysonFrameComponent.name=Dyson Frame Component
+GT5U.gui.text.shutdown_reason.dyson_duplicate_core=This player already has a Dyson Core
