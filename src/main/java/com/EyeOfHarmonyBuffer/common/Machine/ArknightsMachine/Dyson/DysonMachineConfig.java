@@ -99,6 +99,9 @@ public final class DysonMachineConfig {
     /** 核心心跳窗口：超过该 tick 数未收到核心刷新，模块自动停机。 */
     public static final int CORE_HEARTBEAT_TICKS = 40;
 
+    /** 每台核心最多可链接的模块数（与激活曲线完工后的 32 槽一致）。 */
+    public static final int MAX_LINKED_MODULES = 32;
+
     /** 戴森核心与模块只能在塔罗斯 2 维度运行。 */
     public static final int REQUIRED_DIMENSION = RegisterDimensions.ID_TALOS2_DIM;
 

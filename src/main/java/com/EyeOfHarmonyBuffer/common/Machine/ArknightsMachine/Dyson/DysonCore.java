@@ -9,12 +9,10 @@ import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
-import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +30,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
@@ -74,11 +73,10 @@ import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
-import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 
+import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Textures;
-import gregtech.api.interfaces.IHatchElement;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -87,7 +85,6 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTUtility;
-import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.api.util.shutdown.SimpleShutDownReason;
@@ -97,8 +94,9 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 /**
  * 戴森核心：每队一台的模块化巨构枢纽。
  * <p>
- * 占位结构 11×9×9，含 32 个模块位；按本队贴片数激活槽位（8/12/16/20/32），
- * 完工后解锁后 12 槽；接收模块每核心至多 1 台；核心算力 100 万，不足则全部模块断开。
+ * 结构为纯外壳占位（11×9×9，不含模块位）；模块通过 GT 数据棒链接（左键核心保存坐标、
+ * 右键模块绑定，无距离限制），最多链接 32 台；按本队贴片数激活槽位（8/12/16/20/32），
+ * 完工后解锁后 12 槽；接收模块每队至多 1 台；核心算力 100 万，不足则全部模块断开。
  */
 public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     implements IConstructable, ISurvivalConstructable {
@@ -120,7 +118,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     private static final ShutDownReason DUPLICATE_CORE_REASON =
         SimpleShutDownReason.ofNormal("dyson_duplicate_core");
 
-    public final ArrayList<DysonModuleBase<?>> moduleHatches = new ArrayList<>();
+    /** 已链接到本核心的模块（运行时缓存；真身在模块侧 NBT，重启后由模块自动重连）。 */
+    public final ArrayList<DysonModuleBase<?>> linkedModules = new ArrayList<>();
 
     /** 本机因该玩家已存在另一台核心而被停机。 */
     private boolean duplicateRejected = false;
@@ -925,13 +924,6 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             return;
         }
 
-        // 模块热插拔：模块槽位距离控制器 16+ 格，方块邻接更新传不到核心，
-        // 而 GT 的初始结构检查跑完后就不再自动重查。这里每隔 ~2 秒强制一次结构重查，
-        // 让玩家事后新放/替换的模块能被收集进 moduleHatches（不用拆核心重放）。
-        if ((aTick % 40) == 0) {
-            setStructureUpdateTime(5);
-        }
-
         // 队伍归属上报：离队/被踢时由系统把升级树继承到个人
         if (ownerUUID != null) {
             DysonSphereSystem.trackPlayerTeam(
@@ -1003,8 +995,13 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         int activeSlots = DysonMachineConfig.activeSlotsForPaste(paste);
 
         int connectedCount = 0;
-        for (DysonModuleBase<?> module : moduleHatches) {
-            if (module == null) {
+        java.util.Iterator<DysonModuleBase<?>> it = linkedModules.iterator();
+        while (it.hasNext()) {
+            DysonModuleBase<?> module = it.next();
+            // 清理失效引用：模块区块卸载/方块被拆后，GT 重载会新建 MTE 实例，旧实例不再有效；
+            // 新实例会通过模块侧持久化的坐标在加载后自动重连，这里直接丢弃旧引用即可。
+            if (module == null || module.getBaseMetaTileEntity() == null || module.getBaseMetaTileEntity().isDead()) {
+                it.remove();
                 continue;
             }
             // 被软锤关机的模块不允许占用连接名额；接收模块尤其不能占着“每队唯一”的名额
@@ -1035,7 +1032,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     }
 
     private void disconnectAll() {
-        for (DysonModuleBase<?> module : moduleHatches) {
+        for (DysonModuleBase<?> module : linkedModules) {
             if (module != null) {
                 module.disconnect();
             }
@@ -1066,7 +1063,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
 
         int connectedCount = 0;
-        for (DysonModuleBase<?> module : moduleHatches) {
+        for (DysonModuleBase<?> module : linkedModules) {
             if (module != null && module.isConnected()) {
                 connectedCount++;
             }
@@ -1162,7 +1159,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                                 int x, int y, int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
         int connectedCount = 0;
-        for (DysonModuleBase<?> module : moduleHatches) {
+        for (DysonModuleBase<?> module : linkedModules) {
             if (module != null && module.isConnected()) {
                 connectedCount++;
             }
@@ -1182,49 +1179,73 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             ownerUUID != null && WirelessComputeHelper.isConsumerSatisfiedInGroup(this));
     }
 
-    public boolean addModuleTile(IGregTechTileEntity tileEntity) {
-        if (tileEntity == null) {
+    /** 链接注册：由模块侧 trySetControllerFromCoord 调用；槽位满（32）时拒绝。 */
+    public boolean registerLinkedModule(DysonModuleBase<?> module) {
+        if (module == null) {
             return false;
         }
-        IMetaTileEntity metaTileEntity = tileEntity.getMetaTileEntity();
-        if (metaTileEntity instanceof DysonModuleBase) {
-            DysonModuleBase<?> module = (DysonModuleBase<?>) metaTileEntity;
-            if (!moduleHatches.contains(module)) {
-                return moduleHatches.add(module);
-            }
+        if (linkedModules.contains(module)) {
             return true;
         }
-        return false;
+        if (linkedModules.size() >= DysonMachineConfig.MAX_LINKED_MODULES) {
+            return false;
+        }
+        return linkedModules.add(module);
     }
 
-    public enum moduleElement implements IHatchElement<DysonCore> {
+    public void unregisterLinkedModule(DysonModuleBase<?> module) {
+        linkedModules.remove(module);
+    }
 
-        Module((core, tileEntity, index) -> core.addModuleTile(tileEntity), DysonModuleBase.class) {
+    public List<DysonModuleBase<?>> getLinkedModules() {
+        return linkedModules;
+    }
 
-            @Override
-            public long count(DysonCore tileEntity) {
-                return tileEntity.moduleHatches.size();
+    /** 核心被拆/卸载时：通知所有已加载的链接模块解除绑定（未加载的模块靠 NBT 坐标在加载后自动重连）。 */
+    private void unlinkAllModules() {
+        List<DysonModuleBase<?>> copy = new ArrayList<>(linkedModules);
+        linkedModules.clear();
+        for (DysonModuleBase<?> module : copy) {
+            if (module != null) {
+                module.unlinkController();
             }
-        };
+        }
+    }
 
-        private final List<Class<? extends IMetaTileEntity>> mteClasses;
-        private final IGTHatchAdder<DysonCore> adder;
-
-        @SafeVarargs
-        moduleElement(IGTHatchAdder<DysonCore> adder, Class<? extends IMetaTileEntity>... mteClasses) {
-            this.mteClasses = Collections.unmodifiableList(Arrays.asList(mteClasses));
-            this.adder = adder;
+    /** 数据棒左键核心：把核心坐标写入数据棒（GT5U 净化水厂同款交互），仅机主或同队成员可用。 */
+    @Override
+    public void onLeftclick(IGregTechTileEntity aBaseMetaTileEntity, EntityPlayer aPlayer) {
+        if (!(aPlayer instanceof EntityPlayerMP)) {
+            return;
         }
 
-        @Override
-        public List<? extends Class<? extends IMetaTileEntity>> mteClasses() {
-            return mteClasses;
+        ItemStack dataStick = aPlayer.inventory.getCurrentItem();
+        if (!ItemList.Tool_DataStick.isStackEqual(dataStick, false, true)) {
+            return;
+        }
+        if (!DysonModuleBase.canPlayerLinkMachine(ownerUUID, aPlayer)) {
+            aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Permission));
+            return;
         }
 
-        @Override
-        public IGTHatchAdder<? super DysonCore> adder() {
-            return adder;
-        }
+        NBTTagCompound tag = dataStick.stackTagCompound == null
+            ? new NBTTagCompound()
+            : dataStick.stackTagCompound;
+        tag.setString("type", "EOHBDysonCore");
+        tag.setInteger("x", aBaseMetaTileEntity.getXCoord());
+        tag.setInteger("y", aBaseMetaTileEntity.getYCoord());
+        tag.setInteger("z", aBaseMetaTileEntity.getZCoord());
+        dataStick.stackTagCompound = tag;
+        dataStick.setStackDisplayName(
+            Dyson_Link_StickName
+                + " ("
+                + aBaseMetaTileEntity.getXCoord()
+                + ", "
+                + aBaseMetaTileEntity.getYCoord()
+                + ", "
+                + aBaseMetaTileEntity.getZCoord()
+                + ")");
+        aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Saved));
     }
 
     private static final String SP = "                                ";
@@ -1245,12 +1266,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         { SP, SP, CTRL, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
             SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP,
             SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP },
-        // y=3 模块层
-        { SP, ACOL, SP, SP, "  ACA   ACA   ACA   ABA   ACA   ", CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
-            "  ABA   ABA   ABA   ACA   ABA   ", CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
-            "  ABA   ACA   ACA   ACA   ABA   ", CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
-            "  ABA   ACA   ACA   ACA   ACA   ", CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
-            "  ACA   ACA   ABA   ABA   ACA   ", CLUSTER_GAP, CLUSTER_A, SP },
+        // y=3 模块层（原模块槽位 B/C 已全部改为纯外壳；模块改为数据棒链接，不占结构位置）
+        { SP, ACOL, SP, SP, CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
+            CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
+            CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
+            CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
+            CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP },
         // y=4 平台顶
         { SP, SP, ACOL, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
             SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP,
@@ -1264,7 +1285,6 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     @Override
     public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack,
                              List<StructureError> errors) {
-        moduleHatches.clear();
         checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
     }
 
@@ -1294,16 +1314,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     @Override
     public IStructureDefinition<DysonCore> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
-            IStructureElement<DysonCore> moduleSlot = buildHatchAdder(DysonCore.class)
-                .atLeast(moduleElement.Module)
-                .casingIndex(CASING_INDEX)
-                .hint(2)
-                .buildAndChain(ofBlock(sBlockCasings8, 7));
+            // 纯外壳结构：模块不再需要物理插在核心上，通过数据棒链接（无距离限制）
             STRUCTURE_DEFINITION = StructureDefinition.<DysonCore>builder()
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings8, 7))
-                .addElement('B', moduleSlot)
-                .addElement('C', moduleSlot)
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -1338,6 +1352,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             .addInfo(Tooltip_DysonCore_20)
             .addInfo(Tooltip_DysonCore_21)
             .addInfo(Tooltip_DysonCore_22)
+            .addInfo(Tooltip_DysonCore_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

@@ -387,6 +387,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             .addInfo(Tooltip_DysonLaunchModule_09)
             .addInfo(Tooltip_DysonLaunchModule_10)
             .addInfo(Tooltip_DysonLaunchModule_11)
+            .addInfo(Tooltip_DysonModule_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

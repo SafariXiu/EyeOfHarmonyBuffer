@@ -273,6 +273,7 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
             .addInfo(Tooltip_DysonMassLaunchModule_08)
             .addInfo(Tooltip_DysonMassLaunchModule_09)
             .addInfo(Tooltip_DysonMassLaunchModule_10)
+            .addInfo(Tooltip_DysonModule_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

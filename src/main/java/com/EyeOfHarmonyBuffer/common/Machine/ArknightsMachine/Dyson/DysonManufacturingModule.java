@@ -355,6 +355,7 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
             .addInfo(Tooltip_DysonManufacturingModule_10)
             .addInfo(Tooltip_DysonManufacturingModule_11)
             .addInfo(Tooltip_DysonManufacturingModule_12)
+            .addInfo(Tooltip_DysonModule_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

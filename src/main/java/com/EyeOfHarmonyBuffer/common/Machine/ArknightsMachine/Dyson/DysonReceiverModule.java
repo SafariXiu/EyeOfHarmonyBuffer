@@ -431,6 +431,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
             .addInfo(Tooltip_DysonReceiverModule_09)
             .addInfo(Tooltip_DysonReceiverModule_10)
             .addInfo(Tooltip_DysonReceiverModule_11)
+            .addInfo(Tooltip_DysonModule_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

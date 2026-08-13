@@ -11,11 +11,14 @@ import java.util.UUID;
 
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
@@ -27,6 +30,8 @@ import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMac
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeHelper;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 
+import gregtech.api.enums.ItemList;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
@@ -49,6 +54,21 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     protected long lastConnectTick = Long.MIN_VALUE;
     protected BigInteger pendingCost = BigInteger.ZERO;
     protected BigInteger pendingGain = BigInteger.ZERO;
+
+    /** 绑定的戴森核心坐标：链接关系的真身持久化在模块侧，核心侧的链接列表不存档。 */
+    private int controllerX = 0;
+    private int controllerY = 0;
+    private int controllerZ = 0;
+    private boolean controllerSet = false;
+    private DysonCore controller = null;
+
+    /** 链接结果（无距离限制；距离换成权限与槽位校验）。 */
+    private enum LinkResult {
+        NO_VALID_CORE,
+        PERMISSION_DENIED,
+        SLOTS_FULL,
+        SUCCESS
+    }
 
     public enum ModuleType {
         MANUFACTURING,
@@ -93,6 +113,124 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
 
     public boolean isFormed() {
         return mMachine;
+    }
+
+    /** 链接权限：机主本人或同队成员（自动重连时 player 为 null，跳过权限校验）。 */
+    public static boolean canPlayerLinkMachine(UUID ownerUUID, EntityPlayer player) {
+        if (player == null || ownerUUID == null) {
+            return true;
+        }
+        if (player.getUniqueID().equals(ownerUUID)) {
+            return true;
+        }
+        UUID myTeam = OrundumEnergyService.getTeamIdForUser(ownerUUID);
+        UUID playerTeam = OrundumEnergyService.getTeamIdForUser(player.getUniqueID());
+        return myTeam != null && myTeam.equals(playerTeam);
+    }
+
+    public DysonCore getController() {
+        if (controller == null) {
+            return null;
+        }
+        if (controller.getBaseMetaTileEntity() == null) {
+            return null;
+        }
+        return controller;
+    }
+
+    public boolean isLinked() {
+        return getController() != null;
+    }
+
+    /** 核心被拆时调用：清空本模块对核心的全部引用（坐标持久化数据一并清除）。 */
+    public void unlinkController() {
+        this.controllerSet = false;
+        this.controller = null;
+        this.controllerX = 0;
+        this.controllerY = 0;
+        this.controllerZ = 0;
+    }
+
+    /** 按坐标绑定核心：无距离限制，只校验“目标确实是戴森核心 + 双方权限 + 核心槽位未满”。 */
+    private LinkResult trySetControllerFromCoord(int x, int y, int z, EntityPlayer player) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.getWorld() == null) {
+            return LinkResult.NO_VALID_CORE;
+        }
+        TileEntity te = base.getWorld().getTileEntity(x, y, z);
+        if (te == null || !(te instanceof IGregTechTileEntity)) {
+            return LinkResult.NO_VALID_CORE;
+        }
+        IMetaTileEntity metaTileEntity = ((IGregTechTileEntity) te).getMetaTileEntity();
+        if (!(metaTileEntity instanceof DysonCore)) {
+            return LinkResult.NO_VALID_CORE;
+        }
+        DysonCore core = (DysonCore) metaTileEntity;
+
+        // 权限：模块与核心都必须允许该玩家操作
+        if (player != null
+            && (!canPlayerLinkMachine(ownerUUID, player)
+                || !canPlayerLinkMachine(core.getOwnerUUID(), player))) {
+            return LinkResult.PERMISSION_DENIED;
+        }
+
+        // 先尝试注册到新核心：槽位已满则保持原链接不变，避免“丢了旧的又没换上新的”
+        if (!core.registerLinkedModule(this)) {
+            return LinkResult.SLOTS_FULL;
+        }
+        // 注册成功后再解绑旧核心，避免一个模块同时挂在多个核心上
+        DysonCore oldController = getController();
+        if (oldController != null && oldController != core) {
+            oldController.unregisterLinkedModule(this);
+            this.unlinkController();
+        }
+        controllerX = x;
+        controllerY = y;
+        controllerZ = z;
+        controllerSet = true;
+        controller = core;
+        return LinkResult.SUCCESS;
+    }
+
+    /** 数据棒右键：读取核心坐标并尝试绑定（GT5U 净化水厂同款交互）。 */
+    private boolean tryLinkDataStick(EntityPlayer aPlayer) {
+        ItemStack dataStick = aPlayer.inventory.getCurrentItem();
+        if (!ItemList.Tool_DataStick.isStackEqual(dataStick, false, true)) {
+            return false;
+        }
+        if (dataStick.stackTagCompound == null) {
+            return false;
+        }
+        if (!"EOHBDysonCore".equals(dataStick.stackTagCompound.getString("type"))) {
+            return false;
+        }
+        int x = dataStick.stackTagCompound.getInteger("x");
+        int y = dataStick.stackTagCompound.getInteger("y");
+        int z = dataStick.stackTagCompound.getInteger("z");
+        LinkResult result = trySetControllerFromCoord(x, y, z, aPlayer);
+        switch (result) {
+            case SUCCESS:
+                aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Success));
+                break;
+            case NO_VALID_CORE:
+                aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_NoCore));
+                break;
+            case PERMISSION_DENIED:
+                aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Permission));
+                break;
+            case SLOTS_FULL:
+                aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Slots));
+                break;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onRightclick(IGregTechTileEntity aBaseMetaTileEntity, EntityPlayer aPlayer) {
+        if (!aBaseMetaTileEntity.getWorld().isRemote && tryLinkDataStick(aPlayer)) {
+            return true;
+        }
+        return super.onRightclick(aBaseMetaTileEntity, aPlayer);
     }
 
     @Override
@@ -266,6 +404,12 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             connected
                 ? EnumChatFormatting.AQUA + Dyson_Info_ModuleConnected
                 : EnumChatFormatting.AQUA + Dyson_Info_ModuleDisconnected);
+        lines.add(
+            isLinked()
+                ? EnumChatFormatting.AQUA
+                    + StatCollector.translateToLocalFormatted(
+                        "Dyson_Info_Linked", controllerX, controllerY, controllerZ)
+                : EnumChatFormatting.RED + Dyson_Info_NotLinked);
 
         BigInteger demand = getRequiredCompute();
         if (demand.signum() > 0) {
@@ -317,6 +461,11 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             return;
         }
 
+        // 重载/区块重载后自动重连核心（核心侧链接列表不存档，靠模块侧持久化的坐标恢复）
+        if (aTick % 100 == 5 && controllerSet && getController() == null) {
+            trySetControllerFromCoord(controllerX, controllerY, controllerZ, null);
+        }
+
         // 完工锁：非胜利队伍的全部模块禁止开机；胜利队伍的制造/发射模块禁止开机（接收模块除外）
         World world = aBaseMetaTileEntity.getWorld();
         if (world != null) {
@@ -341,6 +490,39 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         }
     }
 
+    @Override
+    public void onBlockDestroyed() {
+        DysonCore controller = getController();
+        if (controller != null) {
+            controller.unregisterLinkedModule(this);
+        }
+        super.onBlockDestroyed();
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        super.saveNBTData(aNBT);
+        if (controllerSet) {
+            NBTTagCompound controllerNBT = new NBTTagCompound();
+            controllerNBT.setInteger("x", controllerX);
+            controllerNBT.setInteger("y", controllerY);
+            controllerNBT.setInteger("z", controllerZ);
+            aNBT.setTag("controller", controllerNBT);
+        }
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        super.loadNBTData(aNBT);
+        if (aNBT.hasKey("controller")) {
+            NBTTagCompound controllerNBT = aNBT.getCompoundTag("controller");
+            controllerX = controllerNBT.getInteger("x");
+            controllerY = controllerNBT.getInteger("y");
+            controllerZ = controllerNBT.getInteger("z");
+            controllerSet = true;
+        }
+    }
+
     // ---- Waila：戴森模块不接能量仓，只显示连接状态 / 算力 / 个人组件库存 ----
 
     @Override
@@ -357,6 +539,17 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             // 戴森球已成型：被锁死的模块不再显示“未连接”，而是明确告知已关闭
             currentTip.add(EnumChatFormatting.RED + Dyson_Info_CompletedShutdown);
         } else {
+            if (tag.getBoolean("dysonLinked")) {
+                currentTip.add(
+                    EnumChatFormatting.AQUA
+                        + StatCollector.translateToLocalFormatted(
+                            "Dyson_Info_Linked",
+                            tag.getInteger("dysonLinkX"),
+                            tag.getInteger("dysonLinkY"),
+                            tag.getInteger("dysonLinkZ")));
+            } else {
+                currentTip.add(EnumChatFormatting.RED + Dyson_Info_NotLinked);
+            }
             currentTip.add(
                 tag.getBoolean("dysonConnected")
                     ? EnumChatFormatting.AQUA + Dyson_Info_ModuleConnected
@@ -381,6 +574,12 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world,
                                 int x, int y, int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
+        tag.setBoolean("dysonLinked", isLinked());
+        if (isLinked()) {
+            tag.setInteger("dysonLinkX", controllerX);
+            tag.setInteger("dysonLinkY", controllerY);
+            tag.setInteger("dysonLinkZ", controllerZ);
+        }
         tag.setBoolean("dysonConnected", connected);
         BigInteger demand = getRequiredCompute();
         if (demand.signum() > 0) {
