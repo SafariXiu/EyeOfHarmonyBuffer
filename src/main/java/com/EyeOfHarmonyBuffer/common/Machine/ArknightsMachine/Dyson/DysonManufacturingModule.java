@@ -244,11 +244,11 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType("戴森制造模块")
-            .addInfo("制造戴森云组件与框架组件")
-            .addInfo("基础一轮 30 秒，基础并行 64")
-            .addInfo("成本计入队伍 Orundum 账本（云 10 亿/t、框架 50 亿/t）")
-            .addInfo("消耗 10,000 算力")
+        tt.addMachineType(Tooltip_DysonManufacturingModule_MachineType)
+            .addInfo(Tooltip_DysonManufacturingModule_00)
+            .addInfo(Tooltip_DysonManufacturingModule_01)
+            .addInfo(Tooltip_DysonManufacturingModule_02)
+            .addInfo(Tooltip_DysonManufacturingModule_03)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

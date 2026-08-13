@@ -168,9 +168,7 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
         String[] origin = super.getInfoData();
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
         lines.add(
-            EnumChatFormatting.AQUA + "发射模式: "
-                + EnumChatFormatting.GOLD
-                + "全量（60 秒一轮，一次性清空个人组件）");
+            EnumChatFormatting.AQUA + Dyson_Info_MassMode);
         return lines.toArray(new String[0]);
     }
 
@@ -223,11 +221,11 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType("戴森全量发射模块")
-            .addInfo("一轮 60 秒，把机主全部云/框架组件一次性发射")
-            .addInfo("需队伍点亮“全量发射”大节点")
-            .addInfo("每个组件消耗 10,000 Orundum")
-            .addInfo("消耗 100,000 算力")
+        tt.addMachineType(Tooltip_DysonMassLaunchModule_MachineType)
+            .addInfo(Tooltip_DysonMassLaunchModule_00)
+            .addInfo(Tooltip_DysonMassLaunchModule_01)
+            .addInfo(Tooltip_DysonMassLaunchModule_02)
+            .addInfo(Tooltip_DysonMassLaunchModule_03)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

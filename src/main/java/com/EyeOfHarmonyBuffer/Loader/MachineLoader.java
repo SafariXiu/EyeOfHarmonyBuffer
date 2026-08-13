@@ -348,35 +348,35 @@ public class MachineLoader {
         DysonCore = new DysonCore(
             MachineBlockID + 42,
             "NameDysonCore",
-            "戴森核心"
+            TextLocalization.NameDysonCore
         ).getStackForm(1);
         GTCMItemList.DysonCore.set(DysonCore);
 
         DysonManufacturingModule = new DysonManufacturingModule(
             MachineBlockID + 43,
             "NameDysonManufacturingModule",
-            "戴森制造模块"
+            TextLocalization.NameDysonManufacturingModule
         ).getStackForm(1);
         GTCMItemList.DysonManufacturingModule.set(DysonManufacturingModule);
 
         DysonLaunchModule = new DysonLaunchModule(
             MachineBlockID + 44,
             "NameDysonLaunchModule",
-            "戴森发射模块"
+            TextLocalization.NameDysonLaunchModule
         ).getStackForm(1);
         GTCMItemList.DysonLaunchModule.set(DysonLaunchModule);
 
         DysonReceiverModule = new DysonReceiverModule(
             MachineBlockID + 45,
             "NameDysonReceiverModule",
-            "戴森接收模块"
+            TextLocalization.NameDysonReceiverModule
         ).getStackForm(1);
         GTCMItemList.DysonReceiverModule.set(DysonReceiverModule);
 
         DysonMassLaunchModule = new DysonMassLaunchModule(
             MachineBlockID + 46,
             "NameDysonMassLaunchModule",
-            "戴森全量发射模块"
+            TextLocalization.NameDysonMassLaunchModule
         ).getStackForm(1);
         GTCMItemList.DysonMassLaunchModule.set(DysonMassLaunchModule);
     }

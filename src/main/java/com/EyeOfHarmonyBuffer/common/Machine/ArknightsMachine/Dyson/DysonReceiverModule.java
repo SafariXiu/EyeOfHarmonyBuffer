@@ -278,7 +278,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
                     }
                     return true;
                 })
-                .tooltipBuilder(t -> t.addLine(IKey.str("配置 Orundum / EU 产出拆分")))
+                .tooltipBuilder(t -> t.addLine(IKey.str(Dyson_Gui_SplitTooltip)))
                 .tooltipShowUpTimer(TOOLTIP_DELAY);
         }
 
@@ -292,7 +292,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
                     Flow.column()
                         .full()
                         .padding(4)
-                        .child(new TextWidget<>(IKey.str("Orundum 产出占比 (0-100)")))
+                        .child(new TextWidget<>(IKey.str(Dyson_Gui_SplitTitle)))
                         .child(
                             new TextFieldWidget()
                                 .value(shareSyncer)
@@ -304,7 +304,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
                             new TextWidget<>(
                                 IKey.dynamic(
                                     () -> EnumChatFormatting.AQUA
-                                        + "EU: "
+                                        + Dyson_Gui_SplitEUText
                                         + (100 - multiblock.getOrundumSharePercent())
                                         + "%"))));
         }
@@ -315,7 +315,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         String[] origin = super.getInfoData();
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
         lines.add(
-            EnumChatFormatting.AQUA + "产出拆分: Orundum "
+            EnumChatFormatting.AQUA + Dyson_Info_Split
                 + EnumChatFormatting.GOLD
                 + orundumSharePercent
                 + "%"
@@ -392,10 +392,10 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType("戴森接收模块")
-            .addInfo("按本队云+贴片功率发电（每秒结算一次）")
-            .addInfo("完工后输出 10^200 EU/t")
-            .addInfo("每队限 1 台（不限挂在哪位队员的核心上）")
+        tt.addMachineType(Tooltip_DysonReceiverModule_MachineType)
+            .addInfo(Tooltip_DysonReceiverModule_00)
+            .addInfo(Tooltip_DysonReceiverModule_01)
+            .addInfo(Tooltip_DysonReceiverModule_02)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

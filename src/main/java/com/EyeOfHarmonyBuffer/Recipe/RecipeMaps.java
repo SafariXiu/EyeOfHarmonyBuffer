@@ -550,7 +550,7 @@ public class RecipeMaps {
         .build();
 
     public static final RecipeMap<RecipeMapBackend> DysonManufacturing = RecipeMapBuilder
-        .of("EOHB_DysonManufacturing")
+        .of(EOHB_Recipe_DysonManufacturing)
         .maxIO(2, 1, 1, 0)
         .neiRecipeBackgroundSize(170, 185)
         .useCustomFilterForNEI()

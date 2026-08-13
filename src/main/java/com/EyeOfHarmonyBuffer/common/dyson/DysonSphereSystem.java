@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonCore;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonReceiverModule;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -319,11 +320,13 @@ public final class DysonSphereSystem {
         if (server == null) {
             return;
         }
-        String name = teamName == null || teamName.isEmpty() ? "未知队伍" : teamName;
+        String name = teamName == null || teamName.isEmpty()
+            ? TextLocalization.Dyson_Broadcast_UnknownTeam
+            : teamName;
         server.getConfigurationManager().sendChatMsg(new ChatComponentText(
-            EnumChatFormatting.GOLD + "[戴森球] " + EnumChatFormatting.RESET
+            EnumChatFormatting.GOLD + TextLocalization.Dyson_Broadcast_00 + EnumChatFormatting.RESET
                 + EnumChatFormatting.AQUA + name + EnumChatFormatting.RESET
-                + " 的队伍完成了塔罗斯戴森球！恒星已永久归属他们。"));
+                + TextLocalization.Dyson_Broadcast_01));
     }
 
     /** 调试重置：清空全部队伍与完工状态。 */

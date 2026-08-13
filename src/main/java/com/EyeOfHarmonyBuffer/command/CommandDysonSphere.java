@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.command;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
@@ -60,13 +62,13 @@ public class CommandDysonSphere extends CommandBase {
         }
 
         if (!sender.canCommandSenderUseCommand(2, getCommandName())) {
-            sendError(sender, "你没有权限使用此命令。");
+            sendError(sender, Dyson_Cmd_NoPermission);
             return;
         }
 
         DysonSphereWorldData data = DysonSphereWorldData.get(sender.getEntityWorld());
         if (data == null) {
-            sendError(sender, "戴森球存档尚未加载。");
+            sendError(sender, Dyson_Cmd_NotLoaded);
             return;
         }
 
@@ -91,18 +93,18 @@ public class CommandDysonSphere extends CommandBase {
         switch (sub) {
             case "stage": {
                 if (args.length < 2) {
-                    sendError(sender, "用法: /dyson stage <1-5>");
+                    sendError(sender, Dyson_Cmd_UsageStage);
                     return;
                 }
                 int stageArg;
                 try {
                     stageArg = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    sendError(sender, "阶段必须是 1-5 的整数。");
+                    sendError(sender, Dyson_Cmd_StageRange);
                     return;
                 }
                 if (stageArg < 1 || stageArg > 5) {
-                    sendError(sender, "阶段必须是 1-5 的整数。");
+                    sendError(sender, Dyson_Cmd_StageRange);
                     return;
                 }
                 switch (stageArg) {
@@ -136,13 +138,13 @@ public class CommandDysonSphere extends CommandBase {
             }
             case "cloud": {
                 if (args.length < 2) {
-                    sendError(sender, "用法: /dyson cloud <数量>");
+                    sendError(sender, Dyson_Cmd_UsageCloud);
                     return;
                 }
                 try {
                     newCloud = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    sendError(sender, "数量必须是整数。");
+                    sendError(sender, Dyson_Cmd_Number);
                     return;
                 }
                 newCloud = Math.max(0, Math.min(DysonSphereState.CLOUD_CAP, newCloud));
@@ -150,13 +152,13 @@ public class CommandDysonSphere extends CommandBase {
             }
             case "frame": {
                 if (args.length < 2) {
-                    sendError(sender, "用法: /dyson frame <数量>");
+                    sendError(sender, Dyson_Cmd_UsageFrame);
                     return;
                 }
                 try {
                     newFrame = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    sendError(sender, "数量必须是整数。");
+                    sendError(sender, Dyson_Cmd_Number);
                     return;
                 }
                 newFrame = Math.max(0, Math.min(DysonSphereState.FRAME_COMPLETE, newFrame));
@@ -164,13 +166,13 @@ public class CommandDysonSphere extends CommandBase {
             }
             case "paste": {
                 if (args.length < 2) {
-                    sendError(sender, "用法: /dyson paste <数量>");
+                    sendError(sender, Dyson_Cmd_UsagePaste);
                     return;
                 }
                 try {
                     newPaste = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    sendError(sender, "数量必须是整数。");
+                    sendError(sender, Dyson_Cmd_Number);
                     return;
                 }
                 newPaste = Math.max(0, Math.min(DysonSphereState.PASTE_COMPLETE, newPaste));
@@ -178,15 +180,15 @@ public class CommandDysonSphere extends CommandBase {
             }
             case "reset":
                 DysonSphereSystem.resetAll(sender.getEntityWorld());
-                sendInfo(sender, "戴森球状态已重置（全部队伍与完工状态清空）。");
+                sendInfo(sender, Dyson_Cmd_Reset);
                 return;
             case "complete":
                 if (data.isCompleted()) {
-                    sendError(sender, "戴森球已完工（永久锁死），可用 /dyson reset 重置测试。");
+                    sendError(sender, Dyson_Cmd_AlreadyComplete);
                     return;
                 }
                 DysonSphereSystem.debugComplete(sender.getEntityWorld(), teamId, teamName);
-                sendInfo(sender, "已触发完工：本队成为占领者，败者清零，全服永久锁死。");
+                sendInfo(sender, Dyson_Cmd_Completed);
                 return;
             default:
                 sendUsage(sender);
@@ -196,18 +198,18 @@ public class CommandDysonSphere extends CommandBase {
         DysonSphereSystem.setTeamCounters(sender.getEntityWorld(), teamId, teamName, newCloud, newFrame, newPaste);
         DysonSphereWorldData updated = DysonSphereWorldData.get(sender.getEntityWorld());
         if (updated != null) {
-            sendInfo(sender, "戴森球状态已更新（领先者）: 云=" + updated.getCloudCount()
-                + " 框架=" + updated.getFrameCount()
-                + " 贴片=" + updated.getPasteCount()
-                + " 阶段=" + updated.getStage()
-                + (updated.getOwnerName().isEmpty() ? "" : " 领先=" + updated.getOwnerName()));
+            sendInfo(sender, Dyson_Cmd_Updated
+                + Dyson_Stat_Cloud + "=" + updated.getCloudCount()
+                + " " + Dyson_Stat_Frame + "=" + updated.getFrameCount()
+                + " " + Dyson_Stat_Paste + "=" + updated.getPasteCount()
+                + " " + Dyson_Stat_Stage + "=" + updated.getStage()
+                + (updated.getOwnerName().isEmpty() ? "" : " " + Dyson_Stat_Leader + "=" + updated.getOwnerName()));
         }
     }
 
     private void sendUsage(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(
-            EnumChatFormatting.YELLOW
-                + "用法: /dyson stage <1-5> | /dyson cloud <数量> | /dyson frame <数量> | /dyson paste <数量> | /dyson complete | /dyson reset"));
+            EnumChatFormatting.YELLOW + Dyson_Cmd_Usage));
     }
 
     private void sendInfo(ICommandSender sender, String msg) {

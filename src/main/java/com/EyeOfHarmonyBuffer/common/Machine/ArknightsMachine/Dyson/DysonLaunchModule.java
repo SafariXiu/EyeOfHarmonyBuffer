@@ -142,11 +142,11 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
         String[] origin = super.getInfoData();
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
         lines.add(
-            EnumChatFormatting.AQUA + "发射优先级: "
+            EnumChatFormatting.AQUA + Dyson_Info_LaunchPriority
                 + EnumChatFormatting.GOLD
-                + (launchCloudFirst ? "云" : "框架"));
+                + (launchCloudFirst ? Dyson_Gui_PriorityCloud : Dyson_Gui_PriorityFrame));
         lines.add(
-            EnumChatFormatting.AQUA + "单轮批量: "
+            EnumChatFormatting.AQUA + Dyson_Info_LaunchBatch
                 + EnumChatFormatting.GOLD
                 + getLaunchBatch());
         return lines.toArray(new String[0]);
@@ -175,19 +175,19 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
                 .value(cloudFirst)
                 .child(
                     true,
-                    new TextWidget<>(IKey.str("云"))
+                    new TextWidget<>(IKey.str(Dyson_Gui_PriorityCloud))
                         .size(18, 18)
                         .textAlign(Alignment.Center)
                         .color(Color.WHITE.main)
                         .shadow(true))
                 .child(
                     false,
-                    new TextWidget<>(IKey.str("框"))
+                    new TextWidget<>(IKey.str(Dyson_Gui_PriorityFrame))
                         .size(18, 18)
                         .textAlign(Alignment.Center)
                         .color(Color.WHITE.main)
                         .shadow(true))
-                .tooltipBuilder(t -> t.addLine(IKey.str("发射优先级：云优先 / 框架优先")));
+                .tooltipBuilder(t -> t.addLine(IKey.str(Dyson_Gui_PriorityTooltip)));
         }
     }
 
@@ -335,11 +335,11 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType("戴森发射模块")
-            .addInfo("从队伍组件库存发射（1 组件 = 1 计数）")
-            .addInfo("基础周期 10 秒，单轮最多 16 组件")
-            .addInfo("每个组件消耗 10,000 Orundum")
-            .addInfo("消耗 100,000 算力")
+        tt.addMachineType(Tooltip_DysonLaunchModule_MachineType)
+            .addInfo(Tooltip_DysonLaunchModule_00)
+            .addInfo(Tooltip_DysonLaunchModule_01)
+            .addInfo(Tooltip_DysonLaunchModule_02)
+            .addInfo(Tooltip_DysonLaunchModule_03)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

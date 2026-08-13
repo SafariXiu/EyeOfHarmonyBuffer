@@ -456,6 +456,89 @@ public class TextLocalization {
     public static final String Tooltip_ElectricPylon_05;
     public static final String Tooltip_ElectricPylon_06;
 
+    //戴森球
+    public static final String NameDysonCore;
+    public static final String Tooltip_DysonCore_MachineType;
+    public static final String Tooltip_DysonCore_00;
+    public static final String Tooltip_DysonCore_01;
+    public static final String Tooltip_DysonCore_02;
+    public static final String Tooltip_DysonCore_03;
+
+    public static final String NameDysonManufacturingModule;
+    public static final String Tooltip_DysonManufacturingModule_MachineType;
+    public static final String Tooltip_DysonManufacturingModule_00;
+    public static final String Tooltip_DysonManufacturingModule_01;
+    public static final String Tooltip_DysonManufacturingModule_02;
+    public static final String Tooltip_DysonManufacturingModule_03;
+
+    public static final String NameDysonLaunchModule;
+    public static final String Tooltip_DysonLaunchModule_MachineType;
+    public static final String Tooltip_DysonLaunchModule_00;
+    public static final String Tooltip_DysonLaunchModule_01;
+    public static final String Tooltip_DysonLaunchModule_02;
+    public static final String Tooltip_DysonLaunchModule_03;
+
+    public static final String NameDysonMassLaunchModule;
+    public static final String Tooltip_DysonMassLaunchModule_MachineType;
+    public static final String Tooltip_DysonMassLaunchModule_00;
+    public static final String Tooltip_DysonMassLaunchModule_01;
+    public static final String Tooltip_DysonMassLaunchModule_02;
+    public static final String Tooltip_DysonMassLaunchModule_03;
+
+    public static final String NameDysonReceiverModule;
+    public static final String Tooltip_DysonReceiverModule_MachineType;
+    public static final String Tooltip_DysonReceiverModule_00;
+    public static final String Tooltip_DysonReceiverModule_01;
+    public static final String Tooltip_DysonReceiverModule_02;
+
+    // 戴森球信息面板 / GUI / 指令
+    public static final String Dyson_Info_ModuleConnected;
+    public static final String Dyson_Info_ModuleDisconnected;
+    public static final String Dyson_Info_ComputeRequirement;
+    public static final String Dyson_Info_CloudComponentStock;
+    public static final String Dyson_Info_FrameComponentStock;
+    public static final String Dyson_Info_ConnectedModules;
+    public static final String Dyson_Info_ActiveSlots;
+    public static final String Dyson_Info_TeamPaste;
+    public static final String Dyson_Info_PersonalComponents;
+    public static final String Dyson_Info_DuplicateCore;
+    public static final String Dyson_Info_ComputeSatisfied;
+    public static final String Dyson_Info_ComputeInsufficient;
+    public static final String Dyson_Info_LaunchPriority;
+    public static final String Dyson_Info_LaunchBatch;
+    public static final String Dyson_Info_MassMode;
+    public static final String Dyson_Info_Split;
+    public static final String Dyson_Stat_Cloud;
+    public static final String Dyson_Stat_Frame;
+    public static final String Dyson_Stat_Paste;
+    public static final String Dyson_Stat_Components;
+    public static final String Dyson_Stat_Stage;
+    public static final String Dyson_Stat_Leader;
+    public static final String Dyson_Gui_PriorityCloud;
+    public static final String Dyson_Gui_PriorityFrame;
+    public static final String Dyson_Gui_PriorityTooltip;
+    public static final String Dyson_Gui_SplitTitle;
+    public static final String Dyson_Gui_SplitEUText;
+    public static final String Dyson_Gui_SplitTooltip;
+    public static final String Dyson_Text_Or;
+    public static final String Dyson_Cmd_NoPermission;
+    public static final String Dyson_Cmd_NotLoaded;
+    public static final String Dyson_Cmd_Usage;
+    public static final String Dyson_Cmd_UsageStage;
+    public static final String Dyson_Cmd_UsageCloud;
+    public static final String Dyson_Cmd_UsageFrame;
+    public static final String Dyson_Cmd_UsagePaste;
+    public static final String Dyson_Cmd_StageRange;
+    public static final String Dyson_Cmd_Number;
+    public static final String Dyson_Cmd_Reset;
+    public static final String Dyson_Cmd_AlreadyComplete;
+    public static final String Dyson_Cmd_Completed;
+    public static final String Dyson_Cmd_Updated;
+    public static final String Dyson_Broadcast_00;
+    public static final String Dyson_Broadcast_01;
+    public static final String Dyson_Broadcast_UnknownTeam;
+    public static final String EOHB_Recipe_DysonManufacturing;
+
     //MOD
     public static final String EOHB_Harmony;
     public static final String EOHB_Harmony_Tooltip;
@@ -1802,5 +1885,87 @@ public class TextLocalization {
         EOHB_Recipe_LargeForce_ContainedProliferationMine = TextHandler.texter("AG-07 Large Force-Contained Proliferation Mine","EOHB_Recipe_LargeForce_ContainedProliferationMine");
         EOHB_Recipe_InternalizedUniverseComputingEngine = TextHandler.texter("Internalized Universe Computing Engine","EOHB_Recipe_InternalizedUniverseComputingEngine");
         EOHB_Recipe_XirangAssembler = TextHandler.texter("Xirang Assembler","EOHB_Recipe_XirangAssembler");
+
+        //戴森球
+        NameDysonCore = TextHandler.texter("Dyson Core","NameDysonCore");
+        Tooltip_DysonCore_MachineType = TextHandler.texter("Dyson Core","Tooltip_DysonCore_MachineType");
+        Tooltip_DysonCore_00 = TextHandler.texter("One core per player, a modular megastructure hub.","Tooltip_DysonCore_00");
+        Tooltip_DysonCore_01 = TextHandler.texter("The core and modules must work inside the Orundum power field.","Tooltip_DysonCore_01");
+        Tooltip_DysonCore_02 = TextHandler.texter("Up to 32 module slots (unlocked by team paste count).","Tooltip_DysonCore_02");
+        Tooltip_DysonCore_03 = TextHandler.texter("Consumes 1,000,000 computation.","Tooltip_DysonCore_03");
+
+        NameDysonManufacturingModule = TextHandler.texter("Dyson Manufacturing Module","NameDysonManufacturingModule");
+        Tooltip_DysonManufacturingModule_MachineType = TextHandler.texter("Dyson Manufacturing Module","Tooltip_DysonManufacturingModule_MachineType");
+        Tooltip_DysonManufacturingModule_00 = TextHandler.texter("Manufactures Dyson Cloud and Frame components.","Tooltip_DysonManufacturingModule_00");
+        Tooltip_DysonManufacturingModule_01 = TextHandler.texter("Base round time 30s, base parallel 64.","Tooltip_DysonManufacturingModule_01");
+        Tooltip_DysonManufacturingModule_02 = TextHandler.texter("Costs go to the team Orundum ledger (cloud 1B/t, frame 5B/t).","Tooltip_DysonManufacturingModule_02");
+        Tooltip_DysonManufacturingModule_03 = TextHandler.texter("Consumes 10,000 computation.","Tooltip_DysonManufacturingModule_03");
+
+        NameDysonLaunchModule = TextHandler.texter("Dyson Launch Module","NameDysonLaunchModule");
+        Tooltip_DysonLaunchModule_MachineType = TextHandler.texter("Dyson Launch Module","Tooltip_DysonLaunchModule_MachineType");
+        Tooltip_DysonLaunchModule_00 = TextHandler.texter("Launches the owner's components into the team counters (1 component = 1 count).","Tooltip_DysonLaunchModule_00");
+        Tooltip_DysonLaunchModule_01 = TextHandler.texter("Base round time 10s, up to 16 components per round.","Tooltip_DysonLaunchModule_01");
+        Tooltip_DysonLaunchModule_02 = TextHandler.texter("Each component costs 10,000 Orundum.","Tooltip_DysonLaunchModule_02");
+        Tooltip_DysonLaunchModule_03 = TextHandler.texter("Consumes 100,000 computation.","Tooltip_DysonLaunchModule_03");
+
+        NameDysonMassLaunchModule = TextHandler.texter("Dyson Mass Launch Module","NameDysonMassLaunchModule");
+        Tooltip_DysonMassLaunchModule_MachineType = TextHandler.texter("Dyson Mass Launch Module","Tooltip_DysonMassLaunchModule_MachineType");
+        Tooltip_DysonMassLaunchModule_00 = TextHandler.texter("One 60s round launches all of the owner's cloud/frame components at once.","Tooltip_DysonMassLaunchModule_00");
+        Tooltip_DysonMassLaunchModule_01 = TextHandler.texter("Requires the team to unlock the Mass Launch major node.","Tooltip_DysonMassLaunchModule_01");
+        Tooltip_DysonMassLaunchModule_02 = TextHandler.texter("Each component costs 10,000 Orundum.","Tooltip_DysonMassLaunchModule_02");
+        Tooltip_DysonMassLaunchModule_03 = TextHandler.texter("Consumes 100,000 computation.","Tooltip_DysonMassLaunchModule_03");
+
+        NameDysonReceiverModule = TextHandler.texter("Dyson Receiver Module","NameDysonReceiverModule");
+        Tooltip_DysonReceiverModule_MachineType = TextHandler.texter("Dyson Receiver Module","Tooltip_DysonReceiverModule_MachineType");
+        Tooltip_DysonReceiverModule_00 = TextHandler.texter("Generates power from the team's cloud + paste count (settles once per second).","Tooltip_DysonReceiverModule_00");
+        Tooltip_DysonReceiverModule_01 = TextHandler.texter("Outputs 10^200 EU/t after completion.","Tooltip_DysonReceiverModule_01");
+        Tooltip_DysonReceiverModule_02 = TextHandler.texter("One per team (can be placed on any member's core).","Tooltip_DysonReceiverModule_02");
+
+        Dyson_Info_ModuleConnected = TextHandler.texter("Module status: Connected","Dyson_Info_ModuleConnected");
+        Dyson_Info_ModuleDisconnected = TextHandler.texter("Module status: Disconnected (core offline)","Dyson_Info_ModuleDisconnected");
+        Dyson_Info_ComputeRequirement = TextHandler.texter("Computation requirement: ","Dyson_Info_ComputeRequirement");
+        Dyson_Info_CloudComponentStock = TextHandler.texter("Personal cloud component stock: ","Dyson_Info_CloudComponentStock");
+        Dyson_Info_FrameComponentStock = TextHandler.texter("Frame component stock: ","Dyson_Info_FrameComponentStock");
+        Dyson_Info_ConnectedModules = TextHandler.texter("Connected modules: ","Dyson_Info_ConnectedModules");
+        Dyson_Info_ActiveSlots = TextHandler.texter("Active slots: ","Dyson_Info_ActiveSlots");
+        Dyson_Info_TeamPaste = TextHandler.texter("Team paste: ","Dyson_Info_TeamPaste");
+        Dyson_Info_PersonalComponents = TextHandler.texter("Personal components: cloud ","Dyson_Info_PersonalComponents");
+        Dyson_Info_DuplicateCore = TextHandler.texter("This player already has a core. This machine is shut down.","Dyson_Info_DuplicateCore");
+        Dyson_Info_ComputeSatisfied = TextHandler.texter("Core computation: Satisfied","Dyson_Info_ComputeSatisfied");
+        Dyson_Info_ComputeInsufficient = TextHandler.texter("Core computation: Insufficient (needs 1,000,000)","Dyson_Info_ComputeInsufficient");
+        Dyson_Info_LaunchPriority = TextHandler.texter("Launch priority: ","Dyson_Info_LaunchPriority");
+        Dyson_Info_LaunchBatch = TextHandler.texter("Batch per round: ","Dyson_Info_LaunchBatch");
+        Dyson_Info_MassMode = TextHandler.texter("Launch mode: Mass (one 60s round clears all personal components)","Dyson_Info_MassMode");
+        Dyson_Info_Split = TextHandler.texter("Output split: Orundum ","Dyson_Info_Split");
+        Dyson_Stat_Cloud = TextHandler.texter("Cloud","Dyson_Stat_Cloud");
+        Dyson_Stat_Frame = TextHandler.texter("Frame","Dyson_Stat_Frame");
+        Dyson_Stat_Paste = TextHandler.texter("Paste","Dyson_Stat_Paste");
+        Dyson_Stat_Components = TextHandler.texter("Personal components","Dyson_Stat_Components");
+        Dyson_Stat_Stage = TextHandler.texter("Stage","Dyson_Stat_Stage");
+        Dyson_Stat_Leader = TextHandler.texter("Leader","Dyson_Stat_Leader");
+        Dyson_Gui_PriorityCloud = TextHandler.texter("Cloud","Dyson_Gui_PriorityCloud");
+        Dyson_Gui_PriorityFrame = TextHandler.texter("Frame","Dyson_Gui_PriorityFrame");
+        Dyson_Gui_PriorityTooltip = TextHandler.texter("Launch priority: cloud first / frame first","Dyson_Gui_PriorityTooltip");
+        Dyson_Gui_SplitTitle = TextHandler.texter("Orundum output share (0-100)","Dyson_Gui_SplitTitle");
+        Dyson_Gui_SplitEUText = TextHandler.texter("EU: ","Dyson_Gui_SplitEUText");
+        Dyson_Gui_SplitTooltip = TextHandler.texter("Configure Orundum / EU output split","Dyson_Gui_SplitTooltip");
+        Dyson_Text_Or = TextHandler.texter(" or ","Dyson_Text_Or");
+        Dyson_Cmd_NoPermission = TextHandler.texter("You do not have permission to use this command.","Dyson_Cmd_NoPermission");
+        Dyson_Cmd_NotLoaded = TextHandler.texter("Dyson sphere save has not been loaded yet.","Dyson_Cmd_NotLoaded");
+        Dyson_Cmd_Usage = TextHandler.texter("Usage: /dyson stage <1-5> | /dyson cloud <count> | /dyson frame <count> | /dyson paste <count> | /dyson complete | /dyson reset","Dyson_Cmd_Usage");
+        Dyson_Cmd_UsageStage = TextHandler.texter("Usage: /dyson stage <1-5>","Dyson_Cmd_UsageStage");
+        Dyson_Cmd_UsageCloud = TextHandler.texter("Usage: /dyson cloud <count>","Dyson_Cmd_UsageCloud");
+        Dyson_Cmd_UsageFrame = TextHandler.texter("Usage: /dyson frame <count>","Dyson_Cmd_UsageFrame");
+        Dyson_Cmd_UsagePaste = TextHandler.texter("Usage: /dyson paste <count>","Dyson_Cmd_UsagePaste");
+        Dyson_Cmd_StageRange = TextHandler.texter("Stage must be an integer from 1 to 5.","Dyson_Cmd_StageRange");
+        Dyson_Cmd_Number = TextHandler.texter("Count must be an integer.","Dyson_Cmd_Number");
+        Dyson_Cmd_Reset = TextHandler.texter("Dyson sphere state reset (all teams and completion cleared).","Dyson_Cmd_Reset");
+        Dyson_Cmd_AlreadyComplete = TextHandler.texter("Dyson sphere is already complete (permanently locked). Use /dyson reset for testing.","Dyson_Cmd_AlreadyComplete");
+        Dyson_Cmd_Completed = TextHandler.texter("Completion triggered: your team becomes the owner, losers are cleared, and the server is permanently locked.","Dyson_Cmd_Completed");
+        Dyson_Cmd_Updated = TextHandler.texter("Dyson sphere state updated (leader): ","Dyson_Cmd_Updated");
+        Dyson_Broadcast_00 = TextHandler.texter("[Dyson Sphere] ","Dyson_Broadcast_00");
+        Dyson_Broadcast_01 = TextHandler.texter("'s team has completed the Talos Dyson Sphere! The star now permanently belongs to them.","Dyson_Broadcast_01");
+        Dyson_Broadcast_UnknownTeam = TextHandler.texter("Unknown Team","Dyson_Broadcast_UnknownTeam");
+        EOHB_Recipe_DysonManufacturing = TextHandler.texter("Dyson Manufacturing","EOHB_Recipe_DysonManufacturing");
     }
 }

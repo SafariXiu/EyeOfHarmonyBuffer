@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 
 import java.math.BigInteger;
@@ -225,14 +226,13 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         String[] origin = super.getInfoData();
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
         lines.add(
-            EnumChatFormatting.AQUA + "模块状态: "
-                + (connected
-                    ? EnumChatFormatting.GREEN + "已连接"
-                    : EnumChatFormatting.RED + "未连接（需核心在线）"));
+            connected
+                ? EnumChatFormatting.AQUA + Dyson_Info_ModuleConnected
+                : EnumChatFormatting.AQUA + Dyson_Info_ModuleDisconnected);
 
         BigInteger demand = getRequiredCompute();
         if (demand.signum() > 0) {
-            lines.add(EnumChatFormatting.AQUA + "算力需求: " + EnumChatFormatting.GOLD + demand);
+            lines.add(EnumChatFormatting.AQUA + Dyson_Info_ComputeRequirement + EnumChatFormatting.GOLD + demand);
         }
 
         IGregTechTileEntity base = getBaseMetaTileEntity();
@@ -240,11 +240,12 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             long cloudComponents = DysonSphereSystem.getPlayerCloudComponents(base.getWorld(), ownerUUID);
             long frameComponents = DysonSphereSystem.getPlayerFrameComponents(base.getWorld(), ownerUUID);
             lines.add(
-                EnumChatFormatting.AQUA + "个人云组件库存: "
+                EnumChatFormatting.AQUA + Dyson_Info_CloudComponentStock
                     + EnumChatFormatting.GOLD
                     + cloudComponents
                     + EnumChatFormatting.AQUA
-                    + " / 框架组件库存: "
+                    + " / "
+                    + Dyson_Info_FrameComponentStock
                     + EnumChatFormatting.GOLD
                     + frameComponents);
         }

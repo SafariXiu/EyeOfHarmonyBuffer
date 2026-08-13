@@ -739,7 +739,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 StatCollector.translateToLocal("eohb.dyson.upgrade.prereq"));
             for (int i = 0; i < prerequisites.length; i++) {
                 if (i > 0) {
-                    builder.append(upgrade.requiresAllPrerequisites() ? " + " : " 或 ");
+                    builder.append(upgrade.requiresAllPrerequisites() ? " + " : Dyson_Text_Or);
                 }
                 builder.append(StatCollector.translateToLocal(prerequisites[i].getNameKey()));
             }
@@ -759,15 +759,18 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .width(120)
                 .crossAxisAlignment(Alignment.CrossAxis.START)
                 .coverChildrenHeight(0)
-                .child(makeStat("云", () -> String.valueOf(cloudSyncer.getValue())))
-                .child(makeStat("框架", () -> String.valueOf(frameSyncer.getValue())))
-                .child(makeStat("贴片", () -> String.valueOf(pasteSyncer.getValue())))
+                .child(makeStat(Dyson_Stat_Cloud, () -> String.valueOf(cloudSyncer.getValue())))
+                .child(makeStat(Dyson_Stat_Frame, () -> String.valueOf(frameSyncer.getValue())))
+                .child(makeStat(Dyson_Stat_Paste, () -> String.valueOf(pasteSyncer.getValue())))
                 .child(
                     makeStat(
-                        "个人组件",
-                        () -> "云 "
+                        Dyson_Stat_Components,
+                        () -> Dyson_Stat_Cloud
+                            + " "
                             + cloudComponentsSyncer.getValue()
-                            + " / 框架 "
+                            + " / "
+                            + Dyson_Stat_Frame
+                            + " "
                             + frameComponentsSyncer.getValue()));
         }
 
@@ -943,38 +946,40 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         int paste = team == null ? 0 : team.pasteCount;
 
         lines.add(
-            EnumChatFormatting.AQUA + "已连接模块: "
+            EnumChatFormatting.AQUA + Dyson_Info_ConnectedModules
                 + EnumChatFormatting.GOLD
                 + connectedCount
                 + EnumChatFormatting.AQUA
-                + " / 激活槽位: "
+                + " / "
+                + Dyson_Info_ActiveSlots
                 + EnumChatFormatting.GOLD
                 + DysonMachineConfig.activeSlotsForPaste(paste));
         lines.add(
-            EnumChatFormatting.AQUA + "本队贴片: "
+            EnumChatFormatting.AQUA + Dyson_Info_TeamPaste
                 + EnumChatFormatting.GOLD
                 + paste);
         lines.add(
-            EnumChatFormatting.AQUA + "个人组件: 云 "
+            EnumChatFormatting.AQUA + Dyson_Info_PersonalComponents
                 + EnumChatFormatting.GOLD
                 + getPersonalCloudComponents()
                 + EnumChatFormatting.AQUA
-                + " / 框架 "
+                + " / "
+                + Dyson_Stat_Frame
+                + " "
                 + EnumChatFormatting.GOLD
                 + getPersonalFrameComponents());
 
         if (duplicateRejected) {
             lines.add(
-                EnumChatFormatting.RED + "该玩家已有一台核心，本机已停机");
+                EnumChatFormatting.RED + Dyson_Info_DuplicateCore);
         }
 
         if (base != null && base.isServerSide()) {
             boolean computeOk = ownerUUID != null && WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
             lines.add(
-                EnumChatFormatting.AQUA + "核心算力: "
-                    + (computeOk
-                        ? EnumChatFormatting.GREEN + "满足"
-                        : EnumChatFormatting.RED + "不足（需 1,000,000）"));
+                computeOk
+                    ? EnumChatFormatting.GREEN + Dyson_Info_ComputeSatisfied
+                    : EnumChatFormatting.RED + Dyson_Info_ComputeInsufficient);
         }
         return lines.toArray(new String[0]);
     }
@@ -1109,11 +1114,11 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     @Override
     protected MultiblockTooltipBuilder createTooltip() {
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType("戴森核心")
-            .addInfo("每位玩家限一台的戴森球巨构枢纽")
-            .addInfo("核心与模块必须在 Orundum 供电场内工作")
-            .addInfo("最多挂载 32 个模块（占位结构，贴片数解锁槽位）")
-            .addInfo("核心消耗 1,000,000 算力")
+        tt.addMachineType(Tooltip_DysonCore_MachineType)
+            .addInfo(Tooltip_DysonCore_00)
+            .addInfo(Tooltip_DysonCore_01)
+            .addInfo(Tooltip_DysonCore_02)
+            .addInfo(Tooltip_DysonCore_03)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
