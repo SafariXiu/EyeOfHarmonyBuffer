@@ -23,6 +23,7 @@ import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -34,6 +35,8 @@ import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -100,6 +103,69 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
     @Override
     public RecipeMap<?> getRecipeMap() {
         return RecipeMaps.DysonManufacturing;
+    }
+
+    @Override
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (!canOperate()) {
+            scheduleRecipeCheckImmediate();
+            this.lastUsedParallel = 0;
+            this.mOutputItems = null;
+            this.mOutputFluids = null;
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        // 制造成本与配方/并行相关，而配方检查本身会吞掉原料；
+        // 这里先用输入总线里的原料数预测本批成本，付不起就提前失败，避免白吞原料。
+        BigInteger predicted = predictBatchCost();
+        if (predicted != null && predicted.signum() > 0) {
+            if (ownerUUID == null
+                || OrundumEnergyService.getOrundumForUser(ownerUUID).compareTo(predicted) < 0) {
+                this.lastUsedParallel = 0;
+                this.mOutputItems = null;
+                this.mOutputFluids = null;
+                return CheckRecipeResultRegistry.insufficientPower(safeToLong(predicted));
+            }
+        }
+
+        return super.doWirelessBusinessOnce();
+    }
+
+    /** 根据输入总线里的源石/息壤数量预测本批 Orundum 成本；不足一轮返回 null。 */
+    private BigInteger predictBatchCost() {
+        int duration = getWirelessModeProcessingTime();
+        if (duration <= 0) {
+            return BigInteger.ZERO;
+        }
+        Item yshi = GTCMItemList.YuanShi.getItem();
+        Item xrg = GTCMItemList.XiRang.getItem();
+        long cloudInput = 0;
+        long frameInput = 0;
+        for (ItemStack stack : getStoredInputsWithoutDualInputHatch()) {
+            if (stack == null) {
+                continue;
+            }
+            if (stack.getItem() == yshi) {
+                cloudInput += stack.stackSize;
+            } else if (stack.getItem() == xrg) {
+                frameInput += stack.stackSize;
+            }
+        }
+
+        if (cloudInput >= 64) {
+            long parallel = Math.min(getMaxParallelRecipes(), cloudInput / 64);
+            return DysonMachineConfig.CLOUD_COMPONENT_ORUNDUM_PER_TICK
+                .multiply(BigInteger.valueOf(duration))
+                .multiply(BigInteger.valueOf(parallel));
+        }
+        if (frameInput >= 64) {
+            long parallel = Math.min(getMaxParallelRecipes(), frameInput / 64);
+            return DysonMachineConfig.FRAME_COMPONENT_ORUNDUM_PER_TICK
+                .multiply(BigInteger.valueOf(duration))
+                .multiply(BigInteger.valueOf(parallel));
+        }
+        return null;
     }
 
     @Override

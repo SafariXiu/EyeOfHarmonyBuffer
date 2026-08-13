@@ -35,6 +35,7 @@ import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
+import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -195,6 +196,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
     protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!canOperate()) {
+            scheduleRecipeCheckImmediate();
             pendingCost = BigInteger.ZERO;
             this.lastUsedParallel = 0;
             this.mOutputItems = null;
@@ -255,6 +257,16 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return CheckRecipeResultRegistry.NO_FUEL_FOUND;
         }
 
+        // 发射成本在扣组件之前先校验，避免“组件打上天但付不起账”的免费发射
+        BigInteger batchCost = BigInteger.valueOf(DysonMachineConfig.launchCostOrundum)
+            .multiply(BigInteger.valueOf(clouds + frames));
+        if (ownerUUID == null
+            || OrundumEnergyService.getOrundumForUser(ownerUUID).compareTo(batchCost) < 0) {
+            pendingCost = BigInteger.ZERO;
+            this.lastUsedParallel = 0;
+            return CheckRecipeResultRegistry.insufficientPower(safeToLong(batchCost));
+        }
+
         if (!DysonSphereSystem.consumeComponentsOfPlayer(world, ownerUUID, clouds, frames)) {
             pendingCost = BigInteger.ZERO;
             this.lastUsedParallel = 0;
@@ -273,8 +285,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return SimpleCheckRecipeResult.ofFailure("DysonSphereLocked");
         }
 
-        pendingCost = BigInteger.valueOf(DysonMachineConfig.launchCostOrundum)
-            .multiply(BigInteger.valueOf(clouds + frames));
+        pendingCost = batchCost;
         this.lastUsedParallel = clouds + frames;
         mMaxProgresstime = getWirelessModeProcessingTime();
         mProgresstime = 0;

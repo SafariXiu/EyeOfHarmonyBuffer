@@ -12,7 +12,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff EOHBCatalyst = new Werkstoff(
         new short[]{128, 45, 200},
-        EOHB_Harmony,
+        "Harmony",
         EOHB_Harmony_Tooltip,
         new Werkstoff.Stats()
             .setBlastFurnace(true)
@@ -28,7 +28,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff OriginiumWasteLiquid = new Werkstoff(
         new short[]{90, 150, 40},
-        EOHB_OriginiumWasteLiquid,
+        "Originium Waste Liquid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.ELEMENT,
         new Werkstoff.GenerationFeatures()
@@ -40,7 +40,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ArsenicImpact = new Werkstoff(
         new short[] { 220, 222, 230 },
-        EOHB_ArsenicImpact,
+        "Arsenic Impact",
         EOHB_ArsenicImpact_Tooltip,
         new Werkstoff.Stats()
             .setGas(false)
@@ -69,7 +69,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Hoyomixium = new Werkstoff(
         new short[] { 120, 200, 255 },
-        EOHB_Hoyomixium,
+        "Hoyomixium",
         EOHB_Hoyomixium_Tooltip,
         new Werkstoff.Stats()
             .setBlastFurnace(true)
@@ -91,7 +91,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff PrecipitationAcid = new Werkstoff(
         new short[] { 255, 170, 0 },
-        EOHB_PrecipitationAcid,
+        "Precipitation Acid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -103,7 +103,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff CupriumSolution = new Werkstoff(
         new short[] { 205, 35, 35 },
-        EOHB_CupriumSolution,
+        "Cuprium Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -115,7 +115,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff InertXirconEffluent = new Werkstoff(
         new short[] { 20, 95, 145 },
-        EOHB_InertXirconEffluent,
+        "Inert Xircon Effluent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -127,7 +127,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HetoniteSolution = new Werkstoff(
         new short[] { 220, 55, 70 },
-        EOHB_HetoniteSolution,
+        "Hetonite Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -139,7 +139,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JinCaoSolution = new Werkstoff(
         new short[] { 225, 245, 185 },
-        EOHB_JinCaoSolution,
+        "JinCao Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -151,7 +151,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff XirconEffluent = new Werkstoff(
         new short[] { 35, 150, 175 },
-        EOHB_XirconEffluent,
+        "Xircon Effluent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -163,7 +163,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Sewage = new Werkstoff(
         new short[] { 125, 125, 125 },
-        EOHB_Sewage,
+        "Sewage",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -175,7 +175,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff YaZhenSolution = new Werkstoff(
         new short[] { 195, 220, 75 },
-        EOHB_YaZhenSolution,
+        "YaZhen Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -187,7 +187,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff LiquidXiranite = new Werkstoff(
         new short[] { 60, 185, 85 },
-        EOHB_LiquidXiranite,
+        "Liquid Xiranite",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -199,7 +199,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff LiquidHeavyXiranite = new Werkstoff(
         new short[] { 25, 105, 45 },
-        EOHB_LiquidHeavyXiranite,
+        "Liquid Heavy Xiranite",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -211,7 +211,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff LiquefiedOrundum = new Werkstoff(
         new short[] { 219, 165, 82 },
-        EOHB_LiquefiedOrundum,
+        "Liquefied Orundum",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -223,7 +223,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff CrudeLiquefiedOrundum = new Werkstoff(
         new short[] { 153, 116, 57 },
-        EOHB_CrudeLiquefiedOrundum,
+        "Crude Liquefied Orundum",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -235,7 +235,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HighEnergyOrundumSolvent = new Werkstoff(
         new short[] { 255, 200, 100 },
-        EOHB_HighEnergyOrundumSolvent,
+        "High-Energy Orundum Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -247,7 +247,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff UnstableOrundumSolvent = new Werkstoff(
         new short[] { 255, 80, 0 },
-        EOHB_UnstableOrundumSolvent,
+        "Unstable Orundum Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -259,7 +259,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ContaminatedOrundumSlurry = new Werkstoff(
         new short[] { 104, 96, 72 },
-        EOHB_ContaminatedOrundumSlurry,
+        "Contaminated Orundum Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -271,7 +271,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff StabilizedHigh_EnergyOrundumSolvent = new Werkstoff(
         new short[] { 0, 210, 255 },
-        EOHB_StabilizedHigh_EnergyOrundumSolvent,
+        "Stabilized High-Energy Orundum Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -283,7 +283,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff AnomalousEnergyCondensate = new Werkstoff(
         new short[] { 150, 0, 200 },
-        EOHB_AnomalousEnergyCondensate,
+        "Anomalous Energy Condensate",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -295,7 +295,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff AdvancedOrundumFuelPrecursor = new Werkstoff(
         new short[] { 150, 0, 200 },
-        EOHB_AdvancedOrundumFuelPrecursor,
+        "Advanced Orundum Fuel Precursor",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -307,7 +307,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Acridgen = new Werkstoff(
         new short[] { 255, 255, 0 },
-        EOHB_Acridgen,
+        "Acridgen",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -319,7 +319,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Aquagen = new Werkstoff(
         new short[] { 128, 128, 128 },
-        EOHB_Aquagen,
+        "Aquagen",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -331,7 +331,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Inergen = new Werkstoff(
         new short[] { 150, 200, 255 },
-        EOHB_Inergen,
+        "Inergen",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -343,7 +343,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff Xiragen = new Werkstoff(
         new short[] { 150, 255, 150 },
-        EOHB_Xiragen,
+        "Xiragen",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -355,7 +355,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HeavyXiragen = new Werkstoff(
         new short[] { 0, 100, 0 },
-        EOHB_HeavyXiragen,
+        "Heavy Xiragen",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -367,7 +367,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff CupriumGas = new Werkstoff(
         new short[] { 255, 150, 150 },
-        EOHB_CupriumGas,
+        "Cuprium Gas",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -379,7 +379,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HetoniteGas = new Werkstoff(
         new short[] { 255, 0, 0 },
-        EOHB_HetoniteGas,
+        "Hetonite Gas",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -391,7 +391,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff PyrroliteGas = new Werkstoff(
         new short[] { 255, 80, 0 },
-        EOHB_PyrroliteGas,
+        "Pyrrolite Gas",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -403,7 +403,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HighEnergyGas = new Werkstoff(
         new short[] { 255, 200, 100 },
-        EOHB_HighEnergyGas,
+        "High-Energy Gas",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -415,7 +415,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff TangZhi = new Werkstoff(
         new short[] { 240, 200, 140 },
-        EOHB_TangZhi,
+        "Sugar Syrup",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -427,7 +427,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff TongJiRongYe = new Werkstoff(
         new short[] { 150, 190, 220 },
-        EOHB_TongJiRongYe,
+        "Ketone Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -439,7 +439,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff FaJiaoTangJiang = new Werkstoff(
         new short[] { 180, 140, 60 },
-        EOHB_FaJiaoTangJiang,
+        "Fermented Sugar Syrup",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -451,7 +451,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff TongJiJuHeWu = new Werkstoff(
         new short[] { 160, 170, 190 },
-        EOHB_TongJiJuHeWu,
+        "Ketone Polymer",
         new Werkstoff.Stats(),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -462,7 +462,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff FuHeTangJiang = new Werkstoff(
         new short[] { 230, 170, 90 },
-        EOHB_FuHeTangJiang,
+        "Compound Sugar Syrup",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -474,7 +474,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff TangRongYe = new Werkstoff(
         new short[] { 250, 240, 200 },
-        EOHB_TangRongYe,
+        "Sugar Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -486,7 +486,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JuZhiRongJiang = new Werkstoff(
         new short[] { 220, 190, 130 },
-        EOHB_JuZhiRongJiang,
+        "Polyester Melt",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -498,7 +498,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff FuHeJuZhiJiang = new Werkstoff(
         new short[] { 200, 170, 110 },
-        EOHB_FuHeJuZhiJiang,
+        "Compound Polyester Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -510,7 +510,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff YiTieJiang = new Werkstoff(
         new short[] { 130, 140, 150 },
-        EOHB_YiTieJiang,
+        "Oriron Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -522,7 +522,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff FuHeYiTieJiang = new Werkstoff(
         new short[] { 100, 110, 120 },
-        EOHB_FuHeYiTieJiang,
+        "Compound Oriron Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -534,7 +534,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff BoYiFen = new Werkstoff(
         new short[] { 200, 205, 210 },
-        EOHB_BoYiFen,
+        "Platinum-Iridium Dust",
         new Werkstoff.Stats(),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -545,7 +545,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff DianJiJiang = new Werkstoff(
         new short[] { 170, 175, 180 },
-        EOHB_DianJiJiang,
+        "Electrode Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -557,7 +557,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingZhiDianJiJiang = new Werkstoff(
         new short[] { 150, 155, 165 },
-        EOHB_JingZhiDianJiJiang,
+        "Refined Electrode Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -569,7 +569,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingTiJiang = new Werkstoff(
         new short[] { 190, 120, 200 },
-        EOHB_JingTiJiang,
+        "Crystal Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -581,7 +581,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ShiKeJingTiJiang = new Werkstoff(
         new short[] { 180, 140, 210 },
-        EOHB_ShiKeJingTiJiang,
+        "Etched Crystal Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -593,7 +593,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff DuBoJingTiJiang = new Werkstoff(
         new short[] { 210, 180, 230 },
-        EOHB_DuBoJingTiJiang,
+        "Platinum-Plated Crystal Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -605,7 +605,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ChiHeJinPeiLiao = new Werkstoff(
         new short[] { 230, 90, 40 },
-        EOHB_ChiHeJinPeiLiao,
+        "Blazing Alloy Feedstock",
         new Werkstoff.Stats(),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -616,7 +616,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ChiHeJinJiang = new Werkstoff(
         new short[] { 220, 100, 50 },
-        EOHB_ChiHeJinJiang,
+        "Blazing Alloy Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -628,7 +628,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingLianChiHeJinJiang = new Werkstoff(
         new short[] { 240, 130, 80 },
-        EOHB_JingLianChiHeJinJiang,
+        "Refined Blazing Alloy Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -640,7 +640,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff WenDingGaoNengQiTi = new Werkstoff(
         new short[] { 255, 230, 150 },
-        EOHB_WenDingGaoNengQiTi,
+        "Stabilized High-Energy Gas",
         new Werkstoff.Stats().setGas(true),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -652,7 +652,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff GaoNengYeTi = new Werkstoff(
         new short[] { 255, 200, 80 },
-        EOHB_GaoNengYeTi,
+        "High-Energy Liquid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -664,7 +664,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff NingJiaoQianTi = new Werkstoff(
         new short[] { 200, 230, 220 },
-        EOHB_NingJiaoQianTi,
+        "Gel Precursor",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -676,7 +676,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JiaoLianNingJiao = new Werkstoff(
         new short[] { 180, 220, 200 },
-        EOHB_JiaoLianNingJiao,
+        "Crosslinked Gel",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -688,7 +688,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff NiuZhuanChunJiang = new Werkstoff(
         new short[] { 170, 220, 160 },
-        EOHB_NiuZhuanChunJiang,
+        "Twisted Alcohol Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -700,7 +700,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ChunHuaNiuZhuanChunJiang = new Werkstoff(
         new short[] { 190, 235, 175 },
-        EOHB_ChunHuaNiuZhuanChunJiang,
+        "Purified Twisted Alcohol Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -712,7 +712,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff ChuanTongRongJi = new Werkstoff(
         new short[] { 210, 200, 180 },
-        EOHB_ChuanTongRongJi,
+        "Traditional Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -724,7 +724,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff GaiXingRongJi = new Werkstoff(
         new short[] { 190, 170, 160 },
-        EOHB_GaiXingRongJi,
+        "Modified Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -736,7 +736,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff NaiSuanJianRongJi = new Werkstoff(
         new short[] { 200, 160, 140 },
-        EOHB_NaiSuanJianRongJi,
+        "Acid-Alkali Resistant Solvent",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -748,7 +748,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff RuHuaJi = new Werkstoff(
         new short[] { 235, 230, 200 },
-        EOHB_RuHuaJi,
+        "Emulsifier",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -760,7 +760,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingZhiQieXiaoYe = new Werkstoff(
         new short[] { 180, 210, 230 },
-        EOHB_JingZhiQieXiaoYe,
+        "Refined Cutting Fluid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -772,7 +772,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff XiFuJiang = new Werkstoff(
         new short[] { 150, 150, 150 },
-        EOHB_XiFuJiang,
+        "Adsorption Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -784,7 +784,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff NingJieJiang = new Werkstoff(
         new short[] { 130, 130, 140 },
-        EOHB_NingJieJiang,
+        "Condensation Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -796,7 +796,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HuanTingDanTi = new Werkstoff(
         new short[] { 200, 220, 235 },
-        EOHB_HuanTingDanTi,
+        "Cyclic Hydrocarbon Monomer",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -808,7 +808,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff HuanTingJuHeWu = new Werkstoff(
         new short[] { 180, 200, 220 },
-        EOHB_HuanTingJuHeWu,
+        "Cyclic Hydrocarbon Polymer",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -820,7 +820,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff GangYuFen = new Werkstoff(
         new short[] { 235, 120, 130 },
-        EOHB_GangYuFen,
+        "Corundum Dust",
         new Werkstoff.Stats(),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -831,7 +831,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff MengKuangJingFen = new Werkstoff(
         new short[] { 150, 150, 170 },
-        EOHB_MengKuangJingFen,
+        "Refined Manganese Dust",
         new Werkstoff.Stats(),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -842,7 +842,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff YanMoJiang = new Werkstoff(
         new short[] { 200, 190, 180 },
-        EOHB_YanMoJiang,
+        "Grinding Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -854,7 +854,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingZhiYanMoJiang = new Werkstoff(
         new short[] { 210, 200, 190 },
-        EOHB_JingZhiYanMoJiang,
+        "Refined Grinding Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -866,7 +866,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff KuangWuJiang = new Werkstoff(
         new short[] { 120, 130, 150 },
-        EOHB_KuangWuJiang,
+        "Mineral Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -878,7 +878,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingZhiKuangWuJiang = new Werkstoff(
         new short[] { 140, 150, 170 },
-        EOHB_JingZhiKuangWuJiang,
+        "Refined Mineral Slurry",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -890,7 +890,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff FangSiYe = new Werkstoff(
         new short[] { 220, 210, 190 },
-        EOHB_FangSiYe,
+        "Spinning Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -902,7 +902,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff JingZhiFangSiYe = new Werkstoff(
         new short[] { 230, 220, 200 },
-        EOHB_JingZhiFangSiYe,
+        "Refined Spinning Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -914,7 +914,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff NongSuoFangSiYe = new Werkstoff(
         new short[] { 240, 230, 205 },
-        EOHB_NongSuoFangSiYe,
+        "Concentrated Spinning Solution",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -926,7 +926,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff CuZhiQieXiaoYe = new Werkstoff(
         new short[] { 190, 205, 220 },
-        EOHB_CuZhiQieXiaoYe,
+        "Raw Cutting Fluid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()
@@ -938,7 +938,7 @@ public class EOHBMaterialPool implements Runnable{
 
     public static final Werkstoff GaoJieJingLianYe = new Werkstoff(
         new short[] { 160, 90, 220 },
-        EOHB_GaoJieJingLianYe,
+        "High-Grade Refining Fluid",
         new Werkstoff.Stats().setGas(false),
         Werkstoff.Types.MATERIAL,
         new Werkstoff.GenerationFeatures()

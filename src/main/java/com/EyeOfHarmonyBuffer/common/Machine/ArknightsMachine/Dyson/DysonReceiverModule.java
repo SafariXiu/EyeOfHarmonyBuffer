@@ -190,6 +190,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!canOperate()) {
+            scheduleRecipeCheckImmediate();
             pendingGain = BigInteger.ZERO;
             this.lastUsedParallel = 0;
             return CheckRecipeResultRegistry.NO_RECIPE;

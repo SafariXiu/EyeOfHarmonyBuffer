@@ -157,50 +157,7 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
     @Inject(method = "createProcessingLogic",at = @At("HEAD"),cancellable = true)
     public void createProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir) {
         if(MainConfig.FusionComputerEnable){
-            ProcessingLogic customLogic = new ProcessingLogic(){
-
-                @NotNull
-                @Override
-                protected ParallelHelper createParallelHelper(@NotNull GTRecipe recipe){
-                    return super.createParallelHelper(recipe).setConsumption(!mRunningOnLoad);
-                }
-
-                @NotNull
-                @Override
-                protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                    return overclockDescriber.createCalculator(super.createOverclockCalculator(recipe), recipe);
-                }
-
-                @NotNull
-                @Override
-                protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                    if (!mRunningOnLoad && recipe.mSpecialValue > maxEUStore()) {
-                        return CheckRecipeResultRegistry.insufficientStartupPower(recipe.mSpecialValue);
-                    }
-                    return CheckRecipeResultRegistry.SUCCESSFUL;
-                }
-
-                @NotNull
-                @Override
-                public CheckRecipeResult process() {
-                    CheckRecipeResult result = super.process();
-                    if (mRunningOnLoad) mRunningOnLoad = false;
-                    turnCasingActive(result.wasSuccessful());
-                    if (result.wasSuccessful()) {
-                        mLastRecipe = lastRecipe;
-                    } else {
-                        mLastRecipe = null;
-                    }
-                    return result;
-                }
-
-                @Override
-                protected double calculateDuration(@Nonnull GTRecipe recipe, @Nonnull ParallelHelper helper,
-                                                   @Nonnull OverclockCalculator calculator) {
-                    return 10;
-                }
-
-            };
+            ProcessingLogic customLogic = new FusionComputerLogic(this);
 
             customLogic
                 .setEuModifier(0.0F)
@@ -208,6 +165,57 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
 
             cir.setReturnValue(customLogic);
             cir.cancel();
+        }
+    }
+
+    private static final class FusionComputerLogic extends ProcessingLogic {
+
+        private final FusionComputerMixin outer;
+
+        FusionComputerLogic(FusionComputerMixin outer) {
+            this.outer = outer;
+        }
+
+        @NotNull
+        @Override
+        protected ParallelHelper createParallelHelper(@NotNull GTRecipe recipe) {
+            return super.createParallelHelper(recipe)
+                .setConsumption(!outer.mRunningOnLoad);
+        }
+
+        @NotNull
+        @Override
+        protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
+            return outer.overclockDescriber.createCalculator(super.createOverclockCalculator(recipe), recipe);
+        }
+
+        @NotNull
+        @Override
+        protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+            if (!outer.mRunningOnLoad && recipe.mSpecialValue > outer.maxEUStore()) {
+                return CheckRecipeResultRegistry.insufficientStartupPower(recipe.mSpecialValue);
+            }
+            return CheckRecipeResultRegistry.SUCCESSFUL;
+        }
+
+        @NotNull
+        @Override
+        public CheckRecipeResult process() {
+            CheckRecipeResult result = super.process();
+            if (outer.mRunningOnLoad) outer.mRunningOnLoad = false;
+            outer.turnCasingActive(result.wasSuccessful());
+            if (result.wasSuccessful()) {
+                outer.mLastRecipe = lastRecipe;
+            } else {
+                outer.mLastRecipe = null;
+            }
+            return result;
+        }
+
+        @Override
+        protected double calculateDuration(@Nonnull GTRecipe recipe, @Nonnull ParallelHelper helper,
+            @Nonnull OverclockCalculator calculator) {
+            return 10;
         }
     }
 }

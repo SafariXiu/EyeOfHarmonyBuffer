@@ -16,7 +16,7 @@ import java.util.List;
 public class BlockCasingsEOH extends BlockCasingsAbstract {
 
     @SideOnly(Side.CLIENT)
-    private IIcon[] mIcons = new IIcon[16];
+    private IIcon[] mIcons;
 
     public static final int META_XIRANG_WAIKE = 0;
     public static final int META_ZHONG_XIRANG_WAIKE = 1;
@@ -52,6 +52,7 @@ public class BlockCasingsEOH extends BlockCasingsAbstract {
     @Override
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister reg) {
+        mIcons = new IIcon[16];
         mIcons[META_XIRANG_WAIKE] =
             reg.registerIcon("eyeofharmonybuffer:Arknights/xirangwaike");
 
@@ -62,6 +63,9 @@ public class BlockCasingsEOH extends BlockCasingsAbstract {
     @Override
     @SideOnly(Side.CLIENT)
     public IIcon getIcon(int side, int meta) {
+        if (mIcons == null) {
+            return null;
+        }
         meta = Math.max(0, Math.min(meta, 1));
         IIcon icon = mIcons[meta];
         if (icon == null) {

@@ -242,7 +242,6 @@ public final class DysonSphereSystem {
             if (team == null) {
                 continue;
             }
-
             // 1) 贴片优先：需队伍核心开机；正午额外要求已点亮贴片转化节点
             boolean coreOnline = DysonCore.isTeamCoreOnline(teamId);
             boolean allowConvert = coreOnline

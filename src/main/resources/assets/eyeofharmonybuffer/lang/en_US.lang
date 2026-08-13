@@ -1353,6 +1353,7 @@ item.DysonCloudComponent.name=Dyson Cloud Component
 item.DysonFrameComponent.name=Dyson Frame Component
 item.QiYiWuZhi.name=Strange Matter
 GT5U.gui.text.shutdown_reason.dyson_duplicate_core=This player already has a Dyson Core
+GT5U.gui.text.shutdown_reason.dyson_completed=The Dyson Sphere is complete!
 eohb.dyson.upgrade.tree=Dyson Upgrade Tree
 eohb.dyson.upgrade.depositTitle=Put cost item here
 eohb.dyson.upgrade.deposit=Deposit

@@ -165,7 +165,10 @@ public class EyeOfHarmonyBuffer {
 
         RegisterDimensions.init();
 
-        MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
+        // 雾效处理器引用客户端类（EntityViewRenderEvent），只能在客户端注册
+        if (event.getSide().isClient()) {
+            MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
+        }
         MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
         MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
         MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());

@@ -4,6 +4,9 @@ import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import gregtech.commands.GTBaseCommand;
 import gregtech.common.misc.spaceprojects.SpaceProjectManager;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
@@ -22,17 +25,18 @@ public class CommandOrundum extends GTBaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/orundum <add|set|join|display>";
+        return "/orundum <add|set|join|kick|leave|display>";
     }
 
     @SuppressWarnings("rawtypes")
     @Override
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "add", "set", "join", "display");
+            return getListOfStringsMatchingLastWord(args, "add", "set", "join", "kick", "leave", "display");
         }
 
-        if (args.length >= 2 && Arrays.asList("add", "set", "join", "display").contains(args[0])) {
+        if (args.length >= 2
+            && Arrays.asList("add", "set", "join", "kick", "display").contains(args[0])) {
             return getListOfStringsMatchingLastWord(args, getAllUsernames());
         }
 
@@ -59,6 +63,8 @@ public class CommandOrundum extends GTBaseCommand {
                     }
                     break;
                 case "join":
+                case "leave":
+                case "kick":
                     break;
                 default:
                     sendError(sender, "未知子命令: " + sub);
@@ -78,6 +84,12 @@ public class CommandOrundum extends GTBaseCommand {
                     break;
                 case "display":
                     handleDisplay(sender, args);
+                    break;
+                case "kick":
+                    handleKick(sender, args);
+                    break;
+                case "leave":
+                    handleLeave(sender, args);
                     break;
             }
 
@@ -263,16 +275,94 @@ public class CommandOrundum extends GTBaseCommand {
         }
     }
 
+    /** 自己退队：回到以自己为队长的独立网络。 */
+    private void handleLeave(ICommandSender sender, String[] args) {
+        if (!(sender instanceof EntityPlayer)) {
+            sendError(sender, "Only players can leave a team. Console can use /orundum kick <player>.");
+            return;
+        }
+
+        EntityPlayer player = (EntityPlayer) sender;
+        UUID self = player.getUniqueID();
+        UUID leader = SpaceProjectManager.getLeader(self);
+        if (leader == null || leader.equals(self)) {
+            sendError(sender, "You are not in a team.");
+            return;
+        }
+
+        String leaderName = SpaceProjectManager.getPlayerNameFromUUID(leader);
+        SpaceProjectManager.putInTeam(self, self);
+        sendInfo(sender, "You have left " + leaderName + "'s Orundum network and returned to your own.");
+    }
+
+    /** 队长踢人（或 OP 代踢）：被踢者回到以自己为队长的独立网络。 */
+    private void handleKick(ICommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sendError(sender, "Usage: /orundum kick <player>");
+            return;
+        }
+
+        String username = args[1];
+        UUID target = SpaceProjectManager.getPlayerUUIDFromName(username);
+        if (target == null) {
+            sendError(sender, "Player not found: " + username);
+            return;
+        }
+
+        UUID senderUuid = sender instanceof EntityPlayer ? ((EntityPlayer) sender).getUniqueID() : null;
+        UUID targetLeader = SpaceProjectManager.getLeader(target);
+
+        boolean isLeader = senderUuid != null && senderUuid.equals(targetLeader);
+        boolean isAdmin = sender.canCommandSenderUseCommand(2, getCommandName());
+        if (!isLeader && !isAdmin) {
+            sendError(sender, "Only the team leader can kick " + username + ".");
+            return;
+        }
+        if (senderUuid != null && senderUuid.equals(target)) {
+            sendError(sender, "You cannot kick yourself. Use /orundum leave instead.");
+            return;
+        }
+        if (targetLeader == null || targetLeader.equals(target)) {
+            sendError(sender, username + " is not in a team.");
+            return;
+        }
+
+        String leaderName = SpaceProjectManager.getPlayerNameFromUUID(targetLeader);
+        SpaceProjectManager.putInTeam(target, target);
+
+        sendInfo(
+            sender,
+            username + " has been removed from " + leaderName + "'s Orundum network.");
+
+        EntityPlayerMP targetPlayer = MinecraftServer.getServer()
+            .getConfigurationManager()
+            .func_152612_a(username);
+        if (targetPlayer != null) {
+            targetPlayer.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.RED
+                        + "You have been removed from "
+                        + leaderName
+                        + "'s Orundum network by "
+                        + sender.getCommandSenderName()
+                        + "."));
+        }
+    }
+
     private void sendUsage(ICommandSender sender) {
         sender.addChatMessage(
             new ChatComponentText(EnumChatFormatting.YELLOW
-                + "Usage: /orundum <add|set|join|display>"));
+                + "Usage: /orundum <add|set|join|kick|leave|display>"));
         sender.addChatMessage(
             new ChatComponentText("/orundum add <player> <amount>    - add Orundum (can be negative)"));
         sender.addChatMessage(
             new ChatComponentText("/orundum set <player> <amount>    - set Orundum (non‑negative)"));
         sender.addChatMessage(
             new ChatComponentText("/orundum join <user_joining> <user_to_join> - share Orundum network"));
+        sender.addChatMessage(
+            new ChatComponentText("/orundum kick <player>              - leader removes a member from the network"));
+        sender.addChatMessage(
+            new ChatComponentText("/orundum leave                      - leave your current network"));
         sender.addChatMessage(
             new ChatComponentText("/orundum display <player>         - show Orundum in network"));
     }

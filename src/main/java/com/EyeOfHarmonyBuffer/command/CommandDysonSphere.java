@@ -83,7 +83,6 @@ public class CommandDysonSphere extends CommandBase {
             teamId = DEBUG_TEAM;
             teamName = "DEBUG";
         }
-
         DysonTeamProgress team = data.getTeam(teamId);
         int newCloud = team == null ? 0 : team.cloudCount;
         int newFrame = team == null ? 0 : team.frameCount;

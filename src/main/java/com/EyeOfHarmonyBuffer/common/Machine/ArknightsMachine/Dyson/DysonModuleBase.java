@@ -24,6 +24,8 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
+import gregtech.api.util.shutdown.ShutDownReason;
+import gregtech.api.util.shutdown.SimpleShutDownReason;
 
 /**
  * 戴森模块基类：由核心控制连接状态，能量只走无线 EU / Orundum 两本账，
@@ -31,6 +33,10 @@ import gregtech.api.recipe.check.SimpleCheckRecipeResult;
  */
 public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     extends OrundumWirelessMultiMachineBase<T> {
+
+    /** 完工锁：非胜利队伍全部锁定；胜利队伍的制造/发射锁定（接收模块保留）。 */
+    public static final ShutDownReason DYSON_COMPLETED_REASON =
+        SimpleShutDownReason.ofNormal("dyson_completed");
 
     protected boolean connected = false;
     protected long lastConnectTick = Long.MIN_VALUE;
@@ -120,6 +126,29 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         return world.getTotalWorldTime() - lastConnectTick <= DysonMachineConfig.CORE_HEARTBEAT_TICKS;
     }
 
+    @Override
+    protected CheckRecipeResult wirelessPreCheck() {
+        CheckRecipeResult result = super.wirelessPreCheck();
+        if (!result.wasSuccessful()) {
+            return result;
+        }
+
+        // 算力必须在任何副作用（吞原料 / 发射组件）之前校验：
+        // 之前放在 wirelessPostProcess 里，制造模块会先被配方检查吞掉原料、发射模块会先打上天，
+        // 然后才因为算力不足失败，造成原料丢失或“免费发射”。
+        if (actsAsComputeConsumer() && ownerUUID != null) {
+            BigInteger demand = getRequiredComputeForCurrentRecipe();
+            if (demand != null && demand.signum() > 0) {
+                WirelessComputeHelper.updateConsumer(this);
+                if (!WirelessComputeHelper.isConsumerSatisfiedInGroup(this)) {
+                    return SimpleCheckRecipeResult.ofFailure("InsufficientCompute");
+                }
+            }
+        }
+
+        return result;
+    }
+
     /** 队伍语义：每次实时解析（SpaceProject 队长），无队伍时退回 owner；被踢后模块会跟随到个人。 */
     protected UUID getTeamId() {
         UUID resolved = OrundumEnergyService.getTeamIdForUser(ownerUUID);
@@ -161,6 +190,7 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     @Override
     protected CheckRecipeResult doWirelessBusinessOnce() {
         if (!canOperate()) {
+            scheduleRecipeCheckImmediate();
             this.lastUsedParallel = 0;
             this.mOutputItems = null;
             this.mOutputFluids = null;
@@ -279,6 +309,23 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide()) {
             return;
         }
+
+        // 完工锁：非胜利队伍的全部模块禁止开机；胜利队伍的制造/发射模块禁止开机（接收模块除外）
+        World world = aBaseMetaTileEntity.getWorld();
+        if (world != null) {
+            DysonSphereWorldData data = DysonSphereWorldData.get(world);
+            if (data != null && data.isCompleted()) {
+                boolean winner = getTeamId() != null
+                    && getTeamId().equals(data.getCompletedTeamId());
+                boolean allowed = winner && getModuleType() == ModuleType.RECEIVER;
+                if (!allowed) {
+                    disableWorking();
+                    stopMachine(DYSON_COMPLETED_REASON);
+                    return;
+                }
+            }
+        }
+
         BigInteger demand = getRequiredCompute();
         if (ownerUUID != null && connected && demand.signum() > 0) {
             WirelessComputeHelper.updateConsumer(this);

@@ -921,6 +921,13 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             return;
         }
 
+        // 模块热插拔：模块槽位距离控制器 16+ 格，方块邻接更新传不到核心，
+        // 而 GT 的初始结构检查跑完后就不再自动重查。这里每隔 ~2 秒强制一次结构重查，
+        // 让玩家事后新放/替换的模块能被收集进 moduleHatches（不用拆核心重放）。
+        if ((aTick % 40) == 0) {
+            setStructureUpdateTime(5);
+        }
+
         // 队伍归属上报：离队/被踢时由系统把升级树继承到个人
         if (ownerUUID != null) {
             DysonSphereSystem.trackPlayerTeam(
@@ -932,6 +939,17 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
         // 维度强约束：只能在塔罗斯 2 运行，否则全部模块断开
         if (!DysonMachineConfig.isInTalos(aBaseMetaTileEntity.getWorld())) {
+            disconnectAll();
+            updateTeamCoreOnline(false);
+            return;
+        }
+
+        // 完工锁：戴森球成型后，非胜利队伍的核心禁止开机
+        DysonSphereWorldData data = DysonSphereWorldData.get(aBaseMetaTileEntity.getWorld());
+        if (data != null && data.isCompleted()
+            && !(getTeamId() != null && getTeamId().equals(data.getCompletedTeamId()))) {
+            disableWorking();
+            stopMachine(DysonModuleBase.DYSON_COMPLETED_REASON);
             disconnectAll();
             updateTeamCoreOnline(false);
             return;
@@ -963,8 +981,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             WirelessComputeHelper.updateConsumer(this);
             computeOk = WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
         }
-        // 核心不在线（未成型 / 算力不足 / 被停机）时全部模块断开
-        if (!mMachine || !computeOk || !aBaseMetaTileEntity.isActive()) {
+        // 核心不在线（未成型 / 算力不足 / 被软锤停机）时全部模块断开
+        // 注意：不能用 isActive()，无线模式下每轮 20 tick 之间 mMaxProgresstime 会短暂归 0，
+        // 那会把模块每轮都断开重连，导致接收模块的每队唯一注册反复抖动。
+        if (!mMachine || !computeOk || !aBaseMetaTileEntity.isAllowedToWork()) {
             disconnectAll();
             updateTeamCoreOnline(false);
             return;
@@ -983,7 +1003,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             if (module == null) {
                 continue;
             }
-            if (!module.isFormed() || connectedCount >= activeSlots || module.getRequiredPaste() > paste) {
+            // 被软锤关机的模块不允许占用连接名额；接收模块尤其不能占着“每队唯一”的名额
+            if (!module.isFormed() || !module.isAllowedToWork()
+                || connectedCount >= activeSlots || module.getRequiredPaste() > paste) {
                 module.disconnect();
                 continue;
             }
