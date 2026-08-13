@@ -115,18 +115,22 @@
 ## 八、升级树
 
 - 模仿 God Forge 的 `ForgeOfGodsUpgrade` + `UpgradeStorage` 结构：节点枚举声明前置/花费/UI，存储负责解锁与 NBT。
-- **货币占位**：当前用原版圆石；后续替换为专属物品。
-- 首批节点（效果数值均为占位，待定）：
+- **存储为队伍级**（`DysonTeamProgress.upgrades`，随存档持久化）：所有队员的核心/模块共享同一棵升级树。
+- **货币占位**：当前用原版圆石；后续替换为专属物品。成本：效率节点 1、大节点 3，不递增。
+- 首批节点：
 
-| 节点 | 前置 | 花费（圆石占位） | 效果（占位） |
+| 节点 | 类型 | 前置 | 效果 |
 | --- | --- | --- | --- |
-| START 核心激活 | 无 | 0 | 激活核心 |
-| 制造效率 I | START | 1 | 制造模块并行 +50% |
-| 制造效率 II | 制造效率 I | 2 | 制造模块并行再 +50% |
-| 发射效率 I | START | 1 | 发射成本 -10% |
-| 发射效率 II | 发射效率 I | 2 | 发射成本再 -10% |
-| 贴片加速 | START | 2 | 每日结算加成（待定） |
-| 接收强化 | 贴片加速 | 3 | 接收输出 +10%（待定） |
+| START 核心激活 | 基础 | 无 | 核心基础功能（默认激活） |
+| 制造效率 I/II/III | 效率 | 逐级 | 制造模块一轮时间 ÷1.5/级 |
+| 发射效率 I/II | 效率 | 逐级 | 发射模块一轮时间 ÷1.5/级 |
+| 双轨发射 | 大节点 | 发射效率 II | 解锁发射模块云+框架同发 |
+| 贴片转化 | 效率（分叉） | START | 每日转化 128 → 112 |
+| 掉落减免 | 效率（分叉） | START | 每日掉落 10~64 → 8~48 |
+| 接收强化 | 效率 | 贴片转化 或 掉落减免（二选一） | 接收输出 ×1.1 |
+| 能量分配 | 大节点 | 接收强化 | 解锁接收模块 EU/Orundum 百分比分配 |
+
+- 贴片转化与掉落减免为**互斥分叉**（最多激活一个）；制造效率 III 目前为断头路，后续再挂大节点。
 
 ## 九、接口清单
 
@@ -136,6 +140,7 @@
 | `DysonSphereSystem.addComponents(...)` / `consumeComponents(...)` | 制造入账 / 发射出账队伍虚拟组件库存 |
 | `DysonSphereWorldData.getTeam(teamId)` | 读本队 cloud/frame/paste |
 | `DysonSphereSystem.getTeamCloudCount/FrameCount/PasteCount/CloudComponents/FrameComponents(world, teamId)` | 对外查询本队数据 |
+| `DysonSphereSystem.getTeamUpgrades(world, teamId)` / `isTeamUpgradeActive(...)` | 读取队伍级升级树 |
 | `DysonSphereSystem.settleDaily(world)` | 每日结算（由每日处理器触发） |
 | `OrundumEnergyService` / `addEUToGlobalEnergyMap` | 能量出入两本账 |
 | `WirelessComputeHelper.updateConsumer(...)` | 声明核心/模块算力需求 |

@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.dyson;
 
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
 import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -143,6 +145,17 @@ public final class DysonSphereSystem {
     public static long getTeamFrameComponents(World world, UUID teamId) {
         DysonTeamProgress team = getTeamForQuery(world, teamId);
         return team == null ? 0 : team.frameComponents;
+    }
+
+    /** 队伍级升级树存储；队伍不存在返回 null。 */
+    public static DysonUpgradeStorage getTeamUpgrades(World world, UUID teamId) {
+        DysonTeamProgress team = getTeamForQuery(world, teamId);
+        return team == null ? null : team.upgrades;
+    }
+
+    public static boolean isTeamUpgradeActive(World world, UUID teamId, DysonUpgrade upgrade) {
+        DysonUpgradeStorage storage = getTeamUpgrades(world, teamId);
+        return storage != null && storage.isUpgradeActive(upgrade);
     }
 
     private static DysonTeamProgress getTeamForQuery(World world, UUID teamId) {

@@ -221,6 +221,7 @@ public class DysonSphereWorldData extends WorldSavedData {
                 team.cloudComponents = c.getLong("CloudComponents");
                 team.frameComponents = c.getLong("FrameComponents");
                 team.firstLaunchTick = c.getLong("FirstLaunchTick");
+                team.upgrades.rebuildFromNBT(c);
                 teams.put(teamId, team);
             } catch (IllegalArgumentException ignored) {
             }
@@ -253,6 +254,7 @@ public class DysonSphereWorldData extends WorldSavedData {
             c.setLong("CloudComponents", team.cloudComponents);
             c.setLong("FrameComponents", team.frameComponents);
             c.setLong("FirstLaunchTick", team.firstLaunchTick);
+            team.upgrades.serializeToNBT(c);
             c.setString("Name", team.teamName == null ? "" : team.teamName);
             teamList.appendTag(c);
         }

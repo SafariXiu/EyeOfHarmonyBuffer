@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.dyson;
 
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
+
 /**
  * 单支队伍的戴森球建造进度（云 / 框架 / 贴片三计数器）。
  * <p>
@@ -16,6 +18,9 @@ public class DysonTeamProgress {
     /** 虚拟组件库存：制造模块入账、发射模块出账（不再流转实体物品）。 */
     public long cloudComponents;
     public long frameComponents;
+
+    /** 队伍级升级树（所有队员的核心/模块共享同一套加成）。 */
+    public final DysonUpgradeStorage upgrades = new DysonUpgradeStorage();
 
     /** 首次发射的世界时间（领先者并列时按先到者排序）。 */
     public long firstLaunchTick;
