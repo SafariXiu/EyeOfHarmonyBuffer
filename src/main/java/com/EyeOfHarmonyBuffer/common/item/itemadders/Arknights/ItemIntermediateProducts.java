@@ -145,6 +145,7 @@ public class ItemIntermediateProducts {
     public static Item YeHuaMiXiJuTi;
     public static Item ZhuanZhiYanZu;
     public static Item ZhuanZhiYanJuKuai;
+    public static Item QiYiWuZhi;
 
     public static void initAndRegister(String modid) {
         initAndRegister(modid, null);

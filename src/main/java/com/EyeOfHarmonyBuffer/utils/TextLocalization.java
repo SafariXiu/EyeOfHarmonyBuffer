@@ -508,10 +508,12 @@ public class TextLocalization {
     public static final String Dyson_Info_LaunchBatch;
     public static final String Dyson_Info_MassMode;
     public static final String Dyson_Info_Split;
+    public static final String Dyson_Info_StrangeMatter;
     public static final String Dyson_Stat_Cloud;
     public static final String Dyson_Stat_Frame;
     public static final String Dyson_Stat_Paste;
     public static final String Dyson_Stat_Components;
+    public static final String Dyson_Stat_StrangeMatter;
     public static final String Dyson_Stat_Stage;
     public static final String Dyson_Stat_Leader;
     public static final String Dyson_Gui_PriorityCloud;
@@ -520,6 +522,7 @@ public class TextLocalization {
     public static final String Dyson_Gui_SplitTitle;
     public static final String Dyson_Gui_SplitEUText;
     public static final String Dyson_Gui_SplitTooltip;
+    public static final String Dyson_Gui_EjectMatter;
     public static final String Dyson_Text_Or;
     public static final String Dyson_Cmd_NoPermission;
     public static final String Dyson_Cmd_NotLoaded;
@@ -717,6 +720,7 @@ public class TextLocalization {
     public static final String[] EOHB_ArknightsItem_YeHuaMiXiJuTi;
     public static final String[] EOHB_ArknightsItem_ZhuanZhiYanZu;
     public static final String[] EOHB_ArknightsItem_ZhuanZhiYanJuKuai;
+    public static final String[] EOHB_ArknightsItem_QiYiWuZhi;
 
 
     //配方池
@@ -1772,6 +1776,10 @@ public class TextLocalization {
             TextHandler.texter("A stable crystalline body, manufactured as a crystal blend within saturated", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_02"),
             TextHandler.texter("solutions. Can provide materials with a diverse array of capabilities.", "EOHB_ArknightsItem_ZhuanZhiYanJuKuai_03")
         };
+        EOHB_ArknightsItem_QiYiWuZhi = new String[] {
+            TextHandler.texter("Strange matter captured from the star, completely different in nature from matter in the material world.", "EOHB_ArknightsItem_QiYiWuZhi_00"),
+            TextHandler.texter("Seems it can be used to improve machine performance.", "EOHB_ArknightsItem_QiYiWuZhi_01")
+        };
 
 
         //流体
@@ -1937,10 +1945,12 @@ public class TextLocalization {
         Dyson_Info_LaunchBatch = TextHandler.texter("Batch per round: ","Dyson_Info_LaunchBatch");
         Dyson_Info_MassMode = TextHandler.texter("Launch mode: Mass (one 60s round clears all personal components)","Dyson_Info_MassMode");
         Dyson_Info_Split = TextHandler.texter("Output split: Orundum ","Dyson_Info_Split");
+        Dyson_Info_StrangeMatter = TextHandler.texter("Strange Matter: ","Dyson_Info_StrangeMatter");
         Dyson_Stat_Cloud = TextHandler.texter("Cloud","Dyson_Stat_Cloud");
         Dyson_Stat_Frame = TextHandler.texter("Frame","Dyson_Stat_Frame");
         Dyson_Stat_Paste = TextHandler.texter("Paste","Dyson_Stat_Paste");
         Dyson_Stat_Components = TextHandler.texter("Personal components","Dyson_Stat_Components");
+        Dyson_Stat_StrangeMatter = TextHandler.texter("Strange Matter","Dyson_Stat_StrangeMatter");
         Dyson_Stat_Stage = TextHandler.texter("Stage","Dyson_Stat_Stage");
         Dyson_Stat_Leader = TextHandler.texter("Leader","Dyson_Stat_Leader");
         Dyson_Gui_PriorityCloud = TextHandler.texter("Cloud","Dyson_Gui_PriorityCloud");
@@ -1949,6 +1959,7 @@ public class TextLocalization {
         Dyson_Gui_SplitTitle = TextHandler.texter("Orundum output share (0-100)","Dyson_Gui_SplitTitle");
         Dyson_Gui_SplitEUText = TextHandler.texter("EU: ","Dyson_Gui_SplitEUText");
         Dyson_Gui_SplitTooltip = TextHandler.texter("Configure Orundum / EU output split","Dyson_Gui_SplitTooltip");
+        Dyson_Gui_EjectMatter = TextHandler.texter("Eject Strange Matter as items","Dyson_Gui_EjectMatter");
         Dyson_Text_Or = TextHandler.texter(" or ","Dyson_Text_Or");
         Dyson_Cmd_NoPermission = TextHandler.texter("You do not have permission to use this command.","Dyson_Cmd_NoPermission");
         Dyson_Cmd_NotLoaded = TextHandler.texter("Dyson sphere save has not been loaded yet.","Dyson_Cmd_NotLoaded");

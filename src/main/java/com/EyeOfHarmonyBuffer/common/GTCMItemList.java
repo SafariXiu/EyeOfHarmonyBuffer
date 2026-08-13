@@ -219,6 +219,7 @@ public enum GTCMItemList {
     DysonReceiverModule,
     DysonCloudComponent,
     DysonFrameComponent,
+    QiYiWuZhi,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

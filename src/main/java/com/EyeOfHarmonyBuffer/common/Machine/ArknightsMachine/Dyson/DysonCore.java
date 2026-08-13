@@ -8,6 +8,7 @@ import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
+import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.math.BigInteger;
@@ -22,7 +23,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
@@ -52,6 +57,7 @@ import com.cleanroommc.modularui.widgets.ToggleButton;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.slot.ItemSlot;
 import com.cleanroommc.modularui.widgets.slot.ModularSlot;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
@@ -118,6 +124,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     /** 当前登记在“开机核心”表里的队伍 ID，换队时用于清理旧键。 */
     private UUID activeCoreTeamId = null;
 
+    /** 储存在核心中的奇异物质（神锻引力碎片式货币），优先供本机升级使用。 */
+    private long strangeMatter = 0L;
+
     public DysonCore(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
@@ -176,6 +185,41 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             Set<DysonCore> cores = ACTIVE_CORES_BY_TEAM.get(teamId);
             return cores != null && !cores.isEmpty();
         }
+    }
+
+    public long getStrangeMatter() {
+        return strangeMatter;
+    }
+
+    /** 把核心中储存的奇异物质喷出为物品：优先塞进玩家背包，放不下的丢在核心附近。 */
+    public void ejectStrangeMatter(EntityPlayer player) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.getWorld() == null || base.getWorld().isRemote || strangeMatter <= 0) {
+            return;
+        }
+        Item item = GTCMItemList.QiYiWuZhi.getItem();
+        if (item == null) {
+            return;
+        }
+        World world = base.getWorld();
+        long remaining = strangeMatter;
+        while (remaining > 0) {
+            int chunk = (int) Math.min(remaining, 64);
+            ItemStack stack = new ItemStack(item, chunk);
+            boolean stored = player != null && player.inventory.addItemStackToInventory(stack);
+            if (!stored || stack.stackSize > 0) {
+                world.spawnEntityInWorld(
+                    new EntityItem(
+                        world,
+                        base.getXCoord() + 0.5D,
+                        base.getYCoord() + 1.5D,
+                        base.getZCoord() + 0.5D,
+                        stack));
+            }
+            remaining -= chunk;
+        }
+        strangeMatter = 0L;
+        base.markDirty();
     }
 
     private void updateTeamCoreOnline(boolean online) {
@@ -279,6 +323,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             || !storage.checkCost(upgrade)) {
             return false;
         }
+        // 奇异物质是独立判定：投料物品与货币两者都够才能点亮
+        if (strangeMatter < upgrade.getShardCost()) {
+            return false;
+        }
+        strangeMatter -= upgrade.getShardCost();
+        base.markDirty();
         storage.unlockUpgrade(upgrade);
         markTeamDataDirty(base);
         return true;
@@ -296,6 +346,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         if (!storage.checkDependents(upgrade)) {
             return false;
         }
+        // 洗点退还奇异物质
+        strangeMatter += upgrade.getShardCost();
+        base.markDirty();
         storage.respecUpgrade(upgrade);
         markTeamDataDirty(base);
         return true;
@@ -335,6 +388,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         private IntSyncValue pasteSyncer;
         private LongSyncValue cloudComponentsSyncer;
         private LongSyncValue frameComponentsSyncer;
+        private LongSyncValue strangeMatterSyncer;
         private final BooleanSyncValue[] activeSyncers = new BooleanSyncValue[DysonUpgrade.VALUES.length];
         private final IntSyncValue[] paidSyncers = new IntSyncValue[DysonUpgrade.VALUES.length];
 
@@ -350,11 +404,13 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             pasteSyncer = new IntSyncValue(multiblock::getTeamPasteCount);
             cloudComponentsSyncer = new LongSyncValue(multiblock::getPersonalCloudComponents);
             frameComponentsSyncer = new LongSyncValue(multiblock::getPersonalFrameComponents);
+            strangeMatterSyncer = new LongSyncValue(multiblock::getStrangeMatter);
             syncManager.syncValue("dysonCloud", cloudSyncer);
             syncManager.syncValue("dysonFrame", frameSyncer);
             syncManager.syncValue("dysonPaste", pasteSyncer);
             syncManager.syncValue("dysonCloudComponents", cloudComponentsSyncer);
             syncManager.syncValue("dysonFrameComponents", frameComponentsSyncer);
+            syncManager.syncValue("dysonStrangeMatter", strangeMatterSyncer);
 
             for (DysonUpgrade upgrade : DysonUpgrade.VALUES) {
                 BooleanSyncValue active = new BooleanSyncValue(() -> multiblock.isUpgradeActive(upgrade));
@@ -376,13 +432,28 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .mainAxisAlignment(Alignment.MainAxis.END)
                 .reverseLayout(true)
                 .child(
-                    new Widget<>()
-                        .size(18, 18)
-                        .marginTop(4)
-                        .invisible())
+                    createStrangeMatterButton(syncManager)
+                        .marginTop(4))
                 .child(createPowerSwitchButton())
                 .child(createStructureUpdateButton(syncManager))
                 .child(createUpgradeTreeButton(panel, syncManager));
+        }
+
+        /** 喷射奇异物质按钮：把核心中储存的货币喷出为物品。 */
+        protected ToggleButton createStrangeMatterButton(PanelSyncManager syncManager) {
+            BooleanSyncValue eject = new BooleanSyncValue(
+                () -> false,
+                val -> {
+                    if (val) {
+                        multiblock.ejectStrangeMatter(syncManager.getPlayer());
+                    }
+                }).allowC2S();
+            return new ToggleButton()
+                .size(18, 18)
+                .value(eject)
+                .overlay(UITexture.fullImage("eyeofharmonybuffer", "items/Arknights/QiYiWuZhi"))
+                .tooltipBuilder(t -> t.addLine(IKey.str(Dyson_Gui_EjectMatter)))
+                .tooltipShowUpTimer(TOOLTIP_DELAY);
         }
 
         protected IWidget createUpgradeTreeButton(ModularPanel panel, PanelSyncManager syncManager) {
@@ -714,20 +785,30 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             if (activeSyncers[upgrade.ordinal()].getValue()) {
                 return StatCollector.translateToLocal("eohb.dyson.upgrade.respec");
             }
-            if (!upgrade.hasExtraCost() || paidSyncers[upgrade.ordinal()].getValue() >= upgrade.getTotalItemCost()) {
-                return StatCollector.translateToLocal("eohb.dyson.upgrade.unlock");
+            boolean itemsPaid = !upgrade.hasExtraCost()
+                || paidSyncers[upgrade.ordinal()].getValue() >= upgrade.getTotalItemCost();
+            if (!itemsPaid) {
+                return StatCollector.translateToLocal("eohb.dyson.upgrade.unpaid");
             }
-            return StatCollector.translateToLocal("eohb.dyson.upgrade.unpaid");
+            if (strangeMatterSyncer.getValue() < upgrade.getShardCost()) {
+                return StatCollector.translateToLocal("eohb.dyson.upgrade.needMatter");
+            }
+            return StatCollector.translateToLocal("eohb.dyson.upgrade.unlock");
         }
 
         protected String costText(DysonUpgrade upgrade) {
+            String matter = StatCollector.translateToLocalFormatted(
+                "eohb.dyson.upgrade.matterCost",
+                upgrade.getShardCost());
             if (!upgrade.hasExtraCost()) {
-                return StatCollector.translateToLocal("eohb.dyson.upgrade.noCost");
+                return matter;
             }
-            return StatCollector.translateToLocalFormatted(
-                "eohb.dyson.upgrade.cost",
-                upgrade.getTotalItemCost(),
-                paidSyncers[upgrade.ordinal()].getValue());
+            return matter
+                + "  "
+                + StatCollector.translateToLocalFormatted(
+                    "eohb.dyson.upgrade.cost",
+                    upgrade.getTotalItemCost(),
+                    paidSyncers[upgrade.ordinal()].getValue());
         }
 
         protected String prerequisiteText(DysonUpgrade upgrade) {
@@ -762,6 +843,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .child(makeStat(Dyson_Stat_Cloud, () -> String.valueOf(cloudSyncer.getValue())))
                 .child(makeStat(Dyson_Stat_Frame, () -> String.valueOf(frameSyncer.getValue())))
                 .child(makeStat(Dyson_Stat_Paste, () -> String.valueOf(pasteSyncer.getValue())))
+                .child(makeStat(Dyson_Stat_StrangeMatter, () -> String.valueOf(strangeMatterSyncer.getValue())))
                 .child(
                     makeStat(
                         Dyson_Stat_Components,
@@ -805,7 +887,31 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         this.lastOrundumCost = BigInteger.ZERO;
         this.lastUsedParallel = 1;
 
+        // 奇异物质产出：按本队云与贴片数量决定，优先储存在核心中
+        DysonSphereWorldData data = DysonSphereWorldData.get(base.getWorld());
+        DysonTeamProgress team = data == null ? null : data.getTeam(getTeamId());
+        if (team != null) {
+            long gain = team.cloudCount / DysonMachineConfig.strangeMatterCloudDivisor
+                + team.pasteCount / DysonMachineConfig.strangeMatterPasteDivisor;
+            if (gain > 0) {
+                strangeMatter += gain;
+                base.markDirty();
+            }
+        }
+
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        aNBT.setLong("StrangeMatter", strangeMatter);
+        super.saveNBTData(aNBT);
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        strangeMatter = aNBT.hasKey("StrangeMatter") ? aNBT.getLong("StrangeMatter") : 0L;
+        super.loadNBTData(aNBT);
     }
 
     @Override
@@ -968,6 +1074,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 + " "
                 + EnumChatFormatting.GOLD
                 + getPersonalFrameComponents());
+        lines.add(
+            EnumChatFormatting.AQUA + Dyson_Info_StrangeMatter
+                + EnumChatFormatting.GOLD
+                + strangeMatter);
 
         if (duplicateRejected) {
             lines.add(

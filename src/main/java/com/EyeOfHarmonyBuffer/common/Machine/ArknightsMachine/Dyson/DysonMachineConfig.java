@@ -51,6 +51,10 @@ public final class DysonMachineConfig {
     public static final int CLOUD_RECIPE_OUTPUT = 64;
     public static final int FRAME_RECIPE_OUTPUT = 512;
 
+    /** 奇异物质产出：每个核心无线周期（1 秒）产出 = 本队云 / cloudDivisor + 本队贴片 / pasteDivisor。 */
+    public static long strangeMatterCloudDivisor = 10_000L;
+    public static long strangeMatterPasteDivisor = 200_000L;
+
     /** 发射效率 I/II 对应的一轮时间（tick）。 */
     public static int launchEfficiencyTicksI = 100;
     public static int launchEfficiencyTicksII = 40;

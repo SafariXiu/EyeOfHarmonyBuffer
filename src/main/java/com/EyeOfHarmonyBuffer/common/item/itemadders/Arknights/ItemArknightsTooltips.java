@@ -87,6 +87,7 @@ public final class ItemArknightsTooltips {
         tooltips.put("YeHuaMiXiJuTi", TextLocalization.EOHB_ArknightsItem_YeHuaMiXiJuTi);
         tooltips.put("ZhuanZhiYanZu", TextLocalization.EOHB_ArknightsItem_ZhuanZhiYanZu);
         tooltips.put("ZhuanZhiYanJuKuai", TextLocalization.EOHB_ArknightsItem_ZhuanZhiYanJuKuai);
+        tooltips.put("QiYiWuZhi", TextLocalization.EOHB_ArknightsItem_QiYiWuZhi);
         return tooltips;
     }
 }

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
@@ -19,7 +18,8 @@ import com.google.common.collect.ImmutableSet;
  * - 效率节点：缩短一轮时间（并行是独立数值，不在此列）；
  * - 大节点：解锁型收益（双轨发射、能量分配）。
  * <p>
- * 材料成本为圆石占位（{@link #getExtraCost()}），后续替换为专属货币，最多 12 种材料。
+ * 解锁需要奇异物质（{@link #getShardCost()}，储存在核心中）与投料物品（{@link #getExtraCost()}）双通道，
+ * 两者是独立判定，都满足才能点亮；投料材料最多 12 种。
  */
 public enum DysonUpgrade {
 
@@ -91,6 +91,7 @@ public enum DysonUpgrade {
     private DysonUpgrade[] prerequisites = new DysonUpgrade[0];
     private boolean requireAllPrerequisites = true;
     private final List<ItemStack> extraCost = new ArrayList<>();
+    private int shardCost;
     private int treeX;
     private int treeY;
     private boolean major;
@@ -104,9 +105,7 @@ public enum DysonUpgrade {
             ? new DysonUpgrade[0]
             : builder.prerequisites.toArray(new DysonUpgrade[0]);
         this.requireAllPrerequisites = builder.requireAllPrerequisites;
-        if (builder.itemCost > 0) {
-            this.extraCost.add(new ItemStack(Blocks.cobblestone, builder.itemCost));
-        }
+        this.shardCost = Math.max(0, builder.itemCost);
         this.treeX = builder.treeX;
         this.treeY = builder.treeY;
         this.major = builder.major;
@@ -126,6 +125,11 @@ public enum DysonUpgrade {
 
     public boolean hasExtraCost() {
         return !extraCost.isEmpty();
+    }
+
+    /** 解锁所需的奇异物质数量（存在核心中）。 */
+    public int getShardCost() {
+        return shardCost;
     }
 
     /** 材料成本（最多 12 种，当前为圆石占位）。 */
