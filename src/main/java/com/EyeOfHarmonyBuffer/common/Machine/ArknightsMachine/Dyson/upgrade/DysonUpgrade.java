@@ -38,6 +38,7 @@ public enum DysonUpgrade {
     DROP_REDUCTION,
     RECEIVER_BOOST,
     SPLIT_UNLOCK,
+    MASS_LAUNCH,
     ;
 
     public static final DysonUpgrade[] VALUES = values();
@@ -70,6 +71,7 @@ public enum DysonUpgrade {
             GTCMItemList.YuanShi.get(1),
             GTCMItemList.XiRang.get(2));
         SPLIT_UNLOCK.build(b -> b.prereqs(RECEIVER_BOOST).cost(3).treePos(140, 255).major());
+        MASS_LAUNCH.build(b -> b.prereqs(DUAL_LAUNCH).cost(3).treePos(252, 225).major());
 
         SPLIT_UPGRADES = ImmutableSet.of(PASTE_CONVERSION, DROP_REDUCTION);
 

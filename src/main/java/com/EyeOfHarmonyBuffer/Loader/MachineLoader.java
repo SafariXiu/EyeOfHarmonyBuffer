@@ -52,6 +52,7 @@ public class MachineLoader {
     public static ItemStack DysonCore;
     public static ItemStack DysonManufacturingModule;
     public static ItemStack DysonLaunchModule;
+    public static ItemStack DysonMassLaunchModule;
     public static ItemStack DysonReceiverModule;
 
     private final static int MachineBlockID = 23000;
@@ -371,5 +372,12 @@ public class MachineLoader {
             "戴森接收模块"
         ).getStackForm(1);
         GTCMItemList.DysonReceiverModule.set(DysonReceiverModule);
+
+        DysonMassLaunchModule = new DysonMassLaunchModule(
+            MachineBlockID + 46,
+            "NameDysonMassLaunchModule",
+            "戴森全量发射模块"
+        ).getStackForm(1);
+        GTCMItemList.DysonMassLaunchModule.set(DysonMassLaunchModule);
     }
 }

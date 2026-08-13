@@ -22,6 +22,9 @@ public final class DysonMachineConfig {
     /** 发射模块：基础无线周期（10 秒 = 200 tick）。 */
     public static int launchTimeTicks = 200;
 
+    /** 全量发射模块：固定一轮 60 秒（1200 tick）。 */
+    public static int massLaunchTimeTicks = 1200;
+
     /** 制造模块：基础无线周期（30 秒 = 600 tick）与基础并行（64）。 */
     public static int manufacturingTimeTicks = 600;
     public static int manufacturingMaxParallel = 64;

@@ -215,6 +215,7 @@ public enum GTCMItemList {
     DysonCore,
     DysonManufacturingModule,
     DysonLaunchModule,
+    DysonMassLaunchModule,
     DysonReceiverModule,
     DysonCloudComponent,
     DysonFrameComponent,
