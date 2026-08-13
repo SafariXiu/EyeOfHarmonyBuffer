@@ -945,9 +945,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         }
 
         // 完工锁：戴森球成型后，非胜利队伍的核心禁止开机
-        DysonSphereWorldData data = DysonSphereWorldData.get(aBaseMetaTileEntity.getWorld());
-        if (data != null && data.isCompleted()
-            && !(getTeamId() != null && getTeamId().equals(data.getCompletedTeamId()))) {
+        DysonSphereWorldData sphereData = DysonSphereWorldData.get(aBaseMetaTileEntity.getWorld());
+        if (sphereData != null && sphereData.isCompleted()
+            && !(getTeamId() != null && getTeamId().equals(sphereData.getCompletedTeamId()))) {
             disableWorking();
             stopMachine(DysonModuleBase.DYSON_COMPLETED_REASON);
             disconnectAll();
