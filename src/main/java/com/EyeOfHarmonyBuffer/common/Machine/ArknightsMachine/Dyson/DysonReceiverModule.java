@@ -171,6 +171,29 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         orundumSharePercent = Math.max(0, Math.min(100, value));
     }
 
+    /** 接收模块是发电方，Waila 那一行显示“每轮输出”而不是“每轮消耗”。 */
+    @Override
+    protected String getWailaCostLabel() {
+        return Dyson_Waila_OutputOrundum;
+    }
+
+    @Override
+    protected void writeWailaRoundStats(NBTTagCompound tag, World world) {
+        tag.setInteger("dysonOruPct", orundumSharePercent);
+    }
+
+    @Override
+    protected void appendWailaRoundStats(NBTTagCompound tag, List<String> currentTip) {
+        if (tag.hasKey("dysonOruPct")) {
+            int pct = tag.getInteger("dysonOruPct");
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_Split
+                    + EnumChatFormatting.GOLD + pct + "%"
+                    + EnumChatFormatting.AQUA + " / EU "
+                    + EnumChatFormatting.GOLD + (100 - pct) + "%");
+        }
+    }
+
     @Override
     public ModuleType getModuleType() {
         return ModuleType.RECEIVER;

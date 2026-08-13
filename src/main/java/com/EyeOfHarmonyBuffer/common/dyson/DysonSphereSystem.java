@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.dyson;
 
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonCore;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonMachineConfig;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonReceiverModule;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
@@ -21,14 +22,6 @@ import java.util.UUID;
  * 队伍语义沿用 Orundum 电网（调用方把玩家 UUID 解析为队伍 ID 后传入）。
  */
 public final class DysonSphereSystem {
-
-    /** 每框架容纳的贴片数。 */
-    public static final int PASTE_PER_FRAME = 4;
-    /** 每贴片消耗的云数。 */
-    public static final int CLOUDS_PER_PASTE = 128;
-    /** 每日掉落范围（含上下限）。 */
-    public static final int DAILY_DROP_MIN = 10;
-    public static final int DAILY_DROP_MAX = 64;
 
     private DysonSphereSystem() {}
 
@@ -247,11 +240,11 @@ public final class DysonSphereSystem {
             boolean allowConvert = coreOnline
                 && (!halfDay || isTeamUpgradeActive(world, teamId, DysonUpgrade.PASTE_CONVERSION));
             if (allowConvert) {
-                int room = Math.max(0, PASTE_PER_FRAME * team.frameCount - team.pasteCount);
-                int batches = Math.min(team.cloudCount / CLOUDS_PER_PASTE, room);
+                int room = Math.max(0, DysonMachineConfig.PASTE_PER_FRAME * team.frameCount - team.pasteCount);
+                int batches = Math.min(team.cloudCount / DysonMachineConfig.CLOUDS_PER_PASTE, room);
                 if (batches > 0) {
                     team.pasteCount += batches;
-                    team.cloudCount -= batches * CLOUDS_PER_PASTE;
+                    team.cloudCount -= batches * DysonMachineConfig.CLOUDS_PER_PASTE;
                     changed = true;
                 }
             }
@@ -290,7 +283,8 @@ public final class DysonSphereSystem {
     }
 
     private static int randomDrop(World world) {
-        return DAILY_DROP_MIN + world.rand.nextInt(DAILY_DROP_MAX - DAILY_DROP_MIN + 1);
+        return DysonMachineConfig.DAILY_DROP_MIN
+            + world.rand.nextInt(DysonMachineConfig.DAILY_DROP_MAX - DysonMachineConfig.DAILY_DROP_MIN + 1);
     }
 
     /**

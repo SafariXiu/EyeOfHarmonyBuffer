@@ -7,41 +7,53 @@ import net.minecraft.world.World;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 
 /**
- * 戴森球机器系统的集中常量与配置（当前为占位值，后续接入 MainConfig）。
+ * 戴森球机器系统的集中常量。
+ * <p>
+ * 数值已全部定稿并硬编码为 final 常量，刻意不开放配置文件，防止玩家修改破坏平衡。
  */
 public final class DysonMachineConfig {
 
     private DysonMachineConfig() {}
 
+    /** 每框架容纳的贴片数。 */
+    public static final int PASTE_PER_FRAME = 4;
+
+    /** 每贴片消耗的云数。 */
+    public static final int CLOUDS_PER_PASTE = 128;
+
+    /** 每日掉落范围（含上下限）。 */
+    public static final int DAILY_DROP_MIN = 10;
+    public static final int DAILY_DROP_MAX = 64;
+
     /** 发射模块：每个组件的发射成本（Orundum）。 */
-    public static long launchCostOrundum = 10_000L;
+    public static final long launchCostOrundum = 10_000L;
 
     /** 发射模块：基础单轮批量（未升级 16）。 */
-    public static int launchBatch = 16;
+    public static final int launchBatch = 16;
 
     /** 发射模块：基础无线周期（10 秒 = 200 tick）。 */
-    public static int launchTimeTicks = 200;
+    public static final int launchTimeTicks = 200;
 
     /** 全量发射模块：固定一轮 60 秒（1200 tick）。 */
-    public static int massLaunchTimeTicks = 1200;
+    public static final int massLaunchTimeTicks = 1200;
 
     /** 制造模块：基础无线周期（30 秒 = 600 tick）与基础并行（64）。 */
-    public static int manufacturingTimeTicks = 600;
-    public static int manufacturingMaxParallel = 64;
+    public static final int manufacturingTimeTicks = 600;
+    public static final int manufacturingMaxParallel = 64;
 
     /** 制造效率 I/II/III 对应的一轮时间（tick）。 */
-    public static int manufacturingEfficiencyTicksI = 300;
-    public static int manufacturingEfficiencyTicksII = 200;
-    public static int manufacturingEfficiencyTicksIII = 100;
+    public static final int manufacturingEfficiencyTicksI = 300;
+    public static final int manufacturingEfficiencyTicksII = 200;
+    public static final int manufacturingEfficiencyTicksIII = 100;
 
     /** 制造并行 II/III 对应的基础并行。 */
-    public static int manufacturingParallelII = 128;
-    public static int manufacturingParallelIII = 512;
+    public static final int manufacturingParallelII = 128;
+    public static final int manufacturingParallelIII = 512;
 
     /** 制造并行 III 每轮额外产出的概率与倍率范围（100~200 × 配方单份产出）。 */
-    public static float manufacturingExtraChance = 0.20F;
-    public static int manufacturingExtraMin = 100;
-    public static int manufacturingExtraMax = 200;
+    public static final float manufacturingExtraChance = 0.20F;
+    public static final int manufacturingExtraMin = 100;
+    public static final int manufacturingExtraMax = 200;
 
     /** 组件制造 Orundum 成本基准（每 tick）：云组件 10 亿，框架组件 50 亿。 */
     public static final BigInteger CLOUD_COMPONENT_ORUNDUM_PER_TICK = BigInteger.valueOf(1_000_000_000L);
@@ -52,21 +64,21 @@ public final class DysonMachineConfig {
     public static final int FRAME_RECIPE_OUTPUT = 512;
 
     /** 奇异物质产出：每个核心无线周期（1 秒）产出 = 本队云 / cloudDivisor + 本队贴片 / pasteDivisor。 */
-    public static long strangeMatterCloudDivisor = 10_000L;
-    public static long strangeMatterPasteDivisor = 200_000L;
+    public static final long strangeMatterCloudDivisor = 10_000L;
+    public static final long strangeMatterPasteDivisor = 200_000L;
 
     /** 发射效率 I/II 对应的一轮时间（tick）。 */
-    public static int launchEfficiencyTicksI = 100;
-    public static int launchEfficiencyTicksII = 40;
+    public static final int launchEfficiencyTicksI = 100;
+    public static final int launchEfficiencyTicksII = 40;
 
     /** 发射批量 I/II 对应的单轮批量。 */
-    public static int launchBatchI = 64;
-    public static int launchBatchII = 128;
+    public static final int launchBatchI = 64;
+    public static final int launchBatchII = 128;
 
     /** 算力需求（核心 / 制造模块 / 发射模块）。 */
-    public static int coreCompute = 1_000_000;
-    public static int manufacturingCompute = 10_000;
-    public static int launchCompute = 100_000;
+    public static final int coreCompute = 1_000_000;
+    public static final int manufacturingCompute = 10_000;
+    public static final int launchCompute = 100_000;
 
     /** 1 云功率 = 1024 × MAX（EU/t）。 */
     public static final BigInteger CLOUD_POWER = BigInteger.valueOf(2_147_483_647L)

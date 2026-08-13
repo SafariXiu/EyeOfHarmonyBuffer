@@ -17,6 +17,9 @@ import java.util.List;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
@@ -54,6 +57,10 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
     private static final int OffsetsY = 1;
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 183;
+
+    /** 本轮制造的云/框架组件数（Waila 显示用，服务端）。 */
+    private long lastRoundClouds = 0;
+    private long lastRoundFrames = 0;
 
     public DysonManufacturingModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -199,6 +206,8 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
 
     @Override
     protected void collectWirelessOutputs() {
+        this.lastRoundClouds = 0;
+        this.lastRoundFrames = 0;
         mOutputItems = null;
         mOutputFluids = null;
         if (processingLogic == null) {
@@ -251,6 +260,26 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
                 base.getOwnerName(),
                 clouds + extraClouds,
                 frames + extraFrames);
+            this.lastRoundClouds = clouds + extraClouds;
+            this.lastRoundFrames = frames + extraFrames;
+        }
+    }
+
+    @Override
+    protected void writeWailaRoundStats(NBTTagCompound tag, World world) {
+        tag.setLong("dysonManufacturedCloud", lastRoundClouds);
+        tag.setLong("dysonManufacturedFrame", lastRoundFrames);
+    }
+
+    @Override
+    protected void appendWailaRoundStats(NBTTagCompound tag, List<String> currentTip) {
+        if (tag.hasKey("dysonManufacturedCloud") && tag.hasKey("dysonManufacturedFrame")) {
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_ManufacturedCloud
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonManufacturedCloud"));
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_ManufacturedFrame
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonManufacturedFrame"));
         }
     }
 

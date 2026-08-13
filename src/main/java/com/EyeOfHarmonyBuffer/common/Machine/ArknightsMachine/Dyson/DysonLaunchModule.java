@@ -71,6 +71,10 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
     /** 单型阶段（未解锁双轨）的发射优先级：true = 云优先，false = 框架优先。 */
     private boolean launchCloudFirst = true;
 
+    /** 本轮实际发射的云/框架组件数（Waila 显示用，服务端）。 */
+    private long lastRoundClouds = 0;
+    private long lastRoundFrames = 0;
+
     public DysonLaunchModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
@@ -194,6 +198,8 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
 
     @Override
     protected CheckRecipeResult doWirelessBusinessOnce() {
+        this.lastRoundClouds = 0;
+        this.lastRoundFrames = 0;
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!canOperate()) {
             scheduleRecipeCheckImmediate();
@@ -285,6 +291,8 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return SimpleCheckRecipeResult.ofFailure("DysonSphereLocked");
         }
 
+        this.lastRoundClouds = clouds;
+        this.lastRoundFrames = frames;
         pendingCost = batchCost;
         this.lastUsedParallel = clouds + frames;
         mMaxProgresstime = getWirelessModeProcessingTime();
@@ -295,6 +303,24 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
         mOutputItems = null;
         mOutputFluids = null;
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected void writeWailaRoundStats(NBTTagCompound tag, World world) {
+        tag.setLong("dysonLaunchedCloud", lastRoundClouds);
+        tag.setLong("dysonLaunchedFrame", lastRoundFrames);
+    }
+
+    @Override
+    protected void appendWailaRoundStats(NBTTagCompound tag, List<String> currentTip) {
+        if (tag.hasKey("dysonLaunchedCloud") && tag.hasKey("dysonLaunchedFrame")) {
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_LaunchedCloud
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonLaunchedCloud"));
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_LaunchedFrame
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonLaunchedFrame"));
+        }
     }
 
     private static final String[][] shapeMain = new String[][] {

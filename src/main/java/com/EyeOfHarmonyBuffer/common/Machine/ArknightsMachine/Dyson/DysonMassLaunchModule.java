@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -56,6 +57,10 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 183;
 
+    /** 本轮实际发射的云/框架组件数（Waila 显示用，服务端）。 */
+    private long lastRoundClouds = 0;
+    private long lastRoundFrames = 0;
+
     public DysonMassLaunchModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
@@ -83,6 +88,8 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
 
     @Override
     protected CheckRecipeResult doWirelessBusinessOnce() {
+        this.lastRoundClouds = 0;
+        this.lastRoundFrames = 0;
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!canOperate()) {
             scheduleRecipeCheckImmediate();
@@ -162,6 +169,8 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
             return SimpleCheckRecipeResult.ofFailure("DysonSphereLocked");
         }
 
+        this.lastRoundClouds = clouds;
+        this.lastRoundFrames = frames;
         pendingCost = batchCost;
         this.lastUsedParallel = (int) Math.min(clouds + frames, Integer.MAX_VALUE);
         mMaxProgresstime = getWirelessModeProcessingTime();
@@ -172,6 +181,24 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
         mOutputItems = null;
         mOutputFluids = null;
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected void writeWailaRoundStats(NBTTagCompound tag, World world) {
+        tag.setLong("dysonLaunchedCloud", lastRoundClouds);
+        tag.setLong("dysonLaunchedFrame", lastRoundFrames);
+    }
+
+    @Override
+    protected void appendWailaRoundStats(NBTTagCompound tag, List<String> currentTip) {
+        if (tag.hasKey("dysonLaunchedCloud") && tag.hasKey("dysonLaunchedFrame")) {
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_LaunchedCloud
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonLaunchedCloud"));
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_LaunchedFrame
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonLaunchedFrame"));
+        }
     }
 
     @Override

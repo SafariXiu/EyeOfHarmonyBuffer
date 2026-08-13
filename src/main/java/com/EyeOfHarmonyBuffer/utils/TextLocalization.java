@@ -509,6 +509,12 @@ public class TextLocalization {
     public static final String Dyson_Info_MassMode;
     public static final String Dyson_Info_Split;
     public static final String Dyson_Info_StrangeMatter;
+    public static final String Dyson_Info_CompletedShutdown;
+    public static final String Dyson_Info_LaunchedCloud;
+    public static final String Dyson_Info_LaunchedFrame;
+    public static final String Dyson_Info_ManufacturedCloud;
+    public static final String Dyson_Info_ManufacturedFrame;
+    public static final String Dyson_Waila_OutputOrundum;
     public static final String Dyson_Stat_Cloud;
     public static final String Dyson_Stat_Frame;
     public static final String Dyson_Stat_Paste;
@@ -1933,7 +1939,7 @@ public class TextLocalization {
         Dyson_Info_ModuleDisconnected = TextHandler.texter("Module status: Disconnected (core offline)","Dyson_Info_ModuleDisconnected");
         Dyson_Info_ComputeRequirement = TextHandler.texter("Computation requirement: ","Dyson_Info_ComputeRequirement");
         Dyson_Info_CloudComponentStock = TextHandler.texter("Personal cloud component stock: ","Dyson_Info_CloudComponentStock");
-        Dyson_Info_FrameComponentStock = TextHandler.texter("Frame component stock: ","Dyson_Info_FrameComponentStock");
+        Dyson_Info_FrameComponentStock = TextHandler.texter("Personal frame component stock: ","Dyson_Info_FrameComponentStock");
         Dyson_Info_ConnectedModules = TextHandler.texter("Connected modules: ","Dyson_Info_ConnectedModules");
         Dyson_Info_ActiveSlots = TextHandler.texter("Active slots: ","Dyson_Info_ActiveSlots");
         Dyson_Info_TeamPaste = TextHandler.texter("Team paste: ","Dyson_Info_TeamPaste");
@@ -1946,6 +1952,12 @@ public class TextLocalization {
         Dyson_Info_MassMode = TextHandler.texter("Launch mode: Mass (one 60s round clears all personal components)","Dyson_Info_MassMode");
         Dyson_Info_Split = TextHandler.texter("Output split: Orundum ","Dyson_Info_Split");
         Dyson_Info_StrangeMatter = TextHandler.texter("Strange Matter: ","Dyson_Info_StrangeMatter");
+        Dyson_Info_CompletedShutdown = TextHandler.texter("Dyson sphere complete, module shut down","Dyson_Info_CompletedShutdown");
+        Dyson_Info_LaunchedCloud = TextHandler.texter("Cloud components launched this round: ","Dyson_Info_LaunchedCloud");
+        Dyson_Info_LaunchedFrame = TextHandler.texter("Frame components launched this round: ","Dyson_Info_LaunchedFrame");
+        Dyson_Info_ManufacturedCloud = TextHandler.texter("Cloud components manufactured this round: ","Dyson_Info_ManufacturedCloud");
+        Dyson_Info_ManufacturedFrame = TextHandler.texter("Frame components manufactured this round: ","Dyson_Info_ManufacturedFrame");
+        Dyson_Waila_OutputOrundum = TextHandler.texter("Per-round Orundum Output","Dyson_Waila_OutputOrundum");
         Dyson_Stat_Cloud = TextHandler.texter("Cloud","Dyson_Stat_Cloud");
         Dyson_Stat_Frame = TextHandler.texter("Frame","Dyson_Stat_Frame");
         Dyson_Stat_Paste = TextHandler.texter("Paste","Dyson_Stat_Paste");

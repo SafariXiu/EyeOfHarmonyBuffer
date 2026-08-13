@@ -23,11 +23,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
@@ -837,7 +841,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
         protected Flow createDysonStatsColumn() {
             return Flow.column()
-                .width(120)
+                .width(140)
                 .crossAxisAlignment(Alignment.CrossAxis.START)
                 .coverChildrenHeight(0)
                 .child(makeStat(Dyson_Stat_Cloud, () -> String.valueOf(cloudSyncer.getValue())))
@@ -1114,6 +1118,68 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                     : EnumChatFormatting.RED + Dyson_Info_ComputeInsufficient);
         }
         return lines.toArray(new String[0]);
+    }
+
+    // ---- Waila：核心不接能量仓，显示队伍计数 / 槽位 / 个人资产 / 算力 ----
+
+    @Override
+    protected boolean shouldShowEuWirelessHud() {
+        return false;
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
+                             IWailaConfigHandler config) {
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+        NBTTagCompound tag = accessor.getNBTData();
+        currentTip.add(
+            EnumChatFormatting.AQUA + Dyson_Info_ConnectedModules
+                + EnumChatFormatting.GOLD + tag.getInteger("dysonModules")
+                + EnumChatFormatting.AQUA + " / " + Dyson_Info_ActiveSlots
+                + EnumChatFormatting.GOLD + tag.getInteger("dysonSlots"));
+        currentTip.add(
+            EnumChatFormatting.AQUA + Dyson_Info_TeamPaste
+                + EnumChatFormatting.GOLD + tag.getInteger("dysonPaste"));
+        currentTip.add(
+            EnumChatFormatting.AQUA + Dyson_Info_PersonalComponents
+                + EnumChatFormatting.GOLD + tag.getLong("dysonCloud")
+                + EnumChatFormatting.AQUA + " / " + Dyson_Stat_Frame + " "
+                + EnumChatFormatting.GOLD + tag.getLong("dysonFrame"));
+        currentTip.add(
+            EnumChatFormatting.AQUA + Dyson_Info_StrangeMatter
+                + EnumChatFormatting.GOLD + tag.getLong("dysonStrange"));
+        if (tag.getBoolean("dysonDuplicate")) {
+            currentTip.add(EnumChatFormatting.RED + Dyson_Info_DuplicateCore);
+        }
+        currentTip.add(
+            tag.getBoolean("dysonComputeOk")
+                ? EnumChatFormatting.GREEN + Dyson_Info_ComputeSatisfied
+                : EnumChatFormatting.RED + Dyson_Info_ComputeInsufficient);
+    }
+
+    @Override
+    public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world,
+                                int x, int y, int z) {
+        super.getWailaNBTData(player, tile, tag, world, x, y, z);
+        int connectedCount = 0;
+        for (DysonModuleBase<?> module : moduleHatches) {
+            if (module != null && module.isConnected()) {
+                connectedCount++;
+            }
+        }
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        DysonTeamProgress team = data == null ? null : data.getTeam(getTeamId());
+        int paste = team == null ? 0 : team.pasteCount;
+        tag.setInteger("dysonModules", connectedCount);
+        tag.setInteger("dysonSlots", DysonMachineConfig.activeSlotsForPaste(paste));
+        tag.setInteger("dysonPaste", paste);
+        tag.setLong("dysonCloud", getPersonalCloudComponents());
+        tag.setLong("dysonFrame", getPersonalFrameComponents());
+        tag.setLong("dysonStrange", strangeMatter);
+        tag.setBoolean("dysonDuplicate", duplicateRejected);
+        tag.setBoolean(
+            "dysonComputeOk",
+            ownerUUID != null && WirelessComputeHelper.isConsumerSatisfiedInGroup(this));
     }
 
     public boolean addModuleTile(IGregTechTileEntity tileEntity) {

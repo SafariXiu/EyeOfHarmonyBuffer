@@ -6,8 +6,15 @@ import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 
@@ -333,4 +340,70 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             WirelessComputeHelper.unregisterConsumer(this);
         }
     }
+
+    // ---- Waila：戴森模块不接能量仓，只显示连接状态 / 算力 / 个人组件库存 ----
+
+    @Override
+    protected boolean shouldShowEuWirelessHud() {
+        return false;
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
+                             IWailaConfigHandler config) {
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+        NBTTagCompound tag = accessor.getNBTData();
+        if (tag.getBoolean("dysonCompletedShutdown")) {
+            // 戴森球已成型：被锁死的模块不再显示“未连接”，而是明确告知已关闭
+            currentTip.add(EnumChatFormatting.RED + Dyson_Info_CompletedShutdown);
+        } else {
+            currentTip.add(
+                tag.getBoolean("dysonConnected")
+                    ? EnumChatFormatting.AQUA + Dyson_Info_ModuleConnected
+                    : EnumChatFormatting.AQUA + Dyson_Info_ModuleDisconnected);
+        }
+        if (tag.hasKey("dysonCompute")) {
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_ComputeRequirement
+                    + EnumChatFormatting.GOLD + tag.getString("dysonCompute"));
+        }
+        if (tag.hasKey("dysonCloud") && tag.hasKey("dysonFrame")) {
+            currentTip.add(
+                EnumChatFormatting.AQUA + Dyson_Info_CloudComponentStock
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonCloud")
+                    + EnumChatFormatting.AQUA + " / " + Dyson_Info_FrameComponentStock
+                    + EnumChatFormatting.GOLD + tag.getLong("dysonFrame"));
+        }
+        appendWailaRoundStats(tag, currentTip);
+    }
+
+    @Override
+    public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world,
+                                int x, int y, int z) {
+        super.getWailaNBTData(player, tile, tag, world, x, y, z);
+        tag.setBoolean("dysonConnected", connected);
+        BigInteger demand = getRequiredCompute();
+        if (demand.signum() > 0) {
+            tag.setString("dysonCompute", demand.toString());
+        }
+        if (ownerUUID != null) {
+            tag.setLong("dysonCloud", DysonSphereSystem.getPlayerCloudComponents(world, ownerUUID));
+            tag.setLong("dysonFrame", DysonSphereSystem.getPlayerFrameComponents(world, ownerUUID));
+        }
+        // 完工锁死：非胜利队伍的模块、胜利队伍的制造/发射模块都会被关闭
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        boolean winnerReceiver = data != null
+            && data.isCompleted()
+            && getTeamId() != null
+            && getTeamId().equals(data.getCompletedTeamId())
+            && getModuleType() == ModuleType.RECEIVER;
+        tag.setBoolean("dysonCompletedShutdown", data != null && data.isCompleted() && !winnerReceiver);
+        writeWailaRoundStats(tag, world);
+    }
+
+    /** 子类可写入本轮统计（发射/制造数量、产出拆分等）供 Waila 显示，默认无。 */
+    protected void writeWailaRoundStats(NBTTagCompound tag, World world) {}
+
+    /** 子类可追加本轮统计行到 Waila，默认无。 */
+    protected void appendWailaRoundStats(NBTTagCompound tag, List<String> currentTip) {}
 }
