@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.dyson;
 
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonCore;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonReceiverModule;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgradeStorage;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -80,42 +82,42 @@ public final class DysonSphereSystem {
     }
 
     /**
-     * 制造模块入口：把组件计入队伍虚拟库存。
+     * 制造模块入口：把组件计入**机主个人**虚拟库存（发射前组件是个人资产）。
      */
-    public static boolean addComponents(World world, UUID teamId, String teamName,
-                                        long cloudAmount, long frameAmount) {
+    public static boolean addComponentsToPlayer(World world, UUID playerUUID, String playerName,
+                                                long cloudAmount, long frameAmount) {
         DysonSphereWorldData data = DysonSphereWorldData.get(world);
-        if (data == null || teamId == null) {
+        if (data == null || playerUUID == null) {
             return false;
         }
-        DysonTeamProgress team = data.getOrCreateTeam(teamId, teamName);
+        DysonTeamProgress player = data.getOrCreateTeam(playerUUID, playerName);
         if (cloudAmount > 0) {
-            team.cloudComponents += cloudAmount;
+            player.cloudComponents += cloudAmount;
         }
         if (frameAmount > 0) {
-            team.frameComponents += frameAmount;
+            player.frameComponents += frameAmount;
         }
         data.markDirty();
         return true;
     }
 
     /**
-     * 发射模块入口：从队伍虚拟库存扣组件。库存不足时一笔不扣。
+     * 发射模块入口：从**机主个人**虚拟库存扣组件。库存不足时一笔不扣。
      */
-    public static boolean consumeComponents(World world, UUID teamId, long cloudAmount, long frameAmount) {
+    public static boolean consumeComponentsOfPlayer(World world, UUID playerUUID, long cloudAmount, long frameAmount) {
         DysonSphereWorldData data = DysonSphereWorldData.get(world);
-        if (data == null || teamId == null) {
+        if (data == null || playerUUID == null) {
             return false;
         }
-        DysonTeamProgress team = data.getTeam(teamId);
-        if (team == null) {
+        DysonTeamProgress player = data.getTeam(playerUUID);
+        if (player == null) {
             return false;
         }
-        if (team.cloudComponents < cloudAmount || team.frameComponents < frameAmount) {
+        if (player.cloudComponents < cloudAmount || player.frameComponents < frameAmount) {
             return false;
         }
-        team.cloudComponents -= cloudAmount;
-        team.frameComponents -= frameAmount;
+        player.cloudComponents -= cloudAmount;
+        player.frameComponents -= frameAmount;
         data.markDirty();
         return true;
     }
@@ -137,14 +139,14 @@ public final class DysonSphereSystem {
         return team == null ? 0 : team.pasteCount;
     }
 
-    public static long getTeamCloudComponents(World world, UUID teamId) {
-        DysonTeamProgress team = getTeamForQuery(world, teamId);
-        return team == null ? 0 : team.cloudComponents;
+    public static long getPlayerCloudComponents(World world, UUID playerUUID) {
+        DysonTeamProgress player = getTeamForQuery(world, playerUUID);
+        return player == null ? 0 : player.cloudComponents;
     }
 
-    public static long getTeamFrameComponents(World world, UUID teamId) {
-        DysonTeamProgress team = getTeamForQuery(world, teamId);
-        return team == null ? 0 : team.frameComponents;
+    public static long getPlayerFrameComponents(World world, UUID playerUUID) {
+        DysonTeamProgress player = getTeamForQuery(world, playerUUID);
+        return player == null ? 0 : player.frameComponents;
     }
 
     /** 队伍级升级树存储；队伍不存在返回 null。 */
@@ -158,6 +160,38 @@ public final class DysonSphereSystem {
         return storage != null && storage.isUpgradeActive(upgrade);
     }
 
+    /**
+     * 核心每 tick 上报 owner 的队伍归属；检测到队伍变化时处理升级树继承。
+     * 队伍计数与组件库存是队伍资产，不随玩家离队转移。
+     */
+    public static void trackPlayerTeam(World world, UUID playerUUID, String playerName, UUID teamId) {
+        DysonSphereWorldData data = DysonSphereWorldData.get(world);
+        if (data == null || playerUUID == null || teamId == null) {
+            return;
+        }
+        UUID oldTeam = data.getPlayerTeam(playerUUID);
+        data.setPlayerTeam(playerUUID, teamId);
+        if (oldTeam != null && !oldTeam.equals(teamId)) {
+            handleTeamChange(data, playerUUID, playerName, oldTeam, teamId);
+        }
+    }
+
+    /** 离队/被踢（新队伍 = 玩家自己）时，把旧队伍的升级树继承一份到个人。 */
+    private static void handleTeamChange(DysonSphereWorldData data, UUID playerUUID, String playerName,
+                                         UUID oldTeamId, UUID newTeamId) {
+        // 加入他人队伍：使用队伍树，不把个人树注入队伍
+        if (!newTeamId.equals(playerUUID)) {
+            return;
+        }
+        DysonTeamProgress oldTeam = data.getTeam(oldTeamId);
+        if (oldTeam == null) {
+            return;
+        }
+        DysonTeamProgress personal = data.getOrCreateTeam(playerUUID, playerName);
+        personal.upgrades.copyFrom(oldTeam.upgrades);
+        data.markDirty();
+    }
+
     private static DysonTeamProgress getTeamForQuery(World world, UUID teamId) {
         DysonSphereWorldData data = DysonSphereWorldData.get(world);
         if (data == null || teamId == null) {
@@ -168,20 +202,33 @@ public final class DysonSphereSystem {
 
     // endregion
 
-    /**
-     * 每日结算（每 MC 天一次，按队独立）：先贴片、后掉落、再完工判定。
-     */
+    /** 每日 0:00 结算：先贴片、后掉落、再完工判定。 */
     public static void settleDaily(World world) {
+        settleDaily(world, false);
+    }
+
+    /**
+     * 结算入口（按队独立）。
+     *
+     * @param halfDay true = 正午 12:00，只做贴片转化（需点亮贴片转化节点），不做掉落；
+     *                 false = 每日 0:00 完整结算。
+     */
+    public static void settleDaily(World world, boolean halfDay) {
         DysonSphereWorldData data = DysonSphereWorldData.get(world);
         if (data == null) {
             return;
         }
 
         if (data.isCompleted()) {
+            if (halfDay) {
+                return;
+            }
             // 完工后：占领者剩余轨道云继续掉落，直到 0；贴片不再变化
             DysonTeamProgress winner = data.getTeam(data.getCompletedTeamId());
             if (winner != null && winner.cloudCount > 0) {
-                winner.cloudCount = Math.max(0, winner.cloudCount - randomDrop(world));
+                int dropped = Math.min(winner.cloudCount, randomDrop(world));
+                winner.cloudCount -= dropped;
+                recoverDroppedClouds(world, data.getCompletedTeamId(), dropped);
                 data.markDirty();
                 syncToAll(world);
             }
@@ -195,18 +242,25 @@ public final class DysonSphereSystem {
                 continue;
             }
 
-            // 1) 贴片优先：128 云 = 1 贴片，容量上限 = 4 × 框架
-            int room = Math.max(0, PASTE_PER_FRAME * team.frameCount - team.pasteCount);
-            int batches = Math.min(team.cloudCount / CLOUDS_PER_PASTE, room);
-            if (batches > 0) {
-                team.pasteCount += batches;
-                team.cloudCount -= batches * CLOUDS_PER_PASTE;
-                changed = true;
+            // 1) 贴片优先：需队伍核心开机；正午额外要求已点亮贴片转化节点
+            boolean coreOnline = DysonCore.isTeamCoreOnline(teamId);
+            boolean allowConvert = coreOnline
+                && (!halfDay || isTeamUpgradeActive(world, teamId, DysonUpgrade.PASTE_CONVERSION));
+            if (allowConvert) {
+                int room = Math.max(0, PASTE_PER_FRAME * team.frameCount - team.pasteCount);
+                int batches = Math.min(team.cloudCount / CLOUDS_PER_PASTE, room);
+                if (batches > 0) {
+                    team.pasteCount += batches;
+                    team.cloudCount -= batches * CLOUDS_PER_PASTE;
+                    changed = true;
+                }
             }
 
-            // 2) 掉落：10~64 云
-            if (team.cloudCount > 0) {
-                team.cloudCount = Math.max(0, team.cloudCount - randomDrop(world));
+            // 2) 掉落：10~64 云，仅每日 0:00
+            if (!halfDay && team.cloudCount > 0) {
+                int dropped = Math.min(team.cloudCount, randomDrop(world));
+                team.cloudCount -= dropped;
+                recoverDroppedClouds(world, teamId, dropped);
                 changed = true;
             }
 
@@ -221,6 +275,18 @@ public final class DysonSphereSystem {
             data.markDirty();
             syncToAll(world);
         }
+    }
+
+    /** 接收强化：掉落的云按 50% 回收为云组件，归正在工作的那台接收模块的机主。 */
+    private static void recoverDroppedClouds(World world, UUID teamId, int dropped) {
+        if (dropped <= 0 || !isTeamUpgradeActive(world, teamId, DysonUpgrade.RECEIVER_BOOST)) {
+            return;
+        }
+        UUID owner = DysonReceiverModule.getTeamReceiverOwner(teamId);
+        if (owner == null) {
+            return;
+        }
+        addComponentsToPlayer(world, owner, null, dropped / 2, 0);
     }
 
     private static int randomDrop(World world) {

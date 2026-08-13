@@ -10,13 +10,29 @@ import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.widget.IWidget;
+import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.utils.Color;
+import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
+import com.cleanroommc.modularui.value.sync.PanelSyncManager;
+import com.cleanroommc.modularui.widgets.TextWidget;
+import com.cleanroommc.modularui.widgets.ToggleButton;
+import com.cleanroommc.modularui.widgets.layout.Flow;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
@@ -35,6 +51,7 @@ import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.MultiblockTooltipBuilder;
+import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
 /**
  * 发射模块：吃戴森云组件/框架组件 → 本队计数器 +1。
@@ -50,6 +67,9 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
     private static final int OffsetsZ = 0;
     private static final int CASING_INDEX = 183;
 
+    /** 单型阶段（未解锁双轨）的发射优先级：true = 云优先，false = 框架优先。 */
+    private boolean launchCloudFirst = true;
+
     public DysonLaunchModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
         setWirelessCycleNum(1);
@@ -58,6 +78,14 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
     public DysonLaunchModule(String aName) {
         super(aName);
         setWirelessCycleNum(1);
+    }
+
+    public boolean isLaunchCloudFirst() {
+        return launchCloudFirst;
+    }
+
+    public void setLaunchCloudFirst(boolean value) {
+        launchCloudFirst = value;
     }
 
     @Override
@@ -72,7 +100,95 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return DysonMachineConfig.TICKS_PER_SETTLEMENT;
+        if (isUpgradeActive(DysonUpgrade.LAUNCH_EFFICIENCY_II)) {
+            return DysonMachineConfig.launchEfficiencyTicksII;
+        }
+        if (isUpgradeActive(DysonUpgrade.LAUNCH_EFFICIENCY_I)) {
+            return DysonMachineConfig.launchEfficiencyTicksI;
+        }
+        return DysonMachineConfig.launchTimeTicks;
+    }
+
+    /** 当前单轮批量：16 → 批量 I 64 → 批量 II 128。 */
+    protected int getLaunchBatch() {
+        if (isUpgradeActive(DysonUpgrade.LAUNCH_BATCH_II)) {
+            return DysonMachineConfig.launchBatchII;
+        }
+        if (isUpgradeActive(DysonUpgrade.LAUNCH_BATCH_I)) {
+            return DysonMachineConfig.launchBatchI;
+        }
+        return DysonMachineConfig.launchBatch;
+    }
+
+    @Override
+    protected MTEMultiBlockBaseGui<?> getGui() {
+        return new LaunchGui(this);
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        aNBT.setBoolean("LaunchCloudFirst", launchCloudFirst);
+        super.saveNBTData(aNBT);
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        launchCloudFirst = !aNBT.hasKey("LaunchCloudFirst") || aNBT.getBoolean("LaunchCloudFirst");
+        super.loadNBTData(aNBT);
+    }
+
+    @Override
+    public String[] getInfoData() {
+        String[] origin = super.getInfoData();
+        ArrayList<String> lines = new ArrayList<>(Arrays.asList(origin));
+        lines.add(
+            EnumChatFormatting.AQUA + "发射优先级: "
+                + EnumChatFormatting.GOLD
+                + (launchCloudFirst ? "云" : "框架"));
+        lines.add(
+            EnumChatFormatting.AQUA + "单轮批量: "
+                + EnumChatFormatting.GOLD
+                + getLaunchBatch());
+        return lines.toArray(new String[0]);
+    }
+
+    /** 发射模块专属 GUI：右侧按钮列追加“发射优先级”切换按钮。 */
+    protected static class LaunchGui extends MTEMultiBlockBaseGui<DysonLaunchModule> {
+
+        public LaunchGui(DysonLaunchModule multiblock) {
+            super(multiblock);
+        }
+
+        @Override
+        protected Flow createButtonColumn(ModularPanel panel, PanelSyncManager syncManager) {
+            return super.createButtonColumn(panel, syncManager)
+                .child(createPriorityButton(syncManager));
+        }
+
+        protected IWidget createPriorityButton(PanelSyncManager syncManager) {
+            BooleanSyncValue cloudFirst = new BooleanSyncValue(
+                multiblock::isLaunchCloudFirst,
+                multiblock::setLaunchCloudFirst).allowC2S();
+            syncManager.syncValue("dysonLaunchCloudFirst", cloudFirst);
+            return new ToggleButton()
+                .size(18, 18)
+                .value(cloudFirst)
+                .child(
+                    true,
+                    new TextWidget<>(IKey.str("云"))
+                        .size(18, 18)
+                        .textAlign(Alignment.Center)
+                        .color(Color.WHITE.main)
+                        .shadow(true))
+                .child(
+                    false,
+                    new TextWidget<>(IKey.str("框"))
+                        .size(18, 18)
+                        .textAlign(Alignment.Center)
+                        .color(Color.WHITE.main)
+                        .shadow(true))
+                .tooltipBuilder(t -> t.addLine(IKey.str("发射优先级：云优先 / 框架优先")));
+        }
     }
 
     @Override
@@ -101,9 +217,37 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return CheckRecipeResultRegistry.NO_FUEL_FOUND;
         }
 
-        int batch = DysonMachineConfig.launchBatch;
-        int clouds = (int) Math.min(batch, team.cloudComponents);
-        int frames = (int) Math.min(batch - clouds, team.frameComponents);
+        int batch = getLaunchBatch();
+        boolean dual = isUpgradeActive(DysonUpgrade.DUAL_LAUNCH);
+        // 组件是机主个人资产：发射只扣自己的组件
+        long cloudStock = ownerUUID == null
+            ? 0
+            : DysonSphereSystem.getPlayerCloudComponents(world, ownerUUID);
+        long frameStock = ownerUUID == null
+            ? 0
+            : DysonSphereSystem.getPlayerFrameComponents(world, ownerUUID);
+        int clouds = 0;
+        int frames = 0;
+        if (dual) {
+            // 双轨：云与框架各自按批量独立发射，互不占用
+            clouds = (int) Math.min(batch, cloudStock);
+            frames = (int) Math.min(batch, frameStock);
+        } else if (launchCloudFirst) {
+            // 单型阶段：只发射优先级类型，无库存不回退
+            if (cloudStock > 0) {
+                clouds = (int) Math.min(batch, cloudStock);
+            }
+        } else {
+            if (frameStock > 0) {
+                frames = (int) Math.min(batch, frameStock);
+            }
+        }
+
+        // 上限保护：云/框架已满时不发射、不扣组件、不收费
+        int cloudRoom = Math.max(0, DysonSphereState.CLOUD_CAP - team.cloudCount);
+        int frameRoom = Math.max(0, DysonSphereState.FRAME_COMPLETE - team.frameCount);
+        clouds = Math.min(clouds, cloudRoom);
+        frames = Math.min(frames, frameRoom);
 
         if (clouds + frames <= 0) {
             pendingCost = BigInteger.ZERO;
@@ -111,7 +255,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return CheckRecipeResultRegistry.NO_FUEL_FOUND;
         }
 
-        if (!DysonSphereSystem.consumeComponents(world, getTeamId(), clouds, frames)) {
+        if (!DysonSphereSystem.consumeComponentsOfPlayer(world, ownerUUID, clouds, frames)) {
             pendingCost = BigInteger.ZERO;
             this.lastUsedParallel = 0;
             return SimpleCheckRecipeResult.ofFailure("DysonComponentsUnavailable");
@@ -129,7 +273,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             return SimpleCheckRecipeResult.ofFailure("DysonSphereLocked");
         }
 
-        pendingCost = BigInteger.valueOf(DysonMachineConfig.launchCostEU)
+        pendingCost = BigInteger.valueOf(DysonMachineConfig.launchCostOrundum)
             .multiply(BigInteger.valueOf(clouds + frames));
         this.lastUsedParallel = clouds + frames;
         mMaxProgresstime = getWirelessModeProcessingTime();
@@ -193,6 +337,8 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType("戴森发射模块")
             .addInfo("从队伍组件库存发射（1 组件 = 1 计数）")
+            .addInfo("基础周期 10 秒，单轮最多 16 组件")
+            .addInfo("每个组件消耗 10,000 Orundum")
             .addInfo("消耗 100,000 算力")
             .addSeparator()
             .addInfo(StructureTooComplex)

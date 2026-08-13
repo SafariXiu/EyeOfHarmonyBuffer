@@ -15,8 +15,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -27,7 +29,6 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
-import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.DynamicDrawable;
@@ -102,6 +103,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     /** 每位玩家一台核心的注册表（服务端运行时，按 ownerUUID）。 */
     private static final Map<UUID, DysonCore> CORE_BY_OWNER = new HashMap<>();
 
+    /** 开机中的核心按队伍注册（服务端运行时，供每日结算判定“核心是否开机”）。 */
+    private static final Map<UUID, Set<DysonCore>> ACTIVE_CORES_BY_TEAM = new HashMap<>();
+
     /** 重复核心的停机原因（文案在语言文件 GT5U.gui.text.shutdown_reason.dyson_duplicate_core）。 */
     private static final ShutDownReason DUPLICATE_CORE_REASON =
         SimpleShutDownReason.ofNormal("dyson_duplicate_core");
@@ -110,6 +114,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
     /** 本机因该玩家已存在另一台核心而被停机。 */
     private boolean duplicateRejected = false;
+
+    /** 当前登记在“开机核心”表里的队伍 ID，换队时用于清理旧键。 */
+    private UUID activeCoreTeamId = null;
 
     public DysonCore(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -160,6 +167,41 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         return ownerUUID != null && CORE_BY_OWNER.containsKey(ownerUUID);
     }
 
+    /** 队伍是否有已开机（成型 + 算力满足 + 运行中）的核心，供每日结算查询。 */
+    public static boolean isTeamCoreOnline(UUID teamId) {
+        if (teamId == null) {
+            return false;
+        }
+        synchronized (ACTIVE_CORES_BY_TEAM) {
+            Set<DysonCore> cores = ACTIVE_CORES_BY_TEAM.get(teamId);
+            return cores != null && !cores.isEmpty();
+        }
+    }
+
+    private void updateTeamCoreOnline(boolean online) {
+        synchronized (ACTIVE_CORES_BY_TEAM) {
+            // 先清理旧队伍登记（队伍变更/停机/卸载都走这里）
+            if (activeCoreTeamId != null) {
+                Set<DysonCore> cores = ACTIVE_CORES_BY_TEAM.get(activeCoreTeamId);
+                if (cores != null) {
+                    cores.remove(this);
+                    if (cores.isEmpty()) {
+                        ACTIVE_CORES_BY_TEAM.remove(activeCoreTeamId);
+                    }
+                }
+                activeCoreTeamId = null;
+            }
+            if (online) {
+                UUID team = getTeamId();
+                if (team != null) {
+                    Set<DysonCore> cores = ACTIVE_CORES_BY_TEAM.computeIfAbsent(team, k -> new HashSet<>());
+                    cores.add(this);
+                    activeCoreTeamId = team;
+                }
+            }
+        }
+    }
+
     /** 本队进度（GUI 与对外查询共用）。 */
     public DysonTeamProgress getTeamProgress() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
@@ -188,14 +230,18 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         return team == null ? 0 : team.pasteCount;
     }
 
-    public long getTeamCloudComponents() {
-        DysonTeamProgress team = getTeamProgress();
-        return team == null ? 0 : team.cloudComponents;
+    public long getPersonalCloudComponents() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        return base == null || ownerUUID == null
+            ? 0
+            : DysonSphereSystem.getPlayerCloudComponents(base.getWorld(), ownerUUID);
     }
 
-    public long getTeamFrameComponents() {
-        DysonTeamProgress team = getTeamProgress();
-        return team == null ? 0 : team.frameComponents;
+    public long getPersonalFrameComponents() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        return base == null || ownerUUID == null
+            ? 0
+            : DysonSphereSystem.getPlayerFrameComponents(base.getWorld(), ownerUUID);
     }
 
     public DysonUpgradeStorage getTeamUpgradesStorage() {
@@ -221,7 +267,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
     public boolean tryUnlockUpgrade(DysonUpgrade upgrade) {
         IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base == null) {
+        if (base == null || base.getWorld() == null || base.getWorld().isRemote) {
             return false;
         }
         DysonUpgradeStorage storage = DysonSphereSystem.getTeamUpgrades(base.getWorld(), getTeamId());
@@ -240,7 +286,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
     public boolean tryRespecUpgrade(DysonUpgrade upgrade) {
         IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base == null) {
+        if (base == null || base.getWorld() == null || base.getWorld().isRemote) {
             return false;
         }
         DysonUpgradeStorage storage = DysonSphereSystem.getTeamUpgrades(base.getWorld(), getTeamId());
@@ -258,11 +304,11 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     /** 从投料格的物品处理器向节点成本充入（神锻 payCost 模式）。 */
     public void payUpgradeFromHandler(DysonUpgrade upgrade, ItemStackHandler handler) {
         IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base == null || handler == null) {
+        if (base == null || handler == null || base.getWorld() == null || base.getWorld().isRemote) {
             return;
         }
         DysonUpgradeStorage storage = DysonSphereSystem.getTeamUpgrades(base.getWorld(), getTeamId());
-        if (storage == null) {
+        if (storage == null || !storage.checkPrerequisites(upgrade)) {
             return;
         }
         storage.payFromHandler(upgrade, handler);
@@ -302,8 +348,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             cloudSyncer = new IntSyncValue(multiblock::getTeamCloudCount);
             frameSyncer = new IntSyncValue(multiblock::getTeamFrameCount);
             pasteSyncer = new IntSyncValue(multiblock::getTeamPasteCount);
-            cloudComponentsSyncer = new LongSyncValue(multiblock::getTeamCloudComponents);
-            frameComponentsSyncer = new LongSyncValue(multiblock::getTeamFrameComponents);
+            cloudComponentsSyncer = new LongSyncValue(multiblock::getPersonalCloudComponents);
+            frameComponentsSyncer = new LongSyncValue(multiblock::getPersonalFrameComponents);
             syncManager.syncValue("dysonCloud", cloudSyncer);
             syncManager.syncValue("dysonFrame", frameSyncer);
             syncManager.syncValue("dysonPaste", pasteSyncer);
@@ -365,10 +411,11 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             IPanelHandler treePanel = syncManager.syncedPanel(
                 "dysonUpgradeTree",
                 true,
-                (panelSyncManager, _) -> createUpgradeTreePanel(
+                (panelSyncManager, handler) -> createUpgradeTreePanel(
                     panelSyncManager,
                     panel,
-                    individualPanels));
+                    individualPanels,
+                    handler));
             return new ButtonWidget<>()
                 .size(18, 18)
                 .overlay(UITexture.fullImage("eyeofharmonybuffer", "gui/EyeOfHarmonyBuffer"))
@@ -380,13 +427,26 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         }
 
         protected ModularPanel createUpgradeTreePanel(PanelSyncManager syncManager, ModularPanel parent,
-                                                      IPanelHandler[] individualPanels) {
+                                                      IPanelHandler[] individualPanels, IPanelHandler selfPanel) {
             ModularPanel panel = new ModularPanel("dysonUpgradeTree")
-                .relative(parent)
-                .leftRel(1)
-                .topRel(0)
-                .size(300, 250);
+                .size(300, 275);
             panel.background(GTGuiTextures.BACKGROUND_POPUP_STANDARD);
+
+            // 标题栏：深色顶条 + 居中标题
+            panel.child(
+                new Widget<>()
+                    .pos(0, 0)
+                    .size(300, 16)
+                    .background(new Rectangle().setColor(0xFF202838)));
+            panel.child(
+                new TextWidget<>(IKey.lang("eohb.dyson.upgrade.tree"))
+                    .pos(0, 0)
+                    .size(300, 16)
+                    .textAlign(Alignment.Center)
+                    .color(Color.WHITE.main)
+                    .shadow(true));
+            panel.child(
+                ButtonWidget.panelCloseButton());
 
             for (DysonUpgrade upgrade : DysonUpgrade.VALUES) {
                 for (DysonUpgrade prerequisite : upgrade.getPrerequisites()) {
@@ -403,19 +463,29 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             int childX = child.getTreeX() + 18;
             int childY = child.getTreeY() + 7;
             if (childY > parentY) {
-                panel.child(
-                    new IDrawable.DrawableWidget(new Rectangle().setColor(0xFF5A6B8C))
-                        .pos(parentX, parentY)
-                        .size(2, childY - parentY));
+                addLineSegment(panel, parentX, parentY, 2, childY - parentY);
             }
             if (childX != parentX) {
                 int lineX = Math.min(parentX, childX);
-                int width = Math.abs(childX - parentX) + 2;
-                panel.child(
-                    new IDrawable.DrawableWidget(new Rectangle().setColor(0xFF5A6B8C))
-                        .pos(lineX, childY)
-                        .size(width, 2));
+                addLineSegment(panel, lineX, childY, Math.abs(childX - parentX) + 2, 2);
             }
+        }
+
+        /** 双色“轨道”连接线：暗色外轨 + 亮色内芯，作为背景绘制，节点盒子后添加会盖在线上面。 */
+        private void addLineSegment(ModularPanel panel, int x, int y, int width, int height) {
+            boolean vertical = height > width;
+            int dx = vertical ? 1 : 0;
+            int dy = vertical ? 0 : 1;
+            panel.child(
+                new Widget<>()
+                    .pos(x - dx, y - dy)
+                    .size(width + dx * 2, height + dy * 2)
+                    .background(new Rectangle().setColor(0xFF1B2232)));
+            panel.child(
+                new Widget<>()
+                    .pos(x, y)
+                    .size(width, height)
+                    .background(new Rectangle().setColor(0xFF5B79B5)));
         }
 
         protected IWidget createUpgradeNodeBox(DysonUpgrade upgrade, IPanelHandler individualPanel) {
@@ -423,17 +493,21 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             return new ButtonWidget<>()
                 .pos(upgrade.getTreeX(), upgrade.getTreeY())
                 .size(36, 14)
-                .background(
+                .background(GTGuiTextures.BUTTON_STANDARD)
+                .hoverBackground(GTGuiTextures.BUTTON_STANDARD_PRESSED)
+                .overlay(
                     new DynamicDrawable(
                         () -> new Rectangle()
                             .setColor(
                                 active.getValue()
-                                    ? 0xFF2E8B57
-                                    : (upgrade.isMajor() ? 0xFF8B5E2E : 0xFF404A63))))
+                                    ? 0x8024B05A
+                                    : (upgrade.isMajor() ? 0x80D9A441 : 0x403A4D78))))
                 .child(
                     new TextWidget<>(IKey.lang(upgrade.getShortNameKey()))
                         .size(36, 14)
-                        .textAlign(Alignment.Center))
+                        .textAlign(Alignment.Center)
+                        .color(Color.WHITE.main)
+                        .shadow(true))
                 .onMousePressed(button -> {
                     if (button == 0) {
                         individualPanel.openPanel();
@@ -447,39 +521,36 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                                                             DysonUpgrade upgrade, IPanelHandler depositPanel,
                                                             IPanelHandler selfPanel) {
             ModularPanel panel = new ModularPanel("dysonUpgradeIndividual" + upgrade.ordinal())
-                .relative(parent)
-                .leftRel(1)
-                .topRel(0)
                 .size(240, 150);
             panel.background(GTGuiTextures.BACKGROUND_POPUP_STANDARD);
 
+            // 标题栏：深色顶条 + 居中标题 + 标准关闭按钮
             panel.child(
-                new ButtonWidget<>()
-                    .pos(222, 4)
-                    .size(12, 12)
-                    .background(new Rectangle().setColor(0xFF8A3A3A))
-                    .child(new TextWidget<>(IKey.str("x")).size(12, 12).textAlign(Alignment.Center))
-                    .onMousePressed(button -> {
-                        selfPanel.closePanel();
-                        return true;
-                    }));
+                new Widget<>()
+                    .pos(0, 0)
+                    .size(240, 16)
+                    .background(new Rectangle().setColor(0xFF202838)));
             panel.child(
                 new TextWidget<>(StatCollector.translateToLocal(upgrade.getNameKey()))
-                    .pos(8, 8)
-                    .size(224, 14)
-                    .textAlign(Alignment.Center));
+                    .pos(0, 0)
+                    .size(240, 16)
+                    .textAlign(Alignment.Center)
+                    .color(Color.WHITE.main)
+                    .shadow(true));
+            panel.child(
+                ButtonWidget.panelCloseButton());
             panel.child(
                 new TextWidget<>(StatCollector.translateToLocal(upgrade.getEffectKey()))
-                    .pos(8, 26)
-                    .size(224, 46));
+                    .pos(8, 24)
+                    .size(224, 44));
             panel.child(
                 new TextWidget<>(IKey.dynamic(() -> costText(upgrade)))
-                    .pos(8, 76)
+                    .pos(8, 74)
                     .size(224, 12)
                     .textAlign(Alignment.Center));
             panel.child(
                 new TextWidget<>(IKey.dynamic(() -> prerequisiteText(upgrade)))
-                    .pos(8, 92)
+                    .pos(8, 88)
                     .size(224, 12)
                     .textAlign(Alignment.Center));
 
@@ -498,20 +569,26 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                     .pos(70, 116)
                     .size(100, 18)
                     .value(actionSyncer)
-                    .background(new Rectangle().setColor(0xFF35507A))
+                    .background(false, GTGuiTextures.BUTTON_STANDARD)
+                    .background(true, GTGuiTextures.BUTTON_STANDARD_PRESSED)
                     .child(
                         new TextWidget<>(IKey.dynamic(() -> confirmLabel(upgrade)))
                             .size(100, 18)
-                            .textAlign(Alignment.Center)));
+                            .textAlign(Alignment.Center)
+                            .color(Color.WHITE.main)
+                            .shadow(true)));
             panel.child(
                 new ButtonWidget<>()
                     .pos(175, 116)
                     .size(50, 18)
-                    .background(new Rectangle().setColor(0xFF7A5A35))
+                    .background(GTGuiTextures.BUTTON_STANDARD)
+                    .hoverBackground(GTGuiTextures.BUTTON_STANDARD_PRESSED)
                     .child(
                         new TextWidget<>(IKey.lang("eohb.dyson.upgrade.depositOpen"))
                             .size(50, 18)
-                            .textAlign(Alignment.Center))
+                            .textAlign(Alignment.Center)
+                            .color(Color.WHITE.main)
+                            .shadow(true))
                     .onMousePressed(d -> {
                         if (upgrade.hasExtraCost()) {
                             depositPanel.openPanel();
@@ -525,26 +602,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                                                          DysonUpgrade upgrade, IPanelHandler selfPanel) {
             ItemStackHandler handler = new ItemStackHandler(16);
             ModularPanel panel = new ModularPanel("dysonUpgradeDeposit" + upgrade.ordinal())
-                .relative(parent)
-                .leftRel(1)
-                .topRel(0)
                 .size(189, 190);
             panel.background(GTGuiTextures.BACKGROUND_POPUP_STANDARD);
 
-            // 关闭按钮
+            // 标准关闭按钮（右上角）
             panel.child(
-                new ButtonWidget<>()
-                    .pos(179, 0)
-                    .size(10, 10)
-                    .background(new Rectangle().setColor(0xFF8A3A3A))
-                    .child(
-                        new TextWidget<>(IKey.str("x"))
-                            .size(10, 10)
-                            .textAlign(Alignment.Center))
-                    .onMousePressed(button -> {
-                        selfPanel.closePanel();
-                        return true;
-                    }));
+                ButtonWidget.panelCloseButton());
 
             // 所需材料图标（左侧 3 列 × 4 行，同神锻布局）
             ItemStack[] costs = upgrade.getExtraCost();
@@ -556,6 +619,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                         .displayAmount(false)
                         .size(16, 16)
                         .pos(5 + 36 * (i / 4), 6 + 18 * (i % 4))
+                        .background(new Rectangle().setColor(0xFF171D29))
                         .tooltipBuilder(
                             t -> t.addLine(IKey.str(cost.getDisplayName() + " x" + cost.stackSize))));
             }
@@ -568,15 +632,17 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 if (filterCost != null) {
                     slot.filter(
                         stack -> selfPanel.isPanelOpen()
+                            && canDepositUpgrade(upgrade)
                             && stack != null
                             && GTUtility.areStacksEqual(stack, filterCost));
                 } else {
-                    slot.filter(stack -> selfPanel.isPanelOpen());
+                    slot.filter(stack -> selfPanel.isPanelOpen() && canDepositUpgrade(upgrade));
                 }
                 panel.child(
                     new ItemSlot()
                         .slot(slot)
-                        .pos(112 + (i % 4) * 18, 6 + (i / 4) * 18));
+                        // 左移一格，避开右上角关闭按钮
+                        .pos(94 + (i % 4) * 18, 6 + (i / 4) * 18));
             }
 
             BooleanSyncValue depositSyncer = new BooleanSyncValue(
@@ -591,17 +657,57 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                     .pos(5, 82)
                     .size(179, 18)
                     .value(depositSyncer)
-                    .background(new Rectangle().setColor(0xFF7A5A35))
+                    .background(
+                        false,
+                        new DynamicDrawable(
+                            () -> canDepositUpgrade(upgrade)
+                                ? GTGuiTextures.BUTTON_STANDARD
+                                : GTGuiTextures.BUTTON_STANDARD_DISABLED))
+                    .background(
+                        true,
+                        new DynamicDrawable(
+                            () -> canDepositUpgrade(upgrade)
+                                ? GTGuiTextures.BUTTON_STANDARD_PRESSED
+                                : GTGuiTextures.BUTTON_STANDARD_DISABLED))
                     .child(
-                        new TextWidget<>(IKey.lang("eohb.dyson.upgrade.deposit"))
+                        new TextWidget<>(
+                            IKey.dynamic(
+                                () -> canDepositUpgrade(upgrade)
+                                    ? StatCollector.translateToLocal("eohb.dyson.upgrade.deposit")
+                                    : EnumChatFormatting.DARK_RED
+                                        + StatCollector.translateToLocal("eohb.dyson.upgrade.locked")))
                             .size(179, 18)
-                            .textAlign(Alignment.Center)));
+                            .textAlign(Alignment.Center)
+                            .color(Color.WHITE.main)
+                            .shadow(true)));
 
             // 玩家背包（下方 4 行），用于 Shift 点击批量填料到上方投料格
             panel.child(
                 SlotGroupWidget.playerInventory(false)
                     .pos(5, 108));
             return panel;
+        }
+
+        /** 投料是否放行：无前置直接可投；有前置时按节点自身“全部/任一”语义检查前置是否已解锁。 */
+        protected boolean canDepositUpgrade(DysonUpgrade upgrade) {
+            DysonUpgrade[] prerequisites = upgrade.getPrerequisites();
+            if (prerequisites.length == 0) {
+                return true;
+            }
+            if (upgrade.requiresAllPrerequisites()) {
+                for (DysonUpgrade prerequisite : prerequisites) {
+                    if (!activeSyncers[prerequisite.ordinal()].getValue()) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            for (DysonUpgrade prerequisite : prerequisites) {
+                if (activeSyncers[prerequisite.ordinal()].getValue()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         protected String confirmLabel(DysonUpgrade upgrade) {
@@ -658,7 +764,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .child(makeStat("贴片", () -> String.valueOf(pasteSyncer.getValue())))
                 .child(
                     makeStat(
-                        "组件",
+                        "个人组件",
                         () -> "云 "
                             + cloudComponentsSyncer.getValue()
                             + " / 框架 "
@@ -706,9 +812,19 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             return;
         }
 
+        // 队伍归属上报：离队/被踢时由系统把升级树继承到个人
+        if (ownerUUID != null) {
+            DysonSphereSystem.trackPlayerTeam(
+                aBaseMetaTileEntity.getWorld(),
+                ownerUUID,
+                aBaseMetaTileEntity.getOwnerName(),
+                getTeamId());
+        }
+
         // 维度强约束：只能在塔罗斯 2 运行，否则全部模块断开
         if (!DysonMachineConfig.isInTalos(aBaseMetaTileEntity.getWorld())) {
             disconnectAll();
+            updateTeamCoreOnline(false);
             return;
         }
 
@@ -724,10 +840,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 disableWorking();
                 stopMachine(DUPLICATE_CORE_REASON);
                 disconnectAll();
+                updateTeamCoreOnline(false);
                 return;
             }
         } else if (owner != null && CORE_BY_OWNER.get(owner) == this) {
             CORE_BY_OWNER.remove(owner);
+            updateTeamCoreOnline(false);
         }
 
         // 核心算力门控：不足则全部模块断开
@@ -739,8 +857,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         // 核心不在线（未成型 / 算力不足 / 被停机）时全部模块断开
         if (!mMachine || !computeOk || !aBaseMetaTileEntity.isActive()) {
             disconnectAll();
+            updateTeamCoreOnline(false);
             return;
         }
+        updateTeamCoreOnline(true);
 
         World world = aBaseMetaTileEntity.getWorld();
         long worldTime = world.getTotalWorldTime();
@@ -750,7 +870,6 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         int activeSlots = DysonMachineConfig.activeSlotsForPaste(paste);
 
         int connectedCount = 0;
-        int receivers = 0;
         for (DysonModuleBase<?> module : moduleHatches) {
             if (module == null) {
                 continue;
@@ -759,13 +878,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 module.disconnect();
                 continue;
             }
-            // 接收模块每核心至多 1 台
+            // 接收模块每队至多 1 台：先注册成功的保持连接，后到的断开；失效后其他接收机可接管
             if (module.getModuleType() == DysonModuleBase.ModuleType.RECEIVER) {
-                if (receivers > 0) {
+                if (!DysonReceiverModule.tryRegisterTeamReceiver(getTeamId(), (DysonReceiverModule) module)) {
                     module.disconnect();
                     continue;
                 }
-                receivers++;
             }
             // 模块自身算力
             BigInteger moduleCompute = module.getRequiredCompute();
@@ -795,7 +913,16 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         if (owner != null && CORE_BY_OWNER.get(owner) == this) {
             CORE_BY_OWNER.remove(owner);
         }
+        updateTeamCoreOnline(false);
+        disconnectAll();
         super.onRemoval();
+    }
+
+    @Override
+    public void onUnload() {
+        updateTeamCoreOnline(false);
+        disconnectAll();
+        super.onUnload();
     }
 
     @Override
@@ -827,16 +954,14 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             EnumChatFormatting.AQUA + "本队贴片: "
                 + EnumChatFormatting.GOLD
                 + paste);
-        if (team != null) {
-            lines.add(
-                EnumChatFormatting.AQUA + "组件库存: 云 "
-                    + EnumChatFormatting.GOLD
-                    + team.cloudComponents
-                    + EnumChatFormatting.AQUA
-                    + " / 框架 "
-                    + EnumChatFormatting.GOLD
-                    + team.frameComponents);
-        }
+        lines.add(
+            EnumChatFormatting.AQUA + "个人组件: 云 "
+                + EnumChatFormatting.GOLD
+                + getPersonalCloudComponents()
+                + EnumChatFormatting.AQUA
+                + " / 框架 "
+                + EnumChatFormatting.GOLD
+                + getPersonalFrameComponents());
 
         if (duplicateRejected) {
             lines.add(

@@ -197,6 +197,25 @@ public class DysonUpgradeStorage {
         }
     }
 
+    /** 把另一份升级进度合并进来（逐节点取并集 / 已付数量取最大），用于离队继承。 */
+    public void copyFrom(DysonUpgradeStorage other) {
+        if (other == null) {
+            return;
+        }
+        for (DysonUpgrade upgrade : DysonUpgrade.VALUES) {
+            UpgradeData target = unlockedUpgrades.get(upgrade);
+            UpgradeData source = other.unlockedUpgrades.get(upgrade);
+            if (source == null) {
+                continue;
+            }
+            target.active |= source.active;
+            target.costPaid |= source.costPaid;
+            for (int i = 0; i < target.amountsPaid.length; i++) {
+                target.amountsPaid[i] = (short) Math.max(target.amountsPaid[i], source.amountsPaid[i]);
+            }
+        }
+    }
+
     public void serializeToNBT(NBTTagCompound nbt) {
         if (!hasAnyProgress()) {
             return;

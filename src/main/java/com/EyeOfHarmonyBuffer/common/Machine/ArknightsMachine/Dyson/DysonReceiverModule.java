@@ -13,7 +13,10 @@ import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -57,6 +60,9 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     implements IConstructable, ISurvivalConstructable {
 
+    /** 队级唯一注册表：teamId → 当前在线的接收模块。 */
+    private static final Map<UUID, DysonReceiverModule> ACTIVE_TEAM_RECEIVERS = new HashMap<>();
+
     private static IStructureDefinition<DysonReceiverModule> STRUCTURE_DEFINITION = null;
     private static final String STRUCTURE_PIECE_MAIN = "mainDysonReceiver";
     private static final int OffsetsX = 1;
@@ -66,6 +72,86 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
 
     /** 产出拆分：给 Orundum 的百分比（0~100），其余进无线 EU。 */
     private int orundumSharePercent = 100;
+
+    /** 当前在队级唯一注册表里使用的键，换队时用于精确清理旧映射。 */
+    private UUID registeredTeamId = null;
+
+    /** 尝试注册为本队唯一接收模块：无占用或自己已占用时成功，否则失败。 */
+    public static boolean tryRegisterTeamReceiver(UUID teamId, DysonReceiverModule module) {
+        if (teamId == null || module == null) {
+            return false;
+        }
+        synchronized (ACTIVE_TEAM_RECEIVERS) {
+            // 换队重注册时先清掉旧键，避免旧队伍留下失效占用
+            if (module.registeredTeamId != null && !module.registeredTeamId.equals(teamId)) {
+                if (ACTIVE_TEAM_RECEIVERS.get(module.registeredTeamId) == module) {
+                    ACTIVE_TEAM_RECEIVERS.remove(module.registeredTeamId);
+                }
+            }
+            DysonReceiverModule existing = ACTIVE_TEAM_RECEIVERS.get(teamId);
+            if (existing == null || existing == module) {
+                ACTIVE_TEAM_RECEIVERS.put(teamId, module);
+                module.registeredTeamId = teamId;
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static boolean isTeamReceiverOnline(UUID teamId) {
+        synchronized (ACTIVE_TEAM_RECEIVERS) {
+            return ACTIVE_TEAM_RECEIVERS.containsKey(teamId);
+        }
+    }
+
+    /** 当前为本队工作的接收模块的机主；无在线接收模块时返回 null。 */
+    public static UUID getTeamReceiverOwner(UUID teamId) {
+        synchronized (ACTIVE_TEAM_RECEIVERS) {
+            DysonReceiverModule module = ACTIVE_TEAM_RECEIVERS.get(teamId);
+            return module == null ? null : module.getOwnerUUID();
+        }
+    }
+
+    private void unregisterIfActive() {
+        synchronized (ACTIVE_TEAM_RECEIVERS) {
+            if (registeredTeamId != null && ACTIVE_TEAM_RECEIVERS.get(registeredTeamId) == this) {
+                ACTIVE_TEAM_RECEIVERS.remove(registeredTeamId);
+            }
+            registeredTeamId = null;
+        }
+    }
+
+    @Override
+    public void disconnect() {
+        if (connected) {
+            unregisterIfActive();
+        }
+        super.disconnect();
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+        if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide() || !connected) {
+            return;
+        }
+        long elapsed = aBaseMetaTileEntity.getWorld().getTotalWorldTime() - lastConnectTick;
+        if (elapsed > DysonMachineConfig.CORE_HEARTBEAT_TICKS) {
+            disconnect();
+        }
+    }
+
+    @Override
+    public void onRemoval() {
+        unregisterIfActive();
+        super.onRemoval();
+    }
+
+    @Override
+    public void onUnload() {
+        unregisterIfActive();
+        super.onUnload();
+    }
 
     public DysonReceiverModule(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -200,9 +286,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
             IntSyncValue shareSyncer = new IntSyncValue(
                 multiblock::getOrundumSharePercent,
                 multiblock::setOrundumSharePercent).allowC2S();
-            return new ModularPanel("dysonSplit").relative(parent)
-                .leftRel(1)
-                .topRel(0)
+            return new ModularPanel("dysonSplit")
                 .size(150, 78)
                 .child(
                     Flow.column()
@@ -310,7 +394,8 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType("戴森接收模块")
             .addInfo("按本队云+贴片功率发电（每秒结算一次）")
-            .addInfo("完工后输出 10^200 EU/t；每核心至多 1 台")
+            .addInfo("完工后输出 10^200 EU/t")
+            .addInfo("每队限 1 台（不限挂在哪位队员的核心上）")
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)

@@ -21,6 +21,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -73,11 +74,26 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
 
     @Override
     public int getWirelessModeProcessingTime() {
+        if (isUpgradeActive(DysonUpgrade.MANUFACTURING_EFFICIENCY_III)) {
+            return DysonMachineConfig.manufacturingEfficiencyTicksIII;
+        }
+        if (isUpgradeActive(DysonUpgrade.MANUFACTURING_EFFICIENCY_II)) {
+            return DysonMachineConfig.manufacturingEfficiencyTicksII;
+        }
+        if (isUpgradeActive(DysonUpgrade.MANUFACTURING_EFFICIENCY_I)) {
+            return DysonMachineConfig.manufacturingEfficiencyTicksI;
+        }
         return DysonMachineConfig.manufacturingTimeTicks;
     }
 
     @Override
     public int getMaxParallelRecipes() {
+        if (isUpgradeActive(DysonUpgrade.MANUFACTURING_PARALLEL_III)) {
+            return DysonMachineConfig.manufacturingParallelIII;
+        }
+        if (isUpgradeActive(DysonUpgrade.MANUFACTURING_PARALLEL_II)) {
+            return DysonMachineConfig.manufacturingParallelII;
+        }
         return DysonMachineConfig.manufacturingMaxParallel;
     }
 
@@ -91,12 +107,28 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
         if (processingLogic == null) {
             return BigInteger.ZERO;
         }
-        long eut = processingLogic.getCalculatedEut();
-        int duration = processingLogic.getDuration();
+        ItemStack[] outputs = processingLogic.getOutputItems();
+        if (outputs == null || outputs.length == 0) {
+            return BigInteger.ZERO;
+        }
+        Item frameItem = GTCMItemList.DysonFrameComponent.getItem();
+        boolean frame = false;
+        for (ItemStack stack : outputs) {
+            if (stack != null && stack.getItem() == frameItem) {
+                frame = true;
+                break;
+            }
+        }
+        // 成本走队伍 Orundum 账本：每 tick 基准 × 实际时长 × 并行（1:1 等价）
+        BigInteger perTick = frame
+            ? DysonMachineConfig.FRAME_COMPONENT_ORUNDUM_PER_TICK
+            : DysonMachineConfig.CLOUD_COMPONENT_ORUNDUM_PER_TICK;
+        int duration = getWirelessModeProcessingTime();
         if (duration <= 0) {
             return BigInteger.ZERO;
         }
-        return BigInteger.valueOf(eut).multiply(BigInteger.valueOf(duration));
+        long parallel = Math.max(1, processingLogic.getCurrentParallels());
+        return perTick.multiply(BigInteger.valueOf(duration)).multiply(BigInteger.valueOf(parallel));
     }
 
     @Override
@@ -127,7 +159,32 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
 
         if (clouds > 0 || frames > 0) {
             IGregTechTileEntity base = getBaseMetaTileEntity();
-            DysonSphereSystem.addComponents(base.getWorld(), getTeamId(), base.getOwnerName(), clouds, frames);
+            long extraClouds = 0;
+            long extraFrames = 0;
+            // 制造并行 III：20% 概率额外产出 100~200 × 配方单份产物
+            if (isUpgradeActive(DysonUpgrade.MANUFACTURING_PARALLEL_III)
+                && base != null
+                && base.getWorld() != null
+                && base.getWorld().rand.nextFloat() < DysonMachineConfig.manufacturingExtraChance) {
+                int multiplier = DysonMachineConfig.manufacturingExtraMin
+                    + base.getWorld()
+                        .rand
+                        .nextInt(
+                            DysonMachineConfig.manufacturingExtraMax
+                                - DysonMachineConfig.manufacturingExtraMin
+                                + 1);
+                if (clouds > 0) {
+                    extraClouds = (long) multiplier * DysonMachineConfig.CLOUD_RECIPE_OUTPUT;
+                } else {
+                    extraFrames = (long) multiplier * DysonMachineConfig.FRAME_RECIPE_OUTPUT;
+                }
+            }
+            DysonSphereSystem.addComponentsToPlayer(
+                base.getWorld(),
+                ownerUUID,
+                base.getOwnerName(),
+                clouds + extraClouds,
+                frames + extraFrames);
         }
     }
 
@@ -189,6 +246,8 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
         final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
         tt.addMachineType("戴森制造模块")
             .addInfo("制造戴森云组件与框架组件")
+            .addInfo("基础一轮 30 秒，基础并行 64")
+            .addInfo("成本计入队伍 Orundum 账本（云 10 亿/t、框架 50 亿/t）")
             .addInfo("消耗 10,000 算力")
             .addSeparator()
             .addInfo(StructureTooComplex)

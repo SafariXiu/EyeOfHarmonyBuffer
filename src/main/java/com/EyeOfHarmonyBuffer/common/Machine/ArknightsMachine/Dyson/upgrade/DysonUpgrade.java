@@ -27,8 +27,12 @@ public enum DysonUpgrade {
     MANUFACTURING_EFFICIENCY_I,
     MANUFACTURING_EFFICIENCY_II,
     MANUFACTURING_EFFICIENCY_III,
+    MANUFACTURING_PARALLEL_II,
+    MANUFACTURING_PARALLEL_III,
     LAUNCH_EFFICIENCY_I,
     LAUNCH_EFFICIENCY_II,
+    LAUNCH_BATCH_I,
+    LAUNCH_BATCH_II,
     DUAL_LAUNCH,
     PASTE_CONVERSION,
     DROP_REDUCTION,
@@ -42,23 +46,30 @@ public enum DysonUpgrade {
     public static final Set<DysonUpgrade> SPLIT_UPGRADES;
 
     static {
-        START.build(b -> b.treePos(140, 40));
+        START.build(b -> b.treePos(140, 30));
 
-        MANUFACTURING_EFFICIENCY_I.build(b -> b.prereqs(START).cost(1).treePos(40, 100));
-        MANUFACTURING_EFFICIENCY_II.build(b -> b.prereqs(MANUFACTURING_EFFICIENCY_I).cost(1).treePos(40, 160));
-        MANUFACTURING_EFFICIENCY_III.build(b -> b.prereqs(MANUFACTURING_EFFICIENCY_II).cost(1).treePos(40, 220));
+        MANUFACTURING_EFFICIENCY_I.build(b -> b.prereqs(START).cost(1).treePos(28, 85));
+        MANUFACTURING_EFFICIENCY_II.build(b -> b.prereqs(MANUFACTURING_EFFICIENCY_I).cost(1).treePos(28, 135));
+        MANUFACTURING_EFFICIENCY_III.build(b -> b.prereqs(MANUFACTURING_EFFICIENCY_II).cost(1).treePos(28, 185));
 
-        LAUNCH_EFFICIENCY_I.build(b -> b.prereqs(START).cost(1).treePos(240, 100));
-        LAUNCH_EFFICIENCY_II.build(b -> b.prereqs(LAUNCH_EFFICIENCY_I).cost(1).treePos(240, 160));
-        DUAL_LAUNCH.build(b -> b.prereqs(LAUNCH_EFFICIENCY_II).cost(3).treePos(240, 220).major());
+        MANUFACTURING_PARALLEL_II.build(b -> b.prereqs(START).cost(1).treePos(76, 125));
+        MANUFACTURING_PARALLEL_III.build(b -> b.prereqs(MANUFACTURING_PARALLEL_II).cost(1).treePos(76, 175));
 
-        PASTE_CONVERSION.build(b -> b.prereqs(START).cost(1).treePos(100, 100));
-        DROP_REDUCTION.build(b -> b.prereqs(START).cost(1).treePos(180, 100));
-        RECEIVER_BOOST.build(b -> b.prereqs(PASTE_CONVERSION, DROP_REDUCTION).anyPrereq().cost(1).treePos(140, 160));
+        LAUNCH_EFFICIENCY_I.build(b -> b.prereqs(START).cost(1).treePos(252, 85));
+        LAUNCH_EFFICIENCY_II.build(b -> b.prereqs(LAUNCH_EFFICIENCY_I).cost(1).treePos(252, 135));
+
+        LAUNCH_BATCH_I.build(b -> b.prereqs(START).cost(1).treePos(210, 125));
+        LAUNCH_BATCH_II.build(b -> b.prereqs(LAUNCH_BATCH_I).cost(1).treePos(210, 175));
+
+        DUAL_LAUNCH.build(b -> b.prereqs(LAUNCH_EFFICIENCY_II, LAUNCH_BATCH_II).cost(3).treePos(252, 185).major());
+
+        PASTE_CONVERSION.build(b -> b.prereqs(START).cost(1).treePos(118, 165));
+        DROP_REDUCTION.build(b -> b.prereqs(START).cost(1).treePos(168, 165));
+        RECEIVER_BOOST.build(b -> b.prereqs(PASTE_CONVERSION, DROP_REDUCTION).anyPrereq().cost(1).treePos(140, 215));
         RECEIVER_BOOST.addExtraCost(
             GTCMItemList.YuanShi.get(1),
             GTCMItemList.XiRang.get(2));
-        SPLIT_UNLOCK.build(b -> b.prereqs(RECEIVER_BOOST).cost(3).treePos(140, 220).major());
+        SPLIT_UNLOCK.build(b -> b.prereqs(RECEIVER_BOOST).cost(3).treePos(140, 255).major());
 
         SPLIT_UPGRADES = ImmutableSet.of(PASTE_CONVERSION, DROP_REDUCTION);
 

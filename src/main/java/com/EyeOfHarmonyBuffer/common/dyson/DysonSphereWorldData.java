@@ -35,6 +35,12 @@ public class DysonSphereWorldData extends WorldSavedData {
     private UUID completedTeamId = null;
     private String completedTeamName = "";
 
+    /** 最近一次结算窗口水印（day*2 + half），持久化避免重启后重复结算。 */
+    private long lastSettlementIndex = -1L;
+
+    /** 玩家 → 当前队伍归属，用于检测离队/被踢并继承升级树。 */
+    private final Map<UUID, UUID> playerTeams = new HashMap<>();
+
     public DysonSphereWorldData() {
         super(DATA_NAME);
     }
@@ -143,6 +149,30 @@ public class DysonSphereWorldData extends WorldSavedData {
         markDirty();
     }
 
+    /** 尝试认领结算窗口：比水印新的窗口返回 true 并刷新水印，否则返回 false。 */
+    public boolean tryClaimSettlement(long index) {
+        if (index <= lastSettlementIndex) {
+            return false;
+        }
+        lastSettlementIndex = index;
+        markDirty();
+        return true;
+    }
+
+    public UUID getPlayerTeam(UUID player) {
+        return player == null ? null : playerTeams.get(player);
+    }
+
+    public void setPlayerTeam(UUID player, UUID team) {
+        if (player == null || team == null) {
+            return;
+        }
+        if (!team.equals(playerTeams.get(player))) {
+            playerTeams.put(player, team);
+            markDirty();
+        }
+    }
+
     // endregion
 
     // region 领先者与展示状态（渲染用）
@@ -239,6 +269,19 @@ public class DysonSphereWorldData extends WorldSavedData {
             completedTeamId = null;
         }
         completedTeamName = nbt.getString("CompletedTeamName");
+        lastSettlementIndex = nbt.hasKey("LastSettlementIndex") ? nbt.getLong("LastSettlementIndex") : -1L;
+
+        playerTeams.clear();
+        NBTTagList playerTeamList = nbt.getTagList("PlayerTeams", 10);
+        for (int i = 0; i < playerTeamList.tagCount(); i++) {
+            NBTTagCompound c = playerTeamList.getCompoundTagAt(i);
+            try {
+                playerTeams.put(
+                    UUID.fromString(c.getString("Player")),
+                    UUID.fromString(c.getString("Team")));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
     }
 
     @Override
@@ -263,5 +306,15 @@ public class DysonSphereWorldData extends WorldSavedData {
         nbt.setBoolean("Completed", completed);
         nbt.setString("CompletedTeamId", completedTeamId == null ? "" : completedTeamId.toString());
         nbt.setString("CompletedTeamName", completedTeamName == null ? "" : completedTeamName);
+        nbt.setLong("LastSettlementIndex", lastSettlementIndex);
+
+        NBTTagList playerTeamList = new NBTTagList();
+        for (Map.Entry<UUID, UUID> entry : playerTeams.entrySet()) {
+            NBTTagCompound c = new NBTTagCompound();
+            c.setString("Player", entry.getKey().toString());
+            c.setString("Team", entry.getValue().toString());
+            playerTeamList.appendTag(c);
+        }
+        nbt.setTag("PlayerTeams", playerTeamList);
     }
 }

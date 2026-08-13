@@ -8,7 +8,8 @@ import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 
 import gregtech.api.enums.GTValues;
 
-/** 戴森组件制造配方（占位材料与数值，后续替换）。 */
+/** 戴森组件制造配方。实际 Orundum 成本见 {@link com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.DysonMachineConfig}，
+ *  配方 eut 仅作 NEI 展示占位（50 亿/t 超出 int 上限，无法直接写在配方里）。 */
 public class DysonManufacturingRecipes implements IRecipePool {
 
     @Override
@@ -16,16 +17,16 @@ public class DysonManufacturingRecipes implements IRecipePool {
 
         GTValues.RA.stdBuilder()
             .itemInputs(GTCMItemList.YuanShi.get(64))
-            .itemOutputs(GTCMItemList.DysonCloudComponent.get(1))
-            .eut(1000)
-            .duration(60 * SECONDS)
+            .itemOutputs(GTCMItemList.DysonCloudComponent.get(64))
+            .eut(1_000_000_000)
+            .duration(30 * SECONDS)
             .addTo(DysonManufacturing);
 
         GTValues.RA.stdBuilder()
             .itemInputs(GTCMItemList.XiRang.get(64))
-            .itemOutputs(GTCMItemList.DysonFrameComponent.get(1))
-            .eut(2000)
-            .duration(60 * SECONDS)
+            .itemOutputs(GTCMItemList.DysonFrameComponent.get(512))
+            .eut(1_000_000_000)
+            .duration(30 * SECONDS)
             .addTo(DysonManufacturing);
     }
 }

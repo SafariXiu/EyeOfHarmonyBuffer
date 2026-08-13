@@ -10,8 +10,10 @@ import java.util.UUID;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
 
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereWorldData;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeHelper;
@@ -31,7 +33,6 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
 
     protected boolean connected = false;
     protected long lastConnectTick = Long.MIN_VALUE;
-    protected UUID teamIdCache = null;
     protected BigInteger pendingCost = BigInteger.ZERO;
     protected BigInteger pendingGain = BigInteger.ZERO;
 
@@ -118,13 +119,10 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         return world.getTotalWorldTime() - lastConnectTick <= DysonMachineConfig.CORE_HEARTBEAT_TICKS;
     }
 
-    /** 队伍语义：Orundum 电网队伍（SpaceProject 队长），无队伍时退回 owner。 */
+    /** 队伍语义：每次实时解析（SpaceProject 队长），无队伍时退回 owner；被踢后模块会跟随到个人。 */
     protected UUID getTeamId() {
-        if (teamIdCache == null) {
-            UUID resolved = OrundumEnergyService.getTeamIdForUser(ownerUUID);
-            teamIdCache = resolved != null ? resolved : ownerUUID;
-        }
-        return teamIdCache;
+        UUID resolved = OrundumEnergyService.getTeamIdForUser(ownerUUID);
+        return resolved != null ? resolved : ownerUUID;
     }
 
     protected DysonTeamProgress getTeamProgress(World world) {
@@ -133,6 +131,15 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             return null;
         }
         return data.getTeam(getTeamId());
+    }
+
+    /** 队伍级升级树查询：本队是否已解锁指定节点。 */
+    protected boolean isUpgradeActive(DysonUpgrade upgrade) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || base.getWorld() == null || upgrade == null) {
+            return false;
+        }
+        return DysonSphereSystem.isTeamUpgradeActive(base.getWorld(), getTeamId(), upgrade);
     }
 
     protected boolean isTeamCompleted(World world) {
@@ -229,18 +236,17 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         }
 
         IGregTechTileEntity base = getBaseMetaTileEntity();
-        if (base != null && base.isServerSide()) {
-            DysonTeamProgress team = getTeamProgress(base.getWorld());
-            if (team != null) {
-                lines.add(
-                    EnumChatFormatting.AQUA + "队伍云组件库存: "
-                        + EnumChatFormatting.GOLD
-                        + team.cloudComponents
-                        + EnumChatFormatting.AQUA
-                        + " / 框架组件库存: "
-                        + EnumChatFormatting.GOLD
-                        + team.frameComponents);
-            }
+        if (base != null && base.isServerSide() && ownerUUID != null) {
+            long cloudComponents = DysonSphereSystem.getPlayerCloudComponents(base.getWorld(), ownerUUID);
+            long frameComponents = DysonSphereSystem.getPlayerFrameComponents(base.getWorld(), ownerUUID);
+            lines.add(
+                EnumChatFormatting.AQUA + "个人云组件库存: "
+                    + EnumChatFormatting.GOLD
+                    + cloudComponents
+                    + EnumChatFormatting.AQUA
+                    + " / 框架组件库存: "
+                    + EnumChatFormatting.GOLD
+                    + frameComponents);
         }
         return lines.toArray(new String[0]);
     }
