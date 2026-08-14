@@ -579,6 +579,12 @@ public class TextLocalization {
     public static final String Dyson_Link_Fail_NoCore;
     public static final String Dyson_Link_Fail_Permission;
     public static final String Dyson_Link_Fail_Slots;
+    public static final String Dyson_Upgrade_SplitLocked;
+    public static final String Dyson_Eject_NoOutputBus;
+    public static final String Dyson_Eject_Success;
+    public static final String Dyson_Eject_Full;
+    public static final String Tooltip_Dyson_OutputBusHint;
+    public static final String Tooltip_DysonCore_Eject;
     public static final String Tooltip_DysonCore_Link;
     public static final String Tooltip_DysonModule_Link;
     public static final String Dyson_Waila_OutputOrundum;
@@ -794,6 +800,11 @@ public class TextLocalization {
     public static final String[] EOHB_ArknightsItem_ZhuanZhiYanZu;
     public static final String[] EOHB_ArknightsItem_ZhuanZhiYanJuKuai;
     public static final String[] EOHB_ArknightsItem_QiYiWuZhi;
+    public static final String[] EOHB_ArknightsItem_D96GangYangPin4;
+    public static final String[] EOHB_ArknightsItem_SanXiangNaMiPian;
+    public static final String[] EOHB_ArknightsItem_KuaiZiLinJianJingGe;
+    public static final String[] EOHB_ArknightsItem_XiangXianNiHeYe;
+    public static final String[] EOHB_ArknightsItem_ChaoJuHuiYingGuan;
 
 
     //配方池
@@ -1853,6 +1864,47 @@ public class TextLocalization {
             TextHandler.texter("Strange matter captured from the star, completely different in nature from matter in the material world.", "EOHB_ArknightsItem_QiYiWuZhi_00"),
             TextHandler.texter("Seems it can be used to improve machine performance.", "EOHB_ArknightsItem_QiYiWuZhi_01")
         };
+        EOHB_ArknightsItem_D96GangYangPin4 = new String[] {
+            TextHandler.texter("A novel and artificial alloy of D32 steel and D64 steel that", "EOHB_ArknightsItem_D96GangYangPin4_00"),
+            TextHandler.texter("cannot exist naturally. D96 steel has inherited the excellent", "EOHB_ArknightsItem_D96GangYangPin4_01"),
+            TextHandler.texter("strength and Arts conduction properties of its constituents.", "EOHB_ArknightsItem_D96GangYangPin4_02"),
+            TextHandler.texter("It also features better performance in areas with unstable", "EOHB_ArknightsItem_D96GangYangPin4_03"),
+            TextHandler.texter("Originium activities. The material is still being experimented", "EOHB_ArknightsItem_D96GangYangPin4_04"),
+            TextHandler.texter("upon, with Sample 4 offering the best cost performance index.", "EOHB_ArknightsItem_D96GangYangPin4_05")
+        };
+        EOHB_ArknightsItem_SanXiangNaMiPian = new String[] {
+            TextHandler.texter("A device that is extremely sensitive to ambient Originium.", "EOHB_ArknightsItem_SanXiangNaMiPian_00"),
+            TextHandler.texter("It can boost Originium sensitivity of all weapons and devices", "EOHB_ArknightsItem_SanXiangNaMiPian_01"),
+            TextHandler.texter("within a significantly large area. The Triphasic Nanoflake is", "EOHB_ArknightsItem_SanXiangNaMiPian_02"),
+            TextHandler.texter("a key component for containing and storing the Arts, and", "EOHB_ArknightsItem_SanXiangNaMiPian_03"),
+            TextHandler.texter("offers better performance in non-realspace environments", "EOHB_ArknightsItem_SanXiangNaMiPian_04"),
+            TextHandler.texter("compared to the older Bipolar Nanoflakes.", "EOHB_ArknightsItem_SanXiangNaMiPian_05")
+        };
+        EOHB_ArknightsItem_KuaiZiLinJianJingGe = new String[] {
+            TextHandler.texter("An ion trap that might be leveraging its innate Aether properties.", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_00"),
+            TextHandler.texter("The lattice ignores temporal factors and is capable of detecting", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_01"),
+            TextHandler.texter("and screening naturally occurring tachyon beams in realspace.", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_02"),
+            TextHandler.texter("Since the people of Talos-II are still incapable of activating", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_03"),
+            TextHandler.texter("and firing tachyons, the lattice is thus essential for any", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_04"),
+            TextHandler.texter("experiments involving random outcome solidification.", "EOHB_ArknightsItem_KuaiZiLinJianJingGe_05")
+        };
+        EOHB_ArknightsItem_XiangXianNiHeYe = new String[] {
+            TextHandler.texter("A hypothetical condensed matter in fluid state. Though it", "EOHB_ArknightsItem_XiangXianNiHeYe_00"),
+            TextHandler.texter("could be synthesized and the optical properties of the", "EOHB_ArknightsItem_XiangXianNiHeYe_01"),
+            TextHandler.texter("resulting materials could be observed, the actual structure", "EOHB_ArknightsItem_XiangXianNiHeYe_02"),
+            TextHandler.texter("and state of the fluid have yet to be successfully measured.", "EOHB_ArknightsItem_XiangXianNiHeYe_03"),
+            TextHandler.texter("The fluid effectively suppresses Originium sublimation in all", "EOHB_ArknightsItem_XiangXianNiHeYe_04"),
+            TextHandler.texter("Depths that could be artificially created, making it an", "EOHB_ArknightsItem_XiangXianNiHeYe_05"),
+            TextHandler.texter("extraordinarily effective filler.", "EOHB_ArknightsItem_XiangXianNiHeYe_06")
+        };
+        EOHB_ArknightsItem_ChaoJuHuiYingGuan = new String[] {
+            TextHandler.texter("A synthetic item for detecting and verifying various field", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_00"),
+            TextHandler.texter("forces and actions at a distance. The tube usually comprises", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_01"),
+            TextHandler.texter("a time crystal sealed in a static vessel, and uses observable", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_02"),
+            TextHandler.texter("regression properties of the photons to achieve its purpose.", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_03"),
+            TextHandler.texter("Though typically stable, users should avoid breaking the vessel", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_04"),
+            TextHandler.texter("and stay out of areas between a pair of linked tubes.", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_05")
+        };
 
 
         //流体
@@ -2089,6 +2141,12 @@ public class TextLocalization {
         Dyson_Link_Fail_NoCore = TextHandler.texter("Link failed: no Dyson Core at the link location","Dyson_Link_Fail_NoCore");
         Dyson_Link_Fail_Permission = TextHandler.texter("Link failed: you do not have permission to link this machine","Dyson_Link_Fail_Permission");
         Dyson_Link_Fail_Slots = TextHandler.texter("Link failed: the Dyson Core module slots are full (32)","Dyson_Link_Fail_Slots");
+        Dyson_Upgrade_SplitLocked = TextHandler.texter("Locked: requires the Energy Allocation upgrade","Dyson_Upgrade_SplitLocked");
+        Dyson_Eject_NoOutputBus = TextHandler.texter("Requires an output bus to eject Strange Matter","Dyson_Eject_NoOutputBus");
+        Dyson_Eject_Success = TextHandler.texter("Ejected %s Strange Matter into the output bus (%s left in the core)","Dyson_Eject_Success");
+        Dyson_Eject_Full = TextHandler.texter("Output bus full, nothing was ejected","Dyson_Eject_Full");
+        Tooltip_Dyson_OutputBusHint = TextHandler.texter("Output bus (optional, used to eject Strange Matter)","Tooltip_Dyson_OutputBusHint");
+        Tooltip_DysonCore_Eject = TextHandler.texter("Strange Matter is ejected into the output bus: click the eject button, overflow stays stored in the core.","Tooltip_DysonCore_Eject");
         Tooltip_DysonCore_Link = TextHandler.texter("Link: left-click with a Data Stick to save core coords, then right-click a Dyson module. No distance limit.","Tooltip_DysonCore_Link");
         Tooltip_DysonModule_Link = TextHandler.texter("Link: right-click with a Data Stick holding core coords to bind to the core.","Tooltip_DysonModule_Link");
         Dyson_Waila_OutputOrundum = TextHandler.texter("Per-round Orundum Output","Dyson_Waila_OutputOrundum");
@@ -2105,7 +2163,7 @@ public class TextLocalization {
         Dyson_Gui_SplitTitle = TextHandler.texter("Orundum output share (0-100)","Dyson_Gui_SplitTitle");
         Dyson_Gui_SplitEUText = TextHandler.texter("EU: ","Dyson_Gui_SplitEUText");
         Dyson_Gui_SplitTooltip = TextHandler.texter("Configure Orundum / EU output split","Dyson_Gui_SplitTooltip");
-        Dyson_Gui_EjectMatter = TextHandler.texter("Eject Strange Matter as items","Dyson_Gui_EjectMatter");
+        Dyson_Gui_EjectMatter = TextHandler.texter("Eject Strange Matter into the output bus","Dyson_Gui_EjectMatter");
         Dyson_Text_Or = TextHandler.texter(" or ","Dyson_Text_Or");
         Dyson_Cmd_NoPermission = TextHandler.texter("You do not have permission to use this command.","Dyson_Cmd_NoPermission");
         Dyson_Cmd_NotLoaded = TextHandler.texter("Dyson sphere save has not been loaded yet.","Dyson_Cmd_NotLoaded");

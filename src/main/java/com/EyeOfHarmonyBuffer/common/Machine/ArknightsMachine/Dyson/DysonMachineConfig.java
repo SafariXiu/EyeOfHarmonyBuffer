@@ -25,6 +25,10 @@ public final class DysonMachineConfig {
     public static final int DAILY_DROP_MIN = 10;
     public static final int DAILY_DROP_MAX = 64;
 
+    /** 点亮“掉落减免”节点后的每日掉落范围。 */
+    public static final int DAILY_DROP_MIN_REDUCED = 8;
+    public static final int DAILY_DROP_MAX_REDUCED = 48;
+
     /** 发射模块：每个组件的发射成本（Orundum）。 */
     public static final long launchCostOrundum = 10_000L;
 

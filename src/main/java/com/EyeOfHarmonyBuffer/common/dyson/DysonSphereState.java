@@ -4,8 +4,8 @@ package com.EyeOfHarmonyBuffer.common.dyson;
  * 戴森球全局状态的客户端/服务端共享缓存。
  * <p>
  * 服务端通过 {@link DysonSphereNetwork} 将状态广播给客户端，
- * 客户端天空盒渲染器直接读取本缓存绘制对应阶段。
- * 后续接入实际系统时，发射机/接收机也通过这里读取当前进度。
+ * 客户端天空盒渲染器直接读取本缓存绘制对应阶段；
+ * 机器侧（核心/模块）通过 {@link DysonSphereSystem} 与 {@link DysonSphereWorldData} 读写进度。
  */
 public final class DysonSphereState {
 

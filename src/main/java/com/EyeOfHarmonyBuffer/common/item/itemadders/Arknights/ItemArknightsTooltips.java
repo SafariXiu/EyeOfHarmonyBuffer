@@ -88,6 +88,11 @@ public final class ItemArknightsTooltips {
         tooltips.put("ZhuanZhiYanZu", TextLocalization.EOHB_ArknightsItem_ZhuanZhiYanZu);
         tooltips.put("ZhuanZhiYanJuKuai", TextLocalization.EOHB_ArknightsItem_ZhuanZhiYanJuKuai);
         tooltips.put("QiYiWuZhi", TextLocalization.EOHB_ArknightsItem_QiYiWuZhi);
+        tooltips.put("D96GangYangPin4", TextLocalization.EOHB_ArknightsItem_D96GangYangPin4);
+        tooltips.put("SanXiangNaMiPian", TextLocalization.EOHB_ArknightsItem_SanXiangNaMiPian);
+        tooltips.put("KuaiZiLinJianJingGe", TextLocalization.EOHB_ArknightsItem_KuaiZiLinJianJingGe);
+        tooltips.put("XiangXianNiHeYe", TextLocalization.EOHB_ArknightsItem_XiangXianNiHeYe);
+        tooltips.put("ChaoJuHuiYingGuan", TextLocalization.EOHB_ArknightsItem_ChaoJuHuiYingGuan);
         return tooltips;
     }
 }

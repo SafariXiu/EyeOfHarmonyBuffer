@@ -29,12 +29,14 @@ import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
 import com.cleanroommc.modularui.value.sync.IntSyncValue;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson.upgrade.DysonUpgrade;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -55,7 +57,8 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 
 /**
  * 接收模块：每 1 秒按本队功率结算一次（云 × 2^41 + 贴片 × 2^79，完工后 10^200），
- * 当前占位逻辑为全额入 Orundum 账本（专属结算后续单独设计）；不耗算力；每核心至多 1 台。
+ * 产出按 GUI 配置的 Orundum 占比（0~100）拆分无线 EU 与 Orundum 两本账，需点亮“能量分配”大节点；
+ * 不耗算力；每队至多 1 台。
  */
 public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
     implements IConstructable, ISurvivalConstructable {
@@ -167,7 +170,17 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         return orundumSharePercent;
     }
 
+    /** “能量分配”大节点：点亮后才允许调整 EU / Orundum 拆分。 */
+    public boolean isSplitUnlocked() {
+        return isUpgradeActive(DysonUpgrade.SPLIT_UNLOCK);
+    }
+
     public void setOrundumSharePercent(int value) {
+        // 未点亮“能量分配”大节点时锁定为全额 Orundum（服务端强制，防客户端/存档直改）
+        if (!isSplitUnlocked()) {
+            this.orundumSharePercent = 100;
+            return;
+        }
         orundumSharePercent = Math.max(0, Math.min(100, value));
     }
 
@@ -254,7 +267,8 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         if (total == null || total.signum() <= 0 || ownerUUID == null) {
             return;
         }
-        int oruPct = Math.max(0, Math.min(100, orundumSharePercent));
+        // 结算时同样强制门控：洗点/未点亮状态下永远全额入 Orundum
+        int oruPct = isSplitUnlocked() ? Math.max(0, Math.min(100, orundumSharePercent)) : 100;
         BigInteger orundum = total.multiply(BigInteger.valueOf(oruPct)).divide(BigInteger.valueOf(100L));
         BigInteger eu = total.subtract(orundum);
         if (orundum.signum() > 0) {
@@ -307,6 +321,8 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         }
 
         protected ModularPanel openSplitConfigPanel(PanelSyncManager syncManager, ModularPanel parent) {
+            BooleanSyncValue unlockedSyncer = new BooleanSyncValue(multiblock::isSplitUnlocked);
+            syncManager.syncValue("dysonSplitUnlocked", unlockedSyncer);
             IntSyncValue shareSyncer = new IntSyncValue(
                 multiblock::getOrundumSharePercent,
                 multiblock::setOrundumSharePercent).allowC2S();
@@ -327,10 +343,12 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
                         .child(
                             new TextWidget<>(
                                 IKey.dynamic(
-                                    () -> EnumChatFormatting.AQUA
-                                        + Dyson_Gui_SplitEUText
-                                        + (100 - multiblock.getOrundumSharePercent())
-                                        + "%"))));
+                                    () -> unlockedSyncer.getValue()
+                                        ? EnumChatFormatting.AQUA
+                                            + Dyson_Gui_SplitEUText
+                                            + (100 - multiblock.getOrundumSharePercent())
+                                            + "%"
+                                        : EnumChatFormatting.RED + Dyson_Upgrade_SplitLocked))));
         }
     }
 
@@ -367,6 +385,7 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
         super.loadNBTData(aNBT);
     }
 
+    /** 占位结构（后续替换为设计稿）：3×3×3 封闭外壳，控制器位于前脸中心。 */
     private static final String[][] shapeMain = new String[][] {
         { "AAA", "AAA", "AAA" },
         { "A~A", "A A", "AAA" },
@@ -402,6 +421,12 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
             true);
     }
 
+    /**
+     * 标准 GT 多方块结构定义（EOHB_WindTurbine 同款模式）。
+     * <p>
+     * 结构替换点：只需要改 {@link #shapeMain}、元素定义与 OffsetsX/Y/Z，其余三件套
+     * （checkMachine / construct / survivalConstruct）无需变动。
+     */
     @Override
     public IStructureDefinition<DysonReceiverModule> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {

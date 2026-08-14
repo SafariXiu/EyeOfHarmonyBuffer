@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofChain;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
 import static gregtech.api.GregTechAPI.sBlockCasings8;
 import static gregtech.api.enums.HatchElement.InputBus;
@@ -283,9 +284,13 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
         }
     }
 
+    /** 占位结构（后续替换为设计稿）：5 宽 × 3 深 × 3 高，前脸为输入舱室位（B）。 */
     private static final String[][] shapeMain = new String[][] {
+        // y0 底
         { "BAAAB", "AAAAA", "AAAAA" },
+        // y1 控制器层（前脸中间为控制器，两侧输入位）
         { "BA~AB", "AAAAA", "AAAAA" },
+        // y2 顶
         { "BAAAB", "AAAAA", "AAAAA" }
     };
 
@@ -318,6 +323,12 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
             true);
     }
 
+    /**
+     * 标准 GT 多方块结构定义（EOHB_WindTurbine 同款模式）。
+     * <p>
+     * 结构替换点：只需要改 {@link #shapeMain}、元素定义与 OffsetsX/Y/Z，其余三件套
+     * （checkMachine / construct / survivalConstruct）无需变动。
+     */
     @Override
     public IStructureDefinition<DysonManufacturingModule> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
@@ -326,11 +337,14 @@ public class DysonManufacturingModule extends DysonModuleBase<DysonManufacturing
                 .addElement('A', ofBlock(sBlockCasings8, 7))
                 .addElement(
                     'B',
-                    buildHatchAdder(DysonManufacturingModule.class)
-                        .atLeast(InputBus, InputHatch)
-                        .casingIndex(CASING_INDEX)
-                        .hint(1)
-                        .buildAndChain(ofBlock(sBlockCasings8, 7)))
+                    // 舱室位：输入总线/输入仓（至少各 1），空位可用外壳方块填充
+                    ofChain(
+                        buildHatchAdder(DysonManufacturingModule.class)
+                            .atLeast(InputBus, InputHatch)
+                            .casingIndex(CASING_INDEX)
+                            .hint(1)
+                            .build(),
+                        ofBlock(sBlockCasings8, 7)))
                 .build();
         }
         return STRUCTURE_DEFINITION;

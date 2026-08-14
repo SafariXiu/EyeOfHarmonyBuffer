@@ -323,6 +323,7 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
         }
     }
 
+    /** 占位结构（后续替换为设计稿）：3×3×3 封闭外壳，控制器位于前脸中心。 */
     private static final String[][] shapeMain = new String[][] {
         { "AAA", "AAA", "AAA" },
         { "A~A", "A A", "AAA" },
@@ -358,6 +359,12 @@ public class DysonLaunchModule extends DysonModuleBase<DysonLaunchModule>
             true);
     }
 
+    /**
+     * 标准 GT 多方块结构定义（EOHB_WindTurbine 同款模式）。
+     * <p>
+     * 结构替换点：只需要改 {@link #shapeMain}、元素定义与 OffsetsX/Y/Z，其余三件套
+     * （checkMachine / construct / survivalConstruct）无需变动。
+     */
     @Override
     public IStructureDefinition<DysonLaunchModule> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {

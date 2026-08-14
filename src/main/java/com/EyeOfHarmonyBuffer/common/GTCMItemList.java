@@ -220,6 +220,11 @@ public enum GTCMItemList {
     DysonCloudComponent,
     DysonFrameComponent,
     QiYiWuZhi,
+    D96GangYangPin4,
+    SanXiangNaMiPian,
+    KuaiZiLinJianJingGe,
+    XiangXianNiHeYe,
+    ChaoJuHuiYingGuan,
 
     //机器结构方块
     SingularityStabilizationRingCasingsLV,

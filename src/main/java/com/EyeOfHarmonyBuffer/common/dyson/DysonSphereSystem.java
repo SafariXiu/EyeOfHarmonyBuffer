@@ -220,7 +220,7 @@ public final class DysonSphereSystem {
             // 完工后：占领者剩余轨道云继续掉落，直到 0；贴片不再变化
             DysonTeamProgress winner = data.getTeam(data.getCompletedTeamId());
             if (winner != null && winner.cloudCount > 0) {
-                int dropped = Math.min(winner.cloudCount, randomDrop(world));
+                int dropped = Math.min(winner.cloudCount, randomDrop(world, data.getCompletedTeamId()));
                 winner.cloudCount -= dropped;
                 recoverDroppedClouds(world, data.getCompletedTeamId(), dropped);
                 data.markDirty();
@@ -251,7 +251,7 @@ public final class DysonSphereSystem {
 
             // 2) 掉落：10~64 云，仅每日 0:00
             if (!halfDay && team.cloudCount > 0) {
-                int dropped = Math.min(team.cloudCount, randomDrop(world));
+                int dropped = Math.min(team.cloudCount, randomDrop(world, teamId));
                 team.cloudCount -= dropped;
                 recoverDroppedClouds(world, teamId, dropped);
                 changed = true;
@@ -282,7 +282,15 @@ public final class DysonSphereSystem {
         addComponentsToPlayer(world, owner, null, dropped / 2, 0);
     }
 
-    private static int randomDrop(World world) {
+    /** 每日掉落：点亮“掉落减免”节点后使用 8~48，否则 10~64。 */
+    private static int randomDrop(World world, UUID teamId) {
+        if (isTeamUpgradeActive(world, teamId, DysonUpgrade.DROP_REDUCTION)) {
+            return DysonMachineConfig.DAILY_DROP_MIN_REDUCED
+                + world.rand.nextInt(
+                    DysonMachineConfig.DAILY_DROP_MAX_REDUCED
+                        - DysonMachineConfig.DAILY_DROP_MIN_REDUCED
+                        + 1);
+        }
         return DysonMachineConfig.DAILY_DROP_MIN
             + world.rand.nextInt(DysonMachineConfig.DAILY_DROP_MAX - DysonMachineConfig.DAILY_DROP_MIN + 1);
     }

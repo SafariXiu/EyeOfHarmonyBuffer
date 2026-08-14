@@ -8,7 +8,9 @@ import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW;
 import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
+import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
+import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -23,7 +25,6 @@ import java.util.function.Supplier;
 
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
@@ -38,6 +39,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import com.cleanroommc.modularui.api.IPanelHandler;
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.widget.IParentWidget;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.DynamicDrawable;
 import com.cleanroommc.modularui.drawable.Rectangle;
@@ -51,7 +53,9 @@ import com.cleanroommc.modularui.value.sync.IntSyncValue;
 import com.cleanroommc.modularui.value.sync.LongSyncValue;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.cleanroommc.modularui.widget.ParentWidget;
+import com.cleanroommc.modularui.widget.ScrollWidget;
 import com.cleanroommc.modularui.widget.Widget;
+import com.cleanroommc.modularui.widget.scroll.VerticalScrollData;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ItemDisplayWidget;
 import com.cleanroommc.modularui.widgets.SlotGroupWidget;
@@ -85,6 +89,7 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTUtility;
+import gregtech.api.util.ItemEjectionHelper;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.api.util.shutdown.SimpleShutDownReason;
@@ -194,35 +199,71 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         return strangeMatter;
     }
 
-    /** 把核心中储存的奇异物质喷出为物品：优先塞进玩家背包，放不下的丢在核心附近。 */
+    /** 按钮版喷出：把奇异物质塞进输出总线并提示玩家（无输出总线/总线满时给出反馈）。 */
     public void ejectStrangeMatter(EntityPlayer player) {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null || base.getWorld() == null || base.getWorld().isRemote || strangeMatter <= 0) {
             return;
         }
-        Item item = GTCMItemList.QiYiWuZhi.getItem();
-        if (item == null) {
+        if (getOutputBusses().isEmpty()) {
+            if (player != null) {
+                player.addChatMessage(new ChatComponentText(Dyson_Eject_NoOutputBus));
+            }
             return;
         }
-        World world = base.getWorld();
+        long ejected = ejectStrangeMatterInternal();
+        if (player != null) {
+            if (ejected > 0) {
+                player.addChatMessage(
+                    new ChatComponentText(
+                        StatCollector.translateToLocalFormatted("Dyson_Eject_Success", ejected, strangeMatter)));
+            } else {
+                player.addChatMessage(new ChatComponentText(Dyson_Eject_Full));
+            }
+        }
+    }
+
+    /** 自动喷出：点亮“自动喷出”大节点后，每周期产出奇异物质时自动塞进输出总线。 */
+    private void autoEjectStrangeMatter() {
+        if (strangeMatter <= 0 || !isUpgradeActive(DysonUpgrade.AUTO_EJECT)) {
+            return;
+        }
+        ejectStrangeMatterInternal();
+    }
+
+    /** 把奇异物质塞进输出总线（原版神锻引力子语义）：能塞多少塞多少，塞不下的留在核心储存里；返回实际喷出数量。 */
+    private long ejectStrangeMatterInternal() {
+        if (strangeMatter <= 0 || getOutputBusses().isEmpty()) {
+            return 0;
+        }
+        Item item = GTCMItemList.QiYiWuZhi.getItem();
+        if (item == null) {
+            return 0;
+        }
+
+        // 分批（64/叠）塞进输出总线，ejectStack 返回实际塞入数量，剩余留在核心储存
+        ItemEjectionHelper ejectionHelper = new ItemEjectionHelper(getOutputBusses(), true);
         long remaining = strangeMatter;
         while (remaining > 0) {
             int chunk = (int) Math.min(remaining, 64);
             ItemStack stack = new ItemStack(item, chunk);
-            boolean stored = player != null && player.inventory.addItemStackToInventory(stack);
-            if (!stored || stack.stackSize > 0) {
-                world.spawnEntityInWorld(
-                    new EntityItem(
-                        world,
-                        base.getXCoord() + 0.5D,
-                        base.getYCoord() + 1.5D,
-                        base.getZCoord() + 0.5D,
-                        stack));
+            int ejected = ejectionHelper.ejectStack(stack);
+            remaining -= ejected;
+            if (ejected < chunk) {
+                break; // 输出总线放不下了
             }
-            remaining -= chunk;
         }
-        strangeMatter = 0L;
-        base.markDirty();
+        ejectionHelper.commit();
+
+        long ejectedTotal = strangeMatter - remaining;
+        if (ejectedTotal > 0) {
+            strangeMatter = remaining;
+            IGregTechTileEntity base = getBaseMetaTileEntity();
+            if (base != null) {
+                base.markDirty();
+            }
+        }
+        return ejectedTotal;
     }
 
     private void updateTeamCoreOnline(boolean online) {
@@ -500,10 +541,13 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .tooltipBuilder(t -> t.addLine(IKey.lang("eohb.dyson.upgrade.tree")));
         }
 
+        /** 升级树内容总高度（神锻式滚动）：节点最大 y + 节点高 + 余量。 */
+        private static final int DYSON_TREE_SCROLL_SIZE = 340;
+
         protected ModularPanel createUpgradeTreePanel(PanelSyncManager syncManager, ModularPanel parent,
                                                       IPanelHandler[] individualPanels, IPanelHandler selfPanel) {
             ModularPanel panel = new ModularPanel("dysonUpgradeTree")
-                .size(300, 275);
+                .size(300, 304);
             panel.background(GTGuiTextures.BACKGROUND_POPUP_STANDARD);
 
             // 标题栏：深色顶条 + 居中标题
@@ -511,7 +555,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 new Widget<>()
                     .pos(0, 0)
                     .size(300, 16)
-                    .background(new Rectangle().setColor(0xFF202838)));
+                    .background(new Rectangle().color(0xFF202838)));
             panel.child(
                 new TextWidget<>(IKey.lang("eohb.dyson.upgrade.tree"))
                     .pos(0, 0)
@@ -522,44 +566,52 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             panel.child(
                 ButtonWidget.panelCloseButton());
 
+            // 可滚动升级树（诸神之锻炉同款）：内容总高 DYSON_TREE_SCROLL_SIZE，可视区 292x284，右侧自动滚动条
+            VerticalScrollData scrollData = new VerticalScrollData();
+            scrollData.setScrollSize(DYSON_TREE_SCROLL_SIZE);
+            ScrollWidget<?> treeList = new ScrollWidget<>(scrollData)
+                .pos(4, 20)
+                .size(292, 284);
+
             for (DysonUpgrade upgrade : DysonUpgrade.VALUES) {
                 for (DysonUpgrade prerequisite : upgrade.getPrerequisites()) {
-                    addConnectorSegments(panel, prerequisite, upgrade);
+                    addConnectorSegments(treeList, prerequisite, upgrade);
                 }
-                panel.child(createUpgradeNodeBox(upgrade, individualPanels[upgrade.ordinal()]));
+                treeList.child(createUpgradeNodeBox(upgrade, individualPanels[upgrade.ordinal()]));
             }
+            panel.child(treeList);
             return panel;
         }
 
-        protected void addConnectorSegments(ModularPanel panel, DysonUpgrade parent, DysonUpgrade child) {
-            int parentX = parent.getTreeX() + 18;
-            int parentY = parent.getTreeY() + 14;
+        protected void addConnectorSegments(IParentWidget<IWidget, ?> parent, DysonUpgrade parentUpgrade, DysonUpgrade child) {
+            int parentX = parentUpgrade.getTreeX() + 18;
+            int parentY = parentUpgrade.getTreeY() + 14;
             int childX = child.getTreeX() + 18;
             int childY = child.getTreeY() + 7;
             if (childY > parentY) {
-                addLineSegment(panel, parentX, parentY, 2, childY - parentY);
+                addLineSegment(parent, parentX, parentY, 2, childY - parentY);
             }
             if (childX != parentX) {
                 int lineX = Math.min(parentX, childX);
-                addLineSegment(panel, lineX, childY, Math.abs(childX - parentX) + 2, 2);
+                addLineSegment(parent, lineX, childY, Math.abs(childX - parentX) + 2, 2);
             }
         }
 
         /** 双色“轨道”连接线：暗色外轨 + 亮色内芯，作为背景绘制，节点盒子后添加会盖在线上面。 */
-        private void addLineSegment(ModularPanel panel, int x, int y, int width, int height) {
+        private void addLineSegment(IParentWidget<IWidget, ?> parent, int x, int y, int width, int height) {
             boolean vertical = height > width;
             int dx = vertical ? 1 : 0;
             int dy = vertical ? 0 : 1;
-            panel.child(
+            parent.child(
                 new Widget<>()
                     .pos(x - dx, y - dy)
                     .size(width + dx * 2, height + dy * 2)
-                    .background(new Rectangle().setColor(0xFF1B2232)));
-            panel.child(
+                    .background(new Rectangle().color(0xFF1B2232)));
+            parent.child(
                 new Widget<>()
                     .pos(x, y)
                     .size(width, height)
-                    .background(new Rectangle().setColor(0xFF5B79B5)));
+                    .background(new Rectangle().color(0xFF5B79B5)));
         }
 
         protected IWidget createUpgradeNodeBox(DysonUpgrade upgrade, IPanelHandler individualPanel) {
@@ -572,7 +624,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 .overlay(
                     new DynamicDrawable(
                         () -> new Rectangle()
-                            .setColor(
+                            .color(
                                 active.getValue()
                                     ? 0x8024B05A
                                     : (upgrade.isMajor() ? 0x80D9A441 : 0x403A4D78))))
@@ -603,7 +655,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 new Widget<>()
                     .pos(0, 0)
                     .size(240, 16)
-                    .background(new Rectangle().setColor(0xFF202838)));
+                    .background(new Rectangle().color(0xFF202838)));
             panel.child(
                 new TextWidget<>(StatCollector.translateToLocal(upgrade.getNameKey()))
                     .pos(0, 0)
@@ -693,7 +745,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                         .displayAmount(false)
                         .size(16, 16)
                         .pos(5 + 36 * (i / 4), 6 + 18 * (i % 4))
-                        .background(new Rectangle().setColor(0xFF171D29))
+                        .background(new Rectangle().color(0xFF171D29))
                         .tooltipBuilder(
                             t -> t.addLine(IKey.str(cost.getDisplayName() + " x" + cost.stackSize))));
             }
@@ -901,6 +953,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 base.markDirty();
             }
         }
+
+        // 自动喷出：点亮“自动喷出”大节点后，产出的奇异物质每周期自动进入输出总线
+        autoEjectStrangeMatter();
 
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }
@@ -1254,6 +1309,10 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     private static final String ACOL = "                A               ";
     private static final String CLUSTER_A = "  AAA   AAA   AAA   AAA   AAA   ";
     private static final String CLUSTER_GAP = "  A A   A A   A A   A A   A A   ";
+    // 输出总线位（D 元素）：D 位于对应列（0 / 2 / 3），与上方 SP 位置一一对应
+    private static final String D0 = "D                               ";
+    private static final String D2 = "  D                             ";
+    private static final String D3 = "   D                            ";
 
     private static final String[][] shapeMain = new String[][] {
         // y=0 空
@@ -1262,18 +1321,18 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         // y=1 空
         { SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP, SP,
             SP, SP, SP, SP, SP, SP, SP, SP },
-        // y=2 控制器 + 平台底
-        { SP, SP, CTRL, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
+        // y=2 控制器 + 平台底（控制器右侧 D = 输出总线位）
+        { SP, SP, CTRL, D3, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
             SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP,
             SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP },
-        // y=3 模块层（原模块槽位 B/C 已全部改为纯外壳；模块改为数据棒链接，不占结构位置）
-        { SP, ACOL, SP, SP, CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
+        // y=3 模块层（原模块槽位 B/C 已全部改为纯外壳；模块改为数据棒链接，不占结构位置；D = 输出总线位）
+        { D0, ACOL, D2, SP, CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
             CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
             CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
             CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP, SP, SP,
             CLUSTER_A, CLUSTER_GAP, CLUSTER_A, SP },
-        // y=4 平台顶
-        { SP, SP, ACOL, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
+        // y=4 平台顶（D = 输出总线位）
+        { D0, SP, ACOL, D3, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A,
             SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP, SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP, SP,
             SP, CLUSTER_A, CLUSTER_A, CLUSTER_A, SP },
         // y=5 全地板
@@ -1314,10 +1373,18 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     @Override
     public IStructureDefinition<DysonCore> getStructureDefinition() {
         if (STRUCTURE_DEFINITION == null) {
-            // 纯外壳结构：模块不再需要物理插在核心上，通过数据棒链接（无距离限制）
+            // 纯外壳结构：模块不再需要物理插在核心上，通过数据棒链接（无距离限制）；
+            // D 位 = 可选输出总线舱室（0+），用于把奇异物质喷出为核心实体物品
             STRUCTURE_DEFINITION = StructureDefinition.<DysonCore>builder()
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings8, 7))
+                .addElement(
+                    'D',
+                    buildHatchAdder(DysonCore.class)
+                        .anyOf(OutputBus)
+                        .casingIndex(CASING_INDEX)
+                        .hint(1)
+                        .buildAndChain(ofBlock(sBlockCasings8, 7)))
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -1352,10 +1419,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             .addInfo(Tooltip_DysonCore_20)
             .addInfo(Tooltip_DysonCore_21)
             .addInfo(Tooltip_DysonCore_22)
+            .addInfo(Tooltip_DysonCore_Eject)
             .addInfo(Tooltip_DysonCore_Link)
             .addSeparator()
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
+            .addOutputBus("0+", Tooltip_Dyson_OutputBusHint)
             .toolTipFinisher(ModName);
         return tt;
     }

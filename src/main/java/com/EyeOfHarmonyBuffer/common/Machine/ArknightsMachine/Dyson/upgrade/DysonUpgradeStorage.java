@@ -13,7 +13,7 @@ import gregtech.api.util.GTUtility;
 
 /**
  * 戴森升级树存储：解锁/洗点/前置/分叉/依赖校验与 NBT。
- * 材料成本最多 12 种，支持 {@link #payFromHandler} 从物品处理器批量充入（当前为圆石占位）。
+ * 材料成本最多 12 种，支持 {@link #payFromHandler} 从物品处理器批量充入（未设材料成本的节点仅需奇异物质）。
  */
 public class DysonUpgradeStorage {
 

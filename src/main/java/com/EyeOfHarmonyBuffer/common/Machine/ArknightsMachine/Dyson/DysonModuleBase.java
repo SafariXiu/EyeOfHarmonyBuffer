@@ -41,7 +41,7 @@ import gregtech.api.util.shutdown.SimpleShutDownReason;
 
 /**
  * 戴森模块基类：由核心控制连接状态，能量只走无线 EU / Orundum 两本账，
- * 消耗与产出统一走 Orundum 账本（接收模块产出结算后续单独设计）。
+ * 消耗统一走 Orundum 账本；接收模块产出按 GUI 配置的 Orundum 占比拆分两本账。
  */
 public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     extends OrundumWirelessMultiMachineBase<T> {
@@ -441,7 +441,7 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         return consumeOrundumForOwner(ownerUUID, total);
     }
 
-    /** 模块产出全部入 Orundum 账本（接收模块专属逻辑后续单独设计）。 */
+    /** 模块产出全部入 Orundum 账本（接收模块覆写 creditGain 按百分比拆分）。 */
     protected void creditOrundumPower(BigInteger total) {
         if (total == null || total.signum() <= 0 || ownerUUID == null) {
             return;

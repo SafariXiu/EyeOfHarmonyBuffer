@@ -146,6 +146,11 @@ public class ItemIntermediateProducts {
     public static Item ZhuanZhiYanZu;
     public static Item ZhuanZhiYanJuKuai;
     public static Item QiYiWuZhi;
+    public static Item D96GangYangPin4;
+    public static Item SanXiangNaMiPian;
+    public static Item KuaiZiLinJianJingGe;
+    public static Item XiangXianNiHeYe;
+    public static Item ChaoJuHuiYingGuan;
 
     public static void initAndRegister(String modid) {
         initAndRegister(modid, null);

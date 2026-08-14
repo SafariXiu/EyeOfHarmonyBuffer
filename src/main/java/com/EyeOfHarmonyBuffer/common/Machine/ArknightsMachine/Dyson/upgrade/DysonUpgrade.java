@@ -39,6 +39,7 @@ public enum DysonUpgrade {
     RECEIVER_BOOST,
     SPLIT_UNLOCK,
     MASS_LAUNCH,
+    AUTO_EJECT,
     ;
 
     public static final DysonUpgrade[] VALUES = values();
@@ -72,6 +73,8 @@ public enum DysonUpgrade {
             GTCMItemList.XiRang.get(2));
         SPLIT_UNLOCK.build(b -> b.prereqs(RECEIVER_BOOST).cost(3).treePos(140, 255).major());
         MASS_LAUNCH.build(b -> b.prereqs(DUAL_LAUNCH).cost(3).treePos(252, 225).major());
+        // 自动喷出：大节点，位于能量分配正下方（树面板已改为可滚动）
+        AUTO_EJECT.build(b -> b.prereqs(SPLIT_UNLOCK).cost(3).treePos(140, 300).major());
 
         SPLIT_UPGRADES = ImmutableSet.of(PASTE_CONVERSION, DROP_REDUCTION);
 
@@ -132,7 +135,7 @@ public enum DysonUpgrade {
         return shardCost;
     }
 
-    /** 材料成本（最多 12 种，当前为圆石占位）。 */
+    /** 材料成本（最多 12 种；未设材料成本的节点仅需奇异物质）。 */
     public ItemStack[] getExtraCost() {
         return extraCost.toArray(new ItemStack[0]);
     }
