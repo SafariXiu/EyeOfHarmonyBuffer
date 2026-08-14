@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
+import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
+
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 
@@ -11,9 +13,6 @@ import java.util.UUID;
 
 public class WirelessComputeManager {
 
-    private static final WirelessNodeRef DEBUG_REF =
-        new WirelessNodeRef(Integer.MIN_VALUE, 0, 0, 0);
-
     private static final WirelessComputeManager INSTANCE = new WirelessComputeManager();
 
     public static WirelessComputeManager getInstance() {
@@ -22,21 +21,29 @@ public class WirelessComputeManager {
 
     private WirelessComputeManager() {}
 
+    /** 算力网络键：统一解析为 Orundum 队伍（队伍即算力组，全盘接入 Orundum 体系），无队伍时回落 owner 本人。 */
+    private static UUID resolveTeamKey(UUID ownerUUID) {
+        if (ownerUUID == null) return null;
+        return OrundumEnergyService.getTeamIdForUser(ownerUUID);
+    }
+
     private final Map<UUID, WirelessComputeNetwork> networks = new HashMap<UUID, WirelessComputeNetwork>();
 
     private WirelessComputeNetwork getOrCreateNetwork(UUID ownerUUID) {
-        if (ownerUUID == null) return null;
-        WirelessComputeNetwork net = networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        if (key == null) return null;
+        WirelessComputeNetwork net = networks.get(key);
         if (net == null) {
-            net = new WirelessComputeNetwork(ownerUUID);
-            networks.put(ownerUUID, net);
+            net = new WirelessComputeNetwork(key);
+            networks.put(key, net);
         }
         return net;
     }
 
     public WirelessComputeNetwork getNetwork(UUID ownerUUID) {
-        if (ownerUUID == null) return null;
-        return networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        if (key == null) return null;
+        return networks.get(key);
     }
 
     public void serverTick(World world) {
@@ -84,18 +91,21 @@ public class WirelessComputeManager {
     }
 
     public boolean isConsumerSatisfied(UUID ownerUUID, WirelessNodeRef ref) {
-        WirelessComputeNetwork net = networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        WirelessComputeNetwork net = key == null ? null : networks.get(key);
         if (net == null) return false;
         return net.isConsumerSatisfied(ref);
     }
 
     public BigInteger getTotalSupply(UUID ownerUUID) {
-        WirelessComputeNetwork net = networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        WirelessComputeNetwork net = key == null ? null : networks.get(key);
         return net == null ? BigInteger.ZERO : net.getTotalSupply();
     }
 
     public BigInteger getTotalDemand(UUID ownerUUID) {
-        WirelessComputeNetwork net = networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        WirelessComputeNetwork net = key == null ? null : networks.get(key);
         return net == null ? BigInteger.ZERO : net.getTotalDemand();
     }
 
@@ -115,19 +125,30 @@ public class WirelessComputeManager {
         if (ownerUUID == null || supply == null) return;
         WirelessComputeNetwork net = getOrCreateNetwork(ownerUUID);
         if (net == null) return;
+        net.setDebugSupply(supply);
+    }
 
-        if (supply.signum() <= 0) {
-            net.unregisterProvider(DEBUG_REF);
-        } else {
-            net.registerProvider(DEBUG_REF, supply);
-        }
+    /** 在现有调试虚空算力上追加（/ocdebug add）。 */
+    public void addDebugSupply(UUID ownerUUID, BigInteger delta) {
+        if (ownerUUID == null || delta == null || delta.signum() <= 0) return;
+        WirelessComputeNetwork net = getOrCreateNetwork(ownerUUID);
+        if (net == null) return;
+        net.setDebugSupply(net.getDebugSupply().add(delta));
+    }
+
+    public BigInteger getDebugSupply(UUID ownerUUID) {
+        UUID key = resolveTeamKey(ownerUUID);
+        if (key == null) return BigInteger.ZERO;
+        WirelessComputeNetwork net = networks.get(key);
+        return net == null ? BigInteger.ZERO : net.getDebugSupply();
     }
 
     public void clearDebugSupply(UUID ownerUUID) {
-        if (ownerUUID == null) return;
-        WirelessComputeNetwork net = networks.get(ownerUUID);
+        UUID key = resolveTeamKey(ownerUUID);
+        if (key == null) return;
+        WirelessComputeNetwork net = networks.get(key);
         if (net != null) {
-            net.unregisterProvider(DEBUG_REF);
+            net.setDebugSupply(BigInteger.ZERO);
         }
     }
 }

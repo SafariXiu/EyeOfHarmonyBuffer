@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
-import com.EyeOfHarmonyBuffer.common.worlddata.WirelessAndGroupWorldData;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.world.World;
@@ -17,8 +16,6 @@ public class WirelessTickHandler {
         if (world == null || world.isRemote) {
             return;
         }
-
-        WirelessAndGroupWorldData.get(world);
 
         WirelessComputeManager.getInstance().serverTick(world);
     }

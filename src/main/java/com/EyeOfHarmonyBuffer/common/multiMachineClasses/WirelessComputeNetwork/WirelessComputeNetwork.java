@@ -6,16 +6,28 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 单个玩家的无线算力网络。
- * key = WirelessNodeRef(维度+坐标)，不含组/联盟概念。
+ * 单个队伍的无线算力网络（算力已全盘接入 Orundum 体系：键 = Orundum 队伍，队伍即算力组）。
+ * key = WirelessNodeRef(维度+坐标)。
  */
-
 public class WirelessComputeNetwork {
 
+    /** 节点失联阈值：超过该 tick 数未刷新即视为残留并清理（正常机器每个 onPostTick 都会刷新）。 */
+    private static final long STALE_TICKS = 100;
+
+    /** 队伍 UUID（无队伍时为单人自身）。 */
     private final UUID ownerUUID;
 
     private final Map<WirelessNodeRef, BigInteger> providers = new HashMap<WirelessNodeRef, BigInteger>();
     private final Map<WirelessNodeRef, BigInteger> consumers = new HashMap<WirelessNodeRef, BigInteger>();
+
+    /** 节点最近一次刷新所在的内部 tick（超时清理用）。 */
+    private final Map<WirelessNodeRef, Long> providerLastSeen = new HashMap<WirelessNodeRef, Long>();
+    private final Map<WirelessNodeRef, Long> consumerLastSeen = new HashMap<WirelessNodeRef, Long>();
+
+    /** 调试虚空算力（/ocdebug）：独立于 providers，不受超时清理影响，也不参与 isEmpty 之外的生命周期。 */
+    private BigInteger debugSupply = BigInteger.ZERO;
+
+    private long tickCounter = 0;
 
     private BigInteger totalSupply = BigInteger.ZERO;
     private BigInteger totalDemand = BigInteger.ZERO;
@@ -34,6 +46,7 @@ public class WirelessComputeNetwork {
             supply = BigInteger.ZERO;
         }
         BigInteger old = providers.put(ref, supply);
+        providerLastSeen.put(ref, tickCounter);
         if (old == null) {
             totalSupply = totalSupply.add(supply);
         } else {
@@ -44,6 +57,7 @@ public class WirelessComputeNetwork {
     public void unregisterProvider(WirelessNodeRef ref) {
         if (ref == null) return;
         BigInteger old = providers.remove(ref);
+        providerLastSeen.remove(ref);
         if (old != null) {
             totalSupply = totalSupply.subtract(old);
         }
@@ -55,6 +69,7 @@ public class WirelessComputeNetwork {
             demand = BigInteger.ZERO;
         }
         BigInteger old = consumers.put(ref, demand);
+        consumerLastSeen.put(ref, tickCounter);
         if (old == null) {
             totalDemand = totalDemand.add(demand);
         } else {
@@ -65,14 +80,15 @@ public class WirelessComputeNetwork {
     public void unregisterConsumer(WirelessNodeRef ref) {
         if (ref == null) return;
         BigInteger old = consumers.remove(ref);
+        consumerLastSeen.remove(ref);
         if (old != null) {
             totalDemand = totalDemand.subtract(old);
         }
     }
 
-    /** 个人网络自身是否供大于需 */
+    /** 本队网络自身是否供大于需（含调试虚空算力） */
     public boolean isNetworkSatisfied() {
-        return totalSupply.compareTo(totalDemand) >= 0;
+        return getTotalSupply().compareTo(totalDemand) >= 0;
     }
 
     public boolean isConsumerRegistered(WirelessNodeRef ref) {
@@ -91,19 +107,46 @@ public class WirelessComputeNetwork {
     }
 
     public BigInteger getTotalSupply() {
-        return totalSupply;
+        return totalSupply.add(debugSupply);
     }
 
     public BigInteger getTotalDemand() {
         return totalDemand;
     }
 
-    public boolean isEmpty() {
-        return providers.isEmpty() && consumers.isEmpty();
+    /** 设置调试虚空算力（/ocdebug set/add），非正数视为清除。 */
+    public void setDebugSupply(BigInteger supply) {
+        this.debugSupply = supply == null || supply.signum() <= 0 ? BigInteger.ZERO : supply;
     }
 
-    /** 预留将来每 tick 的更复杂逻辑 */
-    public void tick() {
+    public BigInteger getDebugSupply() {
+        return debugSupply;
+    }
 
+    public boolean isEmpty() {
+        return providers.isEmpty() && consumers.isEmpty() && debugSupply.signum() == 0;
+    }
+
+    /**
+     * 每 tick 清理失联节点：正常机器每个 onPostTick 都会刷新注册，
+     * 超过 {@link #STALE_TICKS}（5 秒）未刷新的节点视为残留
+     * （崩溃 / 强制卸载等未走 onUnload 注销的异常路径），直接移除。
+     */
+    public void tick() {
+        tickCounter++;
+
+        // 副本遍历：unregisterProvider/unregisterConsumer 会修改 lastSeen 表
+        for (WirelessNodeRef ref : new HashMap<WirelessNodeRef, Long>(providerLastSeen).keySet()) {
+            Long last = providerLastSeen.get(ref);
+            if (last != null && tickCounter - last > STALE_TICKS) {
+                unregisterProvider(ref);
+            }
+        }
+        for (WirelessNodeRef ref : new HashMap<WirelessNodeRef, Long>(consumerLastSeen).keySet()) {
+            Long last = consumerLastSeen.get(ref);
+            if (last != null && tickCounter - last > STALE_TICKS) {
+                unregisterConsumer(ref);
+            }
+        }
     }
 }

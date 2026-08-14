@@ -1,9 +1,6 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.ComputeGroup;
-import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.ComputeGroupService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeManager;
-import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeNetwork;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
@@ -11,7 +8,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
 
 import java.math.BigInteger;
-import java.util.Set;
 import java.util.UUID;
 
 public class CommandComputeDebug extends CommandBase {
@@ -54,13 +50,10 @@ public class CommandComputeDebug extends CommandBase {
                 return;
             }
 
-            BigInteger beforeSupply = manager.getTotalSupply(playerId);
-            WirelessComputeNetwork net = manager.getNetwork(playerId);
-            BigInteger oldDebug = BigInteger.ZERO;
-            if (net != null) {
-            }
-
-            player.addChatMessage(new ChatComponentText("当前实现中未启用 add 子命令，请使用 /ocdebug set 或 /ocdebug clear。"));
+            manager.addDebugSupply(playerId, delta);
+            player.addChatMessage(new ChatComponentText(
+                "已增加虚空算力: +" + delta.toString()
+                    + "（当前虚空算力: " + manager.getDebugSupply(playerId) + "）"));
         } else if ("set".equals(sub)) {
             if (args.length < 2) {
                 player.addChatMessage(new ChatComponentText("用法: /ocdebug set <amount>"));
@@ -86,34 +79,14 @@ public class CommandComputeDebug extends CommandBase {
     }
 
     private void showInfo(EntityPlayer player, UUID playerId, WirelessComputeManager manager) {
+        // 算力已全盘接入 Orundum 队伍：个人网络即队伍网络（同队自动共享，无需手动维护算力组）
         BigInteger selfSupply = manager.getTotalSupply(playerId);
         BigInteger selfDemand = manager.getTotalDemand(playerId);
 
         player.addChatMessage(new ChatComponentText(
-            "你的个人网络: Supply = " + selfSupply.toString() +
+            "你的队伍算力网络: Supply = " + selfSupply.toString() +
                 ", Demand = " + selfDemand.toString()));
-
-        ComputeGroupService groupService = ComputeGroupService.INSTANCE;
-        ComputeGroup group = groupService.getGroupOfPlayer(playerId);
-        if (group == null) {
-            player.addChatMessage(new ChatComponentText("你当前不在任何算力组中（组总量 = 个人总量）。"));
-            return;
-        }
-
-        Set<UUID> members = groupService.getGroupMembers(playerId);
-        BigInteger groupSupply = BigInteger.ZERO;
-        BigInteger groupDemand = BigInteger.ZERO;
-        for (UUID m : members) {
-            groupSupply = groupSupply.add(manager.getTotalSupply(m));
-            groupDemand = groupDemand.add(manager.getTotalDemand(m));
-        }
-
-        player.addChatMessage(new ChatComponentText(
-            "当前算力组: " + group.name +
-                " (成员数=" + members.size() + ")"));
-        player.addChatMessage(new ChatComponentText(
-            "组总网络: Supply = " + groupSupply.toString() +
-                ", Demand = " + groupDemand.toString()));
+        player.addChatMessage(new ChatComponentText("（算力按 Orundum 队伍自动共享，无需手动组队）"));
     }
 
     private BigInteger parseBigInteger(String s) {

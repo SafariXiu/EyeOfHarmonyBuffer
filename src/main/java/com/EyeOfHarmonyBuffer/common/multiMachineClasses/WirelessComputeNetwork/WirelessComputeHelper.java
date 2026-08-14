@@ -1,8 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork;
 
 import java.math.BigInteger;
-import java.util.Collections;
-import java.util.Set;
 import java.util.UUID;
 
 public final class WirelessComputeHelper {
@@ -46,38 +44,12 @@ public final class WirelessComputeHelper {
         return WirelessComputeManager.getInstance().isConsumerSatisfied(owner, ref);
     }
 
+    /**
+     * 队伍算力判定：算力网络已全盘接入 Orundum 体系（网络键 = Orundum 队伍），
+     * 个人判定即队伍判定——同队成员自动共享本队算力，无需手动维护算力组。
+     * 保留该方法名以兼容现有调用点（戴森核心/模块等）。
+     */
     public static boolean isConsumerSatisfiedInGroup(IWirelessComputeConsumer consumer) {
-        if (consumer == null) return false;
-
-        UUID owner = consumer.getOwnerUUID();
-        if (owner == null) return false;
-
-        WirelessNodeRef ref = consumer.getWirelessNodeRef();
-        if (ref == null) return false;
-
-        WirelessComputeManager manager = WirelessComputeManager.getInstance();
-
-        WirelessComputeNetwork selfNet = manager.getNetwork(owner);
-        if (selfNet == null || !selfNet.isConsumerRegistered(ref)) {
-            return false;
-        }
-
-        Set<UUID> members = ComputeGroupService.INSTANCE.getGroupMembers(owner);
-        if (members == null || members.isEmpty()) {
-            members = Collections.singleton(owner);
-        }
-
-        BigInteger totalSupply = BigInteger.ZERO;
-        BigInteger totalDemand = BigInteger.ZERO;
-
-        for (UUID member : members) {
-            WirelessComputeNetwork net = manager.getNetwork(member);
-            if (net != null) {
-                totalSupply = totalSupply.add(net.getTotalSupply());
-                totalDemand = totalDemand.add(net.getTotalDemand());
-            }
-        }
-
-        return totalSupply.compareTo(totalDemand) >= 0;
+        return isConsumerSatisfiedPersonal(consumer);
     }
 }
