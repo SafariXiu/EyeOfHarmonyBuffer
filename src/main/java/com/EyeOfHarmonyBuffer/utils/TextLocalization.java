@@ -814,6 +814,7 @@ public class TextLocalization {
     public static final String EOHB_Recipe_MonkeyShit;
     public static final String EOHB_Recipe_OrundumDynamo;
     public static final String EOHB_Recipe_OrundumDynamo_Tooltip_00;
+    public static final String EOHB_Recipe_DysonManufacturing_Tooltip_00;
     public static final String EOHB_Recipe_ElectricTypeOneMiningMachine;
     public static final String EOHB_Recipe_Planter;
     public static final String EOHB_Recipe_SeedCollectingMachine;
@@ -1989,6 +1990,7 @@ public class TextLocalization {
         EOHB_Recipe_MonkeyShit = TextHandler.texter("The Holy Royal High Priest of Poop Transportation","EOHB_Recipe_MonkeyShit");
         EOHB_Recipe_OrundumDynamo = TextHandler.texter("Orundum Dynamo","EOHB_Recipe_OrundumDynamo");
         EOHB_Recipe_OrundumDynamo_Tooltip_00 = TextHandler.texter("Orundum OutPut：","EOHB_Recipe_OrundumDynamo_Tooltip_00");
+        EOHB_Recipe_DysonManufacturing_Tooltip_00 = TextHandler.texter("Orundum cost per tick: ","EOHB_Recipe_DysonManufacturing_Tooltip_00");
         EOHB_Recipe_ElectricTypeOneMiningMachine = TextHandler.texter("Electric Type-I Mining Machine","EOHB_Recipe_ElectricTypeOneMiningMachine");
         EOHB_Recipe_Planter = TextHandler.texter("Planter","EOHB_Recipe_Planter");
         EOHB_Recipe_SeedCollectingMachine = TextHandler.texter("Seed Collecting Machine","EOHB_Recipe_SeedCollectingMachine");
