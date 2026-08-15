@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
@@ -202,6 +203,10 @@ public final class CaveDecorator {
                     // 形成 3×3 ~ 5×5 的大结构；带外完全不生成。
                     if (h >= 4) {
                         if (spikeZone
+                            // 河流避让：雕刻阶段对河流影响列有水体保护（不挖河床、
+                            // 河岸），装饰必须继承同一语义——石笋/钟乳石不生成在
+                            // 河流影响范围内，否则会出现挂在河岸/河道上方的穿帮装饰。
+                            && !isRiverAffected(wx, wz, (int) seed)
                             // 大厅内不用石笋区的小结构，改用大厅专属大石笋/钟乳石
                             && !insideAnyChamber(wx, lo + 0.5, wz, data)
                             && !insideAnyChamber(wx, hi + 0.5, wz, data)
@@ -237,9 +242,12 @@ public final class CaveDecorator {
                                         setBlock(blocks, meta,
                                             base + hi - k, Blocks.cobblestone);
                                     } else {
-                                        setRockBlock(blocks, meta,
+                                        // 近地表石笋用普通石头：深部岩性
+                                        // （红花岗岩/大理石/玄武岩）不应暴露在
+                                        // 地表附近（浅洞顶部的钟乳石）。
+                                        setSpikeRock(blocks, meta,
                                             base + hi - k,
-                                            wx, hi - k, wz, seed);
+                                            wx, hi - k, wz, seed, top);
                                     }
                                 }
                             } else if (!stalactite
@@ -252,9 +260,9 @@ public final class CaveDecorator {
                                         setBlock(blocks, meta,
                                             base + lo + k, Blocks.cobblestone);
                                     } else {
-                                        setRockBlock(blocks, meta,
+                                        setSpikeRock(blocks, meta,
                                             base + lo + k,
-                                            wx, lo + k, wz, seed);
+                                            wx, lo + k, wz, seed, top);
                                     }
                                 }
                             }
@@ -561,6 +569,12 @@ public final class CaveDecorator {
                 (long) ch.cx, (long) ch.cz, i, seed, 0x64) * 7.0);
             int start = ch.lakeBedY;
             int end = Math.min(start + len - 1, lakeSurface + 4);
+            // 外部水体避让：大厅若骑在河道/海面上（洞底被水覆盖），
+            // 石笋不得长进河水里（装饰阶段无视地形会穿帮）。
+            if (hasExternalWater(ch, wx, wz, Math.min(start, end),
+                    Math.max(start, end), x0, z0, blocks, worldHeight)) {
+                continue;
+            }
             placeChamberSpire(wx, wz, start, end, true,
                 x0, z0, blocks, meta, worldHeight, seed,
                 (long) ch.cx, (long) ch.cz, 0x70 + i);
@@ -591,6 +605,11 @@ public final class CaveDecorator {
             int maxY = (int) Math.floor(ceilingY - 0.5);
             int end = Math.min(start + len - 1, maxY - 1);
             if (end < start) {
+                continue;
+            }
+            // 外部水体避让：干地石笋不得长进河道 / 海水（同湖中石笋）。
+            if (hasExternalWater(ch, wx, wz, start, end,
+                    x0, z0, blocks, worldHeight)) {
                 continue;
             }
             placeChamberSpire(wx, wz, start, end, true,
@@ -624,10 +643,40 @@ public final class CaveDecorator {
             if (end > start) {
                 continue;
             }
+            // 外部水体避让：顶部钟乳石不得垂进河道 / 海水。
+            if (hasExternalWater(ch, wx, wz, end, start,
+                    x0, z0, blocks, worldHeight)) {
+                continue;
+            }
             placeChamberSpire(wx, wz, start, end, false,
                 x0, z0, blocks, meta, worldHeight, seed,
                 (long) ch.cx, (long) ch.cz, 0x69 + i);
         }
+    }
+
+    /**
+     * 该列在 [yLo, yHi]（取整后）范围内是否存在「高于大厅湖面」的外部水体
+     * （河道 / 海面）。大厅骑在河道下方时，河水会占据洞底以上空间——
+     * 装饰阶段若无视地形直接放石笋，就会把石笋种进河道里。
+     * chamber 自己的湖水（≤ lakeSurfaceY）不算外部水，正常大厅装饰不受影响。
+     */
+    private static boolean hasExternalWater(CaveChamber ch,
+                                            int wx, int wz,
+                                            int yLo, int yHi,
+                                            int x0, int z0,
+                                            Block[] blocks, int worldHeight) {
+        if (wx < x0 || wx >= x0 + 16 || wz < z0 || wz >= z0 + 16) {
+            return false;
+        }
+        int base = ((wx & 15) * 16 + (wz & 15)) * worldHeight;
+        int from = Math.max(1, Math.max(yLo, (int) Math.floor(ch.lakeSurfaceY) + 1));
+        int to = Math.min(worldHeight - 1, yHi);
+        for (int y = from; y <= to; y++) {
+            if (isWater(blocks[base + y])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 大厅石笋 / 钟乳石中心 X（确定性偏移）。 */
@@ -705,6 +754,44 @@ public final class CaveDecorator {
                                  int index, Block block) {
         blocks[index] = block;
         meta[index] = 0;
+    }
+
+    /**
+     * 该列是否处于河流影响范围（河谷雕刻区 / 水体 / 湖）。
+     * 与 CaveCarver 的水体保护同一语义：河流影响列不生成石笋 / 钟乳石，
+     * 避免装饰物出现在河岸 / 河道上方（洞穴雕刻避让了河流，装饰必须一致）。
+     */
+    private static boolean isRiverAffected(int wx, int wz, int worldSeedInt) {
+        TalosRiverSystem.HydroSample hydro =
+            TalosRiverSystem.sampleHydroField(wx, wz, worldSeedInt);
+        if (hydro == null) {
+            return false;
+        }
+        if (hydro.body != null) {
+            return true;
+        }
+        return hydro.mask > 0.0 && hydro.distance < hydro.widthValley;
+    }
+
+    /**
+     * 距地表多少格内的石笋 / 钟乳石用普通石头。
+     * 深部岩性（红花岗岩 / 大理石 / 玄武岩 / 深板岩）是「地下」材质，
+     * 浅洞顶部的石笋若用岩性会在近地表穿帮（地表不应出现红花岗岩）。
+     */
+    private static final int SHALLOW_SPIKE_DEPTH = 16;
+
+    /** 石笋 / 钟乳石方块：距地表 SHALLOW_SPIKE_DEPTH 格内用普通石头，
+     *  深部保持岩性变体。 */
+    private static void setSpikeRock(Block[] blocks, byte[] meta,
+                                     int index,
+                                     int wx, int wy, int wz, long seed,
+                                     int surfaceTop) {
+        if (surfaceTop - wy < SHALLOW_SPIKE_DEPTH) {
+            blocks[index] = Blocks.stone;
+            meta[index] = 0;
+        } else {
+            setRockBlock(blocks, meta, index, wx, wy, wz, seed);
+        }
     }
 
     /** 放置大块岩性石头：普通石头为主，花岗岩/闪长岩/安山岩为辅。 */

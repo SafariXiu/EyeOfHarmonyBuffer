@@ -78,8 +78,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      *        基础高度 → 海岸塑形 → 裂谷塑形 → 山脉抬升 → 河岸/泛洪平原 → 河谷下切；
      *   2. 对最终高度 h 执行 clamp 到 [1, worldHeight-2]，避免越界；
      *   3. 按 isLand 决定填充：
-     *        - 陆地：基岩 + [1, h) 石头 + 顶层方块；低于海平面的列灌水；
-     *        - 海洋：基岩 + [1, seabedY] 石头 + [seabedY+1, seaLevel] 水。
+     *        - 陆地：基岩 + [1, h) 石头 + 顶层方块；水面由水场
+     *          （TalosWaterField）授权，仅当「水面高于地表」时才灌水；
+     *        - 海洋：基岩 + [1, seabedY] 石头 + [seabedY+1, 水面] 水（水面=海平面）。
      *
      * 注意：高度链实现只存在于 terrain_layer.api.TalosTerrainHeights，
      * 本方法不重复任何塑形逻辑，只做方块铺设。
@@ -128,10 +129,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 } else if (h > worldHeight - 2) {
                     h = worldHeight - 2;
                 }
+                // 水面高度：水场权威输出（Double.NEGATIVE_INFINITY = 无水）。
+                // 激进版规则：陆地默认无水，只有海洋 / 河道 / 水体 / 近海浅水带
+                // 显式授权水面；干盆地等低于海平面的新地形天然不灌水。
+                double waterLevel = ts.waterLevel;
+                int waterSurfaceYInt = (int) Math.floor(waterLevel);
+
                 // 只有真正低于水面的列才走“挖成河床/湖床”的填充；
                 // 高于水面的岸滩、外坡和湿地干丘走正常地表（草/泥土），
                 // 岸滩方块由 lakeMat 单独铺。
-                boolean underwaterCarved = riverCarved && h < seaLevel;
+                boolean underwaterCarved = riverCarved && waterLevel > h;
 
                 int bedrockIndex = getIndex(localX, 0, localZ);
                 blocks[bedrockIndex] = Blocks.bedrock;
@@ -141,12 +148,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     TalosSurfaceProfile profile =
                         TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
 
-                    // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）
+                    // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）。
+                    // 水面传水场输出（带水位偏移的湖也用正确水面分类）；
+                    // 无水列（干盆地等）不查滩涂方块，走正常地表。
                     int topSolidY = underwaterCarved ? h - 1 : h;
-                    BlockMetaPair lakeMat = TalosRiverSystem.getLakeSurfaceMaterial(
-                        topSolidY, seaLevel, worldX, worldZ,
-                        ctx.hydro[colIndex], ctx.macroPkg[colIndex]
-                    );
+                    BlockMetaPair lakeMat =
+                        (waterLevel != Double.NEGATIVE_INFINITY)
+                            ? TalosRiverSystem.getLakeSurfaceMaterial(
+                                topSolidY, waterSurfaceYInt, worldX, worldZ,
+                                ctx.hydro[colIndex], ctx.macroPkg[colIndex])
+                            : null;
 
                     if (underwaterCarved) {
                         // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
@@ -185,7 +196,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                                 pair = rockPair(profile.deepBlock,
                                     worldX, y, worldZ, worldSeedInt);
                             } else if (y < surfaceStart) {
-                                pair = profile.fillerBlock;
+                                // 填充层也走岩性变体：rockPair 只对普通石头生效
+                                // （泥土 / 沙岩等原样返回）。高原 / 高山等
+                                // fillerBlock=STONE 的群系因此从地表下 1 格起
+                                // 就是变体岩，避免河岸过渡带出现
+                                // 「纯石头填充层 + 深层变体」的断层观感。
+                                pair = rockPair(profile.fillerBlock,
+                                    worldX, y, worldZ, worldSeedInt);
                             } else {
                                 pair = profile.surfaceBlock;
                             }
@@ -202,10 +219,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         }
                     }
 
-                    if (h < seaLevel) {
+                    // 灌水：只有「水面高于地表」的列才灌（水场授权）。
+                    // 干盆地 / 干裂谷等无水列 waterLevel = -inf，天然跳过。
+                    if (waterLevel > h) {
                         int waterStart = riverCarved ? h : h + 1;
 
-                        for (int y = waterStart; y <= seaLevel; y++) {
+                        for (int y = waterStart; y <= waterSurfaceYInt; y++) {
                             int idx = getIndex(localX, y, localZ);
                             blocks[idx] = Blocks.water;
                             meta[idx] = 0;
@@ -217,7 +236,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     if (caveData != null) {
                         CaveCarver.carveColumn(
                             worldX, worldZ, localX, localZ,
-                            topSolidY, seaLevel, ts.riverMask, ts.body,
+                            topSolidY, waterSurfaceYInt, ts.riverMask, ts.body,
                             caveData, blocks, meta, worldHeight, worldSeedInt
                         );
                     }
@@ -269,7 +288,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                         }
                     }
 
-                    for (int y = seabedY + 1; y <= seaLevel; y++) {
+                    // 海洋列水面 = 海平面（水场对海洋恒授权），与陆地共用同一水面口径。
+                    for (int y = seabedY + 1; y <= waterSurfaceYInt; y++) {
                         int idx = getIndex(localX, y, localZ);
                         blocks[idx] = Blocks.water;
                         meta[idx] = 0;
@@ -280,7 +300,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     if (caveData != null && seabedY > 1) {
                         CaveCarver.carveColumn(
                             worldX, worldZ, localX, localZ,
-                            seabedY, seaLevel, 1.0, null,
+                            seabedY, waterSurfaceYInt, 1.0, null,
                             caveData, blocks, meta, worldHeight, worldSeedInt
                         );
                     }

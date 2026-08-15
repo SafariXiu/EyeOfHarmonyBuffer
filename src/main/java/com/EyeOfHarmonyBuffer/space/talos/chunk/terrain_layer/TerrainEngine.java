@@ -172,23 +172,28 @@ public final class TerrainEngine {
         }
 
         // 岩面噪声：按宏包参数叠加（低档台阶化），跨宏包边界用同一 t 混合。
+        // 注意：频率参数（cliffScale / terrace）绝不能随空间插值——t 在大陆
+        // 尺度上渐变，freq = 1/cliffScale 的漂移会被大坐标（z 可达数万格）放大
+        // 成 z 方向的高频锯齿（宏包边界处的「地形墙」）。正确做法是每个宏包用
+        // 各自的固定频率采样，再按 t 混合两个 cliff 结果，边界处平滑无缝。
         if (isLand) {
-            double cliffAmp = lerp(profile1.cliffAmp, profile2.cliffAmp, t);
-            if (cliffAmp > 0.0) {
+            double riftFade = 1.0
+                - smoothstep(0.0, 0.08, smoothedDivergence);
+            if (riftFade > 0.0
+                && (profile1.cliffAmp > 0.0 || profile2.cliffAmp > 0.0)) {
                 // 裂谷区已有自己的岩面噪声，基础岩面噪声在分离带内淡出，
                 // 避免两套独立起伏叠在一起变成混乱台阶。
-                double riftFade = 1.0
-                    - smoothstep(0.0, 0.08, smoothedDivergence);
-                if (riftFade > 0.0) {
-                    double cliffScale =
-                        lerp(profile1.cliffScale, profile2.cliffScale, t);
-                    double terrace =
-                        lerp(profile1.terrace, profile2.terrace, t);
-                    double detailAmp =
-                        lerp(profile1.detailAmp, profile2.detailAmp, t);
-                    h += cliffNoise(worldX, worldZ, worldSeedInt,
-                        cliffAmp, cliffScale, terrace, detailAmp) * riftFade;
-                }
+                double cliff1 = (profile1.cliffAmp > 0.0)
+                    ? cliffNoise(worldX, worldZ, worldSeedInt,
+                        profile1.cliffAmp, profile1.cliffScale,
+                        profile1.terrace, profile1.detailAmp)
+                    : 0.0;
+                double cliff2 = (profile2.cliffAmp > 0.0)
+                    ? cliffNoise(worldX, worldZ, worldSeedInt,
+                        profile2.cliffAmp, profile2.cliffScale,
+                        profile2.terrace, profile2.detailAmp)
+                    : 0.0;
+                h += lerp(cliff1, cliff2, t) * riftFade;
             }
         }
 

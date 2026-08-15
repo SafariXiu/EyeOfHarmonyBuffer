@@ -95,7 +95,8 @@ public final class CaveCarver {
      * 雕刻某一列（在方块填充完成后调用）。
      *
      * @param topSolidY  该列顶层实体方块 Y（与 ChunkProviderTalos2 一致）
-     * @param seaLevel   海平面（入口开口要求地表高于海平面）
+     * @param waterSurfaceY 该列水面高度 Y（水场输出；无水列传
+     *                    Integer.MIN_VALUE，入口开口不受水面限制）
      * @param riverMask  河流影响掩码（0~1）
      * @param body       命中的水体（无则 null）
      * @param worldHeight 世界高度（方块数组索引用）
@@ -103,7 +104,7 @@ public final class CaveCarver {
     public static void carveColumn(int worldX, int worldZ,
                                    int localX, int localZ,
                                    int topSolidY,
-                                   int seaLevel,
+                                   int waterSurfaceY,
                                    double riverMask, RiverBodyData body,
                                    CaveChunkData data,
                                    net.minecraft.block.Block[] blocks,
@@ -145,8 +146,9 @@ public final class CaveCarver {
             int dx = worldX - e.x;
             int dz = worldZ - e.z;
             if (dx * dx + dz * dz <= e.radius * e.radius) {
-                // 井口必须高于海平面，否则会开在水线 / 水下，形成"挖到水地表"。
-                if (!waterProtected && topSolidY >= seaLevel + 1) {
+                // 井口必须高于该列水面，否则会开在水线 / 水下，形成"挖到水地表"。
+                // 无水列（干盆地等，waterSurfaceY = MIN_VALUE）不受水面限制。
+                if (!waterProtected && topSolidY >= waterSurfaceY + 1) {
                     int start = Math.max(1, e.y);
                     for (int y = start; y <= topSolidY; y++) {
                         setAir(blocks, meta, localX, localZ, y, worldHeight);

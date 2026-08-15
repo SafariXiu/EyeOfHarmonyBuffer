@@ -62,7 +62,8 @@ public final class SupercontinentAdapter {
             }
 
             double radius = TalosLandMask.getSuperBaseRadius(superId, worldSeedInt);
-            if (radius <= 0.0) {
+            if (!(radius > 0.0)) {
+                // 同时兜住 NaN / Infinity / <=0：任何非法半径都不得进入实例化
                 radius = 1.0;
             }
 

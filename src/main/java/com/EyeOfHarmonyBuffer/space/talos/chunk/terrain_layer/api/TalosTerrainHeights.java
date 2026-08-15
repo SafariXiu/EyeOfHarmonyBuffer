@@ -12,6 +12,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.water_layer.api.TalosWaterField;
 
 /**
  * 最终高度场（地形链统一出口）。
@@ -112,7 +113,10 @@ public final class TalosTerrainHeights {
         public final double riverMask;
         /** 命中的水体（湖 / 湿地 / 穿河湖 / 牛轭湖），无则 null。 */
         public final RiverBodyData body;
-        /** 水面高度（海平面 + 水体水位偏移；无水体时 = 海平面）。 */
+        /**
+         * 该列水面高度（水场权威输出，与 TalosWaterField.sampleColumn 同口径；
+         * Double.NEGATIVE_INFINITY = 无水）。
+         */
         public final double waterLevel;
 
         public TerrainHeightSample(boolean isLand,
@@ -247,14 +251,35 @@ public final class TalosTerrainHeights {
                 bank, in.seaLevel, in.hydro, in.macroId)
             : bank;
 
-        double waterLevel = in.seaLevel;
-        if (in.hydro.body != null) {
-            waterLevel = in.seaLevel + in.hydro.body.getWaterLevelOffset();
-        }
+        // 水面高度：委托水场（全项目唯一权威），避免两套口径漂移。
+        double waterLevel = TalosWaterField.sampleColumn(
+            waterInputsFor(in, channel)
+        ).waterSurfaceY;
 
         return new TerrainHeightSample(
             in.isLand, coast, bank, channel, riverMask,
             in.hydro.body, waterLevel
+        );
+    }
+
+    /**
+     * 把高度链输入组装成水场输入。
+     * basinMask01 当前恒 0（盆地场未落地）；盆地宏包/掩码接入后在此读取。
+     */
+    private static TalosWaterField.WaterColumnInputs waterInputsFor(
+        TerrainColumnInputs in, double surfaceD
+    ) {
+        return new TalosWaterField.WaterColumnInputs(
+            in.worldX,
+            in.worldZ,
+            in.worldSeedInt,
+            in.seaLevel,
+            in.isLand,
+            in.landSample != null ? in.landSample.coastWeight : 0.0,
+            surfaceD,
+            in.hydro,
+            in.macroId,
+            0.0
         );
     }
 

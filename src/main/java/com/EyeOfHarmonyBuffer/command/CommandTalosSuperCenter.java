@@ -65,6 +65,8 @@ public class CommandTalosSuperCenter extends CommandBase {
         if (y <= 0) {
             y = 64;
         }
+        // 钳制到合法玩家高度（最高 255），避免山顶列 y+2 越界被踢 "Illegal position"
+        y = Math.min(y, 253);
 
         double tpX = centerX + 0.5;
         double tpY = y + 2.0;

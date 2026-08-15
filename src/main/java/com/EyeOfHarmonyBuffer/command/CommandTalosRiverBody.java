@@ -142,12 +142,21 @@ public class CommandTalosRiverBody extends CommandBase {
         TalosRiverSystem.RiverBodyInfo target = filtered.get(index - 1);
         double dist = Math.sqrt(distSq(target, sxPlayer, szPlayer));
 
+        if (!Double.isFinite(target.centerX) || !Double.isFinite(target.centerZ)) {
+            sender.addChatMessage(new ChatComponentText(
+                "[TalosRiver] 目标坐标无效（非有限值），已取消传送。"
+            ));
+            return;
+        }
+
         int blockX = (int) Math.floor(target.centerX);
         int blockZ = (int) Math.floor(target.centerZ);
         int y = world.getTopSolidOrLiquidBlock(blockX, blockZ);
         if (y <= 0) {
             y = 64;
         }
+        // 钳制到合法玩家高度（最高 255），避免山顶列 y+2 越界被踢 "Illegal position"
+        y = Math.min(y, 253);
 
         player.setPositionAndUpdate(target.centerX + 0.5, y + 2.0, target.centerZ + 0.5);
 

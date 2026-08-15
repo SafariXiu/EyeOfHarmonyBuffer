@@ -134,6 +134,13 @@ public class CommandTalosRiverConfluence extends CommandBase {
         TalosRiverSystem.RiverConfluence target = sorted.get(index - 1);
         double dist = Math.sqrt(distSq(target, sxPlayer, szPlayer));
 
+        if (!Double.isFinite(target.x) || !Double.isFinite(target.z)) {
+            sender.addChatMessage(new ChatComponentText(
+                "[TalosRiver] 目标坐标无效（非有限值），已取消传送。"
+            ));
+            return;
+        }
+
         int blockX = (int) Math.floor(target.x);
         int blockZ = (int) Math.floor(target.z);
         int y = world.getTopSolidOrLiquidBlock(blockX, blockZ);
