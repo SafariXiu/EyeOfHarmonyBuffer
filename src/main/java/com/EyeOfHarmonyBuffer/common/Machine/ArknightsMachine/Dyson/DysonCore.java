@@ -73,6 +73,7 @@ import com.EyeOfHarmonyBuffer.common.dyson.DysonTeamProgress;
 import com.EyeOfHarmonyBuffer.common.misc.OrundumEnergyService;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeHelper;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessComputeManager;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -1007,10 +1008,17 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         }
 
         // 每人一台：注册/校验唯一核心
+        // 兜底：ownerUUID 未就绪（onFirstTick 时序/离线解析失败）时重新尝试
+        if (ownerUUID == null) {
+            this.ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
+        }
         UUID owner = ownerUUID;
         if (mMachine && owner != null) {
             DysonCore existing = CORE_BY_OWNER.get(owner);
-            if (existing == null) {
+            // 注册表里的旧实例可能已失效（换档/卸载残留/区块强制卸载），失效则让位
+            if (existing == null
+                || existing.getBaseMetaTileEntity() == null
+                || existing.getBaseMetaTileEntity().isDead()) {
                 CORE_BY_OWNER.put(owner, this);
                 duplicateRejected = false;
             } else if (existing != this) {
@@ -1107,6 +1115,12 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
     @Override
     public void onUnload() {
+        // 关键：区块卸载/换档时必须释放唯一核心注册，否则旧实例会残留在静态表里，
+        // 导致新档/重载后的第一台核心被误判为"重复核心"而停机。
+        UUID owner = ownerUUID;
+        if (owner != null && CORE_BY_OWNER.get(owner) == this) {
+            CORE_BY_OWNER.remove(owner);
+        }
         updateTeamCoreOnline(false);
         disconnectAll();
         super.onUnload();
@@ -1163,7 +1177,9 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         }
 
         if (base != null && base.isServerSide()) {
-            boolean computeOk = ownerUUID != null && WirelessComputeHelper.isConsumerSatisfiedInGroup(this);
+            // 显示用：只问本队网络供需，不要求本机已注册（停机中的重复核心也能正确显示算力状态）
+            boolean computeOk = ownerUUID != null
+                && WirelessComputeManager.getInstance().isNetworkSatisfiedForOwner(ownerUUID);
             lines.add(
                 computeOk
                     ? EnumChatFormatting.GREEN + Dyson_Info_ComputeSatisfied
@@ -1231,7 +1247,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         tag.setBoolean("dysonDuplicate", duplicateRejected);
         tag.setBoolean(
             "dysonComputeOk",
-            ownerUUID != null && WirelessComputeHelper.isConsumerSatisfiedInGroup(this));
+            ownerUUID != null
+                && WirelessComputeManager.getInstance().isNetworkSatisfiedForOwner(ownerUUID));
     }
 
     /** 链接注册：由模块侧 trySetControllerFromCoord 调用；槽位满（32）时拒绝。 */

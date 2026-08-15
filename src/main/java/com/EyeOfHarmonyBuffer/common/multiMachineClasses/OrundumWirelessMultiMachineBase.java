@@ -552,6 +552,11 @@ public abstract class OrundumWirelessMultiMachineBase<T extends OrundumWirelessM
         super.onPostTick(aBaseMetaTileEntity, aTick);
 
         if (aBaseMetaTileEntity != null && aBaseMetaTileEntity.isServerSide()) {
+            // ownerUUID 兜底：onFirstTick 时 getOwnerUuid() 可能尚未就绪（时序/离线解析），
+            // 为 null 会导致算力/供给/扣费全部失效，这里每 tick 重试直到拿到。
+            if (ownerUUID == null) {
+                this.ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
+            }
             if (ownerUUID != null) {
                 BigInteger supply = getProvidedComputeForCurrentState();
                 if (supply != null && supply.signum() > 0) {

@@ -97,6 +97,16 @@ public class WirelessComputeManager {
         return net.isConsumerSatisfied(ref);
     }
 
+    /**
+     * 只看本队网络供需（不要求该机器已注册为消费者）：
+     * 用于状态显示（Waila/info），避免停机中的机器（如重复核心）误报“算力不足”。
+     */
+    public boolean isNetworkSatisfiedForOwner(UUID ownerUUID) {
+        UUID key = resolveTeamKey(ownerUUID);
+        WirelessComputeNetwork net = key == null ? null : networks.get(key);
+        return net != null && net.isNetworkSatisfied();
+    }
+
     public BigInteger getTotalSupply(UUID ownerUUID) {
         UUID key = resolveTeamKey(ownerUUID);
         WirelessComputeNetwork net = key == null ? null : networks.get(key);
