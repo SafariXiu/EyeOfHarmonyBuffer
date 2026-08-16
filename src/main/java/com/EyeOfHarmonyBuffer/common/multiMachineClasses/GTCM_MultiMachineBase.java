@@ -1,23 +1,29 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockGlowCasingBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
+import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.*;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.IDualInputInventory;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.World;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.ApiStatus;
@@ -27,10 +33,12 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static com.EyeOfHarmonyBuffer.utils.TextHandler.texter;
 import static com.EyeOfHarmonyBuffer.utils.Utils.filterValidMTEs;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlockAnyMeta;
 
 public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     extends MTEExtendedPowerMultiBlockBase<T> implements IConstructable, ISurvivalConstructable {
@@ -44,6 +52,101 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
         super(aName);
     }
 
+    // endregion
+
+    // region Glow Casing（发光外壳自动系统）
+    /**
+     * 结构中发光外壳坐标（由 {@link #glowCasing(Block)} 元素在结构检查时自动收集）。
+     * 列表为空时整套系统零开销；机器侧只需在结构定义里加一个元素：
+     * {@code .addElement('B', glowCasing(EOHBMachineBlocks.sBlockCasingsDysonFlow))}
+     */
+    protected final List<Long> mGlowBlocks = new ArrayList<>();
+    private boolean mGlowState = false;
+
+    /**
+     * 发光外壳结构元素：接受该方块任意变体（点亮态 meta|8 同样通过），
+     * 结构检查通过时自动把坐标收集进 {@link #mGlowBlocks}。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> glowCasing(Block block) {
+        return glowCasing(block, -1);
+    }
+
+    /**
+     * 发光外壳结构元素：限定变体（点亮态同样通过）。
+     *
+     * @param variant 0~7，-1 = 任意变体
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> glowCasing(Block block, int variant) {
+        return new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(ofBlockAnyMeta(block)) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                if (!super.check(t, world, x, y, z)) {
+                    return false;
+                }
+                if (variant >= 0
+                    && (world.getBlockMetadata(x, y, z) & BlockGlowCasingBase.META_MASK) != variant) {
+                    return false;
+                }
+                t.mGlowBlocks.add(CoordinatePacker.pack(x, y, z));
+                return true;
+            }
+        };
+    }
+
+    /**
+     * 发光条件：默认 GT 原生"正在加工"语义（结构成型 &amp;&amp; 正在加工），机器可覆写。
+     */
+    protected boolean shouldGlowBlocksBeLit() {
+        return mMachine && mMaxProgresstime > 0;
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+
+        if (!mGlowBlocks.isEmpty() && aBaseMetaTileEntity != null && aBaseMetaTileEntity.isServerSide()) {
+            boolean shouldLit = shouldGlowBlocksBeLit();
+            if (shouldLit != mGlowState) {
+                mGlowState = shouldLit;
+                World world = aBaseMetaTileEntity.getWorld();
+                if (world != null) {
+                    for (long pos : mGlowBlocks) {
+                        BlockGlowCasingBase.setLit(
+                            world,
+                            CoordinatePacker.unpackX(pos),
+                            CoordinatePacker.unpackY(pos),
+                            CoordinatePacker.unpackZ(pos),
+                            shouldLit
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void clearHatches() {
+        if (!mGlowBlocks.isEmpty()) {
+            IGregTechTileEntity base = getBaseMetaTileEntity();
+            if (base != null && base.isServerSide()) {
+                World world = base.getWorld();
+                if (world != null) {
+                    for (long pos : mGlowBlocks) {
+                        BlockGlowCasingBase.setLit(
+                            world,
+                            CoordinatePacker.unpackX(pos),
+                            CoordinatePacker.unpackY(pos),
+                            CoordinatePacker.unpackZ(pos),
+                            false
+                        );
+                    }
+                }
+            }
+            mGlowBlocks.clear();
+            mGlowState = false;
+        }
+        super.clearHatches();
+    }
     // endregion
 
     // region new methods

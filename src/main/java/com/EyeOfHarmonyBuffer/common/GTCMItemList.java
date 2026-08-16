@@ -260,6 +260,7 @@ public enum GTCMItemList {
     SingularityStabilizationRingCasingsMAX,
     XiRangWaiKeCasing,
     ZhongXiRangWaiKeCasing,
+    DysonCoreInfoFlowCasing,
     LongGu,
     Tan,
     TanSu,

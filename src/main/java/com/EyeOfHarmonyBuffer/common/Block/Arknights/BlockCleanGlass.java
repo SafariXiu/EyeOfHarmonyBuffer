@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block.Arknights;
 
+import com.EyeOfHarmonyBuffer.common.Block.CTMHelper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.BlockBreakable;
@@ -60,43 +61,8 @@ public class BlockCleanGlass extends BlockBreakable {
     @Override
     @SideOnly(Side.CLIENT)
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
-        boolean north = isConnected(world, x, y, z - 1); // -Z
-        boolean south = isConnected(world, x, y, z + 1); // +Z
-        boolean west = isConnected(world, x - 1, y, z);  // -X
-        boolean east = isConnected(world, x + 1, y, z);  // +X
-        boolean up = isConnected(world, x, y + 1, z);    // +Y
-        boolean down = isConnected(world, x, y - 1, z);  // -Y
-
-        int mask;
-        switch (side) {
-            case 0: // 底面：贴图上=北(-Z) 下=南(+Z) 左=西(-X) 右=东(+X)
-                mask = mask(north, south, west, east);
-                break;
-            case 1: // 顶面（不镜像，与底面一致）：贴图上=北(-Z) 下=南(+Z) 左=西(-X) 右=东(+X)
-                mask = mask(north, south, west, east);
-                break;
-            case 2: // 北面（水平镜像）：左=东(+X) 右=西(-X)
-                mask = mask(up, down, east, west);
-                break;
-            case 3: // 南面：左=西(-X) 右=东(+X)
-                mask = mask(up, down, west, east);
-                break;
-            case 4: // 西面：左=北(-Z) 右=南(+Z)
-                mask = mask(up, down, north, south);
-                break;
-            case 5: // 东面：左=南(+Z) 右=北(-Z)
-                mask = mask(up, down, south, north);
-                break;
-            default:
-                mask = 0;
-                break;
-        }
+        int mask = CTMHelper.getConnectionMask(world, x, y, z, side, BlockCleanGlass::isConnected);
         return connectionIcons[mask];
-    }
-
-    @SideOnly(Side.CLIENT)
-    private static int mask(boolean up, boolean down, boolean left, boolean right) {
-        return (up ? 1 : 0) | (down ? 2 : 0) | (left ? 4 : 0) | (right ? 8 : 0);
     }
 
     private static boolean isConnected(IBlockAccess world, int x, int y, int z) {

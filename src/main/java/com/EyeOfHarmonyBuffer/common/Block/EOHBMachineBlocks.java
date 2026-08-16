@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
+import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockCasingsDysonFlow;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockCasingsEOH;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import net.minecraft.item.ItemStack;
@@ -11,6 +12,8 @@ import net.minecraft.item.ItemStack;
 public final class EOHBMachineBlocks {
 
     public static BlockCasingsEOH sBlockCasingsEOH;
+
+    public static BlockCasingsDysonFlow sBlockCasingsDysonFlow;
 
     private EOHBMachineBlocks() {
     }
@@ -24,6 +27,12 @@ public final class EOHBMachineBlocks {
 
         GTCMItemList.ZhongXiRangWaiKeCasing.set(
             new ItemStack(sBlockCasingsEOH, 1, BlockCasingsEOH.META_ZHONG_XIRANG_WAIKE)
+        );
+
+        sBlockCasingsDysonFlow = new BlockCasingsDysonFlow();
+
+        GTCMItemList.DysonCoreInfoFlowCasing.set(
+            new ItemStack(sBlockCasingsDysonFlow, 1, BlockCasingsDysonFlow.META_DYSON_FLOW)
         );
     }
 }

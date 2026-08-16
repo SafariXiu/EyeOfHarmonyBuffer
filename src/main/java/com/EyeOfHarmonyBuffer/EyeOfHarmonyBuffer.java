@@ -131,6 +131,7 @@ public class EyeOfHarmonyBuffer {
         TalosBiomes.init();
         TalosSurfaceRegistry.init();
         GTUtility.addTexturePage((byte) 30);
+        GTUtility.addTexturePage((byte) 31);
     }
 
     @Mod.EventHandler
