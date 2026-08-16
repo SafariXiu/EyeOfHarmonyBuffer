@@ -62,11 +62,12 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
     private boolean controllerSet = false;
     private DysonCore controller = null;
 
-    /** 链接结果（无距离限制；距离换成权限与槽位校验）。 */
+    /** 链接结果（无距离限制；限制为维度/权限/槽位校验）。 */
     private enum LinkResult {
         NO_VALID_CORE,
         PERMISSION_DENIED,
         SLOTS_FULL,
+        DIMENSION_RESTRICTED,
         SUCCESS
     }
 
@@ -157,6 +158,11 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
         if (base == null || base.getWorld() == null) {
             return LinkResult.NO_VALID_CORE;
         }
+        // 链接维度约束：模块与核心必须在塔罗斯-2 或其空间站内（双方同世界，校验模块所在维度即可）
+        if (!DysonMachineConfig.isInTalosOrStation(base.getWorld())) {
+            return LinkResult.DIMENSION_RESTRICTED;
+        }
+
         TileEntity te = base.getWorld().getTileEntity(x, y, z);
         if (te == null || !(te instanceof IGregTechTileEntity)) {
             return LinkResult.NO_VALID_CORE;
@@ -221,6 +227,9 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             case SLOTS_FULL:
                 aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Slots));
                 break;
+            case DIMENSION_RESTRICTED:
+                aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Dimension));
+                break;
         }
         return true;
     }
@@ -264,7 +273,7 @@ public abstract class DysonModuleBase<T extends DysonModuleBase<T>>
             return false;
         }
         World world = base.getWorld();
-        if (!DysonMachineConfig.isInTalos(world)) {
+        if (!DysonMachineConfig.isInTalosOrStation(world)) {
             return false;
         }
         // 心跳：核心区块卸载/停机后，模块在窗口内自动停止工作

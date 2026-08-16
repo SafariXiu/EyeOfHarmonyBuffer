@@ -579,6 +579,7 @@ public class TextLocalization {
     public static final String Dyson_Link_Fail_NoCore;
     public static final String Dyson_Link_Fail_Permission;
     public static final String Dyson_Link_Fail_Slots;
+    public static final String Dyson_Link_Fail_Dimension;
     public static final String Dyson_Upgrade_SplitLocked;
     public static final String Dyson_Eject_NoOutputBus;
     public static final String Dyson_Eject_Success;
@@ -2143,14 +2144,15 @@ public class TextLocalization {
         Dyson_Link_Fail_NoCore = TextHandler.texter("Link failed: no Dyson Core at the link location","Dyson_Link_Fail_NoCore");
         Dyson_Link_Fail_Permission = TextHandler.texter("Link failed: you do not have permission to link this machine","Dyson_Link_Fail_Permission");
         Dyson_Link_Fail_Slots = TextHandler.texter("Link failed: the Dyson Core module slots are full (32)","Dyson_Link_Fail_Slots");
+        Dyson_Link_Fail_Dimension = TextHandler.texter("Link failed: can only link inside Talos 2 or its space station","Dyson_Link_Fail_Dimension");
         Dyson_Upgrade_SplitLocked = TextHandler.texter("Locked: requires the Energy Allocation upgrade","Dyson_Upgrade_SplitLocked");
         Dyson_Eject_NoOutputBus = TextHandler.texter("Requires an output bus to eject Strange Matter","Dyson_Eject_NoOutputBus");
         Dyson_Eject_Success = TextHandler.texter("Ejected %s Strange Matter into the output bus (%s left in the core)","Dyson_Eject_Success");
         Dyson_Eject_Full = TextHandler.texter("Output bus full, nothing was ejected","Dyson_Eject_Full");
         Tooltip_Dyson_OutputBusHint = TextHandler.texter("Output bus (optional, used to eject Strange Matter)","Tooltip_Dyson_OutputBusHint");
         Tooltip_DysonCore_Eject = TextHandler.texter("Strange Matter is ejected into the output bus: click the eject button, overflow stays stored in the core.","Tooltip_DysonCore_Eject");
-        Tooltip_DysonCore_Link = TextHandler.texter("Link: left-click with a Data Stick to save core coords, then right-click a Dyson module. No distance limit.","Tooltip_DysonCore_Link");
-        Tooltip_DysonModule_Link = TextHandler.texter("Link: right-click with a Data Stick holding core coords to bind to the core.","Tooltip_DysonModule_Link");
+        Tooltip_DysonCore_Link = TextHandler.texter("Link: left-click with a Data Stick to save core coords, then right-click a Dyson module. No distance limit, but both must be inside Talos 2 or its space station.","Tooltip_DysonCore_Link");
+        Tooltip_DysonModule_Link = TextHandler.texter("Link: right-click with a Data Stick holding core coords to bind to the core. Both must be inside Talos 2 or its space station.","Tooltip_DysonModule_Link");
         Dyson_Waila_OutputOrundum = TextHandler.texter("Per-round Orundum Output","Dyson_Waila_OutputOrundum");
         Dyson_Stat_Cloud = TextHandler.texter("Cloud","Dyson_Stat_Cloud");
         Dyson_Stat_Frame = TextHandler.texter("Frame","Dyson_Stat_Frame");

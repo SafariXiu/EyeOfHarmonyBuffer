@@ -928,7 +928,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
     protected CheckRecipeResult doWirelessBusinessOnce() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (!mMachine || base == null || !base.isAllowedToWork()
-            || !DysonMachineConfig.isInTalos(base.getWorld())) {
+            || !DysonMachineConfig.isInTalosOrStation(base.getWorld())) {
             return CheckRecipeResultRegistry.NO_RECIPE;
         }
 
@@ -989,8 +989,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                 getTeamId());
         }
 
-        // 维度强约束：只能在塔罗斯 2 运行，否则全部模块断开
-        if (!DysonMachineConfig.isInTalos(aBaseMetaTileEntity.getWorld())) {
+        // 维度强约束：只能在塔罗斯 2 或塔罗斯-2 空间站运行，否则全部模块断开
+        if (!DysonMachineConfig.isInTalosOrStation(aBaseMetaTileEntity.getWorld())) {
             disconnectAll();
             updateTeamCoreOnline(false);
             return;
@@ -1297,6 +1297,11 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         }
         if (!DysonModuleBase.canPlayerLinkMachine(ownerUUID, aPlayer)) {
             aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Permission));
+            return;
+        }
+        // 链接维度约束：核心必须在塔罗斯-2 或其空间站内才能参与链接
+        if (!DysonMachineConfig.isInTalosOrStation(aBaseMetaTileEntity.getWorld())) {
+            aPlayer.addChatMessage(new ChatComponentText(Dyson_Link_Fail_Dimension));
             return;
         }
 

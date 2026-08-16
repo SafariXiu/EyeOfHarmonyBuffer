@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import net.minecraft.world.World;
 
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
+import com.EyeOfHarmonyBuffer.space.talos.station.WorldProviderTalos2Station;
 
 /**
  * 戴森球机器系统的集中常量。
@@ -109,8 +110,32 @@ public final class DysonMachineConfig {
     /** 戴森核心与模块只能在塔罗斯 2 维度运行。 */
     public static final int REQUIRED_DIMENSION = RegisterDimensions.ID_TALOS2_DIM;
 
+    /** 塔罗斯-2 空间站维度（固定 ID，戴森模块特殊判定用）。 */
+    public static final int STATION_DIMENSION = RegisterDimensions.ID_TALOS2_STATION_DIM;
+
+    /** 接收模块在塔罗斯-2 地面时的功率倍率（空间站为全功率 1.0，地面 60%）。 */
+    public static final double RECEIVER_POWER_MULTIPLIER_ON_SURFACE = 0.6;
+
     public static boolean isInTalos(World world) {
         return world != null && world.provider.dimensionId == REQUIRED_DIMENSION;
+    }
+
+    /**
+     * 是否位于塔罗斯-1 空间站。
+     *
+     * <p>注意：GC 创建空间站时实际维度为动态分配（DimensionManager.getNextFreeDimId()，
+     * 如 -1000 之类），-52（STATION_DIMENSION）只是 provider 注册 ID，玩家所在空间的
+     * dimensionId 并不等于 -52，因此必须按 provider 类型判定；维度号检查仅作兜底。
+     */
+    public static boolean isInTalosStation(World world) {
+        return world != null
+            && (world.provider instanceof WorldProviderTalos2Station
+                || world.provider.dimensionId == STATION_DIMENSION);
+    }
+
+    /** 戴森机器允许运行的维度：塔罗斯-2 或塔罗斯-2 空间站。 */
+    public static boolean isInTalosOrStation(World world) {
+        return isInTalos(world) || isInTalosStation(world);
     }
 
     /** 模块槽位激活曲线：0/50万/100万/150万贴片 → 8/12/16/20 槽，完工 → 32 槽。 */

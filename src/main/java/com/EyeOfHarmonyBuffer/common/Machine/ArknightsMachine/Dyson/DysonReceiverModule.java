@@ -245,6 +245,13 @@ public class DysonReceiverModule extends DysonModuleBase<DysonReceiverModule>
                 .add(paste.multiply(DysonMachineConfig.PASTE_POWER));
         }
 
+        // 维度功率：塔罗斯-2 空间站全功率；塔罗斯-2 地面仅 60%（整体削减 40%）
+        if (!DysonMachineConfig.isInTalosStation(world)) {
+            perTick = perTick
+                .multiply(BigInteger.valueOf((long) (DysonMachineConfig.RECEIVER_POWER_MULTIPLIER_ON_SURFACE * 100)))
+                .divide(BigInteger.valueOf(100L));
+        }
+
         pendingGain = perTick.multiply(BigInteger.valueOf(DysonMachineConfig.TICKS_PER_SETTLEMENT));
         this.lastUsedParallel = 1;
         mMaxProgresstime = getWirelessModeProcessingTime();

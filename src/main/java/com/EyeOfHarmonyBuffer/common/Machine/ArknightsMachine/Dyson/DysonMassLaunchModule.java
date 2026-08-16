@@ -107,6 +107,13 @@ public class DysonMassLaunchModule extends DysonModuleBase<DysonMassLaunchModule
             return SimpleCheckRecipeResult.ofFailure("DysonMassLaunchLocked");
         }
 
+        // 维度约束：全量发射模块只能在塔罗斯-2 空间站使用
+        if (!DysonMachineConfig.isInTalosStation(base.getWorld())) {
+            pendingCost = BigInteger.ZERO;
+            this.lastUsedParallel = 0;
+            return SimpleCheckRecipeResult.ofFailure("DysonStationOnly");
+        }
+
         World world = base.getWorld();
         DysonSphereWorldData data = DysonSphereWorldData.get(world);
         if (data != null && data.isCompleted()) {
