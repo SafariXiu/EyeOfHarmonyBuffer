@@ -24,6 +24,7 @@ public class ArknightsBlockRegister {
     public static Block CleanGlass;
     public static Block CleanGlassGlow;
     public static Block XieYiYuanShiKuai;
+    public static Block PureGlowBlock;
 
     public static void registryBlocks(){
 
@@ -115,6 +116,30 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(CleanGlassGlow, "CleanGlassGlow");
         GTCMItemList.CleanGlassGlow.set(new ItemStack(CleanGlassGlow, 1, 0));
+
+        PureGlowBlock = new BlockPureGlow()
+            .setBlockName("pure_glow_block")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(PureGlowBlock, com.EyeOfHarmonyBuffer.common.Block.Arknights.ItemBlockPureGlow.class,
+            "pure_glow_block");
+        // 16 个变体条目：一个 GTCMItemList 对应一个 meta（按 MC 标准染料色序）
+        GTCMItemList.PureGlowBlock.set(new ItemStack(PureGlowBlock, 1, 0));
+        GTCMItemList.PureGlowBlock_White.set(new ItemStack(PureGlowBlock, 1, 0));
+        GTCMItemList.PureGlowBlock_Orange.set(new ItemStack(PureGlowBlock, 1, 1));
+        GTCMItemList.PureGlowBlock_Magenta.set(new ItemStack(PureGlowBlock, 1, 2));
+        GTCMItemList.PureGlowBlock_LightBlue.set(new ItemStack(PureGlowBlock, 1, 3));
+        GTCMItemList.PureGlowBlock_Yellow.set(new ItemStack(PureGlowBlock, 1, 4));
+        GTCMItemList.PureGlowBlock_Lime.set(new ItemStack(PureGlowBlock, 1, 5));
+        GTCMItemList.PureGlowBlock_Pink.set(new ItemStack(PureGlowBlock, 1, 6));
+        GTCMItemList.PureGlowBlock_Gray.set(new ItemStack(PureGlowBlock, 1, 7));
+        GTCMItemList.PureGlowBlock_LightGray.set(new ItemStack(PureGlowBlock, 1, 8));
+        GTCMItemList.PureGlowBlock_Cyan.set(new ItemStack(PureGlowBlock, 1, 9));
+        GTCMItemList.PureGlowBlock_Purple.set(new ItemStack(PureGlowBlock, 1, 10));
+        GTCMItemList.PureGlowBlock_Blue.set(new ItemStack(PureGlowBlock, 1, 11));
+        GTCMItemList.PureGlowBlock_Brown.set(new ItemStack(PureGlowBlock, 1, 12));
+        GTCMItemList.PureGlowBlock_Green.set(new ItemStack(PureGlowBlock, 1, 13));
+        GTCMItemList.PureGlowBlock_Red.set(new ItemStack(PureGlowBlock, 1, 14));
+        GTCMItemList.PureGlowBlock_Black.set(new ItemStack(PureGlowBlock, 1, 15));
 
         XieYiYuanShiKuai = new BlockXieYiYuanShi()
             .setBlockName("xie_yi_yuan_shi")

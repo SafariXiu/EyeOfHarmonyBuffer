@@ -9,6 +9,7 @@ import static gregtech.api.enums.Mods.ExtraUtilities;
 import java.util.Objects;
 import java.util.Random;
 
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import net.minecraft.block.Block;
 import net.minecraft.world.World;
 
@@ -72,7 +73,7 @@ public class WorldGenTileStructure extends WorldGenDefaultSpaceStation {
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings8, 7))
                 .addElement('B', ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":glass")), 10))
-                .addElement('C', ofBlock(Objects.requireNonNull(Block.getBlockFromName(ExtraUtilities.ID + ":greenscreen")), 0))
+                .addElement('C', ofBlock(GTCMItemList.PureGlowBlock_White.getBlock(), GTCMItemList.PureGlowBlock_White.getMeta()))
                 .build();
         }
         return STRUCTURE_DEFINITION;
@@ -86,7 +87,7 @@ public class WorldGenTileStructure extends WorldGenDefaultSpaceStation {
             case 'B':
                 return new BlockWithMeta(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":glass")), 10);
             case 'C':
-                return new BlockWithMeta(Objects.requireNonNull(Block.getBlockFromName(ExtraUtilities.ID + ":greenscreen")), 0);
+                return new BlockWithMeta(GTCMItemList.PureGlowBlock_White.getBlock(), GTCMItemList.PureGlowBlock_White.getMeta());
             default:
                 return null;
         }
