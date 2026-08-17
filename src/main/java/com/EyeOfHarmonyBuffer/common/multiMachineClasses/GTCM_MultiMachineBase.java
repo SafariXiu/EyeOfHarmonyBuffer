@@ -126,8 +126,11 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
 
         boolean shouldLit = shouldGlowBlocksBeLit();
         if (shouldLit != mGlowState) {
-            // 目标翻转：重启分帧渐变（从 0 重新扫，已处于目标态的方块被 setLit 的 meta 判等直接跳过）
+            // 目标翻转：按切比雪夫距离（到机器主方块）重排坐标——
+            // 点亮升序（核心向外扩散），熄灭降序（外壳先灭、光收拢回核心）。
+            // 重启分帧渐变（从 0 重新扫，已处于目标态的方块被 setLit 的 meta 判等直接跳过）
             mGlowState = shouldLit;
+            sortGlowBlocksForToggle(shouldLit);
             mGlowToggleIndex = 0;
         }
         if (mGlowToggleIndex >= mGlowBlocks.size()) {
@@ -150,6 +153,34 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
             );
         }
         mGlowToggleIndex = end;
+    }
+
+    /**
+     * 以机器主方块（结构 ~ 锚点）为圆心，按切比雪夫距离（立方壳层）重排发光坐标。
+     *
+     * @param lit true = 点亮（升序，核心先亮向外扩散）；false = 熄灭（降序，外壳先灭收拢回核心）
+     */
+    private void sortGlowBlocksForToggle(boolean lit) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) {
+            return;
+        }
+        final int cx = base.getXCoord();
+        final int cy = base.getYCoord();
+        final int cz = base.getZCoord();
+        mGlowBlocks.sort((a, b) -> {
+            int da = chebyshevDist(a, cx, cy, cz);
+            int db = chebyshevDist(b, cx, cy, cz);
+            int cmp = Integer.compare(da, db);
+            return lit ? cmp : -cmp;
+        });
+    }
+
+    private static int chebyshevDist(long packed, int cx, int cy, int cz) {
+        int dx = Math.abs(CoordinatePacker.unpackX(packed) - cx);
+        int dy = Math.abs(CoordinatePacker.unpackY(packed) - cy);
+        int dz = Math.abs(CoordinatePacker.unpackZ(packed) - cz);
+        return Math.max(Math.max(dx, dy), dz);
     }
 
     /**
