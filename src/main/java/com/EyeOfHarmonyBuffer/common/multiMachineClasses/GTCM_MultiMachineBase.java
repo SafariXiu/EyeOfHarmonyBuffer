@@ -21,6 +21,7 @@ import gregtech.common.tileentities.machines.IDualInputInventory;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
@@ -38,6 +39,7 @@ import java.util.Map;
 
 import static com.EyeOfHarmonyBuffer.utils.TextHandler.texter;
 import static com.EyeOfHarmonyBuffer.utils.Utils.filterValidMTEs;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlockAnyMeta;
 
 public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
@@ -127,6 +129,56 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
         if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide()) {
             return;
         }
+
+        // —— 液体灌装（装饰性，缺液照常工作）——
+        if (mLiquidFillBlock != null && !mLiquidFillBlocks.isEmpty()) {
+            boolean shouldFill = shouldLiquidBeFilled();
+            if (shouldFill != mLiquidFillState) {
+                // 目标翻转：按切比雪夫距离重排（灌装核心向外扩散，回收外壳先收），重启分帧
+                mLiquidFillState = shouldFill;
+                sortLiquidFillBlocks(shouldFill);
+                mLiquidFillIndex = 0;
+                mLiquidFillCooldown = 0;
+                mLiquidPatrolIndex = 0;
+            }
+            World world = aBaseMetaTileEntity.getWorld();
+            if (world != null) {
+                if (mLiquidFillState) {
+                    if (mLiquidFillIndex < mLiquidFillBlocks.size()) {
+                        if (mLiquidFillCooldown > 0) {
+                            mLiquidFillCooldown--;
+                        } else {
+                            mLiquidFillCooldown = LIQUID_FILL_INTERVAL;
+                            int end = Math.min(mLiquidFillBlocks.size(), mLiquidFillIndex + LIQUID_FILL_BUDGET);
+                            for (int i = mLiquidFillIndex; i < end; i++) {
+                                fillOrClear(world, mLiquidFillBlocks.get(i), true);
+                            }
+                            mLiquidFillIndex = end;
+                        }
+                    } else {
+                        // 已灌满：巡检补漏（每 tick 轮询几个位置，发现空气立即补上）
+                        for (int k = 0; k < LIQUID_PATROL_PER_TICK; k++) {
+                            long pos = mLiquidFillBlocks.get(mLiquidPatrolIndex);
+                            mLiquidPatrolIndex = (mLiquidPatrolIndex + 1) % mLiquidFillBlocks.size();
+                            fillOrClear(world, pos, true);
+                        }
+                    }
+                } else if (mLiquidFillIndex < mLiquidFillBlocks.size()) {
+                    // 回收中：同样分帧推进（排序已是降序，外壳先收）
+                    if (mLiquidFillCooldown > 0) {
+                        mLiquidFillCooldown--;
+                    } else {
+                        mLiquidFillCooldown = LIQUID_FILL_INTERVAL;
+                        int end = Math.min(mLiquidFillBlocks.size(), mLiquidFillIndex + LIQUID_FILL_BUDGET);
+                        for (int i = mLiquidFillIndex; i < end; i++) {
+                            fillOrClear(world, mLiquidFillBlocks.get(i), false);
+                        }
+                        mLiquidFillIndex = end;
+                    }
+                }
+            }
+        }
+
         if (mGlowBlocks.isEmpty()) {
             return;
         }
@@ -229,11 +281,145 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
                 }
             }
         }
+        // 液体位立即全量回收（机器已拆，没有后续 tick，无法依赖分帧）
+        if (base != null && base.isServerSide() && mLiquidFillBlock != null && !mLiquidFillBlocks.isEmpty()) {
+            World world = base.getWorld();
+            if (world != null) {
+                for (long pos : mLiquidFillBlocks) {
+                    fillOrClear(world, pos, false);
+                }
+            }
+        }
         mGlowBlocks.clear();
         mGlowState = false;
         mGlowToggleIndex = 0;
         mGlowToggleCooldown = 0;
+        mLiquidFillBlocks.clear();
+        mLiquidFillBlock = null;
+        mLiquidFillState = false;
+        mLiquidFillIndex = 0;
+        mLiquidFillCooldown = 0;
+        mLiquidPatrolIndex = 0;
         super.onRemoval();
+    }
+    // endregion
+
+    // region Liquid Fill（液体灌装系统）
+    /**
+     * 结构中的液体填充位坐标（由 {@link #liquidFillCasing(Block, int)} 元素在结构检查时自动收集）。
+     * 与发光外壳同款模式：机器侧只需一行 {@code .addElement('N', liquidFillCasing(liquidBlock, 0))}。
+     * 液体仅作装饰：缺液照常工作；开机分帧灌满、关机分帧回收、运行中巡检补漏。
+     */
+    protected final List<Long> mLiquidFillBlocks = new ArrayList<>();
+    /** 灌装目标态（true = 要灌满，false = 要清空），与实际进度解耦 */
+    private boolean mLiquidFillState = false;
+    /** 分帧灌装游标：每批处理 LIQUID_FILL_BUDGET 个位置 */
+    private int mLiquidFillIndex = 0;
+    /** 批次间隔倒计时：每 LIQUID_FILL_INTERVAL tick 推进一批 */
+    private int mLiquidFillCooldown = 0;
+    /** 灌满后补液巡检游标（每 tick 轮询几个位置，发现空气立即补上） */
+    private int mLiquidPatrolIndex = 0;
+    /** 灌装液体方块及其 meta（由 liquidFillCasing 元素记录；一台机器一种液体） */
+    protected Block mLiquidFillBlock = null;
+    protected int mLiquidFillMeta = 0;
+    /**
+     * 每批灌装/回收的位置数上限（避免单 tick 大量 setBlock + 光照重算卡顿）。
+     * 与发光系统节奏一致但预算略小，两套批处理错峰叠加时单 tick 上限 ~24 次 setBlock。
+     */
+    private static final int LIQUID_FILL_BUDGET = 10;
+    /**
+     * 批次间隔：每 5 tick 推进一批，形成脉冲式充能波。
+     * DysonCore 共 771 个液体位：10/批 x 5 tick ≈ 78 批 ≈ 390 tick ≈ 20 秒灌满。
+     * 调小则更快（如 2 → ~8 秒），调大则更慢。
+     */
+    private static final int LIQUID_FILL_INTERVAL = 5;
+    /** 灌满后巡检速度：每 tick 检查几个位置（771 位 ≈ 20 秒轮一圈，单次 getBlock 开销可忽略） */
+    private static final int LIQUID_PATROL_PER_TICK = 2;
+
+    /**
+     * 液体填充结构元素：接受"目标液体（任意 meta）或空气"，通过时自动收集坐标并记录灌装液体。
+     * 用 {@link GTStructureUtility#noSurvivalAutoplace} 包装：
+     * 生存自动搭建跳过液体位（无物品可放置、不报缺块错误）；创造模式 construct 直接 setBlock 灌好。
+     *
+     * @param liquid 灌装液体方块；null = 液体不可用（未找到），液体位退化为纯空气占位
+     * @param meta   灌装用的方块 meta（Forge 流体方块 0 = 源）
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> liquidFillCasing(Block liquid, int meta) {
+        if (liquid == null) {
+            return GTStructureUtility.noSurvivalAutoplace(
+                new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(ofBlock(Blocks.air, 0)) {
+                    @Override
+                    public boolean check(T t, World world, int x, int y, int z) {
+                        return world.getBlock(x, y, z) == Blocks.air;
+                    }
+                });
+        }
+        IStructureElement<T> element = new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(
+            ofBlockAnyMeta(liquid)) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                Block b = world.getBlock(x, y, z);
+                if (b != Blocks.air && b != liquid) {
+                    return false;
+                }
+                long pos = CoordinatePacker.pack(x, y, z);
+                // 去重：与发光系统同理，结构重检会重复收集
+                if (!t.mLiquidFillBlocks.contains(pos)) {
+                    t.mLiquidFillBlocks.add(pos);
+                    t.mLiquidFillBlock = liquid;
+                    t.mLiquidFillMeta = meta;
+                }
+                return true;
+            }
+        };
+        return GTStructureUtility.noSurvivalAutoplace(element);
+    }
+
+    /**
+     * 灌装条件：默认"结构成型 && 正在加工"（纯装饰，缺液不阻断运行），机器可覆写。
+     */
+    protected boolean shouldLiquidBeFilled() {
+        return mMachine && mMaxProgresstime > 0;
+    }
+
+    /**
+     * 单位置灌装/回收。
+     *
+     * @param fill true = 空气位灌入液体；false = 液体位清成空气
+     */
+    private void fillOrClear(World world, long pos, boolean fill) {
+        int x = CoordinatePacker.unpackX(pos);
+        int y = CoordinatePacker.unpackY(pos);
+        int z = CoordinatePacker.unpackZ(pos);
+        Block cur = world.getBlock(x, y, z);
+        if (fill) {
+            if (cur == Blocks.air && mLiquidFillBlock != null) {
+                world.setBlock(x, y, z, mLiquidFillBlock, mLiquidFillMeta, 2);
+            }
+        } else if (cur == mLiquidFillBlock) {
+            // block 判等覆盖任意 meta（含玩家乱倒的流动形态），全封闭结构内不会有流动
+            world.setBlock(x, y, z, Blocks.air, 0, 2);
+        }
+    }
+
+    /**
+     * 以机器主方块为圆心按切比雪夫距离重排液体位：
+     * 灌装升序（核心向外扩散），回收降序（外壳先收、收拢回核心）。
+     */
+    private void sortLiquidFillBlocks(boolean fill) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) {
+            return;
+        }
+        final int cx = base.getXCoord();
+        final int cy = base.getYCoord();
+        final int cz = base.getZCoord();
+        mLiquidFillBlocks.sort((a, b) -> {
+            int da = chebyshevDist(a, cx, cy, cz);
+            int db = chebyshevDist(b, cx, cy, cz);
+            int cmp = Integer.compare(da, db);
+            return fill ? cmp : -cmp;
+        });
     }
     // endregion
 
