@@ -61,4 +61,53 @@ public final class CTMHelper {
     private static int mask(boolean up, boolean down, boolean left, boolean right) {
         return (up ? 1 : 0) | (down ? 2 : 0) | (left ? 4 : 0) | (right ? 8 : 0);
     }
+
+    /**
+     * 计算 (x,y,z) 处方块 side 面在贴图上的 4 个对角连接位（0~15）。
+     *
+     * <p>位定义（贴图方位）：bit0=左上, bit1=右上, bit2=左下, bit3=右下，
+     * 与 {@link #getConnectionMask} 的上下左右映射同源（对角 = 上下 x 左右组合）。
+     * 用于"角吸收"判定：角并入屏幕（变黑）仅在两条相邻边都连接且对角也存在方块时发生。
+     */
+    public static int getDiagonalMask(IBlockAccess world, int x, int y, int z, int side,
+        ConnectionChecker checker) {
+        boolean tl;
+        boolean tr;
+        boolean bl;
+        boolean br;
+        switch (side) {
+            case 0: // 底面：贴图上=北(-Z) 左=西(-X)
+            case 1: // 顶面：不镜像，与底面一致
+                tl = checker.isConnected(world, x - 1, y, z - 1);
+                tr = checker.isConnected(world, x + 1, y, z - 1);
+                bl = checker.isConnected(world, x - 1, y, z + 1);
+                br = checker.isConnected(world, x + 1, y, z + 1);
+                break;
+            case 2: // 北面（水平镜像）：左=东(+X) 右=西(-X)
+                tl = checker.isConnected(world, x + 1, y + 1, z);
+                tr = checker.isConnected(world, x - 1, y + 1, z);
+                bl = checker.isConnected(world, x + 1, y - 1, z);
+                br = checker.isConnected(world, x - 1, y - 1, z);
+                break;
+            case 3: // 南面：左=西(-X) 右=东(+X)
+                tl = checker.isConnected(world, x - 1, y + 1, z);
+                tr = checker.isConnected(world, x + 1, y + 1, z);
+                bl = checker.isConnected(world, x - 1, y - 1, z);
+                br = checker.isConnected(world, x + 1, y - 1, z);
+                break;
+            case 4: // 西面：左=北(-Z) 右=南(+Z)
+                tl = checker.isConnected(world, x, y + 1, z - 1);
+                tr = checker.isConnected(world, x, y + 1, z + 1);
+                bl = checker.isConnected(world, x, y - 1, z - 1);
+                br = checker.isConnected(world, x, y - 1, z + 1);
+                break;
+            default: // 东面：左=南(+Z) 右=北(-Z)
+                tl = checker.isConnected(world, x, y + 1, z + 1);
+                tr = checker.isConnected(world, x, y + 1, z - 1);
+                bl = checker.isConnected(world, x, y - 1, z + 1);
+                br = checker.isConnected(world, x, y - 1, z - 1);
+                break;
+        }
+        return (tl ? 1 : 0) | (tr ? 2 : 0) | (bl ? 4 : 0) | (br ? 8 : 0);
+    }
 }

@@ -15,6 +15,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -25,11 +26,14 @@ import java.util.List;
  * 点亮状态直接存服务端 meta（0~15 合法），由 vanilla 方块更新自动同步客户端。
  *
  * <p>CTM：静态块把本类加入 GT5U 的 CTM 方块名单（GTValues.mCTMEnabledBlock），
- * 使 GT 纹理构建器对本方块走 GTCopiedCTMBlockTexture（世界感知 getIcon），
- * 与 BlockCleanGlass 共用 CTMHelper 的 4 方向掩码机制。
- * 贴图命名约定（每变体 32 张）：
- *   &lt;base&gt;_conn_0..15       熄灯 16 张连接变体（0=无连接全边框，15=全连接无边框）
- *   &lt;base&gt;_Ligth_conn_0..15  点亮 16 张
+ * 使 GT 纹理构建器对本方块走 GTCopiedCTMBlockTexture（世界感知 getIcon）。
+ * 正交连接与 BlockCleanGlass 共用 CTMHelper 的 4 方向掩码；
+ * 对角连接决定"角吸收"：角并入屏幕仅当两条相邻边都连接 &amp;&amp; 对角也有方块
+ * （楼梯形缺少对角时角保留边框，2x2 完整时角变黑）。
+ * 贴图命名约定（每变体 94 张 = 47 x 熄灯/点亮）：
+ *   &lt;base&gt;_conn_&lt;N&gt;           N=0..15 正交掩码（其中 5,6,7,9,10,11,13,14,15 为"全保留角"态）
+ *   &lt;base&gt;_conn_&lt;M&gt;_&lt;bits&gt;    角吸收变体：M 同上；bits = 被吸收角（TL=1,TR=2,BL=4,BR=8）
+ *   &lt;base&gt;_Ligth_conn_*        点亮版同名
  * 子类只需提供 getIconBasePath(variant) 与贴图文件，逻辑全部共享。
  *
  * <p>结构检查请使用接受任意 meta 的元素（如 StructureUtility.ofBlockAnyMeta(block)），
@@ -52,10 +56,57 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
         GTValues.mCTMEnabledBlock.add(BlockGlowCasingBase.class.getName());
     }
 
+    /** 47 格 CTM 贴图数量（16 基础正交 + 31 角吸收变体） */
+    private static final int CTM_TILE_COUNT = 47;
+
+    /**
+     * 每个正交掩码的可吸收角位（TL=1, TR=2, BL=4, BR=8）。
+     * 0 = 该掩码没有相邻边对，不存在角吸收。
+     */
+    // 角位：TL=1, TR=2, BL=4, BR=8；掩码位：U=1, D=2, L=4, R=8
+    // 5=U|L→TL, 6=D|L→BL, 7=U|D|L→TL+BL, 9=U|R→TR, 10=D|R→BR,
+    // 11=U|D|R→TR+BR, 13=U|L|R→TL+TR, 14=D|L|R→BL+BR, 15→全
+    private static final int[] ABSORBABLE = { 0, 0, 0, 0, 0, 1, 4, 5, 0, 2, 8, 10, 0, 3, 12, 15 };
+
+    /** 变体槽位表：[正交掩码][角吸收位] -&gt; 贴图槽位 0~46，-1 = 非法组合 */
+    private static final int[][] SLOT = new int[16][16];
+
+    /** 槽位对应的正交掩码（用于注册贴图名） */
+    private static final int[] SLOT_MASK = new int[CTM_TILE_COUNT];
+    /** 槽位对应的角吸收位（0 = 全保留态） */
+    private static final int[] SLOT_CORNERS = new int[CTM_TILE_COUNT];
+
+    static {
+        for (int[] row : SLOT) {
+            Arrays.fill(row, -1);
+        }
+        int slot = 0;
+        for (int m = 0; m < 16; m++) {
+            SLOT[m][0] = slot;
+            SLOT_MASK[slot] = m;
+            SLOT_CORNERS[slot] = 0;
+            slot++;
+        }
+        for (int m = 5; m <= 15; m++) {
+            int a = ABSORBABLE[m];
+            if (a == 0) {
+                continue;
+            }
+            for (int c = 1; c <= 15; c++) {
+                if ((c & a) == c) {
+                    SLOT[m][c] = slot;
+                    SLOT_MASK[slot] = m;
+                    SLOT_CORNERS[slot] = c;
+                    slot++;
+                }
+            }
+        }
+    }
+
     @SideOnly(Side.CLIENT)
-    private IIcon[][] mConnIcons;    // [变体][16] 熄灯连接贴图
+    private IIcon[][] mConnIcons;    // [变体][47] 熄灯连接贴图
     @SideOnly(Side.CLIENT)
-    private IIcon[][] mLitConnIcons; // [变体][16] 点亮连接贴图
+    private IIcon[][] mLitConnIcons; // [变体][47] 点亮连接贴图
 
     protected BlockGlowCasingBase(Class<? extends ItemBlock> aItemClass, String aName) {
         // aMaxMeta=16：为 8 个熄灯变体 + 8 个点亮变体各注册一个纹理索引槽
@@ -67,7 +118,7 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
 
     /**
      * 第 v 个变体的贴图基础路径（不含 _conn 后缀），如 "Arknights/HunNingTuDaoXian"。
-     * 基类按约定自动加载 &lt;base&gt;_conn_0..15 与 &lt;base&gt;_Ligth_conn_0..15。
+     * 基类按约定自动加载 47 张连接贴图（见类注释的命名约定）。
      */
     protected abstract String getIconBasePath(int variant);
 
@@ -80,13 +131,16 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister reg) {
         int count = Math.max(1, Math.min(getVariantCount(), 8));
-        mConnIcons = new IIcon[count][16];
-        mLitConnIcons = new IIcon[count][16];
+        mConnIcons = new IIcon[count][CTM_TILE_COUNT];
+        mLitConnIcons = new IIcon[count][CTM_TILE_COUNT];
         for (int v = 0; v < count; v++) {
             String base = getIconBasePath(v);
-            for (int i = 0; i < 16; i++) {
-                mConnIcons[v][i] = reg.registerIcon("eyeofharmonybuffer:" + base + "_conn_" + i);
-                mLitConnIcons[v][i] = reg.registerIcon("eyeofharmonybuffer:" + base + "_Ligth_conn_" + i);
+            for (int slot = 0; slot < CTM_TILE_COUNT; slot++) {
+                String suffix = SLOT_CORNERS[slot] == 0
+                    ? String.valueOf(SLOT_MASK[slot])
+                    : SLOT_MASK[slot] + "_" + SLOT_CORNERS[slot];
+                mConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "_conn_" + suffix);
+                mLitConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "_Ligth_conn_" + suffix);
             }
         }
     }
@@ -115,9 +169,18 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
         int meta = world.getBlockMetadata(x, y, z);
         int variant = Math.min(meta & META_MASK, mConnIcons.length - 1);
         IIcon[][] table = (meta & LIT_META_BIT) != 0 ? mLitConnIcons : mConnIcons;
-        int mask = CTMHelper.getConnectionMask(world, x, y, z, side, BlockGlowCasingBase::isConnected);
-        IIcon icon = table[variant][mask];
-        return icon != null ? icon : mConnIcons[0][mask];
+        int ortho = CTMHelper.getConnectionMask(world, x, y, z, side, BlockGlowCasingBase::isConnected);
+        int diag = CTMHelper.getDiagonalMask(world, x, y, z, side, BlockGlowCasingBase::isConnected);
+        int corners = ABSORBABLE[ortho] & diag;
+        int slot = SLOT[ortho][corners];
+        if (slot < 0) {
+            slot = ortho;
+        }
+        IIcon icon = table[variant][slot];
+        if (icon == null) {
+            icon = mConnIcons[0][slot];
+        }
+        return icon != null ? icon : mConnIcons[0][0];
     }
 
     @Override
