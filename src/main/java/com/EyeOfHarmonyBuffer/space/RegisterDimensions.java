@@ -31,6 +31,17 @@ public class RegisterDimensions {
     public static final int ID_TALOS2_DIM = 14001;
     /** 塔罗斯-1 空间站维度：固定 ID（-52，避开 GC -27 与 GalaxySpace -40~-51 区间）。 */
     public static final int ID_TALOS2_STATION_DIM = -52;
+    /**
+     * 塔罗斯-1 空间站静态 provider ID（-53）。
+     * GC 的客户端行星同步（WorldUtil.decodePlanetsListClient）按下标
+     * {@code registeredSatellites.size()*2 + 行星序号} 从 GalacticraftRegistry.worldProviderIDs
+     * 取 provider——约定每个已注册卫星必须贡献 2 个条目（动态 + 静态 provider），
+     * 且都注册在所有行星 provider 之前（我们的 init 在 GC postInit 行星注册循环之前）。
+     * 只注册 1 个条目会把整个映射偏移 +1，客户端把塔罗斯-2(14001) 错绑成土卫六的 provider
+     * （日志：IndexOutOfBoundsException @ GalacticraftRegistry.getProviderID + "moon.Titan" 传送到 -1017）。
+     * 参考 GS 土星空间站（saturnSpaceStation）的注册方式。
+     */
+    public static final int ID_TALOS2_STATION_DIM_STATIC = -53;
     public static final int tier_Talos1 = 5;
     public static final int tier_Talos2 = 4;
 
@@ -91,13 +102,16 @@ public class RegisterDimensions {
             .setBodyIcon(SpaceStation);
         talos1Station.setDimensionInfo(
             ID_TALOS2_STATION_DIM,
-            ID_TALOS2_STATION_DIM,
+            ID_TALOS2_STATION_DIM_STATIC,
             WorldProviderTalos2Station.class);
         GalaxyRegistry.registerSatellite(talos1Station);
         // Satellite 新版 setDimensionInfo 默认 autoRegisterDimension=false（不自动注册 provider 类型），
-        // 必须手动注册，否则“行星维度列表”与 GC 的 provider 注册表长度不一致，
-        // 客户端按序号对齐查询时会越界崩溃（GS 对自家空间站同样手动注册）。
-        GalacticraftRegistry.registerProvider(ID_TALOS2_STATION_DIM, WorldProviderTalos2Station.class, true);
+        // 必须手动注册；且按 GC 约定每个卫星注册 动态 + 静态 两个 provider 条目
+        // （见 ID_TALOS2_STATION_DIM_STATIC 注释），否则客户端行星同步下标错位（塔罗斯-2 → 土卫六）。
+        GalacticraftRegistry.registerProvider(
+            ID_TALOS2_STATION_DIM, WorldProviderTalos2Station.class, false, ID_TALOS2_STATION_DIM);
+        GalacticraftRegistry.registerProvider(
+            ID_TALOS2_STATION_DIM_STATIC, WorldProviderTalos2Station.class, true, ID_TALOS2_STATION_DIM_STATIC);
         GalacticraftRegistry.registerTeleportType(WorldProviderTalos2Station.class, new TeleportTypeSpaceStationGS());
 
         // 空间站配方（占位材料：源石 + 息壤，后续可调整）

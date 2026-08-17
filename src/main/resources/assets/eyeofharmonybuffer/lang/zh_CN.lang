@@ -872,6 +872,8 @@ tile.duo_qi_main_block.name=惰气主矿脉块
 eoh.blockcasings.0.name=息壤机械方块
 eoh.blockcasings.1.name=重息壤机械方块
 eoh.blockcasingsdysonflow.0.name=戴森核心信息导流块
+Tooltip_DysonCoreInfoFlow_00=§7得益于前沿光学材料的突破，得以将数据传输速度提升到§a100PB/S§7。§r
+Tooltip_DysonCoreInfoFlow_01=§7连接核心模块中各个模块的信息高速公路得以建成。§r
 tile.xie_yi_yuan_shi.name=§3协议源石块
 
 #space
