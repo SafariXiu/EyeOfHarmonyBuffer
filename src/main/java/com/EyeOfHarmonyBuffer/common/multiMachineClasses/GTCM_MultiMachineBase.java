@@ -63,14 +63,21 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     protected final List<Long> mGlowBlocks = new ArrayList<>();
     /** 目标点亮态（true = 要亮，false = 要灭），与实际切换进度解耦 */
     private boolean mGlowState = false;
-    /** 分帧渐变游标：每 tick 只切换 GLOW_TOGGLE_BUDGET 个方块，避免大量光照重算卡顿 */
+    /** 分帧渐变游标：每批切换 GLOW_TOGGLE_BUDGET 个方块 */
     private int mGlowToggleIndex = 0;
+    /** 批次间隔倒计时：每 GLOW_TOGGLE_INTERVAL tick 推进一批 */
+    private int mGlowToggleCooldown = 0;
     /**
-     * 每 tick 切换的发光外壳数量上限。
-     * setLit 走完整 setBlock 路径会触发每方块一次光照重算（BFS），
-     * DysonCore 结构约 1124 块：14/ tick ≈ 80 tick ≈ 4 秒渐变点亮/熄灭，平滑无卡顿。
+     * 每批切换的发光外壳数量上限（避免单 tick 大量光照重算卡顿）。
+     * setLit 走完整 setBlock 路径会触发每方块一次光照重算（BFS）。
      */
     private static final int GLOW_TOGGLE_BUDGET = 14;
+    /**
+     * 批次间隔：每 5  tick 推进一批，形成脉冲式扩散波。
+     * DysonCore 结构约 1124 块：14/批 x 5 tick ≈ 400 tick ≈ 20 秒渐变。
+     * 调小则更快（如 3 → ~12 秒），调大则更慢。
+     */
+    private static final int GLOW_TOGGLE_INTERVAL = 5;
 
     /**
      * 发光外壳结构元素：接受该方块任意变体（点亮态 meta|8 同样通过），
@@ -132,10 +139,16 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
             mGlowState = shouldLit;
             sortGlowBlocksForToggle(shouldLit);
             mGlowToggleIndex = 0;
+            mGlowToggleCooldown = 0; // 翻转后立即推进第一批
         }
         if (mGlowToggleIndex >= mGlowBlocks.size()) {
             return;
         }
+        if (mGlowToggleCooldown > 0) {
+            mGlowToggleCooldown--;
+            return;
+        }
+        mGlowToggleCooldown = GLOW_TOGGLE_INTERVAL;
 
         World world = aBaseMetaTileEntity.getWorld();
         if (world == null) {
@@ -219,6 +232,7 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
         mGlowBlocks.clear();
         mGlowState = false;
         mGlowToggleIndex = 0;
+        mGlowToggleCooldown = 0;
         super.onRemoval();
     }
     // endregion
