@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.enums.GTValues;
 import gregtech.common.blocks.BlockCasingsAbstract;
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
@@ -222,16 +223,21 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
 
     /**
      * 开关点亮态（仅对自身方块生效）。
-     * 状态未变化时不会触碰 world；变化时以 flag=2 同步客户端并触发光照重算。
+     * 状态未变化时不会触碰 world；变化时走完整 setBlock 路径：
+     * 1.7.10 的 setBlockMetadataWithNotify 不会触发光照重算（func_147451_t 只在
+     * setBlock 完整路径里无条件调用），会导致发光/熄灭时周围光照不更新，
+     * 必须用 {@link World#setBlock(int, int, int, Block, int, int)}（flag=2 只发包，
+     * 不通知邻居；同方块只改 meta，不会触发放置/破坏钩子）。
      */
     public static void setLit(World world, int x, int y, int z, boolean lit) {
-        if (!(world.getBlock(x, y, z) instanceof BlockGlowCasingBase)) {
+        Block block = world.getBlock(x, y, z);
+        if (!(block instanceof BlockGlowCasingBase)) {
             return;
         }
         int meta = world.getBlockMetadata(x, y, z);
         int target = lit ? (meta | LIT_META_BIT) : (meta & META_MASK);
         if (meta != target) {
-            world.setBlockMetadataWithNotify(x, y, z, target, 2);
+            world.setBlock(x, y, z, block, target, 2);
         }
     }
 

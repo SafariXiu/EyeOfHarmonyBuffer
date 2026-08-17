@@ -61,7 +61,16 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
      * {@code .addElement('B', glowCasing(EOHBMachineBlocks.sBlockCasingsDysonFlow))}
      */
     protected final List<Long> mGlowBlocks = new ArrayList<>();
+    /** 目标点亮态（true = 要亮，false = 要灭），与实际切换进度解耦 */
     private boolean mGlowState = false;
+    /** 分帧渐变游标：每 tick 只切换 GLOW_TOGGLE_BUDGET 个方块，避免大量光照重算卡顿 */
+    private int mGlowToggleIndex = 0;
+    /**
+     * 每 tick 切换的发光外壳数量上限。
+     * setLit 走完整 setBlock 路径会触发每方块一次光照重算（BFS），
+     * DysonCore 结构约 1124 块：14/ tick ≈ 80 tick ≈ 4 秒渐变点亮/熄灭，平滑无卡顿。
+     */
+    private static final int GLOW_TOGGLE_BUDGET = 14;
 
     /**
      * 发光外壳结构元素：接受该方块任意变体（点亮态 meta|8 同样通过），
@@ -87,7 +96,11 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
                     && (world.getBlockMetadata(x, y, z) & BlockGlowCasingBase.META_MASK) != variant) {
                     return false;
                 }
-                t.mGlowBlocks.add(CoordinatePacker.pack(x, y, z));
+                long pos = CoordinatePacker.pack(x, y, z);
+                // 去重：clearHatches 不再清列表（见其注释），结构重检会重复收集
+                if (!t.mGlowBlocks.contains(pos)) {
+                    t.mGlowBlocks.add(pos);
+                }
                 return true;
             }
         };
@@ -104,48 +117,78 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
         super.onPostTick(aBaseMetaTileEntity, aTick);
 
-        if (!mGlowBlocks.isEmpty() && aBaseMetaTileEntity != null && aBaseMetaTileEntity.isServerSide()) {
-            boolean shouldLit = shouldGlowBlocksBeLit();
-            if (shouldLit != mGlowState) {
-                mGlowState = shouldLit;
-                World world = aBaseMetaTileEntity.getWorld();
-                if (world != null) {
-                    for (long pos : mGlowBlocks) {
-                        BlockGlowCasingBase.setLit(
-                            world,
-                            CoordinatePacker.unpackX(pos),
-                            CoordinatePacker.unpackY(pos),
-                            CoordinatePacker.unpackZ(pos),
-                            shouldLit
-                        );
-                    }
-                }
-            }
+        if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide()) {
+            return;
         }
+        if (mGlowBlocks.isEmpty()) {
+            return;
+        }
+
+        boolean shouldLit = shouldGlowBlocksBeLit();
+        if (shouldLit != mGlowState) {
+            // 目标翻转：重启分帧渐变（从 0 重新扫，已处于目标态的方块被 setLit 的 meta 判等直接跳过）
+            mGlowState = shouldLit;
+            mGlowToggleIndex = 0;
+        }
+        if (mGlowToggleIndex >= mGlowBlocks.size()) {
+            return;
+        }
+
+        World world = aBaseMetaTileEntity.getWorld();
+        if (world == null) {
+            return;
+        }
+        int end = Math.min(mGlowBlocks.size(), mGlowToggleIndex + GLOW_TOGGLE_BUDGET);
+        for (int i = mGlowToggleIndex; i < end; i++) {
+            long pos = mGlowBlocks.get(i);
+            BlockGlowCasingBase.setLit(
+                world,
+                CoordinatePacker.unpackX(pos),
+                CoordinatePacker.unpackY(pos),
+                CoordinatePacker.unpackZ(pos),
+                mGlowState
+            );
+        }
+        mGlowToggleIndex = end;
     }
 
+    /**
+     * 结构重检（GT 每 ~50 tick 一次）也会走到这里：这里不再清列表/不关灯，
+     * 否则配合 setBlock 的光照重算会周期性全量闪烁。
+     * 亮/灭完全由 onPostTick 的 {@link #shouldGlowBlocksBeLit()} 目标驱动，
+     * 结构失效时 mMachine=false 目标翻转为灭，分帧渐变自然关灯。
+     * 列表只在机器被拆毁（{@link #onRemoval}）时清空。
+     */
     @Override
     public void clearHatches() {
-        if (!mGlowBlocks.isEmpty()) {
-            IGregTechTileEntity base = getBaseMetaTileEntity();
-            if (base != null && base.isServerSide()) {
-                World world = base.getWorld();
-                if (world != null) {
-                    for (long pos : mGlowBlocks) {
-                        BlockGlowCasingBase.setLit(
-                            world,
-                            CoordinatePacker.unpackX(pos),
-                            CoordinatePacker.unpackY(pos),
-                            CoordinatePacker.unpackZ(pos),
-                            false
-                        );
-                    }
+        super.clearHatches();
+    }
+
+    /**
+     * 机器被拆毁：立即全量关灯（罕见事件，可接受一次性光照重算开销），
+     * 之后不再有 tick，无法依赖分帧渐变。
+     */
+    @Override
+    public void onRemoval() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide() && !mGlowBlocks.isEmpty()) {
+            World world = base.getWorld();
+            if (world != null) {
+                for (long pos : mGlowBlocks) {
+                    BlockGlowCasingBase.setLit(
+                        world,
+                        CoordinatePacker.unpackX(pos),
+                        CoordinatePacker.unpackY(pos),
+                        CoordinatePacker.unpackZ(pos),
+                        false
+                    );
                 }
             }
-            mGlowBlocks.clear();
-            mGlowState = false;
         }
-        super.clearHatches();
+        mGlowBlocks.clear();
+        mGlowState = false;
+        mGlowToggleIndex = 0;
+        super.onRemoval();
     }
     // endregion
 
