@@ -30,10 +30,10 @@ import java.util.List;
  * 正交连接与 BlockCleanGlass 共用 CTMHelper 的 4 方向掩码；
  * 对角连接决定"角吸收"：角并入屏幕仅当两条相邻边都连接 &amp;&amp; 对角也有方块
  * （楼梯形缺少对角时角保留边框，2x2 完整时角变黑）。
- * 贴图命名约定（每变体 94 张 = 47 x 熄灯/点亮）：
- *   &lt;base&gt;_conn_&lt;N&gt;           N=0..15 正交掩码（其中 5,6,7,9,10,11,13,14,15 为"全保留角"态）
- *   &lt;base&gt;_conn_&lt;M&gt;_&lt;bits&gt;    角吸收变体：M 同上；bits = 被吸收角（TL=1,TR=2,BL=4,BR=8）
- *   &lt;base&gt;_Ligth_conn_*        点亮版同名
+ * 贴图按变体放在独立文件夹（getIconBasePath 返回其路径，以 / 结尾），文件夹内命名：
+ *   conn_&lt;N&gt;              N=0..15 正交掩码（其中 5,6,7,9,10,11,13,14,15 为"全保留角"态）
+ *   conn_&lt;M&gt;_&lt;bits&gt;       角吸收变体：M 同上；bits = 被吸收角（TL=1,TR=2,BL=4,BR=8）
+ *   Ligth_conn_*          点亮版同名
  * 子类只需提供 getIconBasePath(variant) 与贴图文件，逻辑全部共享。
  *
  * <p>结构检查请使用接受任意 meta 的元素（如 StructureUtility.ofBlockAnyMeta(block)），
@@ -117,8 +117,8 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
     protected abstract int getVariantCount();
 
     /**
-     * 第 v 个变体的贴图基础路径（不含 _conn 后缀），如 "Arknights/HunNingTuDaoXian"。
-     * 基类按约定自动加载 47 张连接贴图（见类注释的命名约定）。
+     * 第 v 个变体的贴图文件夹路径（以 / 结尾），如 "Arknights/HunNingTuDaoXian/"。
+     * 基类按约定自动加载文件夹内的 47 张连接贴图（见类注释的命名约定）。
      */
     protected abstract String getIconBasePath(int variant);
 
@@ -139,8 +139,8 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
                 String suffix = SLOT_CORNERS[slot] == 0
                     ? String.valueOf(SLOT_MASK[slot])
                     : SLOT_MASK[slot] + "_" + SLOT_CORNERS[slot];
-                mConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "_conn_" + suffix);
-                mLitConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "_Ligth_conn_" + suffix);
+                mConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "conn_" + suffix);
+                mLitConnIcons[v][slot] = reg.registerIcon("eyeofharmonybuffer:" + base + "Ligth_conn_" + suffix);
             }
         }
     }
