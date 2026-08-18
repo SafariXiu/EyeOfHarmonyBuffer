@@ -8,6 +8,7 @@ uniform vec3 CameraPosition;
 uniform vec3 BlockPosition;
 
 uniform float iTime;
+uniform float StrikeActive;
 uniform float StrikeRadius;
 
 in vec2 texCoord;
@@ -24,6 +25,11 @@ void main() {
     float frameTimeCounter = max(iTime - 37.0, 0.0);
 
     vec3 original = texture(DiffuseSampler, texCoord).rgb;
+    // 充能期间（非打击）直接透传，不做色差（对齐 Forge 移植版 StrikeActive 门控）
+    if (StrikeActive < 0.5) {
+        fragColor = vec4(original, 1.0);
+        return;
+    }
     vec2 one_pixel = vec2(1.0 / viewWidth, 1.0 / viewHeight);
     vec2 rotated_pixel = rotate(one_pixel, -frameTimeCounter);
 

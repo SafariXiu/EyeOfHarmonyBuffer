@@ -17,7 +17,7 @@ public final class RailgunHudRenderer {
 
     private RailgunHudRenderer() {}
 
-    public static void render(Minecraft mc, RailgunClientState state, ScaledResolution resolution) {
+    public static void render(Minecraft mc, RailgunClientState state, ScaledResolution resolution, boolean postGuiActive) {
         int w = resolution.getScaledWidth();
         int h = resolution.getScaledHeight();
         int cx = w / 2;
@@ -26,13 +26,16 @@ public final class RailgunHudRenderer {
         boolean ready = state.isReady();
         int color = ready ? 0xFF66FF66 : 0xFF9EEDED;
 
-        // 旋转准星（四个方向的短线，随充能旋转展开）
-        float progress = Math.min(1.0F, state.getChargeTicks() / 40.0F);
-        float rot = progress * 0.35F;
-        drawRotatingCrosshair(cx, cy, rot, color, ready);
+        // 旋转准星（四个方向的短线，随充能旋转展开）。
+        // 后处理 GUI 激活时准星由 gui.fsh 全屏绘制（带旋转/扫描线），这里跳过避免重影
+        if (!postGuiActive) {
+            float progress = Math.min(1.0F, state.getChargeTicks() / 40.0F);
+            float rot = progress * 0.35F;
+            drawRotatingCrosshair(cx, cy, rot, color, ready);
 
-        // 中心点
-        drawRect(cx - 1, cy - 1, cx + 1, cy + 1, color);
+            // 中心点
+            drawRect(cx - 1, cy - 1, cx + 1, cy + 1, color);
+        }
 
         // 充能进度条
         int barW = 64;

@@ -13,6 +13,9 @@ import net.minecraft.client.shader.Framebuffer;
  * - 仅 Angelica 已加载时启用（Loader.isModLoaded 不触发 Angelica 类加载，安全）
  * - 光影包（Iris/Oculus）激活时自动跳过，避免与光影 composite 冲突
  * - 出错时永久降级（阶段一几何特效不受影响）
+ *
+ * 渲染窗口（对齐 Forge 移植版）：充能（GUI 瞄准覆盖）或打击（色差）期间
+ * 整链运行；shader 内部自行按阶段门控（chromatic 需要 iTime>=37 且 StrikeActive）。
  */
 public final class EOHBPostProcessor {
 
@@ -28,7 +31,7 @@ public final class EOHBPostProcessor {
     }
 
     /** 在 RenderWorldLastEvent 中、几何特效渲染之后调用。 */
-    public static void renderStrikePost(float partialTicks, RailgunClientState state) {
+    public static void renderPost(float partialTicks, RailgunClientState state) {
         if (!ANGELICA_AVAILABLE || failed || !MainConfig.OrbitalRailgunPostProcessEnable) {
             return;
         }
@@ -40,8 +43,8 @@ public final class EOHBPostProcessor {
         } catch (Throwable t) {
             return;
         }
-        // 色差窗口：打击 37 秒后（与 shader 内部 iTime-37 门控一致）
-        if (state.getStrikeSeconds(partialTicks) < 37.0F) {
+        // 充能（GUI 瞄准覆盖）或打击（色差）期间运行
+        if (!state.isCharging() && !state.isStrikeActive()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -58,5 +61,26 @@ public final class EOHBPostProcessor {
             failed = true;
             EyeOfHarmonyBuffer.LOGGER.error("[EOHB] OrbitalRailgun post chain disabled after error", t);
         }
+    }
+
+    /**
+     * 本帧是否由后处理链渲染 GUI 瞄准覆盖（充能 + 后处理可用 + 无光影）。
+     * 供 2D HUD / 世界空间瞄准标记做去重：后处理激活时由 shader 接管准星与选框。
+     */
+    public static boolean isPostGuiActive(RailgunClientState state) {
+        if (!ANGELICA_AVAILABLE || failed || !MainConfig.OrbitalRailgunPostProcessEnable) {
+            return false;
+        }
+        if (!state.isCharging()) {
+            return false;
+        }
+        try {
+            if (IrisApi.getInstance().isShaderPackInUse()) {
+                return false;
+            }
+        } catch (Throwable t) {
+            return false;
+        }
+        return true;
     }
 }

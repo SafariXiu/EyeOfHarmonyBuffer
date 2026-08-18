@@ -168,6 +168,11 @@ public class RailgunClientState {
         return (clientTick - strikeStartClientTick + partialTicks) / 20.0F;
     }
 
+    /** 充能已进行的秒数（供后处理 GUI 时间轴）。 */
+    public float getChargeSeconds(float partialTicks) {
+        return (chargeTicks + partialTicks) / 20.0F;
+    }
+
     public boolean isExplosionParticleFired() {
         return explosionParticleFired;
     }

@@ -60,14 +60,20 @@ public class RailgunClientEvents {
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         RailgunClientState state = RailgunClientState.getInstance();
         if (state.isCharging() && state.hasTarget()) {
-            RailgunWorldRenderer.renderAimMarker(event.partialTicks,
-                state.getHitX(), state.getHitY(), state.getHitZ());
+            // 后处理 GUI 激活时，瞄准选框/圆环由 gui.fsh 接管（深度感知、可被地形遮挡），
+            // 世界空间几何标记作为无 Angelica/光影激活时的降级路径
+            if (!EOHBPostProcessor.isPostGuiActive(state)) {
+                RailgunWorldRenderer.renderAimMarker(event.partialTicks,
+                    state.getHitX(), state.getHitY(), state.getHitZ());
+            }
         }
         if (state.isStrikeActive()) {
             // 阶段一：世界空间几何特效（任何环境都可用，也是阶段二后处理的降级路径）
             RailgunWorldRenderer.renderStrike(event.partialTicks, state);
-            // 阶段二：Angelica 全屏后处理（色差等），仅在 Angelica 环境且无光影时生效
-            EOHBPostProcessor.renderStrikePost(event.partialTicks, state);
+        }
+        if (state.isCharging() || state.isStrikeActive()) {
+            // 阶段二：Angelica 全屏后处理（色差 + GUI 瞄准覆盖），仅 Angelica 且无光影时生效
+            EOHBPostProcessor.renderPost(event.partialTicks, state);
         }
     }
 
@@ -78,7 +84,8 @@ public class RailgunClientEvents {
             // 隐藏原版 HUD（含准星），改由自定义 HUD 接管
             event.setCanceled(true);
             Minecraft mc = Minecraft.getMinecraft();
-            RailgunHudRenderer.render(mc, state, event.resolution);
+            RailgunHudRenderer.render(mc, state, event.resolution,
+                EOHBPostProcessor.isPostGuiActive(state));
         }
     }
 
