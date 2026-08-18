@@ -41,15 +41,16 @@ public final class RailgunWorldRenderer {
         GL11.glPopMatrix();
     }
 
-    // ================= 打击特效 =================
+    // ================= 打击特效（按单个打击渲染，多人并发时逐个绘制） =================
 
-    public static void renderStrike(float partialTicks, RailgunClientState state) {
-        double x = state.getStrikeX() + 0.5;
-        double y = state.getStrikeY() + 0.5;
-        double z = state.getStrikeZ() + 0.5;
-        float groundY = state.getStrikeY() + 1.0F;
-        float t = state.getStrikeSeconds(partialTicks);
-        float radius = state.getStrikeRadius();
+    public static void renderStrike(float partialTicks, RailgunClientState state,
+                                    RailgunClientState.ClientStrike strike) {
+        double x = strike.x + 0.5;
+        double y = strike.y + 0.5;
+        double z = strike.z + 0.5;
+        float groundY = strike.y + 1.0F;
+        float t = strike.getSeconds(state.getClientTick(), partialTicks);
+        float radius = strike.radius;
 
         GL11.glPushMatrix();
         translateToWorld();
@@ -64,9 +65,9 @@ public final class RailgunWorldRenderer {
 
         GL11.glPopMatrix();
 
-        // 湮灭粒子（只触发一次）
-        if (t >= RailgunClientState.STRIKE_END_SECONDS && !state.isExplosionParticleFired()) {
-            state.markExplosionParticleFired();
+        // 湮灭粒子（每个打击只触发一次）
+        if (t >= RailgunClientState.STRIKE_END_SECONDS && !strike.isExplosionParticleFired()) {
+            strike.markExplosionParticleFired();
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.theWorld != null) {
                 mc.theWorld.spawnParticle("hugeexplosion", x, groundY - 0.5, z, 0.0, 0.0, 0.0);

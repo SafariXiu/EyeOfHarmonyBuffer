@@ -1579,3 +1579,5 @@ EOHB_OrbitalRailgun_Tooltip_00=Hold right-click to charge the orbital strike, th
 EOHB_OrbitalRailgun_Tooltip_01=The target area is completely annihilated. Even bedrock will not survive.
 EOHB_OrbitalRailgun_Ready=READY
 EOHB_OrbitalRailgun_AimAtBlock=Aim at a block to lock the target!
+EOHB_OrbitalRailgun_InsufficientOru=§cInsufficient Orundum energy for an orbital strike!
+EOHB_OrbitalRailgun_AlreadyActive=§cAn orbital strike is already active at this location!

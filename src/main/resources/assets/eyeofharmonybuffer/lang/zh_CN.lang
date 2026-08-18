@@ -1650,3 +1650,5 @@ EOHB_OrbitalRailgun_Tooltip_00=按住右键充能轨道打击，充能完毕后�
 EOHB_OrbitalRailgun_Tooltip_01=目标区域将被彻底湮灭，基岩也不例外。
 EOHB_OrbitalRailgun_Ready=就绪
 EOHB_OrbitalRailgun_AimAtBlock=请将准星对准方块以锁定目标！
+EOHB_OrbitalRailgun_InsufficientOru=§c源石能量不足，无法发动轨道打击！
+EOHB_OrbitalRailgun_AlreadyActive=§c该位置已有进行中的轨道打击！

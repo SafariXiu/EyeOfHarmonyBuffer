@@ -68,14 +68,18 @@ public class RailgunClientEvents {
             }
         }
         if (state.isStrikeActive()) {
-            // 阶段二 strike pass 激活时，打击视觉由 strike.fsh 全权呈现（忠实移植版：
-            // 落点环/扩张球体/六球/光束/冲击波/爆炸柱，几何特效仅作无 Angelica/光影时的降级）
-            if (!EOHBPostProcessor.isPostStrikeActive(state)) {
-                // 阶段一：世界空间几何特效（任何环境都可用，也是阶段二后处理的降级路径）
-                RailgunWorldRenderer.renderStrike(event.partialTicks, state);
+            // 多人并发分流：自己的主打击由后处理 strike.fsh 全权呈现；
+            // 其他打击（别人的/纯坐标的）逐个渲染阶段一几何特效（位置正确、轻量）。
+            // 无 Angelica/光影时全部退回几何特效。
+            RailgunClientState.ClientStrike primary = EOHBPostProcessor.isPostStrikeActive(state)
+                ? state.getPrimaryStrike() : null;
+            for (RailgunClientState.ClientStrike s : state.getStrikes()) {
+                if (s != primary) {
+                    RailgunWorldRenderer.renderStrike(event.partialTicks, state, s);
+                }
             }
         }
-        if (state.isCharging() || state.isStrikeActive()) {
+        if (state.isCharging() || state.getPrimaryStrike() != null) {
             // 阶段二：Angelica 全屏后处理（strike + 色差 + GUI 瞄准覆盖），仅 Angelica 且无光影时生效
             EOHBPostProcessor.renderPost(event.partialTicks, state);
         }

@@ -43,8 +43,9 @@ public final class EOHBPostProcessor {
         } catch (Throwable t) {
             return;
         }
-        // 充能（GUI 瞄准覆盖）或打击（色差）期间运行
-        if (!state.isCharging() && !state.isStrikeActive()) {
+        // 充能（GUI 瞄准覆盖）或存在"自己的"主打击（strike/色差）期间运行。
+        // 只渲染自己的打击：别人的打击只走几何特效，避免后处理链抢占
+        if (!state.isCharging() && state.getPrimaryStrike() == null) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -64,14 +65,14 @@ public final class EOHBPostProcessor {
     }
 
     /**
-     * 本帧是否由后处理链渲染打击特效（strike pass 激活 + 后处理可用 + 无光影）。
-     * 供世界空间几何特效做去重：后处理激活时由 strike.fsh 全权呈现打击视觉（忠实移植版）。
+     * 本帧是否由后处理链渲染打击特效（存在"自己的"主打击 + 后处理可用 + 无光影）。
+     * 供世界空间几何特效做去重：主打击由 strike.fsh 全权呈现（忠实移植版）。
      */
     public static boolean isPostStrikeActive(RailgunClientState state) {
         if (!ANGELICA_AVAILABLE || failed || !MainConfig.OrbitalRailgunPostProcessEnable) {
             return false;
         }
-        if (!state.isStrikeActive()) {
+        if (state.getPrimaryStrike() == null) {
             return false;
         }
         try {

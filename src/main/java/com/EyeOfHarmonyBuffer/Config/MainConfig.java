@@ -133,6 +133,7 @@ public class MainConfig {
     public static boolean OrbitalRailgunDropBlocks = false;
     public static boolean OrbitalRailgunPostProcessEnable = true;
     public static double OrbitalRailgunStrikePassScale = 1.0;
+    public static String OrbitalRailgunOruCost = "10B";
 
     private static Configuration config;
 
@@ -661,6 +662,10 @@ public class MainConfig {
         OrbitalRailgunStrikePassScale = config
             .get("轨道炮", "打击pass分辨率比例", OrbitalRailgunStrikePassScale, "strike.fsh 光线步进 pass 的渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿时可调低")
             .getDouble(OrbitalRailgunStrikePassScale);
+
+        OrbitalRailgunOruCost = config
+            .get("轨道炮", "单次打击ORU消耗", OrbitalRailgunOruCost, "每次轨道打击消耗的 Orundum 能量（按队伍扣除），支持 K/M/B/G/T/P/E 后缀，默认 10B（100亿）")
+            .getString();
 
         if (config.hasChanged()) {
             config.save();

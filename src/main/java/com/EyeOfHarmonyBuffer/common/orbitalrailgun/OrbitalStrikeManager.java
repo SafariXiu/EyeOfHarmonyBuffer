@@ -50,10 +50,9 @@ public class OrbitalStrikeManager {
 
     public OrbitalStrikeManager() {}
 
-    /** 客户端开火请求的服务端入口（已在主线程执行）。 */
+    /** 客户端开火请求的服务端入口（已在主线程执行）：物品/启用校验后走统一 API（ORU 扣费 + 启动）。 */
     public static void handleFireRequest(EntityPlayerMP player, int x, int y, int z) {
-        World world = player.worldObj;
-        if (world == null || world.isRemote) {
+        if (player.worldObj == null || player.worldObj.isRemote) {
             return;
         }
         if (!MainConfig.OrbitalRailgunEnable) {
@@ -63,29 +62,34 @@ public class OrbitalStrikeManager {
         if (held == null || !(held.getItem() instanceof ItemOrbitalRailgun)) {
             return;
         }
-        if (isOnCooldown(player)) {
-            return;
+        OrbitalRailgunApi.StrikeResult result = OrbitalRailgunApi.requestStrikeForPlayer(player, x, y, z);
+        if (result == OrbitalRailgunApi.StrikeResult.INSUFFICIENT_ORU) {
+            player.addChatMessage(new net.minecraft.util.ChatComponentText(
+                net.minecraft.util.StatCollector.translateToLocal("EOHB_OrbitalRailgun_InsufficientOru")));
+        } else if (result == OrbitalRailgunApi.StrikeResult.STRIKE_ALREADY_ACTIVE) {
+            player.addChatMessage(new net.minecraft.util.ChatComponentText(
+                net.minecraft.util.StatCollector.translateToLocal("EOHB_OrbitalRailgun_AlreadyActive")));
         }
-        if (!world.blockExists(x, y, z)) {
-            return;
-        }
-        double dist = player.getDistance(x + 0.5, y + 0.5, z + 0.5);
-        if (dist > MainConfig.OrbitalRailgunRange * 1.5) {
-            return;
-        }
-
-        applyCooldown(player);
-        startStrike(world, x, y, z, (float) MainConfig.OrbitalRailgunRadius, player);
     }
 
-    /** 启动一次轨道打击（服务端主线程调用）。 */
-    public static void startStrike(World world, int x, int y, int z, float radius, EntityPlayer shooter) {
+    /** 指定位置当前是否有进行中的打击（API 扣费前先去重，避免扣费后无法启动）。 */
+    public static boolean hasActiveStrike(int dimensionId, int x, int y, int z) {
+        return ACTIVE_STRIKES.containsKey(new StrikeKey(dimensionId, x, y, z));
+    }
+
+    /**
+     * 启动一次轨道打击（服务端主线程调用）。
+     *
+     * @return true 表示成功启动；false 表示同位置已有打击
+     */
+    public static boolean startStrike(World world, int x, int y, int z, float radius,
+                                      EntityPlayer shooter, UUID shooterUuid, UUID teamId) {
         if (world == null || world.isRemote) {
-            return;
+            return false;
         }
         StrikeKey key = new StrikeKey(world.provider.dimensionId, x, y, z);
         if (ACTIVE_STRIKES.containsKey(key)) {
-            return;
+            return false;
         }
 
         double clampedRadius = Math.max(0.5, Math.min(128.0, radius));
@@ -99,7 +103,9 @@ public class OrbitalStrikeManager {
                 x + extent, y + extent, z + extent));
 
         ACTIVE_STRIKES.put(key, new ActiveStrike(world.provider.dimensionId, x, y, z,
-            (float) clampedRadius, startTick, tracked, shooter != null ? shooter.getUniqueID() : null));
+            (float) clampedRadius, startTick, tracked,
+            shooterUuid != null ? shooterUuid : (shooter != null ? shooter.getUniqueID() : null),
+            teamId));
 
         // 开火音效（占位，后续替换为自定义音效）
         world.playSoundEffect(shooter == null ? x : shooter.posX,
@@ -107,10 +113,16 @@ public class OrbitalStrikeManager {
             shooter == null ? z : shooter.posZ,
             "fireworks.launch", 2.0F, 0.9F);
 
-        // 通知附近客户端播放特效
+        // 通知附近客户端播放特效（携带归属，供客户端多打击分流）
         OrbitalRailgunNetwork.INSTANCE.sendToAllAround(
-            new PacketOrbitalStrikeStart(x, y, z, (float) clampedRadius),
+            new PacketOrbitalStrikeStart(x, y, z, (float) clampedRadius,
+                shooterUuid != null ? shooterUuid : (shooter != null ? shooter.getUniqueID() : null),
+                teamId),
             new NetworkRegistry.TargetPoint(world.provider.dimensionId, x, y, z, 512.0));
+
+        // 打击监听器（机器 GUI/统计）
+        OrbitalRailgunApi.fireListeners(world.provider.dimensionId, x, y, z, (float) clampedRadius, teamId);
+        return true;
     }
 
     // ---------- 冷却 ----------
@@ -127,7 +139,8 @@ public class OrbitalStrikeManager {
         return true;
     }
 
-    private static void applyCooldown(EntityPlayer player) {
+    /** 施加玩家个人冷却（Api 玩家入口调用）。 */
+    public static void applyCooldown(EntityPlayer player) {
         COOLDOWN_UNTIL.put(player.getUniqueID(),
             System.currentTimeMillis() + Math.max(0, MainConfig.OrbitalRailgunCooldownTicks) * 50L);
     }
@@ -313,10 +326,11 @@ public class OrbitalStrikeManager {
         final float radius;
         final long startTick;
         final List<Entity> tracked;
-        final UUID shooter;
+        final UUID shooterUuid;
+        final UUID teamId;
 
         ActiveStrike(int dimensionId, int x, int y, int z, float radius, long startTick,
-                     List<Entity> tracked, UUID shooter) {
+                     List<Entity> tracked, UUID shooterUuid, UUID teamId) {
             this.dimensionId = dimensionId;
             this.x = x;
             this.y = y;
@@ -324,7 +338,8 @@ public class OrbitalStrikeManager {
             this.radius = radius;
             this.startTick = startTick;
             this.tracked = tracked;
-            this.shooter = shooter;
+            this.shooterUuid = shooterUuid;
+            this.teamId = teamId;
         }
     }
 
