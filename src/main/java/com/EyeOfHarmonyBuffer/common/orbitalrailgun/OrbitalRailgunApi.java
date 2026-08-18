@@ -14,17 +14,9 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 轨道打击对外接口（仿 DysonSphereState/DysonSphereSystem 的静态门面模式）。
- * <p>
- * 供戴森球模块/多方块机器/命令调用，统一完成：
- * 校验（启用/世界/坐标/冷却/去重）→ ORU 费用扣除（队伍制）→ 启动打击。
- * 三个入口：
- * <ul>
- *   <li>{@link #requestStrikeForPlayer}：玩家入口（物品开火内部也走这里），扣玩家所在队伍 ORU，受个人冷却与射程限制</li>
- *   <li>{@link #requestStrikeForTeam}：机器/模块入口，按队伍 UUID 扣费，不受个人冷却与射程限制</li>
- *   <li>{@link #fireStrikeAt}：纯坐标直接打击（不扣费，由调用方自行管理费用），仅校验世界/坐标/去重</li>
- * </ul>
- * 监听器：{@link StrikeListener} 在打击成功启动时回调，供机器 GUI/统计使用。
+ * 轨道打击对外接口（静态门面）：校验 → 扣 ORU（队伍制）→ 启动打击。
+ * 三个入口：玩家（扣费+冷却+射程）/ 队伍（机器，扣费）/ 纯坐标（不扣费）。
+ * 监听器 {@link StrikeListener} 在打击成功启动时回调。
  */
 public final class OrbitalRailgunApi {
 

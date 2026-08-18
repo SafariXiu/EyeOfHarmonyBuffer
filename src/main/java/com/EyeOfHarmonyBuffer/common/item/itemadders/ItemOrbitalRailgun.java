@@ -15,7 +15,7 @@ import java.util.List;
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
 /**
- * 轨道炮（阶段1占位物品）。
+ * 轨道炮物品（移植自 orbital-railgun，MIT License，见 LICENSE-orbital-railgun.txt）。
  * 按住右键充能 -> 充能完成后左键开火，服务端收到请求后执行轨道打击。
  * 物品材质暂时复用 KuangMaiCaiJIZhe，后续替换为正式模型。
  */

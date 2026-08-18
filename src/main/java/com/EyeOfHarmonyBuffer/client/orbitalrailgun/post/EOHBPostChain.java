@@ -25,24 +25,9 @@ import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 轨道炮后处理链（自研版，不依赖 Angelica 内部类）。
- *
- * <p>只用标准 GL20/GL30 API：自编译 GLSL program、自建 FBO/纹理/全屏 quad。
- * 运行在 Angelica 提供的 GL 3.3 core 上下文里（GL 调用由 Angelica 的 GLSM
- * 自动重定向/追踪），但代码本身不引用任何 Angelica 内部类，避免内部 API
- * 语义/版本漂移风险。</p>
- *
- * <p>管线（对齐 Forge 移植版 railgun.json 的 strike→chromatic→gui 顺序）：
- * <pre>
- *   主 FBO 颜色 --strike(800步SDF光线步进)--> C0 --色差--> C1 --GUI瞄准覆盖--> C2 --blit--> 主 FBO
- *   主 FBO 深度 --blit--> 深度纹理（1.7.10 主 FBO 深度是 renderbuffer/纹理，不可直接采样，需拷贝）
- * </pre>
- * strike pass 分辨率可由配置 OrbitalRailgunStrikePassScale 缩放（默认 1.0 全分辨率）。
- * </p>
- *
- * <p>shader 一律使用 GLSL 330 core 原生语法（避免 CompatShaderTransformer
- * 的 ANTLR 解析路径——它会对 GLSL 120 兼容语法做转换，遇到 GlShader 附加的
- * '\0' 结尾会报语法错误甚至卡死编译）。</p>
+ * 轨道炮后处理链（自研 GL，不依赖 Angelica 内部类）。
+ * 管线：strike(800步SDF) -> 色差 -> GUI -> 主FBO；深度经 blit 拷贝后采样。
+ * shader 一律 GLSL 330 core 原生语法（避开 CompatShaderTransformer 的 ANTLR 解析）。
  */
 public class EOHBPostChain {
 
@@ -119,7 +104,7 @@ public class EOHBPostChain {
         float[] invProjection = captureInverseProjection();
         float[] modelView = captureModelView();
 
-        // 主 FBO 深度 -> 离屏深度纹理（主 FBO 深度不可直接采样，需 blit 拷贝）
+        // 主 FBO 深度拷贝（renderbuffer 不可直接采样）
         GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, main.framebufferObject);
         GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, depthFramebuffer);
         GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
@@ -166,17 +151,15 @@ public class EOHBPostChain {
         drawFullscreenQuad();
         GL20.glUseProgram(0);
 
-        // blit：GUI 输出 -> 主 FBO（绑定统一走 GLStateManager，保持状态追踪一致）
+        // blit：GUI 输出 -> 主 FBO
         GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, guiFramebuffer);
         GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, main.framebufferObject);
         GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
             GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
-        // 恢复深度测试/深度写入（blend 由后续渲染自行设置）
+        // 恢复深度/主 FBO/视口，供手与 HUD 渲染继续
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(true);
-
-        // 恢复主 FBO 绑定与视口（后续手/HUD 渲染继续）
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, main.framebufferObject);
         GL11.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 

@@ -1,13 +1,8 @@
 #version 330 core
-// 轨道炮打击后处理（移植自 orbital-railgun 的 strike.fsh，forge 移植版原文）
-// GLSL 330 core 原生语法（避开 CompatShaderTransformer 的 ANTLR 解析路径）。
-// 时间轴（iTime = 打击秒数，0 起）：
-//   localTime = iTime - 4*step(4,iTime) - 32*step(36,iTime)
-//   0~4s   落点瞄准环（旋转、渐暗）
-//   4~36s  扩张：主球壳 + 六球环绕 + 高低光束 + 冲击波纹（800 步 SDF 光线步进）
-//   36s+   爆炸：扩散圆柱 + 多环冲击波 + 淡出
-// 世界重建与 gui.fsh 同约定：InverseTransformMatrix = inverse(投影)，
-// ModelViewMat = 纯旋转，世界 = inverse(ModelViewMat)*视图 + CameraPosition。
+// 轨道炮打击后处理（移植自 orbital-railgun 的 strike.fsh）
+// 时间轴（iTime = 打击秒数）：0~4s 落点环；4~36s 扩张球体/六球/光束/冲击波；36s+ 爆炸柱淡出。
+// 世界重建与 gui.fsh 同约定（纯旋转 ModelViewMat + CameraPosition）。
+// 移植自 orbital-railgun（Mishkis，MIT License，见 LICENSE-orbital-railgun.txt）。
 #define STEPS 800
 #define MIN_DIST 0.001
 #define MAX_DIST 2500.

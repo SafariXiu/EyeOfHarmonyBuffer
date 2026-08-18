@@ -28,10 +28,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 轨道打击服务端逻辑（移植自 orbital-railgun）：
- * 0-400 tick  蓄力（无服务端行为）
- * 400-700 tick 把实体吸向目标点
- * 700 tick    伤害 + 清空半径内整列方块（每 tick 预算，防止卡服）
+ * 轨道打击服务端逻辑（移植自 orbital-railgun，MIT License，见 LICENSE-orbital-railgun.txt）。
+ * 时间轴：0-400t 蓄力；400-700t 吸引实体；700t 伤害 + 逐 tick 预算清空方块。
  */
 public class OrbitalStrikeManager {
 

@@ -9,13 +9,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
 
 /**
- * 轨道炮后处理门控：
- * - 仅 Angelica 已加载时启用（Loader.isModLoaded 不触发 Angelica 类加载，安全）
- * - 光影包（Iris/Oculus）激活时自动跳过，避免与光影 composite 冲突
- * - 出错时永久降级（阶段一几何特效不受影响）
- *
- * 渲染窗口（对齐 Forge 移植版）：充能（GUI 瞄准覆盖）或打击（色差）期间
- * 整链运行；shader 内部自行按阶段门控（chromatic 需要 iTime>=37 且 StrikeActive）。
+ * 轨道炮后处理门控：仅 Angelica 加载且无光影包时启用；出错永久降级（几何特效兜底）。
+ * 渲染窗口：充能（GUI 覆盖）或有"自己的"主打击（strike/色差）期间。
  */
 public final class EOHBPostProcessor {
 

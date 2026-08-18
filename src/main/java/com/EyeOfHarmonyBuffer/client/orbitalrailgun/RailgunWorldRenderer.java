@@ -7,11 +7,8 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import org.lwjgl.opengl.GL11;
 
 /**
- * 轨道炮世界空间视觉（阶段1：几何方案，Tessellator + 加法混合）。
- * 时间轴：
- *   0-4s   天降蓄力光束（轴心 + 螺旋）
- *   4-36s  扩张：地面冲击波环 + 球体三环 + 六根旋转光束 + 核心光球
- *   36s+   湮灭闪光 + 爆炸粒子
+ * 轨道炮世界空间视觉（移植自 orbital-railgun 的视觉设计，MIT License，见 LICENSE-orbital-railgun.txt）。
+ * 时间轴：0-4s 蓄力光束；4-36s 扩张环/光束/核心；36s+ 湮灭闪光与粒子。
  */
 public final class RailgunWorldRenderer {
 
@@ -77,7 +74,7 @@ public final class RailgunWorldRenderer {
     }
 
     private static void renderChargeBeam(double x, double y, double z, float t) {
-        float fade = Math.min(1.0F, t * 2.0F); // 0.5s 淡入
+        float fade = Math.min(1.0F, t * 2.0F);
         double topY = y + 0.5 + BEAM_TOP_OFFSET;
 
         // 轴心光束
@@ -87,7 +84,7 @@ public final class RailgunWorldRenderer {
     }
 
     private static void renderExpansion(double x, double y, double z, float local, float radius) {
-        float p = local / RailgunClientState.STRIKE_EXPANSION_SECONDS; // 0..1
+        float p = local / RailgunClientState.STRIKE_EXPANSION_SECONDS;
         p = Math.min(1.0F, p);
         float R = radius * easeOutCubic(p);
         float alpha = Math.max(0.0F, 1.0F - p);
@@ -186,7 +183,7 @@ public final class RailgunWorldRenderer {
     private static void drawHelix(double cx, double cy, double cz, double radius, double height,
                                   float time, float r, float g, float b, float a) {
         begin(GL11.GL_LINE_STRIP, r, g, b, a, 1.5F);
-        double turns = time * 1.5; // 圈数随时间增加
+        double turns = time * 1.5;
         double step = 4.0;
         for (double y = 0; y <= height; y += step) {
             double ang = turns * Math.PI * 2.0 + (y / step) * 0.45;

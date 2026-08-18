@@ -1,5 +1,5 @@
 #version 330 core
-// 轨道炮色差后处理（移植自 orbital-railgun 的 chromatic_abjuration.fsh）
+// 轨道炮色差后处理（移植自 orbital-railgun 的 chromatic_abjuration.fsh，MIT License，见 LICENSE-orbital-railgun.txt）
 // GLSL 330 core 原生语法（避开 CompatShaderTransformer 的 ANTLR 解析路径）。
 // 打击开始 37 秒后开始生效：围绕打击点的旋转 RGB 采样偏移，距离越近强度越大
 

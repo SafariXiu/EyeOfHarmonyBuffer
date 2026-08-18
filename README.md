@@ -157,3 +157,12 @@
 ```text
 /eoh_reloadconfig 重载配置文件
 /eoh_configlist 显示配置文件链接
+```
+
+---
+
+## 📜 移植声明
+
+轨道炮（Orbital Railgun）相关代码与着色器移植自 [Mishkis/orbital-railgun](https://github.com/Mishkis/orbital-railgun)（MIT License），
+包括物品行为、打击状态机、客户端状态/事件处理、打击视觉渲染，以及 `gui.fsh` / `strike.fsh` / `chromatic_abjuration.fsh` 三个着色器。
+原许可证全文与移植清单见 `LICENSE-orbital-railgun.txt`。

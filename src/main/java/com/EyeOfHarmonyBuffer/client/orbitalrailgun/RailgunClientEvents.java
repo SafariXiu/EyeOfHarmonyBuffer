@@ -11,14 +11,7 @@ import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
-/**
- * 轨道炮客户端事件（阶段1）：
- * - ClientTickEvent  驱动状态机
- * - MouseEvent       蓄力时拦截左键（防止破坏方块）并触发开火
- * - RenderWorldLastEvent  世界空间瞄准标记 + 打击特效
- * - RenderGameOverlayEvent.Pre  充能时隐藏原版 HUD 并绘制自定义 HUD
- * - FOVUpdateEvent  充能时轻微缩放视野
- */
+/** 轨道炮客户端事件（部分移植自 orbital-railgun 的 ClientEvents，MIT License，见 LICENSE-orbital-railgun.txt）：状态驱动、左键开火、几何/后处理渲染分流、HUD、FOV。 */
 public class RailgunClientEvents {
 
     @SubscribeEvent
@@ -45,8 +38,7 @@ public class RailgunClientEvents {
         RailgunClientState state = RailgunClientState.getInstance();
         if (event.buttonstate) {
             if (state.isCharging()) {
-                // 蓄力期间左键不再执行原版攻击/挖掘
-                event.setCanceled(true);
+                event.setCanceled(true); // 蓄力时左键不执行原版攻击/挖掘
                 if (state.isReady() && state.hasTarget() && !state.isFired() && !state.isStrikeActive()) {
                     state.markFired();
                     OrbitalRailgunNetwork.INSTANCE.sendToServer(

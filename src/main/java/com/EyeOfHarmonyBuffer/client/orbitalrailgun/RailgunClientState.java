@@ -12,10 +12,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 轨道炮客户端状态机（移植自 orbital-railgun 的 RailgunState）。
- * 单例，由 ClientTickEvent 驱动；渲染层只读。
- */
+/** 轨道炮客户端状态机（移植自 orbital-railgun 的 RailgunState，MIT License，见 LICENSE-orbital-railgun.txt）：充能/目标/多打击列表，由 ClientTickEvent 驱动；渲染层只读。 */
+
 public class RailgunClientState {
 
     /** 打击特效总时长（tick），与时间轴 4s 蓄力 + 32s 扩张 + 收尾对齐。 */

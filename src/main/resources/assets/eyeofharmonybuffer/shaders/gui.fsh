@@ -1,11 +1,8 @@
 #version 330 core
 // 轨道炮瞄准 GUI 后处理（移植自 orbital-railgun 的 gui.fsh）
-// GLSL 330 core 原生语法（避开 CompatShaderTransformer 的 ANTLR 解析路径）。
-// 内容：SDF 目标选框（深度感知、可被地形遮挡）+ 旋转 AOE 圈 + 屏幕内框
-//       （扫描线/glitch 噪点）+ 旋转准星。
-// 1.7.10 适配：世界坐标重建只用 InverseTransformMatrix（= inverse(P * V)，
-//       与 1.7.10 原版 ShaderGroup 约定一致），不再需要 ModelViewMat/CameraPosition；
-//       光线步进仅在有方块命中且像素位于中央区域时执行（等效结果，省掉大部分像素的 500 步）。
+// SDF 目标选框（深度感知）+ 旋转 AOE 圈 + 屏幕内框（扫描线/glitch）+ 旋转准星。
+// 世界重建：inverse(ModelViewMat)*视图 + CameraPosition（1.7.10 相机矩阵为纯旋转）。
+// 移植自 orbital-railgun（Mishkis，MIT License，见 LICENSE-orbital-railgun.txt）。
 #define STEPS 500
 #define MIN_DIST 0.001
 #define MAX_DIST 250.
