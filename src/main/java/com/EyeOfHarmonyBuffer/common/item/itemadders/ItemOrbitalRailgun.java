@@ -56,5 +56,6 @@ public class ItemOrbitalRailgun extends Item {
     public void addInformation(ItemStack stack, EntityPlayer player, List list, boolean advanced) {
         list.add(TextLocalization.Tooltip_OrbitalRailgun_00);
         list.add(TextLocalization.Tooltip_OrbitalRailgun_01);
+        list.add(TextLocalization.Tooltip_OrbitalRailgun_02);
     }
 }

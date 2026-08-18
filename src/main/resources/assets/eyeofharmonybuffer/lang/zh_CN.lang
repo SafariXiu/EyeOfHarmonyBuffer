@@ -1673,6 +1673,7 @@ tile.pure_glow_block.15.name=纯黑发光方块
 item.OrbitalRailgun.name=轨道炮
 EOHB_OrbitalRailgun_Tooltip_00=按住右键充能轨道打击，充能完毕后左键开火。
 EOHB_OrbitalRailgun_Tooltip_01=目标区域将被彻底湮灭，基岩也不例外。
+EOHB_OrbitalRailgun_Tooltip_02=发动一次打击需要100亿源石能量，100tick一位玩家只可打击一次
 EOHB_OrbitalRailgun_Ready=就绪
 EOHB_OrbitalRailgun_AimAtBlock=请将准星对准方块以锁定目标！
 EOHB_OrbitalRailgun_InsufficientOru=§c源石能量不足，无法发动轨道打击！

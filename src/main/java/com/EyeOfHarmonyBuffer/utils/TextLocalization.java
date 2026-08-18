@@ -878,6 +878,7 @@ public class TextLocalization {
     public static final String NameOrbitalRailgun;
     public static final String Tooltip_OrbitalRailgun_00;
     public static final String Tooltip_OrbitalRailgun_01;
+    public static final String Tooltip_OrbitalRailgun_02;
     public static final String EOHB_OrbitalRailgun_Ready;
     public static final String EOHB_OrbitalRailgun_AimAtBlock;
     public static final String EOHB_OrbitalRailgun_InsufficientOru;
@@ -2257,6 +2258,7 @@ public class TextLocalization {
         NameOrbitalRailgun = TextHandler.texter("Orbital Railgun","item.OrbitalRailgun.name");
         Tooltip_OrbitalRailgun_00 = TextHandler.texter("Hold right-click to charge the orbital strike, then left-click to fire.","EOHB_OrbitalRailgun_Tooltip_00");
         Tooltip_OrbitalRailgun_01 = TextHandler.texter("The target area is completely annihilated. Even bedrock will not survive.","EOHB_OrbitalRailgun_Tooltip_01");
+        Tooltip_OrbitalRailgun_02 = TextHandler.texter("Each strike consumes 10B Orundum energy. Each player can strike once every 100 ticks.","EOHB_OrbitalRailgun_Tooltip_02");
         EOHB_OrbitalRailgun_Ready = TextHandler.texter("READY","EOHB_OrbitalRailgun_Ready");
         EOHB_OrbitalRailgun_AimAtBlock = TextHandler.texter("Aim at a block to lock the target!","EOHB_OrbitalRailgun_AimAtBlock");
         EOHB_OrbitalRailgun_InsufficientOru = TextHandler.texter("Insufficient Orundum energy for an orbital strike!","EOHB_OrbitalRailgun_InsufficientOru");

@@ -1602,6 +1602,7 @@ tile.pure_glow_block.15.name=Pure Black Glow Block
 item.OrbitalRailgun.name=Orbital Railgun
 EOHB_OrbitalRailgun_Tooltip_00=Hold right-click to charge the orbital strike, then left-click to fire.
 EOHB_OrbitalRailgun_Tooltip_01=The target area is completely annihilated. Even bedrock will not survive.
+EOHB_OrbitalRailgun_Tooltip_02=Each strike consumes 10B Orundum energy. Each player can strike once every 100 ticks.
 EOHB_OrbitalRailgun_Ready=READY
 EOHB_OrbitalRailgun_AimAtBlock=Aim at a block to lock the target!
 EOHB_OrbitalRailgun_InsufficientOru=§cInsufficient Orundum energy for an orbital strike!
