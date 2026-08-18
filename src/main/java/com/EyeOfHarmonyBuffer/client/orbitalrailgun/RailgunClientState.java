@@ -143,12 +143,22 @@ public class RailgunClientState {
      * 收到服务端打击广播：加入列表。
      * 归属判断：自己发起 或 同队发起（机器打击带队伍）→ 全特效候选；其余只显示几何特效。
      */
-    public void onStrikeStarted(int x, int y, int z, float radius, UUID shooterUuid, UUID teamId) {
+    public void onStrikeStarted(int x, int y, int z, float radius, int dimensionId,
+                                UUID shooterUuid, UUID teamId) {
         boolean own = resolveOwn(shooterUuid, teamId);
-        strikes.add(new ClientStrike(x, y, z, radius, clientTick, own));
+        strikes.add(new ClientStrike(x, y, z, radius, dimensionId, clientTick, own));
         while (strikes.size() > MAX_CLIENT_STRIKES) {
             strikes.remove(0);
         }
+    }
+
+    /** 当前玩家所在维度（无玩家/世界时返回哨兵值，保证不匹配任何打击）。 */
+    private int currentDimensionId() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null || mc.thePlayer.worldObj == null) {
+            return Integer.MIN_VALUE;
+        }
+        return mc.thePlayer.worldObj.provider.dimensionId;
     }
 
     /** 归属判断：本地玩家自己发起，或（客户端可解析队伍时）同队发起。 */
@@ -174,60 +184,87 @@ public class RailgunClientState {
         return false;
     }
 
-    /** 全部进行中的打击（几何特效逐个渲染）。 */
+    /** 当前维度的进行中打击（几何特效逐个渲染；跨维度的打击不显示）。 */
     public List<ClientStrike> getStrikes() {
-        return strikes;
+        int dim = currentDimensionId();
+        List<ClientStrike> visible = new ArrayList<ClientStrike>();
+        for (ClientStrike s : strikes) {
+            if (s.dimensionId == dim) {
+                visible.add(s);
+            }
+        }
+        return visible;
     }
 
     /**
-     * 主打击（后处理链专用）：最近一个"自己的"打击。
+     * 主打击（后处理链专用）：当前维度中最近一个"自己的"打击。
      * 无自己的打击时返回 null（后处理不渲染，避免把别人的打击特效占为己有）。
      */
     public ClientStrike getPrimaryStrike() {
+        int dim = currentDimensionId();
         for (int i = strikes.size() - 1; i >= 0; i--) {
-            if (strikes.get(i).own) {
-                return strikes.get(i);
+            ClientStrike s = strikes.get(i);
+            if (s.own && s.dimensionId == dim) {
+                return s;
             }
         }
         return null;
     }
 
-    /** 是否存在任意进行中的打击（几何渲染门控）。 */
-    public boolean isStrikeActive() {
-        return !strikes.isEmpty();
+    /** 当前维度最近一个进行中的打击（兼容旧接口回退用）。 */
+    private ClientStrike latestCurrentStrike() {
+        int dim = currentDimensionId();
+        for (int i = strikes.size() - 1; i >= 0; i--) {
+            ClientStrike s = strikes.get(i);
+            if (s.dimensionId == dim) {
+                return s;
+            }
+        }
+        return null;
     }
 
-    /** 兼容旧接口：主打击坐标（无主打击时取最近一个）。 */
+    /** 当前维度是否存在进行中的打击（几何渲染门控；跨维度不渲染）。 */
+    public boolean isStrikeActive() {
+        return latestCurrentStrike() != null;
+    }
+
+    /** 兼容旧接口：当前维度主打击坐标（无主打击时取最近一个）。 */
     public int getStrikeX() {
         ClientStrike s = getPrimaryStrike();
-        return s != null ? s.x : (strikes.isEmpty() ? 0 : strikes.get(strikes.size() - 1).x);
+        if (s == null) {
+            s = latestCurrentStrike();
+        }
+        return s != null ? s.x : 0;
     }
 
     public int getStrikeY() {
         ClientStrike s = getPrimaryStrike();
-        return s != null ? s.y : (strikes.isEmpty() ? 0 : strikes.get(strikes.size() - 1).y);
+        if (s == null) {
+            s = latestCurrentStrike();
+        }
+        return s != null ? s.y : 0;
     }
 
     public int getStrikeZ() {
         ClientStrike s = getPrimaryStrike();
-        return s != null ? s.z : (strikes.isEmpty() ? 0 : strikes.get(strikes.size() - 1).z);
+        if (s == null) {
+            s = latestCurrentStrike();
+        }
+        return s != null ? s.z : 0;
     }
 
     public float getStrikeRadius() {
         ClientStrike s = getPrimaryStrike();
-        if (s != null) {
-            return s.radius;
+        if (s == null) {
+            s = latestCurrentStrike();
         }
-        if (!strikes.isEmpty()) {
-            return strikes.get(strikes.size() - 1).radius;
-        }
-        return (float) MainConfig.OrbitalRailgunRadius;
+        return s != null ? s.radius : (float) MainConfig.OrbitalRailgunRadius;
     }
 
     public float getStrikeSeconds(float partialTicks) {
         ClientStrike s = getPrimaryStrike();
-        if (s == null && !strikes.isEmpty()) {
-            s = strikes.get(strikes.size() - 1);
+        if (s == null) {
+            s = latestCurrentStrike();
         }
         return s == null ? 0 : s.getSeconds(clientTick, partialTicks);
     }
@@ -243,17 +280,21 @@ public class RailgunClientState {
         public final int y;
         public final int z;
         public final float radius;
+        /** 打击所在维度（跨维度不渲染）。 */
+        public final int dimensionId;
         public final long startClientTick;
         /** 是否属于本地玩家（自己发起或同队）。 */
         public final boolean own;
         /** 湮灭粒子是否已触发（每个打击各自一次）。 */
         private boolean explosionParticleFired;
 
-        ClientStrike(int x, int y, int z, float radius, long startClientTick, boolean own) {
+        ClientStrike(int x, int y, int z, float radius, int dimensionId,
+                     long startClientTick, boolean own) {
             this.x = x;
             this.y = y;
             this.z = z;
             this.radius = radius;
+            this.dimensionId = dimensionId;
             this.startClientTick = startClientTick;
             this.own = own;
         }

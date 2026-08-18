@@ -110,9 +110,9 @@ public class OrbitalStrikeManager {
             shooter == null ? z : shooter.posZ,
             "fireworks.launch", 2.0F, 0.9F);
 
-        // 通知附近客户端播放特效（携带归属，供客户端多打击分流）
+        // 通知附近客户端播放特效（携带归属与维度，供多打击分流/跨维度门控）
         OrbitalRailgunNetwork.INSTANCE.sendToAllAround(
-            new PacketOrbitalStrikeStart(x, y, z, (float) clampedRadius,
+            new PacketOrbitalStrikeStart(x, y, z, (float) clampedRadius, world.provider.dimensionId,
                 shooterUuid != null ? shooterUuid : (shooter != null ? shooter.getUniqueID() : null),
                 teamId),
             new NetworkRegistry.TargetPoint(world.provider.dimensionId, x, y, z, 512.0));

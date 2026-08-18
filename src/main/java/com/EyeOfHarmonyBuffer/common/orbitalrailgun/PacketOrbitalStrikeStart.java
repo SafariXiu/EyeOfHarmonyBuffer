@@ -9,13 +9,15 @@ import com.EyeOfHarmonyBuffer.client.orbitalrailgun.RailgunClientState;
 
 import java.util.UUID;
 
-/** 服务端 -> 客户端：通知一次轨道打击开始（播放视觉特效）。携带归属信息供多打击分流。 */
+/** 服务端 -> 客户端：通知一次轨道打击开始（播放视觉特效）。携带归属与维度信息供多打击分流/跨维度门控。 */
 public class PacketOrbitalStrikeStart implements IMessage, IMessageHandler<PacketOrbitalStrikeStart, IMessage> {
 
     private int targetX;
     private int targetY;
     private int targetZ;
     private float radius;
+    /** 打击所在维度（客户端按维度过滤特效，跨维度不渲染）。 */
+    private int dimensionId;
     /** 发起者 UUID（机器打击可能为 null）。 */
     private UUID shooterUuid;
     /** 发起者所属队伍 UUID（纯坐标打击可能为 null）。 */
@@ -23,15 +25,17 @@ public class PacketOrbitalStrikeStart implements IMessage, IMessageHandler<Packe
 
     public PacketOrbitalStrikeStart() {}
 
-    public PacketOrbitalStrikeStart(int x, int y, int z, float radius) {
-        this(x, y, z, radius, null, null);
+    public PacketOrbitalStrikeStart(int x, int y, int z, float radius, int dimensionId) {
+        this(x, y, z, radius, dimensionId, null, null);
     }
 
-    public PacketOrbitalStrikeStart(int x, int y, int z, float radius, UUID shooterUuid, UUID teamId) {
+    public PacketOrbitalStrikeStart(int x, int y, int z, float radius, int dimensionId,
+                                    UUID shooterUuid, UUID teamId) {
         this.targetX = x;
         this.targetY = y;
         this.targetZ = z;
         this.radius = radius;
+        this.dimensionId = dimensionId;
         this.shooterUuid = shooterUuid;
         this.teamId = teamId;
     }
@@ -42,6 +46,7 @@ public class PacketOrbitalStrikeStart implements IMessage, IMessageHandler<Packe
         buf.writeInt(targetY);
         buf.writeInt(targetZ);
         buf.writeFloat(radius);
+        buf.writeInt(dimensionId);
         buf.writeBoolean(shooterUuid != null);
         if (shooterUuid != null) {
             buf.writeLong(shooterUuid.getMostSignificantBits());
@@ -60,6 +65,7 @@ public class PacketOrbitalStrikeStart implements IMessage, IMessageHandler<Packe
         targetY = buf.readInt();
         targetZ = buf.readInt();
         radius = buf.readFloat();
+        dimensionId = buf.readInt();
         if (buf.readBoolean()) {
             shooterUuid = new UUID(buf.readLong(), buf.readLong());
         } else {
@@ -81,7 +87,7 @@ public class PacketOrbitalStrikeStart implements IMessage, IMessageHandler<Packe
                 public void run() {
                     RailgunClientState.getInstance().onStrikeStarted(
                         message.targetX, message.targetY, message.targetZ, message.radius,
-                        message.shooterUuid, message.teamId);
+                        message.dimensionId, message.shooterUuid, message.teamId);
                 }
             });
         }
