@@ -120,6 +120,21 @@ public class MainConfig {
     public static boolean MegaIndustrialApiaryOutPutEnable = false;
     public static int MegaIndustrialApiaryOutPut = 10;
 
+    // ===== 轨道炮 =====
+    public static boolean OrbitalRailgunEnable = true;
+    public static double OrbitalRailgunRange = 300;
+    public static int OrbitalRailgunRadius = 24;
+    public static int OrbitalRailgunBlocksPerTick = 8192;
+    public static double OrbitalRailgunDamage = 100000;
+    public static int OrbitalRailgunCooldownTicks = 100;
+    public static int OrbitalRailgunWarmupTicks = 20;
+    public static boolean OrbitalRailgunSuckEnabled = true;
+    public static boolean OrbitalRailgunAllowUnbreakable = true;
+    public static boolean OrbitalRailgunDropBlocks = false;
+    public static boolean OrbitalRailgunPostProcessEnable = true;
+    public static double OrbitalRailgunStrikePassScale = 1.0;
+    public static String OrbitalRailgunOruCost = "10B";
+
     private static Configuration config;
 
     static {
@@ -599,6 +614,58 @@ public class MainConfig {
         Grade1WaterPurificationEnabled = config
             .get("净化水产线机器","1级水",Grade1WaterPurificationEnabled,"开启后1级水机器的过滤器永不损坏")
             .getBoolean(Grade1WaterPurificationEnabled);
+
+        OrbitalRailgunEnable = config
+            .get("轨道炮", "启用轨道炮", OrbitalRailgunEnable, "总开关，关闭后轨道炮物品无法开火")
+            .getBoolean(OrbitalRailgunEnable);
+
+        OrbitalRailgunRange = config
+            .get("轨道炮", "最大射程", OrbitalRailgunRange, "瞄准锁定最大距离（格），客户端与服务端共用")
+            .getDouble(OrbitalRailgunRange);
+
+        OrbitalRailgunRadius = config
+            .get("轨道炮", "打击半径", OrbitalRailgunRadius, "清空范围半径（格），默认24")
+            .getInt(OrbitalRailgunRadius);
+
+        OrbitalRailgunBlocksPerTick = config
+            .get("轨道炮", "每tick清除方块数", OrbitalRailgunBlocksPerTick, "清空方块时每tick处理的方块上限，防止卡服，越大清得越快")
+            .getInt(OrbitalRailgunBlocksPerTick);
+
+        OrbitalRailgunDamage = config
+            .get("轨道炮", "打击伤害", OrbitalRailgunDamage, "爆炸时对范围内实体造成的伤害")
+            .getDouble(OrbitalRailgunDamage);
+
+        OrbitalRailgunCooldownTicks = config
+            .get("轨道炮", "开火冷却(tick)", OrbitalRailgunCooldownTicks, "两次开火之间的冷却时间")
+            .getInt(OrbitalRailgunCooldownTicks);
+
+        OrbitalRailgunWarmupTicks = config
+            .get("轨道炮", "充能时间(tick)", OrbitalRailgunWarmupTicks, "按住右键需要充能多久才能开火")
+            .getInt(OrbitalRailgunWarmupTicks);
+
+        OrbitalRailgunSuckEnabled = config
+            .get("轨道炮", "爆炸前吸引实体", OrbitalRailgunSuckEnabled, "爆炸前数秒将范围内实体吸向目标点")
+            .getBoolean(OrbitalRailgunSuckEnabled);
+
+        OrbitalRailgunAllowUnbreakable = config
+            .get("轨道炮", "清除不可破坏方块", OrbitalRailgunAllowUnbreakable, "允许清除硬度小于0的方块（如基岩）")
+            .getBoolean(OrbitalRailgunAllowUnbreakable);
+
+        OrbitalRailgunDropBlocks = config
+            .get("轨道炮", "掉落方块", OrbitalRailgunDropBlocks, "清空方块时是否掉落方块本身（开启会带来大量掉落物，默认关闭）")
+            .getBoolean(OrbitalRailgunDropBlocks);
+
+        OrbitalRailgunPostProcessEnable = config
+            .get("轨道炮", "后处理特效", OrbitalRailgunPostProcessEnable, "爆炸后的全屏色差等后处理特效开关（关闭后仅保留几何特效）")
+            .getBoolean(OrbitalRailgunPostProcessEnable);
+
+        OrbitalRailgunStrikePassScale = config
+            .get("轨道炮", "打击pass分辨率比例", OrbitalRailgunStrikePassScale, "strike.fsh 光线步进 pass 的渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿时可调低")
+            .getDouble(OrbitalRailgunStrikePassScale);
+
+        OrbitalRailgunOruCost = config
+            .get("轨道炮", "单次打击ORU消耗", OrbitalRailgunOruCost, "每次轨道打击消耗的 Orundum 能量（按队伍扣除），支持 K/M/B/G/T/P/E 后缀，默认 10B（100亿）")
+            .getString();
 
         if (config.hasChanged()) {
             config.save();

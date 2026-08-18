@@ -19,6 +19,8 @@ import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateP
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereDailyHandler;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSyncHandler;
+import com.EyeOfHarmonyBuffer.common.orbitalrailgun.OrbitalRailgunNetwork;
+import com.EyeOfHarmonyBuffer.common.orbitalrailgun.OrbitalStrikeManager;
 import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
 import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
@@ -140,6 +142,9 @@ public class EyeOfHarmonyBuffer {
         proxy.init(event);
 
         DysonSphereNetwork.init();
+        OrbitalRailgunNetwork.init();
+        FMLCommonHandler.instance().bus().register(new OrbitalStrikeManager());
+
         FMLCommonHandler.instance().bus().register(new DysonSphereSyncHandler());
         FMLCommonHandler.instance().bus().register(new DysonSphereDailyHandler());
 

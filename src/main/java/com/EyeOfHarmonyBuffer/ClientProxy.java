@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
 import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.OrundumConnectorHudHandler;
 import com.EyeOfHarmonyBuffer.client.ReactorClientEventHandler;
+import com.EyeOfHarmonyBuffer.client.orbitalrailgun.RailgunClientEvents;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityWindmillRenderer;
@@ -73,6 +74,10 @@ public class ClientProxy extends CommonProxy {
         ReactorClientEventHandler handler = new ReactorClientEventHandler();
         FMLCommonHandler.instance().bus().register(handler);
         MinecraftForge.EVENT_BUS.register(handler);
+
+        RailgunClientEvents railgunEvents = new RailgunClientEvents();
+        FMLCommonHandler.instance().bus().register(railgunEvents);
+        MinecraftForge.EVENT_BUS.register(railgunEvents);
     }
 
     @SideOnly(Side.CLIENT)
