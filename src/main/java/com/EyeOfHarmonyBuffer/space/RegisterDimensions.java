@@ -9,6 +9,8 @@ import micdoodle8.mods.galacticraft.api.world.SpaceStationType;
 import java.util.HashMap;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.space.blackhole.ResourcesBlackHole;
+import com.EyeOfHarmonyBuffer.space.blackhole.WorldProviderEmeraldThrone;
 import com.EyeOfHarmonyBuffer.space.talos.WorldProviderTalos1;
 import com.EyeOfHarmonyBuffer.space.talos.WorldProviderTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.station.WorldProviderTalos2Station;
@@ -44,6 +46,13 @@ public class RegisterDimensions {
     public static final int ID_TALOS2_STATION_DIM_STATIC = -53;
     public static final int tier_Talos1 = 5;
     public static final int tier_Talos2 = 4;
+
+    /** 黑洞星系：主星为黑洞（恒星，无维度不可登录，同塔罗斯恒星模式），行星翡翠王座 T6 可达。 */
+    public static SolarSystem blackholeSystem;
+    public static Star blackHole;
+    public static Planet emeraldThrone;
+    public static final int ID_EMERALD_THRONE_DIM = 14002;
+    public static final int tier_EmeraldThrone = 6;
 
     public static void init() {
 
@@ -123,6 +132,30 @@ public class RegisterDimensions {
                 ID_TALOS2_STATION_DIM,
                 ID_TALOS1_DIM,
                 new SpaceStationRecipe(stationCost)));
+
+        // ---- 黑洞星系（尼科尔-戴森巨构：彭罗斯球选址） ----
+        // 黑洞作为恒星注册：无维度、不可登录（同塔罗斯恒星模式），星系图仅展示；
+        // 翡翠王座为绕黑洞公转的类地行星，T6 可达，地形 / 天空完全自绘
+        // （ChunkProviderEmeraldThrone / SkyProviderEmeraldThrone）。
+        blackholeSystem = new SolarSystem("blackholeSystem", "milkyWay")
+            .setMapPosition(new Vector3(-2.4, 1.5, 0.0));
+        GalaxyRegistry.registerSolarSystem(blackholeSystem);
+
+        blackHole = (Star) new Star("BlackHole")
+            .setParentSolarSystem(blackholeSystem)
+            .setTierRequired(-1);
+        blackHole.setBodyIcon(ResourcesBlackHole.BlackHole);
+        blackholeSystem.setMainStar(blackHole);
+
+        emeraldThrone = new Planet("EmeraldThrone")
+            .setParentSolarSystem(blackholeSystem);
+        emeraldThrone.setTierRequired(tier_EmeraldThrone);
+        emeraldThrone.setBodyIcon(ResourcesBlackHole.EmeraldThrone);
+        emeraldThrone.setRelativeDistanceFromCenter(new CelestialBody.ScalableDistance(0.7F, 0.7F));
+        emeraldThrone.setRelativeOrbitTime(1.5F);
+        emeraldThrone.setDimensionInfo(ID_EMERALD_THRONE_DIM, WorldProviderEmeraldThrone.class);
+        GalaxyRegistry.registerPlanet(emeraldThrone);
+        GalacticraftRegistry.registerTeleportType(WorldProviderEmeraldThrone.class, new WorldProviderEmeraldThrone());
 
         GalaxyRegistry.refreshGalaxies();
     }
