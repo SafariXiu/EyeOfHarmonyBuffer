@@ -68,6 +68,7 @@ public class ItemLoader {
     public static Item QiTaiZhuoTong = new ItemQiTaiZhuoTong();
     public static Item KuangMaiCaiJiZhe = new ItemKuangMaiCaiJiZhe();
     public static Item EnergyConnector = new ItemEnergyConnector();;
+    public static Item OrbitalRailgun = new ItemOrbitalRailgun();
 
     //瓶子
     public static Item ChiTongFluidBottle;
@@ -135,6 +136,7 @@ public class ItemLoader {
         GTCMItemList.QiTaiZhuoTong.set(registryAndCallback(QiTaiZhuoTong,"QiTaiZhuoTong"));
         GTCMItemList.KuangMaiCaiJiZhe.set(registryAndCallback(KuangMaiCaiJiZhe,"KuangMaiCaiJiZhe"));
         GTCMItemList.EnergyConnector.set(registryAndCallback(EnergyConnector,"EnergyConnector"));
+        GTCMItemList.OrbitalRailgun.set(registryAndCallback(OrbitalRailgun,"OrbitalRailgun"));
         GTCMItemList.DysonCloudComponent.set(
             registryAndCallback(new ItemDysonCloudComponent(), "DysonCloudComponent"));
         GTCMItemList.DysonFrameComponent.set(

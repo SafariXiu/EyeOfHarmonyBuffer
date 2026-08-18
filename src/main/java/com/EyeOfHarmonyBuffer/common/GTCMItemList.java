@@ -143,6 +143,7 @@ public enum GTCMItemList {
     HeTongZhuangBeiYuanJian,
     ZhuoTongZhuangBeiYuanJian,
     KuangMaiCaiJiZhe,
+    OrbitalRailgun,
     EnergyConnector,
 
     YuanShiMainBlock,
