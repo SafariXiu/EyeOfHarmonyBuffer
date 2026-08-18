@@ -1,9 +1,9 @@
 package com.EyeOfHarmonyBuffer.client.orbitalrailgun;
 
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.util.StatCollector;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -11,9 +11,6 @@ import org.lwjgl.opengl.GL11;
  * 充能时隐藏原版 HUD，由本类绘制：旋转准星 + 充能进度条 + 状态提示。
  */
 public final class RailgunHudRenderer {
-
-    public static final String KEY_READY = "EOHB_OrbitalRailgun_Ready";
-    public static final String KEY_AIM = "EOHB_OrbitalRailgun_AimAtBlock";
 
     private RailgunHudRenderer() {}
 
@@ -49,9 +46,9 @@ public final class RailgunHudRenderer {
         // 状态提示
         String text;
         if (ready && !state.hasTarget()) {
-            text = StatCollector.translateToLocal(KEY_AIM);
+            text = TextLocalization.EOHB_OrbitalRailgun_AimAtBlock;
         } else if (ready) {
-            text = StatCollector.translateToLocal(KEY_READY);
+            text = TextLocalization.EOHB_OrbitalRailgun_Ready;
         } else {
             text = null;
         }

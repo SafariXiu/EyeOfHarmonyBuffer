@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.item.itemadders;
 
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
-import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.entity.player.EntityPlayer;
@@ -21,13 +21,10 @@ import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
  */
 public class ItemOrbitalRailgun extends Item {
 
-    public static final String TOOLTIP_KEY_00 = "EOHB_OrbitalRailgun_Tooltip_00";
-    public static final String TOOLTIP_KEY_01 = "EOHB_OrbitalRailgun_Tooltip_01";
-
     public ItemOrbitalRailgun() {
         super();
         this.setUnlocalizedName("OrbitalRailgun");
-        this.setTextureName(EyeOfHarmonyBuffer.MODID + ":KuangMaiCaiJIZhe");
+        this.setTextureName(EyeOfHarmonyBuffer.MODID + ":OrbitalRailgun");
         this.setCreativeTab(tabMetaItem01);
         this.setMaxStackSize(1);
     }
@@ -57,7 +54,7 @@ public class ItemOrbitalRailgun extends Item {
     @SideOnly(Side.CLIENT)
     @SuppressWarnings("unchecked")
     public void addInformation(ItemStack stack, EntityPlayer player, List list, boolean advanced) {
-        list.add(TextHandler.texter("Hold right-click to charge the orbital strike, then left-click to fire.", TOOLTIP_KEY_00));
-        list.add(TextHandler.texter("The target area is completely annihilated. Even bedrock will not survive.", TOOLTIP_KEY_01));
+        list.add(TextLocalization.Tooltip_OrbitalRailgun_00);
+        list.add(TextLocalization.Tooltip_OrbitalRailgun_01);
     }
 }

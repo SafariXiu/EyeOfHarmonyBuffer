@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.utils;
 
-import net.minecraft.profiler.PlayerUsageSnooper;
 import net.minecraft.util.EnumChatFormatting;
 
 public class TextLocalization {
@@ -847,6 +846,42 @@ public class TextLocalization {
     public static final String EOHB_Recipe_LargeForce_ContainedProliferationMine;
     public static final String EOHB_Recipe_InternalizedUniverseComputingEngine;
     public static final String EOHB_Recipe_XirangAssembler;
+
+    //能量连接器
+    public static final String EOHB_EnergyConnector_NotOrundumDevice;
+    public static final String EOHB_EnergyConnector_DataNotLoaded;
+    public static final String EOHB_EnergyConnector_NotRegistered;
+    public static final String EOHB_EnergyConnector_NotParticipating;
+    public static final String EOHB_EnergyConnector_SelectedParent;
+    public static final String EOHB_EnergyConnector_RClickToLink;
+    public static final String EOHB_EnergyConnector_InvalidParentId;
+    public static final String EOHB_EnergyConnector_CannotSelfLink;
+    public static final String EOHB_EnergyConnector_ParentGone;
+    public static final String EOHB_EnergyConnector_LinkCreated;
+    public static final String EOHB_EnergyConnector_InvalidId;
+    public static final String EOHB_EnergyConnector_NodeNotFound;
+    public static final String EOHB_EnergyConnector_DifferentTeam;
+    public static final String EOHB_EnergyConnector_DifferentDim;
+    public static final String EOHB_EnergyConnector_TooFar;
+    public static final String EOHB_EnergyConnector_AlreadyHasParent;
+    public static final String EOHB_EnergyConnector_ClearedParent;
+    public static final String EOHB_EnergyConnector_NoParent;
+    public static final String EOHB_EnergyConnector_Tooltip_SelectedParent;
+    public static final String EOHB_EnergyConnector_Tooltip_ParentType;
+    public static final String EOHB_EnergyConnector_Tooltip_MaxDist;
+    public static final String EOHB_EnergyConnector_Tooltip_LinkHint;
+    public static final String EOHB_EnergyConnector_Tooltip_ClearHint;
+    public static final String EOHB_EnergyConnector_Tooltip_SelectHint;
+    public static final String EOHB_EnergyConnector_Tooltip_LinkHint2;
+
+    //轨道炮
+    public static final String NameOrbitalRailgun;
+    public static final String Tooltip_OrbitalRailgun_00;
+    public static final String Tooltip_OrbitalRailgun_01;
+    public static final String EOHB_OrbitalRailgun_Ready;
+    public static final String EOHB_OrbitalRailgun_AimAtBlock;
+    public static final String EOHB_OrbitalRailgun_InsufficientOru;
+    public static final String EOHB_OrbitalRailgun_AlreadyActive;
 
     public TextLocalization() {
     }
@@ -2190,5 +2225,41 @@ public class TextLocalization {
         Dyson_Broadcast_01 = TextHandler.texter("'s team has completed the Talos Dyson Sphere! The star now permanently belongs to them.","Dyson_Broadcast_01");
         Dyson_Broadcast_UnknownTeam = TextHandler.texter("Unknown Team","Dyson_Broadcast_UnknownTeam");
         EOHB_Recipe_DysonManufacturing = TextHandler.texter("Dyson Manufacturing","EOHB_Recipe_DysonManufacturing");
+
+        //能量连接器
+        EOHB_EnergyConnector_NotOrundumDevice = TextHandler.texter("This block is not an Orundum device.","EOHB_EnergyConnector_NotOrundumDevice");
+        EOHB_EnergyConnector_DataNotLoaded = TextHandler.texter("Orundum link data has not loaded yet.","EOHB_EnergyConnector_DataNotLoaded");
+        EOHB_EnergyConnector_NotRegistered = TextHandler.texter("This device is not registered to the Orundum link network (it may have just loaded or is not fully formed).","EOHB_EnergyConnector_NotRegistered");
+        EOHB_EnergyConnector_NotParticipating = TextHandler.texter("This device does not participate in the Orundum link network.","EOHB_EnergyConnector_NotParticipating");
+        EOHB_EnergyConnector_SelectedParent = TextHandler.texter("Selected parent node: %s (type: %s)","EOHB_EnergyConnector_SelectedParent");
+        EOHB_EnergyConnector_RClickToLink = TextHandler.texter("Right-click another Orundum device to create a link.","EOHB_EnergyConnector_RClickToLink");
+        EOHB_EnergyConnector_InvalidParentId = TextHandler.texter("The parent node ID recorded on this item is invalid. Cleared.","EOHB_EnergyConnector_InvalidParentId");
+        EOHB_EnergyConnector_CannotSelfLink = TextHandler.texter("A device cannot link to itself.","EOHB_EnergyConnector_CannotSelfLink");
+        EOHB_EnergyConnector_ParentGone = TextHandler.texter("The parent node no longer exists or is not loaded. Cleared.","EOHB_EnergyConnector_ParentGone");
+        EOHB_EnergyConnector_LinkCreated = TextHandler.texter("Link created: %s -> %s, max distance=%d.","EOHB_EnergyConnector_LinkCreated");
+        EOHB_EnergyConnector_InvalidId = TextHandler.texter("Invalid ID, cannot create a link.","EOHB_EnergyConnector_InvalidId");
+        EOHB_EnergyConnector_NodeNotFound = TextHandler.texter("Parent or child node does not exist.","EOHB_EnergyConnector_NodeNotFound");
+        EOHB_EnergyConnector_DifferentTeam = TextHandler.texter("The two devices belong to different teams and cannot be linked.","EOHB_EnergyConnector_DifferentTeam");
+        EOHB_EnergyConnector_DifferentDim = TextHandler.texter("The two devices are in different dimensions and cannot be linked.","EOHB_EnergyConnector_DifferentDim");
+        EOHB_EnergyConnector_TooFar = TextHandler.texter("Too far away (>%d blocks, planar distance).","EOHB_EnergyConnector_TooFar");
+        EOHB_EnergyConnector_AlreadyHasParent = TextHandler.texter("The child node already has an upstream. Disconnect it first.","EOHB_EnergyConnector_AlreadyHasParent");
+        EOHB_EnergyConnector_ClearedParent = TextHandler.texter("Selected parent node cleared.","EOHB_EnergyConnector_ClearedParent");
+        EOHB_EnergyConnector_NoParent = TextHandler.texter("No parent node selected.","EOHB_EnergyConnector_NoParent");
+        EOHB_EnergyConnector_Tooltip_SelectedParent = TextHandler.texter("Selected parent: ","EOHB_EnergyConnector_Tooltip_SelectedParent");
+        EOHB_EnergyConnector_Tooltip_ParentType = TextHandler.texter("Parent type: ","EOHB_EnergyConnector_Tooltip_ParentType");
+        EOHB_EnergyConnector_Tooltip_MaxDist = TextHandler.texter("Max link distance: %d blocks (planar).","EOHB_EnergyConnector_Tooltip_MaxDist");
+        EOHB_EnergyConnector_Tooltip_LinkHint = TextHandler.texter("Right-click another Orundum device to create a link.","EOHB_EnergyConnector_Tooltip_LinkHint");
+        EOHB_EnergyConnector_Tooltip_ClearHint = TextHandler.texter("Sneak + right-click air to clear the current parent.","EOHB_EnergyConnector_Tooltip_ClearHint");
+        EOHB_EnergyConnector_Tooltip_SelectHint = TextHandler.texter("Right-click an Orundum device to select a parent node.","EOHB_EnergyConnector_Tooltip_SelectHint");
+        EOHB_EnergyConnector_Tooltip_LinkHint2 = TextHandler.texter("Right-click another device to create a link.","EOHB_EnergyConnector_Tooltip_LinkHint2");
+
+        //轨道炮
+        NameOrbitalRailgun = TextHandler.texter("Orbital Railgun","item.OrbitalRailgun.name");
+        Tooltip_OrbitalRailgun_00 = TextHandler.texter("Hold right-click to charge the orbital strike, then left-click to fire.","EOHB_OrbitalRailgun_Tooltip_00");
+        Tooltip_OrbitalRailgun_01 = TextHandler.texter("The target area is completely annihilated. Even bedrock will not survive.","EOHB_OrbitalRailgun_Tooltip_01");
+        EOHB_OrbitalRailgun_Ready = TextHandler.texter("READY","EOHB_OrbitalRailgun_Ready");
+        EOHB_OrbitalRailgun_AimAtBlock = TextHandler.texter("Aim at a block to lock the target!","EOHB_OrbitalRailgun_AimAtBlock");
+        EOHB_OrbitalRailgun_InsufficientOru = TextHandler.texter("Insufficient Orundum energy for an orbital strike!","EOHB_OrbitalRailgun_InsufficientOru");
+        EOHB_OrbitalRailgun_AlreadyActive = TextHandler.texter("An orbital strike is already active at this location!","EOHB_OrbitalRailgun_AlreadyActive");
     }
 }

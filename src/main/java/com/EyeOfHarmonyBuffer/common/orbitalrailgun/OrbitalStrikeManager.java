@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.common.orbitalrailgun;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.ItemOrbitalRailgun;
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -15,8 +16,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.DamageSource;
-import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
@@ -62,11 +63,9 @@ public class OrbitalStrikeManager {
         }
         OrbitalRailgunApi.StrikeResult result = OrbitalRailgunApi.requestStrikeForPlayer(player, x, y, z);
         if (result == OrbitalRailgunApi.StrikeResult.INSUFFICIENT_ORU) {
-            player.addChatMessage(new net.minecraft.util.ChatComponentText(
-                net.minecraft.util.StatCollector.translateToLocal("EOHB_OrbitalRailgun_InsufficientOru")));
+            player.addChatMessage(new ChatComponentText(TextLocalization.EOHB_OrbitalRailgun_InsufficientOru));
         } else if (result == OrbitalRailgunApi.StrikeResult.STRIKE_ALREADY_ACTIVE) {
-            player.addChatMessage(new net.minecraft.util.ChatComponentText(
-                net.minecraft.util.StatCollector.translateToLocal("EOHB_OrbitalRailgun_AlreadyActive")));
+            player.addChatMessage(new ChatComponentText(TextLocalization.EOHB_OrbitalRailgun_AlreadyActive));
         }
     }
 
