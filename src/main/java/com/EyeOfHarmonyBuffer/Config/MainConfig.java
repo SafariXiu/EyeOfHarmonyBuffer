@@ -132,6 +132,7 @@ public class MainConfig {
     public static boolean OrbitalRailgunAllowUnbreakable = true;
     public static boolean OrbitalRailgunDropBlocks = false;
     public static boolean OrbitalRailgunPostProcessEnable = true;
+    public static double OrbitalRailgunStrikePassScale = 1.0;
 
     private static Configuration config;
 
@@ -656,6 +657,10 @@ public class MainConfig {
         OrbitalRailgunPostProcessEnable = config
             .get("轨道炮", "后处理特效", OrbitalRailgunPostProcessEnable, "爆炸后的全屏色差等后处理特效开关（关闭后仅保留几何特效）")
             .getBoolean(OrbitalRailgunPostProcessEnable);
+
+        OrbitalRailgunStrikePassScale = config
+            .get("轨道炮", "打击pass分辨率比例", OrbitalRailgunStrikePassScale, "strike.fsh 光线步进 pass 的渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿时可调低")
+            .getDouble(OrbitalRailgunStrikePassScale);
 
         if (config.hasChanged()) {
             config.save();

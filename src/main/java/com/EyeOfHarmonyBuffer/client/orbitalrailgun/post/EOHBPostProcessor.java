@@ -64,6 +64,27 @@ public final class EOHBPostProcessor {
     }
 
     /**
+     * 本帧是否由后处理链渲染打击特效（strike pass 激活 + 后处理可用 + 无光影）。
+     * 供世界空间几何特效做去重：后处理激活时由 strike.fsh 全权呈现打击视觉（忠实移植版）。
+     */
+    public static boolean isPostStrikeActive(RailgunClientState state) {
+        if (!ANGELICA_AVAILABLE || failed || !MainConfig.OrbitalRailgunPostProcessEnable) {
+            return false;
+        }
+        if (!state.isStrikeActive()) {
+            return false;
+        }
+        try {
+            if (IrisApi.getInstance().isShaderPackInUse()) {
+                return false;
+            }
+        } catch (Throwable t) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * 本帧是否由后处理链渲染 GUI 瞄准覆盖（充能 + 后处理可用 + 无光影）。
      * 供 2D HUD / 世界空间瞄准标记做去重：后处理激活时由 shader 接管准星与选框。
      */

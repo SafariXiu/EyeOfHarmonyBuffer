@@ -17,6 +17,7 @@ uniform mat4 ModelViewMat;
 uniform vec3 CameraPosition;
 
 uniform float IsBlockHit;
+uniform float StrikeActive;
 uniform vec3 BlockPosition;
 uniform float SelectionActive;
 
@@ -114,8 +115,9 @@ void main() {
 
     vec2 uv = texCoord - vec2(0.5);
 
-    // 目标选框只出现在中央 45% 区域且命中方块时（提前判断，跳过无谓的光线步进）
-    float coveredByScreen = min(step(abs(uv.x), 0.45 * scale.x), step(abs(uv.y), 0.45 * scale.y)) * IsBlockHit;
+    // 目标选框只出现在中央 45% 区域、命中方块且非打击时（提前判断，跳过无谓的光线步进）。
+    // 开火后选框/红色辉光消失（* (1.0 - StrikeActive)）；范围圈仍由 IsBlockHit 控制
+    float coveredByScreen = min(step(abs(uv.x), 0.45 * scale.x), step(abs(uv.y), 0.45 * scale.y)) * IsBlockHit * (1.0 - StrikeActive);
 
     float threshold = 0.;
     if (coveredByScreen > 0.5) {
@@ -139,9 +141,11 @@ void main() {
     vec3 redContribution = red * 0.03 / sDist(end_point) * coveredByScreen;
 
     // 攻击范围圈（AOE）：全屏绘制。原版只画在屏幕中央 45% 区域（coveredByScreen），
-    // 这里放开为 IsBlockHit 门控，让范围指示始终可见（即阶段一地面圈的 shader 版）
+    // 这里放开为 IsBlockHit 门控，让范围指示始终可见（即阶段一地面圈的 shader 版）。
+    // 仅充能瞄准时显示（* (1.0 - StrikeActive)）：开火后爆炸范围由 strike.fsh 呈现，
+    // 避免打击期间残留贴地光圈直到打击结束才啪地消失
     vec3 outerBaseRgb = blue * indicator + blue / 5. * step(withinAOE, 0.);
-    vec4 outer = vec4(outerBaseRgb, IsBlockHit);
+    vec4 outer = vec4(outerBaseRgb, IsBlockHit * (1.0 - StrikeActive));
     outer.rgb *= u_MarkerOuterColor;
     outer.a *= u_MarkerOuterAlpha;
 

@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.client.orbitalrailgun.post;
 
+import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 import com.EyeOfHarmonyBuffer.client.orbitalrailgun.RailgunClientState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -31,11 +32,13 @@ import java.nio.charset.StandardCharsets;
  * 自动重定向/追踪），但代码本身不引用任何 Angelica 内部类，避免内部 API
  * 语义/版本漂移风险。</p>
  *
- * <p>管线（对齐 Forge 移植版 railgun.json 的 chromatic→gui 顺序）：
+ * <p>管线（对齐 Forge 移植版 railgun.json 的 strike→chromatic→gui 顺序）：
  * <pre>
- *   主 FBO 颜色 --色差--> 离屏 colorA --GUI 瞄准覆盖--> 离屏 colorB --blit--> 主 FBO
- *   主 FBO 深度 --blit--> 离屏 depth（1.7.10 主 FBO 深度是 renderbuffer，不可采样，需拷贝）
- * </pre></p>
+ *   主 FBO 颜色 --strike(800步SDF光线步进)--> C0 --色差--> C1 --GUI瞄准覆盖--> C2 --blit--> 主 FBO
+ *   主 FBO 深度 --blit--> 深度纹理（1.7.10 主 FBO 深度是 renderbuffer/纹理，不可直接采样，需拷贝）
+ * </pre>
+ * strike pass 分辨率可由配置 OrbitalRailgunStrikePassScale 缩放（默认 1.0 全分辨率）。
+ * </p>
  *
  * <p>shader 一律使用 GLSL 330 core 原生语法（避免 CompatShaderTransformer
  * 的 ANTLR 解析路径——它会对 GLSL 120 兼容语法做转换，遇到 GlShader 附加的
@@ -55,17 +58,27 @@ public class EOHBPostChain {
 
     private int width = -1;
     private int height = -1;
+    private int strikeWidth = -1;
+    private int strikeHeight = -1;
 
-    // pass 1（色差）输出：colorA，同时是 pass 2 的 DiffuseSampler
+    // pass 1（strike）输出：C0，同时是 pass 2 的 DiffuseSampler
+    private GLProgram strikeProgram;
+    private int strikeFramebuffer;
+    private int strikeColorTexture;
+
+    // pass 2（色差）输出：C1，同时是 pass 3 的 DiffuseSampler
     private GLProgram chromaticProgram;
-    private int offscreenFramebuffer;
-    private int offscreenColorTexture;
-    private int offscreenDepthTexture;
+    private int chromaFramebuffer;
+    private int chromaColorTexture;
 
-    // pass 2（GUI 瞄准覆盖）输出：colorB，最终 blit 回主 FBO
+    // pass 3（GUI 瞄准覆盖）输出：C2，最终 blit 回主 FBO
     private GLProgram guiProgram;
     private int guiFramebuffer;
     private int guiColorTexture;
+
+    // 主 FBO 深度的拷贝（供 strike/gui pass 采样）
+    private int depthTexture;
+    private int depthFramebuffer;
 
     private int quadVao;
     private int quadVbo;
@@ -89,7 +102,10 @@ public class EOHBPostChain {
             return;
         }
         this.partialTicks = partialTicks;
-        if (main.framebufferWidth != width || main.framebufferHeight != height || chromaticProgram == null) {
+        int strikeW = strikeWidth(main.framebufferWidth);
+        int strikeH = strikeHeight(main.framebufferHeight);
+        if (main.framebufferWidth != width || main.framebufferHeight != height
+            || strikeW != strikeWidth || strikeH != strikeHeight || chromaticProgram == null) {
             resize(main.framebufferWidth, main.framebufferHeight);
             if (chromaticProgram == null) {
                 return;
@@ -99,37 +115,50 @@ public class EOHBPostChain {
         // 捕获当前 投影 与 模型视图 矩阵。此刻处于 RenderWorldLastEvent：
         // 世界透视与相机矩阵仍在 GL 栈上。1.7.10 相机矩阵是纯旋转（无平移），
         // 世界坐标重建 = inverse(投影)*ndc -> 视图空间，再 inverse(旋转)*视图 + 相机位置
-        // （与 Forge 移植版 gui.fsh 约定一致）
+        // （与 Forge 移植版 gui.fsh/strike.fsh 约定一致）
         float[] invProjection = captureInverseProjection();
         float[] modelView = captureModelView();
 
-        // 主 FBO 深度 -> 离屏深度纹理（主 FBO 深度是 renderbuffer 不可直接采样）
+        // 主 FBO 深度 -> 离屏深度纹理（主 FBO 深度不可直接采样，需 blit 拷贝）
         GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, main.framebufferObject);
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, offscreenFramebuffer);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, depthFramebuffer);
         GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
             GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
 
-        // 全屏后处理不需要深度测试/深度写入/混合（离屏 RT 的深度纹理未初始化，
+        // 全屏后处理不需要深度测试/深度写入/混合（离屏 RT 无深度 attachment，
         // 开着深度测试会导致片段全部被丢弃、输出纯黑）
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(false);
         GL11.glDisable(GL11.GL_BLEND);
 
-        // pass 1：色差（输入：主 FBO 颜色纹理 -> 离屏 colorA）
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, offscreenFramebuffer);
-        GL11.glViewport(0, 0, width, height);
+        // pass 1：strike（输入：主 FBO 颜色 + 深度 -> 离屏 C0，分辨率按配置缩放）
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, strikeFramebuffer);
+        GL11.glViewport(0, 0, strikeWidth, strikeHeight);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, main.framebufferTexture);
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
+        strikeProgram.use();
+        GL20.glUniform1i(strikeProgram.uniform("DiffuseSampler"), 0);
+        GL20.glUniform1i(strikeProgram.uniform("DepthSampler"), 1);
+        setStrikeUniforms(strikeProgram, invProjection, modelView);
+        drawFullscreenQuad();
+
+        // pass 2：色差（输入：C0 -> 离屏 C1）
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, chromaFramebuffer);
+        GL11.glViewport(0, 0, width, height);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, strikeColorTexture);
         chromaticProgram.use();
         setChromaticUniforms(chromaticProgram);
         drawFullscreenQuad();
 
-        // pass 2：GUI 瞄准覆盖（输入：colorA + 深度纹理 -> 离屏 colorB）
+        // pass 3：GUI 瞄准覆盖（输入：C1 + 深度纹理 -> 离屏 C2）
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, guiFramebuffer);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, offscreenColorTexture);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, chromaColorTexture);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, offscreenDepthTexture);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
         guiProgram.use();
         GL20.glUniform1i(guiProgram.uniform("DiffuseSampler"), 0);
         GL20.glUniform1i(guiProgram.uniform("DepthSampler"), 1);
@@ -158,6 +187,22 @@ public class EOHBPostChain {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
+    private void setStrikeUniforms(GLProgram program, float[] inverseProjection, float[] modelView) {
+        GL20.glUniform1f(program.uniform("iTime"), effectSeconds());
+        GL20.glUniform1f(program.uniform("StrikeActive"), state.isStrikeActive() ? 1.0F : 0.0F);
+        GL20.glUniform3f(program.uniform("CameraPosition"), (float) camX(), (float) camY(), (float) camZ());
+        GL20.glUniform3f(program.uniform("BlockPosition"), blockX(), blockY(), blockZ());
+        GL20.glUniform1f(program.uniform("StrikeRadius"), state.getStrikeRadius());
+        GL20.glUniform3f(program.uniform("u_BeamColor"), 1.0F, 1.0F, 1.0F);
+        GL20.glUniform1f(program.uniform("u_BeamAlpha"), 1.0F);
+        GL20.glUniform3f(program.uniform("u_MarkerInnerColor"), 1.0F, 1.0F, 1.0F);
+        GL20.glUniform1f(program.uniform("u_MarkerInnerAlpha"), MARKER_INNER_ALPHA);
+        GL20.glUniform3f(program.uniform("u_MarkerOuterColor"), 1.0F, 1.0F, 1.0F);
+        GL20.glUniform1f(program.uniform("u_MarkerOuterAlpha"), MARKER_OUTER_ALPHA);
+        uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
+        uploadMatrix(program, "ModelViewMat", modelView);
+    }
+
     private void setChromaticUniforms(GLProgram program) {
         GL20.glUniform1f(program.uniform("iTime"), effectSeconds());
         GL20.glUniform1f(program.uniform("StrikeActive"), state.isStrikeActive() ? 1.0F : 0.0F);
@@ -171,6 +216,7 @@ public class EOHBPostChain {
         GL20.glUniform1f(program.uniform("iTime"), effectSeconds());
         GL20.glUniform3f(program.uniform("BlockPosition"), blockX(), blockY(), blockZ());
         GL20.glUniform1f(program.uniform("IsBlockHit"), isBlockHit());
+        GL20.glUniform1f(program.uniform("StrikeActive"), state.isStrikeActive() ? 1.0F : 0.0F);
         GL20.glUniform1f(program.uniform("SelectionActive"), state.isCharging() ? 1.0F : 0.0F);
         GL20.glUniform2f(program.uniform("OutSize"), width, height);
         GL20.glUniform1f(program.uniform("StrikeRadius"), state.getStrikeRadius());
@@ -179,20 +225,22 @@ public class EOHBPostChain {
         GL20.glUniform3f(program.uniform("u_MarkerOuterColor"), 1.0F, 1.0F, 1.0F);
         GL20.glUniform1f(program.uniform("u_MarkerOuterAlpha"), MARKER_OUTER_ALPHA);
         GL20.glUniform3f(program.uniform("CameraPosition"), (float) camX(), (float) camY(), (float) camZ());
-        // InverseTransformMatrix = inverse(投影)（列主序）
-        matrixBuffer.clear();
-        matrixBuffer.put(inverseProjection);
-        matrixBuffer.flip();
-        GL20.glUniformMatrix4(program.uniform("InverseTransformMatrix"), false, matrixBuffer);
-        // ModelViewMat = 纯旋转矩阵：1.7.10 相机矩阵含 0.1 级小平移（yOffset/近景偏移），
+        uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
+        uploadMatrix(program, "ModelViewMat", modelView);
+    }
+
+    private void uploadMatrix(GLProgram program, String name, float[] matrix) {
+        // ModelViewMat 语义为纯旋转：1.7.10 相机矩阵含 0.1 级小平移（yOffset/近景偏移），
         // 置零平移列以对齐移植版语义（平移已由 CameraPosition 承担）
-        modelView[12] = 0.0F;
-        modelView[13] = 0.0F;
-        modelView[14] = 0.0F;
+        if ("ModelViewMat".equals(name)) {
+            matrix[12] = 0.0F;
+            matrix[13] = 0.0F;
+            matrix[14] = 0.0F;
+        }
         matrixBuffer.clear();
-        matrixBuffer.put(modelView);
+        matrixBuffer.put(matrix);
         matrixBuffer.flip();
-        GL20.glUniformMatrix4(program.uniform("ModelViewMat"), false, matrixBuffer);
+        GL20.glUniformMatrix4(program.uniform(name), false, matrixBuffer);
     }
 
     /** 特效时间轴：打击优先于充能（对齐 Forge 移植版：renderStrike ? strikeSeconds : chargeSeconds）。 */
@@ -233,6 +281,20 @@ public class EOHBPostChain {
     private double camZ() {
         EntityClientPlayerMP p = Minecraft.getMinecraft().thePlayer;
         return p == null ? 0 : p.lastTickPosZ + (p.posZ - p.lastTickPosZ) * partialTicks;
+    }
+
+    /** strike pass 分辨率：主分辨率 * 配置比例（0.25~1.0）。 */
+    private static int strikeWidth(int w) {
+        return Math.max(1, (int) Math.round(w * strikeScale()));
+    }
+
+    private static int strikeHeight(int h) {
+        return Math.max(1, (int) Math.round(h * strikeScale()));
+    }
+
+    private static double strikeScale() {
+        double s = MainConfig.OrbitalRailgunStrikePassScale;
+        return s <= 0.0 ? 1.0 : Math.min(1.0, s);
     }
 
     /** 读取 GL 投影矩阵并求逆（列主序）。 */
@@ -311,58 +373,38 @@ public class EOHBPostChain {
         }
         this.width = w;
         this.height = h;
+        this.strikeWidth = strikeWidth(w);
+        this.strikeHeight = strikeHeight(h);
         try {
-            // 离屏颜色纹理（pass 1 输出 / pass 2 输入）
-            offscreenColorTexture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, offscreenColorTexture);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
-                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-
-            // 离屏深度纹理（主 FBO 深度的拷贝，供 GUI pass 采样）
-            offscreenDepthTexture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, offscreenDepthTexture);
+            // 深度纹理 + 专用 FBO（主 FBO 深度的拷贝目标；post pass 不需要深度测试）
+            depthTexture = GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
             GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0,
                 GL11.GL_DEPTH_COMPONENT, GL11.GL_UNSIGNED_INT, (ByteBuffer) null);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-
-            // FBO A：颜色 + 深度
-            offscreenFramebuffer = GL30.glGenFramebuffers();
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, offscreenFramebuffer);
-            GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
-                GL11.GL_TEXTURE_2D, offscreenColorTexture, 0);
+            depthFramebuffer = GL30.glGenFramebuffers();
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, depthFramebuffer);
             GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT,
-                GL11.GL_TEXTURE_2D, offscreenDepthTexture, 0);
-            GL20.glDrawBuffers(GL30.GL_COLOR_ATTACHMENT0);
+                GL11.GL_TEXTURE_2D, depthTexture, 0);
+            // 无颜色 attachment 的 FBO 必须将 draw buffer 设为 GL_NONE，否则视为不完整
+            GL20.glDrawBuffers(GL11.GL_NONE);
             if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
-                throw new IllegalStateException("offscreen framebuffer incomplete");
+                throw new IllegalStateException("depth framebuffer incomplete");
             }
 
-            // 离屏颜色纹理（pass 2 输出）
-            guiColorTexture = GL11.glGenTextures();
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, guiColorTexture);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
-                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            // C0：strike pass 输出（按配置比例缩放）
+            strikeColorTexture = createColorTexture(strikeWidth, strikeHeight);
+            strikeFramebuffer = createFramebuffer(strikeColorTexture, "strike framebuffer incomplete");
 
-            // FBO B：仅颜色（GUI pass 输出）
-            guiFramebuffer = GL30.glGenFramebuffers();
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, guiFramebuffer);
-            GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
-                GL11.GL_TEXTURE_2D, guiColorTexture, 0);
-            GL20.glDrawBuffers(GL30.GL_COLOR_ATTACHMENT0);
-            if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
-                throw new IllegalStateException("gui framebuffer incomplete");
-            }
+            // C1：色差 pass 输出
+            chromaColorTexture = createColorTexture(w, h);
+            chromaFramebuffer = createFramebuffer(chromaColorTexture, "chroma framebuffer incomplete");
+
+            // C2：GUI pass 输出
+            guiColorTexture = createColorTexture(w, h);
+            guiFramebuffer = createFramebuffer(guiColorTexture, "gui framebuffer incomplete");
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 
             // 全屏 quad VAO/VBO（Position 2 分量，[0,1]^2）
@@ -377,6 +419,7 @@ public class EOHBPostChain {
             GL30.glBindVertexArray(0);
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
+            strikeProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("strike.fsh"));
             chromaticProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("chromatic_abjuration.fsh"));
             guiProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("gui.fsh"));
         } catch (Throwable t) {
@@ -384,6 +427,31 @@ public class EOHBPostChain {
             broken = true;
             destroy();
         }
+    }
+
+    private static int createColorTexture(int w, int h) {
+        int tex = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
+            GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        return tex;
+    }
+
+    private static int createFramebuffer(int colorTexture, String error) {
+        int fbo = GL30.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+            GL11.GL_TEXTURE_2D, colorTexture, 0);
+        GL20.glDrawBuffers(GL30.GL_COLOR_ATTACHMENT0);
+        if (GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) != GL30.GL_FRAMEBUFFER_COMPLETE) {
+            throw new IllegalStateException(error);
+        }
+        return fbo;
     }
 
     private static FloatBuffer floatBuffer(float[] data) {
@@ -455,6 +523,10 @@ public class EOHBPostChain {
     }
 
     public void destroy() {
+        if (strikeProgram != null) {
+            strikeProgram.destroy();
+            strikeProgram = null;
+        }
         if (chromaticProgram != null) {
             chromaticProgram.destroy();
             chromaticProgram = null;
@@ -463,25 +535,37 @@ public class EOHBPostChain {
             guiProgram.destroy();
             guiProgram = null;
         }
-        if (offscreenFramebuffer != 0) {
-            GL30.glDeleteFramebuffers(offscreenFramebuffer);
-            offscreenFramebuffer = 0;
+        if (strikeFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(strikeFramebuffer);
+            strikeFramebuffer = 0;
+        }
+        if (chromaFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(chromaFramebuffer);
+            chromaFramebuffer = 0;
         }
         if (guiFramebuffer != 0) {
             GL30.glDeleteFramebuffers(guiFramebuffer);
             guiFramebuffer = 0;
         }
-        if (offscreenColorTexture != 0) {
-            GL11.glDeleteTextures(offscreenColorTexture);
-            offscreenColorTexture = 0;
+        if (depthFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(depthFramebuffer);
+            depthFramebuffer = 0;
         }
-        if (offscreenDepthTexture != 0) {
-            GL11.glDeleteTextures(offscreenDepthTexture);
-            offscreenDepthTexture = 0;
+        if (strikeColorTexture != 0) {
+            GL11.glDeleteTextures(strikeColorTexture);
+            strikeColorTexture = 0;
+        }
+        if (chromaColorTexture != 0) {
+            GL11.glDeleteTextures(chromaColorTexture);
+            chromaColorTexture = 0;
         }
         if (guiColorTexture != 0) {
             GL11.glDeleteTextures(guiColorTexture);
             guiColorTexture = 0;
+        }
+        if (depthTexture != 0) {
+            GL11.glDeleteTextures(depthTexture);
+            depthTexture = 0;
         }
         if (quadVao != 0) {
             GL30.glDeleteVertexArrays(quadVao);
