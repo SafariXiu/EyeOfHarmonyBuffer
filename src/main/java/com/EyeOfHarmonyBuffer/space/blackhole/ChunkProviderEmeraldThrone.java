@@ -1,14 +1,13 @@
 package com.EyeOfHarmonyBuffer.space.blackhole;
 
-import java.util.Random;
-
 import java.util.Collections;
 import java.util.List;
 
+import ganymedes01.etfuturum.ModBlocks;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
-import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import micdoodle8.mods.galacticraft.api.prefab.core.BlockMetaPair;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
+import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -18,13 +17,13 @@ import net.minecraft.world.gen.NoiseGeneratorPerlin;
 
 /**
  * 翡翠王座区块生成器：完全接管地形（无 GC / 原版地形参与）。
- * 三层噪声：大陆形状（低频）→ 丘陵起伏（中频）→ 岩石细节（高频，决定山顶裸岩）。
- * 海平面 62：深海沙底、浅海沙岸、陆地草皮 / 泥土 / 石头。
+ * 高度公式与群系划分共用 {@link EmeraldThroneTerrain}：
+ * y ≤ 64 = 死亡之海（海洋：深色海床 + 水），y &gt; 64 = 生之大陆（草皮大陆 / 裸岩高原）。
+ * 大陆骨架为低频阶梯噪声——一大块一大块的连续大陆与深海，高度封顶 140。
  */
 public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
 
     private static final int CHUNK_SIZE = 16;
-    private static final int SEA_LEVEL = 62;
 
     private final World world;
     private final int worldHeight;
@@ -32,15 +31,17 @@ public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
     private final NoiseGeneratorPerlin continentNoise;
     private final NoiseGeneratorPerlin hillNoise;
     private final NoiseGeneratorPerlin rockNoise;
+    private final NoiseGeneratorPerlin peakNoise;
 
     public ChunkProviderEmeraldThrone(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.world = world;
         this.worldHeight = world.getActualHeight();
-        Random rand = new Random(seed);
-        this.continentNoise = new NoiseGeneratorPerlin(rand, 4);
-        this.hillNoise = new NoiseGeneratorPerlin(rand, 8);
-        this.rockNoise = new NoiseGeneratorPerlin(rand, 3);
+        NoiseGeneratorPerlin[] noises = EmeraldThroneTerrain.createNoises(seed);
+        this.continentNoise = noises[0];
+        this.hillNoise = noises[1];
+        this.rockNoise = noises[2];
+        this.peakNoise = noises[3];
     }
 
     @Override
@@ -121,12 +122,13 @@ public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
 
     @Override
     public int getWaterLevel() {
-        return 64;
+        return EmeraldThroneTerrain.SEA_LEVEL;
     }
 
     @Override
     public boolean canGenerateWaterBlock() {
-        return true;
+        // 死亡之海无任何水：禁止基类生成任何水体
+        return false;
     }
 
     @Override
@@ -152,50 +154,23 @@ public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
                 int wx = worldX0 + lx;
                 int wz = worldZ0 + lz;
 
-                double continent = this.continentNoise.func_151601_a(wx * 0.0035D, wz * 0.0035D);
-                double hill = this.hillNoise.func_151601_a(wx * 0.02D, wz * 0.02D);
-                double rock = this.rockNoise.func_151601_a(wx * 0.09D, wz * 0.09D);
-
-                int h = (int) Math.round(63.0D + continent * 26.0D + hill * 9.0D);
-                if (h < 45) {
-                    h = 45;
-                }
-                if (h > this.worldHeight - 2) {
-                    h = this.worldHeight - 2;
-                }
+                int h = EmeraldThroneTerrain
+                    .sampleHeight(this.continentNoise, this.hillNoise, this.rockNoise,
+                        this.peakNoise, wx, wz, this.worldHeight - 2);
 
                 putBlock(blocks, meta, lx, 0, lz, Blocks.bedrock, 0);
 
-                if (h <= SEA_LEVEL) {
-                    int seabed = h - 3;
-                    if (seabed < 1) {
-                        seabed = 1;
-                    }
-                    for (int y = 1; y < seabed; y++) {
-                        putBlock(blocks, meta, lx, y, lz, Blocks.stone, 0);
-                    }
-                    for (int y = seabed; y < h; y++) {
-                        putBlock(blocks, meta, lx, y, lz, Blocks.sand, 0);
-                    }
-                    for (int y = h; y <= SEA_LEVEL; y++) {
-                        putBlock(blocks, meta, lx, y, lz, Blocks.water, 0);
-                    }
+                // —— 死亡之海（y≤64）：ETF 深板岩（塔罗斯-2 同款获取，找不到时兜底石头）——
+                // —— 生之大陆（y>64）：石头 ——
+                Block fillBlock;
+                if (h <= EmeraldThroneTerrain.SEA_LEVEL) {
+                    Block deepslate = ModBlocks.DEEPSLATE.get();
+                    fillBlock = deepslate != null ? deepslate : Blocks.stone;
                 } else {
-                    int fillerTop = h - 4;
-                    if (fillerTop < 1) {
-                        fillerTop = 1;
-                    }
-                    for (int y = 1; y < fillerTop; y++) {
-                        putBlock(blocks, meta, lx, y, lz, Blocks.stone, 0);
-                    }
-                    for (int y = fillerTop; y < h - 1; y++) {
-                        putBlock(blocks, meta, lx, y, lz, Blocks.dirt, 0);
-                    }
-                    if (rock > 0.28D || h > 100) {
-                        putBlock(blocks, meta, lx, h - 1, lz, Blocks.stone, 0);
-                    } else {
-                        putBlock(blocks, meta, lx, h - 1, lz, Blocks.grass, 0);
-                    }
+                    fillBlock = Blocks.stone;
+                }
+                for (int y = 1; y < h; y++) {
+                    putBlock(blocks, meta, lx, y, lz, fillBlock, 0);
                 }
             }
         }

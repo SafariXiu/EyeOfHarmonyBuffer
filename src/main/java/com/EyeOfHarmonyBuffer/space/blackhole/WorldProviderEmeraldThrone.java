@@ -31,7 +31,7 @@ public class WorldProviderEmeraldThrone extends WorldProviderSpaceGS
 
     @Override
     public void registerWorldChunkManager() {
-        this.worldChunkMgr = new WorldChunkManagerEmeraldThrone();
+        this.worldChunkMgr = new WorldChunkManagerEmeraldThrone(this.worldObj);
         this.hasNoSky = false;
     }
 
@@ -77,7 +77,10 @@ public class WorldProviderEmeraldThrone extends WorldProviderSpaceGS
 
     @Override
     public float getGravity() {
-        return 0.08F;
+        // 与地球一致：GC 的重力实现是 0.08 - getGravity()（WorldUtil.getGravityForEntity），
+        // 即 getGravity 是「重力降低量」：0 = 地球标准；0.04 = 半重力（塔罗斯-2）；
+        // 1.0 会得到负重力（向上飞），0.08 会得到零重力（漂浮）——都别用。
+        return 0.0F;
     }
 
     @Override
@@ -127,12 +130,14 @@ public class WorldProviderEmeraldThrone extends WorldProviderSpaceGS
 
     @Override
     public Vector3 getFogColor() {
-        return new Vector3(0.12, 0.35, 0.22);
+        // 默认大气：原版类地白雾
+        return new Vector3(0.65, 0.75, 1.0);
     }
 
     @Override
     public Vector3 getSkyColor() {
-        return new Vector3(0.18, 0.45, 0.30);
+        // 默认大气：原版类地蓝天
+        return new Vector3(0.25, 0.45, 0.95);
     }
 
     @Override
