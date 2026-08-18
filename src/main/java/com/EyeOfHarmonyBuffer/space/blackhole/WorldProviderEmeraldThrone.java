@@ -12,6 +12,7 @@ import micdoodle8.mods.galacticraft.api.vector.Vector3;
 import micdoodle8.mods.galacticraft.api.world.IExitHeight;
 import micdoodle8.mods.galacticraft.api.world.ISolarLevel;
 import micdoodle8.mods.galacticraft.api.world.ITeleportType;
+import micdoodle8.mods.galacticraft.core.client.CloudRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
@@ -28,6 +29,7 @@ public class WorldProviderEmeraldThrone extends WorldProviderSpaceGS
     implements IExitHeight, ISolarLevel, ITeleportType, IHostileBody {
 
     private IRenderHandler skyProvider;
+    private IRenderHandler cloudRenderer;
 
     @Override
     public void registerWorldChunkManager() {
@@ -196,6 +198,36 @@ public class WorldProviderEmeraldThrone extends WorldProviderSpaceGS
             this.skyProvider = new SkyProviderEmeraldThrone();
         }
         return this.skyProvider;
+    }
+
+    // ===== 潮汐锁定（L5）：天阳角恒定、光照恒定，无日出日落 =====
+
+    /** 天阳角固定 0.25（正午）→ 太阳方向永不移动，阴影方向恒定。 */
+    @Override
+    public float calculateCelestialAngle(long worldTime, float partialTicks) {
+        return 0.25F;
+    }
+
+    /** 阳光亮度恒定最大 → 全天恒昼，地面光影对比强烈（配合"刀锋阴影"氛围）。 */
+    @Override
+    public float getSunBrightness(float partialTicks) {
+        return 1.0F;
+    }
+
+    /** 无星星亮度变化（天空完全由自定义渲染器接管）。 */
+    @Override
+    public float getStarBrightness(float partialTicks) {
+        return 0.0F;
+    }
+
+    // ===== 禁云（L4）：稀薄大气无对流，用 GS 空实现 CloudRenderer 占位跳过默认云 =====
+
+    @Override
+    public IRenderHandler getCloudRenderer() {
+        if (this.cloudRenderer == null) {
+            this.cloudRenderer = new CloudRenderer();
+        }
+        return this.cloudRenderer;
     }
 
     @Override

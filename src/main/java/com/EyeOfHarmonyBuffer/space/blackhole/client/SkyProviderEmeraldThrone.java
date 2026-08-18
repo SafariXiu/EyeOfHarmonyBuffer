@@ -64,6 +64,8 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
         // 背景：暗紫黑渐变（不透明，完全接管天空底色）
         drawBackgroundGradient();
 
+        // L4 大气辉光已取消（视觉效果不佳）；禁云由 provider 的 getCloudRenderer 处理
+
         // 黑洞系统（含假太阳，同一旋转坐标系 → 潮汐锁定）
         drawBlackHoleSystem(tess, t);
 
