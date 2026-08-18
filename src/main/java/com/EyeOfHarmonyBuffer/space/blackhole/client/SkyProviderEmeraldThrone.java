@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.blackhole.client;
 
+import java.util.Random;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.Tessellator;
@@ -33,12 +35,20 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
     private static final int RING_SEG = 128;
 
     // ===== 假太阳（第一象限方向固定，紧贴视界正上方边缘外侧）=====
-    /** 相对黑洞中心再偏：方位 +45°（第一象限 = 东南），仰角 +32°（超过视界角半径 28.8° = 边缘外侧）。 */
+    /** 相对黑洞中心再偏：方位 +45°（第一象限 = 东南），仰角 30°（中心贴近视界边缘 28.8°，光斑内侧压边 = 从深渊边缘溢出的光）。 */
     private static final float SUN_YAW_OFFSET = 45.0F;
-    private static final float SUN_PITCH_OFFSET = 32.0F;
+    private static final float SUN_PITCH_OFFSET = 30.0F;
     private static final double SUN_DIST = -45.0D;
-    private static final double SUN_SX = 2.8D;  // 椭圆长半轴（视直径 ≈ 7°，小而刺眼）
-    private static final double SUN_SY = 1.7D;  // 椭圆短半轴
+    private static final double SUN_SX = 10.0D; // 椭圆长半轴（视直径 ≈ 25°，巨大光斑）
+    private static final double SUN_SY = 6.2D;  // 椭圆短半轴
+
+    // ===== L3 引力透镜场 =====
+    /** 弧线星流固定种子：星空形状每帧确定，不闪烁。 */
+    private static final long STAR_SEED = 0x5EED_5EEDL;
+    /** 吸入流固定种子。 */
+    private static final long STREAM_SEED = 0xACC_2017L;
+    /** 透镜场球面半径（与环带同层）。 */
+    private static final double LENS_R = 95.0D;
 
     @Override
     public void render(float partialTicks, WorldClient world, Minecraft mc) {
@@ -87,19 +97,24 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
         GL11.glRotatef(BH_YAW, 0.0F, 1.0F, 0.0F);
         GL11.glRotatef(BH_PITCH, 1.0F, 0.0F, 0.0F);
 
-        // L1：视界黑球（凹陷球面：中心纯黑、边缘暗灰）
+        // L3：弧线星流先画（视界内的部分会被黑球遮挡——星星不可能出现在黑洞前面）
+        drawLensStars(tess, t);
+        // 宇宙瀑布（径向吸入流）已按需求关闭
+
+        // L1：视界黑球（凹陷球面：中心纯黑、边缘暗灰；后画 → 遮挡视界内的星流）
         drawBlackHoleSphere(tess);
         // L1：湍流光子环（内铂金 → 外紫/冰蓝，径向时间扰动）
         drawPhotonRing(tess, t);
         // L1：环上沸腾流丝（沿环切线拉直的短线，绕环流动）
         drawRingStreaks(tess, t);
 
-        // L2：假太阳（第一象限，紧贴视界正上方边缘外侧）
-        GL11.glPushMatrix();
-        GL11.glRotatef(SUN_YAW_OFFSET, 0.0F, 1.0F, 0.0F);
-        GL11.glRotatef(SUN_PITCH_OFFSET, 1.0F, 0.0F, 0.0F);
-        drawFalseSun(tess, t);
-        GL11.glPopMatrix();
+        // L2 假太阳（光斑 + 日冕）与 L3 爱因斯坦环：按需求暂时关闭，后续有头绪再恢复
+        // GL11.glPushMatrix();
+        // GL11.glRotatef(SUN_YAW_OFFSET, 0.0F, 1.0F, 0.0F);
+        // GL11.glRotatef(SUN_PITCH_OFFSET, 1.0F, 0.0F, 0.0F);
+        // drawFalseSun(tess, t);
+        // drawEinsteinRing(tess, t);
+        // GL11.glPopMatrix();
 
         GL11.glPopMatrix();
     }
@@ -252,64 +267,251 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
         GL11.glPointSize(1.0F);
     }
 
+    // ================= L3 引力透镜场 =================
+
+    /**
+     * 弧线星流：全天空 4500 条以黑洞为圆心的同心弧（星点被引力拉成火柴棍），
+     * 近黑洞的弧更长更弯更亮，远处接近点状；全部顺时针流动（phi 增大），
+     * 近快远慢（视超光速）——"天空在转，但黑洞不动"。
+     * 黑洞局部坐标：极轴 -z（黑洞中心），lensDir(rho, phi) 生成方向。
+     * 注意 Tessellator 单次 buffer 上限 ~4096 顶点，按 1400 顶点/批分段提交。
+     */
+    private static void drawLensStars(Tessellator tess, float t) {
+        int count = 4500;
+        int segs = 8;
+        Random rand = new Random(STAR_SEED);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glLineWidth(1.0F);
+        boolean drawing = false;
+        int batch = 0;
+        for (int i = 0; i < count; i++) {
+            double rho = Math.toRadians(15.0D + rand.nextDouble() * 135.0D); // 15° ~ 150°
+            double phi0 = rand.nextDouble() * Math.PI * 2.0D;
+            // 顺时针流动速度：近处快、远处慢（当前为原速度的 1/24，接近静止）
+            double omega = 0.0005D * (Math.toRadians(90.0D) / (rho + Math.toRadians(18.0D)));
+            double phi = phi0 + t * omega;
+            // 弧长：近处被强透镜拉长，远处接近点状
+            double rhoCap = Math.min(rho, Math.toRadians(90.0D));
+            double arcLen = Math.toRadians(2.0D) + Math.toRadians(18.0D) * Math.cos(rhoCap) * Math.cos(rhoCap);
+            // 亮度：近处增亮（引力压缩），白偏蓝
+            double brightF = Math.max(0.0D, 1.0D - rho / Math.toRadians(160.0D));
+            float bright = (float) (0.22D + 0.78D * brightF * brightF);
+            // 弧：8 段短线段（首尾相接 → 连续弧线）
+            for (int s = 0; s < segs; s++) {
+                double a0 = phi + arcLen * (s / (double) segs - 0.5D);
+                double a1 = phi + arcLen * ((s + 1) / (double) segs - 0.5D);
+                double[] p0 = lensDir(rho, a0);
+                double[] p1 = lensDir(rho, a1);
+                if (!drawing) {
+                    tess.startDrawing(GL11.GL_LINES);
+                    drawing = true;
+                }
+                tess.setColorRGBA_F(bright, bright, bright * 0.96F, 1.0F);
+                tess.addVertex(p0[0] * LENS_R, p0[1] * LENS_R, p0[2] * LENS_R);
+                tess.addVertex(p1[0] * LENS_R, p1[1] * LENS_R, p1[2] * LENS_R);
+                batch += 2;
+                if (batch >= 1400) {
+                    tess.draw();
+                    drawing = false;
+                    batch = 0;
+                }
+            }
+        }
+        if (drawing) {
+            tess.draw();
+        }
+    }
+
+    /** 黑洞局部球面方向：极轴 -z（黑洞中心），rho = 离黑洞角距离，phi = 绕黑洞方位（顺时针 = 增大）。 */
+    private static double[] lensDir(double rho, double phi) {
+        double sr = Math.sin(rho);
+        return new double[] { sr * Math.sin(phi), sr * Math.cos(phi), -Math.cos(rho) };
+    }
+
+    /**
+     * 宇宙瀑布：光子环外 35°~60° 的 1200 条径向细丝，缓慢向黑洞收缩（到 ~8° 重置），
+     * 亮白金、亮度脉动——无数发光的极细丝线被缓慢吸入深渊。
+     */
+    private static void drawAccretionStreams(Tessellator tess, float t) {
+        int count = 1200;
+        Random rand = new Random(STREAM_SEED);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glLineWidth(1.2F);
+        boolean drawing = false;
+        int batch = 0;
+        for (int i = 0; i < count; i++) {
+            double phi = rand.nextDouble() * Math.PI * 2.0D;
+            double rhoOut = Math.toRadians(35.0D + rand.nextDouble() * 25.0D); // 35°~60°
+            double speed = Math.toRadians(0.045D) * (0.5D + rand.nextDouble()); // 收缩速度
+            double phase = rand.nextDouble() * 200.0D;
+            double rhoMin = Math.toRadians(8.0D);
+            // 收缩循环：rho 从 rhoOut 一路收到 rhoMin，然后瞬间重置
+            double span = rhoOut - rhoMin;
+            double rho = rhoOut - ((t * speed + phase) % span);
+            double rhoIn = rho - Math.toRadians(4.5D); // 丝线长 ~4.5°
+            if (rhoIn < rhoMin) {
+                rhoIn = rhoMin;
+            }
+            double[] pOut = lensDir(rho, phi);
+            double[] pIn = lensDir(rhoIn, phi);
+            float bright = 0.55F + 0.45F * (float) Math.abs(Math.sin(t * 0.05D + i * 1.7D));
+            if (!drawing) {
+                tess.startDrawing(GL11.GL_LINES);
+                drawing = true;
+            }
+            tess.setColorRGBA_F(0.95F * bright, 0.93F * bright, 0.90F * bright, 0.9F);
+            tess.addVertex(pOut[0] * LENS_R, pOut[1] * LENS_R, pOut[2] * LENS_R);
+            tess.addVertex(pIn[0] * LENS_R, pIn[1] * LENS_R, pIn[2] * LENS_R);
+            batch += 2;
+            if (batch >= 1400) {
+                tess.draw();
+                drawing = false;
+                batch = 0;
+            }
+        }
+        if (drawing) {
+            tess.draw();
+        }
+        GL11.glLineWidth(1.0F);
+    }
+
+    /**
+     * 爱因斯坦环：假太阳周围被引力弯折 180° 的星系盘倒影——双层甜甜圈环
+     * （外晕 + 亮芯环），冷白星光色，光泽沿环流动，微呼吸。
+     */
+    private static void drawEinsteinRing(Tessellator tess, float t) {
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        // 加法混合：发光体
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        drawRingQuad(tess, 0.0D, 0.0D, SUN_DIST, 12.0D, 21.0D, 0.20F, t, false);
+        drawRingQuad(tess, 0.0D, 0.0D, SUN_DIST, 14.5D, 18.5D, 0.40F, t, true);
+        // 恢复标准混合
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /** 平面上同心圆环三角带：冷白星光色，可选光泽沿环流动。 */
+    private static void drawRingQuad(Tessellator tess, double cx, double cy, double cz, double ri, double ro,
+        float alphaBase, float t, boolean swirl) {
+        int seg = 64;
+        tess.startDrawing(GL11.GL_TRIANGLE_STRIP);
+        for (int i = 0; i <= seg; i++) {
+            double th = Math.PI * 2.0D * i / seg;
+            double glint = swirl ? (0.6D + 0.4D * Math.sin(th - t * 0.15D)) : 1.0D;
+            float a = alphaBase * (float) glint;
+            tess.setColorRGBA_F(0.75F, 0.82F, 0.95F, a);
+            tess.addVertex(cx + Math.cos(th) * ri, cy + Math.sin(th) * ri, cz);
+            tess.setColorRGBA_F(0.75F, 0.82F, 0.95F, a * 0.6F);
+            tess.addVertex(cx + Math.cos(th) * ro, cy + Math.sin(th) * ro, cz);
+        }
+        tess.draw();
+    }
+
     // ================= 假太阳 =================
 
-    /** 椭圆聚光斑 + 边缘衍射晕 + 银蓝日冕螺旋。 */
+    /**
+     * 椭圆聚光斑（真正的椭圆渐变，无矩形硬边）：
+     * 12 条同心椭圆环带——中心 25% 纯白核（alpha 1，过曝刺眼），
+     * 外圈白→蓝白二次渐隐到 0（#F0F8FF 系）；最外叠 2 条宽泛衍射晕；
+     * 全部加法混合。日冕为 12 条更细更弥散的银蓝螺旋丝。
+     */
     private static void drawFalseSun(Tessellator tess, float t) {
         GL11.glDisable(GL11.GL_TEXTURE_2D);
+        // 加法混合：发光体（中心过曝）
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
 
-        // 1. 边缘衍射晕（3 层大椭圆，低 alpha 蓝白）
+        int bands = 12;
+        int seg = 32;
+        // 1. 椭圆渐变光斑本体
+        for (int b = 0; b < bands; b++) {
+            double u0 = b / (double) bands;
+            double u1 = (b + 1) / (double) bands;
+            tess.startDrawing(GL11.GL_TRIANGLE_STRIP);
+            for (int i = 0; i <= seg; i++) {
+                double th = Math.PI * 2.0D * i / seg;
+                double c = Math.cos(th);
+                double s = Math.sin(th);
+                float[] col0 = sunColor(u0);
+                tess.setColorRGBA_F(col0[0], col0[1], col0[2], sunAlpha(u0));
+                tess.addVertex(SUN_SX * u0 * c, SUN_SY * u0 * s, SUN_DIST);
+                float[] col1 = sunColor(u1);
+                tess.setColorRGBA_F(col1[0], col1[1], col1[2], sunAlpha(u1));
+                tess.addVertex(SUN_SX * u1 * c, SUN_SY * u1 * s, SUN_DIST);
+            }
+            tess.draw();
+        }
+
+        // 2. 宽光晕层（解决黑背景下边缘过渡不可见的问题）：
+        //    从光斑表面延伸到 2.6 倍半轴，3 层 alpha 0.10 → 0.04 → 0.015，
+        //    加法混合下给边缘提供充足的中间亮度态
+        double[] haloU = { 1.0D, 1.55D, 2.1D, 2.6D };
+        float[] haloA = { 0.10F, 0.055F, 0.03F, 0.015F };
         for (int i = 0; i < 3; i++) {
-            double f = 1.0D + i * 0.9D;
-            float alpha = 0.10F - i * 0.025F;
-            GL11.glColor4f(0.85F, 0.90F, 1.0F, alpha);
-            tess.startDrawingQuads();
-            tess.addVertex(-SUN_SX * f, -SUN_SY * f, SUN_DIST);
-            tess.addVertex(SUN_SX * f, -SUN_SY * f, SUN_DIST);
-            tess.addVertex(SUN_SX * f, SUN_SY * f, SUN_DIST);
-            tess.addVertex(-SUN_SX * f, SUN_SY * f, SUN_DIST);
+            double u0 = haloU[i];
+            double u1 = haloU[i + 1];
+            tess.startDrawing(GL11.GL_TRIANGLE_STRIP);
+            for (int j = 0; j <= seg; j++) {
+                double th = Math.PI * 2.0D * j / seg;
+                double c = Math.cos(th);
+                double s = Math.sin(th);
+                tess.setColorRGBA_F(0.82F, 0.88F, 1.0F, haloA[i]);
+                tess.addVertex(SUN_SX * u0 * c, SUN_SY * u0 * s, SUN_DIST);
+                tess.setColorRGBA_F(0.82F, 0.88F, 1.0F, haloA[i + 1]);
+                tess.addVertex(SUN_SX * u1 * c, SUN_SY * u1 * s, SUN_DIST);
+            }
             tess.draw();
         }
 
-        // 2. 光斑本体：外 → 内同心椭圆渐变（边缘蓝白 #F0F8FF → 中心纯白）
-        double[] scales = { 1.0D, 0.72D, 0.45D, 0.24D };
-        float[] alphas = { 0.70F, 0.85F, 0.95F, 1.0F };
-        float[] blues = { 0.90F, 0.95F, 0.99F, 1.0F };
-        for (int i = 0; i < 4; i++) {
-            double s = scales[i];
-            GL11.glColor4f(1.0F, 1.0F, blues[i], alphas[i]);
-            tess.startDrawingQuads();
-            tess.addVertex(-SUN_SX * s, -SUN_SY * s, SUN_DIST);
-            tess.addVertex(SUN_SX * s, -SUN_SY * s, SUN_DIST);
-            tess.addVertex(SUN_SX * s, SUN_SY * s, SUN_DIST);
-            tess.addVertex(-SUN_SX * s, SUN_SY * s, SUN_DIST);
-            tess.draw();
-        }
-
-        // 3. 日冕：6 条银蓝螺旋细丝，尾端向黑洞方向（-z）弯折 = 光芒向下流淌
+        // 3. 日冕：12 条更细更弥散的银蓝螺旋丝，尾端向黑洞方向（-z）弯折
         drawCorona(tess, t);
+
+        // 恢复标准混合
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /** 光斑色：中心纯白 → 边缘微蓝白（#F0F8FF 系）。 */
+    private static float[] sunColor(double u) {
+        if (u < 0.25D) {
+            return new float[] { 1.0F, 1.0F, 1.0F };
+        }
+        double t = (u - 0.25D) / 0.75D;
+        return new float[] { (float) (1.0D - 0.06D * t), (float) (1.0D - 0.04D * t), 1.0F };
+    }
+
+    /**
+     * 光斑 alpha：中心 25% 纯白核全实，外圈 cos 缓尾渐隐到 0——
+     * cos 曲线在末端斜率趋缓，配合宽光晕层，边缘过渡有充足中间态。
+     */
+    private static float sunAlpha(double u) {
+        if (u < 0.25D) {
+            return 1.0F;
+        }
+        double t = (u - 0.25D) / 0.75D;
+        return (float) Math.cos(t * Math.PI * 0.5D);
     }
 
     private static void drawCorona(Tessellator tess, float t) {
-        int strands = 6;
+        int strands = 12;
+        int pts = 26;
+        GL11.glLineWidth(1.0F);
         for (int s = 0; s < strands; s++) {
-            double startAngle = Math.PI * 2.0D * s / strands + t * 0.02D;
-            int pts = 26;
+            double startAngle = Math.PI * 2.0D * s / strands + t * 0.015D;
             tess.startDrawing(GL11.GL_LINE_STRIP);
             for (int i = 0; i < pts; i++) {
-                double ang = startAngle + i * 0.16D;
-                double rr = 1.6D + i * 0.55D;
-                double x = Math.cos(ang) * rr * SUN_SX * 0.5D;
-                double y = Math.sin(ang) * rr * SUN_SY * 0.5D;
-                // 尾端向黑洞弯折（-z 更远）
-                double bend = Math.pow(i / (double) pts, 2.0D) * 4.0D;
+                double ang = startAngle + i * 0.13D;
+                // 从光斑表面（半轴）向外螺旋甩出
+                double rr = 1.0D + i * 0.11D;
+                double x = Math.cos(ang) * rr * SUN_SX;
+                double y = Math.sin(ang) * rr * SUN_SY;
+                // 尾端向黑洞弯折（-z 更远）= 光芒向下流淌
+                double bend = Math.pow(i / (double) pts, 2.0D) * 6.0D;
                 double z = SUN_DIST - bend;
-                float a = (1.0F - (float) i / pts) * 0.8F;
-                tess.setColorRGBA_F(0.78F, 0.88F, 1.0F, a);
+                float a = (1.0F - (float) i / pts) * 0.55F;
+                tess.setColorRGBA_F(0.80F, 0.88F, 1.0F, a);
                 tess.addVertex(x, y, z);
             }
             tess.draw();
         }
+        GL11.glLineWidth(1.0F);
     }
 
     // ================= 背景 =================
