@@ -9,13 +9,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.Vec3;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+
+import net.minecraft.client.settings.KeyBinding;
 
 /**
  * 全息面板交互：
  * - ClientTickEvent：每 tick 更新准星悬停（射线 → 面板局部坐标）与控件 hover 状态
- * - InputEvent.MouseInputEvent：左键按下沿 → 命中控件（按 z 上层优先）
- * （不依赖 Mouse.isButtonDown 边沿检测，避免 lwjgl3ify 下鼠标状态不可靠。）
+ * - MouseInputEvent：左键点击控件（聚焦输入框）；右键取消焦点 / 弹回上层 / 关闭面板
+ * - KeyInputEvent：按键路由给聚焦控件（输入框）
  */
 @SideOnly(Side.CLIENT)
 public class RbmkHoloInteraction {
@@ -30,13 +33,7 @@ public class RbmkHoloInteraction {
             RbmkHoloState.hovering = false;
             return;
         }
-        Entity panel = null;
-        for (Object o : mc.theWorld.loadedEntityList) {
-            if (o instanceof RbmkHoloEntity) {
-                panel = (Entity) o;
-                break;
-            }
-        }
+        Entity panel = findPanel(mc);
         if (panel == null) {
             RbmkHoloState.hovering = false;
             return;
@@ -48,11 +45,94 @@ public class RbmkHoloInteraction {
 
     @SubscribeEvent
     public void onMouseInput(InputEvent.MouseInputEvent event) {
-        if (Mouse.getEventButton() == 0 && Mouse.getEventButtonState()) {
-            if (RbmkHoloState.hovering) {
-                handleClick();
+        if (!Mouse.getEventButtonState()) {
+            return;
+        }
+        int button = Mouse.getEventButton();
+        if (!RbmkHoloState.hovering) {
+            return;
+        }
+        if (button == 0) {
+            handleLeftClick();
+        } else if (button == 1) {
+            handleRightClick();
+        }
+    }
+
+    @SubscribeEvent
+    public void onKeyInput(InputEvent.KeyInputEvent event) {
+        if (!Keyboard.getEventKeyState()) {
+            return;
+        }
+        int key = Keyboard.getEventKey();
+        char c = Keyboard.getEventCharacter();
+        if (RbmkHoloPanel.INSTANCE.hasFocus()) {
+            // 输入模式：输入框接收字符，同时吞掉该键的所有游戏动作（快速键 + 移动等持续动作）
+            RbmkHoloPanel.INSTANCE.handleKey(c, key);
+            eatBindings(key);
+        }
+    }
+
+    /**
+     * 输入模式锁定：吞掉绑定到指定键的所有游戏动作。
+     * - isPressed()：吞下沿（开聊天栏、切换视角、投掷等快速键）
+     * - setKeyBindState(key,false)：清 held（锁住移动等持续动作，1.7.10 移动读 KeyBinding.pressed）
+     */
+    private static void eatBindings(int key) {
+        if (key == 0) {
+            return;
+        }
+        Minecraft mc = Minecraft.getMinecraft();
+        for (net.minecraft.client.settings.KeyBinding kb : mc.gameSettings.keyBindings) {
+            if (kb.getKeyCode() == key) {
+                kb.isPressed();
             }
         }
+        KeyBinding.setKeyBindState(key, false);
+    }
+
+    private static void handleLeftClick() {
+        RbmkHoloControl c = RbmkHoloPanel.INSTANCE.hitAt(RbmkHoloState.hoverX, RbmkHoloState.hoverY);
+        // 点击任何位置都先更新焦点：点输入框 → 聚焦；点别处 → 失焦
+        RbmkHoloPanel.INSTANCE.requestFocus(c);
+        if (c != null) {
+            c.onClick();
+        }
+    }
+
+    /** 右键：有焦点 → 取消；有上层 → 弹回；否则关闭面板。 */
+    private static void handleRightClick() {
+        if (RbmkHoloPanel.INSTANCE.hasFocus()) {
+            RbmkHoloPanel.INSTANCE.clearFocus();
+            return;
+        }
+        if (RbmkHoloPanel.INSTANCE.goBack()) {
+            return;
+        }
+        closePanel();
+    }
+
+    private static void closePanel() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null) {
+            return;
+        }
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (o instanceof RbmkHoloEntity) {
+                ((RbmkHoloEntity) o).setDead();
+            }
+        }
+        RbmkHoloPanel.INSTANCE.clearFocus();
+        RbmkHoloState.hovering = false;
+    }
+
+    private static Entity findPanel(Minecraft mc) {
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (o instanceof RbmkHoloEntity) {
+                return (Entity) o;
+            }
+        }
+        return null;
     }
 
     /** 准星射线与面板平面求交，得到局部坐标 (u,v)。返回是否命中面板。 */
@@ -86,13 +166,5 @@ public class RbmkHoloInteraction {
         RbmkHoloState.hoverX = (int) u;
         RbmkHoloState.hoverY = (int) v;
         return RbmkHoloState.hovering;
-    }
-
-    /** 点击：命中 z 上层优先的控件。 */
-    private static void handleClick() {
-        RbmkHoloControl c = RbmkHoloPanel.INSTANCE.hitAt(RbmkHoloState.hoverX, RbmkHoloState.hoverY);
-        if (c != null) {
-            c.onClick();
-        }
     }
 }

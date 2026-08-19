@@ -78,6 +78,7 @@ public class RbmkHoloRender extends Render {
         font.drawString("控制棒: " + (int) rod + "%", 20, 72, 0xFFFFFFFF);
         font.drawString("0%", 150, 92, 0xFF888888);
         font.drawString("100%", 355, 92, 0xFF888888);
+        font.drawString("\u624b\u52a8:", 348, 72, 0xFF888888);
 
         // 控件（含 hover 高亮；内部按 z 排序绘制）
         RbmkHoloPanel.INSTANCE.draw(font);

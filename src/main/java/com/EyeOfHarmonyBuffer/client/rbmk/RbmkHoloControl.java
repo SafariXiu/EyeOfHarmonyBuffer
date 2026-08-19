@@ -29,4 +29,17 @@ public abstract class RbmkHoloControl {
 
     /** 点击回调（命中本控件时调用）。 */
     public abstract void onClick();
+
+    /** 是否可聚焦（接收键盘输入）。 */
+    public boolean isFocusable() {
+        return false;
+    }
+
+    /** 聚焦后键盘输入回调。返回 true 表示消费了该键（阻止游戏动作，如 Enter 开聊天）。 */
+    public boolean onKey(char c, int key) {
+        return false;
+    }
+
+    /** 焦点被移走时回调（如点击别处/右键取消）。 */
+    public void onFocusLost() {}
 }
