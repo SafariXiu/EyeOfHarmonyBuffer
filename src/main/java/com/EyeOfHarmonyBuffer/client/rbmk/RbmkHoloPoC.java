@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.client.rbmk;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
+import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -15,6 +16,7 @@ public class RbmkHoloPoC {
 
     public static void register() {
         RenderingRegistry.registerEntityRenderingHandler(RbmkHoloEntity.class, new RbmkHoloRender());
+        FMLCommonHandler.instance().bus().register(new RbmkHoloInteraction());
         ClientCommandHandler.instance.registerCommand(new CommandBase() {
             @Override
             public String getCommandName() {
