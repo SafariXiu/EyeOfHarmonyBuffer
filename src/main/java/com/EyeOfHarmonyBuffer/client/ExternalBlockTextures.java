@@ -48,7 +48,7 @@ public class ExternalBlockTextures {
         }
         ITexture[] pageArray = Textures.BlockIcons.casingTexturePages[page];
 
-        IIconContainer iconContainer = new Textures.BlockIcons.CustomIcon(texturePath);
+        IIconContainer iconContainer = Textures.BlockIcons.custom(texturePath);
         ITexture texture = TextureFactory.of(iconContainer);
 
         pageArray[slot] = texture;

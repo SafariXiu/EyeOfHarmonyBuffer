@@ -238,7 +238,7 @@ public final class AssemblerRecipes implements IRecipePool {
         //2空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(NewHorizonsCoreMod.ID,"item.EngineeringProcessorSpatialPulsatingCore",1,0),
+                getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Glowstone,4),
                 GTOreDictUnificator.get(OrePrefixes.pearl, Materials.Fluix,4)
             )
@@ -252,7 +252,7 @@ public final class AssemblerRecipes implements IRecipePool {
         //16空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(NewHorizonsCoreMod.ID,"item.EngineeringProcessorSpatialPulsatingCore",1,0),
+                getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.EnderPearl,4),
                 getModItem(AppliedEnergistics2.ID,"item.ItemMultiMaterial",4,32)
             )
@@ -266,7 +266,7 @@ public final class AssemblerRecipes implements IRecipePool {
         //128空间组件
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(NewHorizonsCoreMod.ID,"item.EngineeringProcessorSpatialPulsatingCore",1,0),
+                getModItem(NewHorizonsCoreMod.ID,"EngineeringProcessorSpatialPulsatingCore",1,0),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.EnderEye,4),
                 getModItem(AppliedEnergistics2.ID,"item.ItemMultiMaterial",4,33)
             )
@@ -371,7 +371,7 @@ public final class AssemblerRecipes implements IRecipePool {
         //压缩太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(NewHorizonsCoreMod.ID,"item.ReinforcedAluminiumIronPlate",1,0),
+                getModItem(NewHorizonsCoreMod.ID,"ReinforcedAluminiumIronPlate",1,0),
                 getModItem(IndustrialCraft2.ID, "blockGenerator",8,3)
             )
             .itemOutputs(
@@ -384,7 +384,7 @@ public final class AssemblerRecipes implements IRecipePool {
         //2级压缩太阳能
         GTValues.RA.stdBuilder()
             .itemInputs(
-                getModItem(NewHorizonsCoreMod.ID,"item.IrradiantReinforcedTitaniumPlate",1,0),
+                getModItem(NewHorizonsCoreMod.ID,"IrradiantReinforcedTitaniumPlate",1,0),
                 getModItem(ElectroMagicTools.ID, "EMTSolars",8,0)
             )
             .itemOutputs(

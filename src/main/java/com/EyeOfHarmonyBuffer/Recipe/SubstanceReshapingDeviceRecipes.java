@@ -41,14 +41,13 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
-                GTOreDictUnificator.get(OrePrefixes.dust,Materials.RawRubber,1),
+                GTOreDictUnificator.get(OrePrefixes.dust,Materials.RubberRaw,1),
                 GTOreDictUnificator.get(OrePrefixes.dust,Materials.Sulfur,1)
             )
             .fluidOutputs(
-                Materials.Silicone.getMolten(Integer.MAX_VALUE),
+                Materials.RubberSilicone.getMolten(Integer.MAX_VALUE),
                 Materials.StyreneButadieneRubber.getMolten(Integer.MAX_VALUE),
-                Materials.Rubber.getMolten(Integer.MAX_VALUE),
-                WerkstoffMaterialPool.PTMEGElastomer.getMolten(Integer.MAX_VALUE)
+                Materials.Rubber.getMolten(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
@@ -243,7 +242,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .itemOutputs(
                 setStackSize(getModItem(GalaxySpace.ID, "tcetiedandelions", 1, 4),Integer.MAX_VALUE),
-                setStackSize(TCetiESeaweedExtract.getIS(1),Integer.MAX_VALUE)
+                setStackSize(TCetiESeaweedExtract.get(1),Integer.MAX_VALUE)
             )
             .fluidOutputs(
                 Iodine.getFluidOrGas(Integer.MAX_VALUE)
@@ -260,7 +259,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 GTOreDictUnificator.get(OrePrefixes.dust,Materials.Carbon,1)
             )
             .fluidOutputs(
-                Materials.Plastic.getMolten(Integer.MAX_VALUE),
+                Materials.Polycaprolactam.getMolten(Integer.MAX_VALUE),
                 Materials.PolyvinylChloride.getMolten(Integer.MAX_VALUE),
                 Materials.Polystyrene.getMolten(Integer.MAX_VALUE),
                 Materials.Polytetrafluoroethylene.getMolten(Integer.MAX_VALUE),
@@ -300,13 +299,13 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 Hydrogen.getGas(1000)
             )
             .fluidOutputs(
-                MaterialsUEVplus.ExcitedDTRC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTCC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTEC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTPC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTSC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.StargateCrystalSlurry.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.PrimordialMatter.getFluid(Integer.MAX_VALUE)
+                Materials.ExcitedDTRC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTCC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTEC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTPC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTSC.getFluid(Integer.MAX_VALUE),
+                Materials.StargateCrystalSlurry.getFluid(Integer.MAX_VALUE),
+                Materials.PrimordialMatter.getFluid(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
@@ -323,12 +322,12 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 Hydrogen.getGas(1000)
             )
             .fluidOutputs(
-                MaterialsUEVplus.BlackDwarfMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.WhiteDwarfMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.Universium.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.RawStarMatter.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.MagnetohydrodynamicallyConstrainedStarMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.SpaceTime.getMolten(Integer.MAX_VALUE)
+                Materials.BlackDwarfMatter.getMolten(Integer.MAX_VALUE),
+                Materials.WhiteDwarfMatter.getMolten(Integer.MAX_VALUE),
+                Materials.Universium.getMolten(Integer.MAX_VALUE),
+                Materials.RawStarMatter.getFluid(Integer.MAX_VALUE),
+                Materials.MHDCSM.getMolten(Integer.MAX_VALUE),
+                Materials.SpaceTime.getMolten(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
@@ -368,9 +367,9 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .fluidOutputs(
                 Infinity.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.Eternity.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.MagMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE)
+                Materials.Eternity.getMolten(Integer.MAX_VALUE),
+                Materials.MagMatter.getMolten(Integer.MAX_VALUE),
+                Materials.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
@@ -384,21 +383,21 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 getModItem(IndustrialCraft2.ID, "itemPartCircuit",1)
             )
             .itemOutputs(
-                setStackSize(CircuitULV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitLV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitLuV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitZPM.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUXV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitMAX.getIS(1),Integer.MAX_VALUE)
+                setStackSize(CircuitULV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitHV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitEV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitIV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLuV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitZPM.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUHV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUEV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUIV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUMV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUXV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMAX.get(1),Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)

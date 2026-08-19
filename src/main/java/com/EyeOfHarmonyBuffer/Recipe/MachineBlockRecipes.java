@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
-import appeng.integration.modules.GT;
 import com.EyeOfHarmonyBuffer.Config.MachineLoaderConfig;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
@@ -43,20 +42,20 @@ public final class MachineBlockRecipes implements IRecipePool {
     private static final Map<Tier, ItemStack> CIRCUIT_MAP = new EnumMap<>(Tier.class);
 
     static {
-        CIRCUIT_MAP.put(Tier.LV,  CircuitLV.getIS(1));
-        CIRCUIT_MAP.put(Tier.MV,  CircuitMV.getIS(1));
-        CIRCUIT_MAP.put(Tier.HV,  CircuitHV.getIS(1));
-        CIRCUIT_MAP.put(Tier.EV,  CircuitEV.getIS(1));
-        CIRCUIT_MAP.put(Tier.IV,  CircuitIV.getIS(1));
-        CIRCUIT_MAP.put(Tier.LuV, CircuitLuV.getIS(1));
-        CIRCUIT_MAP.put(Tier.ZPM, CircuitZPM.getIS(1));
-        CIRCUIT_MAP.put(Tier.UV,  CircuitUV.getIS(1));
-        CIRCUIT_MAP.put(Tier.UHV, CircuitUHV.getIS(1));
-        CIRCUIT_MAP.put(Tier.UEV, CircuitUEV.getIS(1));
-        CIRCUIT_MAP.put(Tier.UIV, CircuitUIV.getIS(1));
-        CIRCUIT_MAP.put(Tier.UMV, CircuitUMV.getIS(1));
-        CIRCUIT_MAP.put(Tier.UXV, CircuitUXV.getIS(1));
-        CIRCUIT_MAP.put(Tier.MAX, CircuitMAX.getIS(1));
+        CIRCUIT_MAP.put(Tier.LV,  CircuitLV.get(1));
+        CIRCUIT_MAP.put(Tier.MV,  CircuitMV.get(1));
+        CIRCUIT_MAP.put(Tier.HV,  CircuitHV.get(1));
+        CIRCUIT_MAP.put(Tier.EV,  CircuitEV.get(1));
+        CIRCUIT_MAP.put(Tier.IV,  CircuitIV.get(1));
+        CIRCUIT_MAP.put(Tier.LuV, CircuitLuV.get(1));
+        CIRCUIT_MAP.put(Tier.ZPM, CircuitZPM.get(1));
+        CIRCUIT_MAP.put(Tier.UV,  CircuitUV.get(1));
+        CIRCUIT_MAP.put(Tier.UHV, CircuitUHV.get(1));
+        CIRCUIT_MAP.put(Tier.UEV, CircuitUEV.get(1));
+        CIRCUIT_MAP.put(Tier.UIV, CircuitUIV.get(1));
+        CIRCUIT_MAP.put(Tier.UMV, CircuitUMV.get(1));
+        CIRCUIT_MAP.put(Tier.UXV, CircuitUXV.get(1));
+        CIRCUIT_MAP.put(Tier.MAX, CircuitMAX.get(1));
     }
 
     private static final Map<Tier, ItemStack> SINGULARITY_CASINGS_MAP = new EnumMap<>(Tier.class);
@@ -122,7 +121,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             GTValues.RA.stdBuilder()
                 .itemInputs(
                     getModItem(IndustrialCraft2.ID,"blockPersonal",64,1),
-                    CircuitEV.getIS(16),
+                    CircuitEV.get(16),
                     getModItem(GTPlusPlus.ID, "gtplusplus.blockcasings.3",16,2)
                 )
                 .itemOutputs(
@@ -138,7 +137,7 @@ public final class MachineBlockRecipes implements IRecipePool {
             .itemInputs(
                 ItemList.Block_Plascrete.get(64),
                 ItemList.Electric_Motor_HV.get(64),
-                GTOreDictUnificator.get(OrePrefixes.circuit, Materials.Advanced,16)
+                CircuitHV.get(1)
             )
             .itemOutputs(
                 GTCMItemList.WindTurbines.get(1)
@@ -196,7 +195,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .fluidInputs(
                     MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
                     Materials.Infinity.getMolten(128000000),
-                    MaterialsUEVplus.SpaceTime.getMolten(128000000)
+                    Materials.SpaceTime.getMolten(128000000)
                 )
                 .itemOutputs(
                     GTCMItemList.SubstanceReshapingDevice.get(1)
@@ -280,7 +279,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 .fluidInputs(
                     MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
                     Materials.Infinity.getMolten(128000000),
-                    MaterialsUEVplus.SpaceTime.getMolten(128000000)
+                    Materials.SpaceTime.getMolten(128000000)
                 )
                 .itemOutputs(
                     output
@@ -300,7 +299,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgCoreCrystal", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "ic2Capacitor", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgControllerCrystal", 1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateChevron",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateChevron",1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisUpgrade", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "sgIrisBlade", 1)),
                 GTUtility.copyAmountUnsafe(114514, getModItem(SGCraft.ID, "stargateBase", 1)),
@@ -308,14 +307,14 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTUtility.copyAmountUnsafe(102400000, getModItem(AE2FluidCraft.ID, "fluid_storage.Universe", 1)),
                 GTUtility.copyAmountUnsafe(102400000, getModItem(AppliedEnergistics2.ID, "item.ItemVoidStorageCell", 1)),
                 GTUtility.copyAmountUnsafe(10240000, GTOreDictUnificator.get(OrePrefixes.circuit, Materials.MAX, 1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateShieldingFoil",1)),
-                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "item.StargateFramePart",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateShieldingFoil",1)),
+                GTUtility.copyAmountUnsafe(114514, getModItem(NewHorizonsCoreMod.ID, "StargateFramePart",1)),
                 GTUtility.copyAmountUnsafe(10240000, ItemList.Field_Generator_MAX.get(1))
             )
             .fluidInputs(
                 MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(128000000),
                 Materials.Infinity.getMolten(128000000),
-                MaterialsUEVplus.SpaceTime.getMolten(128000000)
+                Materials.SpaceTime.getMolten(128000000)
             )
             .itemOutputs(
                 GTCMItemList.SingularityStabilizationRingCasingsMAX.get(1)
@@ -349,7 +348,7 @@ public final class MachineBlockRecipes implements IRecipePool {
                 GTCMItemList.Monkey.get(64)
             )
             .fluidInputs(
-                new FluidStack(GTPPFluids.FertileManureSlurry, 10000000)
+                Materials.Water.getFluid(11451419)
             )
             .itemOutputs(
                 GTCMItemList.MonkeyShitS.get(1)

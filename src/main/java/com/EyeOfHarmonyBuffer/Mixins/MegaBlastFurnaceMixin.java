@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
-import bartworks.common.tileentities.multis.mega.MTEMegaBlastFurnace;
+import bartworks.common.tileentities.multis.mega.MTEMegaBlastFurnaceLegacy;
 import bartworks.common.tileentities.multis.mega.MegaMultiBlockBase;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nonnull;
 
-@Mixin(value = MTEMegaBlastFurnace.class, remap = false)
-public abstract class MegaBlastFurnaceMixin extends MegaMultiBlockBase<MTEMegaBlastFurnace> implements ISurvivalConstructable {
+@Mixin(value = MTEMegaBlastFurnaceLegacy.class, remap = false)
+public abstract class MegaBlastFurnaceMixin extends MegaMultiBlockBase<MTEMegaBlastFurnaceLegacy> implements ISurvivalConstructable {
 
     protected MegaBlastFurnaceMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);

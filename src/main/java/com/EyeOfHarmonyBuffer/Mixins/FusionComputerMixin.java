@@ -63,7 +63,7 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
             if (aBaseMetaTileEntity.isServerSide()) {
                 mTotalRunTime++;
                 if (mEfficiency < 0) mEfficiency = 0;
-                if (mRunningOnLoad && checkMachine(aBaseMetaTileEntity, mInventory[1])) {
+                if (mRunningOnLoad && checkStructure(true, aBaseMetaTileEntity)) {
                     this.mEUStore = aBaseMetaTileEntity.getStoredEU();
                     checkRecipe();
                 }
@@ -94,16 +94,23 @@ public abstract class FusionComputerMixin extends MTEEnhancedMultiBlockBase<MTEF
                             this.getBaseMetaTileEntity()
                                 .decreaseStoredEnergyUnits(-mEUt, true);
                             if (mMaxProgresstime > 0 && ++mProgresstime >= mMaxProgresstime) {
-                                if (mOutputItems != null)
-                                    for (ItemStack tStack : mOutputItems) if (tStack != null) addOutput(tStack);
-                                if (mOutputFluids != null)
-                                    for (FluidStack tStack : mOutputFluids) if (tStack != null) addOutput(tStack);
-                                mEfficiency = Math
-                                    .max(0, Math.min(mEfficiency + mEfficiencyIncrease, getMaxEfficiency(mInventory[1])));
+                                if (mOutputItems != null) {
+                                    addItemOutputs(mOutputItems);
+                                }
+
+                                if (mOutputFluids != null) {
+                                    for (FluidStack tStack : mOutputFluids) {
+                                        if (tStack != null) addOutput(tStack);
+                                    }
+                                }
+
+                                mEfficiency = Math.max(0,
+                                    Math.min(mEfficiency + mEfficiencyIncrease, getMaxEfficiency(mInventory[1])));
                                 mOutputItems = null;
                                 mProgresstime = 0;
                                 mMaxProgresstime = 0;
                                 mEfficiencyIncrease = 0;
+
                                 mLastWorkingTick = mTotalRunTime;
                                 if (mOutputFluids != null && mOutputFluids.length > 0) {
                                     try {

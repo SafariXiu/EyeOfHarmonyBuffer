@@ -4,8 +4,9 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
+import gregtech.common.tileentities.machines.MTEHeatSensor;
 import gregtech.common.tileentities.machines.multi.compressor.MTEHIPCompressor;
-import gregtech.common.tileentities.machines.multi.compressor.MTEHeatSensor;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,19 +23,17 @@ public abstract class HIPCompressorMixin extends MTEExtendedPowerMultiBlockBase<
     }
 
     @Shadow
-    private int coilTier = 0;
+    private int coolingTimer;
 
     @Shadow
-    private int coolingTimer = 0;
+    private float heat;
 
     @Shadow
-    private float heat = 0;
+    private boolean overheated;
 
+    @Final
     @Shadow
-    private boolean overheated = false;
-
-    @Shadow
-    private final ArrayList<MTEHeatSensor> sensorHatches = new ArrayList<>();
+    private ArrayList<MTEHeatSensor> sensorHatches;
 
     @Inject(method = "onPostTick", at = @At("HEAD"), cancellable = true)
     private void injectOnPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick, CallbackInfo ci) {
@@ -45,7 +44,7 @@ public abstract class HIPCompressorMixin extends MTEExtendedPowerMultiBlockBase<
                 overheated = false;
 
                 for (MTEHeatSensor hatch : sensorHatches) {
-                    hatch.updateRedstoneOutput(heat);
+                    hatch.setHeatValue(heat);
                 }
 
                 ci.cancel();

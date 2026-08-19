@@ -21,12 +21,6 @@ public abstract class PreciseAssemblerMixin extends MTEExtendedPowerMultiBlockBa
         super(aID, aName, aNameRegional);
     }
 
-    @Shadow
-    protected int mode;
-
-    @Shadow
-    protected int casingTier;
-
     @Inject(method = "createProcessingLogic",at = @At("HEAD"),cancellable = true)
     public void createProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir) {
         if (MainConfig.PreciseAssemblerEnable) {

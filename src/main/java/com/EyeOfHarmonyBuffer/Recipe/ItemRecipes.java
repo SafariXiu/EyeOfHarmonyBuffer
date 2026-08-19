@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
+import gregtech.api.enums.Materials;
 import gregtech.api.enums.TierEU;
 import gtPlusPlus.core.fluids.GTPPFluids;
 import net.minecraftforge.fluids.FluidStack;
@@ -21,7 +22,7 @@ public class ItemRecipes implements IRecipePool {
                 ItemList.Shape_Mold_Ingot.get(0)
             )
             .fluidInputs(
-                new FluidStack(GTPPFluids.FertileManureSlurry, 10000)
+                Materials.Water.getFluid(1000)
             )
             .itemOutputs(
                 GTCMItemList.Shit.get(1)

@@ -1,3 +1,5 @@
+gt.nomobspawnsonthisblock=Mobs cannot Spawn on this Block
+gt.notileentityinthisblock=This is NOT a TileEntity!
 Disable_loading=§4§l§o机器被禁止加载！请前往配置文件MachineLoaderConfig中开启机器！
 BLUE_PRINT_INFO=请参考§9Structure§1Lib§7全息投影，构建主体结构
 Waila.General.WirelessMode=无线模式
@@ -137,3 +139,6 @@ EOHB_Monkey_Tooltip_00=小团体传奇搬屎员！
 EOHB_Monkey_Tooltip_01=猴子和屎真是一对苦命鸳鸯啊......
 item.Shit.name=屎
 EOHB_Shit_Tooltip_00=如你所见 这就是一坨...屎...
+
+#text
+GT5U.gui.text.structure_error.one_dynamo_only=至少有一个动力舱！

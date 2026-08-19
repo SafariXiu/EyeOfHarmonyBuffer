@@ -1,22 +1,13 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.utils.CustomProcessingLogic;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
-import cpw.mods.fml.common.Optional;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEExtendedPowerMultiBlockBase;
-import gregtech.api.recipe.RecipeMap;
-import gregtech.api.recipe.RecipeMaps;
-import gregtech.api.util.GTRecipe;
 import gregtech.common.tileentities.machines.multi.compressor.MTEBlackHoleCompressor;
-import gregtech.common.tileentities.render.TileEntityBlackhole;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import gregtech.common.tileentities.render.RenderingTileEntityBlackhole;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,7 +17,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.stream.Stream;
 
 import static com.EyeOfHarmonyBuffer.Config.MainConfig.BlackHoleCompressorPowerConsumptionModification;
 import static com.EyeOfHarmonyBuffer.Config.MainConfig.BlackHoleCompressorTimeConsumptionModification;
@@ -58,7 +48,7 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
     private boolean shouldRender = true;
 
     @Shadow
-    private TileEntityBlackhole rendererTileEntity = null;
+    private RenderingTileEntityBlackhole rendererTileEntity = null;
 
     @Shadow
     protected abstract boolean createRenderBlock();
@@ -143,6 +133,8 @@ public abstract class BlackHoleCompressorMixin extends MTEExtendedPowerMultiBloc
 
         float powerModifier = parseFloatConfig(powerModifierStr, 0.7F);
         float timeModifier = parseFloatConfig(timeModifierStr, 0.2F);
+        // 防止配置为 0 导致耗时归零（mMaxProgresstime=0 会让机器不产出并出现 9.2E/s 显示）
+        timeModifier = Math.max(0.05F, timeModifier);
 
         ProcessingLogic logic = cir.getReturnValue();
         if(MainConfig.BlackHoleCompressorPowerConsumptionModificationEnabled){

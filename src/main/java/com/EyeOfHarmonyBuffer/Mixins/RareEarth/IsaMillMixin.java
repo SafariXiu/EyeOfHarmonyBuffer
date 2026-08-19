@@ -30,9 +30,6 @@ public abstract class IsaMillMixin extends GTPPMultiBlockBase<MTEIsaMill> implem
     @Shadow
     protected abstract void damageMillingBall(ItemStack aStack);
 
-    @Shadow
-    protected abstract ItemStack findMillingBall(ItemStack[] aItemInputs);
-
     @Inject(
         method = "createProcessingLogic",
         at = @At("HEAD"),
@@ -51,10 +48,9 @@ public abstract class IsaMillMixin extends GTPPMultiBlockBase<MTEIsaMill> implem
                 @org.jetbrains.annotations.NotNull
                 @Override
                 protected OverclockCalculator createOverclockCalculator(@org.jetbrains.annotations.NotNull GTRecipe recipe) {
-                    return new OverclockCalculator()
-                        //.setSpeedBoost(100.0) // 速度提升 100 倍
-                        .setParallel(Integer.MAX_VALUE) // 最大并行数
-                        .setEUt(0); // 不耗电
+                    return OverclockCalculator.ofNoOverclock(recipe)
+                        .setParallel(Integer.MAX_VALUE)
+                        .setEUtDiscount(0.0); // 不耗电
                 }
 
                 @org.jetbrains.annotations.NotNull
