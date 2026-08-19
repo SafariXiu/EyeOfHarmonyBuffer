@@ -8,7 +8,8 @@ uniform float uTime;
 uniform float uTanHalfFov;
 uniform float uAspect;
 uniform mat3  uWorldToBhLocal;   // 相机空间视线方向 → 黑洞局部系
-uniform vec3  uLightDir;         // 盘面朝向参考方向（潮汐锁定，固定）
+uniform vec3  uLightDir;         // 虚拟相机方向（世界太阳方向的视线系投影）
+uniform float uTilt;             // 盘面倾角（绕 X，弧度）——游戏内 F8 循环切换
 uniform sampler2D uNoise;        // 64x64 程序噪声（纹理单元 1）
 
 // ============ 画面亮度（无 bloom 环境下的 HDR 补偿，可按需调节）============
@@ -20,8 +21,8 @@ const float DISC_BRIGHTNESS = 40.0;
 const float OUTER_GLOW = 0.7;
 /** 输出曝光（filmic tone map 系数）。 */
 const float EXPOSURE = 2.2;
-/** 恒星亮度（原 maxLum 0.04 在无 bloom 环境下几乎不可见）。 */
-const float STAR_LUM = 0.32;
+/** 恒星亮度（引力透镜弯曲的星弧需要足够亮才显眼）。 */
+const float STAR_LUM = 0.5;
 
 varying vec2 vNdc;
 
@@ -104,7 +105,8 @@ vec3 calcStars(vec3 worldDir){
     worldDir = rotY * worldDir;
 
     const float scale = 384.0;
-    const float coverage = 0.007;
+    // 星覆盖率：0.007 → 0.025（星数 ×3.5，引力透镜弯曲的星弧/爱因斯坦环更明显）
+    const float coverage = 0.025;
     const float maxLum = STAR_LUM;
     const float minT = 4000.0;
     const float maxT = 8000.0;
@@ -135,8 +137,8 @@ void main(){
     vec3 eye = -lightDir * 6.0;
     vec3 rayPos = eye + rayDir * 3.0;
 
-    // 盘倾斜（绕 X 5.7°、绕 Z -20°）
-    mat3 rot = rotMatrix(0.1, 0.0, -0.35);
+    // 盘面倾角：由 uniform 控制（游戏内 F8 循环切换预设）
+    mat3 rot = rotMatrix(uTilt, 0.0, -0.35);
 
     const float steps = 50.0;
     const float rSteps = 1.0 / steps;
@@ -183,8 +185,10 @@ void main(){
             density = sat01(density + bloomFactor * 0.1);
 
             if (density > 0.0001){
-                vec3 discCoord = vec3(r, p * (1.0 - radialGradient * 0.5), h * 0.1) * 5.25;
-                float f = fbmCloud(discCoord, uTime * vec3(0.1, 0.07, 0.0));
+                // ITT 默认配置（ACCRETIONDISC_DETAIL_ALONG_LONGTITUDE 关闭）：
+                // discCoord 不含经度 p（含 p 会产生 ±π 接缝暗线），卷云沿径向/高度
+                vec3 discCoord = vec3(r, 0.0, h * 0.1) * 5.25;
+                float f = fbmCloud(discCoord, uTime * vec3(0.03, 0.05, 0.0));
                 f = f * f;
                 density *= f * dr;
 

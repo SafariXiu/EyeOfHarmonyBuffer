@@ -7,6 +7,11 @@ import java.io.InputStreamReader;
 import java.nio.FloatBuffer;
 import java.util.Random;
 
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.ChatComponentText;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.Tessellator;
@@ -48,7 +53,62 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
     private static int noiseTexId = 0;
     /** 复用 DirectBuffer 传 uniform 矩阵（Angelica GL 后端要求 native 内存，FloatBuffer.wrap 的堆缓冲会驱动崩溃）。 */
     private static final FloatBuffer BH_MATRIX_BUFFER = BufferUtils.createFloatBuffer(9);
-    private static int uTime, uTanHalfFov, uAspect, uWorldToBhLocal, uLightDir, uNoise;
+    private static int uTime, uTanHalfFov, uAspect, uWorldToBhLocal, uLightDir, uTilt, uNoise;
+
+    // ===== 游戏内调参（F8 循环切换预设，找到效果后告诉我，我再固化成默认值）=====
+    /** 预设：[盘面倾角(rad), 光方向x, 光方向y, 光方向z]。光方向 = 虚拟相机方位（世界太阳方向在视线系的投影）。 */
+    private static final float[][] PRESETS = {
+        { 1.571f, 1.0f, 0.0f, 0.0f },    // 0(默认): 90° + 光=水平右 —— 赤道吸积盘带（当前选定效果）
+        { 1.047f, 0.0f, 0.0f, -1.0f },   // 1: 60° + 光=视线
+        { 1.047f, 1.0f, 0.0f, 0.0f },    // 2: 60° + 光=水平右
+        { 1.047f, 0.0f, 1.0f, 0.0f },    // 3: 60° + 光=竖直上
+        { 1.047f, 0.0f, 0.5f, -0.866f }, // 4: 60° + 光=斜上 30°
+        { 0.785f, 1.0f, 0.0f, 0.0f },    // 5: 45° + 光=水平右
+        { 1.047f, 0.707f, 0.0f, -0.707f }, // 6: 60° + 光=水平偏 45°
+        { 1.309f, 0.707f, 0.0f, -0.707f }, // 7: 75° + 光=水平偏 45°
+    };
+    private static int presetIndex = 0;
+    private static boolean f8Down = false;
+
+    /** 注册 F8 调参热键（ClientProxy.init 调用一次即可）。 */
+    public static void registerKeyHandler() {
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new KeyHandler());
+    }
+
+    /** 下一个预设（聊天栏提示当前值）。 */
+    public static void nextPreset() {
+        setPreset((presetIndex + 1) % PRESETS.length);
+    }
+
+    /** 指定预设（0 ~ PRESETS.length-1，越界取模）。 */
+    public static void setPreset(int index) {
+        presetIndex = ((index % PRESETS.length) + PRESETS.length) % PRESETS.length;
+        float[] p = PRESETS[presetIndex];
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer != null) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(String.format(
+                "[EOHB] 黑洞预设 %d/%d: tilt=%.0f° light=(%.1f, %.1f, %.1f)",
+                presetIndex + 1, PRESETS.length, Math.toDegrees(p[0]), p[1], p[2], p[3])));
+        }
+    }
+
+    /** F8：循环切换黑洞参数预设，并把当前参数打到聊天栏（便于反馈）。 */
+    private static class KeyHandler {
+
+        @SubscribeEvent
+        public void onClientTick(TickEvent.ClientTickEvent event) {
+            if (event.phase != TickEvent.Phase.END) {
+                return;
+            }
+            boolean down = org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_F8);
+            if (down && !f8Down) {
+                f8Down = true;
+                nextPreset();
+            } else if (!down) {
+                f8Down = false;
+            }
+        }
+    }
 
     @Override
     public void render(float partialTicks, WorldClient world, Minecraft mc) {
@@ -97,7 +157,9 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
         BH_MATRIX_BUFFER.put(bh);
         BH_MATRIX_BUFFER.flip();
         GL20.glUniformMatrix3(uWorldToBhLocal, false, BH_MATRIX_BUFFER);
-        GL20.glUniform3f(uLightDir, LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2]);
+        float[] preset = PRESETS[presetIndex];
+        GL20.glUniform3f(uLightDir, preset[1], preset[2], preset[3]);
+        GL20.glUniform1f(uTilt, preset[0]);
 
         // 噪声纹理（单元 1）
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -159,6 +221,7 @@ public class SkyProviderEmeraldThrone extends IRenderHandler {
         uAspect = GL20.glGetUniformLocation(prog, "uAspect");
         uWorldToBhLocal = GL20.glGetUniformLocation(prog, "uWorldToBhLocal");
         uLightDir = GL20.glGetUniformLocation(prog, "uLightDir");
+        uTilt = GL20.glGetUniformLocation(prog, "uTilt");
         uNoise = GL20.glGetUniformLocation(prog, "uNoise");
         return prog;
     }

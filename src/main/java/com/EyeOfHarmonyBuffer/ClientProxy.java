@@ -70,6 +70,8 @@ public class ClientProxy extends CommonProxy {
         hideDisallowedBottleFluids(GTCMItemList.ChiTongGasTank.getItem());
 
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new OrundumConnectorHudHandler());
+        com.EyeOfHarmonyBuffer.space.blackhole.client.SkyProviderEmeraldThrone.registerKeyHandler();
+        ClientCommandHandler.instance.registerCommand(new com.EyeOfHarmonyBuffer.command.CommandBlackHolePreset());
 
         ReactorClientEventHandler handler = new ReactorClientEventHandler();
         FMLCommonHandler.instance().bus().register(handler);
