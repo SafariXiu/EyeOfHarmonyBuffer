@@ -153,9 +153,6 @@ void main(){
 
     vec3 result = vec3(0.0);
     float transmittance = 1.0;
-    // 视界标记：视线进入盘洞（r < discInner）即认为被黑洞吞噬 →
-    // 该像素整体变黑（恒星不会残留在视界内）。
-    float shadowed = 0.0;
 
     rayPos += rayDir * stepLength * noise;
 
@@ -166,10 +163,6 @@ void main(){
         {
             vec3 dp = rot * rayPos;
             float r = length(dp);
-            // 视界（盘洞）检测：r < discInner 的路径段 = 黑洞内部
-            if (r < discInner) {
-                shadowed = 1.0;
-            }
             // ITT: atan2(-discPos.zx) = atan2(y=-z, x=-x)
             float p = atan(-dp.z, -dp.x);
             float h = dp.y;
@@ -234,14 +227,16 @@ void main(){
 
     // 恒星画在弯曲后的视线方向上 → 视界周围形成爱因斯坦环
     vec3 color = calcStars(rayDir);
-    if (shadowed > 0.5) {
-        // 视线坠入视界：整像素为黑（恒星被黑洞吞噬，不残留在视界内）
+    // 视界遮挡（方向级，不是路径级）：弯曲后的视线方向如果仍落在
+    // 视界投影内（夹角 < 视界角半径），恒星被吞噬 → 视界纯黑；
+    // 环/盘带的视线弯曲后指向视界外，不受影响（之前按路径 r 判断会误杀环）。
+    vec3 centerDir = vec3(0.0, 0.0, -1.0);       // 黑洞中心方向（局部系）
+    float horizonCos = cos(discInner / 6.0);      // 视界角半径 ≈ 盘洞/眼距
+    if (dot(rayDir, centerDir) > horizonCos) {
         color = vec3(0.0);
-        result = vec3(0.0);
-    } else {
-        color *= transmittance;
-        color += result;
     }
+    color *= transmittance;
+    color += result;
 
     // 电影 tone map（暗部提亮、高光柔化），模拟 ITT 的 HDR 曝光 + gamma 链
     color = 1.0 - exp(-color * EXPOSURE);
