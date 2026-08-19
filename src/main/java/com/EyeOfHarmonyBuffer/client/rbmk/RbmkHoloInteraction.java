@@ -8,6 +8,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -22,6 +23,9 @@ import net.minecraft.client.settings.KeyBinding;
  */
 @SideOnly(Side.CLIENT)
 public class RbmkHoloInteraction {
+
+    /** 最大交互距离（方块）：超出则不准星命中 / 不可点击，避免隔着几十格远程操作。 */
+    public static final double MAX_INTERACT_DIST = 8.0;
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
@@ -39,8 +43,13 @@ public class RbmkHoloInteraction {
             return;
         }
         pick(panel, mc.thePlayer);
-        RbmkHoloPanel.INSTANCE.updateHover(
-            RbmkHoloState.hoverX, RbmkHoloState.hoverY, RbmkHoloState.hovering);
+        if (RbmkHoloState.activated) {
+            RbmkHoloPanel.INSTANCE.updateHover(
+                RbmkHoloState.hoverX, RbmkHoloState.hoverY, RbmkHoloState.hovering);
+        } else {
+            // 未激活：不显示控件 hover（防误触），但仍记录悬停坐标用于检测"左键激活"
+            RbmkHoloPanel.INSTANCE.updateHover(0, 0, false);
+        }
     }
 
     @SubscribeEvent
@@ -53,9 +62,17 @@ public class RbmkHoloInteraction {
             return;
         }
         if (button == 0) {
-            handleLeftClick();
+            if (!RbmkHoloState.activated) {
+                // 左键点击面板任一位置 → 激活（之后才响应控件）
+                RbmkHoloState.activated = true;
+            } else {
+                handleLeftClick();
+            }
         } else if (button == 1) {
-            handleRightClick();
+            // 右键：仅激活时承担"退出父面板"（取消输入 → 弹回上层 → 关闭面板）
+            if (RbmkHoloState.activated) {
+                handleRightClick();
+            }
         }
     }
 
@@ -124,6 +141,7 @@ public class RbmkHoloInteraction {
         }
         RbmkHoloPanel.INSTANCE.clearFocus();
         RbmkHoloState.hovering = false;
+        RbmkHoloState.activated = false;
     }
 
     private static Entity findPanel(Minecraft mc) {
@@ -154,7 +172,17 @@ public class RbmkHoloInteraction {
             RbmkHoloState.hovering = false;
             return false;
         }
+        // 交互距离限制：太远不可交互
+        if (t > MAX_INTERACT_DIST) {
+            RbmkHoloState.hovering = false;
+            return false;
+        }
         Vec3 q = Vec3.createVectorHelper(eye.xCoord + look.xCoord * t, eye.yCoord + look.yCoord * t, eye.zCoord + look.zCoord * t);
+        // 视线遮挡检测：玩家到面板路径上有任何方块（含玻璃/栅栏等不完整方块）则不可交互
+        if (!hasLineOfSight(player.worldObj, eye, q)) {
+            RbmkHoloState.hovering = false;
+            return false;
+        }
         double s = 0.0625 * RbmkHoloRender.SCALE;
         Vec3 qc = Vec3.createVectorHelper(q.xCoord - c.xCoord, q.yCoord - c.yCoord, q.zCoord - c.zCoord);
         double u = qc.dotProduct(Vec3.createVectorHelper(f.rx, f.ry, f.rz)) / s + RbmkHoloRender.W / 2.0;
@@ -166,5 +194,44 @@ public class RbmkHoloInteraction {
         RbmkHoloState.hoverX = (int) u;
         RbmkHoloState.hoverY = (int) v;
         return RbmkHoloState.hovering;
+    }
+
+    /**
+     * 视线遮挡检测：从 eye 到 target 逐点遍历方块，路径上有任何非空气方块
+     * （含玻璃/栅栏等不完整方块）即判定遮挡。跳过起点（玩家所在）与终点（面板所在）方块。
+     */
+    private static boolean hasLineOfSight(net.minecraft.world.World world, Vec3 eye, Vec3 target) {
+        int startX = MathHelper.floor_double(eye.xCoord);
+        int startY = MathHelper.floor_double(eye.yCoord);
+        int startZ = MathHelper.floor_double(eye.zCoord);
+        int endX = MathHelper.floor_double(target.xCoord);
+        int endY = MathHelper.floor_double(target.yCoord);
+        int endZ = MathHelper.floor_double(target.zCoord);
+
+        double dx = target.xCoord - eye.xCoord;
+        double dy = target.yCoord - eye.yCoord;
+        double dz = target.zCoord - eye.zCoord;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < 1e-4) {
+            return true;
+        }
+        // 每格采样 2 点，避免错过薄方块
+        int steps = (int) Math.ceil(dist * 2.0);
+        for (int i = 1; i < steps; i++) {
+            double t = i / (double) steps;
+            int bx = MathHelper.floor_double(eye.xCoord + dx * t);
+            int by = MathHelper.floor_double(eye.yCoord + dy * t);
+            int bz = MathHelper.floor_double(eye.zCoord + dz * t);
+            if (bx == startX && by == startY && bz == startZ) {
+                continue;
+            }
+            if (bx == endX && by == endY && bz == endZ) {
+                continue;
+            }
+            if (!world.isAirBlock(bx, by, bz)) {
+                return false;
+            }
+        }
+        return true;
     }
 }
