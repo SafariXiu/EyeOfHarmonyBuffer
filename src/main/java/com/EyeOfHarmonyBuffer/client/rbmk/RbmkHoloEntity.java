@@ -12,6 +12,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class RbmkHoloEntity extends Entity {
 
+    /** 视口类型：0 = 控制面板（现有），1 = 堆芯俯瞰大屏。 */
+    public int viewType = 0;
+
     public RbmkHoloEntity(World world) {
         super(world);
         this.setSize(0.01f, 0.01f);

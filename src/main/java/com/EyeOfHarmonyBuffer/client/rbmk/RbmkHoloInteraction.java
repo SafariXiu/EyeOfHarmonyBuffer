@@ -146,8 +146,8 @@ public class RbmkHoloInteraction {
 
     private static Entity findPanel(Minecraft mc) {
         for (Object o : mc.theWorld.loadedEntityList) {
-            if (o instanceof RbmkHoloEntity) {
-                return (Entity) o;
+            if (o instanceof RbmkHoloEntity r && r.viewType == 0) {
+                return r;
             }
         }
         return null;

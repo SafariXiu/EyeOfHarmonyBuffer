@@ -9,7 +9,8 @@ import net.minecraft.util.Vec3;
 import net.minecraftforge.client.ClientCommandHandler;
 
 /**
- * 自写世界全息面板 PoC：/rbmkui 在玩家面前 4 格生成全息面板（纯渲染验证）。
+ * 自写世界全息面板 PoC：/rbmkui 生成两个屏 ——
+ * 左：堆芯俯瞰大屏（viewType 1）；右：控制面板（viewType 0）。
  */
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
 public class RbmkHoloPoC {
@@ -40,12 +41,24 @@ public class RbmkHoloPoC {
                     return;
                 }
                 Vec3 look = mc.thePlayer.getLookVec();
-                double x = mc.thePlayer.posX + look.xCoord * 4;
-                double y = mc.thePlayer.posY + mc.thePlayer.getEyeHeight() + look.yCoord * 4;
-                double z = mc.thePlayer.posZ + look.zCoord * 4;
-                RbmkHoloEntity e = new RbmkHoloEntity(mc.theWorld);
-                e.setPosition(x, y, z);
-                mc.theWorld.spawnEntityInWorld(e);
+                // 玩家视线"左"方向 = cross(look, up)
+                Vec3 left = look.crossProduct(Vec3.createVectorHelper(0, 1, 0)).normalize();
+
+                double bx = mc.thePlayer.posX + look.xCoord * 5;
+                double by = mc.thePlayer.posY + mc.thePlayer.getEyeHeight() + look.yCoord * 5;
+                double bz = mc.thePlayer.posZ + look.zCoord * 5;
+
+                // 左：堆芯俯瞰大屏
+                RbmkHoloEntity coreView = new RbmkHoloEntity(mc.theWorld);
+                coreView.viewType = 1;
+                coreView.setPosition(bx + left.xCoord * 2.4, by, bz + left.zCoord * 2.4);
+                mc.theWorld.spawnEntityInWorld(coreView);
+
+                // 右：控制面板
+                RbmkHoloEntity panel = new RbmkHoloEntity(mc.theWorld);
+                panel.viewType = 0;
+                panel.setPosition(bx - left.xCoord * 1.4, by, bz - left.zCoord * 1.4);
+                mc.theWorld.spawnEntityInWorld(panel);
             }
         });
     }
