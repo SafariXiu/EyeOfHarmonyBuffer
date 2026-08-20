@@ -1,6 +1,11 @@
 package com.EyeOfHarmonyBuffer.client.rbmk;
 
-/** 全息面板共享状态（PoC：单面板）。控件区域定义在 RbmkHoloPanel 的控件里。 */
+import net.minecraft.entity.Entity;
+
+/**
+ * 全息面板共享状态（PoC）。
+ * 控件区域定义在 RbmkHoloPanel 的控件里。
+ */
 public class RbmkHoloState {
 
     public static double rodPos = 62;
@@ -13,4 +18,7 @@ public class RbmkHoloState {
     public static boolean hovering = false;
     public static int hoverX = 0;
     public static int hoverY = 0;
+
+    /** 当前准星命中的全息屏实体（viewType 0 控制面板 / 1 堆芯大屏），未命中为 null。 */
+    public static Entity hoveredEntity = null;
 }

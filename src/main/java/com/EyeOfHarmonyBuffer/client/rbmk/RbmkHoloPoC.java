@@ -26,7 +26,7 @@ public class RbmkHoloPoC {
 
             @Override
             public String getCommandUsage(ICommandSender sender) {
-                return "/rbmkui";
+                return "/rbmkui [1|2]";
             }
 
             @Override
@@ -48,17 +48,31 @@ public class RbmkHoloPoC {
                 double by = mc.thePlayer.posY + mc.thePlayer.getEyeHeight() + look.yCoord * 5;
                 double bz = mc.thePlayer.posZ + look.zCoord * 5;
 
-                // 左：堆芯俯瞰大屏
-                RbmkHoloEntity coreView = new RbmkHoloEntity(mc.theWorld);
-                coreView.viewType = 1;
-                coreView.setPosition(bx + left.xCoord * 2.4, by, bz + left.zCoord * 2.4);
-                mc.theWorld.spawnEntityInWorld(coreView);
+                int mode = args.length >= 1 ? parseMode(args[0]) : 0;
 
-                // 右：控制面板
-                RbmkHoloEntity panel = new RbmkHoloEntity(mc.theWorld);
-                panel.viewType = 0;
-                panel.setPosition(bx - left.xCoord * 1.4, by, bz - left.zCoord * 1.4);
-                mc.theWorld.spawnEntityInWorld(panel);
+                // mode==0: 全部(默认)；1: 仅控制面板(viewType 0)；2: 仅堆芯大屏(viewType 1)
+                if (mode == 0 || mode == 1) {
+                    RbmkHoloEntity panel = new RbmkHoloEntity(mc.theWorld);
+                    panel.viewType = 0;
+                    panel.setPosition(bx - left.xCoord * 1.4, by, bz - left.zCoord * 1.4);
+                    mc.theWorld.spawnEntityInWorld(panel);
+                }
+                if (mode == 0 || mode == 2) {
+                    RbmkHoloEntity coreView = new RbmkHoloEntity(mc.theWorld);
+                    coreView.viewType = 1;
+                    coreView.setPosition(bx + left.xCoord * 4.0, by, bz + left.zCoord * 4.0);
+                    mc.theWorld.spawnEntityInWorld(coreView);
+                }
+            }
+
+            private int parseMode(String s) {
+                if ("1".equals(s)) {
+                    return 1;  // 控制面板
+                }
+                if ("2".equals(s)) {
+                    return 2;  // 堆芯大屏
+                }
+                return 0;
             }
         });
     }

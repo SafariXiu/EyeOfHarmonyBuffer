@@ -10,7 +10,6 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
-import java.util.Random;
 
 /**
  * 自写世界全息面板渲染器。
@@ -23,9 +22,9 @@ public class RbmkHoloRender extends Render {
     public static final int H = 270;
     public static final float SCALE = 0.25f;
 
-    // 堆芯俯瞰大屏视口
-    public static final int CORE_W = 760;
-    public static final int CORE_H = 700;
+    // 堆芯俯瞰大屏视口（扩大一圈，容纳 48×48 满栅格）
+    public static final int CORE_W = 820;
+    public static final int CORE_H = 830;
 
     @Override
     protected ResourceLocation getEntityTexture(Entity entity) {
@@ -116,49 +115,9 @@ public class RbmkHoloRender extends Render {
 
     // ==================== 堆芯俯瞰大屏（viewType 1） ====================
 
-    // 栅格类型：0=圆外空，1=反射层石墨，2=燃料通道，3=控制棒
-    private static final int CORE_GRID = 48;
-    private static final byte[][] core = new byte[CORE_GRID][CORE_GRID];
-    private static int coreFuel = 0, coreRods = 0, coreGraph = 0;
-    private static boolean coreReady = false;
-
-    /** 按真实比例程序生成堆芯栅格（1661 燃料 / 211 棒 / 反射层 的示意比例）。 */
-    private static void ensureCore() {
-        if (coreReady) {
-            return;
-        }
-        Random rnd = new Random(20260826L);
-        double half = (CORE_GRID - 1) / 2.0;
-        double radius = half - 0.5;
-        for (int yy = 0; yy < CORE_GRID; yy++) {
-            for (int xx = 0; xx < CORE_GRID; xx++) {
-                double d = Math.sqrt((xx - half) * (xx - half) + (yy - half) * (yy - half));
-                if (d > radius + 0.5) {
-                    core[yy][xx] = 0;
-                } else if (d > radius - 2.5) {
-                    core[yy][xx] = 1;      // 反射层
-                    coreGraph++;
-                } else {
-                    core[yy][xx] = 2;      // 燃料
-                    coreFuel++;
-                }
-            }
-        }
-        // 控制棒穿插：燃料区约 1/8 → 控制棒
-        for (int yy = 0; yy < CORE_GRID; yy++) {
-            for (int xx = 0; xx < CORE_GRID; xx++) {
-                if (core[yy][xx] == 2 && rnd.nextInt(8) == 0) {
-                    core[yy][xx] = 3;
-                    coreRods++;
-                    coreFuel--;
-                }
-            }
-        }
-        coreReady = true;
-    }
-
     private void drawCoreView(int w, int h) {
-        ensureCore();
+        RbmkCoreData.ensureLoaded();
+        int grid = RbmkCoreData.GRID;
         setupDrawing();
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
@@ -169,22 +128,27 @@ public class RbmkHoloRender extends Render {
         // 栅格区
         int top = 40;
         int bottom = h - 26;
-        int cell = Math.min((w - 30) / CORE_GRID, (bottom - top) / CORE_GRID);
         int gap = 2;
-        int originX = (w - (cell * CORE_GRID + gap * (CORE_GRID - 1))) / 2;
-        int originY = top + ((bottom - top) - (cell * CORE_GRID + gap * (CORE_GRID - 1))) / 2;
+        int cell = Math.min((w - 30 - gap * (grid - 1)) / grid,
+            (bottom - top - gap * (grid - 1)) / grid);
+        cell = Math.max(cell, 1);
+        int originX = (w - (cell * grid + gap * (grid - 1))) / 2;
+        int originY = top + ((bottom - top) - (cell * grid + gap * (grid - 1))) / 2;
 
-        for (int yy = 0; yy < CORE_GRID; yy++) {
-            for (int xx = 0; xx < CORE_GRID; xx++) {
-                byte t = core[yy][xx];
+        for (int yy = 0; yy < grid; yy++) {
+            for (int xx = 0; xx < grid; xx++) {
+                int t = RbmkCoreData.at(yy, xx);
                 if (t == 0) {
-                    continue; // 圆外空
+                    continue; // 石墨砌体('.') 不画
                 }
                 int color;
                 switch (t) {
-                    case 1:  color = 0xFF343C46; break;  // 反射层石墨
-                    case 3:  color = 0xFF3D6BE0; break;  // 控制棒（蓝）
-                    default: color = 0xFF9AA4AE; break;  // 燃料（中性灰）
+                    case 1:  color = 0xFF9AA4AE; break;  // F 燃料压力管（灰）
+                    case 2:  color = 0xFF44C955; break;  // R 普通控制棒（绿）
+                    case 3:  color = 0xFFE6CC3A; break;  // S 缩短吸收棒 UA（黄）
+                    case 4:  color = 0xFFE04848; break;  // A 自动控制棒（红）
+                    case 5:  color = 0xFF3D6BE0; break;  // L LAR 棒（蓝）
+                    default: color = 0xFF343C46; break;
                 }
                 int px = originX + xx * (cell + gap);
                 int py = originY + yy * (cell + gap);
@@ -193,8 +157,11 @@ public class RbmkHoloRender extends Render {
         }
 
         // 图例 + 计数
-        font.drawString("图例: 燃料=灰 控制棒=蓝 反射层=深灰"
-            + "    [燃料 " + coreFuel + " / 控制棒 " + coreRods + " / 反射 " + coreGraph + "]", 20, bottom + 4, 0xFFAAAAAA);
+        font.drawString("石墨=深灰 燃料=灰F 控制=绿R 缩短=黄S 自动=红A LAR=蓝L"
+            + "    [燃料 " + RbmkCoreData.getFuel() + " / 控制棒 " + RbmkCoreData.getRods()
+            + " (R" + RbmkCoreData.getControlRods() + " S" + RbmkCoreData.getShortRods()
+            + " A" + RbmkCoreData.getAutoRods() + " L" + RbmkCoreData.getLarRods()
+            + ") / 石墨 " + RbmkCoreData.getGraphite() + "]", 20, bottom + 4, 0xFFAAAAAA);
 
         teardownDrawing();
     }
