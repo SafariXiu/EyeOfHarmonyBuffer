@@ -6,7 +6,6 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
-import net.minecraft.util.Vec3;
 import net.minecraftforge.client.ClientCommandHandler;
 
 /**
@@ -45,23 +44,15 @@ public class RbmkHoloPoC {
                 if (mc.thePlayer == null || mc.theWorld == null) {
                     return;
                 }
-                Vec3 look = mc.thePlayer.getLookVec();
-                // 玩家视线"左"方向 = cross(look, up)
-                Vec3 left = look.crossProduct(Vec3.createVectorHelper(0, 1, 0)).normalize();
-
-                double bx = mc.thePlayer.posX + look.xCoord * 5;
-                double by = mc.thePlayer.posY + mc.thePlayer.getEyeHeight() + look.yCoord * 5;
-                double bz = mc.thePlayer.posZ + look.zCoord * 5;
-
                 int mode = args.length >= 1 ? parseMode(args[0]) : 0;
 
                 // mode==0: 全部(默认)；1: 仅控制面板(panel)；2: 仅堆芯大屏(core)
                 if (mode == 0 || mode == 1) {
-                    spawnScreen(mc, "panel", bx, by, bz, look, left, 1.4, 0.0);
+                    HoloSpawn.spawnInFront(mc.thePlayer, "panel", 5, 1.4, 0.0);
                 }
                 if (mode == 0 || mode == 2) {
                     // 大屏沿视线方向后移 0.4 格：两块屏平面不再重叠，避免深度测试下互相 z-fighting 闪烁
-                    spawnScreen(mc, "core", bx, by, bz, look, left, -4.0, 0.4);
+                    HoloSpawn.spawnInFront(mc.thePlayer, "core", 5, -4.0, 0.4);
                 }
             }
 
@@ -75,23 +66,5 @@ public class RbmkHoloPoC {
                 return 0;
             }
         });
-    }
-
-    /** 通过注册表创建一块屏并生成实体。
-     * off 为相对视线"左"方向的偏移（可正可负）；depth 为沿视线"后移"的深度偏移
-     * （>0 让屏离玩家更远，用于把多块屏的平面错开，避免重叠处 z-fighting）。 */
-    private static void spawnScreen(Minecraft mc, String id, double bx, double by, double bz,
-                                    Vec3 look, Vec3 left, double off, double depth) {
-        HoloScreen screen = HoloScreenRegistry.create(id);
-        if (screen == null) {
-            return;
-        }
-        HoloEntity e = new HoloEntity(mc.theWorld);
-        e.setScreen(screen);
-        e.setPosition(
-            bx - left.xCoord * off + look.xCoord * depth,
-            by + look.yCoord * depth,
-            bz - left.zCoord * off + look.zCoord * depth);
-        mc.theWorld.spawnEntityInWorld(e);
     }
 }

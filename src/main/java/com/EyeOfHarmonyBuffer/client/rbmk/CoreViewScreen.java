@@ -134,7 +134,7 @@ public class CoreViewScreen extends HoloScreen {
         c.rect(cx, cy, cw, chh, 0xD0000000);
         c.border(cx, cy, cw, chh, fixed ? 0xFF4488FF : 0xFF555555, 1);
         // 类型色块 + 名称
-        int color = HoloGridLayout.colorFor(RbmkCoreData.at(row, col));
+        int color = RbmkCoreData.colorFor(RbmkCoreData.at(row, col));
         c.rect(cx + 6, cy + 8, 10, 10, color);
         c.text(cx + 22, cy + 7, RbmkCoreData.typeName(ch.type), 0xFFFFFFFF);
         // 坐标 + 对称位
@@ -168,7 +168,7 @@ public class CoreViewScreen extends HoloScreen {
         public void draw(HoloCanvas c) {
             int t = RbmkCoreData.at(row, col);
             if (t != 0) {
-                c.rect(x, y, w, h, HoloGridLayout.colorFor(t));
+                c.rect(x, y, w, h, RbmkCoreData.colorFor(t));
             }
             if (fixedRow == row && fixedCol == col) {
                 c.border(x, y, w, h, 0xFF4488FF, Math.max(1, w / 6));

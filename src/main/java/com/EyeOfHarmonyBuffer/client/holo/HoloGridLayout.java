@@ -1,10 +1,8 @@
 package com.EyeOfHarmonyBuffer.client.holo;
 
-import java.util.function.IntBinaryOperator;
-
 /**
- * 通用栅格布局工具：计算 cell/原点，绘制矩阵，支持"局部坐标 → 行列"换算。
- * 机器要画自己的矩阵/粒子布局时直接复用（构造 + draw + cellAt）。
+ * 通用栅格布局工具：纯布局数学 —— 计算 cell/原点、格子坐标换算、局部坐标 → 行列。
+ * 不含任何业务配色/绘制（那是各业务侧的事）：机器要画自己的矩阵时复用（构造 + px/py + cellAt）。
  */
 public class HoloGridLayout {
 
@@ -62,28 +60,4 @@ public class HoloGridLayout {
         return new int[] { row, col };
     }
 
-    /** 通道类型 → 颜色（大屏配色）。0=石墨砌体（不画，返回 0 由调用方跳过）。 */
-    public static int colorFor(int t) {
-        switch (t) {
-            case 1:  return 0xFF9AA4AE; // 燃料压力管（灰）
-            case 2:  return 0xFF44C955; // 普通控制棒（绿）
-            case 3:  return 0xFFE6CC3A; // 缩短吸收棒 UA（黄）
-            case 4:  return 0xFFE04848; // 自动控制棒（红）
-            case 5:  return 0xFF3D6BE0; // LAR 棒（蓝）
-            default: return 0xFF343C46;
-        }
-    }
-
-    /** 绘制整个栅格。typeAt(row, col) 返回通道类型；返回 0 的格子（石墨）不画。 */
-    public void draw(HoloCanvas c, IntBinaryOperator typeAt) {
-        for (int yy = 0; yy < grid; yy++) {
-            for (int xx = 0; xx < grid; xx++) {
-                int t = typeAt.applyAsInt(yy, xx);
-                if (t == 0) {
-                    continue;
-                }
-                c.rect(px(xx), py(yy), cell, cell, colorFor(t));
-            }
-        }
-    }
 }

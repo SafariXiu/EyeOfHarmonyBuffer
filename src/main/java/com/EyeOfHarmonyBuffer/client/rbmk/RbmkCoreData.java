@@ -100,6 +100,18 @@ public class RbmkCoreData {
         return new RbmkChannel(at(row, col), (long) row * 100003L + col);
     }
 
+    /** 通道类型 → 颜色（大屏配色）。0=石墨砌体（调用方自行跳过不画）。 */
+    public static int colorFor(int t) {
+        switch (t) {
+            case 1:  return 0xFF9AA4AE; // 燃料压力管（灰）
+            case 2:  return 0xFF44C955; // 普通控制棒（绿）
+            case 3:  return 0xFFE6CC3A; // 缩短吸收棒 UA（黄）
+            case 4:  return 0xFFE04848; // 自动控制棒（红）
+            case 5:  return 0xFF3D6BE0; // LAR 棒（蓝）
+            default: return 0xFF343C46;
+        }
+    }
+
     /** 通道类型 → 显示名。 */
     public static String typeName(int t) {
         switch (t) {
