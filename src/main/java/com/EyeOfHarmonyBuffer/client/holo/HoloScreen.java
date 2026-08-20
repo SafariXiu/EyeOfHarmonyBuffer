@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.client.holo;
 
+import org.lwjgl.opengl.GL11;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -65,15 +67,28 @@ public abstract class HoloScreen {
         }
     }
 
-    /** 绘制整屏：背景 → 控件（z 升序）→ 叠加层。 */
+    /** 绘制整屏：背景 → 控件（z 升序）→ 叠加层。
+     *
+     * 背景与内容同处一个 z=0 平面；开启深度测试后，GPU 对同一平面上两个三角形的
+     * 逐像素深度插值可能差 1 ULP，导致内容被背景深度剔除（露出黑色背景 → 整面黑色
+     * 条纹/闪烁，且图案随屏朝向变化）。处理：
+     * - 内容层向相机方向做多边形偏移（比背景更近，必然通过背景的深度测试）；
+     * - 内容层关闭深度写入（不再与后续内容互相剔除）。
+     * 方块遮挡不受影响：方块深度比屏近得多，仍正常挡住整块屏。 */
     public void draw(HoloCanvas c) {
         drawBackground(c);
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(-2.0f, -2.0f);
+        GL11.glDepthMask(false);
         List<HoloWidget> sorted = new ArrayList<>(widgets);
         sorted.sort(Comparator.comparingInt(w2 -> w2.z));
         for (HoloWidget w2 : sorted) {
             w2.draw(c);
         }
         drawOverlay(c);
+        GL11.glDepthMask(true);
+        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(0, 0);
     }
 
     // ---- 焦点 ----
@@ -122,17 +137,63 @@ public abstract class HoloScreen {
 
     // ==================== 交互回调（由 HoloInteraction 调用） ====================
 
-    /** 每 tick 准星悬停：局部坐标 + 是否命中。子类可覆写（如未激活时不亮控件）。 */
+    /** 是否已激活：未激活时左键"进入"，激活后左键操作、右键退出（所有屏共用的基本交互模型）。 */
+    protected boolean activated = false;
+
+    /** 每 tick 准星悬停：未激活时不亮控件（防误触），激活后正常更新控件 hover。
+     *  子类需额外记录悬停坐标时可覆写并调用 super。 */
     public void onHover(int px, int py, boolean hovering) {
-        updateHover(px, py, hovering);
+        updateHover(activated ? px : 0, activated ? py : 0, activated && hovering);
     }
 
-    /** 鼠标按键（0=左键 1=右键），u/v 为局部坐标。需要响应的屏覆写。 */
-    public void onMouse(int button, int u, int v) {}
+    /** 鼠标按键（0=左键 1=右键），u/v 为局部坐标。
+     *  基本交互模型：未激活时左键进入；激活后左键操作、右键退出。子类不必重复写。 */
+    public void onMouse(int button, int u, int v) {
+        if (button == 1) {
+            if (activated) {
+                onRightClick();
+            }
+        } else if (button == 0) {
+            if (!activated) {
+                activate();
+            } else {
+                onLeftClick(u, v);
+            }
+        }
+    }
 
-    /** 屏被关闭前回调（默认清焦点；面板覆写以复位激活态）。 */
+    /** 左键进入：置激活态。子类可覆写做进入动作（如复位选中）。 */
+    protected void activate() {
+        activated = true;
+    }
+
+    /** 激活后的左键操作：默认命中并点击控件。子类可覆写（如格子选中）。 */
+    protected void onLeftClick(int u, int v) {
+        HoloWidget c = hitAt(u, v);
+        requestFocus(c);
+        if (c != null) {
+            c.onClick();
+        }
+    }
+
+    /** 激活后的右键退出路径：清焦点 → 弹层 → 复位激活态并请求关闭。
+     *  子类可覆写（如先取消固定再退出）。 */
+    protected void onRightClick() {
+        if (hasFocus()) {
+            clearFocus();
+            return;
+        }
+        if (goBack()) {
+            return;
+        }
+        activated = false;
+        requestClose();
+    }
+
+    /** 屏被关闭前回调（默认清焦点并复位激活态）。 */
     public void onClose() {
         clearFocus();
+        activated = false;
     }
 
     /** 请求关闭本屏：触发宿主关闭对应实体。 */

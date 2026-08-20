@@ -16,7 +16,6 @@ public class PanelScreen extends HoloScreen {
     // ---- 每屏独立状态 ----
     private double rodPos = 62;
     private boolean az5Pressed = false;
-    private boolean activated = false;
 
     public PanelScreen() {
         super(W, H);
@@ -31,7 +30,8 @@ public class PanelScreen extends HoloScreen {
 
     @Override
     protected void drawBackground(HoloCanvas c) {
-        c.rect(0, 0, w, h, 0xE6101820);
+        // 全不透明背景：面板是一块实体屏，后面的世界/另一块屏不再透出（否则移动视角会出现透过伪影）
+        c.rect(0, 0, w, h, 0xFF101820);
         c.rect(0, 0, w, 3, 0xFF2A6B8F);
         c.text(20, 14, "RBMK-1000 · 四号机组 · 自写面板", 0xFFFFFFFF);
         c.text(20, 72, "控制棒: " + (int) rodPos + "%", 0xFFFFFFFF);
@@ -53,55 +53,7 @@ public class PanelScreen extends HoloScreen {
     }
 
     // ---- 交互 ----
-
-    /** 未激活时不亮控件（防误触），但仍记录悬停坐标用于"左键激活"检测。 */
-    @Override
-    public void onHover(int px, int py, boolean hovering) {
-        updateHover(activated ? px : 0, activated ? py : 0, activated && hovering);
-    }
-
-    /** 左键：未激活→激活；已激活→点控件。右键：已激活→取消输入→弹回→关闭。 */
-    @Override
-    public void onMouse(int button, int u, int v) {
-        if (button == 1) {
-            if (activated) {
-                onRightClick();
-            }
-        } else if (button == 0) {
-            if (!activated) {
-                activated = true;
-            } else {
-                onLeftClick(u, v);
-            }
-        }
-    }
-
-    private void onLeftClick(int u, int v) {
-        HoloWidget c = hitAt(u, v);
-        // 点击任何位置都先更新焦点：点输入框 → 聚焦；点别处 → 失焦
-        requestFocus(c);
-        if (c != null) {
-            c.onClick();
-        }
-    }
-
-    /** 右键：有焦点 → 取消；有上层 → 弹回；否则关闭本屏。 */
-    private void onRightClick() {
-        if (hasFocus()) {
-            clearFocus();
-            return;
-        }
-        if (goBack()) {
-            return;
-        }
-        requestClose();
-    }
-
-    @Override
-    public void onClose() {
-        super.onClose();
-        activated = false;
-    }
+    // 基本交互模型（左键进入 / 左键操作 / 右键退出）已由 HoloScreen 基类提供，无需重复实现。
 
     // ==================== 控件 ====================
 

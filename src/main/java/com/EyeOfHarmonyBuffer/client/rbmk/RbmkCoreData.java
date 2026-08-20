@@ -18,6 +18,9 @@ public class RbmkCoreData {
 
     public static final int GRID = 48;
 
+    /** 实时通道数据源（模拟或机器注入）。 */
+    private static RbmkChannelProvider channelProvider = null;
+
     private static int[][] cells;
     private static int fuel = 0;
     private static int rods = 0;
@@ -80,6 +83,32 @@ public class RbmkCoreData {
             loaded = true;
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    /** 设置实时通道数据源（机器接入点）。传 null 恢复模拟数据。 */
+    public static void setChannelProvider(RbmkChannelProvider p) {
+        channelProvider = p;
+    }
+
+    /** 取 (row, col) 通道数据：优先走 provider；无 provider 时用确定性模拟数据。 */
+    public static RbmkChannel channelAt(int row, int col) {
+        RbmkChannel c = channelProvider != null ? channelProvider.channel(row, col) : null;
+        if (c != null) {
+            return c;
+        }
+        return new RbmkChannel(at(row, col), (long) row * 100003L + col);
+    }
+
+    /** 通道类型 → 显示名。 */
+    public static String typeName(int t) {
+        switch (t) {
+            case 1:  return "燃料压力管";
+            case 2:  return "普通控制棒";
+            case 3:  return "缩短吸收棒 UA";
+            case 4:  return "自动控制棒";
+            case 5:  return "LAR 棒";
+            default: return "石墨砌体";
         }
     }
 

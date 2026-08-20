@@ -68,7 +68,11 @@ public class HoloRender extends Render {
 
     private void setupDrawing() {
         GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        // 深度测试保留开启：全息屏应被实心方块正常遮挡（关掉会一直穿透所有方块画在最上层）。
+        // 但屏内所有元素画在同一 z=0 平面，默认 GL_LESS 会把后画的同深度元素全剔除（边框/文字/滑块
+        // 都画不出来 → 伪影闪烁）。改用 GL_LEQUAL：同深度按绘制顺序覆盖（画家算法），真实方块因深度
+        // 不同仍正常遮挡。
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_CULL_FACE);
@@ -76,7 +80,9 @@ public class HoloRender extends Render {
     }
 
     private void teardownDrawing() {
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        // 恢复默认深度函数（vanilla 用 GL_LESS）
+        GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glEnable(GL11.GL_CULL_FACE);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 }

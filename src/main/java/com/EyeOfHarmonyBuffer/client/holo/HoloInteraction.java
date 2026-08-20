@@ -21,9 +21,6 @@ import org.lwjgl.input.Mouse;
 @SideOnly(Side.CLIENT)
 public class HoloInteraction {
 
-    /** 最大交互距离（方块）：超出则不准星命中 / 不可点击，避免隔着几十格远程操作。 */
-    public static final double MAX_INTERACT_DIST = 8.0;
-
     /** 上一帧悬停的屏：离开/切换时清掉旧屏的控件 hover，避免残留高亮。 */
     private static HoloScreen lastHovered = null;
 
@@ -43,7 +40,7 @@ public class HoloInteraction {
         HoloScreen now = hovered instanceof HoloEntity h ? h.getScreen() : null;
         // 离开旧屏/切到另一屏：清掉旧屏控件 hover
         if (lastHovered != null && lastHovered != now) {
-            lastHovered.updateHover(0, 0, false);
+            lastHovered.onHover(0, 0, false); // 通知旧屏"悬停结束"（清组件 hover + 屏内悬停态）
         }
         lastHovered = now;
         if (now == null) {
@@ -67,9 +64,19 @@ public class HoloInteraction {
             return;
         }
         HoloScreen screen = h.getScreen();
-        if (screen != null) {
-            screen.onMouse(button, HoloState.hoverX, HoloState.hoverY);
+        if (screen == null) {
+            return;
         }
+        // 点击瞬间用当前准星重新拾取：消除 tick 与点击事件之间的滞后，保证"指哪点哪"
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null) {
+            return;
+        }
+        double[] uv = new double[2];
+        if (!pick(target, mc.thePlayer, uv)) {
+            return;
+        }
+        screen.onMouse(button, (int) Math.round(uv[0]), (int) Math.round(uv[1]));
     }
 
     @SubscribeEvent
@@ -147,8 +154,8 @@ public class HoloInteraction {
         }
         if (best != null) {
             HoloState.hovering = true;
-            HoloState.hoverX = (int) bestU;
-            HoloState.hoverY = (int) bestV;
+            HoloState.hoverX = (int) Math.round(bestU);
+            HoloState.hoverY = (int) Math.round(bestV);
         }
         return best;
     }
@@ -159,6 +166,15 @@ public class HoloInteraction {
         if (screen == null) {
             return false;
         }
+        double s = 0.0625 * HoloRender.SCALE;
+        int w = screen.w;
+        int h = screen.h;
+        // 交互距离随屏的物理大小缩放：屏半对角线（世界格）+ 玩家可站开的基本距离。
+        // 面板半对角约 4.3 格 → 上限 ~8.3（与旧 8.0 接近）；大屏半对角约 9.1 格 → 上限 ~13.1，
+        // 保证从能看全整块屏的距离内，下缘也一样能点。
+        double halfDiag = 0.5 * Math.sqrt((double) w * w + (double) h * h) * s;
+        double maxDist = 4.0 + halfDiag;
+
         Vec3 eye = Vec3.createVectorHelper(player.posX, player.posY + player.getEyeHeight(), player.posZ);
         Vec3 look = player.getLookVec();
         HoloMath.Frame f = HoloMath.frameFor(e, player);
@@ -174,8 +190,7 @@ public class HoloInteraction {
         if (t < 0) {
             return false;
         }
-        // 交互距离限制：太远不可交互
-        if (t > MAX_INTERACT_DIST) {
+        if (t > maxDist) {
             return false;
         }
         Vec3 q = Vec3.createVectorHelper(eye.xCoord + look.xCoord * t, eye.yCoord + look.yCoord * t, eye.zCoord + look.zCoord * t);
@@ -183,10 +198,6 @@ public class HoloInteraction {
         if (!hasLineOfSight(player.worldObj, eye, q)) {
             return false;
         }
-        double s = 0.0625 * HoloRender.SCALE;
-        // 屏尺寸/居中偏移由屏自己提供（面板与大屏各自尺寸）
-        int w = screen.w;
-        int h = screen.h;
         Vec3 qc = Vec3.createVectorHelper(q.xCoord - c.xCoord, q.yCoord - c.yCoord, q.zCoord - c.zCoord);
         double u = qc.dotProduct(Vec3.createVectorHelper(f.rx, f.ry, f.rz)) / s + w / 2.0;
         double v = h / 2.0 - qc.dotProduct(Vec3.createVectorHelper(f.ux, f.uy, f.uz)) / s;
