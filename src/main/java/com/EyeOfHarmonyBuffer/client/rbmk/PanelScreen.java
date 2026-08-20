@@ -51,7 +51,8 @@ public class PanelScreen extends HoloScreen {
         c.text(20, 14, "RBMK-1000 · 四号机组 · 自写面板", 0xFFFFFFFF);
         c.text(20, 72, "控制棒: " + rodPercent() + "%", 0xFFFFFFFF);
         c.text(150, 92, "0%", 0xFF888888);
-        c.text(355, 92, "100%", 0xFF888888);
+        // 右对齐到滑块轨道右缘（150+220=370），与左侧"0%"左对齐轨道起点对称
+        c.textRight(370, 92, "100%", 0xFF888888);
         c.text(348, 72, "手动:", 0xFF888888);
     }
 

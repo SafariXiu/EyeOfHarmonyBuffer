@@ -107,7 +107,7 @@ public class CoreViewScreen extends HoloScreen {
     protected void drawOverlay(HoloCanvas c) {
         // 基本交互模型：未激活时不显示信息卡，只提示"左键进入"
         if (!activated) {
-            c.text(w / 2 - 70, 30, "未激活 - 左键点击进入", 0xFFFFCC00);
+            c.textCentered(w / 2, 30, "未激活 - 左键点击进入", 0xFFFFCC00);
             return;
         }
         // 信息卡：固定选中优先，其次指针悬停
