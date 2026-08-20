@@ -167,12 +167,12 @@ public abstract class HoloScreen {
         activated = true;
     }
 
-    /** 激活后的左键操作：默认命中并点击控件。子类可覆写（如格子选中）。 */
+    /** 激活后的左键操作：默认命中并点击控件（点击坐标随事件传给控件）。子类可覆写（如格子选中）。 */
     protected void onLeftClick(int u, int v) {
         HoloWidget c = hitAt(u, v);
         requestFocus(c);
         if (c != null) {
-            c.onClick();
+            c.onClick(u, v);
         }
     }
 

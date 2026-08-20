@@ -27,8 +27,9 @@ public abstract class HoloWidget {
     /** 绘制控件（画布已就绪）。hovered 时自行高亮。 */
     public abstract void draw(HoloCanvas c);
 
-    /** 点击回调（命中本控件时调用）。 */
-    public abstract void onClick();
+    /** 点击回调（命中本控件时调用）。u/v 为点击处的屏局部坐标
+     *  （滑块/按钮等需要坐标或纯粹触发动作的控件都可直接使用）。 */
+    public void onClick(int u, int v) {}
 
     /** 是否可聚焦（接收键盘输入）。 */
     public boolean isFocusable() {

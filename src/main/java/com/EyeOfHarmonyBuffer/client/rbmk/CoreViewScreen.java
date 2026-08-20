@@ -179,8 +179,8 @@ public class CoreViewScreen extends HoloScreen {
         }
 
         @Override
-        public void onClick() {
-            // 固定选中由 onMouse 统一处理（此组件仅负责绘制 + hover 高亮）
+        public void onClick(int u, int v) {
+            // 固定选中由屏的 onLeftClick 统一处理（此组件仅负责绘制 + hover 高亮）
         }
     }
 }
