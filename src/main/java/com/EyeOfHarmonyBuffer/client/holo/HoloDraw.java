@@ -1,10 +1,10 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
 /** 世界面板绘制工具（vanilla Tessellator 矩形）。 */
-public class RbmkHoloDraw {
+public class HoloDraw {
 
     public static void drawRect(int x0, int y0, int x1, int y1, int color) {
         float a = (color >> 24 & 255) / 255f;

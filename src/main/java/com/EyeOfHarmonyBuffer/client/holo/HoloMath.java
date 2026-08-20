@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -6,7 +6,7 @@ import net.minecraft.entity.player.EntityPlayer;
 /**
  * 世界面板朝向基计算：渲染与射线拾取共用同一套，保证坐标一致。
  */
-public class RbmkHoloMath {
+public class HoloMath {
 
     /** 面板局部坐标系：法向 n 朝玩家，right 向右，up2 向上（局部 v 向下）。 */
     public static class Frame {

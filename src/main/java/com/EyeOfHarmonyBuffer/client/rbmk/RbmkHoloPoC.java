@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.client.rbmk;
 
+import com.EyeOfHarmonyBuffer.client.holo.*;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraft.client.Minecraft;
@@ -9,15 +10,19 @@ import net.minecraft.util.Vec3;
 import net.minecraftforge.client.ClientCommandHandler;
 
 /**
- * 自写世界全息面板 PoC：/rbmkui 生成两个屏 ——
- * 左：堆芯俯瞰大屏（viewType 1）；右：控制面板（viewType 0）。
+ * 全息屏 PoC：/rbmkui 生成两块平级根屏 ——
+ * 左：堆芯俯瞰大屏（core）；右：控制面板（panel）。
+ * 屏幕都通过 HoloScreenRegistry 创建（每次独立实例，状态互不共享）。
  */
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
 public class RbmkHoloPoC {
 
     public static void register() {
-        RenderingRegistry.registerEntityRenderingHandler(RbmkHoloEntity.class, new RbmkHoloRender());
-        FMLCommonHandler.instance().bus().register(new RbmkHoloInteraction());
+        // 业务侧注册：RBMK 的两块平级根屏（框架不关心具体屏，只由这里告诉注册表）
+        HoloScreenRegistry.register("panel", PanelScreen::new);
+        HoloScreenRegistry.register("core", CoreViewScreen::new);
+        RenderingRegistry.registerEntityRenderingHandler(HoloEntity.class, new HoloRender());
+        FMLCommonHandler.instance().bus().register(new HoloInteraction());
         ClientCommandHandler.instance.registerCommand(new CommandBase() {
             @Override
             public String getCommandName() {
@@ -50,18 +55,12 @@ public class RbmkHoloPoC {
 
                 int mode = args.length >= 1 ? parseMode(args[0]) : 0;
 
-                // mode==0: 全部(默认)；1: 仅控制面板(viewType 0)；2: 仅堆芯大屏(viewType 1)
+                // mode==0: 全部(默认)；1: 仅控制面板(panel)；2: 仅堆芯大屏(core)
                 if (mode == 0 || mode == 1) {
-                    RbmkHoloEntity panel = new RbmkHoloEntity(mc.theWorld);
-                    panel.viewType = 0;
-                    panel.setPosition(bx - left.xCoord * 1.4, by, bz - left.zCoord * 1.4);
-                    mc.theWorld.spawnEntityInWorld(panel);
+                    spawnScreen(mc, "panel", bx, by, bz, left, 1.4);
                 }
                 if (mode == 0 || mode == 2) {
-                    RbmkHoloEntity coreView = new RbmkHoloEntity(mc.theWorld);
-                    coreView.viewType = 1;
-                    coreView.setPosition(bx + left.xCoord * 4.0, by, bz + left.zCoord * 4.0);
-                    mc.theWorld.spawnEntityInWorld(coreView);
+                    spawnScreen(mc, "core", bx, by, bz, left, -4.0);
                 }
             }
 
@@ -75,5 +74,17 @@ public class RbmkHoloPoC {
                 return 0;
             }
         });
+    }
+
+    /** 通过注册表创建一块屏并生成实体（off 为相对视线"左"方向的偏移，可正可负）。 */
+    private static void spawnScreen(Minecraft mc, String id, double bx, double by, double bz, Vec3 left, double off) {
+        HoloScreen screen = HoloScreenRegistry.create(id);
+        if (screen == null) {
+            return;
+        }
+        HoloEntity e = new HoloEntity(mc.theWorld);
+        e.setScreen(screen);
+        e.setPosition(bx - left.xCoord * off, by, bz - left.zCoord * off);
+        mc.theWorld.spawnEntityInWorld(e);
     }
 }

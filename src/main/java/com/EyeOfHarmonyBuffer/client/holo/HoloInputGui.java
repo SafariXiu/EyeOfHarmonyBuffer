@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -11,13 +11,13 @@ import java.util.function.Consumer;
  * 回车确认（交给 onConfirm 做业务校验），ESC 取消。
  */
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
-public class RbmkInputGui extends GuiScreen {
+public class HoloInputGui extends GuiScreen {
 
     private GuiTextField field;
     private final String initial;
     private final Consumer<String> onConfirm;
 
-    public RbmkInputGui(String initial, Consumer<String> onConfirm) {
+    public HoloInputGui(String initial, Consumer<String> onConfirm) {
         this.initial = initial == null ? "" : initial;
         this.onConfirm = onConfirm;
     }
