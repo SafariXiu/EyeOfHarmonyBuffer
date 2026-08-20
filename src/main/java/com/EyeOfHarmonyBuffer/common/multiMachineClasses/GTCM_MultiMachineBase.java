@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockGlowCasingBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
+import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureElement;
@@ -300,6 +301,7 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
         mLiquidFillIndex = 0;
         mLiquidFillCooldown = 0;
         mLiquidPatrolIndex = 0;
+        mHoloPanelBlocks.clear();
         super.onRemoval();
     }
     // endregion
@@ -311,6 +313,8 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
      * 液体仅作装饰：缺液照常工作；开机分帧灌满、关机分帧回收、运行中巡检补漏。
      */
     protected final List<Long> mLiquidFillBlocks = new ArrayList<>();
+    /** 机载面板实例（结构内 'P' 等字母位，由 {@link #holoPanelCasing(HoloPanelConfig)} 元素在结构检查时计算收集；渲染用它做完全固定位置+朝向） */
+    protected final List<HoloPanelInstance> mHoloPanelBlocks = new ArrayList<>();
     /** 灌装目标态（true = 要灌满，false = 要清空），与实际进度解耦 */
     private boolean mLiquidFillState = false;
     /** 分帧灌装游标：每批处理 LIQUID_FILL_BUDGET 个位置 */
@@ -373,6 +377,62 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
             }
         };
         return GTStructureUtility.noSurvivalAutoplace(element);
+    }
+
+    /**
+     * 机载面板元素（默认配置）：不要求锚点方块（任意方块/空气皆可），通过时计算最终面板实例
+     * （位置=锚点中心、朝向=机器前方）。等价于 {@code holoPanelCasing(HoloPanelConfig.builder().build())}。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing() {
+        return holoPanelCasing(HoloPanelConfig.builder().build(), null, -1);
+    }
+
+    /**
+     * 机载面板元素（带配置，不要求锚点方块）：'P' 等字母位接受任意方块/空气，
+     * 通过时用 {@link HoloPanelConfig#compute} 按机器当前朝向算好最终面板实例并收集。
+     * 纯标记位：生存自动搭建跳过该位（无需放方块）。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing(HoloPanelConfig cfg) {
+        return holoPanelCasing(cfg, null, -1);
+    }
+
+    /**
+     * 机载面板元素（带配置 + 锚点方块要求）：'P' 等字母位必须是 {@code block}（meta 为 {@code meta}，
+     * meta < 0 表示任意 meta）。通过时同样用 {@link HoloPanelConfig#compute} 算好最终面板实例并收集。
+     * 指定了方块后该位是真实结构方块：正常参与自动搭建/提示，不再是纯标记位。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing(HoloPanelConfig cfg, Block block, int meta) {
+        IStructureElement<T> underlying = block != null ? ofBlock(block, meta) : ofBlock(Blocks.air, 0);
+        IStructureElement<T> element = new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(underlying) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                if (block != null) {
+                    if (world.getBlock(x, y, z) != block
+                        || (meta >= 0 && world.getBlockMetadata(x, y, z) != meta)) {
+                        return false;   // 'P' 位不是要求的方块，结构不成立
+                    }
+                }
+                HoloPanelInstance inst = cfg.compute(t.getExtendedFacing(), x, y, z);
+                if (inst != null) {
+                    // 去重：结构重检会重复收集（同一实例只保留一份）
+                    boolean exists = false;
+                    for (HoloPanelInstance p : t.mHoloPanelBlocks) {
+                        if (p.sameAs(inst)) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        t.mHoloPanelBlocks.add(inst);
+                    }
+                }
+                return true;
+            }
+        };
+        if (block != null) {
+            return element;   // 有方块要求：正常参与结构检查/自动搭建/提示
+        }
+        return GTStructureUtility.noSurvivalAutoplace(element);   // 纯标记位：生存自动搭建跳过
     }
 
     /**

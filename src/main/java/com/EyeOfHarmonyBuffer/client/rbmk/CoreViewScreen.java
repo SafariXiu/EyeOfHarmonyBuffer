@@ -19,8 +19,13 @@ public class CoreViewScreen extends HoloGridView {
     }
 
     @Override
+    protected int baseColor() {
+        return 0xFF05070A;
+    }
+
+    @Override
     protected void drawBackground(HoloCanvas c) {
-        c.rect(0, 0, w, h, 0xFF05070A);
+        // 底色由 baseColor() 提供；以下内容在偏移区段内，与底色不互剔
         c.rect(0, 0, w, 3, 0xFF2A6B8F);
         c.text(20, 12, "堆芯俯瞰 · 通道组件化", 0xFFFFFFFF);
         // 图例 + 计数

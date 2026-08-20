@@ -16,10 +16,16 @@ public class HoloMath {
     }
 
     public static Frame frameFor(Entity entity, EntityPlayer player) {
+        return frameForDirection(
+            (float) (player.posX - entity.posX),
+            (float) (player.posY + player.getEyeHeight() - entity.posY),
+            (float) (player.posZ - entity.posZ));
+    }
+
+    /** 固定朝向（非公告板）：法向 = 给定方向，up 恒为 (0,1,0)，right = cross(up, n)。
+     *  用于机器一体面板（renderTESR 用机器 facing 作法向，不随相机转动）。 */
+    public static Frame frameForDirection(float nX, float nY, float nZ) {
         Frame f = new Frame();
-        float nX = (float) (player.posX - entity.posX);
-        float nY = (float) (player.posY + player.getEyeHeight() - entity.posY);
-        float nZ = (float) (player.posZ - entity.posZ);
         float len = (float) Math.sqrt(nX * nX + nY * nY + nZ * nZ);
         if (len < 1e-4f) {
             nX = 0f;

@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -13,6 +14,9 @@ import java.nio.FloatBuffer;
 /**
  * 世界全息屏渲染器：只负责"把屏放进世界"（朝向矩阵 + 缩放）。
  * 具体画什么由 HoloScreen.draw(canvas) 决定 —— 本类不再有任何屏类型分派。
+ *
+ * {@link #renderScreen} 为通用静态入口：实体屏（HoloEntity 公告板）与机器一体屏
+ * （renderTESR 固定朝向）共用同一套绘制管线，只是传入的 Frame 不同。
  */
 @cpw.mods.fml.relauncher.SideOnly(cpw.mods.fml.relauncher.Side.CLIENT)
 public class HoloRender extends Render {
@@ -31,28 +35,32 @@ public class HoloRender extends Render {
             return;
         }
         HoloScreen screen = h.getScreen();
-        if (screen == null) {
-            return;
-        }
         EntityPlayer player = Minecraft.getMinecraft().thePlayer;
-        if (player == null) {
+        if (screen == null || player == null) {
             return;
         }
-        int w = screen.w;
-        int hh = screen.h;
+        renderScreen(screen, Minecraft.getMinecraft().fontRenderer, x, y, z,
+            HoloMath.frameFor(entity, player), SCALE);
+    }
+
+    /** 通用世界屏绘制：平移 → 套用朝向矩阵(Frame) → 缩放 → setupDrawing → 屏绘制 → 还原。 */
+    public static void renderScreen(HoloScreen screen, FontRenderer font,
+                                    double x, double y, double z, HoloMath.Frame f, float scale) {
+        if (screen == null || font == null || f == null) {
+            return;
+        }
         GL11.glPushMatrix();
         GL11.glTranslated(x, y, z);
-        applyFacing(entity, player, w, hh);
+        applyFrame(f, screen.w, screen.h, scale);
         setupDrawing();
-        HoloCanvas canvas = new HoloCanvas(Minecraft.getMinecraft().fontRenderer);
+        HoloCanvas canvas = new HoloCanvas(font);
         screen.draw(canvas);
         teardownDrawing();
         GL11.glPopMatrix();
     }
 
-    private static void applyFacing(Entity entity, EntityPlayer player, int w, int h) {
-        HoloMath.Frame f = HoloMath.frameFor(entity, player);
-        float s = 0.0625f * SCALE;
+    private static void applyFrame(HoloMath.Frame f, int w, int h, float scale) {
+        float s = 0.0625f * scale;
         FloatBuffer m = BufferUtils.createFloatBuffer(16);
         m.put(new float[] {
             f.rx, f.ry, f.rz, 0f,
@@ -66,7 +74,7 @@ public class HoloRender extends Render {
         GL11.glTranslatef(-w / 2f, -h / 2f, 0);
     }
 
-    private void setupDrawing() {
+    private static void setupDrawing() {
         GL11.glDisable(GL11.GL_LIGHTING);
         // 深度测试保留开启：全息屏应被实心方块正常遮挡（关掉会一直穿透所有方块画在最上层）。
         // 但屏内所有元素画在同一 z=0 平面，默认 GL_LESS 会把后画的同深度元素全剔除（边框/文字/滑块
@@ -79,7 +87,7 @@ public class HoloRender extends Render {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
     }
 
-    private void teardownDrawing() {
+    private static void teardownDrawing() {
         // 恢复默认深度函数（vanilla 用 GL_LESS）
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glEnable(GL11.GL_CULL_FACE);

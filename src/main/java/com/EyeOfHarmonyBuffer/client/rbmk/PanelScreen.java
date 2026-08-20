@@ -44,9 +44,14 @@ public class PanelScreen extends HoloScreen {
     }
 
     @Override
+    protected int baseColor() {
+        // 全不透明底色：面板是一块实体屏，后面的世界/另一块屏不再透出（否则移动视角会出现透过伪影）
+        return 0xFF101820;
+    }
+
+    @Override
     protected void drawBackground(HoloCanvas c) {
-        // 全不透明背景：面板是一块实体屏，后面的世界/另一块屏不再透出（否则移动视角会出现透过伪影）
-        c.rect(0, 0, w, h, 0xFF101820);
+        // 底色由 baseColor() 提供；以下内容在偏移区段内，与底色不互剔
         c.rect(0, 0, w, 3, 0xFF2A6B8F);
         c.text(20, 14, "RBMK-1000 · 四号机组 · 自写面板", 0xFFFFFFFF);
         c.text(20, 72, "控制棒: " + rodPercent() + "%", 0xFFFFFFFF);

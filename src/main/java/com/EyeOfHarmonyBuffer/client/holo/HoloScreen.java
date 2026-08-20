@@ -15,7 +15,8 @@ import java.util.List;
  *
  * 继承约定：
  * - buildWidgets()    构建控件列表
- * - drawBackground()  画底层内容（背景/静态文字/栅格等）
+ * - baseColor()       整屏底色（框架在真实深度画，唯一参照层；0=透明）
+ * - drawBackground()  画静态内容层（偏移区段内，不会与底色互剔）
  * - drawOverlay()     可选，控件之上叠加（状态文字/边框提示）
  * - onMouse()/onClose() 覆写交互回调（onMouse 默认空，需要响应的屏自己实现）
  */
@@ -40,7 +41,16 @@ public abstract class HoloScreen {
     /** 子类在此构建控件列表。 */
     protected abstract void buildWidgets();
 
-    /** 子类绘制背景（画布上画底层内容）。 */
+    /** 整屏底色（ARGB）；返回 0 表示无底色（透明屏）。
+     * 这个矩形由框架在真实深度、开启深度写入时绘制，是整屏内容层的唯一深度参照。
+     * 注意：只能靠它画这一个矩形 —— 任何其他矩形/文字若画在同一真实深度都会与它
+     * 逐像素深度插值差 1 ULP 互剔（黑色条纹/闪烁）。其他内容一律放 drawBackground/drawOverlay/widgets。 */
+    protected int baseColor() {
+        return 0;
+    }
+
+    /** 子类绘制静态内容层（画布上画底色之上的文字/栅格/装饰等）。
+     * 此方法已在多边形偏移区段内（向相机拉近 + 关闭深度写入），不会与底色互剔。 */
     protected abstract void drawBackground(HoloCanvas c);
 
     /** 子类可选：在控件之上叠加绘制（如状态文字、边框提示）。 */
@@ -67,19 +77,22 @@ public abstract class HoloScreen {
         }
     }
 
-    /** 绘制整屏：背景 → 控件（z 升序）→ 叠加层。
+    /** 绘制整屏：底色 → 静态内容 → 控件（z 升序）→ 叠加层。
      *
-     * 背景与内容同处一个 z=0 平面；开启深度测试后，GPU 对同一平面上两个三角形的
-     * 逐像素深度插值可能差 1 ULP，导致内容被背景深度剔除（露出黑色背景 → 整面黑色
-     * 条纹/闪烁，且图案随屏朝向变化）。处理：
-     * - 内容层向相机方向做多边形偏移（比背景更近，必然通过背景的深度测试）；
-     * - 内容层关闭深度写入（不再与后续内容互相剔除）。
-     * 方块遮挡不受影响：方块深度比屏近得多，仍正常挡住整块屏。 */
+     * 底色（baseColor()）是唯一画在真实深度的矩形（写深度，作参照）；其后的所有内容
+     * 都向相机方向做多边形偏移（glPolygonOffset -2，比底色更近）并关闭深度写入 ——
+     * 内容与底色、内容与内容之间都不会再因同平面深度插值差 1 ULP 而互相剔除
+     * （黑色条纹/闪烁伪影，与屏悬空与否无关）。方块遮挡不受影响：方块深度比屏近得多，
+     * 仍正常挡住整块屏。 */
     public void draw(HoloCanvas c) {
-        drawBackground(c);
+        int base = baseColor();
+        if (base != 0) {
+            c.rect(0, 0, w, h, base);
+        }
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-2.0f, -2.0f);
         GL11.glDepthMask(false);
+        drawBackground(c);
         List<HoloWidget> sorted = new ArrayList<>(widgets);
         sorted.sort(Comparator.comparingInt(w2 -> w2.z));
         for (HoloWidget w2 : sorted) {
