@@ -57,6 +57,7 @@ public class CommandOrundum extends GTBaseCommand {
                 case "add":
                 case "set":
                 case "display":
+                case "kick":
                     if (!sender.canCommandSenderUseCommand(2, getCommandName())) {
                         sendError(sender, "你没有权限使用此子命令。");
                         return;
@@ -64,7 +65,6 @@ public class CommandOrundum extends GTBaseCommand {
                     break;
                 case "join":
                 case "leave":
-                case "kick":
                     break;
                 default:
                     sendError(sender, "未知子命令: " + sub);
@@ -375,6 +375,7 @@ public class CommandOrundum extends GTBaseCommand {
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + msg));
     }
 
+    // 命令整体放行（0）：组相关的 join/leave 任何人可用；add/set/kick/display 在 processCommand 内单独查 OP2。
     @Override
     public int getRequiredPermissionLevel() {
         return 0;

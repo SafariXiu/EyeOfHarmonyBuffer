@@ -23,7 +23,7 @@ public class CommandGasEnvironment extends CommandBase {
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 0;
+        return 2;
     }
 
     @Override
@@ -63,10 +63,5 @@ public class CommandGasEnvironment extends CommandBase {
             String.format("§a[GasEnv] 坐标 (%d, %d, %d) 所在区块 (%d, %d) 的环境为：§e%s",
                 x, y, z, chunkX, chunkZ, envName)
         ));
-    }
-
-    @Override
-    public boolean canCommandSenderUseCommand(ICommandSender sender) {
-        return true;
     }
 }

@@ -42,6 +42,11 @@ public class CommandDysonSphere extends CommandBase {
         return "/dyson <stage|cloud|frame|paste|complete|reset>";
     }
 
+    @Override
+    public int getRequiredPermissionLevel() {
+        return 2;
+    }
+
     @SuppressWarnings("rawtypes")
     @Override
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {

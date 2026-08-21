@@ -42,17 +42,12 @@ public class CommandReactorVideo extends CommandBase {
     }
 
     @Override
-    public boolean canCommandSenderUseCommand(ICommandSender sender) {
-        return true;
-    }
-
-    @Override
     public boolean isUsernameIndex(String[] args, int index) {
         return false;
     }
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 0;
+        return 2;
     }
 }
