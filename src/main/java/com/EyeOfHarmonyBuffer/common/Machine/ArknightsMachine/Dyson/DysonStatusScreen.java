@@ -3,7 +3,30 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson;
 import com.EyeOfHarmonyBuffer.client.holo.HoloCanvas;
 import com.EyeOfHarmonyBuffer.client.holo.HoloScreen;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Compute;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_ComputeLow;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_ComputeOK;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Completed;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_LinkModule;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_MsgDuplicate;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_MsgLost;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_MsgOnline;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_MsgWon;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_OrbitProgress;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_PersonalStock;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Progress;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Sphere;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Team;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Title;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_UnderConstruction;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_Cloud;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_CloudComponent;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_Frame;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_FrameComponent;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_Paste;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Stat_StrangeMatter;
 /**
  * 戴森核心机载状态屏（机器一体、固定朝向、纯展示，无交互控件）。
  *
@@ -62,41 +85,41 @@ public class DysonStatusScreen extends HoloScreen {
         c.rect(0, 0, w, 3, C_ACCENT);
 
         // 标题
-        c.textCentered(w / 2, 14, "戴森核心 · 机载状态屏", C_WHITE);
-        c.textCentered(w / 2, 32, "队伍: " + teamName(), C_GRAY);
+        c.textCentered(w / 2, 14, Dyson_Holo_Title, C_WHITE);
+        c.textCentered(w / 2, 32, Dyson_Holo_Team + teamName(), C_GRAY);
 
         // 左列：轨道进度（队伍）
-        c.text(40, 58, "—— 轨道进度（队伍）——", C_GOLD);
+        c.text(40, 58, Dyson_Holo_OrbitProgress, C_GOLD);
         int barX = 40, barW = 330, barY0 = 0;
-        drawStatBar(c, barX, 78, barW, "云", core.holoCloud, DysonSphereState.CLOUD_CAP, C_CLOUD);
-        drawStatBar(c, barX, 122, barW, "框架", core.holoFrame, DysonSphereState.FRAME_COMPLETE, C_FRAME);
-        drawStatBar(c, barX, 166, barW, "贴片", core.holoPaste, DysonSphereState.PASTE_COMPLETE, C_PASTE);
-        c.text(barX, 196, "进度: " + percent(core.holoCloud, DysonSphereState.CLOUD_CAP) + " / "
+        drawStatBar(c, barX, 78, barW, Dyson_Stat_Cloud, core.holoCloud, DysonSphereState.CLOUD_CAP, C_CLOUD);
+        drawStatBar(c, barX, 122, barW, Dyson_Stat_Frame, core.holoFrame, DysonSphereState.FRAME_COMPLETE, C_FRAME);
+        drawStatBar(c, barX, 166, barW, Dyson_Stat_Paste, core.holoPaste, DysonSphereState.PASTE_COMPLETE, C_PASTE);
+        c.text(barX, 196, Dyson_Holo_Progress + percent(core.holoCloud, DysonSphereState.CLOUD_CAP) + " / "
             + percent(core.holoFrame, DysonSphereState.FRAME_COMPLETE) + " / "
             + percent(core.holoPaste, DysonSphereState.PASTE_COMPLETE), C_DIM);
 
         // 右列：个人库存
-        c.text(400, 58, "—— 个人库存 ——", C_GOLD);
-        drawStatValue(c, 400, 78, "云组件", core.holoCloudComp);
-        drawStatValue(c, 400, 122, "框架组件", core.holoFrameComp);
-        drawStatValue(c, 400, 166, "奇异物质", core.holoStrange);
+        c.text(400, 58, Dyson_Holo_PersonalStock, C_GOLD);
+        drawStatValue(c, 400, 78, Dyson_Stat_CloudComponent, core.holoCloudComp);
+        drawStatValue(c, 400, 122, Dyson_Stat_FrameComponent, core.holoFrameComp);
+        drawStatValue(c, 400, 166, Dyson_Stat_StrangeMatter, core.holoStrange);
 
         // 底部状态条
         int sx = 20, sy = 300, sw = w - 40, sh = h - 300 - 16;
         c.rect(sx, sy, sw, sh, 0xFF0A0A0A);
         c.border(sx, sy, sw, sh, 0xFF333333, 1);
-        drawStatusChip(c, sx + 12, sy + 8, "链接模块", core.holoLinked + " / " + core.holoSlots,
+        drawStatusChip(c, sx + 12, sy + 8, Dyson_Holo_LinkModule, core.holoLinked + " / " + core.holoSlots,
             core.holoLinked > 0 ? C_GREEN : C_GRAY);
-        drawStatusChip(c, sx + 220, sy + 8, "算力", core.holoComputeOk ? "OK" : "不足",
+        drawStatusChip(c, sx + 220, sy + 8, Dyson_Holo_Compute, core.holoComputeOk ? Dyson_Holo_ComputeOK : Dyson_Holo_ComputeLow,
             core.holoComputeOk ? C_GREEN : C_RED);
-        drawStatusChip(c, sx + 380, sy + 8, "戴森球", core.holoComplete ? "已完工" : "建设中",
+        drawStatusChip(c, sx + 380, sy + 8, Dyson_Holo_Sphere, core.holoComplete ? Dyson_Holo_Completed : Dyson_Holo_UnderConstruction,
             core.holoComplete ? C_GOLD : C_GRAY);
         if (core.holoDuplicate) {
-            c.text(sx + 12, sy + 28, "⚠ 检测到重复核心：本机已停机，请拆除多余核心", C_RED);
+            c.text(sx + 12, sy + 28, Dyson_Holo_MsgDuplicate, C_RED);
         } else if (core.holoComplete) {
-            c.text(sx + 12, sy + 28, core.holoWinning ? "本队已完工 · 戴森球建成" : "戴森球已被其他队伍完工", C_GOLD);
+            c.text(sx + 12, sy + 28, core.holoWinning ? Dyson_Holo_MsgWon : Dyson_Holo_MsgLost, C_GOLD);
         } else {
-            c.text(sx + 12, sy + 28, "核心在线 · 全息屏同步中", C_DIM);
+            c.text(sx + 12, sy + 28, Dyson_Holo_MsgOnline, C_DIM);
         }
     }
 
