@@ -85,13 +85,16 @@ public abstract class HoloScreen {
      * （黑色条纹/闪烁伪影，与屏悬空与否无关）。方块遮挡不受影响：方块深度比屏近得多，
      * 仍正常挡住整块屏。 */
     public void draw(HoloCanvas c) {
+        // 先关深度写入再画底色：屏幕整面（含底色）不写深度缓冲，
+        // 避免玩家靠近时屏幕平面与深度缓冲交互导致整面瞬间消失。
+        // 深度测试仍开启（内容靠 GL_LEQUAL 与后方方块正常分层、被正确遮挡）。
+        GL11.glDepthMask(false);
         int base = baseColor();
         if (base != 0) {
             c.rect(0, 0, w, h, base);
         }
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-2.0f, -2.0f);
-        GL11.glDepthMask(false);
         drawBackground(c);
         List<HoloWidget> sorted = new ArrayList<>(widgets);
         sorted.sort(Comparator.comparingInt(w2 -> w2.z));

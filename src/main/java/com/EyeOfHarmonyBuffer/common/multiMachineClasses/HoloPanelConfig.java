@@ -42,11 +42,13 @@ public class HoloPanelConfig {
     public final double roll;
     /** 是否左右镜像。 */
     public final boolean flip;
+    /** 屏类型 id（客户端 renderTESR 按此创建/分派不同屏；null 回退默认总面板）。 */
+    public final String screenId;
 
     private HoloPanelConfig(double forward, double forwardPx,
                             double left, double leftPx,
                             double up, double upPx,
-                            double yaw, double pitch, double roll, boolean flip) {
+                            double yaw, double pitch, double roll, boolean flip, String screenId) {
         this.forward = forward;
         this.forwardPx = forwardPx;
         this.left = left;
@@ -57,6 +59,7 @@ public class HoloPanelConfig {
         this.pitch = pitch;
         this.roll = roll;
         this.flip = flip;
+        this.screenId = screenId;
     }
 
     public static Builder builder() {
@@ -66,6 +69,7 @@ public class HoloPanelConfig {
     public static class Builder {
         private double forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll;
         private boolean flip;
+        private String screenId;
 
         /** 往前(+)/往后(-) N 格。 */
         public Builder forward(double v) { this.forward = v; return this; }
@@ -97,8 +101,11 @@ public class HoloPanelConfig {
         /** 是否左右镜像。 */
         public Builder flip(boolean v) { this.flip = v; return this; }
 
+        /** 屏类型 id（客户端按此创建/分派屏；null = 默认总面板）。 */
+        public Builder screen(String v) { this.screenId = v; return this; }
+
         public HoloPanelConfig build() {
-            return new HoloPanelConfig(forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll, flip);
+            return new HoloPanelConfig(forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll, flip, screenId);
         }
     }
 
@@ -145,7 +152,7 @@ public class HoloPanelConfig {
             f.ry = -f.ry;
             f.rz = -f.rz;
         }
-        return new HoloPanelInstance(cx, cy, cz, f.rx, f.ry, f.rz, f.ux, f.uy, f.uz, f.nx, f.ny, f.nz);
+        return new HoloPanelInstance(cx, cy, cz, f.rx, f.ry, f.rz, f.ux, f.uy, f.uz, f.nx, f.ny, f.nz, screenId);
     }
 
     /** Rodrigues 旋转：把 frame 的三个基向量绕轴 (kx,ky,kz) 旋转 rad 弧度。 */

@@ -76,6 +76,8 @@ public class HoloRender extends Render {
 
     /** 进入渲染前 GL_LIGHTING 是否开启（teardown 按此恢复，避免污染后续世界/2D GUI 渲染）。 */
     private static boolean wasLightingEnabled = true;
+    /** OpenGL 1.4 GL_DEPTH_CLAMP（LWJGL2 GL11 未导出该常量，硬编码 0x864F）。 */
+    private static final int GL_DEPTH_CLAMP = 0x864F;
 
     private static void setupDrawing() {
         wasLightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
@@ -89,6 +91,8 @@ public class HoloRender extends Render {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
+        // 深度钳制：屏幕平面贴近/穿过近裁剪面时钳制深度而非裁剪，避免玩家靠近时整面瞬间消失
+        GL11.glEnable(GL_DEPTH_CLAMP);
     }
 
     private static void teardownDrawing() {
@@ -104,5 +108,6 @@ public class HoloRender extends Render {
             GL11.glDisable(GL11.GL_LIGHTING);
         }
         GL11.glColor4f(1f, 1f, 1f, 1f);
+        GL11.glDisable(GL_DEPTH_CLAMP);
     }
 }

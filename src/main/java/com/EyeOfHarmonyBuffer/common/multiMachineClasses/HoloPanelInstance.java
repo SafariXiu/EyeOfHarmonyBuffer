@@ -15,6 +15,8 @@ public class HoloPanelInstance {
     public float rx, ry, rz;
     public float ux, uy, uz;
     public float nx, ny, nz;
+    /** 屏类型 id（客户端按此创建/分派屏；null/空 = 默认总面板）。 */
+    public String screenId;
 
     public HoloPanelInstance() {
     }
@@ -22,7 +24,8 @@ public class HoloPanelInstance {
     public HoloPanelInstance(double cx, double cy, double cz,
                              float rx, float ry, float rz,
                              float ux, float uy, float uz,
-                             float nx, float ny, float nz) {
+                             float nx, float ny, float nz,
+                             String screenId) {
         this.cx = cx;
         this.cy = cy;
         this.cz = cz;
@@ -35,6 +38,7 @@ public class HoloPanelInstance {
         this.nx = nx;
         this.ny = ny;
         this.nz = nz;
+        this.screenId = screenId;
     }
 
     /** 内容是否完全相同（用于服务端快照版本比对）。 */
@@ -45,6 +49,7 @@ public class HoloPanelInstance {
         return cx == o.cx && cy == o.cy && cz == o.cz
             && rx == o.rx && ry == o.ry && rz == o.rz
             && ux == o.ux && uy == o.uy && uz == o.uz
-            && nx == o.nx && ny == o.ny && nz == o.nz;
+            && nx == o.nx && ny == o.ny && nz == o.nz
+            && java.util.Objects.equals(screenId, o.screenId);
     }
 }
