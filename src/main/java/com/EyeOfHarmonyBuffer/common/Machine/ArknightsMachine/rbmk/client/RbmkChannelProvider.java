@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.client;
 
 /**
  * 通道实时数据源（机器接入点）。

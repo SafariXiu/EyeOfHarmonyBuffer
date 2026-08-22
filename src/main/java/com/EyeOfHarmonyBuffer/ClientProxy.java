@@ -72,7 +72,7 @@ public class ClientProxy extends CommonProxy {
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new OrundumConnectorHudHandler());
         com.EyeOfHarmonyBuffer.space.blackhole.client.SkyProviderEmeraldThrone.registerKeyHandler();
         ClientCommandHandler.instance.registerCommand(new com.EyeOfHarmonyBuffer.command.CommandBlackHolePreset());
-        com.EyeOfHarmonyBuffer.client.rbmk.RbmkHoloPoC.register();
+        com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.client.RbmkHoloPoC.register();
 
         ReactorClientEventHandler handler = new ReactorClientEventHandler();
         FMLCommonHandler.instance().bus().register(handler);

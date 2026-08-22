@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.client;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

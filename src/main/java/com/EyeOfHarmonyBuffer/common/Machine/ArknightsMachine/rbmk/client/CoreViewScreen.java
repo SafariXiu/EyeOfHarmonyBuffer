@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.client;
 
 import com.EyeOfHarmonyBuffer.client.holo.HoloCanvas;
 import com.EyeOfHarmonyBuffer.client.holo.HoloGridView;

@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.client.rbmk;
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.client;
 
 /**
  * 单个堆芯通道的数据模型（一个通道 = 一个 250mm 栅格位）。
