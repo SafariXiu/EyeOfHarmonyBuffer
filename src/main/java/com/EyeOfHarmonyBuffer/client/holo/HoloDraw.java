@@ -21,6 +21,9 @@ public class HoloDraw {
         tess.addVertex(x1, y1, 0);
         tess.addVertex(x1, y0, 0);
         tess.draw();
+        // 恢复 Tessellator 全局颜色为白色：setColorRGBA_F 会污染单例颜色状态，
+        // 不恢复会让后续 GUI/物品渲染（共用 Tessellator.instance）用残留暗色 → 物品/选中框变黑。
+        tess.setColorRGBA(255, 255, 255, 255);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
     }
 

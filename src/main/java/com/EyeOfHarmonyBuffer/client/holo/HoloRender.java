@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -50,12 +51,20 @@ public class HoloRender extends Render {
             return;
         }
         GL11.glPushMatrix();
-        GL11.glTranslated(x, y, z);
-        applyFrame(f, screen.w, screen.h, scale);
-        setupDrawing();
-        HoloCanvas canvas = new HoloCanvas(font);
-        screen.draw(canvas);
-        teardownDrawing();
+        // 终极防泄漏：保存全部 GL 状态属性（颜色/混合/深度/光照/纹理绑定/多边形偏移等），
+        // 渲染后整体恢复，杜绝全息屏渲染污染后续 GUI/物品渲染（字体纹理、glColor、alpha 测试等残留）。
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GL11.glTranslated(x, y, z);
+            applyFrame(f, screen.w, screen.h, scale);
+            setupDrawing();
+            HoloCanvas canvas = new HoloCanvas(font);
+            screen.draw(canvas);
+        } finally {
+            // finally 保证异常路径也执行恢复，不留任何 GL 状态残留
+            teardownDrawing();
+            GL11.glPopAttrib();
+        }
         GL11.glPopMatrix();
     }
 
@@ -108,6 +117,8 @@ public class HoloRender extends Render {
             GL11.glDisable(GL11.GL_LIGHTING);
         }
         GL11.glColor4f(1f, 1f, 1f, 1f);
+        // 双保险：恢复 Tessellator 全局颜色为白色（HoloDraw 每次已恢复，这里兜底防异常路径）
+        Tessellator.instance.setColorRGBA(255, 255, 255, 255);
         GL11.glDisable(GL_DEPTH_CLAMP);
     }
 }
