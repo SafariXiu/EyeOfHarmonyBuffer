@@ -12,9 +12,10 @@ public class HoloDraw {
         float g = (color >> 8 & 255) / 255f;
         float b = (color & 255) / 255f;
         GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(r, g, b, a);
         Tessellator tess = Tessellator.instance;
         tess.startDrawingQuads();
+        // 用 Tessellator 自带颜色（glColor4f 不作用于 addVertex 顶点色，且会污染 GL 当前色）
+        tess.setColorRGBA_F(r, g, b, a);
         tess.addVertex(x0, y0, 0);
         tess.addVertex(x0, y1, 0);
         tess.addVertex(x1, y1, 0);

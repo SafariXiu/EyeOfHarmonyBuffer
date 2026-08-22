@@ -74,7 +74,11 @@ public class HoloRender extends Render {
         GL11.glTranslatef(-w / 2f, -h / 2f, 0);
     }
 
+    /** 进入渲染前 GL_LIGHTING 是否开启（teardown 按此恢复，避免污染后续世界/2D GUI 渲染）。 */
+    private static boolean wasLightingEnabled = true;
+
     private static void setupDrawing() {
+        wasLightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_LIGHTING);
         // 深度测试保留开启：全息屏应被实心方块正常遮挡（关掉会一直穿透所有方块画在最上层）。
         // 但屏内所有元素画在同一 z=0 平面，默认 GL_LESS 会把后画的同深度元素全剔除（边框/文字/滑块
@@ -92,5 +96,13 @@ public class HoloRender extends Render {
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL11.glDisable(GL11.GL_BLEND);
+        // 恢复设置过的混合函数与光照：不恢复会让后续世界/2D GUI 渲染颜色与光照错乱（GUI 消失/变暗）
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        if (wasLightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+        GL11.glColor4f(1f, 1f, 1f, 1f);
     }
 }
