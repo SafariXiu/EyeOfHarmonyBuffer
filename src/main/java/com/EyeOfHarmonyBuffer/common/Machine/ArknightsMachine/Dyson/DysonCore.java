@@ -187,6 +187,8 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
 
         public int type;
         public boolean active;
+        /** 完工锁定：成型后非胜利接收的模块被禁用，但仍占槽位（GUI 显示"已锁定"）。 */
+        public boolean locked;
         public int dim;
         public int x, y, z;
     }
@@ -1233,16 +1235,25 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         long cloudComp = getPersonalCloudComponents();
         long frameComp = getPersonalFrameComponents();
         int slots = DysonMachineConfig.activeSlotsForPaste(paste);
-        // 有效连接模块列表（按链接顺序；断链的过滤掉 → 后续模块自动前移补位）
+        // 模块列表（按链接顺序；普通断链的过滤掉 → 后续模块前移；完工锁定的保留并标记 locked）
         List<HoloModuleData> modules = new ArrayList<>();
         for (DysonModuleBase<?> module : linkedModules) {
             IGregTechTileEntity mb = module == null ? null : module.getBaseMetaTileEntity();
-            if (mb == null || mb.isDead() || !module.isFormed() || !module.isAllowedToWork()) {
+            if (mb == null || mb.isDead() || !module.isFormed()) {
+                continue;
+            }
+            // 完工锁：成型后除胜利队伍接收模块外全部锁定（仍占槽位）
+            boolean winnerReceiver = complete && getTeamId() != null
+                && getTeamId().equals(data.getCompletedTeamId())
+                && module.getModuleType() == DysonModuleBase.ModuleType.RECEIVER;
+            boolean locked = complete && !winnerReceiver;
+            if (!module.isAllowedToWork() && !locked) {
                 continue;
             }
             HoloModuleData d = new HoloModuleData();
             d.type = module.getModuleType().ordinal();
             d.active = mb.isActive();
+            d.locked = locked;
             d.dim = mb.getWorld().provider.dimensionId;
             d.x = mb.getXCoord();
             d.y = mb.getYCoord();
@@ -1297,7 +1308,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         for (int i = 0; i < a.size(); i++) {
             HoloModuleData x = a.get(i);
             HoloModuleData y = b.get(i);
-            if (x.type != y.type || x.active != y.active || x.dim != y.dim
+            if (x.type != y.type || x.active != y.active || x.locked != y.locked || x.dim != y.dim
                 || x.x != y.x || x.y != y.y || x.z != y.z) {
                 return false;
             }
@@ -1365,6 +1376,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
         for (HoloModuleData d : holoModules) {
             buffer.writeInt(d.type);
             buffer.writeBoolean(d.active);
+            buffer.writeBoolean(d.locked);
             buffer.writeInt(d.dim);
             buffer.writeInt(d.x);
             buffer.writeInt(d.y);
@@ -1436,6 +1448,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
             HoloModuleData d = new HoloModuleData();
             d.type = buffer.readInt();
             d.active = buffer.readBoolean();
+            d.locked = buffer.readBoolean();
             d.dim = buffer.readInt();
             d.x = buffer.readInt();
             d.y = buffer.readInt();

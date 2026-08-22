@@ -77,9 +77,18 @@ public class DysonModuleListScreen extends HoloScreen {
             int slotNo = idx + 1;
             if (idx < core.holoModules.size()) {
                 HoloModuleData m = core.holoModules.get(idx);
-                c.text(MARGIN, y, String.format("槽 %02d  %s", slotNo, typeName(m.type)), C_GOLD);
-                String status = m.active ? "开启" : "关闭";
-                c.text(170, y, status, m.active ? C_GREEN : C_RED);
+                // 完工锁定的模块：类型名灰显，状态显示"已锁定"
+                c.text(MARGIN, y, String.format("槽 %02d  %s", slotNo, typeName(m.type)), m.locked ? C_DIM : C_GOLD);
+                String status;
+                int statusColor;
+                if (m.locked) {
+                    status = "已锁定";
+                    statusColor = C_DIM;
+                } else {
+                    status = m.active ? "开启" : "关闭";
+                    statusColor = m.active ? C_GREEN : C_RED;
+                }
+                c.text(170, y, status, statusColor);
                 c.text(250, y, String.format("维度 %d  (%d,%d,%d)", m.dim, m.x, m.y, m.z), C_WHITE);
             } else if (idx < core.holoActiveSlots) {
                 // 激活范围内但未连接：空槽
