@@ -22,12 +22,12 @@ public final class RbmkDanceNetwork {
             Side.CLIENT);
     }
 
-    /** 服务端：广播当前跳舞窗口到该维度所有客户端。 */
+    /** 服务端：广播当前跳舞轮次（多套）到该维度所有客户端。 */
     public static void sendWindow(World world, RbmkDanceDriver driver) {
-        if (world == null || world.isRemote || driver.getDancers().isEmpty()) {
+        if (world == null || world.isRemote || driver.getSubWaves().isEmpty()) {
             return;
         }
-        PacketRbmkDance packet = new PacketRbmkDance(driver.getSeed(), driver.getWindowStartTick(), driver.getDancers());
+        PacketRbmkDance packet = new PacketRbmkDance(driver.getSubWaves());
         INSTANCE.sendToDimension(packet, world.provider.dimensionId);
     }
 }

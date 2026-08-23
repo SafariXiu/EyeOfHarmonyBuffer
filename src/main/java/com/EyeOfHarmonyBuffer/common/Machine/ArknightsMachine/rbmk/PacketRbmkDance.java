@@ -12,16 +12,17 @@ import net.minecraft.world.World;
 import java.util.List;
 
 /**
- * 服务端 -> 客户端：RBMK 跳舞窗口广播。
+ * 服务端 -> 客户端：RBMK 跳舞轮次广播（含多套舞者，错开接力）。
  * <p>
- * 只发"种子 + 窗口开始 tick + 舞者坐标 + 基准位"（每 5 秒一次），
+ * 每轮（5 秒）广播一次：每套携带 种子 + 起跳 tick + 舞者坐标 + 基准位。
  * 客户端用 {@link RbmkDanceMath} 与当前世界时间无缝推出每帧棒位。
  */
 public class PacketRbmkDance implements IMessage, IMessageHandler<PacketRbmkDance, IMessage> {
 
-    private long seed;
-    private long startTick;
-    private int count;
+    private int subwaveCount;
+    private long[] seeds;
+    private long[] startTicks;
+    private int[] counts;
     private int[] xs;
     private int[] ys;
     private int[] zs;
@@ -30,29 +31,44 @@ public class PacketRbmkDance implements IMessage, IMessageHandler<PacketRbmkDanc
     public PacketRbmkDance() {
     }
 
-    public PacketRbmkDance(long seed, long startTick, List<RbmkDanceDriver.Dancer> dancers) {
-        this.seed = seed;
-        this.startTick = startTick;
-        this.count = dancers.size();
-        this.xs = new int[count];
-        this.ys = new int[count];
-        this.zs = new int[count];
-        this.bases = new double[count];
-        for (int i = 0; i < count; i++) {
-            RbmkDanceDriver.Dancer d = dancers.get(i);
-            this.xs[i] = d.x;
-            this.ys[i] = d.y;
-            this.zs[i] = d.z;
-            this.bases[i] = d.basePos;
+    public PacketRbmkDance(List<RbmkDanceDriver.SubWave> subWaves) {
+        this.subwaveCount = subWaves.size();
+        this.seeds = new long[subwaveCount];
+        this.startTicks = new long[subwaveCount];
+        this.counts = new int[subwaveCount];
+        int total = 0;
+        for (int w = 0; w < subwaveCount; w++) {
+            RbmkDanceDriver.SubWave sw = subWaves.get(w);
+            this.seeds[w] = sw.seed;
+            this.startTicks[w] = sw.startTick;
+            this.counts[w] = sw.dancers.size();
+            total += sw.dancers.size();
+        }
+        this.xs = new int[total];
+        this.ys = new int[total];
+        this.zs = new int[total];
+        this.bases = new double[total];
+        int idx = 0;
+        for (RbmkDanceDriver.SubWave sw : subWaves) {
+            for (RbmkDanceDriver.Dancer d : sw.dancers) {
+                this.xs[idx] = d.x;
+                this.ys[idx] = d.y;
+                this.zs[idx] = d.z;
+                this.bases[idx] = d.basePos;
+                idx++;
+            }
         }
     }
 
     @Override
     public void toBytes(ByteBuf buf) {
-        buf.writeLong(seed);
-        buf.writeLong(startTick);
-        buf.writeInt(count);
-        for (int i = 0; i < count; i++) {
+        buf.writeInt(subwaveCount);
+        for (int w = 0; w < subwaveCount; w++) {
+            buf.writeLong(seeds[w]);
+            buf.writeLong(startTicks[w]);
+            buf.writeInt(counts[w]);
+        }
+        for (int i = 0; i < xs.length; i++) {
             buf.writeInt(xs[i]);
             buf.writeInt(ys[i]);
             buf.writeInt(zs[i]);
@@ -62,14 +78,22 @@ public class PacketRbmkDance implements IMessage, IMessageHandler<PacketRbmkDanc
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        seed = buf.readLong();
-        startTick = buf.readLong();
-        count = buf.readInt();
-        xs = new int[count];
-        ys = new int[count];
-        zs = new int[count];
-        bases = new double[count];
-        for (int i = 0; i < count; i++) {
+        subwaveCount = buf.readInt();
+        seeds = new long[subwaveCount];
+        startTicks = new long[subwaveCount];
+        counts = new int[subwaveCount];
+        int total = 0;
+        for (int w = 0; w < subwaveCount; w++) {
+            seeds[w] = buf.readLong();
+            startTicks[w] = buf.readLong();
+            counts[w] = buf.readInt();
+            total += counts[w];
+        }
+        xs = new int[total];
+        ys = new int[total];
+        zs = new int[total];
+        bases = new double[total];
+        for (int i = 0; i < total; i++) {
             xs[i] = buf.readInt();
             ys[i] = buf.readInt();
             zs[i] = buf.readInt();
@@ -87,12 +111,15 @@ public class PacketRbmkDance implements IMessage, IMessageHandler<PacketRbmkDanc
                     if (world == null) {
                         return;
                     }
-                    for (int i = 0; i < message.count; i++) {
-                        TileEntity te = world.getTileEntity(message.xs[i], message.ys[i], message.zs[i]);
-                        if (te instanceof TileEntityRbmkFuelChannel) {
-                            ((TileEntityRbmkFuelChannel) te).setDanceState(
-                                message.seed, message.xs[i], message.ys[i], message.zs[i],
-                                message.bases[i], message.startTick);
+                    int idx = 0;
+                    for (int w = 0; w < message.subwaveCount; w++) {
+                        for (int j = 0; j < message.counts[w]; j++, idx++) {
+                            TileEntity te = world.getTileEntity(message.xs[idx], message.ys[idx], message.zs[idx]);
+                            if (te instanceof TileEntityRbmkFuelChannel) {
+                                ((TileEntityRbmkFuelChannel) te).setDanceState(
+                                    message.seeds[w], message.xs[idx], message.ys[idx], message.zs[idx],
+                                    message.bases[idx], message.startTicks[w]);
+                            }
                         }
                     }
                 }

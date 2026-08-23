@@ -105,11 +105,11 @@ public class TileEntityRbmkFuelChannel extends TileEntity {
     public double getRenderYOffset() {
         if (dancing && worldObj != null) {
             long now = worldObj.getTotalWorldTime();
-            long windowEnd = danceStartTick + RbmkDanceDriver.WINDOW_TICKS;
+            long windowEnd = danceStartTick + RbmkDanceDriver.SUBWAVE_DURATION_TICKS;
             if (now >= windowEnd) {
                 // 窗口结束：从最后跳舞位置平滑回落到基准位；回落后结束跳舞
                 double lastDance = danceBase + RbmkDanceMath.danceOffset(
-                    danceSeed, danceX, danceY, danceZ, RbmkDanceDriver.WINDOW_TICKS / 20.0D);
+                    danceSeed, danceX, danceY, danceZ, RbmkDanceDriver.SUBWAVE_DURATION_TICKS / 20.0D);
                 long elapsed = now - windowEnd;
                 if (elapsed >= RETURN_TICKS) {
                     dancing = false;
