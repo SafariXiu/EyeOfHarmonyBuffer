@@ -461,6 +461,8 @@ public class TextLocalization {
     public static final String Tooltip_DysonCore_Controller;
     public static final String Tooltip_DysonCoreInfoFlow_00;
     public static final String Tooltip_DysonCoreInfoFlow_01;
+    public static final String Tooltip_DysonLaunchCenterEnergyFlow_00;
+    public static final String Tooltip_DysonLaunchCenterEnergyFlow_01;
     public static final String Tooltip_DysonCore_00;
     public static final String Tooltip_DysonCore_01;
     public static final String Tooltip_DysonCore_02;
@@ -2085,6 +2087,8 @@ public class TextLocalization {
         Tooltip_DysonCore_Controller = TextHandler.texter("Controller block of the Dyson Core","Tooltip_DysonCore_Controller");
         Tooltip_DysonCoreInfoFlow_00 = TextHandler.texter("Thanks to a breakthrough in cutting-edge optical materials, data transmission speed has been boosted to 10 PB/s.","Tooltip_DysonCoreInfoFlow_00");
         Tooltip_DysonCoreInfoFlow_01 = TextHandler.texter("The information superhighway linking every module of the Dyson Core has finally been completed.","Tooltip_DysonCoreInfoFlow_01");
+        Tooltip_DysonLaunchCenterEnergyFlow_00 = TextHandler.texter("Thanks to advanced energy-transfer technology, power delivery to the launch modules has been vastly improved.","Tooltip_DysonLaunchCenterEnergyFlow_00");
+        Tooltip_DysonLaunchCenterEnergyFlow_01 = TextHandler.texter("An efficient and stable energy-flow channel for every module of the Dyson Launch Center.","Tooltip_DysonLaunchCenterEnergyFlow_01");
         Tooltip_DysonCore_00 = TextHandler.texter("The craziest project of Endfield Industry - put a star in a box. One core per player; a second one gets you politely shut down.","Tooltip_DysonCore_00");
         Tooltip_DysonCore_01 = TextHandler.texter("The core burns no fuel, holds no battery, and draws no power. It just stands under the Talos sky.","Tooltip_DysonCore_01");
         Tooltip_DysonCore_02 = TextHandler.texter("Its job is to be the master switch for its modules. Its hardest work, allegedly, is counting stars.","Tooltip_DysonCore_02");

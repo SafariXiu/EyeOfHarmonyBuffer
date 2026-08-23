@@ -4,32 +4,45 @@ import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockGlowCasing;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_DysonCoreInfoFlow_00;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_DysonCoreInfoFlow_01;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_DysonLaunchCenterEnergyFlow_00;
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Tooltip_DysonLaunchCenterEnergyFlow_01;
 
 /**
- * 戴森核心信息导流块（可点亮机械外壳，带 CTM 连接纹理）。
- * meta 0 = 熄灯态（默认材质），meta 8 = 点亮态（蓝色发光贴图 + 光照 15）。
- * 连接贴图按约定放在文件夹 Arknights/HunNingTuDaoXian/ 内：
- *   conn_0..15 + conn_&lt;M&gt;_&lt;bits&gt;（熄灯）与 Ligth_conn_*（点亮）
- *
- * <p>后续新方块参考本类的 tooltip 注册方式：构造器里调用
- * {@code register(meta, null, () -> TextLocalization.某条目)}（GT 的 AnimatedTooltipHandler 样式）。
+ * 戴森系列可点亮机械外壳（可点亮，带 CTM 连接纹理）。
+ * <p>
+ * meta 布局：低 3 位 = 变体，第 3 位（+8）= 点亮标志。
+ * <ul>
+ *   <li>变体 0 = 戴森核心信息导流块（贴图文件夹 Arknights/HunNingTuDaoXian/）</li>
+ *   <li>变体 1 = 戴森发射中心能量流转块（贴图文件夹 Arknights/FaSheDanYuanDaoXian/DS_LaunchUnit_）</li>
+ * </ul>
+ * 连接贴图命名约定见 {@link BlockGlowCasingBase} 类注释。
  */
 public class BlockCasingsDysonFlow extends BlockGlowCasingBase {
 
     public static final int META_DYSON_FLOW = 0;
+    public static final int META_DYSON_LAUNCH_FLOW = 1;
 
     public BlockCasingsDysonFlow() {
         super(ItemBlockGlowCasing.class, "eoh.blockcasingsdysonflow");
         register(META_DYSON_FLOW, null, () -> Tooltip_DysonCoreInfoFlow_00, () -> Tooltip_DysonCoreInfoFlow_01);
+        register(META_DYSON_LAUNCH_FLOW, null,
+            () -> Tooltip_DysonLaunchCenterEnergyFlow_00,
+            () -> Tooltip_DysonLaunchCenterEnergyFlow_01);
     }
 
     @Override
     protected int getVariantCount() {
-        return 1;
+        return 2;
     }
 
     @Override
     protected String getIconBasePath(int variant) {
-        return "Arknights/HunNingTuDaoXian/";
+        switch (variant) {
+            case META_DYSON_LAUNCH_FLOW:
+                return "Arknights/FaSheDanYuanDaoXian/DS_LaunchUnit_";
+            case META_DYSON_FLOW:
+            default:
+                return "Arknights/HunNingTuDaoXian/DS_Core_";
+        }
     }
 }

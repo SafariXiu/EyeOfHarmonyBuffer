@@ -271,6 +271,7 @@ public enum GTCMItemList {
     XiRangWaiKeCasing,
     ZhongXiRangWaiKeCasing,
     DysonCoreInfoFlowCasing,
+    DysonLaunchCenterEnergyFlowCasing,
     LongGu,
     Tan,
     TanSu,

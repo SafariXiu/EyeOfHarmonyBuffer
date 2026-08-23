@@ -924,6 +924,9 @@ eoh.blockcasings.1.name=Heavy Xiranite Mechanical Block
 eoh.blockcasingsdysonflow.0.name=Dyson Core Information Flow Block
 Tooltip_DysonCoreInfoFlow_00=Thanks to a breakthrough in cutting-edge optical materials, data transmission speed has been boosted to 100 PB/s.
 Tooltip_DysonCoreInfoFlow_01=The information superhighway linking every module of the Dyson Core has finally been completed.
+eoh.blockcasingsdysonflow.1.name=Dyson Launch Center Energy Flow Block
+Tooltip_DysonLaunchCenterEnergyFlow_00=Thanks to advanced energy-transfer technology, power delivery to the launch modules has been vastly improved.
+Tooltip_DysonLaunchCenterEnergyFlow_01=An efficient and stable energy-flow channel for every module of the Dyson Launch Center.
 tile.xie_yi_yuan_shi.name=Protocol Originite Block
 
 #space

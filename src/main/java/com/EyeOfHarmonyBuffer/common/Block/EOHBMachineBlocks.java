@@ -13,6 +13,7 @@ public final class EOHBMachineBlocks {
 
     public static BlockCasingsEOH sBlockCasingsEOH;
 
+    /** 戴森系列导流外壳：meta 0 = 核心信息导流，meta 1 = 发射中心能量流转 */
     public static BlockCasingsDysonFlow sBlockCasingsDysonFlow;
 
     private EOHBMachineBlocks() {
@@ -33,6 +34,10 @@ public final class EOHBMachineBlocks {
 
         GTCMItemList.DysonCoreInfoFlowCasing.set(
             new ItemStack(sBlockCasingsDysonFlow, 1, BlockCasingsDysonFlow.META_DYSON_FLOW)
+        );
+
+        GTCMItemList.DysonLaunchCenterEnergyFlowCasing.set(
+            new ItemStack(sBlockCasingsDysonFlow, 1, BlockCasingsDysonFlow.META_DYSON_LAUNCH_FLOW)
         );
     }
 }
