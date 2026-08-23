@@ -9,8 +9,8 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.physics;
  */
 public final class RbmkDanceMath {
 
-    /** 单根棒最大上下摆动幅度（格）。 */
-    public static final double MAX_AMPLITUDE = 4.0D;
+    /** 单根棒最大向上顶出幅度（格）。模型 8 格高，最高顶出 3 格。 */
+    public static final double MAX_AMPLITUDE = 3.0D;
 
     private RbmkDanceMath() {
     }
@@ -31,6 +31,9 @@ public final class RbmkDanceMath {
     /**
      * 该棒在给定时刻的跳舞偏移（格，正数向上）。平滑、确定性、无缝。
      * 叠加两个非整数倍频率的正弦，观感不规则（乱窜）但数学上稳定。
+     * <p>
+     * <b>只增不减</b>：把正弦结果从 [-1,1] 映射到 [0,1]，偏移恒在 [0, amp] 之间，
+     * 模型只在基准位以上摆动，绝不会往下跳、也不会落到基准位以下。
      *
      * @param seed     窗口种子
      * @param x,y,z    通道基座世界坐标
@@ -43,7 +46,7 @@ public final class RbmkDanceMath {
         double rP1 = hash01(seed, x, y, z, 61);
         double rP2 = hash01(seed, x, y, z, 73);
 
-        double amp = 0.5D + rAmp * (MAX_AMPLITUDE - 0.5D);      // 0.5 ~ 4.0 格
+        double amp = 0.5D + rAmp * (MAX_AMPLITUDE - 0.5D);      // 0.5 ~ 3.0 格
         double f1 = 0.8D + rF1 * 1.2D;                          // 0.8 ~ 2.0 Hz
         double f2 = f1 * (2.0D + rF2);                          // 高频、非整数倍
         double ph1 = rP1 * Math.PI * 2.0D;
@@ -51,6 +54,8 @@ public final class RbmkDanceMath {
 
         double s = 0.65D * Math.sin(seconds * f1 * Math.PI * 2.0D + ph1)
                  + 0.35D * Math.sin(seconds * f2 * Math.PI * 2.0D + ph2);
+        // 只增不减：s∈[-1,1] -> [0,1]，偏移恒 >= 0（落在基准位以上）
+        s = (s + 1.0D) * 0.5D;
         return amp * s;
     }
 }

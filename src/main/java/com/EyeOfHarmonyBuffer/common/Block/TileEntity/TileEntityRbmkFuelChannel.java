@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Block.TileEntity;
 
+import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.RbmkDanceDriver;
 import com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.physics.RbmkDanceMath;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -97,10 +98,31 @@ public class TileEntityRbmkFuelChannel extends TileEntity {
 
     // ==================== 渲染取值（客户端每帧） ====================
 
+    /** 跳舞窗口结束后，模型平滑回落到基准位的时长（tick）。1 秒。 */
+    private static final int RETURN_TICKS = 20;
+
     /** 客户端每帧读取的渲染偏移：跳舞时用种子公式，否则在同步值间插值平滑。 */
     public double getRenderYOffset() {
         if (dancing && worldObj != null) {
-            double seconds = (worldObj.getTotalWorldTime() - danceStartTick) / 20.0D;
+            long now = worldObj.getTotalWorldTime();
+            long windowEnd = danceStartTick + RbmkDanceDriver.WINDOW_TICKS;
+            if (now >= windowEnd) {
+                // 窗口结束：从最后跳舞位置平滑回落到基准位；回落后结束跳舞
+                double lastDance = danceBase + RbmkDanceMath.danceOffset(
+                    danceSeed, danceX, danceY, danceZ, RbmkDanceDriver.WINDOW_TICKS / 20.0D);
+                long elapsed = now - windowEnd;
+                if (elapsed >= RETURN_TICKS) {
+                    dancing = false;
+                    this.prevYOffset = danceBase;
+                    this.yOffset = danceBase;
+                    this.lastSyncTick = now;
+                    return danceBase;
+                }
+                double k = elapsed / (double) RETURN_TICKS;
+                k = k * k * (3.0D - 2.0D * k); // smoothstep
+                return lastDance + (danceBase - lastDance) * k;
+            }
+            double seconds = (now - danceStartTick) / 20.0D;
             return danceBase + RbmkDanceMath.danceOffset(danceSeed, danceX, danceY, danceZ, seconds);
         }
         return interpolatedYOffset();
