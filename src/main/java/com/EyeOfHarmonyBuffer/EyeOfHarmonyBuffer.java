@@ -145,6 +145,7 @@ public class EyeOfHarmonyBuffer {
 
         DysonSphereNetwork.init();
         OrbitalRailgunNetwork.init();
+        com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.RbmkDanceNetwork.init();
         FMLCommonHandler.instance().bus().register(new OrbitalStrikeManager());
 
         FMLCommonHandler.instance().bus().register(new DysonSphereSyncHandler());

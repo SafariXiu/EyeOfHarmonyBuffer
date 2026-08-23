@@ -158,31 +158,37 @@ public class ArknightsBlockRegister {
         GTCMItemList.XieYiYuanShiKuai.set(new ItemStack(XieYiYuanShiKuai, 1, 0));
 
         //RBMK 控制棒 / 燃料管（顶面分类型纹理，四边/底面共用）
-        StandardControlRod = new BlockRBMKRod("KongZhiBang")
+        StandardControlRod = new BlockRBMKRod("KongZhiBang", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.CONTROL_ROD_TOP,
+            "eyeofharmonybuffer:textures/blocks/Arknights/rbmk/FuelTube_StandardControlRod.png")
             .setBlockName("rbmk_standard_control_rod")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(StandardControlRod, "rbmk_standard_control_rod");
         GTCMItemList.StandardControlRod.set(new ItemStack(StandardControlRod, 1, 0));
 
-        ShortAbsorbingRod = new BlockRBMKRod("Bang_DiMian", "DuanXiShouBang") // 顶部与底部互换
+        //顶部 DuanXiShouBang、底部 Bang_DiMian（顶底对换后与其它控制棒端头朝上一致）
+        ShortAbsorbingRod = new BlockRBMKRod("DuanXiShouBang", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.CONTROL_ROD_TOP,
+            "eyeofharmonybuffer:textures/blocks/Arknights/rbmk/FuelTube_ShortAbsorbingRod.png")
             .setBlockName("rbmk_short_absorbing_rod")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(ShortAbsorbingRod, "rbmk_short_absorbing_rod");
         GTCMItemList.ShortAbsorbingRod.set(new ItemStack(ShortAbsorbingRod, 1, 0));
 
-        AutoControlRod = new BlockRBMKRod("ZiDongKongZhiBang")
+        AutoControlRod = new BlockRBMKRod("ZiDongKongZhiBang", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.CONTROL_ROD_TOP,
+            "eyeofharmonybuffer:textures/blocks/Arknights/rbmk/FuelTube_AutoControlRod.png")
             .setBlockName("rbmk_auto_control_rod")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(AutoControlRod, "rbmk_auto_control_rod");
         GTCMItemList.AutoControlRod.set(new ItemStack(AutoControlRod, 1, 0));
 
-        SpecialAdjustmentRod = new BlockRBMKRod("TeShuTiaoJieBang")
+        SpecialAdjustmentRod = new BlockRBMKRod("TeShuTiaoJieBang", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.CONTROL_ROD_TOP,
+            "eyeofharmonybuffer:textures/blocks/Arknights/rbmk/FuelTube_SpecialAdjustmentRod.png")
             .setBlockName("rbmk_special_adjustment_rod")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(SpecialAdjustmentRod, "rbmk_special_adjustment_rod");
         GTCMItemList.SpecialAdjustmentRod.set(new ItemStack(SpecialAdjustmentRod, 1, 0));
 
-        FuelTube = new BlockRBMKRod("Bang_DingMian", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.FUEL_CHANNEL_TOP)
+        FuelTube = new BlockRBMKRod("Bang_DingMian", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.FUEL_CHANNEL_TOP,
+            "eyeofharmonybuffer:textures/models/FuelTube.png")
             .setBlockName("rbmk_fuel_tube")
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(FuelTube, "rbmk_fuel_tube");

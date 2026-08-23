@@ -56,6 +56,12 @@ public class ClientProxy extends CommonProxy {
         BlockRBMKRod.renderId = RenderingRegistry.getNextAvailableRenderId();
         RenderingRegistry.registerBlockHandler(BlockRBMKRod.renderId, RbmkFuelChannelBlockRenderer.INSTANCE);
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityRbmkFuelChannel.class, new TileEntityRbmkFuelChannelRenderer());
+        // RBMK 通道 TE 的渲染包围盒随跳舞棒位动态变化，注册为 DYNAMIC（Angelica 每帧重算，不做缓存）
+        try {
+            com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry
+                .registerDynamicClass(TileEntityRbmkFuelChannel.class.getName());
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override

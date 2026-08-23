@@ -8,6 +8,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IIcon;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
 /**
@@ -28,13 +29,15 @@ public class BlockRBMKRod extends Block {
 
     /** 方块在燃料通道中的角色。 */
     public enum Role {
-        /** 普通方块（控制棒等）：始终按普通方块渲染 */
+        /** 普通方块（无结构）：始终按普通方块渲染 */
         NORMAL,
-        /** 燃料通道顶部（普通燃料管） */
+        /** 通道顶部（普通燃料管） */
         FUEL_CHANNEL_TOP,
-        /** 燃料通道中段（反应堆内部石墨管道） */
+        /** 通道顶部（控制棒：标准/自动/特殊调节等），成型后由基座 TESR 绘制对应贴图的管子 */
+        CONTROL_ROD_TOP,
+        /** 通道中段（反应堆内部石墨管道） */
         FUEL_CHANNEL_PIPE,
-        /** 燃料通道底部（燃料管底座，持有 TE + TESR） */
+        /** 通道底部（燃料管底座，持有 TE + TESR） */
         FUEL_CHANNEL_BASE
     }
 
@@ -46,6 +49,8 @@ public class BlockRBMKRod extends Block {
     protected final String sideTexture;
     /** 燃料通道角色 */
     protected final Role role;
+    /** 作为通道顶部时，整根管子的模型贴图完整资源路径（空串则 TESR 回退 FuelTube.png） */
+    protected final String modelTexture;
 
     protected IIcon iconTop;
     protected IIcon iconSide;
@@ -64,11 +69,16 @@ public class BlockRBMKRod extends Block {
     }
 
     public BlockRBMKRod(String topTexture, String bottomTexture, String sideTexture, Role role) {
+        this(topTexture, bottomTexture, sideTexture, role, "");
+    }
+
+    public BlockRBMKRod(String topTexture, String bottomTexture, String sideTexture, Role role, String modelTexture) {
         super(Material.iron);
         this.topTexture = topTexture;
         this.bottomTexture = bottomTexture;
         this.sideTexture = sideTexture;
         this.role = role;
+        this.modelTexture = modelTexture;
         this.setHardness(5.0F);
         this.setResistance(10.0F);
         this.setStepSound(soundTypeMetal);
@@ -76,6 +86,80 @@ public class BlockRBMKRod extends Block {
 
     public Role getRole() {
         return role;
+    }
+
+    /** 作为通道顶部时的整根管子模型贴图（完整 ResourceLocation 字符串）；空串回退 FuelTube.png。 */
+    public String getModelTexture() {
+        return modelTexture;
+    }
+
+    // ==================== 通道结构公共接口（客户端渲染 & 服务端逻辑共用） ====================
+
+    /**
+     * 若 (x,y,z) 属于一个已成型通道（燃料管/控制棒顶部 + 6 石墨管道 + 底座），返回该通道基座（底部）的 Y；
+     * 否则返回 -1。可用于服务端物理代码定位通道。
+     */
+    public static int channelBottom(IBlockAccess world, int x, int y, int z) {
+        Role role = roleOf(world, x, y, z);
+        if (role == null) {
+            return -1;
+        }
+        int candidate;
+        switch (role) {
+            case FUEL_CHANNEL_BASE:
+                candidate = y;
+                break;
+            case FUEL_CHANNEL_TOP:
+            case CONTROL_ROD_TOP:
+                candidate = y - 7;
+                break;
+            case FUEL_CHANNEL_PIPE: {
+                int yy = y;
+                while (yy > 0 && roleOf(world, x, yy - 1, z) == Role.FUEL_CHANNEL_PIPE) {
+                    yy--;
+                }
+                candidate = yy - 1; // 最下方石墨管道再往下一格，必须是底座
+                break;
+            }
+            default:
+                return -1;
+        }
+        return isChannel(world, x, candidate, z) ? candidate : -1;
+    }
+
+    /** 是否为合法的通道顶部（普通燃料管 / 各类控制棒）。 */
+    public static boolean isChannelTop(Role role) {
+        return role == Role.FUEL_CHANNEL_TOP || role == Role.CONTROL_ROD_TOP;
+    }
+
+    /**
+     * 取 (x,y,z) 所属已成型通道的基座 TileEntity（用于控制模型的 Y 轴偏移等）。
+     * 未成型或不是通道返回 null。
+     */
+    public static TileEntityRbmkFuelChannel channelTE(net.minecraft.world.World world, int x, int y, int z) {
+        int bottom = channelBottom(world, x, y, z);
+        if (bottom < 0) {
+            return null;
+        }
+        TileEntity te = world.getTileEntity(x, bottom, z);
+        return (te instanceof TileEntityRbmkFuelChannel) ? (TileEntityRbmkFuelChannel) te : null;
+    }
+
+    private static boolean isChannel(IBlockAccess world, int x, int by, int z) {
+        if (roleOf(world, x, by, z) != Role.FUEL_CHANNEL_BASE) {
+            return false;
+        }
+        for (int i = 1; i <= 6; i++) {
+            if (roleOf(world, x, by + i, z) != Role.FUEL_CHANNEL_PIPE) {
+                return false;
+            }
+        }
+        return isChannelTop(roleOf(world, x, by + 7, z));
+    }
+
+    private static Role roleOf(IBlockAccess world, int x, int y, int z) {
+        Block b = world.getBlock(x, y, z);
+        return (b instanceof BlockRBMKRod) ? ((BlockRBMKRod) b).role : null;
     }
 
     @Override
