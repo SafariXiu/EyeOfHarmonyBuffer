@@ -6,13 +6,17 @@ import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.OrundumConnectorHudHandler;
 import com.EyeOfHarmonyBuffer.client.ReactorClientEventHandler;
 import com.EyeOfHarmonyBuffer.client.orbitalrailgun.RailgunClientEvents;
+import com.EyeOfHarmonyBuffer.client.renderer.block.RbmkFuelChannelBlockRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
+import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityRbmkFuelChannelRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityWindmillRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemUnactivatedYuanShiRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.item.ItemYuanShiRenderer;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlockRBMKRod;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityRbmkFuelChannel;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.api.EnumBottleFluid;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
@@ -47,6 +51,11 @@ public class ClientProxy extends CommonProxy {
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOverdomainErosion.class, new RenderOverdomainEndStyle(GTCMItemList.OverdomainErosion.getBlock()));
 
         RenderingRegistry.registerEntityRenderingHandler(EntityIndustrialExplosive.class, new RenderSnowball(GTCMItemList.GongYeBaoZhaWu.getItem()));
+
+        // RBMK 燃料通道：8 格成型后由基座 TESR 绘制整根 FuelTube 模型，方块本体不变
+        BlockRBMKRod.renderId = RenderingRegistry.getNextAvailableRenderId();
+        RenderingRegistry.registerBlockHandler(BlockRBMKRod.renderId, RbmkFuelChannelBlockRenderer.INSTANCE);
+        ClientRegistry.bindTileEntitySpecialRenderer(TileEntityRbmkFuelChannel.class, new TileEntityRbmkFuelChannelRenderer());
     }
 
     @Override

@@ -20,8 +20,35 @@ public class RbmkHoloPoC {
         // 业务侧注册：RBMK 的两块平级根屏（框架不关心具体屏，只由这里告诉注册表）
         HoloScreenRegistry.register("panel", PanelScreen::new);
         HoloScreenRegistry.register("core", CoreViewScreen::new);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new RbmkRadiationOverlay());
         RenderingRegistry.registerEntityRenderingHandler(HoloEntity.class, new HoloRender());
         FMLCommonHandler.instance().bus().register(new HoloInteraction());
+        ClientCommandHandler.instance.registerCommand(new CommandBase() {
+            @Override
+            public String getCommandName() {
+                return "rbmkrad";
+            }
+
+            @Override
+            public String getCommandUsage(ICommandSender sender) {
+                return "/rbmkrad <1-7>";
+            }
+
+            @Override
+            public int getRequiredPermissionLevel() {
+                return 0;
+            }
+
+            @Override
+            public void processCommand(ICommandSender sender, String[] args) {
+                if (args.length >= 1) {
+                    try {
+                        RbmkRadiationOverlay.setLevel(Integer.parseInt(args[0]));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        });
         ClientCommandHandler.instance.registerCommand(new CommandBase() {
             @Override
             public String getCommandName() {

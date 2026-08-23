@@ -14,6 +14,7 @@ import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateRes
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityRbmkFuelChannel;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
 import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
@@ -129,6 +130,7 @@ public class EyeOfHarmonyBuffer {
         BlockIntermediateResources.registerAll(MODID);
 
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
+        GameRegistry.registerTileEntity(TileEntityRbmkFuelChannel.class, "tile_rbmk_fuel_channel");
 
         TalosBiomes.init();
         TalosSurfaceRegistry.init();

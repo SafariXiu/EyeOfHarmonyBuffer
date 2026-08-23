@@ -178,6 +178,15 @@ public enum GTCMItemList {
     PureGlowBlock_Red,
     PureGlowBlock_Black,
 
+    //RBMK 控制棒 / 燃料管
+    StandardControlRod,
+    ShortAbsorbingRod,
+    AutoControlRod,
+    SpecialAdjustmentRod,
+    FuelTube,
+    FuelTubeBase,
+    ReactorGraphitePipe,
+
     //方舟-植物
     GanShi,
     GanShiZhongZi,

@@ -26,6 +26,15 @@ public class ArknightsBlockRegister {
     public static Block XieYiYuanShiKuai;
     public static Block PureGlowBlock;
 
+    //RBMK 控制棒 / 燃料管
+    public static Block StandardControlRod;
+    public static Block ShortAbsorbingRod;
+    public static Block AutoControlRod;
+    public static Block SpecialAdjustmentRod;
+    public static Block FuelTube;
+    public static Block FuelTubeBase;
+    public static Block ReactorGraphitePipe;
+
     public static void registryBlocks(){
 
         YuanShiMainBlock = new BlockYuanShiMain()
@@ -147,6 +156,50 @@ public class ArknightsBlockRegister {
             .setCreativeTab(ArknightsProject_Block);
         GameRegistry.registerBlock(XieYiYuanShiKuai, "xie_yi_yuan_shi");
         GTCMItemList.XieYiYuanShiKuai.set(new ItemStack(XieYiYuanShiKuai, 1, 0));
+
+        //RBMK 控制棒 / 燃料管（顶面分类型纹理，四边/底面共用）
+        StandardControlRod = new BlockRBMKRod("KongZhiBang")
+            .setBlockName("rbmk_standard_control_rod")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(StandardControlRod, "rbmk_standard_control_rod");
+        GTCMItemList.StandardControlRod.set(new ItemStack(StandardControlRod, 1, 0));
+
+        ShortAbsorbingRod = new BlockRBMKRod("Bang_DiMian", "DuanXiShouBang") // 顶部与底部互换
+            .setBlockName("rbmk_short_absorbing_rod")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(ShortAbsorbingRod, "rbmk_short_absorbing_rod");
+        GTCMItemList.ShortAbsorbingRod.set(new ItemStack(ShortAbsorbingRod, 1, 0));
+
+        AutoControlRod = new BlockRBMKRod("ZiDongKongZhiBang")
+            .setBlockName("rbmk_auto_control_rod")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(AutoControlRod, "rbmk_auto_control_rod");
+        GTCMItemList.AutoControlRod.set(new ItemStack(AutoControlRod, 1, 0));
+
+        SpecialAdjustmentRod = new BlockRBMKRod("TeShuTiaoJieBang")
+            .setBlockName("rbmk_special_adjustment_rod")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(SpecialAdjustmentRod, "rbmk_special_adjustment_rod");
+        GTCMItemList.SpecialAdjustmentRod.set(new ItemStack(SpecialAdjustmentRod, 1, 0));
+
+        FuelTube = new BlockRBMKRod("Bang_DingMian", "Bang_DiMian", "Bang_CeMian", BlockRBMKRod.Role.FUEL_CHANNEL_TOP)
+            .setBlockName("rbmk_fuel_tube")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(FuelTube, "rbmk_fuel_tube");
+        GTCMItemList.FuelTube.set(new ItemStack(FuelTube, 1, 0));
+
+        //燃料管底座：顶面/底面与普通燃料管互换（端头在下，作底部支撑）
+        FuelTubeBase = new BlockRBMKRod("Bang_DiMian", "Bang_DingMian", "Bang_CeMian", BlockRBMKRod.Role.FUEL_CHANNEL_BASE)
+            .setBlockName("rbmk_fuel_tube_base")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(FuelTubeBase, "rbmk_fuel_tube_base");
+        GTCMItemList.FuelTubeBase.set(new ItemStack(FuelTubeBase, 1, 0));
+
+        ReactorGraphitePipe = new BlockRBMKRod("Bang_ShiMo_DiMian", "Bang_ShiMo_DiMian", "Bang_ShiMo_CeMian", BlockRBMKRod.Role.FUEL_CHANNEL_PIPE)
+            .setBlockName("rbmk_graphite_pipe")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(ReactorGraphitePipe, "rbmk_graphite_pipe");
+        GTCMItemList.ReactorGraphitePipe.set(new ItemStack(ReactorGraphitePipe, 1, 0));
     }
 
     public static void registry() {
