@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.client.holo;
 
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.util.ResourceLocation;
 
 /**
  * 世界屏绘制画布：屏/控件绘制只通过本类，不直接碰 GL/Tessellator。
@@ -37,6 +38,40 @@ public class HoloCanvas {
     /** 边框（thickness 像素）。 */
     public void border(int x, int y, int w, int h, int color, int thickness) {
         HoloDraw.drawBorder(x, y, w, h, color, thickness);
+    }
+
+    // ==================== 贴图 ====================
+
+    /**
+     * 以 (cx, cy) 为中心的贴图：w/h 为缩放后的目标像素尺寸；tint 为 ARGB 染色（0xFFFFFFFF 原色）。
+     * borderColor/borderThickness 为描边（borderThickness <= 0 或 borderColor == 0 表示不描边）。
+     */
+    public void imageCentered(int cx, int cy, int w, int h, ResourceLocation tex,
+                              int tint, int borderColor, int borderThickness) {
+        int x0 = cx - w / 2;
+        int y0 = cy - h / 2;
+        if (borderThickness > 0 && borderColor != 0) {
+            int bx0 = x0 - borderThickness;
+            int by0 = y0 - borderThickness;
+            int bx1 = x0 + w + borderThickness;
+            int by1 = y0 + h + borderThickness;
+            HoloDraw.drawRect(bx0, by0, bx1, by0 + borderThickness, borderColor);
+            HoloDraw.drawRect(bx0, by1 - borderThickness, bx1, by1, borderColor);
+            HoloDraw.drawRect(bx0, by0, bx0 + borderThickness, by1, borderColor);
+            HoloDraw.drawRect(bx1 - borderThickness, by0, bx1, by1, borderColor);
+        }
+        HoloDraw.drawTexturedRect(x0, y0, x0 + w, y0 + h, tex, 0, 0, 1, 1, tint);
+    }
+
+    /** 无描边便捷重载。 */
+    public void imageCentered(int cx, int cy, int w, int h, ResourceLocation tex, int tint) {
+        imageCentered(cx, cy, w, h, tex, tint, 0, 0);
+    }
+
+    /** 按原始像素尺寸 + 缩放倍率放置（baseW/baseH = 纹理原始像素尺寸，scale = 倍率）。 */
+    public void imageScaled(int cx, int cy, float scale, ResourceLocation tex, int baseW, int baseH,
+                            int tint, int borderColor, int borderThickness) {
+        imageCentered(cx, cy, Math.round(baseW * scale), Math.round(baseH * scale), tex, tint, borderColor, borderThickness);
     }
 
     // ==================== 单行文字 ====================

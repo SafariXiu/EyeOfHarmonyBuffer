@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.client.holo.HoloCanvas;
 import com.EyeOfHarmonyBuffer.client.holo.HoloScreen;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import net.minecraft.util.ResourceLocation;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Compute;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_ComputeLow;
@@ -57,6 +58,10 @@ public class DysonStatusScreen extends HoloScreen {
     private static final int C_FRAME = 0xFF55FFAA;
     private static final int C_PASTE = 0xFFFFAA55;
 
+    /** 戴森球 Logo（128×128，右上角占位；位置/尺寸待定稿）。 */
+    private static final ResourceLocation DYSON_LOGO =
+        new ResourceLocation("eyeofharmonybuffer", "textures/gui/celestialbodies/talos/DysonSphere.png");
+
     /** 画布尺寸由本类自管（W/H）；机器创建屏时不传尺寸。 */
     public DysonStatusScreen(DysonCore core) {
         super(W, H);
@@ -87,6 +92,9 @@ public class DysonStatusScreen extends HoloScreen {
         // 标题
         c.textCentered(w / 2, 14, Dyson_Holo_Title, C_WHITE);
         c.textCentered(w / 2, 32, Dyson_Holo_Team + teamName(), C_GRAY);
+
+        // 戴森球 Logo（中心 (544, 32)，0.5 倍缩放 = 64×64，无描边）
+        c.imageCentered(544, 32, 64, 64, DYSON_LOGO, C_WHITE);
 
         // 左列：轨道进度（队伍）
         c.text(40, 58, Dyson_Holo_OrbitProgress, C_GOLD);
