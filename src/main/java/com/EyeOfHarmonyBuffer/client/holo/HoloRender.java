@@ -83,6 +83,84 @@ public class HoloRender extends Render {
         GL11.glTranslatef(-w / 2f, -h / 2f, 0);
     }
 
+    /**
+     * 世界 3D 模型展示入口：平移 → 套用朝向矩阵(Frame) → 模型自绘 → 还原。
+     * 与 {@link #renderScreen} 同构（同一套 GL 保险与矩阵约定），但渲染的是真 3D 模型：
+     * 模型原点=面板锚点，局部系 x=right / y=向下 / z=法向朝观察者，世界深度/遮挡
+     * 由当前世界渲染管线（深度测试）自然提供 —— 模型在世界上真实存在，可绕行观察。
+     *
+     * @param model 模型实现（自绘几何与动画）
+     * @param x/y/z 锚点（相对相机，与 renderTESR 约定一致）
+     * @param f 模型局部系在世界中的朝向（与屏面板同一 Frame）
+     * @param scale 模型整体缩放倍率（面板配置透传，1 = 默认）
+     * @param opacity 模型不透明度（面板配置透传，0~1）
+     */
+    public static void renderModel3D(HoloModel3D model, double x, double y, double z, HoloMath.Frame f,
+                                     float scale, float opacity) {
+        if (model == null || f == null) {
+            return;
+        }
+        if (opacity <= 0.0F) {
+            return;   // 完全透明：不绘制
+        }
+        GL11.glPushMatrix();
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GL11.glTranslated(x, y, z);
+            FloatBuffer m = BufferUtils.createFloatBuffer(16);
+            m.put(new float[] {
+                f.rx, f.ry, f.rz, 0f,
+                -f.ux, -f.uy, -f.uz, 0f,
+                f.nx, f.ny, f.nz, 0f,
+                0f, 0f, 0f, 1f
+            });
+            m.flip();
+            GL11.glMultMatrix(m);
+            float[] dir = viewerToModelLocal(x, y, z, f);
+            model.draw(getWorldTicks(), dir[0], dir[1], dir[2], Math.max(0.0001F, scale), opacity);
+        } finally {
+            teardownDrawing();
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+            GL11.glPopAttrib();
+        }
+        GL11.glPopMatrix();
+    }
+
+    /** 当前渲染世界 tick（无 world 时回 0）。 */
+    private static double getWorldTicks() {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        return mc.theWorld == null ? 0.0D : mc.theWorld.getWorldTime();
+    }
+
+    /**
+     * 观察方向（模型原点 → 观察者）在模型局部系（x=right、y=向下、z=法向）中的单位向量。
+     * TESR 的 (x,y,z) 是相对相机的坐标，故模型原点世界坐标 = 相机世界坐标 + (x,y,z)。
+     */
+    private static float[] viewerToModelLocal(double x, double y, double z, HoloMath.Frame f) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        net.minecraft.entity.Entity rv = mc.renderViewEntity;
+        if (rv == null) {
+            return new float[] {0f, 0f, -1f};
+        }
+        double eyeX = rv.posX;
+        double eyeY = rv.posY + (rv instanceof net.minecraft.entity.player.EntityPlayer p ? p.getEyeHeight() : 1.62D);
+        double eyeZ = rv.posZ;
+        double ox = eyeX + x;
+        double oy = eyeY + y;
+        double oz = eyeZ + z;
+        double dx = eyeX - ox;
+        double dy = eyeY - oy;
+        double dz = eyeZ - oz;
+        float vx = (float) (dx * f.rx + dy * f.ry + dz * f.rz);
+        float vy = (float) -(dx * f.ux + dy * f.uy + dz * f.uz);
+        float vz = (float) (dx * f.nx + dy * f.ny + dz * f.nz);
+        float len = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (len < 1.0e-6F) {
+            return new float[] {0f, 0f, 1f};
+        }
+        return new float[] {vx / len, vy / len, vz / len};
+    }
+
     /** 进入渲染前 GL_LIGHTING 是否开启（teardown 按此恢复，避免污染后续世界/2D GUI 渲染）。 */
     private static boolean wasLightingEnabled = true;
     /** OpenGL 1.4 GL_DEPTH_CLAMP（LWJGL2 GL11 未导出该常量，硬编码 0x864F）。 */

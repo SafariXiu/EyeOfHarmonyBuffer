@@ -108,6 +108,12 @@ public final class DysonSphereRenderer {
     private static long lastAnimTick = Long.MIN_VALUE;
     /** 当前帧的暖色强度（0=正午冷色，1=晨昏暖色），用于天空染色。 */
     private static float tintWarmth = 0.0F;
+    /** 世界 3D 模型展示模式（{@link #renderAsModel} 设置）：
+     *  不做前半球裁剪/虚化（绕行可见背面，前后遮挡由世界深度测试完成）；
+     *  天空盒路径（render）为 false：保留恒星遮蔽语义。单线程渲染下随入口设置。 */
+    private static boolean fullSphereMode = false;
+    /** 世界 3D 模型展示的整体不透明度（1 = 不透明；renderAsModel 按面板配置设置，天空盒恒 1）。 */
+    private static float modelOpacity = 1.0F;
     /** 三个环的平面法线（球体局部坐标）：赤道、与赤道成 30°、与赤道成 120°。 */
     private static final double[][] RING_NORMALS = {
         {0.0D, 1.0D, 0.0D},
@@ -374,6 +380,7 @@ public final class DysonSphereRenderer {
         double coreX = SUN_DISTANCE * Math.sin(rad);
         double coreY = -SUN_DISTANCE * Math.cos(rad);
 
+        modelOpacity = 1.0F;
         // 使用平滑动画时钟而非原始世界时间，避免睡眠/时间同步导致动画瞬移
         double worldTime = getSmoothAnimTime(world.getWorldTime());
         computeViewLocal(angle, worldTime);
@@ -411,6 +418,91 @@ public final class DysonSphereRenderer {
         GL11.glPopMatrix();
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glLineWidth(1.0F);
+    }
+
+    /**
+     * 世界 3D 模型展示入口（机器绑定的真 3D 模型，如戴森球）：
+     * 调用方（HoloRender.renderModel3D → DysonModelPanel）已设置模型矩阵
+     * （锚点平移 + 朝向 + 世界缩放 + 可选自转），并以原点为球心。
+     * <ul>
+     *   <li>不做前半球裁剪（fullSphereMode）：绕行可见背面，前后遮挡由世界深度测试完成；</li>
+     *   <li>VIEW_LOCAL = 观察方向在顶点系中的单位向量（R_spin^T · 局部方向，与自转一致）；</li>
+     *   <li>动画时钟/数据由参数传入（与天空盒互不干扰）。</li>
+     * </ul>
+     *
+     * @param animTime 动画时钟
+     * @param rotX/rotY/rotZ 自转角度（度，与调用方 GL 施加顺序一致）
+     * @param showClouds 是否绘制戴森云环
+     * @param cloudCount/frameCount/pasteCount 实时进度
+     * @param vx/vy/vz 观察者在模型局部系（x=right、y=向下、z=法向朝观察者）中的单位方向（未自转）
+     */
+    public static void renderAsModel(double animTime, float rotX, float rotY, float rotZ, boolean showClouds,
+                                     int cloudCount, int frameCount, int pasteCount,
+                                     float vx, float vy, float vz, float opacity) {
+        fullSphereMode = true;
+        try {
+            modelOpacity = Math.max(0.0F, Math.min(1.0F, opacity));
+            float pasteCoverage = pasteCount <= 0 ? 0.0F
+                : Math.min(1.0F, pasteCount / (float) DysonSphereState.PASTE_COMPLETE);
+            boolean completed = pasteCount >= DysonSphereState.PASTE_COMPLETE;
+
+            int visibleCloud = Math.min(cloudCount, DysonSphereState.CLOUD_LEVEL_3);
+            int cloudRings = visibleCloud >= 20_000 ? 3 : visibleCloud >= 10_000 ? 2 : visibleCloud > 0 ? 1 : 0;
+            float cloudDensity = cloudRings == 0
+                ? 0.0F
+                : visibleCloud / (float) DysonSphereState.CLOUD_LEVEL_3;
+            if (completed || !showClouds) {
+                cloudRings = 0;
+                cloudDensity = 0.0F;
+            }
+
+            // 模型上下文：暖色固定冷色；视线方向 = 自转补偿后的观察方向
+            tintWarmth = 0.0F;
+            float[] rx = rotX(rotX);
+            float[] ry = rotY(rotY);
+            float[] rz = rotZ(rotZ);
+            float[] r = mul(mul(rx, ry), rz);
+            float lx = r[0] * vx + r[3] * vy + r[6] * vz;
+            float ly = r[1] * vx + r[4] * vy + r[7] * vz;
+            float lz = r[2] * vx + r[5] * vy + r[8] * vz;
+            float ll = (float) Math.sqrt(lx * lx + ly * ly + lz * lz);
+            if (ll < 1.0e-6F) {
+                lx = 0.0F;
+                ly = 0.0F;
+                lz = 1.0F;
+                ll = 1.0F;
+            }
+            VIEW_LOCAL[0] = lx / ll;
+            VIEW_LOCAL[1] = ly / ll;
+            VIEW_LOCAL[2] = lz / ll;
+
+            // GL 状态：真 3D —— 深度测试/写入由世界管线提供（被墙遮挡、前后互挡）
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthFunc(GL11.GL_LEQUAL);
+            GL11.glDepthMask(true);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glDisable(GL11.GL_FOG);
+
+            drawFrame(pasteCoverage, frameCount, animTime);
+            if (cloudRings > 0 && cloudDensity > 0.0F) {
+                drawCloudRings(animTime, cloudRings, cloudDensity);
+            }
+            if (completed) {
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
+                drawCompletedGlow(animTime);
+            }
+
+            GL11.glDepthMask(false);
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glLineWidth(1.0F);
+        } finally {
+            fullSphereMode = false;
+        }
     }
 
     /** 更新并返回平滑动画时钟：单帧最多前进 1 tick，忽略回拨，避免时间跳变导致闪烁。 */
@@ -574,7 +666,7 @@ public final class DysonSphereRenderer {
                 GL11.glDepthMask(true);
                 GL11.glColor4f(
                     warmMix(0.16F, 0.26F), warmMix(0.21F, 0.23F), warmMix(0.34F, 0.26F),
-                    1.0F * alpha);
+                    modelOpacity * alpha);
                 GL11.glBegin(GL11.GL_TRIANGLES);
                 emitPanelTriangle(f, true);
                 GL11.glEnd();
@@ -602,7 +694,7 @@ public final class DysonSphereRenderer {
         List<Integer> visibleBeams = new ArrayList<>();
         for (int i = 0; i < edgeCount; i++) {
             int e = EDGE_ORDER[i];
-            if (clipAlpha(beamDepth(e), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE) > 0.0F) {
+            if (fullSphereMode || clipAlpha(beamDepth(e), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE) > 0.0F) {
                 visibleBeams.add(e);
             }
         }
@@ -651,16 +743,16 @@ public final class DysonSphereRenderer {
                 // 外圈柔光：宽而淡，让光斑在远处也能被注意到
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
                 GL11.glBegin(GL11.GL_QUADS);
-                GL11.glColor4f(0.30F, 0.60F, 1.0F, 0.25F * pulse.alpha);
+                GL11.glColor4f(0.30F, 0.60F, 1.0F, 0.25F * pulse.alpha * modelOpacity);
                 emitBeamBox(pulse, BEAM_THICKNESS * 1.5D);
                 GL11.glEnd();
                 // 亮核：窄而亮，保持清晰的流动感
                 GL11.glBegin(GL11.GL_QUADS);
-                GL11.glColor4f(0.70F, 0.90F, 1.0F, 0.95F * pulse.alpha);
+                GL11.glColor4f(0.70F, 0.90F, 1.0F, 0.95F * pulse.alpha * modelOpacity);
                 emitBeamBox(pulse, BEAM_THICKNESS * 0.55D);
                 GL11.glEnd();
                 GL11.glBegin(GL11.GL_LINES);
-                GL11.glColor4f(0.85F, 0.98F, 1.0F, 1.0F * pulse.alpha);
+                GL11.glColor4f(0.85F, 0.98F, 1.0F, 1.0F * pulse.alpha * modelOpacity);
                 GL11.glVertex3d(pulse.x0, pulse.y0, pulse.z0);
                 GL11.glVertex3d(pulse.x1, pulse.y1, pulse.z1);
                 GL11.glEnd();
@@ -710,6 +802,11 @@ public final class DysonSphereRenderer {
         double limit = -FRAME_FRONT_CLIP;
         float d0 = dotLocal((float) s.x0, (float) s.y0, (float) s.z0);
         float d1 = dotLocal((float) s.x1, (float) s.y1, (float) s.z1);
+        if (fullSphereMode) {
+            // 整球模型展示：梁不裁剪（前后遮挡交给 GL 深度）
+            s.alpha = 1.0F;
+            return s;
+        }
         if (d0 < limit && d1 < limit) {
             return null;
         }
@@ -736,7 +833,7 @@ public final class DysonSphereRenderer {
 
     /** 输出棱的辉光层（宽而淡，配合加法混合），假定 GL_QUADS 已开始。 */
     private static void emitBeamGlow(BeamSeg s) {
-        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.14F * s.alpha);
+        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.14F * s.alpha * modelOpacity);
         emitBeamBox(s, BEAM_THICKNESS * 1.8D);
     }
 
@@ -744,13 +841,13 @@ public final class DysonSphereRenderer {
     private static void emitStraightBeam(BeamSeg s) {
         GL11.glColor4f(
             warmMix(0.20F, 0.32F), warmMix(0.26F, 0.28F), warmMix(0.42F, 0.30F),
-            1.0F * s.alpha);
+            modelOpacity * s.alpha);
         emitBeamBox(s, BEAM_THICKNESS * 0.5D);
     }
 
     /** 输出棱中心亮条纹，假定 GL_LINES 已开始。 */
     private static void emitBeamCoreLine(BeamSeg s) {
-        GL11.glColor4f(0.72F, 0.86F, 1.0F, 0.85F * s.alpha);
+        GL11.glColor4f(0.72F, 0.86F, 1.0F, 0.85F * s.alpha * modelOpacity);
         GL11.glVertex3d(s.x0, s.y0, s.z0);
         GL11.glVertex3d(s.x1, s.y1, s.z1);
     }
@@ -848,7 +945,7 @@ public final class DysonSphereRenderer {
             p[k][1] = (a[1] + b[1]) * 0.5D * RADIUS + n[1] * h;
             p[k][2] = (a[2] + b[2]) * 0.5D * RADIUS + n[2] * h;
         }
-        GL11.glColor4f(0.55F, 0.75F, 1.0F, 0.70F * alpha);
+        GL11.glColor4f(0.55F, 0.75F, 1.0F, 0.70F * alpha * modelOpacity);
         for (int k = 0; k < 3; k++) {
             GL11.glVertex3d(p[k][0], p[k][1], p[k][2]);
             GL11.glVertex3d(p[(k + 1) % 3][0], p[(k + 1) % 3][1], p[(k + 1) % 3][2]);
@@ -879,7 +976,7 @@ public final class DysonSphereRenderer {
         double vz = n[0] * uy - n[1] * ux;
 
         double s = 0.45D;
-        GL11.glColor4f(0.70F, 0.85F, 1.0F, 0.90F * alpha);
+        GL11.glColor4f(0.70F, 0.85F, 1.0F, 0.90F * alpha * modelOpacity);
         quad(
             cx + ux * s, cy + uy * s, cz + uz * s,
             cx + vx * s, cy + vy * s, cz + vz * s,
@@ -893,8 +990,11 @@ public final class DysonSphereRenderer {
         return dotLocal((float) (v[0] * RADIUS), (float) (v[1] * RADIUS), (float) (v[2] * RADIUS));
     }
 
-    /** 节点中心的虚化透明度。 */
+    /** 节点中心的虚化透明度：天空盒按前半球裁剪；整球模型展示模式全部可见。 */
     private static float nodeAlpha(int index) {
+        if (fullSphereMode) {
+            return 1.0F;
+        }
         return clipAlpha(nodeDepth(index), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
     }
 
@@ -916,8 +1016,11 @@ public final class DysonSphereRenderer {
         return dotLocal((float) mx, (float) my, (float) mz);
     }
 
-    /** 面板中心的虚化透明度。 */
+    /** 面板中心的虚化透明度：天空盒按前半球裁剪；整球模型展示模式全部可见。 */
     private static float panelAlpha(int f) {
+        if (fullSphereMode) {
+            return 1.0F;
+        }
         return clipAlpha(panelDepth(f), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
     }
 
@@ -971,7 +1074,7 @@ public final class DysonSphereRenderer {
         double cx = c[0] * outer;
         double cy = c[1] * outer;
         double cz = c[2] * outer;
-        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.20F * nodeAlpha(index));
+        GL11.glColor4f(0.30F, 0.55F, 1.0F, 0.20F * nodeAlpha(index) * modelOpacity);
         for (int k = 0; k < sides; k++) {
             double[] p0 = nodeCorner(index, k, 0.7D);
             double[] p1 = nodeCorner(index, (k + 1) % sides, 0.7D);
@@ -988,7 +1091,9 @@ public final class DysonSphereRenderer {
         double cx = c[0] * outer;
         double cy = c[1] * outer;
         double cz = c[2] * outer;
-        float centerAlpha = clipAlpha(dotLocal((float) cx, (float) cy, (float) cz), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
+        float centerAlpha = fullSphereMode
+            ? 1.0F
+            : clipAlpha(dotLocal((float) cx, (float) cy, (float) cz), -FRAME_FRONT_CLIP, FRAME_EDGE_FADE);
         if (centerAlpha <= 0.0F) {
             return;
         }
@@ -1002,15 +1107,15 @@ public final class DysonSphereRenderer {
             float[] p1 = poly.get((k + 1) % poly.size());
             GL11.glColor4f(
                 warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
-                1.0F * centerAlpha);
+                modelOpacity * centerAlpha);
             GL11.glVertex3d(cx, cy, cz);
             GL11.glColor4f(
                 warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
-                1.0F * p0[3]);
+                modelOpacity * p0[3]);
             GL11.glVertex3d(p0[0], p0[1], p0[2]);
             GL11.glColor4f(
                 warmMix(0.38F, 0.50F), warmMix(0.52F, 0.52F), warmMix(0.80F, 0.66F),
-                1.0F * p1[3]);
+                modelOpacity * p1[3]);
             GL11.glVertex3f(p1[0], p1[1], p1[2]);
         }
     }
@@ -1019,6 +1124,16 @@ public final class DysonSphereRenderer {
     private static List<float[]> clippedNodePolygon(int index) {
         int sides = nodeSides(index);
         double limit = -FRAME_FRONT_CLIP;
+        if (fullSphereMode) {
+            // 整球模型展示：不裁剪（输出完整节点多边形）
+            float aa = nodeAlpha(index);
+            List<float[]> out = new ArrayList<>(sides);
+            for (int k = 0; k < sides; k++) {
+                double[] p = nodeCorner(index, k);
+                out.add(new float[] {(float) p[0], (float) p[1], (float) p[2], aa});
+            }
+            return out;
+        }
         List<float[]> out = new ArrayList<>();
         double[] prev = nodeCorner(index, sides - 1);
         float prevDot = dotLocal((float) prev[0], (float) prev[1], (float) prev[2]);
@@ -1059,6 +1174,18 @@ public final class DysonSphereRenderer {
     private static void emitNodeEdges(int index) {
         int sides = nodeSides(index);
         double limit = -FRAME_FRONT_CLIP;
+        if (fullSphereMode) {
+            float aa = 0.9F * nodeAlpha(index);
+            for (int k = 0; k < sides; k++) {
+                double[] a = nodeCorner(index, k);
+                double[] b = nodeCorner(index, (k + 1) % sides);
+                GL11.glColor4f(
+                    warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), aa * modelOpacity);
+                GL11.glVertex3d(a[0], a[1], a[2]);
+                GL11.glVertex3d(b[0], b[1], b[2]);
+            }
+            return;
+        }
         for (int k = 0; k < sides; k++) {
             double[] a = nodeCorner(index, k);
             double[] b = nodeCorner(index, (k + 1) % sides);
@@ -1073,18 +1200,18 @@ public final class DysonSphereRenderer {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
                 GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
-                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab * modelOpacity);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             } else if (db < limit) {
                 float[] p = intersectNodePoint(a, b, da, db, limit);
-                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa * modelOpacity);
                 GL11.glVertex3d(a[0], a[1], a[2]);
                 GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.0F);
                 GL11.glVertex3d(p[0], p[1], p[2]);
             } else {
-                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * aa * modelOpacity);
                 GL11.glVertex3d(a[0], a[1], a[2]);
-                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab);
+                GL11.glColor4f(warmMix(0.62F, 0.70F), warmMix(0.72F, 0.68F), warmMix(0.92F, 0.78F), 0.9F * ab * modelOpacity);
                 GL11.glVertex3d(b[0], b[1], b[2]);
             }
         }
@@ -1186,7 +1313,7 @@ public final class DysonSphereRenderer {
             if (fade <= 0.0F) {
                 continue;
             }
-            float alpha = piece.alpha * fade;
+            float alpha = piece.alpha * fade * modelOpacity;
             GL11.glColor4f(
                 warmMix(0.10F, 0.20F), warmMix(0.22F, 0.26F), warmMix(0.48F, 0.40F),
                 alpha);
@@ -1260,6 +1387,7 @@ public final class DysonSphereRenderer {
             if (alpha <= 0.001F) {
                 continue;
             }
+            alpha *= modelOpacity;
             GL11.glColor4f(0.15F, 0.45F, 0.95F, alpha);
             drawSphereQuads(r, 20 + (int) (t * 8), 10 + (int) (t * 4));
         }
@@ -1282,7 +1410,7 @@ public final class DysonSphereRenderer {
                 double mx = Math.cos(midPhi) * Math.cos(midTheta);
                 double my = Math.sin(midPhi);
                 double mz = Math.cos(midPhi) * Math.sin(midTheta);
-                if (dotLocal((float) mx, (float) my, (float) mz) < -clipUnit) {
+                if (!fullSphereMode && dotLocal((float) mx, (float) my, (float) mz) < -clipUnit) {
                     continue;
                 }
 

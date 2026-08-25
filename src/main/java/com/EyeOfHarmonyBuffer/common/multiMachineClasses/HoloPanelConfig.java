@@ -14,6 +14,8 @@ import net.minecraftforge.common.util.ForgeDirection;
  *       像素级微调用于错开与方块面完全重合的 z-fighting（1 像素 = 1/64 格）</li>
  *   <li>旋转(3)：yaw（绕上下轴）、pitch（绕左右轴）、roll（绕前后轴），单位度</li>
  *   <li>镜像(1)：flip（左右镜像）</li>
+ *   <li>模型视觉(2)：modelScale（3D 模型整体缩放倍率，1 = 原尺寸）、modelOpacity（不透明度 0~1，
+ *       1 = 不透明）——仅供 3D 模型展示（screenId = "model:*"）使用，屏不受影响</li>
  * </ul>
  * 正角度 = 沿轴正方向看过去逆时针（右旋法则）；游戏里可微调正负。
  */
@@ -44,11 +46,16 @@ public class HoloPanelConfig {
     public final boolean flip;
     /** 屏类型 id（客户端 renderTESR 按此创建/分派不同屏；null 回退默认总面板）。 */
     public final String screenId;
+    /** 3D 模型整体缩放倍率（1 = 原尺寸；仅模型展示用）。 */
+    public final float modelScale;
+    /** 3D 模型不透明度（0~1，1 = 不透明；仅模型展示用）。 */
+    public final float modelOpacity;
 
     private HoloPanelConfig(double forward, double forwardPx,
                             double left, double leftPx,
                             double up, double upPx,
-                            double yaw, double pitch, double roll, boolean flip, String screenId) {
+                            double yaw, double pitch, double roll, boolean flip, String screenId,
+                            float modelScale, float modelOpacity) {
         this.forward = forward;
         this.forwardPx = forwardPx;
         this.left = left;
@@ -60,6 +67,8 @@ public class HoloPanelConfig {
         this.roll = roll;
         this.flip = flip;
         this.screenId = screenId;
+        this.modelScale = modelScale;
+        this.modelOpacity = modelOpacity;
     }
 
     public static Builder builder() {
@@ -70,6 +79,8 @@ public class HoloPanelConfig {
         private double forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll;
         private boolean flip;
         private String screenId;
+        private float modelScale = 1.0F;
+        private float modelOpacity = 1.0F;
 
         /** 往前(+)/往后(-) N 格。 */
         public Builder forward(double v) { this.forward = v; return this; }
@@ -104,8 +115,15 @@ public class HoloPanelConfig {
         /** 屏类型 id（客户端按此创建/分派屏；null = 默认总面板）。 */
         public Builder screen(String v) { this.screenId = v; return this; }
 
+        /** 3D 模型整体缩放倍率（1 = 原尺寸；仅模型展示用）。 */
+        public Builder modelScale(float v) { this.modelScale = v; return this; }
+
+        /** 3D 模型不透明度（0~1，1 = 不透明；仅模型展示用）。 */
+        public Builder modelOpacity(float v) { this.modelOpacity = v; return this; }
+
         public HoloPanelConfig build() {
-            return new HoloPanelConfig(forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll, flip, screenId);
+            return new HoloPanelConfig(forward, forwardPx, left, leftPx, up, upPx, yaw, pitch, roll, flip, screenId,
+                modelScale, modelOpacity);
         }
     }
 
@@ -152,7 +170,10 @@ public class HoloPanelConfig {
             f.ry = -f.ry;
             f.rz = -f.rz;
         }
-        return new HoloPanelInstance(cx, cy, cz, f.rx, f.ry, f.rz, f.ux, f.uy, f.uz, f.nx, f.ny, f.nz, screenId);
+        HoloPanelInstance inst = new HoloPanelInstance(cx, cy, cz, f.rx, f.ry, f.rz, f.ux, f.uy, f.uz, f.nx, f.ny, f.nz, screenId);
+        inst.modelScale = modelScale;
+        inst.modelOpacity = Math.max(0.0F, Math.min(1.0F, modelOpacity));
+        return inst;
     }
 
     /** Rodrigues 旋转：把 frame 的三个基向量绕轴 (kx,ky,kz) 旋转 rad 弧度。 */

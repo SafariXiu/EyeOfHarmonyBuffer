@@ -17,6 +17,10 @@ public class HoloPanelInstance {
     public float nx, ny, nz;
     /** 屏类型 id（客户端按此创建/分派屏；null/空 = 默认总面板）。 */
     public String screenId;
+    /** 3D 模型整体缩放倍率（1 = 原尺寸；仅模型展示分派使用）。 */
+    public float modelScale = 1.0F;
+    /** 3D 模型不透明度（0~1，1 = 不透明；仅模型展示分派使用）。 */
+    public float modelOpacity = 1.0F;
 
     public HoloPanelInstance() {
     }
@@ -50,6 +54,7 @@ public class HoloPanelInstance {
             && rx == o.rx && ry == o.ry && rz == o.rz
             && ux == o.ux && uy == o.uy && uz == o.uz
             && nx == o.nx && ny == o.ny && nz == o.nz
-            && java.util.Objects.equals(screenId, o.screenId);
+            && java.util.Objects.equals(screenId, o.screenId)
+            && modelScale == o.modelScale && modelOpacity == o.modelOpacity;
     }
 }
