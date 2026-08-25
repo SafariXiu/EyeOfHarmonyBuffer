@@ -1941,7 +1941,7 @@ public class DysonCore extends OrundumWirelessMultiMachineBase<DysonCore>
                         .screen("model:dyson")
                         .up(8)
                         .modelScale(2.0f)
-                        .modelOpacity(0.6F)
+                        .modelOpacity(0.8F)
                         .build(),
                     sBlockCasingsDyson, 9
                 ))
