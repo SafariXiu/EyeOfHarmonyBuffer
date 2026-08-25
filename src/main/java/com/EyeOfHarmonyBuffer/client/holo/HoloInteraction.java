@@ -24,6 +24,11 @@ public class HoloInteraction {
     /** 上一帧悬停的屏：离开/切换时清掉旧屏的控件 hover，避免残留高亮。 */
     private static HoloScreen lastHovered = null;
 
+    /** 临时对象复用（渲染/交互单线程）：射线拾取每 tick/每次点击共用。 */
+    private static final double[] UV = new double[2];
+    private static final Vec3 EYE = Vec3.createVectorHelper(0, 0, 0);
+    private static final Vec3 LOOK = Vec3.createVectorHelper(0, 0, 0);
+
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -72,8 +77,8 @@ public class HoloInteraction {
         if (mc.thePlayer == null) {
             return;
         }
-        double[] uv = new double[2];
-        if (!pick(target, mc.thePlayer, uv)) {
+        double[] uv = UV;
+        if (!pick(target, mc.thePlayer, EYE, LOOK, uv)) {
             return;
         }
         screen.onMouse(button, (int) Math.round(uv[0]), (int) Math.round(uv[1]));
@@ -136,13 +141,21 @@ public class HoloInteraction {
         double bestDist = Double.MAX_VALUE;
         double bestU = 0;
         double bestV = 0;
+        // eye/look 每 tick 只算一次（供所有屏共用）
+        EYE.xCoord = player.posX;
+        EYE.yCoord = player.posY + player.getEyeHeight();
+        EYE.zCoord = player.posZ;
+        Vec3 look = player.getLookVec();
+        LOOK.xCoord = look.xCoord;
+        LOOK.yCoord = look.yCoord;
+        LOOK.zCoord = look.zCoord;
+        double[] uv = UV;
         for (Object o : mc.theWorld.loadedEntityList) {
             if (!(o instanceof HoloEntity)) {
                 continue;
             }
             Entity e = (Entity) o;
-            double[] uv = new double[2];
-            if (pick(e, player, uv)) {
+            if (pick(e, player, EYE, LOOK, uv)) {
                 double d = e.getDistanceSqToEntity(player);
                 if (d < bestDist) {
                     bestDist = d;
@@ -160,8 +173,9 @@ public class HoloInteraction {
         return best;
     }
 
-    /** 准星射线与一块屏平面求交，得到局部坐标 (u,v)。命中时 uv[0]/uv[1] 为局部坐标。 */
-    private static boolean pick(Entity e, EntityPlayer player, double[] uv) {
+    /** 准星射线与一块屏平面求交，得到局部坐标 (u,v)。命中时 uv[0]/uv[1] 为局部坐标。
+     *  eye/look 由调用方传入（复用对象），避免每块屏重新计算。 */
+    private static boolean pick(Entity e, EntityPlayer player, Vec3 eye, Vec3 look, double[] uv) {
         HoloScreen screen = e instanceof HoloEntity h ? h.getScreen() : null;
         if (screen == null) {
             return false;
@@ -175,8 +189,6 @@ public class HoloInteraction {
         double halfDiag = 0.5 * Math.sqrt((double) w * w + (double) h * h) * s;
         double maxDist = 4.0 + halfDiag;
 
-        Vec3 eye = Vec3.createVectorHelper(player.posX, player.posY + player.getEyeHeight(), player.posZ);
-        Vec3 look = player.getLookVec();
         HoloMath.Frame f = HoloMath.frameFor(e, player);
         Vec3 c = Vec3.createVectorHelper(e.posX, e.posY, e.posZ);
         Vec3 n = Vec3.createVectorHelper(f.nx, f.ny, f.nz);
@@ -185,22 +197,25 @@ public class HoloInteraction {
         if (Math.abs(denom) < 1e-6) {
             return false;
         }
-        Vec3 cMinusEye = Vec3.createVectorHelper(c.xCoord - eye.xCoord, c.yCoord - eye.yCoord, c.zCoord - eye.zCoord);
-        double t = cMinusEye.dotProduct(n) / denom;
+        double t = ((c.xCoord - eye.xCoord) * n.xCoord + (c.yCoord - eye.yCoord) * n.yCoord + (c.zCoord - eye.zCoord) * n.zCoord) / denom;
         if (t < 0) {
             return false;
         }
         if (t > maxDist) {
             return false;
         }
-        Vec3 q = Vec3.createVectorHelper(eye.xCoord + look.xCoord * t, eye.yCoord + look.yCoord * t, eye.zCoord + look.zCoord * t);
+        double qx = eye.xCoord + look.xCoord * t;
+        double qy = eye.yCoord + look.yCoord * t;
+        double qz = eye.zCoord + look.zCoord * t;
         // 视线遮挡检测：玩家到屏路径上有任何方块（含玻璃/栅栏等不完整方块）则不可交互
-        if (!hasLineOfSight(player.worldObj, eye, q)) {
+        if (!hasLineOfSight(player.worldObj,
+            Vec3.createVectorHelper(eye.xCoord, eye.yCoord, eye.zCoord),
+            Vec3.createVectorHelper(qx, qy, qz))) {
             return false;
         }
-        Vec3 qc = Vec3.createVectorHelper(q.xCoord - c.xCoord, q.yCoord - c.yCoord, q.zCoord - c.zCoord);
-        double u = qc.dotProduct(Vec3.createVectorHelper(f.rx, f.ry, f.rz)) / s + w / 2.0;
-        double v = h / 2.0 - qc.dotProduct(Vec3.createVectorHelper(f.ux, f.uy, f.uz)) / s;
+        // 局部坐标（复用局部 double 避免临时对象）
+        double u = ((qx - c.xCoord) * f.rx + (qy - c.yCoord) * f.ry + (qz - c.zCoord) * f.rz) / s + w / 2.0;
+        double v = h / 2.0 - ((qx - c.xCoord) * f.ux + (qy - c.yCoord) * f.uy + (qz - c.zCoord) * f.uz) / s;
 
         // 放宽命中边界，避免触发区域比视觉面板小（边缘点不到）
         if (u < -16 || u > w + 16 || v < -16 || v > h + 16) {

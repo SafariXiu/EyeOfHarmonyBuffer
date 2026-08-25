@@ -177,10 +177,10 @@ public final class DysonPreviewRenderer {
 
     /** 空进度骨架线。 */
     private static final class SkeletonPrim implements Prim {
-        private final float x0, y0, x1, y1;
-        private final float depth;
+        private float x0, y0, x1, y1;
+        private float depth;
 
-        SkeletonPrim(float[] m, double[] a, double[] b) {
+        void set(float[] m, double[] a, double[] b) {
             float[] ra = rotate(m, a[0], a[1], a[2]);
             float[] rb = rotate(m, b[0], b[1], b[2]);
             this.x0 = ra[0];
@@ -213,9 +213,9 @@ public final class DysonPreviewRenderer {
 
     /** 完工光晕（最远，加法混合）：壳外圈渐隐幽蓝光。 */
     private static final class GlowPrim implements Prim {
-        private final double pulse;
+        private double pulse;
 
-        GlowPrim(double animTime) {
+        void setPulse(double animTime) {
             this.pulse = 0.5D + 0.5D * Math.sin(animTime * 0.01D);
         }
 
@@ -263,10 +263,10 @@ public final class DysonPreviewRenderer {
     private static final class PanelPrim implements Prim {
         private final float[] x = new float[3];
         private final float[] y = new float[3];
-        private final float depth;
-        private final boolean back;
+        private float depth;
+        private boolean back;
 
-        PanelPrim(float[] m, double[][] verts, int[] face) {
+        void set(float[] m, double[][] verts, int[] face) {
             double r = DysonSphereRenderer.getSphereRadius();
             double mx = 0, my = 0, mz = 0;
             for (int k = 0; k < 3; k++) {
@@ -334,13 +334,13 @@ public final class DysonPreviewRenderer {
 
     /** 棱（梁）：外圈辉光 + 实体梁 + 中心亮线 + 能量流动光点。 */
     private static final class BeamPrim implements Prim {
-        private final float x0, y0, x1, y1;
-        private final float depth;
-        private final boolean back;
-        private final float ex, ey;
-        private final float pulseAlpha;
+        private float x0, y0, x1, y1;
+        private float depth;
+        private boolean back;
+        private float ex, ey;
+        private float pulseAlpha;
 
-        BeamPrim(float[] m, double[][] verts, int[] ev, double animTime, double energyPhase) {
+        void set(float[] m, double[][] verts, int[] ev, double animTime, double energyPhase) {
             double r = DysonSphereRenderer.getSphereRadius();
             float[] pa = rotate(m, verts[ev[0]][0] * r, verts[ev[0]][1] * r, verts[ev[0]][2] * r);
             float[] pb = rotate(m, verts[ev[1]][0] * r, verts[ev[1]][1] * r, verts[ev[1]][2] * r);
@@ -433,17 +433,17 @@ public final class DysonPreviewRenderer {
 
     /** 节点：实心多边形 + 辉光 + 亮边。 */
     private static final class NodePrim implements Prim {
-        private final float cx, cy;
-        private final float[] xs, ys;
-        private final float depth;
-        private final boolean back;
+        private final float[] xs = new float[6];
+        private final float[] ys = new float[6];
+        private float cx, cy;
+        private float depth;
+        private boolean back;
+        private int sides;
 
-        NodePrim(float[] m, int index) {
+        void set(float[] m, int index) {
             double[][] corners = nodeCorners(index, 1.0D);
             double mx = 0, my = 0, mz = 0;
-            int sides = corners.length;
-            this.xs = new float[sides];
-            this.ys = new float[sides];
+            this.sides = corners.length;
             float[] center = rotate(m,
                 DysonSphereRenderer.vertices()[index][0] * DysonSphereRenderer.getSphereRadius(),
                 DysonSphereRenderer.vertices()[index][1] * DysonSphereRenderer.getSphereRadius(),
@@ -475,7 +475,6 @@ public final class DysonPreviewRenderer {
 
         @Override
         public void draw() {
-            int sides = xs.length;
             float r = back ? C_NODE_BACK_R : C_NODE_FRONT_R;
             float g = back ? C_NODE_BACK_G : C_NODE_FRONT_G;
             float b = back ? C_NODE_BACK_B : C_NODE_FRONT_B;
@@ -530,6 +529,20 @@ public final class DysonPreviewRenderer {
         }
     }
 
+    // ==================== 每帧对象复用（渲染单线程，静态池安全） ====================
+    /** 图元列表（复用容量，避免每帧 ArrayList 分配/扩容）。 */
+    private static final List<Prim> PRIMS = new ArrayList<>(700);
+    /** 图元对象池：面板 ≤180 / 梁 ≤270 / 节点 ≤92 / 骨架 ≤270。 */
+    private static final List<PanelPrim> PANEL_POOL = new ArrayList<>(200);
+    private static final List<BeamPrim> BEAM_POOL = new ArrayList<>(280);
+    private static final List<NodePrim> NODE_POOL = new ArrayList<>(100);
+    private static final List<SkeletonPrim> SKEL_POOL = new ArrayList<>(280);
+    /** 无状态图元单例。 */
+    private static final DiscPrim DISC = new DiscPrim();
+    private static final GlowPrim GLOW = new GlowPrim();
+    /** 节点标记位（复用）。 */
+    private static boolean[] NODE_SHOWN = new boolean[96];
+
     private static void renderInner(double animTime, float rotX, float rotY, float rotZ, boolean showClouds,
                                     int cloud, int frame, int paste) {
         // 平贴预览：纯色几何需显式关闭贴图/光照/雾（屏的 2D 管线会残留 GL_TEXTURE_2D 与旧贴图）
@@ -555,17 +568,21 @@ public final class DysonPreviewRenderer {
         boolean completed = paste >= DysonSphereState.PASTE_COMPLETE;
         boolean empty = frame <= 0 && paste <= 0 && cloud <= 0;
 
-        // 全部图元（含底座），按 (深度桶, 层级) 字典序统一排序
-        List<Prim> prims = new ArrayList<>(700);
+        // 复用图元列表：清空（保留容量）→ 取池 → set → add
+        List<Prim> prims = PRIMS;
+        prims.clear();
 
-        prims.add(new DiscPrim());
+        prims.add(DISC);
         if (completed) {
-            prims.add(new GlowPrim(animTime));
+            GLOW.setPulse(animTime);
+            prims.add(GLOW);
         }
         // 空进度骨架（打底层）
         if (empty) {
             for (int[] e : DysonSphereRenderer.edges()) {
-                prims.add(new SkeletonPrim(m, verts[e[0]], verts[e[1]]));
+                SkeletonPrim sk = SKEL_POOL.isEmpty() ? new SkeletonPrim() : SKEL_POOL.remove(SKEL_POOL.size() - 1);
+                sk.set(m, verts[e[0]], verts[e[1]]);
+                prims.add(sk);
             }
         }
 
@@ -575,7 +592,9 @@ public final class DysonPreviewRenderer {
             int[] panelOrder = DysonSphereRenderer.panelOrder();
             for (int i = 0; i < faceCount; i++) {
                 int f = panelOrder[i];
-                prims.add(new PanelPrim(m, verts, faces[f]));
+                PanelPrim pp = PANEL_POOL.isEmpty() ? new PanelPrim() : PANEL_POOL.remove(PANEL_POOL.size() - 1);
+                pp.set(m, verts, faces[f]);
+                prims.add(pp);
             }
         }
 
@@ -589,12 +608,18 @@ public final class DysonPreviewRenderer {
             for (int i = 0; i < edgeCount; i++) {
                 int e = edgeOrder[i];
                 double phase = showEnergy ? (e * 0.618033988749895D) % 1.0D : -1.0D;
-                prims.add(new BeamPrim(m, verts, edges[e], animTime, phase));
+                BeamPrim bp = BEAM_POOL.isEmpty() ? new BeamPrim() : BEAM_POOL.remove(BEAM_POOL.size() - 1);
+                bp.set(m, verts, edges[e], animTime, phase);
+                prims.add(bp);
             }
         }
 
         // 节点（梁端点 + 面板端点）
-        boolean[] nodeShown = new boolean[verts.length];
+        if (NODE_SHOWN.length < verts.length) {
+            NODE_SHOWN = new boolean[verts.length];
+        }
+        boolean[] nodeShown = NODE_SHOWN;
+        java.util.Arrays.fill(nodeShown, false);
         if (edgeCount > 0) {
             int[] edgeOrder = DysonSphereRenderer.edgeOrder();
             for (int i = 0; i < edgeCount; i++) {
@@ -614,7 +639,9 @@ public final class DysonPreviewRenderer {
         }
         for (int i = 0; i < nodeShown.length; i++) {
             if (nodeShown[i]) {
-                prims.add(new NodePrim(m, i));
+                NodePrim np = NODE_POOL.isEmpty() ? new NodePrim() : NODE_POOL.remove(NODE_POOL.size() - 1);
+                np.set(m, i);
+                prims.add(np);
             }
         }
 
@@ -639,6 +666,20 @@ public final class DysonPreviewRenderer {
         for (Prim p : prims) {
             p.draw();
         }
+
+        // 归还图元到池（对象复用，消除每帧 ~600 次分配）
+        for (Prim p : prims) {
+            if (p instanceof PanelPrim pp) {
+                PANEL_POOL.add(pp);
+            } else if (p instanceof BeamPrim bp) {
+                BEAM_POOL.add(bp);
+            } else if (p instanceof NodePrim np) {
+                NODE_POOL.add(np);
+            } else if (p instanceof SkeletonPrim sk) {
+                SKEL_POOL.add(sk);
+            }
+        }
+        prims.clear();
 
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glLineWidth(1.0F);

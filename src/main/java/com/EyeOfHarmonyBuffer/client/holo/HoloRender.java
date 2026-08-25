@@ -70,15 +70,15 @@ public class HoloRender extends Render {
 
     private static void applyFrame(HoloMath.Frame f, int w, int h, float scale) {
         float s = 0.0625f * scale;
-        FloatBuffer m = BufferUtils.createFloatBuffer(16);
-        m.put(new float[] {
+        FRAME_MATRIX.clear();
+        FRAME_MATRIX.put(new float[] {
             f.rx, f.ry, f.rz, 0f,
             -f.ux, -f.uy, -f.uz, 0f,
             f.nx, f.ny, f.nz, 0f,
             0f, 0f, 0f, 1f
         });
-        m.flip();
-        GL11.glMultMatrix(m);
+        FRAME_MATRIX.flip();
+        GL11.glMultMatrix(FRAME_MATRIX);
         GL11.glScalef(s, s, s);
         GL11.glTranslatef(-w / 2f, -h / 2f, 0);
     }
@@ -103,19 +103,21 @@ public class HoloRender extends Render {
         if (opacity <= 0.0F) {
             return;   // 完全透明：不绘制
         }
+        // 与 renderScreen 一致的 GL 状态配对：进入时记录光照，teardown 按此恢复（避免用上次残留值）
+        wasLightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
         GL11.glPushMatrix();
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         try {
             GL11.glTranslated(x, y, z);
-            FloatBuffer m = BufferUtils.createFloatBuffer(16);
-            m.put(new float[] {
+            FRAME_MATRIX.clear();
+            FRAME_MATRIX.put(new float[] {
                 f.rx, f.ry, f.rz, 0f,
                 -f.ux, -f.uy, -f.uz, 0f,
                 f.nx, f.ny, f.nz, 0f,
                 0f, 0f, 0f, 1f
             });
-            m.flip();
-            GL11.glMultMatrix(m);
+            FRAME_MATRIX.flip();
+            GL11.glMultMatrix(FRAME_MATRIX);
             float[] dir = viewerToModelLocal(x, y, z, f);
             model.draw(getWorldTicks(), dir[0], dir[1], dir[2], Math.max(0.0001F, scale), opacity);
         } finally {
@@ -163,6 +165,8 @@ public class HoloRender extends Render {
 
     /** 进入渲染前 GL_LIGHTING 是否开启（teardown 按此恢复，避免污染后续世界/2D GUI 渲染）。 */
     private static boolean wasLightingEnabled = true;
+    /** 朝向矩阵（Frame）临时缓冲：渲染单线程且两个入口不嵌套调用，可静态复用避免每帧分配。 */
+    private static final FloatBuffer FRAME_MATRIX = BufferUtils.createFloatBuffer(16);
     /** OpenGL 1.4 GL_DEPTH_CLAMP（LWJGL2 GL11 未导出该常量，硬编码 0x864F）。 */
     private static final int GL_DEPTH_CLAMP = 0x864F;
 
