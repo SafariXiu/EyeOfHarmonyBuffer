@@ -2,6 +2,8 @@ package com.EyeOfHarmonyBuffer.space.talos.client.render;
 
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
 import net.minecraft.client.multiplayer.WorldClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayDeque;
@@ -30,6 +32,12 @@ public final class DysonSphereRenderer {
 
     /** 戴森球壳/框架半径（原 14.5，放大 2 倍）。 */
     private static final double RADIUS = 29.0D;
+
+    /** 戴森球半径（GUI 预览换算尺寸用）。 */
+    public static double getSphereRadius() {
+        return RADIUS;
+    }
+    private static final Logger LOGGER = LogManager.getLogger("DysonSphereRenderer");
     /** 太阳到原点的距离（与天空盒保持一致）。 */
     private static final double SUN_DISTANCE = 100.0D;
     /** 戴森云环的半径，远大于戴森球壳，类似星环围绕恒星。 */
@@ -76,6 +84,9 @@ public final class DysonSphereRenderer {
     private static long lastAnimTick = Long.MIN_VALUE;
     /** 当前帧的暖色强度（0=正午冷色，1=晨昏暖色），用于天空染色。 */
     private static float tintWarmth = 0.0F;
+    /** 平贴预览模式（GUI 2D 图）：只参与深度测试（被墙/方块正常遮挡），不写深度。
+     *  天空盒 3D 路径（render）为 false：面板需要写深度做前后遮挡。单线程渲染下与 tintWarmth 一样随入口设置。 */
+    private static boolean flatPreview = false;
     /** 三个环的平面法线（球体局部坐标）：赤道、与赤道成 30°、与赤道成 120°。 */
     private static final double[][] RING_NORMALS = {
         {0.0D, 1.0D, 0.0D},
@@ -339,6 +350,7 @@ public final class DysonSphereRenderer {
         // 天空染色：太阳越高越冷，靠近地平线（晨昏）越暖
         double sunHeight = -Math.cos(rad);
         tintWarmth = (float) Math.max(0.0D, 1.0D - Math.abs(sunHeight));
+        flatPreview = false;
         double coreX = SUN_DISTANCE * Math.sin(rad);
         double coreY = -SUN_DISTANCE * Math.cos(rad);
 
@@ -379,6 +391,153 @@ public final class DysonSphereRenderer {
         GL11.glPopMatrix();
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glLineWidth(1.0F);
+    }
+
+    /**
+     * GUI 专用入口：在“调用方矩阵”下绘制戴森球（球心在原点，尺寸由外层矩阵 scale 决定）。
+     * 与天空盒 {@link #render} 共用同一套几何绘制，但：
+     * <ul>
+     *   <li>不触碰全局平滑时钟：animTime 由调用方传入（世界时间或 GUI 自己的时钟），避免与天空盒互相推进；</li>
+     *   <li>不设外层矩阵：由 HoloCanvas 3D 视口负责 translate/scale/rotate；</li>
+     *   <li>观察方向固定（沿屏法向 +Z），由 rotX/rotY/rotZ 自转决定视角；</li>
+     *   <li>暖色固定为冷色（GUI 预览无晨昏概念）。</li>
+     * </ul>
+     * 单线程渲染下 tintWarmth/VIEW_LOCAL 作为当前上下文在此设置，下一次 {@link #render} 会重新覆盖，互不干扰。
+     *
+     * @param animTime   动画时钟（GUI 侧传入）
+     * @param rotX/rotY/rotZ 自转角度（度）
+     * @param showClouds 是否绘制云环（GUI 预览默认 false，省性能）
+     */
+    public static void renderPreview(double animTime, float rotX, float rotY, float rotZ, boolean showClouds) {
+        int cloudCount = DysonSphereState.getCloudCount();
+        int frameCount = DysonSphereState.getFrameCount();
+        int pasteCount = DysonSphereState.getPasteCount();
+        float pasteCoverage = DysonSphereState.getPasteCoverage();
+        boolean completed = pasteCount >= DysonSphereState.PASTE_COMPLETE;
+
+        int visibleCloud = Math.min(cloudCount, DysonSphereState.CLOUD_LEVEL_3);
+        int cloudRings = visibleCloud >= 20_000 ? 3 : visibleCloud >= 10_000 ? 2 : visibleCloud > 0 ? 1 : 0;
+        float cloudDensity = cloudRings == 0 ? 0.0F : visibleCloud / (float) DysonSphereState.CLOUD_LEVEL_3;
+        if (completed || !showClouds) {
+            cloudRings = 0;
+            cloudDensity = 0.0F;
+        }
+
+        // GUI 上下文：暖色固定冷色；观察方向固定 +Z，由自转决定视角
+        tintWarmth = 0.0F;
+        computeViewLocalForGui(rotX, rotY, rotZ);
+
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        // 平贴预览：深度测试保持开启（LEQUAL，与屏内容一致 → 被墙/方块正常遮挡，不会隔墙可见），
+        // 但全程不写深度（球内遮挡靠各层远→近排序；平面内等深，LEQUAL 全过 → 画家算法生效）。
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
+        GL11.glDepthMask(false);
+        flatPreview = true;
+
+        // 纯色几何必须显式关闭贴图/光照/雾：屏的 2D 管线会残留 GL_TEXTURE_2D 与旧贴图绑定，
+        // 不关的话 glColor 会被贴图调制、染成黑/透明 → 整球不可见（与天空盒调用侧同款处理）。
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_FOG);
+
+        // 基础骨架：无论进度多少都先画完整框架线框（蓝图底色），保证预览区任何阶段都有一颗可识别的戴森球。
+        // 进度几何（梁/面板/节点/云/完工辉光）叠加其上 —— 低进度时按比例映射出的结构很少，
+        // 若不画底图，预览会看上去“一片空白”而误判为渲染失败。
+        drawSkeleton(animTime);
+        try {
+            drawFrame(pasteCoverage, frameCount, animTime);
+            if (cloudRings > 0 && cloudDensity > 0.0F) {
+                drawCloudRings(animTime, cloudRings, cloudDensity);
+            }
+            if (completed) {
+                drawCompletedGlow(animTime);
+            }
+        } catch (Throwable t) {
+            // 进度态绘制异常不影响基础骨架；堆栈留档便于排查
+            LOGGER.error("[Dyson preview] progressed render failed", t);
+        }
+
+        GL11.glDepthMask(false);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glLineWidth(1.0F);
+    }
+
+    /** 预览蓝图底：淡显完整框架骨架（全部棱），任何进度下保证预览区有可识别的球体轮廓。
+     *  跟随当前深度状态（平贴预览下深度测试开启 → 与屏内容一样被墙/方块正常遮挡）。 */
+    private static void drawSkeleton(double animTime) {
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glLineWidth(1.4F);
+        GL11.glBegin(GL11.GL_LINES);
+        GL11.glColor4f(0.40F, 0.60F, 1.0F, 0.65F);
+        for (int[] e : ICO_EDGES) {
+            double[] a = ICO_VERTICES[e[0]];
+            double[] b = ICO_VERTICES[e[1]];
+            GL11.glVertex3d(a[0] * RADIUS, a[1] * RADIUS, a[2] * RADIUS);
+            GL11.glVertex3d(b[0] * RADIUS, b[1] * RADIUS, b[2] * RADIUS);
+        }
+        GL11.glEnd();
+        GL11.glLineWidth(1.0F);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    /** 预览衬底板：半透明深蓝圆盘 + 细亮环边，先于球体绘制，形成"2D 图像"底座。
+     *  由调用方在旋转之前、缩放之后调用（恒为正圆，不被自转带歪）。半径略大于球壳。 */
+    public static void drawPreviewDisc() {
+        double r = RADIUS * 1.06D;
+        int seg = 48;
+        GL11.glDepthMask(false);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glColor4f(0.05F, 0.10F, 0.18F, 0.60F);
+        GL11.glVertex3d(0, 0, 0);
+        for (int i = 0; i <= seg; i++) {
+            double a = Math.PI * 2.0D * i / seg;
+            GL11.glVertex3d(Math.cos(a) * r, Math.sin(a) * r, 0);
+        }
+        GL11.glEnd();
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        GL11.glColor4f(0.30F, 0.62F, 1.0F, 0.85F);
+        for (int i = 0; i < seg; i++) {
+            double a = Math.PI * 2.0D * i / seg;
+            GL11.glVertex3d(Math.cos(a) * r, Math.sin(a) * r, 0);
+        }
+        GL11.glEnd();
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    /** 平贴矩阵：R = ROTX·ROTY·ROTZ（与 GL 施加顺序一致），把模型顶点旋转后压平到 z=0
+     *  （正交投影到屏面）。与 {@link #computeViewLocalForGui} 同一旋转，因此 dotLocal
+     *  （= 旋转后 z）仍是正确的前后排序/裁剪键。4×4 列主序填充 out16。 */
+    public static void buildFlattenMatrix(float rotX, float rotY, float rotZ, float[] out16) {
+        float[] rx = rotX(rotX);
+        float[] ry = rotY(rotY);
+        float[] rz = rotZ(rotZ);
+        float[] r = mul(mul(rx, ry), rz);
+        // 列主序 m[col*4+row]：前两列 = R 的行0/行1，第三列清零（压平 z），第四列平移单位
+        out16[0] = r[0];  out16[1] = r[3];  out16[2] = 0; out16[3] = 0;
+        out16[4] = r[1];  out16[5] = r[4];  out16[6] = 0; out16[7] = 0;
+        out16[8] = r[2];  out16[9] = r[5];  out16[10] = 0; out16[11] = 0;
+        out16[12] = 0; out16[13] = 0; out16[14] = 0; out16[15] = 1;
+    }
+
+    /** GUI 视角：观察方向固定为球体局部系的 (0,0,1)（屏法向 +Z 朝玩家），按自转角求其在球体基系中的表示。
+     * 与天空盒 {@link #computeViewLocal} 同一逻辑：视线方向的基系表示 = 模型矩阵的转置 × 该方向。
+     * GUI 模型矩阵 M = ROTX·ROTY·ROTZ（glRotatef 依序后乘，顶点 v' = M·v），
+     * M^T·(0,0,1) = M 的第三行（行主序 m[6]/m[7]/m[8]）。 */
+    private static void computeViewLocalForGui(float rotX, float rotY, float rotZ) {
+        float[] rx = rotX(rotX);
+        float[] ry = rotY(rotY);
+        float[] rz = rotZ(rotZ);
+        // GL 模型矩阵（与 modelDyson 施加顺序一致：先 X 后 Y 后 Z）
+        float[] m = mul(mul(rx, ry), rz);
+        VIEW_LOCAL[0] = m[6];
+        VIEW_LOCAL[1] = m[7];
+        VIEW_LOCAL[2] = m[8];
     }
 
     /** 更新并返回平滑动画时钟：单帧最多前进 1 tick，忽略回拨，避免时间跳变导致闪烁。 */
@@ -539,7 +698,8 @@ public final class DysonSphereRenderer {
         if (!visiblePanels.isEmpty()) {
             for (int f : visiblePanels) {
                 float alpha = panelAlpha(f);
-                GL11.glDepthMask(true);
+                // 天空盒 3D 模式写深度（前后遮挡）；平贴预览不写（平面内等深，画家算法即可）
+                GL11.glDepthMask(!flatPreview);
                 GL11.glColor4f(
                     warmMix(0.16F, 0.26F), warmMix(0.21F, 0.23F), warmMix(0.34F, 0.26F),
                     1.0F * alpha);

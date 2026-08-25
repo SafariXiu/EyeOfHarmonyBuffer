@@ -3,7 +3,9 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson;
 import com.EyeOfHarmonyBuffer.client.holo.HoloCanvas;
 import com.EyeOfHarmonyBuffer.client.holo.HoloScreen;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.Dyson_Holo_Compute;
@@ -129,6 +131,16 @@ public class DysonStatusScreen extends HoloScreen {
         } else {
             c.text(sx + 12, sy + 28, Dyson_Holo_MsgOnline, C_DIM);
         }
+
+        // 戴森球 3D 实时预览：进度取本机屏上同源数据（与左侧进度条完全一致），并盖入共享 DysonSphereState
+        // （预览与天空盒共用），避免全局状态未同步/数量过小时预览为空。
+        Minecraft mc = Minecraft.getMinecraft();
+        double anim = mc.theWorld != null ? mc.theWorld.getWorldTime() : 0.0;
+        DysonSphereState.apply(DysonSphereSystem.computeStage(core.holoCloud, core.holoFrame, core.holoPaste),
+            0.0F, core.holoCloud, core.holoFrame, core.holoPaste, core.holoTeamName);
+        // 自动自转（rotY 随时间缓转 ≈20°/秒，一圈约 18 秒），俯仰固定 25°——2D 旋转图像式预览
+        float rotY = (float) ((anim * 1.0D) % 360.0D);
+        c.modelDyson(300, 250, 100, anim, 25, rotY, 0, false);
     }
 
     // ---- 布局原语 ----
@@ -175,4 +187,5 @@ public class DysonStatusScreen extends HoloScreen {
     private static String fmt(long v) {
         return String.format("%,d", v);
     }
+
 }
