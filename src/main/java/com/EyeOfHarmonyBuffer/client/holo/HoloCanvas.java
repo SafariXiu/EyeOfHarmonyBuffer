@@ -1,12 +1,11 @@
 package com.EyeOfHarmonyBuffer.client.holo;
 
+import com.EyeOfHarmonyBuffer.space.talos.client.render.DysonPreviewRenderer;
 import com.EyeOfHarmonyBuffer.space.talos.client.render.DysonSphereRenderer;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.FloatBuffer;
 
 /**
  * 世界屏绘制画布：屏/控件绘制只通过本类，不直接碰 GL/Tessellator。
@@ -82,43 +81,34 @@ public class HoloCanvas {
     // ==================== 3D 模型视口 ====================
 
     /**
-     * 在屏内绘制 3D 戴森球预览：以 (cx,cy) 为中心、size 像素见方，戴森球半径映射到 size/2。
+     * 在屏内绘制 2D 戴森球预览：以 (cx,cy) 为中心、size 像素见方，戴森球半径映射到 size/2。
      * <p>
-     * 视口内由 {@link DysonSphereRenderer#renderPreview} 负责深度测试/写入（模型前后遮挡）与绘制，
-     * 外层用 {@code glPushAttrib} 保存/恢复全部 GL 状态（含进入前的 depthMask/depth test），
-     * 并在 finally 中恢复 —— 不会污染屏外 2D 内容或后续 GUI 渲染。
+     * 由 GUI 专用渲染器 {@link DysonPreviewRenderer} 完成：CPU 旋转 + 全局深度排序
+     * （真正的"前后关系"，前面片不透明、背面从缺口透出暗一档），全部图元平贴于屏面
+     * z=0 —— 不凸出、不穿模、任何观察角度都保持正圆；不写深度，被墙/方块正常遮挡。
+     * 与天空盒渲染完全解耦。
      *
-     * @param cx/cy 视口中心（屏像素）；size 视口边长（像素，戴森球直径）
-     * @param animTime 动画时钟（如世界时间或 GUI 自己的平滑时钟）
-     * @param rotX/rotY/rotZ 自转角度（度），按 X→Y→Z 施加（与 renderPreview 的 VIEW_LOCAL 约定一致）
-     * @param showClouds 是否绘制云环（屏上小尺寸预览默认 false，省性能且更清晰）
+     * @param cx/cy 预览中心（屏像素）；size 直径（像素）
+     * @param animTime 动画时钟（世界时间或 GUI 平滑时钟）
+     * @param rotX/rotY/rotZ 自转角度（度），CPU 内按 X→Y→Z 旋转
+     * @param showClouds 预留（当前不画云环，恒 false）
+     * @param cloud/frame/paste 实时进度数据（与屏上进度条同源）
      */
     public void modelDyson(int cx, int cy, int size, double animTime,
-                           float rotX, float rotY, float rotZ, boolean showClouds) {
+                           float rotX, float rotY, float rotZ, boolean showClouds,
+                           int cloud, int frame, int paste) {
         if (size <= 0) {
             return;
         }
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         try {
-            // 平贴方案：不碰投影矩阵，保留世界相机与屏的模型矩阵 —— 图像画在屏平面自己的
-            // 局部坐标系里（与文字/进度条同一条渲染链），随屏在世界中定位，绝不会粘在视角上。
-            // "旋转+压平(z=0)"烘焙成模型矩阵：球体只是按旋转角算出的 2D 图像，平贴在屏面上，
-            // 不凸出、不穿模、任何观察角度都保持正圆；深度由渲染器内部远→近排序解决。
+            // 平贴渲染：保留世界相机与屏的模型矩阵（与文字/进度条同一条渲染链，随屏在世界中定位），
+            // 只做 translate+scale；旋转与遮挡全在 DysonPreviewRenderer 的 CPU 侧完成。
             GL11.glPushMatrix();
-            // 戴森球半径映射到 size/2 像素
             float sc = size / (float) (2.0D * DysonSphereRenderer.getSphereRadius());
             GL11.glTranslatef(cx, cy, 0.0F);
             GL11.glScalef(sc, sc, sc);
-            // 圆形衬底板（旋转/压平前的 z=0 平面，恒为正圆）
-            DysonSphereRenderer.drawPreviewDisc();
-            // 平贴矩阵：旋转后压平到 z=0（正交投影到屏面），CPU 侧按 rotX/rotY/rotZ 完成旋转
-            float[] flat = new float[16];
-            DysonSphereRenderer.buildFlattenMatrix(rotX, rotY, rotZ, flat);
-            FloatBuffer fb = BufferUtils.createFloatBuffer(16);
-            fb.put(flat);
-            fb.flip();
-            GL11.glMultMatrix(fb);
-            DysonSphereRenderer.renderPreview(animTime, rotX, rotY, rotZ, showClouds);
+            DysonPreviewRenderer.render(animTime, rotX, rotY, rotZ, showClouds, cloud, frame, paste);
             GL11.glPopMatrix();
         } finally {
             GL11.glColor4f(1f, 1f, 1f, 1f);

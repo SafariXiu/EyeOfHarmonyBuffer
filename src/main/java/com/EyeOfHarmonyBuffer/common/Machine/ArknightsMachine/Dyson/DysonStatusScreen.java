@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.Dyson;
 import com.EyeOfHarmonyBuffer.client.holo.HoloCanvas;
 import com.EyeOfHarmonyBuffer.client.holo.HoloScreen;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereState;
-import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSystem;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
@@ -104,7 +103,8 @@ public class DysonStatusScreen extends HoloScreen {
         drawStatBar(c, barX, 78, barW, Dyson_Stat_Cloud, core.holoCloud, DysonSphereState.CLOUD_CAP, C_CLOUD);
         drawStatBar(c, barX, 122, barW, Dyson_Stat_Frame, core.holoFrame, DysonSphereState.FRAME_COMPLETE, C_FRAME);
         drawStatBar(c, barX, 166, barW, Dyson_Stat_Paste, core.holoPaste, DysonSphereState.PASTE_COMPLETE, C_PASTE);
-        c.text(barX, 196, Dyson_Holo_Progress + percent(core.holoCloud, DysonSphereState.CLOUD_CAP) + " / "
+        // 百分比汇总行移到右列空区（y196 原位置会伸进下方球窗透明区）
+        c.text(400, 196, Dyson_Holo_Progress + percent(core.holoCloud, DysonSphereState.CLOUD_CAP) + " / "
             + percent(core.holoFrame, DysonSphereState.FRAME_COMPLETE) + " / "
             + percent(core.holoPaste, DysonSphereState.PASTE_COMPLETE), C_DIM);
 
@@ -114,8 +114,8 @@ public class DysonStatusScreen extends HoloScreen {
         drawStatValue(c, 400, 122, Dyson_Stat_FrameComponent, core.holoFrameComp);
         drawStatValue(c, 400, 166, Dyson_Stat_StrangeMatter, core.holoStrange);
 
-        // 底部状态条
-        int sx = 20, sy = 300, sw = w - 40, sh = h - 300 - 16;
+        // 底部状态条（下移 8px 避开上方球窗透明区）
+        int sx = 20, sy = 308, sw = w - 40, sh = h - 308 - 16;
         c.rect(sx, sy, sw, sh, 0xFF0A0A0A);
         c.border(sx, sy, sw, sh, 0xFF333333, 1);
         drawStatusChip(c, sx + 12, sy + 8, Dyson_Holo_LinkModule, core.holoLinked + " / " + core.holoSlots,
@@ -136,11 +136,12 @@ public class DysonStatusScreen extends HoloScreen {
         // （预览与天空盒共用），避免全局状态未同步/数量过小时预览为空。
         Minecraft mc = Minecraft.getMinecraft();
         double anim = mc.theWorld != null ? mc.theWorld.getWorldTime() : 0.0;
-        DysonSphereState.apply(DysonSphereSystem.computeStage(core.holoCloud, core.holoFrame, core.holoPaste),
-            0.0F, core.holoCloud, core.holoFrame, core.holoPaste, core.holoTeamName);
-        // 自动自转（rotY 随时间缓转 ≈20°/秒，一圈约 18 秒），俯仰固定 25°——2D 旋转图像式预览
+        // 自动自转（rotY 随时间缓转 ≈20°/秒，一圈约 18 秒），俯仰固定 25°——2D 旋转图像式预览。
+        // 数据直接取本机屏上同源值（与左侧进度条完全一致），由 GUI 专用渲染器（DysonPreviewRenderer）
+        // CPU 旋转+深度排序渲染，不再经由共享全局状态/天空盒渲染器。
         float rotY = (float) ((anim * 1.0D) % 360.0D);
-        c.modelDyson(300, 250, 100, anim, 25, rotY, 0, false);
+        c.modelDyson(300, 250, 100, anim, 25, rotY, 0, false,
+            core.holoCloud, core.holoFrame, core.holoPaste);
     }
 
     // ---- 布局原语 ----
