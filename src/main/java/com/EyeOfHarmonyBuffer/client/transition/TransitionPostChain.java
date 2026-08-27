@@ -56,10 +56,18 @@ public class TransitionPostChain {
     private int width = -1;
     private int height = -1;
 
-    // 白化球 pass 输出 C0，最终 blit 回主 FBO
+    // 白化球 pass 输出 C0，输入 skyrip pass
     private GLProgram whiteoutProgram;
     private int whiteoutFramebuffer;
     private int whiteoutColorTexture;
+
+    // 天空撕裂 v2 pass：输入 C0 + 深度 + rift 纹理 -> 输出 C1（地震裂），最终 blit 回主 FBO
+    private GLProgram skyripProgram;
+    private int skyripFramebuffer;
+    private int skyripColorTexture;
+    /** rift_data.png 纹理（r=裂缝边界距离，gb=碎片偏移，a=完整标记）。 */
+    private static int riftTexture = 0;
+    private static boolean riftTextureLoaded = false;
 
     // 主 FBO 深度的拷贝（供 pass 采样）
     private int depthTexture;
@@ -76,6 +84,9 @@ public class TransitionPostChain {
 
     /** 已打印过"渲染链已创建"日志（避免刷屏）。 */
     private boolean createdLogged;
+
+    /** 已打印过"skyrip 渲染"日志（避免刷屏）。 */
+    private boolean skyripCreatedLogged;
 
     /** 当前帧 partialTicks，供相机插值使用。 */
     private float partialTicks;
@@ -111,7 +122,7 @@ public class TransitionPostChain {
         GL11.glDepthMask(false);
         GL11.glDisable(GL11.GL_BLEND);
 
-        // pass：白化球（输入：主 FBO 颜色 + 深度 -> 离屏 C0）
+        // pass 1：白化球（输入：主 FBO 颜色 + 深度 -> 离屏 C0）
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, whiteoutFramebuffer);
         GL11.glViewport(0, 0, width, height);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
@@ -125,8 +136,33 @@ public class TransitionPostChain {
         drawFullscreenQuad();
         GL20.glUseProgram(0);
 
-        // blit：白化输出 -> 主 FBO
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, whiteoutFramebuffer);
+        // pass 2：天空撕裂 v2（输入：C0 白化输出 + 深度 + rift 纹理 -> 离屏 C1）
+        if (TransitionClientState.isSkyRipActive() && skyripProgram != null && getRiftTexture() != 0) {
+            if (!skyripCreatedLogged) {
+                skyripCreatedLogged = true;
+                EyeOfHarmonyBuffer.LOGGER.info("[EOHB] Sky rip v2 pass rendering");
+            }
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, skyripFramebuffer);
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, whiteoutColorTexture);
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
+            GL13.glActiveTexture(GL13.GL_TEXTURE2);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, getRiftTexture());
+            skyripProgram.use();
+            GL20.glUniform1i(skyripProgram.uniform("DiffuseSampler"), 0);
+            GL20.glUniform1i(skyripProgram.uniform("DepthSampler"), 1);
+            GL20.glUniform1i(skyripProgram.uniform("RiftSampler"), 2);
+            setSkyRipUniforms(skyripProgram, invProjection, modelView);
+            drawFullscreenQuad();
+            GL20.glUseProgram(0);
+        } else {
+            // skyrip 未激活：C1 直接复制 C0（保持链路完整）
+            copyTexture(whiteoutFramebuffer, skyripFramebuffer, whiteoutColorTexture, skyripColorTexture);
+        }
+
+        // blit：skyrip 输出 -> 主 FBO
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, skyripFramebuffer);
         GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, main.framebufferObject);
         GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
             GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
@@ -170,6 +206,80 @@ public class TransitionPostChain {
         uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
         uploadMatrix(program, "ModelViewMat", modelView);
     }
+
+    private void setSkyRipUniforms(GLProgram program, float[] inverseProjection, float[] modelView) {
+        // BeaconAndTimer = (撕裂中心+0.5, 撕裂时间秒)
+        GL20.glUniform4f(program.uniform("BeaconAndTimer"),
+            TransitionClientState.getCenterX() + 0.5F,
+            TransitionClientState.getCenterY() + 0.5F,
+            TransitionClientState.getCenterZ() + 0.5F,
+            TransitionClientState.skyRipTimeSeconds());
+        GL20.glUniform1f(program.uniform("CrackPlaneY"),
+            (float) com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipCrackPlaneY);
+        GL20.glUniform1f(program.uniform("uSkyRipActive"), 1.0F);
+        uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
+        uploadMatrix(program, "ModelViewMat", modelView);
+    }
+
+    /** rift_data.png 纹理（懒加载，仿黑洞程序噪声纹理模式）。 */
+    private static int getRiftTexture() {
+        if (riftTexture != 0 && !GL11.glIsTexture(riftTexture)) {
+            riftTexture = 0;
+            riftTextureLoaded = false;
+        }
+        if (riftTexture == 0 && !riftTextureLoaded) {
+            try {
+                ResourceLocation loc = new ResourceLocation(EyeOfHarmonyBuffer.MODID,
+                    "textures/environment/rift_data.png");
+                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(
+                    Minecraft.getMinecraft().getResourceManager().getResource(loc).getInputStream());
+                if (img == null) {
+                    EyeOfHarmonyBuffer.LOGGER.error("[EOHB] rift_data.png missing or unreadable");
+                    riftTextureLoaded = true;
+                    return 0;
+                }
+                int w = img.getWidth();
+                int h = img.getHeight();
+                java.nio.ByteBuffer buf = java.nio.ByteBuffer.allocateDirect(w * h * 4);
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        int argb = img.getRGB(x, y);
+                        buf.put((byte) ((argb >> 16) & 0xFF));
+                        buf.put((byte) ((argb >> 8) & 0xFF));
+                        buf.put((byte) (argb & 0xFF));
+                        buf.put((byte) ((argb >> 24) & 0xFF));
+                    }
+                }
+                buf.flip();
+                int tex = GL11.glGenTextures();
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+                GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
+                    GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+                riftTexture = tex;
+                EyeOfHarmonyBuffer.LOGGER.info("[EOHB] rift_data.png loaded ({}x{})", w, h);
+            } catch (Throwable t) {
+                EyeOfHarmonyBuffer.LOGGER.error("[EOHB] Failed to load rift_data.png", t);
+            }
+            riftTextureLoaded = true;
+        }
+        return riftTexture;
+    }
+
+    /** 把 srcFBO 的颜色纹理复制到 dstFBO（skyrip 未激活时保持链路）。 */
+    private static void copyTexture(int srcFbo, int dstFbo, int srcTex, int dstTex) {
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, dstFbo);
+        GL30.glBlitFramebuffer(0, 0, srcTexW, srcTexH, 0, 0, srcTexW, srcTexH,
+            GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+    }
+
+    private static int srcTexW = -1;
+    private static int srcTexH = -1;
 
     private void uploadMatrix(GLProgram program, String name, float[] matrix) {
         // ModelViewMat 语义为纯旋转：置零平移列（平移由 CamPosData 承担）
@@ -311,6 +421,12 @@ public class TransitionPostChain {
             // C0：白化球 pass 输出
             whiteoutColorTexture = createColorTexture(w, h);
             whiteoutFramebuffer = createFramebuffer(whiteoutColorTexture, "whiteout framebuffer incomplete");
+
+            // C1：天空撕裂 v2 pass 输出（无转场撕裂时由 copyTexture 保持链路）
+            skyripColorTexture = createColorTexture(w, h);
+            skyripFramebuffer = createFramebuffer(skyripColorTexture, "skyrip framebuffer incomplete");
+            srcTexW = w;
+            srcTexH = h;
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 
             // 全屏 quad VAO/VBO（Position 2 分量，[0,1]^2）
@@ -326,7 +442,8 @@ public class TransitionPostChain {
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
             whiteoutProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("transition_whiteout.fsh"));
-            EyeOfHarmonyBuffer.LOGGER.info("[EOHB] Transition post chain created OK ({}x{})", w, h);
+            skyripProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("transition_skyrip_v2.fsh"));
+            EyeOfHarmonyBuffer.LOGGER.info("[EOHB] Transition post chain created OK ({}x{}), skyrip v2 linked", w, h);
         } catch (Throwable t) {
             EyeOfHarmonyBuffer.LOGGER.error("[EOHB] Failed to create transition post chain, disabled permanently", t);
             broken = true;
@@ -432,9 +549,21 @@ public class TransitionPostChain {
             whiteoutProgram.destroy();
             whiteoutProgram = null;
         }
+        if (skyripProgram != null) {
+            skyripProgram.destroy();
+            skyripProgram = null;
+        }
         if (whiteoutFramebuffer != 0) {
             GL30.glDeleteFramebuffers(whiteoutFramebuffer);
             whiteoutFramebuffer = 0;
+        }
+        if (skyripFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(skyripFramebuffer);
+            skyripFramebuffer = 0;
+        }
+        if (skyripColorTexture != 0) {
+            GL11.glDeleteTextures(skyripColorTexture);
+            skyripColorTexture = 0;
         }
         if (depthFramebuffer != 0) {
             GL30.glDeleteFramebuffers(depthFramebuffer);

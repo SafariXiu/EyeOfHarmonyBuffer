@@ -149,6 +149,10 @@ public class MainConfig {
     public static double DimensionTransitionCoverMs = 2000;
     /** 白幕渐入时长（毫秒）：覆盖开始时 0→1 的过渡。 */
     public static double DimensionTransitionCoverFadeInMs = 500;
+    /** 天空撕裂 v2 开关：phase2 起在天空平面播放裂缝破碎动画（移植自 Nostalgia portal_sky_rip_v2）。 */
+    public static boolean DimensionTransitionSkyRipEnable = true;
+    /** 天空撕裂 v2 裂缝平面世界高度（格，源库 256）。 */
+    public static double DimensionTransitionSkyRipCrackPlaneY = 256;
 
     private static Configuration config;
 
@@ -713,6 +717,14 @@ public class MainConfig {
         DimensionTransitionCoverFadeInMs = config
             .get("维度转场", "白幕渐入时长(ms)", DimensionTransitionCoverFadeInMs, "覆盖开始时白幕 0→1 的过渡时长")
             .getDouble(DimensionTransitionCoverFadeInMs);
+
+        DimensionTransitionSkyRipEnable = config
+            .get("维度转场", "天空撕裂v2", DimensionTransitionSkyRipEnable, "phase2 起在天空平面播放裂缝破碎动画（移植自 Nostalgia portal_sky_rip_v2）")
+            .getBoolean(DimensionTransitionSkyRipEnable);
+
+        DimensionTransitionSkyRipCrackPlaneY = config
+            .get("维度转场", "撕裂平面高度", DimensionTransitionSkyRipCrackPlaneY, "天空撕裂 v2 裂缝平面世界高度（格），源库 256")
+            .getDouble(DimensionTransitionSkyRipCrackPlaneY);
 
         if (config.hasChanged()) {
             config.save();

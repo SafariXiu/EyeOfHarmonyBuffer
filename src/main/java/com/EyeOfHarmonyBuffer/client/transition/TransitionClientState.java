@@ -186,6 +186,24 @@ public class TransitionClientState {
         return 0.0F;
     }
 
+    /**
+     * 天空撕裂 v2 时间轴（秒）：phase2 开始起算（对齐源库 PortalSkyRenderer.portalTime：
+     * 0 开始 → 2.5s shatter 破碎 → 裂缝墙/碎片/冲击波 → 淡出）。换维后停止。
+     */
+    public static float skyRipTimeSeconds() {
+        if (!transitioning || inNewDimension || phase < PHASE_2) {
+            return 0.0F;
+        }
+        return Math.max(0.0F, (visualTime() - phase2StartTime) / 1000.0F);
+    }
+
+    /** 天空撕裂 v2 是否激活（phase2..换维前，且不超过 12s 动画窗口）。 */
+    public static boolean isSkyRipActive() {
+        return transitioning && !inNewDimension && phase >= PHASE_2
+            && skyRipTimeSeconds() < 12.0F
+            && com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipEnable;
+    }
+
     /** 白化壳半径（源库 getWhiteRadius）：phase>=2 且未换维时 50 格/s 线性增长。 */
     public static float whiteRadius() {
         if (!transitioning || inNewDimension || phase < PHASE_2) {
