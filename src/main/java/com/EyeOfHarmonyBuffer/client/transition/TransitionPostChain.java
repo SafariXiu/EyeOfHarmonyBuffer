@@ -227,6 +227,7 @@ public class TransitionPostChain {
         GL20.glUniform1f(program.uniform("CrackPlaneY"),
             (float) com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipCrackPlaneY);
         GL20.glUniform1f(program.uniform("uSkyRipActive"), 1.0F);
+        GL20.glUniform1f(program.uniform("uCoverWhite"), TransitionClientState.coverWhite());
         uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
         uploadMatrix(program, "ModelViewMat", modelView);
     }

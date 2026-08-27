@@ -18,6 +18,7 @@ uniform vec3 CameraPosition;
 uniform vec4 BeaconAndTimer;       // xyz = 撕裂中心（世界），w = 撕裂时间（秒）
 uniform float CrackPlaneY;         // 裂缝平面世界高度
 uniform float uSkyRipActive;       // 1.0 渲染撕裂，0.0 透传
+uniform float uCoverWhite;         // 落地揭幕白幕：盖住撕裂/传送门洞（与 whiteout 一致）
 
 in vec2 texCoord;
 out vec4 fragColor;
@@ -32,6 +33,11 @@ const float maxShatterRadius  = 450.0;
 const float fadeStartRadius   = 150.0;
 const float SHATTER_MAX_RADIUS = 75.0;
 const float CRACK_SPREAD_RADIUS = 450.0;
+
+/** 落地揭幕白幕：任何非 scene-透传的输出（传送门洞/裂缝）叠上全屏白，避免白屏时特效残留。 */
+vec3 applyCover(vec3 c) {
+    return mix(c, vec3(1.0), clamp(uCoverWhite, 0.0, 1.0));
+}
 
 float bulgeProfile(float r) {
     float rn = clamp(r / BULGE_RADIUS, 0.0, 1.0);
@@ -197,7 +203,7 @@ void main() {
     // 洞：破碎区块（riftData.a <= 0.5）且碎片已开始飞（rawProgress >= 0）→ 碎片飞走后
     // 留下的空区域。这里填充传送门材质（超域侵蚀风格），洞外保持原样。
     if (shardProgress >= 1.0 || (shardProgress > 0.0 && rawProgress >= 0.0)) {
-        fragColor = vec4(mix(scene, portalMaterial(localPos, TransitionTime), 0.85), 1.0);
+        fragColor = vec4(applyCover(mix(scene, portalMaterial(localPos, TransitionTime), 0.85)), 1.0);
         return;
     }
 
@@ -343,8 +349,9 @@ void main() {
     if (totalCrackAlpha > 0.001) {
         vec3 crackColor = totalCrackColor / max(totalCrackAlpha, 0.0001);
         float crackAlpha = totalCrackAlpha;
-        // 源库输出带 alpha 的裂缝色（blend 叠加）；我们管线无混合 → mix 合成到 scene
-        fragColor = vec4(mix(scene, crackColor, clamp(crackAlpha, 0.0, 1.0)), 1.0);
+        // 源库输出带 alpha 的裂缝色（blend 叠加）；我们管线无混合 → mix 合成到 scene。
+        // 末尾也要盖白幕（否则裂缝/洞在白屏时残留）
+        fragColor = vec4(applyCover(mix(scene, crackColor, clamp(crackAlpha, 0.0, 1.0))), 1.0);
     } else {
         fragColor = vec4(scene, 1.0);
     }
