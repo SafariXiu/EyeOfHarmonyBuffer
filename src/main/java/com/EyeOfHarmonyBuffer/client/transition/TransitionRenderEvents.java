@@ -29,6 +29,15 @@ public class TransitionRenderEvents {
         }
         TransitionClientState.tick(mc);
         TransitionSoundManager.tick();
+
+        // 白幕激活期间强制关闭非必要 GUI（聊天框/背包/暂停菜单等会在白幕之后渲染，盖不住）。
+        // 保留 GuiDownloadTerrain（换维加载界面，已由 Mixin 全白处理）。
+        if (TransitionClientState.coverWhite() > 0.001F) {
+            if (mc.currentScreen != null
+                && !(mc.currentScreen instanceof net.minecraft.client.gui.GuiDownloadTerrain)) {
+                mc.displayGuiScreen(null);
+            }
+        }
     }
 
     @SubscribeEvent
@@ -69,7 +78,27 @@ public class TransitionRenderEvents {
         if (cover <= 0.001F) {
             return;
         }
-        // 白幕存在期间隐藏 HUD（白幕在世界层，HUD 不渲染 = 全屏白）
+        // 白幕存在期间隐藏 HUD。
         event.setCanceled(true);
+    }
+
+    /**
+     * 白幕覆盖（安全时机）：Post(ALL) 时世界、手臂、HUD 已全部渲染到主 FBO，
+     * 用已验证的 GLProgram 路径盖白 —— 覆盖手臂等一切已渲染内容，无 mixin 递归风险。
+     * GUI 由 onClientTick 里的强制关闭处理（在 Post 之前已关闭，不会画到白幕上）。
+     */
+    @SubscribeEvent
+    public void onRenderOverlayPost(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.ALL) {
+            return;
+        }
+        float cover = TransitionClientState.coverWhite();
+        if (cover <= 0.001F) {
+            return;
+        }
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.getFramebuffer() != null) {
+            TransitionPostChain.getInstance().renderCoverToFbo(mc.getFramebuffer(), cover);
+        }
     }
 }

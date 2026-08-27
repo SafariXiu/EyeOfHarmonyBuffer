@@ -65,6 +65,13 @@ public class TransitionPostChain {
     private GLProgram skyripProgram;
     private int skyripFramebuffer;
     private int skyripColorTexture;
+
+    // 落地揭幕白幕覆盖：画离屏 coverFramebuffer 再 blit 回主 FBO（可靠路径，等同 post chain）
+    private GLProgram coverProgram;
+    private int coverVao;
+    private int coverVbo;
+    private int coverFramebuffer;
+    private int coverColorTexture;
     /** rift_data.png 纹理（r=裂缝边界距离，gb=碎片偏移，a=完整标记）。 */
     private static int riftTexture = 0;
     private static boolean riftTextureLoaded = false;
@@ -215,6 +222,126 @@ public class TransitionPostChain {
         GL20.glUniform1f(program.uniform("uCoverWhite"), TransitionClientState.coverWhite());
         uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
         uploadMatrix(program, "ModelViewMat", modelView);
+    }
+
+    /**
+     * 落地揭幕白幕：可靠路径（等同 post chain）——采样主 FBO 纹理画到离屏 coverFramebuffer，
+     * 再 blit 回主 FBO。直接画主 FBO 在 Angelica GLSM 下不生效（与立即模式同理），
+     * 离屏+blit 是我们已验证的唯一可靠方式。
+     */
+    public void renderCoverToFbo(Framebuffer fbo, float cover) {
+        if (broken || fbo == null || cover <= 0.001F) {
+            return;
+        }
+        try {
+            if (coverVao == 0) {
+                coverVao = GL30.glGenVertexArrays();
+                coverVbo = GL15.glGenBuffers();
+                GL30.glBindVertexArray(coverVao);
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, coverVbo);
+                FloatBuffer quad = floatBuffer(new float[] { 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F });
+                GL15.glBufferData(GL15.GL_ARRAY_BUFFER, quad, GL15.GL_STATIC_DRAW);
+                GL20.glEnableVertexAttribArray(0);
+                GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0L);
+                GL30.glBindVertexArray(0);
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                if (coverProgram == null) {
+                    coverProgram = new GLProgram(loadShader("fullscreen.vsh"), loadShader("transition_cover.fsh"));
+                }
+            }
+            if (coverProgram == null || coverFramebuffer == 0) {
+                return;
+            }
+            int w = coverW;
+            int h = coverH;
+            if (w <= 0 || h <= 0) {
+                w = fbo.framebufferWidth;
+                h = fbo.framebufferHeight;
+                ensureCoverFbo(w, h);
+                if (coverFramebuffer == 0) {
+                    return;
+                }
+            }
+
+            GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthMask(false);
+            GL11.glDisable(GL11.GL_BLEND);
+
+            // 画到离屏 coverFBO：采样主 FBO 颜色纹理，mix 白
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, coverFramebuffer);
+            GL11.glViewport(0, 0, w, h);
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, fbo.framebufferTexture);
+            coverProgram.use();
+            GL20.glUniform1i(coverProgram.uniform("DiffuseSampler"), 0);
+            GL20.glUniform1f(coverProgram.uniform("uCoverWhite"), cover);
+            GL30.glBindVertexArray(coverVao);
+            GL11.glDrawArrays(GL11.GL_TRIANGLE_FAN, 0, 4);
+            GL30.glBindVertexArray(0);
+            GL20.glUseProgram(0);
+
+            // blit 回主 FBO
+            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, coverFramebuffer);
+            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, fbo.framebufferObject);
+            GL30.glBlitFramebuffer(0, 0, w, h, 0, 0, fbo.framebufferWidth, fbo.framebufferHeight,
+                GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+
+            // 恢复
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo.framebufferObject);
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GL11.glDepthMask(true);
+            GL11.glPopAttrib();
+
+            // 诊断：盖白后读主 FBO 中心像素，确认白幕真的写进了主 FBO
+            try {
+                java.nio.ByteBuffer px = java.nio.ByteBuffer.allocateDirect(4).order(java.nio.ByteOrder.nativeOrder());
+                GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fbo.framebufferObject);
+                GL11.glReadPixels(fbo.framebufferWidth / 2, fbo.framebufferHeight / 2, 1, 1,
+                    GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, px);
+                int pr = px.get(0) & 0xFF;
+                int pg = px.get(1) & 0xFF;
+                int pb = px.get(2) & 0xFF;
+                if (System.currentTimeMillis() - lastCoverPixelLog >= 500) {
+                    lastCoverPixelLog = System.currentTimeMillis();
+                    EyeOfHarmonyBuffer.LOGGER.info("[EOHB] coverPixel center=({},{},{}) cover={}", pr, pg, pb, cover);
+                }
+            } catch (Throwable t2) {
+                // 诊断失败不影响
+            }
+        } catch (Throwable t) {
+            EyeOfHarmonyBuffer.LOGGER.error("[EOHB] renderCoverToFbo failed", t);
+            broken = true;
+        }
+    }
+
+    private static long lastCoverPixelLog = 0;
+
+    /** cover FBO 尺寸缓存。 */
+    private static int coverW = -1;
+    private static int coverH = -1;
+
+    private void ensureCoverFbo(int w, int h) {
+        if (coverFramebuffer != 0 && coverW == w && coverH == h) {
+            return;
+        }
+        if (coverFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(coverFramebuffer);
+            coverFramebuffer = 0;
+        }
+        if (coverColorTexture != 0) {
+            GL11.glDeleteTextures(coverColorTexture);
+            coverColorTexture = 0;
+        }
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        coverW = w;
+        coverH = h;
+        coverColorTexture = createColorTexture(w, h);
+        coverFramebuffer = createFramebuffer(coverColorTexture, "cover framebuffer incomplete");
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
     }
 
     private void setSkyRipUniforms(GLProgram program, float[] inverseProjection, float[] modelView) {
@@ -634,6 +761,10 @@ public class TransitionPostChain {
             whiteoutProgram.destroy();
             whiteoutProgram = null;
         }
+        if (coverProgram != null) {
+            coverProgram.destroy();
+            coverProgram = null;
+        }
         if (skyripProgram != null) {
             skyripProgram.destroy();
             skyripProgram = null;
@@ -641,6 +772,22 @@ public class TransitionPostChain {
         if (whiteoutFramebuffer != 0) {
             GL30.glDeleteFramebuffers(whiteoutFramebuffer);
             whiteoutFramebuffer = 0;
+        }
+        if (coverFramebuffer != 0) {
+            GL30.glDeleteFramebuffers(coverFramebuffer);
+            coverFramebuffer = 0;
+        }
+        if (coverColorTexture != 0) {
+            GL11.glDeleteTextures(coverColorTexture);
+            coverColorTexture = 0;
+        }
+        if (coverVao != 0) {
+            GL30.glDeleteVertexArrays(coverVao);
+            coverVao = 0;
+        }
+        if (coverVbo != 0) {
+            GL15.glDeleteBuffers(coverVbo);
+            coverVbo = 0;
         }
         if (skyripFramebuffer != 0) {
             GL30.glDeleteFramebuffers(skyripFramebuffer);
