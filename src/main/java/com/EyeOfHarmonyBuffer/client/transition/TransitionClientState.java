@@ -82,6 +82,7 @@ public class TransitionClientState {
         lastRealTime = System.currentTimeMillis();
         wasPaused = false;
         pauseOffset = 0;
+        TransitionSoundManager.reset();
         EyeOfHarmonyBuffer.LOGGER.info("[EOHB] Client transition STARTED phase=1 center=({},{},{}) target={}",
             cx, cy, cz, targetDim);
     }

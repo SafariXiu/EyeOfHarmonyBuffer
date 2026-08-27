@@ -28,6 +28,7 @@ public class TransitionRenderEvents {
             return;
         }
         TransitionClientState.tick(mc);
+        TransitionSoundManager.tick();
     }
 
     @SubscribeEvent
