@@ -151,8 +151,10 @@ public class MainConfig {
     public static double DimensionTransitionCoverFadeInMs = 500;
     /** 天空撕裂 v2 开关：phase2 起在天空平面播放裂缝破碎动画（移植自 Nostalgia portal_sky_rip_v2）。 */
     public static boolean DimensionTransitionSkyRipEnable = true;
-    /** 天空撕裂 v2 裂缝平面世界高度（格，源库 256）。 */
-    public static double DimensionTransitionSkyRipCrackPlaneY = 256;
+    /** 天空撕裂 v2 裂缝平面：相对玩家位置的高度（玩家Y 上方，源库 beacon+90 语义）。 */
+    public static double DimensionTransitionSkyRipCrackPlaneY = 90;
+    /** 天空撕裂 v2 pass 渲染分辨率比例（1.0=全分辨率，0.5=半分辨率）。裂缝/碎片/16层洞开销大，半分辨率性能明显更好。 */
+    public static double DimensionTransitionSkyRipPassScale = 0.5;
 
     private static Configuration config;
 
@@ -723,8 +725,12 @@ public class MainConfig {
             .getBoolean(DimensionTransitionSkyRipEnable);
 
         DimensionTransitionSkyRipCrackPlaneY = config
-            .get("维度转场", "撕裂平面高度", DimensionTransitionSkyRipCrackPlaneY, "天空撕裂 v2 裂缝平面世界高度（格），源库 256")
+            .get("维度转场", "撕裂平面相对高度", DimensionTransitionSkyRipCrackPlaneY, "天空撕裂 v2 裂缝平面相对玩家位置的高度（玩家Y上方，源库 beacon+90 语义）")
             .getDouble(DimensionTransitionSkyRipCrackPlaneY);
+
+        DimensionTransitionSkyRipPassScale = config
+            .get("维度转场", "撕裂pass分辨率比例", DimensionTransitionSkyRipPassScale, "天空撕裂 v2 pass 渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿可调低")
+            .getDouble(DimensionTransitionSkyRipPassScale);
 
         if (config.hasChanged()) {
             config.save();

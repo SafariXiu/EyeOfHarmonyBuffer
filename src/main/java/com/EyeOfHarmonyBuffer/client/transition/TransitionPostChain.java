@@ -65,6 +65,8 @@ public class TransitionPostChain {
     private GLProgram skyripProgram;
     private int skyripFramebuffer;
     private int skyripColorTexture;
+    private int skyripW = -1;
+    private int skyripH = -1;
 
     // 落地揭幕白幕覆盖：画离屏 coverFramebuffer 再 blit 回主 FBO（可靠路径，等同 post chain）
     private GLProgram coverProgram;
@@ -147,13 +149,12 @@ public class TransitionPostChain {
         drawFullscreenQuad();
         GL20.glUseProgram(0);
 
-        // pass 2：天空撕裂 v2（输入：C0 白化输出 + 深度 + rift 纹理 -> 离屏 C1）
+        // pass 2：天空撕裂 v2（输入：C0 白化输出 + 深度 + rift 纹理 -> 降采样离屏 C1）
+        int sw = skyripW > 0 ? skyripW : width;
+        int sh = skyripH > 0 ? skyripH : height;
         if (TransitionClientState.isSkyRipActive() && skyripProgram != null && getRiftTexture() != 0) {
-            if (!skyripCreatedLogged) {
-                skyripCreatedLogged = true;
-                EyeOfHarmonyBuffer.LOGGER.info("[EOHB] Sky rip v2 pass rendering");
-            }
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, skyripFramebuffer);
+            GL11.glViewport(0, 0, sw, sh);
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, whiteoutColorTexture);
             GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -174,14 +175,14 @@ public class TransitionPostChain {
             drawFullscreenQuad();
             GL20.glUseProgram(0);
         } else {
-            // skyrip 未激活：C1 直接复制 C0（保持链路完整）
-            copyTexture(whiteoutFramebuffer, skyripFramebuffer, whiteoutColorTexture, skyripColorTexture);
+            // skyrip 未激活：C1 直接复制 C0（缩放适配）
+            copyTextureScaled(whiteoutFramebuffer, skyripFramebuffer, sw, sh);
         }
 
-        // blit：skyrip 输出 -> 主 FBO
+        // blit：skyrip（sw x sh）-> 主 FBO（全屏放大）
         GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, skyripFramebuffer);
         GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, main.framebufferObject);
-        GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height,
+        GL30.glBlitFramebuffer(0, 0, sw, sh, 0, 0, width, height,
             GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
         // 恢复状态，供手与 HUD 渲染继续
@@ -351,10 +352,16 @@ public class TransitionPostChain {
             TransitionClientState.getCenterY() + 0.5F,
             TransitionClientState.getCenterZ() + 0.5F,
             TransitionClientState.skyRipTimeSeconds());
-        GL20.glUniform1f(program.uniform("CrackPlaneY"),
-            (float) com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipCrackPlaneY);
+        // 裂缝平面：相对玩家位置（玩家Y + 配置相对高度），保证撕裂/碎片始终在头顶上方
+        double planeY = com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipCrackPlaneY;
+        if (Minecraft.getMinecraft().thePlayer != null) {
+            planeY += Minecraft.getMinecraft().thePlayer.posY;
+        }
+        GL20.glUniform1f(program.uniform("CrackPlaneY"), (float) planeY);
         GL20.glUniform1f(program.uniform("uSkyRipActive"), 1.0F);
         GL20.glUniform1f(program.uniform("uCoverWhite"), TransitionClientState.coverWhite());
+        // 关键：skyrip 的 worldPosAtDepth 用 CameraPosition（此前遗漏，导致撕裂世界重建错误/相机偏移失效）
+        GL20.glUniform3f(program.uniform("CameraPosition"), (float) camX(), (float) camY(), (float) camZ());
         uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
         uploadMatrix(program, "ModelViewMat", modelView);
     }
@@ -482,11 +489,11 @@ public class TransitionPostChain {
         return riftTexture;
     }
 
-    /** 把 srcFBO 的颜色纹理复制到 dstFBO（skyrip 未激活时保持链路）。 */
-    private static void copyTexture(int srcFbo, int dstFbo, int srcTex, int dstTex) {
+    /** 把 srcFBO 缩放复制到 dstFBO（skyrip 未激活时保持链路；src 全屏 -> dst 缩放）。 */
+    private static void copyTextureScaled(int srcFbo, int dstFbo, int dstW, int dstH) {
         GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
         GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, dstFbo);
-        GL30.glBlitFramebuffer(0, 0, srcTexW, srcTexH, 0, 0, srcTexW, srcTexH,
+        GL30.glBlitFramebuffer(0, 0, srcTexW, srcTexH, 0, 0, dstW, dstH,
             GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
     }
 
@@ -634,9 +641,16 @@ public class TransitionPostChain {
             whiteoutColorTexture = createColorTexture(w, h);
             whiteoutFramebuffer = createFramebuffer(whiteoutColorTexture, "whiteout framebuffer incomplete");
 
-            // C1：天空撕裂 v2 pass 输出（无转场撕裂时由 copyTexture 保持链路）
-            skyripColorTexture = createColorTexture(w, h);
+            // C1：天空撕裂 v2 pass 输出（降采样渲染：开销大，半分辨率保性能）
+            double scale = com.EyeOfHarmonyBuffer.Config.MainConfig.DimensionTransitionSkyRipPassScale;
+            if (scale <= 0.01) scale = 0.5;
+            if (scale > 1.0) scale = 1.0;
+            int sw = Math.max(1, (int) (w * scale));
+            int sh = Math.max(1, (int) (h * scale));
+            skyripColorTexture = createColorTexture(sw, sh);
             skyripFramebuffer = createFramebuffer(skyripColorTexture, "skyrip framebuffer incomplete");
+            skyripW = sw;
+            skyripH = sh;
             srcTexW = w;
             srcTexH = h;
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);

@@ -18,6 +18,16 @@ public class TransitionRenderEvents {
     /** 诊断日志节流。 */
     private static long lastCoverLog = 0;
 
+    /** 缓存后处理链单例（避免每帧重复空检查）。 */
+    private static TransitionPostChain postChain;
+
+    private static TransitionPostChain chain() {
+        if (postChain == null) {
+            postChain = TransitionPostChain.getInstance();
+        }
+        return postChain;
+    }
+
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -49,7 +59,7 @@ public class TransitionRenderEvents {
         if (mc.getFramebuffer() == null) {
             return;
         }
-        TransitionPostChain.getInstance().render(mc.getFramebuffer(), event.partialTicks);
+        chain().render(mc.getFramebuffer(), event.partialTicks);
     }
 
     /**
@@ -68,7 +78,7 @@ public class TransitionRenderEvents {
         long now = System.currentTimeMillis();
         if (now - lastCoverLog >= 500) {
             lastCoverLog = now;
-            com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.LOGGER.info(
+            com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.LOGGER.debug(
                 "[EOHB] cover={} phase={} inNew={} waiting={} t={}ms",
                 cover, TransitionClientState.getPhase(),
                 TransitionClientState.isInNewDimension(),
@@ -98,7 +108,7 @@ public class TransitionRenderEvents {
         }
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.getFramebuffer() != null) {
-            TransitionPostChain.getInstance().renderCoverToFbo(mc.getFramebuffer(), cover);
+            chain().renderCoverToFbo(mc.getFramebuffer(), cover);
         }
     }
 }
