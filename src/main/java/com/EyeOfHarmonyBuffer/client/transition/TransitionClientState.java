@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiDownloadTerrain;
 
 /**
  * 维度转场客户端状态机（忠实移植 Nostalgia 的 RitualVisualManager 数值语义，CC0-1.0，见 LICENSE-nostalgia.txt）。
@@ -113,13 +114,24 @@ public class TransitionClientState {
         }
         long now = visualTime();
         if (inNewDimension) {
+            // 1.7.10 换维后 GuiDownloadTerrain（"Downloading terrain..."）可能在 2s 后仍未关闭
+            // （区块网络同步时长不定）；界面未关就继续保持白幕（waiting），避免加载界面露出。
+            boolean terrainGuiUp = mc.currentScreen instanceof GuiDownloadTerrain;
             if (waitingForChunks) {
-                if (now - dimensionChangeTime >= WAIT_CHUNKS_MS) {
+                long waited = now - dimensionChangeTime;
+                long maxWait = Math.max(WAIT_CHUNKS_MS, 30000);
+                if ((!terrainGuiUp && waited >= WAIT_CHUNKS_MS) || waited >= maxWait) {
                     waitingForChunks = false;
                     arrivalTime = now;
                 }
             } else if (now - arrivalTime >= FADE_MS) {
-                endTransition();
+                if (terrainGuiUp) {
+                    // 淡出期间加载界面又出现（区块仍不足）：回退到等待，保持全白
+                    waitingForChunks = true;
+                    dimensionChangeTime = now;
+                } else {
+                    endTransition();
+                }
             }
         } else if (now - transitionStartTime > TIMEOUT_MS) {
             // 防卡死：相位长期无进展（如传送失败）强制收尾
