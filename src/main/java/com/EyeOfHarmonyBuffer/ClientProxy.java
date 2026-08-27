@@ -96,6 +96,11 @@ public class ClientProxy extends CommonProxy {
         RailgunClientEvents railgunEvents = new RailgunClientEvents();
         FMLCommonHandler.instance().bus().register(railgunEvents);
         MinecraftForge.EVENT_BUS.register(railgunEvents);
+
+        com.EyeOfHarmonyBuffer.client.transition.TransitionRenderEvents transitionEvents =
+            new com.EyeOfHarmonyBuffer.client.transition.TransitionRenderEvents();
+        FMLCommonHandler.instance().bus().register(transitionEvents);
+        MinecraftForge.EVENT_BUS.register(transitionEvents);
     }
 
     @SideOnly(Side.CLIENT)

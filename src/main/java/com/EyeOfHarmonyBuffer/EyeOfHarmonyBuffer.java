@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.List;
 
 import com.EyeOfHarmonyBuffer.Events.OrundumLinkEventHandler;
+import com.EyeOfHarmonyBuffer.common.transition.DimensionTransitionManager;
+import com.EyeOfHarmonyBuffer.common.transition.TransitionNetwork;
 import com.EyeOfHarmonyBuffer.Loader.*;
 import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
 import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
@@ -154,6 +156,10 @@ public class EyeOfHarmonyBuffer {
         cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
         FMLCommonHandler.instance().bus().register(new OrundumLinkEventHandler());
 
+        // 维度转场：网络通道 + 服务端传送编排
+        TransitionNetwork.init();
+        FMLCommonHandler.instance().bus().register(DimensionTransitionManager.INSTANCE);
+
         EntityLoader.registerEntities();
 
         MachineLoader.loadMachines();
@@ -225,6 +231,7 @@ public class EyeOfHarmonyBuffer {
         RecipeLoader.loadRecipesLate();
 
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandWarp());
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandTalosRiverNearest());

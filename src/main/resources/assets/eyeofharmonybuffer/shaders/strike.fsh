@@ -106,7 +106,8 @@ vec3 worldPos(vec3 point) {
     vec4 homPos = InverseTransformMatrix * vec4(ndc, 1.0);
     vec3 viewPos = homPos.xyz / homPos.w;
 
-    return (inverse(ModelViewMat) * vec4(viewPos, 1.)).xyz + CameraPosition;
+    // ModelViewMat 为纯旋转正交矩阵：逆 = 转置（老 NV 编译器 inverse() 会报 C1067）
+    return (transpose(ModelViewMat) * vec4(viewPos, 1.)).xyz + CameraPosition;
 }
 
 float shockwave(vec3 point) {

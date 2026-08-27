@@ -135,6 +135,21 @@ public class MainConfig {
     public static double OrbitalRailgunStrikePassScale = 1.0;
     public static String OrbitalRailgunOruCost = "10B";
 
+    // ===== 维度转场（塔罗斯2 -> 主世界，忠实移植 Nostalgia / GUN2RAS 相位时序，CC0-1.0，见 LICENSE-nostalgia.txt）=====
+    public static boolean DimensionTransitionEnable = true;
+    public static int DimensionTransitionSourceDimension = 14001;
+    public static int DimensionTransitionTargetDimension = 0;
+    /** phase 1 时长（毫秒）：转场开始到白化壳扩张（源库等全息缓存 ready，我们无全息 → 固定时长）。 */
+    public static double DimensionTransitionPhase1Ms = 1500;
+    /** phase 2 时长（毫秒）：白化壳扩张（whiteRadius 50格/s）。源库 4500。 */
+    public static double DimensionTransitionPhase2Ms = 4500;
+    /** phase 3 时长（毫秒）：白幕揭开（alphaRadius 1.5→300 三秒）+ 剩余等待。源库 4500。 */
+    public static double DimensionTransitionPhase3Ms = 4500;
+    /** 传送前白幕覆盖时长（毫秒）：phase 3 最后这段时间全屏（含 HUD/UI）白色糊住。 */
+    public static double DimensionTransitionCoverMs = 2000;
+    /** 白幕渐入时长（毫秒）：覆盖开始时 0→1 的过渡。 */
+    public static double DimensionTransitionCoverFadeInMs = 500;
+
     private static Configuration config;
 
     static {
@@ -666,6 +681,38 @@ public class MainConfig {
         OrbitalRailgunOruCost = config
             .get("轨道炮", "单次打击ORU消耗", OrbitalRailgunOruCost, "每次轨道打击消耗的 Orundum 能量（按队伍扣除），支持 K/M/B/G/T/P/E 后缀，默认 10B（100亿）")
             .getString();
+
+        DimensionTransitionEnable = config
+            .get("维度转场", "启用维度转场", DimensionTransitionEnable, "总开关：塔罗斯2传送到其他维度时播放转场特效")
+            .getBoolean(DimensionTransitionEnable);
+
+        DimensionTransitionSourceDimension = config
+            .get("维度转场", "源维度", DimensionTransitionSourceDimension, "只有在该维度内才能触发转场（塔罗斯2 = 14001）")
+            .getInt(DimensionTransitionSourceDimension);
+
+        DimensionTransitionTargetDimension = config
+            .get("维度转场", "目标维度", DimensionTransitionTargetDimension, "转场目标维度（主世界 = 0，后续可改为自定义世界）")
+            .getInt(DimensionTransitionTargetDimension);
+
+        DimensionTransitionPhase1Ms = config
+            .get("维度转场", "phase1时长(ms)", DimensionTransitionPhase1Ms, "phase 1 时长：转场开始到白化壳扩张（源库等全息缓存 ready，我们固定时长）")
+            .getDouble(DimensionTransitionPhase1Ms);
+
+        DimensionTransitionPhase2Ms = config
+            .get("维度转场", "phase2时长(ms)", DimensionTransitionPhase2Ms, "phase 2 时长：白化壳扩张（whiteRadius 50格/s），源库 4500")
+            .getDouble(DimensionTransitionPhase2Ms);
+
+        DimensionTransitionPhase3Ms = config
+            .get("维度转场", "phase3时长(ms)", DimensionTransitionPhase3Ms, "phase 3 时长：白幕揭开（alphaRadius 1.5→300 三秒）+ 剩余等待，源库 4500")
+            .getDouble(DimensionTransitionPhase3Ms);
+
+        DimensionTransitionCoverMs = config
+            .get("维度转场", "传送前白幕覆盖时长(ms)", DimensionTransitionCoverMs, "phase 3 最后这段时间全屏（含 HUD/UI）白色糊住，遮盖换维瞬间")
+            .getDouble(DimensionTransitionCoverMs);
+
+        DimensionTransitionCoverFadeInMs = config
+            .get("维度转场", "白幕渐入时长(ms)", DimensionTransitionCoverFadeInMs, "覆盖开始时白幕 0→1 的过渡时长")
+            .getDouble(DimensionTransitionCoverFadeInMs);
 
         if (config.hasChanged()) {
             config.save();
