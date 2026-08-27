@@ -68,6 +68,10 @@ public class TransitionPostChain {
     /** rift_data.png 纹理（r=裂缝边界距离，gb=碎片偏移，a=完整标记）。 */
     private static int riftTexture = 0;
     private static boolean riftTextureLoaded = false;
+    /** end_portal.png（末地传送门发光贴图）+ end_sky.png（末地天空）。 */
+    private static int portalTexture = 0;
+    private static int skyTexture = 0;
+    private static boolean portalTexLoaded = false;
 
     // 主 FBO 深度的拷贝（供 pass 采样）
     private int depthTexture;
@@ -149,10 +153,16 @@ public class TransitionPostChain {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTexture);
             GL13.glActiveTexture(GL13.GL_TEXTURE2);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, getRiftTexture());
+            GL13.glActiveTexture(GL13.GL_TEXTURE3);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, getPortalTexture());
+            GL13.glActiveTexture(GL13.GL_TEXTURE4);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, getSkyTexture());
             skyripProgram.use();
             GL20.glUniform1i(skyripProgram.uniform("DiffuseSampler"), 0);
             GL20.glUniform1i(skyripProgram.uniform("DepthSampler"), 1);
             GL20.glUniform1i(skyripProgram.uniform("RiftSampler"), 2);
+            GL20.glUniform1i(skyripProgram.uniform("PortalSampler"), 3);
+            GL20.glUniform1i(skyripProgram.uniform("SkySampler"), 4);
             setSkyRipUniforms(skyripProgram, invProjection, modelView);
             drawFullscreenQuad();
             GL20.glUseProgram(0);
@@ -219,6 +229,80 @@ public class TransitionPostChain {
         GL20.glUniform1f(program.uniform("uSkyRipActive"), 1.0F);
         uploadMatrix(program, "InverseTransformMatrix", inverseProjection);
         uploadMatrix(program, "ModelViewMat", modelView);
+    }
+
+    /** end_portal.png（末地传送门发光贴图），懒加载。 */
+    private static int getPortalTexture() {
+        if (portalTexture != 0 && !GL11.glIsTexture(portalTexture)) {
+            portalTexture = 0;
+            portalTexLoaded = false;
+        }
+        if (portalTexture == 0 && !portalTexLoaded) {
+            portalTexture = loadVanillaTexture("textures/entity/end_portal.png", "end_portal");
+            portalTexLoaded = true;
+        }
+        return portalTexture;
+    }
+
+    /** end_sky.png（末地天空），懒加载。 */
+    private static int getSkyTexture() {
+        if (skyTexture != 0 && !GL11.glIsTexture(skyTexture)) {
+            skyTexture = 0;
+            portalTexLoaded = false;
+        }
+        if (skyTexture == 0 && !portalTexLoaded) {
+            skyTexture = loadVanillaTexture("textures/environment/end_sky.png", "end_sky");
+        }
+        return skyTexture;
+    }
+
+    /** 从原版资源加载 RGBA 纹理为 GL 纹理对象。 */
+    private static int loadVanillaTexture(String path, String name) {
+        try {
+            ResourceLocation loc = new ResourceLocation(path);
+            IResource res = Minecraft.getMinecraft().getResourceManager().getResource(loc);
+            if (res == null) {
+                EyeOfHarmonyBuffer.LOGGER.error("[EOHB] {} texture missing: {}", name, path);
+                return 0;
+            }
+            java.awt.image.BufferedImage img;
+            try {
+                img = javax.imageio.ImageIO.read(res.getInputStream());
+            } finally {
+                res.getInputStream().close();
+            }
+            if (img == null) {
+                return 0;
+            }
+            int w = img.getWidth();
+            int h = img.getHeight();
+            java.nio.ByteBuffer buf = java.nio.ByteBuffer.allocateDirect(w * h * 4);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int argb = img.getRGB(x, y);
+                    buf.put((byte) ((argb >> 16) & 0xFF));
+                    buf.put((byte) ((argb >> 8) & 0xFF));
+                    buf.put((byte) (argb & 0xFF));
+                    buf.put((byte) ((argb >> 24) & 0xFF));
+                }
+            }
+            buf.flip();
+            int tex = GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
+            // 原版末地传送门是 REPEAT 平铺（纹理坐标超出 [0,1] 重复，不是边缘钳制）
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            EyeOfHarmonyBuffer.LOGGER.info("[EOHB] {} texture loaded ({}x{})", name, w, h);
+            return tex;
+        } catch (Throwable t) {
+            EyeOfHarmonyBuffer.LOGGER.error("[EOHB] Failed to load {} texture", name, t);
+            return 0;
+        }
     }
 
     /** rift_data.png 纹理（懒加载，仿黑洞程序噪声纹理模式）。 */

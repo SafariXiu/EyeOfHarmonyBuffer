@@ -10,6 +10,8 @@
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DepthSampler;
 uniform sampler2D RiftSampler;     // rift_data.png：r=裂缝边界距离，gb=碎片偏移，a=完整标记
+uniform sampler2D PortalSampler;   // 末地传送门贴图（textures/entity/end_portal.png）
+uniform sampler2D SkySampler;      // 末地天空贴图（textures/environment/end_sky.png）
 uniform mat4 InverseTransformMatrix;
 uniform mat4 ModelViewMat;
 uniform vec3 CameraPosition;
@@ -42,6 +44,78 @@ float bulgeAmp(float t) {
     if (t < bs) return 0.0;
     float tt = clamp((t - bs) / BULGE_DURATION, 0.0, 1.0);
     return tt * tt * (3.0 - 2.0 * tt);
+}
+
+/**
+ * 传送门材质（超域侵蚀方块配色 + 末地传送门结构）：
+ * - 结构复刻 1.7.10 原版 RenderEndPortal：层 0 = end_sky 微弱底（SRC_ALPHA），
+ *   层 1~15 = end_portal 加法累加发光（GL_ONE/GL_ONE），每层独立旋转
+ *   （angle = (i*i*4321 + i*9) * 2 度）+ 时间垂直滚动 + 缩放 f6（层1=0.5，其他=0.0625）；
+ * - 颜色用超域侵蚀 RenderOverdomainEndStyle 的 layerR/G/B 算法：
+ *   baseR=随机0.1~0.6、baseG=0~0.3、baseB=0.3~0.8；i==0→(1,0.8,0.8)；
+ *   70% 层 ×0.3（暗）30% ×1.4（亮）；depthLerp 红+0.08、蓝-0.06；
+ *   最终 R×1.4、G×0.4、B×0.4（紫红调）；brightnessFactor=0.25+layer*0.03（层0=0.15）。
+ */
+vec3 portalMaterial(vec2 lp, float t) {
+    vec3 col = vec3(0.0);
+    float scroll = fract(t * 0.1);
+
+    // 层 0：end_sky 微弱底（brightness 0.15，缩放 0.125）
+    {
+        // 内容缩小 10%：采样系数 ×10（贴图重复更密，旋涡更小）
+        vec2 uv = lp * 1.25 * 0.004 + vec2(0.5);
+        uv.y += scroll;
+        col += texture(SkySampler, uv).rgb * 0.15;
+    }
+
+    // 层 1~15：end_portal 加法累加（超域侵蚀配色）
+    for (int i = 1; i < 16; i++) {
+        float fi = float(i);
+        float f6 = (fi < 1.5) ? 0.5 : 0.0625;
+
+        // 旋转（末地传送门角度）+ 缩放 + 滚动；内容缩小 10%：0.02 → 0.2
+        float rotRad = ((fi * fi * 4321.0 + fi * 9.0) * 2.0) * 0.0174533;
+        vec2 sampled = lp * f6 * 0.2;
+        vec2 c = sampled - vec2(0.5);
+        sampled = vec2(c.x * cos(rotRad) - c.y * sin(rotRad),
+                       c.x * sin(rotRad) + c.y * cos(rotRad)) + vec2(0.5);
+        sampled.y += scroll * (0.1 + fi * 0.02) + fi * 0.003;
+
+        vec3 layerCol = texture(PortalSampler, sampled).rgb;
+
+        // 超域侵蚀层色：3 个独立随机（复刻三次 nextFloat）
+        float h1 = fract(sin(dot(vec2(fi, fi * 31.1), vec2(12.9898, 78.233))) * 43758.5453);
+        float h2 = fract(sin(dot(vec2(fi * 7.7, fi + 1.3), vec2(12.9898, 78.233))) * 43758.5453);
+        float h3 = fract(sin(dot(vec2(fi * 3.1, fi + 5.7), vec2(12.9898, 78.233))) * 43758.5453);
+        float baseR = h1 * 0.5 + 0.1;
+        float baseG = h2 * 0.3;
+        float baseB = h3 * 0.5 + 0.3;
+
+        // 70% 暗层 / 30% 亮层
+        float hd = fract(sin(dot(vec2(fi * 13.7, fi + 9.1), vec2(12.9898, 78.233))) * 43758.5453);
+        if (hd < 0.7) {
+            baseR *= 0.3; baseG *= 0.3; baseB *= 0.3;
+        } else {
+            baseR *= 1.4; baseG *= 1.4; baseB *= 1.4;
+        }
+
+        // 深度偏色：红增蓝减
+        float depthLerp = fi / 15.0;
+        baseR += 0.08 * depthLerp;
+        baseB -= 0.06 * depthLerp;
+        baseR = clamp(baseR, 0.0, 1.0);
+        baseB = clamp(baseB, 0.0, 1.0);
+
+        // 最终：R×1.4、G×0.4、B×0.4（紫红调）* brightnessFactor
+        vec3 layerColor = vec3(baseR * 1.4, baseG * 0.4, baseB * 0.4);
+        float brightness = min(0.25 + fi * 0.03, 1.0);
+        layerColor *= brightness;
+
+        // 加法发光累加（GL_ONE/GL_ONE）
+        col += layerCol * layerColor;
+    }
+
+    return clamp(col, 0.0, 1.0);
 }
 
 /** 世界重建：inverse(投影)*NDC -> 视图空间 -> transpose(纯旋转 ModelView) -> + 相机位置（与 whiteout 一致）。 */
@@ -120,11 +194,10 @@ void main() {
         shardProgress = 0.0;
     }
 
-    if (shardProgress >= 1.0) {
-        fragColor = vec4(scene, 1.0);
-        return;
-    } else if (shardProgress > 0.0 && rawProgress >= 0.0) {
-        fragColor = vec4(scene, 1.0);
+    // 洞：破碎区块（riftData.a <= 0.5）且碎片已开始飞（rawProgress >= 0）→ 碎片飞走后
+    // 留下的空区域。这里填充传送门材质（超域侵蚀风格），洞外保持原样。
+    if (shardProgress >= 1.0 || (shardProgress > 0.0 && rawProgress >= 0.0)) {
+        fragColor = vec4(mix(scene, portalMaterial(localPos, TransitionTime), 0.85), 1.0);
         return;
     }
 
