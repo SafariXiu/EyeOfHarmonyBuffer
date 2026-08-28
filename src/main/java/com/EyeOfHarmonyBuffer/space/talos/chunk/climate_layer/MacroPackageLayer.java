@@ -224,10 +224,6 @@ public class MacroPackageLayer {
 
         TectonicStyle style = this.tectonicStyles.sampleAt(x, z).style;
         switch (style) {
-            case RIFT:
-                return MacroPackageDefs.pickCoherentBiome(
-                    riftVariantAt(z), x, z, worldSeedInt
-                );
             case MOUNTAINS:
                 return TalosBiomes.TALOS_MOUNTAINS;
             case PEAK:
@@ -259,8 +255,6 @@ public class MacroPackageLayer {
 
         TectonicStyle style = this.tectonicStyles.sampleAt(x, z).style;
         switch (style) {
-            case RIFT:
-                return riftVariantAt(z);
             case PEAK:
                 return MacroPackageId.MOUNTAIN_PEAK;
             case HIGHLAND:
@@ -269,21 +263,6 @@ public class MacroPackageLayer {
             case NONE:
             default:
                 return null;
-        }
-    }
-
-    /** 按纬度带选择峡谷宏包变体。 */
-    private MacroPackageId riftVariantAt(int z) {
-        switch (ClimateLatitudes.getBelt(z)) {
-            case TROPIC:
-            case SUBTROPIC:
-                return MacroPackageId.RIFT_TROPICAL;
-            case TEMPERATE:
-                return MacroPackageId.RIFT_TEMPERATE;
-            case SUBPOLAR:
-            case POLAR:
-            default:
-                return MacroPackageId.RIFT_POLAR;
         }
     }
 

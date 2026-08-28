@@ -73,22 +73,4 @@ public final class TalosBaseTerrain {
         );
     }
 
-    /**
-     * chunk 级上下文版本 + 群系高度调制 + 已缓存的构造风格 DIVERGENT 强度：
-     * 调用方（TalosChunkContext）已按列算好 smoothedDivergence，基础岩面淡出
-     * 与裂谷塑形共用同一份采样，避免重复查询构造风格层。
-     */
-    public static double sampleBaseHeight(int worldX, int worldZ,
-                                          int worldSeedInt,
-                                          int seaLevel,
-                                          TalosLandMask.Sample landSample,
-                                          double biomeBias,
-                                          double biomeScale,
-                                          double smoothedDivergence) {
-        return TerrainEngine.sampleBaseHeight(
-            worldX, worldZ, worldSeedInt, seaLevel, landSample,
-            biomeBias, biomeScale, smoothedDivergence
-        );
-    }
-
 }

@@ -153,7 +153,6 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private static ResourceClusterDef[] resourcePlantsFor(MacroPackageId macro) {
         switch (macro) {
             case TROPICAL_HUMID:
-            case RIFT_TROPICAL:
                 return new ResourceClusterDef[] {
                     ResourceClusterDef.JIN_CAO,
                     ResourceClusterDef.YA_ZHEN
@@ -161,7 +160,6 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             case TEMPERATE_LOWLAND:
             case TEMPERATE_FORESTED:
             case COOL_FORESTED:
-            case RIFT_TEMPERATE:
                 return new ResourceClusterDef[] {
                     ResourceClusterDef.QIAO_HUA,
                     ResourceClusterDef.GAN_SHI

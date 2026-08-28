@@ -8,8 +8,6 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api;
 public enum TectonicStyle {
     /** 无边界影响，保持自然宏群系。 */
     NONE,
-    /** 分离带：裂谷 / 峡谷。 */
-    RIFT,
     /** 挤压带外缘：高原 / 山脉混合。 */
     HIGHLAND,
     /** 挤压带核心：高山（山脉）。 */

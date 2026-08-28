@@ -18,12 +18,8 @@ public final class TalosTectonicStyles {
         if (s == null || !s.isLand) {
             return TectonicStyle.NONE;
         }
-        double div = TalosLandMask.maxBoundaryStrength(
-            PlateBoundaryState.DIVERGENT, s
-        );
-        if (div >= TalosLandMask.PLATE_BOUNDARY_MIN_STRENGTH) {
-            return TectonicStyle.RIFT;
-        }
+        // 分离带（DIVERGENT）不再接管地形/群系：完全按普通群系选择，
+        // 平滑由气候层处理。仅挤压带（CONVERGENT）继续产生高山风格。
         if (s.plateBoundaryState != PlateBoundaryState.CONVERGENT) {
             return TectonicStyle.NONE;
         }

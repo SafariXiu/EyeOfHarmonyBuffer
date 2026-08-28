@@ -59,63 +59,6 @@ public final class TectonicConfig {
     /** 板块边界风格化 / 覆盖的最小强度（0.2 以外不生效，宏包覆盖与裂谷塑形共用）。 */
     public static final double PLATE_BOUNDARY_MIN_STRENGTH = 0.2;
 
-    /** 裂谷边缘平台高于海平面的格数（硬切后的台地高度）。 */
-    public static final int RIFT_EDGE_ABOVE_SEA = 1;
-
-    /**
-     * 裂谷谷底相对海平面的格数（负数 = 高于海平面）。
-     * 干裂谷：谷底保持在水面之上，避免整个裂谷被淹成湖。
-     */
-    public static final int RIFT_FLOOR_BELOW_SEA = -3;
-
-    /** 裂谷塑形混合系数（1 = 完全按裂谷剖面，越小保留越多原始地形）。 */
-    public static final double RIFT_BLEND = 0.85;
-
-    /**
-     * 裂谷悬崖风格化：外崖面开始受塑形的强度。
-     * 在构造风格层平滑场驱动下，过窄的带（0.197~0.2）会把落差集中成
-     * 一道陡墙，并与宏包高度过渡叠加成“两堵平行墙”。
-     * 0.12~0.2 覆盖带外大部分过渡区：在小大陆上换算成实际宽度也不至于
-     * 挤成墙（0.08 强度 × 大陆半径系数 ≈ 100 格以上）。
-     */
-    public static final double RIFT_CLIFF_START_STRENGTH = 0.12;
-
-    /** 裂谷崖缘平台结束 / 内缘缓坡开始强度。 */
-    public static final double RIFT_TALUS_START_STRENGTH = 0.45;
-
-    /** 裂谷倒石堆结束 / 谷底开始强度。 */
-    public static final double RIFT_FLOOR_START_STRENGTH = 0.75;
-
-    /** 崖缘平台上卷格数（崖唇）。 */
-    public static final double RIFT_RIM_UPLIFT = 7.0;
-
-    /** 倒石堆顶部高于谷底的格数。 */
-    public static final double RIFT_TALUS_HEIGHT = 4.0;
-
-    /** 崖顶锯齿噪声幅度（格）。 */
-    public static final double RIFT_RIM_NOISE_AMP = 4.0;
-
-    /** 崖面凹凸噪声幅度（格）。 */
-    public static final double RIFT_CLIFF_NOISE_AMP = 5.0;
-
-    /** 倒石堆碎石起伏幅度（格）。 */
-    public static final double RIFT_TALUS_NOISE_AMP = 2.5;
-
-    /** 谷底起伏幅度（格）。 */
-    public static final double RIFT_FLOOR_NOISE_AMP = 1.5;
-
-    /** 岩架高度（格）：崖面下落途中的台阶。 */
-    public static final double RIFT_LEDGE_HEIGHT = 2.0;
-
-    /** 崖线主噪声尺度（格）。 */
-    public static final double RIFT_NOISE_SCALE_RIM = 96.0;
-
-    /** 崖面噪声尺度（格）。 */
-    public static final double RIFT_NOISE_SCALE_FACE = 28.0;
-
-    /** 细节噪声尺度（格）。 */
-    public static final double RIFT_NOISE_SCALE_DETAIL = 12.0;
-
     public static final double SHELF_MAX_DISTANCE = 12000.0;
 
     private TectonicConfig() {}
