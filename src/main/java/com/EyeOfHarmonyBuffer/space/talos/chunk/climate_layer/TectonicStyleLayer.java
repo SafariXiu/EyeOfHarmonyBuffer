@@ -40,14 +40,12 @@ public final class TectonicStyleLayer {
         this.worldSeedInt = worldSeedInt;
     }
 
-    /** 查询结果：主导风格 + 平滑后的 DIVERGENT 强度（0~1）。 */
+    /** 查询结果：主导风格（仅挤压带相关的 HIGHLAND/MOUNTAINS/PEAK）。 */
     public static final class Sample {
         public final TectonicStyle style;
-        public final double smoothedDivergence;
 
-        public Sample(TectonicStyle style, double smoothedDivergence) {
+        public Sample(TectonicStyle style) {
             this.style = style;
-            this.smoothedDivergence = smoothedDivergence;
         }
     }
 
@@ -62,7 +60,6 @@ public final class TectonicStyleLayer {
             (worldZ - SAMPLE_STEP / 2.0) / SAMPLE_STEP);
 
         double[] weightByStyle = new double[TectonicStyle.values().length];
-        double divSum = 0.0;
         double wSum = 0.0;
 
         for (int dz = -BLEND_RADIUS_CELLS; dz <= BLEND_RADIUS_CELLS; dz++) {
@@ -97,13 +94,12 @@ public final class TectonicStyleLayer {
                 }
 
                 weightByStyle[style.ordinal()] += w;
-                divSum += w * tile.divStrength[index];
                 wSum += w;
             }
         }
 
         if (wSum <= 0.0) {
-            return new Sample(TectonicStyle.NONE, 0.0);
+            return new Sample(TectonicStyle.NONE);
         }
 
         TectonicStyle best = TectonicStyle.NONE;
@@ -116,7 +112,7 @@ public final class TectonicStyleLayer {
             }
         }
 
-        return new Sample(best, divSum / wSum);
+        return new Sample(best);
     }
 
     private static double blendKernel(double distBlocks) {
@@ -160,7 +156,6 @@ public final class TectonicStyleLayer {
 
         final TectonicStyle[] rawStyle = new TectonicStyle[GRID_SIZE * GRID_SIZE];
         final TectonicStyle[] mergedStyle = new TectonicStyle[GRID_SIZE * GRID_SIZE];
-        final double[] divStrength = new double[GRID_SIZE * GRID_SIZE];
         final boolean[] isLand = new boolean[GRID_SIZE * GRID_SIZE];
         final int[] compId = new int[GRID_SIZE * GRID_SIZE];
 
@@ -196,16 +191,10 @@ public final class TectonicStyleLayer {
                         worldX, worldZ, worldSeedInt);
 
                     TectonicStyle style = TalosTectonicStyles.styleFromSample(s);
-                    double div = 0.0;
                     boolean land = s != null && s.isLand;
-                    if (land) {
-                        div = TalosLandMask.maxBoundaryStrength(
-                            PlateBoundaryState.DIVERGENT, s);
-                    }
 
                     rawStyle[index] = style;
                     mergedStyle[index] = style;
-                    divStrength[index] = div;
                     isLand[index] = land;
                     compId[index] = -1;
                 }

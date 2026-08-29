@@ -125,14 +125,12 @@ public final class TalosMacroClimate {
         return layer.getSmoothedMacroPackageIdAt(worldX, worldZ, isLandKnown);
     }
 
-    /** 构造风格查询结果：主导风格 + 平滑后的 DIVERGENT 强度。 */
+    /** 构造风格查询结果：主导风格（仅挤压带相关，分离带已不接管）。 */
     public static final class TectonicStyleSample {
         public final TectonicStyle style;
-        public final double smoothedDivergence;
 
-        public TectonicStyleSample(TectonicStyle style, double smoothedDivergence) {
+        public TectonicStyleSample(TectonicStyle style) {
             this.style = style;
-            this.smoothedDivergence = smoothedDivergence;
         }
     }
 
@@ -142,7 +140,7 @@ public final class TalosMacroClimate {
     ) {
         TectonicStyleLayer.Sample s = getTectonicLayer(worldSeedInt)
             .sampleAt(worldX, worldZ);
-        return new TectonicStyleSample(s.style, s.smoothedDivergence);
+        return new TectonicStyleSample(s.style);
     }
 
     /**

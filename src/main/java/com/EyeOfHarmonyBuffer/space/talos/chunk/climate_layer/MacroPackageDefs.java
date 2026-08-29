@@ -74,26 +74,6 @@ public final class MacroPackageDefs {
                     TalosBiomes.TALOS_POLAR_DESERT
                 };
 
-            // ===== 裂谷 / 峡谷（板块分离带注入，只放低群系） =====
-            case RIFT_TROPICAL:
-                return new BiomeGenBase[] {
-                    TalosBiomes.TALOS_TROPICAL_RAIN,
-                    TalosBiomes.TALOS_BASIN
-                };
-
-            case RIFT_TEMPERATE:
-                return new BiomeGenBase[] {
-                    TalosBiomes.TALOS_PLAINS,
-                    TalosBiomes.TALOS_TEMPERATE_STEPPE,
-                    TalosBiomes.TALOS_TEMPERATE_FOREST
-                };
-
-            case RIFT_POLAR:
-                return new BiomeGenBase[] {
-                    TalosBiomes.TALOS_SUBPOLAR_TUNDRA,
-                    TalosBiomes.TALOS_COOL_FOREST
-                };
-
             // ===== 最高峰（挤压带核心注入，只含地形最高的群系） =====
             case MOUNTAIN_PEAK:
                 return new BiomeGenBase[] {

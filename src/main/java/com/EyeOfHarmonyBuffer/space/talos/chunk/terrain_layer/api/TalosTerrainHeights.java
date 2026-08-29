@@ -2,16 +2,13 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.PlateBoundaryState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosCoastlineShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosPlateBoundaryShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.api.TalosMountainSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverChannelShaper;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverTerrainModifier;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.format.RiverBodyData;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.water_layer.api.TalosWaterField;
 
 /**
@@ -58,8 +55,6 @@ public final class TalosTerrainHeights {
         public final TalosLandMask.Sample landSample;
         public final double baseHeightD;
         public final double bankIntensity;
-        /** 每列缓存的构造风格平滑 DIVERGENT 强度（基础岩面淡出与裂谷塑形共用）。 */
-        public final double smoothedDivergence;
         /** 水文采样；sampleColumn 要求非 null（samplePreRiverHeight 可传 null）。 */
         public final TalosRiverSystem.HydroSample hydro;
         public final MacroPackageId macroId;
@@ -76,7 +71,6 @@ public final class TalosTerrainHeights {
                                    TalosLandMask.Sample landSample,
                                    double baseHeightD,
                                    double bankIntensity,
-                                   double smoothedDivergence,
                                    TalosRiverSystem.HydroSample hydro,
                                    MacroPackageId macroId,
                                    double mountainElevation01,
@@ -91,7 +85,6 @@ public final class TalosTerrainHeights {
             this.landSample = landSample;
             this.baseHeightD = baseHeightD;
             this.bankIntensity = bankIntensity;
-            this.smoothedDivergence = smoothedDivergence;
             this.hydro = hydro;
             this.macroId = macroId;
             this.mountainElevation01 = mountainElevation01;
@@ -157,12 +150,9 @@ public final class TalosTerrainHeights {
             TalosMacroClimate.getHeightModulationAt(
                 worldX, worldZ, worldSeedInt, isLand
             );
-        double smoothedDivergence = TalosMacroClimate
-            .getTectonicStyleSample(worldX, worldZ, worldSeedInt)
-            .smoothedDivergence;
         double base = TalosBaseTerrain.sampleBaseHeight(
             worldX, worldZ, worldSeedInt, seaLevel, land,
-            mod.bias, mod.scale, smoothedDivergence
+            mod.bias, mod.scale
         );
         double bank = TalosRiverTerrainModifier.smoothedBankIntensityAt(
             worldX, worldZ, worldSeedInt
@@ -174,13 +164,13 @@ public final class TalosTerrainHeights {
 
         return sampleColumn(new TerrainColumnInputs(
             worldX, worldZ, worldSeedInt, seaLevel, worldHeight,
-            isLand, land, base, bank, smoothedDivergence, hydro, macro,
+            isLand, land, base, bank, hydro, macro,
             mountain.elevation01, mountain.mask01, mountain.kind
         ));
     }
 
     /**
-     * 不含水文的高度：基础 → 海岸 → 裂谷 → 山脉抬升。
+     * 不含水文的高度：基础 → 海岸 → 山脉抬升。
      * 用于水体过滤等「不能触发河流查询」的场景
      * （河流系统构建时查询最终高度会与水文查询互相递归）。
      *
@@ -204,19 +194,16 @@ public final class TalosTerrainHeights {
             TalosMacroClimate.getHeightModulationAt(
                 worldX, worldZ, worldSeedInt, isLand
             );
-        double smoothedDivergence = TalosMacroClimate
-            .getTectonicStyleSample(worldX, worldZ, worldSeedInt)
-            .smoothedDivergence;
         double base = TalosBaseTerrain.sampleBaseHeight(
             worldX, worldZ, worldSeedInt, seaLevel, land,
-            mod.bias, mod.scale, smoothedDivergence
+            mod.bias, mod.scale
         );
         TalosMountainSystem.MountainSample mountain =
             TalosMountainSystem.sampleMountain(worldX, worldZ, worldSeedInt);
 
         return preRiverShaped(new TerrainColumnInputs(
             worldX, worldZ, worldSeedInt, seaLevel, worldHeight,
-            isLand, land, base, 0.5, smoothedDivergence, null, macro,
+            isLand, land, base, 0.5, null, macro,
             mountain.elevation01, mountain.mask01, mountain.kind
         ));
     }
@@ -284,35 +271,20 @@ public final class TalosTerrainHeights {
     }
 
     /** 基础 → 海岸 → 裂谷 → 山脉抬升（河岸/河谷之前，不依赖水文）。 */
+    /**
+     * 基础 → 海岸 → 山脉抬升（河岸/河谷之前，不依赖水文）。
+     * 分离带（裂谷）不再接管地形：大陆内部只由基础地形 + 挤压带山脉抬升决定，
+     * 分离带区域 = 普通陆地（群系平滑由气候层处理）。
+     */
     private static double preRiverShaped(TerrainColumnInputs in) {
         double coast = coastShaped(in);
 
-        double riftStrength = in.smoothedDivergence;
-        PlateBoundaryState riftState = (riftStrength > 0.0)
-            ? PlateBoundaryState.DIVERGENT
-            : (in.landSample != null
-                ? in.landSample.plateBoundaryState : null);
-        double riftWeight = (riftState == PlateBoundaryState.DIVERGENT)
-            ? riftStrength
-            : (in.landSample != null
-                ? in.landSample.plateBoundaryWeight : 0.0);
-        // 海岸衰减：分离带与山脉抬升在靠海一侧逐渐收束，避免板块边界把海岸线抬成“墙”。
-        // coastWeight 1=贴海、0.5≈128 格内、0=内陆；平滑带与海岸塑形同源。
-        double coastWeight = (in.landSample != null)
-            ? in.landSample.coastWeight : 0.0;
-        double coastFade = 1.0 - TerrainMath.smoothstep(0.5, 1.0, coastWeight);
-        riftWeight *= coastFade;
-        double rift = TalosPlateBoundaryShaper.applyRiftShaping(
-            coast, in.seaLevel, in.isLand, riftState, riftWeight,
-            in.worldX, in.worldZ, in.worldSeedInt
-        );
-
-        double uplifted = TalosMountainSystem.applyMountainUplift(
-            rift, in.seaLevel,
+        // 山脉抬升（挤压带 CONVERGENT 驱动）；无山区域 = 原样。
+        return TalosMountainSystem.applyMountainUplift(
+            coast, in.seaLevel,
             in.mountainElevation01, in.mountainMask01, in.mountainKind,
             in.worldHeight
         );
-        return TerrainMath.lerp(rift, uplifted, coastFade);
     }
 
     private static double coastShaped(TerrainColumnInputs in) {

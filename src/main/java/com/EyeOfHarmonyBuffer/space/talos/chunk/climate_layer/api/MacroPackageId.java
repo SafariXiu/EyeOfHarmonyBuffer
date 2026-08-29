@@ -27,11 +27,6 @@ public enum MacroPackageId {
     SUBPOLAR_TUNDRA,    // 亚极地冻原
     POLAR_HIGHLAND,     // 高寒山地 + 极地荒漠
 
-    // 裂谷 / 峡谷（仅由板块分离带覆盖注入，不参与站点生成；按纬度分三种）
-    RIFT_TROPICAL,      // 热带 / 亚热带峡谷
-    RIFT_TEMPERATE,     // 温带峡谷
-    RIFT_POLAR,         // 亚寒带 / 寒带峡谷
-
     // 最高峰（仅由挤压带核心覆盖注入，不参与站点生成）
     MOUNTAIN_PEAK       // 最高山峰：只含地形最高的群系
 }
