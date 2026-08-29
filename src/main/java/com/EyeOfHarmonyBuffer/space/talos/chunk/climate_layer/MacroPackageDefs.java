@@ -69,8 +69,11 @@ public final class MacroPackageDefs {
                 };
 
             case POLAR_HIGHLAND:
+                // 寒带高原不再使用 Alpine：Alpine 只留给挤压带 PEAK（DLA 山带）。
+                // 寒带高原是「高原 + 极地荒漠」——地形是 POLAR_HIGHLAND 宏包的高原带，
+                // 观感统一，不会顶着"山峰"名字却呈现噪声高原。
                 return new BiomeGenBase[] {
-                    TalosBiomes.TALOS_ALPINE,
+                    TalosBiomes.TALOS_PLATEAU,
                     TalosBiomes.TALOS_POLAR_DESERT
                 };
 
