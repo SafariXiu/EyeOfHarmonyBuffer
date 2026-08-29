@@ -1,9 +1,11 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
-import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import net.minecraft.world.biome.BiomeGenBase;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainPreset;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMacroPresetRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,7 +42,6 @@ public final class CaveGenerator {
     private static final int SALT_BAND = 0x3C;
     private static final int SALT_CHAMBER = 0x4D;
     private static final int SALT_ENTRANCE = 0x5E;
-    private static final int SALT_SHAFT = 0x6F;
     private static final int SALT_EDGE_JITTER = 0x7A;
     private static final int SALT_EDGE_RADIUS = 0x8B;
     private static final int SALT_COLLAPSE = 0x9C;
@@ -116,6 +117,71 @@ public final class CaveGenerator {
     /** 干洞上层带下限：盆地 / 禁干带内只允许该高度以上的干洞。 */
     public static final int DRY_UPPER_MIN_Y = 46;
 
+    /** 干洞底部 = 含水层顶（含水网络水位上方安全线）。 */
+    public static final int DRY_BOTTOM_Y = DRY_UPPER_MIN_Y;
+
+    /** 干洞顶部到地表的最小距离 / 最大距离（blocks）。 */
+    public static final double DRY_TOP_MIN_GAP = 10.0;
+    public static final double DRY_TOP_MAX_GAP = 20.0;
+
+    /** 参考地表高度缓存（每 256 单元一次；按 seed 隔离，世界卸载时清空）。 */
+    private static final ConcurrentHashMap<Long, Double> SURFACE_REF_CACHE =
+        new ConcurrentHashMap<Long, Double>();
+    private static final int SURFACE_REF_CACHE_LIMIT = 200_000;
+
+    /**
+     * 该 256 单元中心的参考地表高度（真实地形链，确定性；带缓存）。
+     * 洞穴网络用它把干洞深度带从「绝对 Y」改成「跟随地表」。
+     * 地形层不依赖洞穴（线性流水线），此处单向查询安全、无递归。
+     */
+    private static double surfaceRefAt(int cellX, int cellZ, long seed) {
+        long key = cellKey(cellX, cellZ) ^ CaveMath.mix64(seed);
+        Double cached = SURFACE_REF_CACHE.get(key);
+        if (cached != null) {
+            return cached.doubleValue();
+        }
+        if (SURFACE_REF_CACHE.size() > SURFACE_REF_CACHE_LIMIT) {
+            SURFACE_REF_CACHE.clear();
+        }
+        double y = 64.0;
+        try {
+            y = TalosTerrainHeights.sample(
+                cellX * CELL_BLOCKS + CELL_BLOCKS / 2,
+                cellZ * CELL_BLOCKS + CELL_BLOCKS / 2,
+                (int) (seed & 0x7FFFFFFFL), 64, 256
+            ).surfaceD;
+        } catch (Throwable t) {
+            // 地形链不可用（探针 / 未初始化）时退化为海平面，仍确定。
+            y = 64.0;
+        }
+        SURFACE_REF_CACHE.put(key, Double.valueOf(y));
+        return y;
+    }
+
+    /** 干洞深度带层数（按宏包分级，方案 A）：高原 / 山地 3 层，温带 2 层，低地 1 层。 */
+    private static int depthLayersForCell(int cellX, int cellZ, long seed) {
+        int wx = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
+        int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
+        MacroPackageId pkg = TalosMacroClimate.getMacroPackageId(
+            wx, wz, (int) (seed & 0x7FFFFFFFL));
+        if (pkg == null) {
+            return 1;
+        }
+        switch (pkg) {
+            case TEMPERATE_HIGHLAND:
+            case POLAR_HIGHLAND:
+            case MOUNTAIN_PEAK:
+                return 3;
+            case TROPICAL_HUMID:
+            case TROPICAL_DRY:
+            case TEMPERATE_FORESTED:
+            case COOL_FORESTED:
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
     private static final Object NO_MEGA_HALL = new Object();
     private static final ConcurrentHashMap<Long, Object> MEGA_HALL_CACHE =
         new ConcurrentHashMap<Long, Object>();
@@ -152,11 +218,8 @@ public final class CaveGenerator {
             cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS);
         CaveMegaHall megaHall = megaHallForSupercell(
             hallSuperX, hallSuperZ, seed);
-        // 浅层限制单元：含水盆地 + 盆地外圈 1 格禁干带，只允许上层干洞。
-        // 洞厅专属区内不受此限制，干洞恢复全深度。
-        boolean hallZone = isHallZoneCell(cellX, cellZ, seed);
-        boolean shallowOnly = !hallZone
-            && isShallowOnlyCell(cellX, cellZ, seed);
+        // 干洞深度带已相对地表且整体高于含水层（46），
+        // 不再需要浅层限制 / 洞厅专属区的干洞过滤。
         boolean backbone = isBackboneCell(cellX, cellZ);
 
         if (backbone) {
@@ -165,11 +228,9 @@ public final class CaveGenerator {
                 cellX, cellZ, 0, seed, SALT_NODE_POS, 96.0, 160.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, 1, seed, SALT_NODE_POS, 96.0, 160.0);
-            float y = shallowOnly
-                ? (float) CaveMath.hashRange(
-                    cellX, cellZ, 2, seed, SALT_NODE_POS, 50.0, 57.0)
-                : (float) CaveMath.hashRange(
-                    cellX, cellZ, 2, seed, SALT_NODE_POS, 26.0, 46.0);
+            // 骨干必须高于含水层顶（46），否则跨单元骨干边会被
+            // dipsIntoShallowZone 拒绝 → 网络碎片化。放在干洞带中上段。
+            float y = (float) bandY(CaveNode.BAND_MID, cellX, cellZ, 2, seed);
             nodes.add(new CaveNode(
                 id, cellX, cellZ, x, y, z,
                 CaveNode.KIND_BACKBONE, CaveNode.BAND_MID,
@@ -181,10 +242,7 @@ public final class CaveGenerator {
         int detailCount = detailCount(cellX, cellZ, seed);
         for (int i = 0; i < detailCount; i++) {
             int band = pickBand(cellX, cellZ, i, seed);
-            // 浅层限制单元内干洞只留上层，深层/中层让给暗河和禁干带。
-            if (shallowOnly && band != CaveNode.BAND_UPPER) {
-                continue;
-            }
+            // 深度带已相对地表且在含水层上方，不再需要 shallowOnly 过滤。
             float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, i * 3 + 0, seed, SALT_NODE_POS, 24.0, 232.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
@@ -202,16 +260,9 @@ public final class CaveGenerator {
                 cellX, cellZ, i + 200, seed, SALT_CHAMBER,
                 CHAMBER_RADIUS_XZ_MIN, CHAMBER_RADIUS_XZ_MAX) : 0;
 
-            if (shallowOnly) {
-                // 浅层限制单元内不生成大厅，避免巨大干室探进暗河/禁干带。
-                chamber = false;
-                kind = CaveNode.KIND_NORMAL;
-                crx = 0;
-                cry = 0;
-                crz = 0;
-            } else if (chamber && chamberCrossesShallow(
+            if (chamber && chamberCrossesShallow(
                     x, z, crx, crz, seed)) {
-                // 大厅空腔会横向探进盆地/禁干带：降级为普通分支。
+                // 大厅空腔横向探进含水盆地：降级为普通分支。
                 chamber = false;
                 kind = CaveNode.KIND_NORMAL;
                 crx = 0;
@@ -236,31 +287,9 @@ public final class CaveGenerator {
             ));
         }
 
-        // 竖井：为单元内第一个 MID 节点补一个深井孪生
-        CaveNode mid = null;
-        for (CaveNode n : nodes) {
-            if (n.band == CaveNode.BAND_MID) {
-                mid = n;
-                break;
-            }
-        }
-        // 浅层限制单元不生成竖井；竖井列贴近浅层限制单元时也跳过。
-        if (!shallowOnly
-            && mid != null
-            && !columnNearShallow(mid.x, mid.z, 6.0, seed)
-            && CaveMath.hash01(cellX, cellZ, 77, seed, SALT_SHAFT) < 0.10) {
-            int idx = nodes.size();
-            float y = (float) CaveMath.hashRange(
-                cellX, cellZ, 78, seed, SALT_SHAFT, 10.0, 20.0);
-            nodes.add(new CaveNode(
-                nodeId(seed, cellX, cellZ, idx),
-                cellX, cellZ, mid.x, y, mid.z,
-                CaveNode.KIND_SHAFT, CaveNode.BAND_DEEP,
-                0, 0, 0, 0, mid.id
-            ));
-        }
-
-        // 入口 / 天坑
+        // 入口 / 天坑：贴近地表的大洞口（竖井已移除）。
+        // 入口节点放在地表下方数格，雕刻时从节点一路挖到地表（大洞口），
+        // 并作为节点接入干洞网络（collectEdges 会把它连到最近洞穴）。
         double entRoll = CaveMath.hash01(cellX, cellZ, 99, seed, SALT_ENTRANCE);
         if (entRoll < 0.30) {
             int idx = nodes.size();
@@ -268,13 +297,18 @@ public final class CaveGenerator {
                 cellX, cellZ, 100, seed, SALT_ENTRANCE, 48.0, 208.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, 101, seed, SALT_ENTRANCE, 48.0, 208.0);
-            float y = (float) CaveMath.hashRange(
-                cellX, cellZ, 102, seed, SALT_ENTRANCE, 50.0, 58.0);
+            // 贴近地表：地表下 6~16 格，洞口短、宽敞。
+            float y = (float) (surfaceRefAt(cellX, cellZ, seed)
+                - 6.0 - CaveMath.hashRange(
+                    cellX, cellZ, 102, seed, SALT_ENTRANCE, 0.0, 10.0));
+            if (y < 8.0f) {
+                y = 8.0f;
+            }
             nodes.add(new CaveNode(
                 nodeId(seed, cellX, cellZ, idx),
                 cellX, cellZ, x, y, z,
                 CaveNode.KIND_ENTRANCE, CaveNode.BAND_UPPER,
-                0, 0, 0, 2, 0
+                0, 0, 0, 3, 0
             ));
         } else if (entRoll < 0.36) {
             int idx = nodes.size();
@@ -282,13 +316,17 @@ public final class CaveGenerator {
                 cellX, cellZ, 110, seed, SALT_ENTRANCE, 48.0, 208.0);
             float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
                 cellX, cellZ, 111, seed, SALT_ENTRANCE, 48.0, 208.0);
-            float y = (float) CaveMath.hashRange(
-                cellX, cellZ, 112, seed, SALT_ENTRANCE, 52.0, 60.0);
+            float y = (float) (surfaceRefAt(cellX, cellZ, seed)
+                - 10.0 - CaveMath.hashRange(
+                    cellX, cellZ, 112, seed, SALT_ENTRANCE, 0.0, 8.0));
+            if (y < 8.0f) {
+                y = 8.0f;
+            }
             nodes.add(new CaveNode(
                 nodeId(seed, cellX, cellZ, idx),
                 cellX, cellZ, x, y, z,
                 CaveNode.KIND_SINKHOLE, CaveNode.BAND_UPPER,
-                0, 0, 0, 1, 0
+                0, 0, 0, 2, 0
             ));
         }
 
@@ -414,10 +452,19 @@ public final class CaveGenerator {
         return new CaveMegaHall(cx, cy, cz, rx, ry, rz, seed);
     }
 
+    /**
+     * 洞厅只生成在「宏包带底 > 100」的高海拔群系：洞厅是地底巨大空间，
+     * 地表必须足够高才能把它埋住（顶 ≤64）。按宏包 minHeight 判定，
+     * 避免依赖具体 biome 白名单（biome 会随地形层改动漂移）。
+     */
     private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
-        BiomeGenBase biome = TalosMacroClimate.getBiome(wx, wz, seed);
-        return biome == TalosBiomes.TALOS_ALPINE
-            || biome == TalosBiomes.TALOS_POLAR_DESERT;
+        MacroPackageId pkg = TalosMacroClimate.getMacroPackageId(
+            wx, wz, seed);
+        if (pkg == null) {
+            return false;
+        }
+        BaseTerrainPreset preset = TerrainMacroPresetRegistry.get(pkg);
+        return preset != null && preset.minHeight > 100.0;
     }
 
     /** 洞厅中心所在单元对应的网络节点；其他单元返回 null。 */
@@ -572,35 +619,6 @@ public final class CaveGenerator {
         for (int cz = minCZ; cz <= maxCZ; cz++) {
             for (int cx = minCX; cx <= maxCX; cx++) {
                 if (isShallowOnlyCell(cx, cz, seed)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /** 列（x,z）是否在 margin 范围内贴近某个浅层限制单元。 */
-    private static boolean columnNearShallow(double x, double z,
-                                             double margin, long seed) {
-        int cx = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
-        int cz = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
-        for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                int nx = cx + dx;
-                int nz = cz + dz;
-                if (!isShallowOnlyCell(nx, nz, seed)) {
-                    continue;
-                }
-                double cellMinX = nx * CELL_BLOCKS;
-                double cellMaxX = cellMinX + CELL_BLOCKS;
-                double cellMinZ = nz * CELL_BLOCKS;
-                double cellMaxZ = cellMinZ + CELL_BLOCKS;
-                double closestX = Math.max(cellMinX, Math.min(x, cellMaxX));
-                double closestZ = Math.max(cellMinZ, Math.min(z, cellMaxZ));
-                double d = Math.sqrt(
-                    (x - closestX) * (x - closestX)
-                        + (z - closestZ) * (z - closestZ));
-                if (d <= margin) {
                     return true;
                 }
             }
@@ -1421,30 +1439,71 @@ public final class CaveGenerator {
         return 4;
     }
 
+    /**
+     * 深度带选择（按宏包层数分级）。
+     *   - 1 层（低地）：只用 UPPER（浅层，贴近地表）；
+     *   - 2 层（温带）：UPPER + MID；
+     *   - 3 层（高原 / 山地）：UPPER + MID + DEEP 全部。
+     */
     private static int pickBand(int cellX, int cellZ, int i, long seed) {
+        int layers = depthLayersForCell(cellX, cellZ, seed);
         double r = CaveMath.hash01(cellX, cellZ, i + 1, seed, SALT_BAND);
-        if (r < 0.55) {
+        if (layers <= 1) {
+            return CaveNode.BAND_UPPER;
+        }
+        if (layers == 2) {
+            if (r < 0.60) {
+                return CaveNode.BAND_UPPER;
+            }
             return CaveNode.BAND_MID;
         }
-        if (r < 0.80) {
+        // 3 层
+        if (r < 0.25) {
             return CaveNode.BAND_UPPER;
+        }
+        if (r < 0.80) {
+            return CaveNode.BAND_MID;
         }
         return CaveNode.BAND_DEEP;
     }
 
+    /**
+     * 干洞深度带（相对地表）：
+     *   顶部 = 参考地表 - (10~20) 格；
+     *   底部 = 46（含水层顶安全线，DRY_BOTTOM_Y）；
+     *   UPPER / MID / DEEP 在 [底部, 顶部] 内按比例分布。
+     * 保证干洞整体高于含水层，不与暗河抢层（连通性由骨干晶格保证）。
+     */
     private static double bandY(int band, int cellX, int cellZ, int i,
                                 long seed) {
+        int layers = depthLayersForCell(cellX, cellZ, seed);
+        double surfaceD = surfaceRefAt(cellX, cellZ, seed);
+        double topGap = CaveMath.hashRange(
+            cellX, cellZ, i + 40, seed, SALT_BAND,
+            DRY_TOP_MIN_GAP, DRY_TOP_MAX_GAP);
+        double topY = surfaceD - topGap;
+        double bottomY = DRY_BOTTOM_Y;
+        if (topY < bottomY + 6.0) {
+            topY = bottomY + 6.0; // 至少 6 格厚度
+        }
+        double span = topY - bottomY;
+
         switch (band) {
             case CaveNode.BAND_UPPER:
-                return CaveMath.hashRange(
-                    cellX, cellZ, i + 10, seed, SALT_BAND, 46.0, 58.0);
+                return bottomY + span * CaveMath.hashRange(
+                    cellX, cellZ, i + 10, seed, SALT_BAND, 0.55, 0.95);
             case CaveNode.BAND_DEEP:
-                return CaveMath.hashRange(
-                    cellX, cellZ, i + 20, seed, SALT_BAND, 10.0, 24.0);
+                return bottomY + span * CaveMath.hashRange(
+                    cellX, cellZ, i + 20, seed, SALT_BAND, 0.05, 0.40);
             case CaveNode.BAND_MID:
             default:
-                return CaveMath.hashRange(
-                    cellX, cellZ, i + 30, seed, SALT_BAND, 24.0, 46.0);
+                if (layers <= 1) {
+                    // 1 层：整段都在上部（贴近地表）
+                    return bottomY + span * CaveMath.hashRange(
+                        cellX, cellZ, i + 30, seed, SALT_BAND, 0.40, 0.95);
+                }
+                return bottomY + span * CaveMath.hashRange(
+                    cellX, cellZ, i + 30, seed, SALT_BAND, 0.25, 0.70);
         }
     }
 
@@ -1563,14 +1622,10 @@ public final class CaveGenerator {
             && crossesMegaHall(xs, ys, zs, rs, seed)) {
             return null;
         }
-        // 路径级检查：干洞线段在盆地 / 禁干带内下探到上层带以下时拒绝。
-        // 洞厅连接除外（洞厅本身贯通深层）。
-        if (!aquifer
-            && a.kind != CaveNode.KIND_MEGA_HALL
-            && b.kind != CaveNode.KIND_MEGA_HALL
-            && dipsIntoShallowZone(xs, ys, zs, rs, seed)) {
-            return null;
-        }
+        // 干洞深度带已整体高于含水层（≥46，bandY 保证），
+        // 不再需要 dipsIntoShallowZone 的垂直避让——它会把跨单元骨干边
+        // 误伤成 null，导致网络碎片化。含水网络在 46 以下独立成层，
+        // 干洞段从构造上与暗河垂直分离，不会重叠。
         return new CaveSegment(
             edgeId,
             collapsed,
@@ -1652,68 +1707,12 @@ public final class CaveGenerator {
         return false;
     }
 
-    /**
-     * 路径级检查：干洞折线（含隧道半径）是否在盆地 / 禁干带内
-     * 下探到上层带（DRY_UPPER_MIN_Y）以下。
-     */
-    private static boolean dipsIntoShallowZone(float[] xs, float[] ys,
-                                               float[] zs, float[] rs,
-                                               long seed) {
-        for (int i = 0; i < xs.length - 1; i++) {
-            double len = Math.sqrt(
-                (xs[i + 1] - xs[i]) * (xs[i + 1] - xs[i])
-                    + (ys[i + 1] - ys[i]) * (ys[i + 1] - ys[i])
-                    + (zs[i + 1] - zs[i]) * (zs[i + 1] - zs[i]));
-            int samples = Math.max(2, (int) (len / 8.0) + 1);
-            for (int k = 0; k <= samples; k++) {
-                double t = (double) k / samples;
-                double x = xs[i] + (xs[i + 1] - xs[i]) * t;
-                double y = ys[i] + (ys[i + 1] - ys[i]) * t;
-                double z = zs[i] + (zs[i + 1] - zs[i]) * t;
-                int cellX = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
-                int cellZ = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
-                double r = rs[i] + (rs[i + 1] - rs[i]) * t;
-                for (int dz = -1; dz <= 1; dz++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        int nx = cellX + dx;
-                        int nz = cellZ + dz;
-                        if (isHallZoneCell(nx, nz, seed)) {
-                            continue;
-                        }
-                        if (!isShallowOnlyCell(nx, nz, seed)) {
-                            continue;
-                        }
-                        double cellMinX = nx * CELL_BLOCKS;
-                        double cellMaxX = cellMinX + CELL_BLOCKS;
-                        double cellMinZ = nz * CELL_BLOCKS;
-                        double cellMaxZ = cellMinZ + CELL_BLOCKS;
-                        double closestX = Math.max(
-                            cellMinX, Math.min(x, cellMaxX));
-                        double closestZ = Math.max(
-                            cellMinZ, Math.min(z, cellMaxZ));
-                        double d = Math.sqrt(
-                            (x - closestX) * (x - closestX)
-                                + (z - closestZ) * (z - closestZ));
-                        if (d <= r + 1.5
-                            && y - r - 1.5 < DRY_UPPER_MIN_Y) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     private static double baseRadius(int ka, int kb) {
         if (isAquiferKind(ka) || isAquiferKind(kb)) {
             return 6.0;
         }
         if (ka == CaveNode.KIND_MEGA_HALL || kb == CaveNode.KIND_MEGA_HALL) {
             return 10.0;
-        }
-        if (ka == CaveNode.KIND_SHAFT || kb == CaveNode.KIND_SHAFT) {
-            return 3.4;
         }
         if (ka == CaveNode.KIND_BACKBONE || kb == CaveNode.KIND_BACKBONE) {
             return 6.8;
@@ -1910,18 +1909,6 @@ public final class CaveGenerator {
             return;
         }
 
-        if (node.kind == CaveNode.KIND_SHAFT) {
-            CaveNode twin = findNodeById(node.twinId, node.cellX, node.cellZ,
-                seed, nodeCache);
-            if (twin != null) {
-                CaveSegment seg = buildSegment(node, twin, seed);
-                if (seg != null) {
-                    out.add(seg);
-                }
-            }
-            return;
-        }
-
         // 普通 / 大厅 / 入口 / 天坑 / 洞厅：连接邻域最近节点（优先跨单元）。
         // 被盆地/禁干带/洞厅避让检查拒绝的候选直接跳过并继续找下一个。
         // 洞厅是超大节点，搜索半径放宽到 4 单元；其余节点保持 2 单元，成本低。
@@ -2037,16 +2024,6 @@ public final class CaveGenerator {
                                            Map<Long, List<CaveNode>> nodeCache) {
         for (CaveNode n : nodesOf(cx, cz, seed, nodeCache)) {
             if (n.kind == CaveNode.KIND_BACKBONE) {
-                return n;
-            }
-        }
-        return null;
-    }
-
-    private static CaveNode findNodeById(long id, int cx, int cz, long seed,
-                                         Map<Long, List<CaveNode>> nodeCache) {
-        for (CaveNode n : nodesOf(cx, cz, seed, nodeCache)) {
-            if (n.id == id) {
                 return n;
             }
         }

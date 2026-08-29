@@ -49,7 +49,7 @@ public class CommandTalosCave extends CommandBase {
         if (args.length == 2 && args[0].equalsIgnoreCase("node")) {
             return getListOfStringsMatchingLastWord(args,
                 "all", "entrance", "sinkhole", "chamber", "backbone",
-                "normal", "shaft", "hall", "megahall", "aquifer",
+                "normal", "hall", "megahall", "aquifer",
                 "aquiferfull", "aquiferhalf", "aquiferdead");
         }
         return null;
@@ -169,7 +169,7 @@ public class CommandTalosCave extends CommandBase {
         double y = Math.round(surface) + 2.0;
         player.setPositionAndUpdate(e.x + 0.5, y, e.z + 0.5);
         player.addChatMessage(new ChatComponentText(String.format(
-            "[TALCAVE] 跳转到%s #%d/%d: pos=(%d,%d) 井底Y=%d 地表≈%.0f",
+            "[TALCAVE] 跳转到%s #%d/%d: pos=(%d,%d) 洞口底Y=%d 地表≈%.0f",
             e.sinkhole ? "天坑" : "入口",
             index, sorted.size(), e.x, e.z, e.y, surface
         )));
@@ -199,7 +199,7 @@ public class CommandTalosCave extends CommandBase {
         if (halls.isEmpty()) {
             player.addChatMessage(new ChatComponentText(
                 "扫描 65×65 个超级格（约 26 万格范围）未找到洞厅。"
-                    + "洞厅只在 Alpine / Polar Desert 生成，且极稀有。"
+                    + "洞厅只在高海拔群系（宏包带底 > 100）生成，且极稀有。"
             ));
             return;
         }
@@ -266,7 +266,7 @@ public class CommandTalosCave extends CommandBase {
             player.addChatMessage(new ChatComponentText(
                 "未知节点类型: " + type
                     + "（all|entrance|sinkhole|chamber|backbone|normal|"
-                    + "shaft|hall|aquifer|aquiferfull|aquiferhalf|aquiferdead）"
+                    + "hall|aquifer|aquiferfull|aquiferhalf|aquiferdead）"
             ));
             return;
         }
@@ -315,8 +315,6 @@ public class CommandTalosCave extends CommandBase {
             s.add(CaveNode.KIND_BACKBONE);
         } else if (type.equalsIgnoreCase("normal")) {
             s.add(CaveNode.KIND_NORMAL);
-        } else if (type.equalsIgnoreCase("shaft")) {
-            s.add(CaveNode.KIND_SHAFT);
         } else if (type.equalsIgnoreCase("hall")
             || type.equalsIgnoreCase("megahall")) {
             s.add(CaveNode.KIND_MEGA_HALL);
@@ -349,8 +347,6 @@ public class CommandTalosCave extends CommandBase {
                 return "入口";
             case CaveNode.KIND_SINKHOLE:
                 return "天坑";
-            case CaveNode.KIND_SHAFT:
-                return "竖井";
             case CaveNode.KIND_MEGA_HALL:
                 return "洞厅";
             case CaveNode.KIND_AQUIFER_FULL:
