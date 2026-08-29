@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.Mixins;
 
-import bartworks.common.tileentities.multis.mega.MTEMegaBlastFurnace;
+import bartworks.common.tileentities.multis.mega.MTEMegaBlastFurnaceLegacy;
 import bartworks.common.tileentities.multis.mega.MegaMultiBlockBase;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nonnull;
 
-@Mixin(value = MTEMegaBlastFurnace.class, remap = false)
-public abstract class MegaBlastFurnaceMixin extends MegaMultiBlockBase<MTEMegaBlastFurnace> implements ISurvivalConstructable {
+@Mixin(value = MTEMegaBlastFurnaceLegacy.class, remap = false)
+public abstract class MegaBlastFurnaceMixin extends MegaMultiBlockBase<MTEMegaBlastFurnaceLegacy> implements ISurvivalConstructable {
 
     protected MegaBlastFurnaceMixin(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -30,31 +30,40 @@ public abstract class MegaBlastFurnaceMixin extends MegaMultiBlockBase<MTEMegaBl
     @Inject(method = "createProcessingLogic",at = @At("HEAD"),cancellable = true)
     private void createProcessingLogic(CallbackInfoReturnable<ProcessingLogic> cir) {
         if(MainConfig.MegaBlastFurnaceEnable){
-            ProcessingLogic customLogic = new ProcessingLogic(){
-
-                @Nonnull
-                @Override
-                protected OverclockCalculator createOverclockCalculator(@Nonnull GTRecipe recipe) {
-                    return super.createOverclockCalculator(recipe).setRecipeHeat(recipe.mSpecialValue)
-                        .setMachineHeat(mHeatingCapacity)
-                        .setHeatOC(true)
-                        .enablePerfectOC()
-                        .setHeatDiscount(true);
-                }
-
-                @Override
-                protected @Nonnull CheckRecipeResult validateRecipe(@Nonnull GTRecipe recipe) {
-                    return recipe.mSpecialValue <= mHeatingCapacity
-                        ? CheckRecipeResultRegistry.SUCCESSFUL
-                        : CheckRecipeResultRegistry.insufficientHeat(recipe.mSpecialValue);
-                }
-            };
+            ProcessingLogic customLogic = new MegaBlastFurnaceLogic(this);
 
             customLogic
                 .setMaxParallelSupplier(() -> Integer.MAX_VALUE);
 
             cir.setReturnValue(customLogic);
             cir.cancel();
+        }
+    }
+
+    private static final class MegaBlastFurnaceLogic extends ProcessingLogic {
+
+        private final MegaBlastFurnaceMixin outer;
+
+        MegaBlastFurnaceLogic(MegaBlastFurnaceMixin outer) {
+            this.outer = outer;
+        }
+
+        @Nonnull
+        @Override
+        protected OverclockCalculator createOverclockCalculator(@Nonnull GTRecipe recipe) {
+            return super.createOverclockCalculator(recipe)
+                .setRecipeHeat(recipe.mSpecialValue)
+                .setMachineHeat(outer.mHeatingCapacity)
+                .setHeatOC(true)
+                .enablePerfectOC()
+                .setHeatDiscount(true);
+        }
+
+        @Override
+        protected @Nonnull CheckRecipeResult validateRecipe(@Nonnull GTRecipe recipe) {
+            return recipe.mSpecialValue <= outer.mHeatingCapacity
+                ? CheckRecipeResultRegistry.SUCCESSFUL
+                : CheckRecipeResultRegistry.insufficientHeat(recipe.mSpecialValue);
         }
     }
 }

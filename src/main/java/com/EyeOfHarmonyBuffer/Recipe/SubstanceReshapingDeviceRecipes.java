@@ -29,33 +29,22 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
 
-        /*
-          1号：只有流体输出
-          2号：只有物品输出
-          3号：物品流体输出都有
-          其他均为特殊输出
-          Value的起始值是1对应LV，往后依次+1
-         */
-
-        //橡胶
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
-                GTOreDictUnificator.get(OrePrefixes.dust,Materials.RawRubber,1),
+                GTOreDictUnificator.get(OrePrefixes.dust,Materials.RubberRaw,1),
                 GTOreDictUnificator.get(OrePrefixes.dust,Materials.Sulfur,1)
             )
             .fluidOutputs(
-                Materials.Silicone.getMolten(Integer.MAX_VALUE),
+                Materials.RubberSilicone.getMolten(Integer.MAX_VALUE),
                 Materials.StyreneButadieneRubber.getMolten(Integer.MAX_VALUE),
-                Materials.Rubber.getMolten(Integer.MAX_VALUE),
-                WerkstoffMaterialPool.PTMEGElastomer.getMolten(Integer.MAX_VALUE)
+                Materials.Rubber.getMolten(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
             .specialValue(1)
             .addTo(SubstanceReshapingDevice);
 
-        //铂
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -74,7 +63,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
-        //独居石
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -98,7 +86,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(5)
             .addTo(SubstanceReshapingDevice);
 
-        //硅
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -113,7 +100,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(2)
             .addTo(SubstanceReshapingDevice);
 
-        //钨
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -128,7 +114,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //钛
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -144,7 +129,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //氡
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -162,7 +146,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //硅岩
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
@@ -182,7 +165,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(6)
             .addTo(SubstanceReshapingDevice);
 
-        //干细胞
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
@@ -207,7 +189,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(7)
             .addTo(SubstanceReshapingDevice);
 
-        //液态空气
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1)
@@ -232,7 +213,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(3)
             .addTo(SubstanceReshapingDevice);
 
-        //海藻提取物
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(3),
@@ -243,7 +223,7 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .itemOutputs(
                 setStackSize(getModItem(GalaxySpace.ID, "tcetiedandelions", 1, 4),Integer.MAX_VALUE),
-                setStackSize(TCetiESeaweedExtract.getIS(1),Integer.MAX_VALUE)
+                setStackSize(TCetiESeaweedExtract.get(1),Integer.MAX_VALUE)
             )
             .fluidOutputs(
                 Iodine.getFluidOrGas(Integer.MAX_VALUE)
@@ -253,14 +233,13 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(8)
             .addTo(SubstanceReshapingDevice);
 
-        //各种乙烯？
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
                 GTOreDictUnificator.get(OrePrefixes.dust,Materials.Carbon,1)
             )
             .fluidOutputs(
-                Materials.Plastic.getMolten(Integer.MAX_VALUE),
+                Materials.Polycaprolactam.getMolten(Integer.MAX_VALUE),
                 Materials.PolyvinylChloride.getMolten(Integer.MAX_VALUE),
                 Materials.Polystyrene.getMolten(Integer.MAX_VALUE),
                 Materials.Polytetrafluoroethylene.getMolten(Integer.MAX_VALUE),
@@ -272,7 +251,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(4)
             .addTo(SubstanceReshapingDevice);
 
-        //QFT特殊材料
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(4)
@@ -291,7 +269,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
-        //催化剂
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1)
@@ -300,20 +277,19 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 Hydrogen.getGas(1000)
             )
             .fluidOutputs(
-                MaterialsUEVplus.ExcitedDTRC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTCC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTEC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTPC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.ExcitedDTSC.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.StargateCrystalSlurry.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.PrimordialMatter.getFluid(Integer.MAX_VALUE)
+                Materials.ExcitedDTRC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTCC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTEC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTPC.getFluid(Integer.MAX_VALUE),
+                Materials.ExcitedDTSC.getFluid(Integer.MAX_VALUE),
+                Materials.StargateCrystalSlurry.getFluid(Integer.MAX_VALUE),
+                Materials.PrimordialMatter.getFluid(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
             .specialValue(10)
             .addTo(SubstanceReshapingDevice);
 
-        //鸿蒙
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(4)
@@ -323,19 +299,18 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
                 Hydrogen.getGas(1000)
             )
             .fluidOutputs(
-                MaterialsUEVplus.BlackDwarfMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.WhiteDwarfMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.Universium.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.RawStarMatter.getFluid(Integer.MAX_VALUE),
-                MaterialsUEVplus.MagnetohydrodynamicallyConstrainedStarMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.SpaceTime.getMolten(Integer.MAX_VALUE)
+                Materials.BlackDwarfMatter.getMolten(Integer.MAX_VALUE),
+                Materials.WhiteDwarfMatter.getMolten(Integer.MAX_VALUE),
+                Materials.Universium.getMolten(Integer.MAX_VALUE),
+                Materials.RawStarMatter.getFluid(Integer.MAX_VALUE),
+                Materials.MHDCSM.getMolten(Integer.MAX_VALUE),
+                Materials.SpaceTime.getMolten(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
             .specialValue(11)
             .addTo(SubstanceReshapingDevice);
 
-        //一些奇怪的东西......
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(24),
@@ -357,7 +332,6 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             .specialValue(14)
             .addTo(SubstanceReshapingDevice);
 
-        //无尽之类的
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(1),
@@ -368,37 +342,36 @@ public class SubstanceReshapingDeviceRecipes implements IRecipePool {
             )
             .fluidOutputs(
                 Infinity.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.Eternity.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.MagMatter.getMolten(Integer.MAX_VALUE),
-                MaterialsUEVplus.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE)
+                Materials.Eternity.getMolten(Integer.MAX_VALUE),
+                Materials.MagMatter.getMolten(Integer.MAX_VALUE),
+                Materials.QuarkGluonPlasma.getFluid(Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)
             .specialValue(9)
             .addTo(SubstanceReshapingDevice);
 
-        //电路板
         GTValues.RA.stdBuilder()
             .itemInputs(
                 GTUtility.getIntegratedCircuit(2),
                 getModItem(IndustrialCraft2.ID, "itemPartCircuit",1)
             )
             .itemOutputs(
-                setStackSize(CircuitULV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitLV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitLuV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitZPM.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUHV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUEV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUIV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUMV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitUXV.getIS(1),Integer.MAX_VALUE),
-                setStackSize(CircuitMAX.getIS(1),Integer.MAX_VALUE)
+                setStackSize(CircuitULV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitHV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitEV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitIV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitLuV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitZPM.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUHV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUEV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUIV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUMV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitUXV.get(1),Integer.MAX_VALUE),
+                setStackSize(CircuitMAX.get(1),Integer.MAX_VALUE)
             )
             .eut(0)
             .duration(5 * SECONDS)

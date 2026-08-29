@@ -8,6 +8,7 @@ import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.StatCollector;
 
 import java.util.*;
 
@@ -20,8 +21,10 @@ public class ItemBlockBase01 extends ItemBlock {
     // region statics
 
     public static final Map<Integer, String[]> MetaBlockTooltipsMap01 = new HashMap<>();
-    // public static final Map<Integer, ItemStack> MetaBlockMap01 = new HashMap<>();
     public static final Set<Integer> MetaBlockSet01 = new HashSet<>();
+
+    private static final String KEY_NO_MOBS = "gt.nomobspawnsonthisblock";
+    private static final String KEY_NO_TILEENTITY = "gt.notileentityinthisblock";
 
     // endregion
     // -----------------------
@@ -51,35 +54,21 @@ public class ItemBlockBase01 extends ItemBlock {
 
     // endregion
     // -----------------------
-    // region Member Variables
-
-    public final String mNoMobsToolTip = GTLanguageManager
-        .addStringLocalization("gt.nomobspawnsonthisblock", "Mobs cannot Spawn on this Block");
-    public final String mNoTileEntityToolTip = GTLanguageManager
-        .addStringLocalization("gt.notileentityinthisblock", "This is NOT a TileEntity!");
-
-    // endregion
-    // -----------------------
     // region Overrides
 
-    /**
-     * Handle the tooltips.
-     *
-     * @param aItemStack
-     * @param theTooltipsList
-     */
     @SideOnly(Side.CLIENT)
     @Override
-    @SuppressWarnings({ "unchecked" })
-    public void addInformation(ItemStack aItemStack, EntityPlayer p_77624_2_, List theTooltipsList,
-                               boolean p_77624_4_) {
+    @SuppressWarnings("unchecked")
+    public void addInformation(ItemStack aItemStack, EntityPlayer player, List tooltip, boolean advanced) {
         int meta = aItemStack.getItemDamage();
-        if (null != MetaBlockTooltipsMap01.get(meta)) {
-            String[] tooltips = MetaBlockTooltipsMap01.get(meta);
-            theTooltipsList.addAll(Arrays.asList(tooltips));
+
+        String[] extra = MetaBlockTooltipsMap01.get(meta);
+        if (extra != null) {
+            tooltip.addAll(Arrays.asList(extra));
         }
-        theTooltipsList.add(mNoMobsToolTip);
-        theTooltipsList.add(mNoTileEntityToolTip);
+
+        tooltip.add(StatCollector.translateToLocal(KEY_NO_MOBS));
+        tooltip.add(StatCollector.translateToLocal(KEY_NO_TILEENTITY));
     }
 
     @Override

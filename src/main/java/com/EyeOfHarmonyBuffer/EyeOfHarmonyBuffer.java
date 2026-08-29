@@ -3,32 +3,65 @@ package com.EyeOfHarmonyBuffer;
 import java.io.File;
 import java.util.List;
 
-import com.EyeOfHarmonyBuffer.command.CommandReloadConfig;
-import com.EyeOfHarmonyBuffer.command.CommandShowConfigLinks;
+import com.EyeOfHarmonyBuffer.Events.OrundumLinkEventHandler;
+import com.EyeOfHarmonyBuffer.common.transition.DimensionTransitionManager;
+import com.EyeOfHarmonyBuffer.common.transition.TransitionNetwork;
+import com.EyeOfHarmonyBuffer.Loader.*;
+import com.EyeOfHarmonyBuffer.Recipe.RemoverRecipe;
+import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
+import com.EyeOfHarmonyBuffer.command.*;
+import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.TalosUndergroundFluidRegister;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
+import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityRbmkFuelChannel;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
+import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereDailyHandler;
+import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSyncHandler;
+import com.EyeOfHarmonyBuffer.common.orbitalrailgun.OrbitalRailgunNetwork;
+import com.EyeOfHarmonyBuffer.common.orbitalrailgun.OrbitalStrikeManager;
+import com.EyeOfHarmonyBuffer.common.misc.GlobalOrundumWorldSavedData;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.WirelessComputeNetwork.WirelessTickHandler;
+import com.EyeOfHarmonyBuffer.common.material.EOHBGTMaterials;
+import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.TalosOreVeinRegister;
+import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
+import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
+import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
+import com.EyeOfHarmonyBuffer.handler.ArknightsMobDropRegister;
+import com.EyeOfHarmonyBuffer.handler.CommonEventHandler;
+import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
-import com.EyeOfHarmonyBuffer.Loader.LazyStaticsInitLoader;
-import com.EyeOfHarmonyBuffer.Loader.MachineLoader;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
-import com.EyeOfHarmonyBuffer.Loader.MaterialLoader;
-import com.EyeOfHarmonyBuffer.Loader.SpaceModuleRecipeLoader;
 import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
-import com.EyeOfHarmonyBuffer.client.CommandOpenConfig;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
+import com.EyeOfHarmonyBuffer.space.talos.MountainLifecycleHandler;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainBiomeOverrideProvider;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
-import com.EyeOfHarmonyBuffer.Recipe.RecipeLoader;
+import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
 import com.EyeOfHarmonyBuffer.utils.TextHandler;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.FMLLog;
+import cpw.mods.fml.common.registry.GameRegistry;
+import gregtech.api.enums.Materials;
+import gregtech.api.util.GTUtility;
 import net.minecraft.item.ItemStack;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 
-import com.EyeOfHarmonyBuffer.Config.Config;
-
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
@@ -38,19 +71,26 @@ import org.apache.logging.log4j.Logger;
 @Mod(
     modid = EyeOfHarmonyBuffer.MODID,
     name = "EyeOfHarmonyBuffer",
-    dependencies = "required-after:gtnhintergalactic;required-after:gregtech;",
+    dependencies = "required-after:gtnhintergalactic;required-after:gregtech;after:gregtech_nh;",
     acceptedMinecraftVersions = "[1.7.10]")
 public class EyeOfHarmonyBuffer {
     public static Configuration config;
 
     public static final boolean isInDevMode = false;
 
-    public static final Logger LOG = LogManager.getLogger("EOHBuffer");
+    public static final Logger LOGGER = LogManager.getLogger("EOHBuffer");
     public static String DevResource = "";
 
     public final GemErgodic gemErgodic = new GemErgodic();
 
     public static final String MODID = "eyeofharmonybuffer";
+
+    static {
+        Materials.add(new EOHBGTMaterials());
+    }
+
+    @Mod.Instance(EyeOfHarmonyBuffer.MODID)
+    public static EyeOfHarmonyBuffer instance;
 
     @SidedProxy(clientSide = "com.EyeOfHarmonyBuffer.ClientProxy", serverSide = "com.EyeOfHarmonyBuffer.CommonProxy")
 
@@ -58,6 +98,8 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+
+        TalosRiverSystem.onPreInit(event);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
         TextHandler.initLangMap(isInDevMode);
@@ -70,12 +112,13 @@ public class EyeOfHarmonyBuffer {
             configDir.mkdirs();
         }
 
-        File mainConfigFile = new File(configDir, "main.cfg");
+        /*File mainConfigFile = new File(configDir, "main.cfg");
         File itemsConfigFile = new File(configDir, "items.cfg");
         File fluidsConfigFile = new File(configDir, "fluids.cfg");
         File MachineLoaderConfigFile = new File(configDir, "MachineLoaderConfig.cfg");
+        File FieldManagerCacheConfig = new File(configDir, "FieldManagerConfigSpec.cfg");
 
-        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile);
+        Config.init(mainConfigFile, itemsConfigFile, fluidsConfigFile, MachineLoaderConfigFile, FieldManagerCacheConfig);*/
 
         MaterialLoader.loadPreInit();
 
@@ -84,15 +127,69 @@ public class EyeOfHarmonyBuffer {
         if (event.getSide().isClient()) {
             MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
         }
+
+        ItemIntermediateProducts.initAndRegister(MODID, ItemArknightsTooltips.getTooltips());
+        BlockIntermediateResources.registerAll(MODID);
+
+        GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
+        GameRegistry.registerTileEntity(TileEntityRbmkFuelChannel.class, "tile_rbmk_fuel_channel");
+
+        TalosBiomes.init();
+        TalosSurfaceRegistry.init();
+        GTUtility.addTexturePage((byte) 30);
+        GTUtility.addTexturePage((byte) 31);
     }
 
     @Mod.EventHandler
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
         proxy.init(event);
+
+        DysonSphereNetwork.init();
+        OrbitalRailgunNetwork.init();
+        com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine.rbmk.RbmkDanceNetwork.init();
+        FMLCommonHandler.instance().bus().register(new OrbitalStrikeManager());
+
+        FMLCommonHandler.instance().bus().register(new DysonSphereSyncHandler());
+        FMLCommonHandler.instance().bus().register(new DysonSphereDailyHandler());
+
+        cpw.mods.fml.common.FMLCommonHandler.instance().bus().register(new WirelessTickHandler());
+        FMLCommonHandler.instance().bus().register(new OrundumLinkEventHandler());
+
+        // 维度转场：网络通道 + 服务端传送编排
+        TransitionNetwork.init();
+        FMLCommonHandler.instance().bus().register(DimensionTransitionManager.INSTANCE);
+
+        EntityLoader.registerEntities();
+
         MachineLoader.loadMachines();
         proxy.registerRenderers();
         proxy.registerTileEntitySpecialRenderer();
+        MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
+        // 洞穴层：世界加载 / 卸载时维护节点缓存
+        MinecraftForge.EVENT_BUS.register(new CaveLifecycleHandler());
+        // 山地层：WorldEvent 走 Forge 总线，WorldTickEvent 走 FML 总线
+        MinecraftForge.EVENT_BUS.register(new MountainLifecycleHandler());
+        FMLCommonHandler.instance().bus().register(new MountainLifecycleHandler());
+        // 群系覆盖钩子（依赖倒置：气候层只认接口，实现由组合根注册）
+        TalosMacroClimate.setBiomeOverrideProvider(
+            new MountainBiomeOverrideProvider()
+        );
+
+        ExampleQuestRegistration.registerAll();
+
+        RegisterDimensions.init();
+
+        // 雾效处理器引用客户端类（EntityViewRenderEvent），只能在客户端注册
+        if (event.getSide().isClient()) {
+            MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
+        }
+        MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
+        MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
+        MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
+        ArknightsMobDropRegister.registerDrops();
+
+        EOHBMachineBlocks.registerCasings();
     }
 
     @Mod.EventHandler
@@ -101,15 +198,24 @@ public class EyeOfHarmonyBuffer {
         proxy.postInit(event);
         TextHandler.initLangMap(isInDevMode);
 
+        TalosOreVeinRegister.register();
+
+        EOHBFluidBlockRegistry.registerFluidBlocks();
+    }
+
+    @Mod.EventHandler
+    // 在所有 mod 的 postInit 完成之后加载配方，确保依赖其他 mod 后期注册的物品（如 BartWorks 的 Wrap）已就绪
+    public void loadComplete(FMLLoadCompleteEvent event) {
         RecipeLoader.loadRecipes();
         RecipeLoader.registerRecipes();
         AssemblyLineRecipesLoad.RecipeLoad();
-
         new SpaceModuleRecipeLoader().run();
+        RemoverRecipe.run();
     }
 
     @Mod.EventHandler
     public void completeInit(FMLServerStartingEvent event) {
+        TalosUndergroundFluidRegister.register();
         new LazyStaticsInitLoader().initStaticsOnCompleteInit();
     }
 
@@ -125,8 +231,25 @@ public class EyeOfHarmonyBuffer {
         RecipeLoader.loadRecipesLate();
 
         event.registerServerCommand(new CommandReloadConfig());
+        event.registerServerCommand(new CommandWarp());
+        event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
-        event.registerServerCommand(new CommandOpenConfig());
+        event.registerServerCommand(new CommandTalosRiverNearest());
+        event.registerServerCommand(new CommandTalosHere());
+        event.registerServerCommand(new CommandReactorVideo());
+        event.registerServerCommand(new CommandGasEnvironment());
+        event.registerServerCommand(new CommandComputeDebug());
+        event.registerServerCommand(new CommandDysonSphere());
+        event.registerServerCommand(new CommandTalosSuperCenter());
+        event.registerServerCommand(new CommandTalosRiverSource());
+        event.registerServerCommand(new CommandTalosRiverMouth());
+        event.registerServerCommand(new CommandTalosRiverConfluence());
+        event.registerServerCommand(new CommandTalosRiverBody());
+        event.registerServerCommand(new CommandTalosContinent());
+        event.registerServerCommand(new CommandTalosBiome());
+        event.registerServerCommand(new CommandTalosBoundary());
+        event.registerServerCommand(new CommandTalosMountain());
+        event.registerServerCommand(new CommandTalosCave());
     }
 
     @Mod.EventHandler

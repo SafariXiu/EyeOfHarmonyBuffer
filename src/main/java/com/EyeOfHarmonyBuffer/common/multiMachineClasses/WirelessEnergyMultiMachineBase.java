@@ -3,12 +3,12 @@ package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
-import gregtech.api.util.GTUtility;
 import gregtech.api.util.OverclockCalculator;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -27,7 +27,6 @@ import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.Utils.NEGATIVE_ONE;
 import static com.EyeOfHarmonyBuffer.utils.Utils.mergeArray;
-import static com.Nxer.TwistSpaceTechnology.config.Config.DefaultCycleNum_WirelessEnergyMultiMachineBase;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
 public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMultiMachineBase<T>>
@@ -59,7 +58,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     @Override
     public void loadNBTData(NBTTagCompound aNBT) {
         super.loadNBTData(aNBT);
-        wirelessMode = aNBT.getBoolean("wirelessMode");
+        this.wirelessMode = aNBT.getBoolean("wirelessMode");
     }
 
     @Override
@@ -69,8 +68,11 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     }
 
     public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
-        IWailaConfigHandler config) {
+                             IWailaConfigHandler config) {
         super.getWailaBody(itemStack, currentTip, accessor, config);
+        if (!shouldShowEuWirelessHud()) {
+            return;
+        }
         final NBTTagCompound tag = accessor.getNBTData();
         if (tag.getBoolean("wirelessMode")) {
             currentTip.add(EnumChatFormatting.LIGHT_PURPLE + TextLocalization.Waila_WirelessMode);
@@ -85,9 +87,13 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
         }
     }
 
+    protected boolean shouldShowEuWirelessHud() {
+        return true;
+    }
+
     @Override
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
-        int z) {
+                                int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
         final IGregTechTileEntity tileEntity = getBaseMetaTileEntity();
         if (tileEntity != null) {
@@ -143,7 +149,10 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
         boolean succeeded = false;
         CheckRecipeResult finalResult = CheckRecipeResultRegistry.SUCCESSFUL;
-        for (int i = 0; i < cycleNum; i++) {
+
+        int cycles = getWirelessCycleNum();
+
+        for (int i = 0; i < cycles; i++) {
             CheckRecipeResult r = wirelessModeProcessOnce();
             if (!r.wasSuccessful()) {
                 finalResult = r;
@@ -154,7 +163,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
         updateSlots();
         if (!succeeded) return finalResult;
-        costingEUText = GTUtility.formatNumbers(costingEU);
+        costingEUText = NumberFormatUtil.formatNumber(costingEU);
 
         mEfficiency = 10000;
         mEfficiencyIncrease = 10000;
@@ -194,6 +203,15 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
         return result;
     }
 
+    protected int getWirelessCycleNum() {
+        return Math.max(1, cycleNum);
+    }
+
+    protected void setWirelessCycleNum(int wirelessCycleNum) {
+        this.cycleNum = Math.max(1, wirelessCycleNum);
+    }
+
+
     protected void prepareProcessing() {}
 
     protected void setupWirelessProcessingPowerLogic(ProcessingLogic logic) {
@@ -210,7 +228,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     public abstract int getWirelessModeProcessingTime();
 
     public boolean getDefaultWirelessMode() {
-        return false;
+        return true;
     }
 
 }

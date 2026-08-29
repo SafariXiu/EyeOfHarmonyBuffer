@@ -22,13 +22,13 @@ public class SpaceAssemblerRecipes implements IRecipePool {
                 GTValues.RA.stdBuilder()
                     .itemInputs(
                         getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Singularity", 1),
-                        GTOreDictUnificator.get(OrePrefixes.plateDense, MaterialsUEVplus.TranscendentMetal, 64L),
+                        GTOreDictUnificator.get(OrePrefixes.plateDense, Materials.TranscendentMetal, 64L),
                         ItemList.Field_Generator_UXV.get(1L),
                         ItemList.ZPM6.get(1L),
                         new ItemStack(TTCasingsContainer.SpacetimeCompressionFieldGenerators, 4, 8),
                         GTOreDictUnificator.get(OrePrefixes.circuit, Materials.UXV, 4),
-                        MaterialsUEVplus.Eternity.getNanite(4))
-                    .fluidInputs(MaterialsUEVplus.Eternity.getMolten(36864))
+                        Materials.Eternity.getNanite(4))
+                    .fluidInputs(Materials.Eternity.getMolten(36864))
                     .itemOutputs(
                         getModItem(AppliedEnergistics2.ID, "item.ItemExtremeStorageCell.Universe", 1))
                     .specialValue(3)

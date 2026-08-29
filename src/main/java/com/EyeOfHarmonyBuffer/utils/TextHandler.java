@@ -45,9 +45,9 @@ public class TextHandler {
 
             File en_US_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\eyeofharmonybuffer\\lang\\en_US.lang");
             File zh_CN_lang = new File(EyeOfHarmonyBuffer.DevResource + "\\assets\\eyeofharmonybuffer\\lang\\zh_CN.lang");
-            EyeOfHarmonyBuffer.LOG.info("File finder with en_US.lang catch a file absolutePath: " + en_US_lang.getAbsolutePath());
-            EyeOfHarmonyBuffer.LOG.info("File finder with en_US.lang catch a file named: " + en_US_lang.getName());
-            EyeOfHarmonyBuffer.LOG.info("Start write new text: " + en_US_lang.getAbsolutePath());
+            EyeOfHarmonyBuffer.LOGGER.info("File finder with en_US.lang catch a file absolutePath: " + en_US_lang.getAbsolutePath());
+            EyeOfHarmonyBuffer.LOGGER.info("File finder with en_US.lang catch a file named: " + en_US_lang.getName());
+            EyeOfHarmonyBuffer.LOGGER.info("Start write new text: " + en_US_lang.getAbsolutePath());
 
             try {
                 FileWriter en_Us = new FileWriter(en_US_lang, true);
@@ -56,29 +56,29 @@ public class TextHandler {
 
                 while(true) {
                     if (!var5.hasNext()) {
-                        EyeOfHarmonyBuffer.LOG.info("Finish to write new text: " + en_US_lang.getAbsolutePath());
+                        EyeOfHarmonyBuffer.LOGGER.info("Finish to write new text: " + en_US_lang.getAbsolutePath());
                         en_Us.close();
                         zh_CN.close();
                         break;
                     }
 
                     String key = (String)var5.next();
-                    EyeOfHarmonyBuffer.LOG.info("en_US write a Line START: " + key + "===>" + (String)LangMapNeedToWrite.get(key));
+                    EyeOfHarmonyBuffer.LOGGER.info("en_US write a Line START: " + key + "===>" + (String)LangMapNeedToWrite.get(key));
                     en_Us.write(key);
                     en_Us.write("=");
                     en_Us.write((String)LangMapNeedToWrite.get(key));
                     en_Us.write("\n");
-                    EyeOfHarmonyBuffer.LOG.info("en_US write a Line COMPLETE.");
-                    EyeOfHarmonyBuffer.LOG.info("zh_CN write a Line START: " + key + "===>" + (String)LangMapNeedToWrite.get(key));
+                    EyeOfHarmonyBuffer.LOGGER.info("en_US write a Line COMPLETE.");
+                    EyeOfHarmonyBuffer.LOGGER.info("zh_CN write a Line START: " + key + "===>" + (String)LangMapNeedToWrite.get(key));
                     zh_CN.write(key);
                     zh_CN.write("=");
                     zh_CN.write((String)LangMapNeedToWrite.get(key));
                     zh_CN.write("\n");
-                    EyeOfHarmonyBuffer.LOG.info("zh_CN write a Line COMPLETE.");
+                    EyeOfHarmonyBuffer.LOGGER.info("zh_CN write a Line COMPLETE.");
                 }
             } catch (IOException var7) {
                 IOException e = var7;
-                EyeOfHarmonyBuffer.LOG.info("Error in serializeLangMap() File Writer en_US");
+                EyeOfHarmonyBuffer.LOGGER.info("Error in serializeLangMap() File Writer en_US");
                 throw new RuntimeException(e);
             }
 

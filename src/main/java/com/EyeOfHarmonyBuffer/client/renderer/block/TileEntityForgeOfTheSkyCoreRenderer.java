@@ -1,0 +1,282 @@
+package com.EyeOfHarmonyBuffer.client.renderer.block;
+
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSkyCore;
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_Interlayer;
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_OuterRace;
+import com.EyeOfHarmonyBuffer.client.model.ForgeOfTheSky_OutermostCircle;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
+import org.lwjgl.opengl.GL11;
+
+public class TileEntityForgeOfTheSkyCoreRenderer extends TileEntitySpecialRenderer {
+
+    private final ResourceLocation Coretexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_Ceore.png");
+    private final ForgeOfTheSkyCore Core = new ForgeOfTheSkyCore();
+
+    private final ResourceLocation InterlayerTexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_Interlayer.png");
+    private final ForgeOfTheSky_Interlayer Interlayer = new ForgeOfTheSky_Interlayer();
+
+    private final ResourceLocation OuterRaceTexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_OuterRace.png");
+    private final ForgeOfTheSky_OuterRace OuterRace = new ForgeOfTheSky_OuterRace();
+
+    private final ResourceLocation OuterMostTexture =
+        new ResourceLocation("eyeofharmonybuffer:textures/models/ForgeOfTheSky_OuterMost.png");
+    private final ForgeOfTheSky_OutermostCircle OuterMost = new ForgeOfTheSky_OutermostCircle();
+
+    @Override
+    public void renderTileEntityAt(TileEntity te,
+                                   double x,
+                                   double y,
+                                   double z,
+                                   float partialTicks) {
+
+        renderCore(te, x, y, z, partialTicks);
+        renderInterlayer(te, x, y, z, partialTicks);
+        renderOuterRace(te, x, y, z, partialTicks);
+        renderOuterMost(te, x, y, z, partialTicks);
+    }
+
+    private void renderCore(TileEntity te,
+                            double x,
+                            double y,
+                            double z,
+                            float partialTicks) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(x + 0.80D, y - 0.7D, z + 0.88D);
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+        GL11.glScalef(0.5F, 0.85F, 0.5F);
+
+        this.bindTexture(Coretexture);
+        Core.render(null, 0, 0, 0, 0, 0, 0.0625F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+
+    private void renderInterlayer(TileEntity te,
+                                  double x,
+                                  double y,
+                                  double z,
+                                  float partialTicks) {
+        renderSingleInterlayer(x - 0.5D, y - 0.0D, z + 2.0D, -90.0F);
+
+        renderSingleInterlayer(x + 1.5D, y - 0.0D, z - 1.0D, 90.0F);
+    }
+
+    private void renderSingleInterlayer(double tx,
+                                        double ty,
+                                        double tz,
+                                        float rotY) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(tx, ty, tz);
+
+        GL11.glRotatef(rotY, 0.0F, 1.0F, 0.0F);
+
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+
+        GL11.glScalef(0.25F, 0.25F, 0.25F);
+
+        this.bindTexture(InterlayerTexture);
+        Interlayer.render(null, 0, 0, 0, 0, 0, 0.0625F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+
+    private void renderOuterRace(TileEntity te,
+                                 double x,
+                                 double y,
+                                 double z,
+                                 float partialTicks) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(x + 2.5D - 0.1D, y + 0.15D, z + 3.1D);
+
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+
+        GL11.glScalef(0.7F, 0.6F, 0.7F);
+
+        this.bindTexture(OuterRaceTexture);
+        OuterRace.render(null, 0, 0, 0, 0, 0, 0.0625F);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+
+    private void renderOuterMost(TileEntity te,
+                                 double x,
+                                 double y,
+                                 double z,
+                                 float partialTicks) {
+        GL11.glPushMatrix();
+
+        boolean lightingEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
+        boolean lightmapEnabled;
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        GL11.glTranslated(x + 0.5D, y - 0.10D, z + 0.5D);
+        GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
+        GL11.glScalef(0.8F, 0.8F, 0.8F);
+
+        World world = te.getWorldObj();
+
+        this.bindTexture(OuterMostTexture);
+
+        float modelScale = 0.0625F;
+
+        if (world != null) {
+            final float moveTicks   = 200.0F;
+
+            final float shrinkTicks = 60.0F;
+            final float growTicks   = 60.0F;
+            final float cycleTicks  = moveTicks + shrinkTicks + growTicks;
+
+            final float shrinkAmountBlocks = -10.0F;
+
+            long total = world.getTotalWorldTime();
+            long wrapped = total % 1_000_000L;
+            float time = wrapped + partialTicks;
+
+            float tInCycle = time % cycleTicks;
+
+            float cycleIndexInCircle = (float) Math.floor(time / cycleTicks) % 4.0F;
+
+            float phaseAngle;
+            if (tInCycle < moveTicks) {
+                float k = tInCycle / moveTicks;
+                phaseAngle = 90.0F * k;
+            } else {
+                phaseAngle = 90.0F;
+            }
+
+            float globalAngleOffset = cycleIndexInCircle * 90.0F + phaseAngle;
+
+            globalAngleOffset = globalAngleOffset % 360.0F;
+            if (globalAngleOffset < 0.0F) {
+                globalAngleOffset += 360.0F;
+            }
+
+            float radiusOffset;
+            if (tInCycle < moveTicks) {
+                radiusOffset = 0.0F;
+            } else if (tInCycle < moveTicks + shrinkTicks) {
+                float k = (tInCycle - moveTicks) / shrinkTicks;
+                radiusOffset = shrinkAmountBlocks * modelScale * k;
+            } else {
+                float k = (tInCycle - moveTicks - shrinkTicks) / growTicks;
+                radiusOffset = shrinkAmountBlocks * modelScale * (1.0F - k);
+            }
+
+            OuterMost.renderAnimated(modelScale, globalAngleOffset, radiusOffset);
+        } else {
+            OuterMost.render(null, 0, 0, 0, 0, 0, modelScale);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        if (lightmapEnabled) {
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+        }
+
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+
+        if (lightingEnabled) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+        } else {
+            GL11.glDisable(GL11.GL_LIGHTING);
+        }
+
+        GL11.glPopMatrix();
+    }
+}

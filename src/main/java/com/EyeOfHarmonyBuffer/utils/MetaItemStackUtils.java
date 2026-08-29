@@ -32,7 +32,7 @@ public class MetaItemStackUtils {
 
     public static void metaItemStackTooltipsAdd(Map<Integer, String[]> tooltipsMap, int meta, String[] tooltips) {
         if (tooltipsMap.containsKey(meta)) {
-            EyeOfHarmonyBuffer.LOG.info("failed to Replace a tooltips:" + tooltips[0] + " ...");
+            EyeOfHarmonyBuffer.LOGGER.info("failed to Replace a tooltips:" + tooltips[0] + " ...");
             return;
         }
         tooltipsMap.put(meta, tooltips);

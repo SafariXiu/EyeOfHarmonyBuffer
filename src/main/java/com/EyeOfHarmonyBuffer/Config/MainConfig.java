@@ -120,6 +120,42 @@ public class MainConfig {
     public static boolean MegaIndustrialApiaryOutPutEnable = false;
     public static int MegaIndustrialApiaryOutPut = 10;
 
+    // ===== 轨道炮 =====
+    public static boolean OrbitalRailgunEnable = true;
+    public static double OrbitalRailgunRange = 300;
+    public static int OrbitalRailgunRadius = 24;
+    public static int OrbitalRailgunBlocksPerTick = 8192;
+    public static double OrbitalRailgunDamage = 100000;
+    public static int OrbitalRailgunCooldownTicks = 100;
+    public static int OrbitalRailgunWarmupTicks = 20;
+    public static boolean OrbitalRailgunSuckEnabled = true;
+    public static boolean OrbitalRailgunAllowUnbreakable = true;
+    public static boolean OrbitalRailgunDropBlocks = false;
+    public static boolean OrbitalRailgunPostProcessEnable = true;
+    public static double OrbitalRailgunStrikePassScale = 1.0;
+    public static String OrbitalRailgunOruCost = "10B";
+
+    // ===== 维度转场（塔罗斯2 -> 主世界，忠实移植 Nostalgia / GUN2RAS 相位时序，CC0-1.0，见 LICENSE-nostalgia.txt）=====
+    public static boolean DimensionTransitionEnable = true;
+    public static int DimensionTransitionSourceDimension = 14001;
+    public static int DimensionTransitionTargetDimension = 0;
+    /** phase 1 时长（毫秒）：转场开始到白化壳扩张（源库等全息缓存 ready，我们无全息 → 固定时长）。 */
+    public static double DimensionTransitionPhase1Ms = 1500;
+    /** phase 2 时长（毫秒）：白化壳扩张（whiteRadius 50格/s）。源库 4500。 */
+    public static double DimensionTransitionPhase2Ms = 4500;
+    /** phase 3 时长（毫秒）：白幕揭开（alphaRadius 1.5→300 三秒）+ 剩余等待。源库 4500。 */
+    public static double DimensionTransitionPhase3Ms = 4500;
+    /** 传送前白幕覆盖时长（毫秒）：phase 3 最后这段时间全屏（含 HUD/UI）白色糊住。 */
+    public static double DimensionTransitionCoverMs = 2000;
+    /** 白幕渐入时长（毫秒）：覆盖开始时 0→1 的过渡。 */
+    public static double DimensionTransitionCoverFadeInMs = 500;
+    /** 天空撕裂 v2 开关：phase2 起在天空平面播放裂缝破碎动画（移植自 Nostalgia portal_sky_rip_v2）。 */
+    public static boolean DimensionTransitionSkyRipEnable = true;
+    /** 天空撕裂 v2 裂缝平面：相对玩家位置的高度（玩家Y 上方，源库 beacon+90 语义）。 */
+    public static double DimensionTransitionSkyRipCrackPlaneY = 90;
+    /** 天空撕裂 v2 pass 渲染分辨率比例（1.0=全分辨率，0.5=半分辨率）。裂缝/碎片/16层洞开销大，半分辨率性能明显更好。 */
+    public static double DimensionTransitionSkyRipPassScale = 0.5;
+
     private static Configuration config;
 
     static {
@@ -599,6 +635,102 @@ public class MainConfig {
         Grade1WaterPurificationEnabled = config
             .get("净化水产线机器","1级水",Grade1WaterPurificationEnabled,"开启后1级水机器的过滤器永不损坏")
             .getBoolean(Grade1WaterPurificationEnabled);
+
+        OrbitalRailgunEnable = config
+            .get("轨道炮", "启用轨道炮", OrbitalRailgunEnable, "总开关，关闭后轨道炮物品无法开火")
+            .getBoolean(OrbitalRailgunEnable);
+
+        OrbitalRailgunRange = config
+            .get("轨道炮", "最大射程", OrbitalRailgunRange, "瞄准锁定最大距离（格），客户端与服务端共用")
+            .getDouble(OrbitalRailgunRange);
+
+        OrbitalRailgunRadius = config
+            .get("轨道炮", "打击半径", OrbitalRailgunRadius, "清空范围半径（格），默认24")
+            .getInt(OrbitalRailgunRadius);
+
+        OrbitalRailgunBlocksPerTick = config
+            .get("轨道炮", "每tick清除方块数", OrbitalRailgunBlocksPerTick, "清空方块时每tick处理的方块上限，防止卡服，越大清得越快")
+            .getInt(OrbitalRailgunBlocksPerTick);
+
+        OrbitalRailgunDamage = config
+            .get("轨道炮", "打击伤害", OrbitalRailgunDamage, "爆炸时对范围内实体造成的伤害")
+            .getDouble(OrbitalRailgunDamage);
+
+        OrbitalRailgunCooldownTicks = config
+            .get("轨道炮", "开火冷却(tick)", OrbitalRailgunCooldownTicks, "两次开火之间的冷却时间")
+            .getInt(OrbitalRailgunCooldownTicks);
+
+        OrbitalRailgunWarmupTicks = config
+            .get("轨道炮", "充能时间(tick)", OrbitalRailgunWarmupTicks, "按住右键需要充能多久才能开火")
+            .getInt(OrbitalRailgunWarmupTicks);
+
+        OrbitalRailgunSuckEnabled = config
+            .get("轨道炮", "爆炸前吸引实体", OrbitalRailgunSuckEnabled, "爆炸前数秒将范围内实体吸向目标点")
+            .getBoolean(OrbitalRailgunSuckEnabled);
+
+        OrbitalRailgunAllowUnbreakable = config
+            .get("轨道炮", "清除不可破坏方块", OrbitalRailgunAllowUnbreakable, "允许清除硬度小于0的方块（如基岩）")
+            .getBoolean(OrbitalRailgunAllowUnbreakable);
+
+        OrbitalRailgunDropBlocks = config
+            .get("轨道炮", "掉落方块", OrbitalRailgunDropBlocks, "清空方块时是否掉落方块本身（开启会带来大量掉落物，默认关闭）")
+            .getBoolean(OrbitalRailgunDropBlocks);
+
+        OrbitalRailgunPostProcessEnable = config
+            .get("轨道炮", "后处理特效", OrbitalRailgunPostProcessEnable, "爆炸后的全屏色差等后处理特效开关（关闭后仅保留几何特效）")
+            .getBoolean(OrbitalRailgunPostProcessEnable);
+
+        OrbitalRailgunStrikePassScale = config
+            .get("轨道炮", "打击pass分辨率比例", OrbitalRailgunStrikePassScale, "strike.fsh 光线步进 pass 的渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿时可调低")
+            .getDouble(OrbitalRailgunStrikePassScale);
+
+        OrbitalRailgunOruCost = config
+            .get("轨道炮", "单次打击ORU消耗", OrbitalRailgunOruCost, "每次轨道打击消耗的 Orundum 能量（按队伍扣除），支持 K/M/B/G/T/P/E 后缀，默认 10B（100亿）")
+            .getString();
+
+        DimensionTransitionEnable = config
+            .get("维度转场", "启用维度转场", DimensionTransitionEnable, "总开关：塔罗斯2传送到其他维度时播放转场特效")
+            .getBoolean(DimensionTransitionEnable);
+
+        DimensionTransitionSourceDimension = config
+            .get("维度转场", "源维度", DimensionTransitionSourceDimension, "只有在该维度内才能触发转场（塔罗斯2 = 14001）")
+            .getInt(DimensionTransitionSourceDimension);
+
+        DimensionTransitionTargetDimension = config
+            .get("维度转场", "目标维度", DimensionTransitionTargetDimension, "转场目标维度（主世界 = 0，后续可改为自定义世界）")
+            .getInt(DimensionTransitionTargetDimension);
+
+        DimensionTransitionPhase1Ms = config
+            .get("维度转场", "phase1时长(ms)", DimensionTransitionPhase1Ms, "phase 1 时长：转场开始到白化壳扩张（源库等全息缓存 ready，我们固定时长）")
+            .getDouble(DimensionTransitionPhase1Ms);
+
+        DimensionTransitionPhase2Ms = config
+            .get("维度转场", "phase2时长(ms)", DimensionTransitionPhase2Ms, "phase 2 时长：白化壳扩张（whiteRadius 50格/s），源库 4500")
+            .getDouble(DimensionTransitionPhase2Ms);
+
+        DimensionTransitionPhase3Ms = config
+            .get("维度转场", "phase3时长(ms)", DimensionTransitionPhase3Ms, "phase 3 时长：白幕揭开（alphaRadius 1.5→300 三秒）+ 剩余等待，源库 4500")
+            .getDouble(DimensionTransitionPhase3Ms);
+
+        DimensionTransitionCoverMs = config
+            .get("维度转场", "传送前白幕覆盖时长(ms)", DimensionTransitionCoverMs, "phase 3 最后这段时间全屏（含 HUD/UI）白色糊住，遮盖换维瞬间")
+            .getDouble(DimensionTransitionCoverMs);
+
+        DimensionTransitionCoverFadeInMs = config
+            .get("维度转场", "白幕渐入时长(ms)", DimensionTransitionCoverFadeInMs, "覆盖开始时白幕 0→1 的过渡时长")
+            .getDouble(DimensionTransitionCoverFadeInMs);
+
+        DimensionTransitionSkyRipEnable = config
+            .get("维度转场", "天空撕裂v2", DimensionTransitionSkyRipEnable, "phase2 起在天空平面播放裂缝破碎动画（移植自 Nostalgia portal_sky_rip_v2）")
+            .getBoolean(DimensionTransitionSkyRipEnable);
+
+        DimensionTransitionSkyRipCrackPlaneY = config
+            .get("维度转场", "撕裂平面相对高度", DimensionTransitionSkyRipCrackPlaneY, "天空撕裂 v2 裂缝平面相对玩家位置的高度（玩家Y上方，源库 beacon+90 语义）")
+            .getDouble(DimensionTransitionSkyRipCrackPlaneY);
+
+        DimensionTransitionSkyRipPassScale = config
+            .get("维度转场", "撕裂pass分辨率比例", DimensionTransitionSkyRipPassScale, "天空撕裂 v2 pass 渲染分辨率比例（1.0=全分辨率，0.5=半分辨率），画面卡顿可调低")
+            .getDouble(DimensionTransitionSkyRipPassScale);
 
         if (config.hasChanged()) {
             config.save();

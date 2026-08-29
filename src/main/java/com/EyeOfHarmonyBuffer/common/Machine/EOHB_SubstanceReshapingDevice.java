@@ -19,6 +19,7 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
@@ -30,6 +31,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+
+import java.util.List;
 
 import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabilizationRingCasingsUpgrade;
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
@@ -64,12 +67,23 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        if(isSubstanceReshapingDeviceEnabled()){
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+
+        boolean ok;
+
+        if (isSubstanceReshapingDeviceEnabled()) {
             totalSpeedIncrement = Integer.MAX_VALUE;
-            return checkPiece(STRUCTURE_PIECE_MAIN, 4, 4, 0);
+            ok = checkPiece(STRUCTURE_PIECE_MAIN, 4, 4, 0, errors);
+        } else {
+            ok = checkPiece(STRUCTURE_PIECE_MAIN, 19, 19, 0, errors);
         }
-        return checkPiece(STRUCTURE_PIECE_MAIN, 19, 19, 0);
+
+        if (!ok) return;
+
+        checkHasAnyInput(errors);
+        checkHasAnyOutput(errors);
     }
 
     @Override
@@ -211,7 +225,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                         buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
                             .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
                             .casingIndex(DIM_INJECTION_CASING)
-                            .dot(1)
+                            .hint(1)
                             .buildAndChain(
                                 ofBlock(sBlockCasings1, 13)
                             )
@@ -244,7 +258,7 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
                         buildHatchAdder(EOHB_SubstanceReshapingDevice.class)
                             .atLeast(InputBus, OutputBus, InputHatch, OutputHatch)
                             .casingIndex(getCasingTextureIndex())
-                            .dot(1)
+                            .hint(1)
                             .buildAndChain(
                                 ofBlock(ModBlocks.blockCasings2Misc,4)
                             )
@@ -279,10 +293,10 @@ public class EOHB_SubstanceReshapingDevice extends WirelessEnergyMultiMachineBas
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addInputBus(add_InputBus)
-            .addInputHatch(add_inputHatch)
-            .addOutputBus(add_OutputBus)
-            .addOutputHatch(add_outputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }

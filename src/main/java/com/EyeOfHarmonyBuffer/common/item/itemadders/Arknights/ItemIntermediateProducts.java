@@ -1,0 +1,203 @@
+package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
+
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import cpw.mods.fml.common.registry.GameRegistry;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+
+import java.lang.reflect.Field;
+import java.util.Map;
+
+import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
+
+public class ItemIntermediateProducts {
+
+    public static Item ChunJingYuanShiFenMo;
+    public static Item DiChunYuanShiFenMo;
+    public static Item YuanShiJingHe;
+    public static Item HanZaYuanShiFenMo;
+    public static Item ChiTongKuang;
+    public static Item GanShiZhongZi;
+    public static Item JinCaoZhongZi;
+    public static Item QiaoHuaZhongZi;
+    public static Item ShaYeZhongZi;
+    public static Item TongHuaShuZhong;
+    public static Item YaZhenZhongZi;
+    public static Item ZhiMiJingTiFenMo;
+    public static Item ZhiMiYuanShiFenMo;
+    public static Item ZhiMiTanFenMo;
+    public static Item ZhiMiLanTieFenMo;
+    public static Item GaoJingFenMo;
+    public static Item GanShiFenMo;
+    public static Item YaZhenFenMo;
+    public static Item QiaoHuaFenMo;
+    public static Item JinCaoFenMo;
+    public static Item GangZhiLingJian;
+    public static Item GaoJingLingJian;
+    public static Item ZiJingLingJian;
+    public static Item TieZhiLingJian;
+    public static Item GangZhiPing;
+    public static Item GaoJingZhiPing;
+    public static Item ZiJingZhiPing;
+    public static Item LanTiePing;
+    public static Item XiMoGanShiFenMo;
+    public static Item XiMoQiaoHuaFenMo;
+    public static Item XieYiYuanShi;
+    public static Item ChiTongFenMo;
+    public static Item ChiTongKuai;
+    public static Item ChiTongLingJian;
+    public static Item ChiTongPing;
+    public static Item HeTongKuai;
+    public static Item HeTongLingJian;
+    public static Item HeTongPing;
+    public static Item RangJing;
+    public static Item ZhongRongWuLingDianChi;
+    public static Item ZhongXiRang;
+    public static Item FuelRod_empty1;
+    public static Item FuelRod_empty2;
+    public static Item FuelRod_empty4;
+    public static Item OrundumPowder;
+    public static Item OrundumSlag;
+    public static Item YuanShiTongWeiSu_Alpha;
+    public static Item ZhuoTongKuai;
+    public static Item ZhuoTongLingJian;
+    public static Item ChiTongNaiYaPing;
+    public static Item ShuRangYi;
+    public static Item ShuRangYi_KuoRongYiXing;
+    public static Item ShuRangYi_KuoRongErXing;
+    public static Item FenLiXin;
+    public static Item ZiJingZhuangBeiYuanJian;
+    public static Item LanTieZhuangBeiYuanJian;
+    public static Item GaoJingZhuangBeiYuanJian;
+    public static Item XiRangZhuangBeiYuanJian;
+    public static Item ChiTongZhuangBeiYuanJian;
+    public static Item HeTongZhuangBeiYuanJian;
+    public static Item ZhuoTongZhuangBeiYuanJian;
+    public static Item LongGu;
+    public static Item Tan;
+    public static Item TanSu;
+    public static Item TanSuZu;
+    public static Item JiChuJiaGuJianCai;
+    public static Item JinJieJiaGuJianCai;
+    public static Item GaoJiJiaGuJianCai;
+    public static Item YuanShiSuiPian;
+    public static Item ChiJin;
+    public static Item JiQiaoGaiYao_Juan1;
+    public static Item JiQiaoGaiYao_Juan2;
+    public static Item JiQiaoGaiYao_Juan3;
+    public static Item NiuZhuanChun;
+    public static Item BaiMaChun;
+    public static Item ShuangJiNaMiPian;
+    public static Item PoSunZhuangZhi;
+    public static Item ZhuangZhi;
+    public static Item QuanXinZhuangZhi;
+    public static Item GaiLiangZhuangZhi;
+    public static Item HuaHeQieXiaoYe;
+    public static Item DianJiDanYuan;
+    public static Item JuNengDongLiDanYuan;
+    public static Item D32Gang;
+    public static Item ZhongXiangWeiDuiYingTi;
+    public static Item YuanYan;
+    public static Item GuYuanYan;
+    public static Item GuYuanYanZu;
+    public static Item TiChunYuanYan;
+    public static Item HuanTingJuZhi;
+    public static Item HuanTingYuZhiTi;
+    public static Item ChiHeJin;
+    public static Item ChiHeJinKuai;
+    public static Item YiTieSuiPian;
+    public static Item YiTie;
+    public static Item YiTieZu;
+    public static Item YiTieKuai;
+    public static Item LeiNingJieHe;
+    public static Item ShuangTong;
+    public static Item TongNingJi;
+    public static Item TongNingJiZu;
+    public static Item TongZhenLie;
+    public static Item QingMengKuang;
+    public static Item SanShuiMengKuang;
+    public static Item JingTiYuanJian;
+    public static Item JingTiDianLu;
+    public static Item JingTiDianZiDanYuan;
+    public static Item YanMoShi;
+    public static Item WuShuiYanMoShi;
+    public static Item NingJiao;
+    public static Item JuHeNingJiao;
+    public static Item QieXiaoYuanYe;
+    public static Item JuHeJi;
+    public static Item ShouXingQuGuangTi;
+    public static Item RMA70_12;
+    public static Item RMA70_24;
+    public static Item JingLianRongJi;
+    public static Item ZhiYuanLiao;
+    public static Item JuSuanZhi;
+    public static Item JuSuanZhiZu;
+    public static Item JuSuanZhiKuai;
+    public static Item ShaoJieHeNingJing;
+    public static Item BanZiRanRongJi;
+    public static Item DaiTang;
+    public static Item Tang;
+    public static Item TangZu;
+    public static Item TangJuKuai;
+    public static Item HeSuXianWei;
+    public static Item GuHuaXianWeiBan;
+    public static Item YeHuaGaoNengQiTi;
+    public static Item YeHuaMiXiJuTi;
+    public static Item ZhuanZhiYanZu;
+    public static Item ZhuanZhiYanJuKuai;
+    public static Item QiYiWuZhi;
+    public static Item D96GangYangPin4;
+    public static Item SanXiangNaMiPian;
+    public static Item KuaiZiLinJianJingGe;
+    public static Item XiangXianNiHeYe;
+    public static Item ChaoJuHuiYingGuan;
+
+    public static void initAndRegister(String modid) {
+        initAndRegister(modid, null);
+    }
+
+    /**
+     * @param modid    模组 ID
+     * @param tooltips 物品名 -> Tooltip 行数组（可选，null 表示不添加 Tooltip）
+     */
+    public static void initAndRegister(String modid, Map<String, String[]> tooltips) {
+        String textureFolder = "Arknights/";
+
+        try {
+            for (Field field : ItemIntermediateProducts.class.getDeclaredFields()) {
+                if (Item.class.isAssignableFrom(field.getType())) {
+                    String name = field.getName();
+                    Item item;
+                    if (field.getType() == Item.class) {
+                        item = new ItemEOHBBatch();
+                    } else {
+                        item = (Item) field.getType().newInstance();
+                    }
+
+                    if (item instanceof ItemEOHBBatch batch && tooltips != null) {
+                        String[] lines = tooltips.get(name);
+                        if (lines != null && lines.length > 0) {
+                            batch.setTooltipLines(lines);
+                        }
+                    }
+
+                    item.setUnlocalizedName(name)
+                        .setTextureName(modid + ":" + textureFolder + name)
+                        .setCreativeTab(tabMetaItem01);
+
+                    GameRegistry.registerItem(item, name);
+                    field.set(null, item);
+
+                    try {
+                        GTCMItemList enumEntry = GTCMItemList.valueOf(name);
+                        enumEntry.set(new ItemStack(item));
+                        System.out.println("[ItemIntermediateProducts] 已注册到 GTCMItemList: " + name);
+                    } catch (IllegalArgumentException ignore) {
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}

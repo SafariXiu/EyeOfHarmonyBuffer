@@ -1,0 +1,14 @@
+{
+  "reactor.hydrogen_detonation": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/hydrogendetonation" }
+    ]
+  },
+  "reactor.99999mw": {
+    "category": "master",
+    "sounds": [
+      { "name": "reactor/99999mw" }
+    ]
+  }
+}

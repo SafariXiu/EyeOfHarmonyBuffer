@@ -16,17 +16,20 @@ import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.*;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.IDualInputInventory;
 import gtPlusPlus.core.block.ModBlocks;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -41,6 +44,11 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
 
     private static IStructureDefinition<EOHB_VendingMachines> STRUCTURE_DEFINITION = null;
     private int mCasing;
+
+    private static final int CHANCE_100 = 10_000;
+    private static final int[] FULL_CHANCE = new int[]{CHANCE_100};
+    private static final int[] NO_CHANCES = new int[0];
+    private static final FluidStack[] NO_FLUIDS = new FluidStack[0];
 
     public EOHB_VendingMachines(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -122,9 +130,17 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
             false,
             new ItemStack[]{inputItem},
             new ItemStack[]{outputCopy},
-            null, new int[]{10000},
-            null, null,
-            20, 100, 0);
+            null,
+            FULL_CHANCE,
+            FULL_CHANCE,
+            NO_CHANCES,
+            NO_CHANCES,
+            NO_FLUIDS,
+            NO_FLUIDS,
+            20,
+            100,
+            0
+        );
     }
 
     @Override
@@ -140,10 +156,9 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
             @NotNull
             @Override
             protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                return new OverclockCalculator()
-                    //.setSpeedBoost(100.0) // 速度提升 100 倍
-                    .setParallel(Integer.MAX_VALUE) // 最大并行数
-                    .setEUt(0); // 不耗电
+                return OverclockCalculator.ofNoOverclock(recipe)
+                    .setParallel(Integer.MAX_VALUE)
+                    .setEUtDiscount(0.0); // 不耗电
             }
 
             @NotNull
@@ -187,7 +202,7 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     buildHatchAdder(EOHB_VendingMachines.class)
                         .atLeast(InputBus, OutputBus)
                         .casingIndex(getTextureIndex())
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(onElementPass(x -> ++x.mCasing, ofBlock(ModBlocks.blockCasings3Misc, 2))))
                 .build();
         }
@@ -217,8 +232,8 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .addInfo(Tooltip_VendingMachines_02)
                     .addInfo(Tooltip_VendingMachines_03)
                     .addSeparator()
-                    .addInputBus(add_InputBus,1)
-                    .addOutputBus(add_OutputBus,1)
+                    .addInputBus("1+", EOHB_MachineType_1)
+                    .addOutputBus("1+", EOHB_MachineType_1)
                     .addInfo(TextLocalization.StructureTooComplex)
                     .addInfo(TextLocalization.BLUE_PRINT_INFO)
                     .toolTipFinisher(TextLocalization.ModName);
@@ -231,8 +246,8 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
                     .addInfo(Tooltip_VendingMachines_02)
                     .addInfo(Tooltip_VendingMachines_03)
                     .addSeparator()
-                    .addInputBus(add_InputBus,1)
-                    .addOutputBus(add_OutputBus,1)
+                    .addInputBus("1+", EOHB_MachineType_1)
+                    .addOutputBus("1+", EOHB_MachineType_1)
                     .addInfo(TextLocalization.StructureTooComplex)
                     .addInfo(TextLocalization.BLUE_PRINT_INFO)
                     .toolTipFinisher(TextLocalization.ModName);
@@ -241,9 +256,16 @@ public class EOHB_VendingMachines extends WirelessEnergyMultiMachineBase<EOHB_Ve
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
         mCasing = 0;
-        return checkPiece(mName, 1, 1, 0) && mCasing >= 6;
+
+        boolean ok = checkPiece(mName, 1, 1, 0, errors);
+
+        if (!ok) return;
+
+        checkCasingMin(errors, mCasing, 6);
     }
 
     @Override

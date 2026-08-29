@@ -2,11 +2,11 @@ package com.EyeOfHarmonyBuffer.Mixins.OutPutME;
 
 import appeng.api.implementations.IPowerChannelState;
 import appeng.api.storage.data.IAEFluidStack;
-import appeng.api.storage.data.IItemList;
+import appeng.me.helpers.AENetworkProxy;
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
 import gregtech.api.metatileentity.implementations.MTEHatchOutput;
-import gregtech.api.util.GTUtility;
-import gregtech.common.tileentities.machines.MTEHatchOutputME;
+import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
+import gregtech.common.tileentities.machines.outputme.base.MTEHatchOutputMEBase;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,67 +27,59 @@ public abstract class HatchOutputMEMixin extends MTEHatchOutput implements IPowe
         super(aID, aName, aNameRegional, aTier);
     }
 
-    @Shadow(remap = false)
-    @Final
-    IItemList<IAEFluidStack> fluidCache;
+    @Shadow @Final
+    private MTEHatchOutputMEBase<IAEFluidStack> provider;
 
     @Shadow
-    private long baseCapacity;
+    public abstract AENetworkProxy getProxy();
 
     @ModifyConstant(
         method = "<init>",
         constant = @Constant(longValue = 128_000L)
     )
     private static long modifyDefaultCapacity(long constant) {
-        if(MainConfig.OutPutHatchMEEnable){
+        if (MainConfig.OutPutHatchMEEnable) {
             return Long.MAX_VALUE;
         }
         return constant;
     }
 
-    /**
-     * @author eyeofharmonybuffer
-     * @reason 跳过检测单元的逻辑
-     */
-    @Inject(method = "getCacheCapacity", at = @At("HEAD"), cancellable = true)
-    private void onGetCacheCapacity(CallbackInfoReturnable<Long> cir) {
-        if(MainConfig.OutPutHatchMEEnable) {
-            cir.setReturnValue(Long.MAX_VALUE);
-            cir.cancel();
-        }
-    }
-
-    /**
-     * @author eyeofharmonybuffer
-     * @reason 覆写NBT读取与高亮显示
-     */
     @Inject(method = "getInfoData", at = @At("HEAD"), cancellable = true)
     private void onGetInfoData(CallbackInfoReturnable<String[]> cir) {
-        if(MainConfig.OutPutHatchMEEnable) {
-            List<String> ss = new ArrayList<>();
-            ss.add(
-                "The hatch is " + ((getProxy() != null && getProxy().isActive()) ?
-                    EnumChatFormatting.GREEN + "online" :
-                    EnumChatFormatting.RED + "offline" + getAEDiagnostics()) +
-                    EnumChatFormatting.RESET);
-            ss.add("Fluid cache capacity: " + EnumChatFormatting.GOLD + "∞ L" + EnumChatFormatting.RESET);
-
-            if (fluidCache.isEmpty()) {
-                ss.add("The hatch has no cached fluids");
-            } else {
-                ss.add(String.format("The hatch contains %d cached fluids: ", fluidCache.size()));
-                int counter = 0;
-                for (IAEFluidStack s : fluidCache) {
-                    ss.add(
-                        s.getFluid().getLocalizedName(s.getFluidStack()) + ": " +
-                            EnumChatFormatting.GOLD +
-                            GTUtility.formatNumbers(s.getStackSize()) + "L" +
-                            EnumChatFormatting.RESET);
-                    if (++counter > 100) break;
-                }
-            }
-            cir.setReturnValue(ss.toArray(new String[fluidCache.size() + 2]));
-            cir.cancel();
+        if (!MainConfig.OutPutHatchMEEnable) {
+            return;
         }
+
+        List<String> ss = new ArrayList<>();
+
+        boolean online = (getProxy() != null && getProxy().isActive());
+        ss.add(
+            "The hatch is " +
+                (online
+                    ? EnumChatFormatting.GREEN + "online"
+                    : EnumChatFormatting.RED + "offline" + getAEDiagnostics()
+                ) +
+                EnumChatFormatting.RESET
+        );
+
+        ss.add("Fluid cache capacity: " + EnumChatFormatting.GOLD + "∞ L" + EnumChatFormatting.RESET);
+
+        long cached = provider.getCachedAmount();
+        long capacity = provider.getCacheCapacity();
+
+        if (cached <= 0) {
+            ss.add("The hatch has no cached fluids");
+        } else {
+            ss.add(
+                String.format(
+                    "The hatch currently caches %s L of fluids (raw capacity %s L)",
+                    String.valueOf(cached),
+                    capacity == Long.MAX_VALUE ? "∞" : String.valueOf(capacity)
+                )
+            );
+        }
+
+        cir.setReturnValue(ss.toArray(new String[0]));
+        cir.cancel();
     }
 }

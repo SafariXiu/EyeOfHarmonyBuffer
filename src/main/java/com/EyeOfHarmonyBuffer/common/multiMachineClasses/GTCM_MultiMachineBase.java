@@ -1,23 +1,31 @@
 package com.EyeOfHarmonyBuffer.common.multiMachineClasses;
 
 import com.EyeOfHarmonyBuffer.Config.MainConfig;
+import com.EyeOfHarmonyBuffer.common.Block.BlockClass.BlockGlowCasingBase;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.processingLogics.GTCM_ProcessingLogic;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
+import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
+import com.gtnewhorizon.structurelib.alignment.enumerable.ExtendedFacing;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.implementations.*;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.IDualInputInventory;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import gregtech.common.tileentities.machines.MTEHatchInputME;
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.World;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.ApiStatus;
@@ -27,10 +35,13 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static com.EyeOfHarmonyBuffer.utils.TextHandler.texter;
 import static com.EyeOfHarmonyBuffer.utils.Utils.filterValidMTEs;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlockAnyMeta;
 
 public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
     extends MTEExtendedPowerMultiBlockBase<T> implements IConstructable, ISurvivalConstructable {
@@ -44,6 +55,432 @@ public abstract class GTCM_MultiMachineBase<T extends GTCM_MultiMachineBase<T>>
         super(aName);
     }
 
+    // endregion
+
+    // region Glow Casing（发光外壳自动系统）
+    /**
+     * 结构中发光外壳坐标（由 {@link #glowCasing(Block)} 元素在结构检查时自动收集）。
+     * 列表为空时整套系统零开销；机器侧只需在结构定义里加一个元素：
+     * {@code .addElement('B', glowCasing(EOHBMachineBlocks.sBlockCasingsDysonFlow))}
+     */
+    protected final List<Long> mGlowBlocks = new ArrayList<>();
+    /** 目标点亮态（true = 要亮，false = 要灭），与实际切换进度解耦 */
+    private boolean mGlowState = false;
+    /** 分帧渐变游标：每批切换 GLOW_TOGGLE_BUDGET 个方块 */
+    private int mGlowToggleIndex = 0;
+    /** 批次间隔倒计时：每 GLOW_TOGGLE_INTERVAL tick 推进一批 */
+    private int mGlowToggleCooldown = 0;
+    /**
+     * 每批切换的发光外壳数量上限（避免单 tick 大量光照重算卡顿）。
+     * setLit 走完整 setBlock 路径会触发每方块一次光照重算（BFS）。
+     */
+    private static final int GLOW_TOGGLE_BUDGET = 14;
+    /**
+     * 批次间隔：每 5  tick 推进一批，形成脉冲式扩散波。
+     * DysonCore 结构约 1124 块：14/批 x 5 tick ≈ 400 tick ≈ 20 秒渐变。
+     * 调小则更快（如 3 → ~12 秒），调大则更慢。
+     */
+    private static final int GLOW_TOGGLE_INTERVAL = 5;
+
+    /**
+     * 发光外壳结构元素：接受该方块任意变体（点亮态 meta|8 同样通过），
+     * 结构检查通过时自动把坐标收集进 {@link #mGlowBlocks}。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> glowCasing(Block block) {
+        return glowCasing(block, -1);
+    }
+
+    /**
+     * 发光外壳结构元素：限定变体（点亮态同样通过）。
+     *
+     * @param variant 0~7，-1 = 任意变体
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> glowCasing(Block block, int variant) {
+        return new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(ofBlockAnyMeta(block)) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                if (!super.check(t, world, x, y, z)) {
+                    return false;
+                }
+                if (variant >= 0
+                    && (world.getBlockMetadata(x, y, z) & BlockGlowCasingBase.META_MASK) != variant) {
+                    return false;
+                }
+                long pos = CoordinatePacker.pack(x, y, z);
+                // 去重：clearHatches 不再清列表（见其注释），结构重检会重复收集
+                if (!t.mGlowBlocks.contains(pos)) {
+                    t.mGlowBlocks.add(pos);
+                }
+                return true;
+            }
+        };
+    }
+
+    /**
+     * 发光条件：默认 GT 原生"正在加工"语义（结构成型 &amp;&amp; 正在加工），机器可覆写。
+     */
+    protected boolean shouldGlowBlocksBeLit() {
+        return mMachine && mMaxProgresstime > 0;
+    }
+
+    @Override
+    public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
+        super.onPostTick(aBaseMetaTileEntity, aTick);
+
+        if (aBaseMetaTileEntity == null || !aBaseMetaTileEntity.isServerSide()) {
+            return;
+        }
+
+        // —— 液体灌装（装饰性，缺液照常工作）——
+        if (mLiquidFillBlock != null && !mLiquidFillBlocks.isEmpty()) {
+            boolean shouldFill = shouldLiquidBeFilled();
+            if (shouldFill != mLiquidFillState) {
+                // 目标翻转：按切比雪夫距离重排（灌装核心向外扩散，回收外壳先收），重启分帧
+                mLiquidFillState = shouldFill;
+                sortLiquidFillBlocks(shouldFill);
+                mLiquidFillIndex = 0;
+                mLiquidFillCooldown = 0;
+                mLiquidPatrolIndex = 0;
+            }
+            World world = aBaseMetaTileEntity.getWorld();
+            if (world != null) {
+                if (mLiquidFillState) {
+                    if (mLiquidFillIndex < mLiquidFillBlocks.size()) {
+                        if (mLiquidFillCooldown > 0) {
+                            mLiquidFillCooldown--;
+                        } else {
+                            mLiquidFillCooldown = LIQUID_FILL_INTERVAL;
+                            int end = Math.min(mLiquidFillBlocks.size(), mLiquidFillIndex + LIQUID_FILL_BUDGET);
+                            for (int i = mLiquidFillIndex; i < end; i++) {
+                                fillOrClear(world, mLiquidFillBlocks.get(i), true);
+                            }
+                            mLiquidFillIndex = end;
+                        }
+                    } else {
+                        // 已灌满：巡检补漏（每 tick 轮询几个位置，发现空气立即补上）
+                        for (int k = 0; k < LIQUID_PATROL_PER_TICK; k++) {
+                            long pos = mLiquidFillBlocks.get(mLiquidPatrolIndex);
+                            mLiquidPatrolIndex = (mLiquidPatrolIndex + 1) % mLiquidFillBlocks.size();
+                            fillOrClear(world, pos, true);
+                        }
+                    }
+                } else if (mLiquidFillIndex < mLiquidFillBlocks.size()) {
+                    // 回收中：同样分帧推进（排序已是降序，外壳先收）
+                    if (mLiquidFillCooldown > 0) {
+                        mLiquidFillCooldown--;
+                    } else {
+                        mLiquidFillCooldown = LIQUID_FILL_INTERVAL;
+                        int end = Math.min(mLiquidFillBlocks.size(), mLiquidFillIndex + LIQUID_FILL_BUDGET);
+                        for (int i = mLiquidFillIndex; i < end; i++) {
+                            fillOrClear(world, mLiquidFillBlocks.get(i), false);
+                        }
+                        mLiquidFillIndex = end;
+                    }
+                }
+            }
+        }
+
+        if (mGlowBlocks.isEmpty()) {
+            return;
+        }
+
+        boolean shouldLit = shouldGlowBlocksBeLit();
+        if (shouldLit != mGlowState) {
+            // 目标翻转：按切比雪夫距离（到机器主方块）重排坐标——
+            // 点亮升序（核心向外扩散），熄灭降序（外壳先灭、光收拢回核心）。
+            // 重启分帧渐变（从 0 重新扫，已处于目标态的方块被 setLit 的 meta 判等直接跳过）
+            mGlowState = shouldLit;
+            sortGlowBlocksForToggle(shouldLit);
+            mGlowToggleIndex = 0;
+            mGlowToggleCooldown = 0; // 翻转后立即推进第一批
+        }
+        if (mGlowToggleIndex >= mGlowBlocks.size()) {
+            return;
+        }
+        if (mGlowToggleCooldown > 0) {
+            mGlowToggleCooldown--;
+            return;
+        }
+        mGlowToggleCooldown = GLOW_TOGGLE_INTERVAL;
+
+        World world = aBaseMetaTileEntity.getWorld();
+        if (world == null) {
+            return;
+        }
+        int end = Math.min(mGlowBlocks.size(), mGlowToggleIndex + GLOW_TOGGLE_BUDGET);
+        for (int i = mGlowToggleIndex; i < end; i++) {
+            long pos = mGlowBlocks.get(i);
+            BlockGlowCasingBase.setLit(
+                world,
+                CoordinatePacker.unpackX(pos),
+                CoordinatePacker.unpackY(pos),
+                CoordinatePacker.unpackZ(pos),
+                mGlowState
+            );
+        }
+        mGlowToggleIndex = end;
+    }
+
+    /**
+     * 以机器主方块（结构 ~ 锚点）为圆心，按切比雪夫距离（立方壳层）重排发光坐标。
+     *
+     * @param lit true = 点亮（升序，核心先亮向外扩散）；false = 熄灭（降序，外壳先灭收拢回核心）
+     */
+    private void sortGlowBlocksForToggle(boolean lit) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) {
+            return;
+        }
+        final int cx = base.getXCoord();
+        final int cy = base.getYCoord();
+        final int cz = base.getZCoord();
+        mGlowBlocks.sort((a, b) -> {
+            int da = chebyshevDist(a, cx, cy, cz);
+            int db = chebyshevDist(b, cx, cy, cz);
+            int cmp = Integer.compare(da, db);
+            return lit ? cmp : -cmp;
+        });
+    }
+
+    private static int chebyshevDist(long packed, int cx, int cy, int cz) {
+        int dx = Math.abs(CoordinatePacker.unpackX(packed) - cx);
+        int dy = Math.abs(CoordinatePacker.unpackY(packed) - cy);
+        int dz = Math.abs(CoordinatePacker.unpackZ(packed) - cz);
+        return Math.max(Math.max(dx, dy), dz);
+    }
+
+    /**
+     * 结构重检（GT 每 ~50 tick 一次）也会走到这里：这里不再清列表/不关灯，
+     * 否则配合 setBlock 的光照重算会周期性全量闪烁。
+     * 亮/灭完全由 onPostTick 的 {@link #shouldGlowBlocksBeLit()} 目标驱动，
+     * 结构失效时 mMachine=false 目标翻转为灭，分帧渐变自然关灯。
+     * 列表只在机器被拆毁（{@link #onRemoval}）时清空。
+     */
+    @Override
+    public void clearHatches() {
+        super.clearHatches();
+    }
+
+    /**
+     * 机器被拆毁：立即全量关灯（罕见事件，可接受一次性光照重算开销），
+     * 之后不再有 tick，无法依赖分帧渐变。
+     */
+    @Override
+    public void onRemoval() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base != null && base.isServerSide() && !mGlowBlocks.isEmpty()) {
+            World world = base.getWorld();
+            if (world != null) {
+                for (long pos : mGlowBlocks) {
+                    BlockGlowCasingBase.setLit(
+                        world,
+                        CoordinatePacker.unpackX(pos),
+                        CoordinatePacker.unpackY(pos),
+                        CoordinatePacker.unpackZ(pos),
+                        false
+                    );
+                }
+            }
+        }
+        // 液体位立即全量回收（机器已拆，没有后续 tick，无法依赖分帧）
+        if (base != null && base.isServerSide() && mLiquidFillBlock != null && !mLiquidFillBlocks.isEmpty()) {
+            World world = base.getWorld();
+            if (world != null) {
+                for (long pos : mLiquidFillBlocks) {
+                    fillOrClear(world, pos, false);
+                }
+            }
+        }
+        mGlowBlocks.clear();
+        mGlowState = false;
+        mGlowToggleIndex = 0;
+        mGlowToggleCooldown = 0;
+        mLiquidFillBlocks.clear();
+        mLiquidFillBlock = null;
+        mLiquidFillState = false;
+        mLiquidFillIndex = 0;
+        mLiquidFillCooldown = 0;
+        mLiquidPatrolIndex = 0;
+        mHoloPanelBlocks.clear();
+        super.onRemoval();
+    }
+    // endregion
+
+    // region Liquid Fill（液体灌装系统）
+    /**
+     * 结构中的液体填充位坐标（由 {@link #liquidFillCasing(Block, int)} 元素在结构检查时自动收集）。
+     * 与发光外壳同款模式：机器侧只需一行 {@code .addElement('N', liquidFillCasing(liquidBlock, 0))}。
+     * 液体仅作装饰：缺液照常工作；开机分帧灌满、关机分帧回收、运行中巡检补漏。
+     */
+    protected final List<Long> mLiquidFillBlocks = new ArrayList<>();
+    /** 机载面板实例（结构内 'P' 等字母位，由 {@link #holoPanelCasing(HoloPanelConfig)} 元素在结构检查时计算收集；渲染用它做完全固定位置+朝向） */
+    protected final List<HoloPanelInstance> mHoloPanelBlocks = new ArrayList<>();
+    /** 灌装目标态（true = 要灌满，false = 要清空），与实际进度解耦 */
+    private boolean mLiquidFillState = false;
+    /** 分帧灌装游标：每批处理 LIQUID_FILL_BUDGET 个位置 */
+    private int mLiquidFillIndex = 0;
+    /** 批次间隔倒计时：每 LIQUID_FILL_INTERVAL tick 推进一批 */
+    private int mLiquidFillCooldown = 0;
+    /** 灌满后补液巡检游标（每 tick 轮询几个位置，发现空气立即补上） */
+    private int mLiquidPatrolIndex = 0;
+    /** 灌装液体方块及其 meta（由 liquidFillCasing 元素记录；一台机器一种液体） */
+    protected Block mLiquidFillBlock = null;
+    protected int mLiquidFillMeta = 0;
+    /**
+     * 每批灌装/回收的位置数上限（避免单 tick 大量 setBlock + 光照重算卡顿）。
+     * 与发光系统节奏一致但预算略小，两套批处理错峰叠加时单 tick 上限 ~24 次 setBlock。
+     */
+    private static final int LIQUID_FILL_BUDGET = 10;
+    /**
+     * 批次间隔：每 5 tick 推进一批，形成脉冲式充能波。
+     * DysonCore 共 771 个液体位：10/批 x 5 tick ≈ 78 批 ≈ 390 tick ≈ 20 秒灌满。
+     * 调小则更快（如 2 → ~8 秒），调大则更慢。
+     */
+    private static final int LIQUID_FILL_INTERVAL = 5;
+    /** 灌满后巡检速度：每 tick 检查几个位置（771 位 ≈ 20 秒轮一圈，单次 getBlock 开销可忽略） */
+    private static final int LIQUID_PATROL_PER_TICK = 2;
+
+    /**
+     * 液体填充结构元素：接受"目标液体（任意 meta）或空气"，通过时自动收集坐标并记录灌装液体。
+     * 用 {@link GTStructureUtility#noSurvivalAutoplace} 包装：
+     * 生存自动搭建跳过液体位（无物品可放置、不报缺块错误）；创造模式 construct 直接 setBlock 灌好。
+     *
+     * @param liquid 灌装液体方块；null = 液体不可用（未找到），液体位退化为纯空气占位
+     * @param meta   灌装用的方块 meta（Forge 流体方块 0 = 源）
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> liquidFillCasing(Block liquid, int meta) {
+        if (liquid == null) {
+            return GTStructureUtility.noSurvivalAutoplace(
+                new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(ofBlock(Blocks.air, 0)) {
+                    @Override
+                    public boolean check(T t, World world, int x, int y, int z) {
+                        return world.getBlock(x, y, z) == Blocks.air;
+                    }
+                });
+        }
+        IStructureElement<T> element = new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(
+            ofBlockAnyMeta(liquid)) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                Block b = world.getBlock(x, y, z);
+                if (b != Blocks.air && b != liquid) {
+                    return false;
+                }
+                long pos = CoordinatePacker.pack(x, y, z);
+                // 去重：与发光系统同理，结构重检会重复收集
+                if (!t.mLiquidFillBlocks.contains(pos)) {
+                    t.mLiquidFillBlocks.add(pos);
+                    t.mLiquidFillBlock = liquid;
+                    t.mLiquidFillMeta = meta;
+                }
+                return true;
+            }
+        };
+        return GTStructureUtility.noSurvivalAutoplace(element);
+    }
+
+    /**
+     * 机载面板元素（默认配置）：不要求锚点方块（任意方块/空气皆可），通过时计算最终面板实例
+     * （位置=锚点中心、朝向=机器前方）。等价于 {@code holoPanelCasing(HoloPanelConfig.builder().build())}。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing() {
+        return holoPanelCasing(HoloPanelConfig.builder().build(), null, -1);
+    }
+
+    /**
+     * 机载面板元素（带配置，不要求锚点方块）：'P' 等字母位接受任意方块/空气，
+     * 通过时用 {@link HoloPanelConfig#compute} 按机器当前朝向算好最终面板实例并收集。
+     * 纯标记位：生存自动搭建跳过该位（无需放方块）。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing(HoloPanelConfig cfg) {
+        return holoPanelCasing(cfg, null, -1);
+    }
+
+    /**
+     * 机载面板元素（带配置 + 锚点方块要求）：'P' 等字母位必须是 {@code block}（meta 为 {@code meta}，
+     * meta < 0 表示任意 meta）。通过时同样用 {@link HoloPanelConfig#compute} 算好最终面板实例并收集。
+     * 指定了方块后该位是真实结构方块：正常参与自动搭建/提示，不再是纯标记位。
+     */
+    protected final <T extends GTCM_MultiMachineBase<T>> IStructureElement<T> holoPanelCasing(HoloPanelConfig cfg, Block block, int meta) {
+        IStructureElement<T> underlying = block != null ? ofBlock(block, meta) : ofBlock(Blocks.air, 0);
+        IStructureElement<T> element = new GTStructureUtility.ProxyStructureElement<T, IStructureElement<T>>(underlying) {
+            @Override
+            public boolean check(T t, World world, int x, int y, int z) {
+                if (block != null) {
+                    if (world.getBlock(x, y, z) != block
+                        || (meta >= 0 && world.getBlockMetadata(x, y, z) != meta)) {
+                        return false;   // 'P' 位不是要求的方块，结构不成立
+                    }
+                }
+                HoloPanelInstance inst = cfg.compute(t.getExtendedFacing(), x, y, z);
+                if (inst != null) {
+                    // 去重：结构重检会重复收集（同一实例只保留一份）
+                    boolean exists = false;
+                    for (HoloPanelInstance p : t.mHoloPanelBlocks) {
+                        if (p.sameAs(inst)) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        t.mHoloPanelBlocks.add(inst);
+                    }
+                }
+                return true;
+            }
+        };
+        if (block != null) {
+            return element;   // 有方块要求：正常参与结构检查/自动搭建/提示
+        }
+        return GTStructureUtility.noSurvivalAutoplace(element);   // 纯标记位：生存自动搭建跳过
+    }
+
+    /**
+     * 灌装条件：默认"结构成型 && 正在加工"（纯装饰，缺液不阻断运行），机器可覆写。
+     */
+    protected boolean shouldLiquidBeFilled() {
+        return mMachine && mMaxProgresstime > 0;
+    }
+
+    /**
+     * 单位置灌装/回收。
+     *
+     * @param fill true = 空气位灌入液体；false = 液体位清成空气
+     */
+    private void fillOrClear(World world, long pos, boolean fill) {
+        int x = CoordinatePacker.unpackX(pos);
+        int y = CoordinatePacker.unpackY(pos);
+        int z = CoordinatePacker.unpackZ(pos);
+        Block cur = world.getBlock(x, y, z);
+        if (fill) {
+            if (cur == Blocks.air && mLiquidFillBlock != null) {
+                world.setBlock(x, y, z, mLiquidFillBlock, mLiquidFillMeta, 2);
+            }
+        } else if (cur == mLiquidFillBlock) {
+            // block 判等覆盖任意 meta（含玩家乱倒的流动形态），全封闭结构内不会有流动
+            world.setBlock(x, y, z, Blocks.air, 0, 2);
+        }
+    }
+
+    /**
+     * 以机器主方块为圆心按切比雪夫距离重排液体位：
+     * 灌装升序（核心向外扩散），回收降序（外壳先收、收拢回核心）。
+     */
+    private void sortLiquidFillBlocks(boolean fill) {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) {
+            return;
+        }
+        final int cx = base.getXCoord();
+        final int cy = base.getYCoord();
+        final int cz = base.getZCoord();
+        mLiquidFillBlocks.sort((a, b) -> {
+            int da = chebyshevDist(a, cx, cy, cz);
+            int db = chebyshevDist(b, cx, cy, cz);
+            int cmp = Integer.compare(da, db);
+            return fill ? cmp : -cmp;
+        });
+    }
     // endregion
 
     // region new methods

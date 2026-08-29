@@ -39,19 +39,7 @@ public abstract class BioVatMixin extends MTEEnhancedMultiBlockBase<MTEBioVat> i
         if(MainConfig.BioVatRadiationEnabled){
             ProcessingLogic originalLogic = cir.getReturnValue();
 
-            ProcessingLogic wrappedLogic = new ProcessingLogic() {
-                @NotNull
-                @Override
-                protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                    return CheckRecipeResultRegistry.SUCCESSFUL;
-                }
-
-                @NotNull
-                @Override
-                protected ParallelHelper createParallelHelper(@Nonnull GTRecipe recipe) {
-                    return super.createParallelHelper(recipeWithMultiplier(recipe, inputFluids));
-                }
-            };
+            ProcessingLogic wrappedLogic = new BioVatLogic(this);
 
             cir.setReturnValue(wrappedLogic);
         }
@@ -76,6 +64,27 @@ public abstract class BioVatMixin extends MTEEnhancedMultiBlockBase<MTEBioVat> i
     private void modifyOnPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick, CallbackInfo ci) {
         if(MainConfig.BioVatRadiationEnabled){
             this.mSievert = Integer.MAX_VALUE;
+        }
+    }
+
+    private static final class BioVatLogic extends ProcessingLogic {
+
+        private final BioVatMixin outer;
+
+        BioVatLogic(BioVatMixin outer) {
+            this.outer = outer;
+        }
+
+        @NotNull
+        @Override
+        protected CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+            return CheckRecipeResultRegistry.SUCCESSFUL;
+        }
+
+        @NotNull
+        @Override
+        protected ParallelHelper createParallelHelper(@Nonnull GTRecipe recipe) {
+            return super.createParallelHelper(outer.recipeWithMultiplier(recipe, inputFluids));
         }
     }
 }

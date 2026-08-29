@@ -1,22 +1,31 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.BlcokForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRing.SingularityStabilizationRingCasingsItemBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRingCasings;
+import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockForgeOfTheSkyCore;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 
 import static com.EyeOfHarmonyBuffer.common.Block.BasicBlocks.SingularityStabilizationRingCasingsUpgrade;
 
 public class BlockRegister {
 
     public static Block TrubineBlock;
+    public static Block ForgeOfTheSkyBlockCore;
 
     public static void registryBlocks(){
         TrubineBlock = new BlockWindmill().setBlockName("blockWindmill");
         GameRegistry.registerBlock(TrubineBlock, "blockWindmill");
         GameRegistry.registerTileEntity(TileEntityWindmill.class, "Windmill_TE");
+
+        ForgeOfTheSkyBlockCore = new BlcokForgeOfTheSkyCore().setBlockName("ForgeOfTheSkyCore");
+        GameRegistry.registerBlock(ForgeOfTheSkyBlockCore, ItemBlockForgeOfTheSkyCore.class, "ForgeOfTheSkyCore");
+        GameRegistry.registerTileEntity(TileEntityForgeOfTheSkyCore.class, "ForgeOfTheSkyCore_TE");
 
         GameRegistry.registerBlock(
             SingularityStabilizationRingCasingsUpgrade,
@@ -53,6 +62,7 @@ public class BlockRegister {
             .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UXV Tier", 12));
         GTCMItemList.SingularityStabilizationRingCasingsMAX
             .set(SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MAX Tier", 13));
+        GTCMItemList.ForgeOfTheSkyCore.set(Item.getItemFromBlock(ForgeOfTheSkyBlockCore));
     }
 
     public static void registry() {

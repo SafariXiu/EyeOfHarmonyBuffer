@@ -1,0 +1,356 @@
+package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
+
+import bartworks.common.loaders.ItemRegistry;
+import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentType;
+import com.EyeOfHarmonyBuffer.common.multiMachineClasses.OrundumWirelessMultiMachineBase;
+import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
+import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
+import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
+import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
+import com.gtnewhorizon.structurelib.structure.StructureDefinition;
+import gregtech.api.enums.Textures;
+import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.recipe.check.CheckRecipeResult;
+import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.util.MultiblockTooltipBuilder;
+import mcp.mobius.waila.api.IWailaConfigHandler;
+import mcp.mobius.waila.api.IWailaDataAccessor;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.StatCollector;
+import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
+import org.jetbrains.annotations.NotNull;
+
+import java.math.BigInteger;
+import java.util.List;
+
+import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
+import static com.gtnewhorizon.structurelib.structure.StructureUtility.transpose;
+import static gregtech.api.GregTechAPI.sBlockCasings2;
+import static gregtech.api.GregTechAPI.sBlockCasings8;
+import static gregtech.api.enums.Textures.BlockIcons.*;
+import static gregtech.api.enums.Textures.BlockIcons.OVERLAY_FRONT_ASSEMBLY_LINE_GLOW;
+
+public class EOHB_XiraniteSolarPowerGenerator extends OrundumWirelessMultiMachineBase<EOHB_XiraniteSolarPowerGenerator>
+    implements IConstructable, ISurvivalConstructable {
+
+    private static IStructureDefinition<EOHB_XiraniteSolarPowerGenerator> STRUCTURE_DEFINITION = null;
+    private static final String STRUCTURE_PIECE_MAIN = "mainXiraniteSolarPowerGenerator";
+    private static final int OffsetsX = 21;
+    private static final int OffsetsY = 27;
+    private static final int OffsetsZ = 13;
+    private static final int CASING_INDEX = 16;
+
+    private static final int TICKS_PER_CYCLE = 20 * 5;
+    private static final BigInteger ORUNDUM_PER_CYCLE = BigInteger.valueOf(5_000_000L);
+    private BigInteger pendingOrundum = BigInteger.ZERO;
+
+    public EOHB_XiraniteSolarPowerGenerator(int aID, String aName, String aNameRegional) {
+        super(aID, aName, aNameRegional);
+        setWirelessCycleNum(1);
+    }
+
+    public EOHB_XiraniteSolarPowerGenerator(String aName) {
+        super(aName);
+        setWirelessCycleNum(1);
+    }
+
+    @Override
+    public int getWirelessModeProcessingTime() {
+        return TICKS_PER_CYCLE;
+    }
+
+    @Override
+    protected boolean isEnablePerfectOverclock() {
+        return false;
+    }
+
+    @Override
+    protected float getSpeedBonus() {
+        return 0;
+    }
+
+    @Override
+    public int getMaxParallelRecipes() {
+        return 1;
+    }
+
+    /**
+     * 这台是纯发电机，不按配方消耗 Orundum。
+     */
+    @Override
+    protected boolean usesOrundumCost() {
+        return false;
+    }
+
+    /**
+     * 这台机器不需要算力网络。
+     */
+    @Override
+    protected boolean actsAsComputeConsumer() {
+        return false;
+    }
+
+    @Override
+    @NotNull
+    protected CheckRecipeResult doWirelessBusinessOnce() {
+
+        if (!mMachine || ownerUUID == null) {
+            pendingOrundum = BigInteger.ZERO;
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null || !base.isAllowedToWork()) {
+            pendingOrundum = BigInteger.ZERO;
+            return CheckRecipeResultRegistry.NO_RECIPE;
+        }
+
+        if (!isRecipeProcessing) {
+            startRecipeProcessing();
+        }
+
+        BigInteger perCycle = ORUNDUM_PER_CYCLE;
+        GasEnvironmentType env = getCurrentEnvironment();
+        if (env == GasEnvironmentType.XRANITE) {
+            perCycle = perCycle
+                .multiply(BigInteger.valueOf(13L))
+                .divide(BigInteger.TEN);
+        }
+
+        pendingOrundum = perCycle;
+
+        mMaxProgresstime = getWirelessModeProcessingTime();
+        mProgresstime = 0;
+        mEfficiency = 10000;
+        mEUt = 0;
+
+        mOutputItems = null;
+        mOutputFluids = null;
+
+        return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    @Override
+    protected CheckRecipeResult wirelessPostProcess(CheckRecipeResult opResult) {
+        return opResult;
+    }
+
+    @Override
+    public void endRecipeProcessing() {
+        if (ownerUUID != null && pendingOrundum != null && pendingOrundum.signum() > 0) {
+            produceOrundumForOwner(ownerUUID, pendingOrundum);
+
+            addExtraEUToCostingText(pendingOrundum);
+        }
+
+        pendingOrundum = BigInteger.ZERO;
+
+        super.endRecipeProcessing();
+    }
+
+    @Override
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+        if (!ok) return;
+    }
+
+    @Override
+    public void construct(ItemStack stackSize, boolean hintsOnly) {
+        repairMachine();
+        buildPiece(STRUCTURE_PIECE_MAIN, stackSize, hintsOnly, OffsetsX, OffsetsY, OffsetsZ);
+    }
+
+    @Override
+    public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
+        if (mMachine) return -1;
+        return survivalBuildPiece(STRUCTURE_PIECE_MAIN, stackSize, OffsetsX, OffsetsY, OffsetsZ, elementBudget, env, false, true);
+    }
+
+    private static final String[][] shapeMain = new String[][]{
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                   EE EE                   ","                   EE EE                   ","                                           ","                   EE EE                   ","                   EE EE                   ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                  DD                       ","                  DD                       ","                DD  B                      ","                DD   DD                    ","              DD  B  DD                    ","              DD   DD  B                   ","            DD  B  DD   DD                 ","            DD   DD  B  DD                 ","              B  DD   DD  B                ","               DD  B  DD   DD              ","          EE   DD   DD  B  DD  EE          ","          EBE    B  DD   DD   EBE          ","      DD   EBE    DD  B  DD  EBE           ","      DD    EBE   DD   DD   EBE            ","    DD  B    EBE    B  DD  EBE  DD         ","    DD   DD   EBE    DD   EBE   DD         ","  DD  B  DD    EBE   DD  EBE  DD  B        ","  DD   DD  B    EBE     EBE   DD   DD      ","DD  B  DD   DD   EBE   EBE  DD  B  DD      ","DD   DD  B  DD    EEE EEE   DD   DD  B     ","  B  DD   DD  B    EE EE  DD  B  DD   DD   ","   DD  B  DD   DD         DD   DD  B  DD   ","   DD   DD  B  DD  EE EE    B  DD   DD  B  ","     B  DD   DD   EEE EEE    DD  B  DD   DD","      DD  B  DD  EBE   EBE   DD   DD  B  DD","      DD   DD   EBE     EBE    B  DD   DD  ","        B  DD  EBE  DD   EBE    DD  B  DD  ","         DD   EBE   DD    EBE   DD   DD    ","         DD  EBE  DD  B    EBE    B  DD    ","            EBE   DD   DD   EBE    DD      ","           EBE  DD  B  DD    EBE   DD      ","          EBE   DD   DD  B    EBE          ","          EE  DD  B  DD   DD   EE          ","              DD   DD  B  DD               ","                B  DD   DD  B              ","                 DD  B  DD   DD            ","                 DD   DD  B  DD            ","                   B  DD   DD              ","                    DD  B  DD              ","                    DD   DD                ","                      B  DD                ","                       DD                  ","                       DD                  "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","          EE                   EE          ","          EEE                 EEE          ","           EEE               EEE           ","            EEE             EEE            ","             EEE           EEE             ","              EEE         EEE              ","               EEE       EEE               ","                EEE     EEE                ","                 EEE   EEE                 ","                  EEE EEE                  ","                   EE EE                   ","                                           ","                   EE EE                   ","                  EEE EEE                  ","                 EEE   EEE                 ","                EEE     EEE                ","               EEE       EEE               ","              EEE         EEE              ","             EEE           EEE             ","            EEE             EEE            ","           EEE               EEE           ","          EEE                 EEE          ","          EE                   EE          ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                   EE EE                   ","                   ECCCE                   ","                    CCC                    ","                   ECCCE                   ","                   EE EE                   ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                   C   C                   ","                    C C                    ","                     C                     ","                    C C                    ","                   C   C                   ","                  C     C                  ","             C   C       C   C             ","              C C   CCC   C C              ","               C    CCC    C               ","              C C   CCC   C C              ","             C   C       C   C             ","                  C     C                  ","                   C   C                   ","                    C C                    ","                     C                     ","                    C C                    ","                   C   C                   ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                   C   C                   ","                    C C                    ","                     C                     ","                    C C                    ","                   C   C                   ","                  C     C                  ","             C   C       C   C             ","              C C   CCC   C C              ","               C    CCC    C               ","              C C   CCC   C C              ","             C   C       C   C             ","                  C     C                  ","                   C   C                   ","                    C C                    ","                     C                     ","                    C C                    ","                   C   C                   ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    CAC                    ","                    ABA                    ","                    CAC                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                     C                     ","                    CCC                    ","                     C                     ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                     B                     ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                     B                     ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                     B                     ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    E E                    ","                     C                     ","                    E E                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    E E                    ","                     C                     ","                    E E                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                    E E                    ","                     C                     ","                    E E                    ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","              B             B              ","                                           ","                                           ","                                           ","                                           ","                                           ","                    E E                    ","                     C                     ","                    E E                    ","                                           ","                                           ","                                           ","                                           ","                                           ","              B             B              ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","             CCC           CCC             ","             CBC           CBC             ","             CCC           CCC             ","                                           ","                                           ","                                           ","                   CCCCC                   ","                   CCCCC                   ","                   CCCCC                   ","                   CCCCC                   ","                   CCCCC                   ","                                           ","                                           ","                                           ","             CCC           CCC             ","             CBC           CBC             ","             CCC           CCC             ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "},
+        {"                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","             CCCCCCCC~CCCCCCCC             ","             CCCCCCCCCCCCCCCCC             ","             CCCCCCCCCCCCCCCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCDDDCCCCCDDDCCC             ","             CCCDDDCCCCCDDDCCC             ","             CCCDDDCCCCCDDDCCC             ","             CCCDDDCCCCCDDDCCC             ","             CCCDDDCCCCCDDDCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCDDDDDDDDDDDCCC             ","             CCCCCCCCCCCCCCCCC             ","             CCCCCCCCCCCCCCCCC             ","             CCCCCCCCCCCCCCCCC             ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           ","                                           "}
+    };
+
+    @Override
+    public IStructureDefinition<EOHB_XiraniteSolarPowerGenerator> getStructureDefinition() {
+        if (STRUCTURE_DEFINITION == null) {
+            STRUCTURE_DEFINITION = StructureDefinition.<EOHB_XiraniteSolarPowerGenerator>builder()
+                .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
+                .addElement(
+                    'A',
+                    ofBlock(ItemRegistry.bw_realglas, 0)
+                )
+                .addElement(
+                    'B',
+                    ofBlock(EOHBMachineBlocks.sBlockCasingsEOH, 0)
+                )
+                .addElement(
+                    'C',
+                    ofBlock(sBlockCasings2, 0)
+                )
+                .addElement(
+                    'D',
+                    ofBlock(sBlockCasings2, 13)
+                )
+                .addElement(
+                    'E',
+                    ofBlock(sBlockCasings8, 7)
+                )
+                .build();
+        }
+        return STRUCTURE_DEFINITION;
+    }
+
+    @Override
+    protected MultiblockTooltipBuilder createTooltip() {
+        final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
+        tt.addMachineType(Tooltip_XiraniteSolarPowerGenerator_MachineType)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_Controller)
+            .addInfo(EOHB_Arknights_Project)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_00)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_01)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_02)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_03)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_04)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_05)
+            .addInfo(Tooltip_XiraniteSolarPowerGenerator_06)
+            .addInfo(EOHB_Arknights_Project_Energy)
+            .addSeparator()
+            .addInfo(StructureTooComplex)
+            .addInfo(BLUE_PRINT_INFO)
+            .toolTipFinisher(ModName);
+        return tt;
+    }
+
+    @Override
+    protected boolean shouldShowWirelessWaila(NBTTagCompound tag) {
+        return false;
+    }
+
+    @Override
+    public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
+                             IWailaConfigHandler config) {
+        super.getWailaBody(itemStack, currentTip, accessor, config);
+
+        World world = accessor.getWorld();
+        int x = accessor.getPosition().blockX;
+        int y = accessor.getPosition().blockY;
+        int z = accessor.getPosition().blockZ;
+
+        BigInteger perCycle = getOrundumPerCycleForWaila(world, x, y, z);
+
+        BigInteger perTick = perCycle.divide(BigInteger.valueOf(TICKS_PER_CYCLE));
+        BigInteger perSecond = perTick.multiply(BigInteger.valueOf(20L));
+
+        String perSecondText = NumberFormatUtil.formatNumber(perSecond);
+
+        String label = StatCollector.translateToLocal(EOHB_OutPutEnergy);
+
+        currentTip.add(
+            EnumChatFormatting.AQUA + label
+                + EnumChatFormatting.RESET
+                + ": "
+                + EnumChatFormatting.GOLD
+                + perSecondText
+                + EnumChatFormatting.RESET
+                + " Orundum/s"
+        );
+    }
+
+    @Override
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return new EOHB_XiraniteSolarPowerGenerator(this.mName);
+    }
+
+    @Override
+    public ITexture[] getTexture(IGregTechTileEntity aBaseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
+                                 int aColorIndex, boolean aActive, boolean aRedstone) {
+        if (side == facing) {
+            if (aActive) return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE)
+                    .extFacing()
+                    .build(),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_ACTIVE_GLOW)
+                    .extFacing()
+                    .glow()
+                    .build() };
+            return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX), TextureFactory.builder()
+                .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE)
+                .extFacing()
+                .build(),
+                TextureFactory.builder()
+                    .addIcon(OVERLAY_FRONT_ASSEMBLY_LINE_GLOW)
+                    .extFacing()
+                    .glow()
+                    .build() };
+        }
+        return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(CASING_INDEX) };
+    }
+
+    private GasEnvironmentType getCurrentEnvironment() {
+        IGregTechTileEntity base = getBaseMetaTileEntity();
+        if (base == null) return GasEnvironmentType.NONE;
+
+        return GasEnvironmentHelper.getEnvironmentAt(
+            base.getWorld(),
+            base.getXCoord(),
+            base.getYCoord(),
+            base.getZCoord()
+        );
+    }
+
+    private BigInteger getOrundumPerCycleForWaila(World world, int x, int y, int z) {
+        BigInteger perCycle = ORUNDUM_PER_CYCLE;
+
+        GasEnvironmentType env = GasEnvironmentHelper.getEnvironmentAt(world, x, y, z);
+        if (env == GasEnvironmentType.XRANITE) {
+            perCycle = perCycle
+                .multiply(BigInteger.valueOf(13L))
+                .divide(BigInteger.TEN);
+        }
+
+        return perCycle;
+    }
+}

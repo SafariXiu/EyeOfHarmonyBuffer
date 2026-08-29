@@ -9,7 +9,6 @@ public class EOHBSpacePumpingRecipes {
 
     public static void addPumpingRecipes(){
 
-        //T2
         RECIPES.put(Pair.of(2,2), FluidRegistry.getFluidStack("liquiddna",20000000));
     }
 }

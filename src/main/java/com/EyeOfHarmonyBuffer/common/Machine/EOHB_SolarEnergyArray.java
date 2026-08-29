@@ -7,7 +7,6 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import goodgenerator.blocks.tileEntity.base.MTETooltipMultiBlockBaseEM;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -15,6 +14,8 @@ import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
+import gregtech.api.structure.error.StructureErrorRegistry;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import net.minecraft.item.ItemStack;
@@ -27,6 +28,7 @@ import tectech.thing.casing.TTCasingsContainer;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.UUID;
 
 import static com.EyeOfHarmonyBuffer.utils.TextLocalization.*;
@@ -37,7 +39,7 @@ import static gregtech.api.enums.Textures.BlockIcons.casingTexturePages;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
-public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements IConstructable, ISurvivalConstructable{
+public class EOHB_SolarEnergyArray extends TTMultiblockBase implements IConstructable, ISurvivalConstructable{
 
     public EOHB_SolarEnergyArray(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -90,7 +92,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
                                 gregtech.api.enums.HatchElement.Maintenance
                             )
                             .casingIndex(BlockGTCasingsTT.textureOffset + 1)
-                            .dot(1)
+                            .hint(1)
                             .build(),
                         ofBlock(TTCasingsContainer.sBlockCasingsTT,1)
                 ))
@@ -130,12 +132,23 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     }
 
     @Override
-    public boolean checkMachine_EM(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        if(MachineWirelessMode){
-            return structureCheck_EM(mName, 15, 10, 14);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(mName, 15, 10, 14, errors);
+
+        if (!ok) {
+            return;
         }
-        return structureCheck_EM(mName, 15, 10, 14)
-            && mDynamoHatches.size() + eDynamoMulti.size() == 1;
+
+        if (MachineWirelessMode) {
+            return;
+        }
+
+        int dynamos = mDynamoHatches.size() + eDynamoMulti.size();
+        if (dynamos != 1) {
+            errors.add(StructureErrorRegistry.UNKNOWN_STRUCTURE_ERROR);
+        }
     }
 
     @Override
@@ -152,8 +165,8 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
             .addSeparator()
             .addInfo(TextLocalization.StructureTooComplex)
             .addInfo(TextLocalization.BLUE_PRINT_INFO)
-            .addMaintenanceHatch(add_MaintenanceHatch)
-            .addDynamoHatch(add_DynamoHatch)
+            .addMaintenanceHatch("1+", EOHB_MachineType_1)
+            .addDynamoHatch("1+", EOHB_MachineType_1)
             .toolTipFinisher(TextLocalization.ModName);
         return tt;
     }
@@ -235,7 +248,7 @@ public class EOHB_SolarEnergyArray extends MTETooltipMultiBlockBaseEM implements
     public String[] getInfoData() {
         String[] info = super.getInfoData();
         info[4] = "Currently generates: " + EnumChatFormatting.RED
-            + GTUtility.formatNumbers(Math.abs(this.trueOutput))
+            + GTUtility.formatShortenedLong(Math.abs(this.trueOutput))
             + EnumChatFormatting.RESET
             + " EU/t";
         info[5] = "Wireless Mode: " + (MachineWirelessMode ? EnumChatFormatting.GREEN + "ENABLED" : EnumChatFormatting.RED + "DISABLED");

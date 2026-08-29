@@ -15,6 +15,7 @@ import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
+import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
@@ -25,6 +26,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 import java.util.Objects;
 
 import static com.EyeOfHarmonyBuffer.client.ExternalBlockTextures.HEMPCRETE_META12_INDEX;
@@ -59,7 +61,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
 
     @Override
     public int getWirelessModeProcessingTime() {
-        return 0;
+        return 10;
     }
 
     @Override
@@ -74,7 +76,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
 
     @Override
     public int getMaxParallelRecipes() {
-        return 0;
+        return Integer.MAX_VALUE;
     }
 
     @NotNull
@@ -95,7 +97,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
             @NotNull
             @Override
             protected OverclockCalculator createOverclockCalculator(@NotNull GTRecipe recipe) {
-                return new OverclockCalculator()
+                return OverclockCalculator.ofNoOverclock(recipe)
                     .setParallel(Integer.MAX_VALUE);
             }
 
@@ -160,7 +162,7 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
                     buildHatchAdder(EOHB_MonkeyShit.class)
                         .atLeast(InputHatch,InputBus,OutputHatch,OutputBus)
                         .casingIndex(HEMPCRETE_META12_INDEX)
-                        .dot(1)
+                        .hint(1)
                         .buildAndChain(
                             ofBlock(Objects.requireNonNull(Block.getBlockFromName(Chisel.ID + ":hempcrete")), 12)
                         )
@@ -175,8 +177,14 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
     }
 
     @Override
-    public boolean checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack) {
-        return checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ);
+    public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity,
+                             ItemStack aStack,
+                             List<StructureError> errors) {
+        boolean ok = checkPiece(STRUCTURE_PIECE_MAIN, OffsetsX, OffsetsY, OffsetsZ, errors);
+
+        if (!ok) {
+            return;
+        }
     }
 
     @Override
@@ -204,10 +212,10 @@ public class EOHB_MonkeyShit extends WirelessEnergyMultiMachineBase<EOHB_MonkeyS
             .addInfo(Tooltip_MonkeyShit_04)
             .addInfo(Tooltip_MonkeyShit_05)
             .addSeparator()
-            .addInputBus(add_InputBus)
-            .addOutputBus(add_OutputBus)
-            .addInputHatch(add_inputHatch)
-            .addOutputHatch(add_outputHatch)
+            .addInputBus("1+", EOHB_MachineType_1)
+            .addOutputBus("1+", EOHB_MachineType_1)
+            .addInputHatch("1+", EOHB_MachineType_1)
+            .addOutputHatch("1+", EOHB_MachineType_1)
             .addInfo(StructureTooComplex)
             .addInfo(BLUE_PRINT_INFO)
 

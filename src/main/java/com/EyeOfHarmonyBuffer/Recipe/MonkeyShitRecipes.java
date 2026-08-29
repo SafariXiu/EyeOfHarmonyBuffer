@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.Recipe;
 
 import com.EyeOfHarmonyBuffer.utils.IRecipePool;
+import gregtech.api.enums.Materials;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.fluids.GTPPFluids;
@@ -39,8 +40,7 @@ public class MonkeyShitRecipes implements IRecipePool {
         };
 
         final FluidStack[] baseFluidOutputs = new FluidStack[]{
-            new FluidStack(GTPPFluids.PoopJuice, 1_000_000),
-            new FluidStack(GTPPFluids.FertileManureSlurry, 1_000_000)
+            Materials.Water.getFluid(1_000_000_000)
         };
 
         final FluidStack[] fluidInputs  = new FluidStack[0];
@@ -122,6 +122,9 @@ public class MonkeyShitRecipes implements IRecipePool {
                 false,
                 recipeInputs,
                 recipeOutputs,
+                null,
+                null,
+                null,
                 null,
                 null,
                 fluidInputs,

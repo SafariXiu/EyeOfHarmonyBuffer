@@ -6,6 +6,6 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
-  "client": [],
+  "client": ["WaterGlassMixin", "MixinMinecraftHoloInteraction", "MixinGuiDownloadTerrain", "MixinLoadingScreenRenderer", "MixinEntityRendererHand"],
   "server": []
 }
