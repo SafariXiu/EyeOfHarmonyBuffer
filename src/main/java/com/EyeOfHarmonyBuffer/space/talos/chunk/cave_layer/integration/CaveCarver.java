@@ -162,8 +162,12 @@ public final class CaveCarver {
             carveMegaHallColumn(hall, worldX, worldZ, span[1],
                 localX, localZ, blocks, meta, worldHeight, seed);
             // 湖连接管：允许在洞厅内继续雕刻，从湖底/侧壁穿进湖体
+            // 干洞穿墙段：外部干节点→洞厅壁的隧道在洞厅内部可见
             if (!hall.isPillarColumn(worldX, worldZ)) {
                 carveLakePipesThroughMegaHall(
+                    worldX, worldZ, maxY,
+                    localX, localZ, blocks, meta, worldHeight, seed, data);
+                carveDryPipesThroughMegaHall(
                     worldX, worldZ, maxY,
                     localX, localZ, blocks, meta, worldHeight, seed, data);
             }
@@ -599,6 +603,40 @@ public final class CaveCarver {
                         setAir(blocks, meta, localX, localZ, y,
                             worldHeight);
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * 洞厅列内补刻干洞-洞厅穿墙段：外部干节点 → 洞厅壁内侧锚点的隧道
+     * 在洞厅内部也能看到（挖成空气通道）。洞厅列本来就会被洞厅雕刻
+     * 挖成空腔，这里只为穿墙隧道保留清晰的洞口轮廓（与湖管对称）。
+     */
+    private static void carveDryPipesThroughMegaHall(
+        int worldX, int worldZ, int maxY,
+        int localX, int localZ,
+        net.minecraft.block.Block[] blocks, byte[] meta,
+        int worldHeight, long seed, CaveChunkData data
+    ) {
+        for (CaveSegment seg : data.segments) {
+            if (!seg.piercesMegaHall) {
+                continue;
+            }
+            if (worldX < seg.minX || worldX > seg.maxX
+                || worldZ < seg.minZ || worldZ > seg.maxZ) {
+                continue;
+            }
+            int yMin = Math.max(1, (int) Math.ceil(seg.minY));
+            int yMax = Math.min(maxY, (int) Math.floor(seg.maxY));
+            for (int y = yMin; y <= yMax; y++) {
+                double wall = (CaveMath.valueNoise3D(
+                    worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
+                    * 2.0 * WALL_AMP;
+                double e = seg.sampleExcess(worldX, y, worldZ, wall);
+                if (e > 0.0) {
+                    // 干洞穿墙段：挖空气（不灌水）
+                    setAir(blocks, meta, localX, localZ, y, worldHeight);
                 }
             }
         }

@@ -121,6 +121,17 @@ public final class CaveGenerator {
     private static final int MEGA_HALL_LAKE_PIPE_Y = 13;
     /** 洞厅湖接入点扫描步长（blocks）。 */
     private static final int MEGA_HALL_LAKE_SCAN_STEP = 32;
+    /** 干洞-洞厅穿墙段的绝对距离 D：洞厅壁外多少格内的干节点都接入。 */
+    private static final double MEGA_HALL_DRY_DIST = 300.0;
+    /** 干洞穿墙段半径（blocks）：比普通段粗、能看出是入口。 */
+    private static final double MEGA_HALL_DRY_PIPE_RADIUS = 8.0;
+    /** 干洞穿墙段可走地面高度：入口地面 = 该 Y。 */
+    private static final int MEGA_HALL_DRY_ENTRY_Y = 34;
+    /** 干洞穿墙段扫描半径（单元）：覆盖洞厅半径 + D + 余量。 */
+    private static final int MEGA_HALL_DRY_SCAN_RADIUS = 8;
+    private static final int SALT_MEGA_HALL_DRY = 0xA2;
+    /** 洞厅湖连接管数量：生成多条，让洞厅底部多处见暗河出入口。 */
+    private static final int MEGA_HALL_LAKE_PIPE_COUNT = 3;
     /** 大厅湖连接管扫描半径（单元）：覆盖最远全水节点到大厅的管道长度。 */
     private static final int LAKE_PIPE_SCAN_RADIUS = 5;
     /** 干洞上层带下限：盆地 / 禁干带内只允许该高度以上的干洞。 */
@@ -217,6 +228,14 @@ public final class CaveGenerator {
     /** 大厅湖 / 洞厅湖连接管缓存（同一管只构建一次）。 */
     private static final Object NO_LAKE_PIPE = new Object();
     private static final ConcurrentHashMap<Long, Object> LAKE_PIPE_CACHE =
+        new ConcurrentHashMap<Long, Object>();
+    /** 干洞-洞厅穿墙段缓存（同一洞厅只构建一次）。 */
+    private static final Object NO_DRY_PIPE = new Object();
+    private static final ConcurrentHashMap<Long, Object> DRY_PIPE_CACHE =
+        new ConcurrentHashMap<Long, Object>();
+    /** 洞厅含水多管缓存（同一洞厅只构建一次，2~3 条）。 */
+    private static final Object NO_HALL_PIPES = new Object();
+    private static final ConcurrentHashMap<Long, Object> HALL_PIPES_CACHE =
         new ConcurrentHashMap<Long, Object>();
     /** 浅层限制单元缓存：线段检查会按采样点反复查询，避免重复哈希。 */
     private static final ConcurrentHashMap<Long, Boolean> SHALLOW_CELL_CACHE =
@@ -384,6 +403,8 @@ public final class CaveGenerator {
         MEGA_HALL_CACHE.clear();
         MEGA_HALL_LAKE_CACHE.clear();
         LAKE_PIPE_CACHE.clear();
+        DRY_PIPE_CACHE.clear();
+        HALL_PIPES_CACHE.clear();
         SHALLOW_CELL_CACHE.clear();
         HALL_ZONE_CELL_CACHE.clear();
     }
@@ -884,15 +905,13 @@ public final class CaveGenerator {
                 if (hall == null) {
                     continue;
                 }
-                CaveSegment pipe = lakePipeForHall(
-                    hall, seed, nodeCache, edgeCache, aquiferNodeCache);
-                if (pipe == null) {
-                    continue;
-                }
-                if (pipe.maxX >= x0 && pipe.minX <= x0 + 16
-                    && pipe.maxZ >= z0 && pipe.minZ <= z0 + 16
-                    && seenEdges.add(pipe.edgeId)) {
-                    out.add(pipe);
+                for (CaveSegment pipe : lakePipesForHall(
+                    hall, seed, nodeCache, edgeCache, aquiferNodeCache)) {
+                    if (pipe.maxX >= x0 && pipe.minX <= x0 + 16
+                        && pipe.maxZ >= z0 && pipe.minZ <= z0 + 16
+                        && seenEdges.add(pipe.edgeId)) {
+                        out.add(pipe);
+                    }
                 }
             }
         }
@@ -933,7 +952,12 @@ public final class CaveGenerator {
     }
 
     /** 洞厅湖的连接管（缓存：每个洞厅只构建一次）。 */
-    private static CaveSegment lakePipeForHall(
+    /**
+     * 洞厅的含水连接管（2~3 条，缓存）：从洞厅湖底接入点向洞厅外的
+     * 不同全水节点各建一条 U 形管 → 洞厅底部多处见暗河出入口，
+     * 玩家容易找到水路出口。
+     */
+    private static List<CaveSegment> lakePipesForHall(
         CaveMegaHall hall, long seed,
         Map<Long, List<CaveNode>> nodeCache,
         Map<Long, List<CaveSegment>> edgeCache,
@@ -944,29 +968,40 @@ public final class CaveGenerator {
         int superZ = Math.floorDiv(
             (int) Math.floor(hall.cz), MEGA_HALL_CELL_BLOCKS);
         long key = megaHallKey(seed, superX, superZ);
-        Object cached = LAKE_PIPE_CACHE.get(key);
+        Object cached = HALL_PIPES_CACHE.get(key);
         if (cached != null) {
-            return cached == NO_LAKE_PIPE ? null : (CaveSegment) cached;
+            return cached == NO_HALL_PIPES
+                ? java.util.Collections.<CaveSegment>emptyList()
+                : (List<CaveSegment>) cached;
         }
-        CaveSegment pipe = null;
+        List<CaveSegment> pipes = new ArrayList<CaveSegment>();
         double[] lake = megaHallLakeCell(hall, seed);
         if (lake != null) {
-            CaveNode full = nearestFullNodeForLake(
-                lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
-                nodeCache, edgeCache, aquiferNodeCache,
-                HALL_LAKE_FULL_RADIUS, null, hall);
-            if (full != null) {
-                // 同上：水位取洞厅湖面与全水节点深度的较高值，整管水淹。
+            java.util.Set<Long> used = new java.util.HashSet<Long>();
+            for (int p = 0; p < MEGA_HALL_LAKE_PIPE_COUNT; p++) {
+                CaveNode full = nearestFullNodeForLakeExcluding(
+                    lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
+                    nodeCache, edgeCache, aquiferNodeCache,
+                    HALL_LAKE_FULL_RADIUS, null, hall, used);
+                if (full == null) {
+                    break;
+                }
+                used.add(full.id);
+                // 水位取洞厅湖面与全水节点深度的较高值，整管水淹。
                 int pipeWater = Math.max(
                     CaveMegaHall.LAKE_WATER_LEVEL, (int) full.y + 2);
-                pipe = buildLakePipe(
+                CaveSegment pipe = buildLakePipe(
                     full, lake[0], MEGA_HALL_LAKE_PIPE_Y, lake[1], seed,
-                    SALT_LAKE_PIPE + 1, AQUIFER_LAKE_PIPE_RADIUS,
+                    SALT_LAKE_PIPE + 1 + p, AQUIFER_LAKE_PIPE_RADIUS,
                     pipeWater, true, CaveMegaHall.LAKE_WATER_LEVEL);
+                if (pipe != null) {
+                    pipes.add(pipe);
+                }
             }
         }
-        LAKE_PIPE_CACHE.put(key, pipe != null ? pipe : NO_LAKE_PIPE);
-        return pipe;
+        HALL_PIPES_CACHE.put(key,
+            pipes.isEmpty() ? NO_HALL_PIPES : pipes);
+        return pipes;
     }
 
     /** 大厅湖内的接入点：湖床上方 1 格，避开石柱。 */
@@ -996,6 +1031,20 @@ public final class CaveGenerator {
         Map<Long, List<CaveNode>> aquiferNodeCache,
         int radius, CaveChamber rejectChamber, CaveMegaHall rejectHall
     ) {
+        return nearestFullNodeForLakeExcluding(
+            x, y, z, seed, nodeCache, edgeCache, aquiferNodeCache,
+            radius, rejectChamber, rejectHall, null);
+    }
+
+    /** 同上，但额外排除指定 id 集合（供多条含水连接管复用不同节点）。 */
+    private static CaveNode nearestFullNodeForLakeExcluding(
+        double x, double y, double z, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        Map<Long, List<CaveSegment>> edgeCache,
+        Map<Long, List<CaveNode>> aquiferNodeCache,
+        int radius, CaveChamber rejectChamber, CaveMegaHall rejectHall,
+        java.util.Set<Long> excludeIds
+    ) {
         int ccx = Math.floorDiv((int) Math.floor(x), CELL_BLOCKS);
         int ccz = Math.floorDiv((int) Math.floor(z), CELL_BLOCKS);
         CaveNode best = null;
@@ -1006,6 +1055,9 @@ public final class CaveGenerator {
                     ccx + dx, ccz + dz, seed,
                     nodeCache, edgeCache, aquiferNodeCache)) {
                     if (n.kind != CaveNode.KIND_AQUIFER_FULL) {
+                        continue;
+                    }
+                    if (excludeIds != null && excludeIds.contains(n.id)) {
                         continue;
                     }
                     if (rejectChamber != null
@@ -1170,10 +1222,197 @@ public final class CaveGenerator {
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin,
             true, false, waterLevelY, pierceShell,
-            (float) from.x, (float) from.z, lakeSurfaceY
+            (float) from.x, (float) from.z, lakeSurfaceY,
+            false
         );
     }
 
+
+    /**
+     * 干洞-洞厅穿墙段：从外部干节点连到洞厅壁内侧锚点（可走地面 = MEGA_HALL_DRY_ENTRY_Y）。
+     * 标记 piercesMegaHall=true → 洞厅列内也会雕刻，入口在洞厅内部可见。
+     */
+    private static CaveSegment buildDryEntrySegment(
+        CaveNode from, double ax, double az, long seed
+    ) {
+        // 隧道中心 Y = 可走地面(34) + 半径(8)：底部（可走地面）在 34。
+        double ay = MEGA_HALL_DRY_ENTRY_Y + MEGA_HALL_DRY_PIPE_RADIUS;
+        long targetHash = CaveMath.mix64(
+            Double.doubleToLongBits(ax)
+                ^ Double.doubleToLongBits(ay * 1.0e6)
+                ^ Double.doubleToLongBits(az)
+                ^ SALT_MEGA_HALL_DRY);
+        long pipeEdge = edgeId(from.id, targetHash);
+        int n = 7;
+        float[] xs = new float[n];
+        float[] ys = new float[n];
+        float[] zs = new float[n];
+        float[] rs = new float[n];
+        float maxR = 0;
+        xs[0] = (float) from.x;
+        ys[0] = (float) from.y;
+        zs[0] = (float) from.z;
+        for (int i = 1; i < n - 1; i++) {
+            double t = (double) i / (n - 1);
+            double px = from.x + (ax - from.x) * t;
+            double pz = from.z + (az - from.z) * t;
+            double py = from.y + (ay - from.y) * t;
+            double jx = (CaveMath.hash01(
+                pipeEdge, i, 0, seed, SALT_MEGA_HALL_DRY) - 0.5) * 9.0;
+            double jz = (CaveMath.hash01(
+                pipeEdge, i, 1, seed, SALT_MEGA_HALL_DRY) - 0.5) * 9.0;
+            double jy = (CaveMath.hash01(
+                pipeEdge, i, 2, seed, SALT_MEGA_HALL_DRY) - 0.5) * 1.5;
+            xs[i] = (float) (px + jx);
+            ys[i] = (float) Math.max(3.0, py + jy);
+            zs[i] = (float) (pz + jz);
+            double r = MEGA_HALL_DRY_PIPE_RADIUS
+                * (0.85 + 0.3 * CaveMath.hash01(
+                    pipeEdge, i, 3, seed, SALT_MEGA_HALL_DRY));
+            rs[i] = (float) r;
+            if (r > maxR) {
+                maxR = (float) r;
+            }
+        }
+        xs[n - 1] = (float) ax;
+        ys[n - 1] = (float) ay;
+        zs[n - 1] = (float) az;
+        rs[0] = (float) (MEGA_HALL_DRY_PIPE_RADIUS
+            * (0.85 + 0.3 * CaveMath.hash01(
+                pipeEdge, 0, 3, seed, SALT_MEGA_HALL_DRY)));
+        rs[n - 1] = (float) (MEGA_HALL_DRY_PIPE_RADIUS
+            * (0.85 + 0.3 * CaveMath.hash01(
+                pipeEdge, n - 1, 3, seed, SALT_MEGA_HALL_DRY)));
+        maxR = Math.max(maxR, Math.max(rs[0], rs[n - 1]));
+
+        float margin = maxR + 3.0f;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        float maxZ = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            minX = Math.min(minX, xs[i]);
+            maxX = Math.max(maxX, xs[i]);
+            minY = Math.min(minY, ys[i]);
+            maxY = Math.max(maxY, ys[i]);
+            minZ = Math.min(minZ, zs[i]);
+            maxZ = Math.max(maxZ, zs[i]);
+        }
+        return new CaveSegment(
+            pipeEdge, false,
+            xs, ys, zs, rs,
+            minX - margin, minY - margin, minZ - margin,
+            maxX + margin, maxY + margin, maxZ + margin,
+            false, false, 0, false,
+            0f, 0f, 0, true
+        );
+    }
+
+    /**
+     * 洞厅的干洞穿墙段（缓存）：洞厅壁外 MEGA_HALL_DRY_DIST 内所有干节点
+     * 都连一条穿墙段。穿墙锚点 = 洞厅壁内侧、Y = MEGA_HALL_DRY_ENTRY_Y，
+     * 且该列洞厅内部 floorY ≤ 34（入口在开阔空腔，不被高台糊死）。
+     */
+    private static List<CaveSegment> dryEntryPipesForHall(
+        CaveMegaHall hall, long seed,
+        Map<Long, List<CaveNode>> nodeCache
+    ) {
+        int superX = Math.floorDiv(
+            (int) Math.floor(hall.cx), MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(
+            (int) Math.floor(hall.cz), MEGA_HALL_CELL_BLOCKS);
+        long key = megaHallKey(seed, superX, superZ);
+        Object cached = DRY_PIPE_CACHE.get(key);
+        if (cached != null) {
+            return cached == NO_DRY_PIPE
+                ? java.util.Collections.<CaveSegment>emptyList()
+                : (List<CaveSegment>) cached;
+        }
+        int ccx = Math.floorDiv((int) Math.floor(hall.cx), CELL_BLOCKS);
+        int ccz = Math.floorDiv((int) Math.floor(hall.cz), CELL_BLOCKS);
+        List<CaveSegment> pipes = new ArrayList<CaveSegment>();
+        java.util.Set<Long> seen = new java.util.HashSet<Long>();
+        for (int dz = -MEGA_HALL_DRY_SCAN_RADIUS;
+             dz <= MEGA_HALL_DRY_SCAN_RADIUS; dz++) {
+            for (int dx = -MEGA_HALL_DRY_SCAN_RADIUS;
+                 dx <= MEGA_HALL_DRY_SCAN_RADIUS; dx++) {
+                for (CaveNode node : nodesOf(
+                    ccx + dx, ccz + dz, seed, nodeCache)) {
+                    if (!seen.add(node.id)) {
+                        continue;
+                    }
+                    if (isAquiferKind(node.kind)) {
+                        continue;
+                    }
+                    if (node.kind == CaveNode.KIND_MEGA_HALL) {
+                        continue;
+                    }
+                    if (nodeInsideMegaHall(node, hall)) {
+                        continue;
+                    }
+                    // 高度过滤：只连 y 在洞厅顶附近之下的干节点，
+                    // 避免 >100 格的垂直拉丝隧道（穿越洞厅顶 / 地表）。
+                    if (node.y > hall.maxY + 15.0) {
+                        continue;
+                    }
+                    // 绝对距离：到洞厅壁的径向距离 ≤ D
+                    double dw = hall.radialWallDist(node.x, node.z);
+                    if (dw <= 0.0 || dw > MEGA_HALL_DRY_DIST) {
+                        continue;
+                    }
+                    // 穿墙锚点：洞厅壁内侧、隧道中心 Y = 可走地面(34) + 半径(8)，
+                    // 即隧道底部（可走地面）在 Y = 34。
+                    double anchorY = MEGA_HALL_DRY_ENTRY_Y
+                        + MEGA_HALL_DRY_PIPE_RADIUS;
+                    double[] anchor = hall.wallAnchorAlong(
+                        node.x, node.z, anchorY);
+                    if (anchor == null) {
+                        continue;
+                    }
+                    // 锚点列内部 floorY ≤ 34：入口在开阔空腔，不被内部地形糊死。
+                    int fx = (int) Math.floor(anchor[0]);
+                    int fz = (int) Math.floor(anchor[2]);
+                    if (hall.floorY(fx, fz) > MEGA_HALL_DRY_ENTRY_Y) {
+                        continue;
+                    }
+                    pipes.add(buildDryEntrySegment(
+                        node, anchor[0], anchor[2], seed));
+                }
+            }
+        }
+        DRY_PIPE_CACHE.put(key,
+            pipes.isEmpty() ? NO_DRY_PIPE : pipes);
+        return pipes;
+    }
+
+    /** 收集与某区块相交的干洞-洞厅穿墙段（独立收集，保证覆盖整个洞厅）。 */
+    private static void collectMegaHallDryPipesForChunk(
+        int chunkX, int chunkZ, long seed,
+        Map<Long, List<CaveNode>> nodeCache,
+        List<CaveSegment> out, Set<Long> seenEdges
+    ) {
+        int x0 = chunkX * 16;
+        int z0 = chunkZ * 16;
+        int superX = Math.floorDiv(x0, MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(z0, MEGA_HALL_CELL_BLOCKS);
+        for (int sz = -1; sz <= 1; sz++) {
+            for (int sx = -1; sx <= 1; sx++) {
+                CaveMegaHall hall = megaHallForSupercell(
+                    superX + sx, superZ + sz, seed);
+                if (hall == null) {
+                    continue;
+                }
+                for (CaveSegment seg : dryEntryPipesForHall(
+                    hall, seed, nodeCache)) {
+                    if (seenEdges.add(seg.edgeId)
+                        && seg.maxX >= x0 && seg.minX <= x0 + 16
+                        && seg.maxZ >= z0 && seg.minZ <= z0 + 16) {
+                        out.add(seg);
+                    }
+                }
+            }
+        }
+    }
     /** 收集与某区块相交的含水线段（含跨单元长管）。 */
     private static void collectAquiferSegmentsForChunk(
         int chunkX, int chunkZ, long seed,
@@ -1626,7 +1865,7 @@ public final class CaveGenerator {
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin,
             aquifer, fullySubmerged, waterLevelY, false,
-            0f, 0f, 0
+            0f, 0f, 0, false
         );
     }
 
@@ -1716,7 +1955,7 @@ public final class CaveGenerator {
             minX - margin, minY - margin, minZ - margin,
             maxX + margin, maxY + margin, maxZ + margin,
             false, false, 0, false,
-            0f, 0f, 0
+            0f, 0f, 0, false
         );
     }
 
@@ -1972,6 +2211,12 @@ public final class CaveGenerator {
             nodeCache, edgeCache, aquiferNodeCache,
             segments, seenEdges);
 
+        // 干洞-洞厅穿墙段：洞厅壁外 D=300 内所有干节点都连（独立收集，
+        // 保证整条穿墙隧道从外部干节点一路通到洞厅壁内侧、在洞厅内部可见）。
+        collectMegaHallDryPipesForChunk(
+            chunkX, chunkZ, seed,
+            nodeCache, segments, seenEdges);
+
         // 洞厅：只查本区块所在超级格（洞厅被限制在超级格内部）
         collectMegaHallsForChunk(chunkX, chunkZ, seed, megaHalls);
         if (!megaHalls.isEmpty() && !tags.contains(CaveTag.MEGA_HALL)) {
@@ -2159,10 +2404,14 @@ public final class CaveGenerator {
             return;
         }
 
-        // 普通 / 大厅 / 入口 / 天坑 / 洞厅：连接邻域最近节点（优先跨单元）。
+        // 洞厅中心节点的连接由「干洞穿墙段(dryEntryPipesForHall) + 湖连接管
+        // (lakePipesForHall)」显式接管，不再随机连最近干节点（避免入口位置不可控）。
+        if (node.kind == CaveNode.KIND_MEGA_HALL) {
+            return;
+        }
+        // 普通 / 大厅 / 入口 / 天坑：连接邻域最近节点（优先跨单元）。
         // 被盆地/禁干带/洞厅避让检查拒绝的候选直接跳过并继续找下一个。
-        // 洞厅是超大节点，搜索半径放宽到 4 单元；其余节点保持 2 单元，成本低。
-        int radius = node.kind == CaveNode.KIND_MEGA_HALL ? 4 : 2;
+        int radius = 2;
         int maxLinks = node.isEntranceLike() ? 2 : 3;
         int maxTries = node.isEntranceLike() ? 8 : 6;
         long exclude = -1;

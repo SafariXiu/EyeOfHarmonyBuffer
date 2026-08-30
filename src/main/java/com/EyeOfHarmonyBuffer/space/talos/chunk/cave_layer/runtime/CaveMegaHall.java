@@ -1173,4 +1173,72 @@ public final class CaveMegaHall {
         return maxX >= x0 && minX <= x0 + 16
             && maxZ >= z0 && minZ <= z0 + 16;
     }
+
+    // ================= 干洞连接辅助（绝对距离 D=300，穿墙点 Y≥34） =================
+
+    /** double 精度水平形状值（<1 在洞厅内）。 */
+    private double shapeHAt(double wx, double wz) {
+        double fx = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3D(
+            wx / SHAPE_NOISE_SCALE, 0.05, wz / SHAPE_NOISE_SCALE,
+            seed, SHAPE_NOISE_SALT);
+        double fz = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3D(
+            wx / SHAPE_NOISE_SCALE, 0.07, wz / SHAPE_NOISE_SCALE,
+            seed, SHAPE_NOISE_SALT + 1);
+        double dx = (wx - cx) / (rx * fx);
+        double dz = (wz - cz) / (rz * fz);
+        return shapeH(dx, dz);
+    }
+
+    /**
+     * 外部点 (wx,wz) 到洞厅壁的径向距离（沿 中心→点 方向，二分找 shapeH=1）。
+     * @return 正=在壁外多少格；0=在壁上；负=在洞厅内。
+     */
+    public double radialWallDist(double wx, double wz) {
+        double dx = wx - cx, dz = wz - cz;
+        double len = Math.hypot(dx, dz);
+        if (len < 1.0e-6) {
+            return 0.0;
+        }
+        double ux = dx / len, uz = dz / len;
+        double lo = 0.0, hi = len * 1.5 + 200.0;
+        for (int i = 0; i < 48; i++) {
+            double mid = (lo + hi) / 2.0;
+            if (shapeHAt(cx + ux * mid, cz + uz * mid) < 1.0) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return len - (lo + hi) / 2.0;
+    }
+
+    /**
+     * 沿 中心→(wx,wz) 方向，在洞厅壁内侧取一个穿墙锚点（水平距壁内 ~1%，
+     * 高度钳制到洞厅垂直范围中间值 targetY）。供干洞连接段使用。
+     * @return {x, y, z} 锚点坐标；若 targetY 超出洞厅垂直范围返回 null。
+     */
+    public double[] wallAnchorAlong(double wx, double wz, double targetY) {
+        double dx = wx - cx, dz = wz - cz;
+        double len = Math.hypot(dx, dz);
+        if (len < 1.0e-6) {
+            return null;
+        }
+        if (targetY < minY + 2.0 || targetY > maxY - 2.0) {
+            return null;
+        }
+        double ux = dx / len, uz = dz / len;
+        double lo = 0.0, hi = len * 1.5 + 200.0;
+        for (int i = 0; i < 48; i++) {
+            double mid = (lo + hi) / 2.0;
+            if (shapeHAt(cx + ux * mid, cz + uz * mid) < 1.0) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        double wallR = (lo + hi) / 2.0;
+        // 壁内侧 1%：保证段末端在洞厅空腔内（被洞厅雕刻覆盖，不穿出）
+        double r = wallR * 0.99;
+        return new double[] {cx + ux * r, targetY, cz + uz * r};
+    }
 }
