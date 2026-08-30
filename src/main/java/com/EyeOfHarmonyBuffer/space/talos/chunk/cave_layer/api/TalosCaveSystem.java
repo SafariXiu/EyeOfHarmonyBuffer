@@ -143,27 +143,21 @@ public final class TalosCaveSystem {
         CaveWorldState state = stateFor(worldSeedInt);
         int ccx = Math.floorDiv(worldX, 256);
         int ccz = Math.floorDiv(worldZ, 256);
+        java.util.Map<Long, java.util.List<CaveNode>> nodeCache =
+            new java.util.HashMap<Long, java.util.List<CaveNode>>();
         for (int dz = -radiusCells; dz <= radiusCells; dz++) {
             for (int dx = -radiusCells; dx <= radiusCells; dx++) {
-                for (CaveNode n : state.nodesForCell(ccx + dx, ccz + dz)) {
-                    if (!n.isEntranceLike()) {
-                        continue;
-                    }
-                    int ex = (int) Math.floor(n.x);
-                    int ez = (int) Math.floor(n.z);
-                    // 入口列必须能用：陆地且不在河道 / 湖体内，
-                    // 否则竖井不会被雕刻，TP 过去只会落在海上。
-                    if (!usableLandmarkColumn(ex, ez, worldSeedInt)) {
-                        continue;
-                    }
-                    out.add(new CaveEntrance(
-                        ex,
-                        ez,
-                        (int) Math.floor(n.y),
-                        n.shaftRadius,
-                        n.kind == CaveNode.KIND_SINKHOLE
-                    ));
+                CaveEntrance e = CaveGenerator.entranceForCell(
+                    ccx + dx, ccz + dz, worldSeedInt, nodeCache);
+                if (e == null) {
+                    continue;
                 }
+                // 入口开口列必须能用：陆地且不在河道 / 湖体内，
+                // 否则通道不会被雕刻，TP 过去只会落在海上。
+                if (!usableLandmarkColumn(e.x, e.z, worldSeedInt)) {
+                    continue;
+                }
+                out.add(e);
             }
         }
         return out;
@@ -326,18 +320,20 @@ public final class TalosCaveSystem {
         }
 
         List<CaveNode> nodes = state.nodesForCell(cellX, cellZ);
-        int entrance = 0;
         int chamber = 0;
         for (CaveNode n : nodes) {
-            if (n.isEntranceLike()) {
-                entrance++;
-            }
             if (n.kind == CaveNode.KIND_CHAMBER) {
                 chamber++;
             }
         }
+        // 入口 = 从真实节点延伸的通道（entranceForCell 按单元哈希决定）
+        java.util.Map<Long, List<CaveNode>> tmpCache =
+            new java.util.HashMap<Long, List<CaveNode>>();
+        CaveEntrance cellEnt = CaveGenerator.entranceForCell(
+            cellX, cellZ, worldSeedInt, tmpCache);
         lines.add("  本单元: 节点=" + nodes.size()
-            + " 入口=" + entrance + " 大厅=" + chamber);
+            + " 入口=" + (cellEnt != null ? 1 : 0)
+            + " 大厅=" + chamber);
 
         java.util.List<CaveEntrance> ents = debugEntrancesNear(
             worldX, worldZ, worldSeedInt, 2

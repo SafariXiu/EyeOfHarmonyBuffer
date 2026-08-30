@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainPreset;
@@ -42,6 +43,14 @@ public final class CaveGenerator {
     private static final int SALT_BAND = 0x3C;
     private static final int SALT_CHAMBER = 0x4D;
     private static final int SALT_ENTRANCE = 0x5E;
+
+    /**
+     * 入口 / 天坑的洞厅避让 margin（blocks）。
+     * 洞厅水平范围内的洞穴节点会被清理（nodeInsideMegaHall），
+     * 若入口仍生成在洞厅上方，其下方洞穴已被洞厅清空 → 有坑无洞。
+     * 因此入口水平位置落入洞厅影响区（含 margin 外扩带）时直接取消生成。
+     */
+    private static final double ENTRANCE_HALL_MARGIN = 16.0;
     private static final int SALT_EDGE_JITTER = 0x7A;
     private static final int SALT_EDGE_RADIUS = 0x8B;
     private static final int SALT_COLLAPSE = 0x9C;
@@ -156,6 +165,22 @@ public final class CaveGenerator {
         }
         SURFACE_REF_CACHE.put(key, Double.valueOf(y));
         return y;
+    }
+
+    /**
+     * 精确世界坐标的地表高度（无缓存；入口稀疏，直接查成本可接受）。
+     * 入口节点 y 必须用「入口自身位置」的地表，而不是单元中心——
+     * 否则地形起伏时 e.y 可能高于该列实际 topSolidY，雕刻不出开口，
+     * 且入口连接段会悬在空中（玩家往下挖找不到坑道）。
+     */
+    private static double surfaceAt(int wx, int wz, long seed) {
+        try {
+            return TalosTerrainHeights.sample(
+                wx, wz, (int) (seed & 0x7FFFFFFFL), 64, 256
+            ).surfaceD;
+        } catch (Throwable t) {
+            return 64.0;
+        }
     }
 
     /** 干洞深度带层数（按宏包分级，方案 A）：高原 / 山地 3 层，温带 2 层，低地 1 层。 */
@@ -287,48 +312,9 @@ public final class CaveGenerator {
             ));
         }
 
-        // 入口 / 天坑：贴近地表的大洞口（竖井已移除）。
-        // 入口节点放在地表下方数格，雕刻时从节点一路挖到地表（大洞口），
-        // 并作为节点接入干洞网络（collectEdges 会把它连到最近洞穴）。
-        double entRoll = CaveMath.hash01(cellX, cellZ, 99, seed, SALT_ENTRANCE);
-        if (entRoll < 0.30) {
-            int idx = nodes.size();
-            float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
-                cellX, cellZ, 100, seed, SALT_ENTRANCE, 48.0, 208.0);
-            float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
-                cellX, cellZ, 101, seed, SALT_ENTRANCE, 48.0, 208.0);
-            // 贴近地表：地表下 6~16 格，洞口短、宽敞。
-            float y = (float) (surfaceRefAt(cellX, cellZ, seed)
-                - 6.0 - CaveMath.hashRange(
-                    cellX, cellZ, 102, seed, SALT_ENTRANCE, 0.0, 10.0));
-            if (y < 8.0f) {
-                y = 8.0f;
-            }
-            nodes.add(new CaveNode(
-                nodeId(seed, cellX, cellZ, idx),
-                cellX, cellZ, x, y, z,
-                CaveNode.KIND_ENTRANCE, CaveNode.BAND_UPPER,
-                0, 0, 0, 3, 0
-            ));
-        } else if (entRoll < 0.36) {
-            int idx = nodes.size();
-            float x = cellX * CELL_BLOCKS + (float) CaveMath.hashRange(
-                cellX, cellZ, 110, seed, SALT_ENTRANCE, 48.0, 208.0);
-            float z = cellZ * CELL_BLOCKS + (float) CaveMath.hashRange(
-                cellX, cellZ, 111, seed, SALT_ENTRANCE, 48.0, 208.0);
-            float y = (float) (surfaceRefAt(cellX, cellZ, seed)
-                - 10.0 - CaveMath.hashRange(
-                    cellX, cellZ, 112, seed, SALT_ENTRANCE, 0.0, 8.0));
-            if (y < 8.0f) {
-                y = 8.0f;
-            }
-            nodes.add(new CaveNode(
-                nodeId(seed, cellX, cellZ, idx),
-                cellX, cellZ, x, y, z,
-                CaveNode.KIND_SINKHOLE, CaveNode.BAND_UPPER,
-                0, 0, 0, 2, 0
-            ));
-        }
+        // 入口不再生成独立节点：入口 = 从真实洞穴节点（backbone/normal）延伸出的通道。
+        // 由 entranceForCell() 在 buildChunkData 阶段按单元哈希决定（确定性、带缓存）。
+        // 基座是真实网络节点 → 天然连通、无缝隙、不会被塌方填死，相邻入口汇聚到同一隧道。
 
         // 洞厅优先：清掉洞厅范围内的其他所有节点，只留洞厅自己的超级节点
         if (megaHall != null) {
@@ -1537,9 +1523,14 @@ public final class CaveGenerator {
 
         double baseR = baseRadius(a.kind, b.kind);
         long edgeId = edgeId(a.id, b.id);
-        // 连接大厅的通道不允许塌方，避免巨型空腔被碎石填掉。
+        // 连接大厅 / 入口的通道不允许塌方：
+        //   - 大厅：避免巨型空腔被碎石填掉；
+        //   - 入口 / 天坑：入口是玩家进入洞穴的门面，若连接段塌方，
+        //     装饰器会用砂砾/原石把管道填满，入口就成了「有坑无洞」。
         boolean collapsed = a.kind != CaveNode.KIND_CHAMBER
             && b.kind != CaveNode.KIND_CHAMBER
+            && !a.isEntranceLike()
+            && !b.isEntranceLike()
             && !isAquiferKind(a.kind)
             && !isAquiferKind(b.kind)
             && CaveMath.hash01(
@@ -1635,6 +1626,106 @@ public final class CaveGenerator {
             aquifer, fullySubmerged, waterLevelY, false,
             0f, 0f, 0
         );
+    }
+
+    /**
+     * 构建入口通道段：从基座节点 (baseX, e.y, baseZ) 向上延伸到地表开口
+     * (e.x, e.surfaceY - 3, e.z)。这是真正的 CaveSegment——
+     * 主雕刻循环用 sampleExcess（点到折线距离 < 半径 - 洞壁噪声）雕刻，
+     * 与内部洞穴完全一致：带洞壁噪声、半径变化、圆润隧道。
+     *
+     * 顶部留 3 格（SURFACE_CAP）不延伸到地表，由 carveEntranceAt 挖开开口。
+     * collapsed=false（入口通道永不塌方）、aquifer=false。
+     */
+    public static CaveSegment buildEntrancePassage(CaveEntrance e, long seed) {
+        double ax = e.baseX, ay = e.y, az = e.baseZ;
+        double bx = e.x, by = e.surfaceY - 3.0, bz = e.z;
+        double dist = Math.sqrt(
+            (bx - ax) * (bx - ax) + (by - ay) * (by - ay)
+                + (bz - az) * (bz - az)
+        );
+        if (dist < 2.0) {
+            return null;
+        }
+        int n = (int) Math.round(dist / 24.0) + 1;
+        if (n < 3) {
+            n = 3;
+        }
+        if (n > 48) {
+            n = 48;
+        }
+        // 入口通道半径：比普通隧道略宽（好走），带沿路径的 1D 噪声半径变化。
+        double baseR = e.radius + 2.0;
+        long edgeId = entrancePassageId(e, seed);
+
+        // 垂直抖动基向量（与 AB 垂直），中间点做小幅抖动，端点锚定。
+        double abx = bx - ax, aby = by - ay, abz = bz - az;
+        double[] p = perpendicular(abx, aby, abz);
+        double[] q0 = cross(abx, aby, abz, p[0], p[1], p[2]);
+        double qLen = Math.sqrt(q0[0] * q0[0] + q0[1] * q0[1] + q0[2] * q0[2]);
+        double[] q = (qLen > 1.0e-9)
+            ? new double[] {q0[0] / qLen, q0[1] / qLen, q0[2] / qLen}
+            : new double[] {1.0, 0.0, 0.0};
+        double amp = Math.min(5.0, dist * 0.05);
+
+        float[] xs = new float[n];
+        float[] ys = new float[n];
+        float[] zs = new float[n];
+        float[] rs = new float[n];
+        float maxR = 0;
+        for (int i = 0; i < n; i++) {
+            double t = (double) i / (n - 1);
+            double px = ax + (bx - ax) * t;
+            double py = ay + (by - ay) * t;
+            double pz = az + (bz - az) * t;
+            if (i > 0 && i < n - 1) {
+                double jx = CaveMath.hash01(
+                    edgeId, i, 0, seed, SALT_EDGE_JITTER) - 0.5;
+                double jy = CaveMath.hash01(
+                    edgeId, i, 1, seed, SALT_EDGE_JITTER) - 0.5;
+                px += p[0] * jx * 2.0 * amp + q[0] * jy * 2.0 * amp;
+                py += p[1] * jx * 2.0 * amp + q[1] * jy * 2.0 * amp;
+                pz += p[2] * jx * 2.0 * amp + q[2] * jy * 2.0 * amp;
+            }
+            double r = baseR * noise1D(edgeId, t * 4.0, seed);
+            xs[i] = (float) px;
+            ys[i] = (float) py;
+            zs[i] = (float) pz;
+            rs[i] = (float) r;
+            if (r > maxR) {
+                maxR = (float) r;
+            }
+        }
+        float margin = maxR + 3.0f;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, minZ = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            minX = Math.min(minX, xs[i]);
+            maxX = Math.max(maxX, xs[i]);
+            minY = Math.min(minY, ys[i]);
+            maxY = Math.max(maxY, ys[i]);
+            minZ = Math.min(minZ, zs[i]);
+            maxZ = Math.max(maxZ, zs[i]);
+        }
+        return new CaveSegment(
+            edgeId,
+            false,  // 入口通道永不塌方
+            xs, ys, zs, rs,
+            minX - margin, minY - margin, minZ - margin,
+            maxX + margin, maxY + margin, maxZ + margin,
+            false, false, 0, false,
+            0f, 0f, 0
+        );
+    }
+
+    /** 入口通道段唯一 ID（确定性，避开网络边 ID 空间）。 */
+    private static long entrancePassageId(CaveEntrance e, long seed) {
+        long h = seed ^ 0xE17A91L;
+        h = CaveMath.mix64(h ^ (e.baseX * 0x9E3779B97F4A7C15L));
+        h = CaveMath.mix64(h ^ (e.baseZ * 0xBF58476D1CE4E5B9L));
+        h = CaveMath.mix64(h ^ (e.x * 0x94D049BB133111EBL));
+        h = CaveMath.mix64(h ^ (e.z * 0x27D4EB2F165667C5L));
+        return h;
     }
 
     /** 线段（含半径）是否穿过任何洞厅体积（洞厅连接除外）。 */
@@ -1837,19 +1928,33 @@ public final class CaveGenerator {
             }
         }
 
-        // 入口：只取本区块所在单元的入口（竖井列必须在区块内）
-        List<CaveNode> ownNodes = nodesOf(cellX, cellZ, seed, nodeCache);
-        for (CaveNode node : ownNodes) {
-            if (!node.isEntranceLike()) {
-                continue;
-            }
-            int ex = (int) Math.floor(node.x);
-            int ez = (int) Math.floor(node.z);
-            if (ex >= x0 && ex < x0 + 16 && ez >= z0 && ez < z0 + 16) {
-                entrances.add(new CaveEntrance(
-                    ex, ez, (int) Math.floor(node.y),
-                    node.shaftRadius, node.kind == CaveNode.KIND_SINKHOLE
-                ));
+        // 入口：从真实洞穴节点延伸的通道（基座在单元内，地表开口可能在本区块）。
+        // 检查本区块所在单元及相邻单元，收集「通道水平范围与本区块相交」的入口。
+        // 入口通道 = 基座 (baseX,baseZ) → 地表开口 (x,z)，带半径外扩。
+        // 同时把入口通道构建成 CaveSegment 加入 segments——
+        // 主雕刻循环用与洞穴相同的 sampleExcess 雕刻它（洞壁噪声 + 半径变化），
+        // 让入口隧道和内部洞穴完全一致。
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                CaveEntrance e = entranceForCell(
+                    cellX + dx, cellZ + dz, seed, nodeCache);
+                if (e == null) {
+                    continue;
+                }
+                int minX = Math.min(e.x, e.baseX) - e.radius - 2;
+                int maxX = Math.max(e.x, e.baseX) + e.radius + 2;
+                int minZ = Math.min(e.z, e.baseZ) - e.radius - 2;
+                int maxZ = Math.max(e.z, e.baseZ) + e.radius + 2;
+                if (maxX >= x0 && minX <= x0 + 16
+                    && maxZ >= z0 && minZ <= z0 + 16) {
+                    entrances.add(e);
+                    CaveSegment passage = buildEntrancePassage(e, seed);
+                    if (passage != null && seenEdges.add(passage.edgeId)
+                        && passage.maxX >= x0 && passage.minX <= x0 + 16
+                        && passage.maxZ >= z0 && passage.minZ <= z0 + 16) {
+                        segments.add(passage);
+                    }
+                }
             }
         }
 
@@ -1873,6 +1978,149 @@ public final class CaveGenerator {
 
         return new CaveChunkData(
             segments, chambers, entrances, megaHalls, tags
+        );
+    }
+
+
+    /**
+     * 某单元是否拥有地表入口：有则返回入口定义（确定性、带节点缓存）。
+     *
+     * 新架构：入口不再是贴近地表的独立节点，而是「从真实洞穴节点延伸出的通道」。
+     *   - 基座 = 本单元一个真实网络节点（优先骨干，否则普通/大厅节点）；
+     *   - 漏斗 / 天坑 / 竖井：从基座垂直向上延伸到地表（直连节点）；
+     *   - 坡道：从基座斜向延伸一条通道到地表开口。
+     * 基座是真网络节点 → 入口天然连通、无缝隙、不会被塌方填死；相邻入口汇聚到同一隧道。
+     *
+     * @return 入口定义（地表开口列 x/z、基座深度 y、基座水平 baseX/baseZ、地表高度 surfaceY、类型、方向），
+     *         该单元无入口 / 基座缺失 / 开口非陆地 / 洞厅影响区时返回 null。
+     */
+    public static CaveEntrance entranceForCell(int cellX, int cellZ, long seed,
+                                               Map<Long, List<CaveNode>> nodeCache) {
+        double entRoll = CaveMath.hash01(cellX, cellZ, 99, seed, SALT_ENTRANCE);
+        if (entRoll >= 0.36) {
+            return null;
+        }
+        boolean sinkhole = entRoll >= 0.30;
+
+        // 选基座：优先骨干节点；否则第一个普通 / 大厅节点。
+        CaveNode base = null;
+        for (CaveNode n : nodesOf(cellX, cellZ, seed, nodeCache)) {
+            if (n.kind == CaveNode.KIND_BACKBONE) {
+                base = n;
+                break;
+            }
+        }
+        if (base == null) {
+            for (CaveNode n : nodesOf(cellX, cellZ, seed, nodeCache)) {
+                if (n.kind == CaveNode.KIND_NORMAL
+                    || n.kind == CaveNode.KIND_CHAMBER) {
+                    base = n;
+                    break;
+                }
+            }
+        }
+        if (base == null) {
+            return null; // 单元没有可作基座的节点
+        }
+
+        // 类型（确定性）：天坑独立；主入口按哈希分配 funnel 35% / ramp 40% / shaft 25%。
+        int type;
+        if (sinkhole) {
+            type = CaveEntrance.TYPE_SINKHOLE;
+        } else {
+            double tr = CaveMath.hash01(cellX, cellZ, 98, seed, SALT_ENTRANCE);
+            if (tr < 0.35) {
+                type = CaveEntrance.TYPE_FUNNEL;
+            } else if (tr < 0.75) {
+                type = CaveEntrance.TYPE_RAMP;
+            } else {
+                type = CaveEntrance.TYPE_SHAFT;
+            }
+        }
+
+        // 坡道基座：必须贴近地表（浅层节点），否则落差大 → 10~15° 需极长水平距离。
+        // 选本单元 y 最大的真实节点（骨干 / 普通 / 大厅）作坡道基座。
+        if (type == CaveEntrance.TYPE_RAMP) {
+            CaveNode shallow = null;
+            for (CaveNode n : nodesOf(cellX, cellZ, seed, nodeCache)) {
+                if (n.kind == CaveNode.KIND_BACKBONE
+                    || n.kind == CaveNode.KIND_NORMAL
+                    || n.kind == CaveNode.KIND_CHAMBER) {
+                    if (shallow == null || n.y > shallow.y) {
+                        shallow = n;
+                    }
+                }
+            }
+            if (shallow != null) {
+                base = shallow;
+            }
+        }
+
+        int baseX = (int) Math.floor(base.x);
+        int baseZ = (int) Math.floor(base.z);
+        int baseY = (int) Math.floor(base.y);
+
+        // 地表开口位置：漏斗/天坑/竖井 = 基座正上方；坡道 = 沿方向偏移，
+        // 水平长度 = 落差 / tan(10°~15°)，保证坡度平缓可走下去。
+        int ox = baseX;
+        int oz = baseZ;
+        double dirX = 0.0;
+        double dirZ = 0.0;
+        if (type == CaveEntrance.TYPE_RAMP) {
+            double a = CaveMath.hash01(
+                cellX, cellZ, 97, seed, SALT_ENTRANCE) * Math.PI * 2.0;
+            dirX = Math.cos(a);
+            dirZ = Math.sin(a);
+            // 参考落差 = 基座上方地表 - 基座深度。
+            // 基座必须明显低于地表（落差 ≥ 8），否则坡道会倒着/悬空——跳过。
+            double refSurf = surfaceAt(baseX, baseZ, seed);
+            double drop = refSurf - baseY;
+            if (drop < 8.0) {
+                return null;
+            }
+            double angle = (10.0 + CaveMath.hash01(
+                cellX, cellZ, 95, seed, SALT_ENTRANCE) * 5.0)
+                * Math.PI / 180.0;
+            double len = drop / Math.tan(angle);
+            // 坡道水平长度须合理：过短没意义，过长超出单元收集范围。
+            if (len < 16.0 || len > 140.0) {
+                return null;
+            }
+            ox = baseX + (int) Math.round(dirX * len);
+            oz = baseZ + (int) Math.round(dirZ * len);
+        }
+
+        // 陆地 / 洞厅影响区判定（用地表开口列）。
+        double surf = surfaceAt(ox, oz, seed);
+        if (surf < 65.0) {
+            return null;
+        }
+        // 坡道最终校验：用开口列的实际地表落差，坡度必须落在 10°~15°。
+        // 地表起伏会使实际落差偏离基座上方估算，超出范围直接跳过，
+        // 宁可少生成也不生成陡坡/平坡。
+        if (type == CaveEntrance.TYPE_RAMP) {
+            double actualDrop = surf - baseY;
+            double horiz = Math.sqrt(
+                (ox - baseX) * (ox - baseX) + (oz - baseZ) * (oz - baseZ));
+            double deg = Math.toDegrees(Math.atan(actualDrop / horiz));
+            if (deg < 10.0 || deg > 15.0) {
+                return null;
+            }
+        }
+        CaveMegaHall megaHall = megaHallForSupercell(
+            Math.floorDiv(cellX, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS),
+            Math.floorDiv(cellZ, MEGA_HALL_CELL_BLOCKS / CELL_BLOCKS),
+            seed);
+        if (megaHall != null
+            && megaHall.nearHorizontal(ox, oz, ENTRANCE_HALL_MARGIN)) {
+            return null;
+        }
+
+        int surfaceY = (int) Math.round(surf);
+        int radius = sinkhole ? 2 : 3;
+        return new CaveEntrance(
+            ox, oz, baseY, baseX, baseZ, surfaceY,
+            radius, type, dirX, dirZ
         );
     }
 

@@ -39,6 +39,9 @@ public final class CaveCarver {
     public static final int SURFACE_CAP = 3;
     /** 地下湖石头壳厚度：水体外面再包几层石头。 */
     private static final int LAKE_SHELL_THICKNESS = 2;
+    /** 入口竖井向下延伸量（blocks）：挖到节点下方数格，保证钻入连接段，
+     *  消除「竖井底与隧道顶之间的石头缝隙」。 */
+    private static final int ENTRANCE_SHAFT_EXTEND = 4;
     /** 水体保护厚度：河床 / 海床下方至少保留的实心层（防止沙层悬空）。 */
     private static final int WATER_PROTECT_BUFFER = 10;
     /** 河流保护掩码阈值：放宽后河岸两侧也会被包住。 */
@@ -124,7 +127,33 @@ public final class CaveCarver {
             return;
         }
 
-        // 洞厅快速雕刻：整列按几何直接填，不走逐格噪声
+        // 入口：先雕刻（入口优先于洞厅）。
+        // 入口就是要挖穿地表开口，所以只挡「列顶低于水面」（会开在水下 / 水线）；
+        // 不再因 riverMask > 0.35 的河岸带跳过——否则 usableLandmarkColumn 放行、
+        // 装饰器也铺了碎石环，但洞根本没刻出来（用户看到装饰物却没有洞口）。
+        // 真正的水体列（body != null）其列顶低于水面，会被 topSolidY < waterSurfaceY+1 拦住。
+        // 注意：入口可能落在洞厅上方（洞厅顶 ≤64，入口贴近地表），
+        // 若洞厅循环在前并 return，入口会被跳过 → 有装饰物却没洞口。
+        boolean entranceCarved = false;
+        for (CaveEntrance e : data.entrances) {
+            if (topSolidY < waterSurfaceY + 1) {
+                continue;
+            }
+            if (carveEntranceAt(e, worldX, worldZ, localX, localZ,
+                topSolidY, blocks, meta, worldHeight)
+                && topSolidY > e.y) {
+                // 入口通道是真正的 CaveSegment（buildEntrancePassage），
+                // 由主雕刻循环用 sampleExcess 雕刻（洞壁噪声 + 半径变化，
+                // 与内部洞穴完全一致）。这里只挖地表开口，不再钳制 maxY，
+                // 否则主循环不雕刻基座以上（→ 地表）的通道段。
+                entranceCarved = true;
+                break;
+            }
+        }
+
+        // 洞厅快速雕刻：整列按几何直接填，不走逐格噪声。
+        // 若入口已刻，洞厅继续填下层（洞厅顶 ≤64，入口在下层上方，互不重叠），
+        // 且不 return——让下方普通雕刻继续刻入口到洞厅网络的连接段。
         for (CaveMegaHall hall : data.megaHalls) {
             int[] span = new int[2];
             if (!hall.verticalSpan(worldX, worldZ, maxY, span)) {
@@ -138,25 +167,10 @@ public final class CaveCarver {
                     worldX, worldZ, maxY,
                     localX, localZ, blocks, meta, worldHeight, seed, data);
             }
-            return;
-        }
-
-        // 入口竖井：挖穿地表封层（水体列不开入口）
-        for (CaveEntrance e : data.entrances) {
-            int dx = worldX - e.x;
-            int dz = worldZ - e.z;
-            if (dx * dx + dz * dz <= e.radius * e.radius) {
-                // 井口必须高于该列水面，否则会开在水线 / 水下，形成"挖到水地表"。
-                // 无水列（干盆地等，waterSurfaceY = MIN_VALUE）不受水面限制。
-                if (!waterProtected && topSolidY >= waterSurfaceY + 1) {
-                    int start = Math.max(1, e.y);
-                    for (int y = start; y <= topSolidY; y++) {
-                        setAir(blocks, meta, localX, localZ, y, worldHeight);
-                    }
-                    maxY = Math.min(maxY, e.y - 1);
-                }
-                break;
+            if (entranceCarved) {
+                break; // 入口已刻：洞厅填完，继续下方普通雕刻
             }
+            return;
         }
         if (maxY < 1) {
             return;
@@ -328,6 +342,52 @@ public final class CaveCarver {
             }
         }
     }
+
+    /**
+     * 雕刻入口的地表开口：返回该列是否属于入口开口范围（是则已雕刻）。
+     *
+     * 新架构：入口通道是一条真正的 CaveSegment（buildEntrancePassage），
+     * 由主雕刻循环用 sampleExcess 雕刻——带洞壁噪声、半径变化，与内部洞穴
+     * 完全一致。这里只负责「地表开口」：在开口列挖一个可走进的漏斗/坡道坑，
+     * 深度到通道顶部（surfaceY - 3 附近），让玩家能从地表看到并走进通道。
+     */
+    private static boolean carveEntranceAt(CaveEntrance e,
+                                           int worldX, int worldZ,
+                                           int localX, int localZ,
+                                           int topSolidY,
+                                           net.minecraft.block.Block[] blocks,
+                                           byte[] meta,
+                                           int worldHeight) {
+        double dx = worldX - e.x;
+        double dz = worldZ - e.z;
+        double d = Math.sqrt(dx * dx + dz * dz);
+        // 地表开口半径：漏斗 / 坡道更宽（可走进），竖井 / 天坑较窄。
+        double mouthR = (e.type == CaveEntrance.TYPE_FUNNEL
+            || e.type == CaveEntrance.TYPE_RAMP)
+            ? e.radius + 3.0 : e.radius + 1.0;
+        if (d > mouthR) {
+            return false;
+        }
+        // 开口坑深度：中心挖到通道顶部附近（surfaceY - 3），边缘浅（漏斗坑）。
+        // 通道段顶部也在 surfaceY - 3，两者重叠衔接。
+        double topOfPassage = e.surfaceY - 3.0;
+        double centerDepth = topSolidY - topOfPassage;
+        if (centerDepth < 2.0) {
+            centerDepth = 2.0;
+        }
+        // 锥形：中心深、边缘浅
+        double t = mouthR > 0.0 ? Math.max(0.0, 1.0 - d / mouthR) : 1.0;
+        int bottomY = topSolidY - (int) Math.ceil(centerDepth * t);
+        if (bottomY < 1) {
+            bottomY = 1;
+        }
+        for (int y = bottomY; y <= topSolidY; y++) {
+            setAir(blocks, meta, localX, localZ, y, worldHeight);
+        }
+        return true;
+    }
+
+
 
     /** 洞厅整列快速填充：底部中频噪声分出干地与湖泊。 */
     private static void carveMegaHallColumn(CaveMegaHall hall,
