@@ -925,25 +925,6 @@ public final class CaveMegaHall {
         return best;
     }
 
-    /**
-     * 该列是否落在某条墙带内（柱间厚带，全高到顶）。返回墙索引，-1 无。
-     * 判定半径取 wallHalf * 2：墙雕刻的半径含噪声（×1.34）与顶/脚外扩
-     * （×1.5），最大约 wallHalf × 2——判定必须覆盖最大雕刻半径，
-     * 否则墙边 / 墙顶脚超出的列进不了墙分支而被挖掉。
-     */
-    public int wallIndex(int wx, int wz) {
-        double reach = wallHalf * 2.0;
-        double reachSq = reach * reach;
-        for (int i = 0; i < wallCount; i++) {
-            double d = ptSegDist(wx + 0.5, wz + 0.5,
-                pillarX[wallA[i]], pillarZ[wallA[i]],
-                pillarX[wallB[i]], pillarZ[wallB[i]]);
-            if (d <= reach) {
-                return i;
-            }
-        }
-        return -1;
-    }
 
     /**
      * 计算该列在洞厅内的整数 Y 范围并写入 out[0..1]。
@@ -1033,23 +1014,24 @@ public final class CaveMegaHall {
     // 湖心岛接口（外部建筑代码用）
     // ============================================================
 
-    /** 湖心岛：是否落在岛区（噪声起伏的外圈）。外部建筑代码用。 */
-    public boolean isOnIsland(double wx, double wz) {
+    /** 湖心岛中心到 (wx,wz) 的水平距离（统一入口，避免重复计算）。 */
+    private double islandDist(double wx, double wz) {
         double dx = wx + 0.5 - islandX;
         double dz = wz + 0.5 - islandZ;
-        double d = Math.sqrt(dx * dx + dz * dz);
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    /** 湖心岛：是否落在岛区（噪声起伏的外圈）。外部建筑代码用。 */
+    public boolean isOnIsland(double wx, double wz) {
         double n = CaveMath.perlin3D(
             wx / 22.0, 0.3, wz / 22.0, seed, ISLAND_SALT + 1);
         double eff = islandRadius * (0.85 + 0.35 * n);
-        return d <= eff;
+        return islandDist(wx, wz) <= eff;
     }
 
     /** 湖心岛中心平地：保证水平、可放建筑。 */
     public boolean isIslandFlat(double wx, double wz) {
-        double dx = wx + 0.5 - islandX;
-        double dz = wz + 0.5 - islandZ;
-        double d = Math.sqrt(dx * dx + dz * dz);
-        return d <= islandFlatRadius;
+        return islandDist(wx, wz) <= islandFlatRadius;
     }
 
     /** 湖心岛岛顶高度（平地基准，外部建筑代码用）。 */
@@ -1066,9 +1048,7 @@ public final class CaveMegaHall {
      * 湖环外不在此方法处理（调用方只在 isInIslandLake 内调用）。
      */
     public int islandFloorY(double wx, double wz) {
-        double dx = wx + 0.5 - islandX;
-        double dz = wz + 0.5 - islandZ;
-        double d = Math.sqrt(dx * dx + dz * dz);
+        double d = islandDist(wx, wz);
         double n = CaveMath.perlin3D(
             wx / 22.0, 0.3, wz / 22.0, seed, ISLAND_SALT + 1);
         double eff = islandRadius * (0.85 + 0.35 * n); // 岛体外圈（噪声起伏）
@@ -1108,10 +1088,7 @@ public final class CaveMegaHall {
 
     /** 是否落在显式湖环内（岛体 + 实心湖面 + 过渡带）。 */
     public boolean isInIslandLake(double wx, double wz) {
-        double dx = wx + 0.5 - islandX;
-        double dz = wz + 0.5 - islandZ;
-        double d = Math.sqrt(dx * dx + dz * dz);
-        return d <= ISLAND_LAKE_OUTER;
+        return islandDist(wx, wz) <= ISLAND_LAKE_OUTER;
     }
 
     /** 湖心岛中心 X（外部建筑代码用）。 */

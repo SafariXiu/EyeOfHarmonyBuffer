@@ -132,6 +132,19 @@ public final class TalosCaveSystem {
     }
 
     /**
+     * 调试 / 探针用：取指定 256 单元内的入口（不做 usableLandmarkColumn 过滤——
+     * 探针需要看到「不可用」入口来诊断为什么入口没雕刻 / 落海上）。
+     */
+    public static CaveEntrance debugEntranceAt(
+        int cellX, int cellZ, int worldSeedInt
+    ) {
+        java.util.Map<Long, java.util.List<CaveNode>> nodeCache =
+            new java.util.HashMap<Long, java.util.List<CaveNode>>();
+        return CaveGenerator.entranceForCell(
+            cellX, cellZ, worldSeedInt, nodeCache);
+    }
+
+    /**
      * 调试 / 传送用：列出玩家周围 radiusCells×radiusCells 个单元内的所有入口。
      * 入口是稀疏地标（约每 256 格单元一个），只查当前区块基本找不到。
      */

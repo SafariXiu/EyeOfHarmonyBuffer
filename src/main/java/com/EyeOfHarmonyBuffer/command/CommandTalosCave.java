@@ -5,7 +5,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
@@ -254,8 +253,8 @@ public class CommandTalosCave extends CommandBase {
         // 洞厅 TP 直接绑定湖心岛：落点 = 岛心 (islandX, islandZ)，站在岛顶上方。
         // 湖心岛是「房间 1 内离所有墙最远的点」+ 中心平地（islandFlatRadius），
         // 既好找岛，也方便后续在上面放建筑。
-        double tx = hall.islandX;
-        double tz = hall.islandZ;
+        double tx = hall.islandCenterX();
+        double tz = hall.islandCenterZ();
         if (hall.isPillarColumn((int) tx, (int) tz)) {
             boolean found = false;
             for (int dz = -3; dz <= 3 && !found; dz++) {
@@ -271,13 +270,13 @@ public class CommandTalosCave extends CommandBase {
                 }
             }
         }
-        player.setPositionAndUpdate(tx + 0.5, hall.islandTopY + 1.0, tz + 0.5);
+        player.setPositionAndUpdate(tx + 0.5, hall.islandTop() + 1.0, tz + 0.5);
         double dist = Math.sqrt(distSq(
             tx, tz, player.posX, player.posZ));
         player.addChatMessage(new ChatComponentText(String.format(
             "[TALCAVE] 跳转到洞厅 #%d/%d（湖心岛）: 距离≈%.0f 岛心=(%.0f,%.0f) "
                 + "岛顶Y=%d 半径=%.0f×%.0f×%.0f",
-            index, sorted.size(), dist, tx, tz, hall.islandTopY,
+            index, sorted.size(), dist, tx, tz, hall.islandTop(),
             hall.rx, hall.ry, hall.rz
         )));
     }
@@ -464,12 +463,10 @@ public class CommandTalosCave extends CommandBase {
         int cellZ = Math.floorDiv(tz, 256);
         CaveEntrance nearest = null;
         double nearestD = Double.MAX_VALUE;
-        java.util.Map<Long, java.util.List<CaveNode>> tmpCache =
-            new java.util.HashMap<Long, java.util.List<CaveNode>>();
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
-                CaveEntrance e = CaveGenerator.entranceForCell(
-                    cellX + dx, cellZ + dz, seed, tmpCache);
+                CaveEntrance e = TalosCaveSystem.debugEntranceAt(
+                    cellX + dx, cellZ + dz, seed);
                 if (e == null) continue;
                 double d = Math.sqrt(
                     (e.x - tx) * (e.x - tx) + (e.z - tz) * (e.z - tz));

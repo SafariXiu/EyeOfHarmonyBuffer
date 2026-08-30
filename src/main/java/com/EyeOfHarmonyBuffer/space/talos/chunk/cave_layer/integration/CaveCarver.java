@@ -642,60 +642,6 @@ public final class CaveCarver {
         }
     }
 
-    /** 巨型石柱：柱顶/柱脚外扩融合，柱身做侵蚀。 */
-    private static void carveMegaHallPillar(CaveMegaHall hall, int pillarIdx,
-                                            int worldX, int worldZ,
-                                            int floorY, int yMax,
-                                            int localX, int localZ,
-                                            net.minecraft.block.Block[] blocks,
-                                            byte[] meta,
-                                            int worldHeight, long seed) {
-        double px = hall.pillarX[pillarIdx];
-        double pz = hall.pillarZ[pillarIdx];
-        double dx = worldX + 0.5 - px;
-        double dz = worldZ + 0.5 - pz;
-        int span = Math.max(1, yMax - floorY + 1);
-        // 半径纵向每 4 格采样一次再插值，减少 Perlin 调用。
-        int step = 4;
-        int sampleCount = span / step + 2;
-        double[] radii = new double[sampleCount];
-        for (int k = 0; k < sampleCount; k++) {
-            int sy = Math.min(yMax, floorY + k * step);
-            radii[k] = pillarRadiusAt(
-                hall, pillarIdx, worldX, sy, worldZ, seed);
-        }
-        for (int y = floorY; y <= yMax; y++) {
-            double scale = pillarScale(y, floorY, span);
-            int k = (y - floorY) / step;
-            if (k >= sampleCount - 1) {
-                k = sampleCount - 2;
-            }
-            double f = (double) ((y - floorY) - k * step) / step;
-            double r = (radii[k]
-                + (radii[k + 1] - radii[k]) * f) * scale;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist >= r) {
-                // 柱体之外：恢复该列的正常洞厅地形（噪声地面/水面）。
-                if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
-                    int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
-                    if (y <= surface) {
-                        setWater(blocks, meta, localX, localZ, y, worldHeight);
-                    } else {
-                        setAir(blocks, meta, localX, localZ, y, worldHeight);
-                    }
-                } else if (y > floorY) {
-                    setAir(blocks, meta, localX, localZ, y, worldHeight);
-                } else {
-                    // y == floorY：保留实体地面
-                }
-            } else {
-                int idx = (localX * 16 + localZ) * worldHeight + y;
-                byte v = CaveMath.rockVariant3D(worldX, y, worldZ, seed);
-                putRockVariant(blocks, meta, idx, v);
-            }
-        }
-    }
-
     /** 柱体径向半径：用 Perlin 沿圆周和高度做平滑起伏，形成不规则多边柱。 */
     private static double pillarRadiusAt(CaveMegaHall hall, int idx,
                                          int wx, int wy, int wz, long seed) {
