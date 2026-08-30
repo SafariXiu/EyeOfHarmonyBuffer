@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
@@ -12,7 +13,9 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -457,6 +460,34 @@ public class CommandTalosCave extends CommandBase {
             ts.body == null ? "null" : ts.body.toString(),
             ts.waterLevel == Double.NEGATIVE_INFINITY ? "-inf" : String.format("%.0f", ts.waterLevel)
         )));
+
+        // 1.5) 光照诊断：该位置所在区块的实际 skylight / blocklight 值（按 y 采样）。
+        // 洞厅内若 skylight=15（像被太阳照到）说明服务端光照数组错了；
+        // 若 skylight=0 但渲染仍亮，则是客户端渲染缓存问题。
+        Chunk chunk = world.getChunkFromBlockCoords(tx, tz);
+        StringBuilder ls = new StringBuilder("[PROBE] 光照(sky/blk) y=");
+        int[] ys = {8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100, 110};
+        for (int y : ys) {
+            if (y >= world.getActualHeight()) break;
+            int sky = chunk.getSavedLightValue(EnumSkyBlock.Sky, tx & 15, y, tz & 15);
+            int blk = chunk.getSavedLightValue(EnumSkyBlock.Block, tx & 15, y, tz & 15);
+            ls.append(y).append(":").append(sky).append("/").append(blk).append(" ");
+        }
+        player.addChatMessage(new ChatComponentText(ls.toString()));
+
+        // 1.6) 洞厅归属诊断
+        CaveMegaHall hereHall = CaveGenerator.megaHallAt(tx, tz, seed);
+        if (hereHall == null) {
+            player.addChatMessage(new ChatComponentText(
+                "[PROBE] 该坐标不在洞厅内"));
+        } else {
+            int[] vs = new int[2];
+            boolean inVs = hereHall.verticalSpan(tx, tz, world.getActualHeight(), vs);
+            player.addChatMessage(new ChatComponentText(String.format(
+                "[PROBE] 在洞厅内 c=(%.0f,%.0f) Y=[%.0f..%.0f] 本列span=%s",
+                hereHall.cx, hereHall.cz, hereHall.minY, hereHall.maxY,
+                inVs ? (vs[0] + ".." + vs[1]) : "无")));
+        }
 
         // 2) 入口（从真实洞穴节点延伸的通道）
         int cellX = Math.floorDiv(tx, 256);

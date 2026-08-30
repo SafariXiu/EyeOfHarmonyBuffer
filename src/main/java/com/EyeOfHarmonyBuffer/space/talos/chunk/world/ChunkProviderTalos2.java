@@ -9,7 +9,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveDecorator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
 import ganymedes01.etfuturum.ModBlocks;
@@ -20,6 +22,7 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -357,6 +360,40 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         chunk.generateSkylightMap();
         chunk.func_150809_p();
+
+        // 洞厅是地下巨型空腔（cy≈34，ry≈29，顶约 60~63），洞厅上方覆盖层
+        // 可能只剩几格石头。generateSkylightMap 在这种薄覆盖层下可能把
+        // 洞厅内部的天光算成满值（15），客户端渲染成"整块像被太阳照到"，
+        // 而实体/手持物品用的是实时光照数组（暗）→ 只有地形亮、物品暗。
+        // 这里把洞厅覆盖列的天空光强制清零：洞厅在地下，本就不该有天空光；
+        // 玩家若真的挖通到地表，实时光照传播会重新把光送进来（恢复正常）。
+        zeroMegaHallSkyLight(chunk, x, z);
+    }
+
+    /**
+     * 把洞厅覆盖列的天空光清零（洞厅 = 地下空腔，无天空光）。
+     * 只对含洞厅的区块生效，洞厅占超级格约 0.5%，其余区块零开销。
+     */
+    private void zeroMegaHallSkyLight(Chunk chunk, int chunkX, int chunkZ) {
+        // 只查本区块所在超级格（洞厅被限制在超级格内部）
+        CaveMegaHall hall = CaveGenerator.megaHallAt(
+            chunkX * 16 + 8, chunkZ * 16 + 8, worldSeedInt);
+        if (hall == null) {
+            return;
+        }
+        int y0 = Math.max(1, (int) Math.floor(hall.minY));
+        int y1 = Math.min(worldHeight - 1, (int) Math.ceil(hall.maxY));
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                if (!hall.insideHorizontal(chunkX * 16 + lx + 0.5,
+                    chunkZ * 16 + lz + 0.5)) {
+                    continue;
+                }
+                for (int y = y0; y <= y1; y++) {
+                    chunk.setLightValue(EnumSkyBlock.Sky, lx, y, lz, 0);
+                }
+            }
+        }
     }
 
     @Override
