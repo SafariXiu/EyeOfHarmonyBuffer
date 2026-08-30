@@ -1060,6 +1060,8 @@ public final class CaveGenerator {
         double bestZ = Double.NaN;
         double bestFloor = Double.POSITIVE_INFINITY;
         int[] span = new int[2];
+
+        // 主厅湖（含房间内湖）：找最低湖床作为暗河接入点。
         for (int z = minZ; z <= maxZ; z += step) {
             for (int x = minX; x <= maxX; x += step) {
                 if (!hall.insideHorizontal(x + 0.5, z + 0.5)) {

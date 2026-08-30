@@ -251,30 +251,34 @@ public class CommandTalosCave extends CommandBase {
             return;
         }
         CaveMegaHall hall = sorted.get(index - 1);
-        double tx = hall.cx;
-        double tz = hall.cz;
-        if (hall.isPillarColumn((int) hall.cx, (int) hall.cz)) {
+        // 洞厅 TP 直接绑定湖心岛：落点 = 岛心 (islandX, islandZ)，站在岛顶上方。
+        // 湖心岛是「房间 1 内离所有墙最远的点」+ 中心平地（islandFlatRadius），
+        // 既好找岛，也方便后续在上面放建筑。
+        double tx = hall.islandX;
+        double tz = hall.islandZ;
+        if (hall.isPillarColumn((int) tx, (int) tz)) {
             boolean found = false;
             for (int dz = -3; dz <= 3 && !found; dz++) {
                 for (int dx = -3; dx <= 3 && !found; dx++) {
                     if (dx == 0 && dz == 0) {
                         continue;
                     }
-                    if (!hall.isPillarColumn(
-                        (int) hall.cx + dx, (int) hall.cz + dz)) {
-                        tx = hall.cx + dx;
-                        tz = hall.cz + dz;
+                    if (!hall.isPillarColumn((int) tx + dx, (int) tz + dz)) {
+                        tx += dx;
+                        tz += dz;
                         found = true;
                     }
                 }
             }
         }
-        player.setPositionAndUpdate(tx + 0.5, hall.cy + 1.0, tz + 0.5);
+        player.setPositionAndUpdate(tx + 0.5, hall.islandTopY + 1.0, tz + 0.5);
         double dist = Math.sqrt(distSq(
             tx, tz, player.posX, player.posZ));
         player.addChatMessage(new ChatComponentText(String.format(
-            "[TALCAVE] 跳转到洞厅 #%d/%d: 距离≈%.0f 中心=(%.0f,%.0f) 半径=%.0f×%.0f×%.0f",
-            index, sorted.size(), dist, tx, tz, hall.rx, hall.ry, hall.rz
+            "[TALCAVE] 跳转到洞厅 #%d/%d（湖心岛）: 距离≈%.0f 岛心=(%.0f,%.0f) "
+                + "岛顶Y=%d 半径=%.0f×%.0f×%.0f",
+            index, sorted.size(), dist, tx, tz, hall.islandTopY,
+            hall.rx, hall.ry, hall.rz
         )));
     }
 
