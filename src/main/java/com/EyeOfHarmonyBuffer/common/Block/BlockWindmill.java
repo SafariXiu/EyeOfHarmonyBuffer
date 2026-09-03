@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.common.Block;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -17,10 +16,6 @@ public class BlockWindmill extends BlockContainer {
 
     public BlockWindmill() {
         super(Material.iron);
-        setBlockName("blockWindmill");
-        setBlockTextureName("eohb:windmill");
-        setCreativeTab(CreativeTabs.tabMisc);
-
         setHardness(-1.0F);
         setResistance(6000000.0F);
     }

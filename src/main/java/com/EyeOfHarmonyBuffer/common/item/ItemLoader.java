@@ -182,10 +182,11 @@ public class ItemLoader {
             EnumBottleFluid.JIN_CAO_RONG_YE,
             EnumBottleFluid.YE_HUA_XI_RANG
         );
-        HeTongFluidBottle = new ItemBottleBase(
-            "HeTongFluidBottle",
-            "HeTongPing_empty"
-        );
+        // 未设计完成：暂不注册 HeTongFluidBottle（避免 NEI 出现未定瓶装变体）。设计好后再放开。
+        //HeTongFluidBottle = new ItemBottleBase(
+        //    "HeTongFluidBottle",
+        //    "HeTongPing_empty"
+        //);
         ChiTongGasTank = new ItemBottleBase(
             "ChiTongGasTank",
             "ChiTongGasTank_empty",
@@ -204,7 +205,7 @@ public class ItemLoader {
         GTCMItemList.LanTieFluidBottle.set(registryAndCallback(LanTieFluidBottle, "LanTieFluidBottle", 0));
         GTCMItemList.ZiJingZhiFluidBottle.set(registryAndCallback(ZiJingZhiFluidBottle, "ZiJingZhiFluidBottle", 0));
         GTCMItemList.GaoJingFluidBottle.set(registryAndCallback(GaoJingFluidBottle, "GaoJingFluidBottle", 0));
-        GTCMItemList.HeTongFluidBottle.set(registryAndCallback(HeTongFluidBottle, "HeTongFluidBottle", 0));
+        //GTCMItemList.HeTongFluidBottle.set(registryAndCallback(HeTongFluidBottle, "HeTongFluidBottle", 0)); // 未设计完成，暂不注册
         GTCMItemList.ChiTongGasTank.set(registryAndCallback(ChiTongGasTank, "ChiTongGasTank", 0));
 
         GTCMReactorFuelCells.init();

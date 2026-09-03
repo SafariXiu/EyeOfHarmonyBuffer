@@ -1,7 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Machine.ArknightsMachine;
 
 import com.EyeOfHarmonyBuffer.Recipe.RecipeMaps;
-import com.EyeOfHarmonyBuffer.common.Block.BlockRegister;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.misc.OverclockType;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvRecipeFlags;
 import com.EyeOfHarmonyBuffer.common.multiMachineClasses.Gas.GasEnvironmentHelper;
@@ -190,7 +190,7 @@ public class EOHB_ForgeOfTheSky extends OrundumWirelessMultiMachineBase<EOHB_For
                 .addShape(STRUCTURE_PIECE_MAIN, transpose(shapeMain))
                 .addElement('A', ofBlock(sBlockCasings2, 0))
                 .addElement('B', ofBlock(sBlockCasings8, 7))
-                .addElement('D', ofBlock(BlockRegister.ForgeOfTheSkyBlockCore, 0))
+                .addElement('D', ofBlock(GTCMItemList.ForgeOfTheSkyCore.getBlock(), 0))
                 .addElement(
                     'E',
                     buildHatchAdder(EOHB_ForgeOfTheSky.class)

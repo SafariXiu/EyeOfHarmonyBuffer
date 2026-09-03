@@ -20,6 +20,7 @@ public class EOHBFluidBlockRegistry {
 
         if (fluid.getBlock() == null) {
             precipitationAcidBlock = new BlockPrecipitationAcid(fluid);
+            precipitationAcidBlock.setBlockName("fluid.precipitationacid");
             GameRegistry.registerBlock(
                 precipitationAcidBlock, "fluid_precipitationacid");
             fluid.setBlock(precipitationAcidBlock);

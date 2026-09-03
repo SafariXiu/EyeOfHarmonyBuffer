@@ -81,7 +81,7 @@ public class ClientProxy extends CommonProxy {
         hideDisallowedBottleFluids(GTCMItemList.LanTieFluidBottle.getItem());
         hideDisallowedBottleFluids(GTCMItemList.ZiJingZhiFluidBottle.getItem());
         hideDisallowedBottleFluids(GTCMItemList.GaoJingFluidBottle.getItem());
-        hideDisallowedBottleFluids(GTCMItemList.HeTongFluidBottle.getItem());
+        //hideDisallowedBottleFluids(GTCMItemList.HeTongFluidBottle.getItem()); // 未设计完成，暂不注册
         hideDisallowedBottleFluids(GTCMItemList.ChiTongGasTank.getItem());
 
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new OrundumConnectorHudHandler());

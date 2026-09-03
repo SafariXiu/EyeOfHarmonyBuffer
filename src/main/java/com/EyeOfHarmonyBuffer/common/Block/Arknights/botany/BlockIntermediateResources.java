@@ -6,6 +6,8 @@ import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
+import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.ArknightsProject_Block;
+
 public final class BlockIntermediateResources {
 
     private BlockIntermediateResources() {}
@@ -15,6 +17,9 @@ public final class BlockIntermediateResources {
             Item dropItem = resolveDropItem(def.dropItemField);
             Block block = new BlockResourceCluster(modid, def, dropItem);
 
+            block.setBlockName(def.blockName);
+            block.setBlockTextureName(modid + ":Arknights/" + def.blockName);
+            block.setCreativeTab(ArknightsProject_Block);
             GameRegistry.registerBlock(block, def.blockName);
 
             try {

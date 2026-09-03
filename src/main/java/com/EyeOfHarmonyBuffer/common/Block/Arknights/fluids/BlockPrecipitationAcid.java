@@ -24,7 +24,6 @@ public class BlockPrecipitationAcid extends BlockFluidClassic {
 
     public BlockPrecipitationAcid(Fluid fluid) {
         super(fluid, Material.water);
-        setBlockName("fluid.precipitationacid");
     }
 
     @Override

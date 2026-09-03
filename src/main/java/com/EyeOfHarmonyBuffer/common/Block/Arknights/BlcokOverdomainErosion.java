@@ -26,7 +26,6 @@ public class BlcokOverdomainErosion extends BlockContainer {
 
     public BlcokOverdomainErosion() {
         super(ModMaterials.portalLiquid);
-        setBlockName("overdomain_erosion");
         setLightLevel(0.8F);
         setBlockBounds(0F, 0F, 0F, 1F, 0.875F, 1F);
         setBlockUnbreakable();

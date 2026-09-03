@@ -159,6 +159,7 @@ public enum GTCMItemList {
     XiRangQiMainBlock,
     CleanGlass,
     CleanGlassGlow,
+    RBMKShield,
     XieYiYuanShiKuai,
     PureGlowBlock,
     PureGlowBlock_White,
@@ -344,7 +345,8 @@ public enum GTCMItemList {
     YeHuaMiXiJuTi,
     ZhuanZhiYanZu,
     ZhuanZhiYanJuKuai,
-    ForgeOfTheSkyCore;
+    ForgeOfTheSkyCore,
+    TrubineBlock;
 
 
     private boolean mHasNotBeenSet;

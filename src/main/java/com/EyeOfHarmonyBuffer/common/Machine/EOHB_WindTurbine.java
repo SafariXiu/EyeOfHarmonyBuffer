@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.Machine;
 
-import com.EyeOfHarmonyBuffer.common.Block.BlockRegister;
+import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -497,7 +497,7 @@ public class EOHB_WindTurbine extends TTMultiblockBase implements IConstructable
         int meta = getFacingMeta();
 
         baseTE.getWorld().setBlock(x, y, z, Blocks.air);
-        baseTE.getWorld().setBlock(x, y, z, BlockRegister.TrubineBlock, meta, 2);
+        baseTE.getWorld().setBlock(x, y, z, GTCMItemList.TrubineBlock.getBlock(), meta, 2);
 
         modelCreated = true;
     }

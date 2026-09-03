@@ -129,7 +129,8 @@ public class EyeOfHarmonyBuffer {
         }
 
         ItemIntermediateProducts.initAndRegister(MODID, ItemArknightsTooltips.getTooltips());
-        BlockIntermediateResources.registerAll(MODID);
+        // 植物方块依赖种子物品，必须在物品注册之后注册
+        com.EyeOfHarmonyBuffer.common.Block.EOHBBlockRegistry.registerPlantBlocks();
 
         GameRegistry.registerTileEntity(TileEntityOverdomainErosion.class, "tile_overdomain_erosion");
         GameRegistry.registerTileEntity(TileEntityRbmkFuelChannel.class, "tile_rbmk_fuel_channel");
@@ -200,7 +201,8 @@ public class EyeOfHarmonyBuffer {
 
         TalosOreVeinRegister.register();
 
-        EOHBFluidBlockRegistry.registerFluidBlocks();
+        // 流体方块依赖 Werkstoff 材质，必须在材质就绪后（postInit）注册
+        com.EyeOfHarmonyBuffer.common.Block.EOHBBlockRegistry.registerFluidBlocks();
     }
 
     @Mod.EventHandler

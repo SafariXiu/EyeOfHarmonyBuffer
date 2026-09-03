@@ -23,14 +23,6 @@ public class EOHBCreativeTabs {
         }
     };
 
-    public static final CreativeTabs tabGears = new CreativeTabs("EOHBGears") {
-        @Override
-        @SideOnly(Side.CLIENT)
-        public Item getTabIconItem() {
-            return BasicItems.MetaItem01;
-        }
-    };
-
     /**
      * Creative Tab for MetaBlocks
      */
