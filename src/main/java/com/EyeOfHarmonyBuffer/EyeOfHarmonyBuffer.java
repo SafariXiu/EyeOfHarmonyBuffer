@@ -12,13 +12,9 @@ import com.EyeOfHarmonyBuffer.client.renderer.block.OverdomainFogHandler;
 import com.EyeOfHarmonyBuffer.command.*;
 import com.EyeOfHarmonyBuffer.space.talos.CaveLifecycleHandler;
 import com.EyeOfHarmonyBuffer.space.talos.TalosUndergroundFluidRegister;
-import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
-import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.EOHBMachineBlocks;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityOverdomainErosion;
 import com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityRbmkFuelChannel;
-import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemArknightsTooltips;
-import com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights.ItemIntermediateProducts;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereNetwork;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereDailyHandler;
 import com.EyeOfHarmonyBuffer.common.dyson.DysonSphereSyncHandler;
@@ -128,7 +124,8 @@ public class EyeOfHarmonyBuffer {
             MinecraftForge.EVENT_BUS.register(new ClientJoinWorldHandler());
         }
 
-        ItemIntermediateProducts.initAndRegister(MODID, ItemArknightsTooltips.getTooltips());
+        // 物品统一注册（含原 ItemLoader + 中间产物，字段名齐 GTCMItemList，tooltip 已内置于各中间产物类）
+        com.EyeOfHarmonyBuffer.common.item.EOHBItemRegistry.registryItems();
         // 植物方块依赖种子物品，必须在物品注册之后注册
         com.EyeOfHarmonyBuffer.common.Block.EOHBBlockRegistry.registerPlantBlocks();
 

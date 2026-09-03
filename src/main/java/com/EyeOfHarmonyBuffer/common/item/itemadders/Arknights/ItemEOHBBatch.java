@@ -7,8 +7,9 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 /**
- * 批量注册物品的基础类：支持为物品挂多行 Tooltip。
- * 由 ItemIntermediateProducts 反射创建并注入 Tooltip 行。
+ * 中间产物物品基类：支持为物品挂多行 Tooltip。
+ * 每个中间产物有独立子类（ItemEOHBBatch 的 {@code Item<Name>} 子类），
+ * tooltip 在子类构造器中通过 {@link #setTooltipLines(String[])} 注入。
  */
 public class ItemEOHBBatch extends Item {
 

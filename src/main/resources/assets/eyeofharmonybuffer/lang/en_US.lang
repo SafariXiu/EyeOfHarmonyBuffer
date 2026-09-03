@@ -1640,3 +1640,7 @@ EOHB_OrbitalRailgun_Ready=READY
 EOHB_OrbitalRailgun_AimAtBlock=Aim at a block to lock the target!
 EOHB_OrbitalRailgun_InsufficientOru=§cInsufficient Orundum energy for an orbital strike!
 EOHB_OrbitalRailgun_AlreadyActive=§cAn orbital strike is already active at this location!
+item.ChenJiSuan.name=Precipitation Acid
+item.HeTongRongYe.name=Hetonite Solution
+item.QingShui.name=Clean Water
+item.QiTaiZhuoTong.name=Gaseous Turbid Copper

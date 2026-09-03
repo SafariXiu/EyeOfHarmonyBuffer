@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.common.Block.Arknights.*;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockIntermediateResources;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRing.SingularityStabilizationRingCasingsItemBlocks;
+import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRingCasings;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockForgeOfTheSkyCore;
 import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockRBMKShield;
@@ -156,7 +157,8 @@ public final class EOHBBlockRegistry {
     private static void registerModelBlocks() {
         Block b;
 
-        b = reg(new BlockWindmill(), "blockWindmill", "eohb:windmill");
+        // 原 eohb:windmill 指向不存在的资源域，物品栏会紫黑；这里用真实存在的模型贴图作物品图标占位
+        b = reg(new BlockWindmill(), "blockWindmill", "eyeofharmonybuffer:textures/models/textureTrubine");
         GameRegistry.registerTileEntity(com.EyeOfHarmonyBuffer.common.Block.TileEntity.TileEntityWindmill.class, "Windmill_TE");
         link(GTCMItemList.TrubineBlock, b, 0);
 
@@ -223,25 +225,41 @@ public final class EOHBBlockRegistry {
         link(GTCMItemList.PureGlowBlock_Red, b, 14);
         link(GTCMItemList.PureGlowBlock_Black, b, 15);
 
-        // 奇异稳定环外壳：GT 机器方块，构造器已自注册；这里补 ItemBlock 注册 + GTCMItemList 挂接 14 个层级变体
+        // 奇异稳定环外壳：GT 机器方块，构造器已自注册；这里补 ItemBlock 注册 + 14 个层级变体。
+        // 必须走 SingularityStabilizationRingCasingsMeta() —— 它会填充 SingularityStabilizationRingCasingsSet
+        // （meta 0..13，供 getSubBlocks/registerBlockIcons 使用）并 texter 注册各层级 i18n 显示名。
         GameRegistry.registerBlock(
             SingularityStabilizationRingCasingsUpgrade,
             SingularityStabilizationRingCasingsItemBlocks.class,
             SingularityStabilizationRingCasingsUpgrade.getUnlocalizedName());
-        link(GTCMItemList.SingularityStabilizationRingCasingsLV, SingularityStabilizationRingCasingsUpgrade, 0);
-        link(GTCMItemList.SingularityStabilizationRingCasingsMV, SingularityStabilizationRingCasingsUpgrade, 1);
-        link(GTCMItemList.SingularityStabilizationRingCasingsHV, SingularityStabilizationRingCasingsUpgrade, 2);
-        link(GTCMItemList.SingularityStabilizationRingCasingsEV, SingularityStabilizationRingCasingsUpgrade, 3);
-        link(GTCMItemList.SingularityStabilizationRingCasingsIV, SingularityStabilizationRingCasingsUpgrade, 4);
-        link(GTCMItemList.SingularityStabilizationRingCasingsLuV, SingularityStabilizationRingCasingsUpgrade, 5);
-        link(GTCMItemList.SingularityStabilizationRingCasingsZPM, SingularityStabilizationRingCasingsUpgrade, 6);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUV, SingularityStabilizationRingCasingsUpgrade, 7);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUHV, SingularityStabilizationRingCasingsUpgrade, 8);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUEV, SingularityStabilizationRingCasingsUpgrade, 9);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUIV, SingularityStabilizationRingCasingsUpgrade, 10);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUMV, SingularityStabilizationRingCasingsUpgrade, 11);
-        link(GTCMItemList.SingularityStabilizationRingCasingsUXV, SingularityStabilizationRingCasingsUpgrade, 12);
-        link(GTCMItemList.SingularityStabilizationRingCasingsMAX, SingularityStabilizationRingCasingsUpgrade, 13);
+        GTCMItemList.SingularityStabilizationRingCasingsLV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings LV Tier", 0));
+        GTCMItemList.SingularityStabilizationRingCasingsMV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MV Tier", 1));
+        GTCMItemList.SingularityStabilizationRingCasingsHV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings HV Tier", 2));
+        GTCMItemList.SingularityStabilizationRingCasingsEV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings EV Tier", 3));
+        GTCMItemList.SingularityStabilizationRingCasingsIV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings IV Tier", 4));
+        GTCMItemList.SingularityStabilizationRingCasingsLuV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings LuV Tier", 5));
+        GTCMItemList.SingularityStabilizationRingCasingsZPM.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings ZPM Tier", 6));
+        GTCMItemList.SingularityStabilizationRingCasingsUV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UV Tier", 7));
+        GTCMItemList.SingularityStabilizationRingCasingsUHV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UHV Tier", 8));
+        GTCMItemList.SingularityStabilizationRingCasingsUEV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UEV Tier", 9));
+        GTCMItemList.SingularityStabilizationRingCasingsUIV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UIV Tier", 10));
+        GTCMItemList.SingularityStabilizationRingCasingsUMV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UMV Tier", 11));
+        GTCMItemList.SingularityStabilizationRingCasingsUXV.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings UXV Tier", 12));
+        GTCMItemList.SingularityStabilizationRingCasingsMAX.set(
+            SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MAX Tier", 13));
     }
 
     // ==================== 植物（枚举批量） ====================

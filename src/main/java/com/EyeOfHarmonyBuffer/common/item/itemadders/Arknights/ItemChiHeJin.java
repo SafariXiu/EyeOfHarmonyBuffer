@@ -1,0 +1,18 @@
+package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
+
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+
+import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
+
+/**
+ * ChiHeJin（方舟中间产物）。
+ */
+public class ItemChiHeJin extends ItemEOHBBatch {
+
+    public ItemChiHeJin() {
+        setUnlocalizedName("ChiHeJin");
+        setTextureName("eyeofharmonybuffer:Arknights/ChiHeJin");
+        setCreativeTab(tabMetaItem01);
+        setTooltipLines(TextLocalization.EOHB_ArknightsItem_ChiHeJin);
+    }
+}

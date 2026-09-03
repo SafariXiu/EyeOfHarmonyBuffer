@@ -12,11 +12,10 @@ import net.minecraft.world.IBlockAccess;
 /**
  * RBMK 反应堆生物屏蔽层（RBMK Reactor Biological Shield）。
  * <p>
- * 简单版 CTM（16 张连接贴图，正交连接掩码，无角吸收），逻辑与水下纯净玻璃
- * {@link BlockCleanGlass} 一致。贴图放 Arknights/RBMK_Schema_E/：
- *   RBMK_Schema_E_conn_0..15
- * <p>
- * 掩码位定义见 {@link CTMHelper}。
+ * 全连接 CTM（47 张连接贴图，8 方向邻接掩码 + NEIGHBOR_MAP 映射），
+ * 掩码位定义与 @link CTMHelper#NEIGHBOR_MAP 一致。
+ * 贴图放 Arknights/RBMK_Schema_E/：
+ *   RBMK_Schema_E_conn_0..46
  */
 public class BlockRBMKShield extends BlockBreakable {
 
@@ -40,8 +39,8 @@ public class BlockRBMKShield extends BlockBreakable {
     @Override
     @SideOnly(Side.CLIENT)
     public void registerBlockIcons(IIconRegister reg) {
-        connectionIcons = new IIcon[16];
-        for (int i = 0; i < 16; i++) {
+        connectionIcons = new IIcon[47];
+        for (int i = 0; i < 47; i++) {
             connectionIcons[i] = reg.registerIcon("eyeofharmonybuffer:Arknights/RBMK_Schema_E/RBMK_Schema_E_conn_" + i);
         }
     }
@@ -56,8 +55,8 @@ public class BlockRBMKShield extends BlockBreakable {
     @Override
     @SideOnly(Side.CLIENT)
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
-        int mask = CTMHelper.getConnectionMask(world, x, y, z, side, BlockRBMKShield::isConnected);
-        return connectionIcons[mask];
+        int bits = CTMHelper.getNeighborBits(world, x, y, z, side, BlockRBMKShield::isConnected);
+        return connectionIcons[CTMHelper.NEIGHBOR_MAP[bits]];
     }
 
     private static boolean isConnected(IBlockAccess world, int x, int y, int z) {

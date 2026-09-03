@@ -1711,3 +1711,7 @@ EOHB_OrbitalRailgun_Ready=就绪
 EOHB_OrbitalRailgun_AimAtBlock=请将准星对准方块以锁定目标！
 EOHB_OrbitalRailgun_InsufficientOru=§c源石能量不足，无法发动轨道打击！
 EOHB_OrbitalRailgun_AlreadyActive=§c该位置已有进行中的轨道打击！
+item.ChenJiSuan.name=沉淀酸
+item.HeTongRongYe.name=赫铜溶液
+item.QingShui.name=清水
+item.QiTaiZhuoTong.name=气态浊铜

@@ -110,4 +110,85 @@ public final class CTMHelper {
         }
         return (tl ? 1 : 0) | (tr ? 2 : 0) | (bl ? 4 : 0) | (br ? 8 : 0);
     }
+
+    /**
+     * 47 格全连接 CTM 的邻接位相对布局（与 Angelica/mcpatcher 的 neighborMap 一致）：
+     * <pre>
+     *  128  64  32        &lt;- 左上 上 右上
+     *    1   *  16        &lt;- 左      右
+     *    2   4   8        &lt;- 左下 下 右下
+     * </pre>
+     * 下标 = 8 位组合（0~255），值为 47 tile 索引（0~46，对应 RBMK_Schema_E_conn_&lt;n&gt;.png）。
+     */
+    public static final int[] NEIGHBOR_MAP = new int[] {
+        0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15,
+        1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14,
+        0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15,
+        1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14,
+        36, 17, 36, 17, 24, 19, 24, 43, 36, 17, 36, 17, 24, 19, 24, 43,
+        16, 18, 16, 18, 6, 46, 6, 21, 16, 18, 16, 18, 28, 9, 28, 22,
+        36, 17, 36, 17, 24, 19, 24, 43, 36, 17, 36, 17, 24, 19, 24, 43,
+        37, 40, 37, 40, 30, 8, 30, 34, 37, 40, 37, 40, 25, 23, 25, 45,
+        0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15,
+        1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14,
+        0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15,
+        1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14,
+        36, 39, 36, 39, 24, 41, 24, 27, 36, 39, 36, 39, 24, 41, 24, 27,
+        16, 42, 16, 42, 6, 20, 6, 10, 16, 42, 16, 42, 28, 35, 28, 44,
+        36, 39, 36, 39, 24, 41, 24, 27, 36, 39, 36, 39, 24, 41, 24, 27,
+        37, 38, 37, 38, 30, 11, 30, 32, 37, 38, 37, 38, 25, 33, 25, 26 };
+
+    /**
+     * 计算 (x,y,z) 处方块 side 面在贴图上的 8 方向邻接位组合（0~255）。
+     * 位布局见 {@link #NEIGHBOR_MAP}（面镜像规则与 {@link #getConnectionMask} 一致）。
+     *
+     * @param side    Forge 侧面序数（0=底,1=顶,2=北,3=南,4=西,5=东）
+     * @param checker 连接判断
+     * @return 8 位邻接掩码（bit0=左, bit1=左下, bit2=下, bit3=右下, bit4=右, bit5=右上, bit6=上, bit7=左上）
+     */
+    public static int getNeighborBits(IBlockAccess world, int x, int y, int z, int side,
+        ConnectionChecker checker) {
+        boolean up = checker.isConnected(world, x, y + 1, z);
+        boolean down = checker.isConnected(world, x, y - 1, z);
+        boolean north = checker.isConnected(world, x, y, z - 1);
+        boolean south = checker.isConnected(world, x, y, z + 1);
+        boolean west = checker.isConnected(world, x - 1, y, z);
+        boolean east = checker.isConnected(world, x + 1, y, z);
+        boolean uL, uR, dL, dR; // 贴图系四个对角
+        switch (side) {
+            case 0: // 底面：贴图 左=西 右=东 上=北 下=南
+            case 1: // 顶面：不镜像，与底面一致
+                uL = checker.isConnected(world, x - 1, y, z - 1);
+                uR = checker.isConnected(world, x + 1, y, z - 1);
+                dL = checker.isConnected(world, x - 1, y, z + 1);
+                dR = checker.isConnected(world, x + 1, y, z + 1);
+                break;
+            case 2: // 北面（水平镜像）：左=东 右=西 上=上 下=下
+                uL = checker.isConnected(world, x + 1, y + 1, z);
+                uR = checker.isConnected(world, x - 1, y + 1, z);
+                dL = checker.isConnected(world, x + 1, y - 1, z);
+                dR = checker.isConnected(world, x - 1, y - 1, z);
+                break;
+            case 3: // 南面：左=西 右=东 上=上 下=下
+                uL = checker.isConnected(world, x - 1, y + 1, z);
+                uR = checker.isConnected(world, x + 1, y + 1, z);
+                dL = checker.isConnected(world, x - 1, y - 1, z);
+                dR = checker.isConnected(world, x + 1, y - 1, z);
+                break;
+            case 4: // 西面：左=北 右=南 上=上 下=下
+                uL = checker.isConnected(world, x, y + 1, z - 1);
+                uR = checker.isConnected(world, x, y + 1, z + 1);
+                dL = checker.isConnected(world, x, y - 1, z - 1);
+                dR = checker.isConnected(world, x, y - 1, z + 1);
+                break;
+            default: // 东面：左=南 右=北 上=上 下=下
+                uL = checker.isConnected(world, x, y + 1, z + 1);
+                uR = checker.isConnected(world, x, y + 1, z - 1);
+                dL = checker.isConnected(world, x, y - 1, z + 1);
+                dR = checker.isConnected(world, x, y - 1, z - 1);
+                break;
+        }
+        return (west ? 1 : 0) | (dL ? 2 : 0) | (down ? 4 : 0) | (dR ? 8 : 0)
+            | (east ? 16 : 0) | (uR ? 32 : 0) | (up ? 64 : 0) | (uL ? 128 : 0);
+    }
 }
