@@ -3,13 +3,11 @@ package com.EyeOfHarmonyBuffer.common.Block;
 import net.minecraft.world.IBlockAccess;
 
 /**
- * 连接纹理（CTM）公共工具：4 方向连接掩码计算 + 面方向到贴图边的映射。
+ * 连接纹理（CTM）公共工具：完整 47 格 CTM。
  *
- * <p>掩码位定义（相对贴图本身）：
- * bit0 = 上（贴图顶部边）已连接
- * bit1 = 下（贴图底部边）已连接
- * bit2 = 左（贴图左边）已连接
- * bit3 = 右（贴图右边）已连接
+ * <p>核心为 {@link #getNeighborBits} + {@link #NEIGHBOR_MAP}：
+ * 8 方向邻接组合（0~255 位图）直接映射到 47 张连接贴图（_conn_0..46，mcpatcher/Angelica
+ * 标准布局，含角吸收），不再使用旧的 16 格 4 方向连接掩码。
  *
  * <p>面的世界方向 -&gt; 贴图边 的映射由 RenderBlocks 各面 UV 顶点顺序推导得出
  * （注意 vanilla 的北面(side=2)和东面(side=5)贴图是水平镜像的）。
@@ -26,89 +24,27 @@ public final class CTMHelper {
     }
 
     /**
-     * 计算 (x,y,z) 处方块 side 面在贴图上的 4 方向连接掩码（0~15）。
-     *
-     * @param side    Forge 侧面序数（0=底,1=顶,2=北,3=南,4=西,5=东）
-     * @param checker 连接判断
+     * 从 8 位邻接组合中提取 4 向正交掩码（贴图系：U=1,D=2,L=4,R=8）。
+     * 位布局见 {@link #NEIGHBOR_MAP}。
      */
-    public static int getConnectionMask(IBlockAccess world, int x, int y, int z, int side,
-        ConnectionChecker checker) {
-        boolean north = checker.isConnected(world, x, y, z - 1); // -Z
-        boolean south = checker.isConnected(world, x, y, z + 1); // +Z
-        boolean west = checker.isConnected(world, x - 1, y, z);  // -X
-        boolean east = checker.isConnected(world, x + 1, y, z);  // +X
-        boolean up = checker.isConnected(world, x, y + 1, z);    // +Y
-        boolean down = checker.isConnected(world, x, y - 1, z);  // -Y
-
-        switch (side) {
-            case 0: // 底面：贴图上=北(-Z) 下=南(+Z) 左=西(-X) 右=东(+X)
-                return mask(north, south, west, east);
-            case 1: // 顶面（不镜像，与底面一致）：贴图上=北(-Z) 下=南(+Z) 左=西(-X) 右=东(+X)
-                return mask(north, south, west, east);
-            case 2: // 北面（水平镜像）：左=东(+X) 右=西(-X)
-                return mask(up, down, east, west);
-            case 3: // 南面：左=西(-X) 右=东(+X)
-                return mask(up, down, west, east);
-            case 4: // 西面：左=北(-Z) 右=南(+Z)
-                return mask(up, down, north, south);
-            case 5: // 东面：左=南(+Z) 右=北(-Z)
-                return mask(up, down, south, north);
-            default:
-                return 0;
-        }
-    }
-
-    private static int mask(boolean up, boolean down, boolean left, boolean right) {
-        return (up ? 1 : 0) | (down ? 2 : 0) | (left ? 4 : 0) | (right ? 8 : 0);
+    public static int getOrthoFromBits(int bits) {
+        return ((bits & 64) != 0 ? 1 : 0)   // up
+             | ((bits & 4) != 0 ? 2 : 0)    // down
+             | ((bits & 1) != 0 ? 4 : 0)    // left
+             | ((bits & 16) != 0 ? 8 : 0);  // right
     }
 
     /**
-     * 计算 (x,y,z) 处方块 side 面在贴图上的 4 个对角连接位（0~15）。
-     *
-     * <p>位定义（贴图方位）：bit0=左上, bit1=右上, bit2=左下, bit3=右下，
-     * 与 {@link #getConnectionMask} 的上下左右映射同源（对角 = 上下 x 左右组合）。
-     * 用于"角吸收"判定：角并入屏幕（变黑）仅在两条相邻边都连接且对角也存在方块时发生。
+     * 从 8 位邻接组合中提取 4 个对角位（TL=1,TR=2,BL=4,BR=8，贴图系）。
+     * 仅当两条相邻边与该对角都连接时置位（角吸收前提）。
+     * 位布局见 {@link #NEIGHBOR_MAP}。
      */
-    public static int getDiagonalMask(IBlockAccess world, int x, int y, int z, int side,
-        ConnectionChecker checker) {
-        boolean tl;
-        boolean tr;
-        boolean bl;
-        boolean br;
-        switch (side) {
-            case 0: // 底面：贴图上=北(-Z) 左=西(-X)
-            case 1: // 顶面：不镜像，与底面一致
-                tl = checker.isConnected(world, x - 1, y, z - 1);
-                tr = checker.isConnected(world, x + 1, y, z - 1);
-                bl = checker.isConnected(world, x - 1, y, z + 1);
-                br = checker.isConnected(world, x + 1, y, z + 1);
-                break;
-            case 2: // 北面（水平镜像）：左=东(+X) 右=西(-X)
-                tl = checker.isConnected(world, x + 1, y + 1, z);
-                tr = checker.isConnected(world, x - 1, y + 1, z);
-                bl = checker.isConnected(world, x + 1, y - 1, z);
-                br = checker.isConnected(world, x - 1, y - 1, z);
-                break;
-            case 3: // 南面：左=西(-X) 右=东(+X)
-                tl = checker.isConnected(world, x - 1, y + 1, z);
-                tr = checker.isConnected(world, x + 1, y + 1, z);
-                bl = checker.isConnected(world, x - 1, y - 1, z);
-                br = checker.isConnected(world, x + 1, y - 1, z);
-                break;
-            case 4: // 西面：左=北(-Z) 右=南(+Z)
-                tl = checker.isConnected(world, x, y + 1, z - 1);
-                tr = checker.isConnected(world, x, y + 1, z + 1);
-                bl = checker.isConnected(world, x, y - 1, z - 1);
-                br = checker.isConnected(world, x, y - 1, z + 1);
-                break;
-            default: // 东面：左=南(+Z) 右=北(-Z)
-                tl = checker.isConnected(world, x, y + 1, z + 1);
-                tr = checker.isConnected(world, x, y + 1, z - 1);
-                bl = checker.isConnected(world, x, y - 1, z + 1);
-                br = checker.isConnected(world, x, y - 1, z - 1);
-                break;
-        }
-        return (tl ? 1 : 0) | (tr ? 2 : 0) | (bl ? 4 : 0) | (br ? 8 : 0);
+    public static int getCornersFromBits(int bits) {
+        int tl = (bits & 64) != 0 && (bits & 1) != 0 && (bits & 128) != 0 ? 1 : 0;
+        int tr = (bits & 64) != 0 && (bits & 16) != 0 && (bits & 32) != 0 ? 2 : 0;
+        int bl = (bits & 4) != 0 && (bits & 1) != 0 && (bits & 2) != 0 ? 4 : 0;
+        int br = (bits & 4) != 0 && (bits & 16) != 0 && (bits & 8) != 0 ? 8 : 0;
+        return tl | tr | bl | br;
     }
 
     /**
@@ -140,55 +76,52 @@ public final class CTMHelper {
 
     /**
      * 计算 (x,y,z) 处方块 side 面在贴图上的 8 方向邻接位组合（0~255）。
-     * 位布局见 {@link #NEIGHBOR_MAP}（面镜像规则与 {@link #getConnectionMask} 一致）。
+     * 位布局与偏移完全对照 Angelica {@code BlockOrientation.NEIGHBOR_OFFSET}：
+     * <pre>
+     *  7 6 5
+     *  0 * 4
+     *  1 2 3
+     * </pre>
+     * bit0=左, bit1=左下, bit2=下, bit3=右下, bit4=右, bit5=右上, bit6=上, bit7=左上。
+     * 面偏移（含底面 180° 旋转、北/东面水平镜像）：
+     *   BOTTOM: L=EAST +X, D=SOUTH +Z, R=WEST -X, U=NORTH -Z
+     *   TOP   : L=WEST -X, D=SOUTH +Z, R=EAST +X, U=NORTH -Z
+     *   NORTH : L=EAST +X, D=BOTTOM -Y, R=WEST -X, U=TOP +Y
+     *   SOUTH : L=WEST -X, D=BOTTOM -Y, R=EAST +X, U=TOP +Y
+     *   WEST  : L=NORTH -Z, D=BOTTOM -Y, R=SOUTH +Z, U=TOP +Y
+     *   EAST  : L=SOUTH +Z, D=BOTTOM -Y, R=NORTH -Z, U=TOP +Y
      *
      * @param side    Forge 侧面序数（0=底,1=顶,2=北,3=南,4=西,5=东）
      * @param checker 连接判断
-     * @return 8 位邻接掩码（bit0=左, bit1=左下, bit2=下, bit3=右下, bit4=右, bit5=右上, bit6=上, bit7=左上）
+     * @return 8 位邻接掩码
      */
     public static int getNeighborBits(IBlockAccess world, int x, int y, int z, int side,
         ConnectionChecker checker) {
-        boolean up = checker.isConnected(world, x, y + 1, z);
-        boolean down = checker.isConnected(world, x, y - 1, z);
-        boolean north = checker.isConnected(world, x, y, z - 1);
-        boolean south = checker.isConnected(world, x, y, z + 1);
-        boolean west = checker.isConnected(world, x - 1, y, z);
-        boolean east = checker.isConnected(world, x + 1, y, z);
-        boolean uL, uR, dL, dR; // 贴图系四个对角
-        switch (side) {
-            case 0: // 底面：贴图 左=西 右=东 上=北 下=南
-            case 1: // 顶面：不镜像，与底面一致
-                uL = checker.isConnected(world, x - 1, y, z - 1);
-                uR = checker.isConnected(world, x + 1, y, z - 1);
-                dL = checker.isConnected(world, x - 1, y, z + 1);
-                dR = checker.isConnected(world, x + 1, y, z + 1);
-                break;
-            case 2: // 北面（水平镜像）：左=东 右=西 上=上 下=下
-                uL = checker.isConnected(world, x + 1, y + 1, z);
-                uR = checker.isConnected(world, x - 1, y + 1, z);
-                dL = checker.isConnected(world, x + 1, y - 1, z);
-                dR = checker.isConnected(world, x - 1, y - 1, z);
-                break;
-            case 3: // 南面：左=西 右=东 上=上 下=下
-                uL = checker.isConnected(world, x - 1, y + 1, z);
-                uR = checker.isConnected(world, x + 1, y + 1, z);
-                dL = checker.isConnected(world, x - 1, y - 1, z);
-                dR = checker.isConnected(world, x + 1, y - 1, z);
-                break;
-            case 4: // 西面：左=北 右=南 上=上 下=下
-                uL = checker.isConnected(world, x, y + 1, z - 1);
-                uR = checker.isConnected(world, x, y + 1, z + 1);
-                dL = checker.isConnected(world, x, y - 1, z - 1);
-                dR = checker.isConnected(world, x, y - 1, z + 1);
-                break;
-            default: // 东面：左=南 右=北 上=上 下=下
-                uL = checker.isConnected(world, x, y + 1, z + 1);
-                uR = checker.isConnected(world, x, y + 1, z - 1);
-                dL = checker.isConnected(world, x, y - 1, z + 1);
-                dR = checker.isConnected(world, x, y - 1, z - 1);
-                break;
+        // 8 邻偏移表 [面][方向 bit][坐标]，顺序 [左,左下,下,右下,右,右上,上,左上]
+        final int[][][] OFFSET = new int[][][] {
+            // BOTTOM(0): L=+X U=-Z R=-X D=+Z
+            { {1,0,0}, {1,0,1}, {0,0,1}, {-1,0,1}, {-1,0,0}, {-1,0,-1}, {0,0,-1}, {1,0,-1} },
+            // TOP(1): L=-X U=-Z R=+X D=+Z
+            { {-1,0,0}, {-1,0,1}, {0,0,1}, {1,0,1}, {1,0,0}, {1,0,-1}, {0,0,-1}, {-1,0,-1} },
+            // NORTH(2): L=+X U=+Y R=-X D=-Y
+            { {1,0,0}, {1,-1,0}, {0,-1,0}, {-1,-1,0}, {-1,0,0}, {-1,1,0}, {0,1,0}, {1,1,0} },
+            // SOUTH(3): L=-X U=+Y R=+X D=-Y
+            { {-1,0,0}, {-1,-1,0}, {0,-1,0}, {1,-1,0}, {1,0,0}, {1,1,0}, {0,1,0}, {-1,1,0} },
+            // WEST(4): L=-Z U=+Y R=+Z D=-Y
+            { {0,0,-1}, {0,-1,-1}, {0,-1,0}, {0,-1,1}, {0,0,1}, {0,1,1}, {0,1,0}, {0,1,-1} },
+            // EAST(5): L=+Z U=+Y R=-Z D=-Y
+            { {0,0,1}, {0,-1,1}, {0,-1,0}, {0,-1,-1}, {0,0,-1}, {0,1,-1}, {0,1,0}, {0,1,1} },
+        };
+        if (side < 0 || side > 5) {
+            return 0;
         }
-        return (west ? 1 : 0) | (dL ? 2 : 0) | (down ? 4 : 0) | (dR ? 8 : 0)
-            | (east ? 16 : 0) | (uR ? 32 : 0) | (up ? 64 : 0) | (uL ? 128 : 0);
+        int bits = 0;
+        int[][] off = OFFSET[side];
+        for (int b = 0; b < 8; b++) {
+            if (checker.isConnected(world, x + off[b][0], y + off[b][1], z + off[b][2])) {
+                bits |= (1 << b);
+            }
+        }
+        return bits;
     }
 }

@@ -170,8 +170,9 @@ public abstract class BlockGlowCasingBase extends BlockCasingsAbstract {
         int meta = world.getBlockMetadata(x, y, z);
         int variant = Math.min(meta & META_MASK, mConnIcons.length - 1);
         IIcon[][] table = (meta & LIT_META_BIT) != 0 ? mLitConnIcons : mConnIcons;
-        int ortho = CTMHelper.getConnectionMask(world, x, y, z, side, BlockGlowCasingBase::isConnected);
-        int diag = CTMHelper.getDiagonalMask(world, x, y, z, side, BlockGlowCasingBase::isConnected);
+        int bits = CTMHelper.getNeighborBits(world, x, y, z, side, BlockGlowCasingBase::isConnected);
+        int ortho = CTMHelper.getOrthoFromBits(bits);
+        int diag = CTMHelper.getCornersFromBits(bits);
         int corners = ABSORBABLE[ortho] & diag;
         int slot = SLOT[ortho][corners];
         if (slot < 0) {
