@@ -749,6 +749,7 @@ public class TextLocalization {
     public static final String EOHB_ForgeOfTheSkyCore_Tooltip_01;
     public static final String EOHB_KuangMaiCaiJiZhe_Tooltip_00;
     public static final String RBMKShield_Tooltip_00;
+    public static final String RBMKRBMKGraphite_Tooltip_00;
     public static final String EOHB_EnergyConnector_Tooltip_00;
     //粥本家批量物品 Tooltip（双语文案见 en_US.lang / zh_CN.lang）
     public static final String[] EOHB_ArknightsItem_LongGu;
@@ -1444,6 +1445,7 @@ public class TextLocalization {
         EOHB_ForgeOfTheSkyCore_Tooltip_01 = TextHandler.texter("Forge of the Sky, the Earth gives birth to metals.","EOHB_ForgeOfTheSkyCore_Tooltip_01");
         EOHB_KuangMaiCaiJiZhe_Tooltip_00 = TextHandler.texter("Right-click on the Prime Main Vein Block to collect the corresponding vein block.","EOHB_KuangMaiCaiJiZhe_Tooltip_00");
         RBMKShield_Tooltip_00 = TextHandler.texter("Made from serpentine and other materials, used in the biological shield to protect the staff.","RBMKShield_Tooltip_00");
+        RBMKRBMKGraphite_Tooltip_00 = TextHandler.texter("The graphite protective layer used to encase the reactor core. Do not attempt to mix in any counterfeit materials......","RBMKRBMKGraphite_Tooltip_00");
         EOHB_EnergyConnector_Tooltip_00 = TextHandler.texter("Right-click the machine main block to start linking, then left-click the target machine main block to complete the link.","EOHB_EnergyConnector_Tooltip_00");
         EOHB_ArknightsItem_LongGu = new String[] {
             TextHandler.texter("A delicate artificial component used as the core material of Base construction.", "EOHB_ArknightsItem_LongGu_00"),

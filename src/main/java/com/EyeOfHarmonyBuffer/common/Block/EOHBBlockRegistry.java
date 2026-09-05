@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabili
 import com.EyeOfHarmonyBuffer.common.Block.BlockClass.Casings.SingularityStabilizationRingCasings;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockForgeOfTheSkyCore;
+import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockRBMKGraphite;
 import com.EyeOfHarmonyBuffer.common.item.items.ItemBlockRBMKShield;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
@@ -150,6 +151,9 @@ public final class EOHBBlockRegistry {
 
         b = reg(new BlockRBMKShield(), ItemBlockRBMKShield.class, "RBMKShield");
         link(GTCMItemList.RBMKShield, b, 0);
+
+        b = reg(new BlockRBMKGraphite(), ItemBlockRBMKGraphite.class, "RBMKGraphite");
+        link(GTCMItemList.RBMKGraphite, b, 0);
     }
 
     // ==================== 模型方块（TESR：风车 / 天穹炉心） ====================

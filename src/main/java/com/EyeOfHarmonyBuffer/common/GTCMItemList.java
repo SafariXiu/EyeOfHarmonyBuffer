@@ -160,6 +160,7 @@ public enum GTCMItemList {
     CleanGlass,
     CleanGlassGlow,
     RBMKShield,
+    RBMKGraphite,
     XieYiYuanShiKuai,
     PureGlowBlock,
     PureGlowBlock_White,
