@@ -51,7 +51,7 @@ public final class EOHBBlockRegistry {
         registerFluidBlocksInternal();
     }
 
-    // ==================== 统一注册辅助 ====================
+    // 注册辅助
 
     /** 默认 ItemBlock 注册（无贴图名，CTM/模型方块用）。 */
     private static Block reg(Block block, String name) {
@@ -96,7 +96,7 @@ public final class EOHBBlockRegistry {
         entry.set(new ItemStack(block, 1, meta));
     }
 
-    // ==================== 普通方块（矿石 / 纯净方块） ====================
+    // 普通方块
 
     private static void registerNormalBlocks() {
         Block b;
@@ -138,7 +138,7 @@ public final class EOHBBlockRegistry {
         link(GTCMItemList.XieYiYuanShiKuai, b, 0);
     }
 
-    // ==================== CTM 连接方块 ====================
+    // CTM 连接方块
 
     private static void registerCTMBlocks() {
         Block b;
@@ -156,7 +156,7 @@ public final class EOHBBlockRegistry {
         link(GTCMItemList.RBMKGraphite, b, 0);
     }
 
-    // ==================== 模型方块（TESR：风车 / 天穹炉心） ====================
+    // 模型方块
 
     private static void registerModelBlocks() {
         Block b;
@@ -172,7 +172,7 @@ public final class EOHBBlockRegistry {
         link(GTCMItemList.ForgeOfTheSkyCore, b, 0);
     }
 
-    // ==================== RBMK 通道方块 ====================
+    // RBMK 通道方块
 
     private static void registerRBMKBlocks() {
         Block b;
@@ -204,7 +204,7 @@ public final class EOHBBlockRegistry {
         link(GTCMItemList.ReactorGraphitePipe, b, 0);
     }
 
-    // ==================== meta 方块（纯彩光方块 / 奇异稳定环外壳） ====================
+    // meta 方块（PureGlow / 奇异稳定环外壳）
 
     private static void registerMetaBlocks() {
         Block b;
@@ -266,13 +266,13 @@ public final class EOHBBlockRegistry {
             SingularityStabilizationRingCasings.SingularityStabilizationRingCasingsMeta("Singularity Stabilization Ring Casings MAX Tier", 13));
     }
 
-    // ==================== 植物（枚举批量） ====================
+    // 植物（枚举批量）
 
     private static void registerPlantBlocksInternal() {
         BlockIntermediateResources.registerAll(com.EyeOfHarmonyBuffer.EyeOfHarmonyBuffer.MODID);
     }
 
-    // ==================== 液体 ====================
+    // 液体
 
     private static void registerFluidBlocksInternal() {
         EOHBFluidBlockRegistry.registerFluidBlocks();

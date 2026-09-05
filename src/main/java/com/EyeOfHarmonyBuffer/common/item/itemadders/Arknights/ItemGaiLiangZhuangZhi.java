@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * GaiLiangZhuangZhi（方舟中间产物）。
- */
 public class ItemGaiLiangZhuangZhi extends ItemEOHBBatch {
 
     public ItemGaiLiangZhuangZhi() {

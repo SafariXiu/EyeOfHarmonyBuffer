@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
+import com.EyeOfHarmonyBuffer.utils.TextLocalization;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;

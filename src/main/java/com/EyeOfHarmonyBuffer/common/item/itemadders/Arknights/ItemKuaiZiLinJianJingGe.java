@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * KuaiZiLinJianJingGe（方舟中间产物）。
- */
 public class ItemKuaiZiLinJianJingGe extends ItemEOHBBatch {
 
     public ItemKuaiZiLinJianJingGe() {

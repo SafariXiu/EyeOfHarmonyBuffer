@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * ShuangTong（方舟中间产物）。
- */
 public class ItemShuangTong extends ItemEOHBBatch {
 
     public ItemShuangTong() {

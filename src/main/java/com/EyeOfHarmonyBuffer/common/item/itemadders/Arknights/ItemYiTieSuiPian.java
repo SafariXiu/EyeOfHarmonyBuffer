@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * YiTieSuiPian（方舟中间产物）。
- */
 public class ItemYiTieSuiPian extends ItemEOHBBatch {
 
     public ItemYiTieSuiPian() {

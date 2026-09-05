@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.common.item.itemadders.Arknights;
 
 import com.EyeOfHarmonyBuffer.utils.TextLocalization;
-
 import java.util.HashMap;
 import java.util.Map;
 

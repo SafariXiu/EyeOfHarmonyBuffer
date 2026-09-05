@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * LongGu（方舟中间产物）。
- */
 public class ItemLongGu extends ItemEOHBBatch {
 
     public ItemLongGu() {

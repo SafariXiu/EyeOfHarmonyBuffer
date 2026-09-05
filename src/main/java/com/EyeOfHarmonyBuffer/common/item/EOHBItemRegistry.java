@@ -15,17 +15,15 @@ import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
 /**
  * EOHB 物品统一注册入口。
- * <p>
- * 字段全部声明不初始化，注册时 new 对应类（字段名一律对齐 {@link GTCMItemList} 条目名）。
- * 分块：普通物品（原 ItemLoader）/ 中间产物（原 ItemIntermediateProducts，每物独立类）/
- * 流体瓶 / 燃料棒（{@link GTCMReactorFuelCells} 保持独立）。
+ * 字段全部声明不初始化，注册时 new 对应类，字段名对齐 {@link GTCMItemList} 条目名。
+ * 分块：普通物品 / 中间产物（每物独立类）/ 流体瓶 / 燃料棒（{@link GTCMReactorFuelCells} 独立）。
  */
 public final class EOHBItemRegistry {
 
     private EOHBItemRegistry() {
     }
 
-    // ==================== 普通物品（原 ItemLoader） ====================
+    // 普通物品
 
     public static Item ChengDuHeart;
     public static Item Monkey;
@@ -86,17 +84,17 @@ public final class EOHBItemRegistry {
     public static Item DysonCloudComponent;
     public static Item DysonFrameComponent;
 
-    // ==================== 流体瓶 / 气罐 ====================
+    // 流体瓶 / 气罐
 
     public static Item ChiTongFluidBottle;
     public static Item GangZhiFluidBottle;
     public static Item LanTieFluidBottle;
     public static Item ZiJingZhiFluidBottle;
     public static Item GaoJingFluidBottle;
-    // HeTongFluidBottle：未设计完成，暂不注册
+    // HeTongFluidBottle：暂不注册（未设计完成）
     public static Item ChiTongGasTank;
 
-    // ==================== 中间产物（原 ItemIntermediateProducts，每物独立类） ====================
+    // 中间产物（每物独立类）
 
     public static Item ChunJingYuanShiFenMo;
     public static Item DiChunYuanShiFenMo;
@@ -238,7 +236,7 @@ public final class EOHBItemRegistry {
     public static Item XiangXianNiHeYe;
     public static Item ChaoJuHuiYingGuan;
 
-    // ==================== 注册入口 ====================
+    // 注册入口
 
     /** main preInit 调用（须在方块注册之后、植物注册之前）。 */
     public static void registryItems() {
@@ -470,7 +468,7 @@ public final class EOHBItemRegistry {
         GaoJingFluidBottle = regFluidBottle("GaoJingFluidBottle", "GaoJingZhiPing_empty",
             EnumBottleFluid.QING_SHUI, EnumBottleFluid.YA_ZHEN_RONG_YE,
             EnumBottleFluid.JIN_CAO_RONG_YE, EnumBottleFluid.YE_HUA_XI_RANG);
-        // HeTongFluidBottle：未设计完成，暂不注册
+        // HeTongFluidBottle：暂不注册（未设计完成）
         ChiTongGasTank = regFluidBottle("ChiTongGasTank", "ChiTongGasTank_empty",
             EnumBottleFluid.SUAN_QI, EnumBottleFluid.QI_TAI_CHI_TONG,
             EnumBottleFluid.QI_TAI_HE_TONG, EnumBottleFluid.QI_TAI_ZHUO_TONG,
@@ -478,7 +476,7 @@ public final class EOHBItemRegistry {
             EnumBottleFluid.XI_RANG_QI, EnumBottleFluid.ZHONG_XI_RANG_QI);
     }
 
-    // ==================== 注册辅助 ====================
+    // 注册辅助
 
     /** 普通物品：注册 + 挂 GTCMItemList（注册名 = 条目枚举名）。 */
     private static Item regItem(Item item, String name, GTCMItemList entry) {

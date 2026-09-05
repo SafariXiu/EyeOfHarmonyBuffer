@@ -5,12 +5,10 @@ import net.minecraft.world.IBlockAccess;
 /**
  * 连接纹理（CTM）公共工具：完整 47 格 CTM。
  *
- * <p>核心为 {@link #getNeighborBits} + {@link #NEIGHBOR_MAP}：
- * 8 方向邻接组合（0~255 位图）直接映射到 47 张连接贴图（_conn_0..46，mcpatcher/Angelica
- * 标准布局，含角吸收），不再使用旧的 16 格 4 方向连接掩码。
- *
- * <p>面的世界方向 -&gt; 贴图边 的映射由 RenderBlocks 各面 UV 顶点顺序推导得出
- * （注意 vanilla 的北面(side=2)和东面(side=5)贴图是水平镜像的）。
+ * 核心为 {@link #getNeighborBits} + {@link #NEIGHBOR_MAP}：8 方向邻接组合（0~255）
+ * 直接映射到 47 张连接贴图（_conn_0..46，含角吸收）。
+ * 面的世界方向 -&gt; 贴图边 的映射由 RenderBlocks 各面 UV 顶点顺序推导得出
+ * （北面(side=2)和东面(side=5)贴图水平镜像，底面与顶面一致）。
  */
 public final class CTMHelper {
 
@@ -54,7 +52,7 @@ public final class CTMHelper {
      *    1   *  16        &lt;- 左      右
      *    2   4   8        &lt;- 左下 下 右下
      * </pre>
-     * 下标 = 8 位组合（0~255），值为 47 tile 索引（0~46，对应 RBMK_Schema_E_conn_&lt;n&gt;.png）。
+     * 下标 = 8 位组合（0~255），值为 47 tile 索引（0~46，对应 _conn_0..46 贴图）。
      */
     public static final int[] NEIGHBOR_MAP = new int[] {
         0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15,
@@ -82,14 +80,8 @@ public final class CTMHelper {
      *  0 * 4
      *  1 2 3
      * </pre>
-     * bit0=左, bit1=左下, bit2=下, bit3=右下, bit4=右, bit5=右上, bit6=上, bit7=左上。
-     * 面偏移（含底面 180° 旋转、北/东面水平镜像）：
-     *   BOTTOM: L=EAST +X, D=SOUTH +Z, R=WEST -X, U=NORTH -Z
-     *   TOP   : L=WEST -X, D=SOUTH +Z, R=EAST +X, U=NORTH -Z
-     *   NORTH : L=EAST +X, D=BOTTOM -Y, R=WEST -X, U=TOP +Y
-     *   SOUTH : L=WEST -X, D=BOTTOM -Y, R=EAST +X, U=TOP +Y
-     *   WEST  : L=NORTH -Z, D=BOTTOM -Y, R=SOUTH +Z, U=TOP +Y
-     *   EAST  : L=SOUTH +Z, D=BOTTOM -Y, R=NORTH -Z, U=TOP +Y
+     * bit 布局（贴图系）：bit0=左, bit1=左下, bit2=下, bit3=右下, bit4=右, bit5=右上, bit6=上, bit7=左上。
+     * 面偏移基于 vanilla RenderBlocks 的 UV 映射推导：底面与顶面一致，北/东面水平镜像。
      *
      * @param side    Forge 侧面序数（0=底,1=顶,2=北,3=南,4=西,5=东）
      * @param checker 连接判断
@@ -99,10 +91,8 @@ public final class CTMHelper {
         ConnectionChecker checker) {
         // 8 邻偏移表 [面][方向 bit][坐标]，顺序 [左,左下,下,右下,右,右上,上,左上]
         final int[][][] OFFSET = new int[][][] {
-            // BOTTOM(0)：与 TOP 相同（vanilla renderFaceYNeg 默认 UV：U 随 +X、V 随 +Z，
-            // 即贴图 上=-Z 左=-X —— 与顶面完全一致，无旋转无镜像）
+            // BOTTOM/TOP(0,1): 贴图 上=-Z 左=-X（底面与顶面一致）
             { {-1,0,0}, {-1,0,1}, {0,0,1}, {1,0,1}, {1,0,0}, {1,0,-1}, {0,0,-1}, {-1,0,-1} },
-            // TOP(1): L=-X U=-Z R=+X D=+Z
             { {-1,0,0}, {-1,0,1}, {0,0,1}, {1,0,1}, {1,0,0}, {1,0,-1}, {0,0,-1}, {-1,0,-1} },
             // NORTH(2): L=+X U=+Y R=-X D=-Y
             { {1,0,0}, {1,-1,0}, {0,-1,0}, {-1,-1,0}, {-1,0,0}, {-1,1,0}, {0,1,0}, {1,1,0} },

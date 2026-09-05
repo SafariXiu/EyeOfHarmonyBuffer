@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * RMA70_24（方舟中间产物）。
- */
 public class ItemRMA70_24 extends ItemEOHBBatch {
 
     public ItemRMA70_24() {

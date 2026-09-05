@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * QingMengKuang（方舟中间产物）。
- */
 public class ItemQingMengKuang extends ItemEOHBBatch {
 
     public ItemQingMengKuang() {

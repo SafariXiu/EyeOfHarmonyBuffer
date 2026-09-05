@@ -15,22 +15,11 @@ import java.util.*;
 
 public class ItemAdder01 extends ItemAdder_Basic{
 
-    /**
-     * An Item Map for managing basic items
-     */
-    // public static Map<String, ItemAdder01> Item01Map = new HashMap<>();
-
-    /**
-     * A Set contains the meta value that has been used.
-     */
     public static final Set<Integer> Meta01Set = new HashSet<>();
     public static final Map<Integer, String[]> MetaItemTooltipsMap01 = new HashMap<>();
 
     private final String unlocalizedName;
 
-    /**
-     * Create the basic item MetaItem01.
-     */
     public ItemAdder01(String aName, String aMetaName, CreativeTabs aCreativeTabs) {
         super(aName, aMetaName, aCreativeTabs);
         this.unlocalizedName = aMetaName;
@@ -59,15 +48,6 @@ public class ItemAdder01 extends ItemAdder_Basic{
         return initItem01(aName, aMeta);
 
     }
-
-    /**
-     * Init the basic items at the game pre init.
-     */
-    // public static void init() {
-    // for (String MetaName : Item01Map.keySet()) {
-    // GameRegistry.registerItem(Item01Map.get(MetaName), MetaName);
-    // }
-    // }
 
     // region Overrides
 

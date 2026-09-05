@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * Tan（方舟中间产物）。
- */
 public class ItemTan extends ItemEOHBBatch {
 
     public ItemTan() {

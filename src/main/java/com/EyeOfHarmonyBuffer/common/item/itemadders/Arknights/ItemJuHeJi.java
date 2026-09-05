@@ -4,9 +4,6 @@ import com.EyeOfHarmonyBuffer.utils.TextLocalization;
 
 import static com.EyeOfHarmonyBuffer.client.EOHBCreativeTabs.tabMetaItem01;
 
-/**
- * JuHeJi（方舟中间产物）。
- */
 public class ItemJuHeJi extends ItemEOHBBatch {
 
     public ItemJuHeJi() {
