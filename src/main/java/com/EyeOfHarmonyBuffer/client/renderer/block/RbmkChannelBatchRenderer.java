@@ -22,16 +22,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * RBMK 通道批量渲染器（方案 B+）。
+ * RBMK 通道批量渲染器（方案 A：直接遍历，摆脱 Sodium 区块剔除）。
  * <p>
- * 保留"8 格 TE 各自收集"的可见性语义（任意一格可见 -> 该通道必被收集），
- * 但把实际绘制挪到 {@link RenderWorldLastEvent} 一次性执行：
- * <ul>
- *   <li>去重：同一通道 8 格只收集一次，绘制调用降 8 倍（16000 -> ~2000）；</li>
- *   <li>按贴图分组：同种管子贴图连续画完，纹理绑定从 16000 降到贴图种类数；</li>
- *   <li>贴图 ResourceLocation 缓存，避免每帧 new；</li>
- *   <li>不依赖 shader/帧缓冲，无光影环境零兼容问题。</li>
- * </ul>
+ * 在 {@link RenderWorldLastEvent} 中直接遍历 {@code world.loadedTileEntityList} 收集所有
+ * {@link TileEntityRbmkFuelChannel}（每通道仅底座挂 1 个 TE，坐标即通道基座），按贴图分组绘制。
+ * <p>
+ * 不再依赖 TESR 是否被调用：Angelica（Embeddium/Sodium 内核）只在 TE 自身所在 16³ 区块
+ * 可见时才调 TESR，远离后底座区块被剔除会让整根通道消失（即使模型跨到可见区域）。
+ * 直接遍历后，只要区块加载（TE 在列表）就会绘制，远处通道到 chunk 卸载才消失。
+ * <p>
+ * 性能：遍历过滤近乎零成本；用 TE 坐标直接当通道基座（省去每帧 channelBottom 的方块读取）；
+ * 绘制量 = 通道数（~2000），按贴图分组后纹理绑定仅贴图种类数。
  */
 @SideOnly(Side.CLIENT)
 public class RbmkChannelBatchRenderer {
@@ -48,44 +49,71 @@ public class RbmkChannelBatchRenderer {
 
     public static final RbmkChannelBatchRenderer INSTANCE = new RbmkChannelBatchRenderer();
 
+    static {
+        // 类加载即注册事件总线，不再依赖 TESR 惰性触碰（TESR 已空壳化）。
+        MinecraftForge.EVENT_BUS.register(INSTANCE);
+    }
+
     private final FuelTube model = new FuelTube();
     private final Map<String, ResourceLocation> texCache = new ConcurrentHashMap<String, ResourceLocation>();
 
     private final Map<ResourceLocation, List<Entry>> perTex = new HashMap<ResourceLocation, List<Entry>>();
-    private final Map<Long, Entry> byKey = new HashMap<Long, Entry>();
 
     private RbmkChannelBatchRenderer() {
-        MinecraftForge.EVENT_BUS.register(this);
     }
 
-    // ==================== 收集（TESR 调用） ====================
-
-    public void collect(TileEntityRbmkFuelChannel te, World world, int bx, int bottom, int bz, ResourceLocation tex) {
-        long key = pack(bx, bottom, bz);
-        if (byKey.containsKey(key)) {
-            return;
+    /** 供 ClientProxy 客户端启动时调用，确保事件注册时机确定。 */
+    public static void init() {
+        if (INSTANCE == null) {
+            throw new IllegalStateException("unreachable");
         }
-        int light = world.getLightBrightnessForSkyBlocks(bx, bottom + 4, bz, 0);
-        Entry entry = new Entry(bx, bottom, bz, te.getRenderYOffset(), light);
-        byKey.put(key, entry);
-        List<Entry> list = perTex.get(tex);
-        if (list == null) {
-            list = new ArrayList<Entry>();
-            perTex.put(tex, list);
-        }
-        list.add(entry);
     }
 
-    // ==================== 绘制（RenderWorldLastEvent） ====================
+    // ==================== 收集（RenderWorldLast 直接遍历 TE 列表） ====================
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         try {
+            collectAll();
             renderAll(event.partialTicks);
         } finally {
             clear();
         }
     }
+
+    /** 遍历已加载 TE，收集所有 RBMK 通道（TE 坐标即通道基座）。 */
+    private void collectAll() {
+        Minecraft mc = Minecraft.getMinecraft();
+        World world = mc.theWorld;
+        if (world == null) {
+            return;
+        }
+        for (Object o : world.loadedTileEntityList) {
+            if (!(o instanceof TileEntityRbmkFuelChannel)) {
+                continue;
+            }
+            TileEntityRbmkFuelChannel te = (TileEntityRbmkFuelChannel) o;
+            int bx = te.xCoord;
+            int bottom = te.yCoord; // TE 仅挂底座，Y 即基座
+            int bz = te.zCoord;
+            // 防残留：底座位置已不是本通道方块时跳过（结构被拆后 TE 尚未清除）
+            Block baseBlock = world.getBlock(bx, bottom, bz);
+            if (!(baseBlock instanceof BlockRBMKRod)
+                || ((BlockRBMKRod) baseBlock).getRole() != BlockRBMKRod.Role.FUEL_CHANNEL_BASE) {
+                continue;
+            }
+            ResourceLocation tex = resolveTubeTex(world, bx, bottom, bz);
+            int light = world.getLightBrightnessForSkyBlocks(bx, bottom + 4, bz, 0);
+            List<Entry> list = perTex.get(tex);
+            if (list == null) {
+                list = new ArrayList<Entry>();
+                perTex.put(tex, list);
+            }
+            list.add(new Entry(bx, bottom, bz, te.getRenderYOffset(), light));
+        }
+    }
+
+    // ==================== 绘制 ====================
 
     private void renderAll(float partialTicks) {
         if (perTex.isEmpty()) {
@@ -120,14 +148,9 @@ public class RbmkChannelBatchRenderer {
 
     public void clear() {
         perTex.clear();
-        byKey.clear();
     }
 
     // ==================== 工具 ====================
-
-    private static long pack(int x, int y, int z) {
-        return ((long) x & 0xFFFFF) << 42 | ((long) y & 0xFFFFF) << 21 | ((long) z & 0xFFFFF);
-    }
 
     public ResourceLocation tex(String modelTexture) {
         if (modelTexture == null || modelTexture.isEmpty()) {

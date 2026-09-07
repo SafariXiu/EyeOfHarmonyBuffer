@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.client.ExternalBlockTextures;
 import com.EyeOfHarmonyBuffer.client.OrundumConnectorHudHandler;
 import com.EyeOfHarmonyBuffer.client.ReactorClientEventHandler;
 import com.EyeOfHarmonyBuffer.client.orbitalrailgun.RailgunClientEvents;
+import com.EyeOfHarmonyBuffer.client.renderer.block.RbmkChannelBatchRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RbmkFuelChannelBlockRenderer;
 import com.EyeOfHarmonyBuffer.client.renderer.block.RenderOverdomainEndStyle;
 import com.EyeOfHarmonyBuffer.client.renderer.block.TileEntityForgeOfTheSkyCoreRenderer;
@@ -55,6 +56,8 @@ public class ClientProxy extends CommonProxy {
         // RBMK 燃料通道：8 格成型后由基座 TESR 绘制整根 FuelTube 模型，方块本体不变
         BlockRBMKRod.renderId = RenderingRegistry.getNextAvailableRenderId();
         RenderingRegistry.registerBlockHandler(BlockRBMKRod.renderId, RbmkFuelChannelBlockRenderer.INSTANCE);
+        // 确保批处理渲染器事件在首次渲染前注册（TESR 已空壳，不再负责触碰它）
+        RbmkChannelBatchRenderer.init();
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityRbmkFuelChannel.class, new TileEntityRbmkFuelChannelRenderer());
         // RBMK 通道 TE 的渲染包围盒随跳舞棒位动态变化，注册为 DYNAMIC（Angelica 每帧重算，不做缓存）
         try {
