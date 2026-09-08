@@ -249,10 +249,16 @@ bandD / windDirX/Z / gyreWarmth / pressureDry / rainfallBase
 
 ## 十一、实施顺序（最终权威版：海陆 → 气团 → 风 → 洋流）
 
+0. **X1 · 海陆完整重构（当前）** —— superId 改为噪声大陆块，河流/山带/群系全按噪声块工作
+   - 阶段1：NoiseContinentGrid（噪声大陆块：superId + 中心/半径/流出角 + 高程场）
+   - 阶段2：WorldgenAPI/TalosLandMask 接 NoiseContinentGrid
+   - 阶段3：山带/群系 superId 改接
+   - 阶段4：河流 WatershedBuilder 自主生成（替代 RVR2 模板链）
 1. **S1 · 改 ClimateLatitudes 200k 周期**（温度边界，✅）
 2. **S2 · 纬度带/三圈环流基底**（GlobalCirculation 大尺度风带，✅）
-3. **S3 · 海陆分布**（域扭曲+多极，出图验收密度 30~35%、非星形、海绝对连通）← **下一步**
+3. **S3 · 海陆分布**（X1 完成后）—— 高度场 + 鞍部抬升合并（isLand ✅），superId 来自 NoiseContinentGrid
 4. **S4 · 气团层**（依附海陆：海→mT/mP，陆→cT/cP；类型带标签）
 5. **S5 · 风场完整**（三圈基底 + 气团气压差 + 季风；副热高在海/极高在陆）
 6. **S6 · 洋流层**（风 × 海陆折射 → 环流圈/暖寒流/东西岸对流）
+7. **S7 · 水系（WatershedBuilder 巨河）+ L4 地貌 + L5 群系重做**
 7. **S7 · 水系 + 地貌 + 群系**（贯穿巨河 + 盆地湖峡谷 + 以气候为标准的群系/海洋群系）
