@@ -51,23 +51,30 @@ public final class OceanCurrentField {
      * 采样某点洋流（仅海上点调用）。
      */
     public static CurrentSample sample(int x, int z, int worldSeedInt) {
-        // 1) 驱动风（三圈基底 + 15° 斜向 + 弱扰动，见 GlobalCirculation.windDir）
         double[] wind = GlobalCirculation.windDir(x, z, worldSeedInt);
-        double wlen = Math.sqrt(wind[0] * wind[0] + wind[1] * wind[1]);
+        return sample(x, z, worldSeedInt, wind[0], wind[1]);
+    }
+
+    /**
+     * 采样某点洋流（调用方已算好驱动风时用，省一次环流采样；GlobalClimate 走这里）。
+     */
+    public static CurrentSample sample(int x, int z, int worldSeedInt, double windX, double windZ) {
+        // 1) 驱动风（由调用方传入：三圈基底 + 15° 斜向 + 弱扰动）
+        double wlen = Math.sqrt(windX * windX + windZ * windZ);
 
         // 2) 科里奥利偏转：风矢量旋转 ∓CORIOLIS_TURN（北半右偏 = 顺时针、南半左偏 = 逆时针）。
         //    注意这里是"表层流方向"的简化占位；真实为埃克曼螺线积分 + 大陆折射（S6.1）。
         double sign = (GlobalCirculation.foldZ(z) <= ClimateLatitudes.MAX_D) ? 1.0 : -1.0;
         double cosT = Math.cos(CORIOLIS_TURN), sinT = Math.sin(CORIOLIS_TURN);
-        double fx = wind[0] * cosT + sign * wind[1] * sinT;
-        double fz = -sign * wind[0] * sinT + wind[1] * cosT;
+        double fx = windX * cosT + sign * windZ * sinT;
+        double fz = -sign * windX * sinT + windZ * cosT;
         double flen = Math.sqrt(fx * fx + fz * fz);
         if (flen > 1.0e-9) {
             fx /= flen;
             fz /= flen;
         } else {
-            fx = wind[0];
-            fz = wind[1];
+            fx = windX;
+            fz = windZ;
         }
 
         // 3) 海温：纬度基准（热带暖 +1 → 寒带冷 -1）；沿岸暖寒流修正 S6.1（大陆折射后）

@@ -43,7 +43,13 @@ public final class AirMassField {
      * @return 气团（type + 温度 + 湿度）
      */
     public static AirMassSample sample(int x, int z, int worldSeedInt) {
-        boolean isLand = NoiseContinentGrid.isLand(x, z, worldSeedInt);
+        return sample(x, z, worldSeedInt, NoiseContinentGrid.isLand(x, z, worldSeedInt));
+    }
+
+    /**
+     * 采样某点的气团（调用方已算好 isLand 时用，省一次海陆采样）。
+     */
+    public static AirMassSample sample(int x, int z, int worldSeedInt, boolean isLand) {
         // 纬度带：0=热(赤道) 1=冷(极地)，用最近的纬度带插值温度
         double b = GlobalCirculation.bandD(z);
         // 温度：热带暖(+1) → 极地冷(-1)

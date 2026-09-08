@@ -27,19 +27,22 @@ public final class GlobalClimate {
      * @param worldSeedInt  世界种子（TalosLandMask.getWorldSeedInt 同口径）
      */
     public static ClimateSample sample(int x, int z, int worldSeedInt) {
-        boolean isLand = NoiseContinentGrid.isLand(x, z, worldSeedInt);
+        // L1 海陆（一次采样，气团/洋流/海岸全部复用，不重复算）
+        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
+        boolean isLand = r >= 0.0;
         double coastDist = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
 
-        // L0 环流（band / 风 / 干湿 / 雨 / 主导系统 / gyre 占位）
+        // L0 环流（单次系统列表构建，band/风/干湿/雨/主导一次算齐）
         CirculationSample cs = GlobalCirculation.sample(x, z, worldSeedInt);
 
-        // L2 气团
-        AirMassField.AirMassSample am = AirMassField.sample(x, z, worldSeedInt);
+        // L2 气团（复用 isLand，省一次海陆采样）
+        AirMassField.AirMassSample am = AirMassField.sample(x, z, worldSeedInt, isLand);
 
-        // L4 洋流（仅海上）
+        // L4 洋流（仅海上；复用环流风矢量，省一次环流采样）
         double curX = 0.0, curZ = 0.0, seaT = Double.NaN, curV = 0.0;
         if (!isLand) {
-            OceanCurrentField.CurrentSample cur = OceanCurrentField.sample(x, z, worldSeedInt);
+            OceanCurrentField.CurrentSample cur =
+                OceanCurrentField.sample(x, z, worldSeedInt, cs.windX, cs.windZ);
             curX = cur.flowX;
             curZ = cur.flowZ;
             seaT = cur.temperature;

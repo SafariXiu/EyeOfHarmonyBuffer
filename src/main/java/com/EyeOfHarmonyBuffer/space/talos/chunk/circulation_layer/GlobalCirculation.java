@@ -127,39 +127,33 @@ public final class GlobalCirculation {
         return all;
     }
 
-    /** 风场向量 [windX, windZ]：三圈环流基底主导（方向稳定）+ 气压系统弱扰动 + 15° 斜向。 */
-    public static double[] windDir(int worldX, int worldZ, int worldSeedInt) {
-        double[] p = foldPoint(worldX, worldZ);
-        double fx = p[0], fz = p[1];
-        double sign = hemisphereSign(worldZ);
-        double vx = 0.0, vz = 0.0;
-
-        double b = bandD(worldZ);
-        // (1) 三圈环流基底——方向稳定，主导
+    /** 纬向基底 + 15° 斜向（抽出，供 windDir/sample 共用）。返回 {zonalX, zSlope}。 */
+    private static double[] zonalBaseSlope(double b, double sign) {
         double zonalX;
         if (b < 0.32) {
-            zonalX = -1.0;             // 信风：自东向西
+            zonalX = -1.0;
         } else if (b < 0.84) {
-            zonalX = 1.0;              // 西风：自西向东
+            zonalX = 1.0;
         } else {
-            zonalX = -1.0;             // 极地东风
+            zonalX = -1.0;
         }
-        vx += zonalX * 1.0;            // 基底权重 1.0（主导）
-
-        // (2) 15° 斜向（信风朝赤道、西风朝极地、极地东风朝副极地）——物理自然且方向稳定
-        double slope = 0.27;           // ~15°
+        double slope = 0.27;
         double zSlope;
         if (b < 0.32) {
-            zSlope = -sign * slope * (1.0 - b / 0.32);   // 信风：朝赤道
+            zSlope = -sign * slope * (1.0 - b / 0.32);
         } else if (b < 0.84) {
-            zSlope =  sign * slope * (1.0 - Math.abs(b - 0.58) / 0.26);  // 西风：朝极地
+            zSlope =  sign * slope * (1.0 - Math.abs(b - 0.58) / 0.26);
         } else {
-            zSlope = -sign * slope * (1.0 - (b - 0.84) / 0.16);           // 极地东风：朝副极地
+            zSlope = -sign * slope * (1.0 - (b - 0.84) / 0.16);
         }
-        vz += zSlope;
+        return new double[] { zonalX, zSlope };
+    }
 
-        // (3) 气压系统弱扰动——只做局部扰动，不破坏基底方向
-        java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
+    /** 系统弱扰动（切向 0.18 / 径向 0.08）叠加到基底上。 */
+    private static double[] systemWind(double fx, double fz, double sign,
+                                       double vx0, double vz0,
+                                       java.util.ArrayList<double[]> systems) {
+        double vx = vx0, vz = vz0;
         for (double[] c : systems) {
             double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
             double d2 = dx * dx + dz * dz;
@@ -169,7 +163,6 @@ public final class GlobalCirculation {
             double d = Math.sqrt(d2) < 1.0 ? 1.0 : Math.sqrt(d2);
             PressureSystemType type = PressureSystemType.values()[(int) c[3]];
             double spin = type.sign;
-            // 切向（弱权重 0.18）
             double tx = spin * sign * dz;
             double tz = spin * sign * (-dx);
             double tl = Math.sqrt(tx * tx + tz * tz);
@@ -178,44 +171,35 @@ public final class GlobalCirculation {
                 vx += (tx / tl) * mag;
                 vz += (tz / tl) * mag;
             }
-            // 径向（弱 0.08）
             double rmag = w * 0.08 * spin;
             vx += (dx / d) * rmag;
             vz += (dz / d) * rmag;
         }
-        double len = Math.sqrt(vx * vx + vz * vz);
-        if (len < 1.0e-4) return new double[] { zonalX, 0.0 };
         return new double[] { vx, vz };
     }
 
-    /** 气压干湿 [0,1]：以系统为主（锐化四次核，带间不串扰）。 */
-    public static double pressureDry(int worldX, int worldZ, int worldSeedInt) {
-        double[] p = foldPoint(worldX, worldZ);
-        double fx = p[0], fz = p[1];
+    /** 干湿核心（四次核锐化；纬度基准混 10%）。 */
+    private static double pressureDryCore(double fx, double fz, double b,
+                                          java.util.ArrayList<double[]> systems) {
         double acc = 0.0, wsum = 0.0;
-        java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
         for (double[] c : systems) {
             double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
             double d2 = dx * dx + dz * dz;
-            double w = 1.0 / (1.0 + d2 * d2 / DRY_KERNEL_R4);   // 四次核：带内≈1，带间快速衰减
+            double w = 1.0 / (1.0 + d2 * d2 / DRY_KERNEL_R4);
             PressureSystemType type = PressureSystemType.values()[(int) c[3]];
             acc += type.baseDry * w;
             wsum += w;
         }
-        // 系统主导（wsum 覆盖），少量纬度基准混合
-        double b = bandD(worldZ);
         double latBase = (b < 0.2) ? 0.1 : (b < 0.55) ? 0.85 : (b < 0.85) ? 0.2 : 0.8;
         double dry = (wsum > 1.0e-9) ? ((acc / wsum) * 0.9 + latBase * 0.1) : latBase;
         return dry < 0 ? 0 : (dry > 1 ? 1 : dry);
     }
 
-    /** 当前点主导系统类型（供 /talosmap 标注）。 */
-    public static PressureSystemType dominantSystem(int worldX, int worldZ, int worldSeedInt) {
-        double[] p = foldPoint(worldX, worldZ);
-        double fx = p[0], fz = p[1];
+    /** 主导系统核心。 */
+    private static PressureSystemType dominantCore(double fx, double fz,
+                                                    java.util.ArrayList<double[]> systems) {
         double bestW = 0.0;
         PressureSystemType best = null;
-        java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
         for (double[] c : systems) {
             double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
             double r2 = c[2] * c[2];
@@ -225,7 +209,36 @@ public final class GlobalCirculation {
                 best = PressureSystemType.values()[(int) c[3]];
             }
         }
-        return bestW > 0.2 ? best : null;   // 阈值以下视为无主导系统
+        return bestW > 0.2 ? best : null;
+    }
+
+    /** 风场向量 [windX, windZ]：三圈环流基底主导（方向稳定）+ 气压系统弱扰动 + 15° 斜向。 */
+    public static double[] windDir(int worldX, int worldZ, int worldSeedInt) {
+        double[] p = foldPoint(worldX, worldZ);
+        double fx = p[0], fz = p[1];
+        double sign = hemisphereSign(worldZ);
+        double vx = 0.0, vz = 0.0;
+
+        double b = bandD(worldZ);
+        double[] bs = zonalBaseSlope(b, sign);
+        double[] wv = systemWind(fx, fz, sign, bs[0], bs[1],
+            systemsNear(worldX, worldZ, worldSeedInt));
+        double len = Math.sqrt(wv[0] * wv[0] + wv[1] * wv[1]);
+        if (len < 1.0e-4) return new double[] { bs[0], 0.0 };
+        return wv;
+    }
+
+    /** 气压干湿 [0,1]：以系统为主（锐化四次核，带间不串扰）。 */
+    public static double pressureDry(int worldX, int worldZ, int worldSeedInt) {
+        double[] p = foldPoint(worldX, worldZ);
+        double b = bandD(worldZ);
+        return pressureDryCore(p[0], p[1], b, systemsNear(worldX, worldZ, worldSeedInt));
+    }
+
+    /** 当前点主导系统类型（供 /talosmap 标注）。 */
+    public static PressureSystemType dominantSystem(int worldX, int worldZ, int worldSeedInt) {
+        double[] p = foldPoint(worldX, worldZ);
+        return dominantCore(p[0], p[1], systemsNear(worldX, worldZ, worldSeedInt));
     }
 
     /** 潜在降水 [0,1]。 */
@@ -237,15 +250,23 @@ public final class GlobalCirculation {
         return r < 0 ? 0 : (r > 1 ? 1 : r);
     }
 
-    /** 组合采样。 */
+    /** 组合采样（单次构建系统列表，各量共享；比逐量调用省 3/4 的列表重建）。 */
     public static CirculationSample sample(int worldX, int worldZ, int worldSeedInt) {
+        double[] p = foldPoint(worldX, worldZ);
+        double fx = p[0], fz = p[1];
+        double sign = hemisphereSign(worldZ);
         double b = bandD(worldZ);
-        double[] wind = windDir(worldX, worldZ, worldSeedInt);
-        double dry = pressureDry(worldX, worldZ, worldSeedInt);
-        double rain = rainfallBase(worldX, worldZ, worldSeedInt);
-        PressureSystemType sys = dominantSystem(worldX, worldZ, worldSeedInt);
+        java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
+        double[] bs = zonalBaseSlope(b, sign);
+        double[] wv = systemWind(fx, fz, sign, bs[0], bs[1], systems);
+        double dry = pressureDryCore(fx, fz, b, systems);
+        double latRain = 1.0 - 0.6 * b;
+        double rain = latRain * (1.0 - 0.75 * dry);
+        if (rain < 0) rain = 0;
+        if (rain > 1) rain = 1;
+        PressureSystemType sys = dominantCore(fx, fz, systems);
         double gyreBase = 0.5 - b;
         double gyre = gyreBase < -1 ? -1 : (gyreBase > 1 ? 1 : gyreBase);
-        return new CirculationSample(b, wind[0], wind[1], gyre, dry, rain, sys);
+        return new CirculationSample(b, wv[0], wv[1], gyre, dry, rain, sys);
     }
 }

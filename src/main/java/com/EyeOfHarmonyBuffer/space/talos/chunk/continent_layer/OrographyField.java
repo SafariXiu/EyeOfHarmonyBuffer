@@ -121,7 +121,7 @@ public final class OrographyField {
         Cutoffs c = cutoffsFor(worldSeedInt);
         double elevation = elevation01(r, worldSeedInt);
         double dev = ridgeDev(x, z, worldSeedInt);
-        double relief = (c.devQ95 > 0.0) ? clamp01(1.0 - dev / c.devQ95) : 0.0;
+        double relief = reliefFromDev(x, z, worldSeedInt, dev);   // 含贴岸淡化，与 relief01() 同口径
 
         int kind;
         if (dev <= c.devPeakQ && elevation >= PEAK_MIN_ELEV) {
@@ -150,7 +150,11 @@ public final class OrographyField {
 
     /** 山地强度（dev q95 归一 × 贴岸淡化）。 */
     public static double relief01(int x, int z, int worldSeedInt) {
-        double dev = ridgeDev(x, z, worldSeedInt);
+        return reliefFromDev(x, z, worldSeedInt, ridgeDev(x, z, worldSeedInt));
+    }
+
+    /** 山地强度核心（调用方已有 dev 时用，避免重复算 medNoise）。 */
+    private static double reliefFromDev(int x, int z, int worldSeedInt, double dev) {
         double devQ95 = cutoffsFor(worldSeedInt).devQ95;
         double micro = (devQ95 > 0.0) ? clamp01(1.0 - dev / devQ95) : 0.0;
         double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
