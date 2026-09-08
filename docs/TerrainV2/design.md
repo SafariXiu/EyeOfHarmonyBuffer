@@ -32,6 +32,14 @@
 | D18 | 岛链 | **显式生成岛链**：在汇聚边界/大陆边缘撒群岛（岛弧风格），L1 处理 |
 | D19 | 气压显式输出 | L0 **显式输出气压带/沙漠带**信号（副热带高压=干燥带），供 L1/L5 消费 |
 | D20 | 水系独立 | 大陆**内部的水系完全由水系系统决定**（海陆层不掺和内部水体） |
+| D21 | 气团定稿（2026-09） | 气团 = AirMassField 简单分类版（isLand × bandD → cP/mP/mT/cT + 温度 + 湿度），依附海陆、确定性、O(1)。**废弃**“气团种子 G=250k/体量半径 30k → 地转风”方案（旧 AirMassSystem 已删除，git 历史可找回）；该方案的风场职责改由 D22 承担 |
+| D22 | 风场定稿（2026-09） | 风 = 三圈环流纬向基底（权重 1.0，方向稳定主导）+ 15° 斜向（信风朝赤道/西风朝极地/极地东风朝副极地）+ 半固定气压系统弱扰动（切向 0.18 / 径向 0.08）。系统影响距离按环面**最小镜像回卷**（X=400k / Z=200k），保证接缝两侧与南赤道（ITCZ 经回卷覆盖 z≈200k 一侧）连续 |
+| D23 | 海岸距离语义（2026-09） | NoiseContinentGrid 只出**块级**有符号海岸距离 coastDistBlocks（残差/梯度中央差分，±200k 截断）；旧 signedDist 把噪声高度残差当 block 距离用，近岸判定全图恒真，已废弃。等值线附近做鞍部抬升（×2 拉伸合并近邻小块） |
+| D24 | 统一气候门面（2026-09） | GlobalClimate.sample（circulation_layer）= 对外唯一 API，一次返回 ClimateSample（L1 海陆/海岸 + L0 环流 + L2 气团 + L4 洋流）；/talosmap 与未来 L5 群系消费方一律走它，禁止散调各层静态入口 |
+| D25 | S6 洋流 = 结构原型 | OceanCurrentField 已建（风驱方向 + 科里奥利 14° 旋转占位 + 纬度海温）；**大陆折射 → 环流圈/东岸暖西岸冷 = S6.1**，依赖海岸方向场，完成前 current 层海温只是纬度基准 |
+| D26 | 生产未切换 | V2 噪声海陆（NoiseContinentGrid）尚未接入生产（TalosLandMask/WorldgenAPI 仍走 TectonicWorld），接入 = X1 阶段2；当前新 L1 只服务气团/洋流原型与 /talosmap |
+| D27 | 自适应阈值（2026-09） | 固定阈值对低频噪声的种子间均值漂移极敏感（0.607 下陆地占比实测 22%~54% 摆动）。改为按种子标定：首用在该种子主域 4k 网格采样 5000 点取 q67+LIFT/2 作阈值并缓存 → 各种子陆地稳定 ≈33%（D10）。**已知**：大陆块数与均衡度仍随种子变（3~7 块；个别种子出一块 80%+ 泛大陆）；强制 4~6 均衡大洲需布点格+多极点方案（四节），暂缓 |
+| D28 | L1b 地形骨架场 OrographyField（2026-09 定稿） | 给新海陆加"哪里是山"的指示场，**双轨输出**：A. orography 级连续场（气候/气团/风消费）：`elevation01`（残差 q93 归一=内陆海拔，供直减/雨影/高原热源判据）、`relief01`（λ20k 偏差脊线 1-dev/q95 per-seed 归一）、`beltMask01`；B. 离散 `kind`（LOWLAND/HILL/PLATEAU/MOUNTAIN/PEAK，**保留供下游地形/宏群系/山生成层使用**），占比按种子 dev 分位标定保证（峰=dev 最小 3.5%、山+峰=前 30%、高原=非山地海拔顶 17%→低地+丘陵≈53%；三~四种子实测 低+丘 51~52/高原 17/山 28~29/峰 ~1）。**不从板块假设**：全从 NoiseContinentGrid 自身场派生（山永远在陆上、零新随机；脊线与海拔场独立 → 无等距山环/高原同心圈）。已知教训：① 不能用固定阈值切 ridged（窄动态范围→饱和或 0 并列、分位塌陷）② 分位前必须排序 ③ 山链判定不得掺"离岸距离"等高程相关门。未来 PlateField 只替换 ridgeDev 来源，下游 API 不变 |
 
 ### 依赖图（单向，权威因果链：海陆 → 气团 → 风 → 洋流）
 ```
@@ -115,15 +123,38 @@ climate_layer / circulation_layer（统一对外）
 
 ---
 
+## 二d. 气团/风场定稿（2026-09 修订，D21/D22）
+
+早期草案（已废弃）：气团种子网格 G=250k、体量半径 30k、种子源地约束 → 气团气压梯度地转风。
+该实现（AirMassSystem）存在环面折叠与格距不自洽的问题，且与 S5 的三圈基底模型重复，已删除。
+
+定稿模型：
+- **气团（L2，S4）** = AirMassField 简单分类：isLand × bandD → cP/mP/mT/cT 四类 + 连续温度/湿度；
+  block 查询 O(1)（一次海陆采样 + 一次纬度查表）
+- **风场（L3，S5）** = 三圈环流纬向基底（权重 1.0）+ 15° 斜向 + 半固定气压系统弱扰动
+  （切向 0.18 / 径向 0.08；系统=真实大气行动中心：ITCZ/副热带高压/副极地低压/极地高压）；
+  系统距离按 X=400k / Z=200k 最小镜像回卷，接缝两侧连续
+- **洋流（L4，S6）** = 结构原型：表层流 = 驱动风旋转 14°（科里奥利方向）+ 纬度海温；
+  大陆折射环流（东岸暖/西岸冷）待 S6.1（D25）
+- 全链路统一出口：GlobalClimate.sample → ClimateSample（D24）；block 查询 = 固定次数求和 → O(1)
+
+---
+
 ## 三、L0 环流层（独立包 chunk/circulation_layer/）
 
-### 包结构（S2 阶段）
+### 包结构（2026-09）
 ```
 chunk/circulation_layer/
-  GlobalCirculation.java    // 纬度带 + 风带 + 气压带（消费改后 ClimateLatitudes）—— S2 已完成
-  CirculationSample.java    // 输出 DTO（bandD/windX,Z/gyreWarmth占位/pressureDry/rainfallBase）
+  GlobalCirculation.java    // 纬度带 + 三圈基底风 + 半固定气压系统（干湿/雨）；环面最小镜像距离
+  CirculationSample.java    // L0 输出 DTO（bandD/windX,Z/gyreWarmth占位/pressureDry/rainfallBase/system）
+  PressureSystemType.java   // ITCZ/副热带高压/副极地低压/极地高压（标签+旋向+基准干湿）
+  AirMassType.java          // cP/mP/mT/cT（标签+海陆+冷热）——位于 continent_layer，与海陆同层
+  AirMassField.java         // L2 气团采样（continent_layer，消费 NoiseContinentGrid）
+  OceanCurrentField.java    // L4 洋流结构原型（风驱+科里奥利旋转+纬度海温；折射=S6.1）
+  GlobalClimate.java        // ★ 统一门面（二c：对外唯一 API）
+  ClimateSample.java        // 门面输出 DTO（L1+L0+L2+L4 一次编排）
 ```
-（OceanGyreField 已回退删除，洋流推迟到 S4）
+（OceanGyreField 已回退删除；AirMassSystem 种子地转风已废弃删除，见 D21）
 
 ### 风场塑造（S2，已按 3 圈环流重写）
 按权威机制：太阳辐射不均匀加热 → 赤道-极地温差 → 气压差 → 风，再被科里奥利扭向 → 三圈环流。
@@ -132,7 +163,7 @@ chunk/circulation_layer/
 - Polar 圈(极地东风)：东西向 ← + 15° 斜向朝副极地；副极地低压湿、极地高压干
 - 南北镜像由科里奥利；大陆影响（季风/海陆热力）留 S3。
 
-### 洋流生成方式（S4 再做，此处仅保留设计）
+### 洋流生成方式（S6 结构原型已建；大陆折射 S6.1 再做）
 1. **风驱纬向基底**：信风带往西、西风带往东（GlobalCirculation.windDir 已提供）；
 2. **大陆折射**：大陆生成后，洋流绕大陆 → 形成环流圈 + 东岸暖/西岸冷的边界流（S3 大陆完成后实现）；
 3. **旋向**：科里奥利（北顺南逆）；
@@ -249,16 +280,26 @@ bandD / windDirX/Z / gyreWarmth / pressureDry / rainfallBase
 
 ## 十一、实施顺序（最终权威版：海陆 → 气团 → 风 → 洋流）
 
-0. **X1 · 海陆完整重构（当前）** —— superId 改为噪声大陆块，河流/山带/群系全按噪声块工作
-   - 阶段1：NoiseContinentGrid（噪声大陆块：superId + 中心/半径/流出角 + 高程场）
-   - 阶段2：WorldgenAPI/TalosLandMask 接 NoiseContinentGrid
-   - 阶段3：山带/群系 superId 改接
-   - 阶段4：河流 WatershedBuilder 自主生成（替代 RVR2 模板链）
-1. **S1 · 改 ClimateLatitudes 200k 周期**（温度边界，✅）
+0. **X1 · 海陆完整重构** —— 河流/山带/群系最终全按噪声海陆工作
+   - 阶段1：NoiseContinentGrid（噪声大陆场：height/isLand/coastDistBlocks 块级海岸距离 +
+     landResidual/medNoise 结构接口）✅（形态搜索标定：λ=80k×3层+中频0.10；**自适应阈值** D27 →
+     各种子陆地 ≈33%；大陆块数随种子 3~7 块）
+   - 阶段1b：OrographyField 地形骨架场（D28）✅ 原型——orography 级连续场（elevation01/relief01）出图验证；
+     生产山带/群系消费待 X1 阶段2~3
+   - 阶段2：WorldgenAPI/TalosLandMask 接 NoiseContinentGrid（**未开始**；完成前生产仍走 TectonicWorld，D26）
+   - 阶段3：山带/群系 superId 依赖改接（未开始，随阶段2）
+   - 阶段4：河流 WatershedBuilder 自主生成（替代 RVR2 模板链，未开始）
+1. **S1 · 改 ClimateLatitudes 200k 周期**（温度边界，✅ 已合入）
 2. **S2 · 纬度带/三圈环流基底**（GlobalCirculation 大尺度风带，✅）
-3. **S3 · 海陆分布**（X1 完成后）—— 高度场 + 鞍部抬升合并（isLand ✅），superId 来自 NoiseContinentGrid
-4. **S4 · 气团层**（依附海陆：海→mT/mP，陆→cT/cP；类型带标签）
-5. **S5 · 风场完整**（三圈基底 + 气团气压差 + 季风；副热高在海/极高在陆）
-6. **S6 · 洋流层**（风 × 海陆折射 → 环流圈/暖寒流/东西岸对流）
+3. **S3 · 海陆分布**—— 高度场 + 鞍部抬升合并；isLand/coastDistBlocks ✅（V2 原型层，未接生产）
+4. **S4 · 气团层**（依附海陆：海→mT/mP，陆→cT/cP；类型带标签）✅ 定稿（D21）
+   - AirMassType（cP/mP/mT/cT 4 类） + AirMassField.sample（isLand×bandD → type+温度+湿度）
+5. **S5 · 风场完整**（三圈环流基底主导稳定 + 半固定气压系统弱扰动 + 15°斜向；含环面最小镜像回卷修正）✅ 定稿（D22）
+6. **S6 · 洋流层** ⚠ 结构原型（D25）——风驱方向 + 科里奥利 14° 旋转占位 + 纬度海温；
+   **大陆折射 → 环流圈 / 东岸暖西岸冷 = S6.1**（依赖海岸方向场，未开始）
+   - OceanCurrentField.sample：flowX/flowZ/temperature/speed（S6.1 前 temperature 无折射色差）
 7. **S7 · 水系（WatershedBuilder 巨河）+ L4 地貌 + L5 群系重做**
-7. **S7 · 水系 + 地貌 + 群系**（贯穿巨河 + 盆地湖峡谷 + 以气候为标准的群系/海洋群系）
+   （贯穿巨河 + 盆地湖峡谷 + 以气候为标准的群系/海洋群系——未开始）
+
+**当前统一验证手段**：GlobalClimate.sample（D24）→ /talosmap 出图：land（新）/landlegacy（旧，对照）/coast/
+airmass/current/wind/pressure/rain/band/gyre。S4~S6 各层均已接入该单入口；生产消费方（L5 群系）在 S7 接入。

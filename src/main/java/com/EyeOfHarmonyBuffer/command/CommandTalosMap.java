@@ -1,7 +1,8 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.CirculationSample;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ClimateSample;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -19,15 +20,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * /talosmap - 地形/环流离线出图（方案一测试工具）。
+ * /talosmap - V2 海陆/环流/气团/洋流出图（docs/TerrainV2/design.md 十：测试方案）。
  *
  * 用法：/talosmap &lt;layer&gt; [cx cz radius] [stride]
- *   layer: land | gyre | wind | pressure | rain | band
+ *   layer:
+ *     land       海陆（V2 噪声场 NoiseContinentGrid——新 L1）
+ *     landlegacy 海陆（旧生产 TectonicWorld，X1 阶段2 前与 land 对照用）
+ *     coast      海岸距离带（块级有符号距离；近岸 ~30k 内渐变色）
+ *     gyre       洋流占位层：底色=纬度冷暖占位(gyreWarmth)，箭头=盛行风（S6.1 前近似）
+ *     airmass    气团类型（cP/mP/mT/cT 四色）
+ *     current    洋流：海温底色 + 海上洋流箭头（矢量）
+ *     wind       盛行风（矢量：底色=风向色相，箭头=方向）
+ *     pressure   气压干湿
+ *     rain       潜在降水
+ *     band       纬度带
  *   cx cz radius: 区域中心与半径（缺省 = 玩家所在位置，radius 默认 100000）
  *   stride: 采样步长（缺省自动按 radius 使图 ≤ 1024px）
  *
- * gyre/wind 为矢量场：底色表冷暖/风向色相，叠加强度化的箭头（矢量标注）。
- * 输出：当前目录 talos_maps/&lt;layer&gt;.png（服务端 cwd = run）。
+ * 所有图层统一采样 GlobalClimate.sample（唯一口径）；风/洋流为矢量场叠加箭头。
+ * 输出：run/talos_maps/&lt;layer&gt;.png
  */
 public class CommandTalosMap extends CommandBase {
 
@@ -36,6 +47,8 @@ public class CommandTalosMap extends CommandBase {
     private static final int ARROW_SPACING = 100;
     /** 箭头最大长度（px）。 */
     private static final int ARROW_MAX_LEN = 34;
+    /** coast 图层近岸过渡半宽（block）。 */
+    private static final double COAST_BAND = 30_000.0;
 
     @Override
     public String getCommandName() {
@@ -44,7 +57,7 @@ public class CommandTalosMap extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosmap <land|gyre|wind|pressure|rain|band> [cx cz radius] [stride]";
+        return "/talosmap <land|landlegacy|coast|gyre|airmass|current|wind|pressure|rain|band> [cx cz radius] [stride]";
     }
 
     @Override
@@ -128,7 +141,8 @@ public class CommandTalosMap extends CommandBase {
 
         int x0 = cx - radius;
         int z0 = cz - radius;
-        boolean isVector = layer.equals("gyre") || layer.equals("wind");
+        boolean vectorArrows =
+            layer.equals("wind") || layer.equals("gyre") || layer.equals("current");
 
         for (int py = 0; py < h; py++) {
             int wz = z0 + py * stride;
@@ -138,14 +152,14 @@ public class CommandTalosMap extends CommandBase {
             }
         }
 
-        if (isVector) {
+        if (vectorArrows) {
             drawArrows(g, layer, w, h, x0, z0, stride, seed);
         }
         g.dispose();
         return img;
     }
 
-    /** 矢量箭头叠加。 */
+    /** 矢量箭头叠加：wind/gyre = 盛行风箭头；current = 海上洋流箭头。 */
     private void drawArrows(Graphics2D g, String layer, int w, int h,
                             int x0, int z0, int stride, int seed) {
         g.setStroke(new BasicStroke(2.0f));
@@ -153,17 +167,27 @@ public class CommandTalosMap extends CommandBase {
             for (int px = ARROW_SPACING / 2; px < w; px += ARROW_SPACING) {
                 int wx = x0 + px * stride;
                 int wz = z0 + py * stride;
-                double[] flow = flowAt(layer, wx, wz, seed);
-                double len = Math.sqrt(flow[0] * flow[0] + flow[1] * flow[1]);
-                if (len < 1.0e-4) continue;
-                // 方向单位向量
-                double ux = flow[0] / len, uz = flow[1] / len;
-                // px 单位方向（z 增大 → py 增大）
-                double dirX = ux, dirY = uz;
-                double mag = Math.min(1.0, len);           // 强度→长度
-                int arrowLen = Math.max(6, (int) (ARROW_MAX_LEN * mag));
-                int ex = px + (int) (dirX * arrowLen);
-                int ey = py + (int) (dirY * arrowLen);
+                ClimateSample s = GlobalClimate.sample(wx, wz, seed);
+                double fx, fz, mag;
+                if (layer.equals("current")) {
+                    if (s.isLand) continue;          // 洋流只画海上
+                    fx = s.currentX;
+                    fz = s.currentZ;
+                    mag = s.currentSpeed;
+                } else {
+                    fx = s.windX;
+                    fz = s.windZ;
+                    double len = Math.sqrt(fx * fx + fz * fz);
+                    mag = Math.min(1.0, len);
+                    if (len > 1.0e-9) {
+                        fx /= len;
+                        fz /= len;
+                    }
+                }
+                if (mag < 1.0e-3) continue;
+                int arrowLen = Math.max(6, (int) (ARROW_MAX_LEN * Math.min(1.0, mag)));
+                int ex = px + (int) (fx * arrowLen);
+                int ey = py + (int) (fz * arrowLen);
                 g.setColor(layer.equals("gyre") ? Color.WHITE : Color.BLACK);
                 g.drawLine(px, py, ex, ey);
                 drawArrowHead(g, px, py, ex, ey);
@@ -182,59 +206,72 @@ public class CommandTalosMap extends CommandBase {
         g.drawLine(ex, ey, hx2, hy2);
     }
 
-    private double[] flowAt(String layer, int wx, int wz, int seed) {
-        // gyre（S2 阶段）：洋流推迟到 S4，这里显示风驱纬向方向（信风往西/西风往东）作为占位
-        CirculationSample s = GlobalCirculation.sample(wx, wz, seed);
-        return new double[] { s.windX, s.windZ };
-    }
-
     private int colorFor(String layer, int wx, int wz, int seed) {
+        ClimateSample s = GlobalClimate.sample(wx, wz, seed);
         switch (layer) {
             case "land": {
+                return s.isLand ? rgb(60, 150, 70) : rgb(20, 70, 140);
+            }
+            case "landlegacy": {
                 boolean land = TalosLandMask.isLandCheap(wx, wz, seed);
-                return land ? rgb(60, 150, 70) : rgb(20, 70, 140);
+                return land ? rgb(150, 110, 40) : rgb(40, 60, 120);   // 旧系统配色区分
+            }
+            case "coast": {
+                // 海陆底 + 近岸 ±COAST_BAND 内混入白/青渐变（带宽 = 真实块距离）
+                double d = s.coastDist;
+                double t = clamp(1.0 - Math.abs(d) / COAST_BAND, 0, 1);  // 1=岸线
+                if (s.isLand) {
+                    return mix(rgb(60, 150, 70), rgb(150, 160, 90), t);
+                }
+                int deep = rgb(20, 70, 140);
+                return mix(deep, rgb(60, 130, 160), t);
             }
             case "gyre": {
-                CirculationSample s = GlobalCirculation.sample(wx, wz, seed);
+                // 占位层：纬度冷暖底色（S6.1 前不代表真实环流温湿）
                 double g = clamp(s.gyreWarmth, -1, 1);
                 return g >= 0 ? heatColor(g) : coldColor(-g);
             }
-            case "wind":
-            case "pressure":
-            case "rain":
-            case "band": {
-                CirculationSample s = GlobalCirculation.sample(wx, wz, seed);
-                switch (layer) {
-                    case "wind": {
-                        double a = Math.atan2(s.windZ, s.windX);
-                        double hue = Math.toDegrees(a) + 180;
-                        return Color.HSBtoRGB((float) (hue / 360.0), 0.7f, 1.0f);
-                    }
-                    case "pressure": {
-                        double d = clamp(s.pressureDry, 0, 1);
-                        int r = (int) (200 * d + 40 * (1 - d));
-                        int g = (int) (180 * (1 - d) + 120 * d);
-                        int b = (int) (220 * (1 - d) + 30 * d);
-                        return rgb(r, g, b);
-                    }
-                    case "rain": {
-                        double r = clamp(s.rainfallBase, 0, 1);
-                        int gr = (int) (255 * r);
-                        int bl = (int) (200 * r);
-                        int rr = (int) (80 * (1 - r) + 40 * r);
-                        return rgb(rr, gr, bl);
-                    }
-                    default: { // band
-                        double b = clamp(s.bandD, 0, 1);
-                        if (b < 0.5) {
-                            return lerpColor(new int[]{230, 60, 40}, new int[]{60, 180, 60}, b * 2);
-                        }
-                        return lerpColor(new int[]{60, 180, 60}, new int[]{220, 220, 255}, (b - 0.5) * 2);
-                    }
+            case "airmass": {
+                switch (s.airType) {
+                    case MARITIME_TROPICAL:   return rgb(60, 120, 200);   // mT 热带海洋 蓝
+                    case MARITIME_POLAR:      return rgb(90, 180, 220);   // mP 极地海洋 浅蓝
+                    case CONTINENTAL_TROPICAL:return rgb(220, 140, 40);   // cT 热带大陆 橙
+                    default:                   return rgb(180, 190, 200); // cP 极地大陆 灰
                 }
             }
-            default:
-                return rgb(0, 0, 0);
+            case "current": {
+                if (s.isLand) {
+                    return rgb(60, 150, 70);   // 陆地绿
+                }
+                double t = clamp(s.seaTemperature, -1, 1);
+                return t >= 0 ? heatColor(t) : coldColor(-t);   // 海温（纬度基准）
+            }
+            case "wind": {
+                double a = Math.atan2(s.windZ, s.windX);
+                double hue = Math.toDegrees(a) + 180;
+                return Color.HSBtoRGB((float) (hue / 360.0), 0.7f, 1.0f);
+            }
+            case "pressure": {
+                double d = clamp(s.pressureDry, 0, 1);
+                int r = (int) (200 * d + 40 * (1 - d));
+                int g = (int) (180 * (1 - d) + 120 * d);
+                int b = (int) (220 * (1 - d) + 30 * d);
+                return rgb(r, g, b);
+            }
+            case "rain": {
+                double r = clamp(s.rainfallBase, 0, 1);
+                int gr = (int) (255 * r);
+                int bl = (int) (200 * r);
+                int rr = (int) (80 * (1 - r) + 40 * r);
+                return rgb(rr, gr, bl);
+            }
+            default: { // band
+                double b = clamp(s.bandD, 0, 1);
+                if (b < 0.5) {
+                    return lerpColor(new int[]{230, 60, 40}, new int[]{60, 180, 60}, b * 2);
+                }
+                return lerpColor(new int[]{60, 180, 60}, new int[]{220, 220, 255}, (b - 0.5) * 2);
+            }
         }
     }
 
@@ -244,6 +281,12 @@ public class CommandTalosMap extends CommandBase {
 
     private static int rgb(int r, int g, int b) {
         return (r << 16) | (g << 8) | b;
+    }
+
+    private static int mix(int c1, int c2, double t) {
+        int r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
+        int r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
+        return rgb((int) (r1 + (r2 - r1) * t), (int) (g1 + (g2 - g1) * t), (int) (b1 + (b2 - b1) * t));
     }
 
     private static int heatColor(double t) {
@@ -270,7 +313,8 @@ public class CommandTalosMap extends CommandBase {
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "land", "gyre", "wind",
+            return getListOfStringsMatchingLastWord(args,
+                "land", "landlegacy", "coast", "gyre", "airmass", "current", "wind",
                 "pressure", "rain", "band");
         }
         return new ArrayList<>();

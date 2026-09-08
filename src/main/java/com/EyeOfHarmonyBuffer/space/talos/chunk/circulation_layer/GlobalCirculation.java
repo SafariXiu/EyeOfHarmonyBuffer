@@ -16,11 +16,14 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TectonicMath;
  *     - 极地高压 × 随机数量（寒带，顺时针辐散，干）
  *   数量随机、X 位置哈希、不强制南北对称（冷涡可更强更多、热涡更少）。
  *
- *   风 = 绕各系统的旋转环流（科里奥利：北顺南逆）+ 径向辐散/辐合 + 弱纬向基底；
- *   干湿 = **以系统为主**（高压系统大干区、低压大湿区、ITCZ 湿带），少量纬度基准混合；
+ *   风 = 三圈环流纬向基底（主导，权重 1.0）+ 15° 斜向（信风朝赤道 / 西风朝极地 /
+ *        极地东风朝副极地）+ 气压系统弱扰动（切向 0.18 / 径向 0.08）；
+ *   干湿 = 以系统为主（高压系统大干区、低压大湿区、ITCZ 湿带），少量纬度基准混合；
  *   CirculationSample.pressureSystem 输出当前点主导系统类型（供 /talosmap 标注标签）。
  *
- * 环面几何：X 周期 400k，Z 纬度循环 200k。大陆影响留 S3。
+ * 环面几何：X 周期 400k，Z 纬度循环 200k（热带中线 0/±200k，寒带 ±100k）。
+ * 查询点先折叠进主域再采样；系统影响距离一律按周期最小镜像回卷（wrapDelta），
+ * 保证接缝两侧连续——例如 ITCZ 只放在 z≈0，通过回卷同时正确覆盖南赤道 z≈200k 一侧。大陆影响留 S3。
  */
 public final class GlobalCirculation {
 
@@ -29,12 +32,18 @@ public final class GlobalCirculation {
     /** Z 方向纬度循环（blocks）。 */
     public static final int Z_CYCLE = ClimateLatitudes.LAT_CYCLE;
 
-    /** 系统半径范围。 */
+    /** 系统半径范围（风场转向用；体量大、影响远）。 */
     private static final double W_R_MIN = 60_000.0;
     private static final double W_R_MAX = 110_000.0;
 
-    /** 纬向风带基底强度（弱背景）。 */
-    private static final double ZONAL_BASE = 0.25;
+    /**
+     * 干湿带核半宽（block）。干湿权重用锐化四次核：1/(1+(d/R)^4)。
+     * 旧 Lorentz 核 r2/(d2+r2) 的系统半径(60~110k)远大于带间距(ITCZ~副高 26k)，
+     * 相邻系统全部饱和 → 干湿被平均成 ≈0.5，沙漠带信号(D19)出不来。
+     * R 取带间距一半量级：赤道湿/副热干/副极湿/极干各自成带，且场仍连续。
+     */
+    private static final double DRY_KERNEL_R = 12_000.0;
+    private static final double DRY_KERNEL_R4 = DRY_KERNEL_R * DRY_KERNEL_R * DRY_KERNEL_R * DRY_KERNEL_R;
 
     private GlobalCirculation() {}
 
@@ -64,6 +73,14 @@ public final class GlobalCirculation {
         double fx = wx % X_CYCLE; if (fx < 0) fx += X_CYCLE;
         double fz = wz % Z_CYCLE; if (fz < 0) fz += Z_CYCLE;
         return new double[] { fx, fz };
+    }
+
+    /** 环面最小镜像差：把 d 折叠到 [-cycle/2, cycle/2)，作为环面上的真实距离。 */
+    private static double wrapDelta(double d, int cycle) {
+        double dd = d % cycle;
+        if (dd > cycle * 0.5) dd -= cycle;
+        else if (dd < -cycle * 0.5) dd += cycle;
+        return dd;
     }
 
     /**
@@ -97,7 +114,8 @@ public final class GlobalCirculation {
         };
         for (int bi = 0; bi < bandYs.length; bi++) {
             double bandY = bandYs[bi];
-            // ITCZ（bandY=0）是赤道单一的辐合带，不分南北——只放一次，避免折叠后重复
+            // ITCZ（bandY=0）是赤道辐合带：只放一次；配合 wrapDelta 最小镜像距离，
+            // 它对 z≈0 与 z≈200k（同一条赤道线）两侧的作用是一致的
             if (bi == 0) {
                 all.addAll(bandSystems(worldSeedInt, 0.0, types[bi]));
                 continue;
@@ -109,7 +127,7 @@ public final class GlobalCirculation {
         return all;
     }
 
-    /** 风场向量 [windX, windZ]：绕各系统旋转（科里奥利）+ 径向 + 弱纬向基底。 */
+    /** 风场向量 [windX, windZ]：三圈环流基底主导（方向稳定）+ 气压系统弱扰动 + 15° 斜向。 */
     public static double[] windDir(int worldX, int worldZ, int worldSeedInt) {
         double[] p = foldPoint(worldX, worldZ);
         double fx = p[0], fz = p[1];
@@ -117,15 +135,33 @@ public final class GlobalCirculation {
         double vx = 0.0, vz = 0.0;
 
         double b = bandD(worldZ);
+        // (1) 三圈环流基底——方向稳定，主导
         double zonalX;
-        if (b < 0.32) zonalX = -1.0;
-        else if (b < 0.84) zonalX = 1.0;
-        else zonalX = -1.0;
-        vx += zonalX * ZONAL_BASE;
+        if (b < 0.32) {
+            zonalX = -1.0;             // 信风：自东向西
+        } else if (b < 0.84) {
+            zonalX = 1.0;              // 西风：自西向东
+        } else {
+            zonalX = -1.0;             // 极地东风
+        }
+        vx += zonalX * 1.0;            // 基底权重 1.0（主导）
 
+        // (2) 15° 斜向（信风朝赤道、西风朝极地、极地东风朝副极地）——物理自然且方向稳定
+        double slope = 0.27;           // ~15°
+        double zSlope;
+        if (b < 0.32) {
+            zSlope = -sign * slope * (1.0 - b / 0.32);   // 信风：朝赤道
+        } else if (b < 0.84) {
+            zSlope =  sign * slope * (1.0 - Math.abs(b - 0.58) / 0.26);  // 西风：朝极地
+        } else {
+            zSlope = -sign * slope * (1.0 - (b - 0.84) / 0.16);           // 极地东风：朝副极地
+        }
+        vz += zSlope;
+
+        // (3) 气压系统弱扰动——只做局部扰动，不破坏基底方向
         java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
         for (double[] c : systems) {
-            double dx = fx - c[0], dz = fz - c[1];
+            double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
             double d2 = dx * dx + dz * dz;
             double r2 = c[2] * c[2];
             if (d2 > r2 * 4.0) continue;
@@ -133,15 +169,17 @@ public final class GlobalCirculation {
             double d = Math.sqrt(d2) < 1.0 ? 1.0 : Math.sqrt(d2);
             PressureSystemType type = PressureSystemType.values()[(int) c[3]];
             double spin = type.sign;
+            // 切向（弱权重 0.18）
             double tx = spin * sign * dz;
             double tz = spin * sign * (-dx);
             double tl = Math.sqrt(tx * tx + tz * tz);
             if (tl > 1.0e-9) {
-                double mag = w * 1.0;
+                double mag = w * 0.18;
                 vx += (tx / tl) * mag;
                 vz += (tz / tl) * mag;
             }
-            double rmag = w * 0.4 * spin;
+            // 径向（弱 0.08）
+            double rmag = w * 0.08 * spin;
             vx += (dx / d) * rmag;
             vz += (dz / d) * rmag;
         }
@@ -150,16 +188,16 @@ public final class GlobalCirculation {
         return new double[] { vx, vz };
     }
 
-    /** 气压干湿 [0,1]：以系统为主。 */
+    /** 气压干湿 [0,1]：以系统为主（锐化四次核，带间不串扰）。 */
     public static double pressureDry(int worldX, int worldZ, int worldSeedInt) {
         double[] p = foldPoint(worldX, worldZ);
         double fx = p[0], fz = p[1];
         double acc = 0.0, wsum = 0.0;
         java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
         for (double[] c : systems) {
-            double dx = fx - c[0], dz = fz - c[1];
-            double r2 = c[2] * c[2];
-            double w = r2 / (dx * dx + dz * dz + r2);
+            double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
+            double d2 = dx * dx + dz * dz;
+            double w = 1.0 / (1.0 + d2 * d2 / DRY_KERNEL_R4);   // 四次核：带内≈1，带间快速衰减
             PressureSystemType type = PressureSystemType.values()[(int) c[3]];
             acc += type.baseDry * w;
             wsum += w;
@@ -179,7 +217,7 @@ public final class GlobalCirculation {
         PressureSystemType best = null;
         java.util.ArrayList<double[]> systems = systemsNear(worldX, worldZ, worldSeedInt);
         for (double[] c : systems) {
-            double dx = fx - c[0], dz = fz - c[1];
+            double dx = wrapDelta(fx - c[0], X_CYCLE), dz = wrapDelta(fz - c[1], Z_CYCLE);
             double r2 = c[2] * c[2];
             double w = r2 / (dx * dx + dz * dz + r2);
             if (w > bestW) {
