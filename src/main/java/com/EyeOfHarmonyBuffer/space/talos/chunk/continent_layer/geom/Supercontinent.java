@@ -54,11 +54,6 @@ public final class Supercontinent {
     private double[] coastX;
     private double[] coastZ;
 
-    /** 生长极点表（S3 域扭曲+多极点）：每个极点是一块"子大陆核"，多点判定形成连体大陆。 */
-    private double[] poleX;
-    private double[] poleZ;
-    private int poleCount;
-
     public final double innerSafeRadius;
     public final double outerSafeRadius;
 
@@ -129,8 +124,6 @@ public final class Supercontinent {
         initPlateSeeds();
 
         initPlateMotions();
-
-        initGrowthPoles();
 
         precomputeCoastVertices();
 
@@ -238,96 +231,71 @@ public final class Supercontinent {
     /**
      * 初始化生长极点表：2~4 个子大陆核。
      */
-    private void initGrowthPoles() {
-        int cx = id.cellX;
-        int cz = id.cellZ;
-        long ws = worldSeed;
-        long seedCount = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A000, cx, cz);
-        int count = TectonicMath.randRangeInt(seedCount, 2, 4);
-        poleCount = count;
-        poleX = new double[count];
-        poleZ = new double[count];
-        for (int i = 0; i < count; i++) {
-            long seedAng = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A010, cx, cz, i);
-            double theta = TectonicMath.randRange(seedAng, 0.0, 2.0 * PI);
-            long seedDist = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A020, cx, cz, i);
-            double distFrac = TectonicMath.randRange(seedDist, 0.25, 0.70);
-            double d = distFrac * baseRadius;
-            poleX[i] = centerX + d * cos(theta);
-            poleZ[i] = centerZ + d * sin(theta);
-        }
-    }
-
-    /** 低频域扭曲：对采样点做确定性偏移（2~3 次低频谱），让海岸不规则、产生海湾/半岛。 */
+    /** 低频域扭曲（全局，波长 ~1e6，平滑）：让海岸不规则、产生半岛海湾。 */
     private double[] warpPoint(double x, double z) {
-        int cx = id.cellX;
-        int cz = id.cellZ;
         long ws = worldSeed;
-        double ox = 0.0, oz = 0.0;
-        for (int k = 1; k <= 3; k++) {
-            long sA = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B000 + k, cx, cz);
-            double amp = TectonicMath.randRange(sA, 0.05, 0.10) * baseRadius;
-            long sF = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B100 + k, cx, cz);
-            double freq = TectonicMath.randRange(sF, 1.0 / 8000.0, 1.0 / 32000.0);
-            long sP = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B200 + k, cx, cz);
-            double phase = TectonicMath.randRange(sP, 0.0, 2.0 * PI);
-            double phaseZ = phase + 1.3;
-            ox += amp * sin(x * freq + phase);
-            oz += amp * sin(z * freq + phaseZ);
-        }
+        double freq = 1.0 / 1_000_000.0;
+        double amp = 50_000.0;
+        double ox = amp * valueNoise2D(x * freq, z * freq, ws + 1000);
+        double oz = amp * valueNoise2D(x * freq, z * freq, ws + 2000);
         return new double[] { x + ox, z + oz };
     }
 
+    /** 大陆阈值：分形噪声高于此值为陆地（校准：med 0.06 下 ~30% 陆地）。 */
+    private static final double LAND_THRESHOLD = 0.607;
+
+    /** 中频棱角振幅（降低→大陆更成片少碎块；0.12 偏碎、0.06 成片）。 */
+    private static final double MED_AMP = 0.06;
+
+    /** 鞍部抬升宽度：接近阈值的低谷被抬升过阈值，连接紧邻大陆块（零开销、O(1)）。 */
+    private static final double LIFT_WINDOW = 0.06;
+
     /**
-     * 基于分形噪场高度场的"有符号海岸距离"（S3 正式版）。
+     * 基于分形噪场高度场的"有符号海岸距离"（S3 正式版，噪声主导 + 鞍部抬升合并）。
      *
      * isLand 完全由分形噪声涌现（非圆形、非星形、有半岛海湾岛屿），
-     * baseRadius 只作**软偏置**（让陆地倾向集中在大洲附近），不做硬裁剪。
-     * 值：>0 = 陆地（离中心信号越强越内陆，返回负），<0 = 海洋（返回正）。
-     * 距离衰减让远处海洋为正，保证 findNearestSupercontinent 的 superId 归属仍有效。
+     * 鞍部抬升把紧邻的小块连成片（不吞孤立小岛）。值 = 归一化噪声与阈值之差：
+     *   - <0 = 陆地（越小越内陆），>0 = 海洋（越大越外海），0 = 海岸线。
      */
     public double signedCoastDistanceRadial(double x, double z) {
-        double dx = x - centerX;
-        double dz = z - centerZ;
-        double r = Math.sqrt(dx * dx + dz * dz);
-
-        // 分形噪声高度（域扭曲 + 多倍频 ridged），锚定大洲 center
         double h = fractalNoise(x, z);
-
-        // 软偏置：中心处 +0.15，随距离光滑衰减到 0（在 ~1.6×baseRadius 处归零）
-        double bias = 0.0;
-        if (r < baseRadius * 1.6) {
-            bias = 0.15 * (1.0 - r / (baseRadius * 1.6));
+        // 鞍部抬升：h 接近阈值（但未达）时，把低谷抬过阈值 → 连接紧邻大陆块
+        double threshold = LAND_THRESHOLD;
+        if (h > threshold - LIFT_WINDOW) {
+            double lift = LIFT_WINDOW - (threshold - h);
+            h += lift;
         }
-
-        // 陆地信号 = 噪声 + 偏置；> 0 为陆（返回负值），< 0 为海（返回正值）
-        double signal = h + bias;
-        return -signal * baseRadius;
+        return -(h - threshold) * baseRadius;
     }
 
-    /** 分形高度场：域扭曲 + 多倍频 ridged noise（确定性、锚定大洲）。 */
+    /** 分形高度场：低频主导 fbm（波长 ~160k，3 octave）+ 中频棱角（40k，2 octave）*MED_AMP + 域扭曲。全局单一噪声场。 */
     private double fractalNoise(double x, double z) {
-        int cx = id.cellX;
-        int cz = id.cellZ;
         long ws = worldSeed;
 
+        // 域扭曲：低频（全局，波长 ~1e6）
         double[] w = warpPoint(x, z);
         double nx = w[0], nz = w[1];
 
-        double h = 0.0;
+        double LOW_WAV = 160_000.0;
+        double low = fbm(nx, nz, ws, 3, 2.0, 0.5, 1.0 / LOW_WAV);
+        double MED_WAV = LOW_WAV / 4.0;
+        double med = fbm(nx, nz, ws + 500, 2, 2.0, 0.5, 1.0 / MED_WAV);
+        return low + med * MED_AMP;
+    }
+
+    /** 标准 fbm 求和（归一化）。 */
+    private double fbm(double x, double z, long seed, int octaves, double lacunarity, double gain, double baseFreq) {
+        double sum = 0.0;
         double amp = 1.0;
-        double freq = 1.0 / (baseRadius * 0.30);
-        double totalAmp = 0.0;
-        for (int o = 0; o < 4; o++) {
-            long seedO = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x9C000, cx, cz, o);
-            double n = valueNoise2D(nx * freq, nz * freq, seedO);
-            double ridged = 1.0 - Math.abs(2.0 * n - 1.0);   // ridged: 0..1 脊状
-            h += amp * (ridged * 2.0 - 1.0);                 // 转到 [-1,1]
-            totalAmp += amp;
-            amp *= 0.5;
-            freq *= 2.0;
+        double freq = baseFreq;
+        double total = 0.0;
+        for (int i = 0; i < octaves; i++) {
+            sum += amp * valueNoise2D(x * freq, z * freq, seed + i);
+            total += amp;
+            amp *= gain;
+            freq *= lacunarity;
         }
-        return h / totalAmp;
+        return sum / total;
     }
 
     /** 确定性 value noise 2D（整数格哈希 + 平滑插值）。 */
