@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 
 /**
+ * @deprecated 解析链（M4）已被 RelaxedClimate 网格解取代（本类不再被运行时引用，保留作对照/调参参考）。
  * M4 洋流 v2（风场 v2 第四模块）。
  *
  * 权威链：洋流 ≈ 风驱动 × 埃克曼转向 × 大陆折射；海温 = 沿流场的平衡温输运。

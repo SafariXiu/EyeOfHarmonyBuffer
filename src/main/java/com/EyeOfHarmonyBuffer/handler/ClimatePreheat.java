@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.handler;
 
+import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.RelaxedClimate;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
@@ -11,8 +12,6 @@ import net.minecraftforge.event.world.WorldEvent;
  */
 public class ClimatePreheat {
 
-    /** Talos2 维度 ID（与 space.RegisterDimensions 一致）。 */
-    private static final int DIM_TALOS2 = 14001;
 
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
@@ -20,7 +19,7 @@ public class ClimatePreheat {
         if (world == null || world.isRemote || world.provider == null) {
             return;
         }
-        if (world.provider.dimensionId != DIM_TALOS2) {
+        if (world.provider.dimensionId != RegisterDimensions.ID_TALOS2_DIM) {
             return;
         }
         final int seed = (int) (world.getSeed() & 0x7FFFFFFFL);

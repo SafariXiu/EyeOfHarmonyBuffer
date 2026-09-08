@@ -187,7 +187,7 @@ public final class RelaxedClimate {
             computeWind(d, 0.5, worldSeedInt);
             updateFlow(d, worldSeedInt);
             for (int k = 0; k < INNER; k++) {
-                if (advectField(d, worldSeedInt, true) < INNER_TOL) {
+                if (advectSst(d) < INNER_TOL) {
                     break;
                 }
             }
@@ -341,7 +341,7 @@ public final class RelaxedClimate {
     }
 
     /** 海温输运步（仅海上）；返回 RMS 变化。 */
-    private static double advectField(ClimateGridData d, int worldSeedInt, boolean unused) {
+    private static double advectSst(ClimateGridData d) {
         int steps = 6;
         double dt = 6000.0;
         double relaxL = 55_000.0;

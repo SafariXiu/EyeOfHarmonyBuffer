@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 
 /**
+ * @deprecated 解析链（M3）已被 RelaxedClimate 的空气场网格解取代（本类不再被运行时引用，保留作对照/调参参考）。
  * M3 气团输运（风场 v2 第三模块）。
  *
  * 真实机制复刻：某点的"平均空气" = 沿盛行风回溯的源地性质 + 沿途与下垫面交换后的状态。

@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 
 /**
+ * @deprecated 解析链（M2）已被 RelaxedClimate 网格解取代（本类不再被运行时引用，保留作对照/调参参考）。
  * M2 气压诊断场（风场 v2 第二模块；M5 离线松弛的初值来源）。
  *
  * 把"带+点系统"的旧模型替换成**场模型**——气压异常是若干平滑场的叠加：
