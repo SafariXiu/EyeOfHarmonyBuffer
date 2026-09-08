@@ -3,57 +3,56 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
 
 /**
- * V2 统一气候采样结果（docs/TerrainV2/design.md 二c）。
+ * V2 统一气候采样结果（docs/TerrainV2/design.md 二c / climate-layer-internals.md）。
  *
- * 一次编排采样：L1 海陆 + L0 环流（风/干湿/雨）+ L2 气团 + L4 洋流（仅海上有效）。
- * 所有值都是确定性纯函数：f(worldX, worldZ, worldSeedInt)。
- * 生产（L5 群系 / 水体 / 地形增强）消费方与 /talosmap 出图统一走 {@link GlobalClimate}，
- * 不要再直接调各层静态入口，避免口径漂移。
+ * 一次编排：L1 海陆 + 耦合气候场（RelaxedClimate 查表）+ P1b 地形降水算子。
+ * 所有值确定性纯函数。消费方（L5 群系 / 水体 / 地形增强）与出图统一走
+ * {@link GlobalClimate}，不要散调内部场，避免口径漂移。
  */
 public final class ClimateSample {
 
-    // ---- L1 海陆（NoiseContinentGrid · V2 噪声场） ----
+    // ---- L1 海陆（NoiseContinentGrid · 逐 block 解析） ----
     /** 是否陆地。 */
     public final boolean isLand;
     /** 有符号海岸距离（block）：&lt;0 内陆 / ≈0 岸线 / &gt;0 海上。远场截断 ±200k。 */
     public final double coastDist;
 
-    // ---- L0 纬度 / 环流（GlobalCirculation） ----
-    /** 纬度带：0=热带中线，1=寒带中线。 */
+    // ---- 纬度带 ----
+    /** 纬度带：0=赤道中线，1=寒带中线。 */
     public final double bandD;
-    /** 盛行风矢量（未归一化，幅 ≈1；基底主导 + 弱扰动）。 */
+
+    // ---- 耦合气候场（RelaxedClimate 网格解 · 双线性查表） ----
+    /** 地表风矢量（幅 ≈ 风速单位）。 */
     public final double windX;
     public final double windZ;
-    /** 气压干湿 [0,1]：0=湿（ITCZ/副极地低压），1=干（副热带/极地高压）。 */
+    /** 气压干湿 [0,1]：1=干（副高/极地下沉带），0=湿。 */
     public final double pressureDry;
-    /** 潜在降水 [0,1]。 */
+    /** 潜在降水 [0,1]（P1b：辐合对流 + 地形抬升 − 焚风，湿度供能）。 */
     public final double rainfallBase;
-    /** 主导气压系统（带标签），无则 null。 */
-    public final PressureSystemType pressureSystem;
-    /** 洋流温湿占位（0.5 - bandD）；S6.1 折射实现前仅用于 /talosmap gyre 出图。 */
+    /** 洋流温湿占位（0.5 - bandD）；待 L5 海洋群系定型后清理。 */
     public final double gyreWarmth;
 
-    // ---- L2 气团（AirMassField，海陆×纬度四分类） ----
-    /** 气团类型（cP/mP/mT/cT，含海/陆信息）。 */
+    // ---- 气团（溯源派生标签 + 耦合空气场） ----
+    /** 气团类型（cP/mP/mT/cT，海洋性 × 冷暖派生）。 */
     public final AirMassType airType;
-    /** 气温 [-1,1]（= 1 - 2·bandD，连续）。 */
+    /** 空气温度 [-1,1]（沿流场输运弛豫后）。 */
     public final double airTemperature;
-    /** 空气湿度 [0,1]（海洋湿、大陆干；热带偏湿）。 */
+    /** 空气湿度 [0,1]（沿流场输运后；迎风岸/内陆有路径感）。 */
     public final double airHumidity;
 
-    // ---- L4 洋流（OceanCurrentField，仅海上；陆上为 0/占位） ----
-    /** 洋流方向（单位向量，海上）。 */
+    // ---- 洋流 / 海温（网格解；仅海上有效） ----
+    /** 洋流方向（海上）。 */
     public final double currentX;
     public final double currentZ;
-    /** 海温 [-1,1]（纬度基准；折射修正 S6.1）。 */
+    /** 海温 [-1,1]（耦合输运后；陆上 NaN）。 */
     public final double seaTemperature;
-    /** 流速 [0,1]（风应力）。 */
+    /** 流速 [0,1] 占位（=0.5，待 M5 输出流强后替换）。 */
     public final double currentSpeed;
 
     public ClimateSample(boolean isLand, double coastDist,
                          double bandD, double windX, double windZ,
                          double pressureDry, double rainfallBase,
-                         PressureSystemType pressureSystem, double gyreWarmth,
+                         double gyreWarmth,
                          AirMassType airType, double airTemperature, double airHumidity,
                          double currentX, double currentZ,
                          double seaTemperature, double currentSpeed) {
@@ -64,7 +63,6 @@ public final class ClimateSample {
         this.windZ = windZ;
         this.pressureDry = pressureDry;
         this.rainfallBase = rainfallBase;
-        this.pressureSystem = pressureSystem;
         this.gyreWarmth = gyreWarmth;
         this.airType = airType;
         this.airTemperature = airTemperature;

@@ -79,7 +79,7 @@ public final class GlobalClimate {
         return new ClimateSample(
             isLand, coastDist,
             bandD, wind[0], wind[1],
-            dry, rain, null, gyre,
+            dry, rain, gyre,
             type, airT, q,
             cur != null ? cur[0] : 0.0, cur != null ? cur[1] : 0.0,
             sst, cur != null ? 0.5 : 0.0
