@@ -32,6 +32,7 @@ import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
 import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
 import com.EyeOfHarmonyBuffer.handler.ArknightsMobDropRegister;
+import com.EyeOfHarmonyBuffer.handler.ClimatePreheat;
 import com.EyeOfHarmonyBuffer.handler.CommonEventHandler;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -184,6 +185,7 @@ public class EyeOfHarmonyBuffer {
         if (event.getSide().isClient()) {
             MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
         }
+        MinecraftForge.EVENT_BUS.register(new ClimatePreheat());
         MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
         MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
         MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
