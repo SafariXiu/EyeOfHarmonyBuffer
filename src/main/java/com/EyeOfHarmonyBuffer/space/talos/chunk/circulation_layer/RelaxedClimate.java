@@ -88,12 +88,9 @@ public final class RelaxedClimate {
         return new double[] { bilinear(d.u, x, z), bilinear(d.v, x, z) };
     }
 
-    /** 洋流方向 [fx, fz]（海上；陆上 null）。 */
+    /** 洋流方向 [fx, fz]（临海陆格已幽灵填充；纯内陆≈0，调用方先判 isLand）。 */
     public static double[] sampleCurrent(int x, int z, int worldSeedInt) {
         ClimateGridData d = ensure(worldSeedInt);
-        if (isLandCell(d, x, z)) {
-            return null;
-        }
         return new double[] { bilinear(d.fu, x, z), bilinear(d.fv, x, z) };
     }
 
@@ -196,7 +193,61 @@ public final class RelaxedClimate {
             }
         }
         updateP(d, worldSeedInt);
+        ghostFillSea(d);   // 临海陆格用海值填充，消除跨岸插值拽入 0 值的方块伪影
         return d;
+    }
+
+    /**
+     * 临海幽灵填充：把紧邻海的陆格（8 邻域）用海邻值平均填上（sst 与流场），
+     * 使沿岸像素的双线性插值窗跨岸时不再拽入 0 值，消除海岸 1~2 格的方块伪影。
+     */
+    private static void ghostFillSea(ClimateGridData d) {
+        for (int pass = 0; pass < 2; pass++) {
+            double[] s = new double[d.nx * d.ny];
+            double[] fu = new double[d.nx * d.ny];
+            double[] fv = new double[d.nx * d.ny];
+            for (int iy = 0; iy < d.ny; iy++) {
+                for (int ix = 0; ix < d.nx; ix++) {
+                    int i = d.idx(ix, iy);
+                    if (!d.land[i]) {
+                        s[i] = d.sst[i];
+                        fu[i] = d.fu[i];
+                        fv[i] = d.fv[i];
+                        continue;
+                    }
+                    double ss = 0, us = 0, vs = 0;
+                    int n = 0;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            if (dx == 0 && dy == 0) continue;
+                            int j = d.idx(ix + dx, iy + dy);
+                            if (!d.land[j]) {
+                                ss += d.sst[j];
+                                us += d.fu[j];
+                                vs += d.fv[j];
+                                n++;
+                            }
+                        }
+                    }
+                    if (n > 0) {
+                        s[i] = ss / n;
+                        fu[i] = us / n;
+                        fv[i] = vs / n;
+                    } else {
+                        s[i] = d.sst[i];
+                        fu[i] = d.fu[i];
+                        fv[i] = d.fv[i];
+                    }
+                }
+            }
+            for (int i = 0; i < d.nx * d.ny; i++) {
+                if (d.land[i]) {
+                    d.sst[i] = s[i];
+                    d.fu[i] = fu[i];
+                    d.fv[i] = fv[i];
+                }
+            }
+        }
     }
 
     private static double profileP0(double b) {
