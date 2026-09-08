@@ -250,6 +250,7 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandTalosBoundary());
         event.registerServerCommand(new CommandTalosMountain());
         event.registerServerCommand(new CommandTalosCave());
+        event.registerServerCommand(new CommandTalosMap());
     }
 
     @Mod.EventHandler

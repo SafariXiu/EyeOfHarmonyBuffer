@@ -54,6 +54,11 @@ public final class Supercontinent {
     private double[] coastX;
     private double[] coastZ;
 
+    /** 生长极点表（S3 域扭曲+多极点）：每个极点是一块"子大陆核"，多点判定形成连体大陆。 */
+    private double[] poleX;
+    private double[] poleZ;
+    private int poleCount;
+
     public final double innerSafeRadius;
     public final double outerSafeRadius;
 
@@ -124,6 +129,8 @@ public final class Supercontinent {
         initPlateSeeds();
 
         initPlateMotions();
+
+        initGrowthPoles();
 
         precomputeCoastVertices();
 
@@ -228,20 +235,122 @@ public final class Supercontinent {
      *
      * 这是 tectonic_v1 中关于“离海岸有多远”的几何基准。
      */
+    /**
+     * 初始化生长极点表：2~4 个子大陆核。
+     */
+    private void initGrowthPoles() {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+        long seedCount = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A000, cx, cz);
+        int count = TectonicMath.randRangeInt(seedCount, 2, 4);
+        poleCount = count;
+        poleX = new double[count];
+        poleZ = new double[count];
+        for (int i = 0; i < count; i++) {
+            long seedAng = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A010, cx, cz, i);
+            double theta = TectonicMath.randRange(seedAng, 0.0, 2.0 * PI);
+            long seedDist = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8A020, cx, cz, i);
+            double distFrac = TectonicMath.randRange(seedDist, 0.25, 0.70);
+            double d = distFrac * baseRadius;
+            poleX[i] = centerX + d * cos(theta);
+            poleZ[i] = centerZ + d * sin(theta);
+        }
+    }
+
+    /** 低频域扭曲：对采样点做确定性偏移（2~3 次低频谱），让海岸不规则、产生海湾/半岛。 */
+    private double[] warpPoint(double x, double z) {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+        double ox = 0.0, oz = 0.0;
+        for (int k = 1; k <= 3; k++) {
+            long sA = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B000 + k, cx, cz);
+            double amp = TectonicMath.randRange(sA, 0.05, 0.10) * baseRadius;
+            long sF = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B100 + k, cx, cz);
+            double freq = TectonicMath.randRange(sF, 1.0 / 8000.0, 1.0 / 32000.0);
+            long sP = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x8B200 + k, cx, cz);
+            double phase = TectonicMath.randRange(sP, 0.0, 2.0 * PI);
+            double phaseZ = phase + 1.3;
+            ox += amp * sin(x * freq + phase);
+            oz += amp * sin(z * freq + phaseZ);
+        }
+        return new double[] { x + ox, z + oz };
+    }
+
+    /**
+     * 基于分形噪场高度场的"有符号海岸距离"（S3 正式版）。
+     *
+     * isLand 完全由分形噪声涌现（非圆形、非星形、有半岛海湾岛屿），
+     * baseRadius 只作**软偏置**（让陆地倾向集中在大洲附近），不做硬裁剪。
+     * 值：>0 = 陆地（离中心信号越强越内陆，返回负），<0 = 海洋（返回正）。
+     * 距离衰减让远处海洋为正，保证 findNearestSupercontinent 的 superId 归属仍有效。
+     */
     public double signedCoastDistanceRadial(double x, double z) {
         double dx = x - centerX;
         double dz = z - centerZ;
+        double r = Math.sqrt(dx * dx + dz * dz);
 
-        double r2 = dx * dx + dz * dz;
-        if (r2 <= 0.0) {
-            return -baseRadius;
+        // 分形噪声高度（域扭曲 + 多倍频 ridged），锚定大洲 center
+        double h = fractalNoise(x, z);
+
+        // 软偏置：中心处 +0.15，随距离光滑衰减到 0（在 ~1.6×baseRadius 处归零）
+        double bias = 0.0;
+        if (r < baseRadius * 1.6) {
+            bias = 0.15 * (1.0 - r / (baseRadius * 1.6));
         }
 
-        double r = Math.sqrt(r2);
-        double theta = Math.atan2(dz, dx);
-        double rEdge = radiusAtAngle(theta);
+        // 陆地信号 = 噪声 + 偏置；> 0 为陆（返回负值），< 0 为海（返回正值）
+        double signal = h + bias;
+        return -signal * baseRadius;
+    }
 
-        return r - rEdge;
+    /** 分形高度场：域扭曲 + 多倍频 ridged noise（确定性、锚定大洲）。 */
+    private double fractalNoise(double x, double z) {
+        int cx = id.cellX;
+        int cz = id.cellZ;
+        long ws = worldSeed;
+
+        double[] w = warpPoint(x, z);
+        double nx = w[0], nz = w[1];
+
+        double h = 0.0;
+        double amp = 1.0;
+        double freq = 1.0 / (baseRadius * 0.30);
+        double totalAmp = 0.0;
+        for (int o = 0; o < 4; o++) {
+            long seedO = TectonicMath.hashInts((int) (ws & 0xFFFFFFFFL), 0x9C000, cx, cz, o);
+            double n = valueNoise2D(nx * freq, nz * freq, seedO);
+            double ridged = 1.0 - Math.abs(2.0 * n - 1.0);   // ridged: 0..1 脊状
+            h += amp * (ridged * 2.0 - 1.0);                 // 转到 [-1,1]
+            totalAmp += amp;
+            amp *= 0.5;
+            freq *= 2.0;
+        }
+        return h / totalAmp;
+    }
+
+    /** 确定性 value noise 2D（整数格哈希 + 平滑插值）。 */
+    private double valueNoise2D(double x, double z, long seed) {
+        int xi = (int) Math.floor(x);
+        int zi = (int) Math.floor(z);
+        double xf = x - xi;
+        double zf = z - zi;
+        double u = xf * xf * (3.0 - 2.0 * xf);
+        double v = zf * zf * (3.0 - 2.0 * zf);
+        double a = hashUnit(seed, xi, zi);
+        double b = hashUnit(seed, xi + 1, zi);
+        double c = hashUnit(seed, xi, zi + 1);
+        double d = hashUnit(seed, xi + 1, zi + 1);
+        double ab = a + (b - a) * u;
+        double cd = c + (d - c) * u;
+        return ab + (cd - ab) * v;
+    }
+
+    private double hashUnit(long seed, int gx, int gz) {
+        long h = TectonicMath.hashLongs(seed, (gx & 0xFFFFFFFFL), (gz & 0xFFFFFFFFL));
+        long mantissa = (h & 0xFFFFFFFFFFFFFFFFL) >>> (64 - 23);
+        return mantissa / (double) (1L << 23);
     }
 
     private void precomputeCoastVertices() {

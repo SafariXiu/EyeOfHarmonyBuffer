@@ -3,10 +3,11 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
 /**
  * 纬度 / 气候带系统。
  *
- * 设计要点：
- * - 纬度循环长度固定为 100,000 blocks（LAT_CYCLE）。
- * - Z 轴上每隔 100,000 有一条“热带中线”（... -200k, -100k, 0, 100k, 200k ...）。
- * - 在两条相邻热带中线之间的中点（... -150k, -50k, 50k, 150k, ...）是“寒带中点”（最冷）。
+ * 设计要点（V2 重构版）：
+ * - 纬度循环长度固定为 200,000 blocks（LAT_CYCLE），沿 Z 方向循环。
+ * - 热带中线在 z = n×200k（... -400k, -200k, 0, 200k, 400k ...），Z=0 即热带中线。
+ * - 寒带中点（最冷）在两条热带中线正中：z = ±100k, ±300k, ±500k ...。
+ *   → 周期边界落在寒带：跨周期时冷-冷相接（无热带跳变）。
  *
  * - 对任意 worldZ：
  *   1. 将其折叠到一个纬度周期内 [0, LAT_CYCLE)；
@@ -15,12 +16,12 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
  *   3. 用 d 落在哪个区间，决定它属于哪一个气候带（热带 / 亚热带 / 温带 / 亚寒带 / 寒带）。
  *
  * 直观效果：
- * - 0、±100k、±200k ... 是热带中线（TROPIC 中点，d = 0）。
- * - ±50k、±150k、±250k ... 是寒带中点（POLAR 中点，d = 50,000）。
- * - 在一个周期内（例如 0..100k），沿 Z 方向看到的带序为：
- *   热带 → 亚热带 → 温带 → 亚寒带 → 寒带中心 → 亚寒带 → 温带 → 亚热带 → 热带。
+ * - 0、±200k、±400k ... 是热带中线（TROPIC 中点，d = 0）。
+ * - ±100k、±300k、±500k ... 是寒带中点（POLAR 中点，d = 100,000）。
+ * - 在一个周期内（例如 0..200k），沿 Z 方向看到的带序为：
+ *   热带(0) → 亚热带 → 温带 → 亚寒带 → 寒带中心(100k) →
+ *   亚寒带 → 温带 → 亚热带 → 热带(200k)。
  */
-
 public final class ClimateLatitudes {
 
     private ClimateLatitudes() {
@@ -43,24 +44,24 @@ public final class ClimateLatitudes {
     }
 
     /** 纬度循环长度：一条热带中线到下一条热带中线的距离。 */
-    public static final int LAT_CYCLE = 100_000;
+    public static final int LAT_CYCLE = 200_000;
 
-    /** d 的最大值 = LAT_CYCLE / 2 = 50_000（离最近热带中线最远的位置，即寒带中点）。 */
+    /** d 的最大值 = LAT_CYCLE / 2 = 100_000（离最近热带中线最远的位置，即寒带中点）。 */
     public static final int MAX_D = LAT_CYCLE / 2;
 
-    /** 热带距离上限：0–8k 为热带中心区域。 */
-    public static final int D_TROPIC_MAX = 8_000;
+    /** 热带距离上限：0–16k 为热带中心区域。 */
+    public static final int D_TROPIC_MAX = 16_000;
 
-    /** 亚热带距离上限：8k–16k 为亚热带。 */
-    public static final int D_SUBTROPIC_MAX = 16_000;
+    /** 亚热带距离上限：16k–32k 为亚热带。 */
+    public static final int D_SUBTROPIC_MAX = 32_000;
 
-    /** 温带距离上限：16k–32k 为温带（较宽）。 */
-    public static final int D_TEMPERATE_MAX = 32_000;
+    /** 温带距离上限：32k–64k 为温带（较宽）。 */
+    public static final int D_TEMPERATE_MAX = 64_000;
 
-    /** 亚寒带距离上限：32k–42k 为亚寒带。 */
-    public static final int D_SUBPOLAR_MAX = 42_000;
+    /** 亚寒带距离上限：64k–84k 为亚寒带。 */
+    public static final int D_SUBPOLAR_MAX = 84_000;
 
-    /** 寒带距离上限：42k–50k 为寒带（靠近最冷的区域）。 */
+    /** 寒带距离上限：84k–100k 为寒带（靠近最冷的区域）。 */
     public static final int D_POLAR_MAX = MAX_D;
 
     /**
@@ -74,10 +75,10 @@ public final class ClimateLatitudes {
     /**
      * 返回当前 worldZ 在所在气候带内部的插值参数 t ∈ [0, 1]。
      *
-     * t = 0   : 靠近该带“内侧边界”（更接近热带一侧，d 较小）。
-     * t = 1   : 靠近该带“外侧边界”（更接近寒带一侧，d 较大）。
+     * t = 0   : 靠近该带"内侧边界"（更接近热带一侧，d 较小）。
+     * t = 1   : 靠近该带"外侧边界"（更接近寒带一侧，d 较大）。
      *
-     * 注意：这里的“内侧/外侧”是相对于距离 d 的方向，并不区分南北。
+     * 注意：这里的"内侧/外侧"是相对于距离 d 的方向，并不区分南北。
      */
     public static double computeBeltT(int worldZ) {
         int d = distanceToCycleCenter(worldZ);
@@ -95,13 +96,13 @@ public final class ClimateLatitudes {
     /**
      * 将 worldZ 折叠到一个纬度周期内 [0, LAT_CYCLE)。
      *
-     * 例如（LAT_CYCLE = 100,000）：
-     * - z =      0  → zMod = 0
-     * - z =  50,000 → zMod = 50,000
-     * - z = 100,000 → zMod = 0
-     * - z = -50,000 → zMod = 50,000
+     * 例如（LAT_CYCLE = 200,000）：
+     * - z =       0 → zMod = 0
+     * - z = 100,000 → zMod = 100,000
+     * - z = 200,000 → zMod = 0
+     * - z = -50,000 → zMod = 150,000
      *
-     * 即每个长度为 100,000 的区间 [n*100k, (n+1)*100k) 被折叠到同一个 0..100k 模式中。
+     * 即每个长度为 200,000 的区间 [n*200k, (n+1)*200k) 被折叠到同一个 0..200k 模式中。
      */
     private static int foldZToCycle(int worldZ) {
         int m = LAT_CYCLE;
@@ -113,19 +114,19 @@ public final class ClimateLatitudes {
     }
 
     /**
-     * 计算 worldZ 到“最近热带中线”的绝对距离 d ∈ [0, MAX_D]。
+     * 计算 worldZ 到"最近热带中线"的绝对距离 d ∈ [0, MAX_D]。
      *
-     * 热带中线位于 z = n * LAT_CYCLE（..., -200k, -100k, 0, 100k, 200k, ...）。
+     * 热带中线位于 z = n * LAT_CYCLE（..., -200k, 0, 200k, ...）。
      *
      * 对折叠后的 zMod ∈ [0, LAT_CYCLE)：
      * - 最近的热带中线可能是 0 或 LAT_CYCLE；
      * - 因此 d = min(zMod, LAT_CYCLE - zMod)。
      *
-     * 举例（LAT_CYCLE = 100,000）：
-     * - z =   0       → zMod = 0       → d = 0         （热带中线）
-     * - z =  50,000   → zMod = 50,000  → d = 50,000    （寒带中点）
-     * - z = 100,000   → zMod = 0       → d = 0         （下一条热带中线）
-     * - z = -50,000   → zMod = 50,000  → d = 50,000    （寒带中点）
+     * 举例（LAT_CYCLE = 200,000）：
+     * - z =    0      → zMod = 0        → d = 0         （热带中线）
+     * - z =  100,000  → zMod = 100,000  → d = 100,000   （寒带中点）
+     * - z =  200,000  → zMod = 0        → d = 0         （下一条热带中线）
+     * - z = -100,000  → zMod = 100,000  → d = 100,000   （寒带中点）
      */
     private static int distanceToCycleCenter(int worldZ) {
         int zMod = foldZToCycle(worldZ);  // 0..LAT_CYCLE
