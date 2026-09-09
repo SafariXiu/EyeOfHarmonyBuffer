@@ -141,9 +141,20 @@ public final class CaveMath {
     public static final int DEEP_ROCK_MAX_Y = 30;
 
     public static byte rockVariant3D(int wx, int wy, int wz, long seed) {
-        double n = fbm3D(
-            wx / 240.0, wy / 240.0, wz / 240.0,
-            seed, 0xCC, 2, 2.0, 0.5);
+        return rockVariantFromValue(rockValue3D(wx, wy, wz, seed), wy);
+    }
+
+    /**
+     * 岩性原始场值（fBm，特征尺度 240 格）。
+     * 与 {@link #rockVariantFromValue} 配合，供区块级 3D 网格缓存插值使用
+     * （240 格尺度的场按 8/8/16 格采样 + 三线性插值，误差远小于阈值带宽度）。
+     */
+    public static double rockValue3D(int wx, int wy, int wz, long seed) {
+        return fbm3D(wx / 240.0, wy / 240.0, wz / 240.0, seed, 0xCC, 2, 2.0, 0.5);
+    }
+
+    /** 由原始场值 + 深度定岩性（口径与 {@link #rockVariant3D} 完全一致）。 */
+    public static byte rockVariantFromValue(double n, int wy) {
         if (wy <= DEEP_ROCK_MAX_Y) {
             return (byte) (n < 0.3 ? 4 : 5);
         }

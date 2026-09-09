@@ -92,6 +92,23 @@ public final class TalosMountainSystem {
         );
     }
 
+    /**
+     * 带峰顶上限的抬升（V2 轨 D33）：peakCap = 峰核场目标高度 T（峰核外传 +∞）。
+     * DLA 脊顶被压到 T 以下，峰核中心因此保持为最高点。
+     */
+    public static double applyMountainUplift(double baseHeight,
+                                             int seaLevel,
+                                             double elevation01,
+                                             double mask01,
+                                             int beltKind,
+                                             int worldHeight,
+                                             double peakCap) {
+        return MountainTerrainModifier.applyMountainUplift(
+            baseHeight, seaLevel, elevation01, mask01, beltKind,
+            MountainHeightProfile.ofWorldHeight(worldHeight), peakCap
+        );
+    }
+
     /** 调试：获取某世界的山地状态。 */
     public static MountainWorldState getState(int worldSeedInt) {
         return STATES.get(worldSeedInt);

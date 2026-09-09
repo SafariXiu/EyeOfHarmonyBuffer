@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -22,6 +23,8 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     private final World world;
     private final int worldSeedInt;
 
+    /** 群系查询缓存（有界：超过上限整体清空，避免长会话下无限增长）。 */
+    private static final int CACHE_LIMIT = 8192;
     private final Long2ObjectOpenHashMap<BiomeGenBase> biomeCache =
         new Long2ObjectOpenHashMap<>();
 
@@ -38,15 +41,8 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     /**
      * 为某个世界坐标 (x,z) 选择群系。
      *
-     * 现在的逻辑：
-     *   - 使用 TalosMacroClimate：
-     *       * 原始层：MacroPackageLayer + MacroSites.SubPatch 决定大块 Biome；
-     *       * 平滑层：BiomeRegionLayer 在 tile 上对 Biome 做小块吞并；
-     *   - 结果在 biomeCache 中缓存。
-     *
-     * 注意：
-     *   - 坐标 x,z 均为世界方块坐标（与海陆 / 板块系统一致）；
-     *   - 不再有 BIOME_SHIFT 降采样。
+     * V2 轨：{@link V2BiomePicker#biomeAt} → {@link V2BiomeField}（1km LUT + 平滑），
+     * 与地形生成同源；旧轨：TalosMacroClimate 宏群系。结果按坐标缓存（有上限）。
      */
     private BiomeGenBase pickBiomeFor(int x, int z) {
         long key = packXZ(x, z);
@@ -57,15 +53,23 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         }
 
         BiomeGenBase biome;
-        try {
-            biome = TalosMacroClimate.getBiome(x, z, worldSeedInt);
-            if (biome == null) {
+        if (V2TerrainConfigSection.terrainV2Enabled) {
+            // X1 阶段2（T1.4 占位）：群系 = L1/L1b 场直接映射（与 ChunkProviderTalos2 V2 轨同源）
+            biome = V2BiomePicker.biomeAt(x, z, worldSeedInt);
+        } else {
+            try {
+                biome = TalosMacroClimate.getBiome(x, z, worldSeedInt);
+                if (biome == null) {
+                    biome = DEFAULT_BIOME;
+                }
+            } catch (Throwable t) {
                 biome = DEFAULT_BIOME;
             }
-        } catch (Throwable t) {
-            biome = DEFAULT_BIOME;
         }
 
+        if (biomeCache.size() >= CACHE_LIMIT) {
+            biomeCache.clear();
+        }
         biomeCache.put(key, biome);
         return biome;
     }

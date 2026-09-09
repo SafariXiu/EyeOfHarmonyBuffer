@@ -39,6 +39,9 @@ public final class CaveCarver {
     public static final int SURFACE_CAP = 3;
     /** 地下湖石头壳厚度：水体外面再包几层石头。 */
     private static final int LAKE_SHELL_THICKNESS = 2;
+    /** 入口竖井向下延伸量（blocks）：挖到节点下方数格，保证钻入连接段，
+     *  消除「竖井底与隧道顶之间的石头缝隙」。 */
+    private static final int ENTRANCE_SHAFT_EXTEND = 4;
     /** 水体保护厚度：河床 / 海床下方至少保留的实心层（防止沙层悬空）。 */
     private static final int WATER_PROTECT_BUFFER = 10;
     /** 河流保护掩码阈值：放宽后河岸两侧也会被包住。 */
@@ -124,7 +127,33 @@ public final class CaveCarver {
             return;
         }
 
-        // 洞厅快速雕刻：整列按几何直接填，不走逐格噪声
+        // 入口：先雕刻（入口优先于洞厅）。
+        // 入口就是要挖穿地表开口，所以只挡「列顶低于水面」（会开在水下 / 水线）；
+        // 不再因 riverMask > 0.35 的河岸带跳过——否则 usableLandmarkColumn 放行、
+        // 装饰器也铺了碎石环，但洞根本没刻出来（用户看到装饰物却没有洞口）。
+        // 真正的水体列（body != null）其列顶低于水面，会被 topSolidY < waterSurfaceY+1 拦住。
+        // 注意：入口可能落在洞厅上方（洞厅顶 ≤64，入口贴近地表），
+        // 若洞厅循环在前并 return，入口会被跳过 → 有装饰物却没洞口。
+        boolean entranceCarved = false;
+        for (CaveEntrance e : data.entrances) {
+            if (topSolidY < waterSurfaceY + 1) {
+                continue;
+            }
+            if (carveEntranceAt(e, worldX, worldZ, localX, localZ,
+                topSolidY, blocks, meta, worldHeight)
+                && topSolidY > e.y) {
+                // 入口通道是真正的 CaveSegment（buildEntrancePassage），
+                // 由主雕刻循环用 sampleExcess 雕刻（洞壁噪声 + 半径变化，
+                // 与内部洞穴完全一致）。这里只挖地表开口，不再钳制 maxY，
+                // 否则主循环不雕刻基座以上（→ 地表）的通道段。
+                entranceCarved = true;
+                break;
+            }
+        }
+
+        // 洞厅快速雕刻：整列按几何直接填，不走逐格噪声。
+        // 若入口已刻，洞厅继续填下层（洞厅顶 ≤64，入口在下层上方，互不重叠），
+        // 且不 return——让下方普通雕刻继续刻入口到洞厅网络的连接段。
         for (CaveMegaHall hall : data.megaHalls) {
             int[] span = new int[2];
             if (!hall.verticalSpan(worldX, worldZ, maxY, span)) {
@@ -133,30 +162,19 @@ public final class CaveCarver {
             carveMegaHallColumn(hall, worldX, worldZ, span[1],
                 localX, localZ, blocks, meta, worldHeight, seed);
             // 湖连接管：允许在洞厅内继续雕刻，从湖底/侧壁穿进湖体
+            // 干洞穿墙段：外部干节点→洞厅壁的隧道在洞厅内部可见
             if (!hall.isPillarColumn(worldX, worldZ)) {
                 carveLakePipesThroughMegaHall(
                     worldX, worldZ, maxY,
                     localX, localZ, blocks, meta, worldHeight, seed, data);
+                carveDryPipesThroughMegaHall(
+                    worldX, worldZ, maxY,
+                    localX, localZ, blocks, meta, worldHeight, seed, data);
+            }
+            if (entranceCarved) {
+                break; // 入口已刻：洞厅填完，继续下方普通雕刻
             }
             return;
-        }
-
-        // 入口竖井：挖穿地表封层（水体列不开入口）
-        for (CaveEntrance e : data.entrances) {
-            int dx = worldX - e.x;
-            int dz = worldZ - e.z;
-            if (dx * dx + dz * dz <= e.radius * e.radius) {
-                // 井口必须高于该列水面，否则会开在水线 / 水下，形成"挖到水地表"。
-                // 无水列（干盆地等，waterSurfaceY = MIN_VALUE）不受水面限制。
-                if (!waterProtected && topSolidY >= waterSurfaceY + 1) {
-                    int start = Math.max(1, e.y);
-                    for (int y = start; y <= topSolidY; y++) {
-                        setAir(blocks, meta, localX, localZ, y, worldHeight);
-                    }
-                    maxY = Math.min(maxY, e.y - 1);
-                }
-                break;
-            }
         }
         if (maxY < 1) {
             return;
@@ -329,7 +347,52 @@ public final class CaveCarver {
         }
     }
 
-    /** 洞厅整列快速填充：底部中频噪声分出干地与湖泊。 */
+    /**
+     * 雕刻入口的地表开口：返回该列是否属于入口开口范围（是则已雕刻）。
+     *
+     * 新架构：入口通道是一条真正的 CaveSegment（buildEntrancePassage），
+     * 由主雕刻循环用 sampleExcess 雕刻——带洞壁噪声、半径变化，与内部洞穴
+     * 完全一致。这里只负责「地表开口」：在开口列挖一个可走进的漏斗/坡道坑，
+     * 深度到通道顶部（surfaceY - 3 附近），让玩家能从地表看到并走进通道。
+     */
+    private static boolean carveEntranceAt(CaveEntrance e,
+                                           int worldX, int worldZ,
+                                           int localX, int localZ,
+                                           int topSolidY,
+                                           net.minecraft.block.Block[] blocks,
+                                           byte[] meta,
+                                           int worldHeight) {
+        double dx = worldX - e.x;
+        double dz = worldZ - e.z;
+        double d = Math.sqrt(dx * dx + dz * dz);
+        // 地表开口半径：漏斗 / 坡道更宽（可走进），竖井 / 天坑较窄。
+        double mouthR = (e.type == CaveEntrance.TYPE_FUNNEL
+            || e.type == CaveEntrance.TYPE_RAMP)
+            ? e.radius + 3.0 : e.radius + 1.0;
+        if (d > mouthR) {
+            return false;
+        }
+        // 开口坑深度：中心挖到通道顶部附近（surfaceY - 3），边缘浅（漏斗坑）。
+        // 通道段顶部也在 surfaceY - 3，两者重叠衔接。
+        double topOfPassage = e.surfaceY - 3.0;
+        double centerDepth = topSolidY - topOfPassage;
+        if (centerDepth < 2.0) {
+            centerDepth = 2.0;
+        }
+        // 锥形：中心深、边缘浅
+        double t = mouthR > 0.0 ? Math.max(0.0, 1.0 - d / mouthR) : 1.0;
+        int bottomY = topSolidY - (int) Math.ceil(centerDepth * t);
+        if (bottomY < 1) {
+            bottomY = 1;
+        }
+        for (int y = bottomY; y <= topSolidY; y++) {
+            setAir(blocks, meta, localX, localZ, y, worldHeight);
+        }
+        return true;
+    }
+
+
+
     private static void carveMegaHallColumn(CaveMegaHall hall,
                                             int worldX, int worldZ,
                                             int yMax,
@@ -344,38 +407,169 @@ public final class CaveCarver {
         setRock(blocks, meta, localX, localZ, 1,
             worldHeight, worldX, 1, worldZ, seed);
 
-        // 底部地形：分层柏林（3 层 fBm），水面基准 y=15。
+        // 1) 主厅地板（柱子/墙的基座高度）。
         int floorY = hall.floorY(worldX, worldZ);
         if (floorY > yMax) {
             floorY = Math.max(2, yMax - 1);
         }
 
-        int pillarIdx = hall.pillarIndex(worldX, worldZ);
-        if (pillarIdx >= 0) {
-            carveMegaHallPillar(hall, pillarIdx, worldX, worldZ,
-                floorY, yMax,
-                localX, localZ, blocks, meta, worldHeight, seed);
+        // 显式湖环（岛体 + 实心湖面 + 过渡带）：岛顶高于水位、中心平地；
+        // 湖环内强制湖床灌水 → 岛必然在湖中央；过渡带向周围地形平滑融合。
+        if (hall.isInIslandLake(worldX, worldZ)) {
+            floorY = hall.islandFloorY(worldX, worldZ);
+        }
+
+        // 2) 结构候选：最近柱子 + 所有墙（各自按真实雕刻半径判定归属）。
+        //    —— 用「柱体 ∪ 墙体」的并集判实心：谁覆盖该列就是石头，
+        //    柱子不会被墙挖空（柱子体心始终在柱半径内），多墙交汇也能全部连通。
+        int pillarIdx = -1;
+        double pillarDist = Double.MAX_VALUE;
+        for (int i = 0; i < hall.pillarCount; i++) {
+            double d = Math.hypot(
+                worldX + 0.5 - hall.pillarX[i],
+                worldZ + 0.5 - hall.pillarZ[i]);
+            if (d < pillarDist) {
+                pillarDist = d;
+                pillarIdx = i;
+            }
+        }
+        if (pillarDist > hall.pillarHalf * 2.0) {
+            pillarIdx = -1; // 超出柱子最大雕刻半径（噪声 1.34 × 顶/脚外扩 1.5 ≈ 2.0）
+        }
+
+        // 墙候选：所有到墙段距离 <= wallHalf*2（覆盖雕刻半径含顶/脚外扩）的墙
+        java.util.List<Integer> wallCands =
+            new java.util.ArrayList<Integer>();
+        for (int i = 0; i < hall.wallCount; i++) {
+            double d = ptSegDist(worldX + 0.5, worldZ + 0.5,
+                hall.pillarX[hall.wallA[i]], hall.pillarZ[hall.wallA[i]],
+                hall.pillarX[hall.wallB[i]], hall.pillarZ[hall.wallB[i]]);
+            if (d <= hall.wallHalf * 2.0) {
+                wallCands.add(i);
+            }
+        }
+
+        if (pillarIdx < 0 && wallCands.isEmpty()) {
+            // 3) 无结构：湖 / 干地。
+            if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
+                int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
+                for (int y = floorY; y <= surface; y++) {
+                    setWater(blocks, meta, localX, localZ, y, worldHeight);
+                }
+                for (int y = surface + 1; y <= yMax; y++) {
+                    setAir(blocks, meta, localX, localZ, y, worldHeight);
+                }
+            } else {
+                for (int y = floorY + 1; y <= yMax; y++) {
+                    setAir(blocks, meta, localX, localZ, y, worldHeight);
+                }
+            }
             return;
         }
 
-        if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
-            // 压到 15 以下的区域挖成盆地并灌水，水面统一在 y=15。
-            int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
-            for (int y = floorY; y <= surface; y++) {
-                setWater(blocks, meta, localX, localZ, y, worldHeight);
+        // 4) 结构列：逐 y 按并集雕刻（柱 ∪ 墙）。半径沿高度每 4 格采样再插值。
+        int span = Math.max(1, yMax - floorY + 1);
+        int step = 4;
+        int sampleCount = span / step + 2;
+        double[] pillarR = pillarIdx >= 0 ? new double[sampleCount] : null;
+        double[][] wallR = wallCands.isEmpty() ? null
+            : new double[wallCands.size()][sampleCount];
+        for (int k = 0; k < sampleCount; k++) {
+            int sy = Math.min(yMax, floorY + k * step);
+            if (pillarIdx >= 0) {
+                pillarR[k] = pillarRadiusAt(hall, pillarIdx,
+                    worldX, sy, worldZ, seed);
             }
-            for (int y = surface + 1; y <= yMax; y++) {
-                setAir(blocks, meta, localX, localZ, y, worldHeight);
+            if (wallR != null) {
+                for (int w = 0; w < wallCands.size(); w++) {
+                    wallR[w][k] = wallRadiusAt(hall, wallCands.get(w),
+                        worldX, sy, worldZ, floorY, yMax, seed);
+                }
             }
-        } else {
-            // 干地：floorY 是地面实体层，空气从 floorY+1 开始，
-            // 避免岸边 y=15 被挖成空气缝。
-            for (int y = floorY + 1; y <= yMax; y++) {
-                setAir(blocks, meta, localX, localZ, y, worldHeight);
+        }
+        for (int y = floorY; y <= yMax; y++) {
+            double scale = pillarScale(y, floorY, span);
+            int k = (y - floorY) / step;
+            if (k >= sampleCount - 1) {
+                k = sampleCount - 2;
+            }
+            double f = (double) ((y - floorY) - k * step) / step;
+            boolean rock = false;
+            if (pillarIdx >= 0) {
+                double r = (pillarR[k] + (pillarR[k + 1] - pillarR[k]) * f)
+                    * scale;
+                if (pillarDist < r) {
+                    rock = true;
+                }
+            }
+            if (!rock && wallR != null) {
+                for (int w = 0; w < wallCands.size(); w++) {
+                    int wi = wallCands.get(w);
+                    double dw = ptSegDist(worldX + 0.5, worldZ + 0.5,
+                        hall.pillarX[hall.wallA[wi]], hall.pillarZ[hall.wallA[wi]],
+                        hall.pillarX[hall.wallB[wi]], hall.pillarZ[hall.wallB[wi]]);
+                    double r = (wallR[w][k] + (wallR[w][k + 1] - wallR[w][k]) * f)
+                        * scale;
+                    if (dw < r) {
+                        rock = true;
+                        break;
+                    }
+                }
+            }
+            if (rock) {
+                int idx = (localX * 16 + localZ) * worldHeight + y;
+                byte rockV = CaveMath.rockVariant3D(worldX, y, worldZ, seed);
+                putRockVariant(blocks, meta, idx, rockV);
+            } else if (y > floorY) {
+                if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
+                    int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
+                    if (y <= surface) {
+                        setWater(blocks, meta, localX, localZ, y, worldHeight);
+                    } else {
+                        setAir(blocks, meta, localX, localZ, y, worldHeight);
+                    }
+                } else {
+                    setAir(blocks, meta, localX, localZ, y, worldHeight);
+                }
             }
         }
     }
 
+    /**
+     * 墙在 (wx, wy, wz) 处的雕刻半径：沿墙 A→B 走向 + 垂直 + 高度做双层
+     * Perlin 起伏（振幅 0.22 / 0.12，与石柱 pillarRadiusAt 一致），
+     * 让墙边缘像天然岩脊一样不规则。调用方再乘 pillarScale 做顶/脚平滑。
+     */
+    private static double wallRadiusAt(CaveMegaHall hall, int wallIdx,
+                                       int wx, int wy, int wz,
+                                       int floorY, int yMax, long seed) {
+        int a = hall.wallA[wallIdx];
+        int b = hall.wallB[wallIdx];
+        double ax = hall.pillarX[a];
+        double az = hall.pillarZ[a];
+        double bx = hall.pillarX[b];
+        double bz = hall.pillarZ[b];
+        double vx = bx - ax, vz = bz - az;
+        double len = Math.hypot(vx, vz);
+        if (len < 1e-9) {
+            return hall.wallHalf;
+        }
+        double dxU = vx / len, dzU = vz / len;   // 沿墙方向
+        double dxV = -dzU, dzV = dxU;            // 垂直墙方向
+        double rx = wx + 0.5 - ax;
+        double rz = wz + 0.5 - az;
+        double u = Math.max(0.0, Math.min(len, rx * dxU + rz * dzU));
+        double v = rx * dxV + rz * dzV;
+        double r1 = CaveMath.perlin3D(
+            u / 24.0, wy / 9.0, v / 24.0, seed, 0xE7 + wallIdx);
+        double r2 = CaveMath.perlin3D(
+            u / 14.0, wy / 13.0, v / 14.0, seed, 0xE8 + wallIdx);
+        // 门洞开度（拱门形）：门洞处半径乘 0（墙体挖空成拱门缺口），
+        // 拱门轮廓沿墙×高度，边缘 smoothstep+Perlin 渐变
+        double door = hall.wallDoorFactor(
+            wallIdx, u, wy, floorY, yMax, seed);
+        return hall.wallHalf * (1.0 + 0.22 * r1 + 0.12 * r2) * door;
+    }
     /** 洞厅列内补刻含水-湖连接管：穿过洞厅湖底/侧壁进入湖体。 */
     private static void carveLakePipesThroughMegaHall(
         int worldX, int worldZ, int maxY,
@@ -414,56 +608,36 @@ public final class CaveCarver {
         }
     }
 
-    /** 巨型石柱：柱顶/柱脚外扩融合，柱身做侵蚀。 */
-    private static void carveMegaHallPillar(CaveMegaHall hall, int pillarIdx,
-                                            int worldX, int worldZ,
-                                            int floorY, int yMax,
-                                            int localX, int localZ,
-                                            net.minecraft.block.Block[] blocks,
-                                            byte[] meta,
-                                            int worldHeight, long seed) {
-        double px = hall.pillarX[pillarIdx];
-        double pz = hall.pillarZ[pillarIdx];
-        double dx = worldX + 0.5 - px;
-        double dz = worldZ + 0.5 - pz;
-        int span = Math.max(1, yMax - floorY + 1);
-        // 半径纵向每 4 格采样一次再插值，减少 Perlin 调用。
-        int step = 4;
-        int sampleCount = span / step + 2;
-        double[] radii = new double[sampleCount];
-        for (int k = 0; k < sampleCount; k++) {
-            int sy = Math.min(yMax, floorY + k * step);
-            radii[k] = pillarRadiusAt(
-                hall, pillarIdx, worldX, sy, worldZ, seed);
-        }
-        for (int y = floorY; y <= yMax; y++) {
-            double scale = pillarScale(y, floorY, span);
-            int k = (y - floorY) / step;
-            if (k >= sampleCount - 1) {
-                k = sampleCount - 2;
+    /**
+     * 洞厅列内补刻干洞-洞厅穿墙段：外部干节点 → 洞厅壁内侧锚点的隧道
+     * 在洞厅内部也能看到（挖成空气通道）。洞厅列本来就会被洞厅雕刻
+     * 挖成空腔，这里只为穿墙隧道保留清晰的洞口轮廓（与湖管对称）。
+     */
+    private static void carveDryPipesThroughMegaHall(
+        int worldX, int worldZ, int maxY,
+        int localX, int localZ,
+        net.minecraft.block.Block[] blocks, byte[] meta,
+        int worldHeight, long seed, CaveChunkData data
+    ) {
+        for (CaveSegment seg : data.segments) {
+            if (!seg.piercesMegaHall) {
+                continue;
             }
-            double f = (double) ((y - floorY) - k * step) / step;
-            double r = (radii[k]
-                + (radii[k + 1] - radii[k]) * f) * scale;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist >= r) {
-                // 柱体之外：恢复该列的正常洞厅地形（噪声地面/水面）。
-                if (floorY < CaveMegaHall.LAKE_WATER_LEVEL) {
-                    int surface = Math.min(CaveMegaHall.LAKE_WATER_LEVEL, yMax);
-                    if (y <= surface) {
-                        setWater(blocks, meta, localX, localZ, y, worldHeight);
-                    } else {
-                        setAir(blocks, meta, localX, localZ, y, worldHeight);
-                    }
-                } else if (y > floorY) {
+            if (worldX < seg.minX || worldX > seg.maxX
+                || worldZ < seg.minZ || worldZ > seg.maxZ) {
+                continue;
+            }
+            int yMin = Math.max(1, (int) Math.ceil(seg.minY));
+            int yMax = Math.min(maxY, (int) Math.floor(seg.maxY));
+            for (int y = yMin; y <= yMax; y++) {
+                double wall = (CaveMath.valueNoise3D(
+                    worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
+                    * 2.0 * WALL_AMP;
+                double e = seg.sampleExcess(worldX, y, worldZ, wall);
+                if (e > 0.0) {
+                    // 干洞穿墙段：挖空气（不灌水）
                     setAir(blocks, meta, localX, localZ, y, worldHeight);
-                } else {
-                    // y == floorY：保留实体地面
                 }
-            } else {
-                int idx = (localX * 16 + localZ) * worldHeight + y;
-                byte v = CaveMath.rockVariant3D(worldX, y, worldZ, seed);
-                putRockVariant(blocks, meta, idx, v);
             }
         }
     }
@@ -481,6 +655,20 @@ public final class CaveCarver {
         double r2 = CaveMath.perlin3D(
             ca * 2.0, wy / 13.0, sa * 2.0, seed, 0xE2 + idx);
         return hall.pillarHalf * (1.0 + 0.22 * r1 + 0.12 * r2);
+    }
+
+    /** 点到线段 (ax,az)-(bx,bz) 的水平距离。 */
+    private static double ptSegDist(double px, double pz,
+                                    double ax, double az,
+                                    double bx, double bz) {
+        double vx = bx - ax, vz = bz - az;
+        double l2 = vx * vx + vz * vz;
+        if (l2 < 1e-9) {
+            return Math.hypot(px - ax, pz - az);
+        }
+        double t = Math.max(0.0, Math.min(1.0,
+            ((px - ax) * vx + (pz - az) * vz) / l2));
+        return Math.hypot(px - (ax + t * vx), pz - (az + t * vz));
     }
 
     /** 柱顶/柱脚 8 格内向外扩 50%，与天花板/地面融合。 */

@@ -263,14 +263,17 @@ public final class DlaMountainGenerator {
         }
         // 微峰噪声：沿山脊线制造独立尖峰/鞍部（波长 ~5 格 ≈ 320 block），
         // 让山脊不再是连续平台，而是"一个接一个的山峰"。
-        double[] microPeaks = buildProfile(h, seed + 54321, 0.22, 5.0);
+        // 幅度需克制：PEAK 带落差 ~162 格，微峰幅度会被放大成山脊"乱窜"。
+        double[] microPeaks = buildProfile(h, seed + 54321, 0.14, 6.0);
         for (int y = 0; y < h; y++) {
             double mp = microPeaks[y];
             for (int x = 0; x < w; x++) {
                 elevField[y][x] *= mp;
             }
         }
-        elevField = gaussianBlur(elevField, Math.min(blurRadius, 0.2));
+        // 模糊半径用完整 blurRadius（旧实现 Math.min(blurRadius,0.2) 把 2.5 钳到 0.2，
+        // 微峰噪声完全没有被平滑，叠加巨大山带落差后呈逐格乱窜）。
+        elevField = gaussianBlur(elevField, blurRadius);
 
         float[] out = new float[w * h];
         for (int y = 0; y < h; y++) {

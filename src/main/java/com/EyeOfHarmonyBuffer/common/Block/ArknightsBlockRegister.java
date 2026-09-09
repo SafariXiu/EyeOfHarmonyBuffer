@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.common.Block;
 
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.*;
+import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.BlockFaGuangTengMan;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
@@ -25,6 +26,8 @@ public class ArknightsBlockRegister {
     public static Block CleanGlassGlow;
     public static Block XieYiYuanShiKuai;
     public static Block PureGlowBlock;
+    /** 发光藤蔓（洞厅风格化植物，带 7 级光）。 */
+    public static Block FaGuangTengMan;
 
     //RBMK 控制棒 / 燃料管
     public static Block StandardControlRod;
@@ -149,6 +152,13 @@ public class ArknightsBlockRegister {
         GTCMItemList.PureGlowBlock_Green.set(new ItemStack(PureGlowBlock, 1, 13));
         GTCMItemList.PureGlowBlock_Red.set(new ItemStack(PureGlowBlock, 1, 14));
         GTCMItemList.PureGlowBlock_Black.set(new ItemStack(PureGlowBlock, 1, 15));
+
+        FaGuangTengMan = new BlockFaGuangTengMan()
+            .setBlockName("FaGuangTengMan")
+            .setBlockTextureName("eyeofharmonybuffer:Arknights/FaGuangTengMan")
+            .setCreativeTab(ArknightsProject_Block);
+        GameRegistry.registerBlock(FaGuangTengMan, "FaGuangTengMan");
+        GTCMItemList.FaGuangTengMan.set(new ItemStack(FaGuangTengMan, 1, 0));
 
         XieYiYuanShiKuai = new BlockXieYiYuanShi()
             .setBlockName("xie_yi_yuan_shi")

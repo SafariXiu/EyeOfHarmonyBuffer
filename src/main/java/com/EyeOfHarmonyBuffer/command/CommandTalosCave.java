@@ -3,7 +3,9 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
@@ -11,7 +13,9 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,13 +48,19 @@ public class CommandTalosCave extends CommandBase {
                                                 String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                "tp", "tpchamber", "tphall", "node");
+                "tp", "tpchamber", "tphall", "node", "probe");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("node")) {
             return getListOfStringsMatchingLastWord(args,
                 "all", "entrance", "sinkhole", "chamber", "backbone",
-                "normal", "shaft", "hall", "megahall", "aquifer",
+                "normal", "hall", "megahall", "aquifer",
                 "aquiferfull", "aquiferhalf", "aquiferdead");
+        }
+        if (args.length == 2
+            && (args[0].equalsIgnoreCase("tp")
+                || args[0].equalsIgnoreCase("tpchamber"))) {
+            return getListOfStringsMatchingLastWord(args,
+                "funnel", "ramp", "shaft", "sinkhole");
         }
         return null;
     }
@@ -64,6 +74,7 @@ public class CommandTalosCave extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
         int seed = TalosLandMask.getWorldSeedInt(world);
+        LegacyV2Note.note(sender);
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
 
@@ -83,6 +94,10 @@ public class CommandTalosCave extends CommandBase {
             tpToNode(player, seed, px, pz, args);
             return;
         }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("probe")) {
+            probeColumn(player, world, seed, args);
+            return;
+        }
 
         List<String> lines = TalosCaveSystem.debugSummary(px, pz, seed);
         for (String line : lines) {
@@ -93,18 +108,27 @@ public class CommandTalosCave extends CommandBase {
     private void tpToEntrance(EntityPlayerMP player, World world, int seed,
                               int px, int pz, String[] args, boolean chamber) {
         int index = 1;
+        Integer typeFilter = null;
         if (args.length >= 2) {
-            try {
-                index = Integer.parseInt(args[1]);
-            } catch (NumberFormatException ex) {
-                player.addChatMessage(new ChatComponentText(
-                    "序号参数无效: " + args[1] + "（1 为最近）"
-                ));
-                return;
-            }
-            if (index < 1) {
-                player.addChatMessage(new ChatComponentText("序号从 1 开始。"));
-                return;
+            for (int i = 1; i < args.length; i++) {
+                Integer t = parseEntranceType(args[i]);
+                if (t != null) {
+                    typeFilter = t;
+                    continue;
+                }
+                try {
+                    index = Integer.parseInt(args[i]);
+                } catch (NumberFormatException ex) {
+                    player.addChatMessage(new ChatComponentText(
+                        "参数无效: " + args[i]
+                            + "（类型: funnel|ramp|shaft|sinkhole，序号: 1 为最近）"
+                    ));
+                    return;
+                }
+                if (index < 1) {
+                    player.addChatMessage(new ChatComponentText("序号从 1 开始。"));
+                    return;
+                }
             }
         }
 
@@ -141,12 +165,27 @@ public class CommandTalosCave extends CommandBase {
             return;
         }
 
+        // 扫描半径：天坑稀有，用更大的范围；其余类型 3×3 单元。
+        int scanCells = (typeFilter != null
+            && typeFilter.intValue() == CaveEntrance.TYPE_SINKHOLE) ? 4 : 3;
         List<CaveEntrance> ents = TalosCaveSystem.debugEntrancesNear(
-            px, pz, seed, 2
+            px, pz, seed, scanCells
         );
+        if (typeFilter != null) {
+            List<CaveEntrance> filtered = new ArrayList<CaveEntrance>();
+            for (CaveEntrance e : ents) {
+                if (e.type == typeFilter.intValue()) {
+                    filtered.add(e);
+                }
+            }
+            ents = filtered;
+        }
         if (ents.isEmpty()) {
             player.addChatMessage(new ChatComponentText(
-                "周围 5×5 单元内没有入口（洞穴系统可能未启用）。"
+                "周围 " + scanCells + "×" + scanCells + " 单元内没有"
+                    + (typeFilter != null
+                        ? CaveEntrance.typeName(typeFilter.intValue()) : "")
+                    + "入口（洞穴系统可能未启用）。"
             ));
             return;
         }
@@ -169,8 +208,8 @@ public class CommandTalosCave extends CommandBase {
         double y = Math.round(surface) + 2.0;
         player.setPositionAndUpdate(e.x + 0.5, y, e.z + 0.5);
         player.addChatMessage(new ChatComponentText(String.format(
-            "[TALCAVE] 跳转到%s #%d/%d: pos=(%d,%d) 井底Y=%d 地表≈%.0f",
-            e.sinkhole ? "天坑" : "入口",
+            "[TALCAVE] 跳转到%s #%d/%d: pos=(%d,%d) 洞口底Y=%d 地表≈%.0f",
+            CaveEntrance.typeName(e.type),
             index, sorted.size(), e.x, e.z, e.y, surface
         )));
     }
@@ -199,7 +238,7 @@ public class CommandTalosCave extends CommandBase {
         if (halls.isEmpty()) {
             player.addChatMessage(new ChatComponentText(
                 "扫描 65×65 个超级格（约 26 万格范围）未找到洞厅。"
-                    + "洞厅只在 Alpine / Polar Desert 生成，且极稀有。"
+                    + "洞厅只在高海拔群系（宏包带底 > 100）生成，且极稀有。"
             ));
             return;
         }
@@ -215,30 +254,34 @@ public class CommandTalosCave extends CommandBase {
             return;
         }
         CaveMegaHall hall = sorted.get(index - 1);
-        double tx = hall.cx;
-        double tz = hall.cz;
-        if (hall.isPillarColumn((int) hall.cx, (int) hall.cz)) {
+        // 洞厅 TP 直接绑定湖心岛：落点 = 岛心 (islandX, islandZ)，站在岛顶上方。
+        // 湖心岛是「房间 1 内离所有墙最远的点」+ 中心平地（islandFlatRadius），
+        // 既好找岛，也方便后续在上面放建筑。
+        double tx = hall.islandCenterX();
+        double tz = hall.islandCenterZ();
+        if (hall.isPillarColumn((int) tx, (int) tz)) {
             boolean found = false;
             for (int dz = -3; dz <= 3 && !found; dz++) {
                 for (int dx = -3; dx <= 3 && !found; dx++) {
                     if (dx == 0 && dz == 0) {
                         continue;
                     }
-                    if (!hall.isPillarColumn(
-                        (int) hall.cx + dx, (int) hall.cz + dz)) {
-                        tx = hall.cx + dx;
-                        tz = hall.cz + dz;
+                    if (!hall.isPillarColumn((int) tx + dx, (int) tz + dz)) {
+                        tx += dx;
+                        tz += dz;
                         found = true;
                     }
                 }
             }
         }
-        player.setPositionAndUpdate(tx + 0.5, hall.cy + 1.0, tz + 0.5);
+        player.setPositionAndUpdate(tx + 0.5, hall.islandTop() + 1.0, tz + 0.5);
         double dist = Math.sqrt(distSq(
             tx, tz, player.posX, player.posZ));
         player.addChatMessage(new ChatComponentText(String.format(
-            "[TALCAVE] 跳转到洞厅 #%d/%d: 距离≈%.0f 中心=(%.0f,%.0f) 半径=%.0f×%.0f×%.0f",
-            index, sorted.size(), dist, tx, tz, hall.rx, hall.ry, hall.rz
+            "[TALCAVE] 跳转到洞厅 #%d/%d（湖心岛）: 距离≈%.0f 岛心=(%.0f,%.0f) "
+                + "岛顶Y=%d 半径=%.0f×%.0f×%.0f",
+            index, sorted.size(), dist, tx, tz, hall.islandTop(),
+            hall.rx, hall.ry, hall.rz
         )));
     }
 
@@ -266,7 +309,7 @@ public class CommandTalosCave extends CommandBase {
             player.addChatMessage(new ChatComponentText(
                 "未知节点类型: " + type
                     + "（all|entrance|sinkhole|chamber|backbone|normal|"
-                    + "shaft|hall|aquifer|aquiferfull|aquiferhalf|aquiferdead）"
+                    + "hall|aquifer|aquiferfull|aquiferhalf|aquiferdead）"
             ));
             return;
         }
@@ -302,6 +345,23 @@ public class CommandTalosCave extends CommandBase {
         )));
     }
 
+    /** 解析入口类型名（funnel/ramp/shaft/sinkhole），未知返回 null。 */
+    private static Integer parseEntranceType(String s) {
+        if (s.equalsIgnoreCase("funnel")) {
+            return Integer.valueOf(CaveEntrance.TYPE_FUNNEL);
+        }
+        if (s.equalsIgnoreCase("ramp")) {
+            return Integer.valueOf(CaveEntrance.TYPE_RAMP);
+        }
+        if (s.equalsIgnoreCase("shaft")) {
+            return Integer.valueOf(CaveEntrance.TYPE_SHAFT);
+        }
+        if (s.equalsIgnoreCase("sinkhole")) {
+            return Integer.valueOf(CaveEntrance.TYPE_SINKHOLE);
+        }
+        return null;
+    }
+
     private static Set<Integer> parseNodeKinds(String type) {
         Set<Integer> s = new HashSet<Integer>();
         if (type.equalsIgnoreCase("entrance")) {
@@ -315,8 +375,6 @@ public class CommandTalosCave extends CommandBase {
             s.add(CaveNode.KIND_BACKBONE);
         } else if (type.equalsIgnoreCase("normal")) {
             s.add(CaveNode.KIND_NORMAL);
-        } else if (type.equalsIgnoreCase("shaft")) {
-            s.add(CaveNode.KIND_SHAFT);
         } else if (type.equalsIgnoreCase("hall")
             || type.equalsIgnoreCase("megahall")) {
             s.add(CaveNode.KIND_MEGA_HALL);
@@ -349,8 +407,6 @@ public class CommandTalosCave extends CommandBase {
                 return "入口";
             case CaveNode.KIND_SINKHOLE:
                 return "天坑";
-            case CaveNode.KIND_SHAFT:
-                return "竖井";
             case CaveNode.KIND_MEGA_HALL:
                 return "洞厅";
             case CaveNode.KIND_AQUIFER_FULL:
@@ -373,4 +429,140 @@ public class CommandTalosCave extends CommandBase {
     private static double distSq(CaveEntrance e, double sx, double sz) {
         return distSq(e.x, e.z, sx, sz);
     }
+
+    /**
+     * /talcave probe [x z] - 诊断入口列：打印地形采样、入口节点、雕刻门控条件，
+     * 以及实际世界方块（从地表到入口深度哪些是空气）。
+     * 不传坐标则探查最近的入口；传坐标则探查指定列附近最近的入口。
+     */
+    private void probeColumn(EntityPlayerMP player, World world, int seed,
+                             String[] args) {
+        int tx, tz;
+        if (args.length >= 3) {
+            try {
+                tx = Integer.parseInt(args[1]);
+                tz = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ex) {
+                player.addChatMessage(new ChatComponentText(
+                    "坐标无效: " + args[1] + " " + args[2]));
+                return;
+            }
+        } else {
+            tx = (int) Math.floor(player.posX);
+            tz = (int) Math.floor(player.posZ);
+        }
+
+        // 1) 地形采样（雕刻门控条件）
+        TalosTerrainHeights.TerrainHeightSample ts =
+            TalosTerrainHeights.sample(tx, tz, seed, 64, world.getActualHeight());
+        player.addChatMessage(new ChatComponentText(String.format(
+            "[PROBE] pos=(%d,%d) 地表≈%.0f isLand=%b riverMask=%.2f body=%s waterLevel=%s",
+            tx, tz, ts.surfaceD, ts.isLand, ts.riverMask,
+            ts.body == null ? "null" : ts.body.toString(),
+            ts.waterLevel == Double.NEGATIVE_INFINITY ? "-inf" : String.format("%.0f", ts.waterLevel)
+        )));
+
+        // 1.5) 光照诊断：该位置所在区块的实际 skylight / blocklight 值（按 y 采样）。
+        // 洞厅内若 skylight=15（像被太阳照到）说明服务端光照数组错了；
+        // 若 skylight=0 但渲染仍亮，则是客户端渲染缓存问题。
+        Chunk chunk = world.getChunkFromBlockCoords(tx, tz);
+        StringBuilder ls = new StringBuilder("[PROBE] 光照(sky/blk) y=");
+        int[] ys = {8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 90, 100, 110};
+        for (int y : ys) {
+            if (y >= world.getActualHeight()) break;
+            int sky = chunk.getSavedLightValue(EnumSkyBlock.Sky, tx & 15, y, tz & 15);
+            int blk = chunk.getSavedLightValue(EnumSkyBlock.Block, tx & 15, y, tz & 15);
+            ls.append(y).append(":").append(sky).append("/").append(blk).append(" ");
+        }
+        player.addChatMessage(new ChatComponentText(ls.toString()));
+
+        // 1.6) 洞厅归属诊断
+        CaveMegaHall hereHall = CaveGenerator.megaHallAt(tx, tz, seed);
+        if (hereHall == null) {
+            player.addChatMessage(new ChatComponentText(
+                "[PROBE] 该坐标不在洞厅内"));
+        } else {
+            int[] vs = new int[2];
+            boolean inVs = hereHall.verticalSpan(tx, tz, world.getActualHeight(), vs);
+            player.addChatMessage(new ChatComponentText(String.format(
+                "[PROBE] 在洞厅内 c=(%.0f,%.0f) Y=[%.0f..%.0f] 本列span=%s",
+                hereHall.cx, hereHall.cz, hereHall.minY, hereHall.maxY,
+                inVs ? (vs[0] + ".." + vs[1]) : "无")));
+        }
+
+        // 2) 入口（从真实洞穴节点延伸的通道）
+        int cellX = Math.floorDiv(tx, 256);
+        int cellZ = Math.floorDiv(tz, 256);
+        CaveEntrance nearest = null;
+        double nearestD = Double.MAX_VALUE;
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                CaveEntrance e = TalosCaveSystem.debugEntranceAt(
+                    cellX + dx, cellZ + dz, seed);
+                if (e == null) continue;
+                double d = Math.sqrt(
+                    (e.x - tx) * (e.x - tx) + (e.z - tz) * (e.z - tz));
+                if (d < nearestD) {
+                    nearestD = d;
+                    nearest = e;
+                }
+            }
+        }
+        if (nearest == null) {
+            player.addChatMessage(new ChatComponentText(
+                "[PROBE] 附近 3×3 单元内没有入口。"));
+            return;
+        }
+        int ex = nearest.x;
+        int ez = nearest.z;
+        int eY = nearest.y; // 基座深度（通道底部）
+        player.addChatMessage(new ChatComponentText(String.format(
+            "[PROBE] 最近入口 @(%d,%d) 基座Y=%d 地表开口高=%d type=%s dist=%.0f",
+            ex, ez, eY, nearest.surfaceY,
+            CaveEntrance.typeName(nearest.type), nearestD
+        )));
+
+        // 3) 雕刻门控检查（与 CaveCarver.carveColumn 相同的逻辑）
+        int topSolidY = (int) Math.round(ts.surfaceD);
+        boolean gateSkip = topSolidY < (int) (ts.waterLevel) + 1;
+        player.addChatMessage(new ChatComponentText(String.format(
+            "[PROBE] 雕刻门控: topSolidY≈%d, waterSurfaceY≈%d, %s",
+            topSolidY,
+            ts.waterLevel == Double.NEGATIVE_INFINITY ? 0 : (int) ts.waterLevel,
+            gateSkip ? "会跳过（列顶低于水面）" : "不跳过（应雕刻）"
+        )));
+
+        // 4) 实际世界方块：从 eY 到地表
+        StringBuilder sb = new StringBuilder("[PROBE] 方块 y90→地表: ");
+        for (int y = Math.max(1, eY); y <= Math.min(topSolidY, eY + 16); y++) {
+            net.minecraft.block.Block b = world.getBlock(ex, y, ez);
+            String name = (b == null || b == net.minecraft.init.Blocks.air)
+                ? "空" : (b == net.minecraft.init.Blocks.water
+                    || b == net.minecraft.init.Blocks.flowing_water) ? "水" : "石";
+            sb.append(y).append(":").append(name).append(" ");
+        }
+        player.addChatMessage(new ChatComponentText(sb.toString()));
+
+        // 5) 该区块 data.entrances 是否包含入口
+        int chunkX = ex >> 4;
+        int chunkZ = ez >> 4;
+        CaveChunkData data = TalosCaveSystem.dataForChunk(chunkX, chunkZ, seed);
+        if (data == null) {
+            player.addChatMessage(new ChatComponentText(
+                "[PROBE] 该区块 caveData 为 null（洞穴数据未生成！）"));
+            return;
+        }
+        boolean inData = false;
+        for (CaveEntrance e : data.entrances) {
+            if (e.x == ex && e.z == ez) {
+                inData = true;
+                break;
+            }
+        }
+        player.addChatMessage(new ChatComponentText(String.format(
+            "[PROBE] 该区块 caveData.entrances=%d, 入口在数据中: %s",
+            data.entrances.size(), inData ? "是" : "否（异常！）"
+        )));
+    }
+
 }

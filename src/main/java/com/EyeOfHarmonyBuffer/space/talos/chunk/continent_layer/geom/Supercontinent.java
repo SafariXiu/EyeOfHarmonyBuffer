@@ -228,20 +228,97 @@ public final class Supercontinent {
      *
      * 这是 tectonic_v1 中关于“离海岸有多远”的几何基准。
      */
+    /**
+     * 初始化生长极点表：2~4 个子大陆核。
+     */
+    /** 低频域扭曲（全局，波长 ~1e6，平滑）：让海岸不规则、产生半岛海湾。 */
+    private double[] warpPoint(double x, double z) {
+        long ws = worldSeed;
+        double freq = 1.0 / 1_000_000.0;
+        double amp = 50_000.0;
+        double ox = amp * valueNoise2D(x * freq, z * freq, ws + 1000);
+        double oz = amp * valueNoise2D(x * freq, z * freq, ws + 2000);
+        return new double[] { x + ox, z + oz };
+    }
+
+    /** 大陆阈值：分形噪声高于此值为陆地（校准：med 0.06 下 ~30% 陆地）。 */
+    private static final double LAND_THRESHOLD = 0.607;
+
+    /** 中频棱角振幅（降低→大陆更成片少碎块；0.12 偏碎、0.06 成片）。 */
+    private static final double MED_AMP = 0.06;
+
+    /** 鞍部抬升宽度：接近阈值的低谷被抬升过阈值，连接紧邻大陆块（零开销、O(1)）。 */
+    private static final double LIFT_WINDOW = 0.06;
+
+    /**
+     * 基于分形噪场高度场的"有符号海岸距离"（S3 正式版，噪声主导 + 鞍部抬升合并）。
+     *
+     * isLand 完全由分形噪声涌现（非圆形、非星形、有半岛海湾岛屿），
+     * 鞍部抬升把紧邻的小块连成片（不吞孤立小岛）。值 = 归一化噪声与阈值之差：
+     *   - <0 = 陆地（越小越内陆），>0 = 海洋（越大越外海），0 = 海岸线。
+     */
     public double signedCoastDistanceRadial(double x, double z) {
-        double dx = x - centerX;
-        double dz = z - centerZ;
-
-        double r2 = dx * dx + dz * dz;
-        if (r2 <= 0.0) {
-            return -baseRadius;
+        double h = fractalNoise(x, z);
+        // 鞍部抬升：h 接近阈值（但未达）时，把低谷抬过阈值 → 连接紧邻大陆块
+        double threshold = LAND_THRESHOLD;
+        if (h > threshold - LIFT_WINDOW) {
+            double lift = LIFT_WINDOW - (threshold - h);
+            h += lift;
         }
+        return -(h - threshold) * baseRadius;
+    }
 
-        double r = Math.sqrt(r2);
-        double theta = Math.atan2(dz, dx);
-        double rEdge = radiusAtAngle(theta);
+    /** 分形高度场：低频主导 fbm（波长 ~160k，3 octave）+ 中频棱角（40k，2 octave）*MED_AMP + 域扭曲。全局单一噪声场。 */
+    private double fractalNoise(double x, double z) {
+        long ws = worldSeed;
 
-        return r - rEdge;
+        // 域扭曲：低频（全局，波长 ~1e6）
+        double[] w = warpPoint(x, z);
+        double nx = w[0], nz = w[1];
+
+        double LOW_WAV = 160_000.0;
+        double low = fbm(nx, nz, ws, 3, 2.0, 0.5, 1.0 / LOW_WAV);
+        double MED_WAV = LOW_WAV / 4.0;
+        double med = fbm(nx, nz, ws + 500, 2, 2.0, 0.5, 1.0 / MED_WAV);
+        return low + med * MED_AMP;
+    }
+
+    /** 标准 fbm 求和（归一化）。 */
+    private double fbm(double x, double z, long seed, int octaves, double lacunarity, double gain, double baseFreq) {
+        double sum = 0.0;
+        double amp = 1.0;
+        double freq = baseFreq;
+        double total = 0.0;
+        for (int i = 0; i < octaves; i++) {
+            sum += amp * valueNoise2D(x * freq, z * freq, seed + i);
+            total += amp;
+            amp *= gain;
+            freq *= lacunarity;
+        }
+        return sum / total;
+    }
+
+    /** 确定性 value noise 2D（整数格哈希 + 平滑插值）。 */
+    private double valueNoise2D(double x, double z, long seed) {
+        int xi = (int) Math.floor(x);
+        int zi = (int) Math.floor(z);
+        double xf = x - xi;
+        double zf = z - zi;
+        double u = xf * xf * (3.0 - 2.0 * xf);
+        double v = zf * zf * (3.0 - 2.0 * zf);
+        double a = hashUnit(seed, xi, zi);
+        double b = hashUnit(seed, xi + 1, zi);
+        double c = hashUnit(seed, xi, zi + 1);
+        double d = hashUnit(seed, xi + 1, zi + 1);
+        double ab = a + (b - a) * u;
+        double cd = c + (d - c) * u;
+        return ab + (cd - ab) * v;
+    }
+
+    private double hashUnit(long seed, int gx, int gz) {
+        long h = TectonicMath.hashLongs(seed, (gx & 0xFFFFFFFFL), (gz & 0xFFFFFFFFL));
+        long mantissa = (h & 0xFFFFFFFFFFFFFFFFL) >>> (64 - 23);
+        return mantissa / (double) (1L << 23);
     }
 
     private void precomputeCoastVertices() {

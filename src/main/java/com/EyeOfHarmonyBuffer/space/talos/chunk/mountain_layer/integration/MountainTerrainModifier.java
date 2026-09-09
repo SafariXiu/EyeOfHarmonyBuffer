@@ -19,6 +19,9 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration;
  */
 public final class MountainTerrainModifier {
 
+    /** V2 轨 DLA 脊顶相对局部基高的最大抬升（blocks）；超出部分由峰核锥承担。 */
+    public static final double DLA_RELIEF_MAX = 55.0;
+
     private MountainTerrainModifier() {}
 
     public static double applyMountainUplift(double baseHeight,
@@ -27,11 +30,32 @@ public final class MountainTerrainModifier {
                                              double mask01,
                                              int beltKind,
                                              MountainHeightProfile profile) {
+        return applyMountainUplift(baseHeight, seaLevel, elevation01, mask01,
+            beltKind, profile, Double.POSITIVE_INFINITY);
+    }
+
+    /**
+     * v6（D33）：峰顶上限可被外部场压住——V2 轨传入峰核场的目标高度 T，
+     * 保证 DLA 脊顶不越过峰核（否则 DLA 252 会把峰核比下去，Alpine 就不在最高点）。
+     */
+    public static double applyMountainUplift(double baseHeight,
+                                             int seaLevel,
+                                             double elevation01,
+                                             double mask01,
+                                             int beltKind,
+                                             MountainHeightProfile profile,
+                                             double peakCap) {
         if (mask01 <= 0.0 || beltKind <= 0) {
             return baseHeight;
         }
         double valley = profile.valleyForKind(beltKind);
         double peak = profile.peakForKind(beltKind);
+        if (peakCap != Double.POSITIVE_INFINITY) {
+            // V2 轨（D33）：DLA 峰顶不得越过峰核目标 T，也不得无限抬高——
+            // 相对局部基高封顶，保证"最高点"永远由峰核占据（旧轨 peakCap=+∞，行为不变）。
+            peak = Math.min(peak, baseHeight + DLA_RELIEF_MAX);
+            peak = Math.min(peak, peakCap);
+        }
         if (valley <= 0.0) {
             return baseHeight;
         }

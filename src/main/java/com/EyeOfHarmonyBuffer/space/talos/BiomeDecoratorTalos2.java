@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
 import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.ResourceClusterDef;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
@@ -94,8 +95,13 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         final int centerX = worldX0 + 8;
         final int centerZ = worldZ0 + 8;
 
-        final int worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
-        final BiomeGenBase biome = TalosMacroClimate.getBiome(centerX, centerZ, worldSeedInt);
+        final boolean v2 = V2TerrainConfigSection.terrainV2Enabled;
+        // V2 轨装饰只依赖群系配置（不需要旧宏气候种子）；该值仅在旧轨的河网/酸雨湖分支使用
+        final int worldSeedInt = v2 ? 0 : TalosMacroClimate.getWorldSeedInt(world);
+        final BiomeGenBase biome = v2
+            // X1 阶段2（T1.4 占位）：走世界群系管理器（V2 轨同源），不再查旧宏气候
+            ? world.getBiomeGenForCoords(centerX, centerZ)
+            : TalosMacroClimate.getBiome(centerX, centerZ, worldSeedInt);
         if (biome == TalosBiomes.TALOS_OCEAN ||
             biome == TalosBiomes.TALOS_SHELF) {
             return;
@@ -105,12 +111,18 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             return;
         }
 
-        final MacroPackageId macro = TalosMacroClimate.getMacroPackageId(
+        final MacroPackageId macro = v2 ? null : TalosMacroClimate.getMacroPackageId(
             centerX, centerZ, worldSeedInt);
 
         final Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
 
         veinGen.generate(world, rand, chunkX, chunkZ);
+
+        // V2 轨：酸雨湖/河床/资源植物依赖旧宏包与 RVR2 河网（V2 世界无定义），暂跳；T3.x 换源后接入。
+        if (v2) {
+            decorateBiomeFeatures(world, rand, chunk, (TalosBiomeBase) biome);
+            return;
+        }
 
         if (acidLakeGen != null && rand.nextInt(2000) == 0) {
             int lakeX = worldX0 + rand.nextInt(16);
