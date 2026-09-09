@@ -51,15 +51,43 @@ public final class TerrainNoise {
     private static final ConcurrentHashMap<Long, SimplexNoise2D> SIMPLEX_CACHE =
         new ConcurrentHashMap<Long, SimplexNoise2D>();
 
+    /**
+     * 直接映射槽位缓存（性能关键路径）。
+     *
+     * 每列地形要取 10~15 次噪声实例；走 ConcurrentHashMap 会**装箱 long**（每次分配一个 Long）
+     * 并做哈希查找 —— 实测这部分占列耗时的一大块。这里用不可变 Slot + 16 槽直接映射：
+     * 命中只需一次数组读 + long 比较（~1ns），未命中才回落到 map。
+     * Slot 的 final 字段保证安全发布，多线程下不会读到半初始化对象。
+     */
+    private static final int SLOT_BITS = 4;
+    private static final int SLOT_MASK = (1 << SLOT_BITS) - 1;
+    private static final Slot[] SLOTS = new Slot[1 << SLOT_BITS];
+
+    private static final class Slot {
+        final long seed;
+        final SimplexNoise2D inst;
+
+        Slot(long seed, SimplexNoise2D inst) {
+            this.seed = seed;
+            this.inst = inst;
+        }
+    }
+
     private static SimplexNoise2D simplexFor(long seed) {
-        SimplexNoise2D s = SIMPLEX_CACHE.get(seed);
+        int idx = (int) ((seed ^ (seed >>> 32)) & SLOT_MASK);
+        Slot sl = SLOTS[idx];
+        if (sl != null && sl.seed == seed) {
+            return sl.inst;
+        }
+        SimplexNoise2D s = SIMPLEX_CACHE.get(Long.valueOf(seed));
         if (s == null) {
             s = new SimplexNoise2D(seed);
-            SimplexNoise2D prev = SIMPLEX_CACHE.putIfAbsent(seed, s);
+            SimplexNoise2D prev = SIMPLEX_CACHE.putIfAbsent(Long.valueOf(seed), s);
             if (prev != null) {
                 s = prev;
             }
         }
+        SLOTS[idx] = new Slot(seed, s);
         return s;
     }
 

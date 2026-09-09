@@ -76,6 +76,10 @@ public final class RelaxedClimate {
         if (d != null) {
             return d;
         }
+        // 多世界保护：每个解约 1.3MB，最多缓存 3 个种子
+        if (CACHE.size() > 2) {
+            CACHE.clear();
+        }
         return CACHE.computeIfAbsent(worldSeedInt, RelaxedClimate::solve);
     }
 
@@ -193,7 +197,8 @@ public final class RelaxedClimate {
             }
         }
         updateP(d, worldSeedInt);
-        ghostFillSea(d);   // 临海陆格用海值填充，消除跨岸插值拽入 0 值的方块伪影
+        applyCoastalSst(d);   // 沿岸暖舌/冷舌参数化（未解析的边界层）
+        ghostFillSea(d);      // 临海陆格用海值填充，消除跨岸插值拽入 0 值的方块伪影
         return d;
     }
 
@@ -340,8 +345,132 @@ public final class RelaxedClimate {
         }
     }
 
+    /** 岸墙折射作用半径（blocks）。 */
+    private static final double COAST_REFRAIN = 26_000.0;
+    /** 沿岸海温参数化：作用格数（1 格 = CELL blocks）与增益。 */
+    private static final int COAST_SST_CELLS = 50;
+    private static final double COAST_WBC_GAIN = 0.13;
+    private static final double COAST_UPWELL_GAIN = 0.22;
+
+    /**
+     * Sverdrup 西边界回流速度场（每格，仅海格非零）。
+     * β·V = curl(τ) → 洋盆内净经向输运由西边界回流抵消，强度 ∝ −∫_west^east curl dx。
+     */
+    private static double[] sverdrupWbc(ClimateGridData d) {
+        // 行平均纬向风（只统计海格）
+        double[] meanU = new double[d.ny];
+        for (int iy = 0; iy < d.ny; iy++) {
+            double s = 0;
+            int n = 0;
+            for (int ix = 0; ix < d.nx; ix++) {
+                int i = d.idx(ix, iy);
+                if (!d.land[i]) { s += d.u[i]; n++; }
+            }
+            meanU[iy] = n > 0 ? s / n : 0;
+        }
+        // 积分形式 Sverdrup：∫_west^east curl dx = [v] − ∂/∂z(∫u dx)
+        // 洋盆内主项 = −∂(纬向风积分)/∂z；用行平均 u 的南北差近似（稳健，不受 ∂v/∂x 噪声影响）
+        double[] shear = new double[d.ny];
+        double maxShear = 1e-12;
+        for (int iy = 0; iy < d.ny; iy++) {
+            shear[iy] = (meanU[(iy + 1) % d.ny] - meanU[((iy - 1) % d.ny + d.ny) % d.ny])
+                / (2.0 * CELL);
+            double a = Math.abs(shear[iy]);
+            if (a > maxShear) {
+                maxShear = a;
+            }
+        }
+        double[] wbc = new double[d.nx * d.ny];
+        for (int iy = 0; iy < d.ny; iy++) {
+            double strength = BC_STRENGTH * shear[iy] / maxShear;   // 自归一：峰值 ±BC_STRENGTH
+            if (strength == 0.0) {
+                continue;
+            }
+            int ix = 0;
+            while (ix < d.nx) {
+                if (d.land[d.idx(ix, iy)]) {
+                    ix++;
+                    continue;
+                }
+                int start = ix;
+                while (ix < d.nx && !d.land[d.idx(ix, iy)]) {
+                    ix++;
+                }
+                int end = ix - 1;
+                for (int k = start; k <= end && k < start + BC_CELLS; k++) {
+                    double decay = 1.0 - (k - start) / (double) BC_CELLS;
+                    wbc[d.idx(k, iy)] = strength * decay * decay;
+                }
+            }
+        }
+        return wbc;
+    }
+
+    /**
+     * 沿岸海温参数化（未解析的边界层）：
+     *   · 西边界：把边界回流携带的暖/冷水叠加到海温（回流向极 → 暖舌，向赤道 → 冷舌）
+     *   · 东边界：上升流（Ekman 辐散）→ 冷舌（加州/秘鲁/本格拉型）
+     * 只在离岸 COAST_SST_CELLS 格内生效，线性衰减。
+     */
+    private static void applyCoastalSst(ClimateGridData d) {
+        double[] wbc = sverdrupWbc(d);
+        double[] dbgW = new double[10], dbgE = new double[10];
+        int[] dbgWn = new int[10], dbgEn = new int[10];
+        for (int iy = 0; iy < d.ny; iy++) {
+            // 边界回流的**向极分量**决定暖舌（两个半球的副热带西边界都是向极暖流）
+            double sPole = (iy * CELL <= 100_000) ? 1.0 : -1.0;
+            int ix = 0;
+            while (ix < d.nx) {
+                if (d.land[d.idx(ix, iy)]) {
+                    ix++;
+                    continue;
+                }
+                int start = ix;
+                while (ix < d.nx && !d.land[d.idx(ix, iy)]) {
+                    ix++;
+                }
+                int end = ix - 1;
+                for (int k = start; k <= end; k++) {
+                    int i = d.idx(k, iy);
+                    int dW = k - start;
+                    int dE = end - k;
+                    double adj = 0.0;
+                    int band = (int) (GlobalCirculation.bandD(iy * CELL) * 10);
+                    if (band > 9) band = 9;
+                    if (dW < COAST_SST_CELLS) {
+                        double decay = 1.0 - dW / (double) COAST_SST_CELLS;
+                        double a = COAST_WBC_GAIN * sPole * wbc[i] * decay * decay;
+                        adj += a;
+                        if (dW < 5) { dbgW[band] += a; dbgWn[band]++; }
+                    }
+                    if (dE < COAST_SST_CELLS) {
+                        double decay = 1.0 - dE / (double) COAST_SST_CELLS;
+                        double a = -COAST_UPWELL_GAIN * decay * decay;
+                        adj += a;
+                        if (dE < 5) { dbgE[band] += a; dbgEn[band]++; }
+                    }
+                    if (adj != 0.0) {
+                        double v = d.sst[i] + adj;
+                        d.sst[i] = v > 1 ? 1 : (v < -1 ? -1 : v);
+                    }
+                }
+            }
+        }
+    }
+    /** 西边界层宽度（格，1 格 = CELL blocks）与强度增益。 */
+    private static final int BC_CELLS = 40;
+    /** 西边界回流峰值速度（按行平均纬向风切变自归一）。 */
+    private static final double BC_STRENGTH = 2.5;
+
     private static void updateFlow(ClimateGridData d, int worldSeedInt) {
         double ca = Math.cos(0.35), sa = Math.sin(0.35);
+        // ---- 1) Sverdrup 输运 → 西边界层经向速度 ----
+        // β·V = curl(τ)；洋盆内净经向输运必须由**西边界回流**抵消，
+        // 于是西边界流速 ∝ −∫_west^east curl dx（沿纬度行从西岸积到东岸）。
+        // 这给出真实的**环流圈方向**：副热带（NH）风应力旋度为负 → 西边界向极；
+        // 副极地旋度为正 → 西边界向赤道；南半球随风场自动镜像，无需手写半球因子。
+        double[] wbc = sverdrupWbc(d);
+
         for (int iy = 0; iy < d.ny; iy++) {
             double s = (iy * CELL <= 100_000) ? 1.0 : -1.0;
             for (int ix = 0; ix < d.nx; ix++) {
@@ -358,10 +487,13 @@ public final class RelaxedClimate {
                     continue;
                 }
                 double ux = d.u[i] / sp, uz = d.v[i] / sp;
-                double fx = ux * ca + s * uz * sa;
-                double fz = -s * ux * sa + uz * ca;
+                // 埃克曼转向：旋转**整个风矢量**（保留风速量级 → 流速有强弱）
+                double fx = (ux * ca + s * uz * sa) * sp;
+                double fz = (-s * ux * sa + uz * ca) * sp;
+                // 西边界层回流（Sverdrup 补偿）
+                fz += wbc[i];
                 double dist = NoiseContinentGrid.coastDistBlocks(ix * CELL, iy * CELL, worldSeedInt);
-                if (dist < 26_000) {
+                if (dist < COAST_REFRAIN) {
                     int k = 2;
                     double dp = NoiseContinentGrid.coastDistBlocks((ix + k) * CELL, iy * CELL, worldSeedInt)
                               - NoiseContinentGrid.coastDistBlocks((ix - k) * CELL, iy * CELL, worldSeedInt);
@@ -369,19 +501,14 @@ public final class RelaxedClimate {
                               - NoiseContinentGrid.coastDistBlocks(ix * CELL, (iy - k) * CELL, worldSeedInt);
                     double gl = Math.sqrt(dp * dp + dz * dz);
                     if (gl > 1e-9) {
-                        double nx = dp / gl, nz = dz / gl;
+                        double nx = dp / gl, nz = dz / gl;   // 海岸法向（指向海）
                         double vn = fx * nx + fz * nz;
                         if (vn < 0) {
-                            double inf = (26_000 - dist) / (26_000 - 4000);
+                            double inf = (COAST_REFRAIN - dist) / (COAST_REFRAIN - 4000);
                             if (inf > 1) inf = 1;
                             if (inf < 0) inf = 0;
                             fx -= vn * nx * inf;
                             fz -= vn * nz * inf;
-                            double l2 = Math.sqrt(fx * fx + fz * fz);
-                            if (l2 > 1e-9) {
-                                fx /= l2;
-                                fz /= l2;
-                            }
                         }
                     }
                 }
@@ -393,9 +520,11 @@ public final class RelaxedClimate {
 
     /** 海温输运步（仅海上）；返回 RMS 变化。 */
     private static double advectSst(ClimateGridData d) {
-        int steps = 6;
+        int steps = 14;   // 回溯步数：决定海温异常能被流场搬运多远（西边界暖舌/东边界冷舌）
         double dt = 6000.0;
-        double relaxL = 55_000.0;
+        // 海温弛豫长度：水体保留自身温度的 e 折距离。真实海洋 SST 弛豫时间 ~30-60 天，
+        // 流速 ~0.1 m/s → 250~500km。原值 55km 会让异常在 84km 路径上只剩 22% → 洋流对海温几乎无影响。
+        double relaxL = 250_000.0;
         for (int iy = 0; iy < d.ny; iy++) {
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);

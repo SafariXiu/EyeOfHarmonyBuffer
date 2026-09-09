@@ -3,7 +3,10 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.MountainLayerV2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -26,6 +29,7 @@ import java.util.List;
  *   layer:
  *     land       海陆（V2 噪声场 NoiseContinentGrid——新 L1）
  *     landlegacy 海陆（旧生产 TectonicWorld，X1 阶段2 前与 land 对照用）
+ *     terrain    V2 块级高度（类型档案×三层噪声；山带内叠加 DLA 抬升）
  *     coast      海岸距离带（块级有符号距离；近岸 ~30k 内渐变色）
  *     gyre       洋流占位层：底色=纬度冷暖占位(gyreWarmth)，箭头=盛行风（S6.1 前近似）
  *     airmass    气团类型（cP/mP/mT/cT 四色）
@@ -57,7 +61,7 @@ public class CommandTalosMap extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosmap <land|landlegacy|coast|gyre|airmass|current|wind|pressure|rain|band> [cx cz radius] [stride]";
+        return "/talosmap <land|landlegacy|terrain|coast|gyre|airmass|current|wind|pressure|rain|band> [cx cz radius] [stride]";
     }
 
     @Override
@@ -216,6 +220,24 @@ public class CommandTalosMap extends CommandBase {
                 boolean land = TalosLandMask.isLandCheap(wx, wz, seed);
                 return land ? rgb(150, 110, 40) : rgb(40, 60, 120);   // 旧系统配色区分
             }
+            case "terrain": {
+                // V2 块级高度（D34）：基础地形分解 + 山层权威权重仲裁（口径同 ChunkProviderTalos2）
+                OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
+                if (!o.isLand) {
+                    double d = V2TerrainGen.seaDepthBlocks(wx, wz, seed);
+                    return d < 5 ? mix(rgb(102, 168, 200), rgb(63, 110, 154), d / 5.0)
+                        : mix(rgb(42, 85, 128), rgb(10, 22, 48), clamp((d - 5) / 36.0, 0, 1));
+                }
+                double base = V2TerrainGen.landBaseHeight(wx, wz, seed, 64, o);
+                double plain = V2TerrainGen.landPlainHeight(wx, wz, seed, 64, o);
+                double mtnComp = Math.max(0.0, base - plain);
+                double w = MountainLayerV2.auth(wx, wz, seed);
+                double up = MountainLayerV2.uplift(wx, wz, seed);
+                double h = plain + (1.0 - w) * mtnComp + w * up;
+                h += V2TerrainGen.mountainDetail(wx, wz, seed,
+                    Math.max(w, Math.min(1.0, mtnComp / 90.0)));
+                return heightColor(h, wz);
+            }
             case "coast": {
                 // 海陆底 + 近岸 ±COAST_BAND 内混入白/青渐变（带宽 = 真实块距离）
                 double d = s.coastDist;
@@ -275,6 +297,31 @@ public class CommandTalosMap extends CommandBase {
         }
     }
 
+    /** terrain 图层高度配色（海面 64，参考 run 渲染同款色阶）。 */
+    private static int heightColor(double h, int wz) {
+        double snowY = V2TerrainGen.snowLineY(wz);
+        int hh = (int) Math.round(h);
+        int c;
+        if (hh < 69) {
+            c = mix(rgb(230, 216, 160), rgb(216, 200, 120), clamp((hh - 65) / 4.0, 0, 1));
+        } else if (hh < 82) {
+            c = mix(rgb(99, 176, 99), rgb(78, 154, 82), (hh - 69) / 13.0);
+        } else if (hh < 100) {
+            c = mix(rgb(144, 184, 100), rgb(168, 160, 96), (hh - 82) / 18.0);
+        } else if (hh < 135) {
+            c = mix(rgb(168, 148, 104), rgb(154, 138, 120), (hh - 100) / 35.0);
+        } else if (hh < 170) {
+            c = mix(rgb(148, 142, 134), rgb(142, 142, 150), (hh - 135) / 35.0);
+        } else {
+            c = rgb(184, 188, 194);
+        }
+        if (h >= snowY) {
+            double t = clamp((h - snowY) / 8.0, 0, 1);
+            c = mix(c, rgb(242, 245, 246), t);
+        }
+        return c;
+    }
+
     private static double clamp(double v, double lo, double hi) {
         return v < lo ? lo : (v > hi ? hi : v);
     }
@@ -314,7 +361,7 @@ public class CommandTalosMap extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                "land", "landlegacy", "coast", "gyre", "airmass", "current", "wind",
+                "land", "landlegacy", "terrain", "coast", "gyre", "airmass", "current", "wind",
                 "pressure", "rain", "band");
         }
         return new ArrayList<>();

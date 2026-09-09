@@ -34,6 +34,8 @@ public final class NoiseContinentGrid {
     private static final int LOW_OCTAVES = 3;
     /** 中频棱角振幅（叠加在低频之上）。 */
     private static final double MED_AMP = 0.10;
+    /** 中频二次扭曲盐（medNoise 专用，异于 warp 的 1000/2000 盐）。 */
+    private static final long MED_WARP_SALT = 0x3B9ACA07L;
     /** 鞍部抬升窗口宽度（高度单位）：等值线两侧 ±LIFT_WINDOW/2 内高度 ×2 拉伸。 */
     private static final double LIFT_WINDOW = 0.06;
     /** 海岸距离梯度估计步长（block）。需明显小于低频波长且远大于高频毛刺。 */
@@ -50,14 +52,17 @@ public final class NoiseContinentGrid {
     private static final ConcurrentHashMap<Integer, LandStats> STATS_CACHE =
         new ConcurrentHashMap<Integer, LandStats>();
 
-    /** 每种子标定结果。threshold = q67(h)+LIFT/2；landQ93 = 陆地上残差 r=h'-T 的 q93（地貌标尺）。 */
+    /** 每种子标定结果。threshold = q67(h)+LIFT/2；landQ93 = 陆上残差 r=h'-T 的 q93（地貌标尺）；
+     *  seaQ93 = 海上 |r| 的 q93（海床深度标尺）。 */
     private static final class LandStats {
         final double threshold;
         final double landQ93;
+        final double seaQ93;
 
-        LandStats(double threshold, double landQ93) {
+        LandStats(double threshold, double landQ93, double seaQ93) {
             this.threshold = threshold;
             this.landQ93 = landQ93;
+            this.seaQ93 = seaQ93;
         }
     }
 
@@ -111,12 +116,18 @@ public final class NoiseContinentGrid {
     }
 
     /**
-     * 中频带通场（λ=20k/10k，未乘 MED_AMP，值域约 [0,1]）。
+     * 中频带通场（λ=20k/10k/5k/2.5k 四级 + 双重域扭曲，值域约 [0,1]）。
      * 供 OrographyField 做带状山链检测（ridged 零交叉脊线网络）。
+     *
+     * 2026-09 修订：原 2 级中频的 0.5 等值线在平滑场上必成闭合环（每片局部极值一
+     * 个环），出图呈"迷宫项链"。加细层到 4 级 + 二次域扭曲后，脊线网络渗透化：
+     * 大尺度成为蜿蜒山带，闭合环缩小到细尺度（λ/8）在地图上不可辨。分档仍按
+     * 每种子 dev 分位自适应（D28），各类占比目标不变。
      */
     public static double medNoise(int x, int z, int worldSeedInt) {
         double[] w = warp(x, z, worldSeedInt);
-        return fbm(w[0], w[1], worldSeedInt + 500, 2, 2.0, 0.5, 4.0 / LOW_WAV);
+        double[] w2 = warp(w[0], w[1], worldSeedInt + MED_WARP_SALT);   // 二次扭曲（异盐）
+        return fbm(w2[0], w2[1], worldSeedInt + 500, 4, 2.0, 0.5, 4.0 / LOW_WAV);
     }
 
     /**
@@ -159,14 +170,18 @@ public final class NoiseContinentGrid {
         double q67 = sorted[Math.min(sorted.length - 1, (int) (0.67 * sorted.length))];
         double threshold = q67 + LIFT_WINDOW / 2.0;   // +0.03（抬升把等效阈值降到 T - 0.03）
 
-        // 第二遍：收集陆上残差（h' - T >= 0）的 q93，作为地貌层的内陆标尺
+        // 第二遍：收集陆上残差（h' - T >= 0）q93（内陆标尺）与海上 |r| q93（海床标尺）
         double[] rs = new double[nx * nz];
+        double[] ss = new double[nx * nz];
         int m = 0;
+        int ns = 0;
         for (int z = 0; z < 200_000; z += CALIBRATE_STRIDE) {
             for (int x = 0; x < 400_000; x += CALIBRATE_STRIDE) {
                 double r = lifted(hs[((z / CALIBRATE_STRIDE) * nx) + (x / CALIBRATE_STRIDE)], threshold) - threshold;
                 if (r >= 0.0) {
                     rs[m++] = r;
+                } else {
+                    ss[ns++] = -r;
                 }
             }
         }
@@ -178,7 +193,15 @@ public final class NoiseContinentGrid {
                 landQ93 = 1.0e-6;
             }
         }
-        return new LandStats(threshold, landQ93);
+        double seaQ93 = 1.0;
+        if (ns > 0) {
+            Arrays.sort(ss, 0, ns);
+            seaQ93 = ss[Math.min(ns - 1, (int) (0.93 * ns))];
+            if (seaQ93 < 1.0e-6) {
+                seaQ93 = 1.0e-6;
+            }
+        }
+        return new LandStats(threshold, landQ93, seaQ93);
     }
 
     /**
@@ -195,6 +218,13 @@ public final class NoiseContinentGrid {
      */
     public static double residualScale(int worldSeedInt) {
         return statsFor(worldSeedInt).landQ93;
+    }
+
+    /**
+     * 该种子海上 |残差| 的 q93 标尺（&gt;0），海床深度层用它归一化水深；见 LandStats。
+     */
+    public static double seaResidualScale(int worldSeedInt) {
+        return statsFor(worldSeedInt).seaQ93;
     }
 
     // ======== 鞍部抬升 + 海陆判定 ========

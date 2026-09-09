@@ -2,6 +2,9 @@ package com.EyeOfHarmonyBuffer.handler;
 
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.RelaxedClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.MountainLayerV2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
 import net.minecraftforge.event.world.WorldEvent;
@@ -26,7 +29,14 @@ public class ClimatePreheat {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
+                // 山层（400k×200k 环面离线求解 + 侵蚀，~1-3s）
+                MountainLayerV2.ensure(seed);
+                // 地貌场（1km，唯一权威：地形与群系共用）
+                LandformField.ensure(seed);
+                // 气候场（~5s 松弛求解）
                 RelaxedClimate.ensure(seed);
+                // 群系 LUT（1km 网格 + 平滑，依赖气候场，~0.3s）
+                V2BiomeField.ensure(seed);
             }
         }, "EOHB-ClimatePreheat");
         t.setDaemon(true);

@@ -26,6 +26,11 @@ public final class TerrainBaseHeight {
     private static final double CONTINENTAL_AMP = 12.0;
     private static final int CONTINENTAL_OCTAVES = 2;
 
+    /** 群系高度倾向增益（V2 口径）：baseT 位移 = (bias − 0.5) × 本值。 */
+    public static double BIOME_BIAS_GAIN = 1.6;
+    /** 群系散布映射：factor = LO + SPAN × scale（scale=0.5 → 1.0 中性）。 */
+    public static double BIOME_SCALE_LO = 0.4, BIOME_SCALE_SPAN = 1.2;
+
     /** 默认无群系偏移（bias=0.5）。 */
     public static double computeBaseHeightCore(int worldX, int worldZ,
                                                int worldSeedInt,
@@ -45,58 +50,77 @@ public final class TerrainBaseHeight {
                                                int worldSeedInt,
                                                BaseTerrainProfile profile,
                                                double biomeBias) {
+        // 旧轨口径：位移增益 0.25、不做散布调制（保持 V1 行为不变）
+        return computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile, biomeBias, 0.5, 0.25);
+    }
 
-        double x = worldX;
-        double z = worldZ;
+    /** V2 口径：群系高度倾向（bias 位移 + scale 散布）。 */
+    public static double computeBaseHeightCore(int worldX, int worldZ,
+                                               int worldSeedInt,
+                                               BaseTerrainProfile profile,
+                                               double biomeBias, double biomeScale) {
+        return computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile,
+            biomeBias, biomeScale, BIOME_BIAS_GAIN);
+    }
+
+    /**
+     * 三层噪声的**归一化**值（与档案参数无关）。
+     *
+     * warpedFbm2D 对 amp 线性，且归一化除子 octaveSum(amp, oct) 也含 amp，
+     * 所以 "raw/octaveSum(1, oct)" 与档案无关 → base 与 plain（同一频率/八度数）
+     * 可以**共享同一份噪声采样**，省掉一半的列耗时。
+     */
+    public static final class Noise {
+        public double low;
+        public double cont;
+        public double mid;
+        public double hi;
+    }
+
+    /** 采样共享噪声（含域扭曲；频率/八度数取自档案，调用方保证两个档案一致）。 */
+    public static void sampleNoise(int worldX, int worldZ, int worldSeedInt,
+                                   BaseTerrainProfile p, Noise out) {
         long seed = (long) worldSeedInt;
+        out.low = warpedFbm2D(seed ^ 0x1234ABCDL, worldX, worldZ,
+            p.lowFreq, 1.0, p.lowOctaves, p.lowFreq * 0.5, (1.0 / p.lowFreq) * 0.5)
+            / octaveSum(1.0, p.lowOctaves);
+        out.cont = fbm2DS(seed ^ 0xABCDEF01L, worldX, worldZ,
+            CONTINENTAL_FREQ, CONTINENTAL_AMP, CONTINENTAL_OCTAVES);
+        out.mid = warpedFbm2D(seed ^ 0x5678EF01L, worldX, worldZ,
+            p.midFreq, 1.0, p.midOctaves, p.midFreq * 0.5, (1.0 / p.midFreq) * 0.35)
+            / octaveSum(1.0, p.midOctaves);
+        out.hi = warpedFbm2D(seed ^ 0x9ABCDEFFL, worldX, worldZ,
+            p.highFreq, 1.0, p.highOctaves, p.highFreq * 0.5, (1.0 / p.highFreq) * 0.25)
+            / octaveSum(1.0, p.highOctaves);
+    }
 
-        // ===== 三层分解（替代旧的"全频相加 + 一次归一化拉伸"） =====
-        // 旧实现把低/中/高频揉成一个 t 再映射到整条高度带，低频偏置
-        // 会把 t 钉在带内一段，导致地形失去大尺度高差、只剩窄带内抖动。
-        // 新实现：
-        //   base   = 低频 + 大陆骨架 -> bandShape 映射到高度带（绝对海拔，大尺度）
-        //   relief = 中频（域扭曲）-> 有界起伏（丘陵/台地，不被带宽放大）
-        //   detail = 高频（域扭曲）-> 有界细节（岩面/小起伏，振幅小）
-        // 各层独立、有界，高原/平原/山地各自有序。
-
-        // --- base：共享大陆骨架 + 低频，映射到高度带 ---
-        double baseT = 0.5;
+    /** 由共享噪声 + 档案参数求高度（land 分支）。 */
+    public static double fromNoise(BaseTerrainProfile profile, Noise n,
+                                   double biomeBias, double biomeScale, double biasGain) {
+        double loAmp = octaveSum(profile.lowAmp, profile.lowOctaves);
+        double baseT;
         if (profile.oceanDepthMax <= 0.0) {
-            double lowRaw = warpedFbm2D(seed ^ 0x1234ABCDL,
-                x, z,
-                profile.lowFreq, profile.lowAmp, profile.lowOctaves,
-                profile.lowFreq * 0.5, (1.0 / profile.lowFreq) * 0.5);
-            // 大陆骨架（共享低频场）保证边界两侧基座连续
-            double cont = fbm2DS(seed ^ 0xABCDEF01L,
-                x, z,
-                CONTINENTAL_FREQ, CONTINENTAL_AMP, CONTINENTAL_OCTAVES);
-            double loAmp = octaveSum(profile.lowAmp, profile.lowOctaves);
-            baseT = (lowRaw + cont) / (loAmp + CONTINENTAL_AMP) * 0.5 + 0.5;
-            baseT = clamp(baseT, 0.0, 1.0);
+            baseT = (loAmp * n.low + n.cont) / (loAmp + CONTINENTAL_AMP) * 0.5 + 0.5;
         } else {
-            // 海洋：只用低频（低频 base 映射带，海床由 applyOceanDepthLimit 处理）
-            double lowRaw = warpedFbm2D(seed ^ 0x1234ABCDL,
-                x, z,
-                profile.lowFreq, profile.lowAmp, profile.lowOctaves,
-                profile.lowFreq * 0.5, (1.0 / profile.lowFreq) * 0.5);
-            double loAmp = octaveSum(profile.lowAmp, profile.lowOctaves);
-            baseT = lowRaw / loAmp * 0.5 + 0.5;
-            baseT = clamp(baseT, 0.0, 1.0);
+            baseT = n.low * 0.5 + 0.5;
         }
+        baseT = clamp(baseT, 0.0, 1.0);
 
-        // 台地 / 高原修饰（带内操作：把偏高部分向带中心拉拢，幅度减半防压扁）
         double s = profile.plateauStrength;
         if (s > 0.0) {
             double p = smoothstep(0.25, 0.75, baseT);
-            baseT = lerp(baseT, 0.5, p * s * 0.5);
-            baseT = clamp(baseT, 0.0, 1.0);
+            baseT = clamp(lerp(baseT, 0.5, p * s * 0.5), 0.0, 1.0);
         }
 
-        // 群系偏移：baseT 线性偏移（0.5=无偏移），在 bandShape 之前整合。
-        // 强度 0.25：Basin(bias0.30) 下压、Alpine/Plateau(bias0.68) 上抬，
-        // 但纯线性、无 smoothstep 二次放大，不会产生区域性抬升 / 硬切。
+        double factor = BIOME_SCALE_LO + BIOME_SCALE_SPAN * biomeScale;
+        if (factor < 0.0) {
+            factor = 0.0;
+        }
+        if (Math.abs(factor - 1.0) > 1e-6) {
+            baseT = clamp(0.5 + (baseT - 0.5) * factor, 0.0, 1.0);
+        }
         if (biomeBias != 0.5) {
-            baseT = clamp(baseT + (biomeBias - 0.5) * 0.25, 0.0, 1.0);
+            baseT = clamp(baseT + (biomeBias - 0.5) * biasGain, 0.0, 1.0);
         }
 
         double lo = profile.minHeight;
@@ -104,34 +128,25 @@ public final class TerrainBaseHeight {
         if (hi <= lo) {
             hi = lo + 1.0;
         }
-
-        // bandShape：分段 S 曲线，让高度铺满带（低地/丘陵/山地各有密度），
-        // 取代旧的"一个 smoothstep 拉满整带"（后者放大带内噪声抖动）。
         double base = lo + (hi - lo) * bandShape(baseT);
 
-        // --- relief：中频（域扭曲），有界 ---
-        double reliefAmp = Math.min(18.0, profile.midAmp * 0.9);
         if (profile.midAmp > 0.0 && profile.midOctaves > 0) {
-            double mid = warpedFbm2D(seed ^ 0x5678EF01L,
-                x, z,
-                profile.midFreq, profile.midAmp, profile.midOctaves,
-                profile.midFreq * 0.5, (1.0 / profile.midFreq) * 0.35);
-            double midAmp = octaveSum(profile.midAmp, profile.midOctaves);
-            base += mid / midAmp * reliefAmp;
+            base += n.mid * Math.min(18.0, profile.midAmp * 0.9);
         }
-
-        // --- detail：高频（域扭曲），有界小振幅 ---
-        double detailAmp = Math.min(4.0, 1.0 + profile.highAmp * 0.6);
         if (profile.highAmp > 0.0 && profile.highOctaves > 0) {
-            double hiN = warpedFbm2D(seed ^ 0x9ABCDEFFL,
-                x, z,
-                profile.highFreq, profile.highAmp, profile.highOctaves,
-                profile.highFreq * 0.5, (1.0 / profile.highFreq) * 0.25);
-            double hiAmp = octaveSum(profile.highAmp, profile.highOctaves);
-            base += hiN / hiAmp * detailAmp;
+            base += n.hi * Math.min(4.0, 1.0 + profile.highAmp * 0.6);
         }
-
         return base;
+    }
+
+    private static double computeBaseHeightCore(int worldX, int worldZ,
+                                                int worldSeedInt,
+                                                BaseTerrainProfile profile,
+                                                double biomeBias, double biomeScale,
+                                                double biasGain) {
+        Noise n = new Noise();
+        sampleNoise(worldX, worldZ, worldSeedInt, profile, n);
+        return fromNoise(profile, n, biomeBias, biomeScale, biasGain);
     }
 
     /**

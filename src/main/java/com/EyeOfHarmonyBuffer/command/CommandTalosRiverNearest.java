@@ -36,6 +36,7 @@ public class CommandTalosRiverNearest extends CommandBase {
         World world = player.worldObj;
 
         int worldSeedInt = TalosRiverSystem.getWorldSeedInt(world);
+        LegacyV2Note.note(sender);
 
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);

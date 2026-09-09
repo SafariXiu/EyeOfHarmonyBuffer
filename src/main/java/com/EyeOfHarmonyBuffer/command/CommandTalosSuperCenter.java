@@ -35,6 +35,7 @@ public class CommandTalosSuperCenter extends CommandBase {
         World world = player.worldObj;
 
         int worldSeedInt = TalosLandMask.getWorldSeedInt(world);
+        LegacyV2Note.note(sender);
 
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);

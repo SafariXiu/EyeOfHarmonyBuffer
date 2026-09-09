@@ -88,15 +88,18 @@ public final class OrographyField {
         public final int kind;
         /** 原始陆地残差（r = h' - T ≥ 0）。 */
         public final double residual;
+        /** 有符号海岸距离（block：&lt;0 内陆、0 岸线、&gt;0 海上；陆地采样与 relief 同源同值，免二次采样）。 */
+        public final double coastDist;
 
         OroSample(boolean isLand, double elevation01, double relief01,
-                  double beltMask01, int kind, double residual) {
+                  double beltMask01, int kind, double residual, double coastDist) {
             this.isLand = isLand;
             this.elevation01 = elevation01;
             this.relief01 = relief01;
             this.beltMask01 = beltMask01;
             this.kind = kind;
             this.residual = residual;
+            this.coastDist = coastDist;
         }
 
         @Override
@@ -116,12 +119,13 @@ public final class OrographyField {
     public static OroSample sample(int x, int z, int worldSeedInt) {
         double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
         if (r < 0.0) {
-            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0);
+            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0);
         }
         Cutoffs c = cutoffsFor(worldSeedInt);
         double elevation = elevation01(r, worldSeedInt);
         double dev = ridgeDev(x, z, worldSeedInt);
-        double relief = reliefFromDev(x, z, worldSeedInt, dev);   // 含贴岸淡化，与 relief01() 同口径
+        double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
+        double relief = reliefFromDev(x, z, worldSeedInt, dev, d);   // 含贴岸淡化，与 relief01() 同口径
 
         int kind;
         if (dev <= c.devPeakQ && elevation >= PEAK_MIN_ELEV) {
@@ -136,7 +140,7 @@ public final class OrographyField {
             kind = KIND_LOWLAND;
         }
 
-        return new OroSample(true, elevation, relief, smoothstep(0.30, 0.65, relief), kind, r);
+        return new OroSample(true, elevation, relief, smoothstep(0.30, 0.65, relief), kind, r, d);
     }
 
     /** 内陆海拔（陆地残差 → [0,1]）。 */
@@ -155,9 +159,14 @@ public final class OrographyField {
 
     /** 山地强度核心（调用方已有 dev 时用，避免重复算 medNoise）。 */
     private static double reliefFromDev(int x, int z, int worldSeedInt, double dev) {
+        double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
+        return reliefFromDev(x, z, worldSeedInt, dev, d);
+    }
+
+    /** 山地强度核心（调用方已有 dev 与 coastDist 时用，避免重复算 medNoise + 海岸梯度）。 */
+    private static double reliefFromDev(int x, int z, int worldSeedInt, double dev, double d) {
         double devQ95 = cutoffsFor(worldSeedInt).devQ95;
         double micro = (devQ95 > 0.0) ? clamp01(1.0 - dev / devQ95) : 0.0;
-        double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
         double shoreFade = clamp01((-d - SHORE_START) / (SHORE_FULL - SHORE_START));
         return micro * shoreFade;
     }

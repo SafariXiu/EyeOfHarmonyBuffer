@@ -74,6 +74,7 @@ public class CommandTalosCave extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
         int seed = TalosLandMask.getWorldSeedInt(world);
+        LegacyV2Note.note(sender);
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
 
