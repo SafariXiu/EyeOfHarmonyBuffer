@@ -151,7 +151,7 @@ public final class RelaxedClimate {
      * 外层耦合环因此永远不收敛（实测 Δrms 恒在 0.13~0.19，与欠松弛系数几乎无关）。
      * 换成饱和式后位移对 F 处处光滑，且弱流自然少搬运（更物理）。
      */
-    public static double ADVECT_SPEED_REF = 0.2;
+    public static double ADVECT_SPEED_REF = 0.05;
     private static final double INNER_TOL = 5.0e-4;
 
     private static final ConcurrentHashMap<Long, ClimateGridData> CACHE =
@@ -257,6 +257,11 @@ public final class RelaxedClimate {
             pDir = new double[n];
             anom = new double[n];
             anomT = new double[n];
+            gPsi = new double[n];
+            gZeta = new double[n];
+            gSrc = new double[n];
+            fPhys = new double[ny];
+            betaRow = new double[ny];
             wave = new double[n];
             pu = new double[n];
             pv = new double[n];
@@ -300,6 +305,13 @@ public final class RelaxedClimate {
         final double[] pDir;
         final double[] anom;
         final double[] anomT;
+        /** 风生环流求解器的工作数组（跨外层热启动，别每次清零）。 */
+        final double[] gPsi;
+        final double[] gZeta;
+        final double[] gSrc;
+        /** 逐行物理量：f = 2Ω·sin(纬)，β = df/dy。 */
+        final double[] fPhys;
+        final double[] betaRow;
         final double[] wave;
         final double[] fRow;
         final double[] dampRow;
@@ -525,10 +537,20 @@ public final class RelaxedClimate {
             int z = iy * CELL_Z;
             int zm = GlobalCirculation.foldZ(z);
             double b = GlobalCirculation.bandD(z);
-            double latRad = (zm <= 100_000 ? b : -b) * Math.PI / 2.0;
+            // 符号翻转点在**半个纬度周期**处（bandD 的折返点 = 极点），不是 100k。
+            // 旧代码写死 100_000（那是 200k 周期的 Z_CYCLE/2 残留），LAT_CYCLE 提到 4M 后
+            // 它让 f>0 只覆盖前 100k（周期的 2.5%）、其余 97.5% 符号全反，
+            // 且与 sPole 用的 (iy*CELL_Z <= Z_CYCLE/2) 互相矛盾。科氏力符号错了，
+            // 地转风方向与埃克曼转向就都错。
+            double latRad = (zm <= GlobalCirculation.Z_CYCLE / 2 ? b : -b) * Math.PI / 2.0;
             double f = Math.sin(latRad);
             double fa = Math.abs(f);
             d.fRow[iy] = fa < 1.0e-4 ? 0.0 : f;
+            // 物理量：本模型的 f 是归一化的 sin(纬度)，乘 2Ω 才是真科氏参数。
+            // β = df/dy = 2Ω·cos(纬)·(π/2)/MAX_D（MAX_D = 半周期 = Z_CYCLE/2）。
+            d.fPhys[iy] = 2.0 * BarotropicGyre.OMEGA * d.fRow[iy];
+            d.betaRow[iy] = 2.0 * BarotropicGyre.OMEGA * Math.cos(b * Math.PI / 2.0)
+                * (Math.PI / 2.0) * 2.0 / GlobalCirculation.Z_CYCLE;
             d.dampRow[iy] = fa / (fa + 0.30);
             d.p0z[iy] = profileP0(b);
         }
@@ -1068,7 +1090,6 @@ public final class RelaxedClimate {
      * 西边界用已局部化的 wbc，东边界用"向东找真陆地"的距离，都不再依赖窗口内的海段起止。
      */
     private static void applyCoastalSst(ClimateGridData d) {
-        double[] wbc = sverdrupWbc(d);
         for (int iy = 0; iy < d.ny; iy++) {
             // 边界回流的**向极分量**决定暖舌（两个半球的副热带西边界都是向极暖流）
             double sPole = (iy * CELL_Z <= GlobalCirculation.Z_CYCLE / 2) ? 1.0 : -1.0;
@@ -1083,7 +1104,8 @@ public final class RelaxedClimate {
                 // 原写法用 dW = k − start（本行在**填充窗口**里第一个海格）：海段横跨整个
                 // 填充窗时 start 落在 400 km 外的 halo 里 → 暖舌被放到可见区之外，真海岸上
                 // 什么都没有。这与西边界流是同一类 bug，一并修掉。
-                adj += COAST_WBC_GAIN * sPole * wbc[i];
+                // 直接用求解出的经向流速当西边界流强度（归一化到典型 WBC 速度 0.5 m/s）
+                adj += COAST_WBC_GAIN * sPole * Math.max(-1.0, Math.min(1.0, d.fv[i] / 0.5));
                 // 东边界上升流：向东找**真陆地**，而不是海段终点。
                 if (d.coastD[i] < COAST_UPWELL_BLOCKS) {
                     int maxCells = (int) Math.max(1, Math.round(COAST_UPWELL_BLOCKS / CELL_X));
@@ -1126,7 +1148,12 @@ public final class RelaxedClimate {
         // 于是西边界流速 ∝ −∫_west^east curl dx（沿纬度行从西岸积到东岸）。
         // 这给出真实的**环流圈方向**：副热带（NH）风应力旋度为负 → 西边界向极；
         // 副极地旋度为正 → 西边界向赤道；南半球随风场自动镜像，无需手写半球因子。
-        double[] wbc = sverdrupWbc(d);
+        // ===== 路线 B：稳态风生正压环流求解器 =====
+        // 用涡度方程 β·v = curl(τ)/(ρ₀H) − rζ + A_h∇²ζ 解出 u/v（m/s），
+        // 取代原来的"埃克曼旋转 + Sverdrup 自归一化参数化"。
+        // 地块 ψ=0 的 Dirichlet 条件天然给出"无穿岸流"，β 效应自带西向强化。
+        BarotropicGyre.solve(d.nx, d.ny, CELL_X, CELL_Z, d.land,
+            d.u, d.v, d.fPhys, d.betaRow, d.fu, d.fv);
 
         rows(d.ny, iy -> {
             double s = (iy * CELL_Z <= GlobalCirculation.Z_CYCLE / 2) ? 1.0 : -1.0;
@@ -1137,18 +1164,8 @@ public final class RelaxedClimate {
                     d.fv[i] = 0;
                     continue;
                 }
-                double sp = Math.sqrt(d.u[i] * d.u[i] + d.v[i] * d.v[i]);
-                if (sp < 1e-6) {
-                    d.fu[i] = 0;
-                    d.fv[i] = 0;
-                    continue;
-                }
-                double ux = d.u[i] / sp, uz = d.v[i] / sp;
-                // 埃克曼转向：旋转**整个风矢量**（保留风速量级 → 流速有强弱）
-                double fx = (ux * ca + s * uz * sa) * sp;
-                double fz = (-s * ux * sa + uz * ca) * sp;
-                // 西边界层回流（Sverdrup 补偿）
-                fz += wbc[i];
+                // 流速已由 BarotropicGyre 写好（单位 m/s）；这里只叠加近岸约束
+                double fx = d.fu[i], fz = d.fv[i];
                 // 近岸流向约束：把**法向分量**压掉（向岸全消、离岸消一半），
                 // 流量被迫与海岸平行。coastD 的梯度就是"指向海"的法向，处处可用。
                 double cd = d.coastD[i];
