@@ -28,8 +28,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class CaveGenerator {
 
-    /** 水平单元边长（blocks）。 */
-    public static final int CELL_BLOCKS = 256;
+    /**
+     * 水平单元边长（blocks）。
+     *
+     * **必须整除世界周期**（400k × 200k）——否则洞穴晶格无法与环面周期对齐，
+     * 跨周期处洞穴图案会错位。250 → 1600×800 个单元，正好铺满一个周期
+     * （原 256 除不尽：400000/256 = 1562.5）。单元面积变化 +4.9%，密度影响可忽略。
+     */
+    public static final int CELL_BLOCKS = 250;
 
     /** 骨干晶格步长（单元）：每 1 个单元一条主干，约 256 blocks。 */
     public static final int BACKBONE_STEP = 1;
@@ -71,7 +77,7 @@ public final class CaveGenerator {
     private static final float CHAMBER_MAX_CENTER_Y = 78.0f;
 
     /** 洞厅超级格边长（blocks）：每个洞厅独占一个区域，避免重叠。 */
-    public static final int MEGA_HALL_CELL_BLOCKS = 4096;
+    public static final int MEGA_HALL_CELL_BLOCKS = 4000;
     /** 洞厅生成概率：每个 4096×4096 超级格约 0.5%。 */
     public static final double MEGA_HALL_CHANCE = 0.005;
     /** 洞厅水平半径范围：直径约 1000~1800 格。 */
@@ -247,6 +253,69 @@ public final class CaveGenerator {
     private static final int SHALLOW_CELL_CACHE_LIMIT = 200_000;
     private static final int HALL_ZONE_CELL_CACHE_LIMIT = 200_000;
 
+    // ------------------------------------------------------------
+    // 环面周期（洞穴晶格必须与 400k × 200k 世界周期对齐）
+    // ------------------------------------------------------------
+
+    public static final int PERIOD_X = 400_000;
+    public static final int PERIOD_Z = 200_000;
+    /** 每周期单元数（整数，因为 CELL_BLOCKS 整除周期）。 */
+    public static final int CELLS_X = PERIOD_X / CELL_BLOCKS;
+    public static final int CELLS_Z = PERIOD_Z / CELL_BLOCKS;
+    /** 每周期超级格数。 */
+    public static final int SUPERS_X = PERIOD_X / MEGA_HALL_CELL_BLOCKS;
+    public static final int SUPERS_Z = PERIOD_Z / MEGA_HALL_CELL_BLOCKS;
+
+    /**
+     * 世界 x → 折叠。
+     *
+     * **X 方向无限（C1）**：恒等 —— 洞穴晶格沿 X 无限延伸、不再重复；
+     * Z 仍是 200k 纬度循环，继续折叠（见 {@link #wrapWorldZ}）。
+     */
+    public static int wrapWorldX(int x) {
+        return x;
+    }
+
+    /** Z 方向也无限（无限平面世界；纬度循环只作用于气候层）。 */
+    public static int wrapWorldZ(int z) {
+        return z;
+    }
+
+    /** 区块坐标 → 折叠（X 无限 → 恒等）。 */
+    public static int wrapChunkX(int chunkX) {
+        return chunkX;
+    }
+
+    public static int wrapChunkZ(int chunkZ) {
+        return chunkZ;
+    }
+
+    /** 世界坐标 → 单元索引（X 无限 → 直接 floorDiv）。 */
+    public static int cellOfX(int worldX) {
+        return Math.floorDiv(worldX, CELL_BLOCKS);
+    }
+
+    public static int cellOfZ(int worldZ) {
+        return Math.floorDiv(worldZ, CELL_BLOCKS);
+    }
+
+    /** 单元坐标环绕（相邻单元查询用；X 无限 → 恒等，Z 环绕）。 */
+    public static int wrapCellX(int cx) {
+        return cx;
+    }
+
+    public static int wrapCellZ(int cz) {
+        return cz;
+    }
+
+    public static int wrapSuperX(int sx) {
+        return sx;
+    }
+
+    public static int wrapSuperZ(int sz) {
+        return sz;
+    }
+
     private CaveGenerator() {}
 
     // ------------------------------------------------------------
@@ -358,6 +427,9 @@ public final class CaveGenerator {
     /** 查询某个 4096 超级格是否有洞厅（带缓存，确定性）。 */
     public static CaveMegaHall megaHallForSupercell(int superX, int superZ,
                                                     long seed) {
+        // 环面：超级格坐标折叠（位置与哈希都在同一坐标系内）
+        superX = wrapSuperX(superX);
+        superZ = wrapSuperZ(superZ);
         long key = megaHallKey(seed, superX, superZ);
         Object cached = MEGA_HALL_CACHE.get(key);
         if (cached != null) {
@@ -374,8 +446,8 @@ public final class CaveGenerator {
 
     /** 坐标是否落在某个洞厅内（用于标签查询）。 */
     public static CaveMegaHall megaHallAt(int worldX, int worldZ, long seed) {
-        int superX = Math.floorDiv(worldX, MEGA_HALL_CELL_BLOCKS);
-        int superZ = Math.floorDiv(worldZ, MEGA_HALL_CELL_BLOCKS);
+        int superX = Math.floorDiv(wrapWorldX(worldX), MEGA_HALL_CELL_BLOCKS);
+        int superZ = Math.floorDiv(wrapWorldZ(worldZ), MEGA_HALL_CELL_BLOCKS);
         CaveMegaHall hall = megaHallForSupercell(superX, superZ, seed);
         if (hall != null
             && hall.insideHorizontal(worldX + 0.5, worldZ + 0.5)) {
@@ -388,6 +460,8 @@ public final class CaveGenerator {
     private static void collectMegaHallsForChunk(int chunkX, int chunkZ,
                                                  long seed,
                                                  List<CaveMegaHall> out) {
+        chunkX = wrapChunkX(chunkX);
+        chunkZ = wrapChunkZ(chunkZ);
         int superX = Math.floorDiv(
             chunkX * 16, MEGA_HALL_CELL_BLOCKS);
         int superZ = Math.floorDiv(
@@ -767,8 +841,8 @@ public final class CaveGenerator {
         int worldX, int worldZ, long seed, int radiusCells
     ) {
         List<CaveNode> out = new ArrayList<CaveNode>();
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = cellOfX(worldX);
+        int ccz = cellOfZ(worldZ);
         for (int r = 0; r <= radiusCells; r++) {
             for (int dz = -r; dz <= r; dz++) {
                 for (int dx = -r; dx <= r; dx++) {
@@ -860,8 +934,10 @@ public final class CaveGenerator {
         Map<Long, List<CaveNode>> aquiferNodeCache,
         List<CaveSegment> out, Set<Long> seenEdges
     ) {
-        int cellX = chunkX >> 4;
-        int cellZ = chunkZ >> 4;
+        chunkX = wrapChunkX(chunkX);
+        chunkZ = wrapChunkZ(chunkZ);
+        int cellX = Math.floorDiv(chunkX * 16, CELL_BLOCKS);
+        int cellZ = Math.floorDiv(chunkZ * 16, CELL_BLOCKS);
         int x0 = chunkX * 16;
         int z0 = chunkZ * 16;
         // 带湖大厅：连接管最长约 4 单元，扫描 ±5 单元保证覆盖。
@@ -870,7 +946,7 @@ public final class CaveGenerator {
             for (int dx = -LAKE_PIPE_SCAN_RADIUS;
                  dx <= LAKE_PIPE_SCAN_RADIUS; dx++) {
                 for (CaveNode node : nodesOf(
-                    cellX + dx, cellZ + dz, seed, nodeCache)) {
+                    wrapCellX(cellX + dx), wrapCellZ(cellZ + dz), seed, nodeCache)) {
                     if (node.kind != CaveNode.KIND_CHAMBER) {
                         continue;
                     }
@@ -1422,14 +1498,16 @@ public final class CaveGenerator {
         Map<Long, List<CaveSegment>> aquiferEdgeCache,
         List<CaveSegment> out, Set<Long> seenEdges
     ) {
-        int cellX = chunkX >> 4;
-        int cellZ = chunkZ >> 4;
+        chunkX = wrapChunkX(chunkX);
+        chunkZ = wrapChunkZ(chunkZ);
+        int cellX = Math.floorDiv(chunkX * 16, CELL_BLOCKS);
+        int cellZ = Math.floorDiv(chunkZ * 16, CELL_BLOCKS);
         int x0 = chunkX * 16;
         int z0 = chunkZ * 16;
         for (int dz = -AQUIFER_CROSS_RADIUS; dz <= AQUIFER_CROSS_RADIUS; dz++) {
             for (int dx = -AQUIFER_CROSS_RADIUS; dx <= AQUIFER_CROSS_RADIUS; dx++) {
                 for (CaveSegment seg : aquiferSegmentsForCell(
-                    cellX + dx, cellZ + dz, seed,
+                    wrapCellX(cellX + dx), wrapCellZ(cellZ + dz), seed,
                     nodeCache, edgeCache, aquiferNodeCache,
                     aquiferEdgeCache)) {
                     if (seenEdges.add(seg.edgeId)
@@ -2114,8 +2192,11 @@ public final class CaveGenerator {
                                                Map<Long, List<CaveSegment>> edgeCache,
                                                Map<Long, List<CaveNode>> aquiferNodeCache,
                                                Map<Long, List<CaveSegment>> aquiferEdgeCache) {
-        int cellX = chunkX >> 4;
-        int cellZ = chunkZ >> 4;
+        // 环面：全部折叠到一个周期内（区块 → 单元 → 哈希 → 位置都在同一个坐标系里）
+        chunkX = wrapChunkX(chunkX);
+        chunkZ = wrapChunkZ(chunkZ);
+        int cellX = Math.floorDiv(chunkX * 16, CELL_BLOCKS);
+        int cellZ = Math.floorDiv(chunkZ * 16, CELL_BLOCKS);
         int x0 = chunkX * 16;
         int z0 = chunkZ * 16;
 
@@ -2130,8 +2211,8 @@ public final class CaveGenerator {
 
         for (int dz = -SEGMENT_REACH_CELLS; dz <= SEGMENT_REACH_CELLS; dz++) {
             for (int dx = -SEGMENT_REACH_CELLS; dx <= SEGMENT_REACH_CELLS; dx++) {
-                int cx = cellX + dx;
-                int cz = cellZ + dz;
+                int cx = wrapCellX(cellX + dx);
+                int cz = wrapCellZ(cellZ + dz);
                 long ckey = cellKey(cx, cz);
                 List<CaveSegment> cellSegs = edgeCache.get(ckey);
                 if (cellSegs == null) {
@@ -2178,7 +2259,7 @@ public final class CaveGenerator {
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
                 CaveEntrance e = entranceForCell(
-                    cellX + dx, cellZ + dz, seed, nodeCache);
+                    wrapCellX(cellX + dx), wrapCellZ(cellZ + dz), seed, nodeCache);
                 if (e == null) {
                     continue;
                 }

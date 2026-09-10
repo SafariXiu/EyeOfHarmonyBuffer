@@ -31,14 +31,26 @@ public final class MountainLayerV2 {
 
     private MountainLayerV2() {}
 
-    /** 粗网格分辨率（blocks，250m → 1600x800）。 */
+    /** 粗网格分辨率（blocks，250m）。 */
     public static final int CELL = 250;
-    /** 网格尺寸：400k x 200k。 */
-    public static final int NX = 400_000 / CELL;
+    /**
+     * **山带格**（X 方向步长，blocks）。
+     *
+     * C1 世界 = 圆柱：X 无限、Z 是整个 200k 周长（不分格、直接环绕）。
+     * 山带按 X 格子确定性布点、并**完全落在格内**（见 {@link #BELT_X_FIT}），
+     * 于是"每格独立求解"与"全域一起求解"结果一致（实验 P92 验证下切是严格局地的）。
+     */
+    public static final int BELT_CELL_X = 200_000;
+    /** Z 方向山带格（无限平面 → Z 也要分格，否则 z ∉ [0,200k) 没山）。 */
+    public static final int BELT_CELL_Z = 200_000;
+    /** 每格网格尺寸：X = 一格、Z = 一个纬度周期（两者都 800）。 */
+    public static final int NX = BELT_CELL_X / CELL;
     public static final int NZ = 200_000 / CELL;
+    /** 山带在 X 方向的落位上限：距格中心不超过此值（留出 ≥25km 的下切 margin）。 */
+    private static final double BELT_X_FIT = 75_000.0;
 
-    /** 每世界山带数量（种子决定位置/走向/尺寸）。 */
-    private static final int BELTS = 5;
+    /** 每格山带数量上限（旧版全域 400k×200k 放 5 条 ≈ 每 200k 格 2.5 条）。 */
+    private static final int BELTS_PER_CELL = 3;
 
     /**
      * 调参入口：默认值即生产参数。
@@ -74,11 +86,17 @@ public final class MountainLayerV2 {
         public static boolean carveEnabled = true;
     }
 
-    private static final ConcurrentHashMap<Integer, Layer> CACHE =
-        new ConcurrentHashMap<Integer, Layer>();
+    /** 解缓存：key = (seed, cellX)。每个解 800×800 格 ≈ 7.7 MB，最多留 4 个。 */
+    private static final ConcurrentHashMap<Long, Layer> CACHE =
+        new ConcurrentHashMap<Long, Layer>();
+    private static final int CACHE_LIMIT = 6;
 
     /** 当前求解的种子（供纹理与世界种子对齐；仅在 solve() 期间使用）。 */
     private static int SOLVE_SEED = 0;
+
+    private static long cellKey(int seed, int cellX, int cellZ) {
+        return ((long) seed << 40) ^ ((long) (cellX & 0xFFFFF) << 20) ^ (cellZ & 0xFFFFFL);
+    }
 
     /** 一条山带。 */
     private static final class Belt {
@@ -109,68 +127,90 @@ public final class MountainLayerV2 {
         CACHE.clear();
     }
 
-    /** 后台预热：确保该种子的山层已求解（重复调用直接返回）。 */
+    /** 后台预热：预解原点所在的山带格（其余格按需惰性求解）。 */
     public static void ensure(int worldSeedInt) {
         if (!isEnabled()) {
             return;
         }
-        if (CACHE.containsKey(worldSeedInt)) {
-            return;
-        }
-        CACHE.computeIfAbsent(worldSeedInt, MountainLayerV2::solve);
+        layer(worldSeedInt, 0, 0);
     }
 
-    private static Layer layer(int worldSeedInt) {
+    /** 取某格的解（不存在则求解，带容量保护）。 */
+    private static Layer layer(int worldSeedInt, int cellX, int cellZ) {
         if (!isEnabled()) {
             return null;
         }
-        Layer l = CACHE.get(worldSeedInt);
+        long key = cellKey(worldSeedInt, cellX, cellZ);
+        Layer l = CACHE.get(key);
         if (l != null) {
             return l;
         }
-        if (CACHE.size() > 2) {
-            CACHE.clear();   // 多世界保护：最多缓存 3 个种子
+        if (CACHE.size() >= CACHE_LIMIT) {
+            // LRU 近似：淘汰任一旧格（不要整体 clear → 宽范围扫描会引发重解风暴）
+            java.util.Iterator<Long> it = CACHE.keySet().iterator();
+            if (it.hasNext()) {
+                CACHE.remove(it.next());
+            }
         }
-        return CACHE.computeIfAbsent(worldSeedInt, MountainLayerV2::solve);
+        final int cx = cellX, cz = cellZ;
+        return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, cx, cz));
+    }
+
+    /** 点所在的山带格索引。 */
+    public static int cellOfX(int x) {
+        return Math.floorDiv(x, BELT_CELL_X);
+    }
+
+    public static int cellOfZ(int z) {
+        return Math.floorDiv(z, BELT_CELL_Z);
     }
 
     // ==================== 查询 ====================
 
     /** 山带抬升（blocks，已侵蚀；山带外 0）。 */
     public static double uplift(int x, int z, int worldSeedInt) {
-        Layer l = layer(worldSeedInt);
-        if (l == null) {
-            return 0.0;
-        }
-        return bilinear(l.uplift, x, z);
+        Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
+        return l == null ? 0.0 : bilinear(l.uplift, x, z);
     }
 
     /** 山层权威权重 w [0,1]。 */
     public static double auth(int x, int z, int worldSeedInt) {
-        Layer l = layer(worldSeedInt);
-        if (l == null) {
-            return 0.0;
-        }
-        return bilinear(l.auth, x, z);
+        Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
+        return l == null ? 0.0 : bilinear(l.auth, x, z);
     }
 
     /** 坡度 [0,1]（0=平，1≈陡坡）。 */
     public static double slope01(int x, int z, int worldSeedInt) {
-        Layer l = layer(worldSeedInt);
-        if (l == null) {
-            return 0.0;
-        }
-        return bilinear(l.slope, x, z);
+        Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
+        return l == null ? 0.0 : bilinear(l.slope, x, z);
     }
 
+    /**
+     * 一次取齐 auth/uplift/slope（热路径用：避免三次查格 + 三次插值）。
+     * out[0]=auth, out[1]=uplift, out[2]=slope。
+     */
+    public static void sample(int x, int z, int worldSeedInt, double[] out) {
+        Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
+        if (l == null) {
+            out[0] = out[1] = out[2] = 0.0;
+            return;
+        }
+        out[0] = bilinear(l.auth, x, z);
+        out[1] = bilinear(l.uplift, x, z);
+        out[2] = bilinear(l.slope, x, z);
+    }
+
+    /** 格内双线性插值：X 用格内局部坐标（不折叠），Z 环绕。 */
     private static double bilinear(float[] g, int wx, int wz) {
-        double fx = GlobalCirculation.foldX(wx) / (double) CELL - 0.5;
-        double fz = GlobalCirculation.foldZ(wz) / (double) CELL - 0.5;
+        int cellX = cellOfX(wx), cellZ = cellOfZ(wz);
+        double fx = (wx - cellX * (double) BELT_CELL_X) / CELL - 0.5;
+        double fz = (wz - cellZ * (double) BELT_CELL_Z) / CELL - 0.5;
         int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
         double tx = fx - i, tz = fz - j;
-        i = ((i % NX) + NX) % NX;
-        j = ((j % NZ) + NZ) % NZ;
-        int i1 = (i + 1) % NX, j1 = (j + 1) % NZ;
+        i = Math.max(0, Math.min(NX - 1, i));
+        int i1 = Math.min(NX - 1, i + 1);
+        j = Math.max(0, Math.min(NZ - 1, j));
+        int j1 = Math.min(NZ - 1, j + 1);
         double v00 = g[j * NX + i], v10 = g[j * NX + i1];
         double v01 = g[j1 * NX + i], v11 = g[j1 * NX + i1];
         return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
@@ -178,18 +218,20 @@ public final class MountainLayerV2 {
 
     // ==================== 求解 ====================
 
-    private static Layer solve(int seed) {
+    private static Layer solve(int seed, int cellX, int cellZ) {
         long t0 = System.nanoTime();
         SOLVE_SEED = seed;
-        Belt[] belts = layout(seed);
+        Belt[] belts = layout(seed, cellX, cellZ);
+        double originX = cellX * (double) BELT_CELL_X;
+        double originZ = cellZ * (double) BELT_CELL_Z;
 
         Layer layer = new Layer();
         float[] env = new float[NX * NZ];       // 山带包络（0..1），下切只在包络内生效
         // 1) 抬升场 + 权威场
         for (int j = 0; j < NZ; j++) {
-            double z = j * CELL + CELL * 0.5;
+            double z = originZ + j * CELL + CELL * 0.5;
             for (int i = 0; i < NX; i++) {
-                double x = i * CELL + CELL * 0.5;
+                double x = originX + i * CELL + CELL * 0.5;
                 double sumW = 0.0, sumUp = 0.0, sumEnv = 0.0, maxW = 0.0;
                 for (Belt b : belts) {
                     double w = beltWeight(b, x, z);
@@ -215,7 +257,7 @@ public final class MountainLayerV2 {
             int c = 0;
             for (int j = 0; j < NZ; j += 2) {
                 for (int i = 0; i < NX; i += 2) {
-                    double x = i * CELL + CELL * 0.5, z = j * CELL + CELL * 0.5;
+                    double x = originX + i * CELL + CELL * 0.5, z = originZ + j * CELL + CELL * 0.5;
                     for (Belt b : belts) {
                         if (beltEnvelope(b, x, z) < 0.5) continue;
                         double t = ridgeTexture(b, x, z);
@@ -275,13 +317,37 @@ public final class MountainLayerV2 {
     }
 
     /** 山带布局：中心尽量落在内陆，沿轴裁剪保证主要在山地上。 */
-    private static Belt[] layout(int seed) {
-        Random rng = new Random(seed * 6364136223846793005L + 1442695040888963407L);
-        Belt[] out = new Belt[BELTS];
+    /**
+     * 一格（{@link #BELT_CELL_X} 宽 × 200k 周长）内的山带布点。
+     *
+     * 与旧版的区别：旧版把 5 条山带撒在"整个世界域 400k×200k"里（世界必须是有限环面）；
+     * 新版按 **X 格子** 确定性布点（格索引进哈希），并强制**整条山带落在格内**
+     * （X 方向距格边 ≥25km），于是每格可以独立求解、结果与全域求解一致。
+     */
+    private static Belt[] layout(int seed, int cellX, int cellZ) {
+        Random rng = new Random(seed * 6364136223846793005L + 1442695040888963407L
+            + cellX * 0x9E3779B97F4A7C15L + cellZ * 0xC2B2AE3D27D4EB4FL);
+        double cellCX = cellX * (double) BELT_CELL_X;
+        double cellCZ = cellZ * (double) BELT_CELL_Z;
+        Belt[] out = new Belt[BELTS_PER_CELL];
         int made = 0;
-        for (int attempt = 0; attempt < 400 && made < BELTS; attempt++) {
-            double cx = rng.nextDouble() * 400_000.0;
-            double cz = rng.nextDouble() * 200_000.0;
+        for (int attempt = 0; attempt < 400 && made < BELTS_PER_CELL; attempt++) {
+            double ang = rng.nextDouble() * Math.PI * 2.0;
+            double ca = Math.cos(ang), sa = Math.sin(ang);
+            double halfL = 45_000.0 + rng.nextDouble() * 55_000.0;
+            double halfW = 8_000.0 + rng.nextDouble() * 7_000.0;      // 略窄 → 更陡
+            // 约束：包围盒必须落在格内（X、Z 都要，留 ≥25km 下切 margin）
+            double ex = Math.abs(ca) * halfL + Math.abs(sa) * halfW;
+            double ez = Math.abs(sa) * halfL + Math.abs(ca) * halfW;
+            double fit = BELT_X_FIT;
+            if (ex > fit || ez > fit) {
+                double s = Math.min(fit / Math.max(1e-6, ex), fit / Math.max(1e-6, ez));
+                halfL *= s;
+                ex *= s;
+                ez *= s;
+            }
+            double cx = cellCX + (rng.nextDouble() * 2.0 - 1.0) * Math.max(0.0, fit - ex);
+            double cz = cellCZ + (rng.nextDouble() * 2.0 - 1.0) * Math.max(0.0, fit - ez);
             OrographyField.OroSample o = OrographyField.sample((int) cx, (int) cz, seed);
             if (!o.isLand || o.coastDist > -20_000.0) {
                 continue;
@@ -289,11 +355,10 @@ public final class MountainLayerV2 {
             Belt b = new Belt();
             b.cx = cx;
             b.cz = cz;
-            double ang = rng.nextDouble() * Math.PI * 2.0;
-            b.ca = Math.cos(ang);
-            b.sa = Math.sin(ang);
-            b.halfL = 45_000.0 + rng.nextDouble() * 55_000.0;
-            b.halfW = 8_000.0 + rng.nextDouble() * 7_000.0;      // 略窄 → 更陡
+            b.ca = ca;
+            b.sa = sa;
+            b.halfL = halfL;
+            b.halfW = halfW;
             b.amp = Tune.ampLo + rng.nextDouble() * (Tune.ampHi - Tune.ampLo);
             b.axialAmp = Tune.axialLo + rng.nextDouble() * (Tune.axialHi - Tune.axialLo);
             b.meanderAmp = 5_000.0 + rng.nextDouble() * 4_000.0;
@@ -304,7 +369,7 @@ public final class MountainLayerV2 {
             boolean ok = true;
             for (int i = 0; i < made; i++) {
                 double dx = out[i].cx - b.cx, dz = out[i].cz - b.cz;
-                if (dx * dx + dz * dz < 90_000.0 * 90_000.0) {
+                if (dx * dx + dz * dz < 60_000.0 * 60_000.0) {
                     ok = false;
                     break;
                 }
@@ -314,7 +379,7 @@ public final class MountainLayerV2 {
             }
             out[made++] = b;
         }
-        if (made < BELTS) {
+        if (made < BELTS_PER_CELL) {
             Belt[] trimmed = new Belt[made];
             System.arraycopy(out, 0, trimmed, 0, made);
             return trimmed;

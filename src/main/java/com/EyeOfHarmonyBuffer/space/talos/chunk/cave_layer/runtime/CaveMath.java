@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
+
 /**
  * 洞穴层共用确定性数学工具：
  *   - 64 位混合哈希（同项目其它层同一套写法）；
@@ -42,6 +44,13 @@ public final class CaveMath {
     public static double valueNoise3D(int x, int y, int z,
                                       long seed, double scale,
                                       int salt) {
+        return valueNoise3D(x, y, z, seed, scale, salt, 0, 0);
+    }
+
+    /** 3D 值噪声（可选 x/z 环面周期：nx/nz = 每轴格数，≤0 表示不折叠）。 */
+    public static double valueNoise3D(int x, int y, int z,
+                                      long seed, double scale,
+                                      int salt, int nx, int nz) {
         double sx = x / scale;
         double sy = y / scale;
         double sz = z / scale;
@@ -54,15 +63,24 @@ public final class CaveMath {
         double u = fx * fx * (3.0 - 2.0 * fx);
         double v = fy * fy * (3.0 - 2.0 * fy);
         double w = fz * fz * (3.0 - 2.0 * fz);
+        int x1 = x0 + 1, z1 = z0 + 1;
+        if (nx > 0) {
+            x0 = mod(x0, nx);
+            x1 = mod(x1, nx);
+        }
+        if (nz > 0) {
+            z0 = mod(z0, nz);
+            z1 = mod(z1, nz);
+        }
 
         double c000 = hash01(x0, y0, z0, seed, salt);
-        double c100 = hash01(x0 + 1, y0, z0, seed, salt);
+        double c100 = hash01(x1, y0, z0, seed, salt);
         double c010 = hash01(x0, y0 + 1, z0, seed, salt);
-        double c110 = hash01(x0 + 1, y0 + 1, z0, seed, salt);
-        double c001 = hash01(x0, y0, z0 + 1, seed, salt);
-        double c101 = hash01(x0 + 1, y0, z0 + 1, seed, salt);
-        double c011 = hash01(x0, y0 + 1, z0 + 1, seed, salt);
-        double c111 = hash01(x0 + 1, y0 + 1, z0 + 1, seed, salt);
+        double c110 = hash01(x1, y0 + 1, z0, seed, salt);
+        double c001 = hash01(x0, y0, z1, seed, salt);
+        double c101 = hash01(x1, y0, z1, seed, salt);
+        double c011 = hash01(x0, y0 + 1, z1, seed, salt);
+        double c111 = hash01(x1, y0 + 1, z1, seed, salt);
 
         double x00 = c000 + (c100 - c000) * u;
         double x10 = c010 + (c110 - c010) * u;
@@ -79,6 +97,15 @@ public final class CaveMath {
      */
     public static double perlin3D(double x, double y, double z,
                                   long seed, int salt) {
+        return perlin3D(x, y, z, seed, salt, 0, 0);
+    }
+
+    /**
+     * 3D Perlin 噪声（可选 x/z 环面周期：nx/nz = 每轴格数，≤0 表示不折叠）。
+     * 世界是环面 → 需要周期的调用方传 nx/nz（由频率量化，见 PeriodicNoise.cellsXFromFreq）。
+     */
+    public static double perlin3D(double x, double y, double z,
+                                  long seed, int salt, int nx, int nz) {
         int x0 = (int) Math.floor(x);
         int y0 = (int) Math.floor(y);
         int z0 = (int) Math.floor(z);
@@ -88,21 +115,30 @@ public final class CaveMath {
         double u = fx * fx * (3.0 - 2.0 * fx);
         double v = fy * fy * (3.0 - 2.0 * fy);
         double w = fz * fz * (3.0 - 2.0 * fz);
+        int x1 = x0 + 1, z1 = z0 + 1;
+        if (nx > 0) {
+            x0 = mod(x0, nx);
+            x1 = mod(x1, nx);
+        }
+        if (nz > 0) {
+            z0 = mod(z0, nz);
+            z1 = mod(z1, nz);
+        }
 
         double n000 = perlinGrad(x0, y0, z0, fx, fy, fz, seed, salt);
-        double n100 = perlinGrad(x0 + 1, y0, z0,
+        double n100 = perlinGrad(x1, y0, z0,
             fx - 1.0, fy, fz, seed, salt);
         double n010 = perlinGrad(x0, y0 + 1, z0,
             fx, fy - 1.0, fz, seed, salt);
-        double n110 = perlinGrad(x0 + 1, y0 + 1, z0,
+        double n110 = perlinGrad(x1, y0 + 1, z0,
             fx - 1.0, fy - 1.0, fz, seed, salt);
-        double n001 = perlinGrad(x0, y0, z0 + 1,
+        double n001 = perlinGrad(x0, y0, z1,
             fx, fy, fz - 1.0, seed, salt);
-        double n101 = perlinGrad(x0 + 1, y0, z0 + 1,
+        double n101 = perlinGrad(x1, y0, z1,
             fx - 1.0, fy, fz - 1.0, seed, salt);
-        double n011 = perlinGrad(x0, y0 + 1, z0 + 1,
+        double n011 = perlinGrad(x0, y0 + 1, z1,
             fx, fy - 1.0, fz - 1.0, seed, salt);
-        double n111 = perlinGrad(x0 + 1, y0 + 1, z0 + 1,
+        double n111 = perlinGrad(x1, y0 + 1, z1,
             fx - 1.0, fy - 1.0, fz - 1.0, seed, salt);
 
         double x00 = n000 + (n100 - n000) * u;
@@ -118,19 +154,63 @@ public final class CaveMath {
     public static double fbm3D(double x, double y, double z,
                                long seed, int salt, int octaves,
                                double lacunarity, double gain) {
+        return fbm3D(x, y, z, seed, salt, octaves, lacunarity, gain, 0, 0);
+    }
+
+    /** 3D fBm（可选 x/z 环面周期：格数逐层 ×lacunarity）。 */
+    public static double fbm3D(double x, double y, double z,
+                               long seed, int salt, int octaves,
+                               double lacunarity, double gain,
+                               int nx, int nz) {
         double sum = 0.0;
         double amp = 1.0;
         double freq = 1.0;
         double norm = 0.0;
+        int lac = Math.max(2, (int) Math.round(lacunarity));
+        int cx = nx, cz = nz;
         for (int i = 0; i < octaves; i++) {
             sum += amp * perlin3D(
                 x * freq, y * freq, z * freq,
-                seed, salt + i * 131);
+                seed, salt + i * 131, cx, cz);
             norm += amp;
             amp *= gain;
             freq *= lacunarity;
+            cx *= lac;
+            cz *= lac;
         }
         return sum / norm;
+    }
+
+    private static int mod(int v, int m) {
+        int r = v % m;
+        return r < 0 ? r + m : r;
+    }
+
+    // ================= 环面周期便捷入口（世界坐标 + 特征尺度） =================
+
+    /** 世界坐标值噪声（周期版）。 */
+    public static double valueNoise3DP(int x, int y, int z, long seed,
+                                       double scale, int salt) {
+        return valueNoise3D(x, y, z, seed, scale, salt,
+            PeriodicNoise.cellsXFromFreq(1.0 / scale),
+            PeriodicNoise.cellsZFromFreq(1.0 / scale));
+    }
+
+    /** 世界坐标 Perlin（周期版）。 */
+    public static double perlin3DP(double x, double y, double z, long seed,
+                                   int salt, double scale) {
+        return perlin3D(x / scale, y, z / scale, seed, salt,
+            PeriodicNoise.cellsXFromFreq(1.0 / scale),
+            PeriodicNoise.cellsZFromFreq(1.0 / scale));
+    }
+
+    /** 世界坐标 fBm（周期版）。 */
+    public static double fbm3DP(double x, double y, double z, long seed,
+                                int salt, int octaves, double lacunarity,
+                                double gain, double scale) {
+        return fbm3D(x / scale, y, z / scale, seed, salt, octaves, lacunarity,
+            gain, PeriodicNoise.cellsXFromFreq(1.0 / scale),
+            PeriodicNoise.cellsZFromFreq(1.0 / scale));
     }
 
     /**
@@ -150,7 +230,8 @@ public final class CaveMath {
      * （240 格尺度的场按 8/8/16 格采样 + 三线性插值，误差远小于阈值带宽度）。
      */
     public static double rockValue3D(int wx, int wy, int wz, long seed) {
-        return fbm3D(wx / 240.0, wy / 240.0, wz / 240.0, seed, 0xCC, 2, 2.0, 0.5);
+        return fbm3D(wx / 240.0, wy / 240.0, wz / 240.0, seed, 0xCC, 2, 2.0, 0.5,
+            PeriodicNoise.cellsXFromFreq(1.0 / 240.0), PeriodicNoise.cellsZFromFreq(1.0 / 240.0));
     }
 
     /** 由原始场值 + 深度定岩性（口径与 {@link #rockVariant3D} 完全一致）。 */

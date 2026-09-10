@@ -58,7 +58,10 @@ public final class CaveCarver {
     public static double sampleExcess(CaveChunkData data,
                                       int worldX, int worldY, int worldZ,
                                       long seed) {
-        double wall = (CaveMath.valueNoise3D(
+        // 环面：洞穴几何一律在折叠后的坐标系里查询（噪声本身也已周期化）
+        worldX = CaveGenerator.wrapWorldX(worldX);
+        worldZ = CaveGenerator.wrapWorldZ(worldZ);
+        double wall = (CaveMath.valueNoise3DP(
             worldX, worldY, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
             * 2.0 * WALL_AMP;
 
@@ -117,6 +120,9 @@ public final class CaveCarver {
         if (data == null || topSolidY <= 1) {
             return;
         }
+        // 环面：洞穴几何用折叠坐标，方块写入仍用 localX/localZ（真实区块）
+        worldX = CaveGenerator.wrapWorldX(worldX);
+        worldZ = CaveGenerator.wrapWorldZ(worldZ);
 
         boolean waterProtected =
             riverMask > RIVER_PROTECT_MASK || body != null;
@@ -209,15 +215,15 @@ public final class CaveCarver {
 
         // 干湿隔离兜底：盆地 / 禁干带的列，干洞段只能在上层带（46+）雕刻。
         // 洞厅专属区例外：该区域内干洞可全深度雕刻。
-        int shallowCellX = Math.floorDiv(worldX, 256);
-        int shallowCellZ = Math.floorDiv(worldZ, 256);
+        int shallowCellX = CaveGenerator.cellOfX(worldX);
+        int shallowCellZ = CaveGenerator.cellOfZ(worldZ);
         boolean columnShallow = !CaveGenerator.isHallZoneCell(
             shallowCellX, shallowCellZ, seed)
             && CaveGenerator.isShallowOnlyCell(
                 shallowCellX, shallowCellZ, seed);
 
         for (int y = 1; y <= maxY; y++) {
-            double wall = (CaveMath.valueNoise3D(
+            double wall = (CaveMath.valueNoise3DP(
                 worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
                 * 2.0 * WALL_AMP;
             double excess = Double.NEGATIVE_INFINITY;
@@ -588,7 +594,7 @@ public final class CaveCarver {
             int yMin = Math.max(1, (int) Math.ceil(seg.minY));
             int yMax = Math.min(maxY, (int) Math.floor(seg.maxY));
             for (int y = yMin; y <= yMax; y++) {
-                double wall = (CaveMath.valueNoise3D(
+                double wall = (CaveMath.valueNoise3DP(
                     worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
                     * 2.0 * WALL_AMP;
                 double e = seg.sampleExcess(worldX, y, worldZ, wall);
@@ -630,7 +636,7 @@ public final class CaveCarver {
             int yMin = Math.max(1, (int) Math.ceil(seg.minY));
             int yMax = Math.min(maxY, (int) Math.floor(seg.maxY));
             for (int y = yMin; y <= yMax; y++) {
-                double wall = (CaveMath.valueNoise3D(
+                double wall = (CaveMath.valueNoise3DP(
                     worldX, y, worldZ, seed, NOISE_SCALE, NOISE_SALT) - 0.5)
                     * 2.0 * WALL_AMP;
                 double e = seg.sampleExcess(worldX, y, worldZ, wall);

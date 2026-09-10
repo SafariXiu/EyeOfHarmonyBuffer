@@ -42,8 +42,17 @@ public final class LandformField {
      */
     public static double MTN_RISE_SCALE = 85.0;
 
-    private static final ConcurrentHashMap<Integer, Field> CACHE =
-        new ConcurrentHashMap<Integer, Field>();
+    /** 窗口宽度（blocks）：世界沿 X 无限 → 每窗口独立求解（绝对坐标，不换种子）。 */
+    public static final int TILE_X = 400_000;
+
+    public static final int TILE_Z = 200_000;
+
+    private static long tileKey(int seed, int tileX, int tileZ) {
+        return ((long) seed << 40) ^ ((long) (tileX & 0xFFFFF) << 20) ^ (tileZ & 0xFFFFFL);
+    }
+
+    private static final ConcurrentHashMap<Long, Field> CACHE =
+        new ConcurrentHashMap<Long, Field>();
 
     private static final class Field {
         final float[] low = new float[NX * NZ];
@@ -74,32 +83,44 @@ public final class LandformField {
 
     /** 后台预热。 */
     public static void ensure(int worldSeedInt) {
-        if (!CACHE.containsKey(worldSeedInt)) {
-            CACHE.computeIfAbsent(worldSeedInt, LandformField::solve);
-        }
+        field(worldSeedInt, 0, 0);
     }
 
     public static void clearCache() {
         CACHE.clear();
     }
 
-    private static Field field(int worldSeedInt) {
-        Field f = CACHE.get(worldSeedInt);
+    private static Field field(int worldSeedInt, int tileX, int tileZ) {
+        long key = tileKey(worldSeedInt, tileX, tileZ);
+        Field f = CACHE.get(key);
         if (f != null) {
             return f;
         }
-        if (CACHE.size() > 2) {
-            CACHE.clear();
+        if (CACHE.size() > 12) {
+            java.util.Iterator<Long> it = CACHE.keySet().iterator();
+            if (it.hasNext()) {
+                CACHE.remove(it.next());
+            }
         }
-        return CACHE.computeIfAbsent(worldSeedInt, LandformField::solve);
+        final int tx = tileX, tz = tileZ;
+        return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tx, tz));
     }
 
     /** 双线性查询（无分配，结果对象线程本地复用）。 */
+    public static int tileOfX(int x) {
+        return Math.floorDiv(x, TILE_X);
+    }
+
+    public static int tileOfZ(int z) {
+        return Math.floorDiv(z, TILE_Z);
+    }
+
     public static Sample sample(int x, int z, int worldSeedInt) {
-        Field f = field(worldSeedInt);
+        int tile = tileOfX(x), tileZ = tileOfZ(z);
+        Field f = field(worldSeedInt, tile, tileZ);
         Sample s = TL.get();
-        double fx = GlobalCirculation.foldX(x) / (double) CELL - 0.5;
-        double fz = GlobalCirculation.foldZ(z) / (double) CELL - 0.5;
+        double fx = (x - tile * (double) TILE_X) / (double) CELL - 0.5;
+        double fz = (z - tileZ * (double) TILE_Z) / (double) CELL - 0.5;
         int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
         double tx = fx - i, tz = fz - j;
         i = ((i % NX) + NX) % NX;
@@ -157,7 +178,8 @@ public final class LandformField {
 
     // ================= 离线求解 =================
 
-    private static Field solve(int seed) {
+    private static Field solve(int seed, int tileX, int tileZ) {
+        final int originX = tileX * TILE_X, originZ = tileZ * TILE_Z;
         long t0 = System.nanoTime();
         int n = NX * NZ;
         Field f = new Field();
@@ -165,7 +187,7 @@ public final class LandformField {
         double[] bp = new double[2];
 
         for (int j = 0; j < NZ; j++) {
-            int z = j * CELL + CELL / 2;
+            int z = originZ + j * CELL + CELL / 2;
             for (int i = 0; i < NX; i++) {
                 int x = i * CELL + CELL / 2;
                 int k = j * NX + i;

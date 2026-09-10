@@ -1,8 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
 import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMath.*;
-import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainNoise.fbm2DS;
-import static com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainNoise.warpedFbm2D;
 
 /**
  * 第四层内部核心：根据 profile + worldSeedInt 计算 H_base(x,z)。
@@ -77,21 +75,42 @@ public final class TerrainBaseHeight {
         public double hi;
     }
 
-    /** 采样共享噪声（含域扭曲；频率/八度数取自档案，调用方保证两个档案一致）。 */
+    /**
+     * 采样共享噪声（含域扭曲；频率/八度数取自档案，调用方保证两个档案一致）。
+     *
+     * **环面周期版**：全部走 {@link PeriodicNoise}（格数 = round(周期/波长)，lattice 取模），
+     * 因此 f(x+400k,z) ≡ f(x,z)、f(x,z+200k) ≡ f(x,z)。
+     */
     public static void sampleNoise(int worldX, int worldZ, int worldSeedInt,
                                    BaseTerrainProfile p, Noise out) {
         long seed = (long) worldSeedInt;
-        out.low = warpedFbm2D(seed ^ 0x1234ABCDL, worldX, worldZ,
-            p.lowFreq, 1.0, p.lowOctaves, p.lowFreq * 0.5, (1.0 / p.lowFreq) * 0.5)
+        out.low = PeriodicNoise.warpedFbm2(seed ^ 0x1234ABCDL, worldX, worldZ,
+            cellsX(p.lowNX, p.lowFreq), cellsZ(p.lowNZ, p.lowFreq), p.lowOctaves,
+            cellsX(p.lowWNX, p.lowFreq * 0.5), cellsZ(p.lowWNZ, p.lowFreq * 0.5),
+            (1.0 / p.lowFreq) * 0.5)
             / octaveSum(1.0, p.lowOctaves);
-        out.cont = fbm2DS(seed ^ 0xABCDEF01L, worldX, worldZ,
-            CONTINENTAL_FREQ, CONTINENTAL_AMP, CONTINENTAL_OCTAVES);
-        out.mid = warpedFbm2D(seed ^ 0x5678EF01L, worldX, worldZ,
-            p.midFreq, 1.0, p.midOctaves, p.midFreq * 0.5, (1.0 / p.midFreq) * 0.35)
+        out.cont = PeriodicNoise.gradientFbm2(seed ^ 0xABCDEF01L, worldX, worldZ,
+            cellsX(p.contNX, CONTINENTAL_FREQ), cellsZ(p.contNZ, CONTINENTAL_FREQ),
+            CONTINENTAL_OCTAVES) * (CONTINENTAL_AMP / octaveSum(1.0, CONTINENTAL_OCTAVES));
+        out.mid = PeriodicNoise.warpedFbm2(seed ^ 0x5678EF01L, worldX, worldZ,
+            cellsX(p.midNX, p.midFreq), cellsZ(p.midNZ, p.midFreq), p.midOctaves,
+            cellsX(p.midWNX, p.midFreq * 0.5), cellsZ(p.midWNZ, p.midFreq * 0.5),
+            (1.0 / p.midFreq) * 0.35)
             / octaveSum(1.0, p.midOctaves);
-        out.hi = warpedFbm2D(seed ^ 0x9ABCDEFFL, worldX, worldZ,
-            p.highFreq, 1.0, p.highOctaves, p.highFreq * 0.5, (1.0 / p.highFreq) * 0.25)
+        out.hi = PeriodicNoise.warpedFbm2(seed ^ 0x9ABCDEFFL, worldX, worldZ,
+            cellsX(p.hiNX, p.highFreq), cellsZ(p.hiNZ, p.highFreq), p.highOctaves,
+            cellsX(p.hiWNX, p.highFreq * 0.5), cellsZ(p.hiWNZ, p.highFreq * 0.5),
+            (1.0 / p.highFreq) * 0.25)
             / octaveSum(1.0, p.highOctaves);
+    }
+
+    /** 档案里缓存的格数（可能为负 = 该轴不折叠）；0 表示未缓存 → 现算。 */
+    private static int cellsX(int cached, double freq) {
+        return cached != 0 ? cached : PeriodicNoise.cellsX(1.0 / freq);
+    }
+
+    private static int cellsZ(int cached, double freq) {
+        return cached > 0 ? cached : PeriodicNoise.cellsZ(1.0 / freq);
     }
 
     /** 由共享噪声 + 档案参数求高度（land 分支）。 */

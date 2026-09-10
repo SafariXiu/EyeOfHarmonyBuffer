@@ -231,17 +231,17 @@ public class CommandTalosBiome extends CommandBase {
         ));
     }
 
-    /** 环面折叠距离平方（x 周期 400k、z 周期 200k；世界在环面上无边界）。 */
+    /**
+     * 距离平方：**X 无限（不折叠）**、**Z 是 200k 纬度循环（折叠取最短）**。
+     * 世界沿 X 无边界、沿 Z 循环，因此只有 Z 需要绕回。
+     */
     private static double wrapDistSq(int px, int pz, int x, int z) {
-        int dx = Math.abs(x - px) % 400000;
-        if (dx > 200000) {
-            dx = 400000 - dx;
-        }
+        double dx = (double) x - px;
         int dz = Math.abs(z - pz) % 200000;
         if (dz > 100000) {
             dz = 200000 - dz;
         }
-        return (double) dx * dx + (double) dz * dz;
+        return dx * dx + (double) dz * dz;
     }
 
     /** 归一化：小写、空白/下划线统一为下划线、去掉 talos_ 前缀。 */

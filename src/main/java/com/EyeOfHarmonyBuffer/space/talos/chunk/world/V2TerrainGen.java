@@ -4,8 +4,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculat
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainProfile;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainNoise;
 
 /**
  * V2 轨 · 块级高度层（design.md D30/D43）。
@@ -30,6 +30,29 @@ public final class V2TerrainGen {
     private static final double LOW_FREQ = 1.0 / 3000.0;
     private static final double MID_FREQ = 1.0 / 1100.0;
     private static final double HIGH_FREQ = 1.0 / 260.0;
+
+    // 环面周期噪声格数（波长 → 格数；域扭曲波长 = 2/freq）
+    private static final int LOW_NX = PeriodicNoise.cellsXFromFreq(LOW_FREQ);
+    private static final int LOW_NZ = PeriodicNoise.cellsZFromFreq(LOW_FREQ);
+    private static final int LOW_WNX = PeriodicNoise.cellsXFromFreq(LOW_FREQ * 0.5);
+    private static final int LOW_WNZ = PeriodicNoise.cellsZFromFreq(LOW_FREQ * 0.5);
+    private static final int MID_NX = PeriodicNoise.cellsXFromFreq(MID_FREQ);
+    private static final int MID_NZ = PeriodicNoise.cellsZFromFreq(MID_FREQ);
+    private static final int MID_WNX = PeriodicNoise.cellsXFromFreq(MID_FREQ * 0.5);
+    private static final int MID_WNZ = PeriodicNoise.cellsZFromFreq(MID_FREQ * 0.5);
+    private static final int HIGH_NX = PeriodicNoise.cellsXFromFreq(HIGH_FREQ);
+    private static final int HIGH_NZ = PeriodicNoise.cellsZFromFreq(HIGH_FREQ);
+    private static final int HIGH_WNX = PeriodicNoise.cellsXFromFreq(HIGH_FREQ * 0.5);
+    private static final int HIGH_WNZ = PeriodicNoise.cellsZFromFreq(HIGH_FREQ * 0.5);
+    /** 山体细节 / 海床起伏的格数（固定频率）。 */
+    private static final int DET1_NX = PeriodicNoise.cellsXFromFreq(1.0 / 1100.0);
+    private static final int DET1_NZ = PeriodicNoise.cellsZFromFreq(1.0 / 1100.0);
+    private static final int DET2_NX = PeriodicNoise.cellsXFromFreq(1.0 / 420.0);
+    private static final int DET2_NZ = PeriodicNoise.cellsZFromFreq(1.0 / 420.0);
+    private static final int SEABED_NX = PeriodicNoise.cellsXFromFreq(1.0 / 1200.0);
+    private static final int SEABED_NZ = PeriodicNoise.cellsZFromFreq(1.0 / 1200.0);
+    private static final int SEABED_WNX = PeriodicNoise.cellsXFromFreq(1.0 / 2400.0);
+    private static final int SEABED_WNZ = PeriodicNoise.cellsZFromFreq(1.0 / 2400.0);
 
     /** 列序: [min, max, lowAmp, midAmp, plateauStrength]。 */
     private static final double[] LOW     = { 68, 82, 18, 8, 0.10 };
@@ -219,6 +242,14 @@ public final class V2TerrainGen {
         profile.highOctaves = 2;
         profile.plateauStrength = plateauStrength;
         profile.oceanDepthMax = 0.0;
+        profile.lowNX = LOW_NX; profile.lowNZ = LOW_NZ;
+        profile.lowWNX = LOW_WNX; profile.lowWNZ = LOW_WNZ;
+        profile.midNX = MID_NX; profile.midNZ = MID_NZ;
+        profile.midWNX = MID_WNX; profile.midWNZ = MID_WNZ;
+        profile.hiNX = HIGH_NX; profile.hiNZ = HIGH_NZ;
+        profile.hiWNX = HIGH_WNX; profile.hiWNZ = HIGH_WNZ;
+        profile.contNX = PeriodicNoise.cellsXFromFreq(1.0 / 8000.0);
+        profile.contNZ = PeriodicNoise.cellsZFromFreq(1.0 / 8000.0);
     }
 
     /**
@@ -257,8 +288,8 @@ public final class V2TerrainGen {
         if (s <= 0.01) {
             return 0.0;
         }
-        double r1 = ridged(0x9E37L ^ worldSeedInt, x, z, 1.0 / 1100.0, 3);
-        double r2 = ridged(0xC2B2L ^ worldSeedInt, x, z, 1.0 / 420.0, 2);
+        double r1 = PeriodicNoise.ridged2(0x9E37L ^ worldSeedInt, x, z, DET1_NX, DET1_NZ, 3);
+        double r2 = PeriodicNoise.ridged2(0xC2B2L ^ worldSeedInt, x, z, DET2_NX, DET2_NZ, 2);
         return (r1 * 24.0 + r2 * 10.0) * (0.15 + 0.85 * s);
     }
 
@@ -269,28 +300,14 @@ public final class V2TerrainGen {
     public static double mountainTexture(long seed, double x, double z) {
         double sum = 0.0, norm = 0.0, amp = 1.0, f = mtnTexFreq;
         for (int o = 0; o < 3; o++) {
-            double n = TerrainNoise.fbm2DS(seed + o * 0x51ED270BL, x, z, f, 1.0, 2);
+            double n = PeriodicNoise.gradientFbm2(seed + o * 0x51ED270BL, x, z,
+                PeriodicNoise.cellsXFromFreq(f), PeriodicNoise.cellsZFromFreq(f), 2);
             double r = 1.0 - Math.abs(n * 0.7);
             if (r < 0.0) r = 0.0;
             sum += amp * r * r;
             norm += amp;
             amp *= o == 0 ? 1.0 : 0.70;
             f *= 2.5;
-        }
-        return sum / norm;
-    }
-
-    /** ridged 噪声 [0,1]。 */
-    private static double ridged(long seed, double x, double z, double freq, int octaves) {
-        double sum = 0.0, amp = 1.0, norm = 0.0, f = freq;
-        for (int i = 0; i < octaves; i++) {
-            double n = TerrainNoise.noise2S(seed + i * 0x9E3779B9L, x * f, z * f);
-            double v = 1.0 - Math.abs(n);
-            v = v * v;
-            sum += v * amp;
-            norm += amp;
-            f *= 2.0;
-            amp *= 0.5;
         }
         return sum / norm;
     }
@@ -308,8 +325,8 @@ public final class V2TerrainGen {
             d += Math.min(BASIN_EXTRA_CAP, extra);
         }
         // 海床中频起伏（λ≈1.2k 波纹，±SEABED_RELIEF；1.75 = 3 octave 归一和）
-        double mid = TerrainNoise.warpedFbm2D(0x51E5A2D9L ^ worldSeedInt, x, z,
-            1.0 / 1200.0, 1.0, 3, 1.0 / 2400.0, 900.0);
+        double mid = PeriodicNoise.warpedFbm2(0x51E5A2D9L ^ worldSeedInt, x, z,
+            SEABED_NX, SEABED_NZ, 3, SEABED_WNX, SEABED_WNZ, 900.0);
         d += SEABED_RELIEF * mid / 1.75;
         return d;
     }

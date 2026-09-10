@@ -56,7 +56,11 @@ public final class TalosCaveSystem {
             return null;
         }
         CaveWorldState state = stateFor(worldSeedInt);
-        return state != null ? state.dataForChunk(chunkX, chunkZ) : null;
+        return state != null
+            ? state.dataForChunk(
+                CaveGenerator.wrapChunkX(chunkX),
+                CaveGenerator.wrapChunkZ(chunkZ))
+            : null;
     }
 
     /**
@@ -74,8 +78,8 @@ public final class TalosCaveSystem {
             return disabled;
         }
         java.util.List<CaveTag> tags = CaveFlavorRegistry.tagsForCell(
-            Math.floorDiv(worldX, 256),
-            Math.floorDiv(worldZ, 256),
+            CaveGenerator.cellOfX(worldX),
+            CaveGenerator.cellOfZ(worldZ),
             worldSeedInt
         );
         if (CaveGenerator.megaHallAt(
@@ -105,7 +109,9 @@ public final class TalosCaveSystem {
         if (state == null) {
             return -1.0;
         }
-        CaveChunkData data = state.dataForChunk(worldX >> 4, worldZ >> 4);
+        CaveChunkData data = state.dataForChunk(
+            CaveGenerator.wrapChunkX(Math.floorDiv(worldX, 16)),
+            CaveGenerator.wrapChunkZ(Math.floorDiv(worldZ, 16)));
         if (data == null) {
             return -1.0;
         }
@@ -154,8 +160,8 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveEntrance> out =
             new java.util.ArrayList<CaveEntrance>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
         java.util.Map<Long, java.util.List<CaveNode>> nodeCache =
             new java.util.HashMap<Long, java.util.List<CaveNode>>();
         for (int dz = -radiusCells; dz <= radiusCells; dz++) {
@@ -183,8 +189,8 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveChamber> out =
             new java.util.ArrayList<CaveChamber>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
         for (int dz = -radiusCells; dz <= radiusCells; dz++) {
             for (int dx = -radiusCells; dx <= radiusCells; dx++) {
                 for (CaveNode n : state.nodesForCell(ccx + dx, ccz + dz)) {
@@ -250,8 +256,8 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveNode> out =
             new java.util.ArrayList<CaveNode>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
         for (int r = 0; r <= radiusCells; r++) {
             for (int dz = -r; dz <= r; dz++) {
                 for (int dx = -r; dx <= r; dx++) {
@@ -311,9 +317,11 @@ public final class TalosCaveSystem {
             return lines;
         }
 
-        int cellX = Math.floorDiv(worldX, 256);
-        int cellZ = Math.floorDiv(worldZ, 256);
-        CaveChunkData data = state.dataForChunk(worldX >> 4, worldZ >> 4);
+        int cellX = CaveGenerator.cellOfX(worldX);
+        int cellZ = CaveGenerator.cellOfZ(worldZ);
+        CaveChunkData data = state.dataForChunk(
+            CaveGenerator.wrapChunkX(Math.floorDiv(worldX, 16)),
+            CaveGenerator.wrapChunkZ(Math.floorDiv(worldZ, 16)));
         lines.add(String.format(
             "[TALCAVE] pos=(%d,%d) seed=%d cell=(%d,%d) cachedCells=%d",
             worldX, worldZ, worldSeedInt, cellX, cellZ,

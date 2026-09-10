@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
+
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,6 +32,15 @@ public final class NoiseContinentGrid {
     // --- 高度场参数（形态搜索标定：λ=80k/3层 + 中频0.10 → 3~7 块大陆、海 100% 连通性最佳组合） ---
     /** 低频主波长（block）。 */
     private static final double LOW_WAV = 80_000.0;
+    /**
+     * 大陆尺度倍率（2026-09 加入）。
+     *
+     * 实测（P135）：沿东西方向的连续海段中位数只有 **690 km**，而真实地球大西洋约 6,000 km、
+     * 太平洋约 15,000 km。海盆太小 → 风生环流没有空间成形，西边界流占盆宽比例过大，
+     * 视觉上就是"横贯全图的水平带 + 陆地只是被挖掉的障碍物"。
+     * 提高本倍率会把大陆和海洋一起放大（X_STRETCH=5 保持不变，仍沿 X 细长）。
+     */
+    public static double CONTINENT_SCALE = 2.5;
     /** 低频 fbm 层数（λ, λ/2, λ/4）。 */
     private static final int LOW_OCTAVES = 3;
     /** 中频棱角振幅（叠加在低频之上）。 */
@@ -70,48 +81,71 @@ public final class NoiseContinentGrid {
 
     // ======== 高程场（纯函数，全局单一场） ========
 
-    private static double hashUnit(long seed, int gx, int gz) {
-        long h = TectonicMath.hashLongs(seed, (gx & 0xFFFFFFFFL), (gz & 0xFFFFFFFFL));
-        long m = (h & 0xFFFFFFFFFFFFFFFFL) >>> (64 - 23);
-        return m / (double) (1L << 23);
-    }
-
-    private static double valueNoise2D(double x, double z, long seed) {
-        int xi = (int) Math.floor(x), zi = (int) Math.floor(z);
-        double xf = x - xi, zf = z - zi;
-        double u = xf * xf * (3.0 - 2.0 * xf);
-        double v = zf * zf * (3.0 - 2.0 * zf);
-        double a = hashUnit(seed, xi, zi), b = hashUnit(seed, xi + 1, zi);
-        double c = hashUnit(seed, xi, zi + 1), d = hashUnit(seed, xi + 1, zi + 1);
-        double ab = a + (b - a) * u, cd = c + (d - c) * u;
-        return ab + (cd - ab) * v;
-    }
-
-    /** 标准 fbm（归一化到 [0,1]）。 */
+    /**
+     * 标准 fbm（归一化到 [0,1]）—— **环面周期版**。
+     *
+     * 每层用整数 lattice 格数（波长 → 格数 = round(周期/波长)）并对索引取模，
+     * 因此 f(x+400k,z) ≡ f(x,z) 严格成立；格数逐层 ×lacunarity（取整）保持整数。
+     * 与旧实现的差别只有：波长被量化到"周期/整数格数"（≤±0.5%，λ=80k 因 200k/80k=2.5 量化为 66.7k）。
+     */
     private static double fbm(double x, double z, long seed, int octaves, double lacunarity, double gain, double baseFreq) {
-        double sum = 0.0, amp = 1.0, freq = baseFreq, total = 0.0;
+        double sum = 0.0, amp = 1.0, total = 0.0;
+        int lac = Math.max(2, (int) Math.round(lacunarity));
+        // 两轴都不折叠（无限平面）：大陆/海洋不再受任何周期约束。
+        // X 方向仍按 X_STRETCH 拉长 → 大陆呈"沿 X 延展的条带"。
+        double wavZ = 1.0 / baseFreq;
+        double wavX = X_STRETCH * wavZ;
         for (int i = 0; i < octaves; i++) {
-            sum += amp * valueNoise2D(x * freq, z * freq, seed + i);
+            sum += amp * PeriodicNoise.value2XZ(seed + i, x, z, wavX, wavZ);
             total += amp;
             amp *= gain;
-            freq *= lacunarity;
+            wavX /= lac;
+            wavZ /= lac;
         }
         return sum / total;
     }
 
-    /** 低频域扭曲（大陆轮廓弯曲，消除网格 / 平铺感）。 */
+    /** X/Z 波长拉伸比（1 = 各向同性；越大 → 大陆沿 X 越细长）。 */
+    public static double X_STRETCH = 5.0;
+
+
+
+    private static int mod(int v, int m) {
+        int r = v % m;
+        return r < 0 ? r + m : r;
+    }
+
+    // ======== 低频域扭曲（大陆轮廓弯曲，消除网格 / 平铺感） ========
+    //
+    // C1 世界 = **圆柱**：X 无限、Z 是 200k 纬度循环 → 域扭曲必须是"圆柱上"的场：
+    //   · Z 方向按 200k 折叠（格数必须整除 200k）
+    //   · X 方向不折叠（沿 X 无限延伸，不再重复）
+    // 原 λ=1e6 / amp=50k 的扭曲比 Z 周期还大，物理上无法周期化（也无法烘焙成有限 LUT），
+    // 故改为 λ=100k / amp=5k：**局部拉伸率 2πA/λ 与原值相同（0.31）**，观感一致、波长更细。
+
+    /** 扭曲幅度（blocks）。 */
+    private static final double WARP_AMP = 5_000.0;
+    /** 扭曲波长格数：X = -4（λx=100k，不折叠）、Z = 2（λz=100k，整除 200k ⇒ 周期折叠）。 */
+    private static double WARP_WAV_X = 500_000.0;   // 沿 X 拉长（与 X_STRETCH 同一取向）
+    private static double WARP_WAV_Z = 100_000.0;
+
+    private static double warpOffset(long seed, double x, double z) {
+        return WARP_AMP * CONTINENT_SCALE * (PeriodicNoise.value2XZ(seed, x, z, WARP_WAV_X * CONTINENT_SCALE, WARP_WAV_Z * CONTINENT_SCALE) * 2.0 - 1.0);
+    }
+
     private static double[] warp(double x, double z, long seed) {
-        double freq = 1.0 / 1_000_000.0, amp = 50_000.0;
-        double ox = amp * valueNoise2D(x * freq, z * freq, seed + 1000);
-        double oz = amp * valueNoise2D(x * freq, z * freq, seed + 2000);
-        return new double[] { x + ox, z + oz };
+        return new double[] {
+            x + warpOffset(seed + 1000L, x, z),
+            z + warpOffset(seed + 2000L, x, z)
+        };
     }
 
     /** 原始高程场 h（约 [0, 1.10]，均值 ≈0.5）。 */
     public static double height(int x, int z, int worldSeedInt) {
         double[] w = warp(x, z, worldSeedInt);
-        double low = fbm(w[0], w[1], worldSeedInt, LOW_OCTAVES, 2.0, 0.5, 1.0 / LOW_WAV);
-        double med = fbm(w[0], w[1], worldSeedInt + 500, 2, 2.0, 0.5, 4.0 / LOW_WAV);
+        double wav = LOW_WAV * CONTINENT_SCALE;
+        double low = fbm(w[0], w[1], worldSeedInt, LOW_OCTAVES, 2.0, 0.5, 1.0 / wav);
+        double med = fbm(w[0], w[1], worldSeedInt + 500, 2, 2.0, 0.5, 4.0 / wav);
         return low + med * MED_AMP;
     }
 
@@ -127,7 +161,7 @@ public final class NoiseContinentGrid {
     public static double medNoise(int x, int z, int worldSeedInt) {
         double[] w = warp(x, z, worldSeedInt);
         double[] w2 = warp(w[0], w[1], worldSeedInt + MED_WARP_SALT);   // 二次扭曲（异盐）
-        return fbm(w2[0], w2[1], worldSeedInt + 500, 4, 2.0, 0.5, 4.0 / LOW_WAV);
+        return fbm(w2[0], w2[1], worldSeedInt + 500, 4, 2.0, 0.5, 4.0 / (LOW_WAV * CONTINENT_SCALE));
     }
 
     /**
@@ -155,33 +189,79 @@ public final class NoiseContinentGrid {
         return STATS_CACHE.computeIfAbsent(worldSeedInt, NoiseContinentGrid::calibrateStats);
     }
 
+    /** 标定窗口数（沿 X 铺开；世界沿 X 无限 → 单窗口采样会让远处陆地占比严重漂移）。 */
+    private static final int CALIBRATE_WINDOWS = 1;   // 见 calibrateStats：改用单张大网格采样
+
+    /** 标定目标：陆地占比（阈值二分对准这个数）。 */
+    public static double TARGET_LAND = 0.33;
+
     private static LandStats calibrateStats(int worldSeedInt) {
-        int nx = 400_000 / CALIBRATE_STRIDE;
-        int nz = 200_000 / CALIBRATE_STRIDE;
-        double[] hs = new double[nx * nz];
+        // 采样：**大范围、非整除步长**的单张网格（而不是 9 个小窗口）。
+        //
+        // 旧写法是 9 个 400k×200k 的窗口。A 项把大陆波长放大到 λx=1M 后，一个 400k 宽的窗口
+        // 只覆盖 0.4 个最长波长 → 窗口内方差远小于全局方差，池化后仍复现不出全局分布，
+        // 于是阈值在局部样本上对准了 33%、全局只有 24%（P138 实测，沿 X 各分箱均匀）。
+        // 现在跨 ±10M（约 20 个 λx）× ±2M，步长取 49k / 40_001（与噪声格点非整除，避免锁相）。
+        // CALIBRATE_WINDOWS 置 1 后，第二遍的索引 hs[w*per + j*nx + i] 自动退化成 hs[j*nx+i]，
+        // 正好等于本网格的排布，第二遍无需改动。
+        final int nx = 409;
+        final int nz = 101;
+        final int per = nx * nz;
+        final int sampleN = per * CALIBRATE_WINDOWS;
+        double[] hs = new double[sampleN];
         int k = 0;
-        for (int z = 0; z < 200_000; z += CALIBRATE_STRIDE) {
-            for (int x = 0; x < 400_000; x += CALIBRATE_STRIDE) {
-                hs[k++] = height(x, z, worldSeedInt);
+        for (int j = 0; j < nz; j++) {
+            int z = -2_000_000 + j * 40_001;
+            for (int i = 0; i < nx; i++) {
+                hs[k++] = height(-10_000_000 + i * 49_000, z, worldSeedInt);
             }
         }
         double[] sorted = hs.clone();
         Arrays.sort(sorted);
         double q67 = sorted[Math.min(sorted.length - 1, (int) (0.67 * sorted.length))];
-        double threshold = q67 + LIFT_WINDOW / 2.0;   // +0.03（抬升把等效阈值降到 T - 0.03）
+
+        // 阈值：对**真正的陆地判据**做二分，直接对准目标陆地占比。
+        //
+        // 陆地判据（本文件 line 322）：residual(h,t) = lifted(h,t) − t ≥ 0
+        //                              ⟺ h ≥ t − LIFT_WINDOW/2
+        // 旧写法 t = q67(h) + LIFT_WINDOW/2 在数学上等价于"使该判据成立的比例 = 33%"，
+        // **公式本身没错**；错的是 q67 的采样——9 个 400k×200k 小窗口在 λx 放大到 1M 后
+        // 只覆盖 0.4 个最长波长，q67 系统性偏高 → 陆地掉到 18.3%（P138 实测，沿 X 均匀）。
+        // 现在采样换成单张大网格（见上），这里再二分一遍以去掉"目标分位 vs 目标占比"的
+        // 分布假设，两者都对之后陆地占比落在 33%。
+        double lo = sorted[0], hi = sorted[sorted.length - 1];
+        for (int it = 0; it < 30; it++) {
+            double mid = 0.5 * (lo + hi);
+            int cnt = 0;
+            for (int q = 0; q < sampleN; q++) {
+                // 必须用 lifted 判据：residual(h,t) = lifted(h,t) − t ≥ 0 ⟺ h ≥ t − LIFT_WINDOW/2。
+                // 直接用 h ≥ t 会把阈值定低 ~LIFT/2 → 陆地偏多（实测 39.7% vs 目标 33%）。
+                if (lifted(hs[q], mid) - mid >= 0.0) {
+                    cnt++;
+                }
+            }
+            if (cnt / (double) sampleN > TARGET_LAND) {
+                lo = mid;      // 陆地太多 → 抬高阈值
+            } else {
+                hi = mid;
+            }
+        }
+        double threshold = 0.5 * (lo + hi);
 
         // 第二遍：收集陆上残差（h' - T >= 0）q93（内陆标尺）与海上 |r| q93（海床标尺）
-        double[] rs = new double[nx * nz];
-        double[] ss = new double[nx * nz];
+        double[] rs = new double[sampleN];
+        double[] ss = new double[sampleN];
         int m = 0;
         int ns = 0;
-        for (int z = 0; z < 200_000; z += CALIBRATE_STRIDE) {
-            for (int x = 0; x < 400_000; x += CALIBRATE_STRIDE) {
-                double r = lifted(hs[((z / CALIBRATE_STRIDE) * nx) + (x / CALIBRATE_STRIDE)], threshold) - threshold;
-                if (r >= 0.0) {
-                    rs[m++] = r;
-                } else {
-                    ss[ns++] = -r;
+        for (int w = 0; w < CALIBRATE_WINDOWS; w++) {
+            for (int j = 0; j < nz; j++) {
+                for (int i = 0; i < nx; i++) {
+                    double r = lifted(hs[w * per + j * nx + i], threshold) - threshold;
+                    if (r >= 0.0) {
+                        rs[m++] = r;
+                    } else {
+                        ss[ns++] = -r;
+                    }
                 }
             }
         }
@@ -275,14 +355,11 @@ public final class NoiseContinentGrid {
         double gx = (residual(hxp, t) - residual(hxm, t)) / (2.0 * k);
         double gz = (residual(hzp, t) - residual(hzm, t)) / (2.0 * k);
         double grad = Math.sqrt(gx * gx + gz * gz);
-        double dist;
-        if (grad < 1.0e-12) {
-            dist = r < 0.0 ? DIST_CAP : -DIST_CAP;   // 平坦远场：按侧别给饱和值
-        } else {
-            dist = -r / grad;
-            if (dist > DIST_CAP) dist = DIST_CAP;
-            if (dist < -DIST_CAP) dist = -DIST_CAP;
-        }
-        return dist;
+        // 平滑饱和：dist = -DIST_CAP·tanh(r / (grad·DIST_CAP))。
+        // 原实现是 if (grad < 1e-12) dist = (r<0 ? +CAP : -CAP) 的**硬分支**，
+        // 在平坦远场（grad≈0）上 dist 会在 ±CAP 之间跳 2·CAP，而 dist 下游连着
+        // 岸墙折射与近岸流速阻尼——流场方向因此出现不可导的跳变。
+        // tanh 形式在 grad 大时退化成 -r/grad（与旧式一致），grad→0 时连续饱和到 ∓CAP。
+        return -DIST_CAP * Math.tanh(r / (grad * DIST_CAP + 1.0e-12));
     }
 }

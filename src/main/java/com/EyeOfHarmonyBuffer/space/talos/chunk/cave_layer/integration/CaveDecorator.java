@@ -6,6 +6,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveFlavorRegistry;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveSegment;
@@ -51,8 +52,11 @@ public final class CaveDecorator {
             return;
         }
 
-        int x0 = chunkX * 16;
-        int z0 = chunkZ * 16;
+        // 环面：装饰一律在折叠坐标系里查询（方块写入仍用区块内局部索引）
+        int x0 = CaveGenerator.wrapWorldX(chunkX * 16);
+        int z0 = CaveGenerator.wrapWorldZ(chunkZ * 16);
+        int cchunkX = Math.floorDiv(x0, 16);
+        int cchunkZ = Math.floorDiv(z0, 16);
 
         // 小水洼：每个区块独立生成一个候选，中心落在区块内部，
         // 由单个区块完整负责，不再跨区块拼半个水洼。
@@ -62,19 +66,19 @@ public final class CaveDecorator {
         int puddleR = 0;
         int puddleFloor = Integer.MAX_VALUE;
         if (CaveMath.hash01(
-                chunkX, chunkZ, 0, seed, SALT_PUDDLE
+                cchunkX, cchunkZ, 0, seed, SALT_PUDDLE
             ) < PUDDLE_CHUNK_CHANCE) {
             puddleCx = 5 + (int) (CaveMath.hash01(
-                chunkX, chunkZ, 1, seed, SALT_PUDDLE) * 6.0);
+                cchunkX, cchunkZ, 1, seed, SALT_PUDDLE) * 6.0);
             puddleCz = 5 + (int) (CaveMath.hash01(
-                chunkX, chunkZ, 2, seed, SALT_PUDDLE) * 6.0);
+                cchunkX, cchunkZ, 2, seed, SALT_PUDDLE) * 6.0);
             puddleR = CaveMath.hash01(
-                chunkX, chunkZ, 3, seed, SALT_PUDDLE) < 0.5
+                cchunkX, cchunkZ, 3, seed, SALT_PUDDLE) < 0.5
                 ? PUDDLE_RADIUS_MIN : PUDDLE_RADIUS_MAX;
 
             // 整个水洼必须落在同一个石笋区，避免只填一半。
-            int cellX = Math.floorDiv(chunkX * 16 + puddleCx, 256);
-            int cellZ = Math.floorDiv(chunkZ * 16 + puddleCz, 256);
+            int cellX = CaveGenerator.cellOfX(x0 + puddleCx);
+            int cellZ = CaveGenerator.cellOfZ(z0 + puddleCz);
             if (CaveFlavorRegistry.hasTag(
                     CaveTag.SPIKE_ZONE, cellX, cellZ, seed
                 )) {
@@ -169,8 +173,8 @@ public final class CaveDecorator {
                     }
 
                     // 石笋区（256 格单元级），带外不生成石笋 / 水洼
-                    int cellX = Math.floorDiv(wx, 256);
-                    int cellZ = Math.floorDiv(wz, 256);
+                    int cellX = CaveGenerator.cellOfX(wx);
+                    int cellZ = CaveGenerator.cellOfZ(wz);
                     boolean spikeZone = CaveFlavorRegistry.hasTag(
                         CaveTag.SPIKE_ZONE, cellX, cellZ, seed
                     );

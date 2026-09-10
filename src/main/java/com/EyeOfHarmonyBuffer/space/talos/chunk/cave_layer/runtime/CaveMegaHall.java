@@ -940,9 +940,8 @@ public final class CaveMegaHall {
         double a = cy - ryLocal;
         double b = cy + ryLocal;
         double ceilNoise = CEIL_NOISE_AMP * (
-            CaveMath.perlin3D(
-                wx / CEIL_NOISE_SCALE, 0.1, wz / CEIL_NOISE_SCALE,
-                seed, CEIL_NOISE_SALT
+            CaveMath.perlin3DP(
+                wx, 0.1, wz, seed, CEIL_NOISE_SALT, CEIL_NOISE_SCALE
             ));
         b += ceilNoise;
         int yMin = (int) Math.floor(a - 0.5) + 1;
@@ -966,30 +965,28 @@ public final class CaveMegaHall {
      * 雕刻器用它生成底部地形；暗河接入点也用它在洞厅内找水下位置。
      */
     public int floorY(int worldX, int worldZ) {
-        double wx2 = worldX + FLOOR_WARP_AMP * CaveMath.perlin3D(
-            worldX / FLOOR_WARP_SCALE, 0.4, worldZ / FLOOR_WARP_SCALE,
-            seed, FLOOR_WARP_SALT);
-        double wz2 = worldZ + FLOOR_WARP_AMP * CaveMath.perlin3D(
-            worldX / FLOOR_WARP_SCALE, 0.5, worldZ / FLOOR_WARP_SCALE,
-            seed, FLOOR_WARP_SALT + 1);
-        double n = CaveMath.fbm3D(
-            wx2 / FLOOR_NOISE_SCALE, 0.1, wz2 / FLOOR_NOISE_SCALE,
-            seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
+        double wx2 = worldX + FLOOR_WARP_AMP * CaveMath.perlin3DP(
+            worldX, 0.4, worldZ, seed, FLOOR_WARP_SALT, FLOOR_WARP_SCALE);
+        double wz2 = worldZ + FLOOR_WARP_AMP * CaveMath.perlin3DP(
+            worldX, 0.5, worldZ, seed, FLOOR_WARP_SALT + 1, FLOOR_WARP_SCALE);
+        double n = CaveMath.fbm3DP(
+            wx2, 0.1, wz2, seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5,
+            FLOOR_NOISE_SCALE) * 2.0;
         int offset = (int) Math.round(n * FLOOR_NOISE_AMP);
         int lowY = LAKE_WATER_LEVEL + offset;
         int floorY = lowY;
         if (n >= PLATEAU_THRESHOLD - PLATEAU_BLEND) {
-            double pn = CaveMath.perlin3D(
-                worldX / PLATEAU_SCALE, 0.2, worldZ / PLATEAU_SCALE,
-                seed, PLATEAU_SALT) * 2.0;
+            double pn = CaveMath.perlin3DP(
+                worldX, 0.2, worldZ, seed, PLATEAU_SALT, PLATEAU_SCALE) * 2.0;
             int plateauY = PLATEAU_BASE + (int) Math.round(pn * PLATEAU_AMP);
             if (n >= PLATEAU_THRESHOLD) {
                 floorY = plateauY;
             } else {
-                double nRight = CaveMath.fbm3D(
-                    (wx2 + PLATEAU_GRADIENT_STEP) / FLOOR_NOISE_SCALE,
-                    0.1, wz2 / FLOOR_NOISE_SCALE,
-                    seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5) * 2.0;
+                double nRight = CaveMath.fbm3DP(
+                    wx2 + PLATEAU_GRADIENT_STEP,
+                    0.1, wz2,
+                    seed, FLOOR_NOISE_SALT, 3, 2.0, 0.5,
+                    FLOOR_NOISE_SCALE) * 2.0;
                 if (Math.abs(nRight - n) > PLATEAU_HARD_GRADIENT) {
                     floorY = lowY;
                 } else {
@@ -1000,9 +997,9 @@ public final class CaveMegaHall {
                 }
             }
         }
-        double dn = CaveMath.perlin3D(
-            worldX / FLOOR_DETAIL_SCALE, 0.3, worldZ / FLOOR_DETAIL_SCALE,
-            seed, FLOOR_DETAIL_SALT) * 2.0;
+        double dn = CaveMath.perlin3DP(
+            worldX, 0.3, worldZ, seed, FLOOR_DETAIL_SALT,
+            FLOOR_DETAIL_SCALE) * 2.0;
         floorY += (int) Math.round(dn * FLOOR_DETAIL_AMP);
         if (floorY < 2) {
             floorY = 2;
@@ -1023,8 +1020,8 @@ public final class CaveMegaHall {
 
     /** 湖心岛：是否落在岛区（噪声起伏的外圈）。外部建筑代码用。 */
     public boolean isOnIsland(double wx, double wz) {
-        double n = CaveMath.perlin3D(
-            wx / 22.0, 0.3, wz / 22.0, seed, ISLAND_SALT + 1);
+        double n = CaveMath.perlin3DP(
+            wx, 0.3, wz, seed, ISLAND_SALT + 1, 22.0);
         double eff = islandRadius * (0.85 + 0.35 * n);
         return islandDist(wx, wz) <= eff;
     }
@@ -1049,8 +1046,8 @@ public final class CaveMegaHall {
      */
     public int islandFloorY(double wx, double wz) {
         double d = islandDist(wx, wz);
-        double n = CaveMath.perlin3D(
-            wx / 22.0, 0.3, wz / 22.0, seed, ISLAND_SALT + 1);
+        double n = CaveMath.perlin3DP(
+            wx, 0.3, wz, seed, ISLAND_SALT + 1, 22.0);
         double eff = islandRadius * (0.85 + 0.35 * n); // 岛体外圈（噪声起伏）
         double bed = ISLAND_LAKE_BED;                  // 湖床约 11
         double floor;
@@ -1077,8 +1074,8 @@ public final class CaveMegaHall {
             floor = bed + (outer - bed) * s;
         }
         // 高频起伏让海岸线自然
-        double dn = CaveMath.perlin3D(
-            wx / 18.0, 0.3, wz / 18.0, seed, ISLAND_SALT + 7) * 2.0;
+        double dn = CaveMath.perlin3DP(
+            wx, 0.3, wz, seed, ISLAND_SALT + 7, 18.0) * 2.0;
         floor += dn;
         if (floor < 2.0) {
             floor = 2.0;
@@ -1124,17 +1121,15 @@ public final class CaveMegaHall {
 
     private double shapeFactorX(int wx, int wz) {
         return 1.0 + SHAPE_NOISE_AMP * (
-            CaveMath.perlin3D(
-                wx / SHAPE_NOISE_SCALE, 0.05, wz / SHAPE_NOISE_SCALE,
-                seed, SHAPE_NOISE_SALT
+            CaveMath.perlin3DP(
+                wx, 0.05, wz, seed, SHAPE_NOISE_SALT, SHAPE_NOISE_SCALE
             ));
     }
 
     private double shapeFactorZ(int wx, int wz) {
         return 1.0 + SHAPE_NOISE_AMP * (
-            CaveMath.perlin3D(
-                wx / SHAPE_NOISE_SCALE, 0.07, wz / SHAPE_NOISE_SCALE,
-                seed, SHAPE_NOISE_SALT + 1
+            CaveMath.perlin3DP(
+                wx, 0.07, wz, seed, SHAPE_NOISE_SALT + 1, SHAPE_NOISE_SCALE
             ));
     }
 
@@ -1155,12 +1150,10 @@ public final class CaveMegaHall {
 
     /** double 精度水平形状值（<1 在洞厅内）。 */
     private double shapeHAt(double wx, double wz) {
-        double fx = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3D(
-            wx / SHAPE_NOISE_SCALE, 0.05, wz / SHAPE_NOISE_SCALE,
-            seed, SHAPE_NOISE_SALT);
-        double fz = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3D(
-            wx / SHAPE_NOISE_SCALE, 0.07, wz / SHAPE_NOISE_SCALE,
-            seed, SHAPE_NOISE_SALT + 1);
+        double fx = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3DP(
+            wx, 0.05, wz, seed, SHAPE_NOISE_SALT, SHAPE_NOISE_SCALE);
+        double fz = 1.0 + SHAPE_NOISE_AMP * CaveMath.perlin3DP(
+            wx, 0.07, wz, seed, SHAPE_NOISE_SALT + 1, SHAPE_NOISE_SCALE);
         double dx = (wx - cx) / (rx * fx);
         double dz = (wz - cz) / (rz * fz);
         return shapeH(dx, dz);

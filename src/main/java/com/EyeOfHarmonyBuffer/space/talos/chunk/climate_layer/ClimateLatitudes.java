@@ -43,23 +43,33 @@ public final class ClimateLatitudes {
         POLAR
     }
 
-    /** 纬度循环长度：一条热带中线到下一条热带中线的距离。 */
-    public static final int LAT_CYCLE = 200_000;
+    /**
+     * 纬度循环长度：一条热带中线到下一条热带中线的距离。
+     *
+     * **2026-09 由 200,000 提到 4,000,000**。诊断（P115/P117）证明 200k 太小：
+     * 赤道→极地只有 100 km，而气压纬向廓线的特征（四个高斯 σ=0.075~0.17）在 b 上
+     * 换算过去只有 **15~34 km 宽** → 气候带成了 "8~17 km 宽的条纹"，1000 km 的图上
+     * 必然看到 5 次完全相同的重复。提到 4M 后：赤道→极地 2000 km（与 600 km 量级的
+     * 大陆尺度自洽）、最窄的气候带 ~354 km、1000 km 的图里 **没有任何重复**。
+     */
+    public static final int LAT_CYCLE = 4_000_000;
 
-    /** d 的最大值 = LAT_CYCLE / 2 = 100_000（离最近热带中线最远的位置，即寒带中点）。 */
+    /** d 的最大值 = LAT_CYCLE / 2（离最近热带中线最远的位置，即寒带中点）。 */
     public static final int MAX_D = LAT_CYCLE / 2;
 
-    /** 热带距离上限：0–16k 为热带中心区域。 */
-    public static final int D_TROPIC_MAX = 16_000;
+    // 以下阈值按 MAX_D 的比例给出（原来是 16k/32k/64k/84k ÷ 100k 的固定 block 值，
+    // 那样写死会让"热带中心"在周期变大后缩成一条细缝）。比例保持不变。
+    /** 热带距离上限：0–16% 为热带中心区域。 */
+    public static final int D_TROPIC_MAX = (int) (MAX_D * 0.16);
 
-    /** 亚热带距离上限：16k–32k 为亚热带。 */
-    public static final int D_SUBTROPIC_MAX = 32_000;
+    /** 亚热带距离上限：16%–32% 为亚热带。 */
+    public static final int D_SUBTROPIC_MAX = (int) (MAX_D * 0.32);
 
-    /** 温带距离上限：32k–64k 为温带（较宽）。 */
-    public static final int D_TEMPERATE_MAX = 64_000;
+    /** 温带距离上限：32%–64% 为温带（较宽）。 */
+    public static final int D_TEMPERATE_MAX = (int) (MAX_D * 0.64);
 
-    /** 亚寒带距离上限：64k–84k 为亚寒带。 */
-    public static final int D_SUBPOLAR_MAX = 84_000;
+    /** 亚寒带距离上限：64%–84% 为亚寒带。 */
+    public static final int D_SUBPOLAR_MAX = (int) (MAX_D * 0.84);
 
     /** 寒带距离上限：84k–100k 为寒带（靠近最冷的区域）。 */
     public static final int D_POLAR_MAX = MAX_D;
