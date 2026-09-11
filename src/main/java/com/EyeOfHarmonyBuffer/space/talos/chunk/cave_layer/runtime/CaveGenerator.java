@@ -2,11 +2,10 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainPreset;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainMacroPresetRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -171,11 +170,16 @@ public final class CaveGenerator {
         }
         double y = 64.0;
         try {
-            y = TalosTerrainHeights.sample(
-                cellX * CELL_BLOCKS + CELL_BLOCKS / 2,
-                cellZ * CELL_BLOCKS + CELL_BLOCKS / 2,
-                (int) (seed & 0x7FFFFFFFL), 64, 256
-            ).surfaceD;
+            // **必须走 V2 高度链**（composeColumn）：原先这里读的是旧轨的
+            // TalosTerrainHeights.sample(...).surfaceD —— 那是**另一套地形**算出来的地表，
+            // 与眼前世界的列顶可以差几十 blocks（旧命令口径实测 max|Δh|=145.9，见 P218），
+            // 于是干洞的"离地表 10~20 格"深度带会整体错位。
+            int wx = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
+            int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
+            int ws = (int) (seed & 0x7FFFFFFFL);
+            OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
+            y = V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
+                V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             // 地形链不可用（探针 / 未初始化）时退化为海平面，仍确定。
             y = 64.0;
@@ -192,36 +196,82 @@ public final class CaveGenerator {
      */
     private static double surfaceAt(int wx, int wz, long seed) {
         try {
-            return TalosTerrainHeights.sample(
-                wx, wz, (int) (seed & 0x7FFFFFFFL), 64, 256
-            ).surfaceD;
+            // 同 surfaceRefAt：**必须走 V2 高度链**。入口 y 用错地形链会让竖井开口
+            // 开在比真实地表高/低几十格的位置（悬空或挖不到）。
+            int ws = (int) (seed & 0x7FFFFFFFL);
+            OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
+            return V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
+                V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             return 64.0;
         }
     }
 
-    /** 干洞深度带层数（按宏包分级，方案 A）：高原 / 山地 3 层，温带 2 层，低地 1 层。 */
+    /** 洞壁噪声尺度（blocks）。与旧 CaveCarver 的同名常量同值 —— 几何必须是同一个几何。 */
+    public static final double GEOM_NOISE_SCALE = 12.0;
+    /** 洞壁噪声半幅（blocks）。 */
+    public static final double GEOM_WALL_AMP = 1.3;
+    private static final int GEOM_NOISE_SALT = 0xC0FFEE;
+
+    /**
+     * **几何层**挖空余量：&gt;0 表示该方块应挖空（不含地表/水体保护规则）。
+     *
+     * 这个方法原先住在 {@code CaveCarver}（已退役的旧雕刻器）里，而活的
+     * {@code TalosCaveSystem} 为了一个纯几何查询不得不 import 那个旧类 ——
+     * 典型"活代码依赖旧系统"。它只依赖 {@link CaveChunkData}/{@link CaveSegment}
+     * （都在 runtime 包里），所以搬到本类，旧雕刻器就不再被活链引用。
+     */
+    public static double sampleExcess(CaveChunkData data,
+                                      int worldX, int worldY, int worldZ,
+                                      long seed) {
+        worldX = wrapWorldX(worldX);
+        worldZ = wrapWorldZ(worldZ);
+        double wall = (CaveMath.valueNoise3DP(
+            worldX, worldY, worldZ, seed, GEOM_NOISE_SCALE, GEOM_NOISE_SALT) - 0.5)
+            * 2.0 * GEOM_WALL_AMP;
+        double best = Double.NEGATIVE_INFINITY;
+        for (CaveSegment seg : data.segments) {
+            if (worldX < seg.minX || worldX > seg.maxX
+                || worldY < seg.minY || worldY > seg.maxY
+                || worldZ < seg.minZ || worldZ > seg.maxZ) {
+                continue;
+            }
+            double e = seg.sampleExcess(worldX, worldY, worldZ, wall);
+            if (e > best) {
+                best = e;
+            }
+        }
+        for (CaveMegaHall hall : data.megaHalls) {
+            int[] span = new int[2];
+            if (hall.verticalSpan(
+                    worldX, worldZ, (int) Math.floor(hall.maxY), span)
+                && worldY >= span[0] && worldY <= span[1]) {
+                return 1.0;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * 干洞深度带层数：**按 V2 类型场分级** —— 高原/山地/峰 3 层、丘陵 2 层、低地 1 层。
+     *
+     * 这里原先按**旧宏包**（{@code MacroPackageId}）分级：那是旧轨的群系分组，
+     * 与世界实际地形无关 ⇒ "高原 3 层、低地 1 层"这个对应关系在 V2 世界是随机成立的。
+     * V2 的类型场（{@link OrographyField} 的 LOWLAND/HILL/PLATEAU/MOUNTAIN/PEAK）
+     * 本身就是地形给出的分档，用它才是"同一件事只有一处定义"。
+     */
     private static int depthLayersForCell(int cellX, int cellZ, long seed) {
         int wx = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
         int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
-        MacroPackageId pkg = TalosMacroClimate.getMacroPackageId(
-            wx, wz, (int) (seed & 0x7FFFFFFFL));
-        if (pkg == null) {
-            return 1;
+        int kind = OrographyField.sample(wx, wz, (int) (seed & 0x7FFFFFFFL)).kind;
+        if (kind == OrographyField.KIND_PLATEAU || kind == OrographyField.KIND_MOUNTAIN
+            || kind == OrographyField.KIND_PEAK) {
+            return 3;
         }
-        switch (pkg) {
-            case TEMPERATE_HIGHLAND:
-            case POLAR_HIGHLAND:
-            case MOUNTAIN_PEAK:
-                return 3;
-            case TROPICAL_HUMID:
-            case TROPICAL_DRY:
-            case TEMPERATE_FORESTED:
-            case COOL_FORESTED:
-                return 2;
-            default:
-                return 1;
+        if (kind == OrographyField.KIND_HILL) {
+            return 2;
         }
+        return 1;
     }
 
     private static final Object NO_MEGA_HALL = new Object();
@@ -254,29 +304,25 @@ public final class CaveGenerator {
     private static final int HALL_ZONE_CELL_CACHE_LIMIT = 200_000;
 
     // ------------------------------------------------------------
-    // 环面周期（洞穴晶格必须与 400k × 200k 世界周期对齐）
+    // 世界周期：**两个方向都无限**
+    //   契约：Z 的周期（Z_CYCLE = 1M）只控制【气候/纬度】，地形/海陆/洋流/洞穴都不重复。
     // ------------------------------------------------------------
-
-    public static final int PERIOD_X = 400_000;
-    public static final int PERIOD_Z = 200_000;
-    /** 每周期单元数（整数，因为 CELL_BLOCKS 整除周期）。 */
-    public static final int CELLS_X = PERIOD_X / CELL_BLOCKS;
-    public static final int CELLS_Z = PERIOD_Z / CELL_BLOCKS;
-    /** 每周期超级格数。 */
-    public static final int SUPERS_X = PERIOD_X / MEGA_HALL_CELL_BLOCKS;
-    public static final int SUPERS_Z = PERIOD_Z / MEGA_HALL_CELL_BLOCKS;
+    //
+    // 这里曾经有 PERIOD_X = 400_000 / PERIOD_Z = 200_000 以及派生的
+    // CELLS_X / CELLS_Z / SUPERS_X / SUPERS_Z（把洞穴晶格折回一个 400k×200k 环面）。
+    // X 在 C1（世界沿 X 无限）时已改成恒等映射；Z 也早已松开（wrapWorldZ 恒等）。
+    // 那 6 个常量后来**没有任何引用**，只剩"化石"，于本次删除。
+    // 现状：洞穴单元直接由**绝对坐标**哈希（cellOfX/cellOfZ + 各处 CaveMath.hashRange），
+    // 噪声侧由 PeriodicNoise.INFINITE_Z = true 关掉了 Z 折叠 → 两个方向都逐块不同。
 
     /**
-     * 世界 x → 折叠。
-     *
-     * **X 方向无限（C1）**：恒等 —— 洞穴晶格沿 X 无限延伸、不再重复；
-     * Z 仍是 200k 纬度循环，继续折叠（见 {@link #wrapWorldZ}）。
+     * 世界 x → 折叠：**恒等**。X 方向无限（C1）—— 洞穴晶格沿 X 无限延伸、不再重复。
      */
     public static int wrapWorldX(int x) {
         return x;
     }
 
-    /** Z 方向也无限（无限平面世界；纬度循环只作用于气候层）。 */
+    /** Z 方向也**无限**（恒等）：Z_CYCLE 的纬度循环只作用于气候层，洞穴不跟着重复。 */
     public static int wrapWorldZ(int z) {
         return z;
     }
@@ -534,18 +580,17 @@ public final class CaveGenerator {
     }
 
     /**
-     * 洞厅只生成在「宏包带底 > 100」的高海拔群系：洞厅是地底巨大空间，
-     * 地表必须足够高才能把它埋住（顶 ≤64）。按宏包 minHeight 判定，
-     * 避免依赖具体 biome 白名单（biome 会随地形层改动漂移）。
+     * 洞厅只生成在「地表足够高」的位置：洞厅是地底巨大空间（顶 ≤64），地表必须把它埋住。
+     *
+     * 这里原先问的是**旧宏观预设表**的 {@code minHeight}（{@code TerrainMacroPresetRegistry}
+     * ← 旧宏包）——那是旧轨的群系高度带，与世界的真实列顶无关。
+     * 现在直接问**唯一高度链** {@link V2TerrainGen#composeColumn}：列顶 > 100 才放洞厅
+     * （与旧判据的阈值同值，只是从"预设表说这里高"换成"这里确实高"）。
      */
     private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
-        MacroPackageId pkg = TalosMacroClimate.getMacroPackageId(
-            wx, wz, seed);
-        if (pkg == null) {
-            return false;
-        }
-        BaseTerrainPreset preset = TerrainMacroPresetRegistry.get(pkg);
-        return preset != null && preset.minHeight > 100.0;
+        OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
+        return V2TerrainGen.composeColumn(wx, wz, seed, LandformField.SEA_LEVEL, o,
+            V2TerrainGen.MC_WORLD_HEIGHT - 2).h > 100;
     }
 
     /** 洞厅中心所在单元对应的网络节点；其他单元返回 null。 */

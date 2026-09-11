@@ -46,7 +46,14 @@ public final class ClimateSample {
     public final double currentZ;
     /** 海温 [-1,1]（耦合输运后；陆上 NaN）。 */
     public final double seaTemperature;
-    /** 流速 [0,1] 占位（=0.5，待 M5 输出流强后替换）。 */
+    /**
+     * 流速（m/s）= {@code hypot(currentX, currentZ)}；陆上为 0。
+     *
+     * 曾经是**写死的 0.5 占位**（"待 M5 输出流强后替换"）—— M5（耦合正压涡旋求解器）
+     * 早已落地，占位却没换：{@code /talosmap currents} 的箭头长度因此完全不随流速变化，
+     * 而方向那一侧又把 m/s 的原始分量当像素位移用 ⇒ 整层看起来"海上没有洋流"。
+     * 现在它是真实模长，箭头标尺见 {@code CommandTalosMap.CURRENT_FULL_MS}。
+     */
     public final double currentSpeed;
 
     public ClimateSample(boolean isLand, double coastDist,

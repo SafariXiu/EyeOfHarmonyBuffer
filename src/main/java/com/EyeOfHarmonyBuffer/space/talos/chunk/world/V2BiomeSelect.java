@@ -25,7 +25,7 @@ public final class V2BiomeSelect {
     private V2BiomeSelect() {}
 
     /** 浅岸陆架半宽（blocks）。 */
-    public static final double SHELF_BLOCKS = 2400.0;
+    public static final double SHELF_BLOCKS = 600.0;
 
     // ===== Tier-1 气候带中心与隶属度宽度 =====
     /** 温度带中心：极地 / 寒温 / 温带 / 亚热带 / 热带。 */

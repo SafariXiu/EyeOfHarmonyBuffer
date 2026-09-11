@@ -7,8 +7,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -73,8 +75,7 @@ public class CommandTalosCave extends CommandBase {
         }
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
-        int seed = TalosLandMask.getWorldSeedInt(world);
-        LegacyV2Note.note(sender);
+        int seed = TalosSeed.of(world);
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
 
@@ -202,9 +203,10 @@ public class CommandTalosCave extends CommandBase {
         }
         CaveEntrance e = sorted.get(index - 1);
 
-        double surface = TalosTerrainHeights.sample(
-            e.x, e.z, seed, 64, world.getActualHeight()
-        ).surfaceD;
+        // 走唯一高度链（原先读旧轨 TalosTerrainHeights —— 传送落点会按另一套地形算）
+        OrographyField.OroSample oc = OrographyField.sample(e.x, e.z, seed);
+        double surface = V2TerrainGen.composeColumn(e.x, e.z, seed, LandformField.SEA_LEVEL, oc,
+            V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         double y = Math.round(surface) + 2.0;
         player.setPositionAndUpdate(e.x + 0.5, y, e.z + 0.5);
         player.addChatMessage(new ChatComponentText(String.format(
@@ -452,14 +454,14 @@ public class CommandTalosCave extends CommandBase {
             tz = (int) Math.floor(player.posZ);
         }
 
-        // 1) 地形采样（雕刻门控条件）
-        TalosTerrainHeights.TerrainHeightSample ts =
-            TalosTerrainHeights.sample(tx, tz, seed, 64, world.getActualHeight());
+        // 1) 地形采样（雕刻门控条件）—— 唯一海陆判定 + 唯一高度链。
+        // 旧口径里的 riverMask / body / waterLevel 随旧河网删除（V2 世界无河网、水面=海平面）。
+        OrographyField.OroSample oo = OrographyField.sample(tx, tz, seed);
+        int surfaceTop = V2TerrainGen.composeColumn(tx, tz, seed, LandformField.SEA_LEVEL, oo,
+            V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         player.addChatMessage(new ChatComponentText(String.format(
-            "[PROBE] pos=(%d,%d) 地表≈%.0f isLand=%b riverMask=%.2f body=%s waterLevel=%s",
-            tx, tz, ts.surfaceD, ts.isLand, ts.riverMask,
-            ts.body == null ? "null" : ts.body.toString(),
-            ts.waterLevel == Double.NEGATIVE_INFINITY ? "-inf" : String.format("%.0f", ts.waterLevel)
+            "[PROBE] pos=(%d,%d) 地表≈%d isLand=%b waterLevel=%d",
+            tx, tz, surfaceTop, oo.isLand, LandformField.SEA_LEVEL
         )));
 
         // 1.5) 光照诊断：该位置所在区块的实际 skylight / blocklight 值（按 y 采样）。
@@ -522,13 +524,12 @@ public class CommandTalosCave extends CommandBase {
             CaveEntrance.typeName(nearest.type), nearestD
         )));
 
-        // 3) 雕刻门控检查（与 CaveCarver.carveColumn 相同的逻辑）
-        int topSolidY = (int) Math.round(ts.surfaceD);
-        boolean gateSkip = topSolidY < (int) (ts.waterLevel) + 1;
+        // 3) 雕刻门控检查（与 CaveGenerator 的雕刻逻辑同口径）
+        int topSolidY = surfaceTop;
+        boolean gateSkip = topSolidY < LandformField.SEA_LEVEL + 1;
         player.addChatMessage(new ChatComponentText(String.format(
             "[PROBE] 雕刻门控: topSolidY≈%d, waterSurfaceY≈%d, %s",
-            topSolidY,
-            ts.waterLevel == Double.NEGATIVE_INFINITY ? 0 : (int) ts.waterLevel,
+            topSolidY, LandformField.SEA_LEVEL,
             gateSkip ? "会跳过（列顶低于水面）" : "不跳过（应雕刻）"
         )));
 

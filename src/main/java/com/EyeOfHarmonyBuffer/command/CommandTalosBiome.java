@@ -1,8 +1,7 @@
 package com.EyeOfHarmonyBuffer.command;
 
-import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomePicker;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
@@ -21,9 +20,15 @@ import java.util.List;
 
 public class CommandTalosBiome extends CommandBase {
 
-    private static final int DEFAULT_RADIUS = 30000;
-    /** 环面最大有意义距离（x 半周 200k、z 半周 100k）→ 200k 即"全球"。 */
+    /**
+     * 搜索半径上限。**这是旧环面世界的遗留值**（当时 x 半周 200k、z 半周 100k ⇒ 200k 即"全球"），
+     * 现值与任何世界周期都无关。值不变，仅补注说明；改它只影响本命令的输出，不影响世界生成。
+     */
     private static final int MAX_RADIUS = 200000;
+
+    /** 本命令的固定扫描域（blocks）——同样是旧环面遗留，见上方 MAX_RADIUS 说明。 */
+    private static final int SCAN_X_SPAN = 400_000;
+    private static final int SCAN_Z_SPAN = 200_000;
 
     /** 粗扫步长：先在整个搜索范围内找最近的命中点。 */
     private static final int COARSE_STEP = 512;
@@ -65,10 +70,9 @@ public class CommandTalosBiome extends CommandBase {
             return;
         }
 
-        final boolean v2 = V2TerrainConfigSection.terrainV2Enabled;
-        // V2 轨搜索是 8 万次查表（瞬时、覆盖全球），因此默认半径直接取全球；
-        // 旧轨按块粗扫代价高，仍用 DEFAULT_RADIUS。
-        int radius = v2 ? MAX_RADIUS : DEFAULT_RADIUS;
+        // 世界只有一条链 ⇒ 搜索永远是 LUT 查表（8 万次、瞬时、覆盖全球），默认半径直接取全球。
+        // 这里曾经按 terrainV2Enabled 在 MAX_RADIUS / DEFAULT_RADIUS 之间二选一。
+        int radius = MAX_RADIUS;
         if (args.length >= 2) {
             try {
                 radius = Integer.parseInt(args[1]);
@@ -107,7 +111,7 @@ public class CommandTalosBiome extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
 
-        int worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
+        int worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
 
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
@@ -117,13 +121,18 @@ public class CommandTalosBiome extends CommandBase {
         double bestDistSq = Double.POSITIVE_INFINITY;
         boolean found = false;
 
-        if (v2) {
-            // V2 轨：直接在群系 LUT（1km 网格，400×200）上找最近命中格 —— 8 万次查表、瞬时完成，
-            // 且覆盖整张地图；距离按**环面折叠**（x 周期 400k、z 周期 200k），避免在接缝附近选到远点。
+        {
+            // 直接在群系 LUT（250m 网格）上找最近命中格。
+            // 注意：V2BiomeField.NX/NZ 是**单个瓦片**（100km × 50km = 400×200 格），
+            // 而本命令要扫的是下面这张固定的旧环面区域（400k × 200k），所以按 SCAN_*_SPAN 循环，
+            // 不是按瓦片尺寸。⚠️ 世界现在是 X 无限 / Z 不重复，这个扫描域与 wrapDistSq 的环绕
+            // 都是旧环面的遗留；本命令只用于开发排查，改它会改变命令输出（不影响世界生成）。
             final int half = V2BiomeField.CELL / 2;
-            for (int cz = 0; cz < V2BiomeField.NZ; cz++) {
+            final int periodNZ = SCAN_Z_SPAN / V2BiomeField.CELL;
+            final int periodNX = SCAN_X_SPAN / V2BiomeField.CELL;
+            for (int cz = 0; cz < periodNZ; cz++) {
                 int wz = cz * V2BiomeField.CELL + half;
-                for (int cx = 0; cx < V2BiomeField.NX; cx++) {
+                for (int cx = 0; cx < periodNX; cx++) {
                     int wx = cx * V2BiomeField.CELL + half;
                     if (V2BiomePicker.biomeAt(wx, wz, worldSeedInt) != target) {
                         continue;
@@ -153,48 +162,6 @@ public class CommandTalosBiome extends CommandBase {
                             bestDistSq = d;
                             bestX = x;
                             bestZ = z;
-                        }
-                    }
-                }
-            }
-        } else {
-            // 旧轨：块级粗扫 + 精扫
-            final int coarseStep = COARSE_STEP;
-            for (int dz = -radius; dz <= radius; dz += coarseStep) {
-                for (int dx = -radius; dx <= radius; dx += coarseStep) {
-                    int x = px + dx;
-                    int z = pz + dz;
-                    if (biomeAt(v2, world, x, z, worldSeedInt) == target) {
-                        double d = (double) dx * dx + (double) dz * dz;
-                        if (d < bestDistSq) {
-                            bestDistSq = d;
-                            bestX = x;
-                            bestZ = z;
-                            found = true;
-                        }
-                    }
-                }
-            }
-            if (found) {
-                int cx = bestX, cz = bestZ;
-                bestDistSq = Double.POSITIVE_INFINITY;
-                for (int dz = -REFINE_HALF; dz <= REFINE_HALF; dz += REFINE_STEP) {
-                    for (int dx = -REFINE_HALF; dx <= REFINE_HALF; dx += REFINE_STEP) {
-                        int x = cx + dx;
-                        int z = cz + dz;
-                        if (x < px - radius || x > px + radius
-                            || z < pz - radius || z > pz + radius) {
-                            continue;
-                        }
-                        if (biomeAt(v2, world, x, z, worldSeedInt) == target) {
-                            double ddx = (double) x - px;
-                            double ddz = (double) z - pz;
-                            double d = ddx * ddx + ddz * ddz;
-                            if (d < bestDistSq) {
-                                bestDistSq = d;
-                                bestX = x;
-                                bestZ = z;
-                            }
                         }
                     }
                 }
@@ -312,13 +279,10 @@ public class CommandTalosBiome extends CommandBase {
     }
 
     /**
-     * 旧轨（非 V2）群系口径：旧宏气候。V2 轨不经过本方法——直接查 1km 群系 LUT
-     * （{@link V2BiomePicker#biomeAt}），与地形/群系生成同源，且不受已加载区块影响。
+     * 粗扫用的群系查询：走世界群系管理器（= {@link V2BiomePicker} 那一条链）。
+     * 旧轨的"旧宏气候"分支已随旧轨删除 —— 本命令不可能再读到第二套群系口径。
      */
-    private static BiomeGenBase biomeAt(boolean v2, World world, int x, int z, int seed) {
-        if (v2) {
-            return world.getBiomeGenForCoords(x, z);
-        }
-        return TalosMacroClimate.getBiome(x, z, seed);
+    private static BiomeGenBase biomeAt(World world, int x, int z) {
+        return world.getBiomeGenForCoords(x, z);
     }
 }

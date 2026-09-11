@@ -1,14 +1,15 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
 /**
- * 环面周期噪声原语（世界周期 400k(x) × 200k(z)）。
+ * 可选周期噪声原语。**"周期"是每轴可选的**：PERIOD_X = 100,000、PERIOD_Z = 1,000,000
+ * （= ClimateLatitudes.LAT_CYCLE），但 `INFINITE_X` / `INFINITE_Z` 两个开关**默认都为 true**，
+ * 也就是当前世界在两个方向上都不折叠（见下方两段 javadoc）。
  *
- * **为什么需要**：世界是环面，但底层噪声的 lattice 哈希原本不取模，f(x,z) ≠ f(x+400k,z)；
- * 而群系 LUT / 山层网格都是按周期环绕求解的 → 超出一个周期后群系与地形错位。
+ * **为什么需要**：底层噪声的 lattice 哈希原本不取模，f(x,z) ≠ f(x+周期,z)；
+ * 早期世界是环面（群系 LUT / 山层网格按周期环绕求解），超出一个周期后群系与地形错位，
+ * 所以本原语提供"按整格数取模"的选项。契约变更后（X 无限、Z 只重复气候）默认走不折叠那条。
  *
  * **两类原语**：
- *   - {@link #value2}：值噪声（大陆层用）。哈希与旧实现完全一致，lattice 索引按格数取模，
- *     第一周期内与原实现**逐位相同**。
  *   - {@link #gradient2} / {@link #gradientFbm2} / {@link #ridged2} / {@link #warpedFbm2}：
  *     方格 lattice 梯度噪声（地形塑形用）。经典 simplex 的斜 lattice 无法与直角世界周期对齐
  *     （斜率为无理数，任何轴向平移都映射不到整数格位移），故改用 quintic 淡入淡出 +
@@ -19,19 +20,29 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
  */
 public final class PeriodicNoise {
 
-    public static final double PERIOD_X = 400_000.0;
-    public static final double PERIOD_Z = 4_000_000.0;   // = ClimateLatitudes.LAT_CYCLE（纬度循环）
+    public static final double PERIOD_X = 100_000.0;
+    public static final double PERIOD_Z = 1_000_000.0;   // = ClimateLatitudes.LAT_CYCLE（纬度循环）
     private static final double INV_PX = 1.0 / PERIOD_X;
     private static final double INV_PZ = 1.0 / PERIOD_Z;
 
     /**
-     * **X 方向无限**（C1 世界：X 不重复、Z 仍是 200k 纬度循环）。
+     * **X 方向无限**（C1 世界：X 不重复；Z 的周期只由 LAT_CYCLE 管气候，见 INFINITE_Z）。
      *
      * true 时 {@link #cellsX}/{@link #cellsXFromFreq} 一律返回 ≤0（"不折叠"），
      * 于是所有走本原语的噪声自动变成 X 无界；Z 方向不受影响。
-     * 周期 400k 内的取值与 false 时**逐位相同**（取模在周期内是恒等变换）。
+     * 周期 PERIOD_X（100k）内的取值与 false 时**逐位相同**（取模在周期内是恒等变换）。
      */
     public static boolean INFINITE_X = true;
+
+    /**
+     * **Z 方向也无限**（契约：Z_CYCLE = 1M 只控制【气候/纬度】，地形/海陆/洋流必须在两个方向上
+     * 都逐块不同）。true 时 {@link #cellsZ}/{@link #cellsZFromFreq} 一律返回 ≤0（"不折叠"），
+     * 于是所有走本原语的塑形噪声在 Z 上不再每 1M 复读；false = 旧行为（每 1M 逐位相同）。
+     *
+     * 注意：{@code gradient2} 的 lattice 取模本来就是 {@code nz > 0} 才走，
+     * 所以这里只要把格数取负即可，不必改噪声本体。
+     */
+    public static boolean INFINITE_Z = true;
 
     private PeriodicNoise() {}
 
@@ -47,15 +58,21 @@ public final class PeriodicNoise {
         return INFINITE_X ? -n : n;
     }
 
-    /** 波长 → z 方向格数（≥1）。 */
+    /**
+     * 波长 → z 方向格数。
+     * 返回值 > 0 = 按格数取模折叠（每 1M 复读）；**< 0 = 不折叠但保留 |格数| 的尺度**。
+     */
     public static int cellsZ(double wavelength) {
         int n = (int) Math.round(PERIOD_Z / wavelength);
-        return n < 1 ? 1 : n;
+        if (n < 1) {
+            n = 1;
+        }
+        return INFINITE_Z ? -n : n;
     }
 
     /**
      * 值噪声：**两轴都任意波长、都不折叠**（无限平面世界）。
-     * 大陆/海洋/洞穴等"空间"层用它；只有纬度带（bandD）保留 200k 循环。
+     * 大陆/海洋/洞穴等"空间"层用它；只有纬度带（bandD）保留 LAT_CYCLE（1M）循环。
      */
     public static double value2XZ(long seed, double x, double z, double wavX, double wavZ) {
         double sx = x / wavX, sz = z / wavZ;
@@ -79,34 +96,17 @@ public final class PeriodicNoise {
         return INFINITE_X ? -n : n;
     }
 
-    /** 频率（1/blocks）→ z 方向格数（≥1）。 */
+    /** 频率（1/blocks）→ z 方向格数（>0 折叠 / <0 不折叠但保尺度）。 */
     public static int cellsZFromFreq(double freq) {
         int n = (int) Math.round(PERIOD_Z * freq);
-        return n < 1 ? 1 : n;
+        if (n < 1) {
+            n = 1;
+        }
+        return INFINITE_Z ? -n : n;
     }
 
-    // ================= 值噪声（大陆层，[0,1]） =================
-
-    /**
-     * 周期值噪声 [0,1]（哈希与 NoiseContinentGrid 原实现一致 → 第一周期逐位相同）。
-     * **格数 ≤ 0 表示该轴不折叠**（无限世界 / X 无限时用）。
-     */
-    public static double value2(long seed, double x, double z, int nx, int nz) {
-        int ax = nx < 0 ? -nx : (nx == 0 ? 1 : nx);
-        int az = nz < 0 ? -nz : (nz == 0 ? 1 : nz);
-        double sx = x * (ax * INV_PX);
-        double sz = z * (az * INV_PZ);
-        int xi = fastFloor(sx), zi = fastFloor(sz);
-        double fx = sx - xi, fz = sz - zi;
-        double u = fx * fx * (3.0 - 2.0 * fx);
-        double v = fz * fz * (3.0 - 2.0 * fz);
-        int x0 = nx > 0 ? mod(xi, ax) : xi, x1 = nx > 0 ? mod(xi + 1, ax) : xi + 1;
-        int z0 = nz > 0 ? mod(zi, az) : zi, z1 = nz > 0 ? mod(zi + 1, az) : zi + 1;
-        double a = hashUnit(seed, x0, z0), b = hashUnit(seed, x1, z0);
-        double c = hashUnit(seed, x0, z1), d = hashUnit(seed, x1, z1);
-        double ab = a + (b - a) * u, cd = c + (d - c) * u;
-        return ab + (cd - ab) * v;
-    }
+    // 值噪声：大陆/海洋/洞穴层统一走 value2XZ（两轴都不折叠）。此处曾有一个零引用的
+    // value2(seed,x,z,nx,nz) 重载，已作为死代码删除。
 
     private static double hashUnit(long seed, int gx, int gz) {
         long h = hash2(seed, gx, gz);
@@ -145,7 +145,7 @@ public final class PeriodicNoise {
 
     /**
      * 归一化系数：使 rms 与旧 simplex（Gustavson ×70）一致。
-     * 探针 P83 标定（400k×400k 采样域、覆盖 133×133 个 lattice 格）：
+     * 探针 P83 标定（当时的采样域 400k×400k、覆盖 133×133 个 lattice 格 —— 这个 400k 是采样域，与世界周期无关）：
      * simplex 单层 rms 0.4415 / 梯度噪声 0.21565 → 2.047；fbm3 归一后 0.508 vs 0.502（差 1%）。
      */
     public static double GRAD_NORM = 2.047;

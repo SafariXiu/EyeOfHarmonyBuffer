@@ -20,9 +20,9 @@ public final class TerrainBaseHeight {
      *
      * 海洋 preset（oceanDepthMax > 0）不叠加，海底维持原样。
      */
-    private static final double CONTINENTAL_FREQ = 1.0 / 8000.0;
-    private static final double CONTINENTAL_AMP = 12.0;
-    private static final int CONTINENTAL_OCTAVES = 2;
+    public static final double CONTINENTAL_FREQ = 1.0 / 8000.0;
+    public static final double CONTINENTAL_AMP = 12.0;
+    public static final int CONTINENTAL_OCTAVES = 2;
 
     /** 群系高度倾向增益（V2 口径）：baseT 位移 = (bias − 0.5) × 本值。 */
     public static double BIOME_BIAS_GAIN = 1.6;
@@ -78,8 +78,8 @@ public final class TerrainBaseHeight {
     /**
      * 采样共享噪声（含域扭曲；频率/八度数取自档案，调用方保证两个档案一致）。
      *
-     * **环面周期版**：全部走 {@link PeriodicNoise}（格数 = round(周期/波长)，lattice 取模），
-     * 因此 f(x+400k,z) ≡ f(x,z)、f(x,z+200k) ≡ f(x,z)。
+     * 全部走 {@link PeriodicNoise}（格数 = round(周期/波长)；是否对索引取模由 INFINITE_X/INFINITE_Z 决定，
+     * 两者当前都为 true ⇒ **不折叠**，因此上面的"按周期重复"不再成立）。
      */
     public static void sampleNoise(int worldX, int worldZ, int worldSeedInt,
                                    BaseTerrainProfile p, Noise out) {
@@ -104,13 +104,20 @@ public final class TerrainBaseHeight {
             / octaveSum(1.0, p.highOctaves);
     }
 
-    /** 档案里缓存的格数（可能为负 = 该轴不折叠）；0 表示未缓存 → 现算。 */
+    /**
+     * 档案里缓存的格数（**可能为负 = 该轴不折叠**，见 {@link PeriodicNoise#cellsX}）；
+     * 0 表示未缓存 → 现算。
+     *
+     * 两个轴**必须用同一个判据**。原先 Z 写的是 {@code cached > 0}，而 INFINITE_Z=true 时
+     * {@code cellsZFromFreq} 一律返回**负数** ⇒ 判据恒假 ⇒ 每次都白算一遍
+     * （数值相同，所以没有任何测试能发现；这正是"同一件事两套写法"的典型样本）。
+     */
     private static int cellsX(int cached, double freq) {
         return cached != 0 ? cached : PeriodicNoise.cellsX(1.0 / freq);
     }
 
     private static int cellsZ(int cached, double freq) {
-        return cached > 0 ? cached : PeriodicNoise.cellsZ(1.0 / freq);
+        return cached != 0 ? cached : PeriodicNoise.cellsZ(1.0 / freq);
     }
 
     /** 由共享噪声 + 档案参数求高度（land 分支）。 */

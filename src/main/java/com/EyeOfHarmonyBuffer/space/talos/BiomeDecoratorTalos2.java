@@ -1,18 +1,12 @@
 package com.EyeOfHarmonyBuffer.space.talos;
 
-import com.EyeOfHarmonyBuffer.common.Block.Arknights.fluids.EOHBFluidBlockRegistry;
-import com.EyeOfHarmonyBuffer.common.Block.Arknights.botany.ResourceClusterDef;
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
-import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenPrecipitationAcidLake;
 import com.EyeOfHarmonyBuffer.common.WorldGen.ArknightsProject.WorldGenYuanShiVeinTalos;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomeBase;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeature;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBoundedFeatures;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.MacroPackageId;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import net.minecraft.block.Block;
 import net.minecraft.world.World;
@@ -33,17 +27,12 @@ import java.util.Random;
  */
 public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
 
-    /** 河床装饰：水下乱石堆每区块尝试次数 / 水下枯木概率。 */
-    private static final double RIVERBED_ROCK_PER_CHUNK = 2.0;
-    private static final double RIVERBED_LOG_PER_CHUNK = 1.0;
-
     private static final WorldGenYuanShiDoubleConeCluster CRYSTAL_CLUSTER_GEN =
         new WorldGenYuanShiDoubleConeCluster();
 
     private World currentWorld;
 
     private final WorldGenYuanShiVeinTalos veinGen = new WorldGenYuanShiVeinTalos();
-    private WorldGenPrecipitationAcidLake acidLakeGen;
 
     private final TalosBoundedFeatures.DeadBush deadBush = new TalosBoundedFeatures.DeadBush();
     private final TalosBoundedFeatures.Mushroom mushroom = new TalosBoundedFeatures.Mushroom();
@@ -53,19 +42,12 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
     private final TalosBoundedFeatures.Waterlily waterlily = new TalosBoundedFeatures.Waterlily();
     private final TalosBoundedFeatures.Shrub shrub = new TalosBoundedFeatures.Shrub();
     private final TalosBoundedFeatures.Boulder boulder = new TalosBoundedFeatures.Boulder();
-    private final TalosBoundedFeatures.RiverRockPile riverRock =
-        new TalosBoundedFeatures.RiverRockPile();
-    private final TalosBoundedFeatures.RiverDeadLog riverLog =
-        new TalosBoundedFeatures.RiverDeadLog();
+    // 【已删除】riverRock / riverLog（河床乱石堆 / 河床枯木）与 acidLakeGen（酸雨湖）：
+    // 它们的数据源是旧宏包 + RVR2 河网，旧轨退役后没有可用的"河"可装饰。
 
     @Override
     protected void setCurrentWorld(World world) {
         this.currentWorld = world;
-        if (acidLakeGen == null && EOHBFluidBlockRegistry.precipitationAcidBlock != null) {
-            acidLakeGen = new WorldGenPrecipitationAcidLake(
-                EOHBFluidBlockRegistry.precipitationAcidBlock
-            );
-        }
     }
 
     @Override
@@ -95,13 +77,9 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
         final int centerX = worldX0 + 8;
         final int centerZ = worldZ0 + 8;
 
-        final boolean v2 = V2TerrainConfigSection.terrainV2Enabled;
-        // V2 轨装饰只依赖群系配置（不需要旧宏气候种子）；该值仅在旧轨的河网/酸雨湖分支使用
-        final int worldSeedInt = v2 ? 0 : TalosMacroClimate.getWorldSeedInt(world);
-        final BiomeGenBase biome = v2
-            // X1 阶段2（T1.4 占位）：走世界群系管理器（V2 轨同源），不再查旧宏气候
-            ? world.getBiomeGenForCoords(centerX, centerZ)
-            : TalosMacroClimate.getBiome(centerX, centerZ, worldSeedInt);
+        // 群系**只**从世界群系管理器取（与地形/群系生成同源，不受已加载区块影响之外的差异）。
+        // 旧宏气候分支已随旧轨一起删除 —— 装饰与地形不可能再读到两套群系。
+        final BiomeGenBase biome = world.getBiomeGenForCoords(centerX, centerZ);
         if (biome == TalosBiomes.TALOS_OCEAN ||
             biome == TalosBiomes.TALOS_SHELF) {
             return;
@@ -111,102 +89,14 @@ public class BiomeDecoratorTalos2 extends BiomeDecoratorSpace {
             return;
         }
 
-        final MacroPackageId macro = v2 ? null : TalosMacroClimate.getMacroPackageId(
-            centerX, centerZ, worldSeedInt);
-
         final Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
 
         veinGen.generate(world, rand, chunkX, chunkZ);
 
-        // V2 轨：酸雨湖/河床/资源植物依赖旧宏包与 RVR2 河网（V2 世界无定义），暂跳；T3.x 换源后接入。
-        if (v2) {
-            decorateBiomeFeatures(world, rand, chunk, (TalosBiomeBase) biome);
-            return;
-        }
-
-        if (acidLakeGen != null && rand.nextInt(2000) == 0) {
-            int lakeX = worldX0 + rand.nextInt(16);
-            int lakeZ = worldZ0 + rand.nextInt(16);
-            // 完全避开河道影响：整片湖的足迹上河流 mask 必须全为 0
-            if (isFullyOutsideRiver(lakeX, lakeZ, worldSeedInt)) {
-                acidLakeGen.generateAt(world, rand, lakeX, lakeZ);
-            }
-        }
-
-        // 河床装饰：水下乱石堆 + 水下枯木（特征内部只放河道内）
-        scatter(world, rand, chunk, this.riverRock, RIVERBED_ROCK_PER_CHUNK);
-        scatter(world, rand, chunk, this.riverLog, RIVERBED_LOG_PER_CHUNK);
-
-        // 资源植物簇：先于群系地表装饰放置，避免被后续装饰挤占
-        scatterResourcePlants(world, rand, chunk, macro);
-
-        decorateBiomeFeatures(
-            world, rand, chunk, (TalosBiomeBase) biome
-        );
-    }
-
-    /** 资源植物按宏包撒点：每约 500 区块触发一簇，每簇只撒一种植物。 */
-    private void scatterResourcePlants(World world, Random rand, Chunk chunk,
-                                       MacroPackageId macro) {
-        ResourceClusterDef[] defs = resourcePlantsFor(macro);
-        if (defs == null) {
-            return;
-        }
-        ResourceClusterDef def = defs[rand.nextInt(defs.length)];
-        Block block = GTCMItemList.valueOf(def.blockName).getBlock();
-        if (block == null) {
-            return;
-        }
-        new TalosBoundedFeatures.ResourcePlantCluster(
-            block, def.validGround).generate(world, rand, chunk, 8, 8);
-    }
-
-    /** 宏包 -> 资源植物列表（用户拍板的最终分组）。 */
-    private static ResourceClusterDef[] resourcePlantsFor(MacroPackageId macro) {
-        switch (macro) {
-            case TROPICAL_HUMID:
-                return new ResourceClusterDef[] {
-                    ResourceClusterDef.JIN_CAO,
-                    ResourceClusterDef.YA_ZHEN
-                };
-            case TEMPERATE_LOWLAND:
-            case TEMPERATE_FORESTED:
-            case COOL_FORESTED:
-                return new ResourceClusterDef[] {
-                    ResourceClusterDef.QIAO_HUA,
-                    ResourceClusterDef.GAN_SHI
-                };
-            case TEMPERATE_HIGHLAND:
-                return new ResourceClusterDef[] {
-                    ResourceClusterDef.SHA_YE
-                };
-            case TROPICAL_DRY:
-                return new ResourceClusterDef[] {
-                    ResourceClusterDef.TONG_HUA_GUAN_MU
-                };
-            default:
-                return null;
-        }
-    }
-
-    /** 酸雨湖避让河流：覆盖范围内的河流 mask 必须全部等于 0。 */
-    private boolean isFullyOutsideRiver(int x, int z, int worldSeedInt) {
-        for (int dz = -8; dz <= 8; dz += 4) {
-            for (int dx = -8; dx <= 8; dx += 4) {
-                TalosRiverSystem.HydroSample hydro =
-                    TalosRiverSystem.sampleHydroField(
-                        x + dx, z + dz, worldSeedInt
-                    );
-                if (hydro == null) {
-                    continue;
-                }
-                // 河流影响或任何水体（湖 / 湿地 / 穿河湖 / 牛轭湖）都算占用
-                if (hydro.mask > 0.0 || hydro.body != null) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        // 酸雨湖 / 河床乱石 / 河床枯木 / 资源植物簇都依赖**旧宏包 + RVR2 河网**，
+        // 而旧轨已删除（这些系统不再运行）⇒ 这里只做群系地表装饰。
+        // 这不是"暂时跳过"，而是"这些装饰的数据源已经不存在"；T3.x 换源后再接入新的水体/植被。
+        decorateBiomeFeatures(world, rand, chunk, (TalosBiomeBase) biome);
     }
 
     /** 按群系配置逐项撒点（count = 每区块尝试次数，支持小数概率）。 */

@@ -4,9 +4,9 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
  * 纬度 / 气候带系统。
  *
  * 设计要点（V2 重构版）：
- * - 纬度循环长度固定为 200,000 blocks（LAT_CYCLE），沿 Z 方向循环。
- * - 热带中线在 z = n×200k（... -400k, -200k, 0, 200k, 400k ...），Z=0 即热带中线。
- * - 寒带中点（最冷）在两条热带中线正中：z = ±100k, ±300k, ±500k ...。
+ * - 纬度循环长度 = LAT_CYCLE = 1,000,000 blocks（**下文所有数字都从它派生**），沿 Z 方向循环。
+ * - 热带中线在 z = n×LAT_CYCLE（... -1M, 0, 1M ...），Z=0 即热带中线。
+ * - 寒带中点（最冷）在两条热带中线正中：z = ±MAX_D = ±500k（即 ±500k, ±1.5M ...）。
  *   → 周期边界落在寒带：跨周期时冷-冷相接（无热带跳变）。
  *
  * - 对任意 worldZ：
@@ -15,12 +15,13 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer;
  *        d = min(zMod, LAT_CYCLE - zMod)
  *   3. 用 d 落在哪个区间，决定它属于哪一个气候带（热带 / 亚热带 / 温带 / 亚寒带 / 寒带）。
  *
- * 直观效果：
- * - 0、±200k、±400k ... 是热带中线（TROPIC 中点，d = 0）。
- * - ±100k、±300k、±500k ... 是寒带中点（POLAR 中点，d = 100,000）。
- * - 在一个周期内（例如 0..200k），沿 Z 方向看到的带序为：
- *   热带(0) → 亚热带 → 温带 → 亚寒带 → 寒带中心(100k) →
- *   亚寒带 → 温带 → 亚热带 → 热带(200k)。
+ * 直观效果（数字按 LAT_CYCLE=1M、MAX_D=500k 现算）：
+ * - 0、±1M、±2M ... 是热带中线（TROPIC 中点，d = 0）。
+ * - ±500k、±1.5M ... 是寒带中点（POLAR 中点，d = MAX_D = 500,000）。
+ * - 在一个周期内（0..1M），沿 Z 方向看到的带序为（括号内为 d 的边界，见 D_* 常量）：
+ *   热带(0..80k) → 亚热带(80k..160k) → 温带(160k..320k) → 亚寒带(320k..420k) →
+ *   寒带(420k..500k，极点在 500k) → 亚寒带 → 温带 → 亚热带 → 热带(1M)。
+ *   ⇒ 赤道→极点 = MAX_D = **500 km**；最窄的带（热带）= D_TROPIC_MAX = **80 km**。
  */
 public final class ClimateLatitudes {
 
@@ -46,13 +47,17 @@ public final class ClimateLatitudes {
     /**
      * 纬度循环长度：一条热带中线到下一条热带中线的距离。
      *
-     * **2026-09 由 200,000 提到 4,000,000**。诊断（P115/P117）证明 200k 太小：
-     * 赤道→极地只有 100 km，而气压纬向廓线的特征（四个高斯 σ=0.075~0.17）在 b 上
-     * 换算过去只有 **15~34 km 宽** → 气候带成了 "8~17 km 宽的条纹"，1000 km 的图上
-     * 必然看到 5 次完全相同的重复。提到 4M 后：赤道→极地 2000 km（与 600 km 量级的
-     * 大陆尺度自洽）、最窄的气候带 ~354 km、1000 km 的图里 **没有任何重复**。
+     * 历史：曾按 200,000 使用（诊断 P115/P117 证明太小：赤道→极地只有 100 km，
+     * 而气压纬向廓线的特征在 b 上换算过去只有 15~34 km 宽 → 气候带成了"8~17 km 宽的
+     * 条纹"，1000 km 的图上必然看到 5 次完全相同的重复）。**现行值是 1,000,000。**
+     *
+     * 现值下的量纲（全部可由本常量导出）：
+     *   赤道→极点 = MAX_D = 500 km；最窄气候带（热带）= D_TROPIC_MAX = 80 km；
+     *   Z 方向每 1M 重复一次纬度（**只重复气候，不重复海陆/地形/洋流**，见 PeriodicNoise.INFINITE_Z）。
+     *
+     * 注：注释里曾出现"提到 4,000,000"的说法，与常量不符，已按现值改写；那段历史不再引用。
      */
-    public static final int LAT_CYCLE = 4_000_000;
+    public static final int LAT_CYCLE = 1_000_000;
 
     /** d 的最大值 = LAT_CYCLE / 2（离最近热带中线最远的位置，即寒带中点）。 */
     public static final int MAX_D = LAT_CYCLE / 2;
@@ -71,7 +76,7 @@ public final class ClimateLatitudes {
     /** 亚寒带距离上限：64%–84% 为亚寒带。 */
     public static final int D_SUBPOLAR_MAX = (int) (MAX_D * 0.84);
 
-    /** 寒带距离上限：84k–100k 为寒带（靠近最冷的区域）。 */
+    /** 寒带距离上限：84%–100% × MAX_D（= 420k–500k）为寒带（靠近最冷的区域）。 */
     public static final int D_POLAR_MAX = MAX_D;
 
     /**
@@ -106,15 +111,15 @@ public final class ClimateLatitudes {
     /**
      * 将 worldZ 折叠到一个纬度周期内 [0, LAT_CYCLE)。
      *
-     * 例如（LAT_CYCLE = 200,000）：
-     * - z =       0 → zMod = 0
-     * - z = 100,000 → zMod = 100,000
-     * - z = 200,000 → zMod = 0
-     * - z = -50,000 → zMod = 150,000
+     * 例如（LAT_CYCLE = 1,000,000）：
+     * - z =          0 → zMod = 0
+     * - z =    500,000 → zMod = 500,000
+     * - z =  1,000,000 → zMod = 0
+     * - z =   -250,000 → zMod = 750,000
      *
-     * 即每个长度为 200,000 的区间 [n*200k, (n+1)*200k) 被折叠到同一个 0..200k 模式中。
+     * 即每个长度为 LAT_CYCLE 的区间 [n*1M, (n+1)*1M) 被折叠到同一个 0..1M 模式中。
      */
-    private static int foldZToCycle(int worldZ) {
+    public static int foldZToCycle(int worldZ) {
         int m = LAT_CYCLE;
         int zMod = worldZ % m;   // 可能为负
         if (zMod < 0) {
@@ -126,20 +131,25 @@ public final class ClimateLatitudes {
     /**
      * 计算 worldZ 到"最近热带中线"的绝对距离 d ∈ [0, MAX_D]。
      *
-     * 热带中线位于 z = n * LAT_CYCLE（..., -200k, 0, 200k, ...）。
+     * 热带中线位于 z = n * LAT_CYCLE（..., -1M, 0, 1M, ...）。
      *
      * 对折叠后的 zMod ∈ [0, LAT_CYCLE)：
      * - 最近的热带中线可能是 0 或 LAT_CYCLE；
      * - 因此 d = min(zMod, LAT_CYCLE - zMod)。
      *
-     * 举例（LAT_CYCLE = 200,000）：
-     * - z =    0      → zMod = 0        → d = 0         （热带中线）
-     * - z =  100,000  → zMod = 100,000  → d = 100,000   （寒带中点）
-     * - z =  200,000  → zMod = 0        → d = 0         （下一条热带中线）
-     * - z = -100,000  → zMod = 100,000  → d = 100,000   （寒带中点）
+     * 举例（LAT_CYCLE = 1,000,000，MAX_D = 500,000）：
+     * - z =         0 → zMod =       0 → d = 0       （热带中线）
+     * - z =   500,000 → zMod = 500,000 → d = 500,000 （寒带中点）
+     * - z = 1,000,000 → zMod =       0 → d = 0       （下一条热带中线）
+     * - z =  -500,000 → zMod = 500,000 → d = 500,000 （寒带中点）
      */
     private static int distanceToCycleCenter(int worldZ) {
-        int zMod = foldZToCycle(worldZ);  // 0..LAT_CYCLE
+        // **保持折返循环**：纬度沿 Z 循环（赤道→极→赤道）。
+        // 极点交界（z = CYCLE/2）处原本"北极=南极"重合、科氏符号突跳，
+        // 现在用一条**跨越交界的极地冰原带**在地理上把南北两极的海隔开
+        // （见 NoiseContinentGrid.ICE_BAND / ICE_FORCE）—— 冰是"陆"，海不连通；
+        // 玩家则可以直接踩着冰原走过去，纬度照常循环。
+        int zMod = foldZToCycle(worldZ);
         int d = zMod;
         int other = LAT_CYCLE - zMod;
         if (other < d) {
@@ -149,6 +159,15 @@ public final class ClimateLatitudes {
             d = MAX_D;
         }
         return d;
+    }
+
+    /**
+     * 半球符号：[0, CYCLE/2) 为北半球(+1)，[CYCLE/2, CYCLE) 为南半球(−1)。
+     * 科氏参数 f = 2Ω·sin(纬度)，符号由此决定。
+     */
+    public static double hemisphereSign(int worldZ) {
+        int zm = foldZToCycle(worldZ);
+        return zm < LAT_CYCLE / 2 ? 1.0 : -1.0;
     }
 
     /**

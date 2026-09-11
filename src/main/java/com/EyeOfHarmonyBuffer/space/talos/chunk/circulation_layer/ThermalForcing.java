@@ -27,13 +27,13 @@ public final class ThermalForcing {
     private ThermalForcing() {}
 
     /** 大尺度摆动波长（block）：400k 域内 ~4 个暖池/冷池。 */
-    private static final double WOBBLE_WAV = 100_000.0;
+    private static final double WOBBLE_WAV = 25_000.0;
     /** 摆动盐（与海陆场去相关）。 */
     private static final long WOBBLE_SALT = 0x5EED_2026L;
     /** 摆动振幅（[-1,1] 温标；需大于纬向梯度才能形成闭合暖池/冷舌）。 */
     private static final double WOBBLE_AMP = 0.30;
     /** 大陆性尺度（block）：离岸超过它视为"深内陆"。 */
-    private static final double LAND_CONTINENTAL_SCALE = 45_000.0;
+    private static final double LAND_CONTINENTAL_SCALE = 11_250.0;
     /** 大陆性偏置幅度（夏季态；季风驱动力 ∝ 这个 × 内陆度 × 太阳辐射）。 */
     private static final double CONTINENTAL_BIAS = 0.14;
     /** 海拔直减（作用在 elevation01 的平方上：普通内陆少降、深高原才显著）。 */
@@ -89,7 +89,7 @@ public final class ThermalForcing {
 
     /** 平衡表面温度（海陆分流）。 */
     public static double teq(int x, int z, int worldSeedInt) {
-        return NoiseContinentGrid.landResidual(x, z, worldSeedInt) >= 0.0
+        return NoiseContinentGrid.isLand(x, z, worldSeedInt)
             ? landTeq(x, z, worldSeedInt)
             : seaTeq(x, z, worldSeedInt);
     }

@@ -31,7 +31,7 @@ public final class V2TerrainGen {
     private static final double MID_FREQ = 1.0 / 1100.0;
     private static final double HIGH_FREQ = 1.0 / 260.0;
 
-    // 环面周期噪声格数（波长 → 格数；域扭曲波长 = 2/freq）
+    // 可选周期噪声的格数（波长 → 格数，见 PeriodicNoise；当前 INFINITE_X/Z=true ⇒ 取负号、不折叠）
     private static final int LOW_NX = PeriodicNoise.cellsXFromFreq(LOW_FREQ);
     private static final int LOW_NZ = PeriodicNoise.cellsZFromFreq(LOW_FREQ);
     private static final int LOW_WNX = PeriodicNoise.cellsXFromFreq(LOW_FREQ * 0.5);
@@ -248,8 +248,11 @@ public final class V2TerrainGen {
         profile.midWNX = MID_WNX; profile.midWNZ = MID_WNZ;
         profile.hiNX = HIGH_NX; profile.hiNZ = HIGH_NZ;
         profile.hiWNX = HIGH_WNX; profile.hiWNZ = HIGH_WNZ;
-        profile.contNX = PeriodicNoise.cellsXFromFreq(1.0 / 8000.0);
-        profile.contNZ = PeriodicNoise.cellsZFromFreq(1.0 / 8000.0);
+        // 大陆骨架频率**唯一来源**是 TerrainBaseHeight.CONTINENTAL_FREQ
+        // （这里原先又硬编码了一遍 1.0/8000.0 —— 两处各自漂移就会让"档案里预热的格数"
+        //   与"采样时用的格数"不一致，而且不会有任何报错）。
+        profile.contNX = PeriodicNoise.cellsXFromFreq(TerrainBaseHeight.CONTINENTAL_FREQ);
+        profile.contNZ = PeriodicNoise.cellsZFromFreq(TerrainBaseHeight.CONTINENTAL_FREQ);
     }
 
     /**
@@ -277,6 +280,138 @@ public final class V2TerrainGen {
         double h = TerrainBaseHeight.computeBaseHeightCore(x, z, worldSeedInt, profile,
             biomeBias, biomeScale);
         return h < seaLevel + 1 ? seaLevel + 1 : h;
+    }
+
+    // ==================== 块级合成高度：**唯一入口** ====================
+
+    /**
+     * Minecraft 1.7.10 的世界高度（= Provider 的 {@code getActualHeight()}）。
+     * 命令类（{@code /talosmap}、{@code /talos_here}）手里没有 Provider，只能用这个常量；
+     * 世界内的调用方请传自己的 {@code worldHeight}。
+     */
+    public static final int MC_WORLD_HEIGHT = 256;
+
+    /**
+     * 软封顶（blocks）：接近世界高度上限时平滑压缩，不硬截出平台。生产现行值 252 / 6。
+     * **final**：本系统刚清掉一个"跨线程共享的可变静态"（见 BarotropicGyre 顶部），
+     * 新引入的世界常量一律用 final，避免又长出一个可以从前台/预热线程同时写的手柄。
+     */
+    public static final double SOFT_CAP_H = 252.0;
+    public static final double SOFT_CAP_K = 6.0;
+
+    /** {@code mtnComp}（blocks）→ 山体细节强度的标尺。生产现行值 90。 */
+    public static final double DETAIL_MTNCOMP_SCALE = 90.0;
+
+    /** 细节强度里的坡度调制：{@code 1.00 + 0.80·slope01}。生产现行值 0.80。 */
+    public static final double DETAIL_SLOPE_GAIN = 0.80;
+
+    /** 一列的合成高度及其全部中间量（**复用容器**，见 {@link #composeColumn}）。 */
+    public static final class Column {
+        /** 该列是否陆地（与传入的 {@code o.isLand} 一致）。 */
+        public boolean land;
+        /** 海洋列水深（blocks，>0）；陆地列恒为 0。 */
+        public double seaDepth;
+        /** 基础地形分解：base = 含山地/峰档的全量，plain = 瘦身版（山地档并入丘陵）。 */
+        public double base, plain;
+        /** 基础山地贡献 = max(0, base − plain)。 */
+        public double mtnComp;
+        /** 山层权威权重 w（0=基础地形全权，1=山层全权）与山层抬升量（blocks）。 */
+        public double auth, uplift;
+        /** 传给 {@link #mountainDetail} 的强度（已含坡度调制，已 clamp 到 [0,1]）。 */
+        public double detailStrength;
+        /** 基础地形 + 山层仲裁，**未加块级细节、未软封顶**。 */
+        public double hNoDetail;
+        /** 加上块级细节后、**未软封顶** —— 这是算坡度的口径（见 {@link #composeColumn}）。 */
+        public double hDetail;
+        /** 软封顶后的连续高度 —— 这是生产判定雪线/沙滩、以及取整铺方块的口径。 */
+        public double hCapped;
+        /** {@code round(hCapped)} 再 clamp 到 [1, maxY] 的方块高度（= 生产铺方块的列顶）。 */
+        public int h;
+        /** 是否在雪线以上 / 是否贴岸沙滩（口径与生产逐位一致）。 */
+        public boolean snow, beach;
+    }
+
+    private static final ThreadLocal<Column> COLUMN = ThreadLocal.withInitial(Column::new);
+    private static final ThreadLocal<double[]> COMPOSE_BP = ThreadLocal.withInitial(() -> new double[2]);
+
+    /**
+     * **块级合成高度的唯一入口**：生产（{@code ChunkProviderTalos2.fillLandColumnV2}）、
+     * {@code /talosmap} 的 terrain 图层、{@code /talos_here} 的面板，三处都必须走这里。
+     *
+     * <h3>为什么必须唯一</h3>
+     * 这条链原先在 4 处各写了一遍，口径**互不相同**，而且没有任何机制能发现：
+     * <pre>
+     *   生产 fillLandColumnV2   : 群系 bias/scale + slope01 调制 + 软封顶        ← 权威口径
+     *   生产 columnHeight       : 同上但**不软封顶**（坡度估计刻意用未封顶高度）
+     *   /talosmap  terrain 图层 : landBaseHeight/landPlainHeight（**丢了群系 bias/scale**）
+     *                             + 细节**无 slope01 调制** + 无软封顶
+     *   /talos_here 面板        : 同上，且**连 mountainDetail 都没有** —— 却打印
+     *                             "→ 合成高度"和"(雪线以上)"
+     * </pre>
+     * 后果：地图与面板上的"高度"不是世界里的高度，而"雪线以上"在被显示的那个口径上
+     * 几乎永远为假（少了细节噪声，高度偏低 10~40 blocks）。
+     *
+     * <h3>复用容器的使用纪律</h3>
+     * 返回值是**每线程复用**的对象。调用方必须**立刻**把需要的字段拷进局部变量；
+     * 之后的任何一次 {@code composeColumn} 都会覆盖它 —— 尤其是 {@code columnSlope}
+     * 那种连续调用 4 次的场景。
+     *
+     * @param maxY 列顶方块上限（生产传 {@code worldHeight - 2}，命令类传
+     *             {@link #MC_WORLD_HEIGHT} {@code - 2}）
+     */
+    public static Column composeColumn(int x, int z, int worldSeedInt, int seaLevel,
+                                       OrographyField.OroSample o,
+                                       double biomeBias, double biomeScale, int maxY) {
+        Column c = COLUMN.get();
+        if (!o.isLand) {
+            c.land = false;
+            c.seaDepth = seaDepthBlocks(x, z, worldSeedInt);
+            c.base = 0.0;
+            c.plain = 0.0;
+            c.mtnComp = 0.0;
+            c.auth = 0.0;
+            c.uplift = 0.0;
+            c.detailStrength = 0.0;
+            c.hNoDetail = seaLevel - c.seaDepth;
+            c.hDetail = c.hNoDetail;
+            c.hCapped = c.hNoDetail;
+            int hs = (int) Math.round(c.hCapped);
+            c.h = hs < 1 ? 1 : (hs > maxY ? maxY : hs);
+            c.snow = false;
+            c.beach = false;
+            return c;
+        }
+        double[] bp = COMPOSE_BP.get();
+        baseAndPlain(x, z, worldSeedInt, seaLevel, o, biomeBias, biomeScale, bp);
+        c.land = true;
+        c.seaDepth = 0.0;
+        c.base = bp[0];
+        c.plain = bp[1];
+        c.mtnComp = c.base > c.plain ? c.base - c.plain : 0.0;
+        c.auth = MountainLayerV2.auth(x, z, worldSeedInt);
+        c.uplift = MountainLayerV2.uplift(x, z, worldSeedInt);
+        c.hNoDetail = c.plain + (1.0 - c.auth) * c.mtnComp + c.auth * c.uplift;
+        double mtnAmt = Math.max(c.auth, Math.min(1.0, c.mtnComp / DETAIL_MTNCOMP_SCALE));
+        double slope01 = MountainLayerV2.slope01(x, z, worldSeedInt);
+        c.detailStrength = Math.min(1.0, mtnAmt * (1.00 + DETAIL_SLOPE_GAIN * slope01));
+        c.hDetail = c.hNoDetail + mountainDetail(x, z, worldSeedInt, c.detailStrength);
+        c.hCapped = c.hDetail;
+        if (c.hCapped > SOFT_CAP_H - 6.0 * SOFT_CAP_K) {
+            c.hCapped = SOFT_CAP_H - SOFT_CAP_K
+                * Math.log1p(Math.exp((SOFT_CAP_H - c.hCapped) / SOFT_CAP_K));
+        }
+        int h = (int) Math.round(c.hCapped);
+        c.h = h < 1 ? 1 : (h > maxY ? maxY : h);
+        c.snow = c.hCapped >= snowLineY(z);
+        c.beach = !c.snow && isBeachLand(o, c.hCapped, seaLevel);
+        return c;
+    }
+
+    /** 同上，但群系高度倾向由本方法自己采（{@link V2BiomeField#sample}）。 */
+    public static Column composeColumn(int x, int z, int worldSeedInt, int seaLevel,
+                                       OrographyField.OroSample o, int maxY) {
+        V2BiomeField.Sample bs = V2BiomeField.sample(x, z, worldSeedInt, true);
+        return composeColumn(x, z, worldSeedInt, seaLevel, o, bs.bias, bs.scale, maxY);
     }
 
     /**

@@ -51,10 +51,20 @@ public final class OrographyField {
     /** 峰所需的最低海拔。 */
     private static final double PEAK_MIN_ELEV = 0.30;
     // ---- 贴岸淡化（只消最贴岸 ~3k，防贴水线伪影；不做等距山环） ----
-    private static final double SHORE_START = 800.0;
-    private static final double SHORE_FULL = 3500.0;
+    private static final double SHORE_START = 200.0;
+    private static final double SHORE_FULL = 875.0;
     // ---- 标定 ----
-    private static final int CALIBRATE_STRIDE = 8000;
+    private static final int CALIBRATE_STRIDE = 2000;
+    /**
+     * 标定扫描域（blocks）。**这是旧环面世界留下的常量，不是从任何现值派生的** —— 提成具名
+     * 常量只是为了让"这两个 400k/200k 从哪来"可检索。
+     *
+     * ⚠️ 契约变更后 X 无限、Z 不重复，这个扫描域只覆盖世界的一小块角落；标定结果会进 CUTOFF_CACHE，
+     * 进而影响地形。**改扫描域 = 改世界生成**，所以本轮只做"值不变、改成具名常量"，是否要换域
+     * 需要单独拍板（见交付报告里的 flag）。
+     */
+    private static final int CALIBRATE_X_SPAN = 400_000;
+    private static final int CALIBRATE_Z_SPAN = 200_000;
 
     /** 每种子标定结果缓存。 */
     private static final ConcurrentHashMap<Integer, Cutoffs> CUTOFF_CACHE =
@@ -118,7 +128,7 @@ public final class OrographyField {
     /** 单点采样（世界 block 坐标，任意范围）。 */
     public static OroSample sample(int x, int z, int worldSeedInt) {
         double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        if (r < 0.0) {
+        if (!NoiseContinentGrid.isLandResidual(r)) {
             return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0);
         }
         Cutoffs c = cutoffsFor(worldSeedInt);
@@ -182,16 +192,16 @@ public final class OrographyField {
     }
 
     private static Cutoffs calibrate(int worldSeedInt) {
-        int nx = 400_000 / CALIBRATE_STRIDE;
-        int nz = 200_000 / CALIBRATE_STRIDE;
+        int nx = CALIBRATE_X_SPAN / CALIBRATE_STRIDE;
+        int nz = CALIBRATE_Z_SPAN / CALIBRATE_STRIDE;
         int max = nx * nz;
         double[] devs = new double[max];
         double[] elevs = new double[max];
         int m = 0;
-        for (int z = 0; z < 200_000; z += CALIBRATE_STRIDE) {
-            for (int x = 0; x < 400_000; x += CALIBRATE_STRIDE) {
+        for (int z = 0; z < CALIBRATE_Z_SPAN; z += CALIBRATE_STRIDE) {
+            for (int x = 0; x < CALIBRATE_X_SPAN; x += CALIBRATE_STRIDE) {
                 double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-                if (r < 0.0) {
+                if (!NoiseContinentGrid.isLandResidual(r)) {
                     continue;
                 }
                 devs[m] = ridgeDev(x, z, worldSeedInt);

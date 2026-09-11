@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
@@ -10,8 +9,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveWorldState;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -115,7 +116,7 @@ public final class TalosCaveSystem {
         if (data == null) {
             return -1.0;
         }
-        return CaveCarver.sampleExcess(data, worldX, worldY, worldZ,
+        return CaveGenerator.sampleExcess(data, worldX, worldY, worldZ,
             worldSeedInt);
     }
 
@@ -124,13 +125,13 @@ public final class TalosCaveSystem {
         if (!isEnabled()) {
             return;
         }
-        int seed = TalosLandMask.getWorldSeedInt(world);
+        int seed = TalosSeed.of(world);
         stateFor(seed);
     }
 
     /** 世界卸载：释放缓存。 */
     public static void onWorldUnload(World world) {
-        int seed = TalosLandMask.getWorldSeedInt(world);
+        int seed = TalosSeed.of(world);
         CaveWorldState state = STATES.remove(seed);
         if (state != null) {
             state.clear();
@@ -293,13 +294,16 @@ public final class TalosCaveSystem {
      */
     private static boolean usableLandmarkColumn(int worldX, int worldZ,
                                                 int worldSeedInt) {
-        TalosTerrainHeights.TerrainHeightSample ts =
-            TalosTerrainHeights.sample(worldX, worldZ, worldSeedInt, 64, 256);
-        return ts.isLand
-            && ts.riverMask <= 0.7
-            && ts.body == null
-            // 地表必须高于海平面：否则入口井口会开在水线 / 水下
-            && Math.round(ts.surfaceD) >= 65;
+        // 走**唯一海陆判定 + 唯一高度链**。原先读旧轨 TalosTerrainHeights 的
+        // isLand / riverMask / body / surfaceD —— 海陆与地表都是另一套地形算出来的。
+        // 河道/湖体两个条件随旧河网一起消失（V2 世界没有河网；T3.4 接入新水体后再补）。
+        OrographyField.OroSample o = OrographyField.sample(worldX, worldZ, worldSeedInt);
+        if (!o.isLand) {
+            return false;
+        }
+        // 地表必须高于海平面：否则入口井口会开在水线 / 水下
+        return V2TerrainGen.composeColumn(worldX, worldZ, worldSeedInt,
+            LandformField.SEA_LEVEL, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
     }
 
     /** 调试汇总（/talcave 用，只经 api 暴露）。 */

@@ -4,8 +4,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.MountainLayerV2;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -51,6 +51,16 @@ public class CommandTalosMap extends CommandBase {
     private static final int ARROW_SPACING = 100;
     /** 箭头最大长度（px）。 */
     private static final int ARROW_MAX_LEN = 34;
+    /**
+     * 洋流箭头【满长】对应的流速（m/s）。
+     *
+     * 为什么需要它：{@code currentX/currentZ} 是 **m/s**，而像素长度需要一个无量纲比例。
+     * 实测口径（P218 在生产的 tile(0,0) 窗口内采样；同一批数字见 P195/P200）：
+     * |cur| 中位数约 0.1 m/s、典型 0.05~0.25、西边界强化带可到 0.5 以上。
+     * 取 0.30 ⇒ 典型洋流画半长、西边界带画满，不会像旧的"归一化掉了幅度"或
+     * "直接拿 m/s 当像素"那样两种极端。
+     */
+    private static final double CURRENT_FULL_MS = 0.30;
     /** coast 图层近岸过渡半宽（block）。 */
     private static final double COAST_BAND = 30_000.0;
 
@@ -82,7 +92,7 @@ public class CommandTalosMap extends CommandBase {
         }
         String layer = args[0].toLowerCase();
         World world = player.worldObj;
-        int worldSeedInt = TalosLandMask.getWorldSeedInt(world);
+        int worldSeedInt = TalosSeed.of(world);
 
         int cx = (int) Math.floor(player.posX);
         int cz = (int) Math.floor(player.posZ);
@@ -177,7 +187,16 @@ public class CommandTalosMap extends CommandBase {
                     if (s.isLand) continue;          // 洋流只画海上
                     fx = s.currentX;
                     fz = s.currentZ;
-                    mag = s.currentSpeed;
+                    // 方向必须归一。旧写法把 m/s 的原始分量直接当**像素位移**用，
+                    // 典型洋流 |cur| ≈ 0.05~0.25 ⇒ 箭头只有 1~6 px（看起来"海上没有洋流"）；
+                    // 而 mag 又写死 0.5，长度也不随流速变。现在与风箭头同一套：
+                    // 方向归一，长度由真实流速 currentSpeed 决定，标尺见 CURRENT_FULL_MS。
+                    double clen = Math.sqrt(fx * fx + fz * fz);
+                    mag = Math.min(1.0, clen / CURRENT_FULL_MS);
+                    if (clen > 1.0e-9) {
+                        fx /= clen;
+                        fz /= clen;
+                    }
                 } else {
                     fx = s.windX;
                     fz = s.windZ;
@@ -216,27 +235,25 @@ public class CommandTalosMap extends CommandBase {
             case "land": {
                 return s.isLand ? rgb(60, 150, 70) : rgb(20, 70, 140);
             }
-            case "landlegacy": {
-                boolean land = TalosLandMask.isLandCheap(wx, wz, seed);
-                return land ? rgb(150, 110, 40) : rgb(40, 60, 120);   // 旧系统配色区分
-            }
+            // 【已删除】"landlegacy" 图层：它画的是旧生产海陆（TectonicWorld 超级大陆多边形），
+            // 那个系统已随 T4.3 删除。屏幕上同时有两套海陆正是要消除的东西。
             case "terrain": {
-                // V2 块级高度（D34）：基础地形分解 + 山层权威权重仲裁（口径同 ChunkProviderTalos2）
+                // V2 块级高度（D34）：**与生产同一个入口** V2TerrainGen.composeColumn。
+                // 这里曾经自己拼了一遍（landBaseHeight/landPlainHeight → 丢了群系 bias/scale；
+                // 细节没有 slope01 调制；没有软封顶）⇒ 画出来的"高度"不是世界里的高度。
+                // 现在只保留海洋列的配色分支（它本来就与陆地不同源）。
                 OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
                 if (!o.isLand) {
                     double d = V2TerrainGen.seaDepthBlocks(wx, wz, seed);
                     return d < 5 ? mix(rgb(102, 168, 200), rgb(63, 110, 154), d / 5.0)
                         : mix(rgb(42, 85, 128), rgb(10, 22, 48), clamp((d - 5) / 36.0, 0, 1));
                 }
-                double base = V2TerrainGen.landBaseHeight(wx, wz, seed, 64, o);
-                double plain = V2TerrainGen.landPlainHeight(wx, wz, seed, 64, o);
-                double mtnComp = Math.max(0.0, base - plain);
-                double w = MountainLayerV2.auth(wx, wz, seed);
-                double up = MountainLayerV2.uplift(wx, wz, seed);
-                double h = plain + (1.0 - w) * mtnComp + w * up;
-                h += V2TerrainGen.mountainDetail(wx, wz, seed,
-                    Math.max(w, Math.min(1.0, mtnComp / 90.0)));
-                return heightColor(h, wz);
+                V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+                    wx, wz, seed, LandformField.SEA_LEVEL, o,
+                    V2TerrainGen.MC_WORLD_HEIGHT - 2);
+                // 传 hCapped（连续、已软封顶）而不是 col.h：heightColor 的雪线判定
+                // 在生产里用的也是未取整的连续高度，这样两边的雪线边界逐列一致。
+                return heightColor(col.hCapped, wz);
             }
             case "coast": {
                 // 海陆底 + 近岸 ±COAST_BAND 内混入白/青渐变（带宽 = 真实块距离）
@@ -361,7 +378,7 @@ public class CommandTalosMap extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                "land", "landlegacy", "terrain", "coast", "gyre", "airmass", "current", "wind",
+                "land", "terrain", "coast", "gyre", "airmass", "current", "wind",
                 "pressure", "rain", "band");
         }
         return new ArrayList<>();

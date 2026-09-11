@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 
 import java.util.Arrays;
@@ -31,7 +32,7 @@ public final class NoiseContinentGrid {
 
     // --- 高度场参数（形态搜索标定：λ=80k/3层 + 中频0.10 → 3~7 块大陆、海 100% 连通性最佳组合） ---
     /** 低频主波长（block）。 */
-    private static final double LOW_WAV = 80_000.0;
+    private static final double LOW_WAV = 20_000.0;
     /**
      * 大陆尺度倍率（2026-09 加入）。
      *
@@ -50,12 +51,12 @@ public final class NoiseContinentGrid {
     /** 鞍部抬升窗口宽度（高度单位）：等值线两侧 ±LIFT_WINDOW/2 内高度 ×2 拉伸。 */
     private static final double LIFT_WINDOW = 0.06;
     /** 海岸距离梯度估计步长（block）。需明显小于低频波长且远大于高频毛刺。 */
-    private static final double GRAD_STEP = 6000.0;
+    private static final double GRAD_STEP = 1500.0;
     /** 海岸距离输出上限（block）。 */
-    private static final double DIST_CAP = 200_000.0;
+    private static final double DIST_CAP = 50_000.0;
 
-    /** 阈值标定采样步长 / 每轴点数（400k/4k=100，200k/4k=50 → 5000 点）。 */
-    private static final int CALIBRATE_STRIDE = 4000;
+    // （这里曾有一个零引用的 CALIBRATE_STRIDE 常量 + 一句与现值不符的点数注释，已删除：
+    //   真正在跑的标定在 calibrateStats()，用 nx=409 / nz=101、步长 49_000 / 40_001。）
 
     /**
      * 每种子标定结果缓存（自适应阈值 + 陆地残差标尺，一次扫描算齐；见类注释）。
@@ -82,11 +83,11 @@ public final class NoiseContinentGrid {
     // ======== 高程场（纯函数，全局单一场） ========
 
     /**
-     * 标准 fbm（归一化到 [0,1]）—— **环面周期版**。
+     * 标准 fbm（归一化到 [0,1]）—— **两轴都不折叠**（走 PeriodicNoise.value2XZ，
+     * 而 PeriodicNoise.INFINITE_X / INFINITE_Z 默认都是 true）→ 大陆/海洋不受任何周期约束。
      *
-     * 每层用整数 lattice 格数（波长 → 格数 = round(周期/波长)）并对索引取模，
-     * 因此 f(x+400k,z) ≡ f(x,z) 严格成立；格数逐层 ×lacunarity（取整）保持整数。
-     * 与旧实现的差别只有：波长被量化到"周期/整数格数"（≤±0.5%，λ=80k 因 200k/80k=2.5 量化为 66.7k）。
+     * 历史：这里曾是"环面周期版"（f(x+400k,z) ≡ f(x,z)、格数取模）。那段描述已失效，
+     * 现行行为见本节末的 warp 注释与 PeriodicNoise 的 INFINITE_* 开关。
      */
     private static double fbm(double x, double z, long seed, int octaves, double lacunarity, double gain, double baseFreq) {
         double sum = 0.0, amp = 1.0, total = 0.0;
@@ -110,24 +111,19 @@ public final class NoiseContinentGrid {
 
 
 
-    private static int mod(int v, int m) {
-        int r = v % m;
-        return r < 0 ? r + m : r;
-    }
-
     // ======== 低频域扭曲（大陆轮廓弯曲，消除网格 / 平铺感） ========
     //
-    // C1 世界 = **圆柱**：X 无限、Z 是 200k 纬度循环 → 域扭曲必须是"圆柱上"的场：
-    //   · Z 方向按 200k 折叠（格数必须整除 200k）
-    //   · X 方向不折叠（沿 X 无限延伸，不再重复）
-    // 原 λ=1e6 / amp=50k 的扭曲比 Z 周期还大，物理上无法周期化（也无法烘焙成有限 LUT），
-    // 故改为 λ=100k / amp=5k：**局部拉伸率 2πA/λ 与原值相同（0.31）**，观感一致、波长更细。
+    // C1 世界 = **无限平面**：X 无限、Z 也不折叠（Z_CYCLE 只管气候）→ 域扭曲在两个方向上都不折叠。
+    // （历史：曾按"圆柱"处理，Z 方向按 200k 折叠；那段与现值不符。）
+    // 权衡量级：扭曲幅度 WARP_AMP = 1250 blocks；两个波长见下面的 WARP_WAV_X / WARP_WAV_Z。
 
     /** 扭曲幅度（blocks）。 */
-    private static final double WARP_AMP = 5_000.0;
-    /** 扭曲波长格数：X = -4（λx=100k，不折叠）、Z = 2（λz=100k，整除 200k ⇒ 周期折叠）。 */
-    private static double WARP_WAV_X = 500_000.0;   // 沿 X 拉长（与 X_STRETCH 同一取向）
-    private static double WARP_WAV_Z = 100_000.0;
+    private static final double WARP_AMP = 1_250.0;
+    /** 扭曲波长（blocks），沿 X 拉长（与 X_STRETCH 同一取向）。
+     *  实际生效的 lattice 格数 = round(PERIOD_轴 / 波长)，而 INFINITE_X/Z=true 使其取负号 ⇒ **不折叠**：
+     *  X: round(100_000/125_000) = 1 → -1；Z: round(1_000_000/25_000) = 40 → -40（有效 λz = 25k）。 */
+    private static double WARP_WAV_X = 125_000.0;   // 沿 X 拉长（与 X_STRETCH 同一取向）
+    private static double WARP_WAV_Z = 25_000.0;
 
     private static double warpOffset(long seed, double x, double z) {
         return WARP_AMP * CONTINENT_SCALE * (PeriodicNoise.value2XZ(seed, x, z, WARP_WAV_X * CONTINENT_SCALE, WARP_WAV_Z * CONTINENT_SCALE) * 2.0 - 1.0);
@@ -181,6 +177,10 @@ public final class NoiseContinentGrid {
      * 可使陆地占比 ≈33%。标定在主域 4k 网格上采样两次（≈10000 次 height，毫秒级），
      * 多线程首次访问由 computeIfAbsent 保证只算一次。
      */
+    public static void clearStats() {
+        STATS_CACHE.clear();
+    }
+
     private static LandStats statsFor(int worldSeedInt) {
         LandStats s = STATS_CACHE.get(worldSeedInt);
         if (s != null) {
@@ -288,9 +288,24 @@ public final class NoiseContinentGrid {
      * 陆地残差（抬升后相对阈值的超出量，&gt;=0 为陆）：越深内陆越大。
      * 供 OrographyField 等"大陆内部结构"层做海拔/山脊推导。
      */
+    /** 极地冰盖起始纬度带（bandD：0=赤道 1=极地）。0.82 ≈ 74°。 */
+    public static double ICE_BAND = 0.82;
+    /** 冰盖强制成陆的强度（残差量级约 0.3，1.5 足够压过任何噪声起伏）。 */
+    public static double ICE_FORCE = 1.5;
+
     public static double landResidual(int x, int z, int worldSeedInt) {
         double t = statsFor(worldSeedInt).threshold;
-        return residual(height(x, z, worldSeedInt), t);
+        double r = residual(height(x, z, worldSeedInt), t);
+        // 极地永久冰盖：bandD 超过 ICE_BAND 后把残差整体抬高 → 变成陆地。
+        // **它不是装饰**：冰盖是"陆"，把海盆朝极地那一端封住 —— 这与地球的
+        // 南极洲 / 北冰洋封住大西洋是同一个机制，是风生环流圈能形成的前提。
+        // 而且因为纬度在极点饱和，z→±∞ 都是冰盖，所以既不用墙也不会折返。
+        double b = ClimateLatitudes.getDistanceToCenter(z) / (double) ClimateLatitudes.MAX_D;
+        if (b > ICE_BAND) {
+            double k = (b - ICE_BAND) / (1.0 - ICE_BAND);
+            r += ICE_FORCE * k * k;
+        }
+        return r;
     }
 
     /**
@@ -325,9 +340,25 @@ public final class NoiseContinentGrid {
         return lifted(h, threshold) - threshold;
     }
 
-    /** 是否陆地（残差 &gt;= 0）。 */
+    /**
+     * 是否陆地。**整个 V2 地形/气候层唯一的海陆判定**。
+     *
+     * 曾经这条判据被逐字抄在 6 处以上（{@code OrographyField}、{@code GlobalClimate}、
+     * {@code ThermalForcing}、{@code RelaxedClimate}、{@code V2BiomeField}、{@code ClimateCoords}），
+     * 每处都写 {@code landResidual(...) >= 0.0} —— 只要残差函数将来多一个项
+     * （例如新增一种成陆机制），就有 6 个地方要同时改，漏一处就出现"同一列在 A 层是陆、
+     * 在 B 层是海"的口径偏移。现在只有一个定义，第二处写法由 P220 的源码扫描器盯着。
+     */
     public static boolean isLand(int x, int z, int worldSeedInt) {
-        return landResidual(x, z, worldSeedInt) >= 0.0;
+        return isLandResidual(landResidual(x, z, worldSeedInt));
+    }
+
+    /**
+     * 海陆判定（**已有残差值**时用，省一次噪声采样）。
+     * 与 {@link #isLand} 共用同一个比较式，不允许在别处重写 {@code r >= 0.0}。
+     */
+    public static boolean isLandResidual(double residual) {
+        return residual >= 0.0;
     }
 
     // ======== 有符号海岸距离（block 级） ========

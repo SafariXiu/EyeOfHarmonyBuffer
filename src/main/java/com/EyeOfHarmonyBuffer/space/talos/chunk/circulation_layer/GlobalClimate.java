@@ -19,22 +19,33 @@ public final class GlobalClimate {
     private GlobalClimate() {}
 
     // ---- P1b 地形算子参数（尺度归一，出图后微调） ----
-    /** 风场差分/辐合采样步长（block）。 */
-    private static final int DIFF_STEP = 6000;
+
     /** 辐合归一标尺（实测 |div| p50≈5e-5/p90≈1.6e-4 → 取 1.0e-4 使 p90≈饱和 1.0）。 */
     private static final double CONV_SCALE = 1.0e-4;
-    /** 地形抬升坡度归一标尺（实测坡向点积 p90≈1.4e-5 → 取 1.8e-5）。 */
-    private static final double UPLIFT_SCALE = 1.8e-5;
-    /** 海拔梯度采样步长（block）。 */
-    private static final int ELEV_STEP = 8000;
+    /**
+     * 地形抬升坡度归一标尺（实测坡向点积 p90≈1.4e-5 → 取 1.8e-5）。
+     *
+     * **这是"风×海拔梯度"算子唯一的归一标尺**：{@code ClimateCoords}（群系湿度）与
+     * 本类（降水）用的是同一个算子，必须共用这一个数。原先 ClimateCoords 自己又写了一份
+     * 1.8e-5，靠注释宣称"与 GlobalClimate.UPLIFT_SCALE 一致" —— 注释不是约束。
+     */
+    public static final double UPLIFT_SCALE = 1.8e-5;
+    /**
+     * 海拔梯度采样步长（block）。**同样是那个算子的一部分**：
+     * ClimateCoords 原先用 1500、本类用 2000，同一个"迎风抬升"在群系与降水里
+     * 用的是两套梯度 ⇒ 两边的迎风/背风强度系统性差 33%。现在统一为 2000
+     * （本值有上面标尺的实测注释作依据；1500 那份没有）。
+     */
+    public static final int ELEV_STEP = 2000;
+    /** 风场辐合差分步长（block）。辐合**只**在降水里用，故不跨层共用。 */
+    public static final int CONV_STEP = 1500;
 
     /**
      * 单点完整气候采样（x,z 任意范围）。
      */
     public static ClimateSample sample(int x, int z, int worldSeedInt) {
         // ---- L1 海陆（一次采样，各场复用） ----
-        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        boolean isLand = r >= 0.0;
+        boolean isLand = NoiseContinentGrid.isLand(x, z, worldSeedInt);
         double coastDist = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
 
         // ---- M5/M6 松弛气候场（双线性查表，O(1)） ----
@@ -82,13 +93,13 @@ public final class GlobalClimate {
             dry, rain, gyre,
             type, airT, q,
             cur != null ? cur[0] : 0.0, cur != null ? cur[1] : 0.0,
-            sst, cur != null ? 0.5 : 0.0
+            sst, cur != null ? Math.hypot(cur[0], cur[1]) : 0.0
         );
     }
 
     /** 风场散度 ∂u/∂x + ∂v/∂z（每 block）。 */
     private static double divergence(int x, int z, int worldSeedInt) {
-        int e = DIFF_STEP;
+        int e = CONV_STEP;
         double[] wp = RelaxedClimate.sampleWind(x + e, z, worldSeedInt);
         double[] wm = RelaxedClimate.sampleWind(x - e, z, worldSeedInt);
         double[] wzp = RelaxedClimate.sampleWind(x, z + e, worldSeedInt);
@@ -107,10 +118,10 @@ public final class GlobalClimate {
         }
         double ux = wind[0] / sp, uz = wind[1] / sp;
         double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        double elev = OrographyField.elevation01(r, worldSeedInt);
-        if (r < 0.0) {
+        if (!NoiseContinentGrid.isLandResidual(r)) {
             return new double[] { 0.0, 0.0 };   // 海上不适用地形项
         }
+        double elev = OrographyField.elevation01(r, worldSeedInt);
         double ep = elevOf(x + e, z, worldSeedInt);
         double em = elevOf(x - e, z, worldSeedInt);
         double ezp = elevOf(x, z + e, worldSeedInt);

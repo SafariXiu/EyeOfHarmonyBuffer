@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -31,7 +30,7 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     public WorldChunkManagerTalos2(World world) {
         super();
         this.world = world;
-        this.worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
+        this.worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
     }
 
     private static long packXZ(int x, int z) {
@@ -52,20 +51,10 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
             return cached;
         }
 
-        BiomeGenBase biome;
-        if (V2TerrainConfigSection.terrainV2Enabled) {
-            // X1 阶段2（T1.4 占位）：群系 = L1/L1b 场直接映射（与 ChunkProviderTalos2 V2 轨同源）
-            biome = V2BiomePicker.biomeAt(x, z, worldSeedInt);
-        } else {
-            try {
-                biome = TalosMacroClimate.getBiome(x, z, worldSeedInt);
-                if (biome == null) {
-                    biome = DEFAULT_BIOME;
-                }
-            } catch (Throwable t) {
-                biome = DEFAULT_BIOME;
-            }
-        }
+        // 群系 = L1/L1b 场直接映射（与 ChunkProviderTalos2 同源）。
+        // 这里曾经按 terrainV2Enabled 二选一，另一支走 TalosMacroClimate（旧宏气候）——
+        // 现在是**同一条链**，不可能再出现"世界群系管理器与地形用两套海陆/气候"。
+        BiomeGenBase biome = V2BiomePicker.biomeAt(x, z, worldSeedInt);
 
         if (biomeCache.size() >= CACHE_LIMIT) {
             biomeCache.clear();

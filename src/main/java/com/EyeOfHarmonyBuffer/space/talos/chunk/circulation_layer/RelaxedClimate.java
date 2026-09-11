@@ -1,13 +1,16 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * M5+M6 核心：环面离线松弛求解的气候场（按世界种子缓存，运行时查表插值）。
+ * M5+M6 核心：**按绝对坐标窗口**离线松弛求解的气候场（按 世界种子 + 瓦片 缓存，运行时查表插值）。
  *
- * 物理：在 400k×200k 环面的粗网格（2k/格）上做**嵌套定点迭代**：
+ * 物理：在 240×240 的粗网格上做**嵌套定点迭代**。一个窗口 = 暴露区 TILE_X(100km) × Z_CYCLE(1M)
+ * 两侧再各加 HALO_X(100km) / HALO_Z_ROWS(20 行) 的 halo ⇒ 数组域 **300km × 1.2M**，
+ * 格距 CELL_X=1250 / CELL_Z=5000（不再是"2k/格"）。世界不是环面：X 无限、Z 只有气候按 1M 重复。
  *   内层1：固定流场下把海温收敛到"逆流输运 + 向 seaTeq 弛豫"的不动点；
  *   内层2：同流场下把**空气温度/湿度/海洋性**收敛（海上目标=已解海温，陆上目标=landTeq/干平衡）；
  *   外层：用新海温更新气压（暖池低压/冷舌高压，增益 2.2）→ 地转风 + 摩擦
@@ -15,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 产出：副热带环流圈、西岸暖/东岸冷、寒舌暖池、迎风岸湿舌等由耦合自身涌现。
  *
  * 查询（全部双线性 O(1)≈100ns）：samplePressure/sampleWind/sampleCurrent/sampleSst/
- * sampleHumidity/sampleAirTemp/sampleMaritime。首次访问某种子执行求解（约 5s，一次性）。
+ * sampleHumidity/sampleAirTemp/sampleMaritime。**首次访问某个 (种子, tileX, tileZ) 会触发一次求解，
+ * 实测 5.5~7.6 s/窗口（P203），且每跨一个 100km 瓦片就要解一次** —— 不是"每种子一次性 5s"。
  * 确定性：固定迭代上限 + 阈值早停。
  */
 public final class RelaxedClimate {
@@ -23,9 +27,9 @@ public final class RelaxedClimate {
     private RelaxedClimate() {}
 
     /** 网格分辨率（block/格）。 */
-    public static final int CELL_X = 5000;
-    /** Z 方向网格（block/格）：纬度循环 4,000,000 / 20,000 = 200 行。 */
-    public static final int CELL_Z = 20_000;
+    public static final int CELL_X = 1250;
+    /** Z 方向网格（block/格）：Z_CYCLE / CELL_Z = 1,000,000 / 5,000 = 200 行（纬度周期行数）。 */
+    public static final int CELL_Z = 5000;
     /** 外层次数（可调：收敛诊断/预热预算用）。 */
     public static int OUTER = 16;
     /** 诊断：最近一次求解的外层次数 / 末次 SST 残差（收敛判据 5e-4）。 */
@@ -39,10 +43,6 @@ public final class RelaxedClimate {
     public static double lastOuterDelta, lastOuterDeltaMax;
     /** 诊断：同一次外层里流场 fu/fv 的 RMS/最大变化，以及 ΔSST 的按行直方图（10 桶）。 */
     public static double lastFlowDelta, lastFlowDeltaMax;
-    /** 诊断：Sverdrup 西边界流的自归一化尺度——maxShear 与逐行 strength（暴露问题用）。 */
-    public static double lastMaxShear, lastMeanUMin, lastMeanUMax;
-    public static final double[] lastStrength = new double[512];
-    public static int lastStrengthN;
     public static final int[] outerRowHist = new int[10];
     /** 诊断：最近一次 advectSst 的最大 |Δ|、>1e-3 的格数、海格总数、3 个采样值。 */
     public static double DIAG_MAX, DIAG_A, DIAG_B, DIAG_C;
@@ -106,7 +106,7 @@ public final class RelaxedClimate {
      * 所以这里先把距平按本半径平滑掉小尺度，再参与定方向：大尺度暖池/冷池仍在，
      * 格点噪声被挡在门外。取 0 等价于旧的"完全耦合"（不收敛），取正值才可用。
      */
-    public static double SYNOPTIC_KM = 300_000.0;
+    public static double SYNOPTIC_KM = 75_000.0;
     /**
      * 定风向场里纬向廓线 p0z 的放大系数。
      *
@@ -129,7 +129,7 @@ public final class RelaxedClimate {
      * 风速整体倍率。纬度循环 ×20 后 p0z 的经向梯度被摊薄 20 倍，风速从 ~1.9 掉到 ~0.06，
      * 洋流图（速度→明度）因此几乎没有明暗对比。这里只放大**量级**，方向由单位矢量决定、
      * 完全不受影响；ClimateCoords 只用单位化的风向（wind/|wind|），所以群系/气候不变。
-     * 配套：BC_STRENGTH 必须同比放大（它也是绝对速度），COAST_WBC_GAIN 反向补偿以保持
+     * 配套：绝对速度量级的常量必须与风速量级同步（COAST_WBC_GAIN 直接是绝对幅度）；
      * 沿岸暖舌的绝对幅度不变。
      */
     public static double WIND_SCALE = 17.0;
@@ -186,13 +186,32 @@ public final class RelaxedClimate {
     /** 预热开关：解完一个窗口后，在后台把左右邻居也解掉，玩家跨窗口时不再卡顿。 */
     public static volatile boolean PREHEAT = true;
 
-    private static final java.util.concurrent.ExecutorService HEATER =
-        java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "TalosClimatePreheat");
-            t.setDaemon(true);
-            t.setPriority(Thread.MIN_PRIORITY);
-            return t;
-        });
+    /**
+     * 预热队列上限（背压）。预热是**尽力而为**：多世界/多维度同时请求时宁可不预热，
+     * 也不能让任务无限堆积（旧写法是 newSingleThreadExecutor 的无界队列）。
+     */
+    private static final int PREHEAT_QUEUE_MAX = 24;
+
+    private static final java.util.concurrent.ThreadPoolExecutor HEATER =
+        new java.util.concurrent.ThreadPoolExecutor(1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+            new java.util.concurrent.ArrayBlockingQueue<>(PREHEAT_QUEUE_MAX),
+            r -> {
+                Thread t = new Thread(r, "TalosClimatePreheat");
+                t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+
+    /** 最近一次前台访问的世界种子：预热的"过期世界"守卫（换世界/维度时丢弃旧任务）。 */
+    private static volatile int ACTIVE_SEED;
+
+    /** 诊断：因背压/过期被丢弃的预热请求数。 */
+    public static volatile int preheatDropped;
+
+    /** 诊断：预热队列是否已排空（探针用；生产不读）。 */
+    public static boolean preheatIdle() {
+        return PENDING.isEmpty() && HEATER.getActiveCount() == 0 && HEATER.getQueue().isEmpty();
+    }
 
     private static final java.util.Set<Long> PENDING = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -200,88 +219,229 @@ public final class RelaxedClimate {
     public static volatile int preheated;
     public static volatile long lastPreheatMs;
 
-    private static void warm(int worldSeedInt, int tileX) {
-        long key = cacheKey(worldSeedInt, tileX);
+    /**
+     * 预热半径（窗口数）。1 只够玩家正常步行；快速移动、传送、或斜向跨越时来不及，
+     * 前台就会撞上未就绪的窗口而卡一次完整构建。半径 2 时同时活跃 5 个窗口，
+     * 因此 CACHE_LIMIT 必须 >= 2*半径+1，否则逐出策略会把刚预热好的邻居踢掉。
+     */
+    public static int PREHEAT_RADIUS = 2;
+
+    /**
+     * Z 方向预热半径（Z 瓦片）—— **现行值是 1**（I 轮调过；下面论证写的是 0 的取舍，保留作为记录）：
+     * Z 瓦片高 1M（= 10 个 X 瓦片），跨一次很罕见，
+     * 每次预热都要多解几个 12s 的窗口，不划算；真正需要 Z 邻居时（每瓦片最后一格取 halo 行）
+     * 按需求解即可，代价与"没预热到的 X 邻居"完全一样。
+     */
+    public static int PREHEAT_RADIUS_Z = 1;
+
+    private static void warm(int worldSeedInt, int tileX, int tileZ) {
+        long key = cacheKey(worldSeedInt, tileX, tileZ);
         if (CACHE.containsKey(key) || !PENDING.add(key)) {
             return;
         }
-        HEATER.execute(() -> {
-            try {
-                long t0 = System.nanoTime();
-                CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tileX));
-                lastPreheatMs = (System.nanoTime() - t0) / 1_000_000L;
-                preheated++;
-            } catch (Throwable ignored) {
-                // 预热失败不影响前台：下次真正访问时会重解
-            } finally {
-                PENDING.remove(key);
-            }
-        });
+        try {
+            HEATER.execute(() -> {
+                try {
+                    if (worldSeedInt != ACTIVE_SEED) {
+                        return;                     // 已换世界/维度：这次预热没意义，直接丢
+                    }
+                    long t0 = System.nanoTime();
+                    CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tileX, tileZ));
+                    lastPreheatMs = (System.nanoTime() - t0) / 1_000_000L;
+                    preheated++;
+                } catch (Throwable ignored) {
+                    // 预热失败不影响前台：下次真正访问时会重解
+                } finally {
+                    PENDING.remove(key);
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException queueFull) {
+            // 背压：队列满 → 丢弃本次预热（前台访问时按需构建，行为与"没预热到"一致）
+            PENDING.remove(key);
+            preheatDropped++;
+        }
     }
 
-    /** 窗口缓存上限（每个 ≈1.3 MB）。 */
-    public static int CACHE_LIMIT = 5;
+    /**
+     * 窗口缓存上限（个）。**9 → 16 是为了让工作集装得下**（零行为变化的容量修复）。
+     *
+     * 体积不再手写：见 {@link #LAST_WINDOW_BYTES} —— 构造器按**真实分配**累加得出
+     * （旧注释写的 "每个 ≈1.3 MB" 与实际差 10 倍，就是这么漂掉的）。
+     * 240×240 的窗口约 **14.8 MB** ⇒ 9 个 ≈133 MB、16 个 ≈237 MB。
+     *
+     * 16 的依据（实测 P203/P207/P208）：
+     *   · 一个 LandformField/气候窗口在 X 上要被 TILE_BLEND 拉进 ±1 个瓦片 ⇒ 单行工作集 5 个；
+     *   · Z 方向有 3 个瓦片（halo 行落在相邻瓦片上）⇒ 最坏 5×3 = **15**；
+     *   · 16 = 15 + 1 余量。
+     * 实测：工作集 10 个窗时重扫一遍要重解 ~2.2 次、14 个窗要重解 ~10.2 次（旧 CACHE_LIMIT=9）。
+     */
+    public static int CACHE_LIMIT = 16;
 
-    private static long cacheKey(int seed, int tileX) {
-        return ((long) seed << 24) ^ (tileX & 0xFFFFFFL);
+    /**
+     * **诊断计数器（只加两个 long，不参与任何计算，零行为变化）**。
+     *
+     * 为什么要有：曾经三次"进程跑飞"（P140 8325s/27min、P190 ~100min、P191 >50min）全部出在
+     * 「窗口构建 + 采样」这条链路上，而现场**没有任何计数**，只能事后猜。
+     * 实测（P203）：单次窗口构建 5.5~7.6 s；工作集 8 个窗（< CACHE_LIMIT=9）重扫一遍 0.00 s、
+     * 10 个窗要重解 ~2.2 次、14 个窗要重解 ~10.2 次。所以 BUILD_COUNT 一旦远超扫描规模，
+     * 就说明缓存抖动在打转。
+     */
+    public static final java.util.concurrent.atomic.AtomicLong BUILD_COUNT =
+        new java.util.concurrent.atomic.AtomicLong();
+    /** 累计窗口构建耗时（ns）。 */
+    public static final java.util.concurrent.atomic.AtomicLong BUILD_NANOS =
+        new java.util.concurrent.atomic.AtomicLong();
+    /** 每构建这么多次就打一行警告（0 = 不打）。生产默认 0，不影响任何输出。 */
+    public static int BUILD_WARN_EVERY = 0;
+
+    /**
+     * **窗口构建硬上限**（安全阀，不是优化）。
+     *
+     * 0 = 不限（生产默认，行为与以前逐位一致）。>0 时构建次数超过它就直接抛
+     * {@link IllegalStateException}，把计数、缓存占用、当前 tile 一起报出来。
+     * 用途：探针/命令行工具做广域扫描时，宁可**快速失败**也不要像 P140/P190/P191 那样
+     * 闷跑几十分钟。生产不要设它。
+     */
+    public static int BUILD_HARD_CAP = 0;
+
+    /** 诊断计数器（零行为变化）：窗口缓存的命中/未命中次数 —— 用于算真实命中率。 */
+    public static final java.util.concurrent.atomic.AtomicLong CACHE_HIT =
+        new java.util.concurrent.atomic.AtomicLong();
+    public static final java.util.concurrent.atomic.AtomicLong CACHE_MISS =
+        new java.util.concurrent.atomic.AtomicLong();
+
+    /** 命中率（0..1）；无访问时返回 NaN。 */
+    public static double cacheHitRate() {
+        long h = CACHE_HIT.get(), m = CACHE_MISS.get();
+        return (h + m) == 0 ? Double.NaN : h / (double) (h + m);
+    }
+
+    /** 诊断：最近创建的一个窗口实际占用的堆字节数与格数（按真实分配自动累加，见 ClimateGridData 构造器）。 */
+    public static volatile long LAST_WINDOW_BYTES;
+    public static volatile int LAST_WINDOW_N;
+
+    /** 清零诊断计数器（探针用）。 */
+    public static void resetBuildStats() {
+        BUILD_COUNT.set(0L);
+        BUILD_NANOS.set(0L);
+        CACHE_HIT.set(0L);
+        CACHE_MISS.set(0L);
+    }
+
+    /**
+     * 窗口缓存键。**唯一实现是 {@link WindowKey#of}**，本层不再自己拼位段。
+     *
+     * 旧写法 {@code ((long) seed << 40) ^ ((long)(tileX & 0xFFFFF) << 20) ^ ...} 把 int 种子
+     * 左移 40 位，只有低 24 位留在 long 里 —— 于是 seed 与 seed+2^24 的**两个不同世界**
+     * 共用同一批已解窗口（换种子后地形/气候不变）。同一个式子当时在
+     * LandformField / MountainLayerV2 / V2BiomeField 里各抄了一份，是 4 处同源缺陷。
+     */
+    private static long cacheKey(int seed, int tileX, int tileZ) {
+        return WindowKey.of(seed, tileX, tileZ);
     }
 
     /** 网格场数据。 */
     static final class ClimateGridData {
         /** 本窗口在**绝对世界坐标**里的 X 起点（窗口只是"解哪一段"，不改世界）。 */
         final int originX;
+        /**
+         * 本窗口在**绝对世界坐标**里的 Z 起点 = tileZ · Z_CYCLE。
+         *
+         * Z 方向也必须分瓦片：Z_CYCLE=1M 只控制**纬度**（bandD/latRad 都是 z mod 1M 的函数），
+         * 而海陆/洋流在 Z 上**不重复**（契约：跨极点后是新大陆、新海盆）。
+         * 旧实现把查询 z 折回 [0,1M)，于是 |z| ≥ 500k 处的 SST/风/洋流是用**另一套海陆**解出来的，
+         * sampleSst 的 isLandCell 还会把真海面判成陆 → NaN → ClimateCoords 丢掉整条 SST 项。
+         * 因为瓦片原点取 1M 的整数倍，纬度场在每个 Z 瓦片里完全相同，所以加 Z 瓦片几乎零代价。
+         */
+        final int originZ;
+        /** 本窗口的 Z 瓦片索引（跨瓦片取 halo 行时要用）。 */
+        final int tileZ;
         /** 含 halo 的 X 格数（暴露区 400k + 两侧各 HALO_X）。 */
         final int nx;
-        final int ny = GlobalCirculation.Z_CYCLE / CELL_Z;
+        /** 纬度周期行数（200）：一行的纬度 = (该行绝对 z) mod Z_CYCLE。 */
+        final int nyLat = GlobalCirculation.Z_CYCLE / CELL_Z;
+        /** Z halo 行数（上下各一份，构造时快照，避免求解中途被改）。 */
+        final int haloZ = HALO_Z_ROWS;
+        /** 数组行数 = nyLat + 2·haloZ。数组行 iy 的绝对 z = originZ + (iy - haloZ)·CELL_Z。 */
+        final int ny = nyLat + 2 * haloZ;
 
-        ClimateGridData(int originX, int nxPadded) {
+        /** 数组行 → 纬度行（0..nyLat-1）：行 iy 与行 iy±nyLat 的纬度相同。 */
+        int latOf(int iy) {
+            int v = (iy - haloZ) % nyLat;
+            return v < 0 ? v + nyLat : v;
+        }
+
+        ClimateGridData(int originX, int originZ, int tileZ, int nxPadded) {
             this.originX = originX;
+            this.originZ = originZ;
+            this.tileZ = tileZ;
             this.nx = nxPadded;
             // 数组必须在构造器里分配：nx 是构造参数，字段初始化器阶段还没赋值
             int n = nx * ny;
-            land = new boolean[n];
-            sst = new double[n];
-            teqSea = new double[n];
-            teqLand = new double[n];
-            qLandEq = new double[n];
-            p = new double[n];
-            u = new double[n];
-            v = new double[n];
-            fu = new double[n];
-            fv = new double[n];
-            tAir = new double[n];
-            q = new double[n];
-            mar = new double[n];
-            pSm = new double[n];
-            pf = new double[n];
-            pDir = new double[n];
-            anom = new double[n];
-            anomT = new double[n];
-            gPsi = new double[n];
-            gZeta = new double[n];
-            gSrc = new double[n];
-            fPhys = new double[ny];
-            betaRow = new double[ny];
-            wave = new double[n];
-            pu = new double[n];
-            pv = new double[n];
-            sstNew = new double[n];
-            lap = new double[n];
-            fade = new double[n];
-            coastD = new double[n];
-            sstOld = new double[n];
-            sstP = new double[n];
-            tNew = new double[n];
-            qNew = new double[n];
-            marNew = new double[n];
-            p0z = new double[ny];
-            fRow = new double[ny];
-            dampRow = new double[ny];
-            rowSq = new double[ny];
-            rowN = new int[ny];
-            rowMx = new double[ny];
-            rowBig = new int[ny];
+            // 字节数**按真实分配累加**（acc[0]），不再在手写注释里估算体积 ——
+            // 旧注释写的 "每个 ≈1.3 MB" 与实际差了 10 倍，就是这么漂掉的。
+            long[] acc = {0L};
+            land = allocB(n, acc);
+            sst = allocD(n, acc);
+            teqSea = allocD(n, acc);
+            teqLand = allocD(n, acc);
+            qLandEq = allocD(n, acc);
+            p = allocD(n, acc);
+            u = allocD(n, acc);
+            v = allocD(n, acc);
+            fu = allocD(n, acc);
+            fv = allocD(n, acc);
+            tAir = allocD(n, acc);
+            q = allocD(n, acc);
+            mar = allocD(n, acc);
+            pSm = allocD(n, acc);
+            pf = allocD(n, acc);
+            pDir = allocD(n, acc);
+            anom = allocD(n, acc);
+            anomT = allocD(n, acc);
+            gPsi = allocD(n, acc);
+            gZeta = allocD(n, acc);
+            gSrc = allocD(n, acc);
+            fPhys = allocD(ny, acc);
+            betaRow = allocD(ny, acc);
+            sPoleRow = allocD(ny, acc);
+            wave = allocD(n, acc);
+            pu = allocD(n, acc);
+            pv = allocD(n, acc);
+            sstNew = allocD(n, acc);
+            lap = allocD(n, acc);
+            fade = allocD(n, acc);
+            coastD = allocD(n, acc);
+            sstOld = allocD(n, acc);
+            sstP = allocD(n, acc);
+            tNew = allocD(n, acc);
+            qNew = allocD(n, acc);
+            marNew = allocD(n, acc);
+            p0z = allocD(ny, acc);
+            fRow = allocD(ny, acc);
+            dampRow = allocD(ny, acc);
+            rowSq = allocD(ny, acc);
+            rowN = allocI(ny, acc);
+            rowMx = allocD(ny, acc);
+            rowBig = allocI(ny, acc);
+            this.bytes = acc[0];
+            LAST_WINDOW_BYTES = acc[0];
+            LAST_WINDOW_N = n;
         }
+
+        /** 按真实分配累加字节数的三个小助手（8B double / 4B int / 1B boolean）。 */
+        private static double[] allocD(int len, long[] acc) { acc[0] += (long) len * 8L; return new double[len]; }
+        private static int[] allocI(int len, long[] acc) { acc[0] += (long) len * 4L; return new int[len]; }
+        private static boolean[] allocB(int len, long[] acc) { acc[0] += (long) len; return new boolean[len]; }
+
+        /**
+         * 最近一次被命中的时间（**只参与淘汰排序，不参与任何计算**）。
+         * volatile 只为多线程下的可见性；无竞争写，热点代价可忽略。与 LandformField/MountainLayerV2 同款。
+         */
+        volatile long lastUse = System.nanoTime();
+
+        /** 本窗口实际占用的堆字节数（构造时按真实分配累加，自动派生、不会漂）。 */
+        final long bytes;
 
         final boolean[] land;
         final double[] sst;
@@ -312,6 +472,8 @@ public final class RelaxedClimate {
         /** 逐行物理量：f = 2Ω·sin(纬)，β = df/dy。 */
         final double[] fPhys;
         final double[] betaRow;
+        /** 半球符号（+1 北 / -1 南）：按**绝对 z** 的纬度带算，不再假设行号 0..ny-1 是一个周期。 */
+        final double[] sPoleRow;
         final double[] wave;
         final double[] fRow;
         final double[] dampRow;
@@ -337,17 +499,21 @@ public final class RelaxedClimate {
         final double[] qNew;
         final double[] marNew;
 
+        /**
+         * 数组索引。X 仍按瓦片环绕（HALO_X 的设计依赖它）；
+         * **Z 不再环绕**（环就是接缝本身）：越界只 clamp 到 halo 两端。
+         */
         int idx(int ix, int iy) {
-            int wy = ((iy % ny) + ny) % ny;
+            int wy = iy < 0 ? 0 : (iy >= ny ? ny - 1 : iy);
             return wy * nx + ((ix % nx + nx) % nx);
         }
     }
 
     // ================= 查询 API =================
 
-    /** 预热原点窗口。 */
+    /** 预热原点窗口（X 瓦片 0 / Z 瓦片 0）。 */
     public static ClimateGridData ensure(int worldSeedInt) {
-        return tileGrid(worldSeedInt, 0);
+        return tileGrid(worldSeedInt, 0, 0);
     }
 
     /** 清空窗口缓存（世界卸载 / 探针扫参）。 */
@@ -358,21 +524,38 @@ public final class RelaxedClimate {
     // ================= C2：气候按 X 瓦片求解（世界沿 X 无限） =================
 
     /** 瓦片宽度（blocks）：沿用原域宽。 */
-    public static final int TILE_X = 400_000;
+    public static final int TILE_X = 100_000;
     /** 交叉淡入带宽度（blocks），近邻窗口解差异的衰减长度就是它。 */
-    public static int TILE_BLEND = 100_000;
+    public static int TILE_BLEND = 25_000;
     /**
      * 求解 halo（blocks）：每侧在暴露窗口外**多解**这么宽。
      *
-     * 这是"窗口解不唯一"的根治办法。原来窗口 X 方向是**环面**（bilinear/idx 都按 400k 取模），
+     * 这是"窗口解不唯一"的根治办法。**历史**：早期窗口 X 方向是环面（bilinear/idx 都按当时的
+     * 世界周期取模；那个周期常量现在是 PERIOD_X=100k），
      * 而内层平流的有效记忆长度 ~300 km（14 步 × 6 km，按 0.715^k 展开），几乎必然绕回原点；
-     * 再叠加 sverdrupWbc/applyCoastalSst 用"本窗口内的洋盆起点"当西边界，
+     * 再叠加 applyCoastalSst 用"本窗口内的洋盆起点"当西边界，
      * 于是相邻窗口解出来的场**整体**差 0.4（P113 实测：跨边界 4 km 处 Δp=0.36，
      * 而窗口内部 4 km 处只有 0.0055 —— 不是"缝"而是两套完全不同的气候）。
      * 加一圈 ≥ 记忆长度的 halo 后，暴露区内的所有回溯路径都落在 halo 内部，
      * 不再碰到"窗口边缘"这个人为边界。
      */
-    public static int HALO_X = 400_000;
+    public static int HALO_X = 100_000;
+
+    /**
+     * **Z 方向 halo 行数（上下各一份）**。域 = nyLat + 2·HALO_Z_ROWS 行。
+     *
+     * 解决"环接缝"：原来求解域是 1M 纬度环（row ny-1 与 row 0 相连），而 E 之后这两行
+     * 承载的是不同海陆（绝对 z 相差 ~995,000）→ 瓦片 Z 边缘十几到几十行被伪连接扰动。
+     *
+     * 关键洞察（本设计的依据）：纬度只是 z mod 1M 的函数，所以瓦片上方第 k 行的绝对 z
+     * 落在 [originZ+1M, originZ+1M+H·CELL_Z)，其纬度**恰好等于瓦片内第 k 行的纬度**；
+     * 下方同理。于是"加 Z halo"不需要改纬度表的语义：只要让域变成 nyLat+2H 行、
+     * 把 halo 行的海陆/温度/定常波按**绝对 z** 采样（自然落到相邻 Z 瓦片的坐标上），
+     * row ny-1 与 row 0 之间就不再是伪连接，而是真实相邻行。
+     *
+     * 取值由探针 P174 扫出来（判据：跨 z=n·1M 的相邻阶跃 < 场内基线 max|Δ|）。
+     */
+    public static int HALO_Z_ROWS = 20;
 
     // 场选择码（供 sampleBlended 复用同一套"瓦片 + 淡入"逻辑）
     private static final int F_P = 0, F_U = 1, F_V = 2, F_FU = 3, F_FV = 4,
@@ -398,40 +581,69 @@ public final class RelaxedClimate {
     }
 
     /**
+     * 点所在的 **Z 瓦片**索引：瓦片高 = {@link GlobalCirculation#Z_CYCLE}（1M，只控制纬度）。
+     * 与 X 瓦片不同，Z 瓦片只管"用哪一套海陆"，纬度场在每个 Z 瓦片里完全相同。
+     */
+    public static int tileOfZ(int z) {
+        return Math.floorDiv(z, GlobalCirculation.Z_CYCLE);
+    }
+
+    /**
      * 取某窗口的解：**同一个世界种子 + 绝对坐标窗口**（不是"每瓦片换种子"）。
      * 换种子的写法会让每个窗口针对一套虚构海陆松弛，与真实地形对不上（已修正）。
      */
-    private static ClimateGridData tileGrid(int worldSeedInt, int tileX) {
-        long key = cacheKey(worldSeedInt, tileX);
+    private static ClimateGridData tileGrid(int worldSeedInt, int tileX, int tileZ) {
+        ACTIVE_SEED = worldSeedInt;
+        long key = cacheKey(worldSeedInt, tileX, tileZ);
         ClimateGridData d = CACHE.get(key);
         if (d != null) {
+            CACHE_HIT.incrementAndGet();
+            d.lastUse = System.nanoTime();       // 真 LRU：命中即刷新
             return d;
         }
-        // 逐出"离当前窗口最远"的那个：sampleBlended 一次要用 tile-1/tile/tile+1，
-        // 任意逐出（迭代器顺序）会把刚用到的邻居踢掉，造成反复重解（旧写法实测会抖）。
+        CACHE_MISS.incrementAndGet();
+        // **真 LRU 逐出**（淘汰 lastUse 最小的那个），与 LandformField/MountainLayerV2 同款。
+        //
+        // 旧写法淘汰"离当前窗口最远"的，距离 = |Δtx|*(Z_CYCLE/TILE_X) + |Δtz| = |Δtx|*10 + |Δtz|。
+        // 那个度量假定"Z 邻居比 X 邻居更该留"，可实际的扫描是**每一行都要来回用 X 邻居**，
+        // 于是缓存一满就优先逐出每行都要用的 X 邻居、把过期的 Z 瓦片留着 ——
+        // 实测 14 窗工作集时重扫一遍要重解 10.2 次，而理论下限只有 5 次，那 2 倍偏差就来自这里。
+        // LRU 不需要任何关于访问模式的先验，自然解决。
         if (CACHE.size() >= CACHE_LIMIT) {
-            long worst = 0;
-            int worstDist = -1;
-            for (Long k : CACHE.keySet()) {
-                int tx = (int) (k & 0xFFFFFFL);
-                if (tx > 0x7FFFFF) {
-                    tx -= 0x1000000;
+            Long worst = null;
+            long oldest = Long.MAX_VALUE;
+            for (java.util.Map.Entry<Long, ClimateGridData> e : CACHE.entrySet()) {
+                if (e.getKey() == key) {
+                    continue;
                 }
-                int dist = Math.abs(tx - tileX);
-                if (dist > worstDist) {
-                    worstDist = dist;
-                    worst = k;
+                long t = e.getValue().lastUse;
+                if (t < oldest) {
+                    oldest = t;
+                    worst = e.getKey();
                 }
             }
-            if (worstDist > 0) {
+            if (worst != null) {
                 CACHE.remove(worst);
             }
         }
-        final int tile = tileX;
-        ClimateGridData solved = CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tile));
+        final int tile = tileX, tile2 = tileZ;
+        ClimateGridData solved = CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tile, tile2));
         if (PREHEAT) {
-            warm(worldSeedInt, tileX - 1);
-            warm(worldSeedInt, tileX + 1);
+            for (int r = 1; r <= Math.max(1, PREHEAT_RADIUS); r++) {
+                warm(worldSeedInt, tileX - r, tileZ);
+                warm(worldSeedInt, tileX + r, tileZ);
+            }
+            // Z 方向：瓦片高 1M（= 10 个 X 瓦片），但传送/传送门会**瞬时**跨越 → 必须预热，
+            // 否则主线程要等一次完整构建。代价权衡：跨一次 = 一次完整构建（~10s 前台卡顿），
+            // 频率极低但代价极高 → 取半径 1（上下各一个），每次预热的额外成本 = 2 次后台构建。
+            // 注意**只预热同 tileX 的 Z 邻居**（不带上它们的 X 邻居）：Z 邻居的 X 邻居等玩家真过去时
+            // 再按 X 规则预热即可，这样常驻窗口数保持在 CACHE_LIMIT 以内、不会互相逐出。
+            if (PREHEAT_RADIUS_Z > 0) {
+                for (int r = 1; r <= PREHEAT_RADIUS_Z; r++) {
+                    warm(worldSeedInt, tileX, tileZ - r);
+                    warm(worldSeedInt, tileX, tileZ + r);
+                }
+            }
         }
         return solved;
     }
@@ -439,32 +651,68 @@ public final class RelaxedClimate {
     /**
      * 取场值：瓦片查表，可选跨瓦片交叉淡入（{@link #TILE_BLEND}）。
      *
-     * 有了 {@link #HALO_X} 之后相邻窗口在重叠区已经解出同一个场（不再是两套气候），
-     * 所以默认 {@code TILE_BLEND = 0}（直接取本瓦片，连淡入都不需要）。
-     * 保留淡入逻辑是为了在 halo 预算被调小时还能退化成"缝被抹平"的老方案。
+     * **现行值 25_000（25 km），淡入是开着的**（旧注释写"默认 TILE_BLEND = 0"，与常量不符，已改正）。
+     *
+     * 代价（实测 P203/P207/P208）：开了淡入，靠近瓦片 X 边界的采样要**再拉进 ±1 个瓦片**，
+     * 单行工作集从 3 个窗涨到 5 个 —— 这是缓存抖动的一个放大因子。
+     * 有了 {@link #HALO_X} 之后相邻窗口在重叠区其实已经解出同一个场（不再是两套气候），
+     * 所以"是否真的需要这层淡入"值得单独评估；**改它属于行为变更（会改变瓦片边界附近的值），
+     * 本轮只把注释改成与常量一致，没有动值。**
      */
     private static double sampleBlended(int worldSeedInt, int x, int z, int f) {
-        int tile = tileOfX(x);
+        int tile = tileOfX(x), tileZ = tileOfZ(z);
         double localX = x - (double) tile * TILE_X;
-        ClimateGridData d = tileGrid(worldSeedInt, tile);
+        double localZ = z - (double) tileZ * GlobalCirculation.Z_CYCLE;   // ∈ [0, 1M)：本瓦片的纬度周期
+        ClimateGridData d = tileGrid(worldSeedInt, tile, tileZ);
         // 网格坐标 = 暴露区局部坐标 + halo 偏移
         double gx = localX + HALO_X;
-        double v = bilinear(fieldOf(d, f), gx, z, d.nx, d.ny);
+        double v = bilinearSample(worldSeedInt, tile, tileZ, d, f, gx, localZ);
         if (TILE_BLEND > 0) {
             if (localX < TILE_BLEND) {
                 double k = 0.5 - localX / (2.0 * TILE_BLEND);      // 边界 0.5 → 带内 0
-                double vn = bilinear(fieldOf(tileGrid(worldSeedInt, tile - 1), f),
-                    gx + TILE_X, z, d.nx, d.ny);
+                ClimateGridData dn = tileGrid(worldSeedInt, tile - 1, tileZ);
+                double vn = bilinearSample(worldSeedInt, tile - 1, tileZ, dn, f, gx + TILE_X, localZ);
                 v = v * (1.0 - k) + vn * k;
             } else if (localX > TILE_X - TILE_BLEND) {
                 double k = 0.5 - (TILE_X - localX) / (2.0 * TILE_BLEND);
-                double vn = bilinear(fieldOf(tileGrid(worldSeedInt, tile + 1), f),
-                    gx - TILE_X, z, d.nx, d.ny);
+                ClimateGridData dn = tileGrid(worldSeedInt, tile + 1, tileZ);
+                double vn = bilinearSample(worldSeedInt, tile + 1, tileZ, dn, f, gx - TILE_X, localZ);
                 v = v * (1.0 - k) + vn * k;
             }
         }
         return v;
     }
+
+    /**
+     * 采样专用双线性：X 用网格内坐标（含 HALO_X，保持瓦片内环绕）；
+     * **Z 用本瓦片内的 z ∈ [0, Z_CYCLE)，不取模**，行号 = z/CELL_Z + haloZ。
+     *
+     * 因为域上下各解了 HALO_Z_ROWS 行真实数据（halo 行按绝对 z 采样，纬度同瓦片内对应行），
+     * 边界附近插值用的是**真实相邻行**，跨 z = n·1M 连续且域边缘不再有伪连接扰动。
+     */
+    private static double bilinearSample(int worldSeedInt, int tileX, int tileZ, ClimateGridData d,
+                                         int f, double gx, double localZ) {
+        double[] fld = fieldOf(d, f);
+        if (localZ < 0) {
+            localZ += GlobalCirculation.Z_CYCLE;
+        }
+        double gxi = gx / (double) CELL_X, gzi = localZ / (double) CELL_Z + d.haloZ;   // blocks → 格（含 halo 偏移）
+        int ix0 = (int) Math.floor(gxi), iz0 = (int) Math.floor(gzi);
+        double tx = gxi - ix0, tz = gzi - iz0;
+        int ix1 = (ix0 + 1) % d.nx;
+        if (iz0 < 0) {
+            iz0 = 0;
+            tz = 0.0;
+        }
+        int iz1 = iz0 + 1 >= d.ny ? d.ny - 1 : iz0 + 1;
+        int base0 = iz0 * d.nx, base1 = iz1 * d.nx;
+        double s00 = fld[base0 + ix0], s10 = fld[base0 + ix1];
+        double s01 = fld[base1 + ix0], s11 = fld[base1 + ix1];
+        return s00 * (1 - tx) * (1 - tz) + s10 * tx * (1 - tz)
+             + s01 * (1 - tx) * tz + s11 * tx * tz;
+    }
+
+
 
     public static double samplePressure(int x, int z, int worldSeedInt) {
         return sampleBlended(worldSeedInt, x, z, F_P);
@@ -487,9 +735,9 @@ public final class RelaxedClimate {
 
     /** 耦合海温（海上；陆上 NaN）。 */
     public static double sampleSst(int x, int z, int worldSeedInt) {
-        int tile = tileOfX(x);
-        ClimateGridData d = tileGrid(worldSeedInt, tile);
-        if (isLandCell(d, x - tile * TILE_X, z)) {
+        int tile = tileOfX(x), tileZ = tileOfZ(z);
+        ClimateGridData d = tileGrid(worldSeedInt, tile, tileZ);
+        if (isLandCell(d, x - tile * TILE_X, z - tileZ * GlobalCirculation.Z_CYCLE)) {
             return Double.NaN;
         }
         return sampleBlended(worldSeedInt, x, z, F_SST);
@@ -511,18 +759,40 @@ public final class RelaxedClimate {
         return sampleBlended(worldSeedInt, x, z, F_MAR);
     }
 
-    private static boolean isLandCell(ClimateGridData d, int x, int z) {
-        return d.land[d.idx(Math.floorDiv(x - d.originX, CELL_X), Math.floorDiv(z, CELL_Z))];
+    /**
+     * 入参是**本瓦片内**的局部坐标：localX ∈ [0, TILE_X)、localZ ∈ [0, Z_CYCLE)。
+     *
+     * 掩码是按**绝对坐标** originX + ix·CELL_X 建的，所以下标必须自己补偏移，不能再减 originX：
+     *   · 列号：localX + HALO_X（x 下标这一项从 Halo 引入起就是错的 —— 只有 tile=0 时
+     *     localX − originX 恰好等于 localX + HALO_X，其余瓦片整块错位 100km）；
+     *   · 行号：localZ/CELL_Z + haloZ（I 轮加 Z halo 时漏加，造成 100km 整行错位）。
+     * 实测（P191：z=502km 一行真值 100% 陆、旧代码全判成海；z=402km 一行真值 0% 陆、
+     * 旧代码判出 337/400 陆）→ 修复后同一张表 42.52% → 2.95%。
+     *
+     * 残留的 2.95% **不是缺陷**，是掩码自身的分辨率：掩码采样在 1250×5000 的格心上，
+     * 而查询点任意，floorDiv 只能取到那一格。P206 的哨兵对照：
+     *   双轴对齐（查询点落在格心）0.0000%（0/172800）；只偏 z +2500 → 3.1123%；
+     *   只偏 x +625 → 0.1545%；偏 x+1000/z+2500（= P191 口径）→ 3.1128%。
+     * 即残留几乎全部来自 **z 方向 5km 量化**（P191 的采样点正好落在两行正中间）。
+     */
+    private static boolean isLandCell(ClimateGridData d, int localX, int localZ) {
+        return d.land[d.idx(Math.floorDiv(localX + HALO_X, CELL_X),
+            Math.floorDiv(localZ, CELL_Z) + d.haloZ)];
     }
 
+    /**
+     * 网格内双线性（求解器内部用）：wx/wz 是**数组格坐标**（wx = 列·CELL_X，wz = 行·CELL_Z）。
+     * X 仍按瓦片环绕；**Z 改为 clamp**——域现在上下各带 HALO_Z_ROWS 行真实数据，
+     * 再取模就会把 domain 两端接起来（那正是要消除的环接缝）。
+     */
     private static double bilinear(double[] fld, double wx, double wz, int nx, int ny) {
-        int XC = nx * CELL_X, ZC = ny * CELL_Z;
-        int fx = (int) (((wx % XC) + XC) % XC);
-        int fz = (int) (((wz % ZC) + ZC) % ZC);
-        double gx = fx / (double) CELL_X, gz = fz / (double) CELL_Z;
+        double gx = (((wx % (nx * CELL_X)) + nx * CELL_X) % (nx * CELL_X)) / (double) CELL_X;
+        double gz = wz / (double) CELL_Z;
+        if (gz < 0.0) gz = 0.0;
+        if (gz > ny - 1.0) gz = ny - 1.0;
         int ix0 = (int) Math.floor(gx), iz0 = (int) Math.floor(gz);
         double tx = gx - ix0, tz = gz - iz0;
-        int ix1 = (ix0 + 1) % nx, iz1 = (iz0 + 1) % ny;
+        int ix1 = (ix0 + 1) % nx, iz1 = iz0 + 1 >= ny ? ny - 1 : iz0 + 1;
         double s00 = fld[iz0 * nx + ix0], s10 = fld[iz0 * nx + ix1];
         double s01 = fld[iz1 * nx + ix0], s11 = fld[iz1 * nx + ix1];
         return s00 * (1 - tx) * (1 - tz) + s10 * tx * (1 - tz)
@@ -531,18 +801,37 @@ public final class RelaxedClimate {
 
     // ================= 离线求解 =================
 
-    private static ClimateGridData solve(int worldSeedInt, int tileX) {
-        ClimateGridData d = new ClimateGridData(tileX * TILE_X - HALO_X, (TILE_X + 2 * HALO_X) / CELL_X);
+    private static ClimateGridData solve(int worldSeedInt, int tileX, int tileZ) {
+        long bt0 = System.nanoTime();
+        long bn = BUILD_COUNT.incrementAndGet();
+        if (BUILD_HARD_CAP > 0 && bn > BUILD_HARD_CAP) {
+            throw new IllegalStateException("RelaxedClimate 窗口构建超过硬上限 BUILD_HARD_CAP="
+                + BUILD_HARD_CAP + "（已构建 " + bn + " 次，累计 "
+                + (BUILD_NANOS.get() / 1_000_000_000L) + "s，缓存占用 " + CACHE.size() + "/" + CACHE_LIMIT
+                + "，当前 tile=(" + tileX + "," + tileZ + ")）。"
+                + "这几乎一定是缓存抖动：工作集 > CACHE_LIMIT。请改用 tile 主序采样，或调大 CACHE_LIMIT。");
+        }
+        if (BUILD_WARN_EVERY > 0 && bn % BUILD_WARN_EVERY == 0) {
+            System.out.println("[RelaxedClimate] 窗口构建已达 " + bn + " 次，累计 "
+                + (BUILD_NANOS.get() / 1_000_000_000L) + "s，缓存 " + CACHE.size() + "/" + CACHE_LIMIT
+                + "，当前 tile=(" + tileX + "," + tileZ + ")");
+        }
+        final int originZ = tileZ * GlobalCirculation.Z_CYCLE;
+        ClimateGridData d = new ClimateGridData(tileX * TILE_X - HALO_X,
+            originZ, tileZ, (TILE_X + 2 * HALO_X) / CELL_X);
         for (int iy = 0; iy < d.ny; iy++) {
-            int z = iy * CELL_Z;
-            int zm = GlobalCirculation.foldZ(z);
+            // 逐行表按**该行的纬度**填：行 iy 的绝对 z = originZ + (iy-haloZ)·CELL_Z，
+            // 纬度 = 绝对 z mod Z_CYCLE（由 latOf 给出）。halo 行因此自动拿到正确的纬度，
+            // 不需要假设"行号 0..ny-1 恰好是一个完整周期"。
+            int z = d.latOf(iy) * CELL_Z;
             double b = GlobalCirculation.bandD(z);
+            d.sPoleRow[iy] = z <= GlobalCirculation.Z_CYCLE / 2 ? 1.0 : -1.0;
             // 符号翻转点在**半个纬度周期**处（bandD 的折返点 = 极点），不是 100k。
             // 旧代码写死 100_000（那是 200k 周期的 Z_CYCLE/2 残留），LAT_CYCLE 提到 4M 后
             // 它让 f>0 只覆盖前 100k（周期的 2.5%）、其余 97.5% 符号全反，
             // 且与 sPole 用的 (iy*CELL_Z <= Z_CYCLE/2) 互相矛盾。科氏力符号错了，
             // 地转风方向与埃克曼转向就都错。
-            double latRad = (zm <= GlobalCirculation.Z_CYCLE / 2 ? b : -b) * Math.PI / 2.0;
+            double latRad = GlobalCirculation.latRad(z);
             double f = Math.sin(latRad);
             double fa = Math.abs(f);
             d.fRow[iy] = fa < 1.0e-4 ? 0.0 : f;
@@ -557,9 +846,12 @@ public final class RelaxedClimate {
         for (int iy = 0; iy < d.ny; iy++) {
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);
-                int x = d.originX + ix * CELL_X, z = iy * CELL_Z;   // 绝对坐标：窗口只决定解哪一段
-                double b = GlobalCirculation.bandD(z);
-                d.land[i] = NoiseContinentGrid.landResidual(x, z, worldSeedInt) >= 0.0;
+                // **绝对坐标**：X 取窗口起点 + 局部偏移，Z 取本 Z 瓦片起点 + 局部偏移。
+                // 海陆/温度/定常波都必须用绝对 z —— 用局部 z 等于把 1M 外那套海陆搬过来（契约违反）。
+                // 数组行 iy → 绝对 z = originZ + (iy - haloZ)·CELL_Z（halo 行落在相邻 Z 瓦片上）
+                int x = d.originX + ix * CELL_X, z = d.originZ + (iy - d.haloZ) * CELL_Z;
+                double b = GlobalCirculation.bandD(d.latOf(iy) * CELL_Z);   // 纬度 = 绝对 z mod Z_CYCLE
+                d.land[i] = NoiseContinentGrid.isLand(x, z, worldSeedInt);
                 d.teqSea[i] = ThermalForcing.seaTeq(x, z, worldSeedInt);
                 d.teqLand[i] = ThermalForcing.landTeq(x, z, worldSeedInt);
                 d.qLandEq[i] = 0.08 + 0.30 * ThermalForcing.insolation01(b);   // 湿润热带陆平衡升（雨林水汽）
@@ -568,8 +860,11 @@ public final class RelaxedClimate {
                 // 补一层 λ=45 km 让风向有真实的弯曲/涡旋，而因为是固定场，不引入任何反馈增益。
                 double n = NoiseContinentGrid.bandNoise(x, z, worldSeedInt, 0xABC_1234L, 1.0 / 140_000.0, 2);
                 d.wave[i] = (n * 2.0 - 1.0) * WAVE_AMP * Math.sin(Math.PI * b);
-                d.pf[i] = d.p0z[iy] * PF_P0_SCALE + d.wave[i]
-                    + (d.land[i] ? -1.5 * (d.teqLand[i] - ThermalForcing.zonalMeanSeaTeq(b)) : 0.0);
+                // 固定底：只含纬向廓线与定常波。**陆地热力差移出去了** ——
+                // 它在海岸线上是硬跳变（一格 0.6），而大气的响应尺度是天气尺度不是海岸线尺度；
+                // 实测（P150）它贡献的风应力旋度比定常波大 40 倍、且在 40 km 尺度上，
+                // 把海盆尺度的旋度结构完全淹没了 —— 这正是"长不出环流圈"的根因。
+                d.pf[i] = d.p0z[iy] * PF_P0_SCALE + d.wave[i];
                 if (d.land[i]) {
                     d.tAir[i] = d.teqLand[i];
                     d.q[i] = d.qLandEq[i];
@@ -589,7 +884,7 @@ public final class RelaxedClimate {
         updateP(d, worldSeedInt);
         buildDirField(d);
         computeWind(d, 1.0, worldSeedInt);
-        updateFlow(d, worldSeedInt);
+        updateFlow(d, worldSeedInt, 0);   // 初始化这一轮就是完整自旋（与历史行为逐位一致）
         double[] prevOuterSst = new double[d.nx * d.ny];
         double[] prevOuterFu = new double[d.nx * d.ny];
         double[] prevOuterFv = new double[d.nx * d.ny];
@@ -607,7 +902,17 @@ public final class RelaxedClimate {
             smoothP(d, P_SMOOTH_PASSES);
             buildDirField(d);
             computeWind(d, WIND_BLEND, worldSeedInt);
-            updateFlow(d, worldSeedInt);
+            // 外层耦合循环每轮都重解正压涡旋代价极高（实测 16 次 × ~1.1 s）。
+            // 前 15 轮只做粗略自旋（ζ 仍从 0 起步 → 结果与访问顺序无关，确定性不变），
+            // 最后一轮才做完整自旋，保证参与 SSC 平流与输出的流场是收敛解。
+            //
+            // 上限**按参数传进去**：这里曾经写的是 BarotropicGyre.STEP_CAP 静态字段
+            // （赋值 → 调用 → 清零），而 preheat 线程会在同一时间窗里调用 solve()，
+            // 于是解取决于另一个线程当时停在第几轮 → 非确定性世界内容。
+            // 详见 BarotropicGyre 顶部的说明；TalosContract T6b 守着这条不再复发。
+            boolean lastOuter = (it == OUTER - 1);
+            int stepCap = lastOuter ? 0 : Math.max(150, BarotropicGyre.MACRO / 12);
+            updateFlow(d, worldSeedInt, stepCap);
             boolean trace = (it == OUTER - 1);
             int tk = 0;
             for (int k = 0; k < INNER; k++) {
@@ -662,6 +967,7 @@ public final class RelaxedClimate {
         updateP(d, worldSeedInt);
         applyCoastalSst(d);   // 沿岸暖舌/冷舌参数化（未解析的边界层）
         ghostFillSea(d);      // 临海陆格用海值填充，消除跨岸插值拽入 0 值的方块伪影
+        BUILD_NANOS.addAndGet(System.nanoTime() - bt0);
         return d;
     }
 
@@ -738,19 +1044,23 @@ public final class RelaxedClimate {
      */
     private static void updateP(ClimateGridData d, int worldSeedInt) {
         rows(d.ny, iy -> {
-            int z = iy * CELL_Z;
+            int z = d.latOf(iy) * CELL_Z;          // halo 行也要拿到自己那行的纬度
             double b = GlobalCirculation.bandD(z);
             double sstRef = ThermalForcing.zonalMeanSeaTeq(b);
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);
                 int x = d.originX + ix * CELL_X;
                 double pv = d.p0z[iy] + d.wave[i];
+                double term;
                 if (d.land[i]) {
-                    double teq = ThermalForcing.landTeq(x, z, worldSeedInt);
-                    pv += -1.5 * (teq - sstRef);
+                    term = -1.5 * (d.teqLand[i] - sstRef);
                 } else {
-                    pv -= SST_P_GAIN * (d.sstP[i] - sstRef);
+                    term = -SST_P_GAIN * (d.sstP[i] - sstRef);
                 }
+                pv += term;
+                // 真实的热力距平（陆地热力差 + SST 距平），供定风向场做天气尺度平滑。
+                // 注意不能再用 p − pf 反推：两者差一个 p0z·(1−PF_P0_SCALE) 的虚假纬向项。
+                d.anom[i] = term;
                 d.p[i] = pv;
             }
         });
@@ -792,6 +1102,11 @@ public final class RelaxedClimate {
         }
     }
 
+    /** Z 方向（行）越界 → clamp 到 halo 边缘。 */
+    private static int clampIdx(int v, int m) {
+        return v < 0 ? 0 : (v >= m ? m - 1 : v);
+    }
+
     private static int wrapIdx(int v, int m) {
         int r = v % m;
         return r < 0 ? r + m : r;
@@ -817,7 +1132,10 @@ public final class RelaxedClimate {
         }
     }
 
-    /** 同上·Z 方向（行方向，沿纬度环绕）。 */
+    /**
+     * 同上·Z 方向（行方向）。**不再环绕**：域上下各带 HALO_Z_ROWS 行真实数据，
+     * 环绕会把 domain 两端接起来（就是环接缝）；越界 clamp 到 halo 边缘即可。
+     */
     private static void boxBlurY(double[] src, double[] dst, int nx, int ny, int r) {
         if (r <= 0) {
             System.arraycopy(src, 0, dst, 0, nx * ny);
@@ -827,11 +1145,11 @@ public final class RelaxedClimate {
         for (int ix = 0; ix < nx; ix++) {
             double s = 0;
             for (int k = -r; k <= r; k++) {
-                s += src[wrapIdx(k, ny) * nx + ix];
+                s += src[clampIdx(k, ny) * nx + ix];
             }
             for (int iy = 0; iy < ny; iy++) {
                 dst[iy * nx + ix] = s / w;
-                s += src[wrapIdx(iy + r + 1, ny) * nx + ix] - src[wrapIdx(iy - r, ny) * nx + ix];
+                s += src[clampIdx(iy + r + 1, ny) * nx + ix] - src[clampIdx(iy - r, ny) * nx + ix];
             }
         }
     }
@@ -846,9 +1164,7 @@ public final class RelaxedClimate {
             return;
         }
         int n = d.nx * d.ny;
-        for (int i = 0; i < n; i++) {
-            d.anom[i] = d.p[i] - d.pf[i];
-        }
+        // anom 已由 updateP 填好（陆地热力差 + SST 距平），直接平滑
         boxBlurX(d.anom, d.anomT, d.nx, d.ny, (int) Math.max(0, Math.round(SYNOPTIC_KM / CELL_X)));
         boxBlurY(d.anomT, d.anom, d.nx, d.ny, (int) Math.max(0, Math.round(SYNOPTIC_KM / CELL_Z)));
         for (int i = 0; i < n; i++) {
@@ -915,7 +1231,7 @@ public final class RelaxedClimate {
     }
 
     private static void computeWind(ClimateGridData d, double blendNew, int worldSeedInt) {
-        double scale = 14_000.0 * WIND_SCALE;
+        double scale = 3_500.0 * WIND_SCALE;
         double ca = Math.cos(WIND_TURN), sa = Math.sin(WIND_TURN);
         double[] nu = new double[d.nx * d.ny];
         double[] nv = new double[d.nx * d.ny];
@@ -984,104 +1300,26 @@ public final class RelaxedClimate {
      * 近岸流向约束半径（blocks）。
      *
      * 原来的"岸墙折射"只有 26 km 且只消掉**撞岸**的分量，26 km 之外流向完全不管海岸 →
-     * 视觉上就是横贯全图的水平带。现在放大到 200 km，并在带内把**法向分量**压掉
+     * 视觉上就是横贯全图的水平带。缩放前的世界尺寸下这个宽度取 200 km；本轮 1/4 等比缩放时
+     * 一并按比例缩到 **50 km**（注释里曾写"放大到 200 km"，那是缩放前的值，已改正）。
+     * 带内把**法向分量**压掉
      * （向岸的全消、离岸的消一半，保证仍有离岸流），于是近岸流被迫**与海岸平行**，
      * 也就是"贴着陆地流"。这是参数化，不是从涡度平衡涌现的——但不做它就没有沿岸流。
      */
-    public static double COAST_ALIGN = 200_000.0;
+    public static double COAST_ALIGN = 50_000.0;
     /** 沿岸海温参数化：作用格数（1 格 = CELL blocks）与增益。 */
     /** 东边界上升流的离岸作用宽度（blocks）。 */
-    private static final double COAST_UPWELL_BLOCKS = 100_000.0;
-    /** 沿岸暖舌的绝对幅度 = COAST_WBC_GAIN × BC_STRENGTH，绑定成常量以免两者漂开。 */
+    private static final double COAST_UPWELL_BLOCKS = 25_000.0;
+    /** 沿岸暖舌的绝对幅度（**独立常量**；历史上曾与已删除的 BC_STRENGTH 绑定，已解耦）。 */
     private static final double COAST_WBC_TONGUE = 0.32;
-    private static final double COAST_WBC_GAIN = COAST_WBC_TONGUE / RelaxedClimate.BC_STRENGTH;
+    // **不要把它写成"另一个后置常量"的函数**：静态初始化器按文本顺序执行，后声明的非编译期常量
+    // 用限定名会绕过前向引用检查、实际读到默认值 0.0，使 COAST_WBC_GAIN 变成 +Infinity
+    // （曾把整片海 SST 推成 ±1/NaN）。历史上这个坑来自已删除的 BC_STRENGTH。
+    // 现行做法：暖舌幅度只由 COAST_WBC_TONGUE 决定（=0.16），适用位置由 applyCoastalSst 的
+    // "真西岸 + (1−dW/BC_WIDTH)² 向海衰减"决定（P191/P192/P196 实测）。
+    private static final double COAST_WBC_GAIN = COAST_WBC_TONGUE / 2.0;
     private static final double COAST_UPWELL_GAIN = 0.22;
 
-    /**
-     * Sverdrup 西边界回流速度场（每格，仅海格非零）。
-     * β·V = curl(τ) → 洋盆内净经向输运由西边界回流抵消，强度 ∝ −∫_west^east curl dx。
-     */
-    private static double[] sverdrupWbc(ClimateGridData d) {
-        // 行平均纬向风：**解析廓线**（由 p0z 地转风给出），不用"全域海格均值"
-        // —— 后者是全域耦合，X 无限时无定义（C1 改动）。
-        double[] meanU = new double[d.ny];
-        for (int iy = 0; iy < d.ny; iy++) {
-            double f = d.fRow[iy];
-            if (f == 0.0) {
-                meanU[iy] = 0;
-                continue;
-            }
-            double dpdz0 = (d.p0z[(iy + 1) % d.ny] - d.p0z[((iy - 1) % d.ny + d.ny) % d.ny])
-                / (2.0 * CELL_Z);
-            meanU[iy] = -(dpdz0 / f) * 14_000.0 * d.dampRow[iy];
-        }
-        // 积分形式 Sverdrup：∫_west^east curl dx = [v] − ∂/∂z(∫u dx)
-        // 洋盆内主项 = −∂(纬向风积分)/∂z；用行平均 u 的南北差近似（稳健，不受 ∂v/∂x 噪声影响）
-        double[] shear = new double[d.ny];
-        double maxShear = 1e-12;
-        for (int iy = 0; iy < d.ny; iy++) {
-            shear[iy] = (meanU[(iy + 1) % d.ny] - meanU[((iy - 1) % d.ny + d.ny) % d.ny])
-                / (2.0 * CELL_Z);
-            double a = Math.abs(shear[iy]);
-            if (a > maxShear) {
-                maxShear = a;
-            }
-        }
-        lastMeanUMin = Double.MAX_VALUE;
-        lastMeanUMax = -Double.MAX_VALUE;
-        for (int iy = 0; iy < d.ny; iy++) {
-            if (meanU[iy] < lastMeanUMin) lastMeanUMin = meanU[iy];
-            if (meanU[iy] > lastMeanUMax) lastMeanUMax = meanU[iy];
-        }
-        lastMaxShear = maxShear;
-        lastStrengthN = d.ny;
-        double[] wbc = new double[d.nx * d.ny];
-        for (int iy = 0; iy < d.ny; iy++) {
-            double strength = BC_STRENGTH * shear[iy] / maxShear;   // 自归一：峰值 ±BC_STRENGTH
-            if (iy < lastStrength.length) {
-                lastStrength[iy] = strength;
-            }
-            if (strength == 0.0) {
-                continue;
-            }
-            // 局部判定："西边 BC_WIDTH 内有陆、东边没有" = 这里是洋盆的**西边界**。
-            // 旧写法靠"本行连续海段的起点"，而海段起点常落在 400 km 宽的 halo 边上
-            // （人为边缘不是海岸）→ 西边界流被放到可见区之外；大陆放大后海盆超过
-            // 整个填充窗宽，那个写法会更彻底失效。
-            int maxCells = (int) Math.max(1, Math.round(BC_WIDTH / CELL_X));
-            for (int ix = 0; ix < d.nx; ix++) {
-                int i = d.idx(ix, iy);
-                if (d.land[i] || d.coastD[i] > BC_WIDTH) {
-                    continue;
-                }
-                int westCells = 0;
-                boolean westLand = false;
-                for (int k = 1; k <= maxCells; k++) {
-                    if (d.land[d.idx(ix - k, iy)]) {
-                        westLand = true;
-                        westCells = k;
-                        break;
-                    }
-                }
-                if (!westLand) {
-                    continue;
-                }
-                boolean eastLand = false;
-                for (int k = 1; k <= maxCells; k++) {
-                    if (d.land[d.idx(ix + k, iy)]) {
-                        eastLand = true;
-                        break;
-                    }
-                }
-                if (eastLand) {
-                    continue;   // 东边也有陆 → 是海峡，不是洋盆西边界
-                }
-                double decay = 1.0 - (westCells - 1) / (double) maxCells;
-                wbc[i] = strength * decay * decay;
-            }
-        }
-        return wbc;
-    }
 
     /**
      * 沿岸海温参数化（未解析的边界层）：
@@ -1092,7 +1330,7 @@ public final class RelaxedClimate {
     private static void applyCoastalSst(ClimateGridData d) {
         for (int iy = 0; iy < d.ny; iy++) {
             // 边界回流的**向极分量**决定暖舌（两个半球的副热带西边界都是向极暖流）
-            double sPole = (iy * CELL_Z <= GlobalCirculation.Z_CYCLE / 2) ? 1.0 : -1.0;
+            double sPole = d.sPoleRow[iy];   // 按该行绝对 z 的纬度带（halo 行也对）
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);
                 if (d.land[i]) {
@@ -1104,10 +1342,41 @@ public final class RelaxedClimate {
                 // 原写法用 dW = k − start（本行在**填充窗口**里第一个海格）：海段横跨整个
                 // 填充窗时 start 落在 400 km 外的 halo 里 → 暖舌被放到可见区之外，真海岸上
                 // 什么都没有。这与西边界流是同一类 bug，一并修掉。
-                // 直接用求解出的经向流速当西边界流强度（归一化到典型 WBC 速度 0.5 m/s）
-                adj += COAST_WBC_GAIN * sPole * Math.max(-1.0, Math.min(1.0, d.fv[i] / 0.5));
+                // 直接用求解出的经向流速当西边界流强度（归一化到典型 WBC 速度 0.5 m/s）。
+                //
+                // **作用域修复（探针 P191/P184 定位）**：这一项曾经对**每个海格无条件生效**
+                // （实测离岸 400km 仍 100% 被施加），把沿岸暖舌参数化撒到了整片海洋上。
+                // 现在恢复成"只在真西岸 + 向海衰减"：
+                //   西岸判据 = 西侧 BC_WIDTH 内有陆、且东侧 BC_WIDTH 内无陆（洋盆西边界，非海峡）；
+                //   衰减 = (1 - dW/BC_WIDTH)^2，dW 为向西到陆的距离。
+                // 判据用"向西找真陆"实现（与下方东岸上升流的"向东找真陆"镜像），
+                // 不依赖任何"窗口内连续海段起点"的写法（那些已作为死代码删除）。
+                if (!ABLATE_T1_COAST_WBC) {
+                    int maxW = (int) Math.max(1, Math.round(BC_WIDTH / CELL_X));
+                    int dW = -1;
+                    for (int q = 1; q <= maxW; q++) {
+                        if (d.land[d.idx(ix - q, iy)]) {
+                            dW = (q - 1) * (int) CELL_X;
+                            break;
+                        }
+                    }
+                    if (dW >= 0) {
+                        boolean eastOpen = true;
+                        for (int q = 1; q <= maxW; q++) {
+                            if (d.land[d.idx(ix + q, iy)]) {
+                                eastOpen = false;
+                                break;
+                            }
+                        }
+                        if (eastOpen) {
+                            double decay = 1.0 - dW / BC_WIDTH;
+                            adj += COAST_WBC_GAIN * sPole
+                                * Math.max(-1.0, Math.min(1.0, d.fv[i] / 0.5)) * decay * decay;
+                        }
+                    }
+                }
                 // 东边界上升流：向东找**真陆地**，而不是海段终点。
-                if (d.coastD[i] < COAST_UPWELL_BLOCKS) {
+                if (!ABLATE_T2_UPWELL && d.coastD[i] < COAST_UPWELL_BLOCKS) {
                     int maxCells = (int) Math.max(1, Math.round(COAST_UPWELL_BLOCKS / CELL_X));
                     for (int q = 1; q <= maxCells; q++) {
                         if (d.land[d.idx(ix + q, iy)]) {
@@ -1131,17 +1400,28 @@ public final class RelaxedClimate {
      * 原来是固定 80 km，而实测海盆中位数只有 690 km → 边界层占盆宽 12%，读起来是宽带不是急流。
      * 现在改成"离西岸 BC_WIDTH 内"，既与海盆宽度无关（局部判定），也不会在大陆放大后失效。
      */
-    public static double BC_WIDTH = 150_000.0;
-    /**
-     * 西边界回流峰值速度（按行平均纬向风切变自归一）。
-     *
-     * **必须与风速量级同步**：它是直接加到 fz 上的绝对速度。纬度循环 ×20 后 p0z 的经向
-     * 梯度小了 20 倍、风速从 ~1.9 掉到 ~0.14，而 2.5 这个老常量不变 → 西边界流变成了
-     * 风本身的 18 倍，洋流各向异性 RMS(fx):RMS(fz) 从 6.5 掉到 0.97（P118 实测）。
-     */
-    public static double BC_STRENGTH = 2.0;
+    public static double BC_WIDTH = 37_500.0;
 
-    private static void updateFlow(ClimateGridData d, int worldSeedInt) {
+    /**
+     * **诊断消融开关（生产必须全为 false；默认 false = 行为完全不变）**。
+     * 用于定位"u/v 偏置 6.95 vs 求解器单独 1.15"与"南北差异"来自哪一项耦合（探针 P184）：
+     *   T1 = applyCoastalSst 的西岸暖/冷舌项（**已局部化**：只在本行"真西岸"——西侧 BC_WIDTH 内有陆、
+     *        东侧没有——非零，并带 (1−dW/BC_WIDTH)² 向海衰减；作用域实测 100% → 9.26% 海格，P196）
+     *   T2 = applyCoastalSst 的东岸上升流项（coastD + 向东找陆，本来就是局部化的）
+     *   T3 = updateFlow 的近岸法向压缩（coastD < COAST_ALIGN，也是局部化的）
+     *
+     * 这三条是**诊断用**的消融开关：默认全 false = 生产行为逐位不变。定位完 u/v 偏置的来源
+     * （P184/P189 已做）且 PSI 图（批次 2）出完之后，这三个开关就该删掉，不要长期留在生产代码里。
+     */
+    public static boolean ABLATE_T1_COAST_WBC = false;
+    public static boolean ABLATE_T2_UPWELL = false;
+    public static boolean ABLATE_T3_ALIGN = false;
+
+    /**
+     * @param stepCap 传给 {@link BarotropicGyre#solve} 的步数上限。**必须是参数**：
+     *                它曾经是跨线程共享的静态字段，preheat 线程会串改前台的值。
+     */
+    private static void updateFlow(ClimateGridData d, int worldSeedInt, int stepCap) {
         double ca = Math.cos(0.35), sa = Math.sin(0.35);
         // ---- 1) Sverdrup 输运 → 西边界层经向速度 ----
         // β·V = curl(τ)；洋盆内净经向输运必须由**西边界回流**抵消，
@@ -1153,10 +1433,10 @@ public final class RelaxedClimate {
         // 取代原来的"埃克曼旋转 + Sverdrup 自归一化参数化"。
         // 地块 ψ=0 的 Dirichlet 条件天然给出"无穿岸流"，β 效应自带西向强化。
         BarotropicGyre.solve(d.nx, d.ny, CELL_X, CELL_Z, d.land,
-            d.u, d.v, d.fPhys, d.betaRow, d.fu, d.fv);
+            d.u, d.v, d.fPhys, d.betaRow, d.fu, d.fv, stepCap);
 
         rows(d.ny, iy -> {
-            double s = (iy * CELL_Z <= GlobalCirculation.Z_CYCLE / 2) ? 1.0 : -1.0;
+            double s = d.sPoleRow[iy];
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);
                 if (d.land[i]) {
@@ -1169,7 +1449,7 @@ public final class RelaxedClimate {
                 // 近岸流向约束：把**法向分量**压掉（向岸全消、离岸消一半），
                 // 流量被迫与海岸平行。coastD 的梯度就是"指向海"的法向，处处可用。
                 double cd = d.coastD[i];
-                if (cd > 0 && cd < COAST_ALIGN) {
+                if (!ABLATE_T3_ALIGN && cd > 0 && cd < COAST_ALIGN) {
                     double gx2 = d.coastD[d.idx(ix + 1, iy)] - d.coastD[d.idx(ix - 1, iy)];
                     double gz2 = d.coastD[d.idx(ix, iy + 1)] - d.coastD[d.idx(ix, iy - 1)];
                     double gl2 = Math.sqrt(gx2 * gx2 + gz2 * gz2);
@@ -1191,11 +1471,11 @@ public final class RelaxedClimate {
     /** 海温输运步（仅海上）；返回 RMS 变化。 */
     private static double advectSst(ClimateGridData d) {
         int steps = SST_TRACE_STEPS;   // 回溯步数：决定海温异常能被流场搬运多远（西边界暖舌/东边界冷舌）
-        double dt = 6000.0;
+        double dt = 1500.0;
         System.arraycopy(d.sst, 0, d.sstOld, 0, d.nx * d.ny);
         // 海温弛豫长度：水体保留自身温度的 e 折距离。真实海洋 SST 弛豫时间 ~30-60 天，
         // 流速 ~0.1 m/s → 250~500km。原值 55km 会让异常在 84km 路径上只剩 22% → 洋流对海温几乎无影响。
-        double relaxL = 250_000.0;
+        double relaxL = 62_500.0;
         rows(d.ny, iy -> {
             for (int ix = 0; ix < d.nx; ix++) {
                 int i = d.idx(ix, iy);
@@ -1303,7 +1583,7 @@ public final class RelaxedClimate {
     /** 空气三场输运步（全定义域；海上目标=已解海温、陆地目标=landTeq/干平衡）。 */
     private static void advectAir(ClimateGridData d, int worldSeedInt) {
         int steps = 5;
-        double dt = 6000.0;
+        double dt = 1500.0;
         double lt = 40_000.0, lqSea = 20_000.0, lqLand = 55_000.0, lm = 30_000.0;
         rows(d.ny, iy -> {
             for (int ix = 0; ix < d.nx; ix++) {

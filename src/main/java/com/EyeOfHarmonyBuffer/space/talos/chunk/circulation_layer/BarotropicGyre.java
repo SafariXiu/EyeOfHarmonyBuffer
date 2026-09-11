@@ -28,18 +28,107 @@ public final class BarotropicGyre {
     public static double C_D = 1.3e-3;
     public static double RHO_WATER = 1025.0;
     public static double H_MIXED = 100.0;
-    public static double A_H = 1.8e6;
+    public static double A_H = 1.9e4;
     public static double WIND_MS = 10.0;
     public static double BETA_SCALE = 1.0;
 
     public static int NCX = 32, NCZ = 128;
     /** 伪时间步长（s）：显式扩散上限 ≈ 1/(2A_h(1/hx²+1/hz²)) ≈ 155 s。 */
     public static double DT = 140.0;
-    /** 步数：DT×MACRO 需 ≥ 环流建立时间（≈8 天 = 7e5 s）。 */
+    /**
+     * 步数：DT×MACRO 需 ≥ 环流建立时间（≈8 天 = 7e5 s）。
+     *
+     * 注意：V_CYCLES=1 时压力泊松解是**跨步累积** V-cycle 才收敛的，
+     * 所以 MACRO 同时决定 ζ 的积分长度**和** ψ 的收敛程度，不能单独按
+     * 物理自旋时间缩短。实测（1/4 世界，A_H=1.9e4）：MACRO=315 泊松残差
+     * 1.7e-2（未收敛），MACRO=5000 为 4.6e-6。若将来要把 MACRO 调小，
+     * 必须同步把 V_CYCLES 按比例调大。
+     */
     public static int MACRO = 5000;
+    /**
+     * 每个宏观步的 V-cycle 次数。
+     *
+     * 实测（理想闭合海盆 128×128，β=3.24e-10，A_H=1.9e4，δ_M=5 格）单次 V-cycle 只把
+     * 泊松残差降到 3e-1 量级，V_CYCLES=1 时残差 1.4e-1 —— ψ 严重落后 ζ，于是 −β·v 反馈
+     * 是错的，**西边界层根本长不出来**（西/东=0.80，|v| 峰值出现在海盆中央）。
+     * V_CYCLES>=4 后残差降到 4e-3，教科书 Munk 解立刻出现：内部 v≈0.012 m/s
+     * （Sverdrup 理论 1.47e-2，吻合），西岸峰值 0.24 m/s = 内部 20 倍，东岸仅 0.026。
+     */
     public static int V_CYCLES = 1;
+    /**
+     * TODO(成本)：V_CYCLES 1->4 后生产路径单窗口求解实测从 ~9.5 s 涨到 ~440 s（46 倍，
+     * 远高于 V-cycle 次数的 4 倍），说明还有别的开销被这次收敛放大。下一步要做的：
+     *   1) 在 V_CYCLES=4 下扫 MACRO（1250/2500/5000），用理想海盆的"内部 v 是否等于
+     *      Sverdrup 值 + 西/东比"作为判据找出最小可用步数；
+     *   2) 查 updateFlow 里除了 solve() 之外还有哪个循环的迭代次数取决于流场；
+     *   3) 把 vcycle 的 pre/post 平滑从 2 提到 3~4，换取单次 V-cycle 收敛因子更好，
+     *      从而允许 V_CYCLES 降到 2。在此之前不要下调 V_CYCLES。
+     */
+    /** 输出前最后一次泊松解的 V-cycle 次数（取 u/v 用的 ψ 必须充分收敛）。 */
+    public static int FINAL_CYCLES = 32;
+
+    /**
+     * 收敛提前退出阈值：max|Δζ| 相对于 DT·max|src| 的比值。
+     *
+     * 必须**从 ζ=0 起步**做判据，不能跨调用热启动 —— 否则同一坐标的生成结果会依赖
+     * 玩家访问窗口的顺序，破坏确定性地形。从零起点做，收敛步数是窗口的确定函数。
+     */
+    public static double CONV_TOL = 1e-3;
+    /** 提前退出的最小步数下限，避免源项极弱时一步就"收敛"。 */
+    public static int MIN_STEPS = 150;
+    /** 上一次求解实际走了多少步（诊断）。 */
+    public static int lastSteps;
+    // ===== 步数上限是【每次调用的显式参数】，不是静态字段 =====
+    //
+    // 这里曾经是 `public static int STEP_CAP`，由 RelaxedClimate 在调用前后写：
+    //     STEP_CAP = 416; updateFlow(...); STEP_CAP = 0;
+    // 这在**同一个进程里是跨线程共享的可变量**：preheat 线程（RelaxedClimate.warm →
+    // HEATER 线程池）会在前台停在外层某一轮时调用 solve()，于是同一个 (种子, 窗口) 的解
+    // 取决于**另一个线程当时停在第几轮外层** —— 前台/后台谁先跑完就得到不同的流场，
+    // 并被写进窗口缓存长期生效。这是真正的非确定性世界内容缺陷，不是理论风险。
+    // 改成参数后每个调用点的上限在**它自己的栈帧**里，结构上不可能再串。
+    //
+    // 代价：十几处历史探针直接调 11 参 solve()。它们全部走「完整自旋」这一档，
+    // 所以保留一个 11 参重载（= stepCap 0）给它们，生产代码只走带 stepCap 的那个。
+
+    /**
+     * 求解域【Y（Z 轴）方向是否周期环绕】。**默认 true = 与历史行为逐位一致。**
+     *
+     * 存在意义：ClimateGridData 那一层已经改成"Z 不环绕"（I 轮加了真实 halo 行），
+     * 但本求解器的模板用 `(y±1+ncz)%ncz` 又把 Z 接了回去 —— 等于修了一半。
+     * 设 false 时改为 clamp（与 ClimateGridData.idx() 的 Z 处理一致，靠真实 halo 行收边）。
+     *
+     * ===== 状态：保留中，尚未定案（2026-09）=====
+     * · **默认 `true` = 与历史行为逐位一致**（已用 P200 复跑证明：三例的 steps/泊松残差/RMS u,v 全部相同）。
+     * · 它现在只被探针用来做"只改 Y 周期这一个变量"的受控实验（P210）。
+     * · **已实测的收益**（P210，生产窗口 tileX=0，同一批格点）：
+     *     `true`  → RMS u=0.22087 v=0.05545，**u/v = 3.98**
+     *     `false` → RMS u=0.25279 v=0.12310，**u/v = 2.05**（v 翻一倍多）
+     *   负对照（海区上下被陆封死、碰不到接缝）：开关两边**所有统计量逐位相同** ⇒ 差异不是噪声。
+     * · **修改方向已批准，但执行时间未定**（属于会改变世界海洋的行为变更，需与其它决策一起拍板）。
+     *
+     * ⇒ **定案后必须二选一：把默认值固定成正确的那一侧（大概率是 `false`），或者直接删掉这个开关
+     *    并把 yIdx 换成所选实现。不要长期把一个"两种世界都能跑"的开关留在生产代码里。**
+     */
+    public static boolean WRAP_Y = true;
+
+    /** Y 索引：WRAP_Y 时按 ny 取模；否则 clamp 到 [0, ny-1]（与 ClimateGridData.idx 的 Z 规则一致）。 */
+    static int yIdx(int y, int ny) {
+        if (WRAP_Y) {
+            return ((y % ny) + ny) % ny;
+        }
+        return y < 0 ? 0 : (y >= ny ? ny - 1 : y);
+    }
 
     public static double lastResidual, lastMaxU, lastMaxV, lastMaxZeta, lastMaxSrc, lastMs;
+
+    /** 诊断计数器（零行为变化）：solve() 被调用的次数、累计实际走的宏观步数。 */
+    public static final java.util.concurrent.atomic.AtomicLong SOLVE_CALLS =
+        new java.util.concurrent.atomic.AtomicLong();
+    public static final java.util.concurrent.atomic.AtomicLong TOTAL_MACRO_STEPS =
+        new java.util.concurrent.atomic.AtomicLong();
+    /** 诊断：最后一次泊松解的相对残差 max|Lψ−rhs|/max|rhs|（ζ 收敛 ≠ ψ 收敛）。 */
+    public static double lastPoisRes;
 
     private static final class Lv {
         final int nx, ny, n;
@@ -50,7 +139,7 @@ public final class BarotropicGyre {
             psi = new double[n]; rhs = new double[n]; res = new double[n];
         }
         int id(int x, int y) {
-            return (((y % ny) + ny) % ny) * nx + (((x % nx) + nx) % nx);
+            return yIdx(y, ny) * nx + (((x % nx) + nx) % nx);
         }
     }
 
@@ -157,10 +246,27 @@ public final class BarotropicGyre {
         return RHO_AIR * C_D * sp * v[i] * WIND_MS;
     }
 
+    /**
+     * 完整自旋（步数上限 = {@link #MACRO}），等价于 {@code solve(..., 0)}。
+     * 保留这个重载只为不动几十处历史探针的调用点；生产代码用带 {@code stepCap} 的那个。
+     */
     public static void solve(int nxF, int nyF, double dxF, double dzF, boolean[] landF,
                              double[] uW, double[] vW, double[] fRowF, double[] betaRowF,
                              double[] uOutF, double[] vOutF) {
+        solve(nxF, nyF, dxF, dzF, landF, uW, vW, fRowF, betaRowF, uOutF, vOutF, 0);
+    }
+
+    /**
+     * @param stepCap 本次求解的步数上限；{@code <=0} 表示用 {@link #MACRO}。
+     *                调用方（RelaxedClimate 的外层耦合循环）用它在前 15 轮只做粗略自旋、
+     *                只在最后一轮做完整自旋 —— 仍然是 ζ=0 起步，确定性不变。
+     *                **必须走参数，不得退回静态字段**（原因见上方注释；TalosContract T6b 守着这条）。
+     */
+    public static void solve(int nxF, int nyF, double dxF, double dzF, boolean[] landF,
+                             double[] uW, double[] vW, double[] fRowF, double[] betaRowF,
+                             double[] uOutF, double[] vOutF, int stepCap) {
         long t0 = System.nanoTime();
+        SOLVE_CALLS.incrementAndGet();
         int ncx = Math.max(4, Math.min(NCX, nxF)), ncz = Math.max(4, Math.min(NCZ, nyF));
         double hx = nxF * dxF / ncx, hz = nyF * dzF / ncz;
         int nc = ncx * ncz;
@@ -190,7 +296,7 @@ public final class BarotropicGyre {
                 int i = y * ncx + x;
                 if (land[i]) continue;
                 int ip = y * ncx + (x + 1) % ncx, im = y * ncx + (x - 1 + ncx) % ncx;
-                int jp = ((y + 1) % ncz) * ncx + x, jm = ((y - 1 + ncz) % ncz) * ncx + x;
+                int jp = yIdx(y + 1, ncz) * ncx + x, jm = yIdx(y - 1, ncz) * ncx + x;
                 double dTauYdx = (tauY(uC, vC, ip) - tauY(uC, vC, im)) / (2.0 * hx);
                 double dTauXdy = (tauX(uC, vC, jp) - tauX(uC, vC, jm)) / (2.0 * hz);
                 src[i] = (dTauYdx - dTauXdy) / (RHO_WATER * H_MIXED);
@@ -204,9 +310,13 @@ public final class BarotropicGyre {
         double[] zeta = new double[nc];
         double hbar2 = hx * hz;
 
-        // ---- 伪时间步进到稳态 ----
+        // ---- 伪时间步进到稳态（收敛即提前退出；从 ζ=0 起步 → 确定性）----
         double maxRes = 0;
-        for (int it = 0; it < MACRO; it++) {
+        int steps = 0;
+        double convTol = CONV_TOL * DT * maxSrc + 1e-30;
+        int maxIters = stepCap > 0 ? Math.min(stepCap, MACRO) : MACRO;
+        for (int it = 0; it < maxIters; it++) {
+            steps = it + 1;
             for (int i = 0; i < nc; i++) fine.rhs[i] = land[i] ? 0 : hbar2 * zeta[i];
             for (int v = 0; v < V_CYCLES; v++) vcycle(ls, 0);
             maxRes = 0;
@@ -216,7 +326,7 @@ public final class BarotropicGyre {
                     int i = y * ncx + x;
                     if (land[i]) continue;
                     int ip = y * ncx + (x + 1) % ncx, im = y * ncx + (x - 1 + ncx) % ncx;
-                    int jp = ((y + 1) % ncz) * ncx + x, jm = ((y - 1 + ncz) % ncz) * ncx + x;
+                    int jp = yIdx(y + 1, ncz) * ncx + x, jm = yIdx(y - 1, ncz) * ncx + x;
                     double v = (fine.psi[ip] - fine.psi[im]) / (2.0 * hx);
                     double lap = (zeta[ip] - 2 * zeta[i] + zeta[im]) / (hx * hx)
                                + (zeta[jp] - 2 * zeta[i] + zeta[jm]) / (hz * hz);
@@ -227,7 +337,10 @@ public final class BarotropicGyre {
                     if (a != a) { lastResidual = Double.NaN; return; }   // NaN 早退
                 }
             }
+            if (steps >= MIN_STEPS && maxRes < convTol) break;
         }
+        lastSteps = steps;
+        TOTAL_MACRO_STEPS.addAndGet(steps);
         lastResidual = maxRes;
         double maxZ = 0;
         for (int i = 0; i < nc; i++) if (!land[i] && Math.abs(zeta[i]) > maxZ) maxZ = Math.abs(zeta[i]);
@@ -235,14 +348,29 @@ public final class BarotropicGyre {
 
         // ---- 最后一次泊松 → 粗格中心梯度 → 双线性插值回细网格 ----
         for (int i = 0; i < nc; i++) fine.rhs[i] = land[i] ? 0 : hbar2 * zeta[i];
-        for (int v = 0; v < V_CYCLES + 1; v++) vcycle(ls, 0);
+        for (int v = 0; v < Math.max(FINAL_CYCLES, V_CYCLES + 1); v++) vcycle(ls, 0);
+        // 泊松残差：max|Lψ − rhs| / max|rhs|
+        double pr = 0, prs = 1e-30;
+        for (int y = 0; y < ncz; y++) {
+            for (int x = 0; x < ncx; x++) {
+                int i = y * ncx + x;
+                if (land[i]) continue;
+                int ip = y * ncx + (x + 1) % ncx, im = y * ncx + (x - 1 + ncx) % ncx;
+                int jp = yIdx(y + 1, ncz) * ncx + x, jm = yIdx(y - 1, ncz) * ncx + x;
+                double s = fine.psi[ip] + fine.psi[im] + fine.psi[jp] + fine.psi[jm] - 4.0 * fine.psi[i];
+                double r = Math.abs(s - fine.rhs[i]);
+                if (r > pr) pr = r;
+                if (Math.abs(fine.rhs[i]) > prs) prs = Math.abs(fine.rhs[i]);
+            }
+        }
+        lastPoisRes = pr / prs;
         double[] uG = new double[nc], vG = new double[nc];
         for (int y = 0; y < ncz; y++) {
             for (int x = 0; x < ncx; x++) {
                 int i = y * ncx + x;
                 if (land[i]) continue;
                 int ip = y * ncx + (x + 1) % ncx, im = y * ncx + (x - 1 + ncx) % ncx;
-                int jp = ((y + 1) % ncz) * ncx + x, jm = ((y - 1 + ncz) % ncz) * ncx + x;
+                int jp = yIdx(y + 1, ncz) * ncx + x, jm = yIdx(y - 1, ncz) * ncx + x;
                 uG[i] = -(fine.psi[jp] - fine.psi[jm]) / (2.0 * hz);
                 vG[i] = (fine.psi[ip] - fine.psi[im]) / (2.0 * hx);
             }
@@ -272,7 +400,7 @@ public final class BarotropicGyre {
     }
 
     private static int idw(int y, int x, int nx, int ny) {
-        return (((y % ny) + ny) % ny) * nx + (((x % nx) + nx) % nx);
+        return yIdx(y, ny) * nx + (((x % nx) + nx) % nx);
     }
 
     private static double bl(double[] f, int nx, int ny, int x0, int y0, double tx, double ty) {

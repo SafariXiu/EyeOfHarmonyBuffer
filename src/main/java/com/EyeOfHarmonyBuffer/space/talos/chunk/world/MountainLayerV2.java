@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainNoise;
 
 import java.util.Arrays;
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * V2 山层（过程驱动，替换 DLA）：抬升场 + 河道下切（流水侵蚀）+ 权威权重。
  *
  * 架构与 RelaxedClimate 同款：按种子离线求解一次（后台线程，~1-3s），缓存粗网格，
- * 运行时双线性查询。域 = 400k(X) x 200k(Z) 环面（与气候层一致，查询前折叠坐标）。
+ * 运行时双线性查询。**每格域 = BELT_CELL_X(50km) × CARVE_DOMAIN_Z(200km)**；X 无限、查询不折叠坐标。
  *
  * 输出：
  *   uplift(x,z) —— 山带抬升量（blocks，已侵蚀；叠加在 plain 之上）
@@ -36,20 +37,39 @@ public final class MountainLayerV2 {
     /**
      * **山带格**（X 方向步长，blocks）。
      *
-     * C1 世界 = 圆柱：X 无限、Z 是整个 200k 周长（不分格、直接环绕）。
+     * C1 世界 = 无限平面：X 无限；Z 也分格（山带按 Z 格子布点，见下面的 BELT_CELL_Z）。
      * 山带按 X 格子确定性布点、并**完全落在格内**（见 {@link #BELT_X_FIT}），
      * 于是"每格独立求解"与"全域一起求解"结果一致（实验 P92 验证下切是严格局地的）。
      */
-    public static final int BELT_CELL_X = 200_000;
-    /** Z 方向山带格（无限平面 → Z 也要分格，否则 z ∉ [0,200k) 没山）。 */
-    public static final int BELT_CELL_Z = 200_000;
-    /** 每格网格尺寸：X = 一格、Z = 一个纬度周期（两者都 800）。 */
+    public static final int BELT_CELL_X = 50_000;
+    /** Z 方向山带格（无限平面 → Z 必须分格，否则远离原点的 z 上根本没有山带）。 */
+    public static final int BELT_CELL_Z = 50_000;
+    /**
+     * 每格网格尺寸（格）：X = BELT_CELL_X / CELL = 200 格；Z = CARVE_DOMAIN_Z / CELL = 800 行。
+     *
+     * **Z 不能按 BELT_CELL_Z 派生（= 200）。** 看上去 bilinear 只读 j ≤ NZ、其余 600 行"白算"，
+     * 但那 600 行是 {@link #carve}（Priority-Flood 填洼 + D8 汇水面积累积）的**计算域**：
+     * 平地上的水顺 ε 梯度全部汇入山带，域一大一小，汇水面积 acc 就不同 → 下切量不同 → 山高不同。
+     * 实测（探针 P170，belt 格 (0,5)，seed=1022228679）：把 NZ 砍成 200 + Z halo 后，
+     *   auth 逐位一致（主循环是逐点纯函数），
+     *   但 uplift 在深内部仍有 0.51% 的格子变化（最大 0.55 块）、格边界行最大差 22.57 块；
+     *   把 Tune.carveEnabled 关掉再比，uplift 差异**全部归零** → 差异 100% 来自下切域变小。
+     * 即"4 倍白算"的判断不成立，这里保留 800 行。
+     */
     public static final int NX = BELT_CELL_X / CELL;
-    public static final int NZ = 200_000 / CELL;
-    /** 山带在 X 方向的落位上限：距格中心不超过此值（留出 ≥25km 的下切 margin）。 */
-    private static final double BELT_X_FIT = 75_000.0;
+    /**
+     * 下切计算域的高度（blocks）。**这不是"纬度周长"，也不是从 BELT_CELL_Z 派生的量**：
+     * {@link #carve}（Priority-Flood 填洼 + D8 汇水面积累积）是**全局算法**，域的大小会改变 acc，
+     * 从而改变下切量。上面 49~56 行给了实测证据（P170）。
+     *
+     * 提成具名常量只是为了让"这个 200_000 从哪来"可检索；**不要**把它改成 BELT_CELL_Z。
+     */
+    public static final int CARVE_DOMAIN_Z = 200_000;
+    public static final int NZ = CARVE_DOMAIN_Z / CELL;
+    /** 山带在 X/Z 方向的落位上限：距格角不超过此值（留出 ≥25km 的下切 margin）。 */
+    private static final double BELT_X_FIT = 18_750.0;
 
-    /** 每格山带数量上限（旧版全域 400k×200k 放 5 条 ≈ 每 200k 格 2.5 条）。 */
+    /** 每格山带数量上限（历史：旧版在"全域 400k×200k"上放 5 条；现值按每格 50km×200km 折算）。 */
     private static final int BELTS_PER_CELL = 3;
 
     /**
@@ -86,16 +106,59 @@ public final class MountainLayerV2 {
         public static boolean carveEnabled = true;
     }
 
-    /** 解缓存：key = (seed, cellX)。每个解 800×800 格 ≈ 7.7 MB，最多留 4 个。 */
+    /** 解缓存：key = (seed, cellX, cellZ)。每个非空解 = 3×NX×NZ float ≈ 1.92 MB。 */
     private static final ConcurrentHashMap<Long, Layer> CACHE =
         new ConcurrentHashMap<Long, Layer>();
-    private static final int CACHE_LIMIT = 6;
+    /**
+     * 缓存上限（格数）。
+     *
+     * **必须 ≥ "解一个 LandformField 瓦片" 的邻域大小**：LandformField.TILE_X = 100k
+     * = 2 个 belt 格，TILE_Z = 50k = 1 个 belt 格，但它要取 halo（i=-1..NX、j=-1..NZ），
+     * 于是横跨 **4 个 belt 列 × 3 个 belt 行 = 12 格**，外加邻瓦片共享的 2 列。
+     * 旧值 6 < 工作集 → 反复重解（探针 P168 实测：2.4k 次/4 瓦片、单瓦片 800+ 次）。
+     * 16 = 一个瓦片（12）+ 邻瓦片共享列（4）余量；无山带的格共享 {@link #ZERO} 不占内存，
+     * 故最坏 ~16×1.92 MB ≈ 31 MB。
+     */
+    private static final int CACHE_LIMIT = 16;
+
+    /**
+     * 诊断计数器（探针 P168 用，生产恒定只加两个 long，无行为影响）：
+     * solve() 的调用次数与累计耗时。用于验证"解一个 LandformField 瓦片
+     * （100km×50km）到底触发了多少次造山带求解"——理论上只需数十次，
+     * 若出现上万次即为缓存反复失效（thrashing）。
+     */
+    public static final java.util.concurrent.atomic.AtomicLong SOLVE_COUNT =
+        new java.util.concurrent.atomic.AtomicLong();
+    public static final java.util.concurrent.atomic.AtomicLong SOLVE_NANOS =
+        new java.util.concurrent.atomic.AtomicLong();
+
+    /**
+     * **求解硬上限（安全阀，不是优化）**。0 = 不限（生产默认，行为与以前逐位一致）。
+     *
+     * 为什么加：第 4 次"进程跑飞"（探针 P209 的 period 段）就发生在本层 ——
+     * 6,000 次采样触发了 7,165 次 MountainLayerV2 求解（≈1.19 次/查询，等于每次查询都重建），
+     * 1,110 s CPU 跑不出来。成因与气候层同源：**采样在瓦片上跳 → 工作集 > 缓存容量**。
+     * 探针/命令做广域扫描时设一个上限，宁可快速失败也不要闷跑几小时。**生产不要设它。**
+     */
+    public static int SOLVE_HARD_CAP = 0;
+    /** 每求解这么多次就打一行警告（0 = 不打；生产默认 0，不影响任何输出）。 */
+    public static int SOLVE_WARN_EVERY = 0;
+
+
+    /** 清零诊断计数器（探针用）。 */
+    public static void resetStats() {
+        SOLVE_COUNT.set(0L);
+        SOLVE_NANOS.set(0L);
+    }
 
     /** 当前求解的种子（供纹理与世界种子对齐；仅在 solve() 期间使用）。 */
     private static int SOLVE_SEED = 0;
 
+    /** 山带格缓存键。**唯一实现见 {@link WindowKey}** —— 旧写法把 int 种子截成 24 位，
+     *  同一个式子当时在本层与 RelaxedClimate/LandformField/V2BiomeField 各有一份。
+     *  注意 {@code EMPTY_CELLS}（"该格无山带"）用的是同一个键空间，改键时两者必须同步。 */
     private static long cellKey(int seed, int cellX, int cellZ) {
-        return ((long) seed << 40) ^ ((long) (cellX & 0xFFFFF) << 20) ^ (cellZ & 0xFFFFFL);
+        return WindowKey.of(seed, cellX, cellZ);
     }
 
     /** 一条山带。 */
@@ -116,15 +179,50 @@ public final class MountainLayerV2 {
         final float[] auth = new float[NX * NZ];
         /** 坡度场（|∇uplift| / 0.10，0..1），供块级细节与雪-岩判定。 */
         final float[] slope = new float[NX * NZ];
+        /**
+         * 最近一次被命中的时间（**仅供淘汰排序，不参与任何计算**）。
+         * volatile 只为多线程下的原子/可见；无竞争写，热点代价可忽略。
+         */
+        volatile long lastUse = System.nanoTime();
     }
+
+    /**
+     * 无山带格的共享解（全零）。
+     *
+     * 若某格 {@link #layout} 一条山带都布不下（belts.length == 0），solve() 的结果**恒为全零**：
+     * 主循环里 sumW = 0 → auth = 0、uplift = 0、env = 0；carve 中 h 全 0 → 每格走
+     * `v <= 0 → tmp[k] = v` 分支原样写回、平滑因 env = 0 全部跳过；peakify（umax = 0）与
+     * slope 同理得 0。故直接返回这一个共享实例是**逐位等价**的，同时省掉
+     * 1.92 MB/格 的内存与填洼+排序+D8 的 ~10ms。
+     *
+     * lastUse 恒为最小值 → 缓存满时第一个被淘汰（重解它只需一次 layout，~0.1ms）。
+     */
+    private static final Layer ZERO = new Layer();
+
+    static {
+        ZERO.lastUse = Long.MIN_VALUE;
+    }
+
+    /**
+     * "该格没有山带" 的备忘（key = 同 {@link #cellKey}）。
+     *
+     * 无山带格**不进 CACHE**：CACHE 的槽位要留给真正占 1.92 MB 的解。
+     * 但也不能每次都重跑 layout()（400 次尝试 + OrographyField 采样 ≈0.1~0.2 ms，
+     * 实测 P168：不备忘时单瓦片会被动重解 400+ 次无山带格）。
+     * 备忘满了整体清空（重建代价 = 最坏重跑一次 layout，可忽略）。
+     */
+    private static final ConcurrentHashMap<Long, Boolean> EMPTY_CELLS =
+        new ConcurrentHashMap<Long, Boolean>();
+    private static final int EMPTY_LIMIT = 512;
 
     public static boolean isEnabled() {
         return V2TerrainConfigSection.mountainV2Enabled;
     }
 
-    /** 清空解缓存（探针扫参用）。 */
+    /** 清空解缓存（探针扫参用；含"无山带格"备忘 —— Tune 改动会改变 layout 结果）。 */
     public static void clearCache() {
         CACHE.clear();
+        EMPTY_CELLS.clear();
     }
 
     /** 后台预热：预解原点所在的山带格（其余格按需惰性求解）。 */
@@ -135,6 +233,28 @@ public final class MountainLayerV2 {
         layer(worldSeedInt, 0, 0);
     }
 
+    /**
+     * 淘汰"最久没被用过"的那格（近似 LRU）。
+     *
+     * 旧写法是删迭代器吐出的第一个 key（= 任意格），这在 LandformField 的行扫描下**必然出错**：
+     * 一个 belt 列的"边缘列"（i=-1 与 i=NX 那两列）每行只被访问 1 次，而主体列每行被访问
+     * 200 次；任意淘汰会先把主体格踢出去 → 下一行再来 200 次未命中 → 每行重解 4 格。
+     */
+    private static void evictOldest() {
+        Long worst = null;
+        long worstUse = Long.MAX_VALUE;
+        for (java.util.Map.Entry<Long, Layer> e : CACHE.entrySet()) {
+            long u = e.getValue().lastUse;
+            if (u < worstUse) {
+                worstUse = u;
+                worst = e.getKey();
+            }
+        }
+        if (worst != null) {
+            CACHE.remove(worst);
+        }
+    }
+
     /** 取某格的解（不存在则求解，带容量保护）。 */
     private static Layer layer(int worldSeedInt, int cellX, int cellZ) {
         if (!isEnabled()) {
@@ -143,17 +263,28 @@ public final class MountainLayerV2 {
         long key = cellKey(worldSeedInt, cellX, cellZ);
         Layer l = CACHE.get(key);
         if (l != null) {
+            l.lastUse = System.nanoTime();
             return l;
         }
+        if (EMPTY_CELLS.containsKey(key)) {
+            return ZERO;   // 已知该格无山带：解恒为全零，不必再 layout
+        }
         if (CACHE.size() >= CACHE_LIMIT) {
-            // LRU 近似：淘汰任一旧格（不要整体 clear → 宽范围扫描会引发重解风暴）
-            java.util.Iterator<Long> it = CACHE.keySet().iterator();
-            if (it.hasNext()) {
-                CACHE.remove(it.next());
-            }
+            evictOldest();
         }
         final int cx = cellX, cz = cellZ;
-        return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, cx, cz));
+        Layer solved = CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, cx, cz));
+        if (solved == ZERO) {
+            // 全零解不占 CACHE 槽位（否则 16 个槽会被 16 MB 的零数组占满，真解反而被淘汰）
+            CACHE.remove(key);
+            if (EMPTY_CELLS.size() >= EMPTY_LIMIT) {
+                EMPTY_CELLS.clear();
+            }
+            EMPTY_CELLS.put(key, Boolean.TRUE);
+            return ZERO;
+        }
+        solved.lastUse = System.nanoTime();
+        return solved;
     }
 
     /** 点所在的山带格索引。 */
@@ -200,28 +331,75 @@ public final class MountainLayerV2 {
         out[2] = bilinear(l.slope, x, z);
     }
 
-    /** 格内双线性插值：X 用格内局部坐标（不折叠），Z 环绕。 */
+    /**
+     * 格内双线性插值：X 用格内局部坐标（clamp 到 [0, NX-1]）；Z 夹到 [0, NZ-1]。
+     *
+     * 注：fz < 0（每格最靠下的半个格）时 j 会被夹到 0，而 tz 仍是原值 → 取的是 (0,1) 行
+     * 而不是 (-1,0) 行。这是**既有行为**，修它需要加 Z halo，而 halo 会改变 carve 域
+     * （见 NZ 的说明），所以保持原样。
+     */
     private static double bilinear(float[] g, int wx, int wz) {
         int cellX = cellOfX(wx), cellZ = cellOfZ(wz);
         double fx = (wx - cellX * (double) BELT_CELL_X) / CELL - 0.5;
         double fz = (wz - cellZ * (double) BELT_CELL_Z) / CELL - 0.5;
         int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
         double tx = fx - i, tz = fz - j;
-        i = Math.max(0, Math.min(NX - 1, i));
+        // 越界只可能出现在**格首半格**（fx ∈ [-0.5, 0) → i = -1，fz 同理）。
+        // 旧写法把 i 夹到 0 却**保留 tx = 0.5**，于是算成 (列0, 列1) 的 50/50 平均 ——
+        // 与 fx = +0.5 的取值**逐位相同**，等于每 50km 造一条 250 格宽的"重复带"
+        // （违反"X 无周期"契约；实测：x 与 x+250 逐位相同的非零点占 0.46% ≈ 条带面积 0.5%）。
+        // 夹取时把比例一起归位（取边界那一格的值），才是"到边界停住"的正确语义。
+        // 注意：这只改**查询插值**，不动 solve/carve 的网格与 D8 汇水域 → 不属于 C 那类必须批准的改动。
+        if (i < 0) {
+            i = 0;
+            tx = 0.0;
+        } else if (i > NX - 1) {
+            i = NX - 1;
+            tx = 1.0;
+        }
         int i1 = Math.min(NX - 1, i + 1);
-        j = Math.max(0, Math.min(NZ - 1, j));
+        if (j < 0) {
+            j = 0;
+            tz = 0.0;
+        } else if (j > NZ - 1) {
+            j = NZ - 1;
+            tz = 1.0;
+        }
         int j1 = Math.min(NZ - 1, j + 1);
-        double v00 = g[j * NX + i], v10 = g[j * NX + i1];
-        double v01 = g[j1 * NX + i], v11 = g[j1 * NX + i1];
+        int r0 = j * NX, r1 = j1 * NX;
+        double v00 = g[r0 + i], v10 = g[r0 + i1];
+        double v01 = g[r1 + i], v11 = g[r1 + i1];
         return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
     }
 
     // ==================== 求解 ====================
 
+    /** 安全阀共用检查（0 = 不限，生产默认）。 */
+    private static void checkSolveCap(long sn, int cx, int cz) {
+        if (SOLVE_HARD_CAP > 0 && sn > SOLVE_HARD_CAP) {
+            throw new IllegalStateException("MountainLayerV2 求解超过硬上限 SOLVE_HARD_CAP=" + SOLVE_HARD_CAP
+                + "（已 " + sn + " 次，累计 " + (SOLVE_NANOS.get() / 1_000_000_000L) + "s，当前格=("
+                + cx + "," + cz + ")）。几乎一定是缓存抖动：工作集 > 容量。请改用 tile 主序采样。");
+        }
+        if (SOLVE_WARN_EVERY > 0 && sn % SOLVE_WARN_EVERY == 0) {
+            System.out.println("[MountainLayerV2] 求解已达 " + sn + " 次，累计 "
+                + (SOLVE_NANOS.get() / 1_000_000_000L) + "s，当前格=(" + cx + "," + cz + ")");
+        }
+    }
+
     private static Layer solve(int seed, int cellX, int cellZ) {
         long t0 = System.nanoTime();
+        long sn = SOLVE_COUNT.incrementAndGet();
+        checkSolveCap(sn, cellX, cellZ);
         SOLVE_SEED = seed;
         Belt[] belts = layout(seed, cellX, cellZ);
+        if (belts.length == 0) {
+            // 该格一条山带都没有 → 解恒为全零（见 ZERO 的说明），跳过整片 160k 格的计算
+            SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
+            System.out.println("[MountainV2] seed=" + seed + " solved in "
+                + ((System.nanoTime() - t0) / 1_000_000) + "ms  belts=0 (empty)");
+            return ZERO;
+        }
         double originX = cellX * (double) BELT_CELL_X;
         double originZ = cellZ * (double) BELT_CELL_Z;
 
@@ -311,6 +489,7 @@ public final class MountainLayerV2 {
             }
         }
         long ms = (System.nanoTime() - t0) / 1_000_000;
+        SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
         System.out.println("[MountainV2] seed=" + seed + " solved in " + ms + "ms  belts=" + belts.length
             + "  upMax=" + String.format("%.0f", umax));
         return layer;

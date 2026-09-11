@@ -1,7 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.RelaxedClimate;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ThermalForcing;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
@@ -14,8 +16,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
  *              + 寒/暖流海岸 + 气团签名 − 大陆性干燥
  *   continent= 内陆度（海岸距离归一）
  *
- * 与 GlobalClimate 的 P1b 共用同一套算子口径（UPLIFT_SCALE / 风×海拔梯度），
- * 因此群系与 /talosmap、降水场不会口径漂移。**不读最终高度** → 无循环依赖。
+ * 与 GlobalClimate 的 P1b **共用同一份算子常量**（{@link GlobalClimate#UPLIFT_SCALE} /
+ * {@link GlobalClimate#ELEV_STEP}），因此群系与 /talosmap、降水场不会口径漂移 ——
+ * 这不是靠注释声称一致，而是**同一份静态常量**（P220 的源码扫描器盯着这里不许再出现字面量）。
+ * **不读最终高度** → 无循环依赖。
  *
  * 三个物理项可单独开关（探针逐项对照用）：
  *   ENABLE_ORO（风带 + 地形雨） / ENABLE_SST（洋流·海温海岸） / ENABLE_AIRMASS（气团签名）
@@ -34,8 +38,7 @@ public final class ClimateCoords {
     public static double W_LAT = 0.70;
     /** 海拔直减（× elevation01，L1b 类型量）。 */
     public static double LAPSE = 0.55;
-    /** 风×海拔梯度的归一标尺（与 GlobalClimate.UPLIFT_SCALE 一致）。 */
-    public static double UPLIFT_SCALE = 1.8e-5;
+
     /** 迎风抬升 → 增湿 / 背风焚风 → 减湿。 */
     public static double ORO_UP_GAIN = 0.30, ORO_LEE_GAIN = 0.18;
     /** 湿度坐标零点偏移（只做整体平移，不改物理结构；用于把中位数落在 0.45 附近）。 */
@@ -43,19 +46,15 @@ public final class ClimateCoords {
     /** 海温距平 → 增/减湿。 */
     public static double SST_GAIN = 0.90;
     /** 上风海点取样距离（blocks）。 */
-    public static double SST_OFFSET = 60_000.0;
+    public static double SST_OFFSET = 15_000.0;
     /** 大陆性干燥。 */
     public static double INLAND_SCALE = 40_000.0, INLAND_DRY = 0.12;
-    /** 梯度差分步长（blocks）。 */
-    public static double GRAD_STEP = 6_000.0;
+
     /** 气团签名：Δ温度 / Δ湿度（0=mT 1=cT 2=mP 3=cP）。 */
     public static double[] AIR_DT = {0.05, 0.08, -0.05, -0.08};
     public static double[] AIR_DQ = {0.08, -0.06, 0.05, -0.05};
 
-    /** 纬度带海温期望（实测 10 档均值，用于算洋流距平）。 */
-    private static final double[] SST_BY_BAND = {
-        0.281, 0.325, 0.365, 0.345, 0.190, 0.013, -0.120, -0.203, -0.317, -0.406
-    };
+
 
     /** 一次采样的结果。 */
     public static final class Coords {
@@ -102,12 +101,12 @@ public final class ClimateCoords {
         double sp = Math.sqrt(wind[0] * wind[0] + wind[1] * wind[1]);
         if (ENABLE_ORO && oro.isLand && sp > 1.0e-6) {
             double ux = wind[0] / sp, uz = wind[1] / sp;
-            int s = (int) GRAD_STEP;
+            int s = GlobalClimate.ELEV_STEP;
             double gx = (elev01(x + s, z, worldSeedInt) - elev01(x - s, z, worldSeedInt)) / (2.0 * s);
             double gz = (elev01(x, z + s, worldSeedInt) - elev01(x, z - s, worldSeedInt)) / (2.0 * s);
             double dot = ux * gx + uz * gz;
-            c.up = clamp01(Math.max(0.0, dot) / UPLIFT_SCALE);
-            c.lee = clamp01(Math.max(0.0, -dot) / UPLIFT_SCALE);
+            c.up = clamp01(Math.max(0.0, dot) / GlobalClimate.UPLIFT_SCALE);
+            c.lee = clamp01(Math.max(0.0, -dot) / GlobalClimate.UPLIFT_SCALE);
             moist += ORO_UP_GAIN * c.up * q - ORO_LEE_GAIN * c.lee * q;
         }
 
@@ -115,7 +114,7 @@ public final class ClimateCoords {
         if (ENABLE_SST && oro.isLand && sp > 1.0e-6) {
             int px = x + (int) (wind[0] / sp * SST_OFFSET);
             int pz = z + (int) (wind[1] / sp * SST_OFFSET);
-            if (NoiseContinentGrid.landResidual(px, pz, worldSeedInt) < 0.0) {
+            if (!NoiseContinentGrid.isLand(px, pz, worldSeedInt)) {
                 double sst = RelaxedClimate.sampleSst(px, pz, worldSeedInt);
                 if (!Double.isNaN(sst)) {
                     c.sstAnom = sst - sstExpectation(GlobalCirculation.bandD(pz));
@@ -133,15 +132,16 @@ public final class ClimateCoords {
         return c;
     }
 
-    /** 纬度带海温期望（线性插值实测 10 档）。 */
+    /**
+     * 纬度带海温期望 —— **唯一来源是 {@link ThermalForcing#zonalMeanSeaTeq}**（求解器的目标场）。
+     *
+     * 原先这里有一张手抄的 10 档"实测均值表"，与求解器真正在用的目标场**不是同一件事**：
+     * 实测在 bandD=0.5 处两者差 0.31 ⇒ 算出来的"洋流海温距平"里混进了一个纯纬度的偏置，
+     * 群系的"暖流岸/寒流岸"判定因此在整条纬度带上被系统性地推同一个方向。
+     * 现在距平 = 实测海温 − 求解器目标，含义才是干净的"洋流造成的距平"。
+     */
     public static double sstExpectation(double bandD) {
-        double t = clamp01(bandD) * (SST_BY_BAND.length - 1);
-        int i = (int) t;
-        if (i >= SST_BY_BAND.length - 1) {
-            return SST_BY_BAND[SST_BY_BAND.length - 1];
-        }
-        double f = t - i;
-        return SST_BY_BAND[i] * (1.0 - f) + SST_BY_BAND[i + 1] * f;
+        return ThermalForcing.zonalMeanSeaTeq(clamp01(bandD));
     }
 
     private static double elev01(int x, int z, int worldSeedInt) {
