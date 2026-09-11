@@ -5,6 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
@@ -340,9 +341,14 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             }
         }
 
+        // 极地**浮冰**：浮冰带（PolarZone 单一口径，与冰盖/冷带/急流同一条边）的海面铺一层冰。
+        // 刻意用**几何带**而不是"实测 SST < 阈值"：世界生成必须与 237MB 的环流窗口解耦，
+        // 否则同一区块随求解器缓存状态时有时无冰，确定性与"重生同一世界"都保不住。
+        // 冰缘的蜿蜒来自 PolarZone.band 的零均值噪声（面积不变）。
+        boolean floe = PolarZone.isFloeOcean(PolarZone.band(worldX, worldZ, seed));
         for (int y = seabed + 1; y <= seaLevel; y++) {
             int idx = getIndex(localX, y, localZ);
-            blocks[idx] = Blocks.water;
+            blocks[idx] = floe && y == seaLevel ? Blocks.ice : Blocks.water;
             meta[idx] = 0;
         }
     }

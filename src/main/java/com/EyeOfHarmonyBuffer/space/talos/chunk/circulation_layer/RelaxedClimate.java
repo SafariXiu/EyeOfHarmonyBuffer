@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +79,18 @@ public final class RelaxedClimate {
      * 实测洋流 RMS(fx):RMS(fz) 从 6.5 掉到 1.5、风向变成以经向为主——所以必须一起重标定。）
      */
     public static double WAVE_AMP = 0.03;
+    /**
+     * 固定极地急流（ACC 代理）总开关。关闭时 updateFlow 与历史行为逐位一致。
+     *
+     * <b>为什么要用固定值而不是"真算"</b>：真实 ACC 靠**纬向动量收支**（风输入 + 海底形阻 +
+     * 涡旋通量，Munk &amp; Palmén 1951）平衡。本求解器是二维无辐散涡度方程
+     * {@code ∂ζ/∂t = curl(τ)/(ρ₀H) − βv + A_H∇²ζ}，域内 ψ 单值 ⇒ ∮u·dl ≡ 0 ⇒
+     * <b>方程里没有任何一项能承载纬向动量汇</b>；纯纬向风驱动出来的必然是经向 Sverdrup 胞，
+     * 不是急流。所以"算不出来"不是调参问题而是方程问题（要换档 C 斜压 QG，成本 4~7 倍）。
+     * 而 ACC 对环境的全部作用就是"锁住极地冷水 + 挡住中纬度暖水"，解析急流 100% 实现这个作用，
+     * 成本 ≈ 0（3 万格一次加法）。定案：固定值，剖面见 {@link PolarZone#jetU}。
+     */
+    public static boolean POLAR_JET_ON = true;
     /** 保留占位：旧的各向同性近岸阻尼已删除（它把西边界流一起掐掉）。 */
     /**
      * 风向是否只由**解析热力强迫气压场**决定（SST 距平只调风速、不调风向）。
@@ -382,6 +395,7 @@ public final class RelaxedClimate {
             // 旧注释写的 "每个 ≈1.3 MB" 与实际差了 10 倍，就是这么漂掉的。
             long[] acc = {0L};
             land = allocB(n, acc);
+            wall = allocB(n, acc);
             sst = allocD(n, acc);
             teqSea = allocD(n, acc);
             teqLand = allocD(n, acc);
@@ -444,6 +458,12 @@ public final class RelaxedClimate {
         final long bytes;
 
         final boolean[] land;
+        /**
+         * 极地**虚拟墙**掩码（硬墙 C1）。与 {@code land} **分开存**是刻意的：
+         * 墙只交给 {@link BarotropicGyre}，不参与地形/群系/渲染/碰撞 —— 玩家撞不到它。
+         * 几何来自 {@code PolarZone}（极地唯一口径），用**裸纬度**（不带冰缘噪声）。
+         */
+        final boolean[] wall;
         final double[] sst;
         final double[] teqSea;
         final double[] teqLand;
@@ -852,6 +872,10 @@ public final class RelaxedClimate {
                 int x = d.originX + ix * CELL_X, z = d.originZ + (iy - d.haloZ) * CELL_Z;
                 double b = GlobalCirculation.bandD(d.latOf(iy) * CELL_Z);   // 纬度 = 绝对 z mod Z_CYCLE
                 d.land[i] = NoiseContinentGrid.isLand(x, z, worldSeedInt);
+                // 极地虚拟墙：用 PolarZone 的**裸纬度**（刻意不加冰缘噪声）——
+                // 噪声会让等值线在 z 上局部反向，墙就会出现 1 格漏洞，而 1 格漏洞
+                // 在 ψ 场里是一条真实通道（保守粗化只能保证"不消失"，保证不了"无孔"）。
+                d.wall[i] = PolarZone.isWallCell(PolarZone.rawBand(z));
                 d.teqSea[i] = ThermalForcing.seaTeq(x, z, worldSeedInt);
                 d.teqLand[i] = ThermalForcing.landTeq(x, z, worldSeedInt);
                 d.qLandEq[i] = 0.08 + 0.30 * ThermalForcing.insolation01(b);   // 湿润热带陆平衡升（雨林水汽）
@@ -1432,7 +1456,7 @@ public final class RelaxedClimate {
         // 用涡度方程 β·v = curl(τ)/(ρ₀H) − rζ + A_h∇²ζ 解出 u/v（m/s），
         // 取代原来的"埃克曼旋转 + Sverdrup 自归一化参数化"。
         // 地块 ψ=0 的 Dirichlet 条件天然给出"无穿岸流"，β 效应自带西向强化。
-        BarotropicGyre.solve(d.nx, d.ny, CELL_X, CELL_Z, d.land,
+        BarotropicGyre.solve(d.nx, d.ny, CELL_X, CELL_Z, d.land, d.wall,
             d.u, d.v, d.fPhys, d.betaRow, d.fu, d.fv, stepCap);
 
         rows(d.ny, iy -> {
@@ -1460,6 +1484,17 @@ public final class RelaxedClimate {
                         double kill = vn < 0 ? k : k * 0.5;
                         fx -= vn * nx * kill;
                         fz -= vn * nz * kill;
+                    }
+                }
+                // ===== 固定极地急流（ACC 代理）=====
+                // 严格 u=u(b)、v≡0 ⇒ ∂u/∂x ≡ 0，叠加它**不改变散度**。
+                // 只做**只读叠加**：绝不写回 solve 的 rhs —— 一旦写回，中纬度涡旋就不再是
+                // 纯风生的，P215/P220/P221 的单链唯一口径当场破。
+                // 加在近岸约束**之后**：极地通道沿 X 无岸，不该被近岸阻尼吃掉。
+                if (POLAR_JET_ON) {
+                    double jet = PolarZone.jetU(PolarZone.rawBand(d.originZ + (iy - d.haloZ) * CELL_Z));
+                    if (jet != 0.0) {
+                        fx += jet;
                     }
                 }
                 d.fu[i] = fx;

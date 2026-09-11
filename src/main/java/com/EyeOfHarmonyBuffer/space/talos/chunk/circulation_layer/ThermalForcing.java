@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
 /**
@@ -56,17 +57,33 @@ public final class ThermalForcing {
         return (n * 2.0 - 1.0) * WOBBLE_AMP;
     }
 
-    /** SST 骨架 [-1,1]（海上平衡温；洋流输运修正见 M4/M5）。 */
-    public static double seaTeq(int x, int z, int worldSeedInt) {
+    /** 极地冷带目标温：浮冰区压到"和极点一样冷"（已在极地的自然值就是 -1）。 */
+    public static double POLAR_SST = -1.0;
+
+    /**
+     * 海陆**共用**的温度基线 = 纬向骨架 + 大尺度摆动 + **极地冷带**。
+     *
+     * 冷带的自变量用 {@link PolarZone#band}（带冰缘噪声的纬度）而不是裸 bandD：
+     * 这样冷舌边缘与浮冰边缘**是同一条线**，不会出现"冰盖旁边一片没冻的水"这种跨层口径偏移。
+     * 权重在 {@link PolarZone#COLD_BAND}~{@link PolarZone#FLOE_BAND} 之间 smoothstep 升到 1，
+     * 两端导数为 0 ⇒ 不会在气压场里制造折角（折角会经 computeWind 变成风向的硬边）。
+     */
+    private static double baseTeq(int x, int z, int worldSeedInt) {
         double b = GlobalCirculation.bandD(z);
         double t = zonalMeanSeaTeq(b) + wobble(x, z, worldSeedInt);
-        return clamp(t, -1.0, 1.0);
+        double w = PolarZone.coldWeight(PolarZone.band(x, z, worldSeedInt));
+        return w > 0.0 ? t + w * (POLAR_SST - t) : t;
     }
 
-    /** 陆地平衡温 [-1,1]（与海共用同一摆动基线 → 海陆差纯粹 = 大陆度 - 高原地形降温）。 */
+    /** SST 骨架 [-1,1]（海上平衡温；洋流输运修正见 M4/M5）。 */
+    public static double seaTeq(int x, int z, int worldSeedInt) {
+        return clamp(baseTeq(x, z, worldSeedInt), -1.0, 1.0);
+    }
+
+    /** 陆地平衡温 [-1,1]（与海共用同一条基线 → 海陆差纯粹 = 大陆度 - 高原地形降温）。 */
     public static double landTeq(int x, int z, int worldSeedInt) {
         double b = GlobalCirculation.bandD(z);
-        double base = zonalMeanSeaTeq(b) + wobble(x, z, worldSeedInt);
+        double base = baseTeq(x, z, worldSeedInt);
         // 内陆度：贴岸≈0（等温线贴岸弯曲）、深内陆≈1
         double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
         double inland = clamp01((-d) / LAND_CONTINENTAL_SCALE);

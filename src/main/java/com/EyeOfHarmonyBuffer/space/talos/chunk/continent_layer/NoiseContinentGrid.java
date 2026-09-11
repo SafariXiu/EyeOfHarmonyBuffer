@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 
 import java.util.Arrays;
@@ -288,22 +287,27 @@ public final class NoiseContinentGrid {
      * 陆地残差（抬升后相对阈值的超出量，&gt;=0 为陆）：越深内陆越大。
      * 供 OrographyField 等"大陆内部结构"层做海拔/山脊推导。
      */
-    /** 极地冰盖起始纬度带（bandD：0=赤道 1=极地）。0.82 ≈ 74°。 */
-    public static double ICE_BAND = 0.82;
-    /** 冰盖强制成陆的强度（残差量级约 0.3，1.5 足够压过任何噪声起伏）。 */
-    public static double ICE_FORCE = 1.5;
-
     public static double landResidual(int x, int z, int worldSeedInt) {
         double t = statsFor(worldSeedInt).threshold;
         double r = residual(height(x, z, worldSeedInt), t);
-        // 极地永久冰盖：bandD 超过 ICE_BAND 后把残差整体抬高 → 变成陆地。
-        // **它不是装饰**：冰盖是"陆"，把海盆朝极地那一端封住 —— 这与地球的
+        // 极地**实心冰盖**：bandD 超过 PolarZone.CORE_BAND 后把残差整体抬高 → 强制成陆。
+        // **它不是装饰**：冰盖是"陆"，把极区海盆朝极点那一侧封住 —— 这与地球的
         // 南极洲 / 北冰洋封住大西洋是同一个机制，是风生环流圈能形成的前提。
-        // 而且因为纬度在极点饱和，z→±∞ 都是冰盖，所以既不用墙也不会折返。
-        double b = ClimateLatitudes.getDistanceToCenter(z) / (double) ClimateLatitudes.MAX_D;
-        if (b > ICE_BAND) {
-            double k = (b - ICE_BAND) / (1.0 - ICE_BAND);
-            r += ICE_FORCE * k * k;
+        // 阈值、冰缘噪声、强度**全部**来自 PolarZone（极地唯一口径）；
+        // 这里曾经有过第二个 ICE_BAND 常量，已删除：两套阈值必然漂移成"冰缘在 A 层 0.82、
+        // 在 B 层 0.90"。浮冰带（0.90~0.96）是**海**，不参与本判据。
+        double be = PolarZone.band(x, z, worldSeedInt);
+        if (be > PolarZone.CORE_BAND) {
+            double k = (be - PolarZone.CORE_BAND) / (1.0 - PolarZone.CORE_BAND);
+            r += PolarZone.ICE_FORCE * k * k;
+        } else {
+            // **浮冰带强制成海**：极地海盆必须存在，否则"浮冰 / 极地环流 / 虚拟墙"三件套
+            // 没有水可谈（实测 tileX=0 那一窗 bandD 0.88~0.92 自然陆占比 100%，墙加了等于没加）。
+            // 权重两端为 0 ⇒ 与自然海陆的接缝仍由残差决定，看起来是自然的冰架边缘。
+            double sea = PolarZone.floeSeaWeight(be);
+            if (sea > 0.0) {
+                r -= PolarZone.ICE_FORCE * sea;
+            }
         }
         return r;
     }

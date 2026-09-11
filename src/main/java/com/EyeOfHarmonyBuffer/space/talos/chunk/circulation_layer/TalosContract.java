@@ -146,10 +146,9 @@ public final class TalosContract {
 
     static {
         Map<String, String> m = new LinkedHashMap<String, String>();
-        m.put("T4a", "真实缺陷（非误报）：BarotropicGyre.WRAP_Y 当前为 true，"
-            + "其 Y(=Z 轴) 模板用 (y±1+ncz)%ncz 把 Z 接回环，"
-            + "与 ClimateGridData.idx() 的 clamp 冲突。修复方向（WRAP_Y=false）已批准，下一批执行。");
-        m.put("T4b", "上一条的索引层症状：yIdx 走环绕而非 clamp。WRAP_Y 改 false 后本行自动转绿。");
+        // 【已清空】原本登记着 T4a/T4b 两条（WRAP_Y 把 Z 接回环）。2026-09 定案：
+        // 开关已删除、yIdx 改为 clamp，两条断言随之转绿 ⇒ 登记表必须清空
+        // （留着就是"修好了没删"的过期登记，P215 会为此报错）。
         FAILURE_NOTES = Collections.unmodifiableMap(m);
     }
 
@@ -501,12 +500,22 @@ public final class TalosContract {
     // ---------------- T4：所有层的 Z 处理必须一致地【不环绕】 ----------------
 
     private static void t4_zTopology(List<Row> rows) {
-        boolean wrapY = BarotropicGyre.WRAP_Y;
+        // T4a：Z 周期开关**不得复活**。原先这里断言的是 WRAP_Y 字段的值（当前为 true ⇒ 红）；
+        // 定案之后判据升级为"这个字段根本不许存在" —— 与 T6b 守 BarotropicGyre.STEP_CAP 同一套做法。
+        boolean noWrapSwitch = true;
+        String wrapDetail;
+        try {
+            BarotropicGyre.class.getDeclaredField("WRAP_Y");
+            noWrapSwitch = false;
+            wrapDetail = "WRAP_Y 字段仍在（Z 周期开关复活）";
+        } catch (NoSuchFieldException expected) {
+            wrapDetail = "WRAP_Y 字段不存在";
+        }
         rows.add(new Row("T4a",
-            "BarotropicGyre.WRAP_Y 必须为 false（Z 不环绕）",
-            !wrapY,
-            "WRAP_Y == false",
-            "WRAP_Y=" + wrapY,
+            "BarotropicGyre 不得再有 Z 周期开关（Z 不环绕已定案为唯一实现）",
+            noWrapSwitch,
+            "无 WRAP_Y 字段（原先默认 true，把 Z 接回环）",
+            wrapDetail + "（定案实测：u/v 3.98→2.05，见 BarotropicGyre.yIdx 注释）",
             false, false));
 
         int nyA = BarotropicGyre.NCZ;

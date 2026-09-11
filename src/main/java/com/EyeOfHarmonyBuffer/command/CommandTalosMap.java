@@ -3,6 +3,8 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
@@ -71,7 +73,7 @@ public class CommandTalosMap extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talosmap <land|landlegacy|terrain|coast|gyre|airmass|current|wind|pressure|rain|band> [cx cz radius] [stride]";
+        return "/talosmap <land|terrain|coast|polar|gyre|airmass|current|wind|pressure|rain|band> [cx cz radius] [stride]";
     }
 
     @Override
@@ -229,7 +231,37 @@ public class CommandTalosMap extends CommandBase {
         g.drawLine(ex, ey, hx2, hy2);
     }
 
+    /**
+     * 极地验收层。**这是唯一能看到虚拟墙的地方** —— 玩家撞不到它、地形与群系里也不存在它，
+     * 所以除了这张图没有别的办法确认墙加在哪、有没有歪、跟冰缘是否同步。
+     *
+     * 配色：洋红 = 虚拟墙（硬墙）｜近白 = 实心冰盖（强制成陆）｜淡蓝 = 浮冰带（极地环流/急流）
+     * ｜越冷越蓝 = 冷带权重爬升段｜绿/深蓝 = 普通陆/海。
+     * 三者的几何都取自 PolarZone，与求解器、地形、热力场**同一份**实现。
+     */
+    private int polarColor(int wx, int wz, int seed) {
+        if (PolarZone.isWallCell(PolarZone.rawBand(wz))) {
+            return rgb(255, 40, 200);
+        }
+        double be = PolarZone.band(wx, wz, seed);
+        if (PolarZone.isCore(be)) {
+            return rgb(250, 250, 255);
+        }
+        if (PolarZone.isFloeOcean(be)) {
+            return mix(rgb(150, 205, 235), rgb(228, 246, 255),
+                clamp((be - PolarZone.FLOE_BAND) / (PolarZone.CORE_BAND - PolarZone.FLOE_BAND), 0, 1));
+        }
+        int base = NoiseContinentGrid.isLand(wx, wz, seed) ? rgb(60, 150, 70) : rgb(20, 70, 140);
+        double cw = PolarZone.coldWeight(be);
+        return cw > 0.0 ? mix(base, rgb(120, 170, 220), cw) : base;
+    }
+
     private int colorFor(String layer, int wx, int wz, int seed) {
+        // polar 层是**纯几何**（PolarZone 单一口径），不碰气候窗口 ——
+        // 不要为了一张几何验收图去建 237MB 的环流窗口。
+        if (layer.equals("polar")) {
+            return polarColor(wx, wz, seed);
+        }
         ClimateSample s = GlobalClimate.sample(wx, wz, seed);
         switch (layer) {
             case "land": {

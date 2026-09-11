@@ -29,6 +29,9 @@ whitelist.json
 *.bat
 *.DS_Store
 !gradlew.bat
+# probe harness is version-controlled on purpose: build\ and run\ are gitignored, so
+# keeping it under build\ meant clearing build\ destroyed the whole evidence suite.
+!tools/talos-probe/*.bat
 .factorypath
 addon.local.gradle
 addon.local.gradle.kts

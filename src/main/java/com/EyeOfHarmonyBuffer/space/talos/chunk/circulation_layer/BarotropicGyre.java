@@ -36,34 +36,60 @@ public final class BarotropicGyre {
     /** 伪时间步长（s）：显式扩散上限 ≈ 1/(2A_h(1/hx²+1/hz²)) ≈ 155 s。 */
     public static double DT = 140.0;
     /**
-     * 步数：DT×MACRO 需 ≥ 环流建立时间（≈8 天 = 7e5 s）。
+     * 宏观时间步上限：DT×MACRO 需 ≥ 环流建立时间（≈8 天 = 7e5 s）。
      *
-     * 注意：V_CYCLES=1 时压力泊松解是**跨步累积** V-cycle 才收敛的，
-     * 所以 MACRO 同时决定 ζ 的积分长度**和** ψ 的收敛程度，不能单独按
-     * 物理自旋时间缩短。实测（1/4 世界，A_H=1.9e4）：MACRO=315 泊松残差
-     * 1.7e-2（未收敛），MACRO=5000 为 4.6e-6。若将来要把 MACRO 调小，
-     * 必须同步把 V_CYCLES 按比例调大。
+     * ===== 2026-09 实测（P222，生产窗口 tileX=0，输入冻结）=====
+     * <pre>
+     *   MACRO | 宏观步 |      ζ残差 | 收敛阈值   | 残差/阈值 | RMS v   |  u/v
+     *    5000 |   5000 |  8.767e-10 | 4.301e-10  |   203.8%  | 0.14153 | 1.96   ← 顶到上限，没收敛
+     *   10000 |   7112 |  4.300e-10 | 4.301e-10  |   100.0%  | 0.15161 | 2.04   ← 靠 CONV_TOL 提前退出
+     *   20000 |   7112 |  4.300e-10 | —          |   100.0%  | 0.15161 | 2.04
+     *   40000 |   7112 |  4.300e-10 | —          |   100.0%  | 0.15161 | 2.04   ← 与 10000 逐位相同
+     * </pre>
+     * ⇒ 旧的 5000 **把自旋截断在未收敛处**（残差是阈值的 2 倍），海洋流速因此系统性偏弱：
+     * 生产 RMS v 从 0.14153（截断）到 0.15161（收敛）= **+7.1%**。真正的收敛点是 7112 步，
+     * 而 7112 是**窗口的确定函数**，不是可以调的旋钮。
+     *
+     * 取 10000 而不是 7112：留 ~40% 余量，让"收敛所需步数"随窗口/种子波动时仍能靠
+     * CONV_TOL 自己退出（顶到上限就等于又把它变成一个任意截断）。20000/40000 与 10000
+     * 逐位相同 ⇒ 大于收敛点之后加步数**不改变结果**，只花时间。
+     *
+     * 代价（P222 [3]，每个档位重建整个气候窗口）：
+     * 单窗构建 7231 ms → 10310 ms（**+43%**，+3.1 s / 窗，100 km 瓦片跨一次触发一次，
+     * 走后台预热路径）。这是"让海洋真的收敛"必须付的钱。
      */
-    public static int MACRO = 5000;
+    public static int MACRO = 10000;
     /**
-     * 每个宏观步的 V-cycle 次数。
+     * 每个宏观步的 V-cycle 次数。**生产取 1**（最省，且实测不是杠杆）。
      *
-     * 实测（理想闭合海盆 128×128，β=3.24e-10，A_H=1.9e4，δ_M=5 格）单次 V-cycle 只把
-     * 泊松残差降到 3e-1 量级，V_CYCLES=1 时残差 1.4e-1 —— ψ 严重落后 ζ，于是 −β·v 反馈
-     * 是错的，**西边界层根本长不出来**（西/东=0.80，|v| 峰值出现在海盆中央）。
-     * V_CYCLES>=4 后残差降到 4e-3，教科书 Munk 解立刻出现：内部 v≈0.012 m/s
-     * （Sverdrup 理论 1.47e-2，吻合），西岸峰值 0.24 m/s = 内部 20 倍，东岸仅 0.026。
+     * ===== 2026-09 实测（P222 [1]，生产窗口 tileX=0，输入冻结，只改这一个变量）=====
+     * <pre>
+     *  V_CYCLES |  耗时ms | 泊松残差 | RMS u   | RMS v   |  u/v  | 西/东 | 峰值|x|占比
+     *      1    |    1289 |  1.85e-04 | 0.27766 | 0.14153 |  1.96 |  0.99 |     0.017
+     *      2    |    2472 |  9.47e-05 | 0.27759 | 0.14149 |  1.96 |  0.99 |     0.017
+     *      4    |    4849 |  4.97e-05 | 0.27755 | 0.14147 |  1.96 |  0.99 |     0.017
+     * </pre>
+     * ⇒ 场差异只有 **0.048%**，成本是严格线性（×3.76）⇒ **V_CYCLES 不是杠杆**。
+     *
+     * <h3>为什么与本文件旧注释的结论相反（那段话已被删除，理由记在这里）</h3>
+     * 旧注释的依据是**理想闭合海盆 128×128** 的实验：那里 V_CYCLES=1 得到西/东=0.80、
+     * |v| 峰值在海盆中央，V_CYCLES>=4 才出现 Munk 解。但那是**另一种几何**：
+     * 两侧有连续的经向墙。生产窗口是"散布大陆 + X 环绕"，两条结论不能互相搬运。
+     * 实测把两者都放在了同一张表上：**生产窗口的西/东 = 0.99，且与 V_CYCLES 无关** ——
+     * 也就是说生产窗口里**根本没有西边界流**，这跟 V_CYCLES 无关，是**几何**问题
+     * （见下一条待办），把 V_CYCLES 从 1 提到 4 只会多花 3.76 倍时间买 0.048%。
+     *
+     * <h3>机制（为什么 1 次 V-cycle 就够）</h3>
+     * 宏观循环本身就是"对缓慢变化的 rhs 反复解泊松"：{@link #MACRO} 步里 ψ 被迭代精炼了
+     * 上万次，单步做几个 V-cycle 并不重要。泊松残差那一列的差异只是**最后一次**解的好坏。
+     *
+     * <h3>待办（已不是"调参"问题）</h3>
+     * 西/东 = 0.99 ⇒ 生产窗口里没有西边界强化。下一步要查的是**几何**：
+     * β 平面上的西边界流需要一条连续经向墙来闭合 Sverdrup 输运；生产窗口的
+     * X 是**窗口内环绕**（halo padding）且大陆是散布的，"每行最靠西的海格"并不构成一条墙。
+     * 归档记录里"0/419024 个连通分量缺少经向墙"这条也要按同一把尺子重新核一遍。
      */
     public static int V_CYCLES = 1;
-    /**
-     * TODO(成本)：V_CYCLES 1->4 后生产路径单窗口求解实测从 ~9.5 s 涨到 ~440 s（46 倍，
-     * 远高于 V-cycle 次数的 4 倍），说明还有别的开销被这次收敛放大。下一步要做的：
-     *   1) 在 V_CYCLES=4 下扫 MACRO（1250/2500/5000），用理想海盆的"内部 v 是否等于
-     *      Sverdrup 值 + 西/东比"作为判据找出最小可用步数；
-     *   2) 查 updateFlow 里除了 solve() 之外还有哪个循环的迭代次数取决于流场；
-     *   3) 把 vcycle 的 pre/post 平滑从 2 提到 3~4，换取单次 V-cycle 收敛因子更好，
-     *      从而允许 V_CYCLES 降到 2。在此之前不要下调 V_CYCLES。
-     */
     /** 输出前最后一次泊松解的 V-cycle 次数（取 u/v 用的 ψ 必须充分收敛）。 */
     public static int FINAL_CYCLES = 32;
 
@@ -92,31 +118,28 @@ public final class BarotropicGyre {
     // 所以保留一个 11 参重载（= stepCap 0）给它们，生产代码只走带 stepCap 的那个。
 
     /**
-     * 求解域【Y（Z 轴）方向是否周期环绕】。**默认 true = 与历史行为逐位一致。**
+     * Y（= Z 轴）索引：**越界 clamp 到 [0, ny-1]**，与 {@code ClimateGridData.idx()} 的 Z 规则一致。
      *
-     * 存在意义：ClimateGridData 那一层已经改成"Z 不环绕"（I 轮加了真实 halo 行），
-     * 但本求解器的模板用 `(y±1+ncz)%ncz` 又把 Z 接了回去 —— 等于修了一半。
-     * 设 false 时改为 clamp（与 ClimateGridData.idx() 的 Z 处理一致，靠真实 halo 行收边）。
+     * ===== 定案记录（2026-09；这里曾经是开关 `public static boolean WRAP_Y`）=====
+     * 原先默认 {@code true}，模板用 {@code (y±1+ncz)%ncz} 把 Z 接回环。那与世界的 Z 契约
+     * （Z 的周期只控制气候，地形/海陆/洋流在 Z 上不重复）直接冲突，也与
+     * {@code ClimateGridData} 已经改好的 clamp + 真实 halo 行冲突 —— 等于只修了一半。
      *
-     * ===== 状态：保留中，尚未定案（2026-09）=====
-     * · **默认 `true` = 与历史行为逐位一致**（已用 P200 复跑证明：三例的 steps/泊松残差/RMS u,v 全部相同）。
-     * · 它现在只被探针用来做"只改 Y 周期这一个变量"的受控实验（P210）。
-     * · **已实测的收益**（P210，生产窗口 tileX=0，同一批格点）：
-     *     `true`  → RMS u=0.22087 v=0.05545，**u/v = 3.98**
-     *     `false` → RMS u=0.25279 v=0.12310，**u/v = 2.05**（v 翻一倍多）
-     *   负对照（海区上下被陆封死、碰不到接缝）：开关两边**所有统计量逐位相同** ⇒ 差异不是噪声。
-     * · **修改方向已批准，但执行时间未定**（属于会改变世界海洋的行为变更，需与其它决策一起拍板）。
+     * 受控实验（P210，生产窗口 tileX=0，同一批格点，**只改这一个变量**）：
+     * <pre>
+     *   true  → RMS u=0.22087  v=0.05545   u/v = 3.98
+     *   false → RMS u=0.25279  v=0.12310   u/v = 2.05      ← 经向流翻一倍多
+     * </pre>
+     * 负对照（海区上下被陆封死、碰不到 Z 接缝）：开关两侧**所有统计量逐位相同**
+     * ⇒ 上表的差异不是噪声。
      *
-     * ⇒ **定案后必须二选一：把默认值固定成正确的那一侧（大概率是 `false`），或者直接删掉这个开关
-     *    并把 yIdx 换成所选实现。不要长期把一个"两种世界都能跑"的开关留在生产代码里。**
+     * ⇒ **取 clamp，并把开关本身删掉**：不留"两种世界都能跑"的手柄。
+     * 契约行 **T4a**（本类不得再出现 Z 周期开关）与 **T4b**（本方法必须 clamp）守着这条不再复发。
+     *
+     * ⚠ 这是一次**会改变世界海洋**的改动：经向流翻倍、u/v 由 3.98 降到 2.05，
+     * 海洋热输运与沿岸海温随之变化（P195 signstats 指纹在本次改动后应当改变）。
      */
-    public static boolean WRAP_Y = true;
-
-    /** Y 索引：WRAP_Y 时按 ny 取模；否则 clamp 到 [0, ny-1]（与 ClimateGridData.idx 的 Z 规则一致）。 */
     static int yIdx(int y, int ny) {
-        if (WRAP_Y) {
-            return ((y % ny) + ny) % ny;
-        }
         return y < 0 ? 0 : (y >= ny ? ny - 1 : y);
     }
 
@@ -133,9 +156,22 @@ public final class BarotropicGyre {
     private static final class Lv {
         final int nx, ny, n;
         final boolean[] land;
+        /**
+         * **虚拟墙**专用掩码（只含墙，不含天然陆地）；{@code null} = 本层没有墙。
+         *
+         * 它只被 {@link #buildLevels} 用来做**保守粗化**：天然陆地仍走"4 个子格里 ≥2 个是陆"
+         * 的历史判据（保证 wall=null 的调用点逐位不变），而墙只要**命中任意一个子格**就整格算墙。
+         * 原因：极地墙只有 2 个求解器格厚，按 ≥2 粗化会在第 2 层就整条消失，粗层校正于是能穿过墙 ——
+         * 细层每轮 smooth 都会把墙上的 ψ 压回 0，但粗层注入的光滑误差会在 MACRO 步里
+         * 累积成真实的穿墙通量。保守粗化让墙在每一层都保持 ≥1 格厚（实测 128→64→32 全程不消失）。
+         */
+        final boolean[] wall;
         final double[] psi, rhs, res;
         Lv(int nx, int ny, boolean[] land) {
-            this.nx = nx; this.ny = ny; this.n = nx * ny; this.land = land;
+            this(nx, ny, land, null);
+        }
+        Lv(int nx, int ny, boolean[] land, boolean[] wall) {
+            this.nx = nx; this.ny = ny; this.n = nx * ny; this.land = land; this.wall = wall;
             psi = new double[n]; rhs = new double[n]; res = new double[n];
         }
         int id(int x, int y) {
@@ -150,17 +186,25 @@ public final class BarotropicGyre {
         while (cur.nx >= 8 && cur.ny >= 16) {
             int nx = cur.nx / 2, ny = cur.ny / 2;
             boolean[] land = new boolean[nx * ny];
+            boolean[] wall = cur.wall == null ? null : new boolean[nx * ny];
             for (int y = 0; y < ny; y++) {
                 for (int x = 0; x < nx; x++) {
-                    int c = 0;
+                    int c = 0, wc = 0;
                     if (cur.land[cur.id(2 * x, 2 * y)]) c++;
                     if (cur.land[cur.id(2 * x + 1, 2 * y)]) c++;
                     if (cur.land[cur.id(2 * x, 2 * y + 1)]) c++;
                     if (cur.land[cur.id(2 * x + 1, 2 * y + 1)]) c++;
-                    land[y * nx + x] = c >= 2;
+                    if (wall != null) {
+                        if (cur.wall[cur.id(2 * x, 2 * y)]) wc++;
+                        if (cur.wall[cur.id(2 * x + 1, 2 * y)]) wc++;
+                        if (cur.wall[cur.id(2 * x, 2 * y + 1)]) wc++;
+                        if (cur.wall[cur.id(2 * x + 1, 2 * y + 1)]) wc++;
+                        wall[y * nx + x] = wc > 0;
+                    }
+                    land[y * nx + x] = c >= 2 || wc > 0;
                 }
             }
-            cur = new Lv(nx, ny, land);
+            cur = new Lv(nx, ny, land, wall);
             ls.add(cur);
         }
         return ls.toArray(new Lv[0]);
@@ -265,6 +309,26 @@ public final class BarotropicGyre {
     public static void solve(int nxF, int nyF, double dxF, double dzF, boolean[] landF,
                              double[] uW, double[] vW, double[] fRowF, double[] betaRowF,
                              double[] uOutF, double[] vOutF, int stepCap) {
+        solve(nxF, nyF, dxF, dzF, landF, null, uW, vW, fRowF, betaRowF, uOutF, vOutF, stepCap);
+    }
+
+    /** 陆或墙 —— 求解器里的"不可流格"。{@code wallF} 为 null 时退化成纯陆判据。 */
+    private static boolean blocked(boolean[] landF, boolean[] wallF, int fi) {
+        return landF[fi] || (wallF != null && wallF[fi]);
+    }
+
+    /**
+     * 带**虚拟墙**的求解（极地硬墙 C1；墙的几何由 {@code PolarZone} 单一口径给出）。
+     *
+     * @param wallF 与 {@code landF} 同形的墙掩码；{@code null} = 无墙。
+     *              墙格与陆格在求解器里**完全同权**：ψ=0、ζ 不更新、风应力旋度不注入、
+     *              输出流速为 0 —— 数学上就是一条岸线。唯一的区别是它**不写回** {@code landF}，
+     *              所以地形、群系、渲染、玩家碰撞都看不到它（玩家不会撞到一堵空气墙）。
+     *              粗化时的区别见 {@link Lv#wall}。
+     */
+    public static void solve(int nxF, int nyF, double dxF, double dzF, boolean[] landF, boolean[] wallF,
+                             double[] uW, double[] vW, double[] fRowF, double[] betaRowF,
+                             double[] uOutF, double[] vOutF, int stepCap) {
         long t0 = System.nanoTime();
         SOLVE_CALLS.incrementAndGet();
         int ncx = Math.max(4, Math.min(NCX, nxF)), ncz = Math.max(4, Math.min(NCZ, nyF));
@@ -273,6 +337,7 @@ public final class BarotropicGyre {
 
         // ---- 粗网格采样（最近邻；粗细网格用采样解耦，不需要整除） ----
         boolean[] land = new boolean[nc];
+        boolean[] wall = wallF == null ? null : new boolean[nc];
         double[] uC = new double[nc], vC = new double[nc];
         double[] fC = new double[ncz], bC = new double[ncz];
         for (int y = 0; y < ncz; y++) {
@@ -282,7 +347,9 @@ public final class BarotropicGyre {
             for (int x = 0; x < ncx; x++) {
                 int fx = (int) Math.min(nxF - 1, Math.floor((x + 0.5) * hx / dxF));
                 int fi = fy * nxF + fx, i = y * ncx + x;
-                land[i] = landF[fi];
+                boolean w = blocked(landF, wallF, fi);
+                if (wall != null) wall[i] = w && !landF[fi];
+                land[i] = w;
                 uC[i] = land[i] ? 0 : uW[fi];
                 vC[i] = land[i] ? 0 : vW[fi];
             }
@@ -305,7 +372,7 @@ public final class BarotropicGyre {
         }
         lastMaxSrc = maxSrc;
 
-        Lv fine = new Lv(ncx, ncz, land);
+        Lv fine = new Lv(ncx, ncz, land, wall);
         Lv[] ls = buildLevels(fine);
         double[] zeta = new double[nc];
         double hbar2 = hx * hz;
@@ -382,7 +449,7 @@ public final class BarotropicGyre {
             double ty = gy - y0;
             for (int x = 0; x < nxF; x++) {
                 int fi = y * nxF + x;
-                if (landF[fi]) { uOutF[fi] = 0; vOutF[fi] = 0; continue; }
+                if (blocked(landF, wallF, fi)) { uOutF[fi] = 0; vOutF[fi] = 0; continue; }
                 double gx = (x + 0.5) * dxF / hx - 0.5;
                 int x0 = (int) Math.floor(gx);
                 double tx = gx - x0;
