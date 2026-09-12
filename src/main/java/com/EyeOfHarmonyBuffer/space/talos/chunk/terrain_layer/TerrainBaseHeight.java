@@ -29,26 +29,20 @@ public final class TerrainBaseHeight {
     /** 群系散布映射：factor = LO + SPAN × scale（scale=0.5 → 1.0 中性）。 */
     public static double BIOME_SCALE_LO = 0.4, BIOME_SCALE_SPAN = 1.2;
 
-    /** 默认无群系偏移（bias=0.5）。 */
-    public static double computeBaseHeightCore(int worldX, int worldZ,
-                                               int worldSeedInt,
-                                               BaseTerrainProfile profile) {
-        return computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile, 0.5);
-    }
-
     /**
-     * 三层分解核心。
+     * **V1 口径**的三层分解（位移增益固定 0.25、不做散布调制）。
      *
-     * @param biomeBias 群系级高度偏移 [0,1]，0.5=无偏移。作为 baseT 的
-     *                  线性偏移整合进带内塑形（在 bandShape 之前），
-     *                  取代旧系统在 TerrainEngine 里的事后 smoothstep 重映射
-     *                  （后者会把平滑 bias 非线性放大成区域性抬升 / 硬切）。
+     * 生产链**不用**这个重载：{@code V2TerrainGen} 的两处调用点走的都是下面带
+     * {@code biomeScale} 的 6 参版本。这里保留是因为历史探针 {@code Mtn6} 靠它做
+     * V1/V2 对照（它要的正是"位移增益 0.25"这个旧行为）。改动前先看那个探针还在不在。
+     *
+     * 2026-09：原本还有一个 4 参重载（{@code biomeBias=0.5} 的便捷版），
+     * src 与全部 217 个探针里都**零调用者**，已删除 —— 便捷重载没人用就只是下一个人的陷阱。
      */
     public static double computeBaseHeightCore(int worldX, int worldZ,
                                                int worldSeedInt,
                                                BaseTerrainProfile profile,
                                                double biomeBias) {
-        // 旧轨口径：位移增益 0.25、不做散布调制（保持 V1 行为不变）
         return computeBaseHeightCore(worldX, worldZ, worldSeedInt, profile, biomeBias, 0.5, 0.25);
     }
 

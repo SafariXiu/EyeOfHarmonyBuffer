@@ -341,11 +341,13 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             }
         }
 
-        // 极地**浮冰**：浮冰带（PolarZone 单一口径，与冰盖/冷带/急流同一条边）的海面铺一层冰。
+        // 极地**浮冰**：极区（be > FLOE_BAND，含核心带）的海面铺一层冰。
         // 刻意用**几何带**而不是"实测 SST < 阈值"：世界生成必须与 237MB 的环流窗口解耦，
         // 否则同一区块随求解器缓存状态时有时无冰，确定性与"重生同一世界"都保不住。
         // 冰缘的蜿蜒来自 PolarZone.band 的零均值噪声（面积不变）。
-        boolean floe = PolarZone.isFloeOcean(PolarZone.band(worldX, worldZ, seed));
+        // 注意：**这里只铺在真正的海上**（本函数只被海列调用）——极地地形本身不再被强制，
+        // 所以"陆地上不会有冰壳、海里才有浮冰"是自动成立的。
+        boolean floe = PolarZone.isPolar(PolarZone.band(worldX, worldZ, seed));
         for (int y = seabed + 1; y <= seaLevel; y++) {
             int idx = getIndex(localX, y, localZ);
             blocks[idx] = floe && y == seaLevel ? Blocks.ice : Blocks.water;

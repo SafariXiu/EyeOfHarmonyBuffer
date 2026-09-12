@@ -158,6 +158,10 @@ public final class LandformField {
         field(worldSeedInt, 0, 0);
     }
 
+    /**
+     * 清空解缓存。**不是死 API**：探针工作区有 90+ 处调用它来扫参，其中 P168/P169 是入库的守卫。
+     * 审计时看到"src 里没人调用"请不要删。
+     */
     public static void clearCache() {
         CACHE.clear();
     }

@@ -478,6 +478,15 @@ public final class MountainLayerV2 {
             }
         }
         // 3) 坡度场（|∇uplift| / 0.10，0..1）
+        //
+        // 【双轴环面是有意的，别当缺陷删】（本文件 3 处：这里、{@link #fillSinks}、{@link #lowest}）
+        //   · Z 环面：本域 800 行 = CARVE_DOMAIN_Z(200km) 是 belt 间距 BELT_CELL_Z(50km) 的 4 倍，
+        //     这是**故意**给 Priority-Flood 填洼 + D8 汇水面积留的计算域：平地上的水顺 ε 梯度
+        //     全部汇入山带，域一大一小汇水面积就不同、下切量就不同（P170 实测：把域砍到 200 行
+        //     后 uplift 深内部仍有 0.51% 的格子变化、格边界行最大差 22.57 块，关掉下切则差异全归零）。
+        //   · X 环面：山带按 X 格子确定性布点且**完全落在格内**（BELT_X_FIT），下切是**严格局地**的
+        //     （P92 验证），所以边缘那一圈绕回对边时那里根本没有山带，接了也影响不到任何被画出来的地形。
+        // 换句话说：这里的取模不是"把世界接成环"，而是"给一个局部雕刻域选边界条件"。
         for (int j = 0; j < NZ; j++) {
             for (int i = 0; i < NX; i++) {
                 int im = ((i - 1) % NX + NX) % NX, ip = (i + 1) % NX;
@@ -590,7 +599,9 @@ public final class MountainLayerV2 {
      * 这是山带内部 1~4km 尺度起伏的唯一来源——只有它才能造出支脊/次级峰。
      */
     private static double ridgeTexture(Belt b, double x, double z) {
-        return V2TerrainGen.mountainTexture(SOLVE_SEED, x, z);
+        // 种子必须走 V2TerrainGen.textureSeed()：本方法的**全部意义**就是"和基础山地同一套脊线"，
+        // 而裸 SOLVE_SEED 会让这里拿到另一套噪声（见 V2TerrainGen.textureSeed 的注释）。
+        return V2TerrainGen.mountainTexture(V2TerrainGen.textureSeed(SOLVE_SEED), x, z);
     }
 
     /** 山带包络（横向高斯 × 端部 taper，0..1）。 */
@@ -739,7 +750,7 @@ public final class MountainLayerV2 {
             for (int dj = -1; dj <= 1; dj++) {
                 for (int di = -1; di <= 1; di++) {
                     if (di == 0 && dj == 0) continue;
-                    int jj = ((j + dj) % NZ + NZ) % NZ;
+                    int jj = ((j + dj) % NZ + NZ) % NZ;   // 环面见坡度场上方说明（有意）
                     int ii = ((i + di) % NX + NX) % NX;
                     int kk = jj * NX + ii;
                     if (done[kk]) continue;
@@ -791,7 +802,7 @@ public final class MountainLayerV2 {
         for (int dj = -1; dj <= 1; dj++) {
             for (int di = -1; di <= 1; di++) {
                 if (di == 0 && dj == 0) continue;
-                int jj = ((j + dj) % NZ + NZ) % NZ;
+                int jj = ((j + dj) % NZ + NZ) % NZ;   // 环面见坡度场上方说明（有意）
                 int ii = ((i + di) % NX + NX) % NX;
                 int kk = jj * NX + ii;
                 if (h[kk] < bh) { bh = h[kk]; best = kk; }

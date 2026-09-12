@@ -17,7 +17,7 @@ import java.io.PrintStream;
  *   [1] 墙在**每一列**都存在、与浮冰带不重叠，且真的把极地海盆与中纬度海**切开**
  *       （细网格 + 求解器粗网格两级洪水填充，两级都必须不通）；
  *   [2] 冰缘平移**不改变面积**（多相位平均，消掉格点相位这个假信号）；
- *   [3] 急流峰值精确 = JET_PEAK、且严格无散度（u 只依赖纬度）；
+ *   [3] （已删除）过去守的是"规定急流/沿岸环流"——流删了，那几条断言随之删除；
  *   [4] 合成几何下墙**真的切断域**（不是减速）：极侧必须逐位 0，负对照必须非 0；
  *   [5] 生产窗口：加墙前后逐位比对 + 收敛（保守粗化没搞坏多网格）。
  *
@@ -50,9 +50,10 @@ public class P235 {
 
         say("===== P235：极地三件套验收（PolarZone 单一口径）=====");
         say("  SEED=" + SEED + "  网格 " + NX + "x" + NY + " @ " + CELL_X + "/" + CELL_Z + "  haloZ=" + HALO_Z);
-        say(String.format("  口径 CORE=%.2f FLOE=%.2f WALL=(%.2f,%.2f] COLD=%.2f | 冰缘平移 %.0fkm | JET=%.2f | FORCE=%.1f",
-            PolarZone.CORE_BAND, PolarZone.FLOE_BAND, PolarZone.WALL_OUTER, PolarZone.WALL_INNER,
-            PolarZone.COLD_BAND, PolarZone.EDGE_SHIFT / 1000.0, PolarZone.JET_PEAK, PolarZone.ICE_FORCE));
+        say(String.format("  口径 FLOE=%.2f WALL=(%.2f,%.2f] COLD=%.2f | 冰缘平移 %.0fkm | 地形强制=已删 | 规定洋流=已删",
+            PolarZone.FLOE_BAND, PolarZone.WALL_OUTER, PolarZone.WALL_INNER,
+            PolarZone.COLD_BAND, PolarZone.EDGE_SHIFT / 1000.0));
+        say("  【2026-09 最终定案】极地只剩三件事：虚拟墙 + 极地冷带 + 海冰。不改地形、不规定洋流。");
 
         // ===== 建生产几何（originX = -100km，与 RelaxedClimate 的 tileX=0 窗口一致）=====
         final int originX = -100_000;
@@ -67,7 +68,7 @@ public class P235 {
                 int x = originX + ix * CELL_X;
                 land[i] = NoiseContinentGrid.isLand(x, z, SEED);
                 wall[i] = w;
-                floe[i] = PolarZone.isFloeOcean(PolarZone.band(x, z, SEED)) && !land[i];
+                floe[i] = PolarZone.isPolar(PolarZone.band(x, z, SEED)) && !land[i];
             }
         }
         int floeN = 0, polarN = 0, wallOcean = 0;
@@ -147,8 +148,8 @@ public class P235 {
                 for (int iy = 0; iy < NY; iy++) {
                     int z = (iy - HALO_Z) * CELL_Z;
                     double be = PolarZone.rawBand((int) Math.round(z - ph));
-                    if (PolarZone.isCore(be)) baseCore++;
-                    if (PolarZone.isFloeOcean(be)) baseFloe++;
+                    if (PolarZone.isPolar(be)) baseCore++;
+                    if (PolarZone.isFloeBand(be)) baseFloe++;
                 }
             }
             PolarZone.EDGE_SHIFT = saveShift;
@@ -157,8 +158,8 @@ public class P235 {
                 for (int iy = 0; iy < NY; iy++) {
                     int z = (iy - HALO_Z) * CELL_Z;
                     double be = PolarZone.rawBand((int) Math.round(z - sh));
-                    if (PolarZone.isCore(be)) noisyCore++;
-                    if (PolarZone.isFloeOcean(be)) noisyFloe++;
+                    if (PolarZone.isPolar(be)) noisyCore++;
+                    if (PolarZone.isFloeBand(be)) noisyFloe++;
                 }
             }
         }
@@ -184,33 +185,15 @@ public class P235 {
         say("       判据: 平移幅度用掉一半以上（否则就是加了噪声却看不出蜿蜒） -> " + (ok2c ? "PASS" : "FAIL"));
         ok &= ok2c;
 
-        // ================= [3] 急流 =================
+        // ================= [3] 极地洋流：**没有任何规定分量** =================
+        // 【2026-09 最终定案】环极急流与沿岸环流都已删除。极地洋流完全由 BarotropicGyre 解出，
+        // 所以本节不再有任何"剖面/峰值/连续性"可以断言 —— 那些断言守的是**规定流**，流没了它们也就没意义。
+        // 现在的守卫分工：
+        //   · "PolarZone 不得再暴露任何规定洋流 API" → P215 的 T7（反射查成员 + 对照行）
+        //   · "极地地形必须是纯噪声"                  → P240
+        //   · "墙内解出来的流有多快"                  → P221 的 [1c]（当前 0.0006 m/s）
         say("");
-        say("--- [3] 固定急流 u(b) ---");
-        double jetMax = 0; int jetMaxRow = -1, jetNonzero = 0;
-        for (int iy = 0; iy < NY; iy++) {
-            double u = PolarZone.jetU(PolarZone.rawBand((iy - HALO_Z) * CELL_Z));
-            if (u != 0) jetNonzero++;
-            if (Math.abs(u) > jetMax) { jetMax = Math.abs(u); jetMaxRow = iy; }
-        }
-        say(String.format("  [3a] 峰值 |u|=%.6f m/s（行 %d，bandD=%.3f）；有急流的行数=%d/%d（两翼各 5 行）",
-            jetMax, jetMaxRow, PolarZone.rawBand((jetMaxRow - HALO_Z) * CELL_Z), jetNonzero, NY));
-        boolean ok3a = Math.abs(jetMax - PolarZone.JET_PEAK) < 1e-9;
-        say("       判据: 峰值**精确**等于 JET_PEAK（剖面是 sin² 包，两端为 0） -> " + (ok3a ? "PASS" : "FAIL"));
-        ok &= ok3a;
-
-        int dUdx = 0;
-        for (int iy = 0; iy < NY; iy++) {
-            double u0 = PolarZone.jetU(PolarZone.rawBand((iy - HALO_Z) * CELL_Z));
-            for (int ix = 0; ix + 1 < NX; ix++) {
-                double u1 = PolarZone.jetU(PolarZone.rawBand((iy - HALO_Z) * CELL_Z));
-                if (Double.doubleToRawLongBits(u0) != Double.doubleToRawLongBits(u1)) dUdx++;
-            }
-        }
-        say("  [3b] 急流的 du/dx 非零格 = " + dUdx + "（注入只加 fx，v 分量不变）");
-        boolean ok3b = dUdx == 0;
-        say("       判据: 逐位为 0（u 只依赖纬度 ⇒ 散度不变） -> " + (ok3b ? "PASS" : "FAIL"));
-        ok &= ok3b;
+        say("--- [3] 极地洋流：无规定分量（守卫改由 P215 T7 / P240 / P221[1c] 承担）---");
 
         // ================= [4] 合成几何：墙真的切断域 =================
         say("");

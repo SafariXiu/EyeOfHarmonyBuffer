@@ -126,7 +126,7 @@ public final class V2TerrainGen {
         // 否则"山"只是一块光滑的高地（Alpine 群系观感即来源于此）。
         double mtnW = w[3] + w[4];
         if (mtnW > 0.01) {
-            double tex = mountainTexture(worldSeedInt * 0x9E3779B97F4A7C15L, x, z);
+            double tex = mountainTexture(textureSeed(worldSeedInt), x, z);
             h += mtnTexAmp * mtnW * Math.pow(tex, mtnTexPow);
         }
         // 贴岸低地保险：陆地列不下探到海面以下（干盆地处理留待水系阶段）
@@ -165,7 +165,7 @@ public final class V2TerrainGen {
             TerrainBaseHeight.BIOME_BIAS_GAIN);
         double mtnW = w[3] + w[4];
         if (mtnW > 0.01) {
-            double tex = mountainTexture(worldSeedInt * 0x9E3779B97F4A7C15L, x, z);
+            double tex = mountainTexture(textureSeed(worldSeedInt), x, z);
             hb += mtnTexAmp * mtnW * Math.pow(tex, mtnTexPow);
         }
         out[0] = hb < seaLevel + 1 ? seaLevel + 1 : hb;
@@ -429,8 +429,23 @@ public final class V2TerrainGen {
     }
 
     /**
+     * 中尺度脊线纹理的**唯一**种子来源。
+     *
+     * 这里曾经是两套：{@code V2TerrainGen} 自己乘 {@code 0x9E3779B97F4A7C15L}，
+     * 而 {@code MountainLayerV2.ridgeTexture} 传的是**裸种子** —— 于是同一句注释
+     * （"山层与基础山地共用同一套频谱、脊线对齐"）在两边其实是**两个不同的噪声实现**，
+     * 山带的脊线和它所在那块高地的脊线根本对不上，过渡处自然也就谈不上自然。
+     * 现在乘法常量只活在这一个方法里，两处调用点都从这里取，物理上不可能再漂。
+     */
+    public static long textureSeed(int worldSeedInt) {
+        return worldSeedInt * 0x9E3779B97F4A7C15L;
+    }
+
+    /**
      * 中尺度山体纹理（λ ≈ 3k / 1.2k / 480m，ridged，返回 0..1）：
      * 山层（MountainLayerV2）与基础山地共用同一套频谱，保证"只要成山就有脊谷"。
+     *
+     * @param seed 必须来自 {@link #textureSeed(int)} —— 直接传裸种子会拿到另一套噪声。
      */
     public static double mountainTexture(long seed, double x, double z) {
         double sum = 0.0, norm = 0.0, amp = 1.0, f = mtnTexFreq;

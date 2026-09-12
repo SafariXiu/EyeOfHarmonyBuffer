@@ -111,8 +111,8 @@ public class P237 {
                 int x = X0 + px * STRIDE;
                 if (PolarZone.isWallCell(PolarZone.rawBand(z))) wallN++;
                 double be = PolarZone.band(x, z, SEED);
-                if (PolarZone.isCore(be)) core++;
-                else if (PolarZone.isFloeOcean(be)) floe++;
+                if (PolarZone.isPolar(be)) core++;
+                else if (PolarZone.isFloeBand(be)) floe++;
                 if (!isLand[py * N + px]) ocean++;
             }
         }
@@ -132,16 +132,18 @@ public class P237 {
     }
 
     static int landColor(int x, int z, boolean land, double speed) {
+        // 走 PolarZone 的**唯一渲染判据**（见其 RENDER_RULE_VERSION）：
+        // 旧写法 if (isFloeOcean(be)) return 淡青; 会把浮冰带里的真实陆地刷成海色。
         double be = PolarZone.band(x, z, SEED);
-        if (PolarZone.isWallCell(PolarZone.rawBand(z))) return rgb(255, 40, 200);
-        if (PolarZone.isCore(be)) return rgb(252, 252, 255);
-        if (PolarZone.isFloeOcean(be)) {
-            double t = (be - PolarZone.FLOE_BAND) / (PolarZone.CORE_BAND - PolarZone.FLOE_BAND);
-            return mix(rgb(148, 205, 235), rgb(226, 245, 255), clamp(t, 0, 1));
-        }
         int base = land ? rgb(62, 148, 72) : rgb(22, 72, 140);
-        double cw = PolarZone.coldWeight(be);
-        return cw > 0 ? mix(base, rgb(118, 168, 216), cw) : base;
+        switch (PolarZone.overlayCode(be, PolarZone.rawBand(z), land)) {
+            case PolarZone.OV_WALL:      return mix(base, rgb(255, 40, 200), 0.55);
+            case PolarZone.OV_FLOE_SEA:  return mix(base, rgb(170, 215, 240), 0.75);
+            case PolarZone.OV_FLOE_LAND: return mix(base, rgb(235, 248, 240), 0.45);
+            case PolarZone.OV_COLD:      return mix(base, land ? rgb(118, 168, 216) : rgb(90, 130, 190),
+                                                PolarZone.coldWeight(be) * 0.55);
+            default:                     return base;
+        }
     }
 
     static int speedColor(double v) {
@@ -187,7 +189,7 @@ public class P237 {
             double b = PolarZone.rawBand(z);
             if (PolarZone.isWallCell(b)) drawRowLine(g, py, new Color(255, 40, 200, 90));
             if (Math.abs(b - PolarZone.FLOE_BAND) < 0.0025) drawRowLine(g, py, new Color(255, 255, 255, 140));
-            if (Math.abs(b - PolarZone.CORE_BAND) < 0.0025) drawRowLine(g, py, new Color(0, 0, 0, 160));
+            if (Math.abs(b - PolarZone.ICE_INNER_BAND) < 0.0025) drawRowLine(g, py, new Color(0, 0, 0, 160));
         }
         g.dispose();
     }

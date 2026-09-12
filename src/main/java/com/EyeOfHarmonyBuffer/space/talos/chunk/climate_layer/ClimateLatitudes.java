@@ -145,10 +145,12 @@ public final class ClimateLatitudes {
      */
     private static int distanceToCycleCenter(int worldZ) {
         // **保持折返循环**：纬度沿 Z 循环（赤道→极→赤道）。
-        // 极点交界（z = CYCLE/2）处原本"北极=南极"重合、科氏符号突跳，
-        // 现在用一条**跨越交界的极地冰原带**在地理上把南北两极的海隔开
-        // （见 NoiseContinentGrid.ICE_BAND / ICE_FORCE）—— 冰是"陆"，海不连通；
-        // 玩家则可以直接踩着冰原走过去，纬度照常循环。
+        // 极点交界（z = CYCLE/2）处"北极=南极"重合、科氏符号突跳。
+        // 【2026-09】这里原先写着"用一条跨越交界的极地冰原带把两极的海隔开
+        // （NoiseContinentGrid.ICE_BAND / ICE_FORCE）" —— 那两个常量与那套强制成陆**都已删除**：
+        // 极地地形不再被强制（见 PolarZone 类注释、探针 P240）。
+        // 两极的海现在由**虚拟墙**（PolarZone.isWallCell，纯求解器掩码）隔开，
+        // 而不是靠一块人造陆地；玩家本来就撞不到墙，纬度照常循环。
         int zMod = foldZToCycle(worldZ);
         int d = zMod;
         int other = LAT_CYCLE - zMod;

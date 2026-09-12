@@ -286,30 +286,30 @@ public final class NoiseContinentGrid {
     /**
      * 陆地残差（抬升后相对阈值的超出量，&gt;=0 为陆）：越深内陆越大。
      * 供 OrographyField 等"大陆内部结构"层做海拔/山脊推导。
+     *
+     * <h3>【2026-09 定案】这里**不再有任何极地项**</h3>
+     * 曾经这里有两项：{@code be > CORE_BAND} 把残差抬高（造"实心冰盖"）、浮冰带把残差压低
+     * （造"极地海盆"）。两项都被删掉了，因为它们都是**用一条纬度线去跟噪声大陆抢地盘**。
+     *
+     * P240 实测（x ∈ ±250km、800 列）——那一段经度上 bandD 0.87~0.93 天然就是 81~100% 的陆地：
+     * <pre>
+     *   bandD | 自然陆% | 强制后 | 后果
+     *    0.88 |  100.0% | 100.0% | 横贯 500km 的完整大陆
+     *    0.91 |   91.0% |  41.8% | 从大陆上凿掉一半
+     *    0.92 |   98.5% |  27.8% | 凿掉七成   ← 用户看到的"护城河"
+     *    0.96 |    0.0% |  33.8% | 凭空造陆
+     *    0.99 |   19.3% | 100.0% | 凭空造出横贯 500km 的陆地
+     * </pre>
+     * 于是极点在视觉上被"外大陆 + 新造冰盖"夹住，中间还横着一条人工海道。
+     * <b>结论：极地海在哪、陆地在哪，交给噪声；极地系统只做墙/冷/急流/浮冰，一件也不改地形。</b>
+     * 定案记录与取舍见 {@link com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone}
+     * 的类注释、探针 P240。
+     *
+     * 于是本函数现在就是"纯噪声阈值判定"——极地不再是一个特例。
      */
     public static double landResidual(int x, int z, int worldSeedInt) {
         double t = statsFor(worldSeedInt).threshold;
-        double r = residual(height(x, z, worldSeedInt), t);
-        // 极地**实心冰盖**：bandD 超过 PolarZone.CORE_BAND 后把残差整体抬高 → 强制成陆。
-        // **它不是装饰**：冰盖是"陆"，把极区海盆朝极点那一侧封住 —— 这与地球的
-        // 南极洲 / 北冰洋封住大西洋是同一个机制，是风生环流圈能形成的前提。
-        // 阈值、冰缘噪声、强度**全部**来自 PolarZone（极地唯一口径）；
-        // 这里曾经有过第二个 ICE_BAND 常量，已删除：两套阈值必然漂移成"冰缘在 A 层 0.82、
-        // 在 B 层 0.90"。浮冰带（0.90~0.96）是**海**，不参与本判据。
-        double be = PolarZone.band(x, z, worldSeedInt);
-        if (be > PolarZone.CORE_BAND) {
-            double k = (be - PolarZone.CORE_BAND) / (1.0 - PolarZone.CORE_BAND);
-            r += PolarZone.ICE_FORCE * k * k;
-        } else {
-            // **浮冰带强制成海**：极地海盆必须存在，否则"浮冰 / 极地环流 / 虚拟墙"三件套
-            // 没有水可谈（实测 tileX=0 那一窗 bandD 0.88~0.92 自然陆占比 100%，墙加了等于没加）。
-            // 权重两端为 0 ⇒ 与自然海陆的接缝仍由残差决定，看起来是自然的冰架边缘。
-            double sea = PolarZone.floeSeaWeight(be);
-            if (sea > 0.0) {
-                r -= PolarZone.ICE_FORCE * sea;
-            }
-        }
-        return r;
+        return residual(height(x, z, worldSeedInt), t);
     }
 
     /**

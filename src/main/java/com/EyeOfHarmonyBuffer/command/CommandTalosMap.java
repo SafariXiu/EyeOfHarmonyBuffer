@@ -240,20 +240,26 @@ public class CommandTalosMap extends CommandBase {
      * 三者的几何都取自 PolarZone，与求解器、地形、热力场**同一份**实现。
      */
     private int polarColor(int wx, int wz, int seed) {
-        if (PolarZone.isWallCell(PolarZone.rawBand(wz))) {
-            return rgb(255, 40, 200);
-        }
+        // **底色永远是真实海陆**，极地结构只用半透明着色标出来 —— 见 PolarZone.RENDER_RULE_VERSION。
+        // 旧写法是 if (isFloeOcean(be)) return 淡青; 那是纯纬度判据，会把浮冰带里的真实陆地整片刷成海色，
+        // 让看图的人以为"极地还是一条干净的带"。图层骗人比世界错了更坏。
+        boolean land = NoiseContinentGrid.isLand(wx, wz, seed);
         double be = PolarZone.band(wx, wz, seed);
-        if (PolarZone.isCore(be)) {
-            return rgb(250, 250, 255);
+        int base = land ? rgb(60, 150, 70) : rgb(20, 70, 140);
+        switch (PolarZone.overlayCode(be, PolarZone.rawBand(wz), land)) {
+            case PolarZone.OV_WALL:
+                return mix(base, rgb(255, 40, 200), 0.55);          // 半透明：底下的地形仍可见
+
+            case PolarZone.OV_FLOE_SEA:
+                return mix(base, rgb(170, 215, 240), 0.75);          // 海上的浮冰
+            case PolarZone.OV_FLOE_LAND:
+                return mix(base, rgb(235, 248, 240), 0.45);          // 陆上的雪盖（**与上面必须能分辨**）
+            case PolarZone.OV_COLD:
+                return mix(base, land ? rgb(120, 170, 220) : rgb(90, 130, 190),
+                    PolarZone.coldWeight(be) * 0.55);
+            default:
+                return base;
         }
-        if (PolarZone.isFloeOcean(be)) {
-            return mix(rgb(150, 205, 235), rgb(228, 246, 255),
-                clamp((be - PolarZone.FLOE_BAND) / (PolarZone.CORE_BAND - PolarZone.FLOE_BAND), 0, 1));
-        }
-        int base = NoiseContinentGrid.isLand(wx, wz, seed) ? rgb(60, 150, 70) : rgb(20, 70, 140);
-        double cw = PolarZone.coldWeight(be);
-        return cw > 0.0 ? mix(base, rgb(120, 170, 220), cw) : base;
     }
 
     private int colorFor(String layer, int wx, int wz, int seed) {

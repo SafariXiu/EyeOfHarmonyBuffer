@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.BarotropicGyre
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.RelaxedClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -58,9 +59,51 @@ public class P221 {
     //       极地冷带经 ThermalForcing 进 seaTeq → 进 updateP 的 SST_P_GAIN → 进风场；
     //     · 海格数 +3640 ⇒ 冰盖缩小 + 浮冰带强制成海直接改了海陆掩码。
     //   逐位对照见 P235 [5]（那里还量了虚拟墙单独的贡献：ΔRMS ≈ −3.4e-6，远小于本容差）。
-    static final double GOLD_PROD_U = 0.29645, GOLD_PROD_V = 0.14620;
+    // 2026-09 第四次更新（**浮冰带成海强度 1.5 → 0.20**：用户看 /talosmap land 发现 1.5 会压出一条
+    //   横贯全图、0% 陆地的笔直"护城河"，拍板改成偏置。见 PolarZone.FLOE_SEA_FORCE / P240）：
+    //   u 0.29645 → 0.29733、v 0.14620 → 0.14662；海格 38682 → 38445（−237，正是浮冰带里多出来的陆地）。
+    //   归因：闭合盆 [2] 的 0.01882/0.03691 **仍然逐位不变** ⇒ 求解器核心一个字节没动，
+    //   差异全部来自海陆掩码（+ 它带动的风场）。P169 的形变也只在 biome.* 13 条上，
+    //   mountain.* 12 条与 landform.* 2 条逐位不变 —— 位移半径已被证明是"那一条纬带"。
+    // 2026-09 第五次更新（**彻底停止极地地形强制**：ICE_FORCE / FLOE_SEA_FORCE / floeSeaWeight 全删，
+    //   landResidual 变成纯噪声阈值判定。见 PolarZone 类注释、P240、P220 的 U13）：
+    //   u 0.29733 → 0.29852、v 0.14662 → 0.14721；海格 38445 → 38167。
+    //   归因：闭合盆 [2] 的 0.01882/0.03691 **第四次逐位不变** ⇒ 求解器核心一个字节没动；
+    //   差异全部来自海陆掩码（极地带恢复自然：陆占比 32.3% vs 外侧 29.3%，只差 3.0pp）。
+    //   P169 形变仍是 biome.* 13 条，mountain.* / landform.* 14 条逐位不变。
+    // 2026-09 第六次更新（**加回一条极地水道**：20km 基准宽、向赤道单侧摆 40km，墙外移到
+    //   (0.72,0.76] 为它让位。见 PolarZone 的水道一节、P240 的三条断言、P220 的 U13）：
+    //   u 0.29852 → 0.28806、v 0.14721 → 0.14205；海格 38167 → 40972（水道 + 墙外移带来的水）。
+    //   归因：闭合盆 [2] 的 0.01882/0.03691 **第五次逐位不变** ⇒ 求解器核心仍然一个字节没动。
+    //   P169 形变仍是 biome.* 13 条，mountain.*/landform.* 14 条逐位不变。
+    //   附带收益：P235 的负对照从 0/0 变成 3089/3089 —— 地形上的水现在每一列都能绕进极地海，
+    //   于是"墙是唯一在挡水的东西"从推测变成了实测。
+    // 2026-09 第七次更新（当时把规定急流从浮冰带搬进水道；**该急流后来连同沿岸环流一起删除**，见第十次），
+    //   需要 x 才能算，剖面跟着水道一起扭动 ⇒ 沿 X 处处非零 = 真正连续的环极流）：
+    //   u 0.28806 → 0.28804、v 0.14205 → 0.14202（只动了第 5 位）；海格 40972 不变（**没改地形**）。
+    //   闭合盆 [2] 的 0.01882/0.03691 **第六次逐位不变**。
+    //   P169 形变仍是 biome.* 13 条 —— 注意这次**陆海一个字节都没改**，biome 动是因为
+    //   急流搬了海温（advectSst），群系读的是气候。mountain.*/landform.* 14 条不动。
+    // 2026-09 第八次更新（**加沿岸环流**：墙内、海岸距离 30~∞km 上叠一层
+    //   F = f(d)·(d_z, −d_x)，严格无散度（P235 的 [3d] 实测 max|∇·F|=1.6e-10））：
+    //   u 0.28804 → 0.28802、v 0.14202 不变；风 0.894579 → 0.894672。
+    //   注意 [1]/[1b] 量的是**求解器自己的解**（P221 直接调 BarotropicGyre.solve），
+    //   所以规定的叠加场不直接进这两行 —— 它们动是因为叠加场搬了海温 ⇒ 气压 ⇒ 风。
+    //   闭合盆 [2] 的 0.01882/0.03691 **第七次逐位不变**。
+    // 2026-09 第九次更新（**水道收窄 + 墙归位**：20km/单侧40km → **10km/单侧5km**，
+    //   墙 (0.72,0.76] → **(0.82,0.86]**。理由是"被隔离的极地海盆"从 14% 涨到 24%、
+    //   且墙与冷带错开 50km 把一圈不冷的洋面也封了进去）：
+    //   u 0.28802 → 0.29326、v 0.14202 → 0.14460；海格 40972 → 39522（水道窄了 ⇒ 凿得少）。
+    //   [1c] 墙内海格 8112 → **4362**（海盆缩回）、墙内 RMS u 0.00162 → **0.00063**（更静）。
+    //   闭合盆 [2] 的 0.01882/0.03691 **第八次逐位不变**。
+    // 2026-09 第十次更新（**最终定案：删水道 + 删全部规定洋流**）：
+    //   地形恢复纯噪声（landResidual 就是阈值判定），PolarZone 只剩墙/冷带/海冰。
+    //   u 0.29326 → 0.29842、v 0.14460 → 0.14715；海格 39522 → 38167（不再凿水道）。
+    //   闭合盆 [2] 的 0.01882/0.03691 **第九次逐位不变**。
+    //   新增 [1d]：墙内风应力旋度 + Sverdrup 预期 + δ_M ⇒ **归因「有力但被摩擦吃掉」**。
+    static final double GOLD_PROD_U = 0.29842, GOLD_PROD_V = 0.14715;
     /** 风场指纹（同一批海格上的 RMS，用于把"海洋变了"与"风也变了"分开归因）。 */
-    static final double GOLD_WIND_U = 0.915341, GOLD_WIND_V = 0.232663;
+    static final double GOLD_WIND_U = 0.923688, GOLD_WIND_V = 0.234731;
     static final double GOLD_BOX_U = 0.01882, GOLD_BOX_V = 0.03691;
     static final double TOL = 1e-4;
 
@@ -114,6 +157,72 @@ public class P221 {
         say("      用途: 下次海洋数字变了，先用这一行判断是风场动了还是求解器动了");
         ok &= okWind;
 
+        // ---- 1c) 墙内求解器流速：决定"沿岸方向场"能不能叠上去而不打架 ----
+        // 若墙内已经有 ~0.2 m/s 的算出来的流，再叠一条 0.35 的规定流会得到方向混乱的和；
+        // 若只有 ~0.002，规定流就占绝对主导，可以放心叠。
+        double wu2 = 0, wv2 = 0; int wn2 = 0; double wmax = 0;
+        for (int iy = 0; iy < NY; iy++) {
+            int z = (iy - HALO_Z) * CELL_Z;
+            if (PolarZone.rawBand(z) <= PolarZone.WALL_INNER) continue;
+            for (int ix = 0; ix < NX; ix++) {
+                int i = iy * NX + ix;
+                if (box.land[i]) continue;
+                wu2 += uo[i] * uo[i]; wv2 += vo[i] * vo[i]; wn2++;
+                double a = Math.abs(uo[i]);
+                if (a > wmax) wmax = a;
+            }
+        }
+        say(String.format("  [1c] 墙内(>%.2f)海格 %6d | RMS u=%.5f v=%.5f | max|u|=%.5f",
+            PolarZone.WALL_INNER, wn2, Math.sqrt(wu2 / Math.max(1, wn2)),
+            Math.sqrt(wv2 / Math.max(1, wn2)), wmax));
+        say("      用途: ①>0.15 ⇒ 规定流会与算出来的流打架，沿岸方案要重新评估；"
+            + "②<0.01 ⇒ 极地海盆在求解器里近乎静水，规定流占绝对主导");
+        boolean okQuiet = Math.sqrt(wu2 / Math.max(1, wn2)) < 0.05;
+        say("      用途: 极地洋流现在**完全由求解器算出**（规定流已全删），所以这一行就是极地洋流的全部");
+        say("      判据: 墙内 RMS u < 0.05（记录用；规定流删掉之后这里没有对照物了） -> "
+            + (okQuiet ? "PASS" : "FAIL"));
+        ok &= okQuiet;
+
+        // ---- 1d) 归因：墙内是"没力"还是"被摩擦吃掉"？ ----
+        // 量两件事：① 墙内的风应力旋度（驱动力）；② 按 Sverdrup 平衡反推它"应该"驱动出多大的流。
+        //   v_sverdrup = curl(τ) / (ρ·H·β)
+        // 若 ② 远大于实测 ⇒ 是摩擦（δ_M=(A_H/β)^(1/3)≈64km ≈ 海盆宽度）把它掐死了；
+        // 若 ② 本身就很小 ⇒ 是压根没有驱动力。这两者的结论完全不同。
+        double curlMax = 0, curlSum = 0;
+        int curlN = 0;
+        for (int iy = 1; iy + 1 < NY; iy++) {
+            int z = (iy - HALO_Z) * CELL_Z;
+            if (PolarZone.rawBand(z) <= PolarZone.WALL_INNER) continue;
+            for (int ix = 0; ix < NX; ix++) {
+                int i = iy * NX + ix;
+                if (box.land[i]) continue;
+                // 纬向风为主 ⇒ curl(τ) ≈ −∂τ_x/∂z；τ_x = ρ_a·C_D·|W|·W_x（W 为归一化风速×WIND_MS）
+                double curl = -(tauXAt(box.uW, box.vW, ix, iy + 1, NX)
+                              - tauXAt(box.uW, box.vW, ix, iy - 1, NX)) / (2.0 * CELL_Z);
+                double a = Math.abs(curl);
+                curlSum += a;
+                curlN++;
+                if (a > curlMax) curlMax = a;
+            }
+        }
+        double curlMean = curlN > 0 ? curlSum / curlN : 0;
+        // β 取极区代表纬度（bandD 0.93 ≈ 83.7°）：β = 2Ω·cos φ·(π/2)·(2/Z_CYCLE)
+        double betaRef = 2.0 * BarotropicGyre.OMEGA * Math.cos(0.93 * Math.PI / 2.0)
+            * (Math.PI / 2.0) * 2.0 / GlobalCirculation.Z_CYCLE;
+        double vSverdrup = curlMean / (BarotropicGyre.RHO_WATER * BarotropicGyre.H_MIXED * betaRef);
+        // δ_M = (A_H/β)^(1/3)：摩擦边界层厚度。海盆经向宽度 ~140km ⇒ 若 δ_M 与它同量级，整盆都在摩擦层里。
+        double deltaM = Math.cbrt(BarotropicGyre.A_H / betaRef);
+        say(String.format("  [1d] 墙内风应力旋度：均值 %.3e、峰值 %.3e Pa/m（%d 个海格）",
+            curlMean, curlMax, curlN));
+        say(String.format("       Sverdrup 预期 v = curl/(ρHβ) = %.5f m/s（β≈%.2e）；实测 RMS u=%.5f",
+            vSverdrup, betaRef, Math.sqrt(wu2 / Math.max(1, wn2))));
+        say(String.format("       摩擦层 δ_M = (A_H/β)^(1/3) = %.0f km；极地海盆经向宽度 ≈ 140 km ⇒ %.1f 个 δ_M",
+            deltaM / 1000.0, 140_000.0 / deltaM));
+        say(String.format("       ⇒ 判定：%s",
+            vSverdrup > 10 * Math.sqrt(wu2 / Math.max(1, wn2))
+                ? "**有力但被摩擦吃掉**（Sverdrup 预期比实测大一个量级以上 ⇒ 是 δ_M 问题，不是没风）"
+                : "驱动力本身就弱（Sverdrup 预期与实测同量级 ⇒ 极地风应力旋度太小）"));
+
         // ---- 2) 闭合盆负对照 ----
         say("");
         boolean[] basin = new boolean[NX * NY];
@@ -166,6 +275,14 @@ public class P221 {
         rep.flush();
         rep.close();
         System.exit(ok ? 0 : 1);
+    }
+
+    /** 风应力 τ_x = ρ_a·C_D·|W|·W_x，W 为归一化风速 × WIND_MS。 */
+    static double tauXAt(double[] uW, double[] vW, int ix, int iy, int nx) {
+        int i = iy * nx + ix;
+        double u = uW[i], v = vW[i];
+        double sp = Math.hypot(u, v) * BarotropicGyre.WIND_MS;
+        return BarotropicGyre.RHO_AIR * BarotropicGyre.C_D * sp * u * BarotropicGyre.WIND_MS;
     }
 
     static void fillRow(double[] fRow, double[] betaRow) {

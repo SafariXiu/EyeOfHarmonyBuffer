@@ -112,6 +112,31 @@ public class P220 {
         new Rule("U10", "纬度带海温期望只允许一个来源",
             new String[] { "SST_BY_BAND" }, NONE, NONE,
             "唯一来源是 ThermalForcing.zonalMeanSeaTeq；手抄的 10 档表在 bandD=0.5 处差 0.31"),
+        // ---- U13：极地系统不得再碰地形（2026-09 定案）----
+        // 合法引用者恰好 5 个，每一个都只做"非地形"的事：
+        //   PolarZone 自己 | RelaxedClimate（虚拟墙掩码 + 急流）| ThermalForcing（冷带）
+        //   | ChunkProviderTalos2（海面浮冰）| CommandTalosMap（出图）
+        // 地形链（NoiseContinentGrid / OrographyField / V2TerrainGen / MountainLayerV2 / …）
+        // 一旦引用它，就说明"用一条纬度线跟噪声大陆抢地盘"那套又回来了 —— 那正是
+        // P240 实测出"从大陆上凿掉七成、又凭空造出横贯 500km 陆地"的成因。
+        // 【2026-09 二次定案】允许 NoiseContinentGrid 引用 PolarZone，但**只允许水道一项**。
+        // 历史：先是"强制成海 + 强制成陆"（凿出护城河、造出假大陆），然后全删（U13 原文），
+        // 现在退回"只挖一条 20km、向赤道单侧摆 40km 的水道"来保证极地水域连通。
+        // 这条规则的**真正内容**是"允许清单恰好 6 个"，而"水道之外不许再动地形"由 P240 的三条断言守：
+        // 水道必须处处连通、不得越过墙、必须是水。冰盖/浮冰带再也不允许有任何地形项。
+        new Rule("U13", "地形链不得引用 PolarZone（极地系统不改地形）",
+            new String[] { "PolarZone" },
+            // 合法引用者 6 个，每一个都只做"非地形"的事：
+            //   PolarZone 自己 | RelaxedClimate(虚拟墙掩码) | ThermalForcing(冷带)
+            //   | ChunkProviderTalos2(海冰) | CommandTalosMap(出图) | **TalosContract(守卫本身：T7 反射查它)**
+            // 地形链（NoiseContinentGrid / OrographyField / V2TerrainGen / MountainLayerV2 / …）
+            // 一旦引用它，就说明"用一条纬线跟噪声大陆抢地盘"那套又回来了。
+            new String[] { "PolarZone.java", "RelaxedClimate.java", "ThermalForcing.java",
+                           "ChunkProviderTalos2.java", "CommandTalosMap.java", "TalosContract.java" },
+            NONE,
+            "2026-09 最终定案：极地只做墙/冷/海冰，一件也不改地形、一件也不改洋流。"
+                + "历史上强制成海凿出过护城河、强制成陆造出过假大陆、水道两种宽度都不讨好 ——"
+                + "全部删除。地形侧的任何一处引用都说明那套又回来了"),
     };
 
     // ==================================================================

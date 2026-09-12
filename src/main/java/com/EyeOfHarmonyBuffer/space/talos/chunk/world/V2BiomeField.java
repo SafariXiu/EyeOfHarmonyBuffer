@@ -178,9 +178,41 @@ public final class V2BiomeField {
     /** 每求解这么多次就打一行警告（0 = 不打）。 */
     public static int SOLVE_WARN_EVERY = 0;
 
+    /**
+     * 清空解缓存。**不是死 API**：探针工作区（tools/talos-probe + 本地考古层）有 90+ 处调用它来扫参，
+     * 其中 P169/P170 是入库的守卫。审计时看到"src 里没人调用"请不要删。
+     */
     public static void clearCache() {
         CACHE.clear();
     }
+
+    /**
+     * 瓦片缓存容量（个）。每个 Field ≈ 1.94 MB（bias+scale 各 402×202 float、chan 402×202×16 B、shelfW 81 KB）
+     * ⇒ 20 个 ≈ **39 MB**。
+     *
+     * <h3>20 的依据（P239 实测，不是拍的）</h3>
+     * 三种访问模式的**重解次数**（理想 = 每个瓦片只解一次）：
+     * <pre>
+     *   容量 | 生产(1 瓦片 x8 遍) | 巡航(20 瓦片 x2 遍，理想 20) | 对抗(18 瓦片 x3 轮，理想 18) | 巡航耗时
+     *      4 |          1        |              40              |              54              | 97.5 s
+     *      8 |          1        |              40              |              54              | 17.9 s
+     *     12 |          1        |              40(任意策略 29)   |              54(任意策略 32)  | 15.9 s
+     *     16 |          1        |              40              |              54              | 15.8 s
+     *     20 |          1        |          **20 = 理想**       |          **18 = 理想**      |  7.9 s
+     *     24 |          1        |              20              |              18              |  8.0 s
+     * </pre>
+     * 表里是 LRU 的数字；本类实际用的是"任意牺牲者"，在 12 时反而更好（29/32）。
+     * 两者在 20 处都命中理想值 —— 见 {@link #evictAny()}：**策略不是杠杆，容量才是**。
+     *
+     * <h3>生产需要多少？1 个</h3>
+     * 本类 {@code sample()} 只读 {@code (x,z)} 所在的那一个瓦片（halo 是瓦片内部的 1 格，不跨瓦片），
+     * 而瓦片是 100km × 50km —— 一个玩家的加载区连 1 个瓦片都填不满，多玩家/远距离传送也只是
+     * 多撞几个瓦片。**所以"生产 1 次求解"这一列在容量 4 时就已经成立**；
+     * 12 → 20 买到的是**广域扫描**（巡航/地图命令）从 15.9 s 降到 7.9 s，代价是常驻 +15.5 MB。
+     *
+     * 历史：这里原来是个没名字的字面量 12。
+     */
+    public static int CACHE_LIMIT = 20;
 
     private static Field field(int worldSeedInt, int tileX, int tileZ) {
         long key = tileKey(worldSeedInt, tileX, tileZ);
@@ -188,14 +220,39 @@ public final class V2BiomeField {
         if (f != null) {
             return f;
         }
-        if (CACHE.size() > 12) {
-            java.util.Iterator<Long> it = CACHE.keySet().iterator();
-            if (it.hasNext()) {
-                CACHE.remove(it.next());
-            }
+        if (CACHE.size() >= CACHE_LIMIT) {
+            evictAny();
         }
         final int tx = tileX, tz = tileZ;
         return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, tx, tz));
+    }
+
+    /**
+     * 淘汰一个**任意**瓦片（ConcurrentHashMap 迭代器吐出的第一个 key）。
+     *
+     * <h3>为什么这里**故意不用 LRU**（照抄这里之前请先读 P239 的表）</h3>
+     * 另外三个同类缓存（{@code RelaxedClimate} / {@code LandformField} / {@code MountainLayerV2}）
+     * 都是 LRU。本类曾经被"顺手统一成 LRU"，结果**实测更差**：
+     *
+     * <pre>
+     *   容量 | 任意牺牲者 W/A | LRU W/A        （W = 20 瓦片巡航两遍，理想 20；A = 1 热 + 17 冷轮转 3 轮，理想 18）
+     *     12  |      29 / 32   |  40 / 54
+     *     16  |      23 / 22   |  40 / 54
+     *     20  |      20 / 18   |  20 / 18
+     * </pre>
+     *
+     * 原因就是 {@code LandformField} 记过的 **LRU 经典病理**：工作集略大于容量 + 循环访问时，
+     * LRU 每次淘汰的恰好是"下一轮就要用"的那块 ⇒ 退化成"每次访问都未命中"。
+     * 本类的消费者是**线性/循环扫描**（巡航、地图命令），不是热/冷混合，所以任意牺牲者反而更好。
+     *
+     * 而容量一旦 ≥ 工作集（20 行），两种策略都命中理想值 ⇒ **策略在这里根本不是杠杆，容量才是**。
+     * 这也正是 {@code LandformField} 的结论：**先量工作集，再谈淘汰策略**。
+     */
+    private static void evictAny() {
+        java.util.Iterator<Long> it = CACHE.keySet().iterator();
+        if (it.hasNext()) {
+            CACHE.remove(it.next());
+        }
     }
 
     /** 点所在的窗口索引。 */

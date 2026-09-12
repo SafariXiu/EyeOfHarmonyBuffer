@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
@@ -308,6 +309,7 @@ public final class TalosContract {
         t4_zTopology(rows);
         t5_derived(rows);
         t6_keyAndCap(rows);
+        t7_noPrescribedCurrent(rows);
         rows.add(infoRow());
         return new Result(seed, rows);
     }
@@ -755,6 +757,66 @@ public final class TalosContract {
                 + "（含 12 参带 stepCap=" + capParam + "）"
                 + "（旧写法由 RelaxedClimate 赋值→调用→清零，preheat 线程会串改前台的值）",
             false, false));
+    }
+
+    // ---------------- T7：极地不得再有规定洋流 ----------------
+
+    /**
+     * T7：极地系统不得再暴露任何"规定洋流"的 API。
+     *
+     * 2026-09 最终定案：**极地对洋流的影响 = 0**。环极急流与沿岸环流都已删除，
+     * 极地洋流必须**完全由 {@code BarotropicGyre} 解出**。删除理由：那两条流是"画"上去的，
+     * 而且实测墙内求解器只能给出 0.0006 m/s（δ_M ≈ 64km ≈ 海盆宽度 ⇒ 整盆都在摩擦层里），
+     * 规定流实际上是在**掩盖**这个事实，而不是解决它。
+     *
+     * 作法与 T4a / T6b 同一套：不信"注释说删了"，而是**反射查成员**。
+     * 配一条对照行：同一个扫描必须看得见确实还在的成员（{@code isWallCell}），否则 T7 是空断言。
+     */
+    private static void t7_noPrescribedCurrent(List<Row> rows) {
+        java.lang.reflect.Method[] ms = PolarZone.class.getDeclaredMethods();
+        java.lang.reflect.Field[] fs = PolarZone.class.getDeclaredFields();
+        StringBuilder pub = new StringBuilder();
+        int scanned = 0, hit = 0;
+        StringBuilder hitDetail = new StringBuilder();
+        for (java.lang.reflect.Method m : ms) {
+            scanned++;
+            if (java.lang.reflect.Modifier.isPublic(m.getModifiers())
+                && java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
+                pub.append(m.getName()).append(' ');
+            }
+            String nm = m.getName().toLowerCase();
+            if (nm.contains("jet") || nm.contains("coastcurrent")) {
+                hit++;
+                hitDetail.append("方法 ").append(m.getName()).append(' ');
+            }
+        }
+        for (java.lang.reflect.Field f : fs) {
+            scanned++;
+            String nm = f.getName().toLowerCase();
+            if (nm.startsWith("jet") || nm.startsWith("coast_current")) {
+                hit++;
+                hitDetail.append("字段 ").append(f.getName()).append(' ');
+            }
+        }
+        rows.add(new Row("T7",
+            "极地系统不得再暴露规定洋流（环极急流 / 沿岸环流已删除；极地洋流必须完全由求解器算出）",
+            hit == 0,
+            "0 个 jet / coastCurrent 成员",
+            hit == 0 ? ("扫描 " + scanned + " 个成员，0 命中") : ("命中 " + hit + " 个：" + hitDetail),
+            false, false));
+
+        boolean sawWall = false;
+        for (java.lang.reflect.Method m : ms) {
+            if (m.getName().equals("isWallCell")) {
+                sawWall = true;
+            }
+        }
+        rows.add(new Row("T7*",
+            "T7 对照：同一个扫描必须看得见仍然存在的成员（否则 T7 是空断言）",
+            sawWall, "找到 isWallCell", sawWall ? "找到" : "**没找到 ⇒ T7 无效**",
+            true, false));
+        rows.add(new Row("I2", "PolarZone 的公开静态方法面（信息行：便于发现新冒出来的旋钮）",
+            true, "-", pub.length() > 0 ? pub.toString().trim() : "(none)", false, true));
     }
 
     /**

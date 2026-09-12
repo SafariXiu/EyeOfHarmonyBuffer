@@ -38,17 +38,19 @@ public class P238 {
             for (int px = 0; px < w; px++) {
                 int x = x0 + px * st;
                 double be = PolarZone.band(x, z, SEED);
+                // 唯一渲染判据（见 PolarZone.RENDER_RULE_VERSION）：底色 = **真实海陆**，
+                // 极地结构只做半透明标记；浮冰带里"海上的浮冰"与"陆上的雪盖"必须能分辨。
+                // 旧写法 if (isFloeOcean(be)) c = 淡青; 会把浮冰带里的真实陆地整片刷成海色。
+                boolean land = NoiseContinentGrid.isLand(x, z, SEED);
+                int base = land ? 0x3E9448 : 0x16488C;
                 int c;
-                if (PolarZone.isWallCell(raw)) c = 0xFF28C8;
-                else if (PolarZone.isCore(be)) c = 0xFCFCFF;
-                else if (PolarZone.isFloeOcean(be)) {
-                    double t = (be - PolarZone.FLOE_BAND) / (PolarZone.CORE_BAND - PolarZone.FLOE_BAND);
-                    c = mix(0x94CDEB, 0xE2F5FF, cl(t));
-                } else {
-                    boolean land = NoiseContinentGrid.isLand(x, z, SEED);
-                    int base = land ? 0x3E9448 : 0x16488C;
-                    double cw = PolarZone.coldWeight(be);
-                    c = cw > 0 ? mix(base, 0x76A8D8, cw) : base;
+                switch (PolarZone.overlayCode(be, raw, land)) {
+                    case PolarZone.OV_WALL:      c = mix(base, 0xFF28C8, 0.55); break;
+                    case PolarZone.OV_FLOE_SEA:  c = mix(base, 0xAAD7F0, 0.75); break;
+                    case PolarZone.OV_FLOE_LAND: c = mix(base, 0xEBF8F0, 0.45); break;
+                    case PolarZone.OV_COLD:      c = mix(base, land ? 0x76A8D8 : 0x5A82BE,
+                                                     PolarZone.coldWeight(be) * 0.55); break;
+                    default:                     c = base;
                 }
                 img.setRGB(px, py, c);
             }
@@ -80,12 +82,13 @@ public class P238 {
         System.out.println(sb.toString());
 
         // ---- C) 急流数值验证（只碰 1~2 个瓦片）----
-        System.out.println("[P238] 生产洋流在极带上的 z 剖面（x=0）：bandD | u | v | 内建急流 | 净 u");
-        for (int z = 400_000; z <= 600_000; z += 5_000) {
+        System.out.println("[P238] 生产洋流在极带上的 z 剖面（x=0）：bandD | u | v");
+        System.out.println("[P238]   规定洋流已全部删除，所以 u/v 就是 BarotropicGyre 解出来的全部");
+        for (int z = 370_000; z <= 600_000; z += 5_000) {
             double[] c = RelaxedClimate.sampleCurrent(0, z, SEED);
             double raw = PolarZone.rawBand(z);
-            double jet = PolarZone.jetU(raw);
-            if (raw < 0.80) continue;
+            double jet = 0.0;
+            if (raw < 0.74) continue;
             System.out.println(String.format("[P238]   bandD=%.2f z=%6d | u=%+.4f v=%+.4f | jet=%+.4f | u-jet=%+.4f",
                 raw, z, c[0], c[1], jet, c[0] - jet));
         }
