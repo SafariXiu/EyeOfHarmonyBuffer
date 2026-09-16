@@ -253,7 +253,9 @@ public final class PrecipField {
      * 不是本地地面。用局地温度会把「冬季大陆上空又冷又干」错当成「没有风暴轴」。
      */
     public static double zonalSlTemp(double latRad, double theta) {
-        return Atmosphere.tZonalMean(latRad)
+        // ⚠ §216.7：改用**本世界自己的**纬向平均海平面温度（κ = ⟨κ⟩ 处的海陆混合），
+        //   不再用地球的 T_zm —— 否则风暴轴的水汽源会按「地球在那个纬度有多少陆地」算。
+        return Atmosphere.zonalMeanSeaLevelK(latRad)
              + Atmosphere.seasonalAnomaly(latRad, Atmosphere.KAPPA_MEAN, theta);
     }
 
@@ -466,8 +468,10 @@ public final class PrecipField {
         double lat = WorldContract.latOf(z);
         double k = Atmosphere.kappaAt(x, z, seed, cell);
         double elev = PlateField.elevationWithCell(x, z, seed, cell);
-        double tSl = Atmosphere.tZonalMean(lat) + Atmosphere.seasonalAnomaly(lat, k, theta)
-                   + (1.0 - k) * Atmosphere.sstAnom(x, z);
+        // ⚠ §216.7 口径统一：这里要的是「海平面等效年均温度 + 季节项 + SST'」，
+        //   与 Atmosphere.surfaceTemp **同源**（surfaceTemp 只多一个 -Γ*h*k）。
+        double tSl = Atmosphere.annualSeaLevelTemp(lat, k, Atmosphere.sstAnom(x, z))
+                   + Atmosphere.seasonalAnomaly(lat, k, theta);
         double[] u0 = Atmosphere.windAt(x, z, seed, cell, theta, gradStep);
         double hUp = upwindElev(x, z, seed, cell, u0[0], u0[1]);
         double depl = depletion(hUp, k);

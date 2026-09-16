@@ -340,6 +340,19 @@ if ($Table -or $WriteTable) {
     }
 }
 
+# ---- caliber registry guard (objective item 2) --------------------------------------------
+# WARN-ONLY on purpose, same reason as everything else in this file: a guard that can block a
+# probe run gets bypassed. The status is printed on every run so drift is always visible;
+# to run it strict by hand:  powershell -File calibers_check.ps1
+$cc = Join-Path $PSScriptRoot 'calibers_check.ps1'
+if (Test-Path $cc) {
+    $cs = & powershell -NoProfile -ExecutionPolicy Bypass -File $cc 2>&1
+    $cal = ($cs | Where-Object { $_ -match 'CALIBERS_STATUS|STALE ENTRIES|UNTRACKED|NEW UNREGISTERED' }) -join ' | '
+    if (!$cal) { $cal = '(no status line)' }
+    Write-Output ('CALIBERS: ' + $cal)
+    if ($LASTEXITCODE -ne 0) { $issues++; Write-Output ('CALIBERS_EXIT=' + $LASTEXITCODE + ' -> registry needs attention') }
+}
+
 if ($issues -eq 0) {
     Write-Output 'PRECHECK_STATUS=OK (exit 0)'
     exit 0

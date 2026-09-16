@@ -47,16 +47,24 @@ public class P258 {
 
         // ---------------- 自检 ----------------
         say("A. 自检");
-        double[][] anchors = {{0.0, 299.15}, {Math.PI / 4, 284.03}, {Math.PI / 2, 255.15}};
+        // ⚠ 2026-09-16（§216.7）：T_zm 从三点勒让德拟合换成**观测表**，锚点随之换成表的节点值
+        //   （ERA5 t2m 2014+2019 月平均，南北对称化；见 ZonalTables.T_ZM_K 与 refs/gen_zonal_tables.py）。
+        //   非循环性说明：这三个数是 anchor 文本文件 ls_anchor_table.txt 里的独立列，
+        //   P492 A 段会拿它逐点核对 **5 度表 + 线性插值**；这里只做「表节点没被改动」的快检。
+        double[][] anchors = {{0.0, 299.41}, {Math.PI / 4, 282.66}, {Math.PI / 2, 244.27}};
         boolean ok = true;
         for (double[] a : anchors) {
             double got = Atmosphere.tZonalMean(a[0]);
-            boolean good = Math.abs(got - a[1]) < 0.02;
+            boolean good = Math.abs(got - a[1]) < 0.005;
             if (!good) ok = false;
-            say(String.format(LF, "   T_zm(%5.1f 度) = %.2f K   锚点 %.2f K   %s",
+            say(String.format(LF, "   T_zm(%5.1f 度) = %.2f K   表节点 %.2f K   %s",
                 Math.toDegrees(a[0]), got, a[1], good ? "OK" : "错"));
         }
-        say(String.format(LF, "   ⇒ 勒让德拟合三个锚点：%s", ok ? "全部成立" : "**有错**"));
+        say(String.format(LF, "   ⇒ 观测表三个节点：%s", ok ? "全部成立" : "**有错**"));
+        say(String.format(LF, "   本世界的纬向平均（κ=⟨κ⟩）与地球 T_zm 的差：赤道 %+.2f K、45 度 %+.2f K、极 %+.2f K",
+            Atmosphere.zonalMeanSeaLevelK(0.0) - Atmosphere.tZonalMean(0.0),
+            Atmosphere.zonalMeanSeaLevelK(Math.PI / 4) - Atmosphere.tZonalMean(Math.PI / 4),
+            Atmosphere.zonalMeanSeaLevelK(Math.PI / 2) - Atmosphere.tZonalMean(Math.PI / 2)));
         double th0 = Atmosphere.theta(0.0), thHalf = Atmosphere.theta(WorldContract.DAYS_PER_YEAR / 2.0);
         double dtls0 = Atmosphere.seasonalAnomaly(Math.PI / 4, true, th0)
                      - Atmosphere.seasonalAnomaly(Math.PI / 4, false, th0);

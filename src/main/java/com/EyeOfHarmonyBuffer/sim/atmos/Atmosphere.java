@@ -195,11 +195,23 @@ public final class Atmosphere {
         return 2.0 * Math.PI * day / WorldContract.DAYS_PER_YEAR;
     }
 
-    /** 纬向平均地表气温（K）。 */
-    public static double tZonalMean(double latRad) {
-        double s = Math.sin(latRad);
-        return T0 + T2 * p2(s) + T4 * p4(s);
-    }
+    /**
+     * **纬向平均地表气温（K）** —— 观测表（§216.7 / D74）。
+     *
+     * <p>⚠ <b>2026-09-16 换表</b>：原来是三点勒让德拟合 {@code T0 + T2*p2(s) + T4*p4(s)}
+     * （锚 赤道 299.15 / 45 度 284.03 / 极 255.15 —— 三个锚点只是那个拟合自己的取值，
+     * 不是独立观测）。P491 复算：拟合对 ERA5 真实纬向年均剖面的 rms 残差 <b>3.3 K</b>、
+     * 极区最大 <b>9.8 K</b>，而且**抓不到极区向极陡降的形状**。
+     * 现在直接读 {@link ZonalTables#tZmSym}（5 度观测表，南北对称化），
+     * 残差降到 rms 0.4 K 量级。{@link #T0}/{@link #T2}/{@link #T4} 保留**只为
+     * K_P 的定义与老探针的对照**，不再是生产温度场的来源。
+     *
+     * <p>⚠ 它**只**是「那个纬度上地球全表面（陆+海+冰）的年均气温」这个观测事实。
+     * <b>不要</b>把它当成模型的年均温度场 —— 模型的场是
+     * {@link #annualSeaLevelTemp}（= 洋面基线 + κ 加权的海陆对比）。两者相差
+     * {@code (κ - ZF_earth)*Δ + κ*Γ*z_bar}，在高纬可以差 8 K 以上。
+     */
+    public static double tZonalMean(double latRad) { return ZonalTables.tZmSym(latRad); }
 
     public static double clamp01(double t) { return t < 0 ? 0 : (t > 1 ? 1 : t); }
 
@@ -283,6 +295,81 @@ public final class Atmosphere {
 
     /** 记忆化版的 kappa（与 {@link #kappaAt} 逐位相同）。 */
     public static double kappaMemo(int x, int z, long seed, int cell) { return kappaElev(x, z, seed, cell)[0]; }
+
+    // ================= 海陆**年均**对比（§216.7：D74 / ④(b) / D8-b 的同一条物理补全） =================
+
+    /**
+     * **洋面支**：观测的洋面纬向年均气温（K）。**直接的观测量**，不是任何东西的推论。
+     *
+     * <p>为什么不能只用一个 {@code T_zm}：{@code T_zm = ZF*t2m_land + (1-ZF)*t2m_sea} 逐行精确
+     * （P492 在 1 度数据上实测残差 0.0000 K），但那一行里的 {@code ZF} 是**地球的陆地占比**。
+     * 本世界在同一个纬度上的陆地占比是 {@code kappa}，与地球无关 ⇒ 只有一个 T_zm 就
+     * **回答不了「换一个陆地分布会怎样」**。把它拆成 {@code T_OCEAN} 与 {@code T_LAND} 两个
+     * 独立事实之后，用本世界自己的 {@code kappa} 重新混合 —— 这才是能搬运的东西。
+     */
+    public static double oceanBaseK(double latRad) { return ZonalTables.tOceanK(latRad); }
+
+    /**
+     * **陆地相对海洋的海平面年均温差（K）**：{@code T_LAND_SL − T_OCEAN}。
+     *
+     * <p>为什么要把陆地那一支折到海平面：观测的 {@code T_LAND} **已经含了地球自己的海拔**
+     * （陆面平均约 840 m）。而本模型另外还要减一次 {@code Γ*h}（每列自己的精确高程）
+     * ⇒ 不剥出来就是**同一份海拔减两次**（在 75 度能差 10 K 以上）。
+     * 剥出来之后，「海平面上的陆地」比海洋暖/冷这么多，模型的 {@code -Γ*h*κ} 再把它降到位。
+     */
+    public static double landMinusOceanSLK(double latRad) {
+        return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad)
+             - ZonalTables.tOceanK(latRad);
+    }
+
+    /**
+     * **海陆年均温度对比项（K）**，按**连续**大陆度 κ 混合：
+     * κ=0（纯海洋）给 0，κ=1（纯内陆）给 {@link #landMinusOceanSLK}。
+     *
+     * <p><b>这一项是 ④(b) / D74 / D8-b 三条缺陷的共同解</b>：
+     * <ol>
+     *   <li><b>④(b) 极区不对称</b>：这一项让「陆地」与「海洋」在同纬度上年均温度不同 ⇒
+     *       本世界北极是陆地就自动变冷、南极是海洋就自动变暖，<b>不对称来自本世界自己的 κ 场</b>，
+     *       一行也没有从地球搬（P491：本世界的纬向平均海陆南北对称 ⇒ 结果自然对称）；</li>
+     *   <li><b>D74</b>：模型原来没有「海温 vs 气温」之分 —— 现在海洋有独立的 {@link #oceanBaseK}；</li>
+     *   <li><b>D8-b</b>：{@code airT = (tSea - tzm)/AIRT_SCALE} 原来恒为浮点噪声
+     *       （{@code tSea == T_zm}）；现在 {@code tSea - tzm} 有了真实的海陆热力内容。</li>
+     * </ol>
+     *
+     * <p>⚠ 它**不进 p'**（见 {@link #pressureAnomaly}）：海陆年均气压差已由
+     * {@link #cellPressure} 独立锚定在**观测的 7 hPa @30 度**上，两项都进就是重复计数。
+     */
+    public static double landSeaAnnualAnomaly(double latRad, double kappa) {
+        return clamp01(kappa) * landMinusOceanSLK(latRad);
+    }
+
+    /**
+     * **海平面等效的年均地表温度（K）** —— 全模型唯一的年均温度入口。
+     *
+     * <pre>
+     *   T_ann = T_ocean(|phi|) + kappa * (DELTA(|phi|) + GAMMA*z_bar(|phi|)) + (1-kappa) * SST'
+     * </pre>
+     *
+     * <p>它是恒等式的逐点版本：带内平均（陆地占比 ZF_our）= {@code T_ocean + ZF_our*DELTA_SL}，
+     * 而地球在同纬度是 {@code T_ocean + ZF_earth*DELTA} —— 两者的差
+     * {@code (ZF_our - ZF_earth)*Δ} 正是「这个纬度上有多少陆地」造成的差异。
+     * <b>不需要任何沿 x 的窗口平均</b>（X 无限 ⇒ 那种平均本来也没有定义）。
+     */
+    public static double annualSeaLevelTemp(double latRad, double kappa, double sstAnom) {
+        double k = clamp01(kappa);
+        return oceanBaseK(latRad) + k * landMinusOceanSLK(latRad) + (1.0 - k) * sstAnom;
+    }
+
+    /**
+     * **本世界的纬向平均海平面气温（K）**：取 κ = {@link #KAPPA_MEAN} 的 {@link #annualSeaLevelTemp}。
+     *
+     * <p>⚠ 与 {@link #tZonalMean} **不是**同一个量：{@code tZonalMean} 是**地球**在那个纬度的
+     * 全表面年均气温（含地球自己的陆地和海拔），本方法是**本世界**在各种 κ 混合下的纬向平均。
+     * 需要「本世界自己的纬向平均」时一律用本方法（降水的水汽源、airT 的参考、海洋的热成风）。
+     */
+    public static double zonalMeanSeaLevelK(double latRad) {
+        return annualSeaLevelTemp(latRad, KAPPA_MEAN, 0.0);
+    }
 
     /**
      * 季节性温度异常（K）—— 用**连续大陆度**插值振幅与相位。
@@ -466,14 +553,15 @@ public final class Atmosphere {
         return seasonalAnomaly(latRad, land ? 1.0 : 0.0, theta);
     }
 
-    /** 海面温度（K）。 */
+    /** 海面温度（K）：洋面基线 + 季节项（**没有**海陆年均对比项，κ=0）。 */
     public static double seaSurfaceTemp(double latRad, double theta) {
-        return tZonalMean(latRad) + seasonalAnomaly(latRad, false, theta);
+        return annualSeaLevelTemp(latRad, 0.0, 0.0) + seasonalAnomaly(latRad, false, theta);
     }
 
-    /** 陆地地表温度（K），含海拔递减率。 */
+    /** 陆地地表温度（K），含海拔递减率：海平面陆地基线（κ=1）+ 季节项 − Γ*h。 */
     public static double landSurfaceTemp(double latRad, double theta, double elev) {
-        return tZonalMean(latRad) + seasonalAnomaly(latRad, true, theta) - GAMMA * Math.max(0.0, elev);
+        return annualSeaLevelTemp(latRad, 1.0, 0.0) + seasonalAnomaly(latRad, true, theta)
+             - GAMMA * Math.max(0.0, elev);
     }
 
     /** 地表温度（K）—— 世界坐标的纯函数。**用连续大陆度**（见 §31.5 那条链）。 */
@@ -482,10 +570,30 @@ public final class Atmosphere {
         double[] ke = kappaElev(x, z, seed, cell);
         double k = ke[0];
         double elev = ke[1];
-        return tZonalMean(lat) + seasonalAnomaly(lat, k, theta)
-             - GAMMA * Math.max(0.0, elev) * k
-             + (1.0 - k) * sstAnom(x, z);
+        return annualSeaLevelTemp(lat, k, sstAnom(x, z))
+             + seasonalAnomaly(lat, k, theta)
+             - GAMMA * Math.max(0.0, elev) * k;
     }
+
+    /**
+     * 开关：**海陆年均温度对比要不要进 p'**。
+     *
+     * <p>{@code false}（默认）⇒ **解析上逐位抵消**，p' 与换基线之前完全相同 ——
+     * 因为 {@code tSfc + Γ*h - tRef} 里 {@code tRef} 取的是**同一个 κ** 的年均值，
+     * 于是只剩季节项与 SST'（正是原来那两项）。
+     *
+     * <pre>
+     *   tSfc + Γ*h - tRef
+     *     = [annualSL(k,SST') + seas - Γ*h*k] + Γ*h*PLATEAU_AMP*k - annualSL(k,0)
+     *     = seas + (1-k)*SST' + Γ*h*k*(PLATEAU_AMP - 1)        （PLATEAU_AMP=1 时就是 seas + (1-k)SST'）
+     * </pre>
+     *
+     * <p><b>为什么默认不进</b>：同纬度海陆的**年均气压差**已经由 {@link #cellPressure}
+     * 独立锚定在**观测的 ~7 hPa @ 30 度**上。本项若也进 p'，同一份对比就被算两次
+     * （30 度处：cellPressure 给 11.2 hPa，本项会再加约 4.6 hPa ⇒ 15.8 hPa，是锚点的 2.3 倍）。
+     * 打开它只为**量出**这个重复计数，进 {@code configStamp()}。
+     */
+    public static boolean LANDS_ANNUAL_IN_PRESSURE = false;
 
     /**
      * 地面气压异常（Pa）。**纯局部的代数式**，不需要求解任何方程。
@@ -500,11 +608,14 @@ public final class Atmosphere {
         double[] ke = kappaElev(x, z, seed, cell);
         double k = ke[0];
         double elev = ke[1];
-        double tSfc = tZonalMean(lat) + seasonalAnomaly(lat, k, theta)
-                    - GAMMA * Math.max(0.0, elev) * k
-                    + (1.0 - k) * sstAnom(x, z);
+        // tRef = 「同 κ 的年均海平面温度」⇒ 它把海陆年均对比**解析地**从 T'_c 里减掉
+        //（LANDS_ANNUAL_IN_PRESSURE = true 时才换成地球的 T_zm，让那一项真的进 p'）。
+        double tRef = LANDS_ANNUAL_IN_PRESSURE ? tZonalMean(lat) : annualSeaLevelTemp(lat, k, 0.0);
+        double tSfc = annualSeaLevelTemp(lat, k, sstAnom(x, z))
+                    + seasonalAnomaly(lat, k, theta)
+                    - GAMMA * Math.max(0.0, elev) * k;
         double h = Math.max(0.0, elev) * PLATEAU_AMP * k;
-        return -K_P * CHI * (tSfc + GAMMA * h - tZonalMean(lat))
+        return -K_P * CHI * (tSfc + GAMMA * h - tRef)
              + cellPressure(lat, k, theta);
     }
 }

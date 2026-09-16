@@ -142,6 +142,9 @@ public final class CoastalLayer {
         h = h * 31 + COAST_TAN_WIN;
         h = h * 31 + COAST_TAN_STEP;
         h = h * 31 + Double.doubleToLongBits(SMOOTH_KM);
+        // D80：hcLocalRaw 的赤道带口径改过（夹到 ±F_MIN -> 线性衰减到 0）。公式变了就必须让
+        // 上层缓存失效（D58 的准入判据：只写「用了哪些常数」不够，还要写「用的是哪一版公式」）。
+        h = h * 31 + FORMULA_REV;
         return h;
     }
 
@@ -191,19 +194,46 @@ public final class CoastalLayer {
      * @param f        科氏参数（带符号）
      */
     public static double hcLocal(double tauAlong, double f) {
-        double fa = Math.abs(f);
-        if (fa < F_MIN) fa = F_MIN;
-        double fs = f < 0.0 ? -fa : fa;
-        double raw = tauAlong * (UPWELL_SEASON_DAYS * 86400.0) / (RHO * fs * UPWELL_WIDTH);
+        double raw = hcLocalRaw(tauAlong, f);
         return H_THERMOCLINE * Math.tanh(raw / H_THERMOCLINE);
     }
 
-    /** {@link #hcLocal} 的**无界**原始值（m），只为诊断/尺度核对用。 */
+    /**
+     * {@link #hcLocal} 的**无界**原始值（m），只为诊断/尺度核对用。
+     *
+     * <p>⚠⚠ <b>2026-09-16 修正（审计 D80，来自三路审计的第 2 条线索，已逐条复核）</b>：
+     * 原来在 {@code |f| < F_MIN} 时把 {@code |f|} <b>夹到 F_MIN 并保留 f 的符号</b>
+     * ⇒ {@code f = 0.0} 落进「{@code f < 0.0} 为假」的分支，<b>赤道被静默判成北半球</b>。
+     * 由于 {@code WorldContract.latOf(0)} <b>精确等于 0</b>，{@code z=0} 与 {@code z=-1}
+     * 的 {@code h_c} <b>反号</b>。实测（τ=0.06 Pa、UPWELL_WIDTH=1e5、|f|=F_MIN=1e-5）：
+     * <pre>
+     *   raw = 0.06 * (90*86400) / (1025 * 1e-5 * 1e5) = 455.2 m
+     *   h_c = 150 * tanh(455.2/150) = 149.31 m   ⇒ 跨 z=0 的跳变 = 2 x 149.31 = 298.6 m
+     * </pre>
+     * 而物理上 {@code f -> 0} 时<b>海岸埃克曼响应应当消失</b>（没有科氏力就没有埃克曼抽吸），
+     * <b>不是饱和到满量程再翻个号</b>。
+     *
+     * <p><b>现在的口径</b>：{@code |f| < F_MIN} 时响应按 {@code f / F_MIN} <b>线性衰减</b>
+     * —— 奇函数、连续、{@code f = 0} 处为 0（赤道带没有海岸埃克曼抽吸）。
+     * <b>{@code |f| >= F_MIN} 的代码路径逐位不变</b>（那时 {@code fs == f}，与旧式恒等）。
+     *
+     * <p>影响的纬度带：{@code |f| < F_MIN = 1e-5} ⇔ <b>|lat| < 3.93°</b>（赤道带）。
+     * {@link #configStamp()} 里有一个公式版本位，改动会让上层缓存失效（D58 的准入判据）。
+     */
     public static double hcLocalRaw(double tauAlong, double f) {
         double fa = Math.abs(f);
-        if (fa < F_MIN) fa = F_MIN;
-        double fs = f < 0.0 ? -fa : fa;
-        return tauAlong * (UPWELL_SEASON_DAYS * 86400.0) / (RHO * fs * UPWELL_WIDTH);
+        if (fa >= F_MIN) {
+            // ⚠ 这里**逐字保留原式**（不hoist k、不改结合顺序）—— 「远场逐位不变」是写进
+            //    设计冻结的承诺，而把 k 提到外面会让最后一次乘除的结合顺序变化 ⇒ 末位不同。
+            //    P494 B 段第一版就是被这条抓到的（181 个采样点里 96 个末位不同）。
+            double fs = f < 0.0 ? -fa : fa;
+            return tauAlong * (UPWELL_SEASON_DAYS * 86400.0) / (RHO * fs * UPWELL_WIDTH);
+        }
+        // 赤道带（|f| < F_MIN ⇔ |lat| < 3.93°）：夹到 ±F_MIN 之后**再乘 |f|/F_MIN** ——
+        // 响应随 |f| 线性衰减到 0（奇函数、连续、f=0 处严格为 0），而不是饱和到满量程。
+        double fs = f < 0.0 ? -F_MIN : F_MIN;
+        double raw = tauAlong * (UPWELL_SEASON_DAYS * 86400.0) / (RHO * fs * UPWELL_WIDTH);
+        return raw * (fa / F_MIN);
     }
 
     // ---- 局地海岸切向（用户裁决：开） ----
@@ -338,6 +368,15 @@ public final class CoastalLayer {
      * 所以先在 SMOOTH_KM 的窗口上平滑 tau_along，再做周期累积。
      */
     public static double SMOOTH_KM = 1500.0;
+
+    /**
+     * **公式版本号** —— 只用来让上层缓存失效（D58 的准入判据）。
+     *
+     * <p>为什么需要它：{@code configStamp()} 记的是「用了哪些常数」，但**公式本身变了、常数没变**
+     * 的时候它就发现不了。D80 正是这种情况（{@code |f| < F_MIN} 时从「夹到 ±F_MIN」改成
+     * 「线性衰减到 0」，{@code F_MIN} 一个字都没动）。**改任何一只本类的公式都要把它 +1。**
+     */
+    public static final int FORMULA_REV = 2;   // 1 = 原始; 2 = D80 赤道带线性衰减
 
     /**
      * 实际生效的平滑窗口宽度（m）。

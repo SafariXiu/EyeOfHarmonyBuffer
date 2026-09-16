@@ -341,6 +341,8 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_TROPIC_GATE_DEG);
         h = h * 31 + Double.doubleToLongBits(Atmosphere.PLATEAU_AMP);
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
+        // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
+        h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
         h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.SEA_ONLY_UZM ? 1 : 0);
         h = h * 31 + (Atmosphere.COAST_WIND_ON ? 1 : 0);
         h = h * 31 + (Atmosphere.SST_PROVIDER == null ? 0 : 1);
@@ -427,7 +429,9 @@ public final class SimClimate {
         double tSfc = tSea - Atmosphere.GAMMA * Math.max(0.0, elev) * kap;
 
         double lat = WorldContract.latOf(z);
-        double tzm = Atmosphere.tZonalMean(lat);
+        // ⚠ 必须用**本世界自己的**纬向平均（κ = ⟨κ⟩ 处的海陆混合），不是地球的 T_zm ——
+        //   否则 airT = (tSea - tzm)/AIRT_SCALE 会混进「地球在那个纬度的陆地占比」这一层。
+        double tzm = Atmosphere.zonalMeanSeaLevelK(lat);
 
         ClimateCoords.Coords c = new ClimateCoords.Coords();
         c.temp = clamp01(TEMP_LO + (tSfc - T_LO_K) * TEMP_SLOPE);
@@ -560,7 +564,7 @@ public final class SimClimate {
         for (int j = -1; j <= nz; j++) {
             int z = f.originZ + j * cell + cell / 2;
             double lat = WorldContract.latOf(z);
-            double tzm = Atmosphere.tZonalMean(lat);
+            double tzm = Atmosphere.zonalMeanSeaLevelK(lat);
             for (int i = -1; i <= nx; i++) {
                 int x = f.originX + i * cell + cell / 2;
                 int k = (j + 1) * f.sx + (i + 1);

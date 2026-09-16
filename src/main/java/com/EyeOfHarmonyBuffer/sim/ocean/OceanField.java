@@ -310,8 +310,10 @@ public final class OceanField {
             solveCount++; solveNanos += System.nanoTime() - t0;
             if (!g.valid || g.n < 2) return null;
             double f = WorldContract.coriolis(WorldContract.latOf(zRow));
-            double dTdz = (Atmosphere.tZonalMean(WorldContract.latOf(zRow + 50_000))
-                         - Atmosphere.tZonalMean(WorldContract.latOf(zRow - 50_000))) / 100_000.0;
+            // ⚠ §216.7：热成风要的是**本世界自己的**纬向平均经向温度梯度。
+            //   用地球的 T_zm 会把「地球在那个纬度的陆地占比」带进海盆的斜压结构。
+            double dTdz = (Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow + 50_000))
+                         - Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow - 50_000))) / 100_000.0;
             double rd = CoastalLayer.rossbyRadius(f);
             double[] t = CoastalLayer.coastTangent(g.eastX, zRow, seed, cell);
             double tauS = 0;
