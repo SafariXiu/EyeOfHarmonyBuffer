@@ -70,6 +70,14 @@ public final class ClimateCoords {
 
     /** 单点采样（陆地；海上只需 temp/moist 的话也可调用）。 */
     public static Coords sample(int x, int z, int worldSeedInt, OrographyField.OroSample oro) {
+        // ---- 新模拟器的运行时分派（纵向切片第 2 步：气候 -> 群系，§97）----------------
+        // 这是本文件里**唯一**为接线而加的东西：一行分派。SimClimate.ENABLED=false 时，
+        // 下面每一行都与接线前**逐位相同**（实测校验和 17ead228bdf6f150 两侧一致）；
+        // 旧实现一个方法、一个常量都没有改动或删除。
+        if (com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.ENABLED) {
+            return com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.sample(x, z, worldSeedInt, oro);
+        }
+        // ------------------------------------------------------------------------------
         Coords c = new Coords();
 
         // ---- 环流场（4 次查表） ----

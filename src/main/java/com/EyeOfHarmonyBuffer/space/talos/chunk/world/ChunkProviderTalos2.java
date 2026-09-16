@@ -5,7 +5,6 @@ import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
@@ -203,10 +202,30 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 meta[getIndex(localX, 0, localZ)] = 0;
 
                 OrographyField.OroSample oro = OrographyField.sample(worldX, worldZ, seed);
-                if (oro.isLand) {
+                // ⚠ 2026-09-13 修正（审计 D16-a）：方块海陆判定从**旧场** OrographyField.isLand
+                // 改成**新场** PlateField —— 与群系（V2BiomeField:332）和高度（V2TerrainGen:369）
+                // 同源。两个场实测错位 38~57%（V2BiomeField:326-331 的自述），
+                // 错位的方向正是最坏的：「旧说陆 / 新说海」走 fillLandColumnV2，
+                // 高度取 SimTerrain 的**海洋分支**，而该函数**不铺水** ⇒ 海面下的干坑。
+                // SimTerrain.ENABLED=false 时保持旧路径**逐位不变**（回滚点）。
+                // 注：c.land 与 bias/scale 无关（SimTerrain.compose 只看 elevationWithCell），
+                // 所以这里判一次、fillLandColumnV2 里再 compose 一次，两次的 land 必然一致。
+                boolean land = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED
+                    ? com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(
+                        worldX, worldZ,
+                        com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(seed),
+                        com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL)
+                    : oro.isLand;
+                if (land) {
                     fillLandColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, oro, rf);
                 } else {
-                    fillSeaColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, rf);
+                    // ⚠ 2026-09-13 修正（审计 D16-b）：海列的海床原来取自**旧场**的
+                    // V2TerrainGen.seaDepthBlocks —— 于是「海陆判定用新场、海床用旧场」，
+                    // 同一列两套口径。现在改成**同一个列高来源** composeColumn().h，
+                    // 两种 ENABLED 状态下都与地形场逐位一致。
+                    V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+                        worldX, worldZ, seed, seaLevel, oro, 0.5, 0.5, worldHeight - 2);
+                    fillSeaColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, col.h, rf);
                 }
             }
         }
@@ -307,15 +326,16 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     /** V2 轨海洋列：海床深度 = 海残差映射；浅海沙/砂砾底，深海直接岩性变体；水面 = 海平面。 */
     private void fillSeaColumnV2(Block[] blocks, byte[] meta,
                                  int localX, int localZ, int worldX, int worldZ,
-                                 int seed, int seaLevel, RockField rf) {
-        double depth = V2TerrainGen.seaDepthBlocks(worldX, worldZ, seed);
-        int seabed = seaLevel - (int) Math.round(depth);
+                                 int seed, int seaLevel, int seabedCol, RockField rf) {
+        // 审计 D16-b：海床由调用方从 composeColumn().h 传入（与地形场同源）。
+        int seabed = seabedCol;
         if (seabed < 1) {
             seabed = 1;
         }
         if (seabed > seaLevel - 1) {
             seabed = seaLevel - 1;
         }
+        double depth = seaLevel - seabed;
 
         rf.column(worldX, worldZ, seabed);
 
@@ -341,13 +361,28 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
             }
         }
 
-        // 极地**浮冰**：极区（be > FLOE_BAND，含核心带）的海面铺一层冰。
-        // 刻意用**几何带**而不是"实测 SST < 阈值"：世界生成必须与 237MB 的环流窗口解耦，
-        // 否则同一区块随求解器缓存状态时有时无冰，确定性与"重生同一世界"都保不住。
-        // 冰缘的蜿蜒来自 PolarZone.band 的零均值噪声（面积不变）。
-        // 注意：**这里只铺在真正的海上**（本函数只被海列调用）——极地地形本身不再被强制，
-        // 所以"陆地上不会有冰壳、海里才有浮冰"是自动成立的。
-        boolean floe = PolarZone.isPolar(PolarZone.band(worldX, worldZ, seed));
+        // ⚠⚠ **海冰：按海表温度判，不按纬度带判**（审计 D72，2026-09-15）。
+        //
+        // 改之前：`PolarZone.isPolar(PolarZone.band(...))` —— 那是一条**几何纬度带**，
+        // 而且它用的纬度是 `ClimateLatitudes.LAT_CYCLE = 1M / MAX_D = 500k`（赤道->极点 500 km），
+        // 而**世界契约**是 `WorldContract.Z_CYCLE = 20M / MAX_D = 10M`（赤道->极点 10,000 km）
+        // ⇒ 两套纬度差 **20 倍** ⇒ 一个 20M 周期里出现 **20 条**等距冰带（纬度 +4.05, +13.05,
+        //   +22.05, ... , -4.95），**铺满所有纬度**。P483 实测：在纬度 +4.05 度、
+        //   最冷月海温 **+25.55 C** 的海面上真的铺了冰；而 5 个「该结冰却没冰」的反向漏点。
+        //   玩家看到的「浮冰带像把两块大陆切开」就是这 20 条错位冰带。
+        //
+        // 物理判据：海冰在**最冷月海温低于海水冰点**（-1.8 C = 271.35 K，盐度 35）时形成。
+        // 于是冰**自动**落在真极地，**自动**让暖流海域不结冰（真实世界正是如此：
+        // 北大西洋 70N 不结冰，同纬度的加拿大群岛结冰）。
+        //
+        // 为什么现在做得到（当年做不到的理由已经失效）：原来的注释说「世界生成必须与 237MB 的
+        // 环流窗口解耦」——那个 237MB 窗口是**旧栈 RelaxedClimate**（见设计冻结 §195.2）。
+        // 新场 `OceanField` 是**行惰性 + 有界 + 种子纯函数**，而且**同一段代码的陆地分支早就在逐列
+        // 查气候**（SimTerrain.compose -> warmestMonthTempK -> SimClimate，见 D38 的记账）
+        // ⇒ 海列不查气候才是那个异常项。查了之后：**确定性仍然成立**（同一 seed 同一个世界），
+        // 代价与陆地列同类（每进入一个新的 SimClimate 瓦片，第一列等一次瓦片求解）。
+        boolean floe = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.coldestMonthTempK(worldX, worldZ, seed)
+            < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SEA_ICE_T;
         for (int y = seabed + 1; y <= seaLevel; y++) {
             int idx = getIndex(localX, y, localZ);
             blocks[idx] = floe && y == seaLevel ? Blocks.ice : Blocks.water;

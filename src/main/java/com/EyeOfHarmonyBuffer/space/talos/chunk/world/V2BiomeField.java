@@ -323,6 +323,18 @@ public final class V2BiomeField {
 
     /** 热路径查询（自行做精确海陆判定；WorldChunkManager 用）。 */
     public static Sample sample(int x, int z, int worldSeedInt) {
+        // ---- 新模拟器的运行时分派（纵向切片第 1 步的收尾，§97）------------------------
+        // 方块地形走 PlateField（SimTerrain），**群系的海陆判定必须与它同源** ——
+        // 否则会出现「真陆地被判成海」，大片陆地刷 OCEAN/SHELF 群系。
+        // 实测错位 38.49% / 57.35% / 53.64%（三个窗口；两场独立时期望 ≈44% ⇒ 几乎不相关），
+        // 其中「真陆地被判成海」占 10.6% / 48.6% / 40.2%。
+        // SimTerrain.ENABLED=false 时下面一行逐位回退到原实现。
+        if (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED) {
+            return sample(x, z, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(
+                x, z, com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeedInt),
+                com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL));
+        }
+        // ------------------------------------------------------------------------------
         return sample(x, z, worldSeedInt, NoiseContinentGrid.isLand(x, z, worldSeedInt));
     }
 

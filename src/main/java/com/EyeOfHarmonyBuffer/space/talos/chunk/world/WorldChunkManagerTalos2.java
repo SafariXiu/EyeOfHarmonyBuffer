@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
+import com.EyeOfHarmonyBuffer.sim.ocean.OceanWiring;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
@@ -31,6 +32,13 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
         super();
         this.world = world;
         this.worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
+
+        // ── 第三步接线（§162）：把 OceanField 装成 Atmosphere.SST_PROVIDER ──
+        // 这里是**唯一**一处知道 worldSeedInt 的世界级入口。装在这里 ⇒
+        // 地形/气候/群系/降水 四条链拿到的 SST' 全部同源（口径不会漂）。
+        // ⚠ 装上之后 SimClimate.configStamp() 会变 ⇒ 旧瓦片缓存自动失效（这是设计意图）。
+        // ⚠ 首解一行 1~7 s：预热必须放在后台线程，否则世界生成会卡。
+        OceanWiring.onWorld(this.worldSeedInt);
     }
 
     private static long packXZ(int x, int z) {

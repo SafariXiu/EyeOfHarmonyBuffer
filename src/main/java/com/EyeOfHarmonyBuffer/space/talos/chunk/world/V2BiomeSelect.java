@@ -145,8 +145,18 @@ public final class V2BiomeSelect {
         // Tier-2：地貌变体 —— 唯一权威是 LandformField（地形同源，不再自己定阈值）
         LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
         double mtnW = lf.mtnAmt;
-        // 高山 = 真山 × 冷 × **雪线以上**（用中性 bias 的静态骨架高度，避免与地形循环依赖）
-        double snow = ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, lf.h0);
+        // 高山 = 真山 × 冷 × **常年有雪**。
+        // ⚠ 审计 D73（2026-09-15）：这一项原来是**几何**雪线 `V2TerrainGen.snowLineY(z)` ——
+        //   只看纬度与骨架高度 ⇒ 同一个「这里常年下不下雪」的问题，方块层按**温度**答
+        //   （SimTerrain.compose 用 `warmestMonthTempK < SNOW_T`，§98 已按物理改过），
+        //   群系层却按**纬度高度**答 ⇒ 两套口径，必然出现「群系说高山雪原、方块层不铺雪」这类格子。
+        //   §98 改雪线时写的理由（表达不出「沿海 vs 内陆」「暖流海岸」）对群系层**逐字适用**。
+        //   ⇒ 现在**共用同一个判据**（`SimTerrain.SNOW_FROM_TEMP` 开关也一起尊重），
+        //     单一事实来源；`SNOW_FROM_TEMP = false` 时逐位回退到原来的几何式（回滚点）。
+        double snow = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP
+            ? (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.warmestMonthTempK(x, z, worldSeedInt)
+                < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_T ? 1.0 : 0.0)
+            : ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, lf.h0);
         double alpineW = mtnW * ss(ALPINE_TEMP_HI, ALPINE_TEMP_LO, temp) * snow;
         double mtnOnlyW = mtnW - alpineW;
         double platW = lf.plat * (1.0 - mtnW);

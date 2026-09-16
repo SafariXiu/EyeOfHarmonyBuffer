@@ -363,6 +363,13 @@ public final class V2TerrainGen {
                                        OrographyField.OroSample o,
                                        double biomeBias, double biomeScale, int maxY) {
         Column c = COLUMN.get();
+        // ---- 新模拟器的运行时分派（§83）--------------------------------------------
+        // 这是本文件里**唯一**为接线而加的东西：一行分派。ENABLED=false 时，
+        // 下面每一行都与接线前**逐位相同**；旧实现一个方法、一个常量都没有改动或删除。
+        if (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED) {
+            return com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.compose(c, x, z, worldSeedInt, seaLevel, maxY);
+        }
+        // --------------------------------------------------------------------------
         if (!o.isLand) {
             c.land = false;
             c.seaDepth = seaDepthBlocks(x, z, worldSeedInt);
@@ -488,7 +495,15 @@ public final class V2TerrainGen {
 
     /** 该纬度雪线高度（赤道 {@link #SNOW_EQUATOR_Y} / 极地 {@link #SNOW_POLE_Y} 线性插值；bandD：0=赤道 1=极地）。 */
     public static double snowLineY(int worldZ) {
-        double b = clamp01(GlobalCirculation.bandD(worldZ));
+        // ⚠ 2026-09-13 修正（审计 D17）：原来用 GlobalCirculation.bandD —— 那条链的纬度周期是
+        // ClimateLatitudes.LAT_CYCLE = 1_000_000，而世界契约 WorldContract.Z_CYCLE = 20_000_000，
+        // **差 20 倍**。后果：群系的 ALPINE 雪线门在新世界里每 500 km 来回摆一次 185<->128 格，
+        // 与真实地形高度无关；而方块的雪用的是新温度口径（SimTerrain.SNOW_FROM_TEMP）
+        // ⇒ **同一列两套判据**，CommandTalosHere 还把两者并排打印、自相矛盾。
+        // 现改用 WorldContract.bandD（与方块、与气候同一个纬度周期）。
+        // ⚠ 仍未统一的是**判据本身**（这里几何、方块温度）—— 那要把 SimClimate 引进群系 LUT 求解，
+        //   代价高，单独一批。本修正只消掉 20 倍的周期错。
+        double b = clamp01(com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(worldZ));
         return SNOW_POLE_Y + (SNOW_EQUATOR_Y - SNOW_POLE_Y) * (1.0 - b);
     }
 

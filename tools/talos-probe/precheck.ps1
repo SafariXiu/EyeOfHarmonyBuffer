@@ -51,6 +51,23 @@ param(
     [switch]$Strict
 )
 
+
+# ---- SHA256 helper -------------------------------------------------------------------
+# WHY: this script used Get-FileHash, which stopped resolving in the runprobe4.bat child
+# process mid-session (2026-09-14) -- 'Get-FileHash is not recognized as the name of a
+# cmdlet' -- while the same call worked from an interactive prompt. Rather than depend on
+# module autoloading, compute SHA256 with the crypto class (the same recipe fingerprint.ps1
+# already uses, and it produces the SAME uppercase hex as Get-FileHash, so the recorded
+# baselines stay valid).
+$script:EohSha = [System.Security.Cryptography.SHA256]::Create()
+# Drop-in for Get-FileHash: returns an object with a .Hash property so that every
+# existing '(Get-FileHash x).Hash' call site keeps working unchanged.
+function Get-EohHash([string]$path) {
+    $b = [IO.File]::ReadAllBytes($path)
+    $h = [BitConverter]::ToString($script:EohSha.ComputeHash($b)).Replace('-','')
+    return New-Object psobject -Property @{ Hash = $h }
+}
+# --------------------------------------------------------------------------------------
 $ErrorActionPreference = 'Stop'
 # 2026-09: the harness moved from build\ (gitignored) to tools\talos-probe\ (tracked).
 # $dir = tracked sources/scripts; $dst = the gitignored STAGING tree that runprobe4.bat fills.
@@ -138,7 +155,7 @@ $hashDiffOutList = New-Object System.Collections.Generic.List[string]
 foreach ($rel in $treeRel) {
     $sp = Join-Path $src $rel
     if (-not (Test-Path $sp)) { continue }
-    if ((Get-FileHash $sp).Hash -ne (Get-FileHash (Join-Path $dst $rel)).Hash) {
+    if ((Get-EohHash $sp).Hash -ne (Get-EohHash (Join-Path $dst $rel)).Hash) {
         if ($copyList -contains $rel) { [void]$hashDiffInList.Add($rel) } else { [void]$hashDiffOutList.Add($rel) }
     }
 }
@@ -212,7 +229,7 @@ if ($gapList.Count -eq 0) {
 } else {
     foreach ($r in $gapList) {
         $issues++
-        $nowSame = (Get-FileHash (Join-Path $src $r)).Hash -eq (Get-FileHash (Join-Path $dst $r)).Hash
+        $nowSame = (Get-EohHash (Join-Path $src $r)).Hash -eq (Get-EohHash (Join-Path $dst $r)).Hash
         Write-Output ('COPYLIST_GAP ' + $r + '  (identical to src RIGHT NOW=' + $nowSame + ')')
     }
     Write-Output ('WARN: ' + $gapList.Count + ' file(s) are COMPILED by the probe tree but NOT in runprobe4.bat''s copy list.')

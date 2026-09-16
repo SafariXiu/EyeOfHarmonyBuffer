@@ -22,6 +22,11 @@ import java.util.List;
  *  窗口：W1 x[0,1200km)  W2 x[2000,3200km)  W3 x[4000,5200km)  每带每半球 20 行
  *        旧口径 L x[0,800km) 每带每半球 8 行（在 W1 的 tile 循环里顺带采样，不额外建窗）
  *  采样 tile 主序，PREHEAT=false；只读诊断，不改任何源码。
+ *
+ *  2026-09 增补【方向列】：原来只量 |v| 的**大小**不对称，不足以区分暖流/冷流 —— 两者由同一个
+ *  西边界强化机制产生，区别只在方向。现在把 v 乘上「向极符号」（h=0 侧 +1、h=1 侧 −1）后
+ *  另算一套有符号统计（{@link #direction}）。新列**只进报告、不写 signstats.txt**，
+ *  所以 P195 的确定性指纹（signstats SHA-256）不受本次增补影响。
  */
 public class P195 {
 
@@ -44,6 +49,12 @@ public class P195 {
         boolean legacy;
         double[][][] S = new double[5][2][7];      // n k med wLo wHi bLo bHi
         double[][][] M = new double[5][2][2];      // meanWest meanEast
+        /**
+         * 方向列（2026-09 增补）：v 乘上「向极符号」后的**有符号**统计。
+         * 下标 0=nW 1=kPosW 2=ciLoW 3=ciHiW 4=meanWestPole 5=meanEastPole 6=kPosE 7=meanAbsWest。
+         * **不写进 signstats.txt**（那是确定性指纹），只进 p195_report.txt。
+         */
+        double[][][] D = new double[5][2][8];
         int[][] nRow = new int[5][2], kRow = new int[5][2];
         List<Double>[][] ratios = new List[5][2];
 
@@ -75,6 +86,7 @@ public class P195 {
         writeStats(all);
         for (Win w : all) dump(w);
         verdict(w1, w2, w3);
+        direction(w1, w2, w3);
         say("总耗时 " + sec() + "s");
         rep.close();
     }
@@ -108,15 +120,18 @@ public class P195 {
         }
         boolean[][] sea = new boolean[rows][nx];
         float[][] v = new float[rows][nx];
+        float[][] vp = new float[rows][nx];   // 有符号·向极为正
         int lgNx = 0, lgRows = 0;
         boolean[][] lsea = null;
         float[][] lv = null;
+        float[][] lvp = null;
         int[] lgRowZ = null, lgBand = null, lgHem = null;
         if (lg != null) {
             lgNx = (lg.x1 - lg.x0) / STEP;
             lgRows = 5 * 2 * lg.rpb;
             lsea = new boolean[lgRows][lgNx];
             lv = new float[lgRows][lgNx];
+            lvp = new float[lgRows][lgNx];
             lgRowZ = new int[lgRows]; lgBand = new int[lgRows]; lgHem = new int[lgRows];
             int q = 0;
             for (int b = 0; b < 5; b++) {
@@ -140,7 +155,11 @@ public class P195 {
                     int z = rowZ[r];
                     boolean land = NoiseContinentGrid.landResidual(x, z, SEED) >= 0.0;
                     sea[r][i] = !land;
-                    if (!land) v[r][i] = (float) Math.abs(RelaxedClimate.sampleCurrent(x, z, SEED)[1]);
+                    if (!land) {
+                        double[] cur = RelaxedClimate.sampleCurrent(x, z, SEED);
+                        v[r][i] = (float) Math.abs(cur[1]);
+                        vp[r][i] = (float) (hem[r] == 0 ? cur[1] : -cur[1]);
+                    }
                 }
                 if (lg != null) {
                     int li = (x - lg.x0) / STEP;
@@ -149,21 +168,26 @@ public class P195 {
                             int z = lgRowZ[r];
                             boolean land = NoiseContinentGrid.landResidual(x, z, SEED) >= 0.0;
                             lsea[r][li] = !land;
-                            if (!land) lv[r][li] = (float) Math.abs(RelaxedClimate.sampleCurrent(x, z, SEED)[1]);
+                            if (!land) {
+                                double[] cur = RelaxedClimate.sampleCurrent(x, z, SEED);
+                                lv[r][li] = (float) Math.abs(cur[1]);
+                                lvp[r][li] = (float) (lgHem[r] == 0 ? cur[1] : -cur[1]);
+                            }
                         }
                     }
                 }
             }
             say("  tile " + tx + " 完成 t=" + sec() + "s");
         }
-        aggregate(w, sea, v, nx, rows, band, hem);
-        if (lg != null) aggregate(lg, lsea, lv, lgNx, lgRows, lgBand, lgHem);
+        aggregate(w, sea, v, vp, nx, rows, band, hem);
+        if (lg != null) aggregate(lg, lsea, lv, lvp, lgNx, lgRows, lgBand, lgHem);
     }
 
-    static void aggregate(Win w, boolean[][] sea, float[][] v, int nx, int rows,
+    static void aggregate(Win w, boolean[][] sea, float[][] v, float[][] vp, int nx, int rows,
                           int[] band, int[] hem) {
         double[][] sw = new double[5][2], se = new double[5][2];
-        int[][] nb = new int[5][2], nk = new int[5][2];
+        double[][] swp = new double[5][2], sep = new double[5][2], saw = new double[5][2];
+        int[][] nb = new int[5][2], nk = new int[5][2], nkpW = new int[5][2], nkpE = new int[5][2];
         for (int r = 0; r < rows; r++) {
             int b = band[r], h = hem[r], i = 0;
             while (i < nx) {
@@ -181,6 +205,15 @@ public class P195 {
                     nb[b][h]++;
                     sw[b][h] += mw;
                     se[b][h] += me;
+                    double c1 = 0, c2 = 0;
+                    for (int q = i; q < i + edge; q++) c1 += vp[r][q];
+                    for (int q = e - edge + 1; q <= e; q++) c2 += vp[r][q];
+                    double mwp = c1 / edge, mep = c2 / edge;
+                    swp[b][h] += mwp;
+                    sep[b][h] += mep;
+                    saw[b][h] += mw;
+                    if (mwp > 0) nkpW[b][h]++;
+                    if (mep > 0) nkpE[b][h]++;
                     if (mw > me) nk[b][h]++;
                     if (me > 1e-6) w.ratios[b][h].add(mw / me);
                 }
@@ -225,8 +258,71 @@ public class P195 {
                 w.S[b][h][6] = bc[1];
                 w.M[b][h][0] = n > 0 ? sw[b][h] / n : Double.NaN;
                 w.M[b][h][1] = n > 0 ? se[b][h] / n : Double.NaN;
+                double[] ciP = wilson(nkpW[b][h], n);
+                w.D[b][h][0] = n;
+                w.D[b][h][1] = nkpW[b][h];
+                w.D[b][h][2] = ciP[0];
+                w.D[b][h][3] = ciP[1];
+                w.D[b][h][4] = n > 0 ? swp[b][h] / n : Double.NaN;
+                w.D[b][h][5] = n > 0 ? sep[b][h] / n : Double.NaN;
+                w.D[b][h][6] = nkpE[b][h];
+                w.D[b][h][7] = n > 0 ? saw[b][h] / n : Double.NaN;
             }
         }
+    }
+
+    /**
+     * 方向判定（2026-09 增补）。
+     *
+     * <p>P195 原来只量 |v| 的**大小**不对称（西缘是否比东缘快），这对「有没有西边界强化」是够的，
+     * 但对「有没有**冷**流」不够：暖流与冷流由**同一个**西边界强化机制产生，区别只在方向 ——
+     * 副热带西边界向极（湾流/黑潮），副极地西边界向赤道（亲潮/拉布拉多）。
+     *
+     * <p>本世界只有**一条极点线**（bandD=1 在 z=500k），两侧是同一个极点的两条翼，
+     * 两翼的 f 都从赤道的 0 涨到极点的最大 —— 所以**两翼都是「北半球式」**，涡旋旋向相同，
+     * 不需要半球镜像。向极符号：h=0（bandD 随 z 上升）+1，h=1（bandD 随 z 下降）−1。
+     *
+     * <p>预期（若风生涡旋成立）：副热带(b=1) 西缘 +、副极地(b=3) 西缘 −；东缘相反。
+     */
+    static void direction(Win w1, Win w2, Win w3) {
+        Win[] ws = {w1, w2, w3};
+        say("===== 方向判定 [2026-09 增补]：v 已乘向极符号；+ = 向极（暖流向），− = 向赤道（冷流向） =====");
+        say(String.format("%-8s %-4s %8s %19s %13s %13s %13s",
+            "带", "翼", "海盆n", "西缘向极>0比例[95%CI]", "西缘均值", "东缘均值", "西缘|v|均值"));
+        for (int b = 0; b < 5; b++) {
+            for (int h = 0; h < 2; h++) {
+                double n = w1.D[b][h][0];
+                if (n <= 0) continue;
+                say(String.format("%-8s %-4s %8d   %6.3f [%6.3f,%6.3f] %13.5f %13.5f %13.5f",
+                    BN[b], h == 0 ? "北翼" : "南翼", (int) n,
+                    w1.D[b][h][1] / n, w1.D[b][h][2], w1.D[b][h][3],
+                    w1.D[b][h][4], w1.D[b][h][5], w1.D[b][h][7]));
+            }
+        }
+        say("----- 三窗一致性（西缘向极均值符号，两翼合并；单位 m/s）-----");
+        say(String.format("%-8s %14s %14s %14s  %s", "带", "窗口1 西缘均值", "窗口2 西缘均值", "窗口3 西缘均值", "判定"));
+        int nPole = 0, nEq = 0, nUnd = 0;
+        for (int b = 0; b < 5; b++) {
+            double[] m = new double[3];
+            for (int q = 0; q < 3; q++) {
+                double s = 0; int c = 0;
+                for (int h = 0; h < 2; h++) {
+                    if (ws[q].D[b][h][0] > 0) { s += ws[q].D[b][h][4]; c++; }
+                }
+                m[q] = c > 0 ? s / c : Double.NaN;
+            }
+            boolean allPos = !Double.isNaN(m[0]) && m[0] > 0 && m[1] > 0 && m[2] > 0;
+            boolean allNeg = !Double.isNaN(m[0]) && m[0] < 0 && m[1] < 0 && m[2] < 0;
+            String v;
+            if (allPos) { v = "西边界向极（暖流方向）"; nPole++; }
+            else if (allNeg) { v = "西边界向赤道（冷流方向）"; nEq++; }
+            else { v = "不可判定"; nUnd++; }
+            say(String.format("%-8s %14.5f %14.5f %14.5f  %s", BN[b], m[0], m[1], m[2], v));
+        }
+        say("方向汇总：西边界向极（暖流向）" + nPole + " 带，向赤道（冷流向）" + nEq
+            + " 带，不可判定 " + nUnd + " 带（共 5 带）。");
+        say("读法：冷流要求【副极地(b=3) 西边界向赤道】。若 b=1 与 b=3 同为向极或同为向赤道，"
+            + "那不是涡旋，而是同一种纬向强迫响应。");
     }
 
     static double[] wilson(int k, int n) {

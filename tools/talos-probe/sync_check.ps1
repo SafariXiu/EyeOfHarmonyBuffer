@@ -32,6 +32,23 @@ param(
     [switch]$WriteBaseline
 )
 
+
+# ---- SHA256 helper -------------------------------------------------------------------
+# WHY: this script used Get-FileHash, which stopped resolving in the runprobe4.bat child
+# process mid-session (2026-09-14) -- 'Get-FileHash is not recognized as the name of a
+# cmdlet' -- while the same call worked from an interactive prompt. Rather than depend on
+# module autoloading, compute SHA256 with the crypto class (the same recipe fingerprint.ps1
+# already uses, and it produces the SAME uppercase hex as Get-FileHash, so the recorded
+# baselines stay valid).
+$script:EohSha = [System.Security.Cryptography.SHA256]::Create()
+# Drop-in for Get-FileHash: returns an object with a .Hash property so that every
+# existing '(Get-FileHash x).Hash' call site keeps working unchanged.
+function Get-EohHash([string]$path) {
+    $b = [IO.File]::ReadAllBytes($path)
+    $h = [BitConverter]::ToString($script:EohSha.ComputeHash($b)).Replace('-','')
+    return New-Object psobject -Property @{ Hash = $h }
+}
+# --------------------------------------------------------------------------------------
 $ErrorActionPreference = 'Stop'
 $dir  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $dst  = 'K:\moder\EyeOfHarmonyBuffer\build\eoh_probe\mtn\com\EyeOfHarmonyBuffer'
@@ -49,7 +66,7 @@ foreach ($f in Get-ChildItem -Recurse -File -Filter *.java $dst) {
     $rel = $f.FullName.Substring($dst.Length + 1)
     $s = Join-Path $src $rel
     if (-not (Test-Path $s)) { continue }
-    if ((Get-FileHash $s).Hash -ne (Get-FileHash $f.FullName).Hash) { [void]$stale.Add($rel) } else { $ok++ }
+    if ((Get-EohHash $s).Hash -ne (Get-EohHash $f.FullName).Hash) { [void]$stale.Add($rel) } else { $ok++ }
     [void]$rels.Add($rel)
 }
 Write-Output ('SYNC_CHECK: in-sync ' + $ok + '; stale ' + $stale.Count)
@@ -59,7 +76,7 @@ foreach ($r in $stale) { Write-Output ('STALE_COPY ' + $r) }
 if ($WriteBaseline) {
     $lines = @()
     foreach ($rel in ($rels | Sort-Object)) {
-        $lines += ((Get-FileHash (Join-Path $src $rel)).Hash + '  ' + $rel)
+        $lines += ((Get-EohHash (Join-Path $src $rel)).Hash + '  ' + $rel)
     }
     [IO.File]::WriteAllText($base, (($lines -join [Environment]::NewLine) + [Environment]::NewLine), (New-Object Text.UTF8Encoding($false)))
     Write-Output ('SYNC_CHECK: baseline rewritten, ' + $lines.Count + ' files -> ' + $base)
@@ -71,7 +88,7 @@ if ($WriteBaseline) {
     $drift = New-Object System.Collections.ArrayList
     $missing = New-Object System.Collections.ArrayList
     foreach ($rel in ($rels | Sort-Object)) {
-        $now = (Get-FileHash (Join-Path $src $rel)).Hash
+        $now = (Get-EohHash (Join-Path $src $rel)).Hash
         if (-not $recorded.ContainsKey($rel)) { [void]$missing.Add($rel); continue }
         if ($recorded[$rel] -ne $now) { [void]$drift.Add($rel + '  ' + $recorded[$rel].Substring(0,8) + ' -> ' + $now.Substring(0,8)) }
     }

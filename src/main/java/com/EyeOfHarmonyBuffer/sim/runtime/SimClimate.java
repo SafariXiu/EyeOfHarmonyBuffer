@@ -1,0 +1,717 @@
+package com.EyeOfHarmonyBuffer.sim.runtime;
+
+import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
+import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
+import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * **新模拟器 → 世界的运行时桥**（纵向切片第 2 步：气候 → 群系）。
+ *
+ * <h3>接线点与爆炸半径</h3>
+ * 群系管线是 WorldChunkManagerTalos2.pickBiomeFor → V2BiomePicker.biomeAt
+ * → V2BiomeField.kind（250 m LUT）→ **V2BiomeSelect.accumulateWeights**
+ * → **ClimateCoords.sample**。LUT 求解时逐格调用 accumulateWeights，
+ * 运行时只查表 —— 所以「气候 → 群系」的**唯一入口**是 ClimateCoords.sample。
+ * 本类在那一个点做分派（ENABLED 为 false 时旧路径一行都不变），
+ * Coords 的每一个字段都由新模拟器给出，**下游（20 格气候带表、地形变体、高度倾向）
+ * 一行不改**：群系只通过「气候坐标」改变。
+ *
+ * <h3>① 成本：为什么必须在粗格点上算一次再双线性上采样</h3>
+ * 各量的代价（P381 实测，见 build/eoh_scratch_clim2/REPORT.md）：
+ * <pre>
+ *   PlateField.elevationWithCell（1 次高程）             ~0.4-0.6 us
+ *   Atmosphere.kappaAt（193 次 isLand 环采样）           ~56-74 us
+ *   Atmosphere.windAt（4 次 pressureAnomaly + kappa）    ~280 us
+ *   PrecipField.mmPerDay（5 次 windAt + 风暴轴涡动项）   ~1.45 ms
+ *   ⇒ 一整列气候（kappa + T + 年平风 + 4 季降水）        ~6 ms
+ * </pre>
+ * 而群系 LUT 是 **250 m** 网格（一个 100x50 km 瓦片 = 81,204 格）⇒ 直接算需要 **~8 分钟/瓦片**。
+ * 实测（P382/P386）：**旧气候**下同一个瓦片的求解要 **46~49 s**（250 m 网格让 RelaxedClimate 的
+ * 窗口缓存不断抖动，逐格代价 ~0.57 ms），完全不可能。旧实现早有现成范本
+ * （RelaxedClimate 的 TILE_X/CELL_X + halo、V2BiomeField 的 CELL/TILE + 双线性 + 瓦片缓存），
+ * 本类照同一模式做：**在粗格点上算一次、缓存、双线性上采样到 250 m**。
+ * 实测同一个瓦片的求解降到 **~2 s**。
+ *
+ * <h3>格点间距的选取理由（不是拍的）</h3>
+ * 气候场里**最细的独立物理尺度**：
+ * <pre>
+ *   COAST_BLEND（kappa 的海陆混合尺度）          800 km
+ *   风场的差分步长 gradStep（生产 500 km）       ⇒ 风在 1000 km 以下没有独立信息
+ *   ITCZ / w_zm 的纬度带宽                       1000~2000 km
+ *   PrecipField.UPWIND_STEP（上风地形取样）      150 km
+ *   ⇒ 除「原始高程」外，最细的独立尺度 ≈ 150 km。
+ * </pre>
+ * 取 CELL = 10 km ⇒ 对最细尺度 15 倍过采样、对 kappa 80 倍。
+ * 保真度实测（P383 §4）：CELL = 10 km 与 5 km 的**群系不一致率 0.105%**、与 2.5 km 差 0.080%
+ * ⇒ 10 km 已经收敛。
+ *
+ * <p><b>唯一被粗格点牺牲的量是原始高程</b>（Voronoi 棱上有最高 7,970 m 的跳变，§7/§84.5），
+ * 它进温度的方式是**海拔直减** ⇒ 本类**不把直减算进格点**：格点存的是
+ * **海平面等效温度**，每列再用**该列自己的精确高程**减一次直减率。
+ * 于是温度在格点上与生产 surfaceTemp 逐位相等，格点之间只平滑掉 10 km 以下的细节。
+ *
+ * <h3>② 季节：为什么是**4 个等间距相位求平均**</h3>
+ * 群系必须是**静态**的（不能随 Theta 闪）。取 theta = 0, pi/2, pi, 3pi/2（至日 + 分点）：
+ * <pre>
+ *   Sum_q cos(theta_q - psi) = 0   （对任意 psi、任意半球相位）  ⇒ 季节项的**年平恒为 0**
+ * </pre>
+ * ⇒ 对温度这一类「季节项线性进入」的量，4 季平均与**解析年平逐位相等**：
+ * <pre>
+ *   T_年平 = T_zm + (1-kappa)*SST'
+ *          = surfaceTemp(theta_0) - seasonalAnomaly(theta_0)
+ *            + GAMMA*max(0,elev)*kappa + (1-kappa)*SST'
+ * </pre>
+ * ⚠ <b>这里踩过一个坑（P383 抓到）</b>：第一版只写了
+ * <code>surfaceTemp(theta_0) + GAMMA*h*kappa</code>，**忘了减 seasonalAnomaly(theta_0)**，
+ * 于是 tSea 里混进了一个 **±A(phi)（中纬陆地最大 18.7 K）的假季节偏移** ——
+ * 北半球整体偏暖、南半球整体偏冷（theta_0 是北半球夏至）。探针实测：4 季平均与它的差
+ * 最大 **42.1 K**。修好后两者差 &lt; 1e-12 K（P383 §1）。⇒ **温度可以只算一季，省 3/4 调用**。
+ *
+ * <p>对**非线性**的量（wEff 里迁移的 ITCZ、precip 的 max(0,.) 截断、风暴轴涡动项、风矢量）
+ * 不能只取一季：单季取样会把 ITCZ 挪到 10 度以外（theta=0 是北半球夏至），
+ * 赤道群系会整条错位。所以**降水与风都真的取 4 季平均**。
+ *
+ * <h3>③ 归一化：物理量 → [0,1] 的锚（都能被真实观测核对）</h3>
+ * <pre>
+ *   temp  = 0.10 + (T_sfc(K) - 255.15) / 55        T ∈ [255.15, 299.15] ⇒ [0.10, 0.90]
+ *   moist = 0.4974*log10(P_mm/yr) - 0.8525         P ∈ {200,400,900,2000} ⇒ {0.29,0.44,0.62,0.79}
+ *   continent = kappa（已经是 [0,1]，不做映射）
+ * </pre>
+ * 锚点表（V2BiomeSelect 的带心 ↔ 观测）：
+ * <pre>
+ *   带心  坐标   本式反推的物理量        真实观测锚
+ *   0.10  极地   255.2 K (-18.0 C)      北极年平 -18 C；也正是 Atmosphere.T_zm 的极点值
+ *   0.30  苔原   266.2 K (-7.0 C)       苔原带年平 -5~-8 C
+ *   0.52  温带   278.3 K (+5.1 C)       寒温带针叶林/温带年平 3~8 C
+ *   0.72  亚热带 289.3 K (+16.1 C)      亚热带年平 16~18 C
+ *   0.90  热带   299.2 K (+26.0 C)      热带雨林年平 26~27 C；也正是 T_zm 的赤道值
+ *   0.30  干旱   ~200 mm/yr            真沙漠 < 250 mm/yr
+ *   0.44  半干旱 ~400 mm/yr            半干旱草原 250~500 mm/yr
+ *   0.60  湿润   ~880 mm/yr            湿润森林 600~1500 mm/yr
+ *   0.80  过湿   ~2000 mm/yr           雨林/过湿 > 2000 mm/yr
+ * </pre>
+ * 温度的两个端点锚**就是 Atmosphere.T_zm 拟合地球观测用的那两个点**（赤道 299 K / 极 255 K）
+ * ⇒ 归一化与温度场用的是同一套观测，不是两套。降水用 4 个观测降水级做 log 线性回归，
+ * 残差 &lt;= 0.017 坐标（= 降水的 8%），四个带心全部落在观测级里。
+ *
+ * <h3>湿度用的是**生产降水场本身**，不是另写一套</h3>
+ * logP = log10( 4 季平均的 PrecipField.mmPerDay(x,z,seed,cell,theta,500_000) x 365.25 )
+ * ⇒ 群系的「湿」与 /talosmap 的降水图层是**同一个函数**，不存在口径漂移。
+ * 代价是每格点 4 x 1.45 ms（占整个瓦片求解的 ~25%）；换掉的是「自己用 50 km 格点重算散度」
+ * 带来的 **30~77% 的降水偏差**（P383 第一版实测，那版已废弃）。
+ *
+ * <h3>为什么不读 {@code oro}（重要）</h3>
+ * 第 1 步之后世界的海陆由 PlateField 决定，而 OrographyField.OroSample 来自**旧陆海场**
+ * NoiseContinentGrid（两者实测不一致 ~10%，见 P385）。群系 LUT 对**每一格**都用 asLand=true
+ * 求解（海格的陆地通道留给海岸线取用），于是若读 oro.elevation01，会在「旧场说是海、
+ * 新场说是陆」的地方拿到 elevation01 = 0（没有直减）⇒ 引入一个与地形无关的假平地。
+ * **本类一个字段都不读 oro**，参数只为与旧签名逐位兼容而保留。
+ *
+ * <h3>与 SimTerrain 的关系</h3>
+ * 种子映射共用 {@link SimTerrain#seedOf(int)} —— 气候与地形必须落在**同一个** PlateField
+ * 世界上，否则 kappa 的海岸线与方块海岸线会错位。
+ *
+ * <p>纯函数：给定 (seed, x, z) 结果逐位可复现；唯一的静态可变状态是
+ * **瓦片缓存**（{@link #clearCache()}）与开关注入点。
+ */
+public final class SimClimate {
+
+    private SimClimate() {}
+
+    /** 总开关。false ⇒ ClimateCoords.sample 一行都不走这里，与接线前**逐位相同**（P384 实测）。 */
+    public static boolean ENABLED = true;
+
+    // ==================== 网格几何 ====================
+
+    /**
+     * 主格点间距（m）。**必须整除 TILE_X 与 TILE_Z**（否则相邻瓦片的格点不在同一个绝对格上
+     * ⇒ 双线性插值在瓦片边界不连续）。
+     *
+     * <p>10 km 的依据见类注释：气候场最细的独立尺度 ≈ 150 km（UPWIND_STEP），15 倍过采样；
+     * 与 5 km / 2.5 km 的群系不一致率 0.105% / 0.080%（P383 §4）。
+     */
+    public static int CELL = 10_000;
+
+    /**
+     * **到海岸的距离量的搜索半窗（m）—— 群系 continent 坐标专用**（审计 D18-(c2)）。
+     *
+     * <p>⚠ <b>2026-09-13 更正</b>：本字段的语义在 D18 的两次尝试之间**变过**，本段原来描述的是
+     * **已被放弃的那一版**（「40 km 半径的陆地占比」）。现行实现是
+     * {@code continent = clamp01(-PlateField.coastDistanceNew(x,z,seed,cell,COAST_FINE) / COAST_FINE)}，
+     * 即**与旧 ClimateCoords:94 逐字同式的「距离」量**，只是换了场（新场 PlateField）。
+     *
+     * <p>为什么放弃「占比」型：**任何陆地占比在离岸 d 处都是 0.5 + d/(pi*R/2)** ——
+     * 想让 24 km 处达到旧语义的 0.60 就需要 R≈76 km，**而那时岸线处仍是 0.5** ⇒ 端点对不上。
+     * P454 实测：40 km 半径下 kapFine(24 km) 只有 0.038，而旧语义要 0.60 —— **量程差一个数量级**。
+     *
+     * <p>⚠ 也**不能**退回旧的 {@code OrographyField.coastDist}：那个来自**旧场** NoiseContinentGrid，
+     * 而 D16-a 刚把方块/群系的海陆统一到新场 ⇒ 用它等于把旧场请回来。
+     * ⇒ 做法是：**在新场 PlateField 上算一个距离量**（{@code PlateField.coastDistanceNew}）。
+     *
+     * <p>⚠⚠ 本段曾有一版写「用 40 km 半径的陆地**占比**」，并推导「带宽 0.16 = 15 个量化台阶」。
+     * **那一版已被放弃**（P454 实测证伪：占比型在离岸 d 处恒为 0.5 + d/(pi*R/2)，
+     * 24 km 处只到 0.038 而旧语义要 0.60 ⇒ **端点对不上、量程差一个数量级**）。
+     * 引这段旧推导请先读 §118.9。
+     */
+    public static int COAST_FINE = 40_000;
+
+    /**
+     * 瓦片尺寸（m）。
+     *
+     * <p>为什么不能取 1:1（第一版就是 1:1，被 P388 §7 抓到）：群系 LUT 的求解范围含
+     * **±250 m halo**，而缓存是按「包含该点的瓦片」索引的 ⇒ 瓦片边界上的 halo 列会落进
+     * **邻居瓦片**，一次 V2BiomeField 求解要连带解 **9 个**气候瓦片（3x3），首个瓦片 8.9 s
+     * 里 7.5 s（84%）花在气候上。
+     *
+     * <p>⚠⚠ <b>2026-09-13 更正（审计 D20）</b>：本段原来写「取 2x2 之后，每个群系瓦片（含 halo）
+     * **恰好落在一个气候瓦片内**」，并声称 TILE_X/TILE_Z 是 V2BiomeField 的 **2x2 倍**。
+     * <b>两句都不成立</b>：代码里 TILE_X=100_000 / TILE_Z=50_000，与
+     * {@code V2BiomeField.TILE_X/TILE_Z} <b>完全相同</b>（那是 <b>1:1</b>，不是 2x2）；
+     * 而且 V2BiomeField 的 halo 采样点在 {@code originX ± CELL/2 = ±125 m}，
+     * <b>已经跨出</b>气候瓦片 ⇒ 一次冷启动的群系瓦片仍会连带解 <b>3x3 = 9 个</b>气候瓦片。
+     * （数值正确性不受影响 —— 每个瓦片自带 halo 副本；受影响的是**冷启动成本**。）
+     *
+     * <p>原句的后续：
+     * 瓦片内** ⇒ 一次求解一个气候瓦片。2:1 是对齐关系里最小的可行值。
+     */
+    public static final int TILE_X = 100_000;
+    public static final int TILE_Z = 50_000;
+
+    /** 风/气压的差分步长（m）。**必须与生产 Atmosphere.windAt 的实参一致**（500 km）。 */
+    public static int GRAD_STEP = 500_000;
+
+    /** 上风取样距离（m）—— 只用于 onshore 这个诊断位。 */
+    public static int UPWIND_OFFSET = 15_000;
+
+    /** 坡度诊断的差分步长（m）与饱和尺度（无量纲坡度）。2% = 20 m/km = 典型山前坡度。 */
+    public static int SLOPE_STEP = 2_000;
+    public static double SLOPE_SCALE = 0.02;
+
+    /** 瓦片缓存容量（个）。每个瓦片 ≈ 10 KB（84 个格点 x 9 条通道）。 */
+    public static int CACHE_LIMIT = 64;
+
+    /** 4 个等间距季节相位（至日 + 分点）。theta=0 是北半球夏至（Atmosphere 的约定）。 */
+    public static final double[] SEASON = {0.0, Math.PI / 2, Math.PI, 3 * Math.PI / 2};
+
+    // ==================== 归一化锚 ====================
+    /** 温度锚下：模型的极点年平（= 地球观测北极年平 -18 C）。 */
+    public static final double T_LO_K = 255.15;
+    /** 温度锚上：模型的赤道年平（= 地球观测赤道年平 +26 C）。 */
+    public static final double T_HI_K = 299.15;
+    /** 坐标锚：极地带心 / 热带带心（= V2BiomeSelect.TEMP_CENTER 的首末项）。 */
+    public static final double TEMP_LO = 0.10, TEMP_HI = 0.90;
+    /** temp 的斜率 = (0.90-0.10)/(299.15-255.15) = 1/55。 */
+    public static final double TEMP_SLOPE = (TEMP_HI - TEMP_LO) / (T_HI_K - T_LO_K);
+
+    /** moist = MOIST_A*log10(P_mm/yr) - MOIST_B。4 个观测降水级 {200,400,900,2000} mm/yr 的 log 线性拟合。 */
+    public static final double MOIST_A = 0.4974, MOIST_B = 0.8525;
+    /** 降水下限（mm/yr）—— 纯数值保护（log10(0)），远低于任何真实沙漠。 */
+    public static final double P_MIN_MM_YR = 1.0e-3;
+
+    /** airT 诊断的归一尺度（K）：相对纬向平均的距平 / 15 K。 */
+    public static final double AIRT_SCALE = 15.0;
+    /**
+     * airT 的分子用哪个温度（**审计 D8-b 的 A/B 开关**，用户裁决 4-C）。
+     *
+     * <p>{@code false}（默认）{@code = tSfc - tzm}，{@code true} {@code = tSea - tzm}。
+     * 两者是**同一个海平面等效层**的差别问题：{@code tSfc} 含 {@code -GAMMA*max(0,elev)*kappa}，
+     * 而 {@code tzm} 是海平面值 ⇒ 相减会把大陆点系统性压低。
+     *
+     * <p>⚠ 它**进 {@link #configStamp()}**：改了结果就必须让瓦片失效（D58 的教训）。
+     */
+    public static boolean AIRT_SEALEVEL = false;
+
+    /**
+     * 海温距平的注入点（第 3 步接 A2/A3）。null（默认）= 无海温距平 —— 与生产一致：
+     * Atmosphere.SST_PROVIDER 在 src 里**没有任何调用方**（P380 源码扫描）。
+     *
+     * <p>⚠⚠ <b>2026-09-13 修正（审计 D3）</b>：原文写的是「它只进温度这一路（本类显式加
+     * (1-kappa)*SST'）… 第 3 步把洋流接进来时要同时设置两处」——<b>这条指导是错的</b>。
+     * 因为 {@code Atmosphere.surfaceTemp} 的返回式里已经含 (1-k)*sstAnom，
+     * 「两处都设」会得到 2(1-kappa)*SST'（P447 F 段实测差 +5.000 K）。
+     * ⇒ 现在<b>只有一个注入点：Atmosphere.SST_PROVIDER</b>；
+     * {@link #SST_PROVIDER} 保留字段只为兼容探针签名（P447 的反事实分支）。
+     *
+     * <p>⚠ <b>2026-09-13 补正（审计 D56）</b>：上一句原文只说「不再参与 <b>tSea</b> 的计算」——
+     * 措辞太窄，结果<b>另外两个读者被留在原地</b>（{@code tSl -> f.q} 与 {@code f.sst}），
+     * 它们一直读到恒 null 的字段、静静贡献 0。接线之后 tSea 有 SST'、那两个没有 ⇒ 口径分裂。
+     * 现在本类<b>没有任何一处</b>读这个字段；{@code sstAnomAt} 已删除。
+     */
+    public interface SstProvider { double anomalyAt(int x, int z); }
+    public static SstProvider SST_PROVIDER = null;
+
+    // ==================== 诊断计数器 ====================
+    public static final AtomicLong SOLVE_COUNT = new AtomicLong();
+    public static final AtomicLong SOLVE_NANOS = new AtomicLong();
+    public static final AtomicLong NODE_COUNT = new AtomicLong();
+    public static final AtomicLong CACHE_HIT = new AtomicLong();
+    public static final AtomicLong CACHE_MISS = new AtomicLong();
+    public static final AtomicLong SAMPLE_COUNT = new AtomicLong();
+
+    public static void resetStats() {
+        SOLVE_COUNT.set(0); SOLVE_NANOS.set(0); NODE_COUNT.set(0);
+        CACHE_HIT.set(0); CACHE_MISS.set(0); SAMPLE_COUNT.set(0);
+    }
+
+    private static final ConcurrentHashMap<Long, Field> CACHE = new ConcurrentHashMap<Long, Field>();
+
+    /** 清空瓦片缓存。改 CELL 之后**必须**调用（几何变了）。 */
+    public static void clearCache() { CACHE.clear(); }
+
+    /** 改几何的唯一推荐入口：校验整除关系并清缓存。（探针扫参用。） */
+    public static void configure(int cell) {
+        if (cell <= 0 || TILE_X % cell != 0 || TILE_Z % cell != 0) {
+            throw new IllegalArgumentException("SimClimate 几何不合法：CELL 必须整除 TILE_X/TILE_Z（"
+                + TILE_X + "," + TILE_Z + "），得到 " + cell);
+        }
+        CELL = cell; clearCache();
+    }
+
+    // ==================== 一个瓦片 ====================
+
+    /**
+     * 一个瓦片的粗格点解。数组约定与 V2BiomeField 完全一致：含 1 格 halo
+     * （i ∈ [-1, NX]、j ∈ [-1, NZ]），索引 (j+1)*SX + (i+1)，
+     * 格点绝对坐标 = origin + i*cell + cell/2。
+     *
+     * <p><b>为什么这个约定是「无缝」的</b>：相邻瓦片的格点落在**同一个绝对格**上
+     * （要求 cell | TILE），而每个格点的值是 (seed, x, z) 的纯函数 ⇒ 两个瓦片在共享边上
+     * 插值出**逐位相同**的值，不需要任何跨瓦片通信。
+     */
+    private static final class Field {
+        final int cell, nx, nz, sx, sz;
+        final int originX, originZ;
+        /** 海平面等效年平温度（K）—— 直减率**没有**含在里面，由每列按自己的高程减。 */
+        final double[] tSea;
+        /** 大陆度 kappa ∈ [0,1]（= Atmosphere.kappaAt）。 */
+        final double[] kap;
+        /** **到海岸的距离**（block，陆为负/海为正）—— 群系 continent 坐标用它（审计 D18-(c2)）。
+         *  ⚠ 搜索半窗只有 {@link #COAST_FINE}（40 km）⇒ **>32 km 的点返回哨兵 ±80 km**，
+         *  只够 0~40 km 的语义用。要几百 km 的量程必须用 {@link #coastFar}。 */
+        final double[] coastD;
+        /** **到海岸的距离（大量程）**（block）—— 海洋影响穿透权重用它（D46）。
+         *  搜索半窗 {@link #COAST_FAR}（1600 km）⇒ 哨兵 ±3200 km，量程足够。 */
+        final double[] coastFar;
+        /** 年平风（m/s，4 季平均）。 */
+        final double[] wX, wZ;
+        /** 年平降水的 log10(mm/yr) —— 就是 PrecipField.mmPerDay 的 4 季平均。 */
+        final double[] logP;
+        /** 近地比湿（kg/kg，4 季平均）与海温距平（K）—— 诊断用。 */
+        final double[] q, sst;
+        /** 迎风抬升 / 背风下沉（[0,1]，tanh 饱和）。 */
+        final double[] up, lee;
+
+        Field(int cell, int nx, int nz, int ox, int oz) {
+            this.cell = cell; this.nx = nx; this.nz = nz; this.sx = nx + 2; this.sz = nz + 2;
+            this.originX = ox; this.originZ = oz;
+            int n = sx * sz;
+            tSea = new double[n]; kap = new double[n]; coastD = new double[n]; coastFar = new double[n];
+            wX = new double[n]; wZ = new double[n];
+            logP = new double[n]; q = new double[n]; sst = new double[n]; up = new double[n]; lee = new double[n];
+        }
+    }
+
+    /**
+     * **配置指纹**（审计 D2）：把这一跑所依赖的**全部可变旋钮**压成一个 long，异或进缓存键。
+     *
+     * <p>为什么必须有：瓦片缓存原来只按 (seed, tx, tz) 索引，于是改任何一个旋钮
+     * （CELL / GRAD_STEP / SST_PROVIDER / Atmosphere 的一堆 public static / …）都**不会让旧瓦片失效**
+     * —— P447 E 段实测：把 ZonalTables.SEA_ONLY_UZM 翻一下而**不清缓存**，windX 仍是旧值 −2.447146；
+     * 清缓存后才变成 −3.489431（**差 1.042 m/s = 43%**）。
+     * 更坏的是**部分淘汰**之后，同一条纬线上的相邻瓦片会来自不同配置 ⇒ 瓦片边界出现真实跳变。
+     *
+     * <p>做法：**每次 field() 现算**（几十次算术，相对 sample 的 668 ns 可忽略），
+     * 异或进键 ⇒ 旋钮一变、键就变 ⇒ 自动失效，不需要调用方守纪律。
+     */
+    /** **public 是为了让海洋场复用同一个配置指纹**（第三步接线；避免两套 stamp 漂移）。 */
+    public static long configStamp() {
+        long h = 1125899906842597L;
+        h = h * 31 + CELL; h = h * 31 + GRAD_STEP; h = h * 31 + UPWIND_OFFSET; h = h * 31 + SLOPE_STEP;
+        h = h * 31 + Double.doubleToLongBits(SLOPE_SCALE);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.KAPPA_MEAN);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_GAIN);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_MIGRATION);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_TROPIC_GATE_DEG);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.PLATEAU_AMP);
+        h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
+        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.SEA_ONLY_UZM ? 1 : 0);
+        h = h * 31 + (Atmosphere.COAST_WIND_ON ? 1 : 0);
+        h = h * 31 + (Atmosphere.SST_PROVIDER == null ? 0 : 1);
+        h = h * 31 + (SST_PROVIDER == null ? 0 : 1);
+        // ⚠⚠ 审计 D58（2026-09-13）修：上面那个 0/1 位只说明「**有没有**海洋」，
+        // **不说明「海洋是用什么参数算的」**。改 OceanField 的 A_H/ROW_H/GRAD/… 之后，
+        // SST' 会变（OceanField 自己的海盆缓存会失效并重解），但本类的瓦片**不会**失效 ⇒
+        // 旧瓦片（用旧 SST' 算的）被继续使用。P476 A 段实测陈旧量 **1.3837 K**。
+        // ⇒ 把海洋侧的完整指纹折进来。
+        //
+        // ⚠ 这引入了 sim.runtime -> sim.ocean 的**包级循环**（OceanField 也依赖本类）。
+        //   这是**有意**的：两者都是静态工具类，且**没有循环初始化**
+        //   （唯一跨 <clinit> 的边是 OceanField.H_TOTAL -> CoastalLayer.H_TOTAL，单向；
+        //    configStamp() 全是运行期调用，那时所有 <clinit> 早已跑完）。
+        //   ⇒ 改动这里时不要把它当缺陷删掉。
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.OceanField.configStamp();
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EPS_C);
+        h = h * 31 + Double.doubleToLongBits(MARITIME_SCALE);
+        h = h * 31 + COAST_FAR;
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_MIX);
+        h = h * 31 + PrecipField.EDDY_CLOSURE;
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_TAU);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_PHYS_GAIN);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.W_LOC_MAX);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.U0_STORM);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ITCZ_MIGRATION);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.UPWIND_STEP);
+        h = h * 31 + PlateField.MAX_OCEAN_HALF;
+        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_H);
+        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_FRAC);
+        return h;
+    }
+
+    private static Field field(int worldSeedInt, int tx, int tz) {
+        long key = WindowKey.of(worldSeedInt, tx, tz) ^ configStamp();
+        Field f = CACHE.get(key);
+        if (f != null) { CACHE_HIT.incrementAndGet(); return f; }
+        CACHE_MISS.incrementAndGet();
+        if (CACHE.size() >= CACHE_LIMIT) evictAny();
+        final int x = tx, z = tz;
+        return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, x, z));
+    }
+
+    /** 淘汰一个**任意**瓦片 —— 与 V2BiomeField.evictAny 同款（策略不是杠杆，容量才是）。 */
+    private static void evictAny() {
+        java.util.Iterator<Long> it = CACHE.keySet().iterator();
+        if (it.hasNext()) { CACHE.remove(it.next()); }
+    }
+
+    // ==================== 单点查询（热路径） ====================
+
+    /**
+     * 与旧 ClimateCoords.sample **逐字段同签名**的替代实现。
+     *
+     * <p>⚠ 参数 oro 故意不读（理由见类注释「为什么不读 oro」）：它来自旧陆海场，
+     * 而第 1 步之后世界的海陆由 PlateField 决定。保留参数只为调用点零改动。
+     */
+    public static ClimateCoords.Coords sample(int x, int z, int worldSeedInt, OrographyField.OroSample oro) {
+        SAMPLE_COUNT.incrementAndGet();
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        long seed = SimTerrain.seedOf(worldSeedInt);
+
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+
+        double kap = bl(f.kap, k00, k10, k01, k11, tx, tz);
+        double coastD = bl(f.coastD, k00, k10, k01, k11, tx, tz);
+        double tSea = bl(f.tSea, k00, k10, k01, k11, tx, tz);
+        double logP = bl(f.logP, k00, k10, k01, k11, tx, tz);
+        double wX = bl(f.wX, k00, k10, k01, k11, tx, tz);
+        double wZ = bl(f.wZ, k00, k10, k01, k11, tx, tz);
+        double qq = bl(f.q, k00, k10, k01, k11, tx, tz);
+        double sst = bl(f.sst, k00, k10, k01, k11, tx, tz);
+        double up = bl(f.up, k00, k10, k01, k11, tx, tz);
+        double lee = bl(f.lee, k00, k10, k01, k11, tx, tz);
+
+        // 地表温度 = 插值出来的海平面温度 - 该列**自己的**精确高程 x 直减 x kappa
+        double elev = PlateField.elevationWithCell(x, z, seed, PlateField.PLATE_CELL);
+        double tSfc = tSea - Atmosphere.GAMMA * Math.max(0.0, elev) * kap;
+
+        double lat = WorldContract.latOf(z);
+        double tzm = Atmosphere.tZonalMean(lat);
+
+        ClimateCoords.Coords c = new ClimateCoords.Coords();
+        c.temp = clamp01(TEMP_LO + (tSfc - T_LO_K) * TEMP_SLOPE);
+        c.moist = clamp01(MOIST_A * logP - MOIST_B);
+        // 审计 D18（用户裁决 (c)）：continent 用**小半径**陆地占比（岸线 = 0，恢复旧语义），
+        // 不再用大尺度 κ —— 它在岸线上恒为 0.5，且旧门的带宽（0.008）比一个量化台阶（0.0104）还窄。
+        c.continent = clamp01(-coastD / COAST_FINE);
+        c.windX = wX; c.windZ = wZ;
+        c.up = up; c.lee = lee; c.sstAnom = sst;
+        c.q = qq;
+        c.mar = clamp01(1.0 - kap);
+        // ⚠⚠ 审计 D8 的根因分析与一次**失败的修复**（2026-09-13，已撤回，记账）：
+        // 现状 (tSfc - tzm)/AIRT_SCALE 把**含海拔直减的地表温度**与**海平面**纬向平均相减 ——
+        // 两个不同高度层在相减 ⇒ 大陆点被 -GAMMA*elev*kappa 系统性压低 ⇒ airT 恒负。
+        // P458 实测后果：airMass 四类里「大陆性+暖」只占 **1.3%**（几乎为空），
+        // 而两个阈值 mar>=0.5 与 airT>=0 都落在中位数附近 ⇒ 世界被两个刀切面分成四类。
+        //
+        // 我改成 (tSea - tzm)/AIRT_SCALE（同层相比），P458 复测四类变成 21.0/19.0/35.4/24.6 —— 看起来修好了。
+        // **但那是假象**：tSea = T_zm + (1-kappa)*SST'，而 **SST_PROVIDER = null** ⇒ tSea == T_zm
+        // ⇒ airT 只剩「双线性插值 vs 精确纬度」的残差（~1e-5）⇒ **符号是浮点噪声**，
+        // 而 airMass 的类别 2/3 正是由这个符号决定 ⇒ 比改之前更糟。**已撤回。**
+        //
+        // ⇒ **真正的结论**：airMass 的「暖/冷」轴**结构上没有物理内容** ——
+        // 年平温度场 tSea = T_zm + (1-kappa)*SST'，在没有 SST 时**完全没有海陆热力对比**；
+        // 对比全都活在**季节项 A(phi, kappa)** 里，而 tSea 恰恰把季节项减掉了。
+        // **⇒ 这属于第 3 步（接洋流/SST）的接线缺口，不是今天能修的 bug。**
+        //
+        // ⚠⚠ **2026-09-13：第 3 步已经接上了（§162）⇒ D8 的前提变了，必须重新裁决。**
+        //   - 上面那段的前提是「SST_PROVIDER = null ⇒ tSea == T_zm」；现在
+        //     Atmosphere.SST_PROVIDER 是**活的**（OceanField），tSea = T_zm + (1-k)*SST'，
+        //     **有海陆/洋盆热力对比了**（副热带西边界流 ±4~7 K）。
+        //   - 所以「airT 只是浮点噪声」这个结论**不再成立**；但 D8 的**原始**批评仍然成立：
+        //     tSfc 含 -GAMMA*max(0,elev)*kap，与**海平面**的 tzm 相减 ⇒ 大陆点被系统性压低。
+        //   - ⇒ 现在是一个**有物理内容但也有系统性偏差**的轴。要不要改成同层相比、
+        //     改了之后四类占比是否合理 —— **必须先用探针量出来再裁决**（P473），不许拍脑门。
+        // ⚠ D8-b 的 **A/B 开关**（用户裁决 4-C：「重新量四类再决定」）：
+        //   false（默认，现状）= tSfc - tzm —— 含海拔直减的地表温度 与 海平面纬向平均 相减；
+        //   true             = tSea - tzm —— **同层相比**（两个都是海平面等效）。
+        // 它**进 configStamp()**（改了结果就必须让瓦片失效 —— D58 的教训）。
+        c.airT = clamp(((AIRT_SEALEVEL ? tSea : tSfc) - tzm) / AIRT_SCALE, -1.0, 1.0);
+        double qs = PrecipField.qSat(tSfc);
+        c.dry = qs > 0.0 ? clamp01(1.0 - qq / qs) : 1.0;
+        c.bandD = WorldContract.bandD(z);
+        c.airMass = c.mar >= 0.5 ? (c.airT >= 0.0 ? 0 : 2) : (c.airT >= 0.0 ? 1 : 3);
+        double sp = Math.hypot(wX, wZ);
+        c.onshore = sp > 1.0e-6
+            && !PlateField.isLandWithCell(x + (int) (wX / sp * UPWIND_OFFSET),
+                                          z + (int) (wZ / sp * UPWIND_OFFSET), seed, PlateField.PLATE_CELL);
+        return c;
+    }
+
+    /**
+     * 该点的**大陆度 κ**（= {@code Atmosphere.kappaAt}，走同一个瓦片缓存 + 双线性插值）。
+     *
+     * <p>⚠ <b>D46</b>：**不要把 {@link #coords} 的 {@code out3[2]} 当成 κ 用** ——
+     * 那是 {@code continent}（= {@code clamp01(-coastD / COAST_FINE)}，一个 **40 km 就饱和**的
+     * **到岸距离**坡）。两者在**岸线上**分别是 **0.5**（κ：岸线 landFraction = 0.5）与 **0**。
+     *
+     * <p>成本：一次瓦片查表 + 4 次双线性 ⇒ **纳秒级**（对比 {@code Atmosphere.kappaAt} 的 ~60 us，
+     * 后者会让 {@code composeColumn} 的 347 ns/列 慢 170 倍）。
+     */
+    public static double kappaAt(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1);
+        return bl(f.kap, k00, k00 + 1, k00 + f.sx, k00 + f.sx + 1, tx, tz);
+    }
+
+    /**
+     * **海洋影响向内陆的穿透尺度（m）** —— 雪线的海陆季节振幅过渡用它（D46 修复）。
+     *
+     * <p><b>观测依据（我自己取的，可复现）</b>：ERA5 月平均 2 m 气温（2015 年 12 个月，0.25°），
+     * 经 NOAA/UH APDRC OPeNDAP：
+     * <code>https://apdrc.soest.hawaii.edu/dods/public_data/Reanalysis_Data/ERA5/monthly_2d/Surface.ascii</code>
+     * 变量 <code>t2m</code> / <code>sst</code>（sst 缺测 = 陆地，做掩膜）。
+     * 取北美大西洋/墨西哥湾一侧（排除太平洋岸）的年较差随离岸距离：
+     * <pre>
+     *   30~35N:  0-50 km 19.2 K | 50-100 19.9 | 100-200 21.0 | 200-300 22.0 | 300-500 22.8
+     *   ⇒ 拟合 R(d) = Rinf - (Rinf-R0)exp(-d/L) 得 **L ≈ 200 km**
+     * </pre>
+     * 一条更南/更北的断面被山脉与哈德逊湾混淆，只取这一条干净的。
+     * ⚠ 局限：1 年、0.25°、距离用「最近海洋」、山脉未剔除 ⇒ 只当**量级**用，
+     * 用户批准的取值带是 **200~400 km**，取观测值 **200 km**。
+     */
+    public static double MARITIME_SCALE = 200_000.0;
+
+    /** **大量程海岸距离的搜索半窗（m）** —— 必须 >= 3 x {@link #MARITIME_SCALE}（D46 / E20）。 */
+    public static int COAST_FAR = 1_600_000;
+
+    /**
+     * **海洋影响权重**：海岸 = 0（完全海洋性），内陆 ≳3 个 {@link #MARITIME_SCALE} 后 → 1（完全大陆性）。
+     * 纯距离函数、C∞、无阈值 if。**这是 D46 的修复量** —— 它与 {@code continent}
+     * （40 km 就饱和的到岸距离坡）和 κ（{@code COAST_BLEND} = 800 km 的陆海混合）**都不是同一个量**。
+     */
+    public static double maritimeInland(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1);
+        // ⚠ 必须用 coastFar（大量程），不能用 coastD —— 后者 >32 km 就是哨兵（E20）。
+        double d = bl(f.coastFar, k00, k00 + 1, k00 + f.sx, k00 + f.sx + 1, tx, tz);
+        return 1.0 - Math.exp(-Math.max(0.0, -d) / MARITIME_SCALE);
+    }
+
+    /** 只取气候坐标（省一个 Coords 分配；探针/出图用）。 */
+    public static void coords(int x, int z, int worldSeedInt, double[] out3) {
+        ClimateCoords.Coords c = sample(x, z, worldSeedInt, null);
+        out3[0] = c.temp; out3[1] = c.moist; out3[2] = c.continent;
+    }
+
+    // ==================== 离线求解 ====================
+
+    private static Field solve(int worldSeedInt, int tx, int tz) {
+        long t0 = System.nanoTime();
+        SOLVE_COUNT.incrementAndGet();
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        int cell = CELL;
+        int nx = TILE_X / cell, nz = TILE_Z / cell;
+        Field f = new Field(cell, nx, nz, tx * TILE_X, tz * TILE_Z);
+        int pc = PlateField.PLATE_CELL;
+        for (int j = -1; j <= nz; j++) {
+            int z = f.originZ + j * cell + cell / 2;
+            double lat = WorldContract.latOf(z);
+            double tzm = Atmosphere.tZonalMean(lat);
+            for (int i = -1; i <= nx; i++) {
+                int x = f.originX + i * cell + cell / 2;
+                int k = (j + 1) * f.sx + (i + 1);
+                NODE_COUNT.incrementAndGet();
+                solveNode(f, k, x, z, lat, tzm, seed, pc);
+            }
+        }
+        SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
+        return f;
+    }
+
+    /** 单个粗格点。抽成方法只为让循环体可读（内联由 JIT 负责）。 */
+    private static void solveNode(Field f, int k, int x, int z, double lat, double tzm, long seed, int pc) {
+        double kap = Atmosphere.kappaAt(x, z, seed, pc);
+        double elev = PlateField.elevationWithCell(x, z, seed, pc);
+        // ⚠⚠ 审计 D56（2026-09-13，接线当天抓到的口径分裂）：
+        // 这里原来是 sstAnomAt(x, z)，读的是**已废弃**的 SimClimate.SST_PROVIDER（恒 null ⇒ 恒 0）。
+        // 而同一个函数的 tSea（下面几行）走的是 Atmosphere.surfaceTemp ⇒ 含**活的**
+        // Atmosphere.SST_PROVIDER。于是**接线之后**，同一个瓦片节点里：
+        //   tSea  = T_zm + (1-k)*SST'      （有 SST'）
+        //   tSl   = T_zm + 季节项 + 0       （没有 SST'）→ 进 PrecipField.moisture → f.q
+        //   f.sst = 0                       → 进 ClimateCoords.sstAnom → 群系/湿润
+        // 接线之前两者都是 0，所以「一致」；接线之后**必然分裂**。这是接线自己打开的口径口子。
+        // ⇒ 现在本类所有 SST' 读取都走 Atmosphere.sstAnom 这**唯一**注入点。
+        double sstA = Atmosphere.sstAnom(x, z);
+
+        // 海平面等效**年平**温度：
+        //   surfaceTemp(th) = T_zm + seasonalAnomaly(th) - GAMMA*max(0,elev)*kappa + (1-kappa)*SST'
+        //   Sum_q seasonalAnomaly(th_q)/4 == 0  ⇒  年平 = T_zm + (1-kappa)*SST'
+        // 所以取一季的 surfaceTemp 后要**减掉**该季的季节项、加回节点自己的直减项。
+        // ⚠ 漏掉 seasonalAnomaly 这一项会让 tSea 混进 ±A(phi)（中纬陆地最大 18.7 K）的
+        //    假季节偏移（P383 实测 4 季平均与它差 42.1 K）。
+        // 海平面等效年平温度 = T_zm + (1-kappa)*SST'。
+        // ⚠⚠ 2026-09-13 修正（审计 D3）：这里原来还有一项「+ (1.0 - kap) * sstA」，
+        // 但 Atmosphere.surfaceTemp 的返回式里**已经含** (1-k)*sstAnom(x,z)（Atmosphere.java:364），
+        // 他没有被下面的减法减掉 ⇒ 两个 provider 都设时得到 **2(1-kappa)*SST'**。
+        // P447 F 段实测：kappa=0 处两个都设 +5 K ⇒ SimClimate = 309.145996 K，
+        // 而生产 surfaceTemp 年平 = 304.145996 K，**差恰好 +5.000 K**。
+        // 触发条件正是类注释（见 SST_PROVIDER 那一段）推荐的第 3 步接法「同时设置两处」。
+        // ⇒ 现在 SST 只从 Atmosphere.SST_PROVIDER **单点**注入；SimClimate.SST_PROVIDER 已废弃。
+        double tSea = Atmosphere.surfaceTemp(x, z, seed, pc, SEASON[0])
+                    - Atmosphere.seasonalAnomaly(lat, kap, SEASON[0])
+                    + Atmosphere.GAMMA * Math.max(0.0, elev) * kap;
+        f.kap[k] = kap;
+        f.coastD[k] = PlateField.coastDistanceNew(x, z, seed, pc, COAST_FINE);
+        // ⚠ E20（我自己的错误，P461 抓到）：coastD 的半窗只有 40 km ⇒ 它**根本量不到** 200 km 的
+        // 海洋影响尺度（>32 km 全是哨兵 ±80 km）⇒ 我第一版 maritimeInland 会把整个内陆压到 0.33。
+        // ⇒ 另算一个大量程的距离场（每个瓦片节点多一次 coastDistanceNew，约 75 us x 66 节点
+        //   = 5 ms/瓦片，相对瓦片求解的 0.3~3 s 可忽略）。
+        f.coastFar[k] = PlateField.coastDistanceNew(x, z, seed, pc, COAST_FAR);
+        f.tSea[k] = tSea;
+        f.sst[k] = sstA;
+
+        // 年平风（必须真取 4 季平均：p' 的季节项与 U_zm 的 1/7 月表插值都随 theta 变）
+        double ux = 0.0, uz = 0.0;
+        for (int s = 0; s < SEASON.length; s++) {
+            double[] w = Atmosphere.windAt(x, z, seed, pc, SEASON[s], GRAD_STEP);
+            ux += w[0] * 0.25;
+            uz += w[1] * 0.25;
+        }
+        f.wX[k] = ux; f.wZ[k] = uz;
+
+        // 迎风抬升 / 背风下沉：tanh 饱和（零阈值；SLOPE_SCALE = 2% 坡度 -> 0.76）
+        int st = SLOPE_STEP;
+        double gx = (PlateField.elevationWithCell(x + st, z, seed, pc)
+                   - PlateField.elevationWithCell(x - st, z, seed, pc)) / (2.0 * st);
+        double gz = (PlateField.elevationWithCell(x, z + st, seed, pc)
+                   - PlateField.elevationWithCell(x, z - st, seed, pc)) / (2.0 * st);
+        double sp = Math.hypot(ux, uz);
+        double dot = sp > 1.0e-9 ? (ux * gx + uz * gz) / sp : 0.0;
+        f.up[k] = sat(dot);
+        f.lee[k] = sat(-dot);
+
+        // 年平降水 = **生产降水场本身**的 4 季平均（mm/yr）；顺带记 4 季平均比湿。
+        double hUp = PrecipField.upwindElev(x, z, seed, pc, ux, uz);
+        double pMmDay = 0.0, qSum = 0.0;
+        for (int s = 0; s < SEASON.length; s++) {
+            double th = SEASON[s];
+            pMmDay += PrecipField.mmPerDay(x, z, seed, pc, th, GRAD_STEP) * 0.25;
+            double tSl = tzm + Atmosphere.seasonalAnomaly(lat, kap, th) + (1.0 - kap) * sstA;
+            qSum += PrecipField.moisture(tSl, kap > 0.0 ? hUp : 0.0, kap) * 0.25;
+        }
+        f.q[k] = qSum;
+        double mmYr = pMmDay * 365.25;
+        f.logP[k] = Math.log10(Math.max(mmYr, P_MIN_MM_YR));
+    }
+
+    // sstAnomAt(x,z) 已删除（审计 D56）：它读的是废弃的 SimClimate.SST_PROVIDER（恒 0），
+    // 是「两个注入点」这个错误设计的最后一处残留。全部改走 Atmosphere.sstAnom。
+
+    // ==================== 原始物理量的只读访问器 ====================
+
+    /**
+     * **该点的地表温度（K）** —— 与生产 Atmosphere.surfaceTemp(x,z,seed,cell,theta) 的
+     * **年平**在格点上**逐位相等**（P383 §1 端到端实测 max|d| = 1.7e-05 K）。
+     *
+     * <p>⚠ **含每列自己的海拔直减**，不是格点的海平面值 —— 否则雪线会错到山顶上。
+     * 可以直接替代「按高度」的雪线判据：
+     * <pre>c.snow = SimClimate.surfaceTempK(x, z, worldSeedInt) &lt; 273.15;</pre>
+     *
+     * <p>与 {@link #sample} **共用同一份瓦片缓存**（不会算第二遍）；无分配。
+     */
+    public static double surfaceTempK(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        double kap = bl(f.kap, k00, k10, k01, k11, tx, tz);
+        double tSea = bl(f.tSea, k00, k10, k01, k11, tx, tz);
+        double elev = PlateField.elevationWithCell(x, z, SimTerrain.seedOf(worldSeedInt),
+                                                  PlateField.PLATE_CELL);
+        return tSea - Atmosphere.GAMMA * Math.max(0.0, elev) * kap;
+    }
+
+    /**
+     * **该点的风（m/s）**：out[0] = u（纬向，正 = 东）、out[1] = v（经向，正 = 北）。
+     *
+     * <p>⚠ 是**年平风**（4 个等间距季节相位的算术平均），不是某一季的风 ——
+     * 群系必须静态，云/粒子的"斜度"用年平才有意义；要季节风请直接调
+     * Atmosphere.windAt(...,theta,500_000)（那会绕开缓存，贵 ~280 us）。
+     *
+     * <p>与 {@link #sample} **共用同一份瓦片缓存**；不分配（调用方给 out2）。
+     */
+    public static void windAt(int x, int z, int worldSeedInt, double[] out2) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        out2[0] = bl(f.wX, k00, k10, k01, k11, tx, tz);
+        out2[1] = bl(f.wZ, k00, k10, k01, k11, tx, tz);
+    }
+
+    // ==================== 小工具 ====================
+
+    private static double bl(double[] g, int k00, int k10, int k01, int k11, double tx, double tz) {
+        double v00 = g[k00], v10 = g[k10], v01 = g[k01], v11 = g[k11];
+        return (v00 * (1.0 - tx) + v10 * tx) * (1.0 - tz) + (v01 * (1.0 - tx) + v11 * tx) * tz;
+    }
+
+    /** 单侧饱和：v<=0 给 0，正的一侧 tanh 饱和到 1（与旧实现 clamp01(max(0,dot)/S) 同类，但无硬拐点）。 */
+    static double sat(double v) { return v <= 0.0 ? 0.0 : Math.tanh(v / SLOPE_SCALE); }
+
+    static double clamp01(double v) { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
+
+    static double clamp(double v, double lo, double hi) { return v < lo ? lo : (v > hi ? hi : v); }
+}

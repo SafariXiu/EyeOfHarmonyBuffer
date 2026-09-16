@@ -31,6 +31,14 @@ if not exist com\EyeOfHarmonyBuffer\space\talos\chunk\circulation_layer mkdir co
 if not exist com\EyeOfHarmonyBuffer\space\talos\chunk\climate_layer mkdir com\EyeOfHarmonyBuffer\space\talos\chunk\climate_layer
 if not exist com\EyeOfHarmonyBuffer\space\talos\chunk\util mkdir com\EyeOfHarmonyBuffer\space\talos\chunk\util
 if not exist com\EyeOfHarmonyBuffer\space\talos\chunk\cave_layer\runtime mkdir com\EyeOfHarmonyBuffer\space\talos\chunk\cave_layer\runtime
+rem NEW architecture (M1+): plate-tectonics continent field for the rewritten simulator.
+if not exist com\EyeOfHarmonyBuffer\sim\litho mkdir com\EyeOfHarmonyBuffer\sim\litho
+if not exist com\EyeOfHarmonyBuffer\sim\ocean mkdir com\EyeOfHarmonyBuffer\sim\ocean
+if not exist com\EyeOfHarmonyBuffer\sim\world mkdir com\EyeOfHarmonyBuffer\sim\world
+if not exist com\EyeOfHarmonyBuffer\sim\atmos mkdir com\EyeOfHarmonyBuffer\sim\atmos
+if not exist com\EyeOfHarmonyBuffer\sim\export mkdir com\EyeOfHarmonyBuffer\sim\export
+rem NEW architecture (integration): runtime bridge from the simulator into the live world.
+if not exist com\EyeOfHarmonyBuffer\sim\runtime mkdir com\EyeOfHarmonyBuffer\sim\runtime
 copy /Y "%SRC%\space\talos\chunk\world\V2TerrainGen.java" com\EyeOfHarmonyBuffer\space\talos\chunk\world\V2TerrainGen.java >nul
 copy /Y "%SRC%\space\talos\chunk\world\V2BiomeSelect.java" com\EyeOfHarmonyBuffer\space\talos\chunk\world\V2BiomeSelect.java >nul
 copy /Y "%SRC%\space\talos\chunk\world\V2BiomeField.java" com\EyeOfHarmonyBuffer\space\talos\chunk\world\V2BiomeField.java >nul
@@ -60,6 +68,21 @@ copy /Y "%SRC%\space\talos\chunk\util\NoiseUtil.java" com\EyeOfHarmonyBuffer\spa
 copy /Y "%SRC%\space\talos\chunk\util\SimplexNoise2D.java" com\EyeOfHarmonyBuffer\space\talos\chunk\util\SimplexNoise2D.java >nul
 copy /Y "%SRC%\space\talos\chunk\util\WindowKey.java" com\EyeOfHarmonyBuffer\space\talos\chunk\util\WindowKey.java >nul
 copy /Y "%SRC%\space\talos\chunk\cave_layer\runtime\CaveMath.java" com\EyeOfHarmonyBuffer\space\talos\chunk\cave_layer\runtime\CaveMath.java >nul
+copy /Y "%SRC%\sim\litho\PlateField.java" com\EyeOfHarmonyBuffer\sim\litho\PlateField.java >nul
+copy /Y "%SRC%\sim\ocean\BasinFinder.java" com\EyeOfHarmonyBuffer\sim\ocean\BasinFinder.java >nul
+copy /Y "%SRC%\sim\ocean\GyreRow.java" com\EyeOfHarmonyBuffer\sim\ocean\GyreRow.java >nul
+copy /Y "%SRC%\sim\ocean\SurfaceLayer.java" com\EyeOfHarmonyBuffer\sim\ocean\SurfaceLayer.java >nul
+copy /Y "%SRC%\sim\ocean\CoastalLayer.java" com\EyeOfHarmonyBuffer\sim\ocean\CoastalLayer.java >nul
+copy /Y "%SRC%\sim\ocean\SeaSurfaceTemp.java" com\EyeOfHarmonyBuffer\sim\ocean\SeaSurfaceTemp.java >nul
+copy /Y "%SRC%\sim\ocean\OceanField.java" com\EyeOfHarmonyBuffer\sim\ocean\OceanField.java >nul
+copy /Y "%SRC%\sim\ocean\OceanWiring.java" com\EyeOfHarmonyBuffer\sim\ocean\OceanWiring.java >nul
+copy /Y "%SRC%\sim\world\WorldContract.java" com\EyeOfHarmonyBuffer\sim\world\WorldContract.java >nul
+copy /Y "%SRC%\sim\atmos\Atmosphere.java" com\EyeOfHarmonyBuffer\sim\atmos\Atmosphere.java >nul
+copy /Y "%SRC%\sim\atmos\ZonalTables.java" com\EyeOfHarmonyBuffer\sim\atmos\ZonalTables.java >nul
+copy /Y "%SRC%\sim\atmos\PrecipField.java" com\EyeOfHarmonyBuffer\sim\atmos\PrecipField.java >nul
+copy /Y "%SRC%\sim\export\MapWriter.java" com\EyeOfHarmonyBuffer\sim\export\MapWriter.java >nul
+copy /Y "%SRC%\sim\runtime\SimTerrain.java" com\EyeOfHarmonyBuffer\sim\runtime\SimTerrain.java >nul
+copy /Y "%SRC%\sim\runtime\SimClimate.java" com\EyeOfHarmonyBuffer\sim\runtime\SimClimate.java >nul
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync_check.ps1"
 if errorlevel 1 (echo SYNC_FAIL & exit /b 2)
 rem precheck: BIDIRECTIONAL copy-list check + probe-coverage audit. Warns only -- exits 0 unless -Strict,
@@ -88,5 +111,10 @@ if exist "%ARCHIVE%\%1.java" echo %ARCHIVE%\%1.java >> srcs.txt
 mkdir out
 javac -encoding UTF-8 -nowarn -d out @srcs.txt 2>&1
 if errorlevel 1 (echo JAVAC_FAIL & exit /b 1)
+rem --build-only: stage + sync_check + precheck + compile, then STOP.
+rem   WHY: rerun_acceptance.ps1 runs many probes at once, and they must share ONE out\ tree.
+rem   Calling this script N times in parallel would make each copy rmdir out\ while another
+rem   JVM is still reading classes from it.
+if "%2"=="--build-only" (echo BUILD_ONLY_OK & exit /b 0)
 java -Xmx6g %2 %3 %4 -cp out probe.%1
 echo JAVA_EXIT=%errorlevel%
