@@ -225,6 +225,9 @@ public final class OceanField {
         h = h * 31 + ROWS; h = h * 31 + Double.doubleToLongBits(ROW_H);
         h = h * 31 + Double.doubleToLongBits(H_TOTAL); h = h * 31 + Double.doubleToLongBits(A_H);
         h = h * 31 + GRAD; h = h * 31 + Double.doubleToLongBits(JET_RANGE_RD);
+        // ⚠ 2026-09-16（用户裁决 A）：风应力旋度的采样步长也**改解出来的 SST'** ⇒ 按本方法的准入判据
+        // 必须进指纹。它落在 GyreRow 里（求解发生的地方），所以从那里取。
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.GyreRow.CURL_STRIDE;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
         return h;

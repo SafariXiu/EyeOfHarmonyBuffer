@@ -148,6 +148,40 @@ public final class GyreRow {
         public double xAt(int i) { return westX + i * h; }
     }
 
+    /**
+     * **风应力旋度的采样步长**（单位 = 一个格点 = {@code Params.h} = {@link OceanField#ROW_H} = 5 km）。
+     *
+     * <p>{@code curl} 沿整条海盆只需要每 {@code CURL_STRIDE} 格求一次风，中间**线性插值**。
+     * {@code CURL_STRIDE = 1} 逐位复现改前的行为（**回滚点**）。
+     *
+     * <h3>为什么可以这么做（实测，不是估算）</h3>
+     * <p><b>P487</b> 直接量到：{@code solve} 里逐点求风这一项的单价是 **~360 µs/格**，
+     * 而一条纬度行的格点数 = 海盆宽度 / 5 km。最宽的盆（13,510 km）要 **2,703 次求风 ≈ 994 ms**
+     * —— 这**就是** P284 那 50 分钟的全部来源（§212/§213）。
+     *
+     * <p>而风场在**几百公里**尺度上才变化（{@code GRAD = 500 km} 的中心差分、
+     * {@code PlateField.PLATE_CELL = 2,400 km} 的板块结构）⇒ **5 公里采样过采样约 20~50 倍**。
+     *
+     * <h3>代价：有实测上界的力项扰动（P488 的 A/B）</h3>
+     * <p>同一批 10 个海盆（最宽 **15,845 km**、n=3,170）、**同一个 {@code solveSpan}**、只换力项数组：
+     *
+     * <table border=1>
+     *   <tr><th>步长</th><th>求风次数</th><th>最坏 d(vPeak)</th><th>最坏 d(psiMax)</th></tr>
+     *   <tr><td>1（改前）</td><td>n</td><td>0</td><td>0</td></tr>
+     *   <tr><td>5</td><td>n/5</td><td>1.52%</td><td>0.71%</td></tr>
+     *   <tr><td><b>10（现行）</b></td><td><b>n/10</b></td><td><b>1.65%</b></td><td><b>0.72%</b></td></tr>
+     *   <tr><td>20</td><td>n/20</td><td>1.75%</td><td>0.77%</td></tr>
+     *   <tr><td>40</td><td>n/40</td><td>1.63%</td><td>0.93%</td></tr>
+     * </table>
+     *
+     * <p>对着验收判据：A2'' 输运 0.84x（带 [0.5,1.0]）⇒ 1.65% 后仍在带中央；
+     * A7 = 35.08（判据 >= 4）；A5 距平约 ±0.1 K（带 +4~8 / -4~5）。
+     *
+     * <p>⚠ <b>口径</b>：这是一个**数值离散选择**，它**会改 {@code SST'}**，因此
+     * **必须进 {@link OceanField#configStamp()}**（D58 的准入判据：改了结果的旋钮就得让缓存失效）。
+     */
+    public static int CURL_STRIDE = 10;
+
     /** 沿包含 (x,z) 的那条纬度行求解。**纯函数**（除了读写传入的 wind provider）。 */
     public static Row solve(int x, int z, long seed, int cell, WindCurl wind, Params p) {
         Row r = new Row();
@@ -162,8 +196,22 @@ public final class GyreRow {
         if (PlateField.isLandWithCell(x, z, seed, cell)) { r.valid = false; return r; }
         int n = (int) ((xe - xw) / h) + 1;
         if (n < 16) { r.valid = false; return r; }
+        // ⚠ 风应力旋度**按 CURL_STRIDE 格采样 + 线性插值**（2026-09-16，用户裁决 A；见该常量的 javadoc）。
+        // 逐点求风是 P284 那 50 分钟的全部来源：单价 ~360 µs/格 × (盆宽/5 km) 格。
+        // CURL_STRIDE = 1 时下面这条路径**逐位复现**改前行为。
         double[] curl = new double[n];
-        for (int i = 0; i < n; i++) curl[i] = wind.at(xw + (int) (i * h), z);
+        final int K = CURL_STRIDE < 1 ? 1 : CURL_STRIDE;
+        for (int i = 0; i < n; i += K) curl[i] = wind.at(xw + (int) (i * h), z);
+        if ((n - 1) % K != 0) curl[n - 1] = wind.at(xw + (int) ((n - 1) * h), z);   // 东端必须精确
+        if (K > 1) {
+            for (int i = 0; i < n; i++) {
+                int i0 = (i / K) * K; if (i0 > n - 1) i0 = n - 1;
+                int i1 = i0 + K; if (i1 > n - 1) i1 = n - 1;
+                if (i1 == i0) { continue; }          // 已采样，保持原值
+                double t = (i - i0) / (double) (i1 - i0);
+                curl[i] = curl[i0] * (1.0 - t) + curl[i1] * t;
+            }
+        }
         return solveSpan(xw, xe, curl, p);
     }
 
