@@ -343,6 +343,10 @@ public final class SimClimate {
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
+        // D79：季节项的形状（单一谐波 vs 观测年循环形状）。改了结果 ⇒ 必须进指纹。
+        h = h * 31 + (Atmosphere.SEASON_SHAPE_FROM_OBS ? 1 : 0);
+        // D79 判读钩子：非 null 会换掉整条涡动链的纬向剖面 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.ZONAL_PROFILE_OVERRIDE == null ? 0 : 1);
         h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.SEA_ONLY_UZM ? 1 : 0);
         h = h * 31 + (Atmosphere.COAST_WIND_ON ? 1 : 0);
         h = h * 31 + (Atmosphere.SST_PROVIDER == null ? 0 : 1);

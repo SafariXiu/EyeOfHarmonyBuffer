@@ -62,7 +62,7 @@
 | `ZonalTables.landMeanElev` | 陆面平均高程 | m | \|lat\|；ETOPO1 | 同上 | 同上（剥海拔） |
 | `ZonalTables.tZmSym` | 地球**全表面**纬向年均气温 | K | \|lat\|；**只作参照** | 同上 | `Atmosphere.tZonalMean` |
 | `ZonalTables.zfEarth` | 地球纬向陆地占比 | \[0,1\] | \|lat\|；**只作参照** | 同上 | 探针 |
-| `ZonalTables.aLand` / `aSea` ← `A_LAND_K` / `A_SEA_K` | 季节振幅 A(φ) | K | \|lat\|；**10° 分段线性** ⚠ 进 `zonalSlTemp` 的二阶导 | ERA5 | `Atmosphere.seasonalAnomaly` |
+| `ZonalTables.aLand` / `aSea` ← `A_LAND_K` / `A_SEA_K` | 季节振幅 A(φ) | K | \|lat\|；**10° 分段线性** ⚠ 进 `zonalSlTemp` 的二阶导。⚠⚠ **D83：`aSea` 的 60~90° 段是「开阔水面」口径（2.8/1.5 K @70°/80°），而消费者需要的是「纬向平均（含冰盖海洋）」口径（实测 10.76/11.49 K）—— 差 2.6~7.7 倍** | ERA5 | `Atmosphere.seasonalAnomaly` |
 | `Atmosphere.CELL_LAG` | 气压带滞后 | rad | 30 天 | 手定 | `cellPressure` |
 | `Atmosphere.DELTA_PHI0` | 旧的季节平移幅度 | rad | **@Deprecated**，生产已不用（只旧探针） | | |
 | `PrecipField.deformRadius` | 罗斯贝变形半径 | m | 诊断/涡动项 | 本类 | `eadyGrowth` 等 |
@@ -90,13 +90,20 @@
 | `Atmosphere.kappaAt` | 大陆度 κ | \[0,1\] | 193 点环采样，**与 θ 无关** | 本类 | 全部温度/风 |
 | `Atmosphere.KAPPA_MEAN` | 本世界全球平均陆地占比 | \[0,1\] | **常数**（P420: 0.3280；P491: 0.3196）⚠ P491 实测它**沿纬度不是平的**（0.26~0.41），未实现 | 手定 | `cellPressure`、`zonalMeanSeaLevelK`、`zonalSlTemp` |
 | `Atmosphere.LANDS_ANNUAL_IN_PRESSURE` | 开关 | `bool` | 进 `configStamp` | | |
+| `Atmosphere.SEASON_SHAPE_FROM_OBS` | 开关 | `bool` | **D79 的 A/B**：季节项形状用单一谐波（false，现状）还是观测年循环形状（true）。进 `configStamp`。⚠ 测量结果见 §225：true 分支会做出**非单调**的纬向平均温度，**不许直接翻** | | |
+| `ZonalTables.SEASON_SHAPE` | 观测季节形状 | 无量纲 | 19 纬 x 12 月，零年均、单位半振幅；**只被 true 分支引用** | `gen_season_shape.py` | `Atmosphere.seasonalAnomaly` |
+| `ZonalTables.SEASON_SHAPE_N` / `SEASON_SHAPE_PHI0` | 表尺寸 / 相位偏移 | 个 / 无量纲 | PHI0 = 171/365.25（θ=0 ↔ 6 月 21 日） | 同脚本 | `seasonShape` |
+| `ZonalTables.seasonShape` | 观测季节形状（插值后） | 无量纲 | \|lat\| 线性插值、月**循环**线性插值；半球反相 = 0.5 月位置。⚠ 已被路线 C″ 取代，**不再被生产引用**（保留供 P493 对照） | 本类 | 无 |
+| `ZonalTables.T_ZM_SL_MONTH` / `T_ZM_SL_ANN` | 观测月平均纬向剖面（海平面等效） | K | 19 纬 x 12 月 + 同一张表的 12 月平均（**同源**）；**只被 true 分支引用** | `gen_tzm_sl_month.py` | `Atmosphere.seasonalAnomaly`（true 分支） |
+| `ZonalTables.tZmSlMonth` / `tZmSlAnnual` | 上表的插值访问器 | K | 同 `seasonShape` 的口径 | 本类 | `seasonalAnomaly`（true 分支） |
 
 ### 3.3 `PrecipField`
 
 | 符号 | 物理量 | 单位 | 口径 | 生产者 | 消费者 |
 |---|---|---|---|---|---|
 | `PrecipField.mmPerDay` | 降水 | mm/day | **单相位 θ**；生产路径由 `SimClimate` 取 4 相位平均 | 本类 | 方块层群系、`SimClimate`、`CommandTalosMap`、验收 |
-| `PrecipField.zonalSlTemp` | 纬向平均海平面气温 | K | **单相位 θ**；κ = `KAPPA_MEAN` | `Atmosphere.zonalMeanSeaLevelK` | `moisture`、`eddyMfc`、`eddyWEquivalent` |
+| `PrecipField.zonalSlTemp` | 纬向平均海平面气温 | K | **单相位 θ**；κ = `KAPPA_MEAN`。⚠ 非 null 的 `ZONAL_PROFILE_OVERRIDE` 会**整体替换**它 | `Atmosphere.zonalMeanSeaLevelK` | `moisture`、`eddyMfc`、`eddyWEquivalent`、`eadyGrowth`、`deformRadius`、`staticN`、`columnWater` |
+| `PrecipField.ZONAL_PROFILE_OVERRIDE` | **诊断钩子** | 接口/null | **D79 判读专用，生产恒为 null**（默认 null ⇒ 逐位不变，P495 A 段已证）；进 `configStamp` | 探针 | `zonalSlTemp` |
 | `PrecipField.moisture` | 近地比湿 | kg/kg | 0.8·q_sat(T)·exp(−h/H_MOIST·κ) | 本类 | `mmPerDay`、`columnMoisture` |
 | `PrecipField.columnWater` | 气柱水汽 | **kg/m²** | = moisture·ρ_air·H_MOIST（D48 修复，原先少乘 ρ） | 本类 | `eddyWEquivalent` |
 | `PrecipField.eddyMfc` | 涡动水汽通量辐合 | kg/(m²·s) | **二阶导**：`(W(+5°)−2W(0)+W(−5°))/dy²`，dy 为**弧度** | 本类 | `mmPerDay` |

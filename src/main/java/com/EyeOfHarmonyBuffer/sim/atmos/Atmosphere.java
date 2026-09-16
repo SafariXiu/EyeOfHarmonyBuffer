@@ -383,12 +383,39 @@ public final class Atmosphere {
         double k = clamp01(kappa);
         double aSea = ZonalTables.aSea(latDeg);
         double amp = aSea + (ZonalTables.aLand(latDeg) - aSea) * k;
+        // 纬向形状已被观测表 A(phi) 吸收 ⇒ 这里不再乘 sin^2(phi)（§80）
+        if (SEASON_SHAPE_FROM_OBS) {
+            // D79 路线 C″（§229.3）：**观测剖面的季节差值** × 海陆振幅比。
+            //   · κ = ⟨κ⟩ 时比值 = 1 ⇒ 纬向平均**恰好是观测剖面** ⇒ 真剖面能驱动的迁移被保留；
+            //   · 比值把海陆季节振幅差（判据 A5 量的那个）**原样保留**；
+            //   · 赤道：amp(0) = ampRef(0) = 0 ⇒ 提前返回 0，硬约束不受影响。
+            double ampRef = aSea + (ZonalTables.aLand(latDeg) - aSea) * KAPPA_MEAN;
+            if (ampRef < 1.0e-9) return 0.0;
+            double obs = ZonalTables.tZmSlMonth(latRad, theta) - ZonalTables.tZmSlAnnual(latRad);
+            return obs * (amp / ampRef);
+        }
         double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * k;
         double psi = 2.0 * Math.PI * psiDays / WorldContract.DAYS_PER_YEAR;
         double hemi = latRad >= 0.0 ? 0.0 : Math.PI;
-        // 纬向形状已被观测表 A(phi) 吸收 ⇒ 这里不再乘 sin^2(phi)（§80）
         return amp * Math.cos(theta - psi - hemi);
     }
+
+    /**
+     * **D79 的 A/B 开关**：季节项的形状用「单一全年谐波」还是「观测年循环形状」。
+     *
+     * <p>{@code false}（默认）⇒ 与换表之前**逐位相同**（那一支的表达式一字未改）。
+     * {@code true} ⇒ 形状取 {@link ZonalTables#seasonShape}（ERA5 月平均 t2m 的北半球剖面，
+     * 零年均、单位半振幅，19 纬 x 12 月）。
+     *
+     * <p><b>为什么需要它</b>（§220 实测）：真实纬向平均温度的年循环含显著高次谐波，
+     * 斜压性最大值会随季节迁移 <b>7.0 度</b>；而单一余弦只能给出 <b>0.0 度</b>。
+     * 缺了迁移，B2.b 判据红着（D79）。
+     *
+     * <p>⚠ <b>翻之前必须先量</b>：{@code amp(phi,kappa)} 是**本世界自己的**海陆混合振幅，
+     * 而形状表来自**地球**的纬向剖面（65 度上是 75% 陆地）。两者口径不同源，
+     * 直接组合可能**过度迁移** —— 这正是 P493 要量的东西。它进 {@code configStamp()}。
+     */
+    public static boolean SEASON_SHAPE_FROM_OBS = false;
 
     /** 海温异常提供者（由 M2 的洋流给出：西暖东冷）。null = 无异常（默认）。 */
     public interface SstProvider { double anomalyAt(int x, int z); }

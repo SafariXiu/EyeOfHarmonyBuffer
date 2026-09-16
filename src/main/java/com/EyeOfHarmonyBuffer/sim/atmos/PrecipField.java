@@ -255,9 +255,30 @@ public final class PrecipField {
     public static double zonalSlTemp(double latRad, double theta) {
         // ⚠ §216.7：改用**本世界自己的**纬向平均海平面温度（κ = ⟨κ⟩ 处的海陆混合），
         //   不再用地球的 T_zm —— 否则风暴轴的水汽源会按「地球在那个纬度有多少陆地」算。
+        //
+        // ⚠⚠ D79 判读钩子：非 null 时**整条涡动链**（eadyGrowth / deformRadius / staticN /
+        //   columnWater / eddyMfc）都改用外部给的纬向剖面。**生产恒为 null ⇒ 逐位不变。**
+        //   它存在的唯一理由：回答「把真实 ERA5 月平均剖面直接喂进替身，峰位会不会迁移」——
+        //   这是 D79 唯一还没做过的判别实验（§226.4）。进 configStamp（非 null 会改结果，D58）。
+        ZonalProfile ov = ZONAL_PROFILE_OVERRIDE;
+        if (ov != null) return ov.tempAt(latRad, theta);
         return Atmosphere.zonalMeanSeaLevelK(latRad)
              + Atmosphere.seasonalAnomaly(latRad, Atmosphere.KAPPA_MEAN, theta);
     }
+
+    /** D79 判读用的纬向剖面提供者（**生产恒为 null**）。 */
+    public interface ZonalProfile { double tempAt(double latRad, double theta); }
+
+    /**
+     * **诊断钩子**：非 null 时 {@link #zonalSlTemp} 直接用它。默认 {@code null}。
+     *
+     * <p>⚠ 这是一个 {@code public static} **可变**字段（与 {@code Atmosphere.SST_PROVIDER} 同族）——
+     * 审计曾把 PlateField 的同类字段记为「契约可被调用方打破」。这里接受它，因为：
+     * ① 只有一个消费者（{@link #zonalSlTemp}）；② 默认 null ⇒ 生产路径逐位不变；
+     * ③ 它进 {@code SimClimate.configStamp()}，非 null 会让瓦片缓存失效。
+     * **不许**在生产接线里给它赋值。
+     */
+    public static ZonalProfile ZONAL_PROFILE_OVERRIDE = null;
 
     /**
      * **气柱水汽**（kg/m^2）：纬向平均近地比湿 x 空气密度 x 水汽标高 H_MOIST。
