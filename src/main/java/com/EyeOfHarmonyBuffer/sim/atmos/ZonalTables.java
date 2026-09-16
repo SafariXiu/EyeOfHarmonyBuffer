@@ -69,7 +69,7 @@ public final class ZonalTables {
      * 真实地球南半球振幅只有北半球的 0.65~0.72 倍（A_land 30S=7.3、A_sea 35S=2.9），
      * 那是地球陆地分布不对称造成的，**已记账、未实现**。
      */
-    public static final double[] A_LAND_K = {0.0, 2.1, 6.6, 10.1, 13.8, 16.5, 18.4, 18.7, 14.9, 11.0};
+    public static final double[] A_LAND_K = {0.0, 2.4, 6.9, 10.5, 13.4, 15.3, 16.0, 18.7, 16.8, 16.8};
 
     /**
      * **A(phi)（K）** —— 海洋（SST）。ERA5 同口径：
@@ -81,7 +81,7 @@ public final class ZonalTables {
      * （本世界没有海冰）。50 度取 5.0（ERA5 在 45~60 度之间非单调，做了轻微平滑）。
      * <b>0 度同样必须精确为 0</b>（半球相位翻转 ⇒ 赤道年谐波为零），理由见 A_LAND_K。
      */
-    public static final double[] A_SEA_K = {0.0, 0.9, 1.8, 3.6, 5.3, 5.0, 4.2, 2.8, 1.5, 0.8};
+    public static final double[] A_SEA_K = {0.0, 0.6, 2.1, 4.3, 6.2, 5.2, 8.1, 10.9, 11.6, 13.3};
 
     /** 陆地季节振幅（K）。 */
     public static double aLand(double latDeg) { return interp(A_LAND_K, latDeg); }
@@ -98,6 +98,28 @@ public final class ZonalTables {
         double t = f - i;
         return tab[i] * (1.0 - t) + tab[i + 1] * t;
     }
+
+    // ---- by build/eoh_probe/refs/gen_a_zm.py, do not hand-edit ----
+    /**
+     * **纬向平均的季节振幅 A_zm(|lat|)（K）** —— 只给**纬向平均**口径用（Atmosphere.seasonalAnomalyZonal）。
+     *
+     * <p>为什么必须与 A_SEA_K / A_LAND_K **分开**：那两个是**逐点**口径
+     * （该点自己的下垫面，由局部 kappa 混合）；而 PrecipField.zonalSlTemp 要的是**纬向平均**口径。
+     * 两者混用同一张表时，修任何一侧都会污染另一侧 —— 实测代价：D83 的落地版把
+     * B2.a 从「达标」翻成「未达标」（设计冻结 §231.2）。
+     *
+     * <p>播种值 = 旧口径在 kappa = <kappa> 处的混合值（aSea + 0.328*(aLand-aSea)）
+     * ⇒ 步骤 0 是**纯拆分、行为不变**。**决定 2 会把这张表换成推导出来的机制。**
+     */
+    public static final double[] A_ZM_K = {0.0000, 1.2936, 3.3744, 5.7320, 8.0880, 8.7720, 8.8576, 8.0152, 5.8952, 4.1456};
+
+    /**
+     * **纬向平均口径的季节振幅（K）** —— 与逐点的 {@code aLand}/{@code aSea} **分表**。
+     *
+     * <p>只给 {@code Atmosphere.seasonalAnomalyZonal}（→ {@code PrecipField.zonalSlTemp} → 涡动链）用。
+     * 逐点链（{@code surfaceTemp} → 群系/雪线/海冰）继续用 {@code aLand}/{@code aSea}。
+     */
+    public static double aZonalMean(double latDeg) { return interp(A_ZM_K, latDeg); }
 
     /** 参考气压（Pa）：把 p_ref 折算成「高压 / 低压异常」的基准。 */
     public static final double P_REF_BASE = 101300.0;

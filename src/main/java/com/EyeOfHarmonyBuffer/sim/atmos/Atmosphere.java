@@ -401,6 +401,32 @@ public final class Atmosphere {
     }
 
     /**
+     * **纬向平均口径的季节温度异常（K）** —— 涡动链专用（D79 **步骤 0**，设计冻结 §231.4）。
+     *
+     * <p><b>为什么要单开一个方法</b>：{@link #seasonalAnomaly} 有两个主人，要的口径**不同**：
+     * <ul>
+     *   <li>{@code surfaceTemp}（→ 群系 / 雪线 / 海冰）要**逐点**口径 —— 该点自己的下垫面，
+     *       由局部 κ 混合 {@code aLand}/{@code aSea}；</li>
+     *   <li>{@code PrecipField.zonalSlTemp}（→ {@code eadyGrowth} / {@code columnWater} / {@code eddyMfc}）
+     *       要**纬向平均**口径。</li>
+     * </ul>
+     * 两者共用一张表时，修任何一侧都会污染另一侧。**实测代价**：D83 的落地版把逐点口径修对
+     * （aSea 高纬 ×4~17），纬向平均那一侧跟着变（70° 的混合振幅 8.02 → 13.49 K），
+     * 于是 B2.a 从「达标」翻成「未达标」（§231.2）。
+     *
+     * <p>现在两边**分表**：本方法读 {@link ZonalTables#aZonalMean}（表 {@code A_ZM_K}），
+     * {@link #seasonalAnomaly} 读 {@code aLand}/{@code aSea}。**播种值等于旧的混合值** ⇒ 步骤 0 是纯拆分。
+     * **决定 2 会把 {@code A_ZM_K} 换成推导出来的机制。**
+     */
+    public static double seasonalAnomalyZonal(double latRad, double theta) {
+        double amp = ZonalTables.aZonalMean(Math.toDegrees(latRad));
+        double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * KAPPA_MEAN;
+        double psi = 2.0 * Math.PI * psiDays / WorldContract.DAYS_PER_YEAR;
+        double hemi = latRad >= 0.0 ? 0.0 : Math.PI;
+        return amp * Math.cos(theta - psi - hemi);
+    }
+
+    /**
      * **D79 的 A/B 开关**：季节项的形状用「单一全年谐波」还是「观测年循环形状」。
      *
      * <p>{@code false}（默认）⇒ 与换表之前**逐位相同**（那一支的表达式一字未改）。

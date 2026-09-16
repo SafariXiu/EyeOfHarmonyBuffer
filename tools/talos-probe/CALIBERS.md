@@ -82,7 +82,9 @@
 | `Atmosphere.landSeaAnnualAnomaly` | 海陆年均对比 | K | κ 连续混合；**不进 p'**（默认） | 本类 | `? 目前只被 annualSeaLevelTemp 内联` |
 | `Atmosphere.annualSeaLevelTemp` | **海平面等效年均地表温度** | K | **年平**；κ 连续；SST' 从 `(1−κ)` 进 | 本类 | `surfaceTemp`、`PrecipField.mmPerDay`、`SimClimate.solveNode` |
 | `Atmosphere.zonalMeanSeaLevelK` | **本世界**纬向平均（κ=⟨κ⟩） | K | 年平；\|lat\| | 本类 | `PrecipField.zonalSlTemp`、`OceanField.dTdz`、`SimClimate.airT` |
-| `Atmosphere.seasonalAnomaly` | 季节温度异常 | K | **单相位 θ**；A(0)=0 硬约束；南半球相移 π | 本类 | `surfaceTemp`、`PrecipField`、`SimTerrain.warmest/coldestMonth` |
+| `Atmosphere.seasonalAnomaly` | 季节温度异常（**逐点口径**） | K | **单相位 θ**；A(0)=0 硬约束；南半球相移 π；振幅 = aSea/aLand 按**局部 κ** 混合 | 本类 | `surfaceTemp`、`SimTerrain.warmest/coldestMonth`、`SimClimate.solveNode` 的 `tSl` |
+| `Atmosphere.seasonalAnomalyZonal` | 季节温度异常（**纬向平均口径**） | K | 同相位约定，但振幅读 **`ZonalTables.aZonalMean`**（表 `A_ZM_K`）—— 与逐点**分表**（§231.4 步骤 0，因为两者口径不同） | 本类 | `PrecipField.zonalSlTemp`（涡动链） |
+| `ZonalTables.A_ZM_K` / `aZonalMean` | 纬向平均季节振幅 | K | 10 度表、\|lat\| 对称；播种值 = 旧口径在 κ=⟨κ⟩ 处的混合值（纯拆分）；**决定 2 会把它换成推导机制** | `gen_a_zm.py` | `Atmosphere.seasonalAnomalyZonal` |
 | `Atmosphere.surfaceTemp` | 地表温度 | K | **单相位 θ**；**含** `−Γ·h·κ` | 本类 | 方块层、`SimClimate.solveNode`、探针 |
 | `Atmosphere.pressureAnomaly` | 地面气压异常 p' | Pa | 代数式；**海陆年均对比被解析抵消** | 本类 | `windAt`（差分）、`seaLevelPressure`、探针 |
 | `Atmosphere.windAt` | 风（**速度**，含 U_zm） | m/s | **单相位 θ**；梯度步长 `gradStep` 参数化 | 本类 | `PrecipField` 的散度、`SimClimate.windAt` |

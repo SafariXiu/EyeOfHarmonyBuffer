@@ -262,8 +262,11 @@ public final class PrecipField {
         //   这是 D79 唯一还没做过的判别实验（§226.4）。进 configStamp（非 null 会改结果，D58）。
         ZonalProfile ov = ZONAL_PROFILE_OVERRIDE;
         if (ov != null) return ov.tempAt(latRad, theta);
+        // ⚠ D79 步骤 0（§231.4）：改走**纬向平均专用**的季节异常（表 A_ZM_K），
+        //   不再借用逐点口径的 seasonalAnomaly(lat, <kappa>, theta) —— 两者口径不同，
+        //   共用一张表时修逐点那一侧会把涡动链一起带偏。
         return Atmosphere.zonalMeanSeaLevelK(latRad)
-             + Atmosphere.seasonalAnomaly(latRad, Atmosphere.KAPPA_MEAN, theta);
+             + Atmosphere.seasonalAnomalyZonal(latRad, theta);
     }
 
     /** D79 判读用的纬向剖面提供者（**生产恒为 null**）。 */
