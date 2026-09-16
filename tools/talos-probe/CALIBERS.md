@@ -111,6 +111,7 @@
 | `PrecipField.eddyMfc` | 涡动水汽通量辐合 | kg/(m²·s) | **二阶导**：`(W(+5°)−2W(0)+W(−5°))/dy²`，dy 为**弧度** | 本类 | `mmPerDay` |
 | `PrecipField.eddyWEquivalent` | 涡动的 w 当量 | m/s | MFC/ρ_w | 本类 | 探针（分解类：**必须连带自检 d²W/dφ²**，见 P493） |
 | `PrecipField.stormGate` | 风暴轴西风门 | \[0,1\] | smoothstep(u_zm/U0_STORM)；**单相位 θ** | 本类 | `eddyMfc` |
+| `ZonalTables.EDDY_MFC_OBS` / `eddyMfcObs` | 观测的涡动 MFC 纬度剖面 | 无量纲 | 19 纬 5 度表，45~60 度均值为 1，**保留符号**（负 = 辐散）；NCEP 日资料 vwnd+shum 850/500 hPa、1460 天。⚠ 目前**尚未被生产引用**（A-ii 尚未接线） | `gen_eddy_obs.py` | 无（待接） |
 | `PrecipField.EDDY_DPHI_DEG` | **求导步长** | **deg** | **5.0**；进 `curv` 的分母（用弧度） ⚠ 单位陷阱：E64 就是栽在 deg/rad | | |
 | `PrecipField.UPWIND_STEP` | 上风取样距离 | m | 150,000 | | |
 | `PrecipField.wEff` | 有效上升速度 | m/s | = w_zm(φ−Δ) + clamp(−H_bl·divU) | 本类 | `mmPerDay` |

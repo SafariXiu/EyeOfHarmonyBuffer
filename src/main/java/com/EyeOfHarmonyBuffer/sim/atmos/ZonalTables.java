@@ -121,6 +121,24 @@ public final class ZonalTables {
      */
     public static double aZonalMean(double latDeg) { return interp(A_ZM_K, latDeg); }
 
+    // ---- by build/eoh_probe/refs/gen_eddy_obs.py, do not hand-edit ----
+    /**
+     * **观测的纬向平均瞬变涡动水汽通量辐合的【纬度剖面】**（无量纲，45~60 度均值为 1，**保留符号**）。
+     *
+     * <p>来源：NCEP/NCAR R1 **日**资料 vwnd + shum（850 与 500 hPa）、2005-2008 共 1460 天；
+     * 去掉每个格点自己的年循环（1、2 次谐波）后取 [v'q']，沿 850-500 hPa 梯形垂直积分，
+     * 对经度取平均并求经向散度；再南北对称化。**负 = 辐散（干）**。
+     *
+     * <p>⚠ 为什么需要它（§235）：模型的 curv(W) 在 **30~45 度给正**（P493 实测峰 44~52 度），
+     * 而观测在 **30~40 度是负的** —— **一个乘子改不了符号**，所以「放置」必须由观测给。
+     * 这与 pRef / U_ZM / A_LAND_K / A_ZM_K 是**同一类做法**（本世界没有斜压不稳定，
+     * 见 ZonalTables.W_ZM 的注释）。
+     */
+    public static final double[] EDDY_MFC_OBS = {-0.39560, -1.24351, -1.13357, -0.99434, -0.88525, -1.22029, -1.47302, -1.35337, -0.46066, 0.89150, 1.21228, 1.07132, 0.82489, 1.19464, 1.30862, 0.95402, 0.86872, 0.46251, 0.34659};
+
+    /** 观测的涡动 MFC 纬度剖面（无量纲，45~60 度均值为 1，**保留符号**）。 */
+    public static double eddyMfcObs(double latDeg) { return interp5(EDDY_MFC_OBS, latDeg); }
+
     /** 参考气压（Pa）：把 p_ref 折算成「高压 / 低压异常」的基准。 */
     public static final double P_REF_BASE = 101300.0;
 
