@@ -1,0 +1,786 @@
+URL: https://www.redblobgames.com/maps/terrain-from-noise/
+STATUS: 200
+
+Making maps with noise functions 
+
+ Making maps with noise functions
+
+  from Red Blob Games 
+
+ Home 
+ Blog 
+ Links 
+ Bluesky 
+ About 
+
+ written Jul 2015, then updated in 2016, 2017, 2018, 2019, 2020, and 2022 
+
+ Table of Contents
+
+ Noise 
+
+ Elevation 
+
+ Biomes 
+
+ Climate 
+
+ Islands 
+
+ Ridges 
+
+ Terraces 
+
+ Trees 
+
+ Wraparound map 
+
+ Infinite map 
+
+ Implementation 
+
+ Demo 
+
+ Thoughts 
+
+ More 
+
+ One of the more popular pages on my site is about polygonal map generation [1] . Making those maps was a lot of work. I didn’t start there. I started with something much simpler, which I’ll describe here. The simpler technique can make maps like this in under 50 lines of code:
+
+ I’m not going to explain how to draw these maps; that’s going to depend on your language, graphics library, platform, etc. I’m only going to explain how to fill an array with height and biome map data.
+
+ Noise # 
+
+ A common way to generate 2D maps is to use a bandwidth-limited gradient noise function, such as Simplex or Perlin noise, as a building block. This is what the noise function looks like:
+
+ We assign each location on the map a number from 0.0 to 1.0. In this image, 0.0 is black and 1.0 is white. Here’s how to set the color at each grid location in C-like syntax:
+
+ for (int y = 0; y < height; y++) {
+ for (int x = 0; x < width; x++) { 
+ double nx = x/width - 0.5, ny = y/height - 0.5;
+ value[y][x] = noise(nx, ny); 
+ }
+} 
+
+ The loop will work the same in Javascript, Python, Haxe, C++, C#, Java, and most other popular languages, so I’ll show it in C-like syntax and you can convert it to the language you’re using. In the rest of the tutorial, I’ll show how the loop body (the value[y][x]=… line) changes as we add more features. At the end , I’ll show a complete example.
+
+ Depending on the library you use, you may have to shift or multiply the values you get back to fit into the 0.0 to 1.0 range. Some libraries return 0.0 to 1.0; some return -1.0 to +1.0; some return other ranges like -0.7 to +0.7. Some don’t say what they return, so you may have to look at the return values to figure out the range.
+
+ Elevation # 
+
+ Noise by itself is just a bunch of numbers. We need to assign meaning to it. The first thing we might think of is to make the noise correspond to elevation (also called a “height map”). Let’s take the noise from earlier and draw it as elevation:
+
+ The code is almost the same, except for what’s inside the inner loop; it now looks like this:
+
+ elevation [y][x] = noise(nx, ny); 
+
+ Yes, that’s it. The map data is the same, but now I call it elevation instead of value .
+
+ Lots of hills, but not much else. What’s wrong?
+
+ Frequency # 
+
+ Noise can be generated at any frequency . I’ve only picked one frequency so far. Let’s look at the effect of frequency. Try moving the slider to see what happens at different frequencies:
+
+ frequency= 
+ 
+ 2 
+
+ It’s just zooming in and out. That doesn’t seem very useful at first glance, but it is.
+
+ elevation[y][x] = noise( frequency * nx, frequency * ny); 
+
+ It’s sometimes useful to think of wavelength , which is the inverse of frequency. Frequency is measured in oscillations per distance. Doubling the frequency makes everything half the size. Wavelength is measured in distance per oscillation, measured in pixels or tiles or meters etc. Doubling the wavelength makes everything twice the size. Wavelength is related to frequency: wavelength = map_size / frequency .
+
+ elevation[y][x] = noise(x / wavelength , y / wavelength ); 
+
+ I have another tutorial that explains the concepts : frequency, wavelength, amplitude, octaves, pink and blue and white noise, etc.
+
+ Octaves # 
+
+ To make the height map more interesting we’re going add noise at different frequencies :
+
+  +  
+ 
+  +  
+ 
+  =  
+
+ elevation[y][x] = 1 * noise( 1 * nx, 1 * ny);
+ + 0.5 * noise( 2 * nx, 2 * ny);
+ + 0.25 * noise( 4 * nx, 4 * ny); 
+
+ Let’s mix big low frequency hills and small high frequency hills into the same map. Move the slider to add smaller hills to the mix:
+
+ 0.0 
+ 0.5 
+ 1.0 
+
+ Now that looks a lot more like the fractal terrain we want! We can now get hills and rugged mountains, but we still don’t get flat valleys. We need something else for that.
+
+ There’s a potential problem though. Since noise can go from 0 to 1, the sum 1 * noise() + 0.5 * noise() + 0.25 * noise() can go from 0 to 1.75. The numbers [1, 0.5, 0.25] are called the amplitudes . The simplest thing to do is to divide by the sum of amplitudes:
+
+ e = 1 * noise(1 * nx, 1 * ny);
+ + 0.5 * noise(2 * nx, 2 * ny);
+ + 0.25 * noise(4 * nx, 4 * ny);
+elevation[y][x] = e / (1 + 0.5 + 0.25) ; 
+
+ In practice, you may want to experiment to find the best divisor. Although the sum of amplitudes guarantees the elevation stays in the range 0–1, the elevation values may not be distributed the way you want. 
+
+ Amplitudes are commonly set to be an array [1, 1/2, 1/4, 1/8, 1/16, …] , where each amplitude is ½ the previous one. This ratio is called gain or persistence . However we’re not limited to using a fixed ratio. I use amplitudes [1, 1/2, 1/3, 1/4, 1/5] for many examples on this page to bring out more fine detail than the conventional amplitudes would do. Amplitudes can also be calculated dynamically, either from previous noise values (e.g. octave 1’s noise can affect octave 2’s amplitude), or by using an independent noise field, or by using player/simulation data.
+
+ Another possible issue: by using noise(1 * nx, 1 * ny) and noise(2 * nx, 2 * ny) and noise(4 * nx, 4 * ny) , what happens when nx and ny are near 0? These noise values are correlated . To get the best results we want these to be independent . If your noise library allows seeding, you can use separate seeds for each of the octaves. If it does not allow seeding, you can add an offset to each of the octaves, such as noise(1 * nx, 1 * ny) and noise(2 * nx + 5.3, 2 * ny + 9.1) and noise(4 * nx + 17.8, 4 * ny + 23.5) . That way each octave is sampling from different parts of the noise space and they will be independent instead of correlated. And yet another possible issue: these noise values may be aligned along the same directions, which can sometimes cause visible artifacts, especially when using Perlin noise. To reduce this, rotate the output of some of the octaves, or switch to Simplex noise.
+
+ Redistribution # 
+
+ The noise function gives us values between 0 and 1. To make flat valleys, we can raise the elevation to a power . Move the slider to try different exponents.
+
+ exp= 
+ 
+ 1 
+ 3 
+ 5 
+
+ e = 1 * noise(1 * nx, 1 * ny);
+ + 0.5 * noise(2 * nx, 2 * ny);
+ + 0.25 * noise(4 * nx, 4 * ny);
+e = e / (1 + 0.5 + 0.25);
+elevation[y][x] = Math.pow( e , exponent ) ; 
+
+ Higher values push middle elevations down into valleys and lower values pull middle elevations up towards mountain peaks. We want to push them down.
+
+ In practice it may work better to use Math.pow(e * fudge_factor, exponent) , where the fudge factor is some number near 1. For the above demo I used 1.2. Try different values and see what works best for you.
+
+ The pow() function is only one way to reshape the elevations. There are many other functions you can try. You aren’t limited to mathematical functions; consider drawing curves yourself, like the “curves” tool in a photo editor.
+
+ Now that we have a reasonable elevation map, let’s add some biomes!
+
+ Biomes # 
+
+ Noise gives us numbers but we want a map with forests, deserts, and oceans. The first thing to do is to make low elevations into water:
+
+water= 
+ 
+ 0.0 
+ 0.2 
+ 0.5 
+
+ function biome(e) {
+ // a threshold between 0.2 and 0.5 work well in the demo
+ // but each generator will need its own parameter tuning
+ if (e < waterlevel ) return WATER;
+ else return LAND;
+} 
+
+ Hey, that’s starting to look like a procedurally generated world! We have water, grass, and snow. What if we want more things? Let’s make the sequence water, beach, grassland, forest, savannah, desert, snow:
+
+ Terrain based on elevation only 
+
+ function biome(e) {
+ // these thresholds will need tuning to match your generator
+ if (e < 0.1) return WATER;
+ else if (e < 0.2) return BEACH;
+ else if (e < 0.3) return FOREST;
+ else if (e < 0.5) return JUNGLE;
+ else if (e < 0.7) return SAVANNAH;
+ else if (e < 0.9) return DESERT;
+ else return SNOW;
+} 
+
+ Hey, looks cool! You’ll want to change the numbers and biomes for your game. Crysis will have more jungles; Skyrim will have more ice and snow. But no matter what you change the numbers to, this approach is a bit limited. The terrain types line up with the elevations, so they form bands. To make it more interesting, we need to choose biomes with something other than elevation. Let’s create a second noise map for “soil moisture”:
+
+ Elevation noise on left; moisture noise on right 
+
+ Now let’s use both elevation and moisture. In the diagram on the left below, the y-axis is the elevation (first diagram above) and the x-axis is the moisture (second diagram above). It produces a reasonable looking map:
+
+ Terrain based on two noise values 
+
+ Low elevations are oceans and beaches. High elevations are rocky or snowy. In between we get a wide range of biomes. The code looks like this:
+
+ function biome(e, m) { 
+ // these thresholds will need tuning to match your generator
+ if (e < 0.1) return OCEAN;
+ if (e < 0.12) return BEACH;
+ 
+ if (e > 0.8) {
+ if (m < 0.1) return SCORCHED;
+ if (m < 0.2) return BARE;
+ if (m < 0.5) return TUNDRA;
+ return SNOW;
+ }
+
+ if (e > 0.6) {
+ if (m < 0.33) return TEMPERATE_DESERT;
+ if (m < 0.66) return SHRUBLAND;
+ return TAIGA;
+ }
+
+ if (e > 0.3) {
+ if (m < 0.16) return TEMPERATE_DESERT;
+ if (m < 0.50) return GRASSLAND;
+ if (m < 0.83) return TEMPERATE_DECIDUOUS_FOREST;
+ return TEMPERATE_RAIN_FOREST;
+ }
+
+ if (m < 0.16) return SUBTROPICAL_DESERT;
+ if (m < 0.33) return GRASSLAND;
+ if (m < 0.66) return TROPICAL_SEASONAL_FOREST;
+ return TROPICAL_RAIN_FOREST;
+} 
+
+ These are example threshold numbers. In every project I’ve worked on I’ve had to change them, not only for predominant biomes (Dagobah will have more swamp, Hoth will have more tundra, Tatooine will have more desert) but also because it depends on the noise library being used and how the octaves are mixed together. Plan to tweak these numbers!
+
+ Alternatively if you don’t need distinct biomes, smooth gradients (see cartographer Tom Patterson’s article [2] ) can produce colors:
+
+ With either biomes or gradients, one noise value doesn’t produce enough diversity, but two is pretty good. Further reading:
+
+ The biomes I present here are based on Robert Whittaker [3] ’s biome system ( paper from 1966 [4] ). It uses average temperature and average rainfall.
+ 
+ In this section I set temperature from elevation. In the next section I also use latitude.
+
+ The original Whittaker biome classification diagram is triangle-shaped, reflecting colder air being able to hold less rainfall. I stretched this into a square by using moisture relative to the maximum instead of the absolute rainfall level. The square is easier to use in a lookup table or GPU texture lookup.
+
+ The Holdridge Life Zone [5] system uses three axes, rainfall, humidity, and “potential evapotranspiration ratio” (PET). At first it doesn’t seem to account for latitude or elevation, but those affect both PET and rainfall, so the three axes are not independent.
+
+ The Koppen [6] system is popular outside of procedural-generation. I haven’t used it because it feels more descriptive (starting with the biomes and describing their characteristics), but for procedural generation I want something prescriptive (I have the characteristics and want to know the biomes).
+
+ Various game projects have made their own biome classification systems, such as Minecraft’s [7] , or this table [8] . Consider designing a biome system around your project’s individual needs.
+
+ Although these lookup tables are easy to work with, the real biomes on Earth are far more complicated. You might take into account rainfall variation (some plants cannot handle a dry and wet season), cold weather days (some plants only bud during this time), highest temperature (some plants cannot survive), coldest temperature (some plants cannot survive), growing degree days [9] (counting how many days in the year are above some temperature), soil type (loamy soils can hold moisture for far longer than sandy soils), rock type (porous rocks can provide springwater even when it’s not raining), seasonal variation (some slow growing plants cannot handle occasional droughts), and more.
+
+ There are many systems from scientists: 1949 Allee, 1961 Kendeigh, 1974 Goodall, 1976 Walter, 1988 Schultz, 1989 Bailey, 1998 Olson Dinerstein, 1954 Koppen-Geiger / Koppen-Trewartha, 1948 Thornthwaite, 2005 Thornthwaite-Feddema. But for procedural generation I recommend reading 2025 Hersfeldt-Pasta [10] .
+
+ Climate # 
+
+ In the previous section I used elevation as a proxy for temperature . Higher elevations have lower temperatures. However, latitude also affects temperatures. Let’s use both elevation and latitude to control temperature:
+
+equator: hot cold
+ 
+poles: hot cold
+
+ Near the poles (high latitudes) the climate is colder, and on the tops of mountains (high elevations) the climate is also colder. Start with elevation e . Then modify it to an “equivalent” elevation. For this demo I used equivalent_elevation = 10*e*e + poles + (equator-poles) * sin(PI * (y / height)) , and then I used equivalent_elevation instead of e to calculate biomes. I don’t think this is the best approach ; I think you’ll need to experiment with formulas and tweak the parameters to make this work the way you want.
+
+ Latitude and elevation are the main factors for temperature, but there are many more. Further reading:
+
+ Temperature varies seasonally . In summer and winter the northern and southern hemispheres get warmer and colder, but the equator doesn’t change as much.
+
+ Solar “insolation” [11] can be estimated with trigonometry instead of the formula I gave above.
+
+ Rainfall also varies seasonally. There’s a fantastic animation on Wikipedia [12] showing how rainfall varies by month.
+
+ Temperature also depends on prevailing wind, ocean currents, albedo (which depends on vegetation), the ocean’s moderating effect on temperatures, soil moisture, and more.
+
+ Rainfall depends on elevation [13] . A simple model I’ve used in procedural generation projects is that the amount of water vapor that air can hold depends on the air’s temperature. As wind pushes air up a mountain, and the temperature drops at higher elevation, the air can hold less moisture. What it can’t hold falls as rain. This effect explains why the west side of the Andes is dry and the east side produces the Amazon River basin.
+
+ Islands # 
+
+ For some projects I want the boundaries of the map to be water. One way to do this is to generate a map as above and then reshape it. Looking from the side, what is stopping the map from being an island? The border areas that are on land need to be pushed down into water, and the center areas that are in water need to be pushed up to become land.
+
+ Need this below water 
+ Need this above water 
+ Need this below water 
+
+ How does this work? There are two ingredients :
+
+ A distance function assigns a distance to every position on the map, from 0 at the center to 1 at the border.
+
+ A shaping function (as used in the Redistribution section ) takes an elevation as input and chooses a new output elevation.
+
+ At the center of the map (distance 0), we’ll use a shaping function that always outputs land . At the border of the map (distance 1), we’ll use a shaping function that always outputs water . In between, we’ll allow both land and water. For simplicity, I’ll assume the water level is 0.5, so ≥0.5 means land and <0.5 means water.
+
+ Shaping function: linear conversion 
+
+ To calculate the distance d , set nx = 2*x/width - 1 and ny = 2*y/height - 1 . These will range from -1 to +1. Then choose one of these distance functions recommended by /u/KdotJPG [14] :
+ 
+ Square Bump 
+ 
+ d = 1 - (1-nx²) * (1-ny²) , when you have a square map and want to make the island fill as much of the space possible without reaching the borders. 
+ Euclidean² 
+ 
+ d = min(1, (nx² + ny²) / sqrt(2)) , when you want the island to be round, and plan to embed it in a larger world. 
+
+ The simplest way to shape the elevation e is to linearly mix in 1-d .
+ At the center of the map, d is 0, and we want the elevation to be high (1).
+ At the edges of the map, d is 1, and we want the elevation to be low (0).
+ Linear interpolation can do this: e = lerp(e, 1-d, mix ) ,
+ for some value of mix between 0 and 1.
+ Move the mix slider to 0 to see the original map and move it to 1 to see the constraining shape.
+
+ Linear shaping mix parameter: 
+ Distance function: 
+ 
+ 0 for original, ½ for islands: 
+
+ New map 
+
+ 0.0 
+ 0.5 
+ 1.0 
+
+ Linear shaping function blends original noise and a fixed shape 
+
+ There are many more things to try.
+ Try shifting the distance function up or down by adding a constant, or slope it more or less by multiplying by a constant, or change the exponent from 2 to 4 or 6. 
+ Try applying the elevation reshaping to only the lower frequency octaves of the noise generator, and allow the high frequencies to work equally across the map. Try choosing the amount of land area you want, and then push all elevations up or down until you get the desired island size.
+ Try using noise to create the island shape but use some other approach to assign the elevation.
+ Try using a lookup table to allow arbitrary (piecewise linear) reshaping or distance functions. It will take some experimentation to find a combination you like.
+ Try non-linear shaping functions to mix e and 1-d .
+
+ Ridged noise # 
+
+ Instead of raising the elevation to a power, we can use absolute value to create sharp ridges:
+
+ function ridgenoise(nx, ny) {
+ return 2 * (0.5 - abs(0.5 - noise(nx, ny))) ;
+} 
+
+ To add octaves, we can vary the amplitudes of the higher frequencies so that only the mountains get the added noise:
+
+ e0 = 1 * ridgenoise(1 * nx, 1 * ny);
+e1 = 0.5 * ridgenoise(2 * nx, 2 * ny) * e0 ;
+e2 = 0.25 * ridgenoise(4 * nx, 4 * ny) * (e0+e1) ;
+e = (e0 + e1 + e2) / (1 + 0.5 + 0.25);
+elevation[y][x] = Math.pow(e, exponent); 
+
+n= 
+ 
+ 2 
+ 3 
+ 4 
+ 5 
+ 6 
+ 7 
+
+ I don’t have much experience with this technique and will have to play with it more to learn how to use it well. It might also be interesting to mix ridged low frequency noise with non-ridged high frequency noise.
+
+ Terraces # 
+
+ If we round the elevation to the nearest of levels we get terraces:
+
+n= 
+ 
+ 2 
+ 3 
+ 4 
+ 5 
+ 6 
+ 7 
+ 8 
+ 10 
+ 12 
+ 15 
+
+ This is an application of elevation redistribution functions of the form e = f(e) . Earlier we set e = Math.pow(e, exponent) to make mountain peaks steeper; here we use e = Math.round(e * ) / to make terraces. By using a function other than a step function [15] the terraces can be rounder or only occur at some elevations.
+
+ Tree placement # 
+
+ We usually use fractal noise for elevation and moisture, but it can also be used for placing irregularly spaced objects like trees and rocks. For elevation we have higher amplitudes with lower frequencies (“red noise”). For object placement we want to use higher amplitudes with higher frequencies (“blue noise”). On the left is a blue noise pattern; on the right are the locations where the noise is greater than the nearby values:
+
+R= 
+ 
+ 1 
+ 2 
+ 3 
+ 4 
+ 5 
+ 6 
+
+ for (int y = 0; y < height; y++) {
+ for (int x = 0; x < width; x++) {
+ double nx = x/width - 0.5, ny = y/height - 0.5;
+ // blue noise is high frequency; try varying this
+ bluenoise[y][x] = noise(50 * nx, 50 * ny); 
+ }
+}
+
+for (int yc = 0; yc < height; yc++) {
+ for (int xc = 0; xc < width; xc++) {
+ double max = 0;
+ // there are more efficient algorithms than this
+ for (int dy = -R; dy <= R; dy++) {
+ for (int dx = -R; dx <= R; dx++) {
+ int xn = dx + xc, yn = dy + yc;
+ // optionally check that (dx*dx + dy*dy <= R * (R + 1))
+ if (0 <= yn && yn < height && 0 <= xn && xn < width) {
+ double e = bluenoise[yn][xn];
+ if (e > max) { max = e; }
+ }
+ }
+ }
+ if (bluenoise[yc][xc] == max) {
+ // place tree at xc,yc
+ }
+ }
+} 
+
+ KDotJPG recommends checking dx*dx + dy*dy <= R * (R + 1) to change the square overlap check to a circular overlap check , and also to allow non-integer radius values.
+ Also consider that the radius doesn’t have to be a constant. By choosing a different R for each biome we can get a variable density of trees:
+
+ Although it’s cool that Simplex/Perlin noise can be used to place trees, other algorithms are more efficient and produce a better distribution of trees. For trees and other object placement, I recommend using Poisson Disc [16] or a jittered grid instead of high frequency Simplex/Perlin noise as shown here. For Javascript, I use poisson-disk-sampling [17] , fast-2d-poisson-disk-sampling [18] , or jittered-hexagonal-grid-sampling [19] . Wang tiles and graphics dithering algorithms are also worth a look.
+
+ Wraparound maps # 
+
+ Sometimes we want the east edge of the map to match up with the west edge. This corresponds to a cylinder in 3D space. We can implement this with a minor change. We’ll interpret the x value on the flat map as an angle in the cylinder world. Then we convert the angle to cartesian coordinates. To also make the north and south edges match up, we can apply the same pattern again to turn the y value into an angle, and look things up in a 4D noise space. Let’s see how the maps look adjacent to copies of themselves:
+
+ East+West only and North+South+East+West wraparound 
+
+ The first one wraps east-west but not north-south. The second one wraps in all four directions. Here’s some code:
+
+ const TAU = 2 * M_PI;
+
+function cylindernoise(double nx, double ny) {
+ double angle_x = TAU * nx;
+ /* In "noise parameter space", we need nx and ny to travel the
+ same distance. The circle created from nx needs to have
+ circumference=1 to match the length=1 line created from ny,
+ which means the circle's radius is 1/2π, or 1/tau */
+ return noise 3D ( cos(angle_x) / TAU, sin(angle_x) / TAU, ny);
+}
+
+function torusnoise(double nx, double ny) {
+ double angle_x = TAU * nx,
+ angle_y = TAU * ny;
+ return noise 4D (cos(angle_x) / TAU, sin(angle_x) / TAU,
+ cos(angle_y) / TAU, sin(angle_y) / TAU );
+} 
+
+ In practice, you will probably have to scale these noise values up. Higher dimensional noise tends to have a narrower range of values than lower dimensional noise, so if your biome constants are tuned for 2D noise, then you can try multiplying noise3D by √1.5, and noise4D by √2, but you may have to tweak these values further to match your needs. See Rudi Chen’s article on Perlin Noise range [20] . For more on tileable noise, see Ron Valstar’s guide [21] . 
+
+ Another thing that may affect the quality is that the octaves may “bleed” into each other’s frequency ranges, according to the paper Wavelet Noise [22] by Cook and DeRose:
+
+ When rendering, it
+ is common to texture 2D surfaces by sampling a 3D noise function,
+ but the resulting 2D texture will in general not be band-limited,
+ even if the 3D function is perfectly band-limited .
+
+ To infinity and beyond # 
+
+ The calculation of the biome at position (x,y) is independent of calculations at any other position. This local calculation results in two nice properties: it can be calculated in parallel, and it can be used for infinite terrain. Put the mouse over the minimap Touch the minimap on the left to generate a map on the right. We can generate any part of the map without generating (or having to store) the whole thing.
+
+ How can you do this in your own code? It’s a small change to the code we’ve already been using. Find the places where you have calls to noise(…, …) and replace them by noise(… - camera.x, … - camera.y) . In my demo, I use the mouse position to set camera.x and camera.y but you might use W A S D or other controls to move the camera around your infinite map.
+
+ Implementation # 
+
+ Using noise for generating terrain is a popular technique, and you can find tutorials for many different languages and platforms. The map generation code is pretty similar across languages. Here’s the simplest loop, in three different languages:
+
+ Javascript: 
+
+ import { createNoise2D } from 'simplex-noise';
+let gen = createNoise2D();
+function noise(nx, ny) {
+ // Rescale from -1.0:+1.0 to 0.0:1.0
+ return gen(nx, ny) / 2 + 0.5;
+}
+
+let value = []; 
+for (let y = 0; y < height; y++) {
+ value[y] = [];
+ for (let x = 0; x < width; x++) { 
+ let nx = x/width - 0.5, ny = y/height - 0.5;
+ value[y][x] = noise(nx, ny);
+ }
+} 
+
+ C++: 
+
+ module::Perlin gen; // if using libnoise
+double noise(double nx, double ny) { // if using libnoise
+ // Rescale from -1.0:+1.0 to 0.0:1.0
+ return gen.GetValue(nx, ny, 0) / 2.0 + 0.5;
+}
+
+FastNoiseLite gen; // if using fastnoiselite
+double noise(double nx, double ny) { // if using fastnoiselite
+ // Rescale from -1.0:+1.0 to 0.0:1.0
+ return gen.GetNoise(nx, ny) / 2.0 + 0.5;
+}
+
+double value[height][width];
+for (int y = 0; y < height; y++) {
+ for (int x = 0; x < width; x++) {
+ double nx = x/width - 0.5, 
+ ny = y/height - 0.5;
+ value[y][x] = noise(nx, ny);
+ }
+} 
+
+ Python: 
+
+ from opensimplex import OpenSimplex
+gen = OpenSimplex()
+def noise(nx, ny):
+ # Rescale from -1.0:+1.0 to 0.0:1.0
+ return gen.noise2d(nx, ny) / 2.0 + 0.5
+
+value = []
+for y in range(height):
+ value.append([0] * width)
+ for x in range(width):
+ nx = x/width - 0.5
+ ny = y/height - 0.5
+ value[y][x] = noise(nx, ny) 
+
+ Once you have a noise library, the code is similar. Beware: some libraries combine multiple octaves automatically, which is convenient but makes it hard to mix them in your own way.
+
+ Python : opensimplex for Python [23] 
+
+ C++ : SimplexNoise [24] or FastNoiseLite [25] or libnoise [26] 
+
+ Javascript, Typescript : simplex-noise.js [27] or FastNoiseLite [28] 
+
+ Java, C# : opensimplex2 [29] or FastNoiseLite [30] 
+
+ Unity : Unity.Mathematics.noise [31] or Mathf.PerlinNoise [32] 
+
+ There are lots of noise libraries for most popular languages. Alternatively, you may want to spend time studying how Simplex/Perlin/OpenSimplex noise works, or implementing it yourself. I didn’t. I used the existing libraries. FastNoiseLite [33] in particular is available for C, C#, C++, Java, JavaScript, Rust, Go, GLSL, HLSL, Fortran, Zig, Odin, Haxe, Pascal, GML, and even PowerShell.
+
+ Once you have found a noise library for your favorite language, the details will vary (some will return numbers from 0.0 to 1.0 and others from -1.0 to +1.0) but the basic idea is the same. For a real project you may want to wrap the noise function and the gen object into a class but those details aren’t relevant here so I made them global.
+
+ For this simple project it doesn’t matter that much whether you use Simplex noise, OpenSimplex noise, Perlin noise, value noise, midpoint displacement, diamond square [34] displacement, or an inverse Fourier transform. There are pros and cons of each of these but they all produce similar enough output for this type of map generator. 
+
+ The drawing of the map is going to be platform-specific and game-specific so I’m not providing that; this code is to generate the elevations and biomes, which you’ll want to draw yourself in whatever style your game uses. Feel free to copy, port, and use it for your own projects.
+
+ Playground # 
+
+ I’ve covered mixing octaves, raising the elevation to a power, and combining elevation and moisture to pick a biome. Here’s an interactive diagram that lets you play with all of these parameters, and then shows how the code is put together:
+
+ import alea from 'alea';
+import { createNoise2D } from 'simplex-noise';
+const genE = createNoise2D(alea(seed1));
+const genM = createNoise2D(alea(seed2));
+function noiseE(nx, ny) { return genE(nx, ny)/2 + 0.5; }
+function noiseM(nx, ny) { return genM(nx, ny)/2 + 0.5; }
+ 
+for (var y = 0; y < height; y++) {
+ for (var x = 0; x < width; x++) { 
+ var nx = x/width - 0.5, ny = y/height - 0.5;
+ var e = ( * noiseE( 1 * nx, 1 * ny)
+ + * noiseE( 2 * nx, 2 * ny)
+ + * noiseE( 4 * nx, 4 * ny)
+ + * noiseE( 8 * nx, 8 * ny)
+ + * noiseE(16 * nx, 16 * ny)
+ + * noiseE(32 * nx, 32 * ny));
+ e = e / ( + + + + + );
+ e = Math.pow(e, );
+ var m = ( * noiseM( 1 * nx, 1 * ny)
+ + * noiseM( 2 * nx, 2 * ny)
+ + * noiseM( 4 * nx, 4 * ny)
+ + * noiseM( 8 * nx, 8 * ny)
+ + * noiseM(16 * nx, 16 * ny)
+ + * noiseM(32 * nx, 32 * ny));
+ m = m / ( + + + + + );
+ /* draw biome(e, m) at x,y */
+ }
+} 
+
+ Adjust parameters→ 
+ 
+exp= 
+ 
+ Elevation octaves:
+ 
+e1= 
+ 
+e2= 
+ 
+e3= 
+ 
+e4= 
+ 
+e5= 
+ 
+e6= 
+
+ Moisture octaves:
+ 
+m1= 
+ 
+m2= 
+ 
+m3= 
+ 
+m4= 
+ 
+m5= 
+ 
+m6= 
+
+ A tricky bit: you need to use different seeds for the elevation and moisture noise. Otherwise they’ll end up producing the same noise values, and your maps won’t look interesting. Javascript’s simplex-noise v3 package [35] and Python’s opensimplex [36] and C++’s FastNoiseLite [37] libraries support seeds. Javascript’s simplex-noise v4 lets you plug in your own seedable random number generator. If your noise library doesn’t support seeds, an alternative to sample from a faraway space, so you might use noise2D(nx, ny) for elevation and noise2D(nx + 1000, ny) for moisture.
+
+ Another tricky bit: once you combine multiple octaves of noise, the range of output may not be what you expected, and you may have to add/multiply the output value into the desired range (such as 0.0 to 1.0). Scott Turner has written a bit more about common issues with noise [38] ; Rudi Chen has analyzed the range of output for Perlin Noise [39] ; and KDotJPG has studied the problem for Simplex, OpenSimplex, and Perlin Noise [40] . The simplex-noise.js library [41] I’m using takes this into account and rescales output to -1.0 to +1.0.
+
+ Thoughts # 
+
+ What I like about this approach to map generation is that it’s simple . It’s fast. It’s very little code to produce decent results.
+
+ What I don’t like about this approach is that it’s limited. Local calculation means every location is independent of every other location. Different areas of the map don’t relate to each other . Every place on the map “feels” the same. There are no global constraints like “there should be between 3 and 5 lakes” or global features like a river flowing from the top of the highest peak down to the ocean. Another thing I don’t like is that it takes a lot of tweaking of parameters to get something you like.
+
+ Why do I recommend it then? I think it’s a good starting point, especially for indie games or game jams. Two of my friends wrote the initial version of Realm of the Mad God [42] in 30 days, for a game competition [43] . They asked me to help them make the maps. I used this technique (plus some extra features that turned out not to be that useful) to make a map for them. Months later, after getting feedback from players and looking at the game design a lot more, we designed the more advanced map generator using Voronoi polygons, described here [44] . That map generator doesn’t use the techniques from this page, but uses noise very differently to produce maps.
+
+ Noise-based elevation is fun and easy to get started with but you can quickly run into limits. Scott Turner has an insightful essay with reasons to use alternatives [45] . Artifexian’s video on coastlines [46] gives a sense of just how limited noise-based terrain is. One real world geoscientist [47] starts with noise and then uses additional algorithms for mountain ranges, ocean levels, glacial fjords, coastal reefs, and inland seas.
+
+ More # 
+
+ There are lots of cool things you can do with noise functions. My page introduces the basics. Search the web you’ll see more advanced techniques such as turbulence, billow, ridged multifractal, amplitude damping, terraced, voronoi noise, analytical derivatives, domain warping, and others. Take a look at Inigo Quilezs’s page [48] for inspiration. Runevision shows how to use exponents, voronoi, sine waves, shaping functions, directional noise, gradients, fades, ridges, layers to create pseudo-erosion [49] .
+
+ My previous map generation projects that influenced this one:
+
+ I used generic Perlin noise for my first Realm of the Mad God map generator [50] . We used that for the first six months of alpha testing, and then replaced it with a custom-designed Voronoi polygon map generator [51] based on the gameplay needs we identified during the alpha testing. The biomes in this article and their colors come from those projects.
+
+ While studying signal processing for audio, I wrote a tutorial on noise that covers concepts like frequency, amplitude, octaves, and “colors” of noise. The same concepts that work for audio also apply to noise-based map generation. I made some unpolished terrain generation demos at the time but never finished them.
+
+ Sometimes I experiment to find limits. I wanted to see how little code I could get away with while still producing reasonable maps. In this mini-project I got down to zero lines of code— it’s all image filters (turbulence, threshold, color gradients). I was both pleased and disturbed by this. How much of map generation can be done with image filters? Quite a lot. Everything in the “smooth gradient color scheme” I described earlier came from this experiment. The noise layer is a turbulence image filter; the octaves are images layered on top of each other; the exponent is called the “curves adjustment” tool in Photoshop.
+
+ It bothers me somewhat that most of the code we game developers write for noise-based terrain generation (including midpoint displacement) turns out to be the same as audio and image filters. On the other hand, it produces decent results with very little code, so that’s why I wrote the article you’re reading. It’s a quick & easy starting point . I usually don’t use these types of maps for long; I’ll replace them with a custom map generator once more of the game is built and I have a better sense of what types of maps best match that game’s design. That’s a common pattern for me: start with something extremely simple, then replace it only after I better understand the system I’m working on.
+
+ There are a lot of cool things you can do with noise, and I’ve barely explored them here. Try out the Noise Studio [52] to interactively explore lots of possibilities. Also:
+
+ Inigo Quilezles [53] , a must read 
+
+ Sharing everything I could understand about gradient noise [54] is a great explanation of how Simplex/Perlin noise work
+
+ Building Worlds Using Maths [55] - Sean Murray of No Man’s Sky; skip to 20 minutes in.
+
+ Continuous World Generation in No Man’s Sky - Innes McKendrick [56] 
+
+ Noise functions for Factorio’s maps [57] 
+
+ Email me redblobgames@gmail.com , or comment here:
+
+ Links
+
+ [1]: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
+
+ [2]: http://www.shadedrelief.com/hypso/hypso.html
+
+ [3]: https://en.wikipedia.org/wiki/Robert_Whittaker_(ecologist)
+
+ [4]: https://scholar.google.com/scholar?hl=en&as_sdt=0%2C48&q=holdridge+1966
+
+ [5]: https://en.wikipedia.org/wiki/Holdridge_life_zones
+
+ [6]: https://en.wikipedia.org/wiki/K%C3%B6ppen_climate_classification
+
+ [7]: https://toppng.com/free-image/biome-minecraft-biome-color-chart-PNG-free-PNG-Images_425332
+
+ [8]: https://imgur.com/a/bh2iy
+
+ [9]: https://en.wikipedia.org/wiki/Growing_degree-day
+
+ [10]: https://worldbuildingpasta.blogspot.com/2025/09/public-climate-data-re-explorations.html
+
+ [11]: https://en.wikipedia.org/wiki/Solar_irradiance#Derivation
+
+ [12]: https://en.wikipedia.org/wiki/Earth_rainfall_climatology#/media/File:MeanMonthlyP.gif
+
+ [13]: https://en.wikipedia.org/wiki/Orographic_precipitation
+
+ [14]: https://old.reddit.com/r/proceduralgeneration/comments/kaen7h/new_video_on_procedural_island_noise_generation/gfjmgen/
+
+ [15]: https://gamedev.stackexchange.com/a/188513/2472
+
+ [16]: http://devmag.org.za/2009/05/03/poisson-disk-sampling/
+
+ [17]: https://github.com/kchapelier/poisson-disk-sampling
+
+ [18]: https://github.com/kchapelier/fast-2d-poisson-disk-sampling
+
+ [19]: https://github.com/kchapelier/jittered-hexagonal-grid-sampling
+
+ [20]: https://digitalfreepen.com/2017/06/20/range-perlin-noise.html
+
+ [21]: https://ronvalstar.nl/creating-tileable-noise-maps
+
+ [22]: https://graphics.pixar.com/library/WaveletNoise/paper.pdf
+
+ [23]: https://pypi.org/project/opensimplex/
+
+ [24]: https://github.com/SRombauts/SimplexNoise
+
+ [25]: https://github.com/Auburn/FastNoiseLite
+
+ [26]: http://libnoise.sourceforge.net/docs/
+
+ [27]: https://github.com/jwagner/simplex-noise.js
+
+ [28]: https://github.com/Auburn/FastNoiseLite
+
+ [29]: https://github.com/KdotJPG/OpenSimplex2
+
+ [30]: https://github.com/Auburn/FastNoiseLite
+
+ [31]: https://docs.unity3d.com/Packages/com.unity.mathematics@0.0/api/Unity.Mathematics.noise.html
+
+ [32]: https://docs.unity3d.com/ScriptReference/Mathf.PerlinNoise.html
+
+ [33]: https://github.com/Auburn/FastNoiseLite
+
+ [34]: https://undiscoveredworlds.blogspot.com/2019/01/the-global-map-fractals.html
+
+ [35]: https://github.com/jwagner/simplex-noise.js
+
+ [36]: https://pypi.org/project/opensimplex/
+
+ [37]: https://github.com/Auburn/FastNoiseLite/wiki/Documentation#void-setseedint-seed
+
+ [38]: https://heredragonsabound.blogspot.com/2016/10/is-it-noisy-in-here.html
+
+ [39]: https://digitalfreepen.com/2017/06/20/range-perlin-noise.html
+
+ [40]: https://noiseposti.ng/posts/2021-03-22-Normalizing-Gradient-Noise.html
+
+ [41]: https://github.com/jwagner/simplex-noise.js
+
+ [42]: https://en.wikipedia.org/wiki/Realm_of_the_Mad_God
+
+ [43]: https://www.tigsource.com/2010/02/07/assemblee-competition-results/
+
+ [44]: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
+
+ [45]: https://heredragonsabound.blogspot.com/2019/02/perlin-noise-procedural-content.html
+
+ [46]: https://www.youtube.com/watch?v=ztemzsxso0U
+
+ [47]: https://www.reddit.com/r/proceduralgeneration/comments/gi4hq4/comment/fqe9pt0/
+
+ [48]: https://iquilezles.org/articles/warp/
+
+ [49]: https://blog.runevision.com/2026/03/fast-and-gorgeous-erosion-filter.html
+
+ [50]: https://simblob.blogspot.com/2010/01/simple-map-generation.html
+
+ [51]: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
+
+ [52]: https://codepen.io/MittenedWatchmaker/full/aVeoRM/
+
+ [53]: https://iquilezles.org/articles/
+
+ [54]: https://blog.pkh.me/p/42-sharing-everything-i-could-understand-about-gradient-noise.html
+
+ [55]: https://www.gdcvault.com/play/1024514/Building-Worlds-Using
+
+ [56]: https://www.gdcvault.com/play/1024265/Continuous_World_Generation_in__No_Man_s_Sky_
+
+ [57]: https://factorio.com/blog/post/fff-390
+
+ Load comments from Disqus 
+
+ View the discussion thread. 
+
+ Copyright © 2026 Red Blob Games 
+  RSS Feed 
+ 
+ Cite this page: Patel, Amit J., "Making maps with noise functions", 
+ Red Blob Games, 2015,
+ https://www.redblobgames.com/maps/terrain-from-noise/ 
+ @online{Patel-2015,
+ author = {Patel, Amit J.}, 
+ title = {Making maps with noise functions},
+ organization = {Red Blob Games},
+ year = {2015},
+ url = {https://www.redblobgames.com/maps/terrain-from-noise/}
+ urldate = {2026-09-04}
+} 
+
+ Created 07 Jul 2015;
+ Last modified: 26 Aug 2026

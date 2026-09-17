@@ -262,6 +262,8 @@ public final class PrecipField {
         //   这是 D79 唯一还没做过的判别实验（§226.4）。进 configStamp（非 null 会改结果，D58）。
         ZonalProfile ov = ZONAL_PROFILE_OVERRIDE;
         if (ov != null) return ov.tempAt(latRad, theta);
+        // §264：纬向平均海平面温度直接取观测月表（ZONAL_SL_FROM_TABLE=false 时这一支不执行）
+        if (ZONAL_SL_FROM_TABLE) return ZonalTables.tZmSlMonth(latRad, theta);
         // ⚠ D79 步骤 0（§231.4）：改走**纬向平均专用**的季节异常（表 A_ZM_K），
         //   不再借用逐点口径的 seasonalAnomaly(lat, <kappa>, theta) —— 两者口径不同，
         //   共用一张表时修逐点那一侧会把涡动链一起带偏。
@@ -284,6 +286,55 @@ public final class PrecipField {
     public static ZonalProfile ZONAL_PROFILE_OVERRIDE = null;
 
     /**
+     * **纬向平均海平面温度直接取观测月表**（设计冻结 §264，用户裁决 2026-09-17）。
+     *
+     * <p>{@code false}（默认）⇒ 与接线前**逐位相同**（原式一字未改）。
+     * {@code true} ⇒ 在 {@code zonalSlTemp} 的第一支返回
+     * {@link ZonalTables#tZmSlMonth}(lat, theta)，即**观测的纬向平均海平面温度**。
+     *
+     * <p><b>为什么这是「合理」而不是拐杖</b>：
+     * <ol>
+     *   <li>纬向平均态**必须外生给定** —— 这是本模型的第一条设计约束（X 无限 ⇒ 纬向平均无定义）。
+     *       年基 {@code T_OCEAN_K}/{@code T_LAND_K}、风 {@code U_ZM}、气压 {@code P_REF} 早就是观测表，
+     *       <b>温度的季节部分不该例外</b>；</li>
+     *   <li>{@code tZmSlMonth} 是**纬向平均量**，<b>不可能编码降水</b> —— 降水依赖本世界自己生成的
+     *       陆海分布（kappa 场），所以这条外生表没有把结论写进公式；</li>
+     *   <li>它同时消掉三个互相矛盾的口径：年基（模型算的）vs 振幅（补丁表 {@code A_ZM_K}）vs 观测月表。
+     *       实测代价（§256）：原来的 {@code zonalSlTemp} 在 60~90 度比观测月表冷 <b>4~21 K</b>，
+     *       它使柱水汽在 60~70 度只有观测的 0.44~0.75、{@code |dW/dy|} 在 50~60 度是观测的 1.8~2.2 倍，
+     *       进而让涡动水汽通量在 50~55 度塌到 45 度的 0.40。</li>
+     * </ol>
+     *
+     * <p>⚠ <b>纪律修正（§264.1）</b>：这一支是「把已知错误换成已知正确」。
+     * 若验收判据因此后退，<b>不构成回滚它的理由</b> —— 应接受该后退并记为下一处待修。
+     * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
+     */
+    public static boolean ZONAL_SL_FROM_TABLE = true;   // 2026-09-17 用户裁决落地：中纬两条独立带 −40%→−3%（§265）
+
+    /**
+     * **柱水汽取观测月表**（设计冻结 §266/§267）。
+     *
+     * <p>{@code false} ⇒ 原式 {@code moisture(zonalSlTemp)*RHO_AIR*H_MOIST}（隐含**有效柱 RH 恒为 0.80**）。
+     * {@code true} ⇒ {@link ZonalTables#wColMonth}，即 ERA5 月平均全球柱水汽（20 层 1000~300 hPa 积分/g）。
+     *
+     * <p><b>为什么</b>（§266.6 实测，全球口径）：把常数 0.80 换算成它本该代表的「有效柱 RH」，
+     * 观测是 <b>20~30 度只有 0.57~0.62</b>、45~60 度 0.79~0.99、70~85 度 0.87~0.99。
+     * 即模型恒用 0.80 ⇒ <b>副热带气柱湿了 30~40%</b>，这正是 §265 落地后
+     * 「冬季副热带 +769.7%」的唯一来源。
+     *
+     * <p><b>为什么这不是把结论写进公式</b>：① 柱水汽是**热力学状态量**，不是降水型；
+     * 降水仍由 {@code curv(W)}、{@code stormGate}、{@code K} 与**本世界自己的 kappa 场**算出来；
+     * ② 模型里 W **本来就是纯纬向函数**（{@code curv} 只用纬向剖面、{@code stormGate} 用的是**全球表**
+     * {@code uZm}）⇒ 它现在对世界的陆海分布**零依赖**，换成观测表**不减少任何地理内容**；
+     * ③ 与年基、风、气压、以及 §265 刚落地的温度完全同类（纬向平均态外生给定）。
+     *
+     * <p>⚠ 该形状**非单调**（副热带干、中纬持平、高纬略湿），**不可能**写成 {@code f(w_zm)}
+     * —— 70~85 度的 {@code w_zm} 也是负的（下沉），那里却需要 0.87~0.99。已试算否决。
+     * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
+     */
+    public static boolean COL_WATER_FROM_TABLE = true;   // 2026-09-17 §268.3 四格 A/B 通过后落地
+
+    /**
      * **气柱水汽**（kg/m^2）：纬向平均近地比湿 x 空气密度 x 水汽标高 H_MOIST。
      *
      * <p>⚠ <b>2026-09-13 修正（审计 D48）</b>：原来写的是 <code>moisture(...) * H_MOIST</code>，
@@ -296,6 +347,8 @@ public final class PrecipField {
      * 退化（可以互相吸收）⇒ 它不改变任何验收读数的形状，只把标定 gain 从 5.4 降到约 4.4。
      */
     public static double columnWater(double latRad, double theta) {
+        // §267：COL_WATER_FROM_TABLE=false 时走下面原式，逐位不变。
+        if (COL_WATER_FROM_TABLE) return ZonalTables.wColMonth(latRad, theta);
         return moisture(zonalSlTemp(latRad, theta), 0.0, 0.0) * RHO_AIR * H_MOIST;
     }
 
@@ -414,7 +467,128 @@ public final class PrecipField {
     /** 物理化闭合里唯一的 O(1) 无量纲系数（由 GPCP 标定；见设计冻结 §146）。 */
     public static double EDDY_PHYS_GAIN = 5.45;
 
+    /**
+     * **A-ii 开关**（用户裁决 A，设计冻结 §234~§236）：涡动项的**纬度放置**改由观测给。
+     *
+     * <p>{@code false}（默认）⇒ 与接线前**逐位相同**（走 {@link #modelShape}）。
+     * {@code true} ⇒
+     * <pre>
+     *   eddyMfc = EDDY_MFC_REF * eddyMfcObs(|phi|) * [ modelShape(phi,theta) / A(|phi|) ]
+     * </pre>
+     * <b>放置与符号</b>来自观测（NCEP 日资料实测的瞬变涡动水汽通量辐合，30~40 度是**负**的
+     * ⇒ {@code max(0,·)} 之后那里不再有涡动降水 —— 这正是 §235.2 证实的病）；
+     * <b>季节调制</b>仍由模型自己的 {@code modelShape} 给（除以 {@code A} 只是把它无量纲化、有界化），
+     * 所以 B2.b 仍由模型自己的温度场决定，§217 的原则不被绕过。
+     */
+    public static boolean EDDY_PLACEMENT_FROM_OBS = false;   // A′：①② 达标但③不可能达标（§239.2/§241），收尾关闭
+
+    /** A-ii 的基准幅值（kg/(m^2 s)）—— 按既定口径标定（45~55 夏 = GPCP 2.565）。 */
+    public static double EDDY_MFC_REF = 1.0e-4;   // [A 标定点 2]
+
+    /**
+     * **把涡动闭合补成完整的通量散度**（设计冻结 §268，工作项 13）。
+     *
+     * <p>{@code false}（默认）⇒ {@code MFC = gate*K*W''}（原式，逐位不变）。
+     * {@code true} ⇒ {@code MFC = d(gate*K*W')/dy = (gate*K)'*W' + gate*K*W''}。
+     *
+     * <p><b>这不是新物理、也不是新参数</b>：它只是把**同一个下坡扩散闭合**写成它本来的形式
+     * （「通量的散度」），而原式是它在 {@code (gate*K)' = 0} 假设下的特例。
+     *
+     * <p><b>为什么现在必须补</b>（§267.2 实测）：只把柱水汽换成观测表（水平只差 7%），
+     * 中纬降水就掉了 55~66% —— 因为 {@code curv(W)} 换了符号。
+     * 生产式漏掉的 {@code (gate*K)'*W'} 用**旧 W** 量时是保留项的 37%（§262.2），
+     * **用正确的 W 量时就成了决定性的一项**。
+     */
+    public static boolean EDDY_FULL_DIVERGENCE = true;   // 2026-09-17 §268.3 四格 A/B 通过后落地
+
+    /** {@code F(y) = gate(y)*K(y)*W'(y)}（涡动水汽通量，poleward 为正）。 */
+    static double fluxAt(double y, double theta, double d) {
+        double w0 = columnWater(y, theta);
+        double wp = columnWater(y + d, theta);
+        double wm = columnWater(y - d, theta);
+        if (w0 <= 0.0) return 0.0;
+        double dWdy = (wp - wm) / (2.0 * d * WorldContract.R_EFF);
+        double ld = deformRadius(y, theta);
+        double sg = eadyGrowth(y, theta);
+        double K = (EDDY_CLOSURE == 0)
+            ? EDDY_MIX * sg * ld * ld
+            : EDDY_PHYS_GAIN * EDDY_TAU * sg * sg * ld * ld;
+        return stormGate(y, theta) * K * dWdy;
+    }
+
+    /**
+     * **掩码放在散度外面**（设计冻结 §269.5，工作项 14）。
+     *
+     * <p>{@code false} ⇒ 掩码在微分里面（§268 的写法）；{@code true} ⇒
+     * <pre>
+     *   MFC = gate * d(K*W')/dy = gate * ( K'*W' + K*W'' )
+     * </pre>
+     *
+     * <p><b>为什么必须这样</b>（§269.4 实测）：{@code gate} 是「Rossby 波不能传入自由对流层东风带」
+     * 的**掩码**，它回答「这里有没有涡动」，不该参与「通量的空间结构」。
+     * 把掩码放进微分之后 {@code G = gate*K} 在 45 度取极大 ⇒ {@code G'} 在那里反号 ⇒
+     * {@code W'G'} 在 45 度下方为负、上方为正，与保留项 {@code GW''} **几乎相消**
+     * ⇒ 45 度出现一个**不在物理里的洞**。量级上 {@code W'G'} 在 35~60 度比 {@code GW''} 大
+     * <b>1~48 倍</b>，即形状几乎完全由掩码的梯度决定。
+     */
+    public static boolean EDDY_MASK_OUTSIDE = false;
+
+    /** 扩散率 K（**不含掩码**）。 */
+    static double kAt(double y, double theta) {
+        double ld = deformRadius(y, theta);
+        double sg = eadyGrowth(y, theta);
+        return (EDDY_CLOSURE == 0) ? EDDY_MIX * sg * ld * ld
+             : EDDY_PHYS_GAIN * EDDY_TAU * sg * sg * ld * ld;
+    }
+
+    /** W 的经向梯度。 */
+    static double dWdy(double y, double theta, double d) {
+        return (columnWater(y + d, theta) - columnWater(y - d, theta)) / (2.0 * d * WorldContract.R_EFF);
+    }
+
+    /** {@code MFC = gate * d(K*W')/dy}（掩码在外，§269.5）。 */
+    static double modelShapeMasked(double latRad, double theta) {
+        double d = Math.toRadians(EDDY_DPHI_DEG);
+        double lim = Math.PI / 2.0 - d;
+        double c = latRad > lim ? lim : (latRad < -lim ? -lim : latRad);
+        double dy = d * WorldContract.R_EFF;
+        double kp = kAt(c + d, theta), km = kAt(c - d, theta);
+        double wp = dWdy(c + d, theta, d), wm = dWdy(c - d, theta, d);
+        return stormGate(latRad, theta) * (kp * wp - km * wm) / (2.0 * dy);
+    }
+
+    /** {@code MFC = -dF/dy}（中心差分，步长 d = EDDY_DPHI_DEG）。 */
+    static double modelShapeFull(double latRad, double theta) {
+        double d = Math.toRadians(EDDY_DPHI_DEG);
+        double lim = Math.PI / 2.0 - d;
+        double c = latRad > lim ? lim : (latRad < -lim ? -lim : latRad);
+        return (fluxAt(c + d, theta, d) - fluxAt(c - d, theta, d)) / (2.0 * d * WorldContract.R_EFF);
+    }
+
     public static double eddyMfc(double latRad, double theta) {
+        if (!EDDY_PLACEMENT_FROM_OBS) {
+            if (!EDDY_FULL_DIVERGENCE) return modelShape(latRad, theta);
+            return EDDY_MASK_OUTSIDE ? modelShapeMasked(latRad, theta) : modelShapeFull(latRad, theta);
+        }
+        double a = Math.abs(Math.toDegrees(latRad));
+        int k = (int) (a / 5.0);
+        if (k > 17) k = 17;
+        double tl = a / 5.0 - k;
+        double[] ann = shapeAnn();
+        // ---- A（§238）：放置、符号与**季节迁移**全部取自**逐月**观测剖面 ----
+        //  为什么不再乘 modelShape/A：逐月剖面**已经含季节**，再乘一次就是重复计数。
+        //  ⚠ 记账：gate * sigma^2 * L_d^2 * curv(W) 那一整套物理形式由此**降级为诊断量**
+        //  （modelShape/shapeAnn 保留，供对照与回滚）。
+        return EDDY_MFC_REF * ZonalTables.eddyMfcObsMonth(latRad, theta);
+    }
+
+    /**
+     * **模型形状**（原 {@code eddyMfc} 的完整原式，一字未改）—— A-ii 只换它的**纬度放置**。
+     *
+     * <p>{@code A(|phi|) = mean_theta |modelShape|} 用它算：**按幅值归一**而不是按带符号的年均值，
+     * 因为年均值在副热带会穿零（正负相消）⇒ 比值无界（§236.2）。
+     */
+    static double modelShape(double latRad, double theta) {
         double d = Math.toRadians(EDDY_DPHI_DEG);
         double lim = Math.PI / 2.0 - d;
         double c = latRad > lim ? lim : (latRad < -lim ? -lim : latRad);
@@ -430,6 +604,20 @@ public final class PrecipField {
             ? EDDY_MIX * sg * ld * ld
             : EDDY_PHYS_GAIN * EDDY_TAU * sg * sg * ld * ld;
         return K * curv * stormGate(latRad, theta);
+    }
+
+    /** 19 纬（0..90，每 5 度）的 {@code A(|phi|) = mean_theta |modelShape|}，**惰性算一次**（76 次求值）。 */
+    private static volatile double[] SHAPE_ANN = null;
+    private static double[] shapeAnn() {
+        double[] t = SHAPE_ANN;
+        if (t != null) return t;
+        t = new double[19];
+        for (int k = 0; k < 19; k++) {
+            double lat = Math.toRadians(k * 5.0), s = 0.0;
+            for (int q = 0; q < 4; q++) s += Math.abs(modelShape(lat, q * Math.PI / 2.0));
+            t[k] = s / 4.0;
+        }
+        return SHAPE_ANN = t;
     }
 
     /**
@@ -455,6 +643,76 @@ public final class PrecipField {
         return m > 0.0 && q > 1e-9 ? m / (RHO_AIR * q) : 0.0;
     }
 
+    /**
+     * **候选 A（设计冻结 §244.5）：不让局地边界层散度抵消纬向平均上升支。**
+     *
+     * <p>{@code false}（默认）⇒ {@code wEff = w_zm + w_loc}，与接线前**逐位相同**（那一行一字未改）。
+     * {@code true} ⇒ {@code wEff = max(0,w_zm) + max(0,w_loc)}：两项**分别取正再相加**。
+     *
+     * <p><b>为什么要试它</b>（§244.4 实测）：25° 海夏 {@code w_zm = +1.500e-3}、{@code w_loc = -1.836e-3}
+     * ⇒ 相加为负 ⇒ {@code precip()} 直接返回 0 ⇒ 副热带海洋夏季在 98~100% 的格点上是**精确的 0**，
+     * 而观测（GPCP+ETOPO1，25~40°N 海 JJA）= <b>2.356 mm/day</b>。
+     * 这是全降水场里最大的单项误差。
+     *
+     * <p><b>已知局限</b>：它只在 {@code w_zm > 0} 的地方起作用（本世界约 5~27°），
+     * 30~40° 那里 {@code w_zm < 0} ⇒ **A 治不了那一段**。它是一次「便宜的对照」，
+     * 用来把「硬零」拆成「被抵消的」与「本来就下沉的」两部分。进 {@code configStamp()}。
+     */
+    public static boolean SPLIT_ASCENT = false;
+
+    /**
+     * **候选 R-2（设计冻结 §248.6 / §249）：q 改用局地真实地表温度。**
+     *
+     * <p>{@code false}（默认）⇒ 与接线前**逐位相同**（下面那个三元表达式的 else 支就是原变量）。
+     * {@code true} ⇒ 在算 q 之前先减掉 {@code GAMMA*max(0,elev)*kappa}。
+     *
+     * <p><b>为什么</b>（§248.2 实测）：原式喂给 {@link #moisture} 的是**海平面等效温度**，
+     * 而陆地上那个 {@code +GAMMA*z_bar_land} 修正在 30 度是 <b>+5.4 K</b>，把 qSat 抬了约 24%
+     * ⇒ 陆地 q 反而比海洋高（16.0 vs 13.3 g/kg），与真实地球**反号**。
+     * 水汽是由**有高度的真实地表**提供的，不是由「海平面上的温度」提供的。
+     *
+     * <p><b>海洋中性（逐位证明）</b>：P501 自检 [4] 断言
+     * {@code surfaceTemp == tSl - GAMMA*max(0,elev)*kappa} 逐点逐位成立（残差 0.00e+00）
+     * ⇒ {@code kappa = 0} 处两支完全相同 ⇒ **本开关不可能改变任何纯海洋点**。
+     *
+     * <p><b>实测标定（P501 v2，15~45 度）</b>：陆地 q 15.96 → <b>12.55 g/kg（-21.4%）</b>、
+     * 陆地 RH 0.7843 → <b>0.5683</b>；海洋**逐位不变**。
+     * ⚠ 它同时把陆地 E 从 10.23 推到 15.81 ⇒ **R-2 要与陆面湿润度因子 β 配对使用**
+     * （实测 β = 0.60 把陆地 E 压回 2.10 mm/day）。**本切片不接线 E/β。**
+     * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
+     */
+    public static boolean Q_AT_SURFACE_TEMP = false;
+
+    /**
+     * **候选 S-1（设计冻结 §251）：浅对流地板。**
+     *
+     * <p>{@code false}（默认）⇒ **整个分支被跳过**，与接线前逐位相同。
+     *
+     * <p>为什么需要它：{@code precip()} 里那行 {@code if (wEff <= 0) return 0.0} 把
+     * 「深对流触发条件」误当成了「降水存在条件」。真实副热带海洋**从不停止降水**
+     * （GPCP+ETOPO1 实测 20~62.5N 海洋 JJA 最小值 = <b>1.84 mm/day</b>），
+     * 而模型在 25~40 度海洋夏季 **98~100% 的格点是精确的 0**。
+     * §245~§250 已逐条排除：调涡动参数（§247.4）、防空转（§245.5）、
+     * {@code max(0,E+MFC)}（§244.5）、水汽松弛（§248.3）—— **保留 max(0,上升) 的任何形式都无法填这条地板**。
+     *
+     * <pre>
+     *   P_sh = ALPHA_SH * E_sh / rho_w
+     *   E_sh = rho_a * cdOf(kappa) * |V|_eff * max(0, (1-kappa)*qSat(T_sfc) - q)
+     *   |V|_eff = sqrt(|V|^2 + V_GUST^2)
+     *   P    = max(P_原有, P_sh)      ← **地板，不是加法**
+     * </pre>
+     *
+     * <p>四个选择：① {@code (1-kappa)} = 湿表面分数（浅对流是湿表面现象，纯海洋 1 / 纯内陆 0，零阈值连续）；
+     * ② {@code max(0, ...)} 自动把陆地上的地板关掉（陆地 q 本来就高），**不需要分支**；
+     * ③ {@code max} 而不是加法 —— 加法会把**已经太湿**的中纬 45 度海洋推得更湿；
+     * ④ {@code V_GUST} 取 L-3 的 QTCM 值 4 m/s。
+     */
+    public static boolean SHALLOW_FLOOR = true;   // 2026-09-17 落地：① 0.0%->99.5%、⑤ 海洋地板 0.00->1.12（§252）
+    /** 浅对流效率（由判据①的观测锚反解；见 §251.2）。 */
+    public static double ALPHA_SH = 0.40;
+    /** 地表通量的风速下限（m/s）—— L-3（QTCM `VVsmin = 4.0`）。没有下限，季风反转点通量归零。 */
+    public static double V_GUST = 4.0;
+
     /** 有效上升速度（m/s）：纬向平均上升支 + 局地辐合。 */
     public static double wEff(double latRad, double theta, double divU) {
         double shifted = Math.toDegrees(latRad - precipSubsolarLat(theta));
@@ -469,7 +727,8 @@ public final class PrecipField {
         // ⚠ 代价：不是纯粹解封 —— 全值域都被轻微压缩（wLoc = W_LOC_MAX/2 处 −7.6%）
         //   ⇒ B2/B3/B4 会变，需全量重跑。
         double wLoc = W_LOC_MAX * Math.tanh((-H_BL * divU) / W_LOC_MAX);
-        return ZonalTables.wZm(shifted) + wLoc;
+        if (!SPLIT_ASCENT) return ZonalTables.wZm(shifted) + wLoc;
+        return Math.max(0.0, ZonalTables.wZm(shifted)) + Math.max(0.0, wLoc);
     }
 
     /** 降水率（m/s）。 */
@@ -499,7 +758,11 @@ public final class PrecipField {
         double[] u0 = Atmosphere.windAt(x, z, seed, cell, theta, gradStep);
         double hUp = upwindElev(x, z, seed, cell, u0[0], u0[1]);
         double depl = depletion(hUp, k);
-        double q = moisture(tSl, k > 0.0 ? hUp : 0.0, k);
+        // R-2：Q_AT_SURFACE_TEMP=false 时 tQ == tSl ⇒ 下面一行与接线前**逐位相同**。
+        double tQ = Q_AT_SURFACE_TEMP
+                  ? tSl - Atmosphere.GAMMA * Math.max(0.0, elev) * k
+                  : tSl;
+        double q = moisture(tQ, k > 0.0 ? hUp : 0.0, k);
         double[] ux = Atmosphere.windAt(x + gradStep, z, seed, cell, theta, gradStep);
         double[] uw = Atmosphere.windAt(x - gradStep, z, seed, cell, theta, gradStep);
         double[] un = Atmosphere.windAt(x, z + gradStep, seed, cell, theta, gradStep);
@@ -513,6 +776,17 @@ public final class PrecipField {
         if (withEddy) {
             double mfc = eddyMfc(lat, theta);
             if (mfc > 0.0) p += mfc * depl * depletionCol(hUp, k) / RHO_WATER;
+        }
+        // ---- 候选 S-1：浅对流地板（§251）。SHALLOW_FLOOR=false 时整段被跳过 ⇒ 逐位不变。----
+        if (SHALLOW_FLOOR) {
+            double tSfcF = Atmosphere.surfaceTemp(x, z, seed, cell, theta);
+            double qsSfcF = qSat(tSfcF);
+            double spF = Math.hypot(u0[0], u0[1]);
+            double vEff = Math.sqrt(spF * spF + V_GUST * V_GUST);
+            double betaF = 1.0 - Atmosphere.clamp01(k);
+            double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
+            double pSh = ALPHA_SH * eSh / RHO_WATER;
+            if (pSh > p) p = pSh;
         }
         return p * 86400.0 * 1000.0;
     }

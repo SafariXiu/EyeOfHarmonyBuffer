@@ -69,6 +69,7 @@ copy /Y "%SRC%\space\talos\chunk\util\SimplexNoise2D.java" com\EyeOfHarmonyBuffe
 copy /Y "%SRC%\space\talos\chunk\util\WindowKey.java" com\EyeOfHarmonyBuffer\space\talos\chunk\util\WindowKey.java >nul
 copy /Y "%SRC%\space\talos\chunk\cave_layer\runtime\CaveMath.java" com\EyeOfHarmonyBuffer\space\talos\chunk\cave_layer\runtime\CaveMath.java >nul
 copy /Y "%SRC%\sim\litho\PlateField.java" com\EyeOfHarmonyBuffer\sim\litho\PlateField.java >nul
+copy /Y "%SRC%\sim\litho\TalosField.java" com\EyeOfHarmonyBuffer\sim\litho\TalosField.java >nul
 copy /Y "%SRC%\sim\ocean\BasinFinder.java" com\EyeOfHarmonyBuffer\sim\ocean\BasinFinder.java >nul
 copy /Y "%SRC%\sim\ocean\GyreRow.java" com\EyeOfHarmonyBuffer\sim\ocean\GyreRow.java >nul
 copy /Y "%SRC%\sim\ocean\SurfaceLayer.java" com\EyeOfHarmonyBuffer\sim\ocean\SurfaceLayer.java >nul

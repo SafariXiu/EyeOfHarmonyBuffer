@@ -1,0 +1,448 @@
+URL: https://minecraft.wiki/w/Biome
+STATUS: 200
+
+Biome – Minecraft Wiki 
+
+ Biome 
+
+ From Minecraft Wiki
+
+ Jump to navigation 
+ Jump to search 
+ For customization of biomes, see Biome definition . &#32;&#32;For biomes in Minecraft Legends , see Legends:Biome .
+
+ Minecraft contains many different biomes that can be traveled to. Some examples, from left to right, are forest , badlands , deep ocean , grove , cherry grove , and warped forest . 
+ A biome is a region in a world with distinct geographical features, plants , mobs , temperatures, humidity levels, colors, and more. Biomes separate every generated world into different environments, such as forests, deserts, and oceans.
+
+ The biome of a location is determined during world generation rather than by the current environment, even if all blocks in a large area are altered to imitate the terrain of other biomes.
+
+ Existing biomes can be located with the / locate biome command. The / fillbiome command in Java Edition , or the "Biome Data Assignment" tool in Bedrock Editor can be used to change the biome in a selected area.
+
+ Contents
+
+ 1 List of biomes 
+ 
+ 1.1 Biome types 
+
+ 1.2 Overworld 
+ 
+ 1.2.1 Offshore biomes 
+
+ 1.2.2 Highland biomes 
+
+ 1.2.3 Woodland biomes 
+
+ 1.2.4 Wetland biomes 
+
+ 1.2.5 Flatland biomes 
+
+ 1.2.6 Arid-land biomes 
+
+ 1.2.7 Cave biomes 
+
+ 1.2.8 The Void 
+
+ 1.3 The Nether 
+
+ 1.4 The End 
+
+ 1.5 Unused biomes 
+
+ 1.6 Removed biomes 
+
+ 1.7 Joke biomes 
+
+ 2 Tint 
+ 
+ 2.1 Plants 
+ 
+ 2.1.1 Special plant tints 
+
+ 2.2 Environment 
+ 
+ 2.2.1 Vibrant Visuals 
+
+ 2.3 Transition 
+
+ 3 Climate 
+ 
+ 3.1 Temperature 
+
+ 3.2 Downfall 
+
+ 3.3 Precipitation 
+
+ 3.4 Snow accumulation 
+
+ 3.5 List of biome climates 
+ 
+ 3.5.1 Overworld 
+
+ 3.5.2 The Nether 
+
+ 3.5.3 The End 
+
+ 4 Generation 
+ 
+ 4.1 Biome distribution 
+ 
+ 4.1.1 Overworld 
+
+ 4.1.2 The Nether 
+
+ 4.1.3 The End 
+
+ 5 Biome IDs 
+ 
+ 5.1 Java Edition 
+
+ 5.2 Bedrock Edition 
+
+ 6 Achievements 
+
+ 7 Advancements 
+
+ 8 History 
+ 
+ 8.1 Java Edition 
+
+ 8.2 Bedrock Edition 
+
+ 8.3 Legacy Console Edition 
+
+ 8.4 New Nintendo 3DS Edition 
+
+ 9 Quotes 
+
+ 10 Issues 
+
+ 11 Trivia 
+
+ 12 Gallery 
+ 
+ 12.1 Screenshots 
+ 
+ 12.1.1 Historical screenshots 
+
+ 12.2 Templates 
+
+ 12.3 Mojang images 
+
+ 13 See also 
+
+ 14 References 
+
+ 15 External links 
+
+ 16 Navigation 
+
+ List of biomes
+ [ edit | edit source ] 
+
+ Biome types
+ [ edit | edit source ] 
+
+ In Java Edition , there are 67 different biome types: 56 for the Overworld , 5 for the Nether , and 5 for the End , plus one used only for a superflat preset. In Bedrock Edition , there are 89 biome types: 56 for the Overworld, 5 for the Nether, 1 for the End, and 27 unused.
+
+ On this page, for convenience of description and reading, the biomes in Overworld are divided into 8 categories, which are not official.
+
+ Overworld
+ [ edit | edit source ] 
+
+ Offshore biomes
+ [ edit | edit source ] 
+
+ These biomes are used for the generation of oceans and mushroom fields. They are large, open biomes made almost entirely of water going up to Y=63, with underwater relief on the sea floor, such as small mountains and plains, usually including gravel, dirt, and sand. Squid , fish and nautilus spawn frequently in the water, and dolphins spawn in non-frozen oceans. Regular hostile mobs can spawn at rare dry grounds, while drowned and sometimes zombie nautilus jockeys spawn underwater. Shipwrecks and underwater ruined portals are found in all ocean biomes, and ocean ruins may spawn with stone bricks in regular and colder oceans, or sandstone in lukewarm oceans.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ Ocean 
+
+ The basic ocean biome, a vast body of water with occasional grassy islands. Like its colder variants, its floor is largely made up of gravel, covered with kelp and seagrass . However, small patches of dirt, sand and clay can also appear. Cod and salmon &#8204; [ BE only ] can spawn here alongside dolphins , squid , nautiluses , and zombie nautiluses .
+
+ Deep ocean 
+
+ In deep ocean biomes, the ocean can exceed 30 blocks in depth, making it twice as deep as the normal ocean. The ground is mainly covered with gravel and kelp can grow much higher. Ocean monuments generate in deep oceans, where guardians , elder guardians , prismarine , and sponges can be found.
+
+ Warm ocean 
+
+ A variant of the ocean biome with light teal water at the surface. Like the lukewarm ocean, it has a floor made of sand and like all oceans, it is populated with seagrass, but without kelp. Pufferfish and tropical fish spawn here alongside dolphins, squid, and nautiluses, while cod and salmon do not spawn. Unlike other ocean biomes, warm oceans allow for the generation of coral reefs and sea pickles . It is the only ocean biome that does not have a deep equivalent, but the terrain in this biome can reach the same depth as deep oceans. 
+
+ Lukewarm ocean 
+
+ A variant of the ocean biome, with light blue water at the surface. Its floor is made of sand with an occasional patch of dirt or clay. Kelp and seagrass generates here. Unlike the warm ocean biome, cod and salmon&#8204; [ BE only ] can spawn here, together with pufferfish&#8204; [ JE only ] and tropical fish. Dolphins, squid, and nautiluses may also spawn.
+
+ Deep lukewarm ocean 
+
+ Similar to the lukewarm ocean biome, but twice as deep. Because they are a deep ocean variant, they can generate ocean monuments .
+
+ Cold ocean 
+
+ A variant of the ocean biome, with dark blue water at the surface. Like regular oceans and frozen oceans, its floor is made up of gravel, though occasional patches of dirt can be found. Kelp and seagrass generates here. Salmon, cod and nautiluses can spawn in cold ocean biomes alongside squid and dolphins.&#8204; [ BE only ] 
+
+ Deep cold ocean 
+
+ Similar to the cold ocean biome, but twice as deep. Like other deep oceans, ocean monuments can generate here.
+
+ Frozen ocean 
+
+ A variant of the ocean biome with dark indigo water at the surface. Like the cold ocean, it has a gravel seabed and squid swimming about. However, the water's surface is frequently broken up by patches of ice and large icebergs , consisting of packed ice and blue ice , and occasionally topped with snow blocks and snow .&#8204; [ BE only ] Strays , polar bears , rabbits ,&#8204; [ BE only ] and nautiluses can spawn here, but dolphins can't. Salmon and cod&#8204; [ BE only ] may also spawn here.
+
+ Deep frozen ocean 
+
+ Like the frozen ocean biome, but twice as deep. There are no patches of ice on the surface or low enough temperatures for snowfall , instead icebergs are floating standalone in the dark indigo water. Ocean monuments can generate here.
+
+ Mushroom fields 
+
+ This rare biome consists of a mostly flat island and has mycelium as its surface. Mushroom fields are always adjacent to a deep ocean and isolated from other biomes, ranging in size from only tens of blocks to thousands. It is one of the few biomes where huge mushrooms can generate naturally, and where mushrooms can grow in full sunlight.
+
+ No mobs other than mooshrooms , bats ,&#8204; [ JE only ] and glow squid spawn naturally in this biome, including the usual night-time hostile mobs. This also applies to caves, mineshafts and other dark structures, meaning exploring underground is safe. However, mobs can still spawn through other means than the regular spawn cycle, such as monster spawners and wandering traders . Phantoms cannot spawn in Bedrock Edition .
+
+ Highland biomes
+ [ edit | edit source ] 
+
+ See also: Mountains 
+
+ Highland biomes are biomes with a higher Y-level. Rugged terrain and snow-covered peaks appear above the snow line.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ Jagged peaks 
+
+ One of the three biomes that only generate in the peaks of a mountain. This biome is found in taller and more jagged and pointy peaks that often pass the clouds and can peak at Y=256. It is covered by a single layer of snow blocks with stone underneath often exposing ores such as coal , iron and emerald . Just like the snowy slopes, stone cliffs can generate in some sides of the mountain. Goats spawn in this biome. Polar bears and rabbits may also spawn here and strays appear at night or during thunderstorms.&#8204; [ BE only ] Pillager outposts can generate here with tall foundations.
+
+ Frozen peaks 
+
+ Similar to the jagged peaks, but the snow block cover is varied with packed ice and occasional small blobs of ice . Like jagged peaks, mobs that spawn here include goats, polar bears, rabbits, and strays.&#8204; [ BE only ] This biome usually generates in smoother and less jagged mountains compared to the jagged peaks biome. Pillager outposts can generate here.
+
+ Stony peaks 
+
+ The stony peaks are a warmer variation of peak biomes that generate in warmer regions, without snowfall . It is mainly covered by stone with large strips of calcite and exposed ores. No passive mobs spawn here, and pillager outposts can generate.
+
+ Meadow 
+
+ The meadow is an elevated grassy biome found in plateaus near mountain ranges. It is filled with patches of almost every type of flower and turquoise-green short grass and tall grass . Rarely, a lone oak or birch tree can generate and always has a bee nest . Sheep , donkeys and rabbits are the only passive mobs that spawn in this biome. Pillager outposts and plains villages commonly generate here.
+
+ Cherry grove 
+
+ Cherry groves are grassland plateaus with a lot of short grass, tall grass and, instead of the traditional dandelion and poppy flowers, the ground is covered with pink petals . The main environmental feature of the cherry grove are cherry trees identified by their striking pink color and leaf particles filling the atmosphere. The cherry trees may generate densely enough to create a cover of leaves. Sheep, pigs and rabbits are the only passive mobs that spawn in this biome.
+
+ Grove 
+
+ The grove creates a forest of spruce trees beneath the colder mountain peaks when near a forested biome. It is quite reminiscent of the snowy taiga, but the surface is covered with snow blocks and patches of powder snow instead of grass blocks. Rabbits, wolves and foxes can spawn in this biome.
+
+ Snowy slopes 
+
+ The snowy slopes generate beneath the colder mountain peaks and are covered with multiple layers of snow blocks and powder snow , with some sides also having stone cliffs. Goats spawn in this biome alongside rabbits and polar bears .&#8204; [ BE only ] Strays may also spawn here at night and during thunderstorms.&#8204; [ BE only ] This is the only mountain biome where igloos can generate.
+
+ Windswept hills 
+
+ A highland biome with some steep hilltops and an occasional oak or spruce tree in Java Edition . The terrain is usually flat, but sometimes hilly and shattered. This is one of the few biomes where llamas can spawn naturally. Snowfall also occurs above certain heights, rarely creating snow layers on the top of the hills. Windswept hills are one of six biomes where emerald ore and infested stone can be found naturally. Cold animal variants may also spawn here.
+
+ Windswept gravelly hills 
+ 
+ A variant of the windswept hills mostly&#8204; [ JE only ] or almost entirely&#8204; [ BE only ] covered in gravel with occasional patches of grass and stone blocks. In Java Edition , spruce and oak trees can generate here but due to the low amount of grass, the population is sparse. Cold animal variants and llamas may spawn on the rare grass blocks.
+
+ Windswept forest 
+
+ This variant is found when windswept hills are located next to forested biomes. It does not generate stone patches, so the floor is entirely covered by grass blocks, and there are more spruce and oak trees, forming small forests with a lower tree density than other forest biomes. Cold animal variants and llamas may spawn here.
+
+ Woodland biomes
+ [ edit | edit source ] 
+
+ Woodland biomes are rich in plants with a variety of trees , flowers and grasses . Abandoned camps can also generate here.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ Forest 
+
+ A common biome with many oak and birch trees and a fair amount of short grass , mushrooms and flowers . The ground beneath the trees is covered with leaf litter . Wolves can spawn in this biome.
+
+ Flower forest 
+
+ This forest variant has fewer trees but contains nearly every type of flower and tall plant in the game. Wolves do not spawn in the flower forest, although rabbits spawn occasionally. Bee nests have a higher chance to generate in this biome.
+
+ Taiga 
+
+ A biome covered by a forest of spruce trees. Ferns , large ferns and sweet berry bushes grow commonly on the forest floor. One can find packs of wolves here, along with small groups of foxes , rabbits or cold animal variants. Pillager outposts , taiga villages , and trail ruins can generate here.
+
+ Old growth pine taiga 
+
+ A biome composed of spruce trees, much like the standard taiga biome. However, many trees are 2×2 thick and taller than normal, with few leaves at the top resembling pines. Mossy cobblestone boulders appear frequently, mushrooms are common, and podzol can be found on the forest floor. There are also patches of coarse dirt that do not grow grass, with some dead bushes . 
+
+ Wolves, foxes and cold animal variants can spawn here, as they do in normal taiga biomes. Rabbits may also spawn here.&#8204; [ JE only ] 
+
+ Old growth spruce taiga 
+
+ At first glance, this biome may look almost exactly the same as its pine tree counterpart. However, the most striking feature of this biome is its giant spruce trees, which are almost entirely covered with leaves unlike the trees in the old growth pine taiga which only have leaves at the top. Like the old growth pine taiga, wolves, foxes, cold animal variants, and rabbits&#8204; [ JE only ] spawn here. Trail ruins can generate here.
+
+ Snowy taiga 
+
+ A hybrid of the normal taiga and the snowy plains. Ferns and large ferns generate commonly, however sweet berry bushes generate more rarely than in the normal taiga. In Bedrock Edition , taiga villages with snowy villagers and pillager outposts can generate here.
+
+ Wolves, foxes, rabbits and cold animal variants can spawn here. One may also find an igloo nestled between the trees.
+
+ Birch forest 
+
+ A forest that is solely made of birch trees. The grass has an aqua color, and unlike the regular forest, no wolves spawn in this biome. Wildflowers cover the ground and give the biome a slight yellow tint.
+
+ Old growth birch forest 
+
+ Birch trees grow much taller than usual in this variant of the birch forest biome. Whereas normal birch trees grow up to 7 blocks tall, these trees can grow up to 13 blocks in height. It is one of the few biomes where trail ruins can generate. 
+
+ Dark forest 
+
+ This biome is mainly composed of dark oak trees, which create a mostly closed roof of leaves. Oak trees, birch trees, and huge mushrooms can also be found occasionally, and the ground is covered with leaf litter . Trees in this forest are so densely packed that areas are dark enough for hostile mobs to spawn, even during the day. Woodland mansions can generate here.
+
+ Pale garden 
+
+ A rarer variation of the dark forest biome found on higher grounds, where the dark oak trees are replaced with pale oak trees, with lots of pale hanging moss . Patches of pale moss blocks and pale moss carpets cover much of the ground, and eyeblossoms dot the landscape. The sky, foliage, and water in this biome are gray and desaturated, and no music plays inside the biome. Gray fog with Vibrant Visuals is extremely dense and obstructs almost all view.
+
+ Some of the pale oak trees may have a creaking heart hidden within them, which spawns a creaking at night. Like dark forests, hostile mobs can spawn even at day under the dark trees and woodland mansions generate here.
+
+ Jungle 
+
+ A dense forested biome that includes many different plants and features. Jungle trees and mega jungle trees are common, with the mega trees having 2&#215;2 thick trunks and possibly growing up to 31 blocks in height. Fancy oak trees are also common, and jungle bushes often cover much of the forest floor. Ferns and large ferns are found commonly, and vines are found growing and hanging on most types of blocks. Additionally, cocoa can also grow on the sides of jungle trees. Melons can generate here in patches, similar to pumpkins, although they are much more common. Single shoots of bamboo can be found scattered throughout the biome. 
+
+ The foliage in the jungle is a bright, lush green color. Ocelots , parrots , pandas , and warm animal variants can spawn in this biome. Jungle pyramids and trail ruins generate here.
+
+ Sparse jungle 
+
+ In contrast to the wild and overgrown vegetation of the jungle biome, the sparse jungle consists of small jungle and oak trees, and jungle bushes that are spaced out and isolated, creating a much more open environment. 
+
+ Parrots, ocelots, and pandas can still spawn in the sparse jungle.&#8204; [ Bedrock Edition only ] Wolves can also spawn in this biome along with warm animal variants.
+
+ Bamboo jungle 
+
+ In this jungle biome, large areas of the landscape are covered with massive amounts of bamboo . The ground consist of podzol underneath the densely packed bamboo. Additionally, mega jungle trees, fancy oak trees, and jungle bushes can also generate here.
+
+ Pandas have a much higher chance to spawn here than the other jungle biomes, making this the best place to find them. Ocelots,&#8204; [ BE only ] parrots, and warm animal variants are also able to spawn. Jungle pyramids can generate here.&#8204; [ JE only ] 
+
+ Dappled forest 
+
+ An autumnal forest vegetated by poplar trees with red, orange, and yellow-colored leaves, on an orange-brown grass tint with red shrubs . The biome also has various mushrooms , fallen trees , and coarse dirt . Foxes and rabbits spawn here alongside cold animals.
+
+ Wetland biomes
+ [ edit | edit source ] 
+
+ Wetland biomes are rivers, swamps and beaches. They have a large amount of water resources. Rivers separate other biomes; beaches generate as a transition between the ocean and land.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ River 
+
+ A biome that consists of water blocks that form an elongated, curving shape. Rivers cut through terrain or separate the main biomes. They attempt to join up with ocean biomes, but sometimes loop around to the same area of ocean. Rarely, they can have no connection to an ocean, instead forming a loop, or ending in a swamp or far inland.
+
+ On the landside, or rare occasions where rivers generate entirely dry, the grass has a dull aqua tone, and trace amounts of oak trees and firefly bushes tend to generate there. Rivers are also a reliable source of clay and sand. Drowned , squid , cod , and salmon spawn underwater. In Bedrock Edition , no other mobs can spawn through the spawn cycle, even common hostile mobs.
+
+ Frozen river 
+
+ A river with a layer of ice covering its surface, generating when a river goes through snowy biomes. Salmon spawn underwater while rabbits &#8204; [ BE only ] and polar bears &#8204; [ BE only ] spawn on the surface. At night and during thunderstorms, drowned can spawn below the ice with strays &#8204; [ BE only ] and skeletons on the surface. In Bedrock Edition , no other hostile mobs can spawn here.
+
+ Swamp 
+
+ A biome characterized by a mix of flat areas around sea level, and shallow pools of green water with floating lily pads . Clay, sand, and dirt are commonly found at the bottom of these pools. Oak trees are covered with vines and can be found growing out from the water, and in Bedrock Edition , huge mushrooms also generate. Mushrooms , firefly bushes , dead bushes , and sugar canes are abundant, and blue orchids grow exclusively here. Frogs of the temperate variant can spawn here as well.
+
+ Swamp huts with a black cat and a witch generate exclusively in swamps, and fossils are rarely found underground. Slimes also spawn naturally at night and during thunderstorms, most commonly on full moons, and some skeletons are replaced by bogged . Green volumetric fog and underwater fog is much denser than in other biomes.
+
+ Mangrove swamp 
+
+ A warmer variant of the swamp, characterized by a dense foliage, featuring plenty of mangrove trees of varying heights. The floor is mainly composed of mud blocks with occasional grass patches. The grass has the same color as in the normal swamp but leaves and vines have a unique light green tint and the water is teal rather than gray. Warm frogs often spawn in this biome. Slimes also spawn naturally at night and during thunderstorms, most commonly on full moons, and some skeletons are replaced by bogged. Fossils generate underground, but swamp huts do not.
+
+ Beach 
+
+ Generated where oceans meet land biomes, beaches are primarily composed of sand . Buried treasures can be found under few blocks of sand, and an occasional shipwreck can also generate here. Passive mobs other than turtles do not spawn on beaches. 
+
+ Snowy beach 
+
+ Like a regular beach, one can find plenty of sand in this biome and buried treasures can be found underground in this snowy beach. However, sand is covered in a layer of snow . Snowy beaches are found when a snowy biome borders a frozen ocean biome. No passive mobs other than rabbits &#8204; [ BE only ] spawn in this biome, and shipwrecks occasionally generate on land.
+
+ Stony shore 
+
+ This stone-covered biome generates at shores with low erosion values, usually close to mountains . Depending on the height of the nearby land, stony shores may generate as medium slopes or huge cliffs, its tops tall enough to be covered by snow even when near warmer biomes. &#91; 1 &#93; No passive mobs spawn here. Buried treasures can generate here.&#8204; [ BE only ] Strips of gravel can sometimes be found here.
+
+ Flatland biomes
+ [ edit | edit source ] 
+
+ These biomes have a wide view because less trees spawn here and the terrain usually does not contain mountains or cliffs, although hills and plateaus are common. They also have a higher number of passive mob spawns.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ Plains 
+
+ A grassy biome with rolling hills and few oak trees, as well as many flowers and grasses. Villages and pillager outposts are common. Cave openings, lava lakes and waterfalls are easily identifiable due to the unobstructed terrain. Passive mobs are easily found in plains biomes; this biome is also one of the few biomes where horses and donkeys spawn naturally. Hostile zombie horses spawn rarely at night as zombie horsemen.
+
+ Sunflower plains 
+
+ A fairly uncommon variation of the plains, this biome is the only place where sunflowers naturally generate. In Bedrock Edition , plains villages and pillager outposts can generate here.
+
+ Snowy plains 
+
+ A variant of plains entirely covered with snow , and freezing water. There are few spruce trees in this biome, and less grass and flowers generate compared to regular plains. No animal mobs other than rabbits and polar bears can spawn; however, it is one of the few biomes where strays and zombie horsemen spawn at night. In Bedrock Edition , this biome does not spawn any other monsters except skeletons , strays , and zombie horsemen . Snowy villages, pillager outposts, and igloos can generate here.
+
+ Ice spikes 
+
+ A rare variation of the snowy plains biome that features large spikes and glaciers of packed ice . Usually, the spikes are 10 to 20 blocks tall, but some long, thin spikes can reach over 50 blocks in height. The floor in this biome is entirely covered in snow blocks instead of grass, and ice patches made of packed ice can generate on it. Like the regular snowy plains, no animal mobs other than rabbits and polar bears can spawn and strays appear at night or during thunderstorms. 
+
+ Arid-land biomes
+ [ edit | edit source ] 
+
+ In these biomes, it neither rains nor snows. The surface is covered with sparse vegetation.
+
+ Biome name
+ 
+ Description
+ 
+ Screenshot
+
+ Desert 
+
+ A barren biome consisting mostly of sand dunes, dead bushes , dry grass , and cacti . Sandstone and sometimes fossils are found underneath the sand. The only passive mobs that spawn naturally in deserts are gold/creamy rabbits and camels . At night and during dry thunderstorms, husks , parched , and camel husk jockeys usually spawn in the place of normal zombies and skeletons. The biome is rich in structures, including desert villages , desert wells , desert pyramids , and pillager outposts .
+
+ Savanna 
+
+ A relatively flat and dry biome with a dull-brown grass color and acacia trees scattered around the biome, though oak trees may generate occasionally. Tall grass covers the landscape. Savanna villages can generate in this biome, constructed of acacia wood, and pillager outposts also generate. Horses , armadillos and warm animal variants can naturally spawn here, and it is one of the only biomes with rare zombie horsemen . Llamas may also spawn here.&#8204; [ BE only ] 
+
+ Savanna plateau 
+
+ This biome generates when a normal savanna biome spawns at high altitudes and near mountains. It is mostly indistinguishable from the standard savanna, with the main differences being the fact that llamas and wolves can spawn. Villages and pillager outpost do not generate.
+
+ Windswept Savanna 
+
+ In contrast to the mostly flat and calm terrain of the savanna biome, this uncommon variant generates chaotic terrain, with gigantic mountains covered in coarse dirt and some patches of stone. The mountains in the windswept savanna are extremely steep, sometimes jutting out at 90-degree angles and there are floating islands and overhangs. On top of that, they can reach heights comparable to the mountain peak biomes, sometimes rising above the clouds. Massive waterfalls and lavafalls are quite common, and lakes can also generate. 
+
+ Horses, armadillos and warm animal variants can still spawn in the windswept savanna, as well as zombie horsemen and llamas .&#8204; [ BE only ] 
+
+ Badlands 
+
+ An uncommon mountainous and desertic biome composed of layers of terracotta and stained terracotta on higher grounds. Red sand covers this in valleys, with occasional cacti , dead bushes , and dry grass . Armadillos are the only mobs that can be found here. Mineshafts generate at a higher altitude than normal, allowing them to be exposed to the surface, and have dark oak planks instead of oak planks . Gold ore also generates more frequently.
+
+ Wooded badlands 
+
+ On higher altitudes, the wooded badlands have layers of coarse dirt and grass blocks , and forests of small oak trees with leaf litter . The lower parts don't generate the oak forests, exposing terracotta and red sand to the sky. The color of the grass and leaves is a dull green-brown hue, giving it a dried and dead appearance. Armadillos can spawn here during the day, and wolves and warm animal variants can spawn on the wooded plateaus.
+
+ Eroded badlands 
+
+ This rare variant generates unique terrain features that are similar to the structures in Utah's Bryce Canyon . Tall and narrow spires of colorful terracotta rise out of the floor of the canyon, which like all other badlands variants, is covered in red sand. Armadillos are the only passive mobs that can be found here.
+
+ <img src="/images/thumb/Eroded_Badlands

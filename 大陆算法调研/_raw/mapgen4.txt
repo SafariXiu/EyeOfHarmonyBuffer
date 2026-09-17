@@ -1,0 +1,148 @@
+URL: https://www.redblobgames.com/maps/mapgen4/
+
+Mapgen4 Procedural Map Generator 
+
+ Mapgen4 Procedural Map Generator
+
+  from Red Blob Games 
+
+ Home 
+ Blog 
+ Links 
+ Bluesky 
+ About 
+
+ Jul 2018, Apr 2023 
+
+ Pick a starting seed, then paint mountains, valleys, and oceans on the map! It will simulate evaporation, wind, and rainfall to determine biomes and rivers.
+
+ Ocean 
+ Water 
+ Valley 
+ Mountains 
+
+ Reset 
+
+ Loading
+
+ Play with the sliders to change the simulation and style. For example, try decreasing raininess slider to see how reducing rainfall will make rivers dry up, or try decreasing lg_min_flow to see more small streams.
+
+ Treat this as a tool. Everything you create with it is yours to do with as you please. Credit is appreciated but not required. Suggested tag: #mapgen4 . Download high resolution image (doesn’t work on all platforms).
+
+ Goals for this project:
+
+ A hand-drawn inspired look. If you look at maps from Lord of the Rings and other fantasy settings, you’ll see the rivers and coastlines are top-down but the mountains and trees are side view . The map above is rendered in full 3D (try the rotate_deg and tilt_deg sliders!) but I used a custom projection and outline to more closely match a hand-drawn map.
+
+ Being able to paint your own features on the map. With procedural generation we usually let the system generate everything. I wanted to generate something (mountains, valleys, oceans), then let you change those things, and then generate the rest (biomes, rivers). Maybe in a future version also let you paint the biomes. Making the map paintable also meant I needed to make it fast .
+
+ Status of the project: Finished, source code available [1] , but the project is mostly inactive. I made some code changes in Apr 2023, with slightly higher resolution maps, but the maps won’t exactly match previously generated maps. I have a series of blog posts [2] about this project:
+
+ [2018] History [3] of the project
+
+ [2018] Elevation [4] to match the desired look instead of tweaking the look to match the elevation
+
+ [2018] Distance fields for elevation [5] 
+
+ [2018] Multithreading [6] to make it run acceptably fast
+
+ [2018] Fixing the appearance of rivers [7] 
+
+ [2018] Revisiting distance fields [8] , which didn’t work out like I hoped
+
+ [2018] Rainfall [9] , biomes, evaporation, wind
+
+ [2018] Rendering with an oblique projection [10] , not the standard rotate+translate+scale
+
+ [2018] Rendering outlines [11] 
+
+ [2018] Some bug fixes [12] 
+
+ [2018] River representation [13] with binary trees
+
+ [2022] Experiment: animated version of the map , but no longer paintable
+
+ [2023] Rewrote the underlying geometry library [14] 
+
+ [2023] Fixed several geometry problems with the edge of the map [15] 
+
+ [2023] Added rendering of the side of the map [16] , which I think looks pretty cool, but most people will never see it
+
+ [2024] Research: adding labels to maps 
+
+ [2024] Rewrote the mouse/touch handlers to work better
+
+ [2025] Rewrote the renderer , making the page load faster
+
+ [2025] Experiment: quick shape explorer 
+
+ [2025] Experiment: mapgen2 + mapgen4 hybrid 
+
+ [2025] Experiment: trade routes 
+
+ [2025] Experiment: finer control over elevation 
+
+ [2025] Rewrote the river renderer , making the rivers a little bit sharper
+
+ [2025] Rewrote the terrain renderer , and added a mountain_folds slider
+
+ Also see my project from 2010 [17] , where I started developing these techniques. There are lots of things that could be added on top of the underlying delaunay+voronoi structure, like towns, trees, biomes, seasons, nations, watersheds, etc. If you’re interested in adding these, take a look at the source code, and feel free to email me. One day I might work on a mapgen5 that explores some more ideas on top of this.
+
+ Email me redblobgames@gmail.com , or comment here:
+
+ Links
+
+ [1]: https://github.com/redblobgames/mapgen4
+
+ [2]: https://simblob.blogspot.com/search/label/mapgen4
+
+ [3]: https://simblob.blogspot.com/2018/08/mapgen4-goals.html
+
+ [4]: https://simblob.blogspot.com/2018/08/mapgen4-elevation.html
+
+ [5]: https://simblob.blogspot.com/2018/09/mapgen4-elevation-painting.html
+
+ [6]: https://simblob.blogspot.com/2018/09/mapgen4-threads.html
+
+ [7]: https://simblob.blogspot.com/2018/09/mapgen4-river-appearance.html
+
+ [8]: https://simblob.blogspot.com/2018/09/mapgen4-elevation-painting-revisited.html
+
+ [9]: https://simblob.blogspot.com/2018/09/mapgen4-rainfall.html
+
+ [10]: https://simblob.blogspot.com/2018/09/mapgen4-oblique-projection.html
+
+ [11]: https://simblob.blogspot.com/2018/10/mapgen4-outlines.html
+
+ [12]: https://simblob.blogspot.com/2018/09/mapgen4-bug-fixes.html
+
+ [13]: https://simblob.blogspot.com/2018/10/mapgen4-river-representation.html
+
+ [14]: https://simblob.blogspot.com/2023/04/improving-mapgen4s-boundaries-part-1.html
+
+ [15]: https://simblob.blogspot.com/2023/04/improving-mapgen4s-boundaries-part-2.html
+
+ [16]: https://simblob.blogspot.com/2023/04/improving-mapgen4s-boundaries-part-3.html
+
+ [17]: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
+
+ Load comments from Disqus 
+
+ View the discussion thread. 
+
+ Copyright © 2026 Red Blob Games 
+  RSS Feed 
+ 
+ Cite this page: Patel, Amit J., "Mapgen4 Procedural Map Generator", 
+ Red Blob Games, 2018,
+ https://www.redblobgames.com/maps/mapgen4/ 
+ @online{Patel-2018,
+ author = {Patel, Amit J.}, 
+ title = {Mapgen4 Procedural Map Generator},
+ organization = {Red Blob Games},
+ year = {2018},
+ url = {https://www.redblobgames.com/maps/mapgen4/}
+ urldate = {2026-09-04}
+} 
+
+ Created 20 Jul 2018 with delaunator, poisson-disk-sampling, simplex-noise, hash-int, gl-matrix, flatqueue, and other libraries;
+ Last modified: 09 Jul 2026

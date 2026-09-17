@@ -347,6 +347,41 @@ public final class SimClimate {
         h = h * 31 + (Atmosphere.SEASON_SHAPE_FROM_OBS ? 1 : 0);
         // D79 判读钩子：非 null 会换掉整条涡动链的纬向剖面 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.ZONAL_PROFILE_OVERRIDE == null ? 0 : 1);
+        // A-ii：涡动项的纬度放置（观测 vs 模型）。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.EDDY_PLACEMENT_FROM_OBS ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_MFC_REF);
+        // 候选 A（§244.5）：w_eff 的两项分别取正再相加。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.SPLIT_ASCENT ? 1 : 0);
+        // 候选 R-2（§249）：q 用局地真实地表温度。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.Q_AT_SURFACE_TEMP ? 1 : 0);
+        // 候选 S-1（§251）：浅对流地板。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.SHALLOW_FLOOR ? 1 : 0);
+        // §264：纬向平均海平面温度取观测月表。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.ZONAL_SL_FROM_TABLE ? 1 : 0);
+        // §267：柱水汽取观测月表。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.COL_WATER_FROM_TABLE ? 1 : 0);
+        // §268：涡动闭合补成完整通量散度。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.EDDY_FULL_DIVERGENCE ? 1 : 0);
+        // §269.5：掩码放在散度外面。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PrecipField.EDDY_MASK_OUTSIDE ? 1 : 0);
+        // §271 路线 A：海陆几何的三个开关与全部旋钮。它们改的是世界几何 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PlateField.A1_CONTINUOUS_CONT ? 1 : 0);
+        h = h * 31 + (PlateField.A2_DOMAIN_WARP ? 1 : 0);
+        h = h * 31 + (PlateField.A3_GATED_RELIEF ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PlateField.CONT_WAV);
+        h = h * 31 + Double.doubleToLongBits(PlateField.CS_W);
+        h = h * 31 + Double.doubleToLongBits(PlateField.WARP_W);
+        h = h * 31 + Double.doubleToLongBits(PlateField.WARP_AMP);
+        h = h * 31 + Double.doubleToLongBits(PlateField.A_PLAIN);
+        h = h * 31 + Double.doubleToLongBits(PlateField.A_MTN);
+        h = h * 31 + Double.doubleToLongBits(PlateField.FEAT_GATE);
+        h = h * 31 + PlateField.CONT_OCT;
+        // 修 D58 违规（§273.6）：这三个是 public static 可变旋钮，改了会改世界几何，原先不在指纹里。
+        h = h * 31 + PlateField.MAX_OCEAN_HALF;
+        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_H);
+        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_FRAC);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ALPHA_SH);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.V_GUST);
         h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.SEA_ONLY_UZM ? 1 : 0);
         h = h * 31 + (Atmosphere.COAST_WIND_ON ? 1 : 0);
         h = h * 31 + (Atmosphere.SST_PROVIDER == null ? 0 : 1);
@@ -374,9 +409,39 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(PrecipField.U0_STORM);
         h = h * 31 + Double.doubleToLongBits(PrecipField.ITCZ_MIGRATION);
         h = h * 31 + Double.doubleToLongBits(PrecipField.UPWIND_STEP);
-        h = h * 31 + PlateField.MAX_OCEAN_HALF;
-        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_H);
-        h = h * 31 + Double.doubleToLongBits(PlateField.OCEAN_BREAK_FRAC);
+        // ⚠ 2026-09-17 去重：MAX_OCEAN_HALF / OCEAN_BREAK_H / OCEAN_BREAK_FRAC 已在上面
+        //   （§273.6 那一块）进过指纹，这里原本重复了一遍。D58 只要求进指纹，重复无害但无用。
+        // 新目标（大陆内部零海洋）的三个开关与旋钮：
+        h = h * 31 + (PlateField.A4_RIFT_GUARD ? 1 : 0);
+        h = h * 31 + (PlateField.A5_NOISE_FROM_SKEL ? 1 : 0);
+        h = h * 31 + (PlateField.A6_NO_OCEAN_ARC ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PlateField.RIFT_FRAC);
+        h = h * 31 + Double.doubleToLongBits(PlateField.NOISE_FADE);
+        // §277 L2：噪声符号安全化。改了结果 ⇒ 必须进指纹（D58）。
+        h = h * 31 + (PlateField.L2_NOISE_SIGN_SAFE ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PlateField.SKEL_MARGIN);
+        // §278.3 A7：站点壳类型改用同一个连续场。
+        h = h * 31 + (PlateField.A7_SITE_SHELL_FROM_LIVE ? 1 : 0);
+        h = h * 31 + (PlateField.A10_NO_FEAT ? 1 : 0);
+        // §282.5 A11：只在海岸带生效的粗糙度。
+        h = h * 31 + (PlateField.A11_COAST_ONLY_ROUGH ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PlateField.ROUGH_M);
+        h = h * 31 + Double.doubleToLongBits(PlateField.ROUGH_G);
+        // §280 A8：域扭曲的八度数（海岸线多尺度细节的唯一来源）。
+        h = h * 31 + PlateField.WARP_OCT;
+        // §280.8 A9：带限海岸线粗糙度。
+        h = h * 31 + Double.doubleToLongBits(PlateField.COAST_AMP);
+        h = h * 31 + Double.doubleToLongBits(PlateField.COAST_W);
+        h = h * 31 + PlateField.COAST_OCT;
+        // §286.4 A12：海岸线粗糙度的「不得独立越阈」门控。
+        h = h * 31 + (PlateField.A12_GATED_COAST ? 1 : 0);
+        h = h * 31 + (PlateField.A12_SHRINK_ONLY ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PlateField.COAST_BAND);
+        // §280：造山带强度（改成 public 旋钮后必须进指纹）。
+        h = h * 31 + Double.doubleToLongBits(PlateField.COLLIDE_H);
+        h = h * 31 + Double.doubleToLongBits(PlateField.ARC_H);
+        h = h * 31 + Double.doubleToLongBits(PlateField.TRENCH_D);
+        h = h * 31 + Double.doubleToLongBits(PlateField.RIDGE_H);
         return h;
     }
 

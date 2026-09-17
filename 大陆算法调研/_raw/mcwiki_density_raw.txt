@@ -1,0 +1,662 @@
+{{Exclusive|java}}
+'''Density functions''' make up mathematical expressions to obtain a number from a position, stored as [[JSON]] files within a [[data pack]] in the path <code>data/<namespace>/worldgen/density_function</code>. They are referenced from the [[noise router]] in [[noise settings]].
+
+{{TOC|right}}
+
+== JSON format ==
+A density function can be a constant number or an object.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type.
+** Other additional fields depend on the value of {{Nbt|string|type}}, described below.
+</div>
+
+If the {{Nbt|string|type}} is <code>constant</code>, a shorthand format is:
+
+<div class="treeview">
+* {{nbt|double}}: A constant number. Value between −1000000.0 and 1000000.0 (both inclusive).
+</div>
+
+== Marker functions ==
+=== {{cd|cache}} ===
+If this density function is referenced twice, it is only computed once per block position.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>cache</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input to be cached.
+</div>
+
+=== {{cd|interpolated}} ===
+Interpolates at each block in one cell based on the input density function value of some cells around. The size of each cell is <code>size_horizontal * 4</code> and <code>size_vertical * 4</code>.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>interpolated</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input to be interpolated.
+** {{nbt|int|cell_size_xz}}: Size in blocks of the interpolation grid cells on the X and Z axes. The number must not be negative.
+** {{nbt|int|cell_size_y}}: Size in blocks of the interpolation grid cells on the Y axis. The number must not be negative.
+</div>
+
+== Noise sampling functions ==
+These density functions are used to sample [[Custom noise|noises]].
+
+=== {{cd|noise}} ===
+Samples a noise.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>noise</code>).
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+** {{Nbt|double|xz_scale}}: Scales the X and Z before sampling.
+** {{Nbt|double|y_scale}}: Scales the Y before sampling.
+** {{nbt|double|shift_x}}: Optional; A domain warp to apply on X. If not specified, no warping will be applied (equivalent to 0).
+** {{nbt|double|shift_y}}: Optional; A domain warp to apply on Y. If not specified, no warping will be applied (equivalent to 0).
+** {{nbt|double|shift_z}}: Optional; A domain warp to apply on Z. If not specified, no warping will be applied (equivalent to 0).
+</div>
+
+=== {{cd|old_blended_noise}} ===
+Samples a legacy noise. {{Info needed}}
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>old_blended_noise</code>).
+** {{Nbt|double|xz_scale}}: Value between 0.001 and 1000.0 (both inclusive).
+** {{Nbt|double|y_scale}}: Value between 0.001 and 1000.0 (both inclusive).
+** {{Nbt|double|xz_factor}}: Value between 0.001 and 1000.0 (both inclusive).
+** {{Nbt|double|y_factor}}: Value between 0.001 and 1000.0 (both inclusive).
+** {{Nbt|double|smear_scale_multiplier}}: Value between 1.0 and 8.0 (both inclusive).
+</div>
+
+=== {{cd|shift}} ===
+Samples a noise at <code>(x/4, y/4, z/4)</code>, then multiplies it by 4.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>shift</code>).
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+</div>
+
+=== {{cd|shift_a}} ===
+Samples a noise at <code>(x/4, 0, z/4)</code>, then multiplies it by 4.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>shift_a</code>).
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+</div>
+
+=== {{cd|shift_b}} ===
+Samples a noise at <code>(z/4, x/4, 0)</code>, then multiplies it by 4.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>shift_b</code>).
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+</div>
+
+== Mathematical density functions ==
+These density functions are used to perform mathematical operations.
+
+=== {{cd|abs}} ===
+Calculates the absolute value of the input density function.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>abs</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|add}} ===
+Adds two density functions together.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>add</code>).
+** {{Nbt|string}}{{Nbt|double|left}}: {{json ref/density function}} &mdash; The first input of the calculation.
+** {{Nbt|string}}{{Nbt|double|right}}: {{json ref/density function}} &mdash; The second input of the calculation.
+</div>
+
+=== {{cd|ceil}} ===
+Rounds the input value to positive infinity.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>ceil</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to round.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|multiple}}: The output will be rounded to an integer multiple of the value returned by this Density Function. If not specified, defaults to a constant 1.
+</div>
+
+=== {{cd|clamp}} ===
+Clamps the input between two values.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>clamp</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: One density function &mdash; The input to clamp.
+** {{Nbt|double|min}}: The lower bound. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|double|max}}: The upper bound. Value between −1000000.0 and 1000000.0 (both inclusive).
+</div>
+
+=== {{cd|constant}} ===
+A constant value.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>constant</code>).
+** {{Nbt|double|argument|value}}: A constant value. Value between −1000000.0 and 1000000.0 (both inclusive).
+</div>
+
+=== {{cd|cube}} ===
+Cubes the input (<code>x^3</code>).
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>cube</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|div}} ===
+Performs division between two arguments.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>div</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|left}} &mdash; The left-hand side of the operation.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|right}} &mdash; The right-hand side of the operation.
+</div>
+
+=== {{cd|floor}} ===
+Rounds the input value to negative infinity.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>floor</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to round.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|multiple}}: The output will be rounded to an integer multiple of the value returned by this Density Function. If not specified, defaults to a constant 1.
+</div>
+
+=== {{cd|log}} ===
+Computes the natural logarithm of the given input.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>log</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function for which to compute the natural logarithm.
+</div>
+
+=== {{cd|mul}} ===
+Multiplies two inputs.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>mul</code>).
+** {{Nbt|string}}{{Nbt|double|left}}: {{json ref/density function}} &mdash; The first input of the calculation.
+** {{Nbt|string}}{{Nbt|double|right}}: {{json ref/density function}} &mdash; The second input of the calculation.
+</div>
+
+=== {{cd|min}} ===
+Returns the minimum of two inputs.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>min</code>).
+** {{Nbt|string}}{{Nbt|double|left}}: {{json ref/density function}} &mdash; The first input of the calculation.
+** {{Nbt|string}}{{Nbt|double|right}}: {{json ref/density function}} &mdash; The second input of the calculation.
+</div>
+
+=== {{cd|max}} ===
+Returns the maximum of two inputs.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>max</code>).
+** {{Nbt|string}}{{Nbt|double|left}}: {{json ref/density function}} &mdash; The first input of the calculation.
+** {{Nbt|string}}{{Nbt|double|right}}: {{json ref/density function}} &mdash; The second input of the calculation.
+</div>
+
+=== {{cd|negate}} ===
+Negates the input.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{nbt|string|type}}: The ID of the density function type (in this case, <code>negate</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to negate.
+</div>
+
+=== {{cd|pow}} ===
+Raises the given base value to an exponent.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>pow</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|base}}: the base value (Density Function).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|exponent}}: the exponent (Density Function).
+</div>
+
+=== {{cd|reciprocal}} ===
+Inverts the input (<code>1/x</code>).
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>reciprocal</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|argument}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|round}} ===
+Rounds the input value to to the nearest integer (ties round up).
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>round</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to round.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|multiple}}: The output will be rounded to an integer multiple of the value returned by this Density Function. If not specified, defaults to a constant 1.
+</div>
+
+=== {{cd|sub}} ===
+Performs subtraction between two arguments.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>sub</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|left}} &mdash; The left-hand side of the operation.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|right}} &mdash; The right-hand side of the operation.
+</div>
+
+=== {{cd|sign}} ===
+Computes the sign of the given input.  If positive, it returns as 1. If the input is 0, it returns 0. If negative, it returns as -1.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>sign</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function for which to compute the sign.
+</div>
+
+=== {{cd|sqrt}} ===
+Computes the square root of the given input.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>sqrt</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function for which to compute the square root.
+</div>
+
+=== {{cd|square}} ===
+Squares the input. (<code>x^2</code>)
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>square</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|truncate}} ===
+Rounds the input value to 0.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>truncate</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to round.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|multiple}}: The output will be rounded to an integer multiple of the value returned by this Density Function. If not specified, defaults to a constant 1.
+</div>
+
+== Mapped density functions ==
+These density functions map a set of values onto another set of values.
+
+=== {{cd|gradient}} ===
+[[File:Gradient tiling.png|thumb|Demonstration of the different tiling options for the {{cd|gradient}} density function, using both an input range of -100 to 100 and an output range of -1 to 1.]]
+Clamps the given coordinate and maps the gradient to a range.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{nbt|string|type}}: The ID of the density function type (in this case, <code>gradient</code>).
+** {{nbt|string|axis}}: {{cd|x}}, {{cd|y}}. or {{cd|z}}: The axis over which to define the gradient .
+** {{nbt|string|tiling}}: How the density function handles values outside the specified coordinate range. 3 options:
+*** <code>clamp_to_edge</code>: outside the gradient boundaries, the value at the nearest boundary will be used.
+*** <code>repeat</code>: The gradient will be repeated outside its boundaries.
+*** <code>mirrored_repeat</code>: The gradient will be repeated as such that odd repetitions are mirrored, ensuring continuity between repetitions.
+** {{nbt|int|from_coordinate}}: The coordinate at which the gradient starts.
+** {{nbt|int|to_coordinate}}: The coordinate at which the gradient ends. It must not equal {{cd|from_coordinate}}.
+** {{nbt|float|from_value}}: The value at which the gradient starts.
+** {{nbt|float|to_value}}: The value at which the gradient ends.
+</div>
+
+=== {{cd|lerp}} ===
+Performs (unclamped) linear interpolation between two arguments based on an alpha. The returned value is: <code>first*(1-alpha) + second*alpha</code>
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{nbt|string|type}}: The ID of the density function type (in this case, <code>lerp</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|alpha}}: Density function representing the interpolation factor (e.g. 0 = first, 1 = second). Any value outside of {{cd|[0; 1]}} will extrapolate.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|first}}: Density Function to use at {{cd|<nowiki>alpha=0</nowiki>}}.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|second}}: Density Function to use at {{cd|<nowiki>alpha=1</nowiki>}}.
+</div>
+
+=== {{cd|squeeze}} ===
+First clamps the input between −1 and 1, then transforms it using x/2 - x*x*x/24.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>squeeze</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|spline}} ===
+Computes a cubic spline.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>spline</code>).
+** {{Nbt|float}}{{Nbt|compound|spline}}: The spline. Can be either a number or an object.
+*** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|coordinate}}: {{json ref/density function}} &mdash; Input determining the location on the spline.
+*** {{Nbt|list|points}}: (Cannot be empty) List of points of the cubic spline.
+**** {{Nbt|compound}}: A point of the cubic spline.
+***** {{Nbt|float|location}}: The location of this point.
+***** {{Nbt|float}}{{Nbt|compound|value}}: The value of this point. Can be either a number or a spline object.
+***** {{Nbt|float|derivative}}: The slope at this point.
+</div>
+
+== Conditional density functions ==
+These density functions are used to apply "if-then" logic.
+
+=== {{cd|half_negative}} ===
+If the input is negative, returns half of the input. Otherwise returns the input. (<code>x < 0 ? x/2 : x</code>)
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>half_negative</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|interval_select}} ===
+Selects between a number of density functions based on an input density function and a set of threshold values.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>interval_select</code>).
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: Density Function to be compared with any given {{cd|thresholds}}.
+** {{nbt|list|thresholds}}: (List of Floats) The threshold values to compare {{cd|input}} with.
+*** If the input value is less than the threshold values, the result of {{cd|functions[i]}} will be selected.
+*** If the input value is greater than the last threshold value, the last function will be selected.
+*** There must be one fewer {{cd|thresholds}} than {{cd|functions}}.
+** {{nbt|list|functions}}: The resulting functions (at least two) to be selected from.
+*** There must be one more element in {{cd|functions}} than {{cd|thresholds}}.
+</div>
+
+=== {{cd|quarter_negative}} ===
+If the input is negative, returns a quarter of the input. Otherwise returns the input. (<code>x < 0 ? x/4 : x</code>)
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>quarter_negative</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The input of the calculation.
+</div>
+
+=== {{cd|range_choice}} ===
+Computes the input value, and depending on that result returns one of two other density functions. Basically an if-then-else statement.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>range_choice</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|input}}: {{json ref/density function}} &mdash; The value to compare
+** {{Nbt|double|min_inclusive}}: The lower bound of the range. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|double|max_exclusive}}: The upper bound of the range. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|when_in_range}}:  {{json ref/density function}} &mdash; Used when the input is inside the range.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|when_out_of_range}}:  {{json ref/density function}} &mdash; Used when the input is outside the range.
+</div>
+
+== Other density functions ==
+=== {{cd|beardifier}} ===
+Adds beards for structures (see the <code>terrain_adaptation</code> field in [[Structure/JSON format|structures]]). Its value is added to the <code>final_density</code> in noise setting by the game. Should not be referenced in data packs.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>beardifier</code>).
+</div>
+
+=== {{cd|blend_alpha}} ===
+Used in vanilla for smooth transition to chunks generated in old versions.{{Info needed}}
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>blend_alpha</code>).
+</div>
+
+=== {{cd|blend_density}} ===
+Used in vanilla for smooth transition to chunks generated in old versions.{{Info needed}}
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>blend_density</code>).
+** {{Nbt|string}}{{Nbt|double|input}}: {{json ref/density function}} &mdash; The desired density of new chunks.
+</div>
+
+=== {{cd|blend_offset}} ===
+Used in vanilla for smooth transition to chunks generated in old versions.{{Info needed}}
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>blend_offset</code>).
+</div>
+
+=== {{cd|distance_to_point}} ===
+[[File:Distance to point options.png|thumb|Demonstration of the different metric options for the {{cd|distance_to_point}} density function, using the distance from the point (0, 0).]]
+Computes the distance to a fixed point using the specified distance function.
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>distance_to_point</code>).
+** {{nbt|int-array|point}}: {{cd|[x, y, z]}}; the point to compute distance to
+** {{nbt|string|metric}}:
+*** {{nbt|string|euclidean}}: (i.e. {{cd|sqrt(dx^2 + dy^2 + dz^2)}})
+*** {{nbt|string|euclidean_squared}}: (i.e. {{cd|dx^2 + dy^2 + dz^2}})
+*** {{nbt|string|manhattan}}: (i.e. {{cd|abs(dx) + abs(dy) + abs(dz)}})
+*** {{nbt|string|chebyshev}}: (i.e. {{cd|max(abs(dx), abs(dy), abs(dz))}})
+</div>
+
+=== {{cd|end_outer_islands}} ===
+Samples at current position using a noise algorithm used for end islands. Its minimum value is −0.84375 and its maximum value is 0.5625.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>end_outer_islands</code>).
+</div>
+
+=== {{cd|find_top_surface}} ===
+Scans through a column of an input density and returns the topmost y-level that is above 0. If no such position exists within the bounds, the {{Nbt|int|lower_bound}} is returned.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>find_top_surface</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|density}}: {{json ref/density function}} &mdash; The density function to scan.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|upper_bound}}: {{json ref/density function}} &mdash; The y-level to start the scan at. Usually a 2D density function.
+** {{Nbt|int|lower_bound}}: The y-level to stop the scan.
+** {{Nbt|int|cell_height}}: The resolution of the scan. E.g. if set to <code>4</code>, then only every 4th block is checked.
+</div>
+
+=== {{cd|ore_vein}} ===
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>ore_vein</code>).
+** {{nbt|string|ore_block}}: The ore block to place.
+** {{nbt|string|raw_ore_block}}: The raw ore block to place.
+** {{nbt|string|filler_block}}: The filler block to place.
+** {{nbt|float|raw_ore_chance}}: The probability for a raw ore block to be placed instead of an ore block. Value between 0 and 1 (inclusive).
+** {{nbt|int|density}}: The probability for the ore vein to replace a block. If the value is 0 or lower, no block will be replaced.
+** {{nbt|int|richness}}: The probability for an ore block or a raw ore block to be placed, as opposed to {{cd|filler_block}}. If the value is 0 or lower, all blocks will be the filler block. If the value is 1 or greater, no blocks will be the filler block.
+** {{nbt|int|filler_gap}}: Overrides {{cd|richness}}; if the value is positive, {{cd|filler_block}} will always be placed.
+</div>
+
+=== {{cd|slice}} ===
+Removes a dimension from the input domain by taking a "slice" along an axis with a specific coordinate (e.g. with the axis equaling y and the coordinate of 0, a slice will be taken along the XZ plane, with all values sampled at y=0).
+
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>slice</code>).
+** {{nbt|string|axis}}: {{cd|x}}, {{cd|y}}, or {{cd|z}}; the axis to remove.
+** {{nbt|int|coordinate}}: The fixed coordinate to be passed to the input function.
+** {{nbt|string}}{{nbt|double}}{{nbt|compound|input}}: The input function.
+</div>
+
+== Removed density functions ==
+{{outdated|section=1}}
+
+=== {{cd|cache_2d}} ===
+Removed in [[26.3-snap10]]
+
+Only computes the input density once per horizontal position.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>cache_2d</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|argument}}: {{json ref/density function}} &mdash; The input to be cached.
+</div>
+
+=== {{cd|cache_all_in_cell}} ===
+Removed in [[26.3-snap10]]
+
+Used by the game onto <code>final_density</code> and should not be referenced in data packs.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>cache_all_in_cell</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|argument}}: {{json ref/density function}} &mdash; The input to be cached.
+</div>
+
+=== {{cd|flat_cache}} ===
+Removed in [[26.3-snap10]]
+
+Calculate the value per 4×4 column (Value at each block in one column is the same). And it is calculated only once per column, at Y=0. Used often in combination with <code>interpolated</code>.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>flat_cache</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|argument}}: {{json ref/density function}} &mdash; The input to be cached.
+</div>
+
+=== {{cd|shifted_noise}} ===
+Removed in [[26.3-snap10]]
+
+Similar to <code>noise</code>, but first shifts the input coordinates.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>shifted_noise</code>).
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+** {{Nbt|double|xz_scale}}: Scales the X and Z before sampling.
+** {{Nbt|double|y_scale}}: Scales the Y before sampling.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|shift_x}}: {{json ref/density function}} &mdash; offset of the position in the X direction.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|shift_y}}: {{json ref/density function}} &mdash; offset of the position in the Y direction.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|shift_z}}: {{json ref/density function}} &mdash; offset of the position in the Z direction.
+</div>
+
+=== {{cd|slide}} ===
+Removed in [[22w12a]]
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>slide</code>).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|argument}}: {{json ref/density function}}
+</div>
+
+=== The legacy "spline" ===
+Removed in [[22w11a]]
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>spline</code>).
+** {{Nbt|float}}{{Nbt|compound|spline}}: The spline. Can be either a number or an object.
+*** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|coordinate}}: {{json ref/density function}} &mdash; Input determining the location on the spline.
+*** {{Nbt|list|points}}: (Cannot be empty) List of points of the cubic spline.
+**** {{Nbt|float|location}}: The location of this point.
+**** {{Nbt|float}}{{Nbt|compound|value}}: The value of this point. Can be either a number or a spline object.
+**** {{Nbt|float|derivative}}: The slope at this point.
+** {{Nbt|double|min_value}}: The min value of the output. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|double|max_value}}: The max value of the output. Value between −1000000.0 and 1000000.0 (both inclusive).
+</div>
+
+=== {{cd|terrain_shaper_spline}} ===
+Removed in [[22w11a]]
+
+Calculate the spline from the noise settings.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>terrain_shaper_spline</code>).
+** {{Nbt|string|spline}}: Can be <code>offset</code>, <code>factor</code>, or<code>jaggedness</code>.
+** {{Nbt|double|min_value}}: The min value of the output. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|double|max_value}}: The max value of the output. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|continentalness}}: {{json ref/density function}}
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|erosion}}: {{json ref/density function}}
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|weirdness}}: {{json ref/density function}}
+</div>
+
+=== {{cd|weird_scaled_sampler}} ===
+Removed in [[26.2-snap5]]
+
+According to the input value, scales and enhances (or weakens) some regions of the specified noise, and then returns the absolute value.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>weird_scaled_sampler</code>).
+** {{Nbt|string|rarity_value_mapper}}: Can be <code>type_1</code>（The minimum scale is 0.75, and the maximum is 2.0）or <code>type_2</code>（The minimum scale is 0.5, and the maximum is 3.0.)
+** {{Nbt|string|noise}}: {{json ref|noise|Custom noise}} &mdash; The noise to sample.
+** {{Nbt|string}}{{Nbt|double}}{{Nbt|compound|input}}: The input density function. Can be an ID of a density function, or a density function in the form of a JSON object or a constant number.
+</div>
+
+=== {{cd|y_clamped_gradient}} ===
+Removed in [[26.3-snap6]]
+
+Clamps the Y coordinate between <code>from_y</code> and <code>to_y</code> and then linearly maps it to a range.
+<div class="treeview">
+* {{nbt|compound}}: Root object.
+** {{Nbt|string|type}}: The ID of the density function type (in this case, <code>y_clamped_gradient</code>).
+** {{Nbt|int|from_y}}: The value to be mapped to <code>from_value</code>. Value between −4064 and 4062 (both inclusive).
+** {{Nbt|int|to_y}}: The value to be mapped to <code>to_value</code>. Value between −4064 and 4062 (both inclusive).
+** {{Nbt|double|from_value}}: The value to map <code>from_y</code> to. Value between −1000000.0 and 1000000.0 (both inclusive).
+** {{Nbt|double|to_value}}: The value to map <code>to_y</code> to. Value between −1000000.0 and 1000000.0 (both inclusive).
+</div>
+<!--
+TYPE2
+			if (d < −0.75) {
+				return 0.5;
+			} else if (d < −0.5) {
+				return 0.75;
+			} else if (d < 0.5) {
+				return 1.0;
+			} else {
+				return d < 0.75 ? 2.0 : 3.0;
+			}
+
+TYPE1
+			if (d < −0.5) {
+				return 0.75;
+			} else if (d < 0.0) {
+				return 1.0;
+			} else {
+				return d < 0.5 ? 1.5 : 2.0;
+			}
+-->
+
+== History ==
+{{HistoryTable
+|{{HistoryLine|java}}
+|{{HistoryLine||1.18.2|dev=pre1|Added density functions: {{cd|d=and|abs|add|beardifier|blend_alpha|blend_density|blend_offset|cache_2d|cache_all_in_cell|cache_once|clamp|constant|cube|end_islands|flat_cache|half_negative|interpolated|max|min|mul|noise|old_blended_noise|quarter_negative|range_choice|shift|shift_a|shift_b|shifted_noise|slide|square|squeeze|terrain_shaper_spline|weird_scaled_sampler|y_clamped_gradient}}. }}
+|{{HistoryLine|||dev=pre2|Added density function {{cd|spline}}. }}
+|{{HistoryLine||1.19|dev=22w11a|Removed density function {{cd|terrain_shaper_spline}}.|Removed {{cd|min_value}} and {{cd|max_value}} fields in {{cd|spline}}. }}
+|{{HistoryLine|||dev=22w12a|Removed density function {{cd|slide}}. Instead a combination of {{cd|d=and|add|mul|y_clamped_gradient}} is used to achieve the same result.|
+Added fields to {{cd|old_blended_noise}} density function: xz_scale, y_scale, xz_factor, y_factor, and smear_scale_multiplier.}}
+|{{HistoryLine||1.21.9|dev=25w31a|Added density functions {{cd|minecraft:find_top_surface}} and {{cd|minecraft:invert}}.}}
+|{{HistoryLine||26.2|dev=snap1|Density function {{cd|minecraft:clamp}} can now take a density function ID as an input.}}
+|{{HistoryLine|||dev=snap5|Added density function {{cd|minecraft:interval_select}}.|Removed density function {{cd|minecraft:weird_scale_sampler}}. Its functionality has been replaced with {{cd|interval_select}}.}}
+|{{HistoryLine||26.3|dev=snap4|Added the following density functions:
+* {{cd|ceil}}
+* {{cd|div}}
+* {{cd|floor}}
+* {{cd|negate}}
+* {{cd|lerp}}
+* {{cd|round}}
+* {{cd|sub}}
+* {{cd|truncate}}
+|{{cd|invert}} has been renamed to {{cd|reciprocal}}.
+|Numerous {{cd|argument}} fields in density functions have been renamed.}}
+|{{HistoryLine|||dev=snap6|Added the following density functions:
+* {{cd|distance_to_point}}
+* {{cd|log}}
+* {{cd|pow}}
+* {{cd|sign}}
+* {{cd|slice}}
+* {{cd|sqrt}}
+|{{cd|end_islands}} has been renamed to {{cd|end_outer_islands}}.
+|{{cd|y_clamped_gradient}} has been replaced with {{cd|gradient}}.
+}}
+|{{HistoryLine|||dev=snap7|Density functions are no longer evaluated with double-precision floating point values, but instead with single-precision.}}
+|{{HistoryLine|||dev=snap10|Added the {{cd|ore_vein}} density function.
+|{{cd|cache_once}} has been renamed to {{cd|cache}}.
+|Added the {{cd|shift_x}}, {{cd|shift_y}}, and {{cd|shift_z}} fields to the {{cd|noise}} density function.
+|Added the {{cd|cell_size_xz}} and {{cd|cell_size_y}} fields to the {{cd|interpolated}} density function.
+|Removed the following density functions:
+* {{cd|cache_2d}}
+* {{cd|cache_all_in_cell}}
+* {{cd|flat_cache}}
+* {{cd|shifted_noise}}
+}}
+}}
+
+== Issues ==
+{{issue list|projects=MC}}
+
+== References ==
+{{reflist}}
+
+== External links ==
+* [https://misode.github.io/worldgen/density-function/ Density Function Generator on misode.github.io]
+
+== Navigation ==
+{{Navbox Java Edition technical|datapack}}
+
+[[de:Dichtefunktion]]
+[[fr:Fonction de densité]]
+[[ko:밀도 함수]]
+[[pt:Função de densidade]]
+[[zh:密度函数]]

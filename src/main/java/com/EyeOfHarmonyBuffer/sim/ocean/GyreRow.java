@@ -145,6 +145,18 @@ public final class GyreRow {
         public double psiMax, vPeak, westBandMean, eastBandMean;
         /** 西边界流速度 = |psi_S(西岸)| / delta_M（诊断用）。 */
         public double wbcSpeed;
+        /**
+         * 该侧墙**不是真海岸**：扫描撞上了 {@code maxRow} 上限、且上限之外**仍是海**。
+         *
+         * <p>（D81）{@link #solve} 找端点的两个 {@code while} 各有**两个**退出条件 ——
+         * 找到陆地，或撞上 {@code ±maxRow}；而 {@link #solveSpan} 在两端**一律**施加自由滑移墙
+         * {@code psi=0, psi''=0}。⇒ 被上限截断的那一侧，求解器在**世界里不存在的墙**上求解。
+         *
+         * <p>判据是**精确谓词**而不是 {@code xw <= -maxRow}：只有上限之外**没有陆地**时这堵墙才是凭空造的
+         * （上限外恰好是岸 ⇒ 墙离岸仅一格 5 km，属可接受）。
+         * {@link #solveSpan} 的合成算例不会置位（调用者自己知道边界是什么）。
+         */
+        public boolean westTruncated, eastTruncated;
         public double xAt(int i) { return westX + i * h; }
     }
 
@@ -194,6 +206,10 @@ public final class GyreRow {
         int xe = x;
         while (xe < p.maxRow && !PlateField.isLandWithCell(xe + (int) h, z, seed, cell)) xe += (int) h;
         if (PlateField.isLandWithCell(x, z, seed, cell)) { r.valid = false; return r; }
+        // (D81) 这一侧的端点是被 maxRow 上限截断的、且上限外仍是海 ⇒ 墙是求解器凭空造的。
+        // 行为中性：只写两个布尔，不参与任何数值。
+        boolean wTrunc = xw <= -p.maxRow && !PlateField.isLandWithCell(xw - (int) h, z, seed, cell);
+        boolean eTrunc = xe >=  p.maxRow && !PlateField.isLandWithCell(xe + (int) h, z, seed, cell);
         int n = (int) ((xe - xw) / h) + 1;
         if (n < 16) { r.valid = false; return r; }
         // ⚠ 风应力旋度**按 CURL_STRIDE 格采样 + 线性插值**（2026-09-16，用户裁决 A；见该常量的 javadoc）。
@@ -212,7 +228,10 @@ public final class GyreRow {
                 curl[i] = curl[i0] * (1.0 - t) + curl[i1] * t;
             }
         }
-        return solveSpan(xw, xe, curl, p);
+        Row out = solveSpan(xw, xe, curl, p);
+        out.westTruncated = wTrunc;
+        out.eastTruncated = eTrunc;
+        return out;
     }
 
     /** 核心：给定 [xw, xe] 与逐点 curl，解一维 Munk 边值问题。**可用合成 curl 单独验证。** */

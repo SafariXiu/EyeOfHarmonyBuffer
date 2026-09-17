@@ -1,0 +1,102 @@
+URL: https://www.redblobgames.com/x/1729-generate-details/
+STATUS: 200
+
+Adding details to a sketched terrain 
+
+ Adding details to a sketched terrain
+
+  from Red Blob Games 
+
+ Home 
+ Blog 
+ Links 
+ Bluesky 
+ About 
+
+ 24 Jul 2017 
+ 
+ Table of Contents
+
+ 1. Sketch 
+
+ 2. Export to elevation image 
+
+ 3. Generate detailed elevation 
+
+ 4. Next steps 
+
+ Note: the /x/ series of posts on my site are mostly unpolished mini posts. I’m trying out a few different ideas for procedural map generation; this is one of them.
+
+The past few mini projects were:
+
+ Generating rivers from coastlines 
+
+ Generating elevation from rivers, part 1 
+
+ Generating elevation from rivers, part 2 
+
+ Sketching coastlines and mountain ranges 
+
+This week I’m going to glue these together (in a hacky way for now): sketch coastlines and mountain ranges, and see what rivers and elevation are generated.
+
+The page may be a little flaky. I’m including the javascript from two separate projects and hacking them to work together. I’ll fix it up later but for now I just wanted to see if it worked at all.
+
+  1  Sketch # 
+
+Sketch ⯀ mountain ridges or ⯀ coastlines: blank map 
+
+ Mountain (+1) 
+ Erase 
+ Coastlines (0) 
+
+ Noise: 
+
+The rivers will mostly follow the guidelines, but I have some randomness in there to allow rivers to cut through mountain ridges occasionally. That parameter will need to be tweaked eventually.
+
+Bonus feature: To make an interior lake, draw the lake as a coastline. By default the interior will be land. Draw inside the coastline with boundary (-1) to make it a lake instead. Some of the algorithms work on non-island maps too. If you erase the exterior boundary of the map you can make a crater lake. 
+
+  2  Export to elevation image # 
+
+The idea behind sketching was that you’re drawing lines which are then mapped onto a mesh . If I keep the original lines, I can map them onto a higher resolution mesh. For this project, it was quicker to draw the elevations to a bitmap and then build a new mesh from the bitmap. Here’s the bitmap:
+
+ Sharp: 
+
+The parameter controls the elevation exponent, which I often use to sharpen mountain peaks. The bitmap is used for the next section.
+
+  3  Generate detailed elevation # 
+
+From two blog posts ago , I came up with some algorithms to carve canyons and ravines into the terrain. (This renderer may not work across platforms… still need to look into that)
+
+ Render 
+
+Try changing the sharpness slider above and re-rendering.
+
+It looks neat but I don’t know if we’re going to use it for our game.
+
+(Update: the game was cancelled, but I was able to improve the rendering significantly, and some of this ended up in mapgen4 [1] a year later.)
+
+  4  Next steps # 
+
+This week was about a quick hack to combine the last few mini projects to see if everything would work together. It didn’t at first but I found many bugs and fixed them, and now it seems to work reasonably.
+
+Now that I know these steps work together, the next step is biomes.
+
+Also take a look at this page [2] , which has a river algorithm that does a lot more than mine does: lakes, erosion, deposition, river deltas, water tables, snow, surface tension, capillary action. Cool! I didn’t try those algorithms; our game doesn’t need them.
+
+ Email me redblobgames@gmail.com , or comment here:
+
+ Links
+
+ [1]: https://www.redblobgames.com/maps/mapgen4/
+
+ [2]: http://entropicparticles.com/procedure-for-rivers-and-lakes/
+
+ Load comments from Disqus 
+
+ View the discussion thread. 
+
+ Copyright © 2026 Red Blob Games 
+  RSS Feed 
+
+ Created 18 Jul 2017 with Emacs org-mode ( source of this page ); code uses Delaunator , glmatrix , and regl.js 
+ Last modified: 29 Mar 2026

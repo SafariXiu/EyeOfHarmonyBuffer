@@ -1,0 +1,654 @@
+﻿ 
+
+Picroma 
+
+307 captures 
+ 22 Apr 2012 - 16 Aug 2026
+
+Jul 
+ AUG 
+ Sep 
+
+13 
+
+2012 
+ 2013 
+ 2014 
+
+success
+
+ fail
+
+About this capture 
+
+TIMESTAMPS
+
+The Wayback Machine - https://web.archive.org/web/20130813183351/https://picroma.com/cubeworld
+
+Sign in 
+
+Create Account 
+
+Login
+
+ Email: 
+
+ Password: 
+
+Remember me 
+
+ Forgot Password? | Create Account 
+
+CUBE WORLD 
+ PLASMA 
+ MEDIA 
+ FORUMS 
+ ABOUT 
+
+OVERVIEW 
+ WORLD 
+ ADVENTURE 
+ CLASSES 
+ COMBAT 
+ RACES 
+ PETS 
+ MONSTERS 
+ ITEMS 
+ MULTIPLAYER 
+
+Cube World: A Voxel-Based Exploration RPG Back to top 
+
+I'm Wollay, the creator of Cube World. I started this game in June 2011 as a hobby project. My inspirations were Minecraft, Zelda, Secret of Mana, Monster Hunter, Diablo, World of Warcraft and many more.
+My aim was to create an infinite, colorful, procedurally generated world, full of adventures, monsters, and mysteries. The result is Cube World , a voxel-based role-playing game.
+
+My wife joined development in 2012, and we're planning to release an alpha version for Windows PC soon. The alpha already has many features, but some are still missing. You can check out a feature overview below.
+
+The alpha will be available for a lower price than the beta version and the final version.
+We're planning to release updates regularly. Updates are free.
+
+Minimum System Requirements (tentative) 
+ 
+ Windows XP SP2
+
+ Intel� Core 2 Duo 2.0 GHz, Core i3 OR AMD Athlon 64 X2
+
+ NVIDIA� GeForce� 7800, ATI X1800, Intel HD 3000 (256 MB of video RAM and shader model 3.0)
+
+ 2 GB RAM
+
+ Internet Connection (for updates and online multiplayer)
+
+Supported Platforms
+
+Windows
+
+Cube World runs on Windows XP SP2, Windows Vista, Windows 7, Windows 8.
+
+Planned: Mac OS X
+
+We're planning to make a Mac version of Cube World in the future.
+
+Planned: Consoles
+
+We're planning to bring Cube World to consoles in the future.
+
+Endless, Randomly Generated Worlds Back to top 
+
+Infinite Worlds
+
+A main feature of Cube World is the random world generation. In contrast to many games, worlds are not designed by a level designer, but generated procedurally by the game using math and random numbers.
+The result is an endless world (nearly endless, i.e. players can't reach the borders), so players can explore new landscapes all the time.
+
+Players can generate their own worlds by specifiying one single number, the seed . The same seeds result in exactly the same world, so players can share their worlds with friends by telling them their seeds.
+
+Worlds are generated on-the-fly while playing, so there are neither long precomputations nor huge save files at the beginning.
+
+No borders
+
+There are no artificial borders. You can literally reach each cube the world is made of. If you see a mountain on the horizon, you can climb that mountain. If you see a tree, you can climb on top of the tree.
+At least if your climbing skill is good enough. :)
+
+Landscapes
+
+Cube World consists of different lands with varying climates and themes. There are grasslands, snowy landscapes, wide oceans, dangerous lava lands, jungles, and deserts.
+Landscapes are full of mountains, caves, rivers, lakes, forests, rocks, dungeons, castles, ruins, catacombs, temples, villages, and more.
+
+World Features
+
+World Map
+
+Players can plan explorations and missions with a zoomable and turnable 3D voxel map.
+
+Landscape: Greenlands
+
+Greenlands consist of lush grasslands and forests.
+
+Landscape: Snowlands
+
+Snowlands are cold, snowy lands.
+
+Landscape: Deserts
+
+Deserts have a hot and dry climate with sandy dunes, pyramids and oases.
+
+Landscape: Jungles
+
+Jungles are hot, high-humidity zones with large trees, temples and ruins.
+
+Landscape: Lava Lands
+
+Lava lands are hostile landscapes covered with magma and full of demons.
+
+Landscape: Oceans
+
+Oceans are full of blue water, islands, underwater caves and sea animals.
+
+Planned Landscape: Savannahs
+
+Savannahs have a warm and dry climate and consist of sunny grasslands with few trees and wild animals.
+
+Planned Landscape: Undead Lands
+
+Undead lands are contaminated landscapes without vegetation, populated by evil undead creatures.
+
+Planned Landscape: Swamp Lands
+
+Swamp lands are wetlands with many forests and large rivers.
+
+Planned Landscape: Mushroom Lands
+
+Mushroom Lands are full of giant mushrooms and huge insects.
+
+Adventure Back to top 
+
+Adventure Skills
+
+Being an exploration RPG, an important focus of Cube World is exploration and adventure. In Cube World, players are equipped with a set of skills that a true adventurer needs:
+ 
+ Climbing allows players to ascend the highest rocks and reach the deepest abyss.
+
+ Swimming through rivers, lakes and oceans is routine for a Cube World adventurer.
+
+ Diving to the ground of a lake or exploring underwater caves is also possible.
+
+ Hang gliding from a mountain right into a lush valley is a common task in Cube World.
+
+ Sailing enables ocean explorers to travel quickly from one island to another.
+
+Dungeons
+
+Dungeons are dangerous places full of rare loot and are integrated seemlessly into the world. Dungeon enemies are often stronger than normal enemies and there are dungeon bosses.
+Dungeons occur in different forms, such as castles, ruins, temples, pyramids, and catacombs. Apart from that, there are overworld dungeons, which are less structured and consist of disconnected
+buildings.
+
+Missions
+
+Every Cube World day, new missions are available. Missions send players to dungeons or huge boss monsters. Completing a mission gives valuable rewards like weapons, armor and platinum coins .
+ Platinum coins can be used to upgrade weapons and armor.
+
+If a player likes a land he can basically stay forever in that land and just do daily missions.
+
+Adventure Features
+
+Climbing
+
+Players can climb steep walls, mountains, rocks, cliffs, trees and more.
+
+Swimming & Diving
+
+Players can swim and dive through rivers, lakes, and oceans.
+
+Hang Gliding
+
+Players glide through the air and explore the world from above using hang gliders.
+
+Sailing
+
+Players can explore oceans and cross waters with sailboats.
+
+Dungeons
+
+Dungeons can be castles, catacombs, temples, pyramids etc. and are full of powerful enemies and rare loot. Each dungeon has a boss.
+
+Overworld Dungeons
+
+Overworld Dungeons are less linear and more freeform than regular dungeons. They usually consist of multiple separate buildings or ruins and have a boss somewhere in the center.
+
+Portals
+
+Portals consist of magic rune stones that can be found anywhere in the world. Players can quickly teleport between discovered portals.
+
+Missions
+
+Missions are generated every Cube World day. A mission involves defeating a boss monster or a dungeon boss. Completing a mission rewards the player with valuable items and tokens.
+
+Planned: Procedural Quests
+
+Procedural quests are randomly generated tasks with varying story, creatures, and places. Our goal is to come up with a diversified non-repetitive system.
+
+Planned: Background Story
+
+We're planning to add a background story and lore to add more depth.
+
+Planned: Housing
+
+We're planning to enable players to build their own house. Players will be able to store items, trophies, pets etc. in their house and extend the house gradually. 
+
+Classes & Infinite Character Progression Back to top 
+
+Classes
+
+There are currently four playable classes in Cube World: Warriors, Rangers, Mages, and Rogues.
+
+We wanted to give each class a different gameplay and feel.
+
+The key feature of warrior gameplay is charged attacks : they can build up MP with normal attacks and charge up powerful special attacks.
+
+Rangers use ranged charged attacks , which work similar like warrior attacks, but using ranged weapons.
+
+Mages cast spells with varying cast times. Normal attacks are usually faster, while special attacks have longer cast times and consume MP.
+
+Rogue gameplay is fast-paced and special attacks are instant. That way they can concentrate on evasion and move freely during combat.
+
+Specializations
+
+In order to allow for more diversified gameplay, we added class specializations . Each class can choose one out of two specializations, which changes playstyle and abilities of that class.
+
+Warrior specializations: 
+
+Berserker: Attack speed is increased with each hit. Can charge attacks more quickly.
+
+ Guardian: Can block attacks with all weapons and has increased health. Can become immune against stun attacks.
+
+Ranger specializations: 
+
+Sniper: Has camouflage and aim abilities. Attack speed is increased with each hit.
+
+ Scout: Special attacks have a chance to become instantly chargeable. Can sprint.
+
+Mage specializations: 
+
+Fire: Special attacks have a chance to become instantly chargeable. Can cast fire explosions. 
+
+ Water: Attack speed is increased with each hit. Has healing spells.
+
+Rogue specializations: 
+
+Assassin: Special attacks increase stealth. Has improved stealth abilities. 
+
+ Ninja: Dodges during special attacks. Can throw shurikens.
+
+Skill trees
+
+With each gained level, players can assign skill points to a skill tree. There are class specific skills like attacks or spells, and common skills like climbing, hang gliding, or pet riding.
+
+Infinite Progression
+
+Not only worlds are infinite, but so are you character's progression. This means players can theoretically level up infinitely and put infinitely many skill points into their skill trees.
+However, this doesn't mean that players can become infinitely powerful . The power of players, creatures, items and skills doesn't scale linearly or exponentially with the level ,
+but it scales tangentially . So while levels can be between 1 and infinity, the corresponding power is between 1 and 100. A power of 100 can only be reached with an infinite level.
+In lower levels, power increments are more notable than in higher levels.
+
+This system has two advantages: First, there's no level cap and the player never has the feeling of having reached the end of the game.
+Second, power cannot be infinite. For each land, the game generates creatures and dungeons evenly in all power ranges (1-100).
+That way the player can freely travel from land to land and can always be sure to find creatures and dungeons of his power.
+
+Class Features
+
+Warrior Class
+
+Warriors are heavily armored melee fighters. They can wield one-handed weapons, two-handed weapons and shields. Their specializations are Berserker and Guardian.
+
+Ranger Class
+
+Rangers are ranged classes that can use bows, crossbows and boomerangs to attack their enemies from a distance. Their specializations are Sniper and Scout.
+
+Mage Class
+
+Mages use wands, staffs, and bracelets to cast powerful spells to attack enemies, heal allies and protect themselves. They can specialize on Fire and Water.
+
+Rogue Class
+
+Rogues are agile melee fighters specialized on stealth and evasion. They can wield daggers, fist weapons and longswords. Their specializations are Ninja and Assassin.
+
+Specializations
+
+Each class can choose one out of two specializations. A specialization affects gameplay and abilities of a class. The specialization can be changed at the class trainer.
+
+Skill Trees
+
+With each gained level, players can assign skill points in a skill tree. Skill trees contain both combat and non-combat skills.
+
+Planned: Advanced Skill Trees
+
+We're planning to add more complex skill trees with additional skills, branches, and options.
+
+Planned: More Classes
+
+We're planning to add more classes in future updates.
+
+Action-Based Combat Back to top 
+
+Combat in Cube World is based on player skill, movement and reaction. Skilled players can beat high-level monsters, while not-so-skilled players can be beaten by low-level creatures.
+
+Manual Aiming
+
+Enemies need to be targeted manually with a crosshair. There's no target locking. Good players will land more hits and thus deal more damage.
+
+Active Dodging
+
+Most attacks can be dodged with good reaction and proper timing. Dodging costs stamina and makes you immune against damage for a very short time. With skill and good stamina management,
+you can survive even the strongest attacks.
+
+Combos
+
+All creatures have armor and resistance . Armor decreases physical damage, resistance magical damage. Every time you hit an opponent, you get a combo point.
+The more combo points you have, the more armor/resistance of your enemy is ignored for your attacks. So if you succeed to build up enough combo points, you can penetrate even the heaviest armor.
+
+Combat Features
+
+Manual Aiming
+
+There is no target locking. Players need to aim manually, both in melee and ranged combat.
+
+Active Dodging
+
+Most attacks can be dodged with good reaction and timing. Skilled players will be able to avoid damage, no matter how strong the opponent is.
+
+Combo Hits
+
+By landing multiple hits in a row (combos), players can penatrate armor and magical resistance of their enemies. Skilled players will be able to deal damage even against high-level enemies.
+
+Stun Attacks
+
+Special attacks have a chance to stun oppponents. Stunned enemies are easy to hit, can't heal and can't deal damage.
+
+Planned: Crowd Control Abilities
+
+Crowd control means incapicitating certain enemies while fighting other enemies. This is useful when fighting large or powerful groups of enemies.
+
+Races Back to top 
+
+The following races are playable: Elves, Humans, Goblins, Lizardmen, Dwarves, Orcs, Frogmen, Undeads. There are separate models for male and female characters. They also have different voices and there are no class-race restrictions.
+
+Characters are customizable during character creation by choosing a combination of face, hair and hair color. Lizardmen have scales instead of hair and Frogmen have different eyes.
+
+Race Features
+
+Playable Race: Humans
+
+Humans are medium-sized creatures with varying hair styles (including beards).
+
+Playable Race: Elves
+
+Elves are medium-sized creatures with pointy ears and fancy hair.
+
+Playable Race: Dwarves
+
+Dwarves are small creatures. Male dwarves always have beards, while women often have braids.
+
+Playable Race: Goblins
+
+Goblins are small creatures with green skin and reddish noses.
+
+Playable Race: Lizardmen
+
+Lizardmen are medium-sized creatures with scales and a big mouth.
+
+Playable Race: Orcs
+
+Orcs are big creatures with green skin and a pronounced jaw.
+
+Playable Race: Undeads
+
+Undeads are medium-sized creatures with a decayed look and glowing eyes.
+
+Playable Race: Frogmen
+
+Frogmen are medium-sized creatures with an amphibian look and bulging eyes.
+
+Planned: More Playable Races
+
+We're planning to add more playable races in future updates.
+
+Pets Back to top 
+
+Every player can have a pet which accompanies him during his adventures and assists in combat. A player can possess as many pets as he wants, but only one pet can be active at a time.
+The remaining pets are stored in a special pet bag in the inventory.
+
+Taming
+
+Most animals and some monsters in Cube World can be tamed. In order to tame a pet, you need to feed it with it's favorite food. The challenge is to find out which food a pet likes and to obtain the food.
+
+Pet Categories
+
+There are different pet categories:
+ 
+ Melee pets are the most common pets and attack from close range.
+
+ Ranged pets can shoot bullets from a distance.
+
+ Tank pets deal less damage but have higher endurance and generate more aggro.
+
+ Some pets have healing abilities to heal their master and friends.
+
+ Mount pets are ridable and enable fast traveling.
+
+Pet Features
+
+Pet Taming With Pet Food
+
+Most wild animals and some monsters can be tamed by finding the right food for them.
+
+Melee Pets
+
+Most pets attack from melee range.
+
+Ranged Pets
+
+Some pets can shoot bullets from a distance.
+
+Tank Pets
+
+Tank pets deal less damage but have higher endurance and generate more aggro.
+
+Healer Pets
+
+Some pets have healing abilities to heal their master and friends.
+
+Mount Pets
+
+Many pets are ridable for fast traveling.
+
+Planned: Rare Pets
+
+Rare Pets are hard to obtain. They have a special look and special abilities.
+
+Planned: Pet Evolution
+
+We're planning enable some pets to evolve over time.
+
+Monsters Back to top 
+
+Cube World is full of monsters: there are slimes, zombies, ogres, skeletons, vampires, werewolves, and many more.
+
+Boss Monsters
+
+Boss monsters are the strongest creatures in Cube World. Some of them are humanoid, like trolls with big wooden clubs or one-eyed cyclopses. Others are undead, like the evil liches, that summon
+zombies and skeletons. There are saurians which are armored with scales and armed with sharp horns and teeth.
+
+Defeating a boss monster requires a lot of skill and experience. Players have to study their attacks and react properly. They have to jump during earthquakes by trolls, they have to stay away from cyclone attacks by cyclopses,
+and have to dodge the deadly smash attacks by golems.
+
+Defeating a boss monster gives valuable rewards like rare weapons or armor and lots of experience.
+
+Monster Features
+
+Boss Monster: Troll
+
+Trolls are slow but strong and can stun enemies with earthquake attacks.
+
+Boss Monster: Dark Troll
+
+Dark Trolls have faster attacks than Trolls by using two huge maces.
+
+Boss Monster: Yeti
+
+Yetis are the snowland counterpart of Trolls.
+
+Boss Monster: Cyclops
+
+Despite their size Cyclopses are swift melee fighters with dangerous cyclone attacks.
+
+Boss Monster: Saurian
+
+Saurians are giant monsters with varying abilities.
+
+Boss Monster: Mammoth
+
+Mammoths get angry when disturbed and perform dangerous ram and stomp attacks.
+
+Boss Monster: Lich
+
+Liches are undead magicians that summon zombies and skeletons.
+
+Boss Monster: Golem
+
+Golems are big giants made of clay and stone. They use rocks and their body to crush their enemies.
+
+Boss Monster: Ember Golem
+
+Ember Golems are the lavalands counterpart of Golems.
+
+Boss Monster: Snow Golem
+
+Snow Golems are the snowlands counterpart of Golems.
+
+Boss Monster: Hell Demon
+
+Hell Demons are terrible beasts from the lavalands.
+
+Planned Boss Monster: Sea Crab
+
+Sea Crabs are giant armored crabs with huge claws.
+
+Planned Boss Monster: Rune Giant
+
+Rune giants are ancient magical guards with dangerous ranged and melee attacks.
+
+Planned Boss Monster: Dragon
+
+Dragons are flying beasts dealing fire and melee damage.
+
+Planned Boss Monster: Demon
+
+Demons can have various shapes with various attacks.
+
+Items, Crafting & Customization Back to top 
+
+Items can be obtained from enemies, treasure chests, missions, vendors. Apart from that, items are also craftable. The crafting categories are:
+ 
+ Weapon crafting: Each class can craft weapons available to that class. For instance, warriors can craft axes, swords, maces, and shields.
+
+ Armor crafting: Each class can craft armor available to that class. For instance, warriors can craft iron gloves, iron boots, and more.
+
+ Jewel crafting: All classes can craft rings and amulets. Rings and amulets have secondary stats useful for all classes.
+
+ Cooking: Players can craft food for cheap out-of-combat healing and buffs.
+
+ Alchemy: Players can craft healing potions and other useful potions.
+
+Weapon Customization
+
+Weapons can be upgraded and customized on a per-voxel basis. For instance, iron swords can be upgraded with iron cubes which can be freely placed on the weapon.
+This increases damage and changes the look of weapons.
+
+Spirit cubes are rare magic cubes that can be obtained by defeating bosses. They're more powerful than normal cubes and have additional effects when placed on a weapon:
+ 
+ Fire spirit deals additional fire damage. 
+ Wind spirit increases attack and movement speed of the player. 
+ Ice spirit slows attack and movement speed of the target. 
+ Unholy spirit deals damage to the target and heals the player. 
+
+Items/Crafting Features
+
+Weapon Customization
+
+Weapons can be upgraded by placing special cubes on them. This increases the power and changes the look of weapons.
+
+Weapon Crafting
+
+Weapons can be crafted with recipes and ingredients.
+
+Armor Crafting
+
+Armor can be crafted with recipes and ingredients.
+
+Jewel Crafting
+
+Rings and amulets can be crafted with recipes and ingredients.
+
+Cooking
+
+Players can craft food for cheap out-of-combat healing and buffs.
+
+Alchemy
+
+With alchemy, players can craft healing potions and other useful potions.
+
+Planned: Artifacts
+
+Pieces of artifacts can be found in the world. They can be combined to restore a rare random item.
+
+Planned: More Crafting Formulas
+
+We're planning to add more crafting formulas, especially for cooking and alchemy.
+
+Planned: Race-Specific Headgear
+
+We're planning to add headgear like hats, bandannas, glasses bound to certain races. That way we can adapt the items to the varying head shapes.
+
+Planned: Vanity Items
+
+We're planning to add vanity items, which are not directly useful, but add fun, variation, and depth to the game.
+
+Multiplayer Back to top 
+
+There is a separate server application that can be used to host multiplayer games. It can be run on dedicated servers or private computers (you just have to make sure set up port forwarding for routers).
+It enables online and LAN multiplayer for up to four players. We're still experimenting with maximum player limit, especially with respect to game difficulty.
+
+Multiplayer is optional and the game can be played completely offline.
+
+Multiplayer Features
+
+Private Servers
+
+Cube World comes with a separate server application which players can use to host their own server to which friends can connect for a multiplayer session.
+
+LAN Multiplayer
+
+Multiplayer is possible over LAN.
+
+Online Multiplayer
+
+Multiplayer is possible over the Internet. The server application can be run on a dedicated server or a private computer (using port forwarding for routers).
+
+2-4 Player Cooperative Play
+
+You can play cooperatively with up to three friends.
+
+Player vs Player (PvP)
+
+We're planning to add PvP modes with randomly generated battlegrounds and arenas.
+
+PvP Online Ladders
+
+For team-based PvP we're thinking about the possibility of online ladders.
+
+Experimental Massively Multiplayer Server
+
+We will experiment with the possiblity of higher populated multiplayer servers, without compromising game balance and performance.
+
+� Copyright 2013 Picroma e.K. | Privacy Policy | Imprint 
+
+

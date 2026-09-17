@@ -111,10 +111,13 @@ public final class PlateField {
     private static final double ELEV_CONT = 620.0;
     private static final double ELEV_OCEAN = -4100.0;
 
-    private static final double COLLIDE_H = 5600.0;   // 陆陆碰撞：总抬升（高原 2688 + 山系 2912）
-    private static final double ARC_H     = 2600.0;   // 俯冲：陆侧山弧
-    private static final double TRENCH_D  = -2400.0;  // 俯冲：洋侧海沟
-    private static final double RIDGE_H   = 1600.0;   // 洋脊
+    // ⚠ 2026-09-17（§280）改成 public 可变旋钮：用户投诉「大陆外部有小块孤岛」，
+    //   假设是造山带把洋壳抬成了陆壳（feat 沿【连通全图】的 Voronoi 网分布）。
+    //   **默认值不变 ⇒ 逐位中性**；改它们会改世界几何 ⇒ 必须进 configStamp（D58）。
+    public static double COLLIDE_H = 5600.0;   // 陆陆碰撞：总抬升（高原 2688 + 山系 2912）
+    public static double ARC_H     = 2600.0;   // 俯冲：陆侧山弧
+    public static double TRENCH_D  = -2400.0;  // 俯冲：洋侧海沟
+    public static double RIDGE_H   = 1600.0;   // 洋脊
     private static final double RIFT_D    = -900.0;   // 陆内裂谷
     private static final double TRANSFORM_H = 320.0;  // 转换断层（走滑，起伏小）
 
@@ -136,6 +139,195 @@ public final class PlateField {
     private static final long SITE_SALT  = 0x5EED_0001L;
     private static final long CONT_SALT  = 0x5EED_0002L;
     private static final long NOISE_SALT = 0x5EED_0003L;
+    private static final long WARP_SALT  = 0x5EED_0005L;
+    private static final long COAST_SALT = 0x5EED_0006L;
+
+    // ==================== 路线 A：把「格」从几何降级为骨架（设计冻结 §271） ====================
+    // ⚠⚠ 三个开关【默认全 false ⇒ 逐位复现改前行为】（照 PrecipField 的既有模式）。
+    //    改动它们会改世界几何 ⇒ 必须进 SimClimate.configStamp()（D58 的准入判据）。
+
+    /** A1：壳底从「最近站点的【二值】contScore」改成「查询点上的【连续】contScore」。 */
+    public static boolean A1_CONTINUOUS_CONT = false;
+    /** A2：对板块几何做域扭曲（把 Voronoi 边界与海岸线一起揉弯，消掉多边形感）。 */
+    public static boolean A2_DOMAIN_WARP = false;
+    /** A3：把 n1 的第一八度振幅按「山带度 feat」门控（平原小起伏 / 山带大起伏）。 */
+    public static boolean A3_GATED_RELIEF = false;
+
+    /**
+     * A1 的【大陆度波长】（block）。
+     *
+     * <p>为什么必须与 {@link #PLATE_CELL} <b>解耦</b>：现状里 {@code contScore} 的 baseFreq 被写死成
+     * {@code 1.0/cell} ⇒ 大陆尺度 = 板块格尺度，两者无法分别调（这正是 P507 量出的
+     * 「格尺度上陆壳连通块 = 1、一张图只有 8.33 个格」的来源）。
+     * 路线 A 里 {@code PLATE_CELL} 只决定<b>山带间距</b>，大陆大小由本常量决定。
+     */
+    public static double CONT_WAV = 8_000_000.0;
+    /**
+     * A1 的**大陆度八度数**。
+     *
+     * <p>为什么这是关键旋钮（P509 实测）：@@contScore@@ 的最细八度振幅 = 0.25/1.75 = **0.143**，
+     * 而过渡带宽 @@2*CS_W@@ 只有 **0.12** ⇒ **最细八度一个人就能把 wC 从 1 拉到 0**，
+     * @@csP@@ 到处穿越阈值 ⇒ wC **从不饱和** ⇒ 「大陆内部」变成一大片 base~0 的浅滩，
+     * 110 m 的噪声在上面打出 8 km 的点状水洼（P509：内海 640 块点状 + 672 块点状陆块）。
+     * **八度越少 ⇒ csP 越是大块平台 ⇒ wC 才能真正饱和。**
+     * （这正是 MC continentalness「极低频 + spline 两端饱和」的做法。）
+     */
+    public static int CONT_OCT = 1;
+    /** A1 的过渡带半宽（contScore 单位，量程约 ±1）：越小海岸越陡。 */
+    public static double CS_W = 0.06;
+    /** A2 的扭曲尺度（block）与位移量（block）。 */
+    public static double WARP_W = 1_800_000.0;
+    public static double WARP_AMP = 400_000.0;
+    /**
+     * A2 的**扭曲八度数**（默认 2 = 原行为，逐位不变）。
+     *
+     * <p>为什么它才是「大陆形状太规则」的解（P518 实测）：**L2 让海岸线【恰好等于】骨架 skel 的零等值线**
+     * （@@lim = 0.9|skel| -> 0@@，噪声在海岸处被压到 0）⇒ 海岸线只继承了 skel 的尺度结构。
+     * 而 skel 只有两个尺度：@@base@@（lambda >= 1500 km）与 @@feat@@（lambda = 30 / 175 km）——
+     * **1500 km 到 175 km 之间是真空** ⇒ 盒计数分形维数 D 只有 **1.011**（地球海岸 1.2~1.4）。
+     *
+     * <p>而**域扭曲只改变「在哪里求 skel」，不改变 skel 的等值线拓扑** ⇒
+     * **可以在【不增加内海】的前提下给海岸线补上多尺度细节**。这是唯一能做到这件事的手段。
+     * （P518 实测：把 @@CONT_OCT@@ 1->3 也是 D 1.011 -> 1.019，几乎不动，而且 N-1 1 -> 4、G1b 0.96 -> 0.62 ⇒ 那条路被证伪。）
+     */
+    public static int WARP_OCT = 2;
+
+    /**
+     * A13：域扭曲的 **Hurst 指数**（@@fbm@@ 的八度振幅比 = @@2^{-H}@@）。
+     *
+     * <p>⚠ **默认 1.0 = 现有行为**（振幅比 0.5），而且 **H = 1 正是之前六轮域扭曲全部失败的根因**：
+     * 每八度的梯度贡献 @@A_k/lambda_k = (A_0/lambda_0)*2^{k(1-H)}@@ 在 H=1 时**恒为常数** ⇒
+     * **扭曲可微 ⇒ 光滑曲线映成光滑曲线 ⇒ D 不动**；想把 D 推上去只能把 @@|grad w|@@ 推到 1，
+     * 那会在**粗尺度**上失去单射性 ⇒ 拓扑被破坏 ⇒ 内海爆掉（P520 实测 N-1 1 -> 47）。
+     *
+     * <p>**H < 1 时粗糙度来自细尺度**：位移在细尺度不可微 ⇒ 光滑曲线映成**分形**曲线（@@D = 2 - H@@），
+     * 而只要在**方块尺度**上仍单射，@@p -> p + w(p)@@ 就是同胚 ⇒ **陆地集合的拓扑完全不变 ⇒ 内海一个都不多**。
+     *
+     * <p>单射性的可算窗口（1 格 = 1 m）：@@A_0 / lambda_0^H < |p-q|^{1-H}@@。
+     * 取 @@lambda_0 = 2000 km@@、@@H = 0.75@@ ⇒ @@A_0 < 53 km@@。**⇒ 振幅必须比之前用的 400 km 小一个量级。**
+     */
+    public static double WARP_HURST = 1.0;
+
+    /**
+     * A9：**带限的「海岸线粗糙度」项**（默认 0 = 逐位不变）。
+     *
+     * <p>为什么需要它（P518/P519/P520 三次失败的教训）：
+     * P518 给 @@contScore@@ 加八度 -> 八度振幅 0.286/0.143，而 @@base@@ 在 @@csP@@ 上的增益是
+     * @@4720 m / 0.12 = 39,333 m per unit@@ ⇒ 那些八度在【陆内】造出巨大的高程摆动 ⇒ 内海 1 -> 4。
+     * P519 加扭曲八度 -> @@|grad w|@@ 每八度都是 0.22 ⇒ 自相似温和扭曲 ⇒ D 不动。
+     * P520 把 @@|grad w|@@ 推到 1 -> **D 1.010 -> 1.122（有效！）但 N-1 1 -> 47、G1b 0.96 -> 0.19**
+     * （@@|grad w| ~ 1@@ 时映射开始折叠 ⇒ **我原先「域扭曲不改拓扑」的论证被证伪**）。
+     *
+     * <p>本项的做法：**振幅远小于过渡带宽 @@2*CS_W = 0.12@@ 的带限项**，波长落在骨架的谱隙里（1500~175 km）。
+     * 它只在海岸带（@@csP@@ 距阈值 ~0.09 以内）起作用，不会在陆内造出摆动。
+     */
+    public static double COAST_AMP = 0.0;
+    /** A9 的波长（block）与八度数。 */
+    public static double COAST_W = 400_000.0;
+    public static int COAST_OCT = 2;
+
+    /**
+     * A12：**给 A9 的粗糙度加「不得独立越阈」的门控**（默认全 false ⇒ 逐位不变，即原 A9 行为）。
+     *
+     * <p>为什么需要（P527/P529 实测）：A9 的 @@COAST_AMP@@ 是**无门控**地加在 @@csP@@ 上的，
+     * 振幅 0.15 大于海岸线偏移（约 0.033+CS_W 的尺度）⇒ **它能在深海里独立把 csP 推过阈值造岛**，
+     * 也能在深陆里把它压到阈值以下造湖。跨 6 个种子实测：N-1 极差 17、N-2 极差 20。
+     *
+     * <p>两种模式：
+     * <ul>
+     *   <li>@@A12_GATED_COAST@@：乘高斯门控 @@exp(-((csP0 - coast)/COAST_BAND)^2)@@ ——
+     *       只在**海岸带**生效。仍非结构保证（海岸带边缘仍可造小块），但能把「深海里的岛」收成「贴岸的岛」。</li>
+     *   <li>@@A12_SHRINK_ONLY@@：**单侧**（只允许把 @@csP@@ 往下压）⇒ 陆地只减不增 ⇒
+     *       **结构上不可能造出任何新陆地（零孤岛）**。代价：海岸线只能「被吃进去」（海湾），不能长出半岛。</li>
+     * </ul>
+     */
+    public static boolean A12_GATED_COAST = false;
+    public static boolean A12_SHRINK_ONLY = false;
+    /** A12 门控的半宽（csP 单位）。 */
+    public static double COAST_BAND = 0.09;
+    /** A3：平原 / 山带的第一八度振幅（m），以及门控的 feat 尺度（m）。 */
+    public static double A_PLAIN = 160.0;
+    public static double A_MTN = 900.0;
+    public static double FEAT_GATE = 900.0;
+
+    // ---- 新目标（用户裁决 2026-09-17）：**大陆内部完全干净、没有任何海洋**，为接入水系铺路 ----
+
+    /**
+     * A4：**陆内裂谷保底**。
+     *
+     * <p>现状 @@RIFT_D = -900 m@@ 是**绝对值** ⇒ 陆壳底只有 +620 m ⇒ 裂谷槽 e = -280 m **见底成海**。
+     * 而它坐在 Voronoi 棱上、三叉点处呈 Y 形 ⇒ 看起来**就像河**（用户原话）。
+     * 打开后裂谷深度改成**相对量**：@@min(900, RIFT_FRAC*base)@@ ⇒ @@base + feat >= (1-RIFT_FRAC)*base > 0@@，
+     * **结构上永不见底**。真实的东非大裂谷谷底也确实仍在海面以上几百米。
+     */
+    public static boolean A4_RIFT_GUARD = false;
+    /** A4 的裂谷深度上限（占陆壳底的比例）。0.55 ⇒ 最多削掉 55%。 */
+    public static double RIFT_FRAC = 0.55;
+
+    /**
+     * A5：**细尺度噪声按大尺度骨架门控**。
+     *
+     * <p>现状：@@e = skel + n1 + n2 + n3@@，噪声**与骨架无关**地满幅叠加 ⇒ 只要 @@skel@@ 落在 0 附近
+     * 的过渡带（P510 实测：@@CS_W@@ 0.06->0.18 让点状内海 953->2081），噪声就打穿海面成碎屑。
+     * 打开后 @@e = skel + (n1+n2+n3)*smoothstep01(skel/NOISE_FADE)@@：
+     * skel -> 0+ 时噪声也 -> 0 ⇒ **skel > 0 处 e > 0**（在噪声有界的范围内）。
+     * 物理上也对：陆架浅水与滨海平原本来就是沉积区，起伏该小。
+     */
+    public static boolean A5_NOISE_FROM_SKEL = false;
+    /** A5 的骨架尺度（m）：skel >= 该值时噪声满幅。 */
+    public static double NOISE_FADE = 800.0;
+
+    /** A6：**关掉超宽大洋岛弧**。P510 实测：关掉后 G1b 0.022->0.220、G2 0.66->0.97（比 A0 的 0.139 还好）。 */
+    public static boolean A6_NO_OCEAN_ARC = false;
+
+    /**
+     * L2：**噪声符号安全化**（设计冻结 §277）。
+     *
+     * <p>新目标要求「大陆内部完全干净、没有任何海洋」。P511 实测：只要噪声参与海陆判定，
+     * 就必然有碎屑（最好配置仍有 620 个内海，584 个点状）⇒ **统计零到不了 0**。
+     *
+     * <p>打开后 @@n_eff = lim*tanh(n/lim)@@、@@lim = SKEL_MARGIN*|skel|@@ ⇒
+     * @@|n_eff| < lim@@ ⇒ **@@sign(e) == sign(skel)@@ 恒成立、且 @@|e| >= 0.1*|skel|@@** ——
+     * 这是硬保证，不是概率。于是「内海」只剩 @@skel = 0@@ 自身的闭合小圈这一个来源。
+     */
+    public static boolean L2_NOISE_SIGN_SAFE = false;
+    /** L2 的符号裕度：噪声上限 = SKEL_MARGIN * |skel|。必须 < 1。 */
+    public static double SKEL_MARGIN = 0.90;
+
+    /**
+     * A7：**站点的壳类型也改用同一个连续场**（设计冻结 §278.3）。
+     *
+     * <p>A1 之后 @@base@@ 已连续化，但 @@feat@@ 的壳类型 @@c1/c2@@ 仍取自【站点】的二值 @@contScore(站点)@@。
+     * 两者不一致时会出现「本地 base = +620 m（陆）但站点判洋 ⇒ featOf 给 TRENCH_D = -2400 m」
+     * ⇒ @@skel = -1820 m@@ ⇒ **被挖穿成海**。P513 实测：L2 + CONT_WAV=6000 下唯一剩下的内海
+     * 就在一条板块边界上（edgeDist 仅 9 km, 直径 1114 km）—— 正是这一条。
+     */
+    public static boolean A7_SITE_SHELL_FROM_LIVE = false;
+
+    /**
+     * A10：**完全关掉边界特征 feat**（默认 false ⇒ 逐位不变）。
+     *
+     * <p>用途：定位「大陆外部的小块孤岛」的真因。P522 只把 @@COLLIDE_H/ARC_H@@ 归零就宣布
+     * 「造山带假设被证伪」—— **那个实验不完整**（@@RIDGE_H=1600@@ / @@TRANSFORM_H=320@@ / @@TRENCH_D@@ 都还在）。
+     * 这里把整个 @@feat@@ 项置零，才是干净的判别实验。
+     */
+    public static boolean A10_NO_FEAT = false;
+
+    /**
+     * A11：**只在海岸带生效的粗糙度**（默认 false ⇒ 逐位不变）。
+     *
+     * <p>为什么需要（P524 定位出的真因）：A9 的 @@COAST_AMP@@ 是加在 @@csP@@ 上的**无门控**项，
+     * 而海岸线在 @@csP = thr + 0.093@@ ⇒ **振幅一旦超过 0.093，它就能在深海里独立把 csP 推过阈值 ⇒ 造岛**
+     * （实测 @@COAST_AMP@@ 0 -> N-2 = 2，0.15 -> 10，0.20 -> 15）。
+     *
+     * <p>A11 换成**直接扰动 @@base@@**，并乘一道 @@|base|@@ 的高斯门控 @@exp(-(base/ROUGH_G)^2)@@：
+     * 深海（@@base = -4100@@）与深陆（@@base = +620@@）处门控≈0 ⇒ **只揉海岸线，绝不在别处造新结构**。
+     */
+    public static boolean A11_COAST_ONLY_ROUGH = false;
+    /** A11：base 扰动幅度（m）。 */
+    public static double ROUGH_M = 1500.0;
+    /** A11：门控尺度（m）—— |base| 超过它之后粗糙度指数衰减。 */
+    public static double ROUGH_G = 800.0;
 
     // ==================== 大陆度（连续、带符号、O(1)） ====================
 
@@ -313,13 +505,15 @@ public final class PlateField {
      * <p>⚠ **早退是精确的**：max 一旦到 1 就再也降不下来 ⇒ 提前 return 与跑完 8 次**逐位相同**。
      * 于是它保留了原实现的短路性能（绝大多数点在头一两个方向就出结果）。
      */
-    static double wideOceanWeight(int x, int z, long seed, int cell) {
+    static double wideOceanWeight(int x, int z, long seed, int cell, double thr) {
         double lm = 0.0;
         for (int k = 0; k < 8; k++) {
             double a = 2.0 * Math.PI * k / 8.0 + 0.39;
             int sx = x + (int) Math.round(MAX_OCEAN_HALF * Math.cos(a));
             int sz = z + (int) Math.round(MAX_OCEAN_HALF * Math.sin(a));
-            double lk = smoothstep01((contScore(sx, sz, seed, cell) - CONT_THRESHOLD) / ARC_CS_W);
+            // ⚠ 必须用【与陆海判定同一个】大陆度场与【同一个】阈值：
+            //   否则岛弧会按老场/老阈值落在地图上的另一批位置 —— 那是口径错误。
+            double lk = smoothstep01((contScoreLive(sx, sz, seed, cell, thr) - thr) / ARC_CS_W);
             if (lk > lm) lm = lk;
             if (lm >= 1.0) return 0.0;
         }
@@ -357,13 +551,39 @@ public final class PlateField {
      * smoothstep 1.5、flatTop 更陡）⇒ 直接用它做横剖面，崖最缓。
      */
     public static double elevationWithCell(int x, int z, long seed, int cell) {
-        double e = elevationFull(x, z, seed, cell, CONT_THRESHOLD);
-        if (e >= SEA_LEVEL || MAX_OCEAN_HALF <= 0) return e;
-        double w = wideOceanWeight(x, z, seed, cell);
+        return elevationWithCellFull(x, z, seed, cell, CONT_THRESHOLD);
+    }
+
+    /**
+     * 标定入口：**带超宽大洋岛弧**的完整高程，且陆壳阈值可调。
+     *
+     * <p>为什么必须有它：{@link #elevationWithCell} 用的是写死的 {@code CONT_THRESHOLD}，
+     * 而 {@link #isLandFull} 走 {@link #elevationFull}（**不含**岛弧）。
+     * 路线 A 的预览需要在「换了阈值」的同时保持与生产**同一条**地形链 ——
+     * 只用 elevationFull 出图会悄悄漏掉岛弧（那正是海洋上的细长条陆地），
+     * 得到的图与生产不是同一个东西。**那是口径错误，不是简化。**
+     */
+    public static double elevationWithCellFull(int x, int z, long seed, int cell, double contThreshold) {
+        double e = elevationFull(x, z, seed, cell, contThreshold);
+        if (e >= SEA_LEVEL || MAX_OCEAN_HALF <= 0 || A6_NO_OCEAN_ARC) return e;
+        // (A2) 岛弧的八向采样也必须走同一套扭曲几何。
+        double qx = x, qz = z;
+        if (A2_DOMAIN_WARP) {
+            // ⚠ 与 elevationFull 共用同一套几何（WARP_OCT / WARP_HURST）—— E95/E96 的教训：量尺与被量的场必须同源。
+            double wx = fbmH(x, z, seed ^ WARP_SALT, WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            double wz = fbmH(x + 9_117, z - 7_331, seed ^ (WARP_SALT + 1), WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            qx = x + wx; qz = z + wz;
+        }
+        double w = wideOceanWeight((int) Math.round(qx), (int) Math.round(qz), seed, cell, contThreshold);
         if (w <= 0.0) return e;
         double depth = smoothstep01((DEPTH_HI - e) / (DEPTH_HI - DEPTH_LO));
         double ridge = arcRidge(x, z, seed);
         return e + (OCEAN_BREAK_H - e) * (w * depth * ridge);
+    }
+
+    /** 标定入口：带岛弧 + 可调阈值的是否陆地。 */
+    public static boolean isLandFullWithArc(int x, int z, long seed, int cell, double contThreshold) {
+        return elevationWithCellFull(x, z, seed, cell, contThreshold) >= SEA_LEVEL;
     }
 
     public static double elevationWithCellRaw(int x, int z, long seed, int cell) {
@@ -378,17 +598,24 @@ public final class PlateField {
      */
     public static double elevationFull(int x, int z, long seed, int cell, double contThreshold) {
         double px = x, pz = z;
+        // (A2) 域扭曲：只揉【几何坐标】（Voronoi 查询 + contScore）；细尺度噪声 n1/n2/n3 仍用原始 (px,pz)。
+        double qx = px, qz = pz;
+        if (A2_DOMAIN_WARP) {
+            double wx = fbmH(px, pz, seed ^ WARP_SALT, WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            double wz = fbmH(px + 9_117, pz - 7_331, seed ^ (WARP_SALT + 1), WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            qx = px + wx; qz = pz + wz;
+        }
         double d1 = Double.MAX_VALUE, d2 = Double.MAX_VALUE;
         double s1x = 0, s1z = 0, s2x = 0, s2z = 0;
         long h1 = 0, h2 = 0;
-        int cx = (int) Math.floor(px / cell), cz = (int) Math.floor(pz / cell);
+        int cx = (int) Math.floor(qx / cell), cz = (int) Math.floor(qz / cell);
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
                 int gx = cx + dx, gz = cz + dz;
                 long h = hash2(seed + SITE_SALT, gx, gz);
                 double sx = (gx + 0.5 + JITTER * (rnd01(h) * 2 - 1)) * cell;
                 double sz = (gz + 0.5 + JITTER * (rnd01(hash2(h, 7, 3)) * 2 - 1)) * cell;
-                double d = Math.hypot(sx - px, sz - pz);
+                double d = Math.hypot(sx - qx, sz - qz);   // (A2) 用扭曲后的几何坐标
                 if (d < d1) {
                     d2 = d1; s2x = s1x; s2z = s1z; h2 = h1;
                     d1 = d; s1x = sx; s1z = sz; h1 = h;
@@ -399,15 +626,33 @@ public final class PlateField {
         }
 
         double edge = 0.5 * (d2 - d1);           // 到板块边界的距离，两侧都为正
-        double cs1 = contScore(s1x, s1z, seed, cell);
-        double cs2 = contScore(s2x, s2z, seed, cell);
+        double cs1 = A7_SITE_SHELL_FROM_LIVE ? contScoreLive(s1x, s1z, seed, cell, contThreshold) : contScore(s1x, s1z, seed, cell);
+        double cs2 = A7_SITE_SHELL_FROM_LIVE ? contScoreLive(s2x, s2z, seed, cell, contThreshold) : contScore(s2x, s2z, seed, cell);
         boolean c1 = cs1 > contThreshold, c2 = cs2 > contThreshold;
         double b1 = c1 ? ELEV_CONT : ELEV_OCEAN;
         double b2 = c2 ? ELEV_CONT : ELEV_OCEAN;
 
         // 陆坡：边界处取两侧均值 ⇒ 跨越边界高程连续
         double t = edge >= MARGIN_W ? 1.0 : edge / MARGIN_W;
-        double base = (b1 + b2) * 0.5 * (1.0 - t) + b1 * t;
+        final double base;
+        if (A1_CONTINUOUS_CONT) {
+            // (A1) 在【查询点】上求连续大陆度 —— 格只提供骨架（feat = 山带），不再决定海陆。
+            // 为什么用 qx/qz：与 A2 共用同一套（可能被扭曲的）几何坐标。
+            // 顺带【删掉】按格混合 base=(b1+b2)/2*(1-t)+b1*t —— 它唯一的作用是
+            // 「跨越格边界时高程连续」，而连续场本身就是连续的。
+            double csP = contScoreLive(qx, qz, seed, cell, contThreshold);   // 与岛弧共用同一个场（含 CONT_OCT / CONT_WAV / A12）
+            double wC = smoothstep01((csP - (contThreshold - CS_W)) / (2.0 * CS_W));
+            double b0 = ELEV_OCEAN + (ELEV_CONT - ELEV_OCEAN) * wC;
+            if (A11_COAST_ONLY_ROUGH) {
+                // (A11) 只在海岸带生效：门控 exp(-(base/ROUGH_G)^2) 在深海/深陆处≈0。
+                double u = b0 / ROUGH_G;
+                double nz = fbm(qx - 4_711, qz + 3_137, seed ^ COAST_SALT, COAST_OCT, 1.0 / COAST_W, 1.0) / contNorm(COAST_OCT);
+                b0 = b0 + ROUGH_M * Math.exp(-u * u) * nz;
+            }
+            base = b0;
+        } else {
+            base = (b1 + b2) * 0.5 * (1.0 - t) + b1 * t;
+        }
 
         // 边界特征：**双尺度**（宽平顶高原 + 窄山系），并按 MARGIN_W 做**两侧混合**。
         //   平顶高原 gw = exp(-(edge/PLATEAU_W)^4)：中间平坦、边缘陡（青藏型），处处 C∞；
@@ -425,19 +670,42 @@ public final class PlateField {
             double vrel = -(driftX(h2) - driftX(h1)) * (nx / nl) - (driftZ(h2) - driftZ(h1)) * (nz / nl);
             boolean conv = vrel > 0.10;
             boolean dive = vrel < -0.10;
-            double f1 = featOf(c1, c2, conv, dive, g, gCol, gArc);
-            double f2 = featOf(c2, c1, conv, dive, g, gCol, gArc);
+            // (A4) 陆内裂谷保底：深度改成相对量 ⇒ base + feat >= (1-RIFT_FRAC)*base > 0，永不见底。
+            double riftD = RIFT_D;
+            if (A4_RIFT_GUARD) {
+                double bLoc = A1_CONTINUOUS_CONT ? base : b1;
+                riftD = -Math.min(-RIFT_D, RIFT_FRAC * Math.max(0.0, bLoc));
+            }
+            double f1 = featOf(c1, c2, conv, dive, g, gCol, gArc, riftD);
+            double f2 = featOf(c2, c1, conv, dive, g, gCol, gArc, riftD);
             feat = (f1 + f2) * 0.5 * (1.0 - t) + f1 * t;
         }
 
-        double n1 = fbm(px, pz, seed ^ NOISE_SALT, 5, 1.0 / 90_000.0, 700.0);
-        double n2 = fbm(px + 13_337, pz - 7_919, seed ^ (NOISE_SALT + 1), 3, 1.0 / 22_000.0, 160.0);
+        // (A3) n1 的第一八度振幅：平原 ~A_PLAIN，山带 ~A_MTN。
+        // 现状 = 700 m **无门控**地加在所有陆地上 ⇒ 陆壳内区 sigma=352 m、3.64% 被打到海面以下
+        // （P507：10,110 个碎片内海，405 km 平滑后归零）。门控后平原 sigma 应降一个量级。
+        double amp1 = 700.0;
+        if (A3_GATED_RELIEF) amp1 = A_PLAIN + (A_MTN - A_PLAIN) * smoothstep01(feat / FEAT_GATE);
+        // (A5) 细尺度噪声按【大尺度骨架】门控：skel -> 0+ 时噪声也 -> 0 ⇒ skel > 0 处 e > 0。
+        // 新目标（用户裁决）：大陆内部零海洋。门控关时 gN ≡ 1 ⇒ 逐位复现改前行为。
+        if (A10_NO_FEAT) feat = 0.0;          // (A10) 判别实验：把边界特征整项置零
+        final double skel = base + feat;
+        final double gN = A5_NOISE_FROM_SKEL ? smoothstep01(skel / NOISE_FADE) : 1.0;
+        double n1 = fbm(px, pz, seed ^ NOISE_SALT, 5, 1.0 / 90_000.0, amp1) * gN;
+        double n2 = fbm(px + 13_337, pz - 7_919, seed ^ (NOISE_SALT + 1), 3, 1.0 / 22_000.0, 160.0) * gN;
         double n3 = 0.0;
         if (feat > 0.0) {
             n3 = fbm(px - 5_147, pz + 2_237, seed ^ (NOISE_SALT + 2), 3, 1.0 / RELIEF_W,
-                     RELIEF_AMP * (feat / (feat + RELIEF_H0)));
+                     RELIEF_AMP * (feat / (feat + RELIEF_H0))) * gN;
         }
-        return base + feat + n1 + n2 + n3;
+        double nTot = n1 + n2 + n3;
+        if (L2_NOISE_SIGN_SAFE) {
+            // (L2) 噪声符号安全化：|n_eff| < lim = SKEL_MARGIN*|skel| ⇒ sign(e) == sign(skel)。
+            // 用 tanh 而不是硬夹取：tanh 处处 C-infinity，硬夹取只有 C0（平坦台地，E 家族陷阱）。
+            double lim = SKEL_MARGIN * Math.abs(skel);
+            nTot = (lim <= 1e-9) ? 0.0 : lim * Math.tanh(nTot / lim);
+        }
+        return skel + nTot;
     }
 
     /** 平顶高原剖面 exp(-u^4)：u=0 处平坦、u≈1 处陡（青藏高原型边缘），处处 C∞。 */
@@ -445,11 +713,11 @@ public final class PlateField {
 
     /** 单侧边界特征：near = 本侧(最近站)的壳类型，far = 另一侧。 */
     private static double featOf(boolean near, boolean far, boolean conv, boolean dive,
-                                 double g, double gCol, double gArc) {
-        if (near && far) return conv ? COLLIDE_H * gCol : (dive ? RIFT_D * g : TRANSFORM_H * g);
+                                 double g, double gCol, double gArc, double riftD) {
+        if (near && far) return conv ? COLLIDE_H * gCol : (dive ? riftD * g : TRANSFORM_H * g);
         if (near || far) {
             if (conv) return (near ? ARC_H * gArc : TRENCH_D * g);
-            if (dive) return (near ? RIFT_D * 0.6 : RIDGE_H * 0.35) * g;
+            if (dive) return (near ? riftD * 0.6 : RIDGE_H * 0.35) * g;
             return TRANSFORM_H * g;
         }
         return (conv ? ARC_H * 0.45 * g : (dive ? RIDGE_H : TRANSFORM_H * 0.5) * g);
@@ -516,14 +784,22 @@ public final class PlateField {
     /** 到板块边界的距离（block，两侧都为正）。诊断用。 */
     public static double edgeDistance(int x, int z, long seed) {
         double px = x, pz = z;
+        // ⚠ (A2) edgeDistance 必须与 elevationFull 用【同一套几何坐标】，否则量尺与被量的场不是同一个东西
+        //   —— 那是 E95/E96 那一类口径错误。
+        double qx = px, qz = pz;
+        if (A2_DOMAIN_WARP) {
+            double wx = fbmH(px, pz, seed ^ WARP_SALT, WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            double wz = fbmH(px + 9_117, pz - 7_331, seed ^ (WARP_SALT + 1), WARP_OCT, 1.0 / WARP_W, 1.0, WARP_HURST) * WARP_AMP;
+            qx = px + wx; qz = pz + wz;
+        }
         double d1 = Double.MAX_VALUE, d2 = Double.MAX_VALUE;
-        int cx = (int) Math.floor(px / PLATE_CELL), cz = (int) Math.floor(pz / PLATE_CELL);
+        int cx = (int) Math.floor(qx / PLATE_CELL), cz = (int) Math.floor(qz / PLATE_CELL);
         for (int dz = -1; dz <= 1; dz++) {
             for (int dx = -1; dx <= 1; dx++) {
                 long h = hash2(seed + SITE_SALT, cx + dx, cz + dz);
                 double sx = (cx + dx + 0.5 + JITTER * (rnd01(h) * 2 - 1)) * PLATE_CELL;
                 double sz = (cz + dz + 0.5 + JITTER * (rnd01(hash2(h, 7, 3)) * 2 - 1)) * PLATE_CELL;
-                double d = Math.hypot(sx - px, sz - pz);
+                double d = Math.hypot(sx - qx, sz - qz);
                 if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
             }
         }
@@ -536,6 +812,31 @@ public final class PlateField {
     private static double contScore(double sx, double sz, long seed, int cell) {
         return fbm(sx, sz, seed ^ CONT_SALT, 3, 1.0 / cell, 1.0) / 1.75;
     }
+
+    /**
+     * 该点的**大陆度** —— A1 打开时是【连续场】（与 {@code elevationFull} 的 base 同一个场、同一个波长），
+     * 否则是老的「站点尺度」场。岛弧与陆海判定必须共用它（否则两者描述的不是同一个星球）。
+     */
+    private static double contScoreLive(double x, double z, long seed, int cell, double thr) {
+        if (!A1_CONTINUOUS_CONT) return contScore(x, z, seed, cell);
+        double v = fbm(x, z, seed ^ CONT_SALT, CONT_OCT, 1.0 / CONT_WAV, 1.0) / contNorm(CONT_OCT);
+        // (A9) 带限的海岸线粗糙度。COAST_AMP=0 ⇒ 逐位不变。
+        if (COAST_AMP != 0.0) {
+            double nz = COAST_AMP * fbm(x - 4_711, z + 3_137, seed ^ COAST_SALT, COAST_OCT, 1.0 / COAST_W, 1.0) / contNorm(COAST_OCT);
+            if (A12_GATED_COAST) {
+                // coast = base 恰为 0 的 csP 位置：smoothstep01(u)=0.8686 -> u=0.7728 -> csP = thr + CS_W*(2*0.7728-1)
+                double coast = thr + CS_W * 0.5456;
+                double u = (v - coast) / COAST_BAND;
+                nz *= Math.exp(-u * u);
+            }
+            if (A12_SHRINK_ONLY) nz = -Math.abs(nz);
+            v += nz;
+        }
+        return v;
+    }
+
+    /** n 个八度（amp 1, 1/2, ...）的振幅上界 2*(1 - 2^-n)：n=1 -> 1.0，n=3 -> 1.75（与原实现一致）。 */
+    private static double contNorm(int n) { return 2.0 * (1.0 - Math.pow(0.5, n)); }
 
     private static double driftX(long h) { return rnd01(hash2(h, 101, 202)) * 2 - 1; }
     private static double driftZ(long h) { return rnd01(hash2(h, 303, 404)) * 2 - 1; }
@@ -573,10 +874,19 @@ public final class PlateField {
 
     /** 分形叠加。amp 是第一八度的振幅。 */
     private static double fbm(double x, double z, long seed, int oct, double baseFreq, double amp) {
+        return fbmH(x, z, seed, oct, baseFreq, amp, 1.0);
+    }
+
+    /**
+     * **带 Hurst 指数的分形叠加**（A13）：八度振幅比 = @@2^{-hurst}@@，频率比 = 2。
+     * @@hurst = 1.0@@ 时振幅比 = 0.5 ⇒ **与原 fbm 逐位相同**。
+     */
+    private static double fbmH(double x, double z, long seed, int oct, double baseFreq, double amp, double hurst) {
         double s = 0, a = amp, f = baseFreq;
+        double r = Math.pow(2.0, -hurst);
         for (int i = 0; i < oct; i++) {
             s += a * vnoise(x * f, z * f, seed + i * 7919L);
-            a *= 0.5; f *= 2.0;
+            a *= r; f *= 2.0;
         }
         return s;
     }

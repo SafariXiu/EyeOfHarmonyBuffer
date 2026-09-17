@@ -105,7 +105,15 @@
 |---|---|---|---|---|---|
 | `PrecipField.mmPerDay` | 降水 | mm/day | **单相位 θ**；生产路径由 `SimClimate` 取 4 相位平均 | 本类 | 方块层群系、`SimClimate`、`CommandTalosMap`、验收 |
 | `PrecipField.zonalSlTemp` | 纬向平均海平面气温 | K | **单相位 θ**；κ = `KAPPA_MEAN`。⚠ 非 null 的 `ZONAL_PROFILE_OVERRIDE` 会**整体替换**它 | `Atmosphere.zonalMeanSeaLevelK` | `moisture`、`eddyMfc`、`eddyWEquivalent`、`eadyGrowth`、`deformRadius`、`staticN`、`columnWater` |
+| `ZonalTables.EDDY_MFC_OBS_MONTH` / `eddyMfcObsMonth` | 观测涡动 MFC 的**逐月**纬度剖面 | 无量纲 | 19 纬 x 12 月，**只取北半球**（逐月对称化会把两半球相反季节平均掉），45~60 度年均值为 1，保留符号；南半球由消费者做半周期相位平移。⚠ 目前**尚未被生产引用** | `gen_eddy_obs_month.py` | 无（待接） |
+| `PrecipField.EDDY_PLACEMENT_FROM_OBS` | 开关 | `bool` | **A′**：涡动项的纬度放置/符号/季节迁移用**逐月**观测剖面（true）还是模型 `curv(W)`（false）。⚠ 当前 **true 已接线**（B2.a/B2.b 达标，§239），但量级标定未过关；进 `configStamp` | | |
+| `PrecipField.EDDY_MFC_REF` | A-ii 的基准幅值 | kg/(m²·s) | 标定值 **3.40e-5**（命中 45~55 夏 = 2.565）；开关 false 时无作用；进 `configStamp` | 标定 | `eddyMfc` |
 | `PrecipField.ZONAL_PROFILE_OVERRIDE` | **诊断钩子** | 接口/null | **D79 判读专用，生产恒为 null**（默认 null ⇒ 逐位不变，P495 A 段已证）；进 `configStamp` | 探针 | `zonalSlTemp` |
+| `PrecipField.SPLIT_ASCENT` | 开关 | `bool` | **候选 A（§244.5）**：`wEff` 的两项分别取正再相加（true）还是先加后取正（false）。**实测否决**（§245.5：判据①②③全挂）⇒ **默认 false**；进 `configStamp` | | `wEff` |
+| `PrecipField.Q_AT_SURFACE_TEMP` | 开关 | `bool` | **候选 R-2（§249）**：算 q 前先减 `GAMMA*max(0,elev)*kappa`（局地真实地表温度）还是用海平面等效温度（false）。**对海洋逐位中性**（P501 自检[4] 残差 0.00e+00）；单独打开会让陆地降水更干 ⇒ **默认 false**，须与供水项一起评估；进 `configStamp` | | `mmPerDay` |
+| `PrecipField.SHALLOW_FLOOR` | 开关 | `bool` | **候选 S-1（§251/§252）**：`P = max(P_原有, ALPHA_SH*E_sh/rho_w)`。**默认 true（已落地）**：判据① 0.0%→97.9%、⑤ 0.00→1.12、GPCP 赤道冬 −42.4%→−11.3%；进 `configStamp` | | `mmPerDay` |
+| `PrecipField.ALPHA_SH` | 浅对流效率 | 无量纲 | `0.40`（判据①仍通过 97.9% 的**最小值**，对热带冬季过冲最小）；仅 `SHALLOW_FLOOR=true` 时有作用；进 `configStamp` | 标定（判据①观测锚） | `mmPerDay` |
+| `PrecipField.V_GUST` | 地表通量风速下限 | m/s | `4.0`（L-3：QTCM `VVsmin`）。没有下限，季风反转点通量归零；仅浅对流地板用；进 `configStamp` | L-3 | `mmPerDay` |
 | `PrecipField.moisture` | 近地比湿 | kg/kg | 0.8·q_sat(T)·exp(−h/H_MOIST·κ) | 本类 | `mmPerDay`、`columnMoisture` |
 | `PrecipField.columnWater` | 气柱水汽 | **kg/m²** | = moisture·ρ_air·H_MOIST（D48 修复，原先少乘 ρ） | 本类 | `eddyWEquivalent` |
 | `PrecipField.eddyMfc` | 涡动水汽通量辐合 | kg/(m²·s) | **二阶导**：`(W(+5°)−2W(0)+W(−5°))/dy²`，dy 为**弧度** | 本类 | `mmPerDay` |

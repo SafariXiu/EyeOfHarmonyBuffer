@@ -39,6 +39,20 @@ foreach ($v in 'no_proxy','http_proxy','https_proxy','all_proxy','NO_PROXY','HTT
   [System.Environment]::SetEnvironmentVariable($v, $null, 'Process')
 }
 
+# ---- GUARD (E81, added 2026-09-17) --------------------------------------------------
+# fingerprint.ps1 is the ONLY writer of SOURCE_FINGERPRINT.txt, and this script only READS it
+# to name the output directory. Twice now a run was launched right after editing src/, so it
+# was filed under a STALE fingerprint AND deleted the previous baseline's logs. Refuse to run.
+$fpPath = Join-Path $mtn 'SOURCE_FINGERPRINT.txt'
+$fpTime = (Get-Item $fpPath).LastWriteTimeUtc
+$newest = Get-ChildItem (Join-Path $root 'src') -Recurse -Filter *.java -ErrorAction SilentlyContinue |
+          Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+if ($newest -and ($newest.LastWriteTimeUtc -gt $fpTime)) {
+  Write-Output ('STALE_FINGERPRINT: ' + $newest.FullName)
+  Write-Output ('  is newer than ' + $fpPath)
+  Write-Output '  Run tools/talos-probe/fingerprint.ps1 first (design freeze E81). Refusing to run.'
+  exit 3
+}
 $fpLine = Get-Content (Join-Path $mtn 'SOURCE_FINGERPRINT.txt') -TotalCount 1
 $fp = ($fpLine -split '=')[1].Trim().Split(' ')[0]
 $out = Join-Path $mtn ('rerun_acceptance\' + $fp)

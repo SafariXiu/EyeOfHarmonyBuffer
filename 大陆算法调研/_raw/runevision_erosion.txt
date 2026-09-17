@@ -1,0 +1,1766 @@
+URL: https://blog.runevision.com/2026/03/fast-and-gorgeous-erosion-filter.html
+
+Fast and Gorgeous Erosion Filter - runevision 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+ 
+
+ Blog
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ runevision
+ Rune Skovbo Johansen
+
+
+ 
+
+
+ 
+
+ 
+ 
+ Blog 
+
+ Games 
+
+ Articles 
+
+ Tools & Tech 
+
+ Graphics & Animations 
+
+ About Me 
+
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Fast and Gorgeous Erosion Filter
+
+
+ 
+Mar 30, 2026
+
+ in
+ 
+ article ,
+ graphics ,
+ procedural ,
+ video 
+
+
+ This blog post and the companion video both explain an erosion technique I&#8217;ve worked on over the past eight months. The video has lots of elaborate animated visuals, and is more focused on my process of discovering, refining, and evolving the technique, while this post has a bit more implementation details on the final iteration. I suggest watching the video first, but it&#8217;s not required. You can also skip right to the links at the end.
+
+
+ 
+
+ In the real world, rainfall on mountains tends to converge into water streams and rivers, which carve gullies in the mountain sides. These gullies may form branching patterns, as smaller water streams merge into larger ones. And the gullies often butt up against each other, leaving sharp ridges dividing them.
+
+
+ But when generating virtual landscapes, the simulation of countless water drops is slow. It&#8217;s not very suitable for generation in chunks either, which means it&#8217;s not practical to use when generating landscapes that are too large to generate all at once.
+
+
+ This means techniques are sought after, which can produce the appearance of erosion without having to deal with simulating the process of it. This post is about such a technique.
+
+
+ 
+ 
+ Screenshot of Advanced Terrain Erosion Filter Shadertoy by me. 
+ 
+
+ It&#8217;s essentially a special kind of noise which produces gorgeous branching gullies and ridges, while still allowing every point to be evaluated in isolation, which means it&#8217;s fast, GPU-friendly, and trivial to generate in chunks.
+
+
+ Furthermore, rather than defining the landscape entirely, it can be applied on top of any height function, essentially applying erosion on top as a filter.
+
+
+
+ Background
+
+
+ There&#8217;s a website called Shadertoy where people create and share standalone shaders. A shader is a program that runs on the GPU, which can be used to determine what a virtual surface should look like, or for various other effects, or even entire scenes.
+
+
+ In 2018 a user called Clay John ( Bluesky ) posted a Shadertoy called Eroded Terrain Noise . He wrote:
+
+
+ This shader is the result of a long time dreaming of a noise function that looked like eroded terrain, complete with branching structure, that could be run in a single pass pixel shader. I wanted to avoid anything simulated because then you cannot easily make infinite terrains. 
+
+ That dream sounds familiar, but Clay John actually made it work. His Shadertoy is the original version of this technique. Hats off to him.
+
+
+ Later, in 2023, a user called Fewes, aka Felix Westin ( website ), posted a Shadertoy which built on top of the one by Clay John. Fewes&#8217; version slightly tweaked how the erosion effect worked, and presented it in a vastly more polished way.
+
+
+ 
+ 
+ Screenshot of Terrain Erosion Noise Shadertoy by Felix Westin (Fewes). 
+ 
+
+ In 2025 to 2026 I&#8217;ve implemented my own versions of the technique. First I made a version that addresses a few shortcomings of the original technique, and has more intuitive parameters. Eventually I developed a version that works in a completely different way, which produces crisper gullies and ridges and has more expressive parameters. But before going over the differences, let&#8217;s start with the basics of the original technique.
+
+
+
+ The basic idea
+
+
+ We start with a height function where we know not just the height at each point, but also the gradient, meaning the direction and steepness of the steepest ascent. Water flows in the opposite direction, so you can think of the negative gradient at each point as an arrow showing the direction that water would flow down the slope.
+
+
+ 
+ 
+ The gradient at each point of the terrain surface is like an arrow showing the direction that water would flow down the slope. 
+ 
+
+ Let&#8217;s start simple, with a slanted surface, where the gradient is the same everywhere.
+
+
+ We use the gradient to add stripes that run along this direction. The stripes produce alternating gullies and ridges, that could plausibly have been created by water eroding the terrain.
+
+
+ 
+ 
+ A slanted surface with gullies created from stripes that follow the gradient. 
+ 
+
+ The sides of these gullies and ridges come with their own gradients, which are added to the original to produce new combined gradients.
+
+
+ We can then repeat the whole thing again at a smaller scale: Add smaller stripes which run along the new slopes. These form new gullies and ridges which naturally branch out at an angle from the first ones.
+
+
+ By convention, each repetition is called an octave. Add a few more octaves, and we should be done, right?
+
+
+ 
+ 
+ A slanted surface with multiple octaves of gullies, each one taking the changed slope from the previous gullies into account. 
+ 
+
+ Except &#8211; it&#8217;s not quite as simple as I just made it sound.
+
+
+ If we apply the erosion to our original height function, where the gradient is not the same everywhere, we get a chaotic mess. Even if we show it with just a single octave, it&#8217;s still full of chaotic gullies that are often not aligned with the slopes at all. What&#8217;s going on?
+
+
+ 
+ 
+ When rotating the stripe pattern to match a variable gradient, it results in chaotic stripes. 
+ 
+
+
+ Generating stripes
+
+
+ To rotate the stripe pattern, we have to choose some pivot point to rotate it around.
+
+
+ 
+ 
+ Rotating the stripe pattern requires choosing a pivot point to rotate it around. 
+ 
+
+ The problem is the rotation around this pivot point will create increasingly large distortions in the output the further away from the pivot point we are. This is because changes in the rotation angle not only changes the direction of the stripes at a given point, but also shifts which stripe is under that point.
+
+
+ The approach used in the erosion implementation is to divide the pattern into cells that each have their own pivot point for the stripes. If you imagine a square grid, there&#8217;s one cell per grid square, with its pivot placed randomly inside the square, similar to simple Worley noise .
+
+
+ We still get a bit of distortion, but it&#8217;s not too bad, since the pivot point is never too far away. At least as long as the gradient of the height function doesn&#8217;t change too drastically within a single cell.
+
+
+ 
+ 
+ The stripe pattern is divided into cells, and each cell has its own pivot point for rotation of its stripes. 
+ 
+
+ 
+ 
+ The stripes of neighboring cells are blended together to avoid discontinuities between the cells. 
+ 
+
+ To ensure smooth results without discontinuities, we blend the stripes of neighboring cells. The stripes are essentially extruded sine waves, specifically a cosine wave for the height offset and a sine wave for the derivative (slope).
+
+
+
+ 
+ 
+ The gully height offset follows a cosine wave, and the slope follows a sine wave. 
+ 
+
+ The reason the stripes blend so nicely together even when not aligned, is that if you blend two unaligned sine waves, you just get a new sine wave with a smaller amplitude.
+
+
+ 
+ 
+ The blending can transform unaligned stripes from different cells into a long continuous stripe. 
+ 
+
+ The cell size has a big effect. If we choose a cell size that&#8217;s large compared to the stripe width, we get significant distortion issues, just like when we used a single pivot point. If we choose a small cell size, there&#8217;s barely room for any stripes, and we get a kind of grainy noise instead.
+
+
+ If we make the cell size even smaller relative to the stripe thickness, the pattern begins to be all white. Or in terms of ridges and gullies, it&#8217;s all ridge and no gully. This is because each cell uses a stripe pattern with a white stripe in the center.
+
+
+
+ Preserving peaks
+
+
+ When I talk about peaks and valleys, I&#8217;m referring to the local maxima and minima of the original height function, whereas when I talk about ridges and gullies, I&#8217;m referring to the local maxima and minima of the gully stripes applied in each octave of the erosion filter.
+
+
+ Now that we can generate stripes aligned with any gradient, we can apply our erosion effect to the height function without getting chaotic distortions.
+
+
+ However, although we&#8217;ve now got nice gullies on the mountain sides, the mountain peaks look wrong. They barely look like peaks at all.
+
+
+ 
+ 
+ At peaks and valleys of the original height function, where the slope changes abruptly, the erosion effect creates messy folds. 
+ 
+
+ That&#8217;s because the peaks may be located anywhere in our stripe pattern, and they get arbitrarily lifted or lowered based on that. Furthermore, there&#8217;s an issue whenever the surface steepness approaches zero, which happens at peaks and valleys. When the slope is zero, the gradient has no defined direction, so the direction of the gradient changes abruptly around those spots, which creates chaotic stripe patterns in the surrounding area.
+
+
+ There are two ways we can address this, and both are based on the steepness of the slopes. There&#8217;s the original approach used by Clay John and Fewes, which I call the frequency approach , and there&#8217;s an alternative approach I came up with, which I call the fade approach .
+
+
+
+ The frequency approach
+
+
+ The original approach used by Clay John and Fewes is to make the stripe frequency proportional to the slope, so the stripes are thicker, the flatter the terrain is.
+
+
+ At peaks and valleys, where the steepness is zero, the stripes become infinitely thick. And because each cell has a white stripe in the center, this means mountain peaks and valleys, where the slope is zero, always land on the part of the stripe pattern that corresponds to a ridge, and never a gully.
+
+
+ This works great for mountain peaks, but I discovered that it unfortunately causes valleys to have bulges at the bottom, since they land on "ridges" in the stripe pattern too. This is not visible in their Shadertoys, because they have faded out the erosion at lower altitudes. And this workaround is great if you want smooth valleys.
+
+
+ However, if you apply the erosion at equal strength everywhere, the bulges at valleys appear, and it means you can&#8217;t get crisp, V-shaped valleys.
+
+
+ 
+ 
+ The frequency approach produces bulges at the bottom of valleys if it&#8217;s applied at full strength everywhere. 
+ 
+
+ You can find my Shadertoy here based on the frequency approach. It&#8217;s similar to the one by Fewes, but is refactored to have more intuitive parameters. 
+
+
+ The fade approach
+
+
+ I came up with a different approach, which is to keep the stripe widths consistent and instead fade out the stripes where the steepness approaches zero. If we fade towards "white" &#8211; the maximum value of the gully octave &#8211; we get a similar effect as with the frequency approach, that the shape of peaks is preserved, but there are bulges at the bottom of valleys.
+
+
+ Now, if we fade towards "black" instead &#8211; the minimum value of the gully octave &#8211; we don&#8217;t get any bulge at the valleys, but instead we get a crease at the peaks. But if we fade towards a value that goes from black at mountain valleys to white at mountain peaks, we can get nice crisp peaks and valleys at the same time.
+
+
+ 
+ 
+ The fade approach can produce nice crisp peaks and valleys at the same time. 
+ 
+
+ In my implementations, I let it be up to the user to supply this fade target value as an input parameter to the erosion function, for example based on altitude.
+
+
+ For a height value h at the current point, it could look like this, if the expected height range goes from valleyAlt to peakAl t:
+
+
+ 
+float inverse_lerp(float a, float b, float v) {
+ return (v - a) / (b - a);
+}
+ 
+
+ 
+// Convert the altitude to a value between -1 and 1.
+float fadeTarget =
+ inverse_lerp(valleyAlt, peakAlt, h) * 2.0 - 1.0;
+ 
+
+ The fade approach has a different issue that needs to be carefully handled. It initially seemed to create visible folds &#8211; also called discontinuities &#8211; caused by abrupt changes in the gradient directions around the peaks and valleys. But I later found out that this can be addressed by using an appropriate shaping function on the slope.
+
+
+ From early on, I had been raising the steepness of the slope to a power of 0.5, which is equivalent to taking the square root of the slope. This applies erosion more evenly than if we used the slope directly. Unfortunately it produces sharp discontinuities at peaks and valleys. This is because the square root curve starts off vertically, so as the slope increases from zero to even the tiniest slant, the erosion immediately increases drastically.
+
+
+ 
+ 
+ 
+ 
+ Erosion magnitude based on slope 0.5 . 
+ 
+ 
+ 
+ 
+ Erosion magnitude based on 1 - (1 - slope) 2 . 
+ 
+
+
+
+
+ But there are many other functions we can use to shape the erosion. The one I ended up using is to flip the curve vertically by subtracting it from one, then raising it to a power of two, and then flipping the result back.
+
+
+ 
+float ease_out(float t) {
+ // Flip by subtracting from one.
+ // The saturate function clamps between 0 and 1.
+ float v = 1.0 - saturate(t);
+ // Raise to a power of two and flip back.
+ return 1.0 - v * v;
+}
+ 
+
+ This has a somewhat similar shape as the square root &#8211; in fact it&#8217;s mirrored around the diagonal &#8211; but the curve starts off much more moderately. This mostly removes the appearance of discontinuities, especially when we layer multiple octaves of gullies.
+
+
+ With this tweak, the fade approach works just as well as the frequency approach. And unlike the frequency approach, it works well when applying the erosion at full strength everywhere, which can be used to create sharp V-shaped valleys, if desired.
+
+
+
+ The quest for crisp, branching gullies
+
+
+ The erosion we&#8217;ve got so far looks nice, but the larger gullies and ridges get a little bit lost in the smaller ones. I&#8217;d prefer if the gullies at all scales could have crisper ridges and creases, and more clearly show a branching pattern.
+
+
+ To address this, I did a lot of experimentation, and developed three techniques that go hand in hand. I call them stacked fading, normalized gullies, and straight gullies, and I&#8217;ll go over each of them in the next sections.
+
+
+ 
+ 
+ In the techniques developed so far, the ridges of larger gullies get somewhat broken up and lost in the smaller ones. 
+ 
+
+ 
+ 
+ By using techniques I call stacked fading, normalized gullies, and straight gullies, the ridges of larger gullies remain more crisp and unbroken, and the branching pattern of gullies of different sizes becomes more clear. 
+ 
+
+ 
+ Stacked fading
+
+
+ We already fixed a problem with crispness earlier. The mountain peaks and valleys didn&#8217;t look crisp until we began fading towards black or white for the valleys and peaks respectively. And it turns out we can do something similar for the gullies and ridges.
+
+
+ Let&#8217;s establish a few terms first.
+
+
+ I&#8217;m calling the value we fade towards the fade target and it&#8217;s generally expressed in a variable that goes from -1 at valleys to 1 at peaks.
+
+
+ Then there&#8217;s the amount we&#8217;re fading towards the fade target. We&#8217;re doing a weighted average (also known as a lerp or a mix) of the gullies and the fade target, which can be 100% gullies at steep slopes, 100% fade target at flat terrain, or some mix of the two, depending on the slope. We can think of this as a mask applied to the fade target, before we layer it on top of the gullies.
+
+
+ When we&#8217;ve been talking about the fade approach , the fade target and mask have been based on the original height function and its slopes. But just like we don&#8217;t want gullies right on top of the mountain peaks or valleys, we also don&#8217;t want smaller gullies right on top of the ridges or creases of larger gullies. We can achieve this if we conclude each octave by updating the mask and fade target to also be black and white at that octave&#8217;s creases and ridges.
+
+
+ 
+ 
+ Flow chart of how the fade target and masks affects each octave of gullies. 
+ 
+
+ The diagram above may seem daunting, but here&#8217;s the gist of it:
+
+
+ 
+ 
+ The octave 1 raw gullies are faded towards the input fade target based on the input mask to produce the octave 1 faded gullies . You can think of it as the masked fade target being "overlaid" on top of the octave 1 raw gullies. Nothing new so far.
+
+ 
+ The octave 1 faded gullies are then used as the new fade target for the next octave. The mask is also updated: From the octave 1 raw gullies , a mask contribution is created which is opaque at the creases and ridges, where the slope is zero. The existing mask is layered on top of the new mask contribution to produce the new combi-mask after octave 1 .
+
+ 
+ The same steps are repeated for each new octave. The octave 2 raw gullies are faded towards the new fade target based on the new combi-mask to produce the octave 2 faded gullies . These are used as the new fade target, and the mask is updated with a new contribution based on the octave 2 raw gullies. And so on.
+
+ 
+ 
+
+ In broad terms, each new octave adds more ridges and creases to the terrain surface, which increasingly restricts the surface area where subsequent gullies can have any influence on the surface.
+
+
+ How are new mask contributions combined with the existing combi-mask? Let me start by saying that it was easiest in the diagram above to conceptualize the mask as being applied to the fade target, but in the code it&#8217;s actually a mask applied to the gullies, so 0 means all fade target and 1 means all gully. In this form, the new mask contribution can simply be multiplied onto the combi-mask to produce the new combi-mask.
+
+
+ We can furthermore implement a useful control here. By raising the inverse of the combi-mask (meaning its complement) to some power before multiplying it with the new contribution, we can control how detailed the erosion looks. Lower values restrict the effect of higher frequency gullies to steeper slopes.
+
+
+ 
+float pow_inv(float t, float power) {
+ // Flip, raise to the power, and flip back.
+ // The saturate function clamps between 0 and 1.
+ return 1.0 - pow(1.0 - saturate(t), power);
+}
+ 
+
+ 
+combiMask = pow_inv(combiMask, detail) * newMask;
+ 
+
+ 
+ 
+ From left to right, the detail parameter has been set to 0.7, 1.5, and 3.0, respectively. 
+ 
+
+
+ Normalized gullies
+
+
+ One thing that&#8217;s holding back crisper ridges and creases is the inconsistent magnitude of the gullies, caused by the interpolation of stripes that may or may not be well aligned.
+
+
+ At one point I realized that since we interpolate both cosine and sine waves in parallel, we can think of each cosine/sine pair as a point on a unit circle, and the interpolated value as a point on a circle too. The interpolated circle point may have shrunk to a radius smaller than one, but it&#8217;s trivial to normalize it back to one. And this in turn means that both the interpolated cosine and sine waves have a consistent magnitude of one.
+
+
+ Now, in the actual interpolated stripe function we&#8217;ve used up until this point, the sines are multiplied with a vector orthogonal to the terrain gradient in order to calculate the gradient of the slope. But since this vector is the same for all contributing samples, the multiplication can be postponed and applied to the interpolated result rather than to each contributing sample, leaving us free to perform the normalization first.
+
+
+ When straightforward normalization is applied, some curious artifacts appear where ridges and creases join up and form loops. Supposedly, this happens at points where the interpolated waves cancel out completely; something that seems to unavoidably happen with some regularity. On the terrain, this manifests as spiky protrusions (and holes).
+
+
+ However, the loopy artifacts can be avoided if we only normalize lengths above a certain threshold. To avoid discontinuities between normalized and non-normalized gullies, we can use the following approach:
+
+
+ 
+ Scale lengths by a factor k that&#8217;s larger than one.
+
+ Clamp resulting lengths to one.
+
+ 
+
+ I&#8217;ve used a factor k of 2, such that lengths greater than 0.5 become normalized. This produces a good tradeoff with lots of gullies of consistent magnitude and without loopy artifacts.
+
+ 
+ 
+ 
+ Gullies with no normalization have inconsistent magnitudes. 
+ 
+
+ 
+ 
+ Full normalization of all gullies produces spiky protrusions. 
+ 
+
+ 
+ 
+ Normalizing only gullies of magnitudes 0.5 or greater results in a good tradeoff. 
+ 
+
+ The style of partial normalization I&#8217;ve chosen produces second order discontinuities (abrupt changes in slope) in some places, but as it&#8217;s not noticeable once multiple octaves are used, I haven&#8217;t bothered with a more sophisticated approach.
+
+
+ I figured that the ability to produce directional noise is useful for many other purposes than erosion, so I&#8217;ve released the noise function as Phacelle Noise, which I&#8217;ve written about here .
+
+
+
+ Straight gullies
+
+
+ Once the ridges and creases got more crisp, another issue became apparent. Smaller ridges and creases would often run along larger ones for a little distance before branching out.
+
+
+ It&#8217;s here that the limitations of modeling gullies as extruded sine waves becomes apparent. See, on the side of gullies, the terrain slope is strongly affected by it, pointing sideways away from the ridges. But at the bottom and top of gullies, they have virtually no effect on the terrain slope. So at those points, smaller gullies will simply run parallel to the larger ones.
+
+
+ 
+ 
+ The terrain slope is not affected by gullies on top of their ridges or at the bottom of their creases. 
+ 
+
+ Since the effect is gradual, smaller gullies tend to curl at the ends, rather than branching off cleanly from the larger gullies. A visualization of the ridges and creases with just two octaves of gullies shows the difference clearly.
+
+
+ 
+ 
+ 
+ 
+ Ridges and creases with curls at the ends. 
+ 
+ 
+ 
+ 
+ Ridges and creases that branch out cleanly. 
+ 
+
+
+
+
+ The effect of non-straight gullies is more subtle on the actual terrain surface. But when carefully comparing the images below, you may find that the first one, which does not have straight gullies, has more instances of ridges with small grooves on top, less instances of gullies branching out at clean angles rather than curving, and an overall texture which feels a bit more stringy and smushy.
+
+
+ 
+ 
+ An eroded terrain without the straight gullies technique. 
+ 
+
+ 
+ 
+ An eroded terrain with the straight gullies technique. 
+ 
+
+ I fixed the issue of non-straight gullies by essentially faking consistent slopes when calculating the slopes used for the gully stripe pattern directions.
+
+
+ We can pretend that the slope of a gully is constant from top to bottom, as if the gullies were extruded triangle waves instead of sine waves. The faked slope is implemented by using the sign of the sine wave that controls the gully slope, rather than using its value directly. That is, if the sine is negative, we use a value of -1, and otherwise a value of 1.
+
+
+ 
+ 
+ The derivatives of the gullies follow the sign of the sine wave, as if the gullies were straight from top to bottom rather than curved. 
+ 
+
+ I also tried making the gullies actually be extruded triangle waves, but due to complex interactions in how the different octaves combine, that just ended up looking worse.
+
+
+ One aspect of the overall erosion technique I haven&#8217;t explicitly covered yet is that it outputs not only the heights of the eroded terrain, but also the analytical derivatives. However, those derivatives were never very accurate, whether in Clay John and Fewes&#8217; implementations or my own. They are used internally to calculate the gully directions, but the output derivatives were never actually used for anything.
+
+
+ But even if not accurate, they can still come in handy, so I don&#8217;t want to remove support for them. (I actually did begin using them to calculate tree coverage.)
+
+
+ With the fade approach , the mask is also used on the derivatives of each octave. They are faded towards a slope of zero rather than the fade target value, which is only relevant for heights. But fading the derivatives towards zero at ridges and creases undermines the straight gullies technique.
+
+
+ So I began calculating derivatives in two different ways in parallel. The output derivatives are stored as part of a heightAndSlope variable whereas the internal version is stored in a gullySlope variable. And while the former is faded towards zero according to the mask, the latter is not.
+
+
+ The faked gully slope does mean that the new straight gullies created based on it have discontinuities at the creases and ridges of the faked slopes, as stripes going in different directions butt right up against each other. This can be seen in the octave 2 raw gullies part of the diagram from earlier.
+
+
+ But these discontinuities are fully faded away in the faded gullies used for the output height offset (and output derivatives), so they&#8217;re not a problem.
+
+
+ 
+ 
+ The discontinuities of the raw gullies are faded away when combined with the combi-mask. 
+ 
+
+ One issue with the slopes remains. For the gullies, we could pretend they&#8217;re triangle waves, and calculate the slope of those pretend-triangle-waves according to the frequency and magnitude, but not so with the slopes of the input heights, of which we can assume very little.
+
+ 
+ If we use the input slope unchanged, the initial gully octave will have a disproportionally large effect near the peaks and valleys, where the input heights are typically rounded and thus have little to no slope contribution. But in the eroded output terrain, the peaks and valleys are typically pointy, with just as steep slopes as elsewhere.
+
+
+ I&#8217;ve experimented with a variety of solutions to this, but in the end what produced the best results was to just pretend that the input heights have a specific slope everywhere. This pretend slope can be tweaked to somewhat match the typical slope the eroded terrain ends up having.
+
+
+ It&#8217;s a bit ironic that my early work on the erosion technique was focused on making the analytical derivatives more accurate, only to end up giving up on that entirely. But that&#8217;s just how a labyrinthine process of discovery sometimes goes.
+
+
+
+ New coat of paint
+
+
+ The technique has now changed sufficiently that some tweaking of the parameters is in order, to make the most of the new functionality. While at it, I also found a new spot in the heightmap to focus on. Below is the reference terrain I&#8217;ll use going forward, which also includes features covered in the remainder of this article.
+
+
+ 
+ 
+ A new reference terrain that takes advantage of the new implemented features. 
+ 
+
+ While not part of the erosion technique itself, it&#8217;s also fun to dress up the terrain with nice materials. I&#8217;ve been tweaking the logic inherited from the Shadertoy by Fewes, and added bumpy parts to it that evokes trees too. Furthermore, I managed to add little streaks that evoke water drainage using a technique I&#8217;ll discuss further down.
+
+
+ 
+ 
+ The new terrain with features evoking rock, dirt, grass, trees and water drainage streaks. 
+ 
+
+
+ Pointy peaks
+
+
+ It turns out that normalizing the gullies make the mountains less pointy, keeping more of the rounded shape of the input height function.
+
+
+ At first, I tried to compensate by applying a special function to the input height that made peaks more pointy, prior to passing them to the erosion function. But I later found that there is a simpler solution that can be trivially implemented in the erosion function itself: Simply scale down the gullies part of the faded gullies by some gully weight factor (such as 0.5) and compensate by scaling up the erosion strength by the inverse factor (like 2.0).
+
+
+ 
+ 
+ Top left: Original height function with no erosion strength. Top right: Erosion applied, but the mountain peaks are not pointy. Bottom left: Gully weight reduced to zero shows only peaks and no gullies. Bottom right: With double erosion strength and half gully weight, we get erosion with nice pointy peaks. 
+ 
+
+ Pointy peaks are still dependent on the fade target having a value close to 1.0, so in all the example images, the peaks at lower altitudes are less pronounced.
+
+
+ We can look at what happens when the gully weight is reduced to zero. This preserves the overall shape of the eroded mountains, including crisp peaks and valleys, but without all the gullies.
+
+
+ There is a subtle kind of ghosting effect of the gullies present, where ridges and creases alike are turned into all ridges where the original fade target is positive, and all creases where it&#8217;s negative. This unhelpfully counteracts half of the intended creases and ridges if very low gully weight values are used, but at larger values there are no noticeable issues.
+
+
+ There are undoubtedly other ways to go around this, but the approach here is simple and works well enough.
+
+
+
+ Rounding of ridges and creases
+
+
+ The implemented technique can produce very sharp ridges and creases, but something not quite as sharp is often desired. For example:
+
+
+ 
+ Real mountain peaks and ridges tend to not be razor sharp if you zoom in sufficiently.
+
+ Valleys and the bottom of gullies can get a rounded shape if sediment builds up in them.
+
+ 
+
+ For this reason I implemented "edge rounding" with separate control for creases and ridges. As I&#8217;ve previously touched upon, the mask is based on the slope passed through a shaping function. By chaining a variable-size ease-in function onto this shaping function, rounding of the ridges and creases can be achieved. And by mixing two different rounding values &#8211; one for ridges and another for creases &#8211; based on the fade target , the amount of rounding can be controlled separately for those.
+
+
+ 
+ 
+ Depiction of no rounding, rounded ridges, rounded creases, and both at the same time. 
+ 
+
+ I wanted the rounding to have the same size for gullies of all octaves, so the rounding values are counter-adjusted in accordance with the erosion lacunarity value, which controls how much smaller the gullies are in each octave (typically half the size).
+
+
+ The rounding also affects peaks and valleys stemming from the original height function (and its slopes), but the erosion function doesn&#8217;t know about the sizes of the terrain features coming from those, so an input value is provided for tweaking the rounding of those.
+
+
+
+ Water drainage
+
+
+ While getting the erosion increasingly crisp, the idea of a holy grail occurred to me: Could the technique model the branching gullies so crisply that it could render little branching river networks? It turns out: Kind of, with some caveats.
+
+
+ Side note: I later learned that the branching streaks on mountain sides I had in mind constitute dendritic drainage , which, apart from rivers and creeks, also include channels of snow, sediment, and debris-flow. The colored streaks are often not the water itself, but the leftover rocks and sediment which is colored differently from the surrounding soil or vegetation. Either way, it tends to look like bright lines.
+
+
+ If we ignore the recently discussed gully weights and ridge and crease rounding, then the fade target is practically already a map of the ridges and creases in the eroded terrain, once the technique has gone through all the gully octaves. Only, the last octave appears with much thicker lines than the rest, since it hasn&#8217;t been filtered through the mask . This can be resolved by fading it towards a neutral value of zero / gray based on the mask, resulting in what I call a ridge map .
+
+
+ 
+ 
+ Left: The fade target after 2 octaves. Middle: The ridge map, based on 2 octaves. Right: The ridge map, based on 5 octaves. 
+ 
+
+ Now, those recently discussed features do undermine the ridge map, so in order to avoid having to choose between one and the other, we can keep track of two copies of the fade target and mask in parallel, and process the ones for the ridge map without those features.
+
+
+ Here&#8217;s a visualization of the ridge map on the terrain:
+
+
+ 
+ 
+ Visualization of the ridge map on the terrain itself, with ridges in white and creases in black. 
+ 
+
+ With the ridge map, it&#8217;s easy to draw little lines at the bottom of all the gullies that resemble dendritic drainage. Here&#8217;s the image of the textured terrain again:
+
+
+ 
+ 
+ The terrain with features evoking rock, dirt, grass, trees and water drainage streaks. 
+ 
+
+ It&#8217;s not a perfect solution, since the interpolated stripes we use for the gullies cannot consistently produce unbroken lines. So sometimes a gully, and the drawn water drainage at its bottom, just stops halfway down a mountainside rather than following through all the way down to the lowest reachable point. Nevertheless, it looks nice and can be sufficient for use cases that don&#8217;t require accuracy in this regard.
+
+
+
+ Future work
+
+
+ You can see my final iteration of the technique in my Shadertoys Advanced Terrain Erosion Filter and Mouse-Paint Eroded Mountains .
+
+
+ As has hopefully been clear, the erosion technique I&#8217;ve described in this post is highly malleable. Compared to the original version by Clay John and Fewes, I&#8217;ve modified it to a point where its internal workings, capabilities, and characteristics are entirely different.
+
+
+ While I don&#8217;t have plans to further work on this technique myself, I find it likely that others will, given how open-ended the nature of the technique is, and how ripe it is with potential.
+
+
+ In my work with the technique, I&#8217;ve simply aimed to make the eroded terrain look good to my eyes, loosely using a bunch of reference images for inspiration.
+
+
+ An interesting jumping off point for future work could be to try to use the technique to emulate a variety of specific eroded terrain types, each based on different references. The input parameters should allow for a wide variety of looks on their own, especially when considering most of them can be varied based on other variables. If the technique then falls short of being able to emulate certain terrain characteristics, that could point the way towards potential future improvements.
+
+
+ I&#8217;ve released my code under the Mozilla Public License v2 in order to encourage further sharing of improvements. I&#8217;m looking forward to seeing how the technique evolves in the future!
+
+
+ Based on feedback after publication I've added some additional notes after the links section. 
+
+
+
+ Links
+
+
+ YouTube videos
+
+
+ Some things are easier to explain in motion.
+
+
+ 
+ My video Fast & Gorgeous Erosion Filter Explained has more elaborate visualizations than this blog post, and more details on the initial process I went through.
+
+ Better Mountain Generators That Aren&#8217;t Perlin Noise or Erosion on Josh&#8217;s Channel is a highly polished and well explained video on two other non-simulated erosion techniques. I reference this video in my own video.
+
+ 
+
+ Shadertoys
+
+
+ You can run and see these visuals directly in your browser, and easily see and modify the source shader code too.
+
+
+ 
+ Eroded Terrain Noise by Clay John ( Bluesky ). The original version of the technique.
+
+ Terrain Erosion Noise by Felix Westin (Fewes) ( website ). Slightly tweaked erosion effect, and presented in a vastly more polished way.
+
+ Clean Terrain Erosion Filter by me. My earlier rewrite of Clay John and Fewes&#8217; technique (based on the frequency approach), with more intuitive parameters.
+
+ Advanced Terrain Erosion Filter by me. My final iteration of the technique, with animated parameters.
+
+ Mouse-Paint Eroded Mountains by me. My final iteration of the technique, with interactive mouse painting of the terrain.
+
+ Phacelle Noise Animation by me. A demonstration of the Phacelle Noise I extracted into a self-contained function ( blog post here ).
+
+ 
+
+
+ Erosion filters in the wild
+
+
+ Let me know if you use the erosion filter technique in your project and have public images or videos to show for it!
+
+
+ I'm very happy so many people have found the technique useful enough to make their own implementations in a variety of shapes and forms. Some of the ones below are faithful implementations, while others are partial, derived, or based on an earlier version of the technique.
+
+
+ Implementations in tools, engines, and online
+
+
+ 
+ Highly customizable online demo of the erosion filter and terrain (faithful to my Shadertoy) by optozorax
+
+ Implementation in Unity Burst posted on Reddit and released on Github by Luke Mitchell.
+
+ Implementation in Unity Shadergraph posted on Bluesky and released on Github by Jens Maier.
+
+ Implementation in Unreal's landmass plugin posted on Twitter by Michael Kinsey.
+
+ Implementation in Godot posted (with source) on Godot forum by Henry.
+
+ Implementation in Blender geometry nodes Quick Erosion Filter free Gumroad download by Jérémy Derlande (Kollapse3D).
+
+ Implementation in Houdini blog post with source files by eetu.
+
+ Implementation in Leveller heightmap modeler tool included in version 4.4 (with source) by Ray Gardener.
+
+ Online standalone web widget to apply the erosion filter to a PNG by Robert Winslow
+
+ 
+
+ Implementations in games and private experiments
+
+
+ 
+ Implementation in Hytale's Worldgen v2 posted on Bluesky and released on Github by Verday.
+
+ Minecraft published mod and source on GitHub by oovaa8.
+
+ Erosion on a sphere posted on Mastodon by metarapi.
+
+ Terraform Blending Test YouTube video by HerrLynnsTube.
+
+ |peak| implementation in Desmos graphing calculator graph by lemon (and a simpler version here ).
+
+ 
+
+
+ Shadertoy video exporters
+
+
+ This is not entirely related to erosion techniques, but here are the tools I used to render high quality Shadertoys footage for the video. Okay, I may also be using the links section here to tell a side story about my video production woes.
+
+
+ 
+ Shadertoy Exporter (original) by Jonathan Giroux (Koltes). This tool worked great, until it broke when the Shadertoy website introduced Cloudflare human verification in early October 2025.
+
+ Shadertoy Exporter (forked) by Lara Davidova (larathedev). This fork was made to work with the Cloudflare human verification, and was briefly functional, until the Shadertoy website entirely disallowed being displayed in an iframe later in October 2025.
+
+ Shadertoy Exporter (Godot version) by krazyjakee (NodotProject). This rewrite based on Godot is partially functional at the time of writing. It&#8217;s Windows-only, and (for me) has the following bugs: Does not convert the rendered frames into videos, has to be restarted after each render, and frequently does not register text input until the window focus is switched away and back. I begrudgingly used this for later footage in the video, manually running ffmpeg on the frames.
+
+ I&#8217;m aware there are also frame exporter browser plugins for Firefox and for Chrome , but these have even worse usability for me. I have my browser set to display a save dialog when downloading a file, so when I try to render a Shadertoy for 200 frames, it opens 200 save dialogs.
+
+ 
+
+
+ Additional notes
+
+
+ On using the second derivatives (curvature) for the fade target
+
+
+ Several people have suggested using the second derivatives (curvature) instead of the altitude for the fade target.
+
+
+ Using altitude is indeed not robust in the general case, since e.g. some valley could be higher up than some mountain peak. I'm not sure there's a perfect solution, and I kind of let it be up to the user to decide what to base the input fade target parameter on. I just base it on altitude in all my demonstrations.
+
+
+ I did think about using the second derivatives (curvature), but then every function involved in producing the input heights has to calculate and return those second order derivatives, or alternatively it has to be done numerically which is either slow (via multi-sampling) or rather inaccurate (via shader derivatives).
+
+
+ On top of that, curvature does not produce a value that's between -1 and 1 as the fade target needs, so you'd have to combine it with other things (like the first derivatives) to wrangle it into a useful range. That's absolutely possible, but hand-tweaking the particulars may still be needed.
+
+
+ So while it's something I considered, I don't really have a good solution. I'm curious if others will find a better way to handle this.
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+ 
+ 
+ 
+
+
+
+
+ 
+ 
+ 9 comments:
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+Anonymous
+said...
+ 
+ 
+ 
+This is a really interesting read. I've been trying to implement my own version following your blog post, and I can't seem to get the results on the third picture. Is that picture a direct application of the algorithm? or did you do a modification to show it so cleanly? 
+
+My gullies, even in a second octave look too high frequency, while the first one looks fine. 
+
+
+ 
+ 
+ 
+ 
+March 31, 2026 at 11:56&#8239;AM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ Rune Skovbo Johansen 
+said...
+ 
+ 
+ 
+I'm not quite sure which picture you count as the third. The initial pictures in for example the section "the basic idea" are mostly for illustrating concepts. The technique doesn't work right until "stripes in blended cells" is implemented.
+
+At the end of the article you can find links to Shadertoys that have shader code included.
+
+
+ 
+ 
+ 
+ 
+March 31, 2026 at 12:09&#8239;PM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+Anonymous
+said...
+ 
+ 
+ 
+Hi, I am not familiar with shadertoy. I have a heightmap where I would love to apply this filter. Is there an application available for using this shader/filter where I can export the new heightmap?
+
+
+ 
+ 
+ 
+ 
+April 3, 2026 at 2:00&#8239;PM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ Rune Skovbo Johansen 
+said...
+ 
+ 
+ 
+Hi! There is no such application at this time. Maybe someone will make one, or maybe as plugins to existing applications. I find this likely to happen at some point, given how much interest I've seen in the technique, also from developers, but it may take some time. I don't have time to make such an application myself.
+
+
+ 
+ 
+ 
+ 
+April 3, 2026 at 3:18&#8239;PM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+Anonymous
+said...
+ 
+ 
+ 
+I'm making a citybuilder/total war type game called Iron Chieftain and would like to implement something like this for random map generation. I'll follow your method but since unreal engine's support for compute shaders is so convoluted I might just multithread it on the CPU.
+
+When I first saw this on youtube I couldn't believe my eyes. The old method of simulating every droplet just feels archaic now. Amazing work.
+
+
+ 
+ 
+ 
+ 
+April 5, 2026 at 5:03&#8239;AM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ andy_t_roo 
+said...
+ 
+ 
+ 
+you should have a look at artifexian's worldbuilders youtube channel - for good ideas on how to colour - things like beaches, rain shadows around mountains, prevailing winds, etc
+
+
+ 
+ 
+ 
+ 
+April 5, 2026 at 10:18&#8239;AM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+Anonymous
+said...
+ 
+ 
+ 
+I study remote sensing and this has quite an interesting overlap with fastscape from the GFZ in Potsdam.
+
+
+ 
+ 
+ 
+ 
+April 15, 2026 at 2:50&#8239;PM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ MangoButtermilch 
+said...
+ 
+ 
+ 
+Hi, I saw your Youtube Video about this topic and it was super interesting. Really appreciate all the work! I wanted to let you know that I have briefly implemented your erosion filter in a web application to generate height maps.
+
+This app was previously only made for generating pseudo 3d volumes but I thought this was a cool way of extending it.
+I've made the source code public as well and left attributions about your implementation.
+If you don't mind, I'd like to keep the approach in the app and extend it over time.
+
+Since I don't know if I'm allowed to post links here, you could search for my Github page, if you want to check it out (MangoButtermilch =&gt; 3d-volume-generator-web).
+:)
+
+
+ 
+ 
+ 
+ 
+May 7, 2026 at 9:38&#8239;PM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+miir
+said...
+ 
+ 
+ 
+Someone has implemented a minecraft mod using your erosion function here:https://modrinth.com/mod/catto
+
+
+ 
+ 
+ 
+ 
+July 27, 2026 at 3:08&#8239;AM
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+ 
+ Post a Comment 
+
+
+
+
+
+
+ 
+ &#171; Newer Post 
+ Older Post &#187; 
+
+
+
+ 
+
+
+
+
+ 
+ 
+ Copyright Rune Skovbo Johansen
+
+ 
+ Bluesky 
+
+ 
+ Mastodon 
+
+ YouTube 
+
+ 
+
+
+
+
+ 
+ 
+
+ 
+ 
+ 
+ Blog 
+
+ Games 
+
+ Articles 
+
+ Tools & Tech 
+
+ Graphics & Animations 
+
+ About Me 
+
+ 
+
+
+ 
+ 
+ Bluesky 
+
+ 
+ Mastodon 
+
+ YouTube 
+
+ 
+
+
+ 
+ Blog Archive
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ &#9660;&#160;
+ 
+ 
+ 
+ 
+2026
+ 
+ (4) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+July
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jul 29
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+June
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jun 14
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9660;&#160;
+ 
+ 
+ 
+ 
+March
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9660;&#160;
+ 
+ 
+ 
+ 
+Mar 30
+ 
+ (1) 
+ 
+ Fast and Gorgeous Erosion Filter 
+
+ 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+January
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jan 22
+ 
+ (1) 
+
+
+ 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+2025
+ 
+ (5) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+October
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Oct 23
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+June
+ 
+ (2) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jun 29
+ 
+ (1) 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jun 27
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+January
+ 
+ (2) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jan 10
+ 
+ (1) 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jan 05
+ 
+ (1) 
+
+
+ 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+2024
+ 
+ (3) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+October
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Oct 02
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+August
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Aug 18
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+January
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Jan 08
+ 
+ (1) 
+
+
+ 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+2023
+ 
+ (2) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+September
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+Sep 15
+ 
+ (1) 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+May
+ 
+ (1) 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+May 06
+ 
+ (1) 
+
+
+ 
+
+
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+
+ &#9658;&#160;
+ 
+ 
+ 
+ 
+2022
+ 
+<span cl
