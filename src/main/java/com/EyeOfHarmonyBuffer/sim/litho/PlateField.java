@@ -69,6 +69,33 @@ public final class PlateField {
      * 海岸线翻转率 1.59 %、elevationWithCell 659 -> 712 ns（1.08x）。
      */
     public static final int PLATE_CELL = 2_400_000;
+
+    /**
+     * ★ 地形实现切换（设计冻结 §315）。
+     *
+     * <p>{@code false} = 原 PlateField 地形（**默认**，逐位不变）；
+     * {@code true} = 委托给 {@link TalosField}（V8 生成器：性能 0.405x，形态已按 §314 验收）。
+     *
+     * <p>打开后地形会变 ⇒ 必须让气候瓦片失效。{@code SimClimate.configStamp()} 已**按条件**折入本开关，
+     * 所以关闭时指纹与历史完全一致（严格 bit-neutral）。
+     */
+    /** 默认 false；可用 {@code -Dtalos.terrain=true} 打开（验收对照用，不改任何探针）。 */
+    public static boolean TALOS_TERRAIN = Boolean.getBoolean("talos.terrain");
+
+    /**
+     * ★★ <b>物理线验证用的外部陆海掩膜钩子</b>（默认 {@code null} ⇒ 行为逐位不变）。
+     *
+     * <p>为什么需要它：真正的判据是「给定边界条件，模型算得对不对」。在此之前我们是拿
+     * <b>随机世界</b>的纬向平均去减<b>地球</b>的纬向平均，那个差里混了
+     * 【边界条件差异】+【物理误差】两项，分不开。把地球真实的陆海掩膜喂进来，
+     * 边界条件这一项就被钉死，剩下的是纯物理误差。
+     *
+     * <p>只给探针用，<b>不在生产路径上</b>；{@code null} 时下面的分支根本不进。
+     */
+    public interface LandMask { boolean isLand(int x, int z); }
+
+    /** 见 {@link LandMask}。默认 null（生产与全部既有探针的行为都不变）。 */
+    public static LandMask MASK = null;
     /**
      * 站点抖动幅度（**单位为格边长**：`sx = (gx + 0.5 + JITTER*(2u-1)) * cell`，
      * 所以站点最多偏离格心 +/- JITTER 格）。
@@ -551,6 +578,7 @@ public final class PlateField {
      * smoothstep 1.5、flatTop 更陡）⇒ 直接用它做横剖面，崖最缓。
      */
     public static double elevationWithCell(int x, int z, long seed, int cell) {
+        if (TALOS_TERRAIN) return TalosField.elevation(x, z, seed);
         return elevationWithCellFull(x, z, seed, cell, CONT_THRESHOLD);
     }
 
@@ -730,6 +758,9 @@ public final class PlateField {
 
     /** 标定入口：与 {@link #isLand} 相同，板块格边长可调。 */
     public static boolean isLandWithCell(int x, int z, long seed, int cell) {
+        // ★ 物理线验证：外部掩膜优先（默认 null ⇒ 逐位不变）。见 {@link LandMask}。
+        if (MASK != null) return MASK.isLand(x, z);
+        if (TALOS_TERRAIN) return TalosField.isLand(x, z, seed);
         return elevationWithCell(x, z, seed, cell) >= SEA_LEVEL;
     }
 

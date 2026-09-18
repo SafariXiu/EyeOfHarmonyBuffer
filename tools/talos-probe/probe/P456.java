@@ -52,7 +52,7 @@ public class P456 {
             for (int sx = -10; sx <= 10; sx++) {
                 for (int sz = 0; sz < 6; sz++) {
                     double latDeg = lo + (sz + 0.5) * (hi - lo) / 6.0;
-                    int z = (int) (latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+                    int z = WorldContract.zOfLat(latDeg);
                     int x = sx * 1_000_000;
                     double lat = WorldContract.latOf(z);
                     for (double th : PH4) {

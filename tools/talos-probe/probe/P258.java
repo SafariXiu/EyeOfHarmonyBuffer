@@ -109,7 +109,11 @@ public class P258 {
                 MapWriter.writeTsv(new File(MAPDIR, "p258_temp_summer.tsv"), NX, NZ, tempS, X0, Z0, STEP, "T_sfc summer solstice (K)");
                 MapWriter.writeTsv(new File(MAPDIR, "p258_land.tsv"), NX, NZ, mask, X0, Z0, STEP, "land mask 1=land");
             }
-            say(String.format(LF, "   %-10d %-16s %10.1f %10.1f %10.1f %9.0f", cell, "T_summer(K)", min(tempS), max(tempS), mean(tempS), ms));
+            // ⚠ 2026-09-18：原来是 `%9.0f` + 裸 ms 值 —— **日志里出现无单位的数字**，
+            //   验收 diff 既不能把它当读数（它每趟都抖），也无法自动识别成计时
+            //   ⇒ 变成永久假阳性。现在补上单位 `us`（ms 是 long，值仍是同一毫秒数），
+            //   归一化规则 \d+\s*us 就能正确把它归零，而前三列读数照旧参与比较。
+            say(String.format(LF, "   %-10d %-16s %10.1f %10.1f %10.1f %7.0f us", cell, "T_summer(K)", min(tempS), max(tempS), mean(tempS), ms * 1000.0));
             say(String.format(LF, "   %-10d %-16s %10.1f %10.1f %10.1f %9s", cell, "T_winter(K)", min(tempW), max(tempW), mean(tempW), ""));
             say(String.format(LF, "   %-10d %-16s %10.1f %10.1f %10.1f %9s", cell, "p'_summer(Pa)", min(presS), max(presS), mean(presS), ""));
             say(String.format(LF, "   %-10d %-16s %10.1f %10.1f %10.1f %9s", cell, "land 占比%", mean(mask) * 100, mean(mask) * 100, mean(mask) * 100, ""));

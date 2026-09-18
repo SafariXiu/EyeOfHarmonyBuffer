@@ -1,0 +1,145 @@
+SYNC_CHECK: in-sync 45; stale 0
+SYNC_CHECK: baseline 44 entries; drifted 10; not-in-baseline 1
+SRC_DRIFT sim\atmos\Atmosphere.java  FA1C891B -> 39CB15CA
+SRC_DRIFT sim\atmos\PrecipField.java  FA830FA7 -> A2D70679
+SRC_DRIFT sim\atmos\ZonalTables.java  8708B9C9 -> E8C81AA2
+SRC_DRIFT sim\litho\PlateField.java  968807C1 -> 6E4D737D
+SRC_DRIFT sim\ocean\GyreRow.java  D3444AF1 -> D6A35DCF
+SRC_DRIFT sim\ocean\OceanField.java  29E1B331 -> B2188FE9
+SRC_DRIFT sim\runtime\SimClimate.java  350F5183 -> D762CAEE
+SRC_DRIFT sim\world\WorldContract.java  155BE351 -> 9C19DBA2
+SRC_DRIFT space\talos\chunk\terrain_layer\PeriodicNoise.java  A0869529 -> CD50C0A4
+SRC_DRIFT space\talos\chunk\world\ClimateCoords.java  7DD4B45F -> 4285D02F
+SRC_NEW sim\litho\TalosField.java
+SRC_DRIFT means src moved since the definition values were recorded.
+It is NOT an error (editing src is normal). Re-run the affected probes, then
+refresh with: sync_check.ps1 -WriteBaseline
+PRECHECK: compiled=47 src-derived=45 stubs=2 copyList=45 probes=369 (tracked=175 local-only=194)
+--- DIRECTION 1: copy list -> probe tree copy is current (45 entries) ---
+  OK: all 45 listed files present and identical to src
+--- DIRECTION 2: probe tree -> copy list (NEW; sync_check cannot see this) ---
+  OK: every compiled src-derived file is in the copy list
+  stub (intentional, not in src): Config\TalosConfig.java
+  stub (intentional, not in src): probeorig\OrigMountainV2.java
+--- COVERAGE: no probe can execute these (0) ---
+  (none)
+--- COVERAGE: reachable only through another class, never named by a probe (4) ---
+INDIRECT_ONLY space\talos\chunk\terrain_layer\BaseTerrainPreset.java  (trans=167 probes)
+INDIRECT_ONLY space\talos\chunk\util\NoiseUtil.java  (trans=176 probes)
+INDIRECT_ONLY space\talos\chunk\util\SimplexNoise2D.java  (trans=176 probes)
+INDIRECT_ONLY space\talos\chunk\terrain_layer\TerrainMath.java  (trans=167 probes)
+--- SCOPE for P543: it can NOT see these 44 file(s) ---
+NOT_IN_SCOPE space\talos\chunk\continent_layer\AirMassType.java
+NOT_IN_SCOPE sim\atmos\Atmosphere.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\BarotropicGyre.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\BaseTerrainPreset.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\BaseTerrainProfile.java
+NOT_IN_SCOPE sim\ocean\BasinFinder.java
+NOT_IN_SCOPE space\talos\chunk\cave_layer\runtime\CaveMath.java
+NOT_IN_SCOPE space\talos\chunk\world\ClimateCoords.java
+NOT_IN_SCOPE space\talos\chunk\climate_layer\ClimateLatitudes.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\ClimateSample.java
+NOT_IN_SCOPE sim\ocean\CoastalLayer.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\GlobalCirculation.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\GlobalClimate.java
+NOT_IN_SCOPE sim\ocean\GyreRow.java
+NOT_IN_SCOPE space\talos\chunk\world\LandformField.java
+NOT_IN_SCOPE sim\export\MapWriter.java
+NOT_IN_SCOPE space\talos\chunk\world\MountainLayerV2.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\NoiseContinentGrid.java
+NOT_IN_SCOPE space\talos\chunk\util\NoiseUtil.java
+NOT_IN_SCOPE sim\ocean\OceanField.java
+NOT_IN_SCOPE sim\ocean\OceanWiring.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\OrographyField.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\PeriodicNoise.java
+NOT_IN_SCOPE sim\litho\PlateField.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\PolarZone.java
+NOT_IN_SCOPE sim\atmos\PrecipField.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\RelaxedClimate.java
+NOT_IN_SCOPE sim\ocean\SeaSurfaceTemp.java
+NOT_IN_SCOPE sim\runtime\SimClimate.java
+NOT_IN_SCOPE space\talos\chunk\util\SimplexNoise2D.java
+NOT_IN_SCOPE sim\runtime\SimTerrain.java
+NOT_IN_SCOPE sim\ocean\SurfaceLayer.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\TalosContract.java
+NOT_IN_SCOPE sim\litho\TalosField.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\TectonicMath.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainBaseHeight.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainMath.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainNoise.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\ThermalForcing.java
+NOT_IN_SCOPE space\talos\chunk\world\V2BiomeField.java
+NOT_IN_SCOPE space\talos\chunk\world\V2BiomeSelect.java
+NOT_IN_SCOPE space\talos\chunk\world\V2TerrainGen.java
+NOT_IN_SCOPE space\talos\chunk\util\WindowKey.java
+NOT_IN_SCOPE sim\atmos\ZonalTables.java
+WARN: a green P543 run proves NOTHING about the 44 file(s) above.
+CALIBERS: CALIBERS: acceptance-probes=17  untracked=0 | CALIBERS: NEW UNREGISTERED MEMBERS = 54
+CALIBERS_EXIT=4 -> registry needs attention
+PRECHECK_STATUS=WARN issues=1 (exit 0 by default; -Strict => exit 1)
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: K:\moder\EyeOfHarmonyBuffer\tools\talos-probe\probe\P195.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+BUILD_ONLY_OK 
+RUNPROBE_ARGS=P543
+[P543] P543：D1 契约守卫（极点已分离）
+[P543] 
+[P543] === A. 常量 ===
+[P543]   Z_CYCLE = 40000000   （期望 40000000 = 4 x MAX_D）   OK
+[P543]   MAX_D   = 10000000   （期望 10000000）               OK
+[P543]   R_EFF   = 6366197.724 m   （期望 6366197.724，= MAX_D/(pi/2)）   差 = 0.000e+00
+[P543]   R = Z_CYCLE/(2pi) = 6366197.724 m   ? 与 R_EFF 差 = 0.000e+00 m   行星尺度一致 OK
+[P543] 
+[P543] === B. 函数逐点对照**新**显式公式（最大绝对差必须恰好 0）===
+[P543]   采样 571 点   最大绝对差 = 1.110e-16   （在 bandD）   ? 实现与公式一致 OK（<1e-12 = 浮点 1ULP 级）
+[P543] 
+[P543] === C. ★ D1 的**全部意义**：f 不再跳号 ===
+[P543]   |delta f| 跨 z=MAX_D   (北极, +-1 格) = 0.000000e+00   OK
+[P543]   |delta f| 跨 z=2*MAX_D (赤道, +-1 格) = 4.581762e-11   OK
+[P543]   |delta f| 跨 z=0       (赤道, +-1 格) = 4.581762e-11   OK
+[P543]   （D1 之前：跨 z=MAX_D 的 |delta f| = 2.9e-04，即 f 硬翻号）
+[P543] 
+[P543] === D. zOfLat 往返 ===
+[P543]      latDeg      zOfLat        latOf(zOfLat)      误差(度)
+[P543]      +0.00            0        +0.00000   0.00e+00
+[P543]      +5.00       555556        +5.00000   4.00e-06
+[P543]     +23.50      2611111       +23.50000   1.00e-06
+[P543]     +45.00      5000000       +45.00000   0.00e+00
+[P543]     +62.50      6944444       +62.50000   4.00e-06
+[P543]     +85.00      9444444       +85.00000   4.00e-06
+[P543]     +90.00     10000000       +90.00000   0.00e+00
+[P543]      -5.00     20555556        -5.00000   4.00e-06
+[P543]     -23.50     22611111       -23.50000   1.00e-06
+[P543]     -45.00     25000000       -45.00000   0.00e+00
+[P543]     -62.50     26944444       -62.50000   4.00e-06
+[P543]     -85.00     29444444       -85.00000   4.00e-06
+[P543]     -90.00     30000000       -90.00000   0.00e+00
+[P543]   ? 往返判定 = OK
+[P543] 
+[P543] === E. 采样值存档 ===
+[P543]         z          bandD      latOf(deg)     sin(lat)        f(1/s)
+[P543]           0     0.0000000      +0.00000    +0.000000   +0.000000e+00
+[P543]     5000000     0.5000000     +45.00000    +0.707107   +1.031259e-04
+[P543]    10000000     1.0000000     +90.00000    +1.000000   +1.458420e-04
+[P543]    15000000     0.5000000     +45.00000    +0.707107   +1.031259e-04
+[P543]    20000000     0.0000000      +0.00000    +0.000000   +0.000000e+00
+[P543]    25000000     0.5000000     -45.00000    -0.707107   -1.031259e-04
+[P543]    30000000     1.0000000     -90.00000    -1.000000   -1.458420e-04
+[P543]    35000000     0.5000000     -45.00000    -0.707107   -1.031259e-04
+[P543]    40000000     0.0000000      +0.00000    +0.000000   +0.000000e+00
+[P543] 
+[P543] === F. WorldContract 自带自检 ===
+[P543]   Z_CYCLE_D1 = 40000000  ( = 4 x MAX_D )
+  R_EFF(现行) = 6366.198 km    R = Z_CYCLE_D1/(2*pi) = 6366.198 km    差 = 0.000 km
+  lat(z=        0) =  +0.00000 deg    期望   +0    OK
+  lat(z= 10000000) = +90.00000 deg    期望  +90    OK
+  lat(z= 20000000) =  +0.00000 deg    期望   +0    OK
+  lat(z= 30000000) = -90.00000 deg    期望  -90    OK
+  lat(z= 40000000) =  +0.00000 deg    期望   +0    OK
+  D1   |delta sin(lat)| 最大单格步进 = 0.00000016 (z=79999917)   连续 OK
+  D1 落地后 |delta sin(lat)| 跨 z=MAX_D(+-1 格) = 0.000000   (应 ~0)
+  总判定 = PASS
+
+JAVA_EXIT=0
+JAVA_EXIT=0

@@ -52,7 +52,7 @@ public class P462 {
         double[][] latRows = new double[3][6];
         for (double latDeg = 45; latDeg <= 65.0001; latDeg += 10) {
             nLat++;
-            int z = (int) Math.round(latDeg / 90.0 * (WorldContract.Z_CYCLE / 2.0));
+            int z = WorldContract.zOfLat(latDeg);
             double lat = WorldContract.latOf(z);
             double aS = ZonalTables.aSea(Math.abs(latDeg)), aL = ZonalTables.aLand(Math.abs(latDeg));
             for (int c = 0; c < 121; c++) {

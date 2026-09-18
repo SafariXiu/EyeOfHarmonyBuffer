@@ -66,8 +66,13 @@ public final class OceanField {
      * 或调 {@link OceanWiring#off()}。代价修好之前，**不要**把它当成「已完成的生产特性」。
      */
     public static boolean ENABLED = true;
-    /** 纬度行数（P265 参考口径 = 64）。 */
-    public static int ROWS = 64;
+    /**
+     * 纬度行数。★ D1（2026-09-18）：Z_CYCLE 20M -> 40M ⇒ **64 -> 128**，
+     * 以保住每行 312.5 km（= 2.81° 纬度）的分辨率。
+     * <p>降回 64 会把纬度分辨率砍半；{@code configStamp} 已含 ROWS（见本文件缓存键），
+     * 所以改这个值会正确失效缓存，不会读到旧行。
+     */
+    public static int ROWS = 128;
     /** 行网格间距（block）—— 必须能分辨 Munk 层。 */
     public static double ROW_H = 5_000.0;
     /**

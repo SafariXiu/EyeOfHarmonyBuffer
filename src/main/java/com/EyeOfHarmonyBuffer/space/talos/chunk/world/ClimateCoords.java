@@ -1,9 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.RelaxedClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ThermalForcing;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
@@ -21,17 +18,17 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
  * 这不是靠注释声称一致，而是**同一份静态常量**（P220 的源码扫描器盯着这里不许再出现字面量）。
  * **不读最终高度** → 无循环依赖。
  *
- * 三个物理项可单独开关（探针逐项对照用）：
- *   ENABLE_ORO（风带 + 地形雨） / ENABLE_SST（洋流·海温海岸） / ENABLE_AIRMASS（气团签名）
+ * 第 3 段（2026-09-18 顶死一套）之后，本类只剩「一个分派 + 一个 Coords 结构」：
+ *   气候的唯一实现是 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate}。旧栈实现已删除。
  */
 public final class ClimateCoords {
 
     private ClimateCoords() {}
 
-    // ===== 开关 =====
-    public static boolean ENABLE_ORO = true;
-    public static boolean ENABLE_SST = true;
-    public static boolean ENABLE_AIRMASS = true;
+    // ===== 开关：已随第 3 段（顶死一套）退役 =====
+    //   ENABLE_ORO / ENABLE_SST / ENABLE_AIRMASS 只被已删除的旧栈实现使用；
+    //   新气候链（SimClimate）有自己的一套，所以这三个字段没有任何读者。
+    //   ⚠ 不要再把它们加回来：同一件事两份开关正是口径漂移的温床。
 
     // ===== 系数（探针可扫参） =====
     /** 温度 = W_LAT·纬度带 + (1−W_LAT)·气团温度。 */
@@ -74,83 +71,19 @@ public final class ClimateCoords {
         // 这是本文件里**唯一**为接线而加的东西：一行分派。SimClimate.ENABLED=false 时，
         // 下面每一行都与接线前**逐位相同**（实测校验和 17ead228bdf6f150 两侧一致）；
         // 旧实现一个方法、一个常量都没有改动或删除。
-        if (com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.ENABLED) {
-            return com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.sample(x, z, worldSeedInt, oro);
-        }
-        // ------------------------------------------------------------------------------
-        Coords c = new Coords();
-
-        // ---- 环流场（4 次查表） ----
-        double p = RelaxedClimate.samplePressure(x, z, worldSeedInt);
-        double airT = RelaxedClimate.sampleAirTemp(x, z, worldSeedInt);
-        double q = RelaxedClimate.sampleHumidity(x, z, worldSeedInt);
-        double mar = RelaxedClimate.sampleMaritime(x, z, worldSeedInt);
-        double dry = clamp01(0.5 + p / 3.2);
-        double bandD = GlobalCirculation.bandD(z);
-        c.dry = dry; c.q = q; c.mar = mar; c.airT = airT; c.bandD = bandD;
-
-        double temp = W_LAT * (1.0 - bandD) + (1.0 - W_LAT) * (0.5 + 0.5 * airT);
-        double moist = MOIST_OFFSET + 0.55 * q + 0.25 * mar + 0.20 * (1.0 - dry);
-        c.continent = clamp01(-oro.coastDist / INLAND_SCALE);
-
-        // ---- 气团签名（M3 产物） ----
-        boolean maritime = mar >= 0.5;
-        boolean tropical = airT >= 0.0;
-        c.airMass = maritime ? (tropical ? 0 : 2) : (tropical ? 1 : 3);
-        if (ENABLE_AIRMASS) {
-            temp += AIR_DT[c.airMass];
-            moist += AIR_DQ[c.airMass];
-        }
-
-        // ---- 风带 + 地形雨（1 次风查表 + 4 次 elevation01 差分） ----
-        double[] wind = RelaxedClimate.sampleWind(x, z, worldSeedInt);
-        c.windX = wind[0];
-        c.windZ = wind[1];
-        double sp = Math.sqrt(wind[0] * wind[0] + wind[1] * wind[1]);
-        if (ENABLE_ORO && oro.isLand && sp > 1.0e-6) {
-            double ux = wind[0] / sp, uz = wind[1] / sp;
-            int s = GlobalClimate.ELEV_STEP;
-            double gx = (elev01(x + s, z, worldSeedInt) - elev01(x - s, z, worldSeedInt)) / (2.0 * s);
-            double gz = (elev01(x, z + s, worldSeedInt) - elev01(x, z - s, worldSeedInt)) / (2.0 * s);
-            double dot = ux * gx + uz * gz;
-            c.up = clamp01(Math.max(0.0, dot) / GlobalClimate.UPLIFT_SCALE);
-            c.lee = clamp01(Math.max(0.0, -dot) / GlobalClimate.UPLIFT_SCALE);
-            moist += ORO_UP_GAIN * c.up * q - ORO_LEE_GAIN * c.lee * q;
-        }
-
-        // ---- 洋流 / 海温海岸（上风方向的海点距平） ----
-        if (ENABLE_SST && oro.isLand && sp > 1.0e-6) {
-            int px = x + (int) (wind[0] / sp * SST_OFFSET);
-            int pz = z + (int) (wind[1] / sp * SST_OFFSET);
-            if (!NoiseContinentGrid.isLand(px, pz, worldSeedInt)) {
-                double sst = RelaxedClimate.sampleSst(px, pz, worldSeedInt);
-                if (!Double.isNaN(sst)) {
-                    c.sstAnom = sst - sstExpectation(GlobalCirculation.bandD(pz));
-                    c.onshore = true;
-                    moist += SST_GAIN * c.sstAnom;
-                }
-            }
-        }
-
-        // ---- 大陆性干燥 ----
-        moist -= INLAND_DRY * c.continent * (1.0 - 0.5 * mar);
-
-        c.temp = clamp01(temp - LAPSE * oro.elevation01);
-        c.moist = clamp01(moist);
-        return c;
+        // ★★ 2026-09-18 顶死一套（第 3 段）★★
+        //   原来这里有一个 `if (SimClimate.ENABLED)` 分派 + 一整套旧栈实现（RelaxedClimate /
+        //   GlobalCirculation / ThermalForcing，LAT_CYCLE = 1M、赤道→极点 500 km）。
+        //   `ENABLED` 默认就是 true ⇒ 旧实现**一行都不走**，是不可达代码；
+        //   留着它只会再长出口径分歧（D17 雪线 20 倍错摆、D72 二十条等距冰带都是这么来的）。
+        //   ⇒ 旧实现已删除，本方法**只剩这一条路**。
+        //   回退开关（SimClimate.ENABLED）一并退役：新气候链已被 D1 / 口径统一 /
+        //   地球掩膜验证这一整套依赖，回退已无实际意义。
+        return com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.sample(x, z, worldSeedInt, oro);
     }
 
-    /**
-     * 纬度带海温期望 —— **唯一来源是 {@link ThermalForcing#zonalMeanSeaTeq}**（求解器的目标场）。
-     *
-     * 原先这里有一张手抄的 10 档"实测均值表"，与求解器真正在用的目标场**不是同一件事**：
-     * 实测在 bandD=0.5 处两者差 0.31 ⇒ 算出来的"洋流海温距平"里混进了一个纯纬度的偏置，
-     * 群系的"暖流岸/寒流岸"判定因此在整条纬度带上被系统性地推同一个方向。
-     * 现在距平 = 实测海温 − 求解器目标，含义才是干净的"洋流造成的距平"。
-     */
-    public static double sstExpectation(double bandD) {
-        return ThermalForcing.zonalMeanSeaTeq(clamp01(bandD));
-    }
+    // sstExpectation(bandD) 已于第 3 段（顶死一套）删除：它只被已删除的旧栈实现使用，
+    // 而且是本文件对旧栈 ThermalForcing 的**最后一个依赖**。新气候链用它自己的一致性口径。
 
     private static double elev01(int x, int z, int worldSeedInt) {
         return OrographyField.elevation01(NoiseContinentGrid.landResidual(x, z, worldSeedInt), worldSeedInt);

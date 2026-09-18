@@ -1,0 +1,71 @@
+SYNC_CHECK: in-sync 39; stale 0
+SYNC_CHECK: baseline 44 entries; drifted 18; not-in-baseline 1
+SRC_DRIFT sim\atmos\Atmosphere.java  FA1C891B -> 39CB15CA
+SRC_DRIFT sim\atmos\PrecipField.java  FA830FA7 -> A2D70679
+SRC_DRIFT sim\atmos\ZonalTables.java  8708B9C9 -> E8C81AA2
+SRC_DRIFT sim\litho\PlateField.java  968807C1 -> 6E4D737D
+SRC_DRIFT sim\ocean\GyreRow.java  D3444AF1 -> D6A35DCF
+SRC_DRIFT sim\ocean\OceanField.java  29E1B331 -> B2188FE9
+SRC_DRIFT sim\runtime\SimClimate.java  350F5183 -> D762CAEE
+SRC_DRIFT sim\runtime\SimTerrain.java  C1B5160A -> EC162DB7
+SRC_DRIFT sim\world\WorldContract.java  155BE351 -> 9C19DBA2
+SRC_DRIFT space\talos\chunk\circulation_layer\ClimateSample.java  758E0846 -> 994448EE
+SRC_DRIFT space\talos\chunk\circulation_layer\GlobalClimate.java  1B7C7209 -> 985361E4
+SRC_DRIFT space\talos\chunk\continent_layer\PolarZone.java  5835FDAE -> 1BB544D1
+SRC_DRIFT space\talos\chunk\terrain_layer\PeriodicNoise.java  A0869529 -> 043A03C6
+SRC_DRIFT space\talos\chunk\world\ClimateCoords.java  7DD4B45F -> C1EAB86C
+SRC_DRIFT space\talos\chunk\world\LandformField.java  730C4AE2 -> 684B5B91
+SRC_DRIFT space\talos\chunk\world\MountainLayerV2.java  D65FF060 -> 5A768DFA
+SRC_DRIFT space\talos\chunk\world\V2BiomeField.java  7857D5FA -> 12EB3DAE
+SRC_DRIFT space\talos\chunk\world\V2TerrainGen.java  0D761A56 -> C197AF23
+SRC_NEW sim\litho\TalosField.java
+SRC_DRIFT means src moved since the definition values were recorded.
+It is NOT an error (editing src is normal). Re-run the affected probes, then
+refresh with: sync_check.ps1 -WriteBaseline
+PRECHECK: compiled=47 src-derived=39 stubs=2 copyList=45 probes=377 (tracked=183 local-only=194)
+--- DIRECTION 1: copy list -> probe tree copy is current (45 entries) ---
+  OK: all 45 listed files present and identical to src
+--- DIRECTION 2: probe tree -> copy list (NEW; sync_check cannot see this) ---
+  OK: every compiled src-derived file is in the copy list
+  stub (intentional, not in src): Config\TalosConfig.java
+  stub (intentional, not in src): probeorig\OrigMountainV2.java
+--- COVERAGE: no probe can execute these (0) ---
+  (none)
+--- COVERAGE: reachable only through another class, never named by a probe (4) ---
+INDIRECT_ONLY space\talos\chunk\terrain_layer\BaseTerrainPreset.java  (trans=175 probes)
+INDIRECT_ONLY space\talos\chunk\util\NoiseUtil.java  (trans=185 probes)
+INDIRECT_ONLY space\talos\chunk\util\SimplexNoise2D.java  (trans=185 probes)
+INDIRECT_ONLY space\talos\chunk\terrain_layer\TerrainMath.java  (trans=175 probes)
+--- SCOPE for P551: it can NOT see these 6 file(s) ---
+NOT_IN_SCOPE sim\ocean\BasinFinder.java
+NOT_IN_SCOPE space\talos\chunk\cave_layer\runtime\CaveMath.java
+NOT_IN_SCOPE sim\export\MapWriter.java
+NOT_IN_SCOPE sim\ocean\OceanWiring.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\PolarZone.java
+NOT_IN_SCOPE sim\ocean\SurfaceLayer.java
+WARN: a green P551 run proves NOTHING about the 6 file(s) above.
+CALIBERS: CALIBERS: acceptance-probes=17  untracked=0 | CALIBERS: NEW UNREGISTERED MEMBERS = 54
+CALIBERS_EXIT=4 -> registry needs attention
+PRECHECK_STATUS=WARN issues=1 (exit 0 by default; -Strict => exit 1)
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: K:\moder\EyeOfHarmonyBuffer\tools\talos-probe\probe\P195.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+BUILD_ONLY_OK 
+RUNPROBE_ARGS=P551
+[P551] P551：丙方案可行性 —— 逆风 1500 km 会走到哪里？（地球掩膜驱动）
+[P551]   契约自证：Z_CYCLE=40000000  RH_SEA=0.8  UPWIND_STEP=150000.0  NSTEP=10  步长=150 km
+[P551] 
+[P551] === 逆风轨迹（JJA）===
+[P551]   框                     起点陆占比  落到海上的比例  首达海平均步数(=距离/150km)  起点q    轨迹源q(RH_SEA*qSat(T_sea))  比
+[P551]   亚洲季风区 70-120E            83.8%          68.8%                    4.4      0.01720              0.01797     0.96
+[P551]   撒哈拉 0-30E                80.6%          50.0%                    3.5      0.02269              0.02144     1.06
+[P551]   美国南部 110-75W             75.0%          89.3%                    3.4      0.01628              0.01645     0.99
+[P551]   北太平洋 150E-150W            0.0%         100.0%                    1.0      0.01317              0.01329     0.99
+[P551]   北大西洋 60-10W               2.5%         100.0%                    1.0      0.01325              0.01325     1.00
+[P551] 
+[P551]   判据：撒哈拉的「落到海上的比例」应显著低于亚洲 —— 那才说明「离岸风 ? 上游无水」这件事
+[P551]         在模型自己的风场里**已经成立**，丙方案才有意义。
+[P551]   若两者比例相近 ? 模型的风场没有这个经向差异 ? 丙方案同样无效，必须先修风场。
+JAVA_EXIT=0
+JAVA_EXIT=0

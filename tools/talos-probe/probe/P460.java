@@ -42,7 +42,7 @@ public class P460 {
     static void say(String s) { rep.println("[P460] " + s); System.out.println("[P460] " + s); }
 
     static int zOfLat(double latDeg) {
-        return (int) Math.round(latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+        return WorldContract.zOfLat(latDeg);
     }
 
     static double[] band(String name, double lo, double hi, double theta, int nx) {

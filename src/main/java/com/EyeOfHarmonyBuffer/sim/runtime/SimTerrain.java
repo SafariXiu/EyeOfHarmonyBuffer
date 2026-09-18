@@ -44,8 +44,15 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
  *   <li><b>方块层的海陆已与群系/高度同源</b>（审计 D16-a）：{@code ChunkProviderTalos2} 改用
  *       {@code PlateField.isLandWithCell}；海床也已改用本类的海洋分支高度（审计 D16-b）。</li>
  * </ol>
- * <p><b>仍未做的</b>：洋流（A2/A3）与降水里的 SST 距平**还没有生产来源** ——
- * {@code ocean/} 整个包零生产调用者（见设计冻结 §102.8）。
+ * <p><b>⚠ 2026-09-18 更正</b>：本段原写「仍未做的：洋流（A2/A3）与降水里的 SST 距平
+ * **还没有生产来源** —— {@code ocean/} 整个包零生产调用者（见设计冻结 §102.8）」。
+ * **那句话现在不成立了**，已核实的生产调用者有：
+ * <ul>
+ *   <li>{@code WorldChunkManagerTalos2} 构造器 → {@code OceanWiring.onWorld(worldSeedInt)}（世界级接线）</li>
+ *   <li>{@code SimClimate.configStamp()} → {@code OceanField.configStamp()}</li>
+ *   <li>{@code GlobalClimate.sample}（/talosmap 出图）→ {@code OceanField.bandMeansAt} / {@code anomalyAt}</li>
+ * </ul>
+ * ⇒ 洋流**有**生产来源了；§102.8 是当时的事实，已被后续的接线步骤取代。
  *
  * <p>纯函数：给定 (seed, x, z) 结果逐位可复现；无静态可变字段（{@link #ENABLED} 等
  * 是**开关注入点**，与旧实现的 {@code ClimateCoords.ENABLE_ORO} 同类）。

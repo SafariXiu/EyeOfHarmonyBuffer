@@ -25,45 +25,26 @@ public class P463 {
     static final int SEED = 1022228679;
     static final long SD = SimTerrain.seedOf(SEED);
     static final int CELL = PlateField.PLATE_CELL;
-    static final int GRAD = 500_000, NX = 400, NZ = 50;
+    static final int GRAD = 500_000, NX = Zonal.NX, NZ = Zonal.NZ;   // ★ 口径唯一化（M13）
     static final Locale LF = Locale.ROOT;
     static final File ROOT = new File("K:" + File.separator + "moder" + File.separator + "EyeOfHarmonyBuffer");
     static PrintStream rep;
 
     static void say(String s) { rep.println("[P463] " + s); System.out.println("[P463] " + s); }
 
+    /** ★ M13：口径唯一化 —— 委托 {@link Zonal}（40,000 km = 地球纬圈周长）。 */
     static double band(double[] p, double lo, double hi) {
-        double s = 0; int n = 0;
-        for (int r = 0; r < NZ; r++) {
-            int z = (int) ((r + 0.5) / NZ * WorldContract.Z_CYCLE);
-            double lat = Math.toDegrees(WorldContract.latOf(z, WorldContract.Z_CYCLE));
-            if (lat < lo || lat > hi) continue;
-            s += p[r]; n++;
-        }
-        return n > 0 ? s / n : 0;
+        return Zonal.band(p, lo, hi);
     }
 
+    /** ★ M13：剖面也走 Zonal，保证与验收仪器 P296 逐点同口径。 */
     static double[] field(double theta) {
-        double[] p = new double[NZ];
-        for (int r = 0; r < NZ; r++) {
-            int z = (int) ((r + 0.5) / NZ * WorldContract.Z_CYCLE);
-            double a = 0;
-            for (int c = 0; c < NX; c++) a += PrecipField.mmPerDay(c * 40_000, z, SD, CELL, theta, GRAD);
-            p[r] = a / NX;
-        }
-        return p;
+        return Zonal.profile(SD, theta);
     }
 
-    /** 三条**独立** GPCP 量的偏差绝对值之和（越小越好）。 */
+    /** 六个 GPCP 观测锚的平均绝对相对偏差 —— **定义只在 Zonal 里一份**（M13）。 */
     static double indepErr(double[] pS, double[] pW) {
-        double e = 0;
-        e += Math.abs(band(pS, 47.5, 62.5) / 2.534 - 1);
-        e += Math.abs(band(pW, 47.5, 62.5) / 2.432 - 1);
-        e += Math.abs(band(pS, 2.5, 12.5) / 6.585 - 1);
-        e += Math.abs(band(pW, 2.5, 12.5) / 3.580 - 1);
-        e += Math.abs(band(pS, 27.5, 37.5) / 2.301 - 1);
-        e += Math.abs(band(pW, 27.5, 37.5) / 2.391 - 1);
-        return e / 6.0;
+        return Zonal.err(pS, pW);
     }
 
     public static void main(String[] args) throws Exception {
@@ -71,6 +52,13 @@ public class P463 {
         say("P463：涡动闭合大改的标定扫描（口径 = P296，NX=400 x NZ=50）");
         say(String.format(LF, "  现行 EDDY_MIX=%.3f   EDDY_TAU=%.0f s (%.2f 天)   标定目标 GPCP 45~55 JJA = 2.565",
             PrecipField.EDDY_MIX, PrecipField.EDDY_TAU, PrecipField.EDDY_TAU / 86400.0));
+        // ★ E122 守卫：读数前先自证仪器状态。批处理曾把 -Dtalos.terrain=true 拆成
+        //   "-Dtalos.terrain true" => getBoolean 为 false => 整张标定表是在开关关闭下测的。
+        say("  地形开关 PlateField.TALOS_TERRAIN = "
+            + com.EyeOfHarmonyBuffer.sim.litho.PlateField.TALOS_TERRAIN
+            + "   (必须与本次意图一致，否则整张表作废)");
+        say("  口径 = Zonal（x 跨度 " + (int) (Zonal.XSPAN / 1000) + " km = 地球纬圈周长，NX="
+            + Zonal.NX + "，NZ=" + Zonal.NZ + "）—— 与验收仪器 P296 同口径");
         say("");
         double thS = Atmosphere.theta(0.0), thW = Atmosphere.theta(WorldContract.DAYS_PER_YEAR / 2.0);
         final int savedC = PrecipField.EDDY_CLOSURE;
@@ -80,8 +68,15 @@ public class P463 {
         // ⚠ D48 修完之后**两个闭合都要重新标定**才能公平比较：
         //   closure 0 是纯乘子 ⇒ 扫 EDDY_MIX；closure 1 ⇒ 扫 EDDY_PHYS_GAIN。
         // D47（deformRadius 换 beta 平面）之后重扫：L_d 在 45~55N 降 11.4% ⇒ κ 降 1.238 倍
-        double[] gains = {5.45};
-        double[] eddyMixSweep = {2.8, 3.0, 3.2};
+        // §318 重标（新地形 V8）：OFF 地形下 gain=5.45 命中 2.565；
+        // 换成 TalosField 后 45~55 夏掉到 1.85（-27.7%）⇒ 需要更宽的括号来找新工作点。
+        // §319 精化：把「命中锚」的工作点 bracketed 到 6.2，并保留 5.45 作为 A/B 对照。
+        // §320：新地形下把工作点 bracketed 到 8.4（不外推）。
+        // §323：E124 修好之后地形再变 ⇒ 第二次重标。P296 实测 gain=8.40 -> 2.33（-9.0%）。
+        // ★ 2026-09-18 口径改到 40,000 km 后：gain=9.60 在 45~55 夏给出 3.45
+        //   （对 GPCP 2.565 **+34.5%**）⇒ 旧的 8.4/9.5/10.6 整段失效，必须往下括。
+        double[] gains = {4.00, 5.00, 6.00, 7.00, 8.00};
+        double[] eddyMixSweep = {3.0};
         double bestErr = 1e9, bestGain = 0;
         for (int mode = 0; mode <= 1; mode++) {
             double[] gs = (mode == 0) ? eddyMixSweep : gains;

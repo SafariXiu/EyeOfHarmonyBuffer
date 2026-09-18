@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalCirculation;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainNoise;

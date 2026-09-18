@@ -40,101 +40,113 @@ public final class GlobalClimate {
     /** 风场辐合差分步长（block）。辐合**只**在降水里用，故不跨层共用。 */
     public static final int CONV_STEP = 1500;
 
+    /** 降水归一标尺（mm/day -> [0,1]）：20 mm/day 视为饱和。**只影响出图配色，不参与任何物理量。** */
+    public static final double RAIN_FULL_MM = 20.0;
+
     /**
-     * 单点完整气候采样（x,z 任意范围）。
+     * 岸距搜索半径（block）。**口径依据**：{@code ClimateSample.coastDist} 自己的 javadoc 写的是
+     * 「远场截断 ±200k」⇒ 本值复现该口径。
+     *
+     * <p>⚠ {@code PlateField.coastDistanceNew(x,z,seed,cell,maxSearch)} 在搜索半径内找不到海岸时
+     * 返回**哨兵 ±2*maxSearch** ⇒ 本值给出的哨兵是 ±400k。
+     * <p>参照系：{@code SimClimate.COAST_FINE = 40_000}（哨兵 ±80 km，便宜但 >40 km 即饱和，
+     * 出图无用）；{@code SimClimate.COAST_FAR = 1_600_000}（哨兵 ±3200 km，量程足但搜索昂贵）。
+     * 本层要的是「一张图上的岸距观感」，取中间量程。
+     */
+    private static final int COAST_MAX = 200_000;
+
+    /**
+     * ★★ 2026-09-18（顶死一套 · 第 4 段）：本方法已改成**新气候链的适配器**。
+     *
+     * <p><b>为什么改这里而不是改 `CommandTalosMap`</b>：整个旧栈（`RelaxedClimate` /
+     * `GlobalCirculation` / `ClimateLatitudes` / `ThermalForcing` / `PolarZone` / `BarotropicGyre`）
+     * 挂在唯一一个根上 —— 地图命令。保持签名与 {@code ClimateSample} 形状不变，
+     * 命令就**一行都不用改**，而旧栈失去了最后一个消费者 ⇒ 第 6 段才能整簇删除。
+     *
+     * <p><b>取数口径（全部来自 sim/ 新栈，与群系链同一个源）</b>：
+     * <ul>
+     *   <li>海陆 / 岸距 ← {@code PlateField.isLandWithCell} / {@code coastDistanceNew}（新场）</li>
+     *   <li>纬度带 ← {@code WorldContract.bandD}（D1 后：0=赤道、1=极点）</li>
+     *   <li>风矢 ← {@code SimClimate.windAt}（与气候瓦片缓存同源）</li>
+     *   <li>干湿 / 气团 / 气温 / 湿度 ← {@code ClimateCoords.sample}（= 新气候）</li>
+     *   <li>降水 ← {@code PrecipField.mmPerDay}（气候层唯一降水口径），按 RAIN_FULL_MM 归一</li>
+     *   <li>洋流 ← {@code OceanField.bandMeansAt} 的西/东带均速度（**真求解器**的带均值）</li>
+     *   <li>海温 ← {@code OceanField.anomalyAt} 归一到 [-1,1]（口径见下）</li>
+     *   <li>{@code gyreWarmth} ← 保留原式 {@code 0.5 - bandD}（它**本来就是占位符**，
+     *       见 {@code ClimateSample} 里该字段的 javadoc）</li>
+     * </ul>
+     *
+     * <p><b>⚠ 两处口径变更（诚实记账，都是「出图语义」不是物理量）</b>：
+     * <ol>
+     *   <li>{@code seaTemperature} 由「耦合输运后的海温」改为「海温距平 / 10 K」——
+     *       新链建模的就是距平（`OceanField.anomalyAt`），绝对海温另有来源。</li>
+     *   <li>{@code currentZ} 恒为 0：{@code bandMeansAt} 给的是**沿盆**带均速度（x 方向），
+     *       丢掉了经向分量。旧实现是 O(1) 查表，这里是 O(1) **缓存命中**
+     *       （首查会解那一行，代价见 `OceanField.solveRow`）。</li>
+     * </ol>
      */
     public static ClimateSample sample(int x, int z, int worldSeedInt) {
-        // ---- L1 海陆（一次采样，各场复用） ----
-        boolean isLand = NoiseContinentGrid.isLand(x, z, worldSeedInt);
-        double coastDist = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
+        long seed = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeedInt);
+        int cell = com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL;
 
-        // ---- M5/M6 松弛气候场（双线性查表，O(1)） ----
-        double bandD = GlobalCirculation.bandD(z);
-        double[] wind = RelaxedClimate.sampleWind(x, z, worldSeedInt);
-        double p = RelaxedClimate.samplePressure(x, z, worldSeedInt);
-        double airT = RelaxedClimate.sampleAirTemp(x, z, worldSeedInt);
-        double q = RelaxedClimate.sampleHumidity(x, z, worldSeedInt);
-        double mar = RelaxedClimate.sampleMaritime(x, z, worldSeedInt);
-        double sst = isLand ? Double.NaN : RelaxedClimate.sampleSst(x, z, worldSeedInt);
-        double[] cur = isLand ? null : RelaxedClimate.sampleCurrent(x, z, worldSeedInt);
+        boolean isLand = com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(x, z, seed, cell);
+        double coastDist = com.EyeOfHarmonyBuffer.sim.litho.PlateField.coastDistanceNew(x, z, seed, cell, COAST_MAX);
+        double bandD = com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(z);
 
-        // ---- 干湿：高压=干（动力下沉骨架），低压=湿 ----
-        double dry = clamp01(0.5 + p / 3.2);
+        double[] wind = new double[2];
+        com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.windAt(x, z, worldSeedInt, wind);
 
-        // ---- P1b 降水：湿度 ×（对流辐合 + 地形抬升 − 焚风） ----
-        double conv = -divergence(x, z, worldSeedInt);
-        double convN = clamp01(conv / CONV_SCALE);
-        // 下沉抑制：副热带高压/极地高压下沉带削弱对流雨（动力干燥骨架）
-        double subsidence = clamp01((p - 0.15) / 1.2);
-        double convEff = convN * (1.0 - 0.85 * subsidence);
-        double[] oro = slopeAlongWind(x, z, worldSeedInt, wind);
-        double upliftN = clamp01(Math.max(0.0, oro[0]) / UPLIFT_SCALE);   // 迎风抬升
-        double downN = clamp01(Math.max(0.0, -oro[0]) / UPLIFT_SCALE);    // 背风下沉
-        double lee = downN * (isLand ? 1.0 : 0.0);                        // 陆上才有焚风减雨
-        double rain = q * (0.30 + 1.6 * convEff) + 2.0 * upliftN * q * (isLand ? 1.0 : 0.0);
-        rain = rain * (1.0 - 0.5 * lee);
-        rain = clamp01(rain);
+        com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.Coords c =
+            com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.sample(x, z, worldSeedInt, null);
 
-        // ---- 气团标签（溯源派生：海洋性 × 冷热） ----
+        double rainMm = com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.mmPerDay(
+            x, z, seed, cell, com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.theta(0.0), 500_000);
+        double rain = clamp01(rainMm / RAIN_FULL_MM);
+
+        // ClimateCoords.Coords.airMass: 0=mT 1=cT 2=mP 3=cP（见其字段注释）
         AirMassType type;
-        boolean tropical = airT >= 0.0;
-        if (mar >= 0.5) {
-            type = tropical ? AirMassType.MARITIME_TROPICAL : AirMassType.MARITIME_POLAR;
-        } else {
-            type = tropical ? AirMassType.CONTINENTAL_TROPICAL : AirMassType.CONTINENTAL_POLAR;
+        switch (c.airMass) {
+            case 0:  type = AirMassType.MARITIME_TROPICAL; break;
+            case 1:  type = AirMassType.CONTINENTAL_TROPICAL; break;
+            case 2:  type = AirMassType.MARITIME_POLAR; break;
+            default: type = AirMassType.CONTINENTAL_POLAR; break;
         }
 
-        double gyreBase = 0.5 - bandD;
-        double gyre = gyreBase < -1 ? -1 : (gyreBase > 1 ? 1 : gyreBase);
+        double gb = 0.5 - bandD;
+        double gyre = gb < -1 ? -1 : (gb > 1 ? 1 : gb);
 
-        return new ClimateSample(
-            isLand, coastDist,
+        double curX = 0.0, curZ = 0.0, sst = Double.NaN, spd = 0.0;
+        if (!isLand) {
+            double[] bm = com.EyeOfHarmonyBuffer.sim.ocean.OceanField.bandMeansAt(x, z, worldSeedInt);
+            if (bm != null) {
+                double v = 0.5 * (bm[0] + bm[1]);
+                curX = v; curZ = 0.0; spd = Math.abs(v);
+            }
+            sst = com.EyeOfHarmonyBuffer.sim.ocean.OceanField.anomalyAt(x, z, worldSeedInt) / 10.0;
+        }
+
+        return new ClimateSample(isLand, coastDist,
             bandD, wind[0], wind[1],
-            dry, rain, gyre,
-            type, airT, q,
-            cur != null ? cur[0] : 0.0, cur != null ? cur[1] : 0.0,
-            sst, cur != null ? Math.hypot(cur[0], cur[1]) : 0.0
-        );
+            c.dry, rain, gyre,
+            type, c.airT, c.q,
+            curX, curZ, sst, spd);
     }
 
-    /** 风场散度 ∂u/∂x + ∂v/∂z（每 block）。 */
-    private static double divergence(int x, int z, int worldSeedInt) {
-        int e = CONV_STEP;
-        double[] wp = RelaxedClimate.sampleWind(x + e, z, worldSeedInt);
-        double[] wm = RelaxedClimate.sampleWind(x - e, z, worldSeedInt);
-        double[] wzp = RelaxedClimate.sampleWind(x, z + e, worldSeedInt);
-        double[] wzm = RelaxedClimate.sampleWind(x, z - e, worldSeedInt);
-        return (wp[0] - wm[0]) / (2.0 * e) + (wzp[1] - wzm[1]) / (2.0 * e);
-    }
-
-    /**
-     * 风沿海拔梯度的投影 [dotSlope, relief01]：>0 迎风抬升、<0 背风下沉。
-     */
-    private static double[] slopeAlongWind(int x, int z, int worldSeedInt, double[] wind) {
-        int e = ELEV_STEP;
-        double sp = Math.sqrt(wind[0] * wind[0] + wind[1] * wind[1]);
-        if (sp < 1.0e-6) {
-            return new double[] { 0.0, 0.0 };
-        }
-        double ux = wind[0] / sp, uz = wind[1] / sp;
-        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        if (!NoiseContinentGrid.isLandResidual(r)) {
-            return new double[] { 0.0, 0.0 };   // 海上不适用地形项
-        }
-        double elev = OrographyField.elevation01(r, worldSeedInt);
-        double ep = elevOf(x + e, z, worldSeedInt);
-        double em = elevOf(x - e, z, worldSeedInt);
-        double ezp = elevOf(x, z + e, worldSeedInt);
-        double ezm = elevOf(x, z - e, worldSeedInt);
-        double gx = (ep - em) / (2.0 * e);
-        double gz = (ezp - ezm) / (2.0 * e);
-        return new double[] { ux * gx + uz * gz, 0.0 };
-    }
-
-    private static double elevOf(int x, int z, int worldSeedInt) {
-        double rr = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        return OrographyField.elevation01(rr, worldSeedInt);
-    }
+    // ══════════════════════════════════════════════════════════════════════════════
+    // ★★ 2026-09-18 顶死一套 · 第 6 段：**旧栈实现已删除**
+    //
+    // 删掉的内容：`sampleLegacy(x,z,worldSeedInt)` 与其三个私有帮手
+    //   （`divergence` / `slopeAlongWind` / `elevOf`）。
+    //
+    // 它们的数据源是整套 1M 旧契约：`RelaxedClimate`（LAT_CYCLE=1M、赤道→极点 500 km）、
+    // `GlobalCirculation`、`NoiseContinentGrid`、`OrographyField`。
+    // 第 4 段把 `sample` 改成新链适配器之后，它们**再无调用者**。
+    //
+    // 随之可删（本段的其余部分）：`RelaxedClimate` / `GlobalCirculation` / `ClimateLatitudes`
+    // / `ThermalForcing` / `BarotropicGyre` / `PolarZone`（已改基到世界契约）。
+    //
+    // ⚠ `clamp01` 必须保留 —— 新适配器还在用它。
+    // ══════════════════════════════════════════════════════════════════════════════
 
     private static double clamp01(double v) {
         return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);

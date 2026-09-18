@@ -117,5 +117,12 @@ rem   WHY: rerun_acceptance.ps1 runs many probes at once, and they must share ON
 rem   Calling this script N times in parallel would make each copy rmdir out\ while another
 rem   JVM is still reading classes from it.
 if "%2"=="--build-only" (echo BUILD_ONLY_OK & exit /b 0)
-java -Xmx6g %2 %3 %4 -cp out probe.%1
+rem EOH_TALOS_TERRAIN (optional): set => run with the V8 terrain switch ON.
+rem WHY NOT a command-line -D: cmd splits "-Dtalos.terrain=true" at the '=' when it goes
+rem through %2/%3/%4, turning it into "-Dtalos.terrain true" -> getBoolean()==false -> SILENTLY OFF
+rem (E122: a whole P463 calibration table was measured with the switch off). Env var + batch
+rem assignment cannot be mangled that way.
+set TALOS_FLAG=
+if defined EOH_TALOS_TERRAIN set TALOS_FLAG=-Dtalos.terrain=true
+java -Xmx6g %TALOS_FLAG% %2 %3 %4 -cp out probe.%1
 echo JAVA_EXIT=%errorlevel%

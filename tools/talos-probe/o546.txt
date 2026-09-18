@@ -1,0 +1,79 @@
+SYNC_CHECK: in-sync 39; stale 0
+SYNC_CHECK: baseline 44 entries; drifted 16; not-in-baseline 1
+SRC_DRIFT sim\atmos\Atmosphere.java  FA1C891B -> 39CB15CA
+SRC_DRIFT sim\atmos\PrecipField.java  FA830FA7 -> A2D70679
+SRC_DRIFT sim\atmos\ZonalTables.java  8708B9C9 -> E8C81AA2
+SRC_DRIFT sim\litho\PlateField.java  968807C1 -> 6E4D737D
+SRC_DRIFT sim\ocean\GyreRow.java  D3444AF1 -> D6A35DCF
+SRC_DRIFT sim\ocean\OceanField.java  29E1B331 -> B2188FE9
+SRC_DRIFT sim\runtime\SimClimate.java  350F5183 -> D762CAEE
+SRC_DRIFT sim\world\WorldContract.java  155BE351 -> 9C19DBA2
+SRC_DRIFT space\talos\chunk\circulation_layer\GlobalClimate.java  1B7C7209 -> 985361E4
+SRC_DRIFT space\talos\chunk\continent_layer\PolarZone.java  5835FDAE -> 1BB544D1
+SRC_DRIFT space\talos\chunk\terrain_layer\PeriodicNoise.java  A0869529 -> 043A03C6
+SRC_DRIFT space\talos\chunk\world\ClimateCoords.java  7DD4B45F -> C1EAB86C
+SRC_DRIFT space\talos\chunk\world\LandformField.java  730C4AE2 -> 684B5B91
+SRC_DRIFT space\talos\chunk\world\MountainLayerV2.java  D65FF060 -> 5A768DFA
+SRC_DRIFT space\talos\chunk\world\V2BiomeField.java  7857D5FA -> 12EB3DAE
+SRC_DRIFT space\talos\chunk\world\V2TerrainGen.java  0D761A56 -> C197AF23
+SRC_NEW sim\litho\TalosField.java
+SRC_DRIFT means src moved since the definition values were recorded.
+It is NOT an error (editing src is normal). Re-run the affected probes, then
+refresh with: sync_check.ps1 -WriteBaseline
+PRECHECK: compiled=47 src-derived=39 stubs=2 copyList=45 probes=372 (tracked=178 local-only=194)
+--- DIRECTION 1: copy list -> probe tree copy is current (45 entries) ---
+  OK: all 45 listed files present and identical to src
+--- DIRECTION 2: probe tree -> copy list (NEW; sync_check cannot see this) ---
+  OK: every compiled src-derived file is in the copy list
+  stub (intentional, not in src): Config\TalosConfig.java
+  stub (intentional, not in src): probeorig\OrigMountainV2.java
+--- COVERAGE: no probe can execute these (0) ---
+  (none)
+--- COVERAGE: reachable only through another class, never named by a probe (4) ---
+INDIRECT_ONLY space\talos\chunk\terrain_layer\BaseTerrainPreset.java  (trans=170 probes)
+INDIRECT_ONLY space\talos\chunk\util\NoiseUtil.java  (trans=180 probes)
+INDIRECT_ONLY space\talos\chunk\util\SimplexNoise2D.java  (trans=180 probes)
+INDIRECT_ONLY space\talos\chunk\terrain_layer\TerrainMath.java  (trans=170 probes)
+--- SCOPE for P546: it can NOT see these 6 file(s) ---
+NOT_IN_SCOPE sim\ocean\BasinFinder.java
+NOT_IN_SCOPE space\talos\chunk\cave_layer\runtime\CaveMath.java
+NOT_IN_SCOPE sim\export\MapWriter.java
+NOT_IN_SCOPE sim\ocean\OceanWiring.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\PolarZone.java
+NOT_IN_SCOPE sim\ocean\SurfaceLayer.java
+WARN: a green P546 run proves NOTHING about the 6 file(s) above.
+CALIBERS: CALIBERS: acceptance-probes=17  untracked=0 | CALIBERS: NEW UNREGISTERED MEMBERS = 54
+CALIBERS_EXIT=4 -> registry needs attention
+PRECHECK_STATUS=WARN issues=1 (exit 0 by default; -Strict => exit 1)
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: K:\moder\EyeOfHarmonyBuffer\tools\talos-probe\probe\P195.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+BUILD_ONLY_OK 
+RUNPROBE_ARGS=P546
+[P546] P546：副热带 Q-D 诊断 —— 降水分解（地球掩膜驱动，纯物理）
+[P546]   契约自证：Z_CYCLE=40000000  gain=9.6  closure=1  SHALLOW_FLOOR=true  ALPHA_SH=0.4
+[P546]   ? 地球掩膜已装载（与 P542 同一台仪器）  NX=120 步长 333 km
+[P546] 
+[P546] === 夏至 JJA ===
+[P546]   带            term1(w_zm+wLoc)   term2(风暴轴)   term3(浅对流地板)   min(t1+t2,t3)取谁   合计     GPCP     偏差
+[P546]   赤道 2.5-12.5         4.047        0.000          1.266   地板胜 16.5%      4.368    6.585    -33.7%
+[P546]       （诊断）kappa=0.230  q=0.01767  divU=-3.556e-07  w_zm=+2.598e-03  wLoc=+9.776e-06  mfc=-5.199e-08
+[P546]   副热 27.5-37.5        0.616        3.425          0.457   地板胜 35.6%      4.306    2.301    +87.1%
+[P546]       （诊断）kappa=0.285  q=0.01212  divU=+1.606e-08  w_zm=-2.250e-05  wLoc=-2.077e-04  mfc=-3.226e-05
+[P546]   中纬 47.5-62.5        0.442        4.464          0.160   地板胜  4.3%      4.911    2.534    +93.8%
+[P546]       （诊断）kappa=0.296  q=0.00545  divU=-5.207e-07  w_zm=+5.831e-04  wLoc=+3.921e-04  mfc=+5.406e-05
+[P546] 
+[P546] === 冬至 DJF ===
+[P546]   带            term1(w_zm+wLoc)   term2(风暴轴)   term3(浅对流地板)   min(t1+t2,t3)取谁   合计     GPCP     偏差
+[P546]   赤道 2.5-12.5         4.088        0.000          1.257   地板胜 16.2%      4.392    3.580    +22.7%
+[P546]       （诊断）kappa=0.230  q=0.01768  divU=-4.343e-07  w_zm=+2.598e-03  wLoc=+2.708e-05  mfc=-5.199e-08
+[P546]   副热 27.5-37.5        0.495        2.994          0.474   地板胜 44.5%      3.831    2.391    +60.2%
+[P546]       （诊断）kappa=0.285  q=0.01085  divU=-2.618e-07  w_zm=-2.250e-05  wLoc=-2.646e-04  mfc=-3.226e-05
+[P546]   中纬 47.5-62.5        0.298        4.315          0.231   地板胜  0.2%      4.613    2.432    +89.7%
+[P546]       （诊断）kappa=0.296  q=0.00378  divU=+4.398e-07  w_zm=+5.831e-04  wLoc=-8.794e-05  mfc=+5.406e-05
+[P546] 
+[P546] === 自证：重算的 final 与 PrecipField.mmPerDay 逐位对照 ===
+[P546]   36 个对照点：最大绝对差 = 8.882e-16   超差点数 = 0   ? 分解与生产逐位相同 OK
+JAVA_EXIT=0
+JAVA_EXIT=0

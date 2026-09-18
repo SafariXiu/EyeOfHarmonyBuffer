@@ -86,16 +86,53 @@ public final class TalosField {
 
     static final int[][] NB = {{-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}};
 
-    // ================= O1：格窗缓存（每 139,000 个区块才失效一次） =================
+    // ================= O1：格窗缓存 =================
     static final int WIN = 9, WOFF = 4;
-    static long winCI = Long.MIN_VALUE, winCJ = Long.MIN_VALUE, winSeed = Long.MIN_VALUE;
-    // 分块记忆化：XY 全块算一次，PHI/PSI 各算一次 —— 杜绝重复求值（乱序 3.7x 的根因）
-    static final double[] wCX = new double[WIN * WIN], wCZ = new double[WIN * WIN];
-    static final double[] wPHI = new double[WIN * WIN], wPSI = new double[WIN * WIN];
-    static final double[] wNRM = new double[WIN * WIN], wB = new double[WIN * WIN];
+    /**
+     * ★★ 线程安全（E123）：**全部可变状态搬进 {@link ThreadLocal}**。
+     *
+     * <p>为什么必须：本类原先用 {@code static} 数组做窗口缓存，而**区块生成是按多线程对待的** ——
+     * 证据是 {@code space/talos/chunk/world} 里有 **7 处 ThreadLocal**（同一个 scratch 缓冲模式，
+     * 例如 {@code V2TerrainGen:334 COLUMN}）。多线程共享一个窗口 ⇒ 线程 A 读到线程 B 建的窗 ⇒
+     * **静默错值且不崩**，是最难查的一类缺陷。
+     *
+     * <p>修法与项目既有模式一致。代价：每线程一份（256 槽 x 6 数组 x 81 double 约 1 MB/线程）。
+     */
+    static final int NSLOT = 256;
+    static final int NLVL = 8;
+    static final class Win {
+        final long[] slotKey = new long[NSLOT];
+        final long[] sCI = new long[NSLOT], sCJ = new long[NSLOT], sSeed = new long[NSLOT];
+        final double[][] sCX = new double[NSLOT][], sCZ = new double[NSLOT][], sPHI = new double[NSLOT][],
+                         sPSI = new double[NSLOT][], sNRM = new double[NSLOT][], sB = new double[NSLOT][];
+        int cur = 0;
+        long winCI = Long.MIN_VALUE, winCJ = Long.MIN_VALUE, winSeed = Long.MIN_VALUE;
+        final long[] lvlSeeds = new long[NLVL];
+        final double[] lvlVals = new double[NLVL];
+        int lvlN = 0;
+        Win() {
+            for (int i = 0; i < NSLOT; i++) {
+                slotKey[i] = Long.MIN_VALUE;
+                sCX[i] = new double[WIN * WIN]; sCZ[i] = new double[WIN * WIN]; sPHI[i] = new double[WIN * WIN];
+                sPSI[i] = new double[WIN * WIN]; sNRM[i] = new double[WIN * WIN]; sB[i] = new double[WIN * WIN];
+            }
+        }
+    }
+    static final ThreadLocal<Win> TL = ThreadLocal.withInitial(Win::new);
 
-    static void buildWindow(long ci, long cj, long seed) {
-        winCI = ci; winCJ = cj; winSeed = seed;
+    // 分块记忆化：XY 全块算一次，PHI/PSI 各算一次 —— 杜绝重复求值（乱序 3.7x 的根因）
+    static void buildWindow(Win w, long ci, long cj, long seed) {
+        long key = mix(seed, ci, cj);
+        int s = (int) ((key >>> 40) & (NSLOT - 1));
+        w.cur = s;
+        w.winCI = ci; w.winCJ = cj; w.winSeed = seed;
+        w.slotKey[s] = key; w.sCI[s] = ci; w.sCJ[s] = cj; w.sSeed[s] = seed;
+        final double[] wCX = w.sCX[s], wCZ = w.sCZ[s], wPHI = w.sPHI[s], wPSI = w.sPSI[s], wNRM = w.sNRM[s], wB = w.sB[s];
+        // ★ 必须清零：只有内圈 5x5 会被写入，而下面的归一化遍历全部 81 格。
+        // 不清零 = 外圈保留上一次构建的残值 ⇒ sref/cref 被污染 ⇒ **TalosField 不再是 (x,z,seed) 的纯函数**
+        // （实测：换缓存策略后 LEVEL 从 0.6516 漂到 0.6620）。Python 原型用全新数组（外圈为 0）⇒ 这里必须对齐。
+        java.util.Arrays.fill(wNRM, 0.0);
+        java.util.Arrays.fill(wB, 0.0);
         // 1) XY 全 9x9（唯一会调用 cellX/cellZ 的地方）
         for (int p = 0; p < WIN; p++) for (int q = 0; q < WIN; q++) {
             int k = p * WIN + q; long I = ci - WOFF + p, J = cj - WOFF + q;
@@ -137,24 +174,56 @@ public final class TalosField {
         }
     }
 
-    static void ensureWindow(long ci, long cj, long seed) {
-        if (seed == winSeed && Math.abs(ci - winCI) <= 2 && Math.abs(cj - winCJ) <= 2) return;
-        buildWindow(ci, cj, seed);
+    /**
+     * ⚠ 陷阱（验收套件在 P296/P268/P297 上抓到）：
+     * 原来写的是 {@code Math.abs(ci - winCI) <= 2}，而哨兵值是 {@code Long.MIN_VALUE} ——
+     * {@code ci - Long.MIN_VALUE} 会 **long 溢出**，{@code Math.abs} 溢出后为负，{@code <= 2} 恒真
+     * ⇒ **窗口从未建立** ⇒ {@code bfield} 用垃圾索引读到界外（ArrayIndexOutOfBounds）或读到脏值（下游挂死）。
+     * 修法：用显式 {@code winValid} 标志（不用哨兵比较），并且差值用范围比较（不调 Math.abs）。
+     */
+    /**
+     * 命中则复用槽，未命中才重建。
+     *
+     * <p>两级命中：① 直接映射槽的精确键命中；② **扫描所有槽找 |dci|<=2 且 |dcj|<=2 的同种子窗口**
+     * —— 后者是 P536 时代的容差逻辑，粗步长采样时能省掉大量重建（P539 实测：去掉它 604 -> 712 ns）。
+     */
+    /**
+     * ★★ E124：窗口中心**必须精确等于查询格**（容差半径 = 0）。
+     *
+     * <p>为什么原来的 ±2 容差是错的（P540 实测抓到，同一线程连续两次差 0.23）：
+     * 窗口**只计算内圈 5x5 的 Bn**（即格 `[winCI-2, winCI+2]`），而容差命中允许查询格离中心 2 格 ⇒
+     * 查询格 `ci = winCI+2` 时要读格 `[winCI, winCI+4]` —— **`winCI+3/+4` 在已计算区之外**，
+     * 那里是归一化循环写进去的 0.5（外圈从 0 被归一化成 0.5）⇒ **静默错值**。
+     *
+     * <p>症状不是崩溃而是「结果依赖调用历史」：冷缓存时走精确路径（对），热缓存时走容差路径（错）。
+     * 这也解释了为什么主线程与工作线程的 LEVEL 会不同（0.680054516 vs 0.681593467）。
+     *
+     * <p>代价：重建更频繁（P539 实测 604 -> 712 ns）。**正确性优先**；256 槽缓存 + 顺序访问已把代价压回去。
+     */
+    static int selectWindow(Win w, long ci, long cj, long seed) {
+        long key = mix(seed, ci, cj);
+        int s = (int) ((key >>> 40) & (NSLOT - 1));
+        if (w.slotKey[s] == key) { w.cur = s; w.winCI = ci; w.winCJ = cj; w.winSeed = seed; return s; }
+        buildWindow(w, ci, cj, seed);
+        return w.cur;
     }
 
     /** 预算场：紧支撑 C3 核插值（E113 —— 进出支撑区权重为 0，无格缝）。 */
     public static double bfield(double x, double z, long seed) {
         long ci = (long) Math.floor(x / DCELL), cj = (long) Math.floor(z / DCELL);
-        ensureWindow(ci, cj, seed);
+        final Win w = TL.get();
+        int s = selectWindow(w, ci, cj, seed);
+        final double[] wCX = w.sCX[s], wCZ = w.sCZ[s], wB = w.sB[s];
         double num = 0, den = 0;
         for (int di = -2; di <= 2; di++) for (int dj = -2; dj <= 2; dj++) {
-            int p = (int) (ci + di - (winCI - WOFF)), q = (int) (cj + dj - (winCJ - WOFF));
-            // ensureWindow 保证 |ci-winCI|<=2 ⇒ p,q 必在 [0,8]，边界检查是死代码（已删）
-            int k = p * WIN + q;
+            // 窗口恒以 (ci,cj) 为中心 ⇒ p,q = WOFF+di / WOFF+dj 必在 [2,6] ✓
+            // 窗口中心是 winCI（容差路径下 != ci）⇒ 索引 = WOFF + di + (ci - winCI)。符号写反会静默取错格。
+            int k = (WOFF + di + (int) (ci - w.winCI)) * WIN + (WOFF + dj + (int) (cj - w.winCJ));
+            if (k < 0 || k >= WIN * WIN) continue;   // 容差路径下的保险（不是死代码）
             double dx = x - wCX[k], dz = z - wCZ[k];
             double t = 1 - (dx * dx + dz * dz) / RW2; if (t <= 0) continue;
-            double w = t * t * t * t;
-            num += w * wB[k]; den += w;
+            double kw = t * t * t * t;      // 核权重（原名 w，与 ThreadLocal 工作区 w 撞名）
+            num += kw * wB[k]; den += kw;
         }
         return den > 0 ? num / den : 0.5;
     }
@@ -170,10 +239,21 @@ public final class TalosField {
     public static double fieldValue(double x, double z, long seed) { return bfield(x, z, seed) + AN * hf(x, z, seed); }
 
     // ================= 每世界自标定（O(1) 于列数） =================
-    static long lvlSeed = Long.MIN_VALUE; static double lvl = 0;
-    /** 1024 点、跨 +-100,000 km（= 200,000,000 block）的固定采样上取 70% 分位。 */
-    public static synchronized double level(long seed) {
-        if (seed == lvlSeed) return lvl;
+    // （E123：原 lvlSeed/lvl 的静态缓存已删 —— 那是不受保护的共享可变状态）
+    // ★ E121：只缓存一个种子是致命的 —— 调用方只要交替传不同种子，
+    // 每一次 isLandWithCell 都会重跑整次 1024 点标定（0.5 ms）=> P442 慢 1000 倍的根因（jstack 实证）。
+    /**
+     * 1024 点、跨 +-100,000 km（= 200,000,000 block）的固定采样上取 70% 分位。
+     *
+     * <p>E121：只缓存一个种子是致命的 —— 调用方交替传不同种子时，每一次 {@code isLandWithCell}
+     * 都会重跑整次标定（0.5 ms）=> 探针慢 1000 倍（jstack 实证）。故按种子做 8 项记忆表。
+     *
+     * <p>E123：记忆表也在 {@link ThreadLocal} 里 ⇒ **不再需要 synchronized**（每线程各算一份，值相同）。
+     */
+    public static double level(long seed) { return level(TL.get(), seed); }
+
+    static double level(Win w, long seed) {
+        for (int i = 0; i < w.lvlN; i++) if (w.lvlSeeds[i] == seed) return w.lvlVals[i];
         final int G = 32, N = G * G;
         double[] f = new double[N];
         java.util.Random r = new java.util.Random(seed * 1000003L + 17L);
@@ -182,9 +262,12 @@ public final class TalosField {
             f[i] = fieldValue(ox, oz, seed);
         }
         java.util.Arrays.sort(f);
-        lvl = f[(int) Math.floor(0.70 * N)];
-        lvlSeed = seed;
-        return lvl;
+        double v = f[(int) Math.floor(0.70 * N)];
+        if (w.lvlN < NLVL) { w.lvlSeeds[w.lvlN] = seed; w.lvlVals[w.lvlN] = v; w.lvlN++; }
+        else { System.arraycopy(w.lvlSeeds, 1, w.lvlSeeds, 0, NLVL - 1);
+               System.arraycopy(w.lvlVals, 1, w.lvlVals, 0, NLVL - 1);
+               w.lvlSeeds[NLVL - 1] = seed; w.lvlVals[NLVL - 1] = v; }
+        return v;
     }
 
     // ================= 高程：单调三次样条（Fritsch-Carlson，含平台段） =================
@@ -214,7 +297,12 @@ public final class TalosField {
              + (-2 * t3 + 3 * t2) * KY[i + 1] + (t3 - t2) * h * MS[i + 1];
     }
 
-    static double lvlFast(long seed) { return seed == lvlSeed ? lvl : level(seed); }
+    /** 无锁快路径：先查小记忆表（命中即返回），真未命中才进 synchronized 的 level()。 */
+    static double lvlFast(long seed) {
+        final Win w = TL.get();
+        for (int i = 0; i < w.lvlN; i++) if (w.lvlSeeds[i] == seed) return w.lvlVals[i];
+        return level(w, seed);
+    }
 
     /** 完整高程（米）。 */
     public static double elevation(double x, double z, long seed) {
@@ -225,4 +313,18 @@ public final class TalosField {
         return h > ridge ? h : ridge;
     }
     public static boolean isLand(double x, double z, long seed) { return fieldValue(x, z, seed) > lvlFast(seed); }
+
+    /** 本生成器的全部可调参数进指纹（D58：改了结果就必须让瓦片失效）。 */
+    public static long configStamp() {
+        long h = 0x7A105EEDL;
+        h = h * 31 + Double.doubleToLongBits(DCELL);
+        h = h * 31 + Double.doubleToLongBits(SWS);
+        h = h * 31 + Double.doubleToLongBits(JIT);
+        h = h * 31 + Double.doubleToLongBits(AN);
+        h = h * 31 + Double.doubleToLongBits(HH);
+        h = h * 31 + Double.doubleToLongBits(USx);
+        h = h * 31 + Double.doubleToLongBits(LAM);
+        h = h * 31 + Double.doubleToLongBits(RW);
+        return h;
+    }
 }

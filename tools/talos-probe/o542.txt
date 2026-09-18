@@ -1,0 +1,122 @@
+SYNC_CHECK: in-sync 45; stale 0
+SYNC_CHECK: baseline 44 entries; drifted 6; not-in-baseline 1
+SRC_DRIFT sim\atmos\Atmosphere.java  FA1C891B -> 39CB15CA
+SRC_DRIFT sim\atmos\PrecipField.java  FA830FA7 -> A2D70679
+SRC_DRIFT sim\atmos\ZonalTables.java  8708B9C9 -> E8C81AA2
+SRC_DRIFT sim\litho\PlateField.java  968807C1 -> 6E4D737D
+SRC_DRIFT sim\ocean\GyreRow.java  D3444AF1 -> D6A35DCF
+SRC_DRIFT sim\runtime\SimClimate.java  350F5183 -> CFDDA742
+SRC_NEW sim\litho\TalosField.java
+SRC_DRIFT means src moved since the definition values were recorded.
+It is NOT an error (editing src is normal). Re-run the affected probes, then
+refresh with: sync_check.ps1 -WriteBaseline
+PRECHECK: compiled=47 src-derived=45 stubs=2 copyList=45 probes=369 (tracked=175 local-only=194)
+--- DIRECTION 1: copy list -> probe tree copy is current (45 entries) ---
+  OK: all 45 listed files present and identical to src
+--- DIRECTION 2: probe tree -> copy list (NEW; sync_check cannot see this) ---
+  OK: every compiled src-derived file is in the copy list
+  stub (intentional, not in src): Config\TalosConfig.java
+  stub (intentional, not in src): probeorig\OrigMountainV2.java
+--- COVERAGE: no probe can execute these (0) ---
+  (none)
+--- COVERAGE: reachable only through another class, never named by a probe (4) ---
+INDIRECT_ONLY space\talos\chunk\terrain_layer\BaseTerrainPreset.java  (trans=170 probes)
+INDIRECT_ONLY space\talos\chunk\util\NoiseUtil.java  (trans=179 probes)
+INDIRECT_ONLY space\talos\chunk\util\SimplexNoise2D.java  (trans=179 probes)
+INDIRECT_ONLY space\talos\chunk\terrain_layer\TerrainMath.java  (trans=170 probes)
+--- SCOPE for P542: it can NOT see these 38 file(s) ---
+NOT_IN_SCOPE space\talos\chunk\continent_layer\AirMassType.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\BarotropicGyre.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\BaseTerrainPreset.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\BaseTerrainProfile.java
+NOT_IN_SCOPE sim\ocean\BasinFinder.java
+NOT_IN_SCOPE space\talos\chunk\cave_layer\runtime\CaveMath.java
+NOT_IN_SCOPE space\talos\chunk\world\ClimateCoords.java
+NOT_IN_SCOPE space\talos\chunk\climate_layer\ClimateLatitudes.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\ClimateSample.java
+NOT_IN_SCOPE sim\ocean\CoastalLayer.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\GlobalCirculation.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\GlobalClimate.java
+NOT_IN_SCOPE sim\ocean\GyreRow.java
+NOT_IN_SCOPE space\talos\chunk\world\LandformField.java
+NOT_IN_SCOPE sim\export\MapWriter.java
+NOT_IN_SCOPE space\talos\chunk\world\MountainLayerV2.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\NoiseContinentGrid.java
+NOT_IN_SCOPE space\talos\chunk\util\NoiseUtil.java
+NOT_IN_SCOPE sim\ocean\OceanField.java
+NOT_IN_SCOPE sim\ocean\OceanWiring.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\OrographyField.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\PeriodicNoise.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\PolarZone.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\RelaxedClimate.java
+NOT_IN_SCOPE sim\runtime\SimClimate.java
+NOT_IN_SCOPE space\talos\chunk\util\SimplexNoise2D.java
+NOT_IN_SCOPE sim\runtime\SimTerrain.java
+NOT_IN_SCOPE sim\ocean\SurfaceLayer.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\TalosContract.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\TectonicMath.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainBaseHeight.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainMath.java
+NOT_IN_SCOPE space\talos\chunk\terrain_layer\TerrainNoise.java
+NOT_IN_SCOPE space\talos\chunk\circulation_layer\ThermalForcing.java
+NOT_IN_SCOPE space\talos\chunk\world\V2BiomeField.java
+NOT_IN_SCOPE space\talos\chunk\world\V2BiomeSelect.java
+NOT_IN_SCOPE space\talos\chunk\world\V2TerrainGen.java
+NOT_IN_SCOPE space\talos\chunk\util\WindowKey.java
+WARN: a green P542 run proves NOTHING about the 38 file(s) above.
+CALIBERS: CALIBERS: acceptance-probes=17  untracked=0 | CALIBERS: NEW UNREGISTERED MEMBERS = 47
+CALIBERS_EXIT=4 -> registry needs attention
+PRECHECK_STATUS=WARN issues=1 (exit 0 by default; -Strict => exit 1)
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: K:\moder\EyeOfHarmonyBuffer\tools\talos-probe\probe\P195.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+BUILD_ONLY_OK 
+RUNPROBE_ARGS=P542
+[P542] P542：物理线验证 —— 用地球真实陆海掩膜驱动模型，对 GPCP
+[P542]   锚（GPCP v2.3，全部观测值）：47-62夏 2.534 / 47-62冬 2.432 / 赤道夏 6.585 / 赤道冬 3.580 / 副热夏 2.301 / 副热冬 2.391
+[P542]   口径 = Zonal（x 跨度 40,000 km = 地球纬圈周长，NX=1000，NZ=50）
+[P542] 
+[P542]   掩膜：721 x 1441  lat0=-90.000 dlat=0.2500  lon0=0.000 dlon=0.2500  1039005 bytes
+[P542] === 自证 A：掩膜映射（路径 a 直接遍历 vs 路径 b 经映射+采样）===
+[P542]    |lat| 带    (a) 直接遍历    (b) 映射+采样    差(pt)
+[P542]      0-  5         22.80%         22.70%        0.10
+[P542]      5- 10         23.76%         23.60%        0.16
+[P542]     10- 15         21.97%         21.60%        0.37
+[P542]     15- 20         26.38%         26.53%        0.15
+[P542]     20- 25         29.75%         30.40%        0.65
+[P542]     25- 30         30.80%         30.70%        0.10
+[P542]     30- 35         29.14%         29.15%        0.01
+[P542]     35- 40         24.53%         25.05%        0.52
+[P542]     40- 45         25.31%         24.90%        0.41
+[P542]     45- 50         28.16%         27.90%        0.26
+[P542]     50- 55         30.34%         31.15%        0.81
+[P542]     55- 60         27.43%         27.98%        0.55
+[P542]     60- 65         34.97%         35.85%        0.88
+[P542]     65- 70         46.48%         44.25%        2.23
+[P542]     70- 75         47.11%         46.83%        0.28
+[P542]     75- 80         54.25%         53.15%        1.10
+[P542]     80- 85         56.12%         55.78%        0.35
+[P542]     85- 90         50.00%         50.00%        0.00
+[P542]    ? 最大差 = 2.23 pt   判定 = **映射有误，以下全部作废**
+[P542]    参考：地球全球陆地占比（ETOPO1 均匀纬度）= 33.91%
+[P542] 
+[P542] === 自证 B：钩子已装上 ===
+[P542]    PlateField.MASK != null : true    TALOS_TERRAIN = false（应被掩膜覆盖，不再生效）
+[P542] 
+[P542] === 对 GPCP（地球掩膜驱动；seed 已不影响陆海，只影响残差的随机项）===
+[P542]   closure  gain/mix   45-55夏   47-62夏   47-62冬    赤道夏    赤道冬    副热夏    副热冬   独立 err
+[P542]   0        3.000        3.220     3.357     2.571     6.906     3.011     1.194     4.192    0.3040
+[P542]   1        4.000        2.245     2.177     2.258     6.906     3.011     1.194     3.768    0.2461
+[P542]   1        5.000        2.593     2.531     2.760     6.906     3.011     1.194     4.597    0.2913
+[P542]   1        6.000        2.941     2.885     3.261     6.906     3.011     1.194     5.427    0.4063
+[P542]   1        7.000        3.289     3.239     3.763     6.906     3.011     1.194     6.257    0.5218
+[P542]   1        8.000        3.637     3.593     4.264     6.906     3.011     1.194     7.087    0.6373
+[P542]   1        9.600        4.193     4.159     5.066     6.906     3.011     1.194     8.415    0.8221
+[P542] 
+[P542]   ? 地球掩膜驱动下的最优 = closure 1 / 4.0（独立 err 0.2461）
+[P542]   ? 这个 err 里**不含边界条件差异**，是纯物理误差（再加圆柱几何残差）。
+[P542] 
+[P542]   GPCP 参照：47-62夏 2.534 / 47-62冬 2.432 / 赤道夏 6.585 / 赤道冬 3.580 / 副热夏 2.301 / 副热冬 2.391
+JAVA_EXIT=0
+JAVA_EXIT=0

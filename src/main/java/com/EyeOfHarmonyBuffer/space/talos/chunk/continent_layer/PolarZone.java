@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.ClimateLatitudes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 
 /**
@@ -104,9 +103,26 @@ public final class PolarZone {
     /** 次八度振幅比。 */
     private static final double EDGE_OCT2 = 0.5;
 
-    /** 裸纬度带（无平移）：{@code z=0→0}（赤道），{@code z=500k→1}（极点），对 z 严格单调。 */
+    /**
+     * 裸纬度带（无平移）：{@code z=0→0}（赤道），**极点→1**，对 z 严格单调。
+     *
+     * <p>★★ 2026-09-18 顶死一套（第 6 段）—— <b>本函数原先名不副实</b>：
+     * 实现是 {@code ClimateLatitudes.getDistanceToCenter(z) / ClimateLatitudes.MAX_D}，
+     * 那是**旧栈 1M 契约的「几何带索引」**，在一个 40M 契约周期里会出现 **20 条等距带** ——
+     * 正是审计 D72 实测到的那 20 条假冰带（纬度 +4.05, +13.05, +22.05, …，
+     * 连最冷月海温 **+25.55 C** 的海面都被刷成冰，见 `ChunkProviderTalos2` 的记账）。
+     *
+     * <p>D72 只改掉了 `ChunkProviderTalos2` 的**物理**判据（改成按海表温度判海冰），
+     * 却没人更新**渲染** ⇒ `/talosmap` 的 polar 层至今仍在画那 20 条假冰带。
+     * <b>图层骗人比世界错了更坏。</b>
+     *
+     * <p>现在统一到世界契约 {@code WorldContract.bandD}（D1 之后：0 = 两条赤道、1 = 两个极点），
+     * 于是本函数的**实现终于与它自己的文档一致**；下面的阈值也自动获得合理的纬度含义：
+     * {@code WALL_OUTER = 0.82} ⇒ 73.8 度，{@code FLOE_BAND = 0.90} ⇒ 81 度，
+     * {@code ICE_INNER_BAND = 0.96} ⇒ 86.4 度。
+     */
     public static double rawBand(int z) {
-        return ClimateLatitudes.getDistanceToCenter(z) / (double) ClimateLatitudes.MAX_D;
+        return com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(z);
     }
 
     /** 冰缘平移量（block，零均值，**只依赖 x**）：只依赖 x 才能保证 {@link #band} 对 z 仍严格单调。 */

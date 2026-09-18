@@ -5,9 +5,18 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
 /**
  * V2 统一气候采样结果（docs/TerrainV2/design.md 二c / climate-layer-internals.md）。
  *
- * 一次编排：L1 海陆 + 耦合气候场（RelaxedClimate 查表）+ P1b 地形降水算子。
- * 所有值确定性纯函数。消费方（L5 群系 / 水体 / 地形增强）与出图统一走
- * {@link GlobalClimate}，不要散调内部场，避免口径漂移。
+ * ★ 2026-09-18（顶死一套 · 第 6 段）之后，本类是 **`GlobalClimate` 适配器的 DTO**，
+ * 数据源已全部切到 `sim/` 新栈：
+ *   - 海陆/岸距 ← `PlateField.isLandWithCell` / `coastDistanceNew`
+ *   - 纬度带   ← `WorldContract.bandD`（D1 后：0=两条赤道、1=两个极点）
+ *   - 风矢     ← `SimClimate.windAt`
+ *   - 干湿/气团/气温/湿度 ← `ClimateCoords.sample`（= `SimClimate`）
+ *   - 降水     ← `PrecipField.mmPerDay`
+ *   - 洋流/海温 ← `OceanField.bandMeansAt` / `anomalyAt`
+ *
+ * <p>⚠ 原文写的是「耦合气候场（**RelaxedClimate 查表**）」—— 那个类**已退役**。
+ * <p>⚠ 群系链**不再**走 {@link GlobalClimate}：它是 `V2BiomeSelect → ClimateCoords.sample
+ * → SimClimate`。本 DTO 现在只服务 `/talosmap` 出图。
  */
 public final class ClimateSample {
 
@@ -21,7 +30,7 @@ public final class ClimateSample {
     /** 纬度带：0=赤道中线，1=寒带中线。 */
     public final double bandD;
 
-    // ---- 耦合气候场（RelaxedClimate 网格解 · 双线性查表） ----
+    // ---- 耦合气候场（新栈：SimClimate.windAt + ClimateCoords.sample） ----
     /** 地表风矢量（幅 ≈ 风速单位）。 */
     public final double windX;
     public final double windZ;

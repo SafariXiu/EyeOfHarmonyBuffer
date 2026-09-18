@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * → V2BiomeField.kind（250 m LUT）→ **V2BiomeSelect.accumulateWeights**
  * → **ClimateCoords.sample**。LUT 求解时逐格调用 accumulateWeights，
  * 运行时只查表 —— 所以「气候 → 群系」的**唯一入口**是 ClimateCoords.sample。
- * 本类在那一个点做分派（ENABLED 为 false 时旧路径一行都不变），
+ * 本类就是气候的唯一实现（第 3 段之后不再有回退分支），
  * Coords 的每一个字段都由新模拟器给出，**下游（20 格气候带表、地形变体、高度倾向）
  * 一行不改**：群系只通过「气候坐标」改变。
  *
@@ -125,8 +125,10 @@ public final class SimClimate {
 
     private SimClimate() {}
 
-    /** 总开关。false ⇒ ClimateCoords.sample 一行都不走这里，与接线前**逐位相同**（P384 实测）。 */
-    public static boolean ENABLED = true;
+    // ★ 2026-09-18 顶死一套（第 3 段）：原 `public static boolean ENABLED = true` 已退役。
+    //   它是「回退到旧栈」的开关，但 ClimateCoords 的旧实现已删除 ⇒ 无路可回退；
+    //   留着这个 false 分支只会再长出一套口径（D17/D72 就是这么来的）。
+    //   现在气候只有一条路：ClimateCoords.sample -> SimClimate.sample。
 
     // ==================== 网格几何 ====================
 
@@ -442,6 +444,11 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(PlateField.ARC_H);
         h = h * 31 + Double.doubleToLongBits(PlateField.TRENCH_D);
         h = h * 31 + Double.doubleToLongBits(PlateField.RIDGE_H);
+        // §315 地形实现切换：**按条件**折入 ⇒ 关闭时指纹与历史完全一致（严格 bit-neutral）。
+        if (PlateField.TALOS_TERRAIN) {
+            h = h * 31 + 0x7A105L;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.TalosField.configStamp();
+        }
         return h;
     }
 

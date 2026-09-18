@@ -44,7 +44,7 @@ public class P297 {
         double[][] onset = new double[6][4];
         for (int li = 0; li < 6; li++) {
             int latDeg = 30 + li * 10;
-            int z0 = (int) ((double) latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+            int z0 = WorldContract.zOfLat(latDeg);
             int[] num = new int[4], den = new int[4];
             double[] on = new double[4];
             for (int b = 0; b < 4; b++) on[b] = 1e9;
@@ -82,7 +82,7 @@ public class P297 {
         say("A. 雪线随纬度的抬升（在 x=0..600 km 这条带上逐纬度找最高点与是否下雪）");
         say(String.format(LF, "  %-8s %12s %12s %14s", "纬度", "带内最高 m", "是否下雪", "雪线起始 m"));
         for (int latDeg = 20; latDeg <= 80; latDeg += 10) {
-            int z0 = (int) ((double) latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+            int z0 = WorldContract.zOfLat(latDeg);
             double hMax = -1e9, on = 1e9; int nSnow = 0, nLand = 0;
             for (int dz = 0; dz < 20; dz++) {
                 int z = z0 + dz * 2000;

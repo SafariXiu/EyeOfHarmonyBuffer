@@ -2,7 +2,9 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 
 /**
  * 可选周期噪声原语。**"周期"是每轴可选的**：PERIOD_X = 100,000、PERIOD_Z = 1,000,000
- * （= ClimateLatitudes.LAT_CYCLE），但 `INFINITE_X` / `INFINITE_Z` 两个开关**默认都为 true**，
+ * （⚠ 该值**不是**任何纬度循环 —— 原注释曾写「= ClimateLatitudes.LAT_CYCLE」，
+ * 那是概念挂错；`ClimateLatitudes` 与整个旧栈已于 2026-09-18 退役），
+ * 但 `INFINITE_X` / `INFINITE_Z` 两个开关**默认都为 true**，
  * 也就是当前世界在两个方向上都不折叠（见下方两段 javadoc）。
  *
  * **为什么需要**：底层噪声的 lattice 哈希原本不取模，f(x,z) ≠ f(x+周期,z)；
@@ -21,7 +23,20 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
 public final class PeriodicNoise {
 
     public static final double PERIOD_X = 100_000.0;
-    public static final double PERIOD_Z = 1_000_000.0;   // = ClimateLatitudes.LAT_CYCLE（纬度循环）
+    /**
+     * ⚠ 2026-09-18（顶死一套·第 2 段）：**本常量是惰性的**。
+     *
+     * <p>它不是「纬度循环」，而是**早期环面世界**留下的 Z 折叠周期；
+     * 原注释写「= ClimateLatitudes.LAT_CYCLE（纬度循环）」是**概念挂错**：
+     * 地形塑形噪声的周期与纬度气候周期本来就是两件事。
+     * （`ClimateLatitudes` 与整个 1M 旧栈已于 2026-09-18 顶死一套时退役，本常量**不属于任何契约**。）
+     *
+     * <p>{@link #INFINITE_Z} 默认为 true ⇒ {@link #cellsZ} 一律返回 ≤0 ⇒
+     * <b>当前契约下 PERIOD_Z 一次都不参与计算</b>（见本类 javadoc 的格数约定）。
+     * <p>退役计划：第 6 段删旧栈时，本常量与 {@code TalosContract} 里那条
+     * 「PERIOD_Z == LAT_CYCLE」的自检一起删除（那条自检是在给一套死代码做自检）。
+     */
+    public static final double PERIOD_Z = 1_000_000.0;
     private static final double INV_PX = 1.0 / PERIOD_X;
     private static final double INV_PZ = 1.0 / PERIOD_Z;
 

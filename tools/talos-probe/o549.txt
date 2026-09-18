@@ -1,0 +1,82 @@
+SYNC_CHECK: in-sync 39; stale 0
+SYNC_CHECK: baseline 44 entries; drifted 18; not-in-baseline 1
+SRC_DRIFT sim\atmos\Atmosphere.java  FA1C891B -> 39CB15CA
+SRC_DRIFT sim\atmos\PrecipField.java  FA830FA7 -> A2D70679
+SRC_DRIFT sim\atmos\ZonalTables.java  8708B9C9 -> E8C81AA2
+SRC_DRIFT sim\litho\PlateField.java  968807C1 -> 6E4D737D
+SRC_DRIFT sim\ocean\GyreRow.java  D3444AF1 -> D6A35DCF
+SRC_DRIFT sim\ocean\OceanField.java  29E1B331 -> B2188FE9
+SRC_DRIFT sim\runtime\SimClimate.java  350F5183 -> D762CAEE
+SRC_DRIFT sim\runtime\SimTerrain.java  C1B5160A -> EC162DB7
+SRC_DRIFT sim\world\WorldContract.java  155BE351 -> 9C19DBA2
+SRC_DRIFT space\talos\chunk\circulation_layer\ClimateSample.java  758E0846 -> 994448EE
+SRC_DRIFT space\talos\chunk\circulation_layer\GlobalClimate.java  1B7C7209 -> 985361E4
+SRC_DRIFT space\talos\chunk\continent_layer\PolarZone.java  5835FDAE -> 1BB544D1
+SRC_DRIFT space\talos\chunk\terrain_layer\PeriodicNoise.java  A0869529 -> 043A03C6
+SRC_DRIFT space\talos\chunk\world\ClimateCoords.java  7DD4B45F -> C1EAB86C
+SRC_DRIFT space\talos\chunk\world\LandformField.java  730C4AE2 -> 684B5B91
+SRC_DRIFT space\talos\chunk\world\MountainLayerV2.java  D65FF060 -> 5A768DFA
+SRC_DRIFT space\talos\chunk\world\V2BiomeField.java  7857D5FA -> 12EB3DAE
+SRC_DRIFT space\talos\chunk\world\V2TerrainGen.java  0D761A56 -> C197AF23
+SRC_NEW sim\litho\TalosField.java
+SRC_DRIFT means src moved since the definition values were recorded.
+It is NOT an error (editing src is normal). Re-run the affected probes, then
+refresh with: sync_check.ps1 -WriteBaseline
+PRECHECK: compiled=47 src-derived=39 stubs=2 copyList=45 probes=375 (tracked=181 local-only=194)
+--- DIRECTION 1: copy list -> probe tree copy is current (45 entries) ---
+  OK: all 45 listed files present and identical to src
+--- DIRECTION 2: probe tree -> copy list (NEW; sync_check cannot see this) ---
+  OK: every compiled src-derived file is in the copy list
+  stub (intentional, not in src): Config\TalosConfig.java
+  stub (intentional, not in src): probeorig\OrigMountainV2.java
+--- COVERAGE: no probe can execute these (0) ---
+  (none)
+--- COVERAGE: reachable only through another class, never named by a probe (4) ---
+INDIRECT_ONLY space\talos\chunk\terrain_layer\BaseTerrainPreset.java  (trans=173 probes)
+INDIRECT_ONLY space\talos\chunk\util\NoiseUtil.java  (trans=183 probes)
+INDIRECT_ONLY space\talos\chunk\util\SimplexNoise2D.java  (trans=183 probes)
+INDIRECT_ONLY space\talos\chunk\terrain_layer\TerrainMath.java  (trans=173 probes)
+--- SCOPE for P549: it can NOT see these 6 file(s) ---
+NOT_IN_SCOPE sim\ocean\BasinFinder.java
+NOT_IN_SCOPE space\talos\chunk\cave_layer\runtime\CaveMath.java
+NOT_IN_SCOPE sim\export\MapWriter.java
+NOT_IN_SCOPE sim\ocean\OceanWiring.java
+NOT_IN_SCOPE space\talos\chunk\continent_layer\PolarZone.java
+NOT_IN_SCOPE sim\ocean\SurfaceLayer.java
+WARN: a green P549 run proves NOTHING about the 6 file(s) above.
+CALIBERS: CALIBERS: acceptance-probes=17  untracked=0 | CALIBERS: NEW UNREGISTERED MEMBERS = 54
+CALIBERS_EXIT=4 -> registry needs attention
+PRECHECK_STATUS=WARN issues=1 (exit 0 by default; -Strict => exit 1)
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: K:\moder\EyeOfHarmonyBuffer\tools\talos-probe\probe\P195.java使用了未经检查或不安全的操作。
+注: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+BUILD_ONLY_OK 
+RUNPROBE_ARGS=P549
+[P549] P549：A3 —— term1 的偏差在哪个因子？（地球掩膜驱动）
+[P549]   契约自证：Z_CYCLE=40000000  EPS_C=0.75  RH_SEA=0.8  H_BL=1000.0  W_LOC_MAX=0.002  H_MOIST=2000.0
+[P549] 
+[P549] === term1 的因子分解（term1 = EPS_C * rho * q * wEff / rho_w）===
+[P549]   带 / 季          term1   term2   term3   final   GPCP   亏空    q        w_zm      wLoc      wEff     depl
+[P549]   赤道 2.5-12.5  JJA   6.362   0.000   1.166   6.364  6.585   1.03x  0.01817 +4.513e-03 -7.330e-05 +4.439e-03 0.986
+[P549]   副热 27.5-37.5 JJA   0.853   0.000   0.396   1.211  2.301   2.70x  0.01522 -5.338e-04 +1.051e-04 -4.286e-04 0.919
+[P549]   中纬 47.5-62.5 JJA   0.499   3.220   0.105   3.719  2.534   5.08x  0.00755 +7.325e-04 -1.019e-04 +6.306e-04 0.915
+[P549]   赤道 2.5-12.5  DJF   1.725   0.000   1.296   2.333  3.580   2.08x  0.01703 +6.825e-04 +8.708e-05 +7.696e-04 0.985
+[P549]   副热 27.5-37.5 DJF   0.561   5.990   0.311   6.655  2.391   4.27x  0.00800 +4.887e-04 -1.762e-05 +4.711e-04 0.923
+[P549]   中纬 47.5-62.5 DJF   0.222   4.771   0.070   4.993  2.432  10.94x  0.00223 +4.337e-04 -2.735e-04 +1.603e-04 0.917
+[P549] 
+[P549] === 归因：要补上亏空，哪个因子必须变？以及**是否在上限之内** ===
+[P549]   （term2/term3 都算在 final 里；下表只针对 **term1** 的亏空，用 term1 单独比 —— 即假设其它项不变）
+[P549]   带 / 季          亏空   ①只抬 wEff: 需要/上限(w_zm+W_LOC_MAX)  可达?   ②只抬 q: 需要/上限(q/depl)  可达?   ③只抬 EPS_C: 需要   ≤1?
+[P549]   赤道 2.5-12.5  JJA   1.03x   4.595e-03 /6.513e-03    YES    0.01881 / 0.01843     NO    0.776    YES
+[P549]   副热 27.5-37.5 JJA   2.70x   -1.156e-03 /1.466e-03    YES    0.04104 / 0.01655     NO    2.023     NO
+[P549]   中纬 47.5-62.5 JJA   5.08x   3.203e-03 /2.733e-03     NO    0.03835 / 0.00825     NO    3.809     NO
+[P549]   赤道 2.5-12.5  DJF   2.08x   1.597e-03 /2.683e-03    YES    0.03533 / 0.01728     NO    1.556     NO
+[P549]   副热 27.5-37.5 DJF   4.27x   2.009e-03 /2.489e-03    YES    0.03410 / 0.00866     NO    3.199     NO
+[P549]   中纬 47.5-62.5 DJF  10.94x   1.754e-03 /2.434e-03    YES    0.02442 / 0.00243     NO    8.208     NO
+[P549] 
+[P549] === 对照：赤道带（term1 占比 ~100%，是「整体尺度」的标尺）===
+[P549]   若赤道带的 final 已经接近 GPCP，说明 EPS_C/RH_SEA/q 的**整体尺度是对的**，
+[P549]   副热带的亏空必须由**形状**（wEff 的经向分布 / q 的源距离）解释，而不是一个全局乘子。
+JAVA_EXIT=0
+JAVA_EXIT=0

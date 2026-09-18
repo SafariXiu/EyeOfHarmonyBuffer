@@ -38,3 +38,21 @@ addon.local.gradle.kts
 addon.late.local.gradle
 addon.late.local.gradle.kts
 layout.json
+
+# ============ research/：只入库【交付物】，不入库草稿纸 ============
+# 本仓库的既有约定见上：build\ 被忽略，取数/参考脚本就留在那里（build\eoh_probe\refs\*.py
+# 因此不受版本控制）。research\ 沿用同一条约定。实测体量：
+#   全部 455 个文件 / 328.4 MB —— 其中 pdfs\ 是 348 个已下载 PDF = 328.1 MB，
+#   另有 89 个一次性抓取脚本（oa2/citecheck1-6/meta1-4/probe1-4/_bulk1-4 ...）与 12 个 spec dump。
+# 入库的【交付物】：STEADY_STATE_MODEL_EQUATIONS.md、sections\*.md、pdfs\_report_*.md、
+#   B-climate-engineering-survey.md，以及三个被点名的可复用取数工具。
+# 若还要留下别的脚本，加一行 `!research/<名字>.py` 即可。
+/research/pdfs/*
+!/research/pdfs/*.md
+/research/__pycache__/
+/research/we/
+/research/*.py
+/research/*.json
+!research/oa2.py
+!research/wb.py
+!research/fetch_pdf.py

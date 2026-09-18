@@ -29,20 +29,27 @@ public class P296 {
         System.out.println("[P296] 接线口径：installedSeed=" + com.EyeOfHarmonyBuffer.sim.ocean.OceanField.installedSeed()
             + "  ENABLED=" + com.EyeOfHarmonyBuffer.sim.ocean.OceanField.ENABLED);
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p296_report.txt"), "UTF-8");
+        // ★ M7：外部开关必须自证。P296 走 PlateField.isLandWithCell 委托点，
+        //   开关若静默 OFF 则本报告量的是旧地形，却看不出任何异常。
+        say("P296：仪器自证 PlateField.TALOS_TERRAIN=" + PlateField.TALOS_TERRAIN
+            + "  sd=seedOf(" + SEED + ")=" + SimTerrain.seedOf(SEED)
+            + "  PLATE_CELL=" + PlateField.PLATE_CELL);
         int cell = PlateField.PLATE_CELL;
         long sd = SimTerrain.seedOf(SEED);
         double thS = Atmosphere.theta(0.0), thW = Atmosphere.theta(WorldContract.DAYS_PER_YEAR / 2.0);
 
         say("P296：B2 落地复测 + 本世界陆地占比/kappa 的纬度剖面");
         say("");
-        say("A. 本世界的陆地占比与 kappa 均值随纬度（每纬线 400 个 x 采样，x 跨 16,000 km）");
+        say("A. 本世界的陆地占比与 kappa 均值随纬度（每纬线 " + Zonal.NX + " 个 x 采样，x 跨 "
+            + (int) (Zonal.XSPAN / 1000) + " km = 地球纬圈周长）");
         say(String.format(LF, "  %-8s %10s %10s %12s", "纬度", "陆地占比", "kappa均值", "对照：地球"));
         double sumLand = 0, sumKap = 0; int nLat = 0;
+        long tSecA = System.nanoTime();   // §333 计时：找出 P296 的瓶颈
         for (int latDeg = 5; latDeg <= 85; latDeg += 5) {
-            int z = (int) ((double) latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+            int z = (int) ((double) WorldContract.zOfLat(latDeg));
             int nLand = 0, n = 0; double ks = 0;
-            for (int i = 0; i < 400; i++) {
-                int x = (int) ((long) i * 40_000L);
+            for (int i = 0; i < Zonal.NX; i++) {
+                int x = (int) Math.round((i + 0.5) * Zonal.XSPAN / Zonal.NX);
                 if (PlateField.isLandWithCell(x, z, sd, cell)) nLand++;
                 ks += Atmosphere.kappaAt(x, z, sd, cell);
                 n++;
@@ -53,23 +60,25 @@ public class P296 {
         }
         say(String.format(LF, "  ⇒ 全球平均：陆地占比 %.1f%%   kappa 均值 %.3f", sumLand / nLat, sumKap / nLat));
         say(String.format(LF, "  对照：PlateField 的 KAPPA_MEAN = %.3f（cell 项的「零纬向平均」参考值）", Atmosphere.KAPPA_MEAN));
+        say(String.format(LF, "  ⏱ A 段耗时 = %.1f s   （%d 次 kappaAt + %d 次 isLand）",
+            (System.nanoTime() - tSecA) / 1e9, Zonal.NX * 17, Zonal.NX * 17));
         say("");
 
         say("B. 纬向平均降水（mm/day），夏至 / 冬至");
         say(String.format(LF, "  %-8s %12s %12s %10s", "纬度", "夏至", "冬至", "陆地占比"));
-        int NX = 400, NZ = 50;
-        double[] pS = new double[NZ], pW = new double[NZ];
+        // ★ 口径唯一化（M13）：降水剖面走 Zonal.profile —— 40,000 km = 地球纬圈周长。
+        int NX = Zonal.NX, NZ = Zonal.NZ;
+        long tSecB = System.nanoTime();
+        double[] pS = Zonal.profile(sd, thS), pW = Zonal.profile(sd, thW);
         int[] lc = new int[NZ];
         for (int r = 0; r < NZ; r++) {
             int z = (int) ((r + 0.5) / NZ * WorldContract.Z_CYCLE);
-            double a = 0, b = 0; int nl = 0;
+            int nl = 0;
             for (int c = 0; c < NX; c++) {
-                int x = c * 40_000;
-                a += PrecipField.mmPerDay(x, z, sd, cell, thS, 500_000);
-                b += PrecipField.mmPerDay(x, z, sd, cell, thW, 500_000);
+                int x = (int) Math.round((c + 0.5) * Zonal.XSPAN / NX);
                 if (PlateField.isLandWithCell(x, z, sd, cell)) nl++;
             }
-            pS[r] = a / NX; pW[r] = b / NX; lc[r] = nl * 100 / NX;
+            lc[r] = nl * 100 / NX;
         }
         for (int r = 0; r < NZ; r += 2) {
             int z = (int) ((r + 0.5) / NZ * WorldContract.Z_CYCLE);
@@ -120,6 +129,9 @@ public class P296 {
             band(pS, 27.5, 37.5, NZ), 100 * (band(pS, 27.5, 37.5, NZ) / 2.301 - 1),
             band(pW, 27.5, 37.5, NZ), 100 * (band(pW, 27.5, 37.5, NZ) / 2.391 - 1)));
         say(String.format(LF, "   （诊断）旧带 47.5~62.5 夏 = %.2f", band(pS, 47.5, 62.5, NZ)));
+        say(String.format(LF, "  ⏱ B 段耗时 = %.1f s   （%d 次 mmPerDay = %.3f ms/次）",
+            (System.nanoTime() - tSecB) / 1e9, 2 * NX * NZ,
+            (System.nanoTime() - tSecB) / 1e6 / (2.0 * NX * NZ)));
         rep.close();
     }
 
@@ -135,14 +147,13 @@ public class P296 {
         return new double[]{best < 0 ? 0 : best, bestLat};
     }
 
+    /**
+     * ★ M13：口径唯一化 —— 本函数**不再自己算**，直接委托给 {@link Zonal}
+     * （40,000 km = 地球纬圈周长；见设计冻结 §327/§328）。
+     * NZ 参数保留只为不改动 14 个调用点；真口径只在 Zonal 里定义一份。
+     */
     static double band(double[] p, double lo, double hi, int NZ) {
-        double s = 0; int n = 0;
-        for (int r = 0; r < NZ; r++) {
-            int z = (int) ((r + 0.5) / NZ * WorldContract.Z_CYCLE);
-            double lat = Math.toDegrees(WorldContract.latOf(z, WorldContract.Z_CYCLE));
-            if (lat >= lo && lat < hi) { s += p[r]; n++; }
-        }
-        return n > 0 ? s / n : 0;
+        return Zonal.band(p, lo, hi);
     }
 
     static void say(String s) { System.out.println("[P296] " + s); rep.println("[P296] " + s); }

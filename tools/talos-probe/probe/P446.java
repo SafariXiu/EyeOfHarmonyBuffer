@@ -45,7 +45,7 @@ public class P446 {
             for (int xi = -6_000_000; xi <= 6_000_000; xi += 1_000_000) {
                 for (int k = 0; k < 5; k++) {
                     double latDeg = lo + (k + 0.5) * (hi - lo) / 5.0;
-                    int z = (int) (latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+                    int z = WorldContract.zOfLat(latDeg);
                     for (double th : PH4) {
                         double d = divU(xi, z, th);
                         vs.add(Math.abs(d)); n++;
