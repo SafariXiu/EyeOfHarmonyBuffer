@@ -25,6 +25,8 @@ import java.util.Locale;
 public class P256 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = com.EyeOfHarmonyBuffer.sim.world.WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685;
     static final double H_TOTAL = 4000.0;
@@ -60,10 +62,10 @@ public class P256 {
             for (int bi = 0; bi < NB; bi++) {
                 int z = (int) (BANDS[bi] * (ZC / 2));
                 int nLand = 0, nCross = 0, run = 0, best = 0;
-                boolean prev = PlateField.isLandWithCell(0, z, SEED, cell);
+                boolean prev = PlateField.isLandWithCell(0, z, SD, cell);
                 for (int xi = 0; xi < 2000; xi++) {
                     int x = xi * 5000;
-                    boolean land = PlateField.isLandWithCell(x, z, SEED, cell);
+                    boolean land = PlateField.isLandWithCell(x, z, SD, cell);
                     if (land) nLand++;
                     if (land != prev) nCross++;
                     if (!land) { run++; if (run > best) best = run; } else run = 0;
@@ -95,7 +97,7 @@ public class P256 {
                 GyreRow.BandedWind wind = new GyreRow.BandedWind(TAU0, ZC);
                 for (int ix = 0; ix < NCOL; ix++) {
                     tot++;
-                    GyreRow.Row r = GyreRow.solve(ix * XSTEP, z, SEED, cell, wind, pb);
+                    GyreRow.Row r = GyreRow.solve(ix * XSTEP, z, SD, cell, wind, pb);
                     if (!r.valid) continue;
                     if ((r.eastX - r.westX) < 2 * gate) continue;
                     int n = r.n;

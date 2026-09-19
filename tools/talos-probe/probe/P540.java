@@ -11,30 +11,33 @@ public class P540 {
   static final File ROOT = new File("K:" + File.separator + "moder" + File.separator + "EyeOfHarmonyBuffer");
   static PrintStream rep;
   static void S(String s){ rep.println("[P540] "+s); rep.flush(); System.out.println("[P540] "+s); System.out.flush(); }
-  static final long SEED = 1022228679L;
+  static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
   static final int N = 40000;
   static final double[] X = new double[N], Z = new double[N];
   /** 只取 bfield，用于把「预算场」与「高程映射」两层分开测。 */
   static double[] runB() {
     double[] r = new double[N];
-    for (int i = 0; i < N; i++) r[i] = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[i], Z[i], SEED);
+    for (int i = 0; i < N; i++) r[i] = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[i], Z[i], SD);
     return r; }
   static final double[] LVL = new double[8];
   static final int[] CALLER = new int[8];
   static double[] run() {
     double[] r = new double[N];
-    for (int i = 0; i < N; i++) r[i] = PlateField.elevationWithCell((int) X[i], (int) Z[i], SEED, PlateField.PLATE_CELL);
+    for (int i = 0; i < N; i++) r[i] = PlateField.elevationWithCell((int) X[i], (int) Z[i], SD, PlateField.PLATE_CELL);
     return r; }
   /** 本线程标定出的 LEVEL（若线程间不同 => 标定不确定；若相同 => 差异在下游）。 */
-  static double lvlNow() { return com.EyeOfHarmonyBuffer.sim.litho.TalosField.level(SEED); }
+  static double lvlNow() { return com.EyeOfHarmonyBuffer.sim.litho.TalosField.level(SD); }
   public static void main(String[] a) throws Exception {
     File dir=new File(ROOT,"build"+File.separator+"eoh_probe"+File.separator+"refs"); dir.mkdirs();
     rep=new PrintStream(new File(dir,"P540_threads.txt"),"UTF-8");
-    PlateField.TALOS_TERRAIN = true;
+    // §567：这里原先把 PlateField.TALOS_TERRAIN 强制置 true（旧实现还在时要显式选新路）。
+    // 旧地形与开关已删除 ⇒ 无需（也无法）再指定地形；本探针本来就测 TalosField 的线程安全。
     // 坐标要跨多个格窗，否则争用太弱
     for (int i = 0; i < N; i++) { X[i] = (i % 200) * 220_000.0 + 1000; Z[i] = (i / 200) * 1_900_000.0 + 2000; }
     S("=== P540 并发正确性 ===");
-    S(String.format(LF,"TALOS_TERRAIN=%b  SEED=%d  N=%d  线程=4", PlateField.TALOS_TERRAIN, SEED, N));
+    S(String.format(LF,"WORLD_IS_TALOS=%b  SEED=%d  N=%d  线程=4", PlateField.WORLD_IS_TALOS, SEED, N));
     double[] q1 = runB();
     double[] q2 = runB();
     double[] q3 = runB();
@@ -55,14 +58,14 @@ public class P540 {
     S(String.format(LF,"同线程连续三次: |r1-r2|max=%.3f (n=%d)   |r2-r3|max=%.3f (n=%d)", d12, n12, d23, n23));
     if (firstBad >= 0) {
       S(String.format(LF,"首个不一致 i=%d  x=%.0f z=%.0f  r1=%.6f r2=%.6f r3=%.6f", firstBad, X[firstBad], Z[firstBad], r1[firstBad], r2[firstBad], r3[firstBad]));
-      com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SEED);
-      double b1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SEED);
-      double b2 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SEED);
-      double h1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.hf(X[firstBad], Z[firstBad], SEED);
-      double g1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.age(X[firstBad], Z[firstBad], SEED);
+      com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SD);
+      double b1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SD);
+      double b2 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.bfield(X[firstBad], Z[firstBad], SD);
+      double h1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.hf(X[firstBad], Z[firstBad], SD);
+      double g1 = com.EyeOfHarmonyBuffer.sim.litho.TalosField.age(X[firstBad], Z[firstBad], SD);
       S(String.format(LF,"  分量: bfield 连续两次 = %.9f / %.9f   (差 %.3e)", b1, b2, Math.abs(b1-b2)));
       S(String.format(LF,"        hf = %.9f   age = %.9f   (纯噪声，应确定)", h1, g1));
-      S(String.format(LF,"        LEVEL = %.9f", com.EyeOfHarmonyBuffer.sim.litho.TalosField.level(SEED)));
+      S(String.format(LF,"        LEVEL = %.9f", com.EyeOfHarmonyBuffer.sim.litho.TalosField.level(SD)));
     }
     double[] base = r3;
     double[][] out = new double[4][];

@@ -13,6 +13,8 @@ import java.util.Locale;
 public class P270 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0;
     static final Locale LF = Locale.ROOT;
@@ -29,7 +31,7 @@ public class P270 {
         int z = (int) (0.25 * (ZC / 2));
         GyreRow.Params p = new GyreRow.Params();
         p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-        GyreRow.Row row = GyreRow.solve(5_500_000, z, SEED, cell, wind, p);
+        GyreRow.Row row = GyreRow.solve(5_500_000, z, SD, cell, wind, p);
         say(String.format(LF, "  纬线 z=%d（%.1f 度）盆宽 %.0f km，东岸 x=%d", z,
             Math.toDegrees(WorldContract.latOf(z, ZC)), (row.eastX - row.westX) / 1000.0, row.eastX));
         say("");
@@ -41,11 +43,11 @@ public class P270 {
             for (int k = 1; k <= 4; k++) {
                 int x = row.eastX - k * 120_000;
                 double lat = WorldContract.latOf(z, ZC);
-                double kx = Atmosphere.kappaAt(x, z, SEED, cell);
+                double kx = Atmosphere.kappaAt(x, z, SD, cell);
                 double gTot = gradP(x, z, cell, th, GRAD, true);
                 double gCell = gradP(x, z, cell, th, GRAD, false);
-                double[] uv = Atmosphere.windAt(x, z, SEED, cell, th, GRAD);
-                double[] ts = Atmosphere.windStress(x, z, SEED, cell, th, GRAD);
+                double[] uv = Atmosphere.windAt(x, z, SD, cell, th, GRAD);
+                double[] ts = Atmosphere.windStress(x, z, SD, cell, th, GRAD);
                 say(String.format(LF, "   %-9d %7.3f %11.3e %11.3e %11.3e %10.2f %9.5f %9.5f",
                     k * 120, kx, gTot, gTot - gCell, gCell, Math.hypot(uv[0], uv[1]), ts[0], ts[1]));
             }
@@ -80,9 +82,9 @@ public class P270 {
     }
 
     static double pv(int x, int z, int cell, double th, boolean total) {
-        double p = Atmosphere.pressureAnomaly(x, z, SEED, cell, th);
+        double p = Atmosphere.pressureAnomaly(x, z, SD, cell, th);
         if (total) return p;
-        return p - Atmosphere.cellPressure(WorldContract.latOf(z, ZC), Atmosphere.kappaAt(x, z, SEED, cell), th);
+        return p - Atmosphere.cellPressure(WorldContract.latOf(z, ZC), Atmosphere.kappaAt(x, z, SD, cell), th);
     }
 
     static void say(String s) { System.out.println("[P270] " + s); rep.println("[P270] " + s); }

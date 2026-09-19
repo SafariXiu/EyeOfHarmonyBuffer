@@ -23,6 +23,8 @@ import java.util.Locale;
 public class P247 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRID = 20;                 // 20x20 = 400 个查询点
     static final int GSTEP = 200_000;           // 200 km 间距 -> 4000 km 见方
@@ -57,7 +59,7 @@ public class P247 {
         int ns = 0, nc = 0;
         for (int iz = 0; iz < GRID; iz++) {
             for (int ix = 0; ix < GRID; ix++) {
-                BasinFinder.Basin b = BasinFinder.find(xs[ix], zs[iz], SEED, CELL);
+                BasinFinder.Basin b = BasinFinder.find(xs[ix], zs[iz], SD, CELL);
                 if (!b.valid) { nLand++; continue; }
                 nSea++;
                 if (b.truncated) nTrunc++;
@@ -87,11 +89,11 @@ public class P247 {
         int trials = 0, same = 0, skipped = 0;
         for (int iz = 0; iz < GRID; iz++) {
             for (int ix = 0; ix < GRID; ix++) {
-                BasinFinder.Basin b1 = BasinFinder.find(xs[ix], zs[iz], SEED, CELL);
+                BasinFinder.Basin b1 = BasinFinder.find(xs[ix], zs[iz], SD, CELL);
                 if (!b1.valid || b1.truncated) { skipped++; continue; }
                 // 区内另一个点：包围盒中心
                 int mx = (b1.minX + b1.maxX) / 2, mz = (b1.minZ + b1.maxZ) / 2;
-                BasinFinder.Basin b2 = BasinFinder.find(mx, mz, SEED, CELL);
+                BasinFinder.Basin b2 = BasinFinder.find(mx, mz, SD, CELL);
                 if (!b2.valid) { skipped++; continue; }   // 包围盒中心可能落在陆上：跳过而不是判失败
                 trials++;
                 if (b2.minX == b1.minX && b2.maxX == b1.maxX && b2.minZ == b1.minZ && b2.maxZ == b1.maxZ) same++;

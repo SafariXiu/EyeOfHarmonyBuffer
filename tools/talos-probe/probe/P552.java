@@ -92,7 +92,7 @@ public class P552 {
             long n = 0, nConv = 0;
             double sDiv = 0, sKap = 0, sCell = 0, sWzm = 0, sWloc = 0, sWlocP = 0, sWeff = 0, sWeffP = 0, sQ = 0, sP = 0;
             for (double latd = la + 2.5; latd <= hb; latd += 2.5) {
-                int z = (int) Math.round(latd / 90.0 * WorldContract.MAX_D);
+                int z = WorldContract.zOfLat(latd);
                 for (int c = 0; c < 72; c++) {
                     double lon = (c + 0.5) * 360.0 / 72;
                     if (lon < lo || lon > hi) continue;
@@ -138,7 +138,7 @@ public class P552 {
             double lo = (double) bx[0], hi = (double) bx[1];
             double la = (double) bx[2], hb = (double) bx[3];
             for (double latd = la + 2.5; latd <= hb; latd += 5.0) {
-                int z = (int) Math.round(latd / 90.0 * WorldContract.MAX_D);
+                int z = WorldContract.zOfLat(latd);
                 long n = 0, nConv = 0; double sDiv = 0, sKap = 0, sCell = 0, sWz = 0, sWl = 0, sWe = 0, sP = 0;
                 for (int c = 0; c < 72; c++) {
                     double lon = (c + 0.5) * 360.0 / 72;

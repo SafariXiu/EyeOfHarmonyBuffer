@@ -47,7 +47,7 @@ public class P497 {
         say(String.format(LF, "  %5s %10s %10s %10s %10s %12s", "lat", "陆_夏", "陆_冬", "海_夏", "海_冬", "陆(夏-冬)"));
         double[] mi = new double[2];
         for (int la = 5; la <= 45; la += 5) {
-            int z = (int) Math.round(la / 90.0 * WorldContract.MAX_D);
+            int z = WorldContract.zOfLat(la);
             double[] sum = new double[4]; int[] cnt = new int[4];
             double[] sumW = new double[2]; int[] cntW = new int[2];
             for (int i = 0; i < NX; i++) {

@@ -115,6 +115,7 @@ public class P478 {
         say(String.format(LF, "  判据：带流的经向海岸比例 %.1f%% >= 50%%  ⇒ %s",
             100.0 * nMeridWith / Math.max(1, nMerid),
             100.0 * nMeridWith / Math.max(1, nMerid) >= 50.0 ? "通过" : "**不通过**"));
+        say(String.format(LF, "  GATE_A6_MERIDIONAL=%s", 100.0 * nMeridWith / Math.max(1, nMerid) >= 50.0 ? "PASS" : "FAIL"));
         say(String.format(LF, "  reentryBlocked = %d（必须 0）", OceanField.reentryBlocked));
         say("⚠ 记账：本探针只读取 OceanField 的公开取值接口 + PlateField 的公开判定，未改任何生产常量。");
         rep.flush();

@@ -80,7 +80,7 @@ public class P548 {
             double dq = 0, dk = 0, dwzm = 0, dwloc = 0, dmfc = 0, dt = 0;
             double dts = 0, dqs = 0;   // ★ A1 诊断：地表温度 / 该温度下的饱和比湿
             for (double latd = la + 2.5; latd <= hb; latd += 2.5) {
-                int z = (int) Math.round(latd / 90.0 * WorldContract.MAX_D);
+                int z = WorldContract.zOfLat(latd);
                 for (int c = 0; c < 72; c++) {
                     int x = (int) Math.round((c + 0.5) * CIRC / 72);
                     double lon = (c + 0.5) * 360.0 / 72;

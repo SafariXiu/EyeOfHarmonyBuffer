@@ -92,7 +92,7 @@ public class P499 {
 
         for (int i = 0; i < NROW; i++) {
             double la = 2.5 + i * 2.5;
-            int z = (int) Math.round(la / 90.0 * WorldContract.MAX_D);
+            int z = WorldContract.zOfLat(la);
             double sL = 0, wL = 0, sS = 0, wS = 0;
             for (int q = 0; q < NX; q++) {
                 int x = (int) ((long) q * XSPAN / NX);

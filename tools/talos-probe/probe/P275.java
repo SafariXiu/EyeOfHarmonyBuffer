@@ -15,6 +15,8 @@ import java.util.Locale;
 public class P275 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0, W = 100_000.0;
     static final int NM = 96, NQ = 5;
@@ -29,8 +31,8 @@ public class P275 {
         double th = Atmosphere.theta(day);
         int GRAD = 500_000;   // R2：真实大气对海陆对比的响应尺度 1000~2000 km
         GyreRow.BandedWind wind = new GyreRow.BandedWind(TAU0, ZC);
-        say(String.format(LF, "P275：沿岸风做厚  PLATE_CELL=%d  C(MAX_OCEAN_HALF)=%d km  NM=%d NQ=%d",
-            cell, PlateField.MAX_OCEAN_HALF / 1000, NM, NQ));
+        say(String.format(LF, "P275：沿岸风做厚  PLATE_CELL=%d  NM=%d NQ=%d",
+            cell, NM, NQ));
         say("");
         double[] tau = new double[NM];
         int[] cnt = new int[NM];
@@ -43,17 +45,17 @@ public class P275 {
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SEED, cell, wind, p);
+                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SD, cell, wind, p);
                 if (!row.valid) continue;
                 if (row.eastX >= p.maxRow - 20_000) continue;
                 if (row.westX <= -p.maxRow + 20_000) continue;
                 if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
                 for (int k = 1; k <= 3; k++) {
                     int xx = row.eastX - k * 25_000;
-                    double[] uv0 = Atmosphere.windAt(xx, z, SEED, cell, th, GRAD);
+                    double[] uv0 = Atmosphere.windAt(xx, z, SD, cell, th, GRAD);
                     if (Math.hypot(uv0[0], uv0[1]) >= 24.5) capped++;
                     nsp++;
-                    double tz = Atmosphere.windStress(xx, z, SEED, cell, th, GRAD)[1];
+                    double tz = Atmosphere.windStress(xx, z, SD, cell, th, GRAD)[1];
                     s += tz; c++;
                     // 向赤道为正：北半球向赤道 = 南向 = tau_z < 0
                     double eq = Math.toDegrees(lat) >= 0 ? -tz : tz;
@@ -104,7 +106,7 @@ public class P275 {
             int z = (int) ((r + 0.5) / NM * ZC);
             GyreRow.Params p = new GyreRow.Params();
             p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-            GyreRow.Row row = GyreRow.solve((r * 97_000) % 9_000_000, z, SEED, cell, wind, p);
+            GyreRow.Row row = GyreRow.solve((r * 97_000) % 9_000_000, z, SD, cell, wind, p);
             if (!row.valid) continue;
             if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
             int q = Math.min(row.n, (int) (W / H));

@@ -15,6 +15,8 @@ import java.util.Locale;
 public class P269 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0, W = 100_000.0;
     static final double[] BANDS = {0.15, 0.25, 0.40, 0.55, 0.70, 0.85};
@@ -42,11 +44,11 @@ public class P269 {
             zs[r] = (int) ((r + 0.5) / NM * ZC);
             GyreRow.Params p = new GyreRow.Params();
             p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-            rows[r] = GyreRow.solve(5_500_000, zs[r], SEED, cell, wind, p);
+            rows[r] = GyreRow.solve(5_500_000, zs[r], SD, cell, wind, p);
             double s = 0; int c = 0;
             if (rows[r].valid) {
                 for (int k = 1; k <= 4; k++) {
-                    double[] a = Atmosphere.windStress(rows[r].eastX - k * 120_000, zs[r], SEED, cell,
+                    double[] a = Atmosphere.windStress(rows[r].eastX - k * 120_000, zs[r], SD, cell,
                         Atmosphere.theta(0.0), 15_000);
                     s += a[1]; c++;
                 }
@@ -81,7 +83,7 @@ public class P269 {
             int z = (int) ((k + 0.5) / NS * ZC);
             GyreRow.Params p = new GyreRow.Params();
             p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-            GyreRow.Row r = GyreRow.solve((k * 733_000) % 11_000_000, z, SEED, cell, wind, p);
+            GyreRow.Row r = GyreRow.solve((k * 733_000) % 11_000_000, z, SD, cell, wind, p);
             if (!r.valid || (r.eastX - r.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
             int q = Math.min(r.n, (int) (W / H));
             double s = 0;

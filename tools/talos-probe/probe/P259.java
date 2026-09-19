@@ -18,6 +18,8 @@ import java.util.Locale;
 public class P259 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int XSTEP = 20_000, ZSTEP = 200_000;   // z 覆盖一整个气候周期 0~20M
     static final int NX = 551, NZ = 101;
@@ -49,11 +51,11 @@ public class P259 {
                 for (int c = 0; c < NX; c++) {
                     int x = c * XSTEP;
                     int i = r * NX + c;
-                    land[i] = PlateField.isLandWithCell(x, z, SEED, cell) ? 1.0 : 0.0;
-                    elev[i] = PlateField.elevationWithCell(x, z, SEED, cell);
-                    tS[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, th0);
-                    tW[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, thHalf);
-                    pS[i] = Atmosphere.pressureAnomaly(x, z, SEED, cell, th0);
+                    land[i] = PlateField.isLandWithCell(x, z, SD, cell) ? 1.0 : 0.0;
+                    elev[i] = PlateField.elevationWithCell(x, z, SD, cell);
+                    tS[i] = Atmosphere.surfaceTemp(x, z, SD, cell, th0);
+                    tW[i] = Atmosphere.surfaceTemp(x, z, SD, cell, thHalf);
+                    pS[i] = Atmosphere.pressureAnomaly(x, z, SD, cell, th0);
                 }
             }
             double ms = (System.nanoTime() - t0) / 1e6;

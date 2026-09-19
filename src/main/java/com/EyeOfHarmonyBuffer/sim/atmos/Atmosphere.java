@@ -114,6 +114,94 @@ public final class Atmosphere {
     }
 
     /**
+     * ★★★ **§451：`pzRef` 进 `v` 的替代方案（§422 选项 D）。**
+     *
+     * <pre>
+     * 0 = 现状：v = (f*px - gam*(pz + pzRef))/den          （pzRef 直接驱动 v）
+     * 1 = 选项 D：v 的纬向平均部分改由【w_zm 经质量连续性导出】，pzRef 不再进 v
+     * </pre>
+     *
+     * <p><b>为什么必须换</b>（§422 已确证、但修法一直没落地）：`f→0` 时 `den → rho*gam²`，
+     * 于是 `v = -pzRef/(rho*gam)` —— `gam≈2.5e-5`、`pzRef≈3.6e-4 Pa/m` ⇒ **v ≈ -12 m/s**，
+     * 实测赤道纬向平均 `divU` 因此**大 14 倍**，且 **25~30N 符号翻**。
+     * 物理：赤道处经向气压梯度受**质量连续性**约束，不是「纯摩擦平衡」。
+     *
+     * <p><b>导出的式子</b>（球面纬向平均质量连续性，`V = ∫v dz`）：
+     * <pre>
+     *   (1/(a cosφ)) ∂(V cosφ)/∂φ = -w_zm(φ)
+     *   ⇒ V(φ) = -a * g(φ)/cosφ ,  g(φ) = ∫_0^φ w_zm cosφ' dφ' - wbar_c*sinφ
+     *   ⇒ v_zm(φ) = V(φ)/H_EFF
+     * </pre>
+     * `wbar_c = ∫_0^{π/2} w_zm cosφ dφ / ∫_0^{π/2} cosφ dφ` 是 `w_zm` 的余弦加权均值：
+     * **一个流函数要求净质量输送为零**（否则极点处 `V→∞`）⇒ 这一项是**推导出来的，不是拟合的**。
+     * 它同时给出 `v_zm(90°)=0`（`g` 与 `cosφ` 同阶趋于 0）与 `div(v_zm) = -(w_zm - wbar_c)/H_EFF`。
+     *
+     * <p>表源口径：`ZonalTables.wZm`（生产口径，`WZM_FROM_TABLE=false`）。
+     * ⚠ 若将来把 `WZM_FROM_TABLE` 定为 true，**这里必须同步换表**（已进 CALIBERS 未对账清单）。
+     */
+    public static int PZREF_VZ_MODE = 1;   // §487：默认改为 1 —— 模式 0 是【已确证的缺陷】
+    //  为什么改默认（用户裁决「按照最物理最正确的方向做」）：模式 0 下 f→0 时 den → rho*gam²，
+    //  v = -pzRef/(rho*gam) ≈ -12 m/s ⇒ 赤道纬向平均 divU 大 14 倍、25~30N 符号翻（§422 实测）。
+    //  模式 1 用 w_zm 经质量连续性导出的 v_zm（wbar_c 是推导出的流函数闭合项，§451 实测）。
+    //  ⚠ 这【会改变生产行为】：divU 量级回到 ~1e-6，验收基线需要重捕。
+
+    /** `v_zm` 查表步长（度）。 */
+    private static final double VZ_STEP = 0.5;
+    private static volatile double[] VZ_TAB = null;
+    private static volatile double VZ_WBAR_C = 0.0;
+
+    /** `w_zm` 的余弦加权均值（m/s）—— 流函数闭合项。首次调用时随表一起算好。 */
+    public static double vzWbarC() { vzTable(); return VZ_WBAR_C; }
+
+    private static double[] vzTable() {
+        double[] t = VZ_TAB;
+        if (t != null) return t;
+        synchronized (Atmosphere.class) {
+            if (VZ_TAB != null) return VZ_TAB;
+            final int n = (int) Math.round(90.0 / VZ_STEP) + 1;
+            double[] acc = new double[n];
+            double a = 0.0, prevW = ZonalTables.wZm(0.0);
+            for (int i = 1; i < n; i++) {
+                double d2 = i * VZ_STEP;
+                double curW = ZonalTables.wZm(d2) * Math.cos(Math.toRadians(d2));
+                a += 0.5 * (prevW + curW) * Math.toRadians(VZ_STEP);
+                acc[i] = a;
+                prevW = curW;
+            }
+            double wbar = acc[n - 1];          // / ∫_0^{π/2} cos = 1
+            double[] out = new double[n];
+            for (int i = 1; i < n - 1; i++) {
+                double d2 = i * VZ_STEP;
+                double g = acc[i] - wbar * Math.sin(Math.toRadians(d2));
+                out[i] = -(WorldContract.R_EFF * g) / (Math.cos(Math.toRadians(d2)) * H_EFF);
+            }
+            out[0] = 0.0; out[n - 1] = 0.0;
+            VZ_WBAR_C = wbar;
+            VZ_TAB = out;
+        }
+        return VZ_TAB;
+    }
+
+    /** §451：由 `w_zm` 经连续性导出的纬向平均经向风（m/s）。南半球取反。 */
+    public static double vZmAt(double latDeg) {
+        double a = Math.abs(latDeg);
+        if (a >= 90.0) return 0.0;
+        double[] t = vzTable();
+        double fi = a / VZ_STEP;
+        int i0 = (int) fi;
+        if (i0 >= t.length - 1) return t[t.length - 1];
+        double tx = fi - i0;
+        double v = t[i0] * (1.0 - tx) + t[i0 + 1] * tx;
+        return latDeg >= 0.0 ? v : -v;
+    }
+
+    /** §451：prescribed `v_zm` 自身的纬向平均散度（s^-1）= `-(w_zm - wbar_c)/H_EFF`。 */
+    public static double divVzmAt(double latDeg) {
+        double a = Math.min(90.0, Math.abs(latDeg));
+        return -(ZonalTables.wZm(a) - vzWbarC()) / H_EFF;
+    }
+
+    /**
      * Ekman-Rayleigh 平衡 + 纬向平均风。**赤道与中纬同一个公式，没有任何分支**。
      *
      * <pre>
@@ -134,7 +222,9 @@ public final class Atmosphere {
         // §62.3-2 / §84：p_ref 的**经向**梯度只进 v。u 不进 —— 纬向平均风已由外生 U_zm 给定，
         // 把 p_ref 的梯度也喂进 u 就是重复计数（P260 实测会造出 40 m/s 的虚假纬向风）。
         // d p_ref/dz = pRefSlopePerRad(latDeg)/R_EFF（sign 已含在方法里 ⇒ 赤道两侧都指向赤道）。
-        double pzRef = ZonalTables.pRefSlopePerRad(Math.toDegrees(latRad)) / WorldContract.R_EFF;
+        // §451：PZREF_VZ_MODE >= 1 时 pzRef 不再进 v（改由 w_zm 经连续性导出，见 vZmAt）。
+        double pzRef = (PZREF_IN_V && PZREF_VZ_MODE == 0)
+                     ? ZonalTables.pRefSlopePerRad(Math.toDegrees(latRad)) / WorldContract.R_EFF : 0.0;
         for (int it = 0; it < 3; it++) {
             double den = RHO_AIR * (gam * gam + f * f);
             u = -(gam * px + f * pz) / den;
@@ -145,6 +235,8 @@ public final class Atmosphere {
         // §83：不再用「整体平移 6 度」，改成观测的 1 月/7 月两表 + 按 cos(Theta) 季节插值。
         // 「洋盆尺度纬向风骨架」：SEA_ONLY_UZM=false 时与原行逐位不变；打开时按 κ 混入洋面口径表。
         u += ZonalTables.uZmBlend(Math.toDegrees(latRad), theta, kappa);
+        // §451：纬向平均【经向】风的等价项 —— 与 u_zm 平行地加进来（而不是让 pzRef 通过 Ekman 分母放大 14 倍）。
+        if (PZREF_VZ_MODE >= 1) v += vZmAt(Math.toDegrees(latRad));
         double sp = Math.hypot(u, v);
         if (sp > U_MAX) { u *= U_MAX / sp; v *= U_MAX / sp; }
         return new double[]{u, v};
@@ -378,7 +470,83 @@ public final class Atmosphere {
      * 而是在 COAST_BLEND（800 km）尺度上平滑过渡。
      * 南半球自动反相（相位移 pi），不需要任何开关。
      */
+    // ================= §407 陆海热容对比（平板模型） =================
+
+    /**
+     * ★★★ §407：季节项改由【平板热容模型】推导，取代地球振幅表（`A_LAND_K`/`A_SEA_K`）。
+     * **默认 false => 逐位不变。**
+     *
+     * <p><b>物理</b>：`C*dT'/dt = F'(t) - lambda*T'`，周期强迫下的稳态解
+     * <pre>
+     *   A   = (F0/lambda) / sqrt(1 + (omega*tau)^2),   tau = C/lambda
+     *   phi = atan(omega*tau)
+     * </pre>
+     * **陆海差异全部来自 `C`（差 133 倍）与 `lambda`（蒸发反馈在干表面被 beta 压掉）。**
+     *
+     * <p><b>lambda 零新拟合常数</b>：`lambda = 4*EPS*sigma*T^3 + beta*chv*LV*dq_sat/dT`
+     * —— 长波反馈用模型自己的 OLR 参数化的导数，蒸发反馈用模型自己的 `qSat`。
+     *
+     * <p><b>实测（P607，25N）</b>：海洋振幅 2.09 K（表 3.20）、陆地 8.93 K（表 8.70）、
+     * 陆海比 4.27（表 2.72）、海洋滞后 52.5 天（表 60）、**陆地滞后 1.5 天（表 30）**。
+     * ⇒ **陆地滞后表差 20 倍，那是本开关要修的主要东西。**
+     */
+    public static boolean SEASON_FROM_HEAT_CAPACITY = false;
+    /** 海洋混合层热容 J/(m^2 K)：rho_w*c_w*h = 1000*4000*50 m。 */
+    public static double C_SEA = 1000.0 * 4000.0 * 50.0;
+    /** 陆地土壤热容 J/(m^2 K)：rho_s*c_s*h = 1500*1000*1 m。 */
+    public static double C_LAND = 1500.0 * 1000.0 * 1.0;
+    /** 参考风速耦合系数 rho*C_D*|V|（kg/(m^2 s)）。 */
+    public static double CHV_REF = 1.2 * 1.3e-3 * 6.0;
+    /** 陆地上的参考表面湿润度（§387 实测值，用于压制蒸发反馈）。 */
+    public static double BETA_LAND_REF = 0.30;
+
+    /** 平板模型的反馈系数 lambda（W/(m^2 K)）。 */
+    public static double slabLambda(double latRad, double kappa) {
+        double t = annualSeaLevelTemp(latRad, 0.5, 0.0);
+        double lamLong = 4.0 * Radiation.EPS * Radiation.SIGMA * t * t * t;
+        double dq = (PrecipField.qSat(t + 1.0) - PrecipField.qSat(t - 1.0)) / 2.0;
+        double lamEvapRef = CHV_REF * Radiation.LV * dq;
+        double k = clamp01(kappa);
+        double betaEff = 1.0 - k * (1.0 - BETA_LAND_REF);
+        return lamLong + betaEff * lamEvapRef;
+    }
+
+    /** 平板模型的时间常数（秒）。 */
+    public static double slabTau(double latRad, double kappa) {
+        double k = clamp01(kappa);
+        double c = (1.0 - k) * C_SEA + k * C_LAND;
+        return c / slabLambda(latRad, kappa);
+    }
+
+    private static double slabOmega() {
+        return 2.0 * Math.PI / (WorldContract.DAYS_PER_YEAR * 86400.0);
+    }
+
+    /** 吸收太阳的季节振幅（W/m^2）：用二至日的日照差。 */
+    public static double seasonalSolarAmp(double latRad, double kappa) {
+        double a = Radiation.insolation(latRad, OBLIQUITY);
+        double b = Radiation.insolation(latRad, -OBLIQUITY);
+        return Math.abs(a - b) / 2.0 * (1.0 - Radiation.ALB_LAND);
+    }
+
+    /** 平板模型给出的季节振幅（K）。 */
+    public static double slabAmpK(double latRad, double kappa) {
+        double lam = slabLambda(latRad, kappa);
+        double tau = slabTau(latRad, kappa);
+        double w = slabOmega();
+        return (seasonalSolarAmp(latRad, kappa) / lam) / Math.sqrt(1.0 + w * tau * w * tau);
+    }
+
+    /** 平板模型给出的滞后相位（弧度）。 */
+    public static double slabPhaseRad(double latRad, double kappa) {
+        return Math.atan(slabOmega() * slabTau(latRad, kappa));
+    }
+
     public static double seasonalAnomaly(double latRad, double kappa, double theta) {
+        if (SEASON_FROM_HEAT_CAPACITY) {
+            double hemi0 = latRad >= 0.0 ? 0.0 : Math.PI;
+            return slabAmpK(latRad, kappa) * Math.cos(theta - slabPhaseRad(latRad, kappa) - hemi0);
+        }
         double latDeg = Math.toDegrees(latRad);
         double k = clamp01(kappa);
         double aSea = ZonalTables.aSea(latDeg);
@@ -444,7 +612,20 @@ public final class Atmosphere {
     public static boolean SEASON_SHAPE_FROM_OBS = false;
 
     /** 海温异常提供者（由 M2 的洋流给出：西暖东冷）。null = 无异常（默认）。 */
-    public interface SstProvider { double anomalyAt(int x, int z); }
+    public interface SstProvider {
+        double anomalyAt(int x, int z);
+        /**
+         * ★★★ **§447：带相位的重载**（默认回落到年平 ⇒ 既有提供者不必改）。
+         *
+         * <p>为什么需要：SST 的**区域季节循环**在旧接口里根本表达不出来（`anomalyAt(int,int)` 没有 theta），
+         * 模型的季节 SST 只能来自 `seasonalAnomaly(lat,kappa,theta)` —— 那是**纬向**的。
+         * 而季风的水汽源带**区域**季节循环。观测锚（COBE-SST2 月气候 1991-2020，
+     * `refs/gen_sst_box_cycle.py`）：孟加拉湾盒 JJA − 年 = **+1.13 K**、南海 **+1.30 K**、
+     * 阿拉伯海 **+0.04 K**、索马里外海 **−1.01 K**。
+     * ⚠ §445 三 里那个「JJA 比年均暖 4~5 K」是**没有出处的估值**，§448 已用实测改正。
+         */
+        default double anomalyAt(int x, int z, double theta) { return anomalyAt(x, z); }
+    }
     public static SstProvider SST_PROVIDER = null;
 
     /**
@@ -502,9 +683,10 @@ public final class Atmosphere {
      * （κ 场 0.3280 / isLand 面积加权陆地占比 32.80 % / hypsometry 32.855 %）。
      * 旧值 0.15 的问题是<b>数值错了 2.2 倍</b>（残留 +252 Pa 的假高压）。
      *
-     * <p>⚠ <b>不要把它换成「按纬度的大陆度表」</b>：`PlateField` 全链
-     * （contScore / 抖动 Voronoi / 造山 / 岛弧限制器）是 (x,z) 统计均匀且各向同性的，
-     * **没有任何一处引用纬度** ⇒ ⟨κ⟩(φ) 实测是平的（19 个纬度全在 0.304~0.341，**无一超过 2σ**）。
+     * <p>⚠ <b>不要把它换成「按纬度的大陆度表」</b>：地形链（§567 之前是 `PlateField` 的
+     * contScore / 抖动 Voronoi / 造山 / 岛弧限制器；§567 之后是 `TalosField`）都只依赖 (x,z)，
+     * **没有任何一处引用纬度** ⇒ ⟨κ⟩(φ) 实测是平的（19 个纬度全在 0.304~0.341，**无一超过 2σ**；
+     * ⚠ 该实测是在**旧地形**上做的，本常量在 TalosField 上应重测 —— 见设计冻结 §567 的重捕清单）。
      * 「65 度 0.71」是单条 z 线 × 6.7 个板块格的**抽样噪声**（同纬度换窗口给 0.054，见 §90）。
      *
      * <p>⚠ `PLATE_CELL` 一旦改变，⟨κ⟩ **必须重测**（P420 应进回归集）。
@@ -543,9 +725,53 @@ public final class Atmosphere {
         return t * t * (3.0 - 2.0 * t);
     }
 
+    /**
+     * 环流侧（§405）：cellPressure 的季节位相改由模型自己的陆海温差驱动。
+     *
+     * 为什么：原来写死 CELL_MIGRATION*cos(theta - CELL_LAG)（8 度迁移 + 30 天滞后），
+     * 那是一个与模型温度场完全无关的正弦。于是「哪个月热低压在哪」不是从物理里长出来的。
+     *
+     * 诚实的局限：模型现在没有自己的求解温度场（S1a Radiation 与 HadleyCell 都默认关），
+     * 所以这里用的是 landSurfaceTemp/seaSurfaceTemp —— 它们本身仍来自 ZonalTables（地球表）。
+     * 这严格优于现状（至少位相与模型其余部分同源、且随模型温度变化），
+     * 但真正的升级要等 RCE 落地（§396）。
+     *
+     * 幅度对齐：CELL_MIG_SENS 由首次调用时自标定，使 JJA 在 25N 的迁移量与旧式完全相同
+     * => 只换形状，不动幅度（§398 的教训：归一化方式必须说清）。
+     */
+    public static boolean CELL_PHASE_FROM_TEMP = false;
+    /** 陆海温差 -> 迁移纬度的灵敏度（度/K）。<=0 时首次调用自标定。 */
+    public static double CELL_MIG_SENS = 0.0;
+    /** 自标定参考纬度（度）。 */
+    public static double CELL_MIG_REF_LAT_DEG = 25.0;
+
+    /** 旧式（硬编码正弦）给出的迁移纬度，度。 */
+    public static double cellMigrationDegHardcoded(double theta) {
+        return Math.toDegrees(CELL_MIGRATION * Math.cos(theta - CELL_LAG));
+    }
+
+    /** 模型自己的陆海温差（K）：陆地（用该纬度平均海拔）减海洋。 */
+    public static double landSeaTempContrast(double latRad, double theta) {
+        double elev = ZonalTables.landMeanElev(latRad);
+        return landSurfaceTemp(latRad, theta, elev) - seaSurfaceTemp(latRad, theta);
+    }
+
+    private static double cellMigSensCalib() {
+        if (CELL_MIG_SENS > 0.0) return CELL_MIG_SENS;
+        double ref = Math.toRadians(CELL_MIG_REF_LAT_DEG);
+        double dT = landSeaTempContrast(ref, 0.0);
+        double want = cellMigrationDegHardcoded(0.0);
+        CELL_MIG_SENS = (Math.abs(dT) < 1.0e-6) ? 0.0 : want / dT;
+        return CELL_MIG_SENS;
+    }
+
     public static double cellPressure(double latRad, double kappa, double theta) {
-        double shifted = Math.toDegrees(latRad - CELL_MIGRATION * Math.cos(theta - CELL_LAG));
-        return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (KAPPA_MEAN - clamp01(kappa));
+        double migDeg = CELL_PHASE_FROM_TEMP
+                ? cellMigSensCalib() * landSeaTempContrast(latRad, theta)
+                : cellMigrationDegHardcoded(theta);
+        double shifted = Math.toDegrees(latRad) - migDeg;
+        double kk = Double.isNaN(PA_FIXED_KAPPA) ? clamp01(kappa) : PA_FIXED_KAPPA;
+        return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (KAPPA_MEAN - kk);
     }
 
     // ================= 沿岸风参数化（观测锚点） =================
@@ -563,6 +789,20 @@ public final class Atmosphere {
      * <p>它规定的是**风**（大气的输出），不是洋流 ⇒ 不违反「零规定洋流」。
      * 关闭方式：COAST_WIND_ON = false。
      */
+    /**
+     * ★★★ A/B 开关（§422）：`p_ref` 的经向斜率是否进 `v`。**默认 true ⇒ 逐位不变。**
+     *
+     * <p><b>物理疑问</b>：`wind()` 的注释已经指出，`p_ref` 的经向梯度是【纬向平均】气压梯度，
+     * 而纬向平均风已由外生 `U_zm` 给定 ⇒ 把它喂进 `u` 就是重复计数（P260 实测造出 40 m/s 虚假纬向风）。
+     * **同一个论证对 `v` 也成立**：纬向平均气压梯度的平衡响应就是【纬向平均经向环流】，
+     * 而模型已经用 `ZonalTables.wZm`（Hadley 胞表）表示它了。
+     *
+     * <p><b>实测症状</b>（P629）：赤道 `pzRef = 0`、5N `pzRef = +3.6e-4 Pa/m`，
+     * 而 `f=0` 处 `v = -gam*(pz+pzRef)/(rho*(gam^2+f^2))` ⇒ `v` 从赤道的 `+2.04` 跳到 5N 的 `-5.82`，
+     * 产生 `dv/dz = -1.5e-05` 的【虚假赤道辐合】—— 比真实热带低层散度（~1e-6）大 13.6 倍。
+     */
+    public static boolean PZREF_IN_V = true;
+
     public static boolean COAST_WIND_ON = false;   // 裁决：继续修诊断，不用参数化（§52.2）
     /** 沿岸风速幅值（m/s），由观测的 0.09 Pa 反推。 */
     public static double COAST_WIND_V = 7.5;
@@ -601,6 +841,14 @@ public final class Atmosphere {
         return p == null ? 0.0 : p.anomalyAt(x, z);
     }
 
+    /** §447：**带相位**的 SST 距平（K）。没有支持相位的提供者时回落到年平。 */
+    public static double sstAnom(int x, int z, double theta) {
+        Integer s = SST_SUPPRESS.get();
+        if (s != null && s > 0) return 0.0;
+        SstProvider p = SST_PROVIDER;
+        return p == null ? 0.0 : p.anomalyAt(x, z, theta);
+    }
+
     /** 兼容重载（离散海陆）。仅用于对照。 */
     public static double seasonalAnomaly(double latRad, boolean land, double theta) {
         return seasonalAnomaly(latRad, land ? 1.0 : 0.0, theta);
@@ -623,7 +871,7 @@ public final class Atmosphere {
         double[] ke = kappaElev(x, z, seed, cell);
         double k = ke[0];
         double elev = ke[1];
-        return annualSeaLevelTemp(lat, k, sstAnom(x, z))
+        return annualSeaLevelTemp(lat, k, sstAnom(x, z, theta))
              + seasonalAnomaly(lat, k, theta)
              - GAMMA * Math.max(0.0, elev) * k;
     }
@@ -656,6 +904,15 @@ public final class Atmosphere {
      *   p'   = -K_P * T'_c
      * </pre>
      */
+    // ===== §409 诊断钩子（只给探针用，生产恒为默认值）：把 p 的两项拆开 =====
+    public static boolean PA_NO_CELL = false;
+    public static boolean PA_NO_THERMAL = false;
+    public static double PA_FIXED_KAPPA = Double.NaN;
+    /** 打开地表干暖项（§409）：见 pressureAnomaly 内的推导。默认 false => 逐位不变。 */
+    public static boolean PA_DRY_WARMTH = false;
+    /** 干暖项里取 beta 用的差分步长（与生产同口径）。 */
+    public static int SOIL_GRAD_STEP = 500_000;
+
     public static double pressureAnomaly(int x, int z, long seed, int cell, double theta) {
         double lat = WorldContract.latOf(z);
         double[] ke = kappaElev(x, z, seed, cell);
@@ -668,7 +925,35 @@ public final class Atmosphere {
                     + seasonalAnomaly(lat, k, theta)
                     - GAMMA * Math.max(0.0, elev) * k;
         double h = Math.max(0.0, elev) * PLATEAU_AMP * k;
-        return -K_P * CHI * (tSfc + GAMMA * h - tRef)
-             + cellPressure(lat, k, theta);
+        // ★★★ §409：地表干暖项 —— 缺蒸发冷却导致的额外升温。
+        //   为什么必须有它（P610 实测）：seasonalAnomaly 在亚洲 +6.95 K、撒哈拉 +7.01 K，
+        //   【几乎完全一样】，因为它只依赖 kappa。而真实的撒哈拉夏季升温远大于印度，
+        //   正是因为【没有蒸发冷却】。缺了这一项，纬向对称的副高场对两地一视同仁，
+        //   模型就永远区分不出亚洲与撒哈拉。
+        //
+        //   零新常数：ΔT_dry = (1-beta) * LE_pot / lambda
+        //     LE_pot = chv*LV*(qSat(T) - q_a)      潜在蒸发（beta=1 时的潜热通量）
+        //     lambda = 4*EPS*sigma*T^3 + beta*chv*LV*dqSat/dT   线性化反馈
+        //   beta=1 => ΔT=0（逐位不变）；beta=0 => 把全部缺失的蒸发冷却转成升温。
+        double dryWarmth = 0.0;
+        if (PA_DRY_WARMTH && SoilMoisture.ENABLED) {
+            double beta = SoilMoisture.betaAt(x, z, seed, cell, theta, SOIL_GRAD_STEP);
+            double ta = annualSeaLevelTemp(lat, k, 0.0) + seasonalAnomaly(lat, k, theta);
+            double qa = PrecipField.moisture(ta, 0.0, k);
+            // ⚠ 这里【绝不能】调 windAt：windAt -> pressureAnomaly -> 本分支 => 无限递归
+            //   （实测 P611 第一版 JAVA_EXIT=1，就是这个）。
+            //   改用模型已有的【纬向平均风表】作为大尺度风速 —— 零递归、零新常数。
+            //   省略了经向分量与瞬变风，属于已文档化的近似。
+            double sp = Math.abs(ZonalTables.uZmBlend(Math.toDegrees(lat), theta, k));
+            double chv = Radiation.bulkCoeff(k, sp);
+            double lePot = chv * Radiation.LV * Math.max(0.0, PrecipField.qSat(ta) - qa);
+            double dq = (PrecipField.qSat(ta + 1.0) - PrecipField.qSat(ta - 1.0)) / 2.0;
+            double lambda = 4.0 * Radiation.EPS * Radiation.SIGMA * ta * ta * ta
+                          + beta * chv * Radiation.LV * dq;
+            if (lambda > 1.0e-6) dryWarmth = (1.0 - beta) * lePot / lambda;
+        }
+        double therm = PA_NO_THERMAL ? 0.0 : -K_P * CHI * (tSfc + dryWarmth + GAMMA * h - tRef);
+        double cellTerm = PA_NO_CELL ? 0.0 : cellPressure(lat, k, theta);   // 注意：参数名已经是 cell
+        return therm + cellTerm;
     }
 }

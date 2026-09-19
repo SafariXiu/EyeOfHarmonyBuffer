@@ -21,6 +21,8 @@ import java.util.Locale;
 public class P445 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRAD = 500_000;
@@ -31,10 +33,10 @@ public class P445 {
     static void say(String s) { rep.println("[P445] " + s); System.out.println("[P445] " + s); }
 
     static double divU(int x, int z, double th) {
-        double[] ux = Atmosphere.windAt(x + GRAD, z, SEED, CELL, th, GRAD);
-        double[] uw = Atmosphere.windAt(x - GRAD, z, SEED, CELL, th, GRAD);
-        double[] un = Atmosphere.windAt(x, z + GRAD, SEED, CELL, th, GRAD);
-        double[] us = Atmosphere.windAt(x, z - GRAD, SEED, CELL, th, GRAD);
+        double[] ux = Atmosphere.windAt(x + GRAD, z, SD, CELL, th, GRAD);
+        double[] uw = Atmosphere.windAt(x - GRAD, z, SD, CELL, th, GRAD);
+        double[] un = Atmosphere.windAt(x, z + GRAD, SD, CELL, th, GRAD);
+        double[] us = Atmosphere.windAt(x, z - GRAD, SD, CELL, th, GRAD);
         return (ux[0] - uw[0]) / (2.0 * GRAD) + (un[1] - us[1]) / (2.0 * GRAD);
     }
 
@@ -56,15 +58,15 @@ public class P445 {
                 double wl = -Atmosphere.H_BL * d;
                 double wlc = Math.max(-PrecipField.W_LOC_MAX, Math.min(PrecipField.W_LOC_MAX, wl));
                 double lat = WorldContract.latOf(z);
-                double k = Atmosphere.kappaAt(x, z, SEED, CELL);
-                double elev = PlateField.elevationWithCell(x, z, SEED, CELL);
+                double k = Atmosphere.kappaAt(x, z, SD, CELL);
+                double elev = PlateField.elevationWithCell(x, z, SD, CELL);
                 double tSl = Atmosphere.tZonalMean(lat) + Atmosphere.seasonalAnomaly(lat, k, 0.0);
                 double hUp = Math.max(0.0, elev);
                 double q = PrecipField.moisture(tSl, k > 0.0 ? hUp : 0.0, k);
                 double w = PrecipField.wEff(lat, 0.0, d);
                 if (dz % 2 == 0 || Math.abs(dz) <= 2)
                     say(String.format(LF, "    %-12d %12.4e %13.3e %13.3e %13.3e %13.4f", dz, d, wl, wlc, w,
-                        PrecipField.mmPerDay(x, z, SEED, CELL, 0.0, GRAD)));
+                        PrecipField.mmPerDay(x, z, SD, CELL, 0.0, GRAD)));
             }
             say("");
         }
@@ -74,7 +76,7 @@ public class P445 {
         for (int dz = -4; dz <= 4; dz += 2) {
             say(String.format(LF, "    z 偏移 %-4d  divU = %12.4e    mm/day = %13.4f", dz,
                 divU(x, z15 + dz, 0.0),
-                PrecipField.mmPerDay(x, z15 + dz, SEED, CELL, 0.0, GRAD)));
+                PrecipField.mmPerDay(x, z15 + dz, SD, CELL, 0.0, GRAD)));
         }
         say("");
         say("  === divU 的「台阶」有多大：跨 10 度线前后的 divU 差（1 m 分辨率）===");

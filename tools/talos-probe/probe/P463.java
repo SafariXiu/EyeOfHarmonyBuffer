@@ -52,11 +52,12 @@ public class P463 {
         say("P463：涡动闭合大改的标定扫描（口径 = P296，NX=400 x NZ=50）");
         say(String.format(LF, "  现行 EDDY_MIX=%.3f   EDDY_TAU=%.0f s (%.2f 天)   标定目标 GPCP 45~55 JJA = 2.565",
             PrecipField.EDDY_MIX, PrecipField.EDDY_TAU, PrecipField.EDDY_TAU / 86400.0));
-        // ★ E122 守卫：读数前先自证仪器状态。批处理曾把 -Dtalos.terrain=true 拆成
-        //   "-Dtalos.terrain true" => getBoolean 为 false => 整张标定表是在开关关闭下测的。
-        say("  地形开关 PlateField.TALOS_TERRAIN = "
-            + com.EyeOfHarmonyBuffer.sim.litho.PlateField.TALOS_TERRAIN
-            + "   (必须与本次意图一致，否则整张表作废)");
+        // ★ E122 守卫（历史注记，§567）：读数前先自证仪器状态。批处理曾把 -Dtalos.terrain=true
+        //   拆成 "-Dtalos.terrain true" => 整张标定表是在旧地形（开关关闭）下测的。
+        //   §567 把旧地形与开关整支删除 ⇒ 地形只剩 TalosField 一条路；本行改为自证世界身份位。
+        say("  地形身份 PlateField.WORLD_IS_TALOS = "
+            + com.EyeOfHarmonyBuffer.sim.litho.PlateField.WORLD_IS_TALOS
+            + "   (旧开关已删除；唯一地形路 = TalosField)");
         say("  口径 = Zonal（x 跨度 " + (int) (Zonal.XSPAN / 1000) + " km = 地球纬圈周长，NX="
             + Zonal.NX + "，NZ=" + Zonal.NZ + "）—— 与验收仪器 P296 同口径");
         say("");

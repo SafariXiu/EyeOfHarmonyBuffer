@@ -24,6 +24,8 @@ import java.util.Locale;
 public class P466 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_TOTAL = 4000.0, A_H = 1.9e4, GRID = 5000.0;
     static final int GRAD = 500_000;
@@ -39,10 +41,10 @@ public class P466 {
         final double theta;
         AtmosCurl(double theta) { this.theta = theta; }
         @Override public double at(int x, int z) {
-            double[] e = Atmosphere.windStress(x + GRAD, z, SEED, CELL, theta, GRAD);
-            double[] w = Atmosphere.windStress(x - GRAD, z, SEED, CELL, theta, GRAD);
-            double[] n = Atmosphere.windStress(x, z + GRAD, SEED, CELL, theta, GRAD);
-            double[] s = Atmosphere.windStress(x, z - GRAD, SEED, CELL, theta, GRAD);
+            double[] e = Atmosphere.windStress(x + GRAD, z, SD, CELL, theta, GRAD);
+            double[] w = Atmosphere.windStress(x - GRAD, z, SD, CELL, theta, GRAD);
+            double[] n = Atmosphere.windStress(x, z + GRAD, SD, CELL, theta, GRAD);
+            double[] s = Atmosphere.windStress(x, z - GRAD, SD, CELL, theta, GRAD);
             return (e[1] - w[1]) / (2.0 * GRAD) - (n[0] - s[0]) / (2.0 * GRAD);
         }
     }
@@ -63,7 +65,7 @@ public class P466 {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = GRID; p.rhoH = CoastalLayer.RHO * H_TOTAL; p.aH = A_H; p.zCycle = ZC;
                 long t0 = System.nanoTime();
-                GyreRow.Row row = GyreRow.solve(5_500_000, z, SEED, CELL, wc, p);
+                GyreRow.Row row = GyreRow.solve(5_500_000, z, SD, CELL, wc, p);
                 double dt = (System.nanoTime() - t0) / 1e9;
                 if (!row.valid) { say(String.format(LF, "  %-6d %-8s  invalid", latDeg, which == 0 ? "band" : "atmos")); continue; }
                 say(String.format(LF, "  %-6d %-8s %6d %11.3e %11.4f %11.3e %11.3e %9.2f",
@@ -72,7 +74,7 @@ public class P466 {
             // 两种 curl 的剖面差异（每隔 1/8 盆宽采一个点，用 band 行的两端）
             GyreRow.Params p = new GyreRow.Params();
             p.h = GRID; p.rhoH = CoastalLayer.RHO * H_TOTAL; p.aH = A_H; p.zCycle = ZC;
-            GyreRow.Row rb = GyreRow.solve(5_500_000, z, SEED, CELL, band, p);
+            GyreRow.Row rb = GyreRow.solve(5_500_000, z, SD, CELL, band, p);
             if (rb.valid) {
                 AtmosCurl ac = new AtmosCurl(Atmosphere.theta(0.0));
                 StringBuilder sb = new StringBuilder();

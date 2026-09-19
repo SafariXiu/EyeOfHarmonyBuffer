@@ -19,6 +19,8 @@ import java.util.Locale;
 public class P260 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int XSTEP = 20_000, ZSTEP = 200_000;   // z 覆盖一整个气候周期 0~20M
     static final int NX = 551, NZ = 101;
     static final int GRAD = 10_000;
@@ -71,10 +73,10 @@ public class P260 {
                 for (int c = 0; c < NX; c++) {
                     int x = c * XSTEP;
                     int i = r * NX + c;
-                    double[] uv = Atmosphere.windAt(x, z, SEED, cell, th, GRAD);
+                    double[] uv = Atmosphere.windAt(x, z, SD, cell, th, GRAD);
                     uu[i] = uv[0]; vv[i] = uv[1];
                     sp[i] = Math.hypot(uv[0], uv[1]);
-                    mask[i] = PlateField.isLandWithCell(x, z, SEED, cell) ? 1.0 : 0.0;
+                    mask[i] = PlateField.isLandWithCell(x, z, SD, cell) ? 1.0 : 0.0;
                 }
             }
             double ms = (System.nanoTime() - t0) / 1e6;
@@ -97,7 +99,7 @@ public class P260 {
             double sumS = 0, sumW = 0; int n = 0;
             for (int c = 0; c < NX; c++) {
                 int x = c * XSTEP;
-                if (PlateField.isLandWithCell(x, z, SEED, cell)) continue;
+                if (PlateField.isLandWithCell(x, z, SD, cell)) continue;
                 sumS += store[0][0][(z / ZSTEP) * NX + c];
                 sumW += store[1][0][(z / ZSTEP) * NX + c];
                 n++;
@@ -123,7 +125,7 @@ public class P260 {
                     int z = r * ZSTEP;
                     for (int c = 0; c < NX; c++) {
                         int x = c * XSTEP;
-                        boolean land = PlateField.isLandWithCell(x, z, SEED, cell);
+                        boolean land = PlateField.isLandWithCell(x, z, SD, cell);
                         if ((wantLand == 1) != land) continue;
                         int i = r * NX + c;
                         double us = store[0][0][i], vs = store[0][1][i];
@@ -152,12 +154,12 @@ public class P260 {
             int z = r * (WorldContract.MAX_D / (CZN - 1));
             for (int c = 0; c < CXN; c++) {
                 int x = c * 20_000;
-                double[] tE = Atmosphere.windStress(x + GRAD, z, SEED, cell, thS, GRAD);
-                double[] tW2 = Atmosphere.windStress(x - GRAD, z, SEED, cell, thS, GRAD);
-                double[] tN = Atmosphere.windStress(x, z + GRAD, SEED, cell, thS, GRAD);
-                double[] tS = Atmosphere.windStress(x, z - GRAD, SEED, cell, thS, GRAD);
+                double[] tE = Atmosphere.windStress(x + GRAD, z, SD, cell, thS, GRAD);
+                double[] tW2 = Atmosphere.windStress(x - GRAD, z, SD, cell, thS, GRAD);
+                double[] tN = Atmosphere.windStress(x, z + GRAD, SD, cell, thS, GRAD);
+                double[] tS = Atmosphere.windStress(x, z - GRAD, SD, cell, thS, GRAD);
                 double curl = (tE[1] - tW2[1]) / (2.0 * GRAD) - (tN[0] - tS[0]) / (2.0 * GRAD);
-                double[] t0 = Atmosphere.windStress(x, z, SEED, cell, thS, GRAD);
+                double[] t0 = Atmosphere.windStress(x, z, SD, cell, thS, GRAD);
                 curlAcc[r] += curl; spdAcc[r] += Math.hypot(t0[0], t0[1]); curlN[r]++;
             }
         }
@@ -179,15 +181,15 @@ public class P260 {
         for (int k = 0; k < reps; k++) {
             for (int r = 0; r < 50; r++) {
                 for (int c = 0; c < 50; c++) {
-                    double[] uv = Atmosphere.windAt(c * 2000, r * 2000, SEED, cell, thS, 2000);
+                    double[] uv = Atmosphere.windAt(c * 2000, r * 2000, SD, cell, thS, 2000);
                     m += (uv[0] > 0 ? 1 : 0);
                 }
             }
         }
         double perTile = (System.nanoTime() - t2) / 1e6 / reps;
         say(String.format(LF, "   风场：dx=2km 的 100 km 瓦片（2500 点，含 4 次 p_sl 差分）= %.0f ms（预算 20000 ms）", perTile));
-        double[] a1 = Atmosphere.windAt(123456, 234567, SEED, cell, thS, GRAD);
-        double[] a2 = Atmosphere.windAt(123456, 234567, SEED, cell, thS, GRAD);
+        double[] a1 = Atmosphere.windAt(123456, 234567, SD, cell, thS, GRAD);
+        double[] a2 = Atmosphere.windAt(123456, 234567, SD, cell, thS, GRAD);
         say(String.format(LF, "   确定性：%.12f vs %.12f  %s", a1[0], a2[0], a1[0] == a2[0] ? "逐位相同 OK" : "**不同**"));
         say(String.format(LF, "   （校验和 %d）", m));
         rep.close();

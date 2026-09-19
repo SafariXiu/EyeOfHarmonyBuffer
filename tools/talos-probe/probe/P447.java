@@ -60,9 +60,9 @@ public class P447 {
         double aMax = 0;
         for (int[] p : new int[][]{{0, 0}, {500_000, 3_000_000}, {-2_000_000, -6_000_000}, {7_000_000, 1_234_567}}) {
             for (double th : PH4) {
-                double[] tau = Atmosphere.windStress(p[0], p[1], SEED, CELL, th, GRAD);
-                double[] uv = Atmosphere.windAt(p[0], p[1], SEED, CELL, th, GRAD);
-                double cd = Atmosphere.cdOf(Atmosphere.kappaAt(p[0], p[1], SEED, CELL));
+                double[] tau = Atmosphere.windStress(p[0], p[1], com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED), CELL, th, GRAD);
+                double[] uv = Atmosphere.windAt(p[0], p[1], com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED), CELL, th, GRAD);
+                double cd = Atmosphere.cdOf(Atmosphere.kappaAt(p[0], p[1], com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED), CELL));
                 double k = Atmosphere.RHO_AIR * cd * Math.hypot(uv[0], uv[1]);
                 aMax = Math.max(aMax, Math.abs(tau[0] - k * uv[0]));
                 aMax = Math.max(aMax, Math.abs(tau[1] - k * uv[1]));

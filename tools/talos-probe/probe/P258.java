@@ -19,6 +19,24 @@ import java.util.Locale;
 public class P258 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code Atmosphere}/{@code PlateField} 的入口收的是 <b>派生后</b> 的长种子，不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后
+     * 温度/气压/掩膜全用它。本探针原来把裸世界种子 {@code SEED} 直接传给了 7 处收
+     * {@code long seed} 的入口 —— {@code surfaceTemp}(:95/:96/:148/:158/:159)、
+     * {@code pressureAnomaly}(:97)、{@code isLandWithCell}(:98)
+     * ⇒ 渲染出来的温度场/气压场/陆地掩膜（含两张 PNG 与两份 TSV）全来自另一个世界。
+     * 同型缺陷本仓已修三次：E5a（冻结 :6208）、P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口必须传派生值 {@code SD}；收 {@code int worldSeedInt}
+     * 的入口传裸值**。本文件的 {@code OceanWiring.onWorld(SEED)}（:39）按定义收 int 世界种子
+     * ⇒ **保持裸 int**（生产同样如此）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：仍是 T_zm 三节点 {@code < 0.005 K}、
+     * 仍是 C1 {@code <= 20 s}、仍是两次同参数调用逐位相同。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int X0 = 0, Z0 = 0, STEP = 5000;
     static final int NX = 481, NZ = 201;
@@ -61,6 +79,7 @@ public class P258 {
                 Math.toDegrees(a[0]), got, a[1], good ? "OK" : "错"));
         }
         say(String.format(LF, "   ⇒ 观测表三个节点：%s", ok ? "全部成立" : "**有错**"));
+        say(String.format(LF, "  GATE_ZM_ANCHOR=%s", ok ? "PASS" : "FAIL"));
         say(String.format(LF, "   本世界的纬向平均（κ=⟨κ⟩）与地球 T_zm 的差：赤道 %+.2f K、45 度 %+.2f K、极 %+.2f K",
             Atmosphere.zonalMeanSeaLevelK(0.0) - Atmosphere.tZonalMean(0.0),
             Atmosphere.zonalMeanSeaLevelK(Math.PI / 4) - Atmosphere.tZonalMean(Math.PI / 4),
@@ -91,10 +110,10 @@ public class P258 {
                 for (int c = 0; c < NX; c++) {
                     int x = X0 + c * STEP;
                     int i = r * NX + c;
-                    tempS[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, th0);
-                    tempW[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, thHalf);
-                    presS[i] = Atmosphere.pressureAnomaly(x, z, SEED, cell, th0);
-                    mask[i] = PlateField.isLandWithCell(x, z, SEED, cell) ? 1.0 : 0.0;
+                    tempS[i] = Atmosphere.surfaceTemp(x, z, SD, cell, th0);
+                    tempW[i] = Atmosphere.surfaceTemp(x, z, SD, cell, thHalf);
+                    presS[i] = Atmosphere.pressureAnomaly(x, z, SD, cell, th0);
+                    mask[i] = PlateField.isLandWithCell(x, z, SD, cell) ? 1.0 : 0.0;
                 }
             }
             double ms = (System.nanoTime() - t0) / 1e6;
@@ -144,18 +163,20 @@ public class P258 {
         for (int k = 0; k < reps; k++) {
             for (int r = 0; r < W; r++) {
                 for (int c = 0; c < W; c++) {
-                    Atmosphere.surfaceTemp(c * 2000, r * 2000, SEED, PlateField.PLATE_CELL, th0);
+                    Atmosphere.surfaceTemp(c * 2000, r * 2000, SD, PlateField.PLATE_CELL, th0);
                 }
             }
         }
         double perTile = (System.nanoTime() - t1) / 1e6 / reps;
         say(String.format(LF, "   dT 单场：dx=2 km 的 100 km 瓦片（%d 点）= %.0f ms", W * W, perTile));
         say(String.format(LF, "   ⇒ 温度+气压两个场约 %.0f ms，离 20 s 预算有巨大余量", perTile * 2));
+        say(String.format(LF, "  GATE_COST_C1=%s", perTile * 2 <= 20000.0 ? "PASS" : "FAIL"));
         say("");
         say("D. 确定性");
-        double a = Atmosphere.surfaceTemp(123456, 234567, SEED, PlateField.PLATE_CELL, 1.2345);
-        double b = Atmosphere.surfaceTemp(123456, 234567, SEED, PlateField.PLATE_CELL, 1.2345);
+        double a = Atmosphere.surfaceTemp(123456, 234567, SD, PlateField.PLATE_CELL, 1.2345);
+        double b = Atmosphere.surfaceTemp(123456, 234567, SD, PlateField.PLATE_CELL, 1.2345);
         say(String.format(LF, "   同参数两次调用：%.12f vs %.12f  %s", a, b, a == b ? "逐位相同 OK" : "**不同**"));
+        say(String.format(LF, "  GATE_DETERMINISM=%s", a == b ? "PASS" : "FAIL"));
         say(String.format(LF, "   输出目录：%s", MAPDIR.getAbsolutePath()));
         rep.close();
     }

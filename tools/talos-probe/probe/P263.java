@@ -20,6 +20,8 @@ import java.util.Locale;
 public class P263 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int MAX_D = WorldContract.MAX_D;
     static final double TAU0 = 0.0685;
@@ -82,14 +84,14 @@ public class P263 {
                 int x0 = (ix * 1_800_000 + m * 137_000) % 11_000_000;
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = GRID; p.rhoH = 1025.0 * H_TOTAL; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row r = GyreRow.solve(x0, z, SEED, cell, wind, p);
+                GyreRow.Row r = GyreRow.solve(x0, z, SD, cell, wind, p);
                 if (!r.valid) continue;
                 double gate = Math.PI * p.deltaAt(z);
                 if ((r.eastX - r.westX) < 2 * gate) continue;
                 int xe = r.eastX;
                 for (int k = 1; k <= 3; k++) {
                     int xq = xe - k * 150_000;
-                    double[] ts = Atmosphere.windStress(xq, z, SEED, cell, thS, 10_000);
+                    double[] ts = Atmosphere.windStress(xq, z, SD, cell, thS, 10_000);
                     sum += ts[1];
                     sumS += Math.hypot(ts[0], ts[1]);
                     n++;

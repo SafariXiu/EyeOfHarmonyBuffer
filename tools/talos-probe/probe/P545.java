@@ -42,7 +42,7 @@ public class P545 {
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p545_report.txt"), "UTF-8");
         say("P545：高纬度陆地占比 vs 地球（同口径：|lat| 5 度带 × 整圈 40,000 km × " + NW + " 世界系综）");
         say("  契约自证：Z_CYCLE=" + WorldContract.Z_CYCLE + "  MAX_D=" + WorldContract.MAX_D
-            + "  TALOS_TERRAIN=" + PlateField.TALOS_TERRAIN);
+            + "  WORLD_IS_TALOS=" + PlateField.WORLD_IS_TALOS);
         say(String.format(LF, "  采样：NX=%d（%.0f km 步长）  NZ=%d（%.1f 度一行）",
             NX, 40_000.0 / NX, NZ, 360.0 / NZ));
         say("");

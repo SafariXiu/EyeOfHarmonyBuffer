@@ -16,6 +16,26 @@ import java.util.Locale;
 public class P292 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（C5/D1，**E5a 类口径错误**）：{@code PlateField}/{@code Atmosphere} 要的是
+     * <b>派生后</b>的长种子，不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后
+     * {@code GyreRow.solve}(:369) / {@code CoastalLayer.coastTangent}(:385) /
+     * {@code Atmosphere.windStress}(:390) <b>全部</b>用它。本探针原来把裸世界种子 {@code SEED}
+     * 直接传给这三处 ⇒ 陆地掩膜、κ 场、海岸切向全不同 ⇒ **量的是另一个世界**。
+     * 同型错误本仓已有两次先例并已修：E5a（冻结 :6208）；P539（冻结 :22955
+     * 「用裸种子 ⇒ 量的不是同一个世界」、:22962「已改为 SimTerrain.seedOf(...) 派生」）。
+     *
+     * <p>正确性的独立判据：P294 A 段（:53-61）断言
+     * {@code V2TerrainGen.composeColumn(..., SEED, ...)} 必须与
+     * {@code PlateField.isLandWithCell(x, z, SimTerrain.seedOf(SEED), ...)} 逐位一致
+     * ⇒ PlateField 收的是派生种子。
+     *
+     * <p>{@code OceanWiring.onWorld(SEED)} 仍传<b>世界种子</b>：那个入口按定义收 int 世界种子（生产同样如此）。
+     * <p>本次改动**不动任何判据、域、阈值**（仍是 |lat| <= 35 的 24 格、仍 >= 80%）。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0, W = 100_000.0;
     static final int GRAD = 500_000;
@@ -68,7 +88,7 @@ public class P292 {
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row row = GyreRow.solve((q * 3_100_000 + li * 811_000) % 9_000_000, z, SEED, cell, band, p);
+                GyreRow.Row row = GyreRow.solve((q * 3_100_000 + li * 811_000) % 9_000_000, z, SD, cell, band, p);
                 if (!row.valid) continue;
                 if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) continue;
                 if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
@@ -97,8 +117,8 @@ public class P292 {
                 for (int q = 0; q < NQ; q++) {
                     if (!rOk[li][q]) continue;
                     int z = rZ[li][q];
-                    double[] t = CoastalLayer.coastTangent(rX[li][q], z, SEED, cell);
-                    double[] ts = Atmosphere.windStress(rX[li][q] - 50_000, z, SEED, cell, th, GRAD);
+                    double[] t = CoastalLayer.coastTangent(rX[li][q], z, SD, cell);
+                    double[] ts = Atmosphere.windStress(rX[li][q] - 50_000, z, SD, cell, th, GRAD);
                     double tauS = ts[0]*t[0] + ts[1]*t[1];
                     double hc = CoastalLayer.hcLocal(tauS, f);
                     v[n++] = CoastalLayer.eastBandContribution(hc, f, W) * 1000;
@@ -153,6 +173,7 @@ public class P292 {
         for (int li = 0; li < LATS.length; li++) { totAlive += nAlive[li]; totEqAlive += nEqAlive[li]; }
         say(String.format(LF, "  **合计（|lat| <= 35，判据域 = D53） %d/%d = %.0f%%**（判据 >=80%%）   死区版 %d/%d = %.0f%%",
             totEqC, totC, totEqC*100.0/Math.max(1,totC), eqAliveC, aliveC, eqAliveC*100.0/Math.max(1,aliveC)));
+        say(String.format(LF, "  GATE_A3_DIRECTION=%s", totEqC*100.0/Math.max(1,totC) >= 80.0 ? "PASS" : "FAIL"));
         say(String.format(LF, "  （诊断）含 ±45 度的旧合计 %d/%d = %.0f%% —— **已废**（D53：那条判据在 45 度观测上不成立）",
             totEq, tot, totEq*100.0/Math.max(1,tot)));
         say(String.format(LF, "  **合计（死区 |v| < %.1f mm/s 不计） %d/%d = %.0f%%**   被排除 %d 格 = %.0f%%",

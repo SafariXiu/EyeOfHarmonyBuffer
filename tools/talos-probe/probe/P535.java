@@ -15,6 +15,10 @@ import java.util.Locale;
  *   当量 = ns/列 / ns(一次 vnoise)
  *
  * 于是「V8 生成器必须 <= N 当量」成为与机器无关的验收条件。
+ *
+ * <p>⚠ §567：旧地形基线的两个 bench（{@code elevationWithCellFull} / {@code isLandFullWithArc}）
+ * 已随旧实现删除 ⇒ 本节不再打印「相对旧基线的比值」，只报机器无关的当量读数。
+ * 历史基线读数见 build/eoh_probe/refs 与归档日志。
  */
 public class P535 {
 
@@ -23,7 +27,9 @@ public class P535 {
     static PrintStream rep;
     static void S(String s) { rep.println("[P535] " + s); rep.flush(); System.out.println("[P535] " + s); System.out.flush(); }
 
-    static final long SEED = 1022228679L;
+    static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int  CELL = 2_400_000;
     static final double THR = 0.10;
     static double sinkD = 0; static boolean sinkB = false;
@@ -45,31 +51,15 @@ public class P535 {
 
     static double benchVnoise(int n) {
         long t0 = System.nanoTime(); double acc = 0;
-        for (int i = 0; i < n; i++) acc += vnoise(i * 0.017, i * 0.031, SEED);
+        for (int i = 0; i < n; i++) acc += vnoise(i * 0.017, i * 0.031, SD);
         long dt = System.nanoTime() - t0; sinkD += acc; return dt / (double) n; }
-
-    static double benchElevFull(int baseX, int baseZ) {
-        long t0 = System.nanoTime(); double acc = 0;
-        for (int c = 0; c < CHUNKS; c++) {
-            int bx = baseX + (c % 64) * 16, bz = baseZ + (c / 64) * 16;
-            for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++)
-                acc += PlateField.elevationWithCellFull(bx + lx, bz + lz, SEED, CELL, THR); }
-        long dt = System.nanoTime() - t0; sinkD += acc; return dt / (double) (CHUNKS * 256); }
-
-    static double benchLandFull(int baseX, int baseZ) {
-        long t0 = System.nanoTime(); int acc = 0;
-        for (int c = 0; c < CHUNKS; c++) {
-            int bx = baseX + (c % 64) * 16, bz = baseZ + (c / 64) * 16;
-            for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++)
-                if (PlateField.isLandFullWithArc(bx + lx, bz + lz, SEED, CELL, THR)) acc++; }
-        long dt = System.nanoTime() - t0; sinkD += acc; return dt / (double) (CHUNKS * 256); }
 
     static double benchElevLight(int baseX, int baseZ) {
         long t0 = System.nanoTime(); double acc = 0;
         for (int c = 0; c < CHUNKS; c++) {
             int bx = baseX + (c % 64) * 16, bz = baseZ + (c / 64) * 16;
             for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++)
-                acc += PlateField.elevationWithCell(bx + lx, bz + lz, SEED, CELL); }
+                acc += PlateField.elevationWithCell(bx + lx, bz + lz, SD, CELL); }
         long dt = System.nanoTime() - t0; sinkD += acc; return dt / (double) (CHUNKS * 256); }
 
     static double benchFbm7(int baseX, int baseZ) {   // 7 倍频 fbm，当「10 当量」的参照物
@@ -78,7 +68,7 @@ public class P535 {
             int bx = baseX + (c % 64) * 16, bz = baseZ + (c / 64) * 16;
             for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {
                 double x = bx + lx, z = bz + lz, s = 0, a = 1, f = 1.0 / 3000.0;
-                for (int o = 0; o < 7; o++) { s += a * vnoise(x * f, z * f, SEED + o * 7919L); a *= 0.5; f *= 2; }
+                for (int o = 0; o < 7; o++) { s += a * vnoise(x * f, z * f, SD + o * 7919L); a *= 0.5; f *= 2; }
                 acc += s; } }
         long dt = System.nanoTime() - t0; sinkD += acc; return dt / (double) (CHUNKS * 256); }
 
@@ -92,33 +82,28 @@ public class P535 {
         S("");
 
         S("--- 预热 ---");
-        for (int i = 0; i < 4; i++) { benchVnoise(2_000_000); benchElevFull(1000, 2000); benchLandFull(1000, 2000); benchElevLight(1000, 2000); benchFbm7(1000, 2000); }
+        for (int i = 0; i < 4; i++) { benchVnoise(2_000_000); benchElevLight(1000, 2000); benchFbm7(1000, 2000); }
         S("预热完成");
         S("");
 
-        double[] nv = new double[REP], ef = new double[REP], lf = new double[REP], el = new double[REP], f7 = new double[REP];
+        double[] nv = new double[REP], el = new double[REP], f7 = new double[REP];
         for (int r = 0; r < REP; r++) {
             nv[r] = benchVnoise(4_000_000);
-            ef[r] = benchElevFull(1000 + r * 4096, 2000 + r * 4096);
-            lf[r] = benchLandFull(1000 + r * 4096, 2000 + r * 4096);
             el[r] = benchElevLight(1000 + r * 4096, 2000 + r * 4096);
             f7[r] = benchFbm7(1000 + r * 4096, 2000 + r * 4096);
         }
-        java.util.Arrays.sort(nv); java.util.Arrays.sort(ef); java.util.Arrays.sort(lf); java.util.Arrays.sort(el); java.util.Arrays.sort(f7);
-        double medNv = nv[REP/2], medEf = ef[REP/2], medLf = lf[REP/2], medEl = el[REP/2], medF7 = f7[REP/2];
+        java.util.Arrays.sort(nv); java.util.Arrays.sort(el); java.util.Arrays.sort(f7);
+        double medNv = nv[REP/2], medEl = el[REP/2], medF7 = f7[REP/2];
 
         S(String.format(LF, "--- 中位数（%d 趟）---", REP));
         S(String.format(LF, "vnoise(x1)             %8.2f ns", medNv));
         S(String.format(LF, "fbm 7 倍频             %8.2f ns  = %6.2f 当量", medF7, medF7 / medNv));
-        S(String.format(LF, "elevationWithCell      %8.2f ns  = %6.2f 当量", medEl, medEl / medNv));
-        S(String.format(LF, "isLandFullWithArc      %8.2f ns  = %6.2f 当量", medLf, medLf / medNv));
-        S(String.format(LF, "elevationWithCellFull  %8.2f ns  = %6.2f 当量   <= 基线", medEf, medEf / medNv));
-        S("");
-        S(String.format(LF, "min/max 离散度: elevFull %.2f..%.2f ns (%.1f%%)", ef[0], ef[REP-1], 100.0*(ef[REP-1]-ef[0])/ef[0]));
+        S(String.format(LF, "elevationWithCell      %8.2f ns  = %6.2f 当量   (= 生产路 TalosField)", medEl, medEl / medNv));
         S("");
         S(String.format(LF, "=== 验收门槛（设计冻结 §306）==="));
-        S(String.format(LF, "V8 生成器目标  <= %.2f 当量（= 1.00x 基线）", medEf / medNv));
-        S(String.format(LF, "V8 生成器理想  <= %.2f 当量（= 0.70x 基线）", 0.70 * medEf / medNv));
+        S(String.format(LF, "⚠ §567：旧地形基线（elevationWithCellFull / isLandFullWithArc）已随旧实现删除，"));
+        S(String.format(LF, "   本节原本的「V8 生成器 <= x 当量（= 1.00x / 0.70x 旧基线）」无法再现场计算。"));
+        S(String.format(LF, "   历史门槛读数见 build/eoh_probe/refs 与归档日志；本探针只报机器无关的当量值。"));
         S(String.format(LF, "§306 代价模型预测：朴素移植 360 vnoise -> O1 后 10 -> O2 后 4"));
         S(String.format(LF, "sink=%.6e/%b", sinkD, sinkB));
         rep.close();

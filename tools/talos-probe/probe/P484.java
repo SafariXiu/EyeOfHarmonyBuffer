@@ -79,6 +79,8 @@ public class P484 {
             bsNew, bsOld));
         boolean wireOk = cpNew >= 1 && cpOld == 0 && cpImp == 0 && bsNew >= 1 && bsOld == 1;
         say(String.format(LF, "   ⇒ 接线自检：%s", wireOk ? "**通过**" : "**不通过**"));
+        say(String.format(LF, "  GATE_D72_WIRING=%s", wireOk ? "PASS" : "FAIL"));
+        say("  GATE_D72_ICE_EDGE=REVIEW");
         say("");
 
         OceanWiring.onWorld(SEED);

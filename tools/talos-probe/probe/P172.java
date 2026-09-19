@@ -77,8 +77,8 @@ public class P172 {
                 sumH += dH;
                 if (dH > mxH) mxH = dH;
 
-                double t0 = V2TerrainGen.mountainTexture(SEED, x, z);
-                double t1 = V2TerrainGen.mountainTexture(SEED, x, z + ZC);
+                double t0 = V2TerrainGen.mountainTexture(V2TerrainGen.textureSeed(SEED), x, z);
+                double t1 = V2TerrainGen.mountainTexture(V2TerrainGen.textureSeed(SEED), x, z + ZC);
                 nT++;
                 sumT += Math.abs(t1 - t0);
                 if (Math.abs(t1 - t0) < 1e-12) sameT++;

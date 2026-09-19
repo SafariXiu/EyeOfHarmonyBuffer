@@ -112,7 +112,7 @@ public class P491 {
         int nSig = 0, nPairs = 0; double ssZ = 0, sumAbsD = 0;
         for (int i = 1; i <= 17; i++) {
             double lat = i * 5.0;
-            int zN = (int) Math.round(lat / 90.0 * WorldContract.MAX_D);
+            int zN = WorldContract.zOfLat(lat);
             int zS = WorldContract.Z_CYCLE - zN;
             double[] rN = landFrac(zN), rS = landFrac(zS);
             double d = rN[0] - rS[0];

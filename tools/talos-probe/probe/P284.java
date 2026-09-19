@@ -22,6 +22,28 @@ import java.util.Locale;
 public class P284 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code Atmosphere}/{@code PlateField} 的入口收的是 <b>派生后</b> 的长种子，不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后
+     * κ 场/气压距平/风/海拔全用它。本探针原来把裸世界种子 {@code SEED} 直接传给了收
+     * {@code long seed} 的入口 ⇒ κ 分层、陆地比例、风场与气压距平全不同 ⇒ **量的不是同一个世界**。
+     * 直接改的 13 个调用点：{@code kappaAt}(:117/:483)、{@code isLandWithCell}(:128)、
+     * {@code kappaMemo}(:523)、{@code elevationWithCell}(:527)，以及两个收 {@code long seed}
+     * 的助手 {@code grad()}（:179/:180/:513/:514）与 {@code pAnom()}（:182/:183/:516/:517）——
+     * 经它们到达的入口是 {@code pressureAnomaly}(:275)、{@code kappaAt}(:277)、
+     * {@code elevationWithCell}(:287)。
+     * 同型缺陷本仓已修三次：E5a（冻结 :6208）、P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口（含 {@code grad()}/{@code pAnom()} 的 seed 形参）
+     * 必须传派生值 {@code SD}；收 {@code int worldSeedInt} 的入口传裸值**。本文件的
+     * {@code OceanWiring.onWorld(SEED)}（:93/:337）与 {@code OceanField.install(SEED)}（:456）
+     * 按定义收 int 世界种子 ⇒ **保持裸 int**（生产同样如此）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：本门是 (b) 类「无判据」的原始读数表
+     * （V0~V4 与 20~40 度汇总的口径、{@code n < 5} 不打印的过滤一律不动）。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int XSTEP = 20_000, NX = 2001;      // x = 0 .. 40,000 km
     static final int ZSTEP = 200_000, R0 = 8, R1 = 25; // z = 1.6M .. 5.0M  => lat 14.4 .. 45.0
     static final int GRAD = 500_000;
@@ -114,7 +136,7 @@ public class P284 {
         for (int r = R0; r <= R1; r++) {
             int baseH = (r - R0) * NK;
             for (int c = XOFF; c < XOFF + NK; c++) {
-                kapH[baseH + (c - XOFF)] = Atmosphere.kappaAt(c * XSTEP, r * ZSTEP, SEED, cell);
+                kapH[baseH + (c - XOFF)] = Atmosphere.kappaAt(c * XSTEP, r * ZSTEP, SD, cell);
             }
         }
         int[] px_ = new int[nP], pz_ = new int[nP];
@@ -125,7 +147,7 @@ public class P284 {
             for (int c = CLO; c <= CHI; c++) {
                 px_[k] = c * XSTEP; pz_[k] = r * ZSTEP;
                 kap[k] = kapH[(r - R0) * NK + (c - XOFF)];
-                land[k] = PlateField.isLandWithCell(c * XSTEP, r * ZSTEP, SEED, cell);
+                land[k] = PlateField.isLandWithCell(c * XSTEP, r * ZSTEP, SD, cell);
                 k++;
             }
         }
@@ -176,11 +198,11 @@ public class P284 {
                 int x = px_[i], z = pz_[i];
                 double lat = WorldContract.latOf(z);
                 int rr = R0 + i / nOwn, cc = CLO + i % nOwn;   // D76：默认 nOwn=NX, CLO=0
-                double[] a = grad(cc, rr, SEED, cell, thS, var, refLine);
-                double[] b2 = grad(cc, rr, SEED, cell, thW, var, refLine);
+                double[] a = grad(cc, rr, SD, cell, thS, var, refLine);
+                double[] b2 = grad(cc, rr, SD, cell, thW, var, refLine);
                 double refC = refLine == null ? 0.0 : refLine[i];
-                pS[i] = pAnom(x, z, SEED, cell, thS, var, refC);
-                pW[i] = pAnom(x, z, SEED, cell, thW, var, refC);
+                pS[i] = pAnom(x, z, SD, cell, thS, var, refC);
+                pW[i] = pAnom(x, z, SD, cell, thW, var, refC);
                 double[] w1 = Atmosphere.wind(a[0], a[1], kap[i], lat, thS);
                 double[] w2 = Atmosphere.wind(b2[0], b2[1], kap[i], lat, thW);
                 if ((var & V_NO_UZM) != 0) {
@@ -480,7 +502,7 @@ public class P284 {
         for (int r = R0; r <= R1; r++) {
             int baseH = (r - R0) * nk;
             for (int c = xoff; c < xoff + nk; c++) {
-                kapH[baseH + (c - xoff)] = Atmosphere.kappaAt(c * XSTEP, r * ZSTEP, SEED, cell);
+                kapH[baseH + (c - xoff)] = Atmosphere.kappaAt(c * XSTEP, r * ZSTEP, SD, cell);
             }
         }
         long tKappa = System.nanoTime() - t0;
@@ -510,21 +532,21 @@ public class P284 {
             double lat = WorldContract.latOf(z);
             int rr = R0 + i / nOwn, cc = cLo + i % nOwn;
             long a = System.nanoTime();
-            double[] g1 = grad(cc, rr, SEED, cell, thS, 0, ref2);
-            double[] g2 = grad(cc, rr, SEED, cell, thW, 0, ref2);
+            double[] g1 = grad(cc, rr, SD, cell, thS, 0, ref2);
+            double[] g2 = grad(cc, rr, SD, cell, thW, 0, ref2);
             long b = System.nanoTime(); tGrad += b - a;
-            double p1 = pAnom(x, z, SEED, cell, thS, 0, 0.0);
-            double p2 = pAnom(x, z, SEED, cell, thW, 0, 0.0);
+            double p1 = pAnom(x, z, SD, cell, thS, 0, 0.0);
+            double p2 = pAnom(x, z, SD, cell, thW, 0, 0.0);
             long c2 = System.nanoTime(); tPAnom += c2 - b;
             double[] w1 = Atmosphere.wind(g1[0], g1[1], kap[i], lat, thS);
             double[] w2 = Atmosphere.wind(g2[0], g2[1], kap[i], lat, thW);
             long d = System.nanoTime(); tWind += d - c2;
             long e = System.nanoTime();
-            double ke = Atmosphere.kappaMemo(x, z, SEED, cell);
+            double ke = Atmosphere.kappaMemo(x, z, SD, cell);
             long f = System.nanoTime(); tKappaMemo += f - e;
             double sa = Atmosphere.sstAnom(x, z);
             long g2b = System.nanoTime(); tSst += g2b - f;
-            double el = PlateField.elevationWithCell(x, z, SEED, cell);
+            double el = PlateField.elevationWithCell(x, z, SD, cell);
             tElev += System.nanoTime() - g2b;
             sink += p1 + p2 + w1[0] + w2[0] + ke + sa + el;
         }

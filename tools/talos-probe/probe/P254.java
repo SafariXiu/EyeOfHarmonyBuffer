@@ -23,6 +23,8 @@ import java.util.Locale;
 public class P254 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int CELL = PlateField.PLATE_CELL;
     static final int ZC = com.EyeOfHarmonyBuffer.sim.world.WorldContract.Z_CYCLE;
     static final double BAND_KM = 122.0;
@@ -67,7 +69,7 @@ public class P254 {
             GyreRow.Row[] tmp = new GyreRow.Row[8];
             int c = 0;
             for (int ix = 0; ix < 8; ix++) {
-                GyreRow.Row r = GyreRow.solve(ix * 1_500_000, z, SEED, CELL, wind, p);
+                GyreRow.Row r = GyreRow.solve(ix * 1_500_000, z, SD, CELL, wind, p);
                 if (!r.valid) continue;
                 if ((r.eastX - r.westX) < 2 * mwGate) continue;
                 tmp[c++] = r;

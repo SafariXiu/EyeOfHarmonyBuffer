@@ -117,6 +117,8 @@ public class P479 {
         double passRate = 100.0 * nSubPass / Math.max(1, ns);
         say(String.format(LF, "  判据：中位 |比| %.2f >= 4  ⇒ %s", medR, medR >= 4.0 ? "通过" : "**不通过**"));
         say(String.format(LF, "        通过率 %.0f%% >= 50%%  ⇒ %s", passRate, passRate >= 50.0 ? "通过" : "**不通过**"));
+        say(String.format(LF, "  GATE_A7_RATIO=%s", medR >= 4.0 ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_A7_PASSRATE=%s", passRate >= 50.0 ? "PASS" : "FAIL"));
         say(String.format(LF, "  reentryBlocked = %d（必须 0）", OceanField.reentryBlocked));
         say("⚠ 记账：本探针只读 OceanField 的公开接口（bandMeansAt / spanOf / anomalyAt），未改任何生产常量。");
         rep.flush();

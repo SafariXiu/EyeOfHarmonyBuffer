@@ -28,6 +28,8 @@ import java.util.Locale;
 public class P444 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRAD = 500_000;
@@ -43,7 +45,7 @@ public class P444 {
         long key = ((long) x << 32) ^ (z & 0xFFFFFFFFL);
         Double v = KC.get(key);
         if (v != null) return v;
-        double k = Atmosphere.kappaAt(x, z, SEED, CELL);
+        double k = Atmosphere.kappaAt(x, z, SD, CELL);
         KC.put(key, k);
         return k;
     }
@@ -86,8 +88,8 @@ public class P444 {
             say(String.format(LF, "    %-9s %14s %14s %12s", "纬度线", "v(线-1m)", "v(线+1m)", "阶跃 m/s"));
             for (int L = -60; L <= 60; L += 10) {
                 int zLine = (int) (L / 90.0 * (ZC / 2));
-                double vM = Atmosphere.windAt(x, zLine - 1, SEED, CELL, 0.0, GRAD)[1];
-                double vP = Atmosphere.windAt(x, zLine + 1, SEED, CELL, 0.0, GRAD)[1];
+                double vM = Atmosphere.windAt(x, zLine - 1, SD, CELL, 0.0, GRAD)[1];
+                double vP = Atmosphere.windAt(x, zLine + 1, SD, CELL, 0.0, GRAD)[1];
                 double j = Math.abs(vP - vM);
                 maxVJump1m = Math.max(maxVJump1m, j);
                 say(String.format(LF, "    %-9d %14.4f %14.4f %12.4f", L, vM, vP, j));
@@ -97,8 +99,8 @@ public class P444 {
             say("    对照（5 度线，不应有阶跃）：");
             for (int L = -55; L <= 55; L += 10) {
                 int zLine = (int) (L / 90.0 * (ZC / 2));
-                double vM = Atmosphere.windAt(x, zLine - 1, SEED, CELL, 0.0, GRAD)[1];
-                double vP = Atmosphere.windAt(x, zLine + 1, SEED, CELL, 0.0, GRAD)[1];
+                double vM = Atmosphere.windAt(x, zLine - 1, SD, CELL, 0.0, GRAD)[1];
+                double vP = Atmosphere.windAt(x, zLine + 1, SD, CELL, 0.0, GRAD)[1];
                 say(String.format(LF, "    %-9d %14.4f %14.4f %12.4f", L, vM, vP, Math.abs(vP - vM)));
             }
         }

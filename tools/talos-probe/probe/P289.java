@@ -17,6 +17,8 @@ import java.util.Locale;
 public class P289 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0;
     static final int GRAD = 500_000;
@@ -44,12 +46,12 @@ public class P289 {
                 int i = r * NQ + q;
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 2_119_000) % 9_000_000, z, SEED, cell, band, p);
+                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 2_119_000) % 9_000_000, z, SD, cell, band, p);
                 if (!row.valid) continue;
                 if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) continue;
                 if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
                 eastX[i] = row.eastX; eastZ[i] = z;
-                kap[i] = Atmosphere.kappaAt(row.eastX - 50_000, z, SEED, cell);
+                kap[i] = Atmosphere.kappaAt(row.eastX - 50_000, z, SD, cell);
                 ok[i] = true;
             }
         }
@@ -69,7 +71,7 @@ public class P289 {
                     for (int k = 1; k <= 3; k++) {
                         int xx = eastX[i] - k * 25_000;
                         int zz = eastZ[i];
-                        s += Atmosphere.windStress(xx, zz, SEED, cell, th, GRAD)[1];
+                        s += Atmosphere.windStress(xx, zz, SD, cell, th, GRAD)[1];
                         double[] pt = gradTherm(xx, zz, th);
                         double[] pc = gradCell(xx, zz, th);
                         double lat = WorldContract.latOf(zz);
@@ -128,12 +130,12 @@ public class P289 {
     }
     static double pTherm(int x, int z, double th) {
         double lat = WorldContract.latOf(z);
-        double k = Atmosphere.kappaAt(x, z, SEED, cell);
+        double k = Atmosphere.kappaAt(x, z, SD, cell);
         return -Atmosphere.K_P * Atmosphere.CHI * Atmosphere.seasonalAnomaly(lat, k, th);
     }
     static double pCell(int x, int z, double th) {
         double lat = WorldContract.latOf(z);
-        double k = Atmosphere.kappaAt(x, z, SEED, cell);
+        double k = Atmosphere.kappaAt(x, z, SD, cell);
         return Atmosphere.cellPressure(lat, k, th);
     }
 

@@ -27,6 +27,8 @@ import java.util.Locale;
 public class P283 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int XSTEP = 20_000, ZSTEP = 200_000, NX = 551;
     static final int MD = WorldContract.MAX_D;
     static final int GRAD = 500_000;
@@ -68,8 +70,8 @@ public class P283 {
                 for (int c = 0; c < NX; c++) {
                     int x = c * XSTEP, z = r * ZSTEP;
                     px_[k] = x; pz_[k] = z; pb_[k] = b;
-                    kap[k] = Atmosphere.kappaAt(x, z, SEED, cell);
-                    land[k] = PlateField.isLandWithCell(x, z, SEED, cell);
+                    kap[k] = Atmosphere.kappaAt(x, z, SD, cell);
+                    land[k] = PlateField.isLandWithCell(x, z, SD, cell);
                     k++;
                 }
             }
@@ -84,10 +86,10 @@ public class P283 {
                 int x = px_[i], z = pz_[i];
                 double lat = WorldContract.latOf(z);
                 double kk = kap[i];
-                double[] a = grad(x, z, SEED, cell, thS, var);
-                double[] b2 = grad(x, z, SEED, cell, thW, var);
-                pS[i] = pAnom(x, z, SEED, cell, thS, var);
-                pW[i] = pAnom(x, z, SEED, cell, thW, var);
+                double[] a = grad(x, z, SD, cell, thS, var);
+                double[] b2 = grad(x, z, SD, cell, thW, var);
+                pS[i] = pAnom(x, z, SD, cell, thS, var);
+                pW[i] = pAnom(x, z, SD, cell, thW, var);
                 double[] w1 = Atmosphere.wind(a[0], a[1], kk, lat, thS);
                 double[] w2 = Atmosphere.wind(b2[0], b2[1], kk, lat, thW);
                 if ((var & V_NO_UZM) != 0) {
@@ -138,8 +140,8 @@ public class P283 {
                 if (ld < lo || ld >= hi) continue;
                 int x = px_[i], z = pz_[i];
                 double lat = WorldContract.latOf(z);
-                double[] a = grad(x, z, SEED, cell, thS, var);
-                double[] b2 = grad(x, z, SEED, cell, thW, var);
+                double[] a = grad(x, z, SD, cell, thS, var);
+                double[] b2 = grad(x, z, SD, cell, thW, var);
                 double[] w1 = Atmosphere.wind(a[0], a[1], kap[i], lat, thS);
                 double[] w2 = Atmosphere.wind(b2[0], b2[1], kap[i], lat, thW);
                 if (w1[0]*w2[0] + w1[1]*w2[1] < 0) rev++;

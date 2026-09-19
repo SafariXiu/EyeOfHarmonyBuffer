@@ -19,6 +19,8 @@ import java.util.Locale;
 public class P280 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0;
     static final int NM = 96, NQ = 5, GRAD = 15_000;
@@ -59,7 +61,7 @@ public class P280 {
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SEED, CELL, wind, p);
+                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SD, CELL, wind, p);
                 if (!row.valid) continue;
                 if (row.eastX >= p.maxRow - 20_000) continue;
                 if (row.westX <= -p.maxRow + 20_000) continue;
@@ -71,17 +73,17 @@ public class P280 {
                 }
             }
         }
-        say(String.format(LF, "P280：沿岸风符号根因定位  采样点 %d  GRAD=%d m  PLATE_CELL=%d  MAX_OCEAN_HALF=%d km", ns, GRAD, CELL, PlateField.MAX_OCEAN_HALF / 1000));
+        say(String.format(LF, "P280：沿岸风符号根因定位  采样点 %d  GRAD=%d m  PLATE_CELL=%d", ns, GRAD, CELL));
         say(String.format(LF, "当前 src 状态：K_P=%.0f Pa/K (H_EFF=%.0f)  CELL_GAIN=%.1f  U_MAX=%.0f  COAST_WIND_ON=%s",
                 Atmosphere.K_P, Atmosphere.H_EFF, Atmosphere.CELL_GAIN, Atmosphere.U_MAX, Atmosphere.COAST_WIND_ON));
 
         for (int i = 0; i < ns; i++) {
             for (int j = 0; j < 5; j++) {
                 int xx = SX[i] + SDX[j] * GRAD, zz = SZ[i] + SDZ[j] * GRAD;
-                KAP[i][j] = PlateField.landFractionWithCell(xx, zz, SEED, CELL, PlateField.COAST_BLEND);
-                KAPB[i][j] = PlateField.landFractionWithCell(xx, zz, SEED, CELL, 2_400_000);
+                KAP[i][j] = PlateField.landFractionWithCell(xx, zz, SD, CELL, PlateField.COAST_BLEND);
+                KAPB[i][j] = PlateField.landFractionWithCell(xx, zz, SD, CELL, 2_400_000);
                 int xs = SX[i] + SDX[j] * STEP2, zs = SZ[i] + SDZ[j] * STEP2;
-                KAPS[i][j] = PlateField.landFractionWithCell(xs, zs, SEED, CELL, PlateField.COAST_BLEND);
+                KAPS[i][j] = PlateField.landFractionWithCell(xs, zs, SD, CELL, PlateField.COAST_BLEND);
                 for (int s = 0; s < NSE; s++) {
                     TN[i][j][s] = -Atmosphere.CHI * Atmosphere.seasonalAnomaly(WorldContract.latOf(zz), KAP[i][j], SET[s]);
                     TNS[i][j][s] = -Atmosphere.CHI * Atmosphere.seasonalAnomaly(WorldContract.latOf(zs), KAPS[i][j], SET[s]);

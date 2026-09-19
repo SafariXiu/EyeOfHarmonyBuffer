@@ -30,6 +30,24 @@ import java.util.Locale;
 public class P452 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code PlateField}/{@code Atmosphere}/{@code PrecipField} 的入口收的是 <b>派生后</b> 的长种子，
+     * 不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后所有
+     * 地形/风/降水调用都用它。本探针原来把裸世界种子 {@code SEED} 直接传给了 5 处收
+     * {@code long seed} 的入口 —— {@code isLandWithCell}(:60)、{@code elevationWithCell}(:61)、
+     * {@code windAt}(:63)、{@code upwindElev}(:64)、{@code mmPerDay}(:65)
+     * ⇒ 陆地掩膜、海拔、上风地形、降水全不同 ⇒ **量的不是同一个世界**（B4 的分子与分母都换了对象）。
+     * 同型缺陷本仓已修三次：E5a（冻结 :6208）、P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口必须传派生值 {@code SD}；收 {@code int worldSeedInt}
+     * 的入口传裸值**（本文件不调用任何 int 世界种子入口）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：仍是观测锚带 1.8~4.1（Taylor 1980，§132.2）、
+     * 仍是 {@code UPWIND_STEP} 扰动集合 {120, 150, 180} km、仍是网格 110x200。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int GRAD = 20_000;
     static final int CELL = PlateField.PLATE_CELL;
@@ -57,12 +75,12 @@ public class P452 {
             int z = (int) ((r + 0.5) / NZ * ZC);
             for (int c = 0; c < NX; c++) {
                 int x = (int) ((c + 0.5) / NX * 11_400_000);
-                if (!PlateField.isLandWithCell(x, z, SEED, CELL)) continue;
-                double e = PlateField.elevationWithCell(x, z, SEED, CELL);
+                if (!PlateField.isLandWithCell(x, z, SD, CELL)) continue;
+                double e = PlateField.elevationWithCell(x, z, SD, CELL);
                 if (e < 250) continue;                       // 与 P268 同：跳过低地（低地本来就少雨）
-                double[] u = Atmosphere.windAt(x, z, SEED, CELL, th, GRAD);
-                double hUp = PrecipField.upwindElev(x, z, SEED, CELL, u[0], u[1]);
-                double p = PrecipField.mmPerDay(x, z, SEED, CELL, th, GRAD);
+                double[] u = Atmosphere.windAt(x, z, SD, CELL, th, GRAD);
+                double hUp = PrecipField.upwindElev(x, z, SD, CELL, u[0], u[1]);
+                double p = PrecipField.mmPerDay(x, z, SD, CELL, th, GRAD);
                 cnt[bin(e)][bin(hUp)]++; sumP[bin(e)][bin(hUp)] += p;
                 double wHi = ss(250, 1500, hUp);
                 wLoP += p * (1 - wHi); wLoSum += (1 - wHi);
@@ -112,6 +130,7 @@ public class P452 {
         say(String.format(LF, "  陆地采样点 = %.0f（原 P268 只有 341）", r[2]));
         say(String.format(LF, "  新 B4 = **%.3f 倍**   观测锚带 1.8~4.1（中心 2.7）   %s   （相对中心 %.2fx）", r[1],
             (r[1] >= 1.8 && r[1] <= 4.1) ? "落在锚带内 ✓" : (r[1] > 4.1 ? "**高于锚带上沿**" : "**低于锚带下沿**"), r[1] / 2.7));
+        say(String.format(LF, "  GATE_B4_INBAND=%s", (r[1] >= 1.8 && r[1] <= 4.1) ? "PASS" : "FAIL"));
         say(String.format(LF, "  旧口径同源读数 = %.3f 倍（应与 P268 的 4.19 同量级，差异只来自网格密度）", r[0]));
         PrecipField.UPWIND_STEP = stepSaved;
         rep.close();

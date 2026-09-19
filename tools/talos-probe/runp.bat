@@ -36,12 +36,11 @@ call "%HERE%runprobe4.bat" %PROBE% --build-only
 if errorlevel 1 (echo BUILD_FAIL %PROBE% & exit /b 1)
 cd /d %PDIR%
 echo RUNPROBE_ARGS=%PROBE%%ARGS%
-rem EOH_TALOS_TERRAIN (optional): set => run with the V8 terrain switch ON.
-rem E122: this is the ONLY java line that matters for runp.bat -- runprobe4.bat is invoked
-rem with --build-only above, so patching ITS java line has no effect. And a command-line
-rem -Dtalos.terrain=true gets split at '=' by the shift loop into "-Dtalos.terrain true",
-rem which makes Boolean.getBoolean() false => the switch is SILENTLY OFF.
-set TALOS_FLAG=
-if defined EOH_TALOS_TERRAIN set TALOS_FLAG=-Dtalos.terrain=true
-java -Xmx6g %TALOS_FLAG% -cp out probe.%PROBE% %ARGS%
+rem SECTION 567: the terrain selector is GONE. EOH_TALOS_TERRAIN / -Dtalos.terrain and the
+rem legacy PlateField terrain were deleted together; exactly ONE terrain implementation
+rem remains (TalosField), so no flag can select one any more.
+rem Do NOT put a raw -Dname=value on this command line: the shift loop above splits it at
+rem '=' (E122), so the JVM would see a differently-named property and the flag would look
+rem like a silent no-op.
+java -Xmx6g -cp out probe.%PROBE% %ARGS%
 echo JAVA_EXIT=%errorlevel%

@@ -65,6 +65,12 @@ public final class OceanField {
      * <b>若要立刻退出这个口径，把本字段改回 false 即可</b>（一行），
      * 或调 {@link OceanWiring#off()}。代价修好之前，**不要**把它当成「已完成的生产特性」。
      */
+    /**
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
+     * （4 个 false：HadleyCell/SoilMoisture/StationaryWave/Vegetation；2 个 true：OceanField/SimTerrain）。
+     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.ENABLED`），
+     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     */
     public static boolean ENABLED = true;
     /**
      * 纬度行数。★ D1（2026-09-18）：Z_CYCLE 20M -> 40M ⇒ **64 -> 128**，
@@ -85,6 +91,20 @@ public final class OceanField {
     public static double H_TOTAL = CoastalLayer.H_TOTAL;
     public static double A_H = 1.9e4;
     /** 沿岸风应力/旋度的差分步长（block）。 */
+    /**
+     * ★★★ **§447：SST 异常是否【逐相位】求解。** 默认 **false**（年平，逐位不变）。
+     *
+     * <p>物理：`GyreRow` 对 curl 是**线性**的，而 `curlAtmos` 原来把 4 个相位的 curl 直接平均掉了
+     * ⇒ 整条 SST 异常链是**年平**的，模型里【不存在区域季节 SST 异常】。
+     * P660 实测季节信号很强且**两个海盆反相**：
+     * <pre>
+     *   孟加拉湾(88.5E,19.3N)  curl: 0.00pi -4.796e-07  vs  1.00pi -1.161e-07   (JJA 强 4.1 倍)
+     *   阿拉伯海(62E,15N)      curl: 0.00pi -1.235e-08  vs  1.00pi -1.236e-07   (DJF 强 10 倍)
+     * </pre>
+     * 打开后按 (行, 相位) 懒解 4 份并在 theta 上线性插值。**代价约 4 倍海洋预热时间。**
+     */
+    public static boolean PHASE_SEASONAL = false;
+
     public static int GRAD = 500_000;
     /** 东边界急流作用范围（R_d 的倍数）。 */
     public static double JET_RANGE_RD = 4.0;
@@ -146,6 +166,8 @@ public final class OceanField {
         installedSeed = s;
         Atmosphere.SST_PROVIDER = new Atmosphere.SstProvider() {
             @Override public double anomalyAt(int x, int z) { return OceanField.anomalyAt(x, z, s); }
+            // §447：相位重载。开关关着时 anomalyAt(x,z,s,theta) 内部直接回落 ⇒ 逐位不变。
+            @Override public double anomalyAt(int x, int z, double theta) { return OceanField.anomalyAt(x, z, s, theta); }
         };
     }
 
@@ -190,6 +212,11 @@ public final class OceanField {
                 int[] sp = spanOf(x, z, worldSeedInt);
                 if (sp == null) continue;
                 if (seen.add(((long) sp[1] << 32) ^ (sp[2] & 0xFFFFFFFFL))) basins++;
+                // §447：相位分辨时把 4 个相位一并预热（年平那一支仍然要 —— SimClimate 的年均读数用它）。
+                // 代价：解行数 ×(1+4)=5 ⇒ 预热时间约 5 倍（§162 的代价记账继续有效）。
+                if (PHASE_SEASONAL) {
+                    for (int p = 0; p < PH4.length; p++) anomalyAt(x, z, worldSeedInt, PH4[p]);
+                }
             }
             warmRowsDone = zIdx + 1;
             if (Thread.currentThread().isInterrupted()) break;
@@ -233,6 +260,8 @@ public final class OceanField {
         // ⚠ 2026-09-16（用户裁决 A）：风应力旋度的采样步长也**改解出来的 SST'** ⇒ 按本方法的准入判据
         // 必须进指纹。它落在 GyreRow 里（求解发生的地方），所以从那里取。
         h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.GyreRow.CURL_STRIDE;
+        // §447：相位分辨会换掉解出来的 SST' ⇒ 按本方法的准入判据必须进指纹。
+        if (PHASE_SEASONAL) h = h * 31 + 0x7A11DL;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
         return h;
@@ -247,7 +276,18 @@ public final class OceanField {
     }
 
     /** 模型自己的风应力旋度（4 相位平均）：curl = d(tau_z)/dx - d(tau_x)/dz。 */
-    private static double curlAtmos(int x, int z, long seed, int cell) {
+    private static double curlAtmos(int x, int z, long seed, int cell) { return curlAtmos(x, z, seed, cell, -1); }
+
+    /** §447：{@code phase < 0} = 4 相位平均（原式，逐位不变）；{@code phase >= 0} = 单相位。 */
+    private static double curlAtmos(int x, int z, long seed, int cell, int phase) {
+        if (phase >= 0) {
+            double th = PH4[phase];
+            double[] e = Atmosphere.windStress(x + GRAD, z, seed, cell, th, GRAD);
+            double[] w = Atmosphere.windStress(x - GRAD, z, seed, cell, th, GRAD);
+            double[] n = Atmosphere.windStress(x, z + GRAD, seed, cell, th, GRAD);
+            double[] s = Atmosphere.windStress(x, z - GRAD, seed, cell, th, GRAD);
+            return ((e[1] - w[1]) - (n[0] - s[0])) / (2.0 * GRAD);
+        }
         double c = 0;
         for (double th : PH4) {
             double[] e = Atmosphere.windStress(x + GRAD, z, seed, cell, th, GRAD);
@@ -260,9 +300,10 @@ public final class OceanField {
     }
 
     private static final class Curl implements GyreRow.WindCurl {
-        final long seed; final int cell;
-        Curl(long seed, int cell) { this.seed = seed; this.cell = cell; }
-        @Override public double at(int x, int z) { return curlAtmos(x, z, seed, cell); }
+        final long seed; final int cell; final int phase;
+        Curl(long seed, int cell) { this(seed, cell, -1); }
+        Curl(long seed, int cell, int phase) { this.seed = seed; this.cell = cell; this.phase = phase; }
+        @Override public double at(int x, int z) { return curlAtmos(x, z, seed, cell, phase); }
     }
 
     private static GyreRow.Params params() {
@@ -278,9 +319,22 @@ public final class OceanField {
     }
     static int rowZ(int zIdx) { return (int) ((zIdx + 0.5) / ROWS * WorldContract.Z_CYCLE); }
 
-    /** 命中已缓存的行（返回 {arr, westX}），否则 null。 */
-    private static Object[] hit(int x, int zIdx) {
-        java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zIdx);
+    /**
+     * ★★★ **§447：缓存下标（相位分辨）。**
+     *
+     * <p>{@code phase < 0} ⇒ 返回 {@code zIdx} 本身 ⇒ **年平口径，与打开本开关之前逐位相同**；
+     * {@code phase >= 0} ⇒ 返回 {@code ROWS * (phase + 1) + zIdx}。
+     * 两者值域不相交（年平 ∈ [0,64)，相位 ∈ [64,320)）⇒ 不会互相污染。
+     *
+     * <p>为什么改下标而不是改 {@code SPAN_BY_ROW} 的结构：桶、{@code ANOM}、{@code SPAN}、{@code BAND}
+     * 四处都按同一个整数索引，只换这个整数的算法 ⇒ **不需要动任何一张表的结构**，
+     * 年平那条支路也就没有机会被改坏。
+     */
+    private static int zkey(int zIdx, int phase) { return phase < 0 ? zIdx : ROWS * (phase + 1) + zIdx; }
+
+    /** 命中已缓存的行（返回 {arr, westX}），否则 null。{@code zk} 见 {@link #zkey}。 */
+    private static Object[] hit(int x, int zk) {
+        java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zk);
         if (ks == null) return null;
         for (int i = 0; i < ks.size(); i++) {
             Long k = ks.get(i);
@@ -293,7 +347,8 @@ public final class OceanField {
         return null;
     }
 
-    private static synchronized Object[] solveRow(int zRow, int zIdx, long seed, int worldSeedInt, int xHint) {
+    private static synchronized Object[] solveRow(int zRow, int zIdx, int phase, long seed, int worldSeedInt, int xHint) {
+        int zk = zkey(zIdx, phase);
         int cell = PlateField.PLATE_CELL;
         long t0 = System.nanoTime();
         // ⚠⚠ E30（2026-09-13 实测抓到，生产级缺陷）：抑制必须覆盖**整个** solveRow。
@@ -311,20 +366,34 @@ public final class OceanField {
         int d0 = depthGet();
         depthSet(d0 + 1);
         try {
-            GyreRow.Row g = GyreRow.solve(xHint, zRow, seed, cell, new Curl(seed, cell), params());
+            GyreRow.Row g = GyreRow.solve(xHint, zRow, seed, cell, new Curl(seed, cell, phase), params());
             solveCount++; solveNanos += System.nanoTime() - t0;
             if (!g.valid || g.n < 2) return null;
             double f = WorldContract.coriolis(WorldContract.latOf(zRow));
             // ⚠ §216.7：热成风要的是**本世界自己的**纬向平均经向温度梯度。
             //   用地球的 T_zm 会把「地球在那个纬度的陆地占比」带进海盆的斜压结构。
+            //
+            // ⚠ **§447 已知未建模项（不是妥协，是记账）**：这里的 dT/dz 仍是**年平**的。
+            //   季节版应当用 `zonalMeanSeaLevelK(lat) + seasonalAnomalyZonal(lat, theta)`，
+            //   但 `seasonalAnomalyZonal` 读的是**预置表** `ZonalTables.A_ZM_K`，
+            //   其经向结构不是本世界推出来的。§216.7 已经用同一条理由禁止把地球的
+            //   「该纬度陆地占比」带进海盆斜压结构 ⇒ 这里**不能**顺手加进去。
+            //   先量纯 curl 季节性的效果，等本世界自己的季节 dT/dz 有了机制再另开一步。
             double dTdz = (Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow + 50_000))
                          - Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow - 50_000))) / 100_000.0;
             double rd = CoastalLayer.rossbyRadius(f);
             double[] t = CoastalLayer.coastTangent(g.eastX, zRow, seed, cell);
+            // §447：沿海切向风应力。单相位 ⇒ 只取该相位（沿岸急流是**季节**现象）；
+            // 年平 ⇒ 4 相位平均（原式一字未改）。
             double tauS = 0;
-            for (double th : PH4) {
-                double[] ts = Atmosphere.windStress(g.eastX - 50_000, zRow, seed, cell, th, GRAD);
-                tauS += (ts[0] * t[0] + ts[1] * t[1]) / PH4.length;
+            if (phase >= 0) {
+                double[] ts = Atmosphere.windStress(g.eastX - 50_000, zRow, seed, cell, PH4[phase], GRAD);
+                tauS = ts[0] * t[0] + ts[1] * t[1];
+            } else {
+                for (double th : PH4) {
+                    double[] ts = Atmosphere.windStress(g.eastX - 50_000, zRow, seed, cell, th, GRAD);
+                    tauS += (ts[0] * t[0] + ts[1] * t[1]) / PH4.length;
+                }
             }
             double hc = CoastalLayer.hcLocal(tauS, f);
             double vJet = CoastalLayer.jetPeak(hc, f);
@@ -344,13 +413,14 @@ public final class OceanField {
                 // 第 3 个元素 = psi_max（Sverdrup 流函数峰值，m^2/s）—— 供 A2 的**物理核对**：
                 // Munk 解应当满足 v_band ~ psi_max / delta，delta = (A_H/beta)^(1/3)。
                 // 有了它，探针就能判「量级不足」是**求解器错**还是**风/几何给的 psi 本来就小**。
-                BAND.put(key(seed, zIdx, g.westX), new double[]{ws / q, es / q, g.psiMax});
+                BAND.put(key(seed, zk, g.westX), new double[]{ws / q, es / q, g.psiMax});
             }
-            long k = key(seed, zIdx, g.westX);
+            long k = key(seed, zk, g.westX);
             ANOM.put(k, a);
+            // SPAN 里的第 0 位永远是**真实行号** zIdx（探针与 bandMeansAt 读它），不是 zk。
             SPAN.put(k, new int[]{zIdx, g.westX, g.eastX});
-            java.util.ArrayList<Long> bucket = SPAN_BY_ROW.get(zIdx);
-            if (bucket == null) { bucket = new java.util.ArrayList<>(); SPAN_BY_ROW.put(zIdx, bucket); }
+            java.util.ArrayList<Long> bucket = SPAN_BY_ROW.get(zk);
+            if (bucket == null) { bucket = new java.util.ArrayList<>(); SPAN_BY_ROW.put(zk, bucket); }
             bucket.add(k);
             return new Object[]{a, g.westX};
         } finally {
@@ -377,13 +447,15 @@ public final class OceanField {
         resetIfStale(seed, worldSeedInt);
         int zIdx = rowIndexOf(z);
         Object[] h = hit(x, zIdx);
-        if (h == null) { h = solveRow(rowZ(zIdx), zIdx, seed, worldSeedInt, x); if (h == null) return null; }
+        // §447：海盆几何（span）用**年平**解 —— 它是地理量，不该随季节变；
+        // 而且所有既有探针（P620/P469/...）读的都是这一支，保住它们的口径。
+        if (h == null) { h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x); if (h == null) return null; }
         return findSpan(x, zIdx);
     }
 
-    /** 在**该行**的桶里找包含 x 的海盆；没有则 null。 */
-    private static int[] findSpan(int x, int zIdx) {
-        java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zIdx);
+    /** 在**该桶**里找包含 x 的海盆；没有则 null。{@code zk} 见 {@link #zkey}。 */
+    private static int[] findSpan(int x, int zk) {
+        java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zk);
         if (ks == null) return null;
         for (int i = 0; i < ks.size(); i++) {
             int[] sp = SPAN.get(ks.get(i));
@@ -404,25 +476,17 @@ public final class OceanField {
         long seed = SimTerrain.seedOf(worldSeedInt);
         resetIfStale(seed, worldSeedInt);
         int zIdx = rowIndexOf(z);
-        Object[] h = hit(x, zIdx);
-        if (h == null) { h = solveRow(rowZ(zIdx), zIdx, seed, worldSeedInt, x); if (h == null) return null; }
-        int[] sp = findSpan(x, zIdx);
+        int zk = zkey(zIdx, -1);
+        Object[] h = hit(x, zk);
+        if (h == null) { h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x); if (h == null) return null; }
+        int[] sp = findSpan(x, zk);
         if (sp == null) return null;
-        double[] b = BAND.get(key(seed, zIdx, sp[1]));
+        double[] b = BAND.get(key(seed, zk, sp[1]));
         return b == null ? null : new double[]{b[0], b[1], b[2]};
     }
 
-    /** 该点的**海温异常（K）**。未缓存时当场解那一行（首查 0.3~4 s，见 §158）。 */
-    public static synchronized double anomalyAt(int x, int z, int worldSeedInt) {
-        if (inSolve()) { reentryBlocked++; return 0.0; }   // 护栏：见 solveRow 的 E30 注释
-        long seed = SimTerrain.seedOf(worldSeedInt);
-        resetIfStale(seed, worldSeedInt);
-        int zIdx = rowIndexOf(z);
-        Object[] h = hit(x, zIdx);
-        if (h == null) {
-            h = solveRow(rowZ(zIdx), zIdx, seed, worldSeedInt, x);
-            if (h == null) return 0.0;
-        }
+    /** 沿 x 在解出来的 `a[]` 上做**分段线性**插值（原 `anomalyAt` 的那 8 行，一字未改）。 */
+    private static double lerpX(Object[] h, int x) {
         double[] a = (double[]) h[0];
         int westX = (int) h[1];
         double fi = (x - westX) / ROW_H;
@@ -431,5 +495,67 @@ public final class OceanField {
         if (i0 >= a.length - 1) return a[a.length - 1];
         double tx = fi - i0;
         return a[i0] * (1 - tx) + a[i0 + 1] * tx;
+    }
+
+    /** 单个相位的海温异常（K）；未缓存时当场解那一行（首查 0.3~4 s，见 §158）。 */
+    private static double anomalyAtPhase(int x, int z, int zIdx, long seed, int worldSeedInt, int phase) {
+        int zk = zkey(zIdx, phase);
+        Object[] h = hit(x, zk);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, phase, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+        }
+        return lerpX(h, x);
+    }
+
+    /**
+     * 该点的**海温异常（K）**。未缓存时当场解那一行（首查 0.3~4 s，见 §158）。
+     *
+     * <p>{@link #PHASE_SEASONAL}=true 时返回 **4 个相位解的算术平均**，
+     * 而不是「对年平 curl 的单次解」。为什么必须这样：线性插值在等间距 4 点上的**全周期平均
+     * 恰好等于 4 个样本的平均** ⇒ 只有这样，本方法与 `mean_theta(anomalyAt(x,z,theta))` 才自洽。
+     * 拿年平解顶替会出现「年平读数 ≠ 季节读数之年均」的隐性矛盾（探针会量出这个差）。
+     */
+    public static synchronized double anomalyAt(int x, int z, int worldSeedInt) {
+        if (inSolve()) { reentryBlocked++; return 0.0; }   // 护栏：见 solveRow 的 E30 注释
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        if (PHASE_SEASONAL) {
+            double s = 0;
+            for (int p = 0; p < PH4.length; p++) s += anomalyAtPhase(x, z, zIdx, seed, worldSeedInt, p);
+            return s / PH4.length;
+        }
+        Object[] h = hit(x, zIdx);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+        }
+        return lerpX(h, x);
+    }
+
+    /**
+     * ★★★ **§447：带相位的海温异常（K）** —— 季风源区季节循环的入口。
+     *
+     * <p>{@link #PHASE_SEASONAL}=false ⇒ **直接回落**到 {@link #anomalyAt(int,int,int)}（年平，逐位相同）。
+     * 否则解出 4 个相位并在 theta 上做**环形线性插值**。
+     *
+     * <p>⚠ **记账：4 点等间距采样的 Nyquist 上限是二次谐波** ⇒
+     * 本方法只保留**年谐波 + 半年谐波**。季风的海温年循环以年谐波为绝对主导，
+     * 所以这是一个明确写下来的近似；探针要报**残差**，不能只说「打开了」。
+     */
+    public static synchronized double anomalyAt(int x, int z, int worldSeedInt, double theta) {
+        if (!PHASE_SEASONAL) return anomalyAt(x, z, worldSeedInt);
+        if (inSolve()) { reentryBlocked++; return 0.0; }
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        double[] v = new double[PH4.length];
+        for (int p = 0; p < PH4.length; p++) v[p] = anomalyAtPhase(x, z, zIdx, seed, worldSeedInt, p);
+        double q = theta * (PH4.length / (2.0 * Math.PI));
+        q = q - Math.floor(q / PH4.length) * PH4.length;   // 归一到 [0,4)（theta 可负 / 可 > 2pi）
+        int i0 = (int) q; if (i0 >= PH4.length) i0 = PH4.length - 1;
+        double tx = q - i0;
+        return v[i0] * (1.0 - tx) + v[(i0 + 1) % PH4.length] * tx;
     }
 }

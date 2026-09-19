@@ -24,6 +24,8 @@ import java.util.Locale;
 public class P264 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685;
     static final double H_TOTAL = 4000.0;
@@ -51,7 +53,7 @@ public class P264 {
         int nS = 0, nL = 0, nC = 0; double smin = 9, smax = -9;
         for (int k = 0; k < 4000; k++) {
             int x = k * 3000;
-            double s = PlateField.landScoreWithCell(x, z0, SEED, cell);
+            double s = PlateField.landScoreWithCell(x, z0, SD, cell);
             if (s < smin) smin = s;
             if (s > smax) smax = s;
             if (s > 0.6) nL++; else if (s < -0.6) nS++; else nC++;
@@ -68,11 +70,11 @@ public class P264 {
             int z = (int) ((r + 0.5) / 60.0 * ZC);
             for (int c = 0; c < 60; c++) {
                 int x = c * 200_000;
-                double g = Math.abs(Atmosphere.pressureAnomaly(x + 10_000, z, SEED, cell, thS)
-                                  - Atmosphere.pressureAnomaly(x - 10_000, z, SEED, cell, thS)) / 20_000.0;
+                double g = Math.abs(Atmosphere.pressureAnomaly(x + 10_000, z, SD, cell, thS)
+                                  - Atmosphere.pressureAnomaly(x - 10_000, z, SD, cell, thS)) / 20_000.0;
                 if (g > maxG) maxG = g;
                 sumG += g; n++;
-                double[] uv = Atmosphere.windAt(x, z, SEED, cell, thS, 10_000);
+                double[] uv = Atmosphere.windAt(x, z, SD, cell, thS, 10_000);
                 double sp = Math.hypot(uv[0], uv[1]);
                 if (sp > maxSp) maxSp = sp;
             }
@@ -95,12 +97,12 @@ public class P264 {
                 int x0 = (ix * 2_100_000 + m * 137_000) % 11_000_000;
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = GRID; p.rhoH = 1025.0 * H_TOTAL; p.aH = A_H; p.zCycle = ZC;
-                GyreRow.Row r = GyreRow.solve(x0, z, SEED, cell, wind, p);
+                GyreRow.Row r = GyreRow.solve(x0, z, SD, cell, wind, p);
                 if (!r.valid) continue;
                 if ((r.eastX - r.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
                 for (int k = 1; k <= 3; k++) {
-                    double[] a = Atmosphere.windStress(r.eastX - k * 150_000, z, SEED, cell, thS, 10_000);
-                    double[] b = Atmosphere.windStress(r.eastX - k * 150_000, z, SEED, cell, thW, 10_000);
+                    double[] a = Atmosphere.windStress(r.eastX - k * 150_000, z, SD, cell, thS, 10_000);
+                    double[] b = Atmosphere.windStress(r.eastX - k * 150_000, z, SD, cell, thW, 10_000);
                     s1 += a[1]; s2 += b[1]; sa += Math.hypot(a[0], a[1]); c++;
                 }
             }
@@ -139,7 +141,7 @@ public class P264 {
         for (int k = 0; k < reps; k++)
             for (int r = 0; r < 50; r++)
                 for (int c = 0; c < 50; c++) {
-                    double[] uv = Atmosphere.windAt(c * 2000, r * 2000, SEED, cell, thS, 2000);
+                    double[] uv = Atmosphere.windAt(c * 2000, r * 2000, SD, cell, thS, 2000);
                     mm += (uv[0] > 0 ? 1 : 0);
                 }
         say(String.format(LF, "   风场 100 km 瓦片（dx=2km、2500 点、含 4 次 p' 差分）= %.0f ms（预算 20000）",
@@ -152,7 +154,7 @@ public class P264 {
     static double landCost() {
         long t = System.nanoTime();
         double s = 0;
-        for (int k = 0; k < 1_000_000; k++) s += PlateField.landScoreWithCell(k * 137, k * 911, 1022228679L, PlateField.PLATE_CELL);
+        for (int k = 0; k < 1_000_000; k++) s += PlateField.landScoreWithCell(k * 137, k * 911, SD, PlateField.PLATE_CELL);
         return (System.nanoTime() - t) / 1e6 * (s == 0 ? 1 : 1);
     }
 

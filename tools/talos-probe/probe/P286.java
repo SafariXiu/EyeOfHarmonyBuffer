@@ -18,6 +18,8 @@ import java.util.Locale;
 public class P286 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0, W = 100_000.0;
     static final int GRAD = 500_000, CLAT = 100_000;
@@ -52,7 +54,7 @@ public class P286 {
                 for (int q = 0; q < 6; q++) {
                     int x = (q * 2_300_000 + li * 97_000) % 9_000_000;
                     GyreRow.Params p = params();
-                    GyreRow.Row r = GyreRow.solve(x, z, SEED, cell, realWind(th), p);
+                    GyreRow.Row r = GyreRow.solve(x, z, SD, cell, realWind(th), p);
                     if (!r.valid) continue;
                     if (r.eastX >= p.maxRow - 20_000 || r.westX <= -p.maxRow + 20_000) continue;
                     if ((r.eastX - r.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
@@ -89,12 +91,12 @@ public class P286 {
                 double s = 0; int c = 0;
                 for (int q = 0; q < NQ; q++) {
                     GyreRow.Params p = params();
-                    GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SEED, cell, band, p);
+                    GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SD, cell, band, p);
                     if (!row.valid) continue;
                     if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) continue;
                     if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
                     for (int k = 1; k <= 3; k++) {
-                        double tz = Atmosphere.windStress(row.eastX - k * 25_000, z, SEED, cell, th, GRAD)[1];
+                        double tz = Atmosphere.windStress(row.eastX - k * 25_000, z, SD, cell, th, GRAD)[1];
                         s += tz; c++;
                     }
                 }
@@ -156,10 +158,10 @@ public class P286 {
         int g = GRAD;
         for (int i = 0; i < NLAT; i++) {
             int x = (int) ((long) (i - NLAT / 2) * CLAT);
-            double tyE = Atmosphere.windStress(x + g, z, SEED, cell, th, g)[1];
-            double tyW = Atmosphere.windStress(x - g, z, SEED, cell, th, g)[1];
-            double txN = Atmosphere.windStress(x, z + g, SEED, cell, th, g)[0];
-            double txS = Atmosphere.windStress(x, z - g, SEED, cell, th, g)[0];
+            double tyE = Atmosphere.windStress(x + g, z, SD, cell, th, g)[1];
+            double tyW = Atmosphere.windStress(x - g, z, SD, cell, th, g)[1];
+            double txN = Atmosphere.windStress(x, z + g, SD, cell, th, g)[0];
+            double txS = Atmosphere.windStress(x, z - g, SD, cell, th, g)[0];
             a[i] = (tyE - tyW) / (2.0 * g) - (txN - txS) / (2.0 * g);
         }
         CACHE.put(key, a);

@@ -25,6 +25,25 @@ import java.util.Locale;
 public class P285 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code GyreRow}/{@code Atmosphere} 的入口收的是 <b>派生后</b> 的长种子，不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后
+     * {@code GyreRow.solve}(OceanField:369) 与 {@code Atmosphere.windStress}(:390) 都用它。
+     * 本探针原来把裸世界种子 {@code SEED} 直接传给了 9 处收 {@code long seed} 的入口 ——
+     * {@code GyreRow.solve}(:78/:80/:134)、{@code windAt}(:140)、
+     * {@code windStress}(:143/:217/:218/:219/:220) ⇒ 海盆几何、真实风旋度格点、沿岸风应力
+     * 全不同 ⇒ **量的不是同一个世界**。
+     * 同型缺陷本仓已修三次：E5a（冻结 :6208）、P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口必须传派生值 {@code SD}；收 {@code int worldSeedInt}
+     * 的入口传裸值**。本文件的 {@code OceanWiring.onWorld(SEED)}（:45）按定义收 int 世界种子
+     * ⇒ **保持裸 int**（生产同样如此）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：本门是 (b) 类「无判据」的原始读数表
+     * （A 段受控对照与 B 段大样本的分档与统计量一律不动；A3 的判据在 P292、B4 的判据在 P452）。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0, W = 100_000.0;
     static final int GRAD = 500_000;
@@ -75,9 +94,9 @@ public class P285 {
             for (int q = 0; q < 8; q++) {
                 int x = (q * 2_300_000 + li * 97_000) % 9_000_000;
                 GyreRow.Params pB = params();
-                GyreRow.Row rb = GyreRow.solve(x, z, SEED, cell, band, pB);
+                GyreRow.Row rb = GyreRow.solve(x, z, SD, cell, band, pB);
                 GyreRow.Params pR = params();
-                GyreRow.Row rr = GyreRow.solve(x, z, SEED, cell, real, pR);
+                GyreRow.Row rr = GyreRow.solve(x, z, SD, cell, real, pR);
                 if (!rb.valid || !rr.valid) continue;
                 if (rb.eastX >= pB.maxRow - 20_000 || rb.westX <= -pB.maxRow + 20_000) continue;
                 if ((rb.eastX - rb.westX) < 2 * Math.PI * pB.deltaAt(z)) continue;
@@ -131,16 +150,16 @@ public class P285 {
             double s = 0; int c = 0;
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = params();
-                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SEED, cell, band, p);
+                GyreRow.Row row = GyreRow.solve((q * 2_300_000 + r * 97_000) % 9_000_000, z, SD, cell, band, p);
                 if (!row.valid) continue;
                 if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) continue;
                 if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
                 for (int k = 1; k <= 3; k++) {
                     int xx = row.eastX - k * 25_000;
-                    double[] uv0 = Atmosphere.windAt(xx, z, SEED, cell, th, GRAD);
+                    double[] uv0 = Atmosphere.windAt(xx, z, SD, cell, th, GRAD);
                     if (Math.hypot(uv0[0], uv0[1]) >= 24.5) capped++;
                     nsp++;
-                    double tz = Atmosphere.windStress(xx, z, SEED, cell, th, GRAD)[1];
+                    double tz = Atmosphere.windStress(xx, z, SD, cell, th, GRAD)[1];
                     s += tz; c++;
                     double eq = Math.toDegrees(lat) >= 0 ? -tz : tz;
                     if (Math.abs(lat) < Math.toRadians(48)) dirEq[nd++] = eq;
@@ -214,10 +233,10 @@ public class P285 {
         int g = GRAD;
         for (int i = 0; i < NLAT; i++) {
             int x = (int) ((long) (i - NLAT / 2) * CLAT);
-            double tyE = Atmosphere.windStress(x + g, z, SEED, cell, th, g)[1];
-            double tyW = Atmosphere.windStress(x - g, z, SEED, cell, th, g)[1];
-            double txN = Atmosphere.windStress(x, z + g, SEED, cell, th, g)[0];
-            double txS = Atmosphere.windStress(x, z - g, SEED, cell, th, g)[0];
+            double tyE = Atmosphere.windStress(x + g, z, SD, cell, th, g)[1];
+            double tyW = Atmosphere.windStress(x - g, z, SD, cell, th, g)[1];
+            double txN = Atmosphere.windStress(x, z + g, SD, cell, th, g)[0];
+            double txS = Atmosphere.windStress(x, z - g, SD, cell, th, g)[0];
             a[i] = (tyE - tyW) / (2.0 * g) - (txN - txS) / (2.0 * g);
         }
         CACHE.put(key, a);

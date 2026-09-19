@@ -20,6 +20,8 @@ import java.util.Locale;
 public class P265 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685;
     static final double H_TOTAL = 4000.0;
@@ -56,7 +58,7 @@ public class P265 {
             zs[r] = z;
             GyreRow.Params p = new GyreRow.Params();
             p.h = GRID; p.rhoH = 1025.0 * H_TOTAL; p.aH = A_H; p.zCycle = ZC;
-            rows[r] = GyreRow.solve(5_500_000, z, SEED, cell, wind, p);
+            rows[r] = GyreRow.solve(5_500_000, z, SD, cell, wind, p);
         }
 
         for (int iter = 0; iter < 3; iter++) {
@@ -89,7 +91,7 @@ public class P265 {
                 GyreRow.Row row = rows[m];
                 if (row.valid) {
                     for (int k = 1; k <= 4; k++) {
-                        double[] a = Atmosphere.windStress(row.eastX - k * 120_000, z, SEED, cell, thS, 15_000);
+                        double[] a = Atmosphere.windStress(row.eastX - k * 120_000, z, SD, cell, thS, 15_000);
                         s1 += a[1]; c++;
                     }
                 }

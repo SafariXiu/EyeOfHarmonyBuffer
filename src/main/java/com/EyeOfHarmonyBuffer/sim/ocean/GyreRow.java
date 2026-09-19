@@ -129,10 +129,28 @@ public final class GyreRow {
         public double tauY(int z) { return 0.0; }
     }
 
+    /**
+     * bandD —— **单一来源委托给 {@link com.EyeOfHarmonyBuffer.sim.world.WorldContract#bandD(int,int)}**。
+     *
+     * <p>★ §527 修复（审计面 1）：此处原为【同一口径的第二份实现】：
+     * <pre>
+     *   int zz = ((z % zc) + zc) % zc;
+     *   return Math.min(zz, zc - zz) / (zc / 2.0);   // 把 zc/2 当成【极点】
+     * </pre>
+     * 而契约的几何是：z=0 赤道、z=MAX_D 北极、z=2*MAX_D 【第二赤道】、z=3*MAX_D 南极。
+     * ⇒ Z_CYCLE = 40M 时旧式把 20M（**真赤道**）当成极点：
+     * <pre>
+     *   真赤道 → 旧式 1.0，契约 0.0 ；  真北极 → 旧式 0.5，契约 1.0
+     *   ⇒ BandedWind 三带风的 curl 零点由 0/30/60/90 度变成 0/60 度
+     * </pre>
+     * 这正是 {@code WorldContract.java:123} 落地清单第 4 条要求审计、而一直漏掉的一处。
+     *
+     * <p>影响面：生产【不受影响】（{@link com.EyeOfHarmonyBuffer.sim.ocean.OceanField} 有专节
+     * 说明为何不用 {@link BandedWind}），但 **47 个探针**会读到它 ⇒ 修好后这些探针的
+     * 纬度分带读数会变，属【修正】而非回归。
+     */
     static double bandD(int z, int zc) {
-        int zz = ((z % zc) + zc) % zc;
-        int d = Math.min(zz, zc - zz);
-        return d / (zc / 2.0);
+        return com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(z, zc);
     }
 
     /** 一行的解。 */

@@ -33,19 +33,15 @@ public final class ClimateCoords {
     // ===== 系数（探针可扫参） =====
     /** 温度 = W_LAT·纬度带 + (1−W_LAT)·气团温度。 */
     public static double W_LAT = 0.70;
-    /** 海拔直减（× elevation01，L1b 类型量）。 */
-    public static double LAPSE = 0.55;
 
-    /** 迎风抬升 → 增湿 / 背风焚风 → 减湿。 */
-    public static double ORO_UP_GAIN = 0.30, ORO_LEE_GAIN = 0.18;
-    /** 湿度坐标零点偏移（只做整体平移，不改物理结构；用于把中位数落在 0.45 附近）。 */
-    public static double MOIST_OFFSET = 0.25;
-    /** 海温距平 → 增/减湿。 */
-    public static double SST_GAIN = 0.90;
-    /** 上风海点取样距离（blocks）。 */
-    public static double SST_OFFSET = 15_000.0;
-    /** 大陆性干燥。 */
-    public static double INLAND_SCALE = 40_000.0, INLAND_DRY = 0.12;
+    // ★ §537（P2-12）退役：以下 8 个常数【全工程零读者】，已删除。
+    //   实测（2026-09-19）：src/main/java 与 tools/talos-probe/probe 下，
+    //     每个名字除声明行外【零命中】。
+    //     LAPSE / ORO_UP_GAIN / ORO_LEE_GAIN / MOIST_OFFSET /
+    //     SST_GAIN / SST_OFFSET / INLAND_SCALE / INLAND_DRY
+    //   ⚠ 它们与上面 :28-31 那块墓碑【同类】：都是旧栈退役后留下的、没有任何读者的字段。
+    //     上一轮墓碑只清了三个开关、漏了这 8 个系数 —— 现在一起清掉。
+    //   ⚠ 不要再加回来：同一件事两份系数/开关正是口径漂移的温床。
 
     /** 气团签名：Δ温度 / Δ湿度（0=mT 1=cT 2=mP 3=cP）。 */
     public static double[] AIR_DT = {0.05, 0.08, -0.05, -0.08};

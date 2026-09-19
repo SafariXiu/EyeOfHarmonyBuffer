@@ -29,9 +29,9 @@ public class P296 {
         System.out.println("[P296] 接线口径：installedSeed=" + com.EyeOfHarmonyBuffer.sim.ocean.OceanField.installedSeed()
             + "  ENABLED=" + com.EyeOfHarmonyBuffer.sim.ocean.OceanField.ENABLED);
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p296_report.txt"), "UTF-8");
-        // ★ M7：外部开关必须自证。P296 走 PlateField.isLandWithCell 委托点，
-        //   开关若静默 OFF 则本报告量的是旧地形，却看不出任何异常。
-        say("P296：仪器自证 PlateField.TALOS_TERRAIN=" + PlateField.TALOS_TERRAIN
+        // ★ M7：仪器身份必须自证。§567 已删除旧地形开关 TALOS_TERRAIN，
+        //   身份位移到 PlateField.WORLD_IS_TALOS（度量溯源读它；见 PlateField 的 javadoc）。
+        say("P296：仪器自证 PlateField.WORLD_IS_TALOS=" + PlateField.WORLD_IS_TALOS
             + "  sd=seedOf(" + SEED + ")=" + SimTerrain.seedOf(SEED)
             + "  PLATE_CELL=" + PlateField.PLATE_CELL);
         int cell = PlateField.PLATE_CELL;
@@ -104,6 +104,8 @@ public class P296 {
             pkS[0], pkS[1], pkW[0], pkW[1], pkW[0] > pkS[0] ? "达标 ✓" : "**未达标**"));
         say(String.format(LF, "   B2.b 中纬带峰值随季节向赤道移动： %.1f -> %.1f = %.1f 度   ⇒ %s",
             pkS[1], pkW[1], pkS[1] - pkW[1], (pkS[1] - pkW[1]) >= 10.0 ? "达标 ✓ (>=10 度)" : "**不足 10 度**"));
+        say(String.format(LF, "  GATE_B2A_PEAK=%s", pkW[0] > pkS[0] ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_B2B_SHIFT=%s", (pkS[1] - pkW[1]) >= 10.0 ? "PASS" : "FAIL"));
         say(String.format(LF, "   （诊断）赤道带(0~25 度)峰值： 夏 %.2f @%.1f   冬 %.2f @%.1f",
             itS[0], itS[1], itW[0], itW[1]));
         // ⚠⚠ 2026-09-13 重锚（用户裁决「重锚 按照新的重新测试找到正确值」）：
@@ -116,7 +118,13 @@ public class P296 {
         // 判据锚换成真观测：GPCP v2.2 LTM(1991-2020) 45~55N JJA = 2.565 mm/day（等纬距口径）。
         // 数据：https://downloads.psl.noaa.gov/Datasets/gpcp/precip.mon.ltm.1991-2020.nc
         double b4555 = band(pS, 45.0, 55.0, NZ);
-        say(String.format(LF, "   [标定检查·非独立] EDDY_MIX 标定目标 45~55 夏 = %.2f，GPCP 观测 2.565（%+.1f%%）",
+        // ★ §538 修正（P2-19）：原写「[标定检查·非独立] EDDY_MIX 标定目标 45~55 夏 = …」。
+        //   而 EDDY_MIX 自 §429 起已是【推导值】：PrecipField.java:169 = 1/EADY_COEF = 3.2258
+        //   （:165-167 说明 (L_mix/L_d)^2 = 1/EADY_COEF，**完全由模型自己的 EADY_COEF 导出，零自由度**）。
+        //   ⇒ 它【不再是「标定乘子」】⇒ 本行只是【数值对照】，不构成「标定检查」。
+        //   CALIBERS.md §8 第 12 条自己就写着「该检查已失效…持续误导」——本条即其修正。
+        say(String.format(LF, "   [数值对照·非判据] 45~55 夏 = %.2f，GPCP 观测 2.565（%+.1f%%）"
+            + "   ⚠ EDDY_MIX 已是推导值 1/EADY_COEF=3.2258（零自由度），本行不构成标定检查",
             b4555, 100 * (b4555 / 2.565 - 1)));
         say("   ---- 以下是**独立**验收：同一份 GPCP 里没有被 EDDY_MIX 拟合过的量 ----");
         say(String.format(LF, "   [独立·GPCP] 中纬 47.5~62.5  夏 %.2f / 2.534（%+.1f%%）   冬 %.2f / 2.432（%+.1f%%）",

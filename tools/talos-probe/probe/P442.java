@@ -25,6 +25,26 @@ import java.util.Locale;
 public class P442 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code PlateField}/{@code Atmosphere} 的入口收的是 <b>派生后</b> 的长种子，不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后
+     * {@code GyreRow.solve}(:369) / {@code CoastalLayer.coastTangent}(:385) /
+     * {@code Atmosphere.windStress}(:390) <b>全部</b>用它。本探针原来把裸世界种子 {@code SEED}
+     * 直接传给了 11 处收 {@code long seed} 的入口 —— {@code isLandWithCell}(:84)、
+     * {@code windStress}(:97/:98/:99/:100/:101)、{@code kappaAt}(:115)、
+     * {@code pressureAnomaly}(:120/:121/:122/:123) ⇒ 陆地掩膜、κ 场、风应力全不同
+     * ⇒ **量的不是同一个世界**。同型缺陷本仓已修三次：E5a（冻结 :6208）、
+     * P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口必须传派生值 {@code SD}；收 {@code int worldSeedInt}
+     * 的入口传裸值**。本文件的 {@code OceanWiring.onWorld(SEED)}（:45）按定义收 int 世界种子
+     * ⇒ **保持裸 int**（生产同样如此）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：仍是 {@code |lat| < 65} 的判据域、
+     * 17.5/40 度的分带、{@code 0.9 x 97.8% = 88.0%} 的阈值。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRAD = 500_000, DX = 100_000;
@@ -81,7 +101,7 @@ public class P442 {
             double basinU = 0, basinL = 0;
             int runStart = Integer.MIN_VALUE;
             for (int x = XMIN; x <= XMAX + DX; x += DX) {
-                boolean land = (x > XMAX) || PlateField.isLandWithCell(x, z, SEED, CELL);
+                boolean land = (x > XMAX) || PlateField.isLandWithCell(x, z, SD, CELL);
                 if (!land) { if (runStart == Integer.MIN_VALUE) runStart = x; continue; }
                 if (runStart == Integer.MIN_VALUE) continue;
                 int xw = runStart, xe = x - DX, L = xe - xw;
@@ -94,11 +114,11 @@ public class P442 {
                 for (int xx = xw; xx <= xe; xx += DX) {
                     double c4 = 0, tx4 = 0;
                     for (double th : PH4) {
-                        double tyE = Atmosphere.windStress(xx + GRAD, z, SEED, CELL, th, GRAD)[1];
-                        double tyW = Atmosphere.windStress(xx - GRAD, z, SEED, CELL, th, GRAD)[1];
-                        double txN = Atmosphere.windStress(xx, z + GRAD, SEED, CELL, th, GRAD)[0];
-                        double txS = Atmosphere.windStress(xx, z - GRAD, SEED, CELL, th, GRAD)[0];
-                        double tx0 = Atmosphere.windStress(xx, z, SEED, CELL, th, GRAD)[0];
+                        double tyE = Atmosphere.windStress(xx + GRAD, z, SD, CELL, th, GRAD)[1];
+                        double tyW = Atmosphere.windStress(xx - GRAD, z, SD, CELL, th, GRAD)[1];
+                        double txN = Atmosphere.windStress(xx, z + GRAD, SD, CELL, th, GRAD)[0];
+                        double txS = Atmosphere.windStress(xx, z - GRAD, SD, CELL, th, GRAD)[0];
+                        double tx0 = Atmosphere.windStress(xx, z, SD, CELL, th, GRAD)[0];
                         c4 += (tyE - tyW) / (2.0 * GRAD) - (txN - txS) / (2.0 * GRAD);
                         tx4 += tx0;
                     }
@@ -112,15 +132,15 @@ public class P442 {
                 basinU += eqU * L; basinL += L;
                 // ---- F 项分解（全部走生产 API；COAST_WIND_ON 只改 v，故 u 与 windAt 逐位相同）----
                 double latR = WorldContract.latOf(z);
-                double kap = Atmosphere.kappaAt((xw + xe) / 2, z, SEED, CELL);
+                double kap = Atmosphere.kappaAt((xw + xe) / 2, z, SD, CELL);
                 double fZm1 = 0, fTot1 = 0, fPx1 = 0, fPz1 = 0;
                 int mf = 0;
                 for (int xx = xw; xx <= xe; xx += 4 * DX) {   // F 是诊断，1/4 抽样即可
                     for (double th : PH4) {
-                        double px = (Atmosphere.pressureAnomaly(xx + GRAD, z, SEED, CELL, th)
-                                   - Atmosphere.pressureAnomaly(xx - GRAD, z, SEED, CELL, th)) / (2.0 * GRAD);
-                        double pz = (Atmosphere.pressureAnomaly(xx, z + GRAD, SEED, CELL, th)
-                                   - Atmosphere.pressureAnomaly(xx, z - GRAD, SEED, CELL, th)) / (2.0 * GRAD);
+                        double px = (Atmosphere.pressureAnomaly(xx + GRAD, z, SD, CELL, th)
+                                   - Atmosphere.pressureAnomaly(xx - GRAD, z, SD, CELL, th)) / (2.0 * GRAD);
+                        double pz = (Atmosphere.pressureAnomaly(xx, z + GRAD, SD, CELL, th)
+                                   - Atmosphere.pressureAnomaly(xx, z - GRAD, SD, CELL, th)) / (2.0 * GRAD);
                         double uZm = Atmosphere.wind(0, 0, kap, latR, th)[0];
                         double uT  = Atmosphere.wind(px, pz, kap, latR, th)[0];
                         double uX  = Atmosphere.wind(px, 0, kap, latR, th)[0] - uZm;
@@ -236,6 +256,7 @@ public class P442 {
         say(String.format(LF, "  【A1 阈值】观测-观测上限 = %.1f%%（逐月中位数）⇒ 判据 = 0.9 x 上限 = %.1f%%", A1_CEILING_PCT, 0.9 * A1_CEILING_PCT));
         say(String.format(LF, "  【A1 判定】实测 %.1f%%（强信号 %.1f%%）  ⇒ %s", modelPct, 100.0 * tWAg / Math.max(1, tW),
             modelPct >= 0.9 * A1_CEILING_PCT ? "达标 ✓" : "**未达标**"));
+        say(String.format(LF, "  GATE_A1_SIGN=%s", modelPct >= 0.9 * A1_CEILING_PCT ? "PASS" : "FAIL"));
         say("");
         say("C. 观测锚本身的形状（逐 5 度，年均 = 4 相位 curl 的平均）");
         say(String.format(LF, "  %-7s %13s %13s %13s", "纬度", "obs curl 年均", "obs 1 月", "obs 7 月"));

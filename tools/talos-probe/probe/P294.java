@@ -68,6 +68,7 @@ public class P294 {
         }
         say(String.format(LF, "  采样 %d 列：陆地 %d (%.1f%%)   海陆判定不一致 %d %s",
             n, nLand, 100.0*nLand/n, mismatch, mismatch == 0 ? "★ 逐位一致 ✓" : "**不一致**"));
+        say(String.format(LF, "  GATE_LAND_CONSISTENT=%s", mismatch == 0 ? "PASS" : "FAIL"));
         say(String.format(LF, "  列顶方块高度 min %d / max %d（seaLevel=%d, maxY=%d）", (int)hMin, (int)hMax, seaLevel, maxY));
         say("");
 

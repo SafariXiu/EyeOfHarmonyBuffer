@@ -70,7 +70,7 @@ public class P551 {
             long n = 0, nLand0 = 0, nReachSea = 0; double sumStep = 0;
             double sumQ = 0, sumQsrc = 0;
             for (double latd = la + 2.5; latd <= hb; latd += 2.5) {
-                int z = (int) Math.round(latd / 90.0 * WorldContract.MAX_D);
+                int z = WorldContract.zOfLat(latd);
                 for (int c = 0; c < 72; c++) {
                     double lon = (c + 0.5) * 360.0 / 72;
                     if (lon < lo || lon > hi) continue;

@@ -101,7 +101,8 @@ public final class BasinFinder {
         // 原写法是先把这个 161x161 = **25,921 格**的陆地掩膜**全部算出来**，
         // 才在第 84 行检查中心格 —— 而中心格 land[cz*W+cx] 恰好就等于
         // PlateField.isLandWithCell(x, z, seed, cell)（因为 jz=cz=MAX_R ⇒ wz=z、jx=cx ⇒ 该 x）。
-        // 代价：陆地查询要白算 25,921 次 isLandWithCell（每次还会走 elevationFull 的 Math.hypot）
+        // 代价：陆地查询要白算 25,921 次 isLandWithCell（§567 之前每次还会走 elevationFull 的
+        // Math.hypot；现在走 TalosField，量级同为常数级格查询）
         // ⇒ 实测 7~50 ms/次。而**每一次 sstAnom(x,z) 都会走这里**（pressureAnomaly -> sstAnom），
         // 陆地格点占三成以上 ⇒ 区块生成与一切大范围导出都被这一条拖住。
         // 等价性：掩膜构造**没有任何副作用**，早退条件与第 84 行**逐字相同** ⇒

@@ -205,7 +205,7 @@ public class P546 {
 
     /** 取 |lat| 指定值在第 k 个分支（0..3）上的 z。 */
     static int zForAbsLat(double absLatDeg, int branch) {
-        int q = (int) Math.round(absLatDeg / 90.0 * WorldContract.MAX_D);   // 该分支内到赤道的弧长
+        int q = WorldContract.zOfLat(absLatDeg);   // 该分支内到赤道的弧长
         switch (branch) {
             case 0: return q;                                        // N 升： lat = +abs
             case 1: return 2 * WorldContract.MAX_D - q;              // N 降

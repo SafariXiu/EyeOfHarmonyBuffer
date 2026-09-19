@@ -91,7 +91,7 @@ public class P539 {
     long sC = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(1022228679);
     long zC = (long) (5.0 / 90.0 * 10_000_000.0);
     S(String.format(LF, "  seedOf(1022228679) = %d", sC));
-    S(String.format(LF, "  z(lat5) = %d      com.EyeOfHarmonyBuffer.sim.litho.PlateField.TALOS_TERRAIN = %s", zC, com.EyeOfHarmonyBuffer.sim.litho.PlateField.TALOS_TERRAIN));
+    S(String.format(LF, "  z(lat5) = %d      com.EyeOfHarmonyBuffer.sim.litho.PlateField.WORLD_IS_TALOS = %s", zC, com.EyeOfHarmonyBuffer.sim.litho.PlateField.WORLD_IS_TALOS));
     S(String.format(LF, "  LEVEL(seed) = %.6f", TalosField.level(sC)));
     int c1 = 0;
     for (int i = 0; i < 400; i++) { double xA = (double) i * 40_000.0; if (TalosField.isLand(xA, zC, sC)) c1++; }

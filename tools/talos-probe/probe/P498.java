@@ -174,7 +174,7 @@ public class P498 {
         say("       (w_* 单位 1e-3 m/s，P_* 单位 mm/day)");
         for (int li = 0; li < 9; li++) {
             int la = 5 + li * 5;
-            int z = (int) Math.round(la / 90.0 * WorldContract.MAX_D);
+            int z = WorldContract.zOfLat(la);
             for (int i = 0; i < NX; i++) {
                 int x = (int) ((long) i * XSPAN / NX);
                 double kk = Atmosphere.kappaAt(x, z, SD, CELL);

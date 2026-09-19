@@ -63,7 +63,7 @@ public class P549 {
                 long n = 0;
                 for (int xk = 0; xk < 2; xk++) {
                     for (double latd = lo + 1.0; latd < hi; latd += (hi - lo) / 4.0) {
-                        int q3 = (int) Math.round(latd / 90.0 * WorldContract.MAX_D);
+                        int q3 = WorldContract.zOfLat(latd);
                         int z = (xk == 0) ? q3 : 2 * WorldContract.MAX_D - q3;
                         for (int c = 0; c < NX; c++) {
                             int x = (int) Math.round((c + 0.5) * CIRC / NX);

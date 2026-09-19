@@ -13,6 +13,8 @@ import java.util.Locale;
 public class P291 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int DX = 25_000, XMIN = -12_000_000, XMAX = 12_000_000;
     static final Locale LF = Locale.ROOT;
@@ -41,7 +43,7 @@ public class P291 {
             int nw = 0, nOcean = 0, nTot = 0, nActive = 0;
             int run = 0;
             for (int x = XMIN; x <= XMAX; x += DX) {
-                boolean land = PlateField.isLandWithCell(x, z, SEED, cell);
+                boolean land = PlateField.isLandWithCell(x, z, SD, cell);
                 nTot++;
                 if (land) {
                     if (run > 0 && nw < w.length) { w[nw++] = run * (double) DX; }

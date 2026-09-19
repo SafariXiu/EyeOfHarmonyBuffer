@@ -25,6 +25,8 @@ import java.util.Locale;
 public class P261 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int X0 = 0, Z0 = 0, DX = 20_000, DZ = 200_000;   // z 覆盖一整个气候周期 0~20M
     static final int NX = 551, NZ = 101;
@@ -64,18 +66,18 @@ public class P261 {
                 for (int c = 0; c < NX; c++) {
                     int x = X0 + c * DX;
                     int i = r * NX + c;
-                    land[i] = PlateField.isLandWithCell(x, z, SEED, cell) ? 1.0 : 0.0;
-                    elev[i] = PlateField.elevationWithCell(x, z, SEED, cell);
-                    tS[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, thS);
-                    tW[i] = Atmosphere.surfaceTemp(x, z, SEED, cell, thW);
+                    land[i] = PlateField.isLandWithCell(x, z, SD, cell) ? 1.0 : 0.0;
+                    elev[i] = PlateField.elevationWithCell(x, z, SD, cell);
+                    tS[i] = Atmosphere.surfaceTemp(x, z, SD, cell, thS);
+                    tW[i] = Atmosphere.surfaceTemp(x, z, SD, cell, thW);
                     dT[i] = tS[i] - tW[i];
-                    pS[i] = Atmosphere.pressureAnomaly(x, z, SEED, cell, thS);
-                    double[] a = Atmosphere.windAt(x, z, SEED, cell, thS, GRAD);
+                    pS[i] = Atmosphere.pressureAnomaly(x, z, SD, cell, thS);
+                    double[] a = Atmosphere.windAt(x, z, SD, cell, thS, GRAD);
                     uS[i] = a[0]; vS[i] = a[1]; spS[i] = Math.hypot(a[0], a[1]);
-                    double[] b = Atmosphere.windAt(x, z, SEED, cell, thW, GRAD);
+                    double[] b = Atmosphere.windAt(x, z, SD, cell, thW, GRAD);
                     uW[i] = b[0]; vW[i] = b[1]; spW[i] = Math.hypot(b[0], b[1]);
-                    prS[i] = PrecipField.mmPerDay(x, z, SEED, cell, thS, GRAD);
-                    prW[i] = PrecipField.mmPerDay(x, z, SEED, cell, thW, GRAD);
+                    prS[i] = PrecipField.mmPerDay(x, z, SD, cell, thS, GRAD);
+                    prW[i] = PrecipField.mmPerDay(x, z, SD, cell, thW, GRAD);
                 }
             }
             double ms = (System.nanoTime() - t0) / 1e6;

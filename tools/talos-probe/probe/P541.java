@@ -99,12 +99,12 @@ public class P541 {
             + " closure=" + PrecipField.EDDY_CLOSURE);
         double thS = Atmosphere.theta(0.0), thW = Atmosphere.theta(WorldContract.DAYS_PER_YEAR / 2.0);
 
-        for (int terr = 1; terr >= 0; terr--) {
-            PlateField.TALOS_TERRAIN = (terr == 1);
-            say("");
-            say("========== 地形 = " + (terr == 1 ? "新（TalosField）" : "旧（PlateField）")
-                + "   自证 PlateField.TALOS_TERRAIN = " + PlateField.TALOS_TERRAIN + " ==========");
-            say("A. 采样跨度效应（单世界 1022228679）");
+        // §567：原先这里对 terr ∈ {1,0} 循环，把同一套锚点在【新/旧两种地形】上各测一遍。
+        // 旧地形与它的开关已整支删除 ⇒ 只剩 TalosField 一臂。下面的循环体**原样保留**
+        // （所以缩进仍是一层深），只是去掉了这一层循环与其自证行。
+        say("");
+        say("========== 地形 = TalosField（唯一地形路；§567 已删除旧 PlateField 地形与开关）==========");
+        say("A. 采样跨度效应（单世界 1022228679）");
             say("  跨度              47-62夏  47-62冬   赤道夏   赤道冬   副热夏   副热冬    独立err");
             long sd0 = SimTerrain.seedOf(SEED0);
             for (double xs : new double[]{16_000_000.0, 40_000_000.0, 80_000_000.0}) {
@@ -137,7 +137,6 @@ public class P541 {
                     xs / 1000.0, a1 / 16, a2 / 16, a3 / 16));
             }
             say("  地球实测陆地占比（ETOPO1，同纬带）：47.5-62.5 ≈ 55%   2.5-12.5 ≈ 24%   27.5-37.5 ≈ 45%");
-        }
         rep.close();
     }
 }

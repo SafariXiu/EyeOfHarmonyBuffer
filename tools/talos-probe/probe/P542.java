@@ -26,6 +26,8 @@ public class P542 {
     static final Locale LF = Locale.ROOT;
     static final File ROOT = new File("K:" + File.separator + "moder" + File.separator + "EyeOfHarmonyBuffer");
     static final File MASKF = new File(ROOT, "build" + File.separator + "eoh_probe" + File.separator + "refs" + File.separator + "earth_mask.bin");
+    /** ⚠ 口径修正（§559，模板 P442:47）：世界种子 → 地形/气候长种子。{@code Zonal.profile} 收 {@code long seed}，必须传派生值。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(1022228679);
     static final double EARTH_CIRC = 40_000_000.0;   // 360 度 = 40,000 km
     static PrintStream rep;
     static void say(String s) { rep.println("[P542] " + s); System.out.println("[P542] " + s); }
@@ -119,7 +121,7 @@ public class P542 {
         };
         say("=== 自证 B：钩子已装上 ===");
         say("   PlateField.MASK != null : " + (PlateField.MASK != null)
-            + "    TALOS_TERRAIN = " + PlateField.TALOS_TERRAIN + "（应被掩膜覆盖，不再生效）");
+            + "    WORLD_IS_TALOS = " + PlateField.WORLD_IS_TALOS + "（度量身份位，不是开关；地形恒为 TalosField）");
         say("");
 
         // ---------- 对 GPCP ----------
@@ -136,7 +138,7 @@ public class P542 {
                 PrecipField.EDDY_CLOSURE = mode;
                 if (mode == 0) { PrecipField.EDDY_MIX = g; PrecipField.EDDY_PHYS_GAIN = 1.0; }
                 else { PrecipField.EDDY_MIX = savedMix; PrecipField.EDDY_PHYS_GAIN = g; }
-                double[] pS = Zonal.profile(1022228679L, thS), pW = Zonal.profile(1022228679L, thW);
+                double[] pS = Zonal.profile(SD, thS), pW = Zonal.profile(SD, thW);
                 double[] a = Zonal.anchors(pS, pW);
                 double e = Zonal.err(pS, pW);
                 say(String.format(LF, "  %-8d %-9.3f %8.3f %9.3f %9.3f %9.3f %9.3f %9.3f %9.3f   %7.4f",

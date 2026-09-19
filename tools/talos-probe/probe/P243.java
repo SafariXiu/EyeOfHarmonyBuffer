@@ -34,6 +34,8 @@ import java.util.Locale;
 public class P243 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int STEP = 5_000;
     static final int NX = 800, NZ = 800;         // 4000 km x 4000 km
     static final int EDGE_STEPS = 10;            // 50 km
@@ -81,7 +83,7 @@ public class P243 {
         boolean[] a = new boolean[NX * NZ];
         for (int iz = 0; iz < NZ; iz++) {
             int z = iz * STEP;
-            for (int ix = 0; ix < NX; ix++) a[iz * NX + ix] = PlateField.isLandWithCell(ix * STEP, z, SEED, cell);
+            for (int ix = 0; ix < NX; ix++) a[iz * NX + ix] = PlateField.isLandWithCell(ix * STEP, z, SD, cell);
         }
         return a;
     }
@@ -106,7 +108,7 @@ public class P243 {
             for (int ix = 0; ix < NX; ix++) {
                 int x = ix * STEP;
                 a[iz * NX + ix] = usePlate
-                    ? PlateField.isLand(x, z, SEED)
+                    ? PlateField.isLand(x, z, SD)
                     : (NoiseContinentGrid.landResidual(x, z, SEED) >= 0.0);
             }
         }

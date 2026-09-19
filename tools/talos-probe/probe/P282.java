@@ -19,6 +19,8 @@ import java.util.Locale;
 public class P282 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int XSTEP = 20_000, ZSTEP = 200_000, NX = 551;
     static final int MD = WorldContract.MAX_D;
     static final int[][] BAND = new int[3][2];
@@ -55,8 +57,8 @@ public class P282 {
                 for (int c = 0; c < NX; c++) {
                     int x = c * XSTEP, z = r * ZSTEP;
                     px_[k] = x; pz_[k] = z; pb_[k] = b;
-                    kap[k] = Atmosphere.kappaAt(x, z, SEED, cell);
-                    land[k] = PlateField.isLandWithCell(x, z, SEED, cell);
+                    kap[k] = Atmosphere.kappaAt(x, z, SD, cell);
+                    land[k] = PlateField.isLandWithCell(x, z, SD, cell);
                     k++;
                 }
             }
@@ -73,8 +75,8 @@ public class P282 {
             long t0 = System.nanoTime();
             double[] us = new double[nP], vs = new double[nP], uw = new double[nP], vw = new double[nP];
             for (int i = 0; i < nP; i++) {
-                double[] a = Atmosphere.windAt(px_[i], pz_[i], SEED, cell, thS, G);
-                double[] b2 = Atmosphere.windAt(px_[i], pz_[i], SEED, cell, thW, G);
+                double[] a = Atmosphere.windAt(px_[i], pz_[i], SD, cell, thS, G);
+                double[] b2 = Atmosphere.windAt(px_[i], pz_[i], SD, cell, thW, G);
                 us[i] = a[0]; vs[i] = a[1]; uw[i] = b2[0]; vw[i] = b2[1];
             }
             double ms = (System.nanoTime() - t0) / 1e6;
@@ -119,10 +121,10 @@ public class P282 {
         double[] usG = new double[nP], vsG = new double[nP], uwG = new double[nP], vwG = new double[nP];
         for (int i = 0; i < nP; i++) {
             int x = px_[i], z = pz_[i];
-            double[] pt = diffTherm(x, z, SEED, cell, thS, G);
-            double[] pw = diffTherm(x, z, SEED, cell, thW, G);
-            double[] ct = diffCell(x, z, SEED, cell, thS, G);
-            double[] cw = diffCell(x, z, SEED, cell, thW, G);
+            double[] pt = diffTherm(x, z, SD, cell, thS, G);
+            double[] pw = diffTherm(x, z, SD, cell, thW, G);
+            double[] ct = diffCell(x, z, SD, cell, thS, G);
+            double[] cw = diffCell(x, z, SD, cell, thW, G);
             double lat = WorldContract.latOf(z);
             double kk = kap[i];
             double[] a = Atmosphere.wind(pt[0], pt[1], kk, lat, thS);
@@ -164,8 +166,8 @@ public class P282 {
             if (pb_[i] != 1 || !land[i]) continue;
             sUs += usF[i]; sVs += vsF[i]; sUw += uwF[i]; sVw += vwF[i];
             sTs += usT[i]; sTw += uwT[i]; sCs += usC[i]; sCw += uwC[i];
-            double pS = Atmosphere.pressureAnomaly(px_[i], pz_[i], SEED, cell, thS);
-            double pW = Atmosphere.pressureAnomaly(px_[i], pz_[i], SEED, cell, thW);
+            double pS = Atmosphere.pressureAnomaly(px_[i], pz_[i], SD, cell, thS);
+            double pW = Atmosphere.pressureAnomaly(px_[i], pz_[i], SD, cell, thW);
             if (pS * pW < 0) pRev++;
             n++;
         }

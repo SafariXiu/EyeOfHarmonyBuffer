@@ -33,6 +33,7 @@ public class P293 {
         }
         say(rep, "");
         say(rep, String.format(LF, "  最大跳变 = %.8f K   %s", worst, worst < 1e-9 ? "★ 逐位连续 ✓" : "**仍有跳变**"));
+        say(rep, String.format(LF, "  GATE_EQ_JUMP=%s", worst < 1e-9 ? "PASS" : "FAIL"));
         say(rep, "  参考：B2 子代理 P295 在旧表（0 度 = 0.5/0.3）下实测 0.3814 / 0.5387 / 0.8698 K");
         // 顺带：A(phi) 表本身
         say(rep, "");
@@ -49,6 +50,8 @@ public class P293 {
         double dN = (Atmosphere.seasonalAnomaly(Math.toRadians(0.01) , 0.5, th0) - Atmosphere.seasonalAnomaly(0.0, 0.5, th0)) / (0.01/90.0*WorldContract.MAX_D);
         double dS = (Atmosphere.seasonalAnomaly(0.0, 0.5, th0) - Atmosphere.seasonalAnomaly(-Math.toRadians(0.01), 0.5, th0)) / (0.01/90.0*WorldContract.MAX_D);
         say(rep, String.format(LF, "  赤道处 dT'/dz：北侧 %+.4e  南侧 %+.4e K/m  （应当接近）", dN, dS));
+        say(rep, String.format(LF, "  GATE_EQ_DERIV=%s", String.format(LF, "%+.4e", dN).equals(String.format(LF, "%+.4e", dS)) ? "PASS" : "FAIL"));
+        say(rep, String.format(LF, "  GATE_EQ_DERIV_ULP=REVIEW  dN=%.17g  dS=%.17g  dN-dS=%.17g  判据：1 ULP = 浮点结合律噪声，非物理不连续；本门只做记录，不做判定", dN, dS, dN - dS));
         rep.close();
     }
 

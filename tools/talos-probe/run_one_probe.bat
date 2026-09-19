@@ -15,9 +15,8 @@ rem   WITHOUT SPACES (the probe tree is under build\eoh_probe\mtn, which has non
 rem
 rem KEEP THIS FILE ASCII-ONLY.
 rem ============================================================================
-rem EOH_TALOS_TERRAIN (optional): when set, run the probe with the V8 terrain switch ON.
-rem Unset => the command line is byte-identical to before (zero behaviour change).
-set TALOS_FLAG=
-if defined EOH_TALOS_TERRAIN set TALOS_FLAG=-Dtalos.terrain=true
-java -Xmx6g %TALOS_FLAG% -cp out probe.%1 > "%~2" 2> "%~3"
+rem SECTION 567: the terrain selector is GONE with the legacy terrain itself
+rem (EOH_TALOS_TERRAIN / -Dtalos.terrain / PlateField.TALOS_TERRAIN were deleted together);
+rem exactly ONE terrain implementation remains (TalosField).
+java -Xmx6g -cp out probe.%1 > "%~2" 2> "%~3"
 echo EOH_RUNNER_DONE=%errorlevel% JAVA_EXIT=%errorlevel% >> "%~2"

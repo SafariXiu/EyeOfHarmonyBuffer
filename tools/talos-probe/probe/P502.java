@@ -69,7 +69,7 @@ public class P502 {
         double[] acc = new double[13]; int[] cnt = new int[2];
         for (int i = 0; i < NROW; i++) {
             double la = 2.5 + i * 2.5;
-            int z = (int) Math.round(la / 90.0 * WorldContract.MAX_D);
+            int z = WorldContract.zOfLat(la);
             double[] a = new double[13]; int[] c = new int[2];
             for (int q = 0; q < NX; q++) {
                 int x = (int) ((long) q * XSPAN / NX);

@@ -58,7 +58,7 @@ public class P490 {
         double sumAbs = 0, sumSe = 0; int nLat = 0, nSig = 0;
         for (int i = 1; i <= 30; i++) {
             double lat = i * 3.0;                                   // 3..90 度
-            int zN = (int) Math.round(lat / 90.0 * WorldContract.MAX_D);
+            int zN = WorldContract.zOfLat(lat);
             int zS = WorldContract.Z_CYCLE - zN;
             if (zN <= 0 || zN >= WorldContract.MAX_D) continue;
             int nLandN = 0, nLandS = 0;

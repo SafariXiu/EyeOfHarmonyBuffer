@@ -1,9 +1,6 @@
 sim\atmos\Atmosphere.java|landSurfaceTemp
-sim\atmos\PrecipField.java|GAMMA_D
 sim\atmos\PrecipField.java|precipSubsolarLat
-sim\atmos\PrecipField.java|staticN
 sim\atmos\ZonalTables.java|interp
-sim\atmos\ZonalTables.java|interp5
 sim\atmos\ZonalTables.java|LAND_MEAN_ELEV_M
 sim\atmos\ZonalTables.java|T_LAND_K
 sim\atmos\ZonalTables.java|T_OCEAN_K
@@ -24,12 +21,9 @@ sim\ocean\CoastalLayer.java|COAST_TAN_DZ
 sim\ocean\CoastalLayer.java|COAST_TAN_N
 sim\ocean\CoastalLayer.java|COAST_TAN_STEP
 sim\ocean\CoastalLayer.java|COAST_TAN_WIN
-sim\ocean\OceanField.java|install
 sim\ocean\OceanField.java|uninstall
-sim\ocean\OceanWiring.java|off
 sim\ocean\OceanWiring.java|onWorld
 sim\runtime\SimClimate.java,space\talos\chunk\world\V2BiomeField.java,space\talos\chunk\world\LandformField.java,space\talos\chunk\world\MountainLayerV2.java|SOLVE_COUNT
-sim\runtime\SimClimate.java,space\talos\chunk\world\V2BiomeField.java,space\talos\chunk\world\LandformField.java,space\talos\chunk\world\MountainLayerV2.java|SOLVE_NANOS
 sim\runtime\SimClimate.java|MOIST_B
 sim\runtime\SimClimate.java|TEMP_HI
 space\talos\chunk\continent_layer\OrographyField.java|elevation01
@@ -40,14 +34,6 @@ space\talos\chunk\continent_layer\OrographyField.java|KIND_PEAK
 space\talos\chunk\continent_layer\OrographyField.java|KIND_PLATEAU
 space\talos\chunk\continent_layer\OrographyField.java|relief01
 space\talos\chunk\continent_layer\OrographyField.java|ridgeDev
-space\talos\chunk\world\ClimateCoords.java|ENABLE_ORO
-space\talos\chunk\world\ClimateCoords.java|ENABLE_SST
-space\talos\chunk\world\ClimateCoords.java|INLAND_DRY
-space\talos\chunk\world\ClimateCoords.java|INLAND_SCALE
-space\talos\chunk\world\ClimateCoords.java|LAPSE
-space\talos\chunk\world\ClimateCoords.java|MOIST_OFFSET
-space\talos\chunk\world\ClimateCoords.java|ORO_LEE_GAIN
-space\talos\chunk\world\ClimateCoords.java|ORO_UP_GAIN
 space\talos\chunk\world\LandformField.java|computeWeights
 space\talos\chunk\world\MountainLayerV2.java|aGateHi
 space\talos\chunk\world\MountainLayerV2.java|aGateLo

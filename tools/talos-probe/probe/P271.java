@@ -13,6 +13,8 @@ import java.util.Locale;
 public class P271 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final double TAU0 = 0.0685, H_T = 4000.0, A_H = 1.9e4, H = 5000.0;
 
@@ -33,7 +35,7 @@ public class P271 {
             int z = (int) ((k + 0.5) / 24.0 * ZC);
             GyreRow.Params p = new GyreRow.Params();
             p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
-            GyreRow.Row r = GyreRow.solve((k * 977_000) % 9_000_000, z, SEED, cell, wind, p);
+            GyreRow.Row r = GyreRow.solve((k * 977_000) % 9_000_000, z, SD, cell, wind, p);
             if (!r.valid) continue;
             // **关键断言：东端必须是真海岸，不是 maxRow 截断**
             if (r.eastX >= p.maxRow - 20_000) continue;
@@ -48,11 +50,11 @@ public class P271 {
             int mono = 0, n = 0;
             for (int j = 1; j <= 8; j++) {
                 int x = r.eastX - j * 50_000;
-                double kx = Atmosphere.kappaAt(x, z, SEED, cell);
-                double gx = (Atmosphere.pressureAnomaly(x + GRAD, z, SEED, cell, th)
-                           - Atmosphere.pressureAnomaly(x - GRAD, z, SEED, cell, th)) / (2.0 * GRAD);
-                double[] uv = Atmosphere.windAt(x, z, SEED, cell, th, GRAD);
-                double[] ts = Atmosphere.windStress(x, z, SEED, cell, th, GRAD);
+                double kx = Atmosphere.kappaAt(x, z, SD, cell);
+                double gx = (Atmosphere.pressureAnomaly(x + GRAD, z, SD, cell, th)
+                           - Atmosphere.pressureAnomaly(x - GRAD, z, SD, cell, th)) / (2.0 * GRAD);
+                double[] uv = Atmosphere.windAt(x, z, SD, cell, th, GRAD);
+                double[] ts = Atmosphere.windStress(x, z, SD, cell, th, GRAD);
                 if (!Double.isNaN(prev)) { n++; if (Math.abs(kx) > Math.abs(prev)) mono++; }
                 prev = kx;
                 say(String.format(LF, "   %-9d %8.3f %11.3e %11.2f %11.5f",

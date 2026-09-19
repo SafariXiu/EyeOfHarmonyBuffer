@@ -37,6 +37,8 @@ import java.util.Locale;
 public class P443 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRAD = 500_000, DX = 100_000;
@@ -54,7 +56,7 @@ public class P443 {
         long key = ((long) x << 32) ^ (z & 0xFFFFFFFFL);
         Double v = KC.get(key);
         if (v != null) return v;
-        double k = Atmosphere.kappaAt(x, z, SEED, CELL);
+        double k = Atmosphere.kappaAt(x, z, SD, CELL);
         KC.put(key, k);
         return k;
     }
@@ -91,15 +93,15 @@ public class P443 {
                 double kP = kap(x, z + GRAD), kM = kap(x, z - GRAD);
                 double kE = kap(x + GRAD, z), kW = kap(x - GRAD, z);
                 for (double th : PH4) {
-                    double prod = Atmosphere.pressureAnomaly(x, z, SEED, CELL, th);
+                    double prod = Atmosphere.pressureAnomaly(x, z, SD, CELL, th);
                     eVal = Math.max(eVal, Math.abs(pS(lat, kC, th) + pC(lat, kC, th) - prod));
                     pMax = Math.max(pMax, Math.abs(prod));
-                    double pxProd = (Atmosphere.pressureAnomaly(x + GRAD, z, SEED, CELL, th)
-                                   - Atmosphere.pressureAnomaly(x - GRAD, z, SEED, CELL, th)) / (2.0 * GRAD);
+                    double pxProd = (Atmosphere.pressureAnomaly(x + GRAD, z, SD, CELL, th)
+                                   - Atmosphere.pressureAnomaly(x - GRAD, z, SD, CELL, th)) / (2.0 * GRAD);
                     double pxSum = (pS(lat, kE, th) - pS(lat, kW, th) + pC(lat, kE, th) - pC(lat, kW, th)) / (2.0 * GRAD);
                     ePx = Math.max(ePx, Math.abs(pxSum - pxProd));
-                    double pzProd = (Atmosphere.pressureAnomaly(x, z + GRAD, SEED, CELL, th)
-                                   - Atmosphere.pressureAnomaly(x, z - GRAD, SEED, CELL, th)) / (2.0 * GRAD);
+                    double pzProd = (Atmosphere.pressureAnomaly(x, z + GRAD, SD, CELL, th)
+                                   - Atmosphere.pressureAnomaly(x, z - GRAD, SD, CELL, th)) / (2.0 * GRAD);
                     double pzSum = (pS(latP, kP, th) - pS(latM, kM, th) + pC(latP, kP, th) - pC(latM, kM, th)) / (2.0 * GRAD);
                     ePz = Math.max(ePz, Math.abs(pzSum - pzProd));
                     pzMax = Math.max(pzMax, Math.abs(pzProd));
@@ -134,7 +136,7 @@ public class P443 {
 
             int runStart = Integer.MIN_VALUE;
             for (int x = XMIN; x <= XMAX + DX; x += DX) {
-                boolean land = (x > XMAX) || PlateField.isLandWithCell(x, z, SEED, CELL);
+                boolean land = (x > XMAX) || PlateField.isLandWithCell(x, z, SD, CELL);
                 if (!land) { if (runStart == Integer.MIN_VALUE) runStart = x; continue; }
                 if (runStart == Integer.MIN_VALUE) continue;
                 int xw = runStart, xe = x - DX, L = xe - xw;
@@ -158,7 +160,7 @@ public class P443 {
                         double pxSd = (pSd(lat, kE, th) - pSd(lat, kW, th)) / (2.0 * GRAD);
                         double pzSd = (pSd(latP, kP, th) - pSd(latM, kM, th)) / (2.0 * GRAD);
                         double uZm  = Atmosphere.wind(0, 0, kC, lat, th)[0];
-                        double uTot = Atmosphere.windAt(xx, z, SEED, CELL, th, GRAD)[0];
+                        double uTot = Atmosphere.windAt(xx, z, SD, CELL, th, GRAD)[0];
                         double uS   = Atmosphere.wind(pxS, pzS, kC, lat, th)[0] - uZm;
                         double uC   = Atmosphere.wind(pxC, pzC, kC, lat, th)[0] - uZm;
                         double uFx  = Atmosphere.wind(pxSd + pxC, pzSd + pzC, kC, lat, th)[0];

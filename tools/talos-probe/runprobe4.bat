@@ -81,9 +81,22 @@ copy /Y "%SRC%\sim\world\WorldContract.java" com\EyeOfHarmonyBuffer\sim\world\Wo
 copy /Y "%SRC%\sim\atmos\Atmosphere.java" com\EyeOfHarmonyBuffer\sim\atmos\Atmosphere.java >nul
 copy /Y "%SRC%\sim\atmos\ZonalTables.java" com\EyeOfHarmonyBuffer\sim\atmos\ZonalTables.java >nul
 copy /Y "%SRC%\sim\atmos\PrecipField.java" com\EyeOfHarmonyBuffer\sim\atmos\PrecipField.java >nul
+copy /Y "%SRC%\sim\atmos\Radiation.java" com\EyeOfHarmonyBuffer\sim\atmos\Radiation.java >nul
+copy /Y "%SRC%\sim\atmos\StationaryWave.java" com\EyeOfHarmonyBuffer\sim\atmos\StationaryWave.java >nul
+copy /Y "%SRC%\sim\atmos\HadleyCell.java" com\EyeOfHarmonyBuffer\sim\atmos\HadleyCell.java >nul
+copy /Y "%SRC%\sim\atmos\SoilMoisture.java" com\EyeOfHarmonyBuffer\sim\atmos\SoilMoisture.java >nul
+copy /Y "%SRC%\sim\atmos\Vegetation.java" com\EyeOfHarmonyBuffer\sim\atmos\Vegetation.java >nul
+copy /Y "%SRC%\sim\atmos\ParcelLift.java" com\EyeOfHarmonyBuffer\sim\atmos\ParcelLift.java >nul
+copy /Y "%SRC%\sim\atmos\VerticalColumn.java" com\EyeOfHarmonyBuffer\sim\atmos\VerticalColumn.java >nul
 copy /Y "%SRC%\sim\export\MapWriter.java" com\EyeOfHarmonyBuffer\sim\export\MapWriter.java >nul
 copy /Y "%SRC%\sim\runtime\SimTerrain.java" com\EyeOfHarmonyBuffer\sim\runtime\SimTerrain.java >nul
 copy /Y "%SRC%\sim\runtime\SimClimate.java" com\EyeOfHarmonyBuffer\sim\runtime\SimClimate.java >nul
+rem P720 (monsoon-heating -> stationary wave -> Sahara descent): stage the probe source next to the other
+rem probes so `runp.bat P720` behaves exactly like an archived probe. NOTE the line deliberately does NOT
+rem use the "%SRC%\..." form above: precheck.ps1 parses those lines as its DIRECTION-1 copy list and a probe
+rem is not a src-derived com\** file, so listing it there would raise a spurious COPYLIST_ORPHAN.
+if not exist "%PDIR%\probe" mkdir "%PDIR%\probe"
+copy /Y "%~dp0probe\P720.java" "%PDIR%\probe\P720.java" >nul
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync_check.ps1"
 if errorlevel 1 (echo SYNC_FAIL & exit /b 2)
 rem precheck: BIDIRECTIONAL copy-list check + probe-coverage audit. Warns only -- exits 0 unless -Strict,
@@ -108,7 +121,11 @@ dir /S /B /A:-D com\*.java > srcs.txt
 dir /S /B /A:-D "%PROBES%\*.java" >> srcs.txt
 rem archive: compile ONLY the one requested probe. Compiling all 199 at once means any single
 rem stale historical probe breaks every archive run -- the same rot-coupling we just removed.
-if exist "%ARCHIVE%\%1.java" echo %ARCHIVE%\%1.java >> srcs.txt
+rem E129 (2026-09, measured with P720): a probe that exists in BOTH trees must be listed ONCE.
+rem javac resolves the two paths to the SAME class and dies with "duplicate class: probe.<name>"
+rem (the earlier duplicate-path test passed only because there both lines were the SAME path).
+rem Guard is inert for today's corpus (no probe is in both trees) and only prevents the double-listing.
+if exist "%ARCHIVE%\%1.java" if not exist "%PROBES%\%1.java" echo %ARCHIVE%\%1.java >> srcs.txt
 mkdir out
 javac -encoding UTF-8 -nowarn -d out @srcs.txt 2>&1
 if errorlevel 1 (echo JAVAC_FAIL & exit /b 1)
@@ -117,12 +134,9 @@ rem   WHY: rerun_acceptance.ps1 runs many probes at once, and they must share ON
 rem   Calling this script N times in parallel would make each copy rmdir out\ while another
 rem   JVM is still reading classes from it.
 if "%2"=="--build-only" (echo BUILD_ONLY_OK & exit /b 0)
-rem EOH_TALOS_TERRAIN (optional): set => run with the V8 terrain switch ON.
-rem WHY NOT a command-line -D: cmd splits "-Dtalos.terrain=true" at the '=' when it goes
-rem through %2/%3/%4, turning it into "-Dtalos.terrain true" -> getBoolean()==false -> SILENTLY OFF
-rem (E122: a whole P463 calibration table was measured with the switch off). Env var + batch
-rem assignment cannot be mangled that way.
-set TALOS_FLAG=
-if defined EOH_TALOS_TERRAIN set TALOS_FLAG=-Dtalos.terrain=true
-java -Xmx6g %TALOS_FLAG% %2 %3 %4 -cp out probe.%1
+rem SECTION 567: the terrain selector is GONE with the legacy terrain itself
+rem (EOH_TALOS_TERRAIN / -Dtalos.terrain / PlateField.TALOS_TERRAIN were deleted together);
+rem exactly ONE terrain implementation remains (TalosField), so no flag can select one.
+rem Any -D passed through %2/%3/%4 is still split at '=' by cmd (E122) -- do not rely on it.
+java -Xmx6g %2 %3 %4 -cp out probe.%1
 echo JAVA_EXIT=%errorlevel%

@@ -14,6 +14,8 @@ import java.util.Locale;
 public class P267 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int X0 = 0, Z0 = 0, DX = 40_000, DZ = 100_000;
     static final int NX = 276, NZ = 201;
@@ -36,8 +38,8 @@ public class P267 {
             int z = Z0 + r * DZ;
             for (int c = 0; c < NX; c++) {
                 int x = X0 + c * DX;
-                a[r * NX + c] = PrecipField.mmPerDay(x, z, SEED, cell, thS, GRAD);
-                b[r * NX + c] = PrecipField.mmPerDay(x, z, SEED, cell, thW, GRAD);
+                a[r * NX + c] = PrecipField.mmPerDay(x, z, SD, cell, thS, GRAD);
+                b[r * NX + c] = PrecipField.mmPerDay(x, z, SD, cell, thW, GRAD);
             }
         }
         double ms = (System.nanoTime() - t0) / 1e6;
@@ -57,7 +59,7 @@ public class P267 {
             double sa = 0, sb = 0, sl = 0; int n = 0;
             for (int c = 0; c < NX; c++) {
                 sa += a[r * NX + c]; sb += b[r * NX + c];
-                if (PlateField.isLandWithCell(X0 + c * DX, z, SEED, cell)) sl++;
+                if (PlateField.isLandWithCell(X0 + c * DX, z, SD, cell)) sl++;
                 n++;
             }
             say(String.format(LF, "   %-9.1f %12.2f %12.2f %9.0f%%", Math.toDegrees(WorldContract.latOf(z, ZC)),
@@ -74,12 +76,12 @@ public class P267 {
                 int z = Z0 + r * DZ;
                 for (int c = 0; c < NX; c += 2) {
                     int x = X0 + c * DX;
-                    if (!PlateField.isLandWithCell(x, z, SEED, cell)) continue;
-                    double e = PlateField.elevationWithCell(x, z, SEED, cell);
+                    if (!PlateField.isLandWithCell(x, z, SD, cell)) continue;
+                    double e = PlateField.elevationWithCell(x, z, SD, cell);
                     if (e < lo[k] || e >= hi[k]) continue;
                     sp += a[r * NX + c];
                     double lat = WorldContract.latOf(z);
-                    double kk = Atmosphere.kappaAt(x, z, SEED, cell);
+                    double kk = Atmosphere.kappaAt(x, z, SD, cell);
                     sq += PrecipField.moisture(Atmosphere.tZonalMean(lat)
                         + Atmosphere.seasonalAnomaly(lat, kk, thS), e, kk);
                     n++;

@@ -11,7 +11,9 @@ import java.util.Locale;
 /** P288：**造山补丁落地校验** —— 复现子代理的校验和 076de5e9976c8857 与高程分布。 */
 public class P288 {
 
-    static final long SEED = 1022228679L;
+    static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int DX = 20_000, NX = 1001, NZ = 1001;
     static final int CELL = PlateField.PLATE_CELL;
     static final int BIN = 100, LO = -11_000, HI = 9_000, NB = (HI - LO) / BIN + 1;
@@ -35,7 +37,7 @@ public class P288 {
             boolean antarctic = Math.toDegrees(lat) < -60.0;
             for (int c = 0; c < NX; c++) {
                 int x = c * DX;
-                double e = PlateField.elevationWithCell(x, z, SEED, CELL);
+                double e = PlateField.elevationWithCell(x, z, SD, CELL);
                 h ^= Double.doubleToLongBits(e);
                 h *= 0x100000001B3L;
                 int b = (int) Math.floor((e - LO) / BIN);

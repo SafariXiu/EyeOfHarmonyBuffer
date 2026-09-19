@@ -59,13 +59,13 @@ public class P547 {
 
     /** 北纬 latDeg 对应的 z（分支 0 = N 升）。 */
     static int zOfLatN(double latDeg) {
-        return (int) Math.round(latDeg / 90.0 * WorldContract.MAX_D);
+        return WorldContract.zOfLat(latDeg);
     }
 
     public static void main(String[] args) throws Exception {
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p547_report.txt"), "UTF-8");
         say("P547：模型里到底有没有季风？（经向对比，地球掩膜驱动）");
-        say("  契约自证：Z_CYCLE=" + WorldContract.Z_CYCLE + "  TEMP=" + PlateField.TALOS_TERRAIN
+        say("  契约自证：Z_CYCLE=" + WorldContract.Z_CYCLE + "  WORLD_IS_TALOS=" + PlateField.WORLD_IS_TALOS
             + "  PLATEAU_AMP=" + Atmosphere.PLATEAU_AMP);
         loadMask();
         PlateField.MASK = new PlateField.LandMask() {

@@ -157,6 +157,9 @@ public class P477 {
             medWarm, inBand, nWarm, (medWarm >= 4.0 && medWarm <= 8.0) ? "通过" : "**不通过**"));
         say(String.format(LF, "  ② 冷峰中位 %+.2f K ⇒ %s", median(wCold, nCold), median(wCold, nCold) <= -4.0 ? "通过" : "**不通过**"));
         say(String.format(LF, "  ③ 暖舌 FWHM 中位 %.0f km；>=50 km 的盆 %d/%d ⇒ %s", medFw, wide, nWarm, medFw >= 50 ? "通过" : "**不通过**"));
+        say(String.format(LF, "  GATE_A5_WARM=%s", (medWarm >= 4.0 && medWarm <= 8.0) ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_A5_COLD=%s", median(wCold, nCold) <= -4.0 ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_A4_SCALE=%s", medFw >= 50 ? "PASS" : "FAIL"));
         say("");
         say(String.format(LF, "  reentryBlocked = %d（必须 0）", OceanField.reentryBlocked));
         say("⚠ 记账：本探针只读 OceanField 的公开取值接口，未改任何生产常量。");

@@ -22,6 +22,15 @@ $mtn  = Join-Path $root 'build\eoh_probe\mtn'
 if (!(Test-Path $mtn)) { New-Item -ItemType Directory -Path $mtn | Out-Null }
 $files = @(
   'sim\atmos\Atmosphere.java','sim\atmos\ZonalTables.java','sim\atmos\PrecipField.java',
+  # ---- 520 SCOPE FIX: these files were NOT in the scan list, so every public static
+  #      member in them was INVISIBLE to the registry (the D67/D75/D78 class).
+  #      Evidence: none of the 84 UNREG entries came from VerticalColumn/ParcelLift,
+  #      yet StationaryWave.OLR_K (reused in 504) and QRAD_ASR_MINUS_OLR (default
+  #      flipped in 487) live in these files -> the blind spot sat exactly where the
+  #      most consequential edits were made. Adding them makes the count LARGER but HONEST.
+  'sim\atmos\Radiation.java','sim\atmos\StationaryWave.java','sim\atmos\HadleyCell.java',
+  'sim\atmos\SoilMoisture.java','sim\atmos\Vegetation.java',
+  'sim\atmos\ParcelLift.java','sim\atmos\VerticalColumn.java','sim\litho\TalosField.java',
   'sim\litho\PlateField.java','sim\world\WorldContract.java',
   'sim\ocean\OceanField.java','sim\ocean\OceanWiring.java','sim\ocean\GyreRow.java',
   'sim\ocean\SurfaceLayer.java','sim\ocean\CoastalLayer.java','sim\ocean\SeaSurfaceTemp.java',

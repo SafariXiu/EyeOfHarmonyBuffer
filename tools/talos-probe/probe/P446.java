@@ -13,6 +13,8 @@ import java.util.Locale;
 public class P446 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int CELL = PlateField.PLATE_CELL;
     static final int GRAD = 500_000;
     static final double[] PH4 = {0.0, Math.PI / 2, Math.PI, 3.0 * Math.PI / 2.0};
@@ -23,10 +25,10 @@ public class P446 {
     static void say(String s) { rep.println("[P446] " + s); System.out.println("[P446] " + s); }
 
     static double divU(int x, int z, double th) {
-        double[] ux = Atmosphere.windAt(x + GRAD, z, SEED, CELL, th, GRAD);
-        double[] uw = Atmosphere.windAt(x - GRAD, z, SEED, CELL, th, GRAD);
-        double[] un = Atmosphere.windAt(x, z + GRAD, SEED, CELL, th, GRAD);
-        double[] us = Atmosphere.windAt(x, z - GRAD, SEED, CELL, th, GRAD);
+        double[] ux = Atmosphere.windAt(x + GRAD, z, SD, CELL, th, GRAD);
+        double[] uw = Atmosphere.windAt(x - GRAD, z, SD, CELL, th, GRAD);
+        double[] un = Atmosphere.windAt(x, z + GRAD, SD, CELL, th, GRAD);
+        double[] us = Atmosphere.windAt(x, z - GRAD, SD, CELL, th, GRAD);
         return (ux[0] - uw[0]) / (2.0 * GRAD) + (un[1] - us[1]) / (2.0 * GRAD);
     }
 

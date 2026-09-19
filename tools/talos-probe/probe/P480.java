@@ -116,6 +116,8 @@ public class P480 {
             wMed / 1000, wRef / 1000, anchorScaled));
         say(String.format(LF, "      模型西带 |v| 中位 %.2f mm/s vs 归一后的锚 %.2f mm/s ⇒ %s",
             median(vv, n), anchorScaled, median(vv, n) >= anchorScaled ? "达标" : String.format(LF, "**差 %.2fx**", anchorScaled / median(vv, n))));
+        say(String.format(LF, "  GATE_A2_ANCHOR_SCALED=%s", median(vv, n) >= anchorScaled ? "PASS" : "FAIL"));
+        say("  GATE_A2_SHAPE=REVIEW");
         say("");
         say(String.format(LF, "  reentryBlocked = %d（必须 0）", OceanField.reentryBlocked));
         say("⚠ 记账：本探针只读 OceanField 的公开接口，未改任何生产常量。");

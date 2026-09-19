@@ -54,9 +54,29 @@ public final class WorldContract {
      * <p>z=0 赤道 → MAX_D 北极(+90°) → 2·MAX_D 赤道 → 3·MAX_D 南极(-90°) → 4·MAX_D 赤道。
      * <p>1 格 = 1 米不变（每 MAX_D 格走 90 度）。**全程连续且周期** ⇒ sin(lat) 连续 ⇒ f 不再跳号。
      */
+    /**
+     * ★ §527 新增：**z 的周期回卷 —— 单一来源**。
+     *
+     * <p>为什么要有它：契约下气候在 Z 上以 {@code zCycle} 周期重复，所以「把 z 弄回一个周期内」
+     * 只能【回卷】，不能【夹逼】。历史上有两处用了 {@code clamp(z, 0, MAX_D)}，
+     * 那只保留北半球：南半球点（z 约 3*MAX_D）会被夹到 **MAX_D = 北极**，
+     * 而不是回到它自己的纬度。见 {@code PrecipField.upwindSea} / {@code moistureAdvected}。
+     *
+     * <p>整数版与 {@link #latOf} 内部【逐字一致】；连续版供沿风逆推这类浮点游走使用。
+     */
+    public static int wrapZ(int z, int zCycle) {
+        return ((z % zCycle) + zCycle) % zCycle;
+    }
+
+    /** 连续 z 的周期回卷（与 {@link #wrapZ(int,int)} 同口径）。 */
+    public static double wrapZ(double z, int zCycle) {
+        double w = z % zCycle;
+        return w < 0.0 ? w + zCycle : w;
+    }
+
     public static double latOf(int z, int zCycle) {
         int quarter = zCycle / 4;
-        int u = ((z % zCycle) + zCycle) % zCycle;
+        int u = wrapZ(z, zCycle);
         double q = (double) u / quarter;
         double t;
         if (q < 1.0) t = q;

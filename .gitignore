@@ -56,3 +56,11 @@ layout.json
 !research/oa2.py
 !research/wb.py
 !research/fetch_pdf.py
+
+# ============ 探针/命令行的临时日志：不入库 ============
+# 为什么需要：交付物是 build/ 下的 *_report.txt 与 tools/talos-probe/CALIBERS.md；
+# 而 runp.bat 的【命令行重定向】（例如 > p701.txt）过去写在源码目录，
+# 导致 79 个调试日志变成未跟踪文件、会被手工提交带进仓库。这里一次性忽略。
+# 若确有需要入库的 .txt，用 !tools/talos-probe/<名字>.txt 显式放行。
+/*.txt
+/tools/talos-probe/*.txt

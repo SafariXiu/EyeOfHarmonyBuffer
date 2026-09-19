@@ -95,7 +95,8 @@ public class P295 {
         say("  （翻转本身是正常的：海岸线本来就是海陆交界；这里看的是量级有没有异常变大）");
         say("");
 
-        // 对照：旧实现的 base 跳变点在哪 —— 用 elevationFull 的 base 直接找"次近站换人"
+        // 对照：高程场的 base 跳变点在哪 —— 直接找"次近站换人"（探针用的是保留入口
+        // elevationWithCell；旧实现的 elevationFull 已随 §567 删除，本节只剩现役路）
         say("B. 直接定位 base 跳变（沿 8 条 x 扫描，看 1-block 步长下的高程最大跳变）");
         int worst1 = 0; long pairs1 = 0;
         for (int li = 0; li < 8; li++) {

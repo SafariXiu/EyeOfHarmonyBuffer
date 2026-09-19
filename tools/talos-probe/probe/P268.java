@@ -22,6 +22,26 @@ import java.util.Locale;
 public class P268 {
 
     static final int SEED = 1022228679;
+    /**
+     * ⚠⚠ 2026-09-19 修正（D 类「仪器口径」，**E5a 类错误**；模板 = P292:38、冻结 §559）：
+     * {@code PlateField}/{@code Atmosphere}/{@code PrecipField} 的入口收的是 <b>派生后</b> 的长种子，
+     * 不是裸世界种子。
+     *
+     * <p>生产路径：{@code OceanField:205 long seed = SimTerrain.seedOf(worldSeedInt)}，随后所有
+     * 地形/风/降水调用都用它。本探针原来把裸世界种子 {@code SEED} 直接传给了 6 处收
+     * {@code long seed} 的入口 —— {@code isLandWithCell}(:56)、{@code elevationWithCell}(:57)、
+     * {@code windAt}(:59)、{@code upwindElev}(:60)、{@code mmPerDay}(:61)、{@code kappaAt}(:62)
+     * ⇒ 陆地掩膜、海拔、上风地形、降水、κ 全不同 ⇒ **量的不是同一个世界**。
+     * 同型缺陷本仓已修三次：E5a（冻结 :6208）、P539（:22955/:22962）、P292（§558）。
+     *
+     * <p>判据：**收 {@code long seed} 的入口必须传派生值 {@code SD}；收 {@code int worldSeedInt}
+     * 的入口传裸值**。本文件的 {@code OceanWiring.onWorld(SEED)}（:38）按定义收 int 世界种子
+     * ⇒ **保持裸 int**（生产同样如此）。
+     * <p>本次改动**不动任何判据、判据域、阈值**：本门是 (c) 类「已淘汰、仅作诊断」的旧极端档
+     * 读数（用户裁决 2026-09-13）；B4 的验收口径 = P452（质量加权），本文件的 1.8~4.1 锚带与
+     * 分档边界（250/750/1500 m）一字未动。
+     */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int ZC = WorldContract.Z_CYCLE;
     static final int GRAD = 20_000;
 
@@ -53,13 +73,13 @@ public class P268 {
             int z = (int) ((r + 0.5) / NZ * ZC);
             for (int c = 0; c < NX; c++) {
                 int x = (int) ((c + 0.5) / NX * 11_400_000);
-                if (!PlateField.isLandWithCell(x, z, SEED, cell)) continue;
-                double e = PlateField.elevationWithCell(x, z, SEED, cell);
+                if (!PlateField.isLandWithCell(x, z, SD, cell)) continue;
+                double e = PlateField.elevationWithCell(x, z, SD, cell);
                 if (e <= 0) continue;
-                double[] u = Atmosphere.windAt(x, z, SEED, cell, th, GRAD);
-                double hUp = PrecipField.upwindElev(x, z, SEED, cell, u[0], u[1]);
-                double p = PrecipField.mmPerDay(x, z, SEED, cell, th, GRAD);
-                double k = Atmosphere.kappaAt(x, z, SEED, cell);
+                double[] u = Atmosphere.windAt(x, z, SD, cell, th, GRAD);
+                double hUp = PrecipField.upwindElev(x, z, SD, cell, u[0], u[1]);
+                double p = PrecipField.mmPerDay(x, z, SD, cell, th, GRAD);
+                double k = Atmosphere.kappaAt(x, z, SD, cell);
                 double deplete = Math.exp(-Math.max(0.0, hUp) / PrecipField.H_MOIST * k);
                 double pNoLoss = deplete > 1e-9 ? p / deplete : p;
                 int bi = bin(e), bj = bin(hUp);

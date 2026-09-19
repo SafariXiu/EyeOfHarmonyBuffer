@@ -57,6 +57,8 @@ import java.util.Locale;
 public class P248 {
 
     static final int SEED = 1022228679;
+    /** ⚠ 口径修正（§559，模板 P442:47）：收 {@code long seed} 的入口传本值；收 {@code int worldSeedInt} 的入口仍传裸 {@code SEED}。本次未改任何判据/阈值/输出行。 */
+    static final long SD = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(SEED);
     static final int CELL = PlateField.PLATE_CELL;
     static final int SAMPLE = 20_000;          // 沿行步长
     static final int DH = 10_000;               // 差分步长
@@ -88,7 +90,7 @@ public class P248 {
         for (int iz = 0; iz < 20; iz++) {
             for (int ix = 0; ix < 20; ix++) {
                 int x = xs[ix], z = zs[iz];
-                if (PlateField.isLandWithCell(x, z, SEED, CELL)) { nLand++; continue; }
+                if (PlateField.isLandWithCell(x, z, SD, CELL)) { nLand++; continue; }
                 nSea++;
                 int[] span = rowSpan(x, z);
                 int w = (span[2] - span[0]) / SAMPLE + 1;
@@ -119,7 +121,7 @@ public class P248 {
         int jumps = 0, printed = 0;
         StringBuilder sb = new StringBuilder("      ");
         for (int x = 0; x <= 4_000_000; x += 200_000) {
-            if (PlateField.isLandWithCell(x, 1_200_000, SEED, CELL)) { sb.append("  [陆]  "); prev = Double.NaN; continue; }
+            if (PlateField.isLandWithCell(x, 1_200_000, SD, CELL)) { sb.append("  [陆]  "); prev = Double.NaN; continue; }
             int cnt = 0;
             double p = psiSverdrup(x, 1_200_000, cnt);
             if (!Double.isNaN(prev) && Math.abs(p - prev) > 5e4) jumps++;
@@ -144,9 +146,9 @@ public class P248 {
     /** 返回 {西岸x, 东岸x, 西岸索引偏移, 是否触到行扫描上限}。 */
     static int[] rowSpan(int x, int z) {
         int w = x; int guard = 0;
-        while (guard++ < MAXROW && !PlateField.isLandWithCell(w - SAMPLE, z, SEED, CELL)) w -= SAMPLE;
+        while (guard++ < MAXROW && !PlateField.isLandWithCell(w - SAMPLE, z, SD, CELL)) w -= SAMPLE;
         int e = x; guard = 0;
-        while (guard++ < MAXROW && !PlateField.isLandWithCell(e + SAMPLE, z, SEED, CELL)) e += SAMPLE;
+        while (guard++ < MAXROW && !PlateField.isLandWithCell(e + SAMPLE, z, SD, CELL)) e += SAMPLE;
         return new int[]{w, e, (x - w) / SAMPLE, guard >= MAXROW ? 1 : 0};
     }
 
@@ -160,7 +162,7 @@ public class P248 {
     static double psiSverdrup(int x, int z, int cnt) {
         double sum = 0; int n = 0, g = 0;
         for (int xx = x; g < MAXROW; xx += SAMPLE, g++) {
-            if (PlateField.isLandWithCell(xx, z, SEED, CELL)) break;
+            if (PlateField.isLandWithCell(xx, z, SD, CELL)) break;
             sum += curlAt(xx, z) * SAMPLE;
             n++;
         }
