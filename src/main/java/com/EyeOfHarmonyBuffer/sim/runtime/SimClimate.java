@@ -402,6 +402,12 @@ public final class SimClimate {
             h = h * 31 + 0x7A125L;
             h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_SMOOTH_K);
         }
+        // ★ §577 θ_e 阈值判据（Folkins & Braun 2003）：按条件折入 ⇒ 关闭时指纹与历史完全一致。
+        //   ⚠ 必须折入：它改变降水 ⇒ 不折入会让气候瓦片命中旧缓存（本项目已有的缺陷类）。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_THETA_E) {
+            h = h * 31 + 0x7A130L;
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_SMOOTH_K);
+        }
         // §480 wEff 改由 F_net/M 驱动：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.WZM_FROM_QNET) {
             h = h * 31 + 0x7A124L;
@@ -545,6 +551,27 @@ public final class SimClimate {
         }
         if (!com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP) {
             h = h * 31 + 0x7A12FL;
+        }
+        // ★★★★★★★ §589 复查补漏：以下 2 个开关【会改变结果】却【不在指纹里】——
+        //   与 §527 补的那 10 个是【同一个缺陷类】（漏网，不是设计豁免）。
+        //   · HadleyCell.ENABLED：换掉 wEff 里的 wBase（PrecipField:1742）⇒ 改降水 ⇒ 改气候瓦片。
+        //   · COAST_WIND_ON：Atmosphere:265 会给风场叠加沿岸风项 ⇒ 改风应力 ⇒ 改海洋。
+        //   折入约定沿用 §527（:521-524）：默认 false ⇒ 用 if (FLAG) ⇒ 关闭时指纹与历史完全一致。
+        //   ⇒ 本次补漏【不改变当前指纹】，只让「翻这两个开关」这件事被指纹看见。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.ENABLED) {
+            h = h * 31 + 0x7A131L;
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.H_TROP);
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.T0);
+        }
+        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.COAST_WIND_ON) {
+            h = h * 31 + 0x7A132L;
+        }
+        // S619 (A1 scan, third configStamp gap): EDDY_DPHI_DEG_V changes the differencing step used
+        // by the whole eddy chain (X-prime and MFC), so it MUST invalidate climate tiles.
+        // Conditional fold => the default -1 keeps the fingerprint bit-identical to history.
+        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V > 0.0) {
+            h = h * 31 + 0x7A133L;
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V);
         }
         return h;
     }

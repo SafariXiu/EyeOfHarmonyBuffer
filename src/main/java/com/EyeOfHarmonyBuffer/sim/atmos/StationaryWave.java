@@ -247,6 +247,31 @@ public final class StationaryWave {
     /** OLR 的宽带吸收系数（m²/kg）。由观测锚定，**不是拟合目标量**。 */
     public static double OLR_K = 0.0667;
 
+    /**
+     * ★★★★★ §575：<b>大气吸收占「到达地表的光束」的比例</b>，用于把【地表吸收短波】
+     * 换算成【行星吸收短波 ASR】。
+     *
+     * <p><b>为什么必须要有它（这是一个已确证的 bug）</b>：原式
+     * {@code qRad = absSolar - olrClear(...)} 里的 {@code absSolar} 是
+     * {@code insolation × (1 − 地表反照率)}，那是<b>地表吸收的短波</b>；
+     * 而 {@code qRad} 是<b>柱净辐射</b>，该用<b>行星 ASR</b>。
+     * 两者之间差的正是<b>被大气自己吸收的那一份</b> —— 它算在行星 ASR 里，却从不到达地表。
+     *
+     * <p><b>两个独立锚（我自己算的，两处都给了原始数）</b>：
+     * <pre>
+     * 全球（Trenberth et al. 2009 能量收支，本文件 OLR 定标已引同一来源）：
+     *   S = 341.3，地表反照率 0.125 ⇒ S(1−αs) = 298.6，ASR = 240
+     *   ⇒ A_atm = 1 − 240/298.6 = 0.1962
+     * 撒哈拉（GERB 卫星，Alamirew et al. 2018 ACP 18, 1241, Table 2）：
+     *   S = 486.8，αs = 0.1875 ⇒ S(1−αs) = 395.5，TOA 净短波 = 314
+     *   ⇒ A_atm = 1 − 314/395.5 = 0.2061
+     * </pre>
+     * 两个独立来源差 5% ⇒ 取 <b>0.20</b>。
+     *
+     * <p>⚠ 置 0.0 可逐位恢复旧行为（旧行为已确证错误，保留只作 A/B）。
+     */
+    public static double ABS_ATM_FRAC = 0.20;
+
     /** 晴空 OLR（W/m²）：单层灰体，干极限 → sigma*Ts^4，湿极限 → sigma*T_ft^4。 */
     public static double olrClear(double ts, double cwv) {
         double tft = ts - Atmosphere.GAMMA * 0.5 * Atmosphere.H_EFF;
@@ -317,7 +342,9 @@ public final class StationaryWave {
         double qRad;
         if (QRAD_ASR_MINUS_OLR) {
             // §455：物理口径 F_net = ASR - OLR + LH + SH。
-            qRad = absSolar - olrClear(ts, cwv);
+            // ★★★ §575：absSolar 是【地表吸收短波】，必须先去掉大气吸收那一份才是【行星 ASR】。
+            //   实测（GERB）：撒哈拉 TOA 净短波 314 W/m²，而 absSolar = 395.5 ⇒ 差 81 W/m²。
+            qRad = absSolar * (1.0 - ABS_ATM_FRAC) - olrClear(ts, cwv);
         } else {
             double absFrac = (WVLW_K > 0.0) ? (1.0 - Math.exp(-WVLW_K * cwv)) : 1.0;
             qRad = Radiation.SIGMA * ts * ts * ts * ts * (absFrac - 2.0 * Radiation.EPS);

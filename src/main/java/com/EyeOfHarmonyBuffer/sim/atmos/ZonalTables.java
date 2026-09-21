@@ -150,28 +150,30 @@ public final class ZonalTables {
         return tab[i] * (1.0 - t) + tab[i + 1] * t;
     }
 
-    // ---- by build/eoh_probe/refs/gen_a_zm.py, do not hand-edit ----
+    // ---- by build/eoh_probe/refs/gen_a_zm_obs.py, do not hand-edit ----
     /**
      * **纬向平均的季节振幅 A_zm(|lat|)（K）** —— 只给**纬向平均**口径用（Atmosphere.seasonalAnomalyZonal）。
      *
-     * <p>为什么必须与 A_SEA_K / A_LAND_K **分开**：那两个是**逐点**口径
-     * （该点自己的下垫面，由局部 kappa 混合）；而 PrecipField.zonalSlTemp 要的是**纬向平均**口径。
-     * 两者混用同一张表时，修任何一侧都会污染另一侧 —— 实测代价：D83 的落地版把
-     * B2.a 从「达标」翻成「未达标」（设计冻结 §231.2）。
+     * <p>⚠ <b>2026-09-17 换表（设计冻结 S256.4）</b>：旧表是「旧口径在 kappa = <kappa> 处的混合值」
+     * （aSea + 0.328*(aLand-aSea)），它在 60~90 度只有 8.86~4.15 K；而**本文件自己的**
+     * {@code T_ZM_SL_MONTH}（ERA5 月平均海平面温度）反算出的振幅在 60~90 度是 12.7~15.7 K
+     * —— 两张表的最大比值 <b>3.2 倍</b>（a_zm_check.py）。后果是一整条链：
+     * zonalSlTemp 在 60~80 度偏冷 4~16 K -> 柱水汽 W 在 60~70 度只有观测的 0.44~0.75
+     * -> |dW/dy| 在 50~60 度是观测的 1.8~2.2 倍 -> 涡动水汽通量在 50~55 度塌到 45 度的 0.40~0.46
+     * -> 中纬降水带是窄峰而不是高原（判据 ④⑨ 与 B2.b 红着）。
      *
-     * <p>播种值 = 旧口径在 kappa = <kappa> 处的混合值（aSea + 0.328*(aLand-aSea)）
-     * ⇒ 步骤 0 是**纯拆分、行为不变**。**决定 2 会把这张表换成推导出来的机制。**
+     * <p><b>本表由脚本从 T_ZM_SL_MONTH 反算</b>：A[j] = 0.5*(max_m - min_m)，<b>19 节点</b>（0..90 步长 5）
+     * ⇒ {@link #aZonalMean} 必须用 {@code interp5}（旧表是 10 节点、用 {@code interp}）。
      *
-     * <p>⚠⚠ <b>2026-09-17 §257：已试过「换成由 T_ZM_SL_MONTH 反算的 19 节点振幅表」并回滚。</b>
-     * 换表修好了模型的**内部矛盾**（本表在 60~90 度只有 ERA5 月表振幅的一半，最大比 3.2 倍；
-     * 换后 zonalSlTemp 在 30~65 度的误差从 −1~−8.7 K 降到 −0.1~−2.1 K，柱水汽比从 0.75~0.94 升到 0.92~0.99），
-     * 并且把判据 ④ 的形状 r 从 0.076 抬到 0.224、中纬冬季从 −39.9% 改善到 −17%；
-     * **但它同时把副热带冬季从 +112% 推到 +208%、判据③从 3.95 推到 5.335、判据⑤从 1.12 掉到 0.69** ⇒
-     * 按预登记门（①②③⑤与中纬夏不得后退）**回滚**。生成器留在 refs/gen_a_zm_obs.py。
-     * 结论：旧的错振幅**一直在补偿另一个错**（风暴轴赤道侧边缘泄漏进副热带），
-     * ⇒ 换表必须与「修 stormGate 的赤道侧边缘」**同时**做，单独换是净负。
+     * <p>为什么必须与 A_SEA_K / A_LAND_K **分开**：那两个是**逐点**口径（该点自己的下垫面，由局部 kappa
+     * 混合）；而 PrecipField.zonalSlTemp 要的是**纬向平均**口径。两者混用同一张表时，修任何一侧都会污染
+     * 另一侧 —— 实测代价：D83 的落地版把 B2.a 从「达标」翻成「未达标」（设计冻结 §231.2）。
      */
-    public static final double[] A_ZM_K = {0.0000, 1.2936, 3.3744, 5.7320, 8.0880, 8.7720, 8.8576, 8.0152, 5.8952, 4.1456};
+    // ⚠⚠ 2026-09-21（§607）：生成器 gen_a_zm_obs.py 算的是 0.5*(max-min)，赤道处 = 0.6225，
+    //   **违反本文件 :114-117 的硬约束「0 度必须精确为 0」**（否则半球相位在 lat=0 翻转 ⇒ 赤道硬跳变，
+    //   P295 实测 0.38~0.87 K）。⇒ 手工把首节点归零；其余 18 点保持生成器输出不动。
+    //   ⚠ 这是**生成器的缺陷**（它没做归零），已记账，待修生成器。
+    public static final double[] A_ZM_K = {0.0000, 0.3495, 0.9110, 1.8680, 3.3895, 4.8425, 6.7340, 7.7060, 9.0545, 9.8350, 10.5750, 10.7855, 12.2245, 15.7000, 14.6895, 12.8255, 12.9005, 12.6910, 13.3160};
 
     /**
      * **纬向平均口径的季节振幅（K）** —— 与逐点的 {@code aLand}/{@code aSea} **分表**。
@@ -179,7 +181,7 @@ public final class ZonalTables {
      * <p>只给 {@code Atmosphere.seasonalAnomalyZonal}（→ {@code PrecipField.zonalSlTemp} → 涡动链）用。
      * 逐点链（{@code surfaceTemp} → 群系/雪线/海冰）继续用 {@code aLand}/{@code aSea}。
      */
-    public static double aZonalMean(double latDeg) { return interp(A_ZM_K, latDeg); }
+    public static double aZonalMean(double latDeg) { return interp5(A_ZM_K, latDeg); }
 
     // ---- by build/eoh_probe/refs/gen_eddy_obs.py, do not hand-edit ----
     /**

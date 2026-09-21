@@ -184,7 +184,7 @@ public final class PrecipField {
      * 更早的 P632（见第 1343 行注释）已经指出：**`EDDY_DPHI_DEG = 5` 恰好落在表的节点上**
      * ⇒ `curv(W)` 拾取的全是**折角伪影**。这个旋钮就是为了把那一句变成可测的 A/B。
      */
-    public static double EDDY_DPHI_DEG_V = -1.0;
+    public static double EDDY_DPHI_DEG_V = 15.0;   // S619: P617 scan gave best sign agreement at 15 deg (30/34 vs 25/34 at 5 deg)
 
     /** 实际使用的求导步长（度）。 */
     public static double dphiDeg() { return EDDY_DPHI_DEG_V > 0.0 ? EDDY_DPHI_DEG_V : EDDY_DPHI_DEG; }
@@ -481,12 +481,61 @@ public final class PrecipField {
     public static boolean BLQ_GATE = false;
     /** 光滑宽度（K 当量）。1 K 相对 ±20,000 J/kg 的信号 ⇒ 实质是阶跃但不产生空间不连续。 */
     public static double BLQ_SMOOTH_K = 1.0;
+
+    /**
+     * ★★★★★ §577：<b>Folkins &amp; Braun (2003) 的湿熵阈值判据</b>（默认 false ⇒ 逐位不变）。
+     *
+     * <p>与 {@link #BLQ_GATE} 的关键差别：BLQ 比的是<b>MSE 差</b>（化简后等价于「RH &gt; 约 0.77」
+     * —— 见 §576 的代数推导，那是一条<b>固定的湿度门</b>，会把全球陆地一起禁雨）；
+     * 本判据比的是 <b>θ_e(BL) vs θ_e,conv(SST)</b>，<b>阈值随海温变</b>。
+     *
+     * <p><b>文献逐字</b>（Folkins &amp; Braun 2003）：
+     * <pre>
+     * "θ_e,conv rapidly increases from 334 to 342 K in going from an SST of 25 to 28 C"
+     * Table 1: 342.0 K @ 28.2 C ；343.8 @ 29.1 ；344.4 @ 29.7
+     * "At SSTs below the convective threshold, near-surface winds are generally directed from cold to
+     *  warmer SSTs, so that horizontal advection of equivalent potential temperature (θ_e) will tend to
+     *  suppress moist entropy, and rainfall, in these regions."
+     * </pre>
+     * ⇒ <b>零自由拟合参数</b>：334 K / 342 K 两个端点与线性过渡全部来自文献。
+     *
+     * <p>⚠ 两处必须记账的口径限制：
+     * <ol>
+     * <li>θ_e,conv 的原文是<b>海面</b>判据；本实现用 {@code seaSurfaceTemp(lat,theta) + sstAnom}
+     *     作为该纬度「对流阈值」的代理，<b>在陆地上是外推</b>。</li>
+     * <li>文献那条「冷海向岸风压低 θ_e」的<b>平流项尚未实现</b> —— 现在只做了阈值这一半。</li>
+     * </ol>
+     */
+    // ★★★ §577：默认改为 true（用户裁决）。实测（P907，JJA，同一口径）：
+    //   判据              ASIA P   SAHARA P   比值（观测 0.0137）
+    //   无                1.709    1.683      0.985   （沙漠偏湿 16 倍）
+    //   BLQ_GATE(MSE)     0.108    0.045      0.417   （全陆禁雨）
+    //   BLQ_THETA_E       0.365    0.045      0.123   ← 本判据
+    //   ⇒ 撒哈拉 0.045 vs 观测 0.105（差 2.3 倍，原为 16 倍）；失败模式从「沙漠太湿」
+    //     翻转为「季风太干」⇒ 系统落到了正确的分支上。
+    //   ⚠ 已折入 SimClimate.configStamp()（0x7A130L）。
+    public static boolean BLQ_THETA_E = true;
     /** 诊断：最近一次的 `dh = h_bl - h*_th`（J/kg）。 */
     public static volatile double blqLastDh = 0.0;
     /** 诊断：被 BLQ 判据压到接近 0 的次数（`g < 0.01`）。 */
     public static long blqBlocked = 0;
     /** 诊断：调用次数。 */
     public static long blqCalls = 0;
+
+    /**
+     * ★ §577：Folkins &amp; Braun (2003) 的深对流湿熵阈值 θ_e,conv（K），按 SST 分段。
+     * 334 K @ ≤25°C ；线性到 342 K @ 28°C ；342 K @ ≥28°C。**零自由参数。**
+     */
+    public static double thetaEConv(double sstC) {
+        if (sstC <= 25.0) return 334.0;
+        if (sstC >= 28.0) return 342.0;
+        return 334.0 + 8.0 * (sstC - 25.0) / 3.0;
+    }
+
+    /** §577：边界层等效位温 θ_e（K）。Bolton (1980) 的常用近似 θ_e = T·exp(L_v·q/(c_p·T))。 */
+    public static double thetaE(double tK, double qKgKg) {
+        return tK * Math.exp(Radiation.LV * qKgKg / (Radiation.CP * tK));
+    }
 
     /** smoothstep01(x)：x<=0 -> 0，x>=1 -> 1。 */
     public static double smoothstep01b(double x) {
@@ -715,7 +764,29 @@ public final class PrecipField {
      * 若验收判据因此后退，<b>不构成回滚它的理由</b> —— 应接受该后退并记为下一处待修。
      * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
      */
-    public static boolean ZONAL_SL_FROM_TABLE = true;   // 2026-09-17 用户裁决落地：中纬两条独立带 −40%→−3%（§265）
+    // ★ 2026-09-21（§602，(c) 第一刀）：P935 实测 —— 只有【两个源场都涌现】时，
+    //   X'' 的变号次数才在两个季节都降到 1（单极型，与观测同形）：
+    //     两表都关 = 1/1    仅关柱水汽 = 3/0    仅关纬向温度 = 4/2    两表都开（原状）= 3/0
+    //   而 EDDY_VAR=2（湿静能）在每一种组合里都更差（4~5 次）⇒ §427 那条论证在本实现被证伪。
+    //   ⇒ 本次 A/B 把它关掉。
+    // ⚠⚠ 2026-09-21（§603）A/B 结果：**已撤回 true**。
+    //   P935 说它修形状（X'' 变号 3->1，单极型）；但整套验收读数显示：
+    //     · 修好了量级：中纬 47.5~62.5 夏 1.38 -> 2.09（GPCP 2.534，偏差 -45.6% -> -17.4%）；
+    //       NH band 平均夏 1.430 -> 2.430（GPCP 2.329，几乎正中）；
+    //     · **但季节振幅被放大到远超观测**：NH 冬 2.307 -> 4.977（GPCP 2.488，2 倍过湿），
+    //       冬/夏 = 2.05 而观测 1.07；SH 冬 2.090 -> 4.617（GPCP 2.674）、夏 0.839 -> 1.693（GPCP 2.432），
+    //       冬/夏 = 2.73 而观测 1.10；45~55 夏 +25.6% -> +123%；
+    //     · **并把 GATE_B2B_SPLIT_SH 打翻**（夏/冬 0.5347/0.4428 -> 0.3114/0.4898，南半球季节比反了），
+    //       判决 9/3 -> 8/4；P692 冷/暖对比也减弱（0.2335 -> 0.2818）。
+    //   ⇒ 根因：涌现的纬向温度场来自【模型自己的地表温度】，其季节循环比【观测的纬向平均】强得多。
+    //   ⇒ 保留 true（已验 9/3）；「让源场涌现」这条路要等季节振幅问题先解决（见 §603）。
+    // ★★★★★★★ 2026-09-21（§608）**用户裁决 (a)：整组上** —— §257 那一对的完整形态。
+    //   四个条件必须【同时】成立（§607 五）：
+    //     ① `A_ZM_K` = 新版 19 节点（已换）—— §257 的那一刀本身；
+    //     ② 本开关 = false —— 否则 A_ZM_K 被 :720 的提前 return 遮蔽（§607 三）；
+    //     ③ COL_WATER_FROM_TABLE = false —— P935：两者必须同时关才达单极型；
+    //     ④ EDDY_MASK_OUTSIDE = true —— §257：「换表必须与修风暴轴赤道侧边缘一起做」。
+    public static boolean ZONAL_SL_FROM_TABLE = false;   // 2026-09-17 用户裁决落地：中纬两条独立带 −40%→−3%（§265）
 
     /**
      * **柱水汽取观测月表**（设计冻结 §266/§267）。
@@ -738,7 +809,11 @@ public final class PrecipField {
      * —— 70~85 度的 {@code w_zm} 也是负的（下沉），那里却需要 0.87~0.99。已试算否决。
      * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
      */
-    public static boolean COL_WATER_FROM_TABLE = true;   // 2026-09-17 §268.3 四格 A/B 通过后落地
+    // ★ 2026-09-21（§602，(c) 第一刀）：与 ZONAL_SL_FROM_TABLE 同批关闭 —— P935 实测两者【必须同时】关，
+    //   单独关任一个都达不到单极型。详见上一段的读数。
+    // ⚠⚠ 2026-09-21（§603）：与 ZONAL_SL_FROM_TABLE 同批撤回 true（P935 要求两者同时关，故必须一起回退）。
+    // ★ 2026-09-21（§608）：与 ZONAL_SL_FROM_TABLE 同批关闭（§607 五 的条件 ③）。
+    public static boolean COL_WATER_FROM_TABLE = false;   // 2026-09-17 §268.3 四格 A/B 通过后落地
 
     /**
      * **气柱水汽**（kg/m^2）：纬向平均近地比湿 x 空气密度 x 水汽标高 H_MOIST。
@@ -811,7 +886,11 @@ public final class PrecipField {
      *
      * <p><b>默认 false ⇒ 走原路 ⇒ 逐位不变。</b>
      */
-    public static boolean EDDY_T_SMOOTH = false;
+    // ★ 2026-09-21（§593）：§592 修法 #2 已完成（新增 t850Slope：把 PCHIP 镜像到【当前生效的】
+    //   温度源 t850Month 上）。P924 实测：默认下 t850Slope(关) 与 raw 中心差分逐位相同（23/23），
+    //   打开后 23/23 全变，最大相对差 39.2%，且大差异恰在 57.5~67.5 度 —— 正是本文上面预告的带。
+    //   ⇒ 本次打开做 A/B。
+    public static boolean EDDY_T_SMOOTH = true;
 
     /** PCHIP 节点：-90..+90 每 5 度，共 37 个。 */
     public static final int T_NN = 37;
@@ -861,6 +940,64 @@ public final class PrecipField {
                     + y1 * (-6.0 * t * t + 6.0 * t) + h * m[i + 1] * (3.0 * t * t - 2.0 * t);
         return dHdt / h;
     }
+
+    /** PCHIP 节点：-90..+90 每 5 度，共 37 个（t850Month 按 |lat| 对称化，与 zonalSlTemp 同约定）。 */
+    public static final int T850_NN = 37;
+    private static final class T850SlopeCache {
+        boolean valid; double theta;
+        final double[] m = new double[T850_NN];
+    }
+    private static final ThreadLocal<T850SlopeCache> T850_SLOPE = new ThreadLocal<T850SlopeCache>();
+
+    /** 37 个节点的 PCHIP 节点导数（dT850/dy，K/m）。等距 ⇒ 权重 W1 = W2 = 3h。 */
+    static double[] t850NodeSlopes(double theta) {
+        T850SlopeCache c = T850_SLOPE.get();
+        if (c == null) { c = new T850SlopeCache(); T850_SLOPE.set(c); }
+        if (c.valid && c.theta == theta) return c.m;
+        double h = Math.toRadians(5.0) * WorldContract.R_EFF;
+        double[] y = new double[T850_NN];
+        for (int k = 0; k < T850_NN; k++) y[k] = ZonalTables.t850Month(Math.toRadians((k - 18) * 5.0), theta);
+        double[] dl = new double[T850_NN - 1];
+        for (int k = 0; k < T850_NN - 1; k++) dl[k] = (y[k + 1] - y[k]) / h;
+        c.m[0] = pchipEnd(dl[0], dl[1]);
+        for (int k = 1; k < T850_NN - 1; k++) {
+            double d0 = dl[k - 1], d1 = dl[k];
+            if (d0 * d1 <= 0.0) { c.m[k] = 0.0; continue; }
+            c.m[k] = 2.0 / (1.0 / d0 + 1.0 / d1);
+        }
+        c.m[T850_NN - 1] = pchipEnd(dl[T850_NN - 2], dl[T850_NN - 3]);
+        c.valid = true; c.theta = theta;
+        return c.m;
+    }
+
+    /**
+     * **850 hPa 温度的经向梯度 dT850/dy（K/m）** —— EDDY_T_SMOOTH 在 EDDY_SIGMA_T850=true（默认）下走这一支。
+     *
+     * <p>★★★ 2026-09-21（§592 修法 #2）：§432 的 PCHIP 只写给 zonalSlTemp，
+     * 而 §433 把温度源换成了 t850Month ⇒ 修复被架空、EDDY_T_SMOOTH 成了空操作。
+     * 本方法把同一套重建【镜像】到当前生效的温度源上：零新常数、与 zonalSlTempSlope 同构。
+     *
+     * <p>本方法只在 EDDY_T_SMOOTH 为真时被调用 ⇒ 默认下不进任何计算路径。
+     */
+    public static double t850Slope(double latRad, double theta) {
+        if (!EDDY_T_SMOOTH || ZONAL_PROFILE_OVERRIDE != null) {
+            double dd = Math.toRadians(dphiDeg());
+            return (ZonalTables.t850Month(latRad + dd, theta) - ZonalTables.t850Month(latRad - dd, theta))
+                 / (2.0 * dd * WorldContract.R_EFF);
+        }
+        double fr = latRad / Math.toRadians(5.0) + 18.0;
+        if (fr <= 0.0) return t850NodeSlopes(theta)[0];
+        if (fr >= T850_NN - 1) return t850NodeSlopes(theta)[T850_NN - 1];
+        int i = (int) Math.floor(fr);
+        double t = fr - i, h = Math.toRadians(5.0) * WorldContract.R_EFF;
+        double[] m = t850NodeSlopes(theta);
+        double y0 = ZonalTables.t850Month(Math.toRadians((i - 18) * 5.0), theta);
+        double y1 = ZonalTables.t850Month(Math.toRadians((i + 1 - 18) * 5.0), theta);
+        double dHdt = y0 * (6.0 * t * t - 6.0 * t) + h * m[i] * (3.0 * t * t - 4.0 * t + 1.0)
+                    + y1 * (-6.0 * t * t + 6.0 * t) + h * m[i + 1] * (3.0 * t * t - 2.0 * t);
+        return dHdt / h;
+    }
+
     /**
      * ★★★ **§433：Eady 增长率的温度梯度是否改用 850 hPa（自由对流层）**。
      *
@@ -902,9 +1039,17 @@ public final class PrecipField {
         double t = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad, theta) : zonalSlTemp(latRad, theta);
         double tN = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad + d, theta) : zonalSlTemp(latRad + d, theta);
         double tS = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad - d, theta) : zonalSlTemp(latRad - d, theta);
-        // §432：EDDY_T_SMOOTH 时改走 PCHIP 解析导数（默认 false ⇒ 下面这行一字不改）。
-        double dTdy = (EDDY_T_SMOOTH && !EDDY_SIGMA_T850) ? zonalSlTempSlope(latRad, theta)
-                                    : (tN - tS) / (2.0 * d * WorldContract.R_EFF);
+        // §432：EDDY_T_SMOOTH 时改走 PCHIP 解析导数。
+        // ★★★ 2026-09-21（§592 修法 #2）：原式是 (EDDY_T_SMOOTH && !EDDY_SIGMA_T850)，
+        //   而 EDDY_SIGMA_T850 默认 true（:939）⇒ 条件【恒假】⇒ EDDY_T_SMOOTH 是空操作。
+        //   现在按【当前生效的温度源】选 PCHIP：850 hPa 用 t850Slope，否则用 zonalSlTempSlope。
+        //   EDDY_T_SMOOTH = false 时仍走原来那一行 ⇒ 默认配置逐位不变。
+        double dTdy;
+        if (EDDY_T_SMOOTH) {
+            dTdy = EDDY_SIGMA_T850 ? t850Slope(latRad, theta) : zonalSlTempSlope(latRad, theta);
+        } else {
+            dTdy = (tN - tS) / (2.0 * d * WorldContract.R_EFF);
+        }
         double f = WorldContract.coriolis(latRad);
         if (Math.abs(f) < 1.0e-8) return 0.0;
         double dudz = -(G_ACC / (f * t)) * dTdy;
@@ -1048,7 +1193,16 @@ public final class PrecipField {
      * 生产式漏掉的 {@code (gate*K)'*W'} 用**旧 W** 量时是保留项的 37%（§262.2），
      * **用正确的 W 量时就成了决定性的一项**。
      */
-    public static boolean EDDY_FULL_DIVERGENCE = true;   // 2026-09-17 §268.3 四格 A/B 通过后落地
+    // ⚠⚠ **§597（A1 扫描）：本开关的值【当前不被读取】。**
+    //   原因：eddyMfc 在 :1617 的 `EDDY_VAR != 0 || EDDY_GRAD != 0 || EDDY_GATE_MODE != 0` 分支
+    //   就提前 return modelShapeVarFull()，而 EDDY_GATE_MODE = 2（§429 定案）⇒ :1618-1619 那两行
+    //   【永远到不了】。**静态扫描与经验扫描（P926，210 个样本）两路都证实：翻它零影响。**
+    //   ✅ 物理行为没有丢：modelShapeVarFull 的构造【本身就是】完整散度 + 掩码在外
+    //      （见 :1282 注释「MFC = d(gate*K*X')/dy（掩码在外，§269.5）」）。
+    //   ⇒ 处置：**保留在 configStamp**（若哪天把 EDDY_GATE_MODE 改回 0，它立刻恢复生效），
+    //     但**不得**再把它当成「已生效的修复」来记账。
+    public static boolean EDDY_FULL_DIVERGENCE = true;
+    //   2026-09-17 §268.3 落地；§597：被 EDDY_GATE_MODE>=1 取代，值不被读取。
 
     /** {@code F(y) = gate(y)*K(y)*W'(y)}（涡动水汽通量，poleward 为正）。 */
     static double fluxAt(double y, double theta, double d) {
@@ -1080,7 +1234,51 @@ public final class PrecipField {
      * ⇒ 45 度出现一个**不在物理里的洞**。量级上 {@code W'G'} 在 35~60 度比 {@code GW''} 大
      * <b>1~48 倍</b>，即形状几乎完全由掩码的梯度决定。
      */
-    public static boolean EDDY_MASK_OUTSIDE = false;
+    // ⚠⚠ **§597（A1 扫描）：本开关的值【当前不被读取】。**
+    //   原因：eddyMfc 在 :1617 的 `EDDY_VAR != 0 || EDDY_GRAD != 0 || EDDY_GATE_MODE != 0` 分支
+    //   就提前 return modelShapeVarFull()，而 EDDY_GATE_MODE = 2（§429 定案）⇒ :1618-1619 那两行
+    //   【永远到不了】。**静态扫描与经验扫描（P926，210 个样本）两路都证实：翻它零影响。**
+    //   ✅ 物理行为没有丢：modelShapeVarFull 的构造【本身就是】完整散度 + 掩码在外
+    //      （见 :1282 注释「MFC = d(gate*K*X')/dy（掩码在外，§269.5）」）。
+    //   ⇒ 处置：**保留在 configStamp**（若哪天把 EDDY_GATE_MODE 改回 0，它立刻恢复生效），
+    //     但**不得**再把它当成「已生效的修复」来记账。
+    // ★ 2026-09-21（§604）：**已接进 Var 路径，本开关现在真的有效**（原先被 EDDY_GATE_MODE=2 遮蔽）。
+    //   P936 实测（JJA）：30 度处 gate=0（没有涡动）时，掩码在内给出 -4.945e-5 的【假辐散】，
+    //   掩码在外给出【精确 0】；32~40 度爬升段量级降 3.6~8.7e-5；|lat|>=44 两者逐位相同
+    //   ⇒ 它修的是 §269.5 说的「不在物理里的洞」，且**不碰**中纬那个洞（那是 K'X'，§601）。
+    //   ⇒ 本次打开做 A/B（§605），并顺带验证 §257 说的「必须与风暴轴赤道侧边缘一起修」。
+    // ⚠⚠ 2026-09-21（§605）A/B 结果：**已撤回 false**（生产默认回到已验证的 9/3 基线；接线保留，翻一行即可复测）。
+    //   `192AF3ED_4178799F_TALOS`，`failed=0`，判决 `9/3 -> 8/4`。读数：
+    //     · **NH 全部量逐位不变**（中纬 47.5~62.5 夏 1.38/冬 1.63、band 1.430/2.307、45~55 夏 3.22）
+    //       —— 与 P936 的预测一致（|lat|>=44 两者逐位相同）；
+    //     · **SH 夏季 band 平均 0.839 -> 1.001**（朝 GPCP 2.432 改善）；
+    //     · **但 `GATE_B2B_SPLIT_SH` 由 PASS 翻 FAIL** —— 它在 35~42 度的爬升段抬高了【向赤道带】，
+    //       于是 R = P(50~70S)/P(35~50S) 下降，南半球的季节符号比较被压到门槛之下。
+    //   ⇒ **这是一次「物理与门冲突」**：本开关是 §269.5 规定的正确形式（gate 不该参与通量的空间结构），
+    //     但它改善量级的同时打翻了那条门。**处置交用户裁决**：
+    //       保留 true  => 物理更正确、SH 量级更准，但判决 8/4；
+    //       保留 false => 判决 9/3，但保留一个代码自己说「没有物理意义」的项。
+    //   ⇒ 本次先取 false（维持已验证基线），并已把接线做好（config illusion 已真正修好）。
+    // ★★★★★★★ 2026-09-21（§606）**用户裁决：「我们要求物理正确」⇒ 保留 true。**
+    //
+    //   判据不来自那条门，来自【代码自己的规定】：§269.5 逐字「gate 是掩码，它回答「这里有没有
+    //   涡动」，**不该参与「通量的空间结构」**」；§427.3 把被消掉的那一项称为「**没有物理意义：
+    //   它完全由「阈值取得多陡」决定**」。⇒ 门在微分内是错的项，**不该因为它打翻一条门就留着**。
+    //
+    //   A/B 读数（`192AF3ED_4178799F_TALOS`，`failed=0`）：
+    //     · NH 全部量【逐位不变】（中纬 47.5~62.5 夏 1.38/冬 1.63、band 1.430/2.307、45~55 夏 3.22）
+    //       —— 因为 |lat|>=44 处 gate 恒为 1，两种形式的门梯度项都精确为 0；
+    //     · SH 夏季 band 平均 0.839 -> 1.001（GPCP 2.432，**朝观测改善**）；
+    //     · SH 冬季量【逐位不变】（2.090、R 0.4428）—— 因为临界纬度随季节换位
+    //       （SH：JJA 23.64 度 / DJF 31.61 度），冬季爬升段落在 23~30S，**在 35-50S 带之外**；
+    //     · SH 夏季 R 0.5347 -> 0.3969 ⇒ 子带比值门由 PASS 翻 FAIL。
+    //
+    //   ★ **那条门的 PASS 是「买」来的**：被去掉的假辐散（30 度处 gate=0 却有 -4.945e-5 的辐散）
+    //     原本【压低】了 35~42S 的降水，从而【虚高】了 R_summer。这与 §257 记的
+    //     「旧的错振幅一直在补偿另一个错」是**同一个模式**。
+    //   ⇒ 门翻掉**不是回退，是暴露**：模型南半球的风暴轴【夏季向极移得不够】
+    //     （模型 0.3969 < 0.4428；观测 GPCP 是 0.9264 > 0.7164）。**这是下一个待做项，不是留错项的理由。**
+    public static boolean EDDY_MASK_OUTSIDE = true;
 
     /** 扩散率 K（**不含掩码**）。 */
     static double kAt(double y, double theta) {
@@ -1156,7 +1354,11 @@ public final class PrecipField {
             double t = zonalSlTemp(latRad, theta);
             return RHO_AIR * H_MOIST * (CP_AIR * t / Radiation.LV + zonalQ(latRad, theta));
         }
-        return columnWater(latRad, theta);
+        // ★★★ 2026-09-21（§592 修法 #1）：本行原为 columnWater(latRad, theta)（直连原始表）。
+        //   那让 CW_SMOOTH 成为【空操作】—— 唯一感知它的 wOf() 只被 fluxAt() 调用，
+        //   而 EDDY_GATE_MODE=2 让 eddyMfc 在 :1531 就返回 modelShapeVarFull() ⇒ fluxAt 不可达。
+        //   wOf() 在 CW_SMOOTH=false 时【逐位等于】columnWater() ⇒ 本改动对默认配置零影响。
+        return wOf(latRad, theta);
     }
 
     /** PCHIP 节点导数缓存的钥匙：theta + 变量号（两个都变了才重算）。 */
@@ -1230,6 +1432,30 @@ public final class PrecipField {
         return gateOf(y, theta) * kAt(y, theta) * eddyDXdy(y, theta, d);
     }
 
+    /**
+     * **Var 路径的「掩码在外」形式**：{@code MFC = gate * d(K*X')/dy}（设计冻结 §269.5）。
+     *
+     * <p>★★★ 2026-09-21（§604）：这是把 `EDDY_MASK_OUTSIDE` **接进 Var 路径**的那一刀。
+     * 原先它只作用于 `modelShapeMasked`，而那条分支被 `EDDY_GATE_MODE=2` 遮蔽
+     * （§597 已把它记为「配置幻觉」：值从不被读取）。
+     *
+     * <p><b>为什么必须补</b>：`modelShapeVarFull` 是 {@code d(gate*K*X')/dy} ⇒ 展开后第一项是
+     * {@code (dgate/dy)*K*X'}，而 §427.3 与 P931 实测都指出**那一项没有物理意义**
+     * （「完全由阈值取得多陡决定」）。P931 在 JJA 36 度实测：三项分别是
+     * {@code gate'KX' = -8.79}、{@code K'X' = -0.36}、{@code K*X'' = -2.17}（1e-5 单位）
+     * ⇒ **门的梯度项在 30~42 度主导**。把它移到微分外面，那一项**恒等于 0**。
+     *
+     * <p>⚠ {@code EDDY_MASK_OUTSIDE = false}（默认）时**逐位不变** —— 调用点仍走 `modelShapeVarFull`。
+     */
+    static double modelShapeVarMasked(double latRad, double theta) {
+        double d = Math.toRadians(dphiDeg());
+        double lim = Math.PI / 2.0 - d;
+        double c = latRad > lim ? lim : (latRad < -lim ? -lim : latRad);
+        double dy = d * WorldContract.R_EFF;
+        double kp = kAt(c + d, theta), km = kAt(c - d, theta);
+        double xp = eddyDXdy(c + d, theta, d), xm = eddyDXdy(c - d, theta, d);
+        return gateOf(latRad, theta) * (kp * xp - km * xm) / (2.0 * dy);
+    }
     /** {@code MFC = d(gate*K*X')/dy}（掩码在外，§269.5；X 由 §427 的开关选）。 */
     static double modelShapeVarFull(double latRad, double theta) {
         double d = Math.toRadians(dphiDeg());
@@ -1426,8 +1652,20 @@ public final class PrecipField {
      *
      * <p>修法：在 5 度节点上取 `columnWater`，再用 **Catmull-Rom** 做 C1 光滑重建。
      * 零新常数、局部、只影响涡动链。**默认 false ⇒ 走原路 ⇒ 逐位不变。**
+     *
+     * <p>★★★ 2026-09-21（§592）A/B 实测：【本开关对生产结果零影响】，已撤回 false。
+     * 证据：打开后跑整套验收，与基线逐行对比 => 【没有任何一个物理数值变化】，
+     * 只有 ms/us/s 计时抖动。机制：唯一感知本开关的入口是 wOf()，而 wOf() 只被
+     * fluxAt() 调用；fluxAt() 位于 eddyMfc 的 :1532-1533 分支，而默认 EDDY_GATE_MODE=2
+     * 让代码在 :1531 就提前返回 modelShapeVarFull() => 那条分支永远进不去。
+     * 实际生效的 eddyScalar() 在 :1208 直连 columnWater()，不走 wOf()。
+     * ⇒ 要让本修复生效，必须把 eddyScalar 的 EDDY_VAR==0 分支改走 wOf()。
      */
-    public static boolean CW_SMOOTH = false;
+    // ★ 2026-09-21（§593）：§592 修法 #1 已完成（eddyScalar 改走 wOf），本开关【现在真的有效】；
+    //   P924 实测：默认下 eddyScalar(关) 与 columnWater 逐位相同（23/23），打开后 13/23 处变化，
+    //   且差异只出现在【节点之间】（节点上仍逐位相同）—— 正是分段线性的折角签名。
+    //   ⇒ 本次打开做 A/B。
+    public static boolean CW_SMOOTH = true;
 
     static double cwNode(int k, double theta) {
         int kk = k < 0 ? 0 : (k > 18 ? 18 : k);
@@ -1479,7 +1717,9 @@ public final class PrecipField {
     public static double eddyMfc(double latRad, double theta) {
         if (!EDDY_PLACEMENT_FROM_OBS) {
             // §427：EDDY_VAR / EDDY_GRAD 非默认时才换路 ⇒ 默认路径一字不动（逐位不变）。
-            if (EDDY_VAR != 0 || EDDY_GRAD != 0 || EDDY_GATE_MODE != 0) return modelShapeVarFull(latRad, theta);
+            // §604：把 EDDY_MASK_OUTSIDE 接进 Var 路径 —— false（默认）时与原来逐字等价。
+        if (EDDY_VAR != 0 || EDDY_GRAD != 0 || EDDY_GATE_MODE != 0)
+            return EDDY_MASK_OUTSIDE ? modelShapeVarMasked(latRad, theta) : modelShapeVarFull(latRad, theta);
             if (!EDDY_FULL_DIVERGENCE) return modelShape(latRad, theta);
             return EDDY_MASK_OUTSIDE ? modelShapeMasked(latRad, theta) : modelShapeFull(latRad, theta);
         }
@@ -1821,6 +2061,18 @@ public final class PrecipField {
             double dh = hBl - hTh;
             blqLastDh = dh; blqCalls++;
             double g = smoothstep01b(dh / (Radiation.CP * BLQ_SMOOTH_K));
+            if (g < 0.01) blqBlocked++;
+            p *= g;
+        }
+        // ★★★★★ §577：θ_e 阈值判据（默认关）。阈值随海温变 ⇒ 冷海自然压低对流。
+        if (BLQ_THETA_E) {
+            double sstC = Atmosphere.seaSurfaceTemp(lat, theta)
+                        + Atmosphere.sstAnom(x, z, theta) - 273.15;
+            double teConv = thetaEConv(sstC);
+            double teBl = thetaE(tQ, q);
+            double dth = teBl - teConv;
+            blqLastDh = dth; blqCalls++;
+            double g = smoothstep01b(dth / BLQ_SMOOTH_K);
             if (g < 0.01) blqBlocked++;
             p *= g;
         }

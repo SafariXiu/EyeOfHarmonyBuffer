@@ -586,10 +586,59 @@ public final class Atmosphere {
      * {@link #seasonalAnomaly} 读 {@code aLand}/{@code aSea}。**播种值等于旧的混合值** ⇒ 步骤 0 是纯拆分。
      * **决定 2 会把 {@code A_ZM_K} 换成推导出来的机制。**
      */
+    /**
+     * 2026-09-21 (S615): PHASE FROM OBSERVATION TABLE instead of the pointwise constant.
+     * true  => phase = first-harmonic phase of T_ZM_SL_MONTH, per latitude
+     * false => old path (a single constant psi from PSI_SEA_DAYS/PSI_LAND_DAYS), bit-identical.
+     * WHY (S614, P938): those two constants were calibrated for the POINTWISE sea-surface
+     * caliber (thermal inertia). Used on the ZONAL MEAN they give a 50.16-day lag, while the
+     * observed table first harmonic is 0..-6 days -- nearly an order of magnitude apart.
+     * The amplitude (A_ZM_K) was already re-derived from the same table in S607, so the phase
+     * must come from the same source too.
+     */
+    public static boolean PHASE_FROM_OBS = true;   // S615: P939 self-check passed, lags match P938 (0.1..-6.5 d vs old +50.16 d)
+
+    private static volatile double[] PHI_ZM = null;
+
+    /** first-harmonic phase (rad, theta origin) at the 19 nodes of T_ZM_SL_MONTH. Lazy. */
+    public static double[] phiZmNodes() {
+        double[] t = PHI_ZM;
+        if (t != null) return t;
+        t = new double[19];
+        double p0 = 2.0 * Math.PI * ZonalTables.SEASON_SHAPE_PHI0;
+        for (int j = 0; j < 19; j++) {
+            double sc = 0.0, ss = 0.0;
+            for (int m = 0; m < 12; m++) {
+                double v = ZonalTables.T_ZM_SL_MONTH[m * 19 + j];
+                double ang = 2.0 * Math.PI * m / 12.0;
+                sc += v * Math.cos(ang);
+                ss += v * Math.sin(ang);
+            }
+            t[j] = Math.atan2(ss, sc) + p0;
+        }
+        return PHI_ZM = t;
+    }
+
+    /** zonal-mean annual-cycle phase (rad, theta origin; theta=0 is NH summer solstice). */
+    public static double phiZonalMean(double latDeg) {
+        double[] t = phiZmNodes();
+        double a = Math.abs(latDeg);
+        if (a >= 90.0) return t[18];
+        int i = (int) (a / 5.0);
+        if (i > 17) i = 17;
+        double f = a / 5.0 - i;
+        return t[i] * (1.0 - f) + t[i + 1] * f;
+    }
+
     public static double seasonalAnomalyZonal(double latRad, double theta) {
         double amp = ZonalTables.aZonalMean(Math.toDegrees(latRad));
-        double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * KAPPA_MEAN;
-        double psi = 2.0 * Math.PI * psiDays / WorldContract.DAYS_PER_YEAR;
+        double psi;
+        if (PHASE_FROM_OBS) {
+            psi = phiZonalMean(Math.toDegrees(latRad));
+        } else {
+            double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * KAPPA_MEAN;
+            psi = 2.0 * Math.PI * psiDays / WorldContract.DAYS_PER_YEAR;
+        }
         double hemi = latRad >= 0.0 ? 0.0 : Math.PI;
         return amp * Math.cos(theta - psi - hemi);
     }
@@ -609,7 +658,7 @@ public final class Atmosphere {
      * 而形状表来自**地球**的纬向剖面（65 度上是 75% 陆地）。两者口径不同源，
      * 直接组合可能**过度迁移** —— 这正是 P493 要量的东西。它进 {@code configStamp()}。
      */
-    public static boolean SEASON_SHAPE_FROM_OBS = false;
+    public static boolean SEASON_SHAPE_FROM_OBS = false;   // S610 A/B: reverted, P293+P683 regressed, phase not fixed
 
     /** 海温异常提供者（由 M2 的洋流给出：西暖东冷）。null = 无异常（默认）。 */
     public interface SstProvider {

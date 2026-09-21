@@ -98,14 +98,80 @@ public class P296 {
         //   ✅ 新口径 = 峰值 + 随带迁移的相对口径。
         say("   ★★★ B2 季节判据（§95 新口径）★★★");
         // ⚠ 必须**分区**取峰值：全球峰值是赤道带（ITCZ），而 B2 判的是**中纬带**。
+        // ★★★ §585（P2-15 判据来源修正）：拆 NH/SH + 来源改「GPCP 月平均纬向降水峰纬度表」。
+        //   ❌ 原版只扫 35~70（**北半球**）⇒ 南半球中纬【从来没被扫过】——调研 §9 第 6 条。
+        //   ✅ GPCP v2.3 LTM(1991-2020) 实测锚（本轮独立复算）：
+        //        NH 35~70N：DJF 38.75° → JJA 51.25° = 12.5°
+        //        SH 35~70S：DJF -41.25° → JJA -56.25° = 15.0°
+        //   ⚠ 阈值 >= 10.0 **不改**（它是地板；来源改为 GPCP 表，不再声称出自某篇论文）。
         double[] pkS = peakIn(pS, NZ, 35.0, 70.0), pkW = peakIn(pW, NZ, 35.0, 70.0);
+        double[] pkSsh = peakIn(pS, NZ, -70.0, -35.0), pkWsh = peakIn(pW, NZ, -70.0, -35.0);
         double[] itS = peakIn(pS, NZ, 0.0, 25.0), itW = peakIn(pW, NZ, 0.0, 25.0);
-        say(String.format(LF, "   B2.a 中纬带(35~70 度)峰值 冬 > 夏： 夏 %.2f @%.1f   冬 %.2f @%.1f   ⇒ %s",
-            pkS[0], pkS[1], pkW[0], pkW[1], pkW[0] > pkS[0] ? "达标 ✓" : "**未达标**"));
-        say(String.format(LF, "   B2.b 中纬带峰值随季节向赤道移动： %.1f -> %.1f = %.1f 度   ⇒ %s",
-            pkS[1], pkW[1], pkS[1] - pkW[1], (pkS[1] - pkW[1]) >= 10.0 ? "达标 ✓ (>=10 度)" : "**不足 10 度**"));
-        say(String.format(LF, "  GATE_B2A_PEAK=%s", pkW[0] > pkS[0] ? "PASS" : "FAIL"));
-        say(String.format(LF, "  GATE_B2B_SHIFT=%s", (pkS[1] - pkW[1]) >= 10.0 ? "PASS" : "FAIL"));
+        // SH 的「向赤道移动」= |DJF 纬度 - JJA 纬度|（南半球夏 = DJF = thW）
+        double shShift = Math.abs(pkWsh[1] - pkSsh[1]);
+        // ★★★ §595（用户裁决「换成带平均」）：B2.a 的统计量由【band 内 argmax 值】换成【band 平均】。
+        //   为什么换：peakIn 取的是同纬度两个 z 切片的 max，且被 7.2 度格子量化
+        //   —— 与 §586 废掉 GATE_B2B_SHIFT 同族（那里是位置，这里是数值）。
+        //   ⚠ 为什么【带仍是 35~70】：这一条由【观测】定，不是由方便定。
+        //   本地 gpcp_ltm.nc 复算（refs/b2a_band_gpcp.py；2.5 度网格、[lo,hi) 半开、等纬距）：
+        //     35-70N    JJA 2.329  DJF 2.488  (DJF-JJA = +0.159)  => 冬 > 夏  ✓
+        //     47.5-62.5N JJA 2.534 DJF 2.432  (DJF-JJA = -0.101)  => 夏 > 冬  ✗
+        //     35-50N    JJA 2.403  DJF 3.005  (DJF-JJA = +0.602)  => 冬 > 夏（最强）
+        //   ⇒ 「冬 > 夏」这条物理的家就在 35~70。若把它放在 47.5~62.5（那里观测是夏更湿），
+        //     模型会因为「冬>夏」而 PASS，而观测锚是反的 —— 那就是门与仪器校验矛盾。
+        //   ⇒ 带不动，只换统计量（隔离单一改动）。
+        double b2aS = band(pS, 35.0, 70.0, NZ), b2aW = band(pW, 35.0, 70.0, NZ);
+        say(String.format(LF, "   B2.a 中纬带(35~70 度)【band 平均】冬 > 夏： 夏 %.3f   冬 %.3f   （GPCP 2.329 / 2.488）⇒ %s",
+            b2aS, b2aW, b2aW > b2aS ? "达标 ✓" : "**未达标**"));
+        say(String.format(LF, "   （诊断·旧口径）band 内 argmax： 夏 %.2f @%.1f   冬 %.2f @%.1f",
+            pkS[0], pkS[1], pkW[0], pkW[1]));
+        // ★ §595 顺带诊断（**不设门**）：南半球同带。观测同样支持「冬>夏」
+        //   （本地复算 35-70S：JJA 2.674 > DJF 2.432）。P296 的 B2.a 历来只覆盖北半球 ⇒
+        //   此处只打印，是否升级为门【待裁决】。
+        double b2aShW = band(pS, -70.0, -35.0, NZ), b2aShS = band(pW, -70.0, -35.0, NZ);
+        say(String.format(LF, "   [SH 诊断·无门] 35~70S band 平均 冬(JJA) %.3f / 夏(DJF) %.3f（GPCP 2.674 / 2.432）",
+            b2aShW, b2aShS));
+        // ★★★ §586（仪器判决）：B2.b 的 argmax 版【已降级为诊断】—— 它测的是仪器的格子，不是物理。
+        //   三条独立理由（任一即足以废掉这个门）：
+        //   ① 量化：Zonal.profile 只有 NZ=50 行覆盖 Z_CYCLE=4e7 ⇒ 行心 3.6/10.8/.../90.0，间距恰 7.2 度。
+        //      实测四个峰位 46.8/39.6/10.8/3.6 逐位等于行心 ⇒「7.2 度」= 恰好一格。
+        //      阈值 >=10 在本仪器上构造不可达（一格 7.2、两格 14.4）⇒ 旧门只可能靠两格跳变偶然通过。
+        //   ② 峰位跨切片：三角波令每个纬度在一个周期里出现 2 次（r6 与 r18 都是 +46.8），
+        //      而 peakIn 取的是这 2 条的【max】。P296 自己的剖面就已显示 JJA 取 r18=3.83、DJF 取 r19=3.97
+        //      —— 两个季节用的是【不同世界切片】的最大值，7.2 度的"迁移"里混着切片差。
+        //   ③ 锚侧同样病态：GPCP 的 NH-JJA argmax 落在 41.25~58.75 一条 2.42~2.66（±5%）的平台上，
+        //      那个 51.25 是平台上的噪声极大值，不是物理峰。⇒ 两侧的 argmax 都不该做判据。
+        say(String.format(LF, "   （诊断·已降级）B2.b argmax 迁移： NH %.1f->%.1f = %.1f 度   SH %.1f->%.1f = %.1f 度",
+            pkS[1], pkW[1], pkS[1] - pkW[1], pkSsh[1], pkWsh[1], shShift));
+        // §595：本门改用【band 平均】（b2aS/b2aW 在上面的 B2.a 段声明）。
+        say(String.format(LF, "  GATE_B2A_PEAK=%s", b2aW > b2aS ? "PASS" : "FAIL"));
+        // ---- §586 替代判据：向极 / 向赤道【子带比值】----
+        //   物理：每个半球的【夏季】风暴轴降水峰向极移 ⇒ R_夏 > R_冬，其中 R = P(50~70)/P(35~50)。
+        //   为何对分辨率稳健：R 连续依赖于带内全部 4~6 行的数值，argmax 只能整格跳；
+        //   且 R 用 band() 把每个纬度的 2 个切片平均掉，不挑 max。
+        //   锚：本地 gpcp_ltm.nc 独立复算（refs/split_gpcp.py；2.5 度网格、[lo,hi) 半开、等纬距、JJA=6/7/8 月、DJF=12/1/2 月）
+        //     NH   R_JJA=0.9456  R_DJF=0.6987（差 +0.247）
+        //     SH   R_DJF=0.9264  R_JJA=0.7164（差 +0.210）
+        //   ⚠ 判据只用【符号】（夏 > 冬）。两侧差值都在 0.2 以上 ⇒ 符号不是临界量；
+        //     本门【不】对绝对值设阈值（不捏造门槛）。
+        double rNhS = band(pS, 50.0, 70.0, NZ) / band(pS, 35.0, 50.0, NZ);
+        double rNhW = band(pW, 50.0, 70.0, NZ) / band(pW, 35.0, 50.0, NZ);
+        double rShW = band(pW, -70.0, -50.0, NZ) / band(pW, -50.0, -35.0, NZ);
+        double rShS = band(pS, -70.0, -50.0, NZ) / band(pS, -50.0, -35.0, NZ);
+        say(String.format(LF, "   B2.b NH 子带比值 R=P(50~70)/P(35~50)  夏 %.4f / 冬 %.4f（GPCP 0.9456 / 0.6987）⇒ %s",
+            rNhS, rNhW, rNhS > rNhW ? "夏>冬 ✓" : "**夏<=冬**"));
+        say(String.format(LF, "  GATE_B2B_SPLIT=%s", rNhS > rNhW ? "PASS" : "FAIL"));
+        say(String.format(LF, "   B2.b-SH 子带比值 R=P(50~70S)/P(35~50S)  夏(DJF) %.4f / 冬(JJA) %.4f（GPCP 0.9264 / 0.7164）⇒ %s",
+            rShW, rShS, rShW > rShS ? "夏>冬 ✓" : "**夏<=冬**"));
+        say(String.format(LF, "  GATE_B2B_SPLIT_SH=%s", rShW > rShS ? "PASS" : "FAIL"));
+        // ---- §586 极地诊断（**无门**）：P296 的 35~70 带【不含】70 度以上，而那里有未入门的大偏差 ----
+        double polNS = band(pS, 70.0, 90.001, NZ), polNW = band(pW, 70.0, 90.001, NZ);
+        double polSS = band(pS, -90.001, -70.0, NZ), polSW = band(pW, -90.001, -70.0, NZ);
+        say(String.format(LF, "   [极地诊断·无门] 70~90 带  NH 夏 %.3f / 冬 %.3f（GPCP 0.908 / 0.604 ⇒ %+.0f%% / %+.0f%%）",
+            polNS, polNW, 100 * (polNS / 0.908 - 1), 100 * (polNW / 0.604 - 1)));
+        say(String.format(LF, "   [极地诊断·无门] 70~90 带  SH 夏(DJF) %.3f / 冬(JJA) %.3f（GPCP 0.386 / 0.670 ⇒ %+.0f%% / %+.0f%%）",
+            polSW, polSS, 100 * (polSW / 0.386 - 1), 100 * (polSS / 0.670 - 1)));
+        say(String.format(LF, "   [判据来源] GPCP v2.3 LTM(1991-2020) 本地 gpcp_ltm.nc 独立复算：refs/split_gpcp.py + refs/polar_and_centroid_gpcp.py"));
         say(String.format(LF, "   （诊断）赤道带(0~25 度)峰值： 夏 %.2f @%.1f   冬 %.2f @%.1f",
             itS[0], itS[1], itW[0], itW[1]));
         // ⚠⚠ 2026-09-13 重锚（用户裁决「重锚 按照新的重新测试找到正确值」）：

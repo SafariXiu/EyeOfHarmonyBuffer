@@ -52,7 +52,14 @@ public final class SoilMoisture {
      * **本份的含义是：SoilMoisture（土壤湿度桶 / S3）。** 引用时务必写全类名（如 `SoilMoisture.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
      */
-    public static boolean ENABLED = false;
+    // ★★★ §574：默认改为 true（用户裁决）。
+    //   文献锚：Manabe 1969 的桶（W_FC=15cm, W_K=0.75·W_FC）与 Isca GMD 2018 §5.4 逐字
+    //   「evaporation is proportional to the bucket depth as a fraction of the field capacity」。
+    //   为什么必须开：四个参考模式（Isca / SpeedyWeather.jl / PlaSim / MITgcm）一致指出，
+    //   陆地上的「沙漠级」干旱只靠两件事 —— (i) 一个会归零的土壤水库，(ii) 陆地反照率高于海洋。
+    //   关着时 beta 恒为 1（潜在蒸发）⇒ 源码自己的注释写着「模型里没有『干燥』这个状态」。
+    //   代价：每个点都要自旋一次桶（见 SPIN_TOL_REL），会显著变慢。
+    public static boolean ENABLED = true;
 
     /** 田间持水（mm）—— Manabe 桶的标准取值。 */
     public static double W_FC = 150.0;
@@ -89,6 +96,18 @@ public final class SoilMoisture {
     public static int MAX_YEARS = 60;
     /** 收敛判据：|W(2pi) - W(0)| / W_FC。 */
     public static double SPIN_TOL = 1.0e-4;
+    /**
+     * ★★★ §573：<b>无量纲</b>自旋收敛判据 = 年际差 / 年振幅。
+     *
+     * <p><b>为什么必须有无量纲判据</b>：强季风气候的土壤桶是【极限环】不是不动点 ——
+     * 它有巨大的季节循环，年际差永远到不了 {@link #SPIN_TOL} 那个绝对值。
+     * 实测（P905）：亚洲在 {@code MAX_YEARS=60} 撞顶，resid = 1.06e-1，
+     * 换算成水量是 0.016 m × 1.06e-1 ≈ 1.7 mm/yr 的年际差 —— 物理上早已可忽略。
+     *
+     * <p>⚠ 这是<b>数值</b>判据、<b>不是物理常数</b>（同 {@code BLQ_SMOOTH_K} 的先例）。
+     * 取 1e-2 = 年际差小于年振幅的 1%。
+     */
+    public static double SPIN_TOL_REL = 1.0e-2;
     /** 自旋初值（相对 W_FC）。 */
     public static double W_INIT_FRAC = 0.5;
 
@@ -104,6 +123,8 @@ public final class SoilMoisture {
     public static final double[] V_HIST = new double[12];
     public static int vHistN = 0;
     public static double lastSpinYears = -1, lastSpinResid = -1;
+    /** 诊断：最近一次自旋的【归一化】残差 = 年际差 / 年振幅（无量纲）。 */
+    public static double lastSpinRelResid = -1;
 
     private static final int MEMO_MAX = 1_000_000;
     /** (x,z) -> W(θ) 的 NTHETA 个采样（相对 W_FC）。 */
@@ -222,6 +243,7 @@ public final class SoilMoisture {
         w = new double[N];
         for (int kk = 0; kk < N; kk++) w[kk] = W_INIT_FRAC;
         double dtDays = WorldContract.DAYS_PER_YEAR / (double) N;
+        double relResid = -1;
         for (; years < MAX_YEARS; years++) {
             double[] prev = w.clone();
             double cur = w[0];
@@ -238,8 +260,17 @@ public final class SoilMoisture {
             }
             // ★ 收敛判据看【整年】的最大变化，不是只看 theta=0（第一版只看 w[0]，会假收敛）
             resid = 0;
-            for (int kk = 0; kk < N; kk++) resid = Math.max(resid, Math.abs(w[kk] - prev[kk]));
-            if (resid < SPIN_TOL) { years++; break; }
+            double wMax = -1.0e30, wMin = 1.0e30;
+            for (int kk = 0; kk < N; kk++) {
+                resid = Math.max(resid, Math.abs(w[kk] - prev[kk]));
+                if (w[kk] > wMax) wMax = w[kk];
+                if (w[kk] < wMin) wMin = w[kk];
+            }
+            // ★★★ §573：改用【无量纲】判据。强季风气候是极限环 ⇒ 绝对残差永不收敛。
+            //   振幅退化（恒定桶）时 relResid 回落到 resid 本身 ⇒ 与旧行为一致。
+            double amp = wMax - wMin;
+            relResid = (amp > 1.0e-6) ? (resid / amp) : resid;
+            if (resid < SPIN_TOL || relResid < SPIN_TOL_REL) { years++; break; }
         }
         // ★ §466：用【收敛后的状态】算 V —— 输入 P 就用年循环里已经算出来的那个量（§465）。
         //   零额外自旋：这里只是把 A[kk]*rh 与闭式解再走一遍（纯标量）。
@@ -261,6 +292,7 @@ public final class SoilMoisture {
         }
         lastSpinYears = years;
         lastSpinResid = resid;
+        lastSpinRelResid = relResid;
         }   // end pass（§466）
         lastV = vBar;
         lastVResid = (vBarFirst < 0.0) ? -1.0 : Math.abs(vBar - vBarFirst);
