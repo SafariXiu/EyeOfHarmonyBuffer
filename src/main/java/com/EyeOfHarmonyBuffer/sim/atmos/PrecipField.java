@@ -240,6 +240,137 @@ public final class PrecipField {
         return rh * qSat(tSfcSl) * depletion(elev, kappa);
     }
 
+    // ==================== §648 w_*：浅对流速度尺度（零行为改动新增） ====================
+
+    /** 虚温系数 {@code R_d/R_v - 1}。 */
+    public static final double EPS_V = 0.608;
+
+    /**
+     * **近地面空气温度 `T_a`（K）** —— 与表面温度 `T_s` 分开。
+     *
+     * <p>⚠ <b>方向（易错，冻结 §646）</b>：{@code Atmosphere.surfaceTemp} 在海洋上**就是海表温度**
+     * `T_s`，而观测海气温差 `DT = T_air - T_sea` **为负**（空气比海冷）⇒ 海表比空气**暖**
+     * ⇒ 表面浮力通量为**正**（不稳定）。所以 {@code T_a = T_s + DT}，**不是** `T_s = T_a + DT`。
+     *
+     * <p>`(1 - kappa)` 把海洋锚按大陆度线性淡出：纯陆地 (`kappa = 1`) 时 `T_a = T_s`。
+     * 陆地侧的皮温另有 {@link Radiation#skinTempLand} 机械，本函数**不**涉及（记 OPEN）。
+     */
+    public static double airTempK(double tSfc, double latRad, double kappa) {
+        double land = kappa < 0.0 ? 0.0 : (kappa > 1.0 ? 1.0 : kappa);
+        return tSfc + (1.0 - land) * ZonalTables.dtAirSea(Math.toDegrees(latRad));
+    }
+
+    /**
+     * **表面浮力（虚位温）通量 `(w'theta_v')_0`（K m/s）** —— 浅对流速度尺度 `w_*` 的驱动。
+     *
+     * <pre>
+     *   (w'theta_v')_0 = C_H * |V| * [ theta_v(T_s, q_sat(T_s)) - theta_v(T_a, q) ]
+     *   theta_v(T, q)  = T * (1 + 0.608 q)
+     * </pre>
+     *
+     * <p><b>为什么必须拆 `T_a` 与 `T_s`</b>（§639 定性、P966 实测）：只有一个温度时上式退化成
+     * `C_H|V| * 0.608 * T * (q_sat(T_s) - q)`，**饱和极限恒为零**（152/152 样本实测
+     * `flux &lt;= 0`）⇒「饱和的湿边界层反而不产生对流」，物理上是反的。拆开后保留
+     * **与 `q` 无关**的热力项 `(T_s - T_a)(1 + 0.608 q)`，饱和极限为正。
+     *
+     * <p>⚠ 本函数**不动** {@link #moisture}：该函数是 `RH_SEA * qSat(tSfcSl) * depletion(...)`，
+     * 其 `RH_SEA = 0.80` 是**海表**相对湿度（§636 口径），所以空气湿度 `q` 的正确锚是
+     * **表面**温度 `T_s` 而不是 `T_a`。§646 曾写「`moisture` 一侧改用 `T_a`」—— **那是错的，
+     * 见 §648**。
+     *
+     * @param tSfc 表面温度 `T_s`（K）—— 海洋 = 海表，陆地 = 海平面等效陆面温度
+     * @param qSfc 表面饱和比湿 `qSat(T_s)`（kg/kg）
+     * @param qAir 空气比湿 `q`（kg/kg），即 {@link #moisture} 的返回值
+     * @param vEff 有效风速 `|V|`（m/s，调用方负责带上 {@link #V_GUST}）
+     */
+    public static double surfaceBuoyancyFluxK(double tSfc, double qSfc, double qAir,
+                                              double latRad, double kappa, double vEff) {
+        double tAir = airTempK(tSfc, latRad, kappa);
+        double thvS = tSfc * (1.0 + EPS_V * qSfc);
+        double thvA = tAir * (1.0 + EPS_V * qAir);
+        return Atmosphere.cdOf(kappa) * vEff * (thvS - thvA);
+    }
+
+    /**
+     * **对流速度尺度 `w_*`（m/s）** —— Deardorff velocity。
+     *
+     * <p>定义式（出处：**AMS Glossary of Meteorology, 「Deardorff velocity」**，
+     * 公式图 `Ams2001glos-De7.gif` 本地副本在 `build/eoh_probe/refs/`，两次独立视觉转写一致）：
+     * <pre>    w_* = [ (g / T_v) * z_i * (w'theta_v')_0 ] ^ (1/3)</pre>
+     * 词条符号表：`z_i` = **average depth of the mixed layer** ⇒ 本模型取
+     * {@link Atmosphere#H_BL}（= 1000 m，本来就是 `gamma_turb = C_D*|U|/H_BL` 的尺度）；
+     * `(w'theta_v')_0` = **kinematic vertical turbulent flux of virtual potential temperature
+     * near the surface** ⇒ {@link #surfaceBuoyancyFluxK}。**式内无任何经验常数**
+     * （`a = 0.3` 属于 `M_u = a*w_*` 的质量通量闭合，不是本式的一部分）。
+     *
+     * <p>通量非正（稳定层结）时返回 `0`：`w_*` 按定义只对**对流**混合层成立。
+     */
+    public static double wStarK(double tSfc, double qSfc, double qAir,
+                                double latRad, double kappa, double vEff) {
+        double flux = surfaceBuoyancyFluxK(tSfc, qSfc, qAir, latRad, kappa, vEff);
+        if (flux <= 0.0) return 0.0;
+        return Math.cbrt((G_ACC / tSfc) * Atmosphere.H_BL * flux);
+    }
+
+    /**
+     * **陆地侧的近地面空气温度 `T_a`（K）** —— §650 的**闭式反解**，O(1)，无迭代。
+     *
+     * <p>用的是模型**自己**的能量平衡（{@link Radiation#residual}）：
+     * <pre>    residual = absSolar - OLR(T_s) - H - LE ,   H = chv*CP*(T_s - T_a)</pre>
+     * `H` 逐字可逆 ⇒ 不需要 `Radiation.skinTempLand` 的 60 次二分：
+     * <pre>    T_a = T_s - ( absSolar - OLR(T_s) - LE(T_s) ) / ( chv * CP )
+     *     OLR(T_s) = EPS*SIGMA*T_s^4
+     *     LE(T_s)  = beta*chv*LV*max(0, qSat(T_s) - qAir)</pre>
+     *
+     * <p><b>方向自检</b>：强日照 + 干地表（`beta -> 0`）⇒ 括号内为正 ⇒ `T_a &lt; T_s`
+     * ⇒ 皮温比空气热 ⇒ 浮力通量为**正**；湿地表 ⇒ `LE` 大 ⇒ `T_a &gt;= T_s` ⇒ 稳定。
+     * 与 `Radiation` 已记录并实测的行为一致（`beta -&gt; 0` ⇒ 皮温升高 ⇒ `H` 翻正，
+     * P570 实测在 `beta ~ 0.3` 处翻正）。**不是新闭合。**
+     *
+     * <p>`chv &lt;= 0` 时返回 `T_s`（无湍流交换 ⇒ 无感热 ⇒ 两者不可分）。
+     */
+    public static double landAirTempK(double tSfc, double absSolar, double qAir, double beta,
+                                      double kappa, double vEff) {
+        double chv = Atmosphere.cdOf(kappa) * vEff;
+        if (!(chv > 1.0e-12)) return tSfc;
+        double t2 = tSfc * tSfc;
+        double olr = Radiation.EPS * Radiation.SIGMA * t2 * t2;
+        double le = beta * chv * Radiation.LV * Math.max(0.0, qSat(tSfc) - qAir);
+        return tSfc - (absSolar - olr - le) / (chv * Radiation.CP);
+    }
+
+    /**
+     * **统一口径的空气温度 `T_a`（K）** —— 按大陆度把海洋锚与陆地反解线性混合。
+     *
+     * <p>海洋侧 `T_a = T_s + DT_AIR_SEA(lat)`（观测锚，§645）；陆地侧 {@link #landAirTempK}
+     * （能量平衡闭式反解，§650）。`kappa = 0` 取纯海洋，`kappa = 1` 取纯陆地。
+     */
+    public static double airTempK(double tSfc, double absSolar, double qAir, double beta,
+                                  double latRad, double kappa, double vEff) {
+        double land = kappa < 0.0 ? 0.0 : (kappa > 1.0 ? 1.0 : kappa);
+        double taOcean = tSfc + ZonalTables.dtAirSea(Math.toDegrees(latRad));
+        if (land <= 0.0) return taOcean;
+        double taLand = landAirTempK(tSfc, absSolar, qAir, beta, kappa, vEff);
+        return (1.0 - land) * taOcean + land * taLand;
+    }
+
+    /** {@link #surfaceBuoyancyFluxK} 的**全口径**版本：`T_a` 由 {@link #airTempK} 的统一口径给出。 */
+    public static double surfaceBuoyancyFluxK(double tSfc, double qSfc, double qAir, double absSolar,
+                                              double beta, double latRad, double kappa, double vEff) {
+        double tAir = airTempK(tSfc, absSolar, qAir, beta, latRad, kappa, vEff);
+        double thvS = tSfc * (1.0 + EPS_V * qSfc);
+        double thvA = tAir * (1.0 + EPS_V * qAir);
+        return Atmosphere.cdOf(kappa) * vEff * (thvS - thvA);
+    }
+
+    /** {@link #wStarK} 的**全口径**版本。 */
+    public static double wStarK(double tSfc, double qSfc, double qAir, double absSolar,
+                                double beta, double latRad, double kappa, double vEff) {
+        double flux = surfaceBuoyancyFluxK(tSfc, qSfc, qAir, absSolar, beta, latRad, kappa, vEff);
+        if (flux <= 0.0) return 0.0;
+        return Math.cbrt((G_ACC / tSfc) * Atmosphere.H_BL * flux);
+    }
+
     /**
      * 过山损耗因子 <code>exp(-h/H_MOIST*kappa)</code> —— **雨影的唯一来源**。
      *
@@ -290,7 +421,140 @@ public final class PrecipField {
      * <p><b>P678 实测（§471）</b>：现状下收支 q 与模型现在 q 同量级（0.01138 vs 0.01367、0.00918 vs 0.01300）；
      * 而 `M` 由「§448 下两盒都为负（−5.656e7 / −1.376e8）」变成**两盒都正（+9.994e7 / +2.452e7）**。
      */
+    // ★★ A/B DONE (S625, full 22-gate suite): MEASURED, TRIED, REVERTED.  Result recorded below.
+    //    It works where divU is physically right and backfires where divU is wrong -- see the
+    //    RESULT paragraph at the head of the block below.  Order matters: fix divU FIRST.
+    // ★★ S628 A/B: the subsidence-only branch was tried; Q_FROM_BLBUDGET is REVERTED to false.
+    //    Arms: A0 = false (B97DFF43_805B5532_TALOS, 18/22); A1 = true + SUB_ONLY (D258C818_C1B5BF94_TALOS, 17/22).
+    //    NEW RED: GATE_VERDICT.  INDEPENDENT GPCP (A0 -> A1):
+    //      subtropics 27.5~37.5  summer -78.3% -> -55.0%  (gain HELD; §627 with |w_BL| gave -50.5%)
+    //      equator    2.5~12.5   summer -41.3% -> -73.9%  (regression NOT removed; §627 gave -72.9%)
+    //      equator    2.5~12.5   winter -61.4% -> -74.7%  (regression NOT removed; §627 gave -72.8%)
+    //      mid-lat    47.5~62.5  unchanged.
+    //    => REFUTED: "the tropical regression comes from the convergence branch of the entrainment."
+    //       P949 measured the tropical ocean (5~10 deg) as CONVERGENT, so max(0,divU) gives C=0 there --
+    //       yet the equator still degraded.  The remaining sink in the closure is k_P:
+    //         q* = 86400*chv*qSat*beta / (86400*chv + k_P + C*(1-qftf)),  k_P > 0 when wE > 0 (ITCZ ascent)
+    //       => even with C=0 the budget lowers q below RH_SEA*qSat.  The tropical drying is therefore
+    //       PRECIPITATION ACTING AS A BOUNDARY-LAYER MOISTURE SINK, not entrainment.
+    //       Physically the real tropical BL is DECOUPLED from the deep convection and is re-moistened by it;
+    //       this closure treats the BL as a closed slab that only loses moisture.  THAT is the next thing
+    //       to address -- not the entrainment branch.
+    // ★★★ S630 A/B: THE THIRD AND LAST BRANCH OF THIS CLOSURE ALSO FAILED.  REVERTED.
+    //   Three branches of the SAME closure, all with Q_FROM_BLBUDGET = true:
+    //     S627  C = 86400*rho*|w_BL|          equator summer -72.9%  winter -72.8%   dir 5AC617A8
+    //     S628  C = 86400*rho*max(0,H_BL*divU) equator summer -73.9%  winter -74.7%   dir D258C818
+    //     S630  + k_P *= (1-BETA_DOWNDRAFT)   equator summer -70.3%  winter -66.7%   dir 156D4DC5
+    //   BASELINE (closure OFF):               equator summer -41.3%  winter -61.4%   dir B97DFF43
+    //   Subtropical gain held in all three (~ -50% .. -55% vs -78.3% baseline);
+    //   GATE_VERDICT went red in all three (18/22 -> 17/22).
+    //
+    //   => CONCLUSION, and it is about the FORM not any branch: this boundary-layer budget closure
+    //      is right in the subtropics (subsidence, little rain -- a closed slab losing moisture is
+    //      a fair approximation there) and structurally wrong in the ITCZ, where the real boundary
+    //      layer is DECOUPLED from deep convection.  Drying it by |divU|, by max(0,divU), or by
+    //      (1-beta_d)*k_P all leave the tropics far too dry.  Halving the rain sink helped only
+    //      ~8 points of the ~30 needed.
+    //   => STOP PATCHING THIS CLOSURE.  Any future attempt must change the FORM (e.g. decouple the
+    //      tropical BL from the convective sink outright, or supply moisture from the convective
+    //      downdraft as an explicit source rather than by discounting the sink), and it must be
+    //      sourced from literature before any code is written.
     public static boolean Q_FROM_BLBUDGET = false;
+
+    /**
+     * <b>S628：卷夹只取【下沉枝】。</b>默认 true。
+     *
+     * <p>闭包写成 {@code V = 86400*rho*w_e*(q - q_FT)}，其中 {@code w_e} 是与自由对流层的交换速度。
+     * <p>物理上两枝的机制不同：
+     * <ul>
+     *   <li><b>下沉区（副热带）</b>：边界层顶就是下沉逆温，卷夹速度 {@code w_e ~ -w_subsidence = |w_BL|}
+     *       —— 这是 trade inversion 的标准图像 ⇒ 该干燥；</li>
+     *   <li><b>辐合区（ITCZ）</b>：边界层顶抬升，卷夹由【对流】驱动（{@code w_e ~ 0.2*w_*}，来自地面浮力通量），
+     *       <b>不由 |divU| 决定</b> ⇒ 不该按 |divU| 干燥。</li>
+     * </ul>
+     * 旧式 {@code |w_BL|} 两枝都算成「卷夹 ⇒ 变干」，因此把热带也抽干了。
+     *
+     * <p>⚠ 这与「有符号 {@code w_BL}」<b>不是</b>同一件事（§627 已用代数证明后者方向相反、
+     * 且会让 {@code denB} 在辐散侧变负）：
+     * <pre>
+     *   有符号 w_BL : 辐合 => C>0 => 更干   （方向错）
+     *   max(0,divU) : 辐合 => C=0 => 不干   （方向对）
+     * </pre>
+     */
+    public static boolean Q_BLBUDGET_SUB_ONLY = true;
+
+    /**
+     * <b>S630：下气流把降水的一部分还回边界层</b>（Betts & Miller 1986 一系）。
+     *
+     * <p>闭包现在写成 {@code E = P + V}，<b>两项都是汇</b> ⇒ 降水一下来边界层就变干。
+     * 而真实的对流下气流把凝结物蒸发回环境，补偿了这一汇。文献形式：
+     * <pre>
+     *   EVP 正比于降水率          Betts and Miller (1986)   —— refs/gmd_conv_adj.txt:3733
+     *   EVP <= 降水的一个分数      Emanuel (1991)            —— 同上 Table 12
+     *   EVP = C_evap (1-RH) P^1/2  Bechtold et al. (2001) / Park and Bretherton (2009)
+     * </pre>
+     *
+     * <p><b>取值有出处，不是选的</b>：{@code refs/betts_miller_2004.txt:58}（Betts 1973，VIMHEX 外场）——
+     * 「<b>about half the updraft condensation was evaporated into the downdrafts</b>」。
+     * ⇒ 有效汇 {@code (1 - BETA_DOWNDRAFT) * k_P}，取 <b>0.5</b>。
+     *
+     * <p>⚠ 这只补偿了【对流尺度下气流】这一项。文献里另有一支是 <b>(1-RH)</b> 依赖
+     * （干处蒸发更多）—— 它与本项方向不同，且需要降水通量的单位链对齐，
+     * <b>本项不掺入它</b>（避免引入第二个来源不明的系数）。
+     */
+    public static double BETA_DOWNDRAFT = 0.5;
+
+    // ===== RESULT OF THE S625 A/B (value left at false) =====
+    // Arm A = false (dir B97DFF43_805B5532_TALOS, 18/22); Arm B = true (dir 5AC617A8_5E49E6C4_TALOS, 16/22).
+    // GATES: 18/22 -> 16/22.  NEW RED: GATE_B4_INBAND, GATE_VERDICT.  => reverted.
+    // INDEPENDENT GPCP ROWS (P296), arm A -> arm B:
+    //   subtropics 27.5~37.5  summer -78.3% -> -50.5%  (BIG improvement, +27.8 points)
+    //                         winter -67.8% -> -65.1%  (small improvement)
+    //   equator    2.5~12.5   summer -41.3% -> -72.9%  (big regression)
+    //                         winter -61.4% -> -72.8%  (regression)
+    //   mid-lat    47.5~62.5  summer/winter UNCHANGED.
+    // MECHANISM.  C uses Math.abs(-H_BL*divU) => CONVERGENCE DRIES TOO.  And in this model the
+    // ocean receives DIVERGENCE from cellPressure EVERYWHERE (the code itself measured at :2006
+    // that divU is a land/sea switch, not a monsoon/desert discriminator).  So the coupling is
+    // right where divU is right and wrong where divU is wrong:
+    //   SUBTROPICS  divU>0 (divergence) is PHYSICALLY CORRECT there => the closure supplied
+    //               exactly the missing dry boundary layer => -78% -> -50%.  The MECHANISM IS RIGHT.
+    //   TROPICAL OCEAN  divU>0 is PHYSICALLY WRONG (the real tropics converge -- ITCZ) => the
+    //               closure dried the one place that should be wettest => -41% -> -73%.
+    // => CONCLUSION: keep this closure as the correct mechanism, but it MUST NOT be enabled
+    //    until divU itself is physical.  Fix divU first, then re-run this A/B.  Enabling it now
+    //    would be compensating one wrong field with another.
+    //
+    // S625 (2026-09-22): false -> true.  WHY (measured, not taste):
+    //   P948 measured that this world's marine boundary layer has an effective RH of ~0.902 and
+    //   that it is a CONSTANT of latitude -- because this switch being off means q comes from
+    //   moisture() = RH_SEA*qSat(T), i.e. the same 0.80 everywhere.  The observed profile
+    //   (e_obs_profile.py: COBE-SST2 + NCEP-R1 shum at 1000 hPa + ERA5 u,v) has an RH MINIMUM of
+    //   0.614 at 25 deg (0.676 at 15, 0.628 at 20), i.e. the subtropical dry boundary layer that
+    //   Hadley subsidence produces.  The resulting dq deficit is ~3x (observed 7.4~8.0 g/kg at
+    //   15~25 deg vs the model's <=2.57 g/kg), and since E = rho*cd*|V|*(qsat-qa), E comes out
+    //   0.12~0.27 of observed in the tropics/subtropics while the MODEL/obs ratio climbs to
+    //   0.55~0.76 at 45~60 deg => the error is STRUCTURAL (latitude-dependent), not a calibration.
+    //
+    //   This closure is the mechanism that supplies it, and it introduces NO new constant:
+    //     q* = 86400*chv*qSat(Ts)*beta / (86400*chv + k_P + C*(1-qftF)),  C = 86400*rho*|w_BL|
+    //     w_BL = -H_BL*divU  =>  over ocean (which gets DIVERGENCE from cellPressure) |w_BL| is
+    //     large => C large => q small.  Subsidence dries the boundary layer by itself.
+    //
+    //   The constant RH path is what makes E peak at the EQUATOR (E ~ qsat(Ts) with fixed RH);
+    //   the observation has a RELATIVE MINIMUM at the equator and a maximum at 15~20 deg
+    //   (Grothjahn, General Circulation, ch.5: "There is a relative minimum of E_w near the
+    //   equator").  E_obs computed with this same bulk formula reproduces the accepted global
+    //   mean (2.889 mm/day vs the literature ~2.9) => the observed side is trustworthy.
+    //
+    //   P678 (S471) had already measured that this closure lowers q by 17~29% (0.01138 vs 0.01367,
+    //   0.00918 vs 0.01300) and flips the moist stability M positive in both boxes; it was left
+    //   off because it had never been A/B'd through the full 22-gate suite.  That A/B is this run.
+    //
+    //   NOT turned on with it: Q_FROM_SOURCE (its javadoc requires pairing with
+    //   StationaryWave.WVLW_K, which is not enabled) and Q_ADVECT_BUDGET.  They gate which path
+    //   computes q BEFORE this block; this block then overrides q, so they are irrelevant here,
+    //   but beta (SoilMoisture) stays in the numerator => LAND dryness is preserved.
 
     /** 水汽从海岸向内陆的 e 折输送尺度（m）。P656 扫的三个值：1e6 / 2e6 / 3e6。 */
     public static double SOURCE_FETCH_L = 1.5e6;
@@ -1864,6 +2128,61 @@ public final class PrecipField {
     public static boolean SHALLOW_FLOOR = true;   // 2026-09-17 落地：① 0.0%->99.5%、⑤ 海洋地板 0.00->1.12（§252）
     /** 浅对流效率（由判据①的观测锚反解；见 §251.2）。 */
     public static double ALPHA_SH = 0.40;
+
+    /**
+     * **浅对流降水改用【凝结量 x 对流速度尺度】**（冻结 §655/§656；默认 **false** ⇒ 逐位不变）。
+     *
+     * <p><b>为什么换</b>（§638 确证的反常）：旧形式 `pSh = ALPHA_SH * rho*Cd*|V|*max(0, (1-k)*qSat(T_s) - q) / rho_w`
+     * 与 `q` **反比** ⇒ 「边界层越湿 ⇒ 降水越少」，且它在 `q -> qSat(T_s)`（**饱和**）时归零 ——
+     * 而饱和的湿边界层恰恰最有利于对流，方向是反的。P968 实测：152/152 个海洋样本上随 `q` 递减，
+     * 最坏相对下降 **100%**。
+     *
+     * <p><b>新形式</b>：
+     * <pre>    q_c = max(0, q - qSat(tTh))          // tTh = T_s - GAMMA*H_BL（模型既有的节流层构造）
+     *     P_c = ALPHA_COND * precip(q_c, wStarK(T_s, qSat(T_s), q, ...))</pre>
+     * `q_c` 是边界层空气被抬升到节流层后**能凝结出来的量**；`w_*` 是 Deardorff 对流速度尺度
+     * （AMS Glossary 定义式，§639 核证）。**两个零点在相反的两端**：旧形式在「湿」端归零（反的），
+     * 新形式在「干」端归零（对的 —— 抬升都不饱和就不凝结）。
+     *
+     * <p>P969 实测（152 个海洋样本，`q` 从 0 扫到 `qSat(T_s)`）：`P_c` **152/152 严格非递减，
+     * 最坏相对下降 0.000e+00**（逐位单调），对比旧形式的最坏下降 **100%**。
+     *
+     * <p><b>⚠ 常数 `ALPHA_COND` 是【标定】，不是推导来的</b>（§656）：形式由物理给定，常数反解自
+     * **GPCP + ETOPO1，20~62.5N 海洋，JJA，带内最小 = 1.84 mm/day**。反解值 `1.84/9.4274 = 0.195`。
+     * **限度（写死）**：只锚了**一个统计量、一个季节**；冬季未锚；陆地向未测；`tTh` 沿用
+     * {@code BLQ_GATE} 的环境递减率近似，不是真抬升凝结高度。
+     */
+    public static boolean SHALLOW_CONDENSATE = true;   // §679 A/B 臂 B（§677 文献形式）
+
+    /** 新形式的标定常数（倍率，作用在 {@link #precip} 的 `EPS_C` 上）。见 {@link #SHALLOW_CONDENSATE}。 */
+    public static double ALPHA_COND = 0.195;
+
+    /** 降水效率 E_P（无量纲）。出处：Liu et al., Sci. Adv. 10, eado2515 (2024) Fig. 3D，区间 0.19~0.29（本轮读图，原图存 refs/fig3_page5.png）。 */
+    public static double EP_COND = 0.24;
+
+    /** 上升气流面积占比 sigma_up。出处：Siebesma et al. (2007)，冻结 §667 逐字引文。 */
+    public static double SIGMA_UP = 0.065;
+
+    /**
+     * 浅积云云顶高度 `z_ct`（m）。
+     *
+     * <p>出处：**Squires (1958) / Byers & Hall (1955)**，经 **Rauber et al., Bull. Amer. Meteor. Soc.
+     * 88(12), 1913 (2007)** 逐字转述：「**rain first appears in maritime cumuli when their tops
+     * reach about 2 km, and is ubiquitous by the time the tops reach 3.5 km**」；以及「Squires (1958) …
+     * maritime clouds with tops **greater than 2500 m** 'usually rain within half an hour'」。
+     *
+     * <p>本本地副本：`refs/rico_bams.pdf`（截图在 `refs/rico_bams.txt`）。
+     *
+     * <p><b>为什么不能用 `Atmosphere.H_BL`</b>（§676 实测）：`ParcelLift` 的环境送减率
+     * `GAMMA = 6.5 K/km` **大于** 热带湿绝热送减率（约 4~6 K/km）⇒ 气块一路比环境暖
+     * ⇒ `zLnb == zMax`（全部热带海洋格点上 `convective = true`）。**模型没有信风逆温层**，
+     * 而浅对流云顶正由它决定 ⇒ `z_ct` 不可从模型热力学导出。
+     *
+     * <p>§686 实测：取 `z_ct = 1000 m`（= `H_BL`）时量级门恰好通过，但一旦换成 1500~2500 m
+     * 就 FAIL 2.2~4.1 倍 ⇒ **那是一个自由参数的单点巧合**。§687 用有出处的三件套
+     * 重验：在整个 2000~3500 m 区间上两门均 PASS（rJJA 0.69~1.26）。
+     */
+    public static double Z_CT_COND = 2500.0;
     /** 地表通量的风速下限（m/s）—— L-3（QTCM `VVsmin = 4.0`）。没有下限，季风反转点通量归零。 */
     public static double V_GUST = 4.0;
 
@@ -2045,8 +2364,10 @@ public final class PrecipField {
         if (Q_FROM_BLBUDGET) {
             double qsTsB = qSat(tQ);
             double chvB = Radiation.bulkCoeff(k, Math.hypot(u0[0], u0[1]));
-            double Cb = 86400.0 * RHO_AIR * Math.abs(-Atmosphere.H_BL * divU);
-            double kPb = (wE > 0.0) ? EPS_C * RHO_AIR * wE / RHO_WATER * 86400.0 * 1000.0 : 0.0;
+            double Cb = Q_BLBUDGET_SUB_ONLY
+                    ? 86400.0 * RHO_AIR * Math.max(0.0, Atmosphere.H_BL * divU)   // S628: 只下沉枝 (divU>0)
+                    : 86400.0 * RHO_AIR * Math.abs(-Atmosphere.H_BL * divU);      // S627 旧式: 两枝都干
+            double kPb = (wE > 0.0) ? (1.0 - BETA_DOWNDRAFT) * EPS_C * RHO_AIR * wE / RHO_WATER * 86400.0 * 1000.0 : 0.0;   // S630
             double qftF = Math.exp(-(0.5 * Atmosphere.H_EFF) / H_MOIST);
             double denB = 86400.0 * chvB + kPb + Cb * (1.0 - qftF);
             if (denB > 1.0e-12) q = 86400.0 * chvB * qsTsB * betaUsed * depl / denB;
@@ -2092,11 +2413,32 @@ public final class PrecipField {
             double qsSfcF = qSat(tSfcF);
             double spF = Math.hypot(u0[0], u0[1]);
             double vEff = Math.sqrt(spF * spF + V_GUST * V_GUST);
-            double betaF = 1.0 - Atmosphere.clamp01(k);
-            double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
-            double pSh = ALPHA_SH * eSh / RHO_WATER;
-            DIAG.get()[10] = pSh;
-            if (pSh > p) p = pSh;
+            double pFloor;
+            if (SHALLOW_CONDENSATE) {
+                // §677：Held & Soden 形式  P = E_P * sigma_up * rho * w_up * (q*_LCL - q*_ct) / rho_w
+                //   全部输入有出处（§663/§667/§666）；唯一建模陈述是 z_ct := H_BL。全程 O(1)，无循环。
+                double eS = ParcelLift.vaporPressure(q, P_SURF);
+                double tD = ParcelLift.dewpoint(eS);
+                double tLcl = ParcelLift.lclTempDaviesJones(tSfcF, tD);
+                double pLcl = P_SURF * Math.pow(tLcl / tSfcF, ParcelLift.CP_D / ParcelLift.R_D);   // 干绝热闭式
+                double qLcl = ParcelLift.qs(tLcl, pLcl);
+                double zLcl = ParcelLift.zOfP(pLcl, tSfcF, Atmosphere.GAMMA);
+                double zCt = Z_CT_COND;   // §687：有出处的浅积云云顶（Squires 1958）
+                double pCt = ParcelLift.pOfZ(zCt, tSfcF, Atmosphere.GAMMA);
+                double dq = 0.0;
+                if (pCt < pLcl) {
+                    double tCt = tLcl - ParcelLift.gammaMoist(tLcl, pLcl, qLcl) * (zCt - zLcl);
+                    dq = Math.max(0.0, qLcl - ParcelLift.qs(tCt, pCt));
+                }
+                pFloor = EP_COND * SIGMA_UP * RHO_AIR
+                       * wStarK(tSfcF, qsSfcF, q, lat, k, vEff) * dq / RHO_WATER;
+            } else {
+                double betaF = 1.0 - Atmosphere.clamp01(k);
+                double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
+                pFloor = ALPHA_SH * eSh / RHO_WATER;
+            }
+            DIAG.get()[10] = pFloor;
+            if (pFloor > p) p = pFloor;
         }
         double pMm = p * 86400.0 * 1000.0;
         // ★ §462：植被的【降水反馈通道】 P_eff = P_d + D_B*V（文献：Liu et al. 2006a; Claussen et al. 2013）。

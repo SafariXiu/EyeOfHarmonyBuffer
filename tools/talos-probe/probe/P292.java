@@ -82,20 +82,48 @@ public class P292 {
         say("  参考：真实沿岸上升流抬升 50~150 m；东边界流表层 0.2~0.5 m/s；沿岸急流 1~2 Sv");
         say("");
 
+        // ── §640 采样重写 ──────────────────────────────────────────────────────────
+        // 旧起点 (q*3_100_000 + li*811_000) % 9_000_000 把**全部**起点锁死在 48e6 长行的前
+        // 18.75%；而 GyreRow:226 是「起点落在陆地 ⇒ valid=false」⇒ 抽到陆地就静默丢弃。
+        // P965 普查：48 个采样里 28 个 invalid，+20 与 -10 两纬整行全灭（它们陆地占比只有
+        // 54% / 79%，有海）。⇒ 那不是「这里没有海」，是「抽到了陆地」。
+        // 新采样：先扫全周期找海，再在**海上**均匀取 NQ 个起点。
+        // 资格判据同时换成类里已有的**精确谓词** Row.westTruncated/eastTruncated（D81），
+        // 不再用 ±20 km 的粗近似。旧口径普查照旧输出（§636：新旧同时报）。
         int nOk = 0;
+        int cInvalid = 0, cTrunc = 0, cNarrow = 0;
+        int oInvalid = 0, oEdge = 0, oNarrow = 0, oOk = 0;
         for (int li = 0; li < LATS.length; li++) {
             int z = (int) ((double) LATS[li] / 90.0 * (ZC / 2));
+            int maxRow = 24_000_000;
+            java.util.ArrayList<Integer> ocean = new java.util.ArrayList<Integer>();
+            for (int x = -maxRow; x < maxRow; x += 25_000) {
+                if (!PlateField.isLandWithCell(x, z, SD, cell)) ocean.add(x);
+            }
+            for (int q = 0; q < NQ; q++) {
+                if (ocean.isEmpty()) break;
+                int idx = (int) Math.round((double) q * (ocean.size() - 1) / Math.max(1, NQ - 1));
+                GyreRow.Params p = new GyreRow.Params();
+                p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
+                GyreRow.Row row = GyreRow.solve(ocean.get(idx), z, SD, cell, band, p);
+                if (!row.valid) { cInvalid++; continue; }
+                if (row.westTruncated || row.eastTruncated) { cTrunc++; continue; }
+                if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) { cNarrow++; continue; }
+                rX[li][q] = row.eastX; rZ[li][q] = z; rOk[li][q] = true; nOk++;
+            }
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
                 GyreRow.Row row = GyreRow.solve((q * 3_100_000 + li * 811_000) % 9_000_000, z, SD, cell, band, p);
-                if (!row.valid) continue;
-                if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) continue;
-                if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) continue;
-                rX[li][q] = row.eastX; rZ[li][q] = z; rOk[li][q] = true; nOk++;
+                if (!row.valid) { oInvalid++; continue; }
+                if (row.eastX >= p.maxRow - 20_000 || row.westX <= -p.maxRow + 20_000) { oEdge++; continue; }
+                if ((row.eastX - row.westX) < 2 * Math.PI * p.deltaAt(z)) { oNarrow++; continue; }
+                oOk++;
             }
         }
-        say(String.format(LF, "  合格行 %d / %d", nOk, LATS.length * NQ));
+        say(String.format(LF, "  合格行 %d / %d  （新采样：全周期找海 + 海上均匀取点 + 精确截断谓词）", nOk, LATS.length * NQ));
+        say(String.format(LF, "  淘汰普查（新）：invalid=%d truncated=%d narrow=%d", cInvalid, cTrunc, cNarrow));
+        say(String.format(LF, "  OLD_SAMPLING_DIAG（§640 保留）：OK=%d invalid=%d edge=%d narrow=%d  <- 旧口径北半球样本数为 0 的原因", oOk, oInvalid, oEdge, oNarrow));
         say("");
 
         double[] all = new double[400];
@@ -109,8 +137,7 @@ public class P292 {
             double th = Atmosphere.theta(si * WorldContract.DAYS_PER_YEAR / 4.0);
             StringBuilder sb = new StringBuilder();
             for (int li = 0; li < LATS.length; li++) {
-                double lat = WorldContract.latOf(rZ[li][0] == 0 && !rOk[li][0] ? (int)((double)LATS[li]/90.0*(ZC/2)) : rZ[li][0], ZC);
-                if (rZ[li][0] == 0) lat = Math.toRadians(LATS[li]);
+                double lat = Math.toRadians(LATS[li]);   // §640：直接用采样纬度（原式在 rZ==0 时也归结于此）
                 double f = WorldContract.coriolis(lat);
                 double[] v = new double[NQ];
                 int n = 0;
@@ -174,6 +201,16 @@ public class P292 {
         say(String.format(LF, "  **合计（|lat| <= 35，判据域 = D53） %d/%d = %.0f%%**（判据 >=80%%）   死区版 %d/%d = %.0f%%",
             totEqC, totC, totEqC*100.0/Math.max(1,totC), eqAliveC, aliveC, eqAliveC*100.0/Math.max(1,aliveC)));
         say(String.format(LF, "  GATE_A3_DIRECTION=%s", totEqC*100.0/Math.max(1,totC) >= 80.0 ? "PASS" : "FAIL"));
+        // ── §641 把判据自身的结构性弱点摆到台面上（不藏在正文里）──────────────────
+        int nCov35 = 0, nCovGot = 0;
+        for (int li = 0; li < LATS.length; li++) {
+            if (Math.abs(LATS[li]) <= 35) { nCov35++; if (nS[li] > 0) nCovGot++; }
+        }
+        say(String.format(LF, "  GATE_A3_COVERAGE=REVIEW  判据域纬度 %d 个，其中产出可用行 %d 个；北半球 3 个全灭 —— 其大洋跨越行原点，GyreRow.solve 在 ±maxRow 处截断（D81），处理不了绕回", nCov35, nCovGot));
+        say(String.format(LF, "  GATE_A3_POWER=REVIEW     n=%d，80%% 阈值下 1σ = %.0f 个百分点 ⇒ **单个格就能翻转判定**", totC, 100.0 * Math.sqrt(0.8 * 0.2 / Math.max(1, totC))));
+        say(String.format(LF, "  SENSITIVITY_DIAG  含 |lat|=10 ⇒ %d/%d = %.0f%%；**排除 |lat|=10（探针自己标注为「挂起」）⇒ %d/%d = %.0f%%**",
+            totEqC, totC, 100.0 * totEqC / Math.max(1, totC), subEq, sub, 100.0 * subEq / Math.max(1, sub)));
+        say("  ★ 结论纪律：本门读数的**判定依赖一个探针自己标注为挂起的纬度**。要裁决 |lat|=10 该不该留在判据域，需要一个物理判断（模型在 10 度给 18.6 m/s 向极风），**不由本探针单方面决定**。");
         say(String.format(LF, "  （诊断）含 ±45 度的旧合计 %d/%d = %.0f%% —— **已废**（D53：那条判据在 45 度观测上不成立）",
             totEq, tot, totEq*100.0/Math.max(1,tot)));
         say(String.format(LF, "  **合计（死区 |v| < %.1f mm/s 不计） %d/%d = %.0f%%**   被排除 %d 格 = %.0f%%",

@@ -268,6 +268,25 @@
 |---|---|
 | `Atmosphere.PA_DRY_WARMTH`,`Atmosphere.PA_FIXED_KAPPA`,`Atmosphere.PA_NO_CELL`,`Atmosphere.PA_NO_THERMAL` | 实验编号（A/PA 前缀） |
 
+### 6.3 S620–S623 补登记（P943/P944/P946 与 §620–§623 新增的公开生产者）
+
+本表由 `calibers_check.ps1` 的 UNREG 清单逼出（2026-09-22 报 **11 项**，其中 5 项是 S615/S619 留下的）。
+**只做登记**；逐项的物理判读与实测依据见设计冻结 §620–§623。
+
+| 符号 | 类别 | 依据 |
+|---|---|---|
+| `Atmosphere.phiZonalMean` | 派生（物理） | `T_ZM_SL_MONTH` 首谐波相位的纬向插值（S615，设计冻结 §615） |
+| `Atmosphere.phiZmNodes` | 派生（缓存） | 上一项的 19 节点惰性缓存 |
+| `Atmosphere.zmslkNew` | 派生（物理） | §620 修法本体：`tZmSlAnnual + (κ − zfEarth)·Δ_SL` |
+| `Atmosphere.zmslkLegacy` | 派生（物理） | §620 的旧式（重构式）；**供 §621/§622 归因**，非生产路径 |
+| `Atmosphere.PHASE_FROM_OBS` | 开关（默认 true） | 季节项相位取观测首谐波 / 旧常数（S615） |
+| `Atmosphere.ZMSLK_LEGACY` | 开关（默认 false） | §620 归因开关；折入指纹 `0x7A134L` |
+| `OceanField.DTDZ_FORCE` | 开关（默认 0） | §621 归因开关（分离直接/间接通路）；指纹 `0x7A135L` |
+| `OceanField.DTDZ_MODE` | 开关（默认 3） | §621 物理修正（位 0 极向符号 / 位 1 5 度尺度）；指纹 `0x7A136L` |
+| `OceanField.vAt` | 派生（物理） | §622 新增：表层经向速度（m/s，正 = 向极），口径与 `anomalyAt` 平行 |
+| `PrecipField.T850_NN` | 常数（= 37） | §432 的 PCHIP 节点数（S615） |
+| `PrecipField.t850Slope` | 派生（物理） | 当前生效温度源的 850 hPa 纬向斜率（S615） |
+
 ## 9. 物理常数与辅助函数（`calibers_check.ps1` 第一次运行后按「未分类」清单补齐）
 
 > 这一节是**被机器逼出来**的：§1~§7 写完之后，提取器仍然报出 217 个未分类的 `public static` 成员。
@@ -372,7 +391,7 @@ UNCLASSIFIED_BASELINE=0
      ⚠ 说明只能写在栅栏【外】：calibers_check.ps1:74 把块内每个空白分隔 token 当成探针名，
        写在块内会被当成 16 个不存在的探针（实测 acceptance-probes 由 20 虚报为 36、untracked 由 3 虚报为 19）。 -->
 ```acceptance-probes
-P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 P484 P692 P683 P712
+P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 P484 P692 P683 P712 P991
 ```
 
 ## 8. ⚠ 已知的**未对账 / 未实现**条目（不许当成"已核对"）

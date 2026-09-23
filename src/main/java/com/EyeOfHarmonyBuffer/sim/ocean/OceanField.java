@@ -112,6 +112,16 @@ public final class OceanField {
     public static final double[] PH4 = {0.0, Math.PI / 2, Math.PI, 3.0 * Math.PI / 2.0};
 
     private static final HashMap<Long, double[]> ANOM = new HashMap<>();
+    /**
+     * <b>与 {@link #ANOM} 同键同网格的表层经向速度（m/s，正 = 向极）</b>—— 即喂给
+     * {@link SeaSurfaceTemp#anomaly} 的那个 {@code vs}。
+     *
+     * <p>存它是为了 {@link #vAt}：P478 的 A6 问「经向海岸上有没有流」，那是关于<b>流动</b>的陈述，
+     * 而旧版只能用 |T-prime| 当代理量 —— 由 {@code anomaly} 的 tanh 形式，
+     * {@code |T-prime| = ANOM_MAX*tanh(|v*dTds|/(lambda*ANOM_MAX))}，同一个 |v| 在不同纬度
+     * 给出完全不同的 |T-prime|（P946 实测 |dTds| 随纬度变 9 倍）。
+     */
+    private static final HashMap<Long, double[]> VEL = new HashMap<>();
     private static final HashMap<Long, int[]> SPAN = new HashMap<>();
     /**
      * 每个海盆的**西带/东带深度平均速度**（m/s），键与 ANOM 相同。
@@ -264,7 +274,79 @@ public final class OceanField {
         if (PHASE_SEASONAL) h = h * 31 + 0x7A11DL;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
+        // S620 (P944 attribution): DTDZ_FORCE re-routes ONLY the thermal-wind gradient, leaving the
+        // airT/wind path on Atmosphere.ZMSLK_LEGACY. It changes the solved SST-prime => must enter
+        // the configuration fingerprint (and, via resetIfStale, invalidate ANOM/SPAN/SPAN_BY_ROW/BAND).
+        if (DTDZ_FORCE != 0) { h = h * 31 + 0x7A135L; h = h * 31 + DTDZ_FORCE; }
+        // S621 (P945): DTDZ_MODE changes the thermal-wind gradient ITSELF (poleward sign + 5-degree
+        // scale) => it changes the solved SST-prime and must enter the configuration fingerprint.
+        h = h * 31 + 0x7A136L; h = h * 31 + DTDZ_MODE;
         return h;
+    }
+
+    /**
+     * <b>P944 归因开关</b>：只改热成风梯度 {@code dT/dz} 的取法，不动任何别的消费者。
+     * <ul>
+     *   <li>{@code 0}（默认）= 跟随 {@link Atmosphere#ZMSLK_LEGACY}（生产行为）；</li>
+     *   <li>{@code 1} = 强制旧式 {@link Atmosphere#zmslkLegacy}；</li>
+     *   <li>{@code 2} = 强制新式 {@link Atmosphere#zmslkNew}。</li>
+     * </ul>
+     * 有了它，(airT, dTdz) 的 2x2 才可分离：ZMSLK_LEGACY 管间接通路，DTDZ_FORCE 管直接通路。
+     */
+    public static int DTDZ_FORCE = 0;
+
+    /** 热成风用的纬向平均海平面温度（受 {@link #DTDZ_FORCE} 路由）。 */
+    static double zmSlk(double latRad) {
+        int m = DTDZ_FORCE;
+        if (m == 1) return Atmosphere.zmslkLegacy(latRad);
+        if (m == 2) return Atmosphere.zmslkNew(latRad);
+        return Atmosphere.zonalMeanSeaLevelK(latRad);
+    }
+
+    /**
+     * <b>P945 物理修正开关</b>（位掩码）：
+     * <ul>
+     *   <li>位 0 = <b>极向符号修正</b>；</li>
+     *   <li>位 1 = <b>5 度尺度中心差</b>（用表自己的节点间距）。</li>
+     * </ul>
+     * {@code 3}（默认）= 两条都开 = 物理口径；{@code 0} = 历史口径（±50 km 的 z 方向差）。
+     */
+    public static int DTDZ_MODE = 3;
+
+    /** 每度纬度的米数（由世界契约本身给出，零新常数）。 */
+    private static final double M_PER_DEG = WorldContract.MAX_D / 90.0;
+
+    /**
+     * <b>背景经向温度梯度（K/m，极向距离为正）</b>—— 热成风的唯一驱动量。
+     *
+     * <p><b>为什么必须极向为正</b>：{@link SeaSurfaceTemp#anomaly} 的平衡是
+     * {@code t = -(v/lambda) * dT/ds}，而 {@code vSurf} 的定义是「正 = 向极」
+     * （{@code SeaSurfaceTemp:76}）。所以这里的梯度必须是 {@code dT/ds}（s = 极向距离），
+     * <b>不是</b> {@code dT/dz}。而 {@link WorldContract#latOf} 是一条 <b>tent</b>：
+     * {@code +z} 在第 1/3 象限向极、在第 2/4 象限向赤道 ⇒ {@code dT/dz} 在半个世界里符号是反的。
+     *
+     * <p><b>为什么用 5 度尺度的中心差</b>：{@code zmslk} 由 {@code ZonalTables} 的 5 度节点表
+     * 经 {@code interp5} 线性插值而来 ⇒ 它的导数在 5 度格内是常数、在节点上跳变。
+     * 用 ±50 km（±0.45 度）去差，得到的不是梯度而是「选了哪个格子」—— P944 实测：
+     * 68.91 度与 71.72 度两行的梯度比是 0.097 与 0.290，差 3 倍。取一个完整节点间距
+     * （±2.5 度）的中心差，等于相邻两条 5 度割线的平均 ⇒ 无跨界跳变，也无新常数
+     * （2.5 度 = 表节点间距的一半）。
+     *
+     * <p>两处修正都<b>不含任何标定</b>：符号来自 {@code vSurf} 的定义，尺度来自表自己的分辨率。
+     */
+    static double dTzmDz(int zRow) {
+        int m = DTDZ_MODE;
+        if ((m & 2) != 0) {
+            double a = Math.abs(Math.toDegrees(WorldContract.latOf(zRow)));
+            double hi = Math.min(a + 2.5, 90.0), lo = Math.max(a - 2.5, 0.0);
+            double dy = (hi - lo) * M_PER_DEG;
+            if (dy <= 0.0) return 0.0;
+            return (zmSlk(Math.toRadians(hi)) - zmSlk(Math.toRadians(lo))) / dy;
+        }
+        double latT = WorldContract.latOf(zRow + 50_000), latM = WorldContract.latOf(zRow - 50_000);
+        double g = (zmSlk(latT) - zmSlk(latM)) / 100_000.0;
+        if ((m & 1) != 0 && Math.abs(latT) < Math.abs(latM)) g = -g;
+        return g;
     }
 
     private static void resetIfStale(long seed, int worldSeedInt) {
@@ -272,7 +354,7 @@ public final class OceanField {
         h = h * 31 + seed; h = h * 31 + worldSeedInt;
         h = h * 31 + configStamp();
         h = h * 31 + SimClimate.configStamp();
-        if (h != stamp) { ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); stamp = h; }
+        if (h != stamp) { ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); VEL.clear(); stamp = h; }
     }
 
     /** 模型自己的风应力旋度（4 相位平均）：curl = d(tau_z)/dx - d(tau_x)/dz。 */
@@ -332,15 +414,21 @@ public final class OceanField {
      */
     private static int zkey(int zIdx, int phase) { return phase < 0 ? zIdx : ROWS * (phase + 1) + zIdx; }
 
+    /** 命中已缓存的 T-prime 行。{@code zk} 见 {@link #zkey}。 */
+    private static Object[] hit(int x, int zk) { return hitIn(ANOM, x, zk); }
+
+    /** 命中已缓存的速度行（与 {@link #hit} 同网格同键，只是取 {@link #VEL}）。 */
+    private static Object[] hitVel(int x, int zk) { return hitIn(VEL, x, zk); }
+
     /** 命中已缓存的行（返回 {arr, westX}），否则 null。{@code zk} 见 {@link #zkey}。 */
-    private static Object[] hit(int x, int zk) {
+    private static Object[] hitIn(HashMap<Long, double[]> src, int x, int zk) {
         java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zk);
         if (ks == null) return null;
         for (int i = 0; i < ks.size(); i++) {
             Long k = ks.get(i);
             int[] sp = SPAN.get(k);
             if (sp != null && x >= sp[1] && x <= sp[2]) {
-                double[] a = ANOM.get(k);
+                double[] a = src.get(k);
                 if (a != null) return new Object[]{a, sp[1]};
             }
         }
@@ -379,8 +467,7 @@ public final class OceanField {
             //   其经向结构不是本世界推出来的。§216.7 已经用同一条理由禁止把地球的
             //   「该纬度陆地占比」带进海盆斜压结构 ⇒ 这里**不能**顺手加进去。
             //   先量纯 curl 季节性的效果，等本世界自己的季节 dT/dz 有了机制再另开一步。
-            double dTdz = (Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow + 50_000))
-                         - Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow - 50_000))) / 100_000.0;
+            double dTdz = dTzmDz(zRow);
             double rd = CoastalLayer.rossbyRadius(f);
             double[] t = CoastalLayer.coastTangent(g.eastX, zRow, seed, cell);
             // §447：沿海切向风应力。单相位 ⇒ 只取该相位（沿岸急流是**季节**现象）；
@@ -398,10 +485,14 @@ public final class OceanField {
             double hc = CoastalLayer.hcLocal(tauS, f);
             double vJet = CoastalLayer.jetPeak(hc, f);
             double[] a = new double[g.n];
+            // S623：把喂给 anomaly() 的表层速度同点存一份（供 OceanField.vAt / P478 的 A6）。
+            // 逐位不影响 a[] —— 只是多写一个数组。
+            double[] vv = new double[g.n];
             for (int i = 0; i < g.n; i++) {
                 double vs = g.v[i] * SeaSurfaceTemp.SURF_FACTOR;
                 double d = g.eastX - g.xAt(i);
                 if (d > 0 && d < JET_RANGE_RD * rd) vs += vJet * Math.exp(-d / rd);
+                vv[i] = vs;
                 a[i] = SeaSurfaceTemp.anomaly(vs, dTdz);
             }
             // A7：西带/东带深度平均速度（生产解本身，探针只读）
@@ -417,6 +508,7 @@ public final class OceanField {
             }
             long k = key(seed, zk, g.westX);
             ANOM.put(k, a);
+            VEL.put(k, vv);
             // SPAN 里的第 0 位永远是**真实行号** zIdx（探针与 bandMeansAt 读它），不是 zk。
             SPAN.put(k, new int[]{zIdx, g.westX, g.eastX});
             java.util.ArrayList<Long> bucket = SPAN_BY_ROW.get(zk);
@@ -506,6 +598,44 @@ public final class OceanField {
             if (h == null) return 0.0;
         }
         return lerpX(h, x);
+    }
+
+    /** 单个相位的表层经向速度（m/s，正 = 向极）。 */
+    private static double velAtPhase(int x, int z, int zIdx, long seed, int worldSeedInt, int phase) {
+        int zk = zkey(zIdx, phase);
+        Object[] h = hitVel(x, zk);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, phase, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+        }
+        return lerpX(h, x);
+    }
+
+    /**
+     * 该点的**表层经向速度 v（m/s，正 = 向极）** —— 就是喂给
+     * {@link SeaSurfaceTemp#anomaly} 的那个量（{@code g.v[i]*SURF_FACTOR + vJet*exp(-d/rd)}）。
+     *
+     * <p>口径与 {@link #anomalyAt} <b>完全平行</b>（同一张 {@link #VEL} 表、同一个 {@code lerpX} 网格、
+     * 同样的 4 相位平均）⇒ {@code anomalyAt(x,z,s) == SeaSurfaceTemp.anomaly(vAt(x,z,s), dTzmDz(rowZ))}
+     * 逐位成立。
+     *
+     * <p><b>为什么必须直接暴露它</b>（P478 的 A6）：A6 问的是「经向海岸上<b>有没有流</b>」，
+     * 那是关于<b>流动</b>的陈述。旧版只能用 |T-prime| 当代理量，而
+     * {@code |T-prime| = ANOM_MAX*tanh(|v*dTds|/(lambda*ANOM_MAX))} ⇒ 同一个 |v| 在不同纬度
+     * 给出完全不同的 |T-prime|。P946 实测：模型的速度场中位 |v| 在 0.050~0.531 m/s 之间
+     * （纬度无关），而 |dTds| 变 9 倍 ⇒ 旧的 T-prime 判据等价于要求 |v| 随纬度变 9 倍。
+     */
+    public static synchronized double vAt(int x, int z, int worldSeedInt) {
+        if (inSolve()) { reentryBlocked++; return 0.0; }
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        if (PHASE_SEASONAL) {
+            double s = 0;
+            for (int p = 0; p < PH4.length; p++) s += velAtPhase(x, z, zIdx, seed, worldSeedInt, p);
+            return s / PH4.length;
+        }
+        return velAtPhase(x, z, zIdx, seed, worldSeedInt, -1);
     }
 
     /**

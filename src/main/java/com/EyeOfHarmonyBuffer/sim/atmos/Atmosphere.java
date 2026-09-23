@@ -453,14 +453,55 @@ public final class Atmosphere {
     }
 
     /**
-     * **本世界的纬向平均海平面气温（K）**：取 κ = {@link #KAPPA_MEAN} 的 {@link #annualSeaLevelTemp}。
+     * **本世界的纬向平均海平面气温（K）** —— 锚在观测的海平面年表上，只加「本世界陆地占比」那一项差。
+     *
+     * <pre>
+     *   T_ann(φ, κ) = T_ZM_SL_ANN(φ) + (κ − ZF_earth(φ)) · DELTA_SL(φ)
+     * </pre>
+     *
+     * <p>κ = {@link ZonalTables#zfEarth} 时**逐位等于观测表** ⇒ 恒等式按构造成立。
      *
      * <p>⚠ 与 {@link #tZonalMean} **不是**同一个量：{@code tZonalMean} 是**地球**在那个纬度的
      * 全表面年均气温（含地球自己的陆地和海拔），本方法是**本世界**在各种 κ 混合下的纬向平均。
      * 需要「本世界自己的纬向平均」时一律用本方法（降水的水汽源、airT 的参考、海洋的热成风）。
+     *
+     * <p><b>为什么不再写 {@code annualSeaLevelTemp(latRad, KAPPA_MEAN, 0)}</b>（P943 实测，2026-09-21）：
+     * 那条式子等价于 {@code T_OCEAN + KAPPA_MEAN·DELTA_SL}，即假定重构式
+     * {@code T_ZM_SL = T_OCEAN + ZF_earth·DELTA_SL} 成立。它**在 25~65 度成立到 ≤1.5 K，
+     * 在 70~85 度崩到 +5.2/+8.0/+9.7/+8.0 K**，而崩的位置精确对应 {@link ZonalTables#landMeanElev}
+     * 的跳升（245 → 444 → 1095 → 1638 → 1447 m）。
+     * 原因是**折算口径不一致**：{@code T_ZM_SL_ANN} 是上游那张表自己的海平面折算，
+     * 而重构式用 {@link #GAMMA}（6.5 K/km）乘**纬向平均**高程 —— 两者在高纬（陆地集中、
+     * 高程大）必然分叉。这个分叉被 {@code (KAPPA_MEAN − ZF_earth)} 放大成一支**虚假的极地冷偏差**：
+     * 80 度上 {@code zonalMeanSeaLevelK − T_ZM_SL_ANN} = <b>−8.83 K</b>，与 P940 实测的
+     * {@code zonalSlTemp − tZmSlMonth} = −8.69 K 同源（季节项无辜：A_ZM 13.36/13.36、
+     * 相位逐行相同）。
+     *
+     * <p>改成上式后：κ = ZF_earth 处恒等；25~65 度只动 ≤1.5 K；70~85 度消掉那 −4.4…−8.8 K。
+     * **零新常数**（{@code T_ZM_SL_ANN} / {@code ZF_EARTH} / {@code DELTA_SL} 全部已在册），
+     * 且 {@code interp5} 取 {@code abs(lat)} ⇒ 南北对称不破。
      */
-    public static double zonalMeanSeaLevelK(double latRad) {
+    /**
+     * <b>P944 归因开关</b>（默认 false = 生产）。true 时 {@link #zonalMeanSeaLevelK} 走
+     * {@link #zmslkLegacy}，用于在同一次 JVM 内把「直接通路（dTdz）」与
+     * 「间接通路（airT 到 风 到 tauS 到 vJet）」分开量。它折进 {@code SimClimate.configStamp()}，
+     * 因此翻它会作废气候瓦片缓存，并经 {@code OceanField} 的 stamp 作废 ANOM 缓存。
+     */
+    public static boolean ZMSLK_LEGACY = false;
+
+    /** 新式：锚在观测海平面年表上，只加本世界陆地占比那一项差。 */
+    public static double zmslkNew(double latRad) {
+        return ZonalTables.tZmSlAnnual(latRad)
+             + (KAPPA_MEAN - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
+    }
+
+    /** 旧式（重构式）：{@code T_OCEAN + KAPPA_MEAN*DELTA_SL}。仅为归因保留，不是生产路径。 */
+    public static double zmslkLegacy(double latRad) {
         return annualSeaLevelTemp(latRad, KAPPA_MEAN, 0.0);
+    }
+
+    public static double zonalMeanSeaLevelK(double latRad) {
+        return ZMSLK_LEGACY ? zmslkLegacy(latRad) : zmslkNew(latRad);
     }
 
     /**
@@ -740,7 +781,64 @@ public final class Atmosphere {
      *
      * <p>⚠ `PLATE_CELL` 一旦改变，⟨κ⟩ **必须重测**（P420 应进回归集）。
      */
-    public static double KAPPA_MEAN = 0.328;
+    public static double KAPPA_MEAN = 0.328;   // ★ 见下方 S624：0.575 已【测出但未采用】
+
+
+    // S624 (P947, 2026-09-22): this constant was RE-MEASURED.  Result: MEASURED BUT NOT ADOPTED
+    // (the A/B is recorded at the end of this block).  The production value is unchanged at 0.328.
+    // 0.3280/0.3196 (P420/P491) were measured on the LEGACY terrain; §567 replaced the whole
+    // land-sea chain with TalosField, and the javadoc above already recorded this constant as
+    // needing re-measurement on it ("见设计冻结 §567 的重捕清单").
+    // P947 re-ran P420 protocol verbatim (19 lat x 8 non-overlapping 5,000 km windows x 6 z-lines
+    // x 2001 points/line = 96,048 points per latitude, cos-area-weighted):
+    //   (1) kappa field  <kappa> = 0.5749   <-- ARTIFACT (see the correction at the end of this block)
+    //   (2) isLand area-weighted land fraction = 0.5729     (two independent calibers agree to 0.002)
+    //   (3) unweighted simple mean = 0.4746
+    // Every estimator is far above 0.328.
+    //
+    //
+    // ★★ P947 WAS UNDER-SAMPLED IN X -- ITS PROFILE IS AN ARTIFACT.  CORRECTED.
+    //   P947 covered ONE 40,000 km meridian span (8 windows x 5,000 km inside it).  Its own output
+    //   shows why that is not enough: the 8 window means were [0.008, 0.337, 0.663, 0.564, 0.792,
+    //   0.923, 0.988, 0.324], SD 0.40 -- the land-sea field is dominated by a few very large
+    //   continents, so a single span is ONE realization, not an ensemble.
+    //   The PRE-EXISTING measurement refs/kappa_bar_profile.txt (P491: 12 independent 40,000 km
+    //   windows x 2000 points, batch means = 480,000 km of x per latitude) gives a nearly flat
+    //   profile 0.28~0.37, and its cos-weighted mean is ~0.33 -- i.e. THIS CONSTANT IS CORRECT.
+    //   (Process lesson, recorded so it is not repeated: that file already existed in refs/; it
+    //    should have been read BEFORE writing a new probe, and a new probe must be checked against
+    //    the sampling density of the measurement it intends to replace.)
+    //
+    //   => The "do not replace it with a per-latitude table" warning above STANDS: kbar(phi) is
+    //      flat, so the global mean is the right reference for every consumer, and arm 2
+    //      (per-latitude <kappa>) is NOT needed.  zonalMeanSeaLevelK (S620) is likewise fine with
+    //      the global constant.
+    //
+    // ★ A/B RESULT (full 22-gate acceptance suite).  Arms: A0 = 0.328 (dir B97DFF43_805B5532_TALOS),
+    //   A1 = 0.575 (dir 7D3A696A_99C31376_TALOS).
+    //   GATES: 18/22 -> 18/22, ZERO gate changes -- the battery is insensitive to this constant.
+    //   INDEPENDENT GPCP ROWS (P296; the only column never fitted by EDDY_MIX), A0 -> A1:
+    //     mid-lat 47.5~62.5   summer +17.2% -> +18.5%    winter +71.2% -> +82.7%
+    //     equator  2.5~12.5   summer -41.3% -> -45.8%    winter -61.4% -> -56.8%
+    //     subtrop 27.5~37.5   summer -78.3% -> -77.5%    winter -67.8% -> -70.2%
+    //   4 of 6 got worse, and the large one-signed equatorial/subtropical deficits did NOT improve.
+    //   => REFUTED: "the stale zero-reference explains the tropical/subtropical deficits."
+    //
+    //   MECHANISM (why a correctly measured value made things worse).  Split kappa into the
+    //   latitude own zonal mean and its anomaly:
+    //     zonal-mean part = CELL_GAIN*carrier*(KAPPA_MEAN - kbar(phi))   <- non-zero iff KAPPA_MEAN is GLOBAL
+    //     land-sea part   = -CELL_GAIN*carrier*(kappa - kbar(phi))       <- INDEPENDENT of KAPPA_MEAN
+    //   The land-sea CONTRAST is invariant to this constant; only the zonal MEAN of the term moves.
+    //   0.328 -> 0.575 therefore injects a spurious zonal-mean pressure signal proportional to
+    //   carrier(phi); it does NOT correct the land-sea difference.  Hence the regression.
+    //
+    //   => This constant is NOT independently changeable.  The physically correct repair is the
+    //      SEMANTIC one (arm 2, NOT YET RUN):  (KAPPA_MEAN - kappa)  ->  (kbar(phi) - kappa),
+    //      which makes the zonal-mean part vanish BY CONSTRUCTION and leaves a pure land-sea
+    //      contrast.  The sign stays correct (at 30 deg kbar = 0.549: land 0.6 -> -, ocean 0.1 -> +,
+    //      and with carrier > 0 that is still "ocean high / land low").
+    //      The SAME kbar(phi) is owed by zonalMeanSeaLevelK (S620), whose coefficient currently
+    //      takes the global constant instead of the latitude own mean.
 
     /** 副高 cell 的气压贡献（Pa）。**年平均值**，与季节性热力项的 p' 是两回事。 */
     /**

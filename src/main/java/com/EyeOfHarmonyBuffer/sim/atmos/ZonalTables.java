@@ -139,6 +139,56 @@ public final class ZonalTables {
     /** 海洋季节振幅（K）。 */
     public static double aSea(double latDeg) { return interp(A_SEA_K, latDeg); }
 
+    /**
+     * **海气温差 `DT = T_air - T_sea`（K，负 = 空气比海冷）** —— 海洋侧近地面气温与海表的分隔锚。
+     *
+     * <p><b>为什么需要它</b>：本模型此前只有一个温度（{@code Atmosphere.surfaceTemp}），它**既是**
+     * 海表温度（拿去算 {@code qSat}）**又是**近地面气温（拿去做 {@code moisture} 的水汽源）。
+     * 后果：感热（浮力）通量在构造上恒为零 ⇒ 表面虚位温通量退化成纯水汽项
+     * {@code C_H|V|*0.608*theta*(q_sat(T_s) - q)} ⇒ ① {@code q -> q_sat} 时 {@code w_* -> 0}
+     * （饱和边界层反而不对流，物理上是反的）；② {@code w_*} 与 {@code q} 反比。拆开之后热力项
+     * {@code theta(T_s) - theta(T_a)} **与 q 无关**，两处后果同时减轻。
+     *
+     * <p><b>⚠ 赋值方向（易错，写死在这里）</b>：{@code surfaceTemp} 本模型里**就是海表温度**
+     * {@code T_s}（= {@code annualSeaLevelTemp} + {@code sstAnom}）。所以新增的是**空气温度**：
+     * <pre>    T_s = Atmosphere.surfaceTemp(...)      // 语义不变
+     *     T_a = T_s + DT_AIR_SEA(lat)            // DT &lt; 0 ⇒ T_a &lt; T_s ⇒ 浮力通量 &gt; 0</pre>
+     * 反了会得到稳定层结（{@code T_a > T_s}），{@code w_*} 变虚数。见设计冻结 §646。
+     *
+     * <p><b>数据源与口径（四项全部核对过；冻结 §645）</b>：
+     * <ol>
+     *   <li>气候窗：两侧统一 <b>1991-2020</b>（SST = COBE-SST2；空气 = NCEP R1）。</li>
+     *   <li>层次：NCEP R1 **地面层 sigma 0.995**（约 2 m）。可直接用的 2 m 文件没有 1991-2020 窗口，
+     *       所以用**同一窗口（1981-2010）**的「地面层 vs 1000 mb」两份文件测出**实测偏移**
+     *       （{@code air_sfc_8110.nc} / {@code air_pl_8110.nc}，**不假设递减率**），再加到
+     *       1991-2020 的 1000 mb 场上。实测偏移在 +-30 度达 -1.0 K ⇒ **直接用 1000 mb 当气温
+     *       会造成同量级偏差**。</li>
+     *   <li>相位：两者都是逐月 LTM；本表取**年均**（逐月值另存 {@code refs/dt_air_sea.npz} 的
+     *       {@code monthly_2m}）。</li>
+     *   <li>统计量：两者都先最近邻重网格到 COBE 的 1 度网格，再用**同一张**海洋掩膜
+     *       （43799/64800 点）取**经向平均**，然后**两半球取平均**（{@link #interp} 用
+     *       {@code Math.abs}，表必须对称）。</li>
+     * </ol>
+     *
+     * <p><b>⚠ 已知限度（不许日后悄悄当实测用）</b>：
+     * <ul>
+     *   <li><b>60~90 度是外推值，不是观测。</b>原因：NCEP R1 与 COBE-SST2 在**海冰区**的差不是
+     *       海气温差 —— SST 被钉在冰点而 1000 mb 空气极冷（+60 度实测 -3.40 K、-85 度曾达 -25 K）。
+     *       <b>本世界没有海冰</b>，故 50 度以外**保持 50 度的值**并在此声明为外推。</li>
+     *   <li>NCEP R1 与 COBE-SST2 并非完全独立（同化相近的观测）⇒ 本表是**气候态锚**，
+     *       不是独立验证。</li>
+     * </ul>
+     */
+    public static final double[] DT_AIR_SEA_K = {
+        -1.56, -1.48, -1.52, -1.66, -1.38, -0.92, -1.38, -1.38, -1.38, -1.38
+    };
+
+    /**
+     * 海气温差 {@code T_air - T_sea}（K）。**负值 = 空气比海冷 = 海洋表面对流不稳定。**
+     * 详见 {@link #DT_AIR_SEA_K} 的口径与限度声明。
+     */
+    public static double dtAirSea(double latDeg) { return interp(DT_AIR_SEA_K, latDeg); }
+
     /** 按**带符号纬度**（度）线性插值；表对 |lat| 对称，超界取端点。 */
     public static double interp(double[] tab, double latDeg) {
         double a = Math.abs(latDeg);

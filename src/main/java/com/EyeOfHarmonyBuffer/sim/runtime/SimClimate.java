@@ -362,6 +362,7 @@ public final class SimClimate {
         h = h * 31 + (PrecipField.Q_AT_SURFACE_TEMP ? 1 : 0);
         // 候选 S-1（§251）：浅对流地板。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.SHALLOW_FLOOR ? 1 : 0);
+        if (PrecipField.SHALLOW_CONDENSATE) h = h * 31 + 0x7A139L;   // §655 浅对流凝结形式
         // §264：纬向平均海平面温度取观测月表。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.ZONAL_SL_FROM_TABLE ? 1 : 0);
         // §267：柱水汽取观测月表。改了结果 ⇒ 必须进指纹（D58）。
@@ -420,6 +421,13 @@ public final class SimClimate {
         // §472 边界层水汽收支口径：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_FROM_BLBUDGET) {
             h = h * 31 + 0x7A122L;
+            // S628: the entrainment branch changes q => must invalidate climate tiles.
+            if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_BLBUDGET_SUB_ONLY) {
+                h = h * 31 + 0x7A137L;
+            }
+            // S630: the downdraft return fraction changes q => must invalidate climate tiles.
+            h = h * 31 + 0x7A138L;
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BETA_DOWNDRAFT);
         }
         // §459 植被/干旱度状态：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.ENABLED) {
@@ -572,6 +580,13 @@ public final class SimClimate {
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V > 0.0) {
             h = h * 31 + 0x7A133L;
             h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V);
+        }
+        // S620 (P944 attribution): ZMSLK_LEGACY swaps zonalMeanSeaLevelK between the observed
+        // sea-level annual table and the old reconstruction. It feeds airT = (tSea - tzm)/AIRT_SCALE
+        // (SimClimate:634/:775) AND the OceanField thermal-wind gradient, so it MUST invalidate
+        // climate tiles. Conditional fold => the default (false) keeps production bit-identical.
+        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.ZMSLK_LEGACY) {
+            h = h * 31 + 0x7A134L;
         }
         return h;
     }

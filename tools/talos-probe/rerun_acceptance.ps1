@@ -160,12 +160,18 @@ $acceptList = @(
   'P683',   # 4  section 477 seasonal-cycle PHASE gate (in-sample + HOLDOUT); GPCP anchor
             #    WHY PHASE: it is set by the subsolar latitude and the land-sea thermal
             #    contrast, so no magnitude tuning can fake it (design freeze section 476).
-  'P712'    # 4  section 518 GATE_QDIV_SIGN - regional MSE advection budget SIGN gate
+  'P712',   # 4  section 518 GATE_QDIV_SIGN - regional MSE advection budget SIGN gate
             #    WHY SIGN: the literature criterion is only about the SIGN
             #    (monsoon EXPORTS MSE => Qdiv>0 ; desert IMPORTS MSE => Qdiv<0),
             #    so it needs NO Earth magnitude and cannot be tuned into passing.
             #    Baseline (current, FAILING): ASIA Qdiv=+144.787 P=3.525 ;
             #                                 SAHARA Qdiv=+202.371 P=4.029  (1/3)
+  'P991'    # 5  SS682 tropical precipitation vs same-mask GPCP anchor
+            #    WHY: the suite had NO criterion for 0-25N precipitation (SS680/SS681),
+            #    so it was BLIND to the SS677 shallow-floor change.  It measures
+            #    PRODUCTION mmPerDay, so it judges whichever floor is active.
+            #    Caliber matches refs/_eqpeak_masked.py (ocean, 0-25N, argmax).
+            #    Baseline: GATE_NTP_MAGNITUDE=1.179 PASS, GATE_NTP_SEASONAL=0.617 PASS.
 )
 $runList   = $acceptList
 $isPartial = $false
