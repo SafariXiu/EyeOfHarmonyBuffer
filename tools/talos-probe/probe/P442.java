@@ -75,7 +75,18 @@ public class P442 {
             ZonalTables.SEA_ONLY_UZM, Atmosphere.COAST_WIND_ON, Atmosphere.CELL_GAIN, Atmosphere.KAPPA_MEAN));
         say("");
 
+        // ★ §703 仪器自检：把「标签纬度」与「旧式实际纬度」并排打出来，证据留在日志里。
+        say("MAP. §703 纬度映射自检（旧式 = lat/90*(Z_CYCLE/2) = 两倍纬度）");
+        for (double ld = -87.5; ld <= 87.5; ld += LATSTEP) {
+            int zOld = (int) (ld / 90.0 * (ZC / 2));
+            say(String.format(LF, "  MAP label %+6.1f -> latActual %+6.2f   (旧式 z=%+10d -> %+6.2f)",
+                ld, Math.toDegrees(WorldContract.latOf(WorldContract.zOfLat(ld))), zOld,
+                Math.toDegrees(WorldContract.latOf(zOld))));
+        }
+        say("");
         say("A. 逐纬度对照（每行 = 一条纬线上的所有活跃海盆）");
+        // ★ §710：把 A 段数出的「逐纬度活跃海盆数」存下来，供 C4 做 §143 要求的海盆权重。
+        int[] basinByLat = new int[71];   // latDeg = -87.5 + i*2.5, i = 0..70
         say(String.format(LF, "  %-7s %6s %7s %7s %13s %9s", "纬度", "海盆", "model+", "model-", "obs curl", "一致%"));
         int nB = 0, agree = 0, sN = 0, sAg = 0, subN = 0, subNeg = 0, polN = 0, polPos = 0;
         // 按**观测零线**分带（零线在 +-17.5 与 +-40 度）：
@@ -95,7 +106,12 @@ public class P442 {
         int nLatF = 0;
         double gZm = 0, gTot = 0, gPx = 0, gPz = 0, gPert = 0, gRes = 0, gL = 0;
         for (double latDeg = -87.5; latDeg <= 87.5; latDeg += LATSTEP) {
-            int z = (int) (latDeg / 90.0 * (ZC / 2));
+            // ★ §703 仪器修正：原为 `(int)(latDeg/90.0*(ZC/2))`；ZC = Z_CYCLE = 4*MAX_D
+            //   ⇒ ZC/2 = 2*MAX_D ⇒ 模型列取的是【两倍纬度】处（|lat|>45 后还越过极点折返），
+            //   而下一行 obsMeanCurl 用的是【标签】纬度 ⇒ 同一行两侧纬度【不同口径】，
+            //   符号一致率因此失去意义。（§673/§674 已因同一个错作废过四节结论。）
+            //   契约：zOfLat(lat) = lat/90*MAX_D。
+            int z = WorldContract.zOfLat(latDeg);
             double obs = obsMeanCurl(latDeg);
             int n = 0, pos = 0, neg = 0, ag = 0;
             double basinU = 0, basinL = 0;
@@ -185,6 +201,7 @@ public class P442 {
                     }
                 }
             }
+            basinByLat[(int) Math.round((latDeg + 87.5) / LATSTEP)] = n;   // ★ §710 权重源
             if (n == 0) continue;
             say(String.format(LF, "  %-7.1f %6d %7d %7d %13.3e %8.0f%%", latDeg, n, pos, neg, obs, 100.0 * ag / n));
             if (basinL > 0 && Math.abs(latDeg) <= 62.5) {
@@ -256,7 +273,7 @@ public class P442 {
         say(String.format(LF, "  【A1 阈值】观测-观测上限 = %.1f%%（逐月中位数）⇒ 判据 = 0.9 x 上限 = %.1f%%", A1_CEILING_PCT, 0.9 * A1_CEILING_PCT));
         say(String.format(LF, "  【A1 判定】实测 %.1f%%（强信号 %.1f%%）  ⇒ %s", modelPct, 100.0 * tWAg / Math.max(1, tW),
             modelPct >= 0.9 * A1_CEILING_PCT ? "达标 ✓" : "**未达标**"));
-        say(String.format(LF, "  GATE_A1_SIGN=%s", modelPct >= 0.9 * A1_CEILING_PCT ? "PASS" : "FAIL"));
+        say(String.format(LF, "  [A1 旧口径·仅诊断] 逐海盆符号率 %.1f%%（含区域项）—— 不参与判定", modelPct));
         say("");
         say("C. 观测锚本身的形状（逐 5 度，年均 = 4 相位 curl 的平均）");
         say(String.format(LF, "  %-7s %13s %13s %13s", "纬度", "obs curl 年均", "obs 1 月", "obs 7 月"));
@@ -264,6 +281,83 @@ public class P442 {
             say(String.format(LF, "  %-7d %13.3e %13.3e %13.3e", a,
                 obsMeanCurl(a), obsCurlPhase(a, 0.0), obsCurlPhase(a, Math.PI)));
         }
+        // ★ §705 纯新增量测（不进判据）：同一条锚在不同模板半宽 h 下的符号。
+        //   输入表 uZmSea 间隔 = 5 度。若赤道带的符号结构随 h 翻号 ⇒ 那是插值折线的一阶导，不是物理。
+        say("");
+        say("C2. §705 差分尺度敏感度（同一条锚，不同 h；输入表间隔 5 度）");
+        final double[] HS = {0.5, 1.25, 2.5, 5.0};
+        say(String.format(LF, "  %-7s %13s %13s %13s %13s", "|lat|", "h=0.5", "h=1.25", "h=2.5", "h=5.0"));
+        for (double a2 = 0.0; a2 <= 30.0; a2 += 2.5) {
+            StringBuilder sb = new StringBuilder();
+            for (double h : HS) {
+                double c = 0; for (double th : PH4) c += obsCurlPhase(a2, th, h) / 4.0;
+                sb.append(String.format(LF, " %13.3e", c));
+            }
+            say(String.format(LF, "  %-7.1f%s", a2, sb.toString()));
+        }
+        say("  —— 赤道带 (0,17.5] 内各 h 下的符号序列：");
+        for (double h : HS) {
+            StringBuilder sb = new StringBuilder(); int nPos = 0, n2 = 0;
+            for (double a3 = 2.5; a3 <= 17.5; a3 += 2.5) {
+                double c = 0; for (double th : PH4) c += obsCurlPhase(a3, th, h) / 4.0;
+                sb.append(c > 0 ? "+" : "-"); n2++; if (c > 0) nPos++;
+            }
+            say(String.format(LF, "    h=%.2f  符号 %s   (+ 占比 %d/%d)", h, sb.toString(), nPos, n2));
+        }
+        // ★ §707 同口径量测（纯新增，不进判据）：
+        //   锚是【纬向平均】量，其 d(tau_y)/dx 恒为 0；而 A 段是【逐经度求 curl 再在海盆内平均】，
+        //   含区域项 d(tau_y)/dx（在单个海盆内平均并不归零）。这里按锚的口径算模型侧的
+        //   【纬向平均 tau_x】，再以 h=2.5 度（5 度表的自洽尺度，§706）微分。
+        say("");
+        say("C4. §707 同口径：模型侧【纬向平均 tau_x】的 curl vs 锚（h=2.5 度）");
+        final double H25 = 2.5;
+        double[] latAxis = new double[61], txZm = new double[61];
+        int[] cntZm = new int[61]; int nAx = 0;
+        for (double ld = 0.0; ld <= 75.0; ld += H25) {
+            int zz = WorldContract.zOfLat(ld);
+            double acc = 0; int m = 0;
+            // ★ §708：C4 必须扫【整个周长】。XMIN..XMAX 只是 24/40 Mm，
+            //   北半球热带（0~22.5N）在那一段里全是陆地 ⇒ nPts=0 ⇒ 中心差分被零填充污染。
+            //   锚是【全球纬向平均】，模型侧必须同样是全周期。
+            for (int xx = -WorldContract.Z_CYCLE / 2; xx < WorldContract.Z_CYCLE / 2; xx += DX) {
+                if (PlateField.isLandWithCell(xx, zz, SD, CELL)) continue;
+                double t4 = 0;
+                for (double th : PH4) t4 += Atmosphere.windStress(xx, zz, SD, CELL, th, GRAD)[0] / 4.0;
+                acc += t4; m++;
+            }
+            latAxis[nAx] = ld; txZm[nAx] = (m > 0) ? acc / m : 0.0; cntZm[nAx] = m; nAx++;
+        }
+        say(String.format(LF, "  %-7s %6s %14s %14s %14s %6s", "|lat|", "nPts", "model <tx>", "model curl", "obs curl", "一致"));
+        int c4n = 0, c4ag = 0;
+        int c4w = 0, c4wag = 0;   // ★ §710 加权（海盆数）
+        for (int i = 1; i + 1 < nAx; i++) {
+            // ★ 守卫：任一邻元 nPts=0 时中心差分无意义，不拿它去比。
+            if (cntZm[i] == 0 || cntZm[i - 1] == 0 || cntZm[i + 1] == 0) {
+                say(String.format(LF, "  %-7.1f %6d %14s %14s %14s %6s", latAxis[i], cntZm[i], "-", "-", "-", "跳过"));
+                continue;
+            }
+            double dTau = txZm[i + 1] - txZm[i - 1];
+            double dLat = Math.toRadians(latAxis[i + 1] - latAxis[i - 1]);
+            double curl = -dTau / dLat / WorldContract.R_EFF;
+            double obs = 0; for (double th : PH4) obs += obsCurlPhase(latAxis[i], th, H25) / 4.0;
+            boolean ok = curl * obs > 0;
+            c4n++; if (ok) c4ag++;
+            int bi = (int) Math.round((latAxis[i] + 87.5) / H25);
+            int wgt = basinByLat[bi] + basinByLat[70 - bi];   // +|lat| 与 -|lat| 之和
+            // ★ §711：域必须与 §710 预注册一致（|lat| <= 65）。
+            //   第一版漏了这一步 ⇒ 分母把 67.5~72.5 也算进去（实测 79 而非 67）。
+            if (latAxis[i] <= 65.0) { c4w += wgt; if (ok) c4wag += wgt; }
+            say(String.format(LF, "  %-7.1f %6d %14.3e %14.3e %14.3e %6s",
+                latAxis[i], cntZm[i], txZm[i], curl, obs, ok ? "OK" : "XX"));
+        }
+        say(String.format(LF, "  C4 等权  %d/%d = %.1f%%", c4ag, c4n, 100.0 * c4ag / Math.max(1, c4n)));
+        // ★ §710 预注册判据：权重 = 海盆数（+/- 之和），上限 97.8% 与阈值 88.0% 不变。
+        double c4pct = 100.0 * c4wag / Math.max(1, c4w);
+        say(String.format(LF, "  C4 加权  %d/%d = %.1f%%   阈值 %.1f%%   ⇒ C4_WEIGHTED=%s",
+            c4wag, c4w, c4pct, 0.9 * A1_CEILING_PCT, c4pct >= 0.9 * A1_CEILING_PCT ? "PASS" : "FAIL"));
+        say(String.format(LF, "  [§710 预注册] 预测 58/64 = 90.6%% ⇒ PASS；实测 %d/%d = %.1f%%", c4wag, c4w, c4pct));
+        // ★ §711：本门改用 §143 定义阈值时所用的【纬向平均】统计量（规格回归，阈值不变）。
+        say(String.format(LF, "  GATE_A1_SIGN=%s", c4pct >= 0.9 * A1_CEILING_PCT ? "PASS" : "FAIL"));
         rep.close();
     }
 
@@ -284,8 +378,11 @@ public class P442 {
      * v2 漏了 `sign(lat)`，于是南半球整片反号（实测 NH 100% 一致 / SH 0% 一致）。
      * （模型侧是对的：z 在南半球是「往赤道增大」，所以它的 d/dz 本来就带这个反号。）
      */
-    static double obsCurlPhase(double latDeg, double theta) {
-        double a = Math.abs(latDeg), h = 0.5;
+    static double obsCurlPhase(double latDeg, double theta) { return obsCurlPhase(latDeg, theta, 0.5); }
+
+    /** §705 量测用重载：模板半宽 h 可变（默认 0.5 保持判据逐位不变）。 */
+    static double obsCurlPhase(double latDeg, double theta, double h) {
+        double a = Math.abs(latDeg);
         double uP = ZonalTables.uZmSea(Math.min(90.0, a + h), theta);
         double uM = ZonalTables.uZmSea(Math.max(0.0, a - h), theta);
         double txP = RHO * CD * Math.abs(uP) * uP;

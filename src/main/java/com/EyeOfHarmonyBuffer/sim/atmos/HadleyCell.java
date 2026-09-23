@@ -34,6 +34,11 @@ public final class HadleyCell {
      * **本份的含义是：HadleyCell（哈得来环流）。** 引用时务必写全类名（如 `HadleyCell.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
      */
+    // ★ §714：§713 的 A/B 实验已做完并撤销。`ENABLED=true` 使 `GATE_PHASE_ALL` 3/4→2/4、
+    //   留出集 2/2→1/2，`GATE_VERDICT` 仍 FAIL ⇒ 部分进入条件失败，恢复原值。
+    //   关键发现：撒哈拉 DJF 在开关前后逐位相同（都是 0.950），JJA 只降 12%
+    //   ⇒ 撒哈拉的雨主要不来自 `wBase`，而是被 `wEff = max(0,wBase)+max(0,wLoc)` 的
+    //   【短路】（§690的 SPLIT_ASCENT）保住了 —— 下沉永远无法被表达。下一个候选是 `SPLIT_ASCENT`。
     public static boolean ENABLED = false;
 
     public static final double OM = 7.2921e-5;                       // s^-1

@@ -161,9 +161,14 @@ public class P296 {
         say(String.format(LF, "   B2.b NH 子带比值 R=P(50~70)/P(35~50)  夏 %.4f / 冬 %.4f（GPCP 0.9456 / 0.6987）⇒ %s",
             rNhS, rNhW, rNhS > rNhW ? "夏>冬 ✓" : "**夏<=冬**"));
         say(String.format(LF, "  GATE_B2B_SPLIT=%s", rNhS > rNhW ? "PASS" : "FAIL"));
+        // §694【判据修正】原式是 rShW > rShS（冬>夏），与本段 :149 的物理陈述
+        //   「R_夏 > R_冬」以及 :154 的锚相反；而 :163 的 NH 门写的是 rNhS > rNhW（夏>冬）。
+        //   证据全在代码自身，不需外部文献。同时修正打印槽位（原来把冬打进「夏」）。
         say(String.format(LF, "   B2.b-SH 子带比值 R=P(50~70S)/P(35~50S)  夏(DJF) %.4f / 冬(JJA) %.4f（GPCP 0.9264 / 0.7164）⇒ %s",
-            rShW, rShS, rShW > rShS ? "夏>冬 ✓" : "**夏<=冬**"));
-        say(String.format(LF, "  GATE_B2B_SPLIT_SH=%s", rShW > rShS ? "PASS" : "FAIL"));
+            rShS, rShW, rShS > rShW ? "夏>冬 ✓" : "**夏<=冬**"));
+        say(String.format(LF, "  GATE_B2B_SPLIT_SH=%s", rShS > rShW ? "PASS" : "FAIL"));
+        say(String.format(LF, "  OLD_B2B_SPLIT_SH_DIAG=%s   （§694 修正前的不等式 rShW>rShS，即冬>夏；与物理相反，仅存档）",
+            rShW > rShS ? "PASS" : "FAIL"));
         // ---- §586 极地诊断（**无门**）：P296 的 35~70 带【不含】70 度以上，而那里有未入门的大偏差 ----
         double polNS = band(pS, 70.0, 90.001, NZ), polNW = band(pW, 70.0, 90.001, NZ);
         double polSS = band(pS, -90.001, -70.0, NZ), polSW = band(pW, -90.001, -70.0, NZ);

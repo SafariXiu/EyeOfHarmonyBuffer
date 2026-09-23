@@ -45,7 +45,11 @@ public class P991 {
         String[] sn = {"JJA", "DJF"};
         double[] peak = new double[2]; double[] atLat = new double[2];
         for (int s = 0; s < 2; s++) {
-            double th = Atmosphere.theta(s == 0 ? 2.0 * WorldContract.DAYS_PER_YEAR / 4.0 : 0.0);
+            // ★ §701 仪器修正：`Atmosphere.theta(day)` 的相位是 day=0 为【北半球夏至】
+            //   （源码 Atmosphere.java:285-288；subsolarLat = OBLIQUITY*cos(theta) ⇒ theta=0 → +OBLIQUITY）。
+            //   本行原为 `s==0 ? 2*DPY/4 : 0`，即把 JJA 接成 theta=pi（= 北半球冬至）、DJF 接成 theta=0（= 夏至），
+            //   **两季标签与实际相位恰好互换** ⇒ GATE_NTP_SEASONAL 的分子分母互换。仪器缺陷，非模型缺陷。
+            double th = Atmosphere.theta(s == 0 ? 0.0 : WorldContract.DAYS_PER_YEAR / 2.0);
             say(rep, "");
             say(rep, "  === " + sn[s] + "  (mm/day, ocean kappa<0.02, all longitudes)");
             say(rep, String.format(LF, "    %-7s %6s %11s", "latN", "nPts", "P(mm/day)"));

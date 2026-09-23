@@ -2195,6 +2195,8 @@ public final class PrecipField {
      * 18.75 度推到 25.7 度 —— **撒哈拉（20~30N）因此整片落进上升区**。
      * 默认 true ⇒ 逐位不变。
      */
+    // ★ §716：§715 的 A/B 已做完并撤销（现场读数见 §716）。
+    //   GATE_VERDICT 仍 FAIL，且其余 26 门全 PASS（含 S1/S2/S3）⇒ 没有收益。恢复原值。
     public static boolean WZM_ITCZ_SHIFT = true;
 
     /**
@@ -2373,6 +2375,12 @@ public final class PrecipField {
             if (denB > 1.0e-12) q = 86400.0 * chvB * qsTsB * betaUsed * depl / denB;
         }
         double p = precip(q, wE);
+        // ★ §720：把 BLQ 门控因子【提到公共作用域】，供浅对流地板共用。
+        //   为什么：两道门只把 g 乘在【大尺度 p】上，而地板在它们之后执行、
+        //   且是【无条件下界】⇒ 把门控压下去的结果又顶了回去。
+        //   证据（§577 实测，P907，JJA，同一口径）：门控开时撒哈拉 = 0.045（观测 0.105），
+        //   而 P683 实测 = 1.712（38 倍）⇒ 差距恰好是地板把它顶回去的部分。
+        double blqG = 1.0;
         // ★★★ §496：BLQ 对流判据（默认关 ⇒ 逐位不变）。
         if (BLQ_GATE) {
             double tSfc = Atmosphere.surfaceTemp(x, z, seed, cell, theta);
@@ -2383,7 +2391,7 @@ public final class PrecipField {
             blqLastDh = dh; blqCalls++;
             double g = smoothstep01b(dh / (Radiation.CP * BLQ_SMOOTH_K));
             if (g < 0.01) blqBlocked++;
-            p *= g;
+            p *= g; blqG *= g;
         }
         // ★★★★★ §577：θ_e 阈值判据（默认关）。阈值随海温变 ⇒ 冷海自然压低对流。
         if (BLQ_THETA_E) {
@@ -2395,7 +2403,7 @@ public final class PrecipField {
             blqLastDh = dth; blqCalls++;
             double g = smoothstep01b(dth / BLQ_SMOOTH_K);
             if (g < 0.01) blqBlocked++;
-            p *= g;
+            p *= g; blqG *= g;
         }
         DIAG.get()[8] = p;
         // 风暴轴：瞬变斜压涡动的水汽通量辐合。
@@ -2437,6 +2445,8 @@ public final class PrecipField {
                 double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
                 pFloor = ALPHA_SH * eSh / RHO_WATER;
             }
+            // ★ §720：地板也受同一道门控约束（原为无条件下界，绕过了门控）。
+            pFloor *= blqG;
             DIAG.get()[10] = pFloor;
             if (pFloor > p) p = pFloor;
         }

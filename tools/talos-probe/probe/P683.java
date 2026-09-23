@@ -43,6 +43,19 @@ public class P683 {
         return n == 0 ? Double.NaN : s / n;
     }
 
+    /** ★ §719：单条纬线的盒均值（定位地板绑在哪个子带）。 */
+    static double bmLat(long sd, int cell, double th, int b, double latd) {
+        int z = zOfLat(latd);
+        double s = 0; long n = 0;
+        for (int c = 0; c < 72; c++) {
+            double lon = (c + 0.5) * 5.0;
+            if (lon < BX[b][0] || lon > BX[b][1]) continue;
+            s += PrecipField.mmPerDay(xOfLon(lon), z, sd, cell, th, GRAD);
+            n++;
+        }
+        return n == 0 ? Double.NaN : s / n;
+    }
+
     public static void main(String[] args) throws Exception {
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p683_report.txt"), "UTF-8");
         say("P683 常驻门：降水季节循环的相位 + 幅度（§477）—— * = in-sample，其余为留出集");
@@ -70,6 +83,37 @@ public class P683 {
         say("     GATE_PHASE_ALL=" + pass + "/" + tot);
         say("     GATE_PHASE_HOLDOUT=" + holdPass + "/" + holdTot);
         say("     GATE_VERDICT=" + ((pass == tot && holdTot > 0 && holdPass == holdTot) ? "PASS" : "FAIL"));
+        // ★ §718 量测（纯新增，不进判据）：浅对流地板对每个盒子的分季贡献。
+        //   做法：同一盒子在 SHALLOW_CONDENSATE=true/false 下各算一次，差即地板贡献。
+        //   为什么不读 DIAG[10]：它只在诊断重载里写，而 mmPerDay(6 参) 不暴露地板前的 p。
+        say("");
+        say("D. §718 浅对流地板的分季贡献（同一盒子，地板开/关各算一次）");
+        say(String.format(LF, "     %-10s | %8s %8s %8s | %8s %8s %8s",
+            "盒子", "JJA开", "JJA关", "dJJA", "DJF开", "DJF关", "dDJF"));
+        boolean savedSC = PrecipField.SHALLOW_CONDENSATE;
+        for (int b = 0; b < BX.length; b++) {
+            PrecipField.SHALLOW_CONDENSATE = true;  SimClimate.clearCache();
+            double jOn = bm(sd, cell, thS, b), wOn = bm(sd, cell, thW, b);
+            PrecipField.SHALLOW_CONDENSATE = false; SimClimate.clearCache();
+            double jOff = bm(sd, cell, thS, b), wOff = bm(sd, cell, thW, b);
+            say(String.format(LF, "     %-10s | %8.3f %8.3f %8.3f | %8.3f %8.3f %8.3f",
+                NM[b], jOn, jOff, jOn - jOff, wOn, wOff, wOn - wOff));
+        }
+        PrecipField.SHALLOW_CONDENSATE = savedSC; SimClimate.clearCache();
+        // ★ §719 纯新增：撒哈拉盒内逐纬度的地板贡献。
+        say("");
+        say("E. §719 撒哈拉盒 (0~30E,20~35N) 内【逐纬度】的地板贡献");
+        say(String.format(LF, "     %-7s %10s %10s %10s | %10s %10s %10s", "latN", "JJA开", "JJA关", "dJJA", "DJF开", "DJF关", "dDJF"));
+        double[] la = new double[8], j1 = new double[8], j0 = new double[8], w1 = new double[8], w0 = new double[8];
+        int nL = 0;
+        PrecipField.SHALLOW_CONDENSATE = true; SimClimate.clearCache();
+        for (double latd = 20.0; latd <= 35.0; latd += 2.5) { la[nL] = latd; j1[nL] = bmLat(sd, cell, thS, 1, latd); w1[nL] = bmLat(sd, cell, thW, 1, latd); nL++; }
+        PrecipField.SHALLOW_CONDENSATE = false; SimClimate.clearCache();
+        for (int i = 0; i < nL; i++) { j0[i] = bmLat(sd, cell, thS, 1, la[i]); w0[i] = bmLat(sd, cell, thW, 1, la[i]); }
+        PrecipField.SHALLOW_CONDENSATE = savedSC; SimClimate.clearCache();
+        for (int i = 0; i < nL; i++)
+            say(String.format(LF, "     %-7.1f %10.3f %10.3f %10.3f | %10.3f %10.3f %10.3f",
+                la[i], j1[i], j0[i], j1[i] - j0[i], w1[i], w0[i], w1[i] - w0[i]));
         rep.flush();
         System.out.println("JAVA_EXIT=0");
     }
