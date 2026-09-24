@@ -3,28 +3,15 @@
 /.idea/
 /.vscode/
 /run/
-# ============ build/：整体忽略；但 eoh_probe/refs 的【证据链】要入库 ============
-# 为什么：refs 是降水标定（ALPHA_COND / EP_COND / ALPHA_SH / ENTRAIN_A）的全部证据链，
-#   过去被整体忽略 —— 外部审计点名「清一次 build 就销毁」。
-# 用户裁决 D-7 = 方案 B：入库 T1 生成器 + T1b 读数/摘录 + T1c 读图存档 + T2a 生产输入，
-#   实测 367 个文件 / 49.61 MB（其中 etopo1_025.npz 是 ZonalTables 生产表的地形输入）。
-# 不入库（公开源可重下、或可由脚本重建）：
-#   .npy 下载缓存 156.1 MB / .pdf 文献 65.4 MB / .nc 再分析 27.6 MB /
-#   ls_chunk_* 中间产物 35.8 MB / .bin 5.0 MB / .gz 3.2 MB   —— 合计 293.1 MB
-# ★ 为什么不能只写一条 refs 的否定规则：原来的 /build/ 是【目录级】忽略，
-#   git 根本不会进入该目录，任何子目录内的否定规则都不生效；必须先改成 /build/*
-#   再逐级用 ! 放行。改这条时务必用 git check-ignore -v 实测（只读命令）。
-/build/*
-!/build/eoh_probe/
-/build/eoh_probe/*
-!/build/eoh_probe/refs/
-!/build/eoh_probe/refs/**
-/build/eoh_probe/refs/**/*.npy
-/build/eoh_probe/refs/**/*.pdf
-/build/eoh_probe/refs/**/*.nc
-/build/eoh_probe/refs/**/*.bin
-/build/eoh_probe/refs/**/*.gz
-/build/eoh_probe/refs/**/ls_chunk_*.npz
+# ============ build/：整体忽略（2026-09-24 用户裁决，选项 C）============
+# build/ 下的【一切】都不入库 —— 包含 build/eoh_probe/refs/ 的证据链
+#   （426 文件 / 342.7 MB：降水标定 ALPHA_COND / EP_COND / ALPHA_SH / ENTRAIN_A 的全部证据）。
+# ★ 已知代价（如实记账，不掩盖）：外部审计点名过「清一次 build 就销毁」，该风险【已被接受】。
+#   refs/ 里的脚本与读数只存在本机；`gradlew clean` 或手工清 build/ 会一并销毁。
+#   备查：撤销前的完整规则集与实测数字记在 设计冻结 §7207。
+#   ★ 要反悔时注意：/build/ 是【目录级】忽略，子目录里的否定规则【不生效】；
+#     必须改成 /build/* 再逐级 ! 放行（曾踩过这个坑）。
+/build/
 /eclipse/
 .classpath
 .project
@@ -85,3 +72,18 @@ layout.json
 # 若确有需要入库的 .txt，用 !tools/talos-probe/<名字>.txt 显式放行。
 /*.txt
 /tools/talos-probe/*.txt
+
+# ============ 嵌套 git 仓库：必须忽略（§7208）============
+# 为什么不忽略会出事：.tmp-fmg 曾是 Azgaar FMG 的一个 git clone（内含它自己的 .git）。
+# 在 VS Code 里「全部添加」时，git 不会加它里面的 504 个文件，而是把【整个嵌套仓库】
+# 记成一个 gitlink（mode 160000，与子模块同一种记录）。之后那个目录一被删，
+# VS Code 的 git 扩展仍按「子模块」去打开 .tmp-fmg/.git，于是报：
+#     Error updating changes: '.tmp-fmg/.git' not recognized as a git repository
+# ⇒ 凡【会把别人的仓库 clone 到工作区】的临时目录，名字一律在这里排除。
+.tmp-fmg
+.tmp-*
+tmp-clone*
+
+# Python 字节码缓存（生成器跑一次就会出现）
+__pycache__/
+*.pyc
