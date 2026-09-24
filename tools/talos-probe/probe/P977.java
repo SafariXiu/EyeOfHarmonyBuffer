@@ -31,7 +31,7 @@ public class P977 {
         say(rep, String.format(LF, "  %-6s %6s %11s %11s %11s %11s %11s",
             "latN", "nPts", "oceanBaseK", "sstAnom", "seasonal", "T_ocean", "realJanSST"));
         for (int latDeg = 5; latDeg <= 65; latDeg += 5) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             double lat = WorldContract.latOf(z);
             double sBase = 0, sAnom = 0, sSea = 0, sT = 0; int n = 0;
             for (int x = -23_000_000; x <= 23_000_000; x += 1_000_000) {

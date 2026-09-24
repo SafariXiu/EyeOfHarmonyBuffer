@@ -53,7 +53,7 @@ public class P481 {
         say("");
 
         // 找若干条跨越海岸的 x 扫描线
-        int[] zs = {(int)(35.0/90.0*(ZC/2)), (int)(-35.0/90.0*(ZC/2)), (int)(55.0/90.0*(ZC/2))};
+        int[] zs = {WorldContract.zOfLat(35.0), WorldContract.zOfLat(-35.0), WorldContract.zOfLat(55.0)};
         for (int z : zs) {
             double lat = WorldContract.latOf(z, ZC) * 180.0 / Math.PI;
             // 找一条 |dkappa/dx| 大的位置：粗扫

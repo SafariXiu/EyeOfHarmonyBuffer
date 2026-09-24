@@ -44,7 +44,7 @@ public class P972 {
             double bestSh = -1, bestC = -1, bestPre = -1, bestFin = -1;
             double atSh = 0, atC = 0, atPre = 0, atFin = 0;
             for (double latDeg = 2.5; latDeg <= 25.0; latDeg += 2.5) {
-                int z = (int) (latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latDeg);   // ★ §734 两倍纬度修正
                 double lat = WorldContract.latOf(z);
                 double sPre = 0, sSh = 0, sC = 0, sFin = 0; int n = 0;
                 for (int x = -23_000_000; x <= 23_000_000; x += 2_000_000) {

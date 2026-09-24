@@ -90,7 +90,7 @@ public class P285 {
         for (int li = 0; li < 34; li++) {
             int latSign = li < 17 ? 1 : -1;
             int latDeg = 5 + (li % 17) * 5;
-            int z = (int) (latSign * latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latSign * latDeg);   // ★ §727 两倍纬度修正
             for (int q = 0; q < 8; q++) {
                 int x = (q * 2_300_000 + li * 97_000) % 9_000_000;
                 GyreRow.Params pB = params();

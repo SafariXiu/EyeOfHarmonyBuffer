@@ -42,7 +42,7 @@ public class P474 {
         say("");
 
         // ---- A. 收集陆地 / 海洋样本点 ----
-        int z30 = (int) (30.0 / 90.0 * (ZC / 2));
+        int z30 = WorldContract.zOfLat(30.0);
         int[] landX = new int[400], seaX = new int[400];
         int nl = 0, ns = 0;
         for (int x = -8_000_000; x <= 8_000_000 && (nl < 400 || ns < 400); x += 40_000) {

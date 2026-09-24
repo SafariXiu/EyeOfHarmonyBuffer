@@ -112,7 +112,7 @@ public class P467 {
         List<Stat> all = new ArrayList<>();
         long t0 = System.nanoTime();
         for (int latDeg : lats) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             // rowIndexOf/rowZ 是包内可见的，探针在别的包 ⇒ 按 WorldContract 的同一公式复算
             int zIdx = (int) Math.round((double) z / ZC * OceanField.ROWS) % OceanField.ROWS;
             int zRow = (int) ((zIdx + 0.5) / OceanField.ROWS * ZC);

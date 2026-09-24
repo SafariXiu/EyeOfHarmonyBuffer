@@ -63,7 +63,7 @@ public class P476 {
             OceanField.installedSeed(), OceanField.ROW_H, OceanField.A_H, OceanField.JET_RANGE_RD));
         say("");
 
-        int z30 = (int) (30.0 / 90.0 * (ZC / 2));
+        int z30 = WorldContract.zOfLat(30.0);
         int x30 = -2_000_000;                       // P473 找出的副热带暖舌点
         say(String.format(LF, "测点 x=%d km  z=%d（lat %.2f）", x30 / 1000, z30,
             Math.toDegrees(WorldContract.latOf(z30, ZC))));

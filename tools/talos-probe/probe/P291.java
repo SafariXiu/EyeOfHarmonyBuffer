@@ -36,7 +36,7 @@ public class P291 {
         for (int li = 0; li < 34; li++) {
             int latSign = li < 17 ? 1 : -1;
             int latDeg = 5 + (li % 17) * 5;
-            int z = (int) (latSign * latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latSign * latDeg);
             double lat = WorldContract.latOf(z, ZC);
             double thr = 2.0 * Math.PI * pp.deltaAt(z);
             double[] w = new double[64];

@@ -72,7 +72,7 @@ public class P974 {
             say(rep, String.format(LF, "  %-7s %6s %11s %11s %11s %11s", "latN", "nPts", "P_lit", "oldSh", "wStar", "dqs"));
             best[s] = -1; at[s] = 0;
             for (double latDeg = 2.5; latDeg <= 25.0; latDeg += 2.5) {
-                int z = (int) (latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latDeg);   // ★ §734 两倍纬度修正
                 double lat = WorldContract.latOf(z);
                 double sLit = 0, sSh = 0, sW = 0, sD = 0; int n = 0;
                 for (int x = -23_000_000; x <= 23_000_000; x += 2_000_000) {

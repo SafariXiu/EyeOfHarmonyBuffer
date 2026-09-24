@@ -59,7 +59,7 @@ public class P466 {
         int[] lats = {30, 45, 60, -45};
         say(String.format(LF, "  %-6s %-8s %6s %11s %11s %11s %11s %9s", "lat", "curlSrc", "n", "psiMax", "vPeak m/s", "westBand", "eastBand", "秒"));
         for (int latDeg : lats) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             for (int which = 0; which < 2; which++) {
                 GyreRow.WindCurl wc = (which == 0) ? band : new AtmosCurl(Atmosphere.theta(0.0));
                 GyreRow.Params p = new GyreRow.Params();
@@ -90,7 +90,7 @@ public class P466 {
         say("D. 海温异常的量级（用 band 行的 v，乘 SURF_FACTOR）");
         double dTdz = 0;
         for (int latDeg : new int[]{30, 45}) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             dTdz = (Atmosphere.tZonalMean(WorldContract.latOf(z + 50_000, ZC))
                   - Atmosphere.tZonalMean(WorldContract.latOf(z - 50_000, ZC))) / 100_000.0;
             say(String.format(LF, "  lat %+d: dT_zm/dz = %+.3e K/m", latDeg, dTdz));

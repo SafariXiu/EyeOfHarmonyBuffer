@@ -2,7 +2,7 @@
 >
 > 本文件写于 **2026-09-09/10**，当时自称「V2 地形重构的唯一设计记录」。
 > 之后地形与气候管线经历了多次**契约级**变更，**唯一有效的记录是
-> `../../世界模拟器-设计冻结.md`**（现为 §0–§340）。
+> `../模拟器/核心/世界模拟器-设计冻结.md`**（**追加式：只增不改**；要定位段号请查 `世界模拟器-段索引.tsv`；**结论层**见 `../模拟器/核心/世界模拟器-当前状态.md`）。
 >
 > 本目录**仍然有效**的部分是**架构意图与分层设计**；
 > **所有具体数字（尺度、阈值、常数、性能）都以设计冻结为准。**
@@ -51,7 +51,7 @@ BiomeDecoratorTalos2 / TalosBoundedFeatures → 按群系对象查配置
 | L0 耦合环流 | circulation_layer/ M1 ThermalForcing + M5 RelaxedClimate（按种子离线求解~5s/种子）+ M6 查表 | ✅ 完成 |
 | 统一门面 | circulation_layer/GlobalClimate.sample → ClimateSample（含 P1b 降水算子） | ✅ 完成（D24） |
 | 生产外接入点 | CommandTalosMap（/talosmap 出图）、handler/ClimatePreheat（WorldEvent.Load 预求解, dim 14001 ✓） | ✅ 已接线 |
-| 文档 | design.md（D1–D29）、climate-layer-internals.md | ✅ |
+| 文档 | design.md（D1–D29）、climate-layer-internals.md（§7186 已补写） | ✅ |
 
 ### 核心差距（D26）
 

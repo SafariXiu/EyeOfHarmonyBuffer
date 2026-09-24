@@ -72,7 +72,7 @@ public class P473 {
 
         // ---------- B. f.sst / f.q 现在看得到 SST' 吗 ----------
         say("B. 找一个 SST' 显著的副热带点，比较「注入的真值」与「SimClimate 用到的值」");
-        int z30 = (int) (30.0 / 90.0 * (ZC / 2));
+        int z30 = WorldContract.zOfLat(30.0);
         int bestX = 0; double bestV = -1e9;
         for (int x = -9_000_000; x <= 9_000_000; x += 250_000) {
             double v = Atmosphere.sstAnom(x, z30);

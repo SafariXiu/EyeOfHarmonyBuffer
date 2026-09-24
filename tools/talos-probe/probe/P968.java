@@ -45,7 +45,7 @@ public class P968 {
         for (int latI = 5; latI <= 55; latI += 5) {
             for (int sgn = -1; sgn <= 1; sgn += 2) {
                 int latDeg = sgn * latI;
-                int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latDeg);   // ★ §734 两倍纬度修正
                 double lat = WorldContract.latOf(z);
                 double sumTs = 0, sumQs = 0, sumQt = 0, sumWs = 0;
                 int incPw = 0, decOld = 0, turnAbove = 0, nHere = 0;

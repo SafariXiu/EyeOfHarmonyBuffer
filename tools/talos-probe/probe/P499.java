@@ -45,6 +45,13 @@ public class P499 {
     static void say(String s) { rep.println("[P499] " + s); rep.flush(); System.out.println("[P499] " + s); System.out.flush(); }
 
     static final int NX = 120;
+    // ★★ §779/§780 口径记录（**已量测，暂未落地**）：本常量 60_000_000 = 540 度当量，
+    //   而 Zonal.java:32 = P683:21 = P914:17 = P296 都是 40_000_000 = 360 度，锚 GPCP 也是 360 度。
+    //   WorldContract:6-11 权威陈述：「X 无限、无周期」⇒ 纬向平均**必须显式选窗口**。
+    //   §780 实测 A/B（改 40e6）：idx25 +0.312 -> +0.334（Δ0.022）、① 带平均 4.985 -> 5.090、
+    //   ③ 1.156 -> 1.196，**三门一个都没翻**。⇒ 口径不一致是真的，但量化上是**小效应**，
+    //   不是任何门红的原因。**落地它必须与一次完整 22 支 A/B 同批进行**（它是验收探针，
+    //   改它会变 PROBEFP）—— 因此这里暂时保持与已验证的 A/B 一致，留待同批落地。
     static final int XSPAN = 60_000_000;
     static final int GS = 500_000;
     static final int NROW = 25;           // 2.5 .. 62.5 步长 2.5（与 P296 的 band 上沿对齐）
@@ -153,6 +160,99 @@ public class P499 {
         say(String.format(LF, "  ③ 30~40N 陆 冬 P = %.3f   观测 %.3f   允许 %.2f~%.2f   %s",
                 djf3040, OBS_DJF_3040_LAND, OBS_DJF_3040_LAND * (1 - TOL), OBS_DJF_3040_LAND * (1 + TOL),
                 inBand(djf3040, OBS_DJF_3040_LAND) ? "达标" : "**未达标**"));
+        // ★ §739: expose the THREE criteria that P499 already carries (javadoc :30-32)
+        //   as machine-readable GATE tokens. PURE ADDITION: no computation is changed,
+        //   the pre-existing verdict is merely printed a second time in PASS/FAIL form.
+        say(String.format(LF, "  GATE_SUBTROP_ZERO=%s    (25~40N summer ocean frac(P>=0.3) %.1f%% vs required 90%%)",
+                frac1 >= 90.0 ? "PASS" : "FAIL", frac1));
+        say(String.format(LF, "  GATE_MONSOON_IDX=%s     (15~30N land monsoon idx %+.3f in %.2f~%.2f)",
+                inBand(idx25, OBS_IDX_1530_LAND) ? "PASS" : "FAIL", idx25,
+                OBS_IDX_1530_LAND * (1 - TOL), OBS_IDX_1530_LAND * (1 + TOL)));
+        say(String.format(LF, "  GATE_DJF_3040=%s        (30~40N land DJF P %.3f in %.2f~%.2f)",
+                inBand(djf3040, OBS_DJF_3040_LAND) ? "PASS" : "FAIL", djf3040,
+                OBS_DJF_3040_LAND * (1 - TOL), OBS_DJF_3040_LAND * (1 + TOL)));
+        // ★ §747 PURE ADDITION (placed AFTER the gate prints so it cannot affect them):
+        //   measure the SS251 floor P_sh = ALPHA_SH*E_sh/rho_w profile in P499's OWN caliber,
+        //   so ALPHA_SH can be REVERSE-SOLVED.  SS251.2 forbids guessing a number first.
+        //   Method: turn SHALLOW_CONDENSATE off -> DIAG[10] IS that form. No new formula.
+        boolean scSaved = PrecipField.SHALLOW_CONDENSATE;
+        PrecipField.SHALLOW_CONDENSATE = false;
+        try { com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache(); } catch (Throwable ignore) { }
+        double shSum = 0; int shN = 0;
+        for (int i2 = 0; i2 < NROW; i2++) {
+            double la2 = 2.5 + i2 * 2.5;
+            if (la2 < 25.0 - 1e-9 || la2 > 40.0 + 1e-9) continue;
+            int z2 = WorldContract.zOfLat(la2);
+            double s2 = 0; int n2 = 0;
+            double sTs = 0, sQs = 0, sQb = 0, sVeff = 0, sK = 0;
+            for (int q2 = 0; q2 < NX; q2++) {
+                int x2 = (int) ((long) q2 * XSPAN / NX);
+                int cell2 = CELL;
+                double kk = Atmosphere.kappaAt(x2, z2, SD, cell2);
+                if (kk >= 0.2) continue;
+                double Ts2 = Atmosphere.surfaceTemp(x2, z2, SD, cell2, thS);
+                double qs2 = PrecipField.qSat(Ts2);
+                double qb2 = PrecipField.moisture(Ts2, 0.0, kk);
+                double[] uu2 = Atmosphere.windAt(x2, z2, SD, cell2, thS, GS);
+                double ve2 = Math.sqrt(uu2[0]*uu2[0] + uu2[1]*uu2[1] + PrecipField.V_GUST*PrecipField.V_GUST);
+                PrecipField.mmPerDay(x2, z2, SD, CELL, thS, GS, true);
+                s2 += PrecipField.DIAG.get()[10] * 86400.0 * 1000.0;
+                sTs += Ts2; sQs += qs2; sQb += qb2; sVeff += ve2; sK += kk;
+                n2++;
+            }
+            if (n2 > 0) { shSum += s2; shN += n2;
+                double mTs = sTs/n2, mQs = sQs/n2, mQb = sQb/n2, mV = sVeff/n2, mK = sK/n2;
+                say(String.format(LF, "  %6.2f | n%4d | P_sh %.4f | Ts %.2fK | qSat %.5f | q_BL %.5f | q/qSat %.3f | (1-k)qSat-q %+.5f | Veff %.2f | k %.3f",
+                        la2, n2, s2 / n2, mTs, mQs, mQb, mQb / mQs, (1.0 - mK) * mQs - mQb, mV, mK)); }
+        }
+        PrecipField.SHALLOW_CONDENSATE = scSaved;
+        say("");
+        say("J. 751 blqG over 25-40N, LAND vs SEA (g = smoothstep01b(blqLastDh))");
+        for (int i3 = 0; i3 < NROW; i3++) {
+            double la3 = 2.5 + i3 * 2.5;
+            if (la3 < 24.9 || la3 > 40.1) continue;
+            int z3 = WorldContract.zOfLat(la3);
+            double sg = 0, lg = 0; int sn = 0, ln = 0, sz = 0, lz = 0;
+            for (int q3 = 0; q3 < NX; q3++) {
+                int x3 = (int) ((long) q3 * XSPAN / NX);
+                double k3 = Atmosphere.kappaAt(x3, z3, SD, CELL);
+                if (k3 >= 0.2 && k3 <= 0.8) continue;
+                PrecipField.mmPerDay(x3, z3, SD, CELL, thS, GS, true);
+                double g3 = PrecipField.smoothstep01b(PrecipField.blqLastDh);
+                if (k3 < 0.2) { sg += g3; sn++; if (g3 < 0.01) sz++; } else { lg += g3; ln++; if (g3 < 0.01) lz++; }
+            }
+            say(String.format(LF, "  lat %5.1f  sea n=%3d g=%6.3f zero=%5.2f  |  land n=%3d g=%6.3f zero=%5.2f",
+                la3, sn, sg / Math.max(1, sn), (double) sz / Math.max(1, sn), ln, lg / Math.max(1, ln), (double) lz / Math.max(1, ln)));
+        }
+        // J2. 755: Sahara box (0-30E, 20-35N) -- k histogram and P_sh (SS251 form) by k bin.
+        say("");
+        say("J2. 755 Sahara box: k histogram + P_sh(ALPHA_SH) by k bin  [SHALLOW_CONDENSATE off = SS251 form]");
+        PrecipField.SHALLOW_CONDENSATE = false;
+        try { com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache(); } catch (Throwable ig3) { }
+        int[] hb = new int[5];
+        double[] hs = new double[5];
+        for (int zd = 20; zd <= 35; zd += 5) {
+            int zz = WorldContract.zOfLat(zd);
+            for (int xd = 0; xd <= 30; xd += 2) {
+                int xx = (int) ((long) xd * 40_000_000L / 360L);
+                double kk = Atmosphere.kappaAt(xx, zz, SD, CELL);
+                PrecipField.mmPerDay(xx, zz, SD, CELL, thS, GS, true);
+                double pf = PrecipField.DIAG.get()[10] * 86400.0 * 1000.0;
+                int bi = kk < 0.2 ? 0 : (kk < 0.5 ? 1 : (kk < 0.8 ? 2 : (kk < 0.95 ? 3 : 4)));
+                hb[bi]++; hs[bi] += pf;
+            }
+        }
+        PrecipField.SHALLOW_CONDENSATE = scSaved;
+        try { com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache(); } catch (Throwable ig4) { }
+        for (int b = 0; b < 5; b++)
+            say(String.format(LF, "  kbin%d n=%4d  P_sh mean=%8.4f mm/day", b, hb[b], hs[b] / Math.max(1, hb[b])));
+        try { com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache(); } catch (Throwable ignore2) { }
+        double shMean = shN > 0 ? shSum / shN : Double.NaN;
+        say(String.format(LF, "  BAND 25~40N ocean  nPts=%d   P_sh mean = %.4f   anchor = %.3f",
+                shN, shMean, OBS_ANN_2540_OCEAN));
+        say(String.format(LF, "  ratio P_sh/anchor = %.3f   =>  REVERSE-SOLVED ALPHA_SH = %.3f   (fitted %.2f)",
+                shMean / OBS_ANN_2540_OCEAN,
+                PrecipField.ALPHA_SH * OBS_ANN_2540_OCEAN / shMean, PrecipField.ALPHA_SH));
         say("");
         say("H. 新的判别量：**观测的「海洋降水地板」**");
         say(String.format(LF, "  观测 20~62.5N 海洋 JJA 最小值 = 1.84 mm/day（23.75N）；DJF 最小值 = 1.17（18.75N）"));

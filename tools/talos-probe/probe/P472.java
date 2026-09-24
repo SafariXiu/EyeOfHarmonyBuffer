@@ -86,7 +86,7 @@ public class P472 {
         say("B. **缓存命中**时的单次取值代价（D55 要压住的正是这个量）");
         OceanWiring.onWorld(SEED);
         say(String.format(LF, "   已重新装线：installedSeed=%d", OceanField.installedSeed()));
-        int z30 = (int) (30.0 / 90.0 * (ZC / 2));
+        int z30 = WorldContract.zOfLat(30.0);
         LinkedHashMap<Long, int[]> m30 = basins(z30, -10_000_000, 10_000_000, 500_000);
         int tot = 0; for (int[] b : m30.values()) tot += b[1] - b[0];
         say(String.format(LF, "   +30 行累计盆宽 %.0f km（%d 个盆）", tot / 1000.0, m30.size()));
@@ -121,7 +121,7 @@ public class P472 {
         say(String.format(LF, "   %-6s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-8s",
             "lat", "盆西km", "@西端", "@1/4", "@1/2", "@3/4", "@东端", "西带均", "东带均", "中位比", "西带峰"));
         for (int latDeg : new int[]{30, -30}) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             for (int[] b : new ArrayList<>(basins(z, -10_000_000, 10_000_000, 500_000).values())) {
                 int westX = b[0], eastX = b[1];
                 double[] v = new double[5];

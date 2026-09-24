@@ -49,7 +49,7 @@ public class P445 {
 
         int x = 0;
         for (int L : new int[]{-30, 0, 30}) {
-            int zc = (int) (L / 90.0 * (ZC / 2));
+            int zc = WorldContract.zOfLat(L);
             say(String.format(LF, "  === 跨 %d 度线（z = %d，线两侧各扫 20 个采样）===", L, zc));
             say(String.format(LF, "    %-12s %12s %13s %13s %13s %13s", "z 偏移 m", "divU 1/s", "wLoc(未限)", "wLoc(限幅)", "wEff m/s", "mm/day"));
             for (int dz = -20; dz <= 20; dz++) {
@@ -72,7 +72,7 @@ public class P445 {
         }
 
         say("  === 对照：同一 x 上一条**不在 10 度网格上**的纬线（15 度）===");
-        int z15 = (int) (15 / 90.0 * (ZC / 2));
+        int z15 = WorldContract.zOfLat(15);
         for (int dz = -4; dz <= 4; dz += 2) {
             say(String.format(LF, "    z 偏移 %-4d  divU = %12.4e    mm/day = %13.4f", dz,
                 divU(x, z15 + dz, 0.0),
@@ -81,7 +81,7 @@ public class P445 {
         say("");
         say("  === divU 的「台阶」有多大：跨 10 度线前后的 divU 差（1 m 分辨率）===");
         for (int L : new int[]{-60, -30, 0, 30, 60}) {
-            int zc = (int) (L / 90.0 * (ZC / 2));
+            int zc = WorldContract.zOfLat(L);
             double d0 = divU(x, zc - 1, 0.0), d1 = divU(x, zc + 1, 0.0);
             say(String.format(LF, "    %+4d 度: divU %+.4e -> %+.4e   跳变 %.4e 1/s   (wLoc 跳变 %.3e m/s)",
                 L, d0, d1, Math.abs(d1 - d0), Math.abs(-Atmosphere.H_BL * (d1 - d0))));

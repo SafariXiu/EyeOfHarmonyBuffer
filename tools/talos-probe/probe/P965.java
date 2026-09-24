@@ -32,7 +32,7 @@ public class P965 {
             "lat", "q", "valid", "maxRow", "eastX", "westX", "width", "2pi*delta", "verdict"));
         int[] cause = new int[5];
         for (int li = 0; li < LATS.length; li++) {
-            int z = (int) ((double) LATS[li] / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(LATS[li]);
             for (int q = 0; q < NQ; q++) {
                 GyreRow.Params p = new GyreRow.Params();
                 p.h = H; p.rhoH = 1025.0 * H_T; p.aH = A_H; p.zCycle = ZC;
@@ -53,7 +53,7 @@ public class P965 {
         say(rep, "");
         say(rep, "  land fraction per sampled row (is the row mostly land?)");
         for (int li = 0; li < LATS.length; li++) {
-            int z = (int) ((double) LATS[li] / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(LATS[li]);
             int nLand = 0, n = 0;
             for (int x = -ZC / 2; x < ZC / 2; x += 4000) { n++; if (PlateField.isLandWithCell(x, z, SD, cell)) nLand++; }
             say(rep, String.format(LF, "    lat %+4d : land %3d/%3d = %3.0f%%", LATS[li], nLand, n, 100.0 * nLand / n));

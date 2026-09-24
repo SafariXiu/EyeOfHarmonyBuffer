@@ -40,7 +40,13 @@ import java.util.Map;
  * {@code RH_eff = RH_SEA*beta + RH_DRY*(1-beta)}。
  * {@code RH_DRY} 是「完全干表面之上的近地面相对湿度」，沙漠边界层观测值 10~30%（取 0.20）。
  *
- * <p><b>默认 ENABLED=false ⇒ 逐位不变。</b>
+ * <p><b>★ §785 更正：本字段现值是 <code>true</code>（<code>:62</code>），不是 false。</b>
+ * 原注释写「默认 ENABLED=false ⇒ 逐位不变」，那是**接线前**的状态；默认值后来被翻成 true 而注释未同步，
+ * 会让人（包括审计者）误判「土壤湿度没接」。**现状：beta 路径是活的** ——
+ * {@code PrecipField:2327-2332} 在 {@code ENABLED && !isSpinningUp()} 时会算 {@code betaAt} 并设好
+ * {@code BETA_OVERRIDE}，于是 {@code moisture()} 走 {@code SoilMoisture.rhEff(beta)} 而不是全球常数 0.80。
+ * 但请注意 {@code PrecipField:2326} 的兜底值是 {@code betaUsed = 1.0}（最湿）⇒ ENABLED 一旦为 false
+ * 就等价于「处处 RH_SEA」。</p>
  */
 public final class SoilMoisture {
 

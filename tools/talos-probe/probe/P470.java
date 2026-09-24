@@ -80,7 +80,7 @@ public class P470 {
         say(String.format(LF, "   SST_PROVIDER=%s  installedSeed=%d",
             Atmosphere.SST_PROVIDER == null ? "**null（接线失败）**" : "已装", OceanField.installedSeed()));
 
-        int z30 = (int) (30.0 / 90.0 * (ZC / 2));
+        int z30 = WorldContract.zOfLat(30.0);
         List<int[]> b30 = basinsAt(z30);
         say(String.format(LF, "   +30 行海盆 %d 个", b30.size()));
         if (b30.isEmpty()) { say("   **没有海盆，后面全部无法进行**"); rep.flush(); System.out.println("JAVA_EXIT=2"); return; }
@@ -119,7 +119,7 @@ public class P470 {
         say(String.format(LF, "   %-6s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-9s %-8s",
             "lat", "盆西km", "@西端", "@1/4", "@1/2", "@3/4", "@东端", "西带均", "东带均", "西|中位比", "西带峰"));
         for (int latDeg : new int[]{30, -30}) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             for (int[] b : basinsAt(z)) {
                 int westX = b[0], eastX = b[1];
                 double[] v = new double[5];

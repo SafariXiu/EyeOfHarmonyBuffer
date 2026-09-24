@@ -3,7 +3,28 @@
 /.idea/
 /.vscode/
 /run/
-/build/
+# ============ build/：整体忽略；但 eoh_probe/refs 的【证据链】要入库 ============
+# 为什么：refs 是降水标定（ALPHA_COND / EP_COND / ALPHA_SH / ENTRAIN_A）的全部证据链，
+#   过去被整体忽略 —— 外部审计点名「清一次 build 就销毁」。
+# 用户裁决 D-7 = 方案 B：入库 T1 生成器 + T1b 读数/摘录 + T1c 读图存档 + T2a 生产输入，
+#   实测 367 个文件 / 49.61 MB（其中 etopo1_025.npz 是 ZonalTables 生产表的地形输入）。
+# 不入库（公开源可重下、或可由脚本重建）：
+#   .npy 下载缓存 156.1 MB / .pdf 文献 65.4 MB / .nc 再分析 27.6 MB /
+#   ls_chunk_* 中间产物 35.8 MB / .bin 5.0 MB / .gz 3.2 MB   —— 合计 293.1 MB
+# ★ 为什么不能只写一条 refs 的否定规则：原来的 /build/ 是【目录级】忽略，
+#   git 根本不会进入该目录，任何子目录内的否定规则都不生效；必须先改成 /build/*
+#   再逐级用 ! 放行。改这条时务必用 git check-ignore -v 实测（只读命令）。
+/build/*
+!/build/eoh_probe/
+/build/eoh_probe/*
+!/build/eoh_probe/refs/
+!/build/eoh_probe/refs/**
+/build/eoh_probe/refs/**/*.npy
+/build/eoh_probe/refs/**/*.pdf
+/build/eoh_probe/refs/**/*.nc
+/build/eoh_probe/refs/**/*.bin
+/build/eoh_probe/refs/**/*.gz
+/build/eoh_probe/refs/**/ls_chunk_*.npz
 /eclipse/
 .classpath
 .project

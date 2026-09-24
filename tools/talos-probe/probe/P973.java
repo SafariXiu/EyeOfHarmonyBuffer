@@ -40,7 +40,7 @@ public class P973 {
             say(rep, String.format(LF, "  %-7s %6s %9s %11s %11s %11s %11s %11s", "latN", "nPts", "fracNeg", "pAbs", "pWstar", "pSh(A)", "pC(B)", "pFinalA"));
             int totN = 0, totNeg = 0; double gAbs = 0, gWs = 0, gSh = 0, gC = 0, gFin = 0;
             for (double latDeg = 2.5; latDeg <= 25.0; latDeg += 2.5) {
-                int z = (int) (latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latDeg);   // ★ §734 两倍纬度修正
                 double lat = WorldContract.latOf(z);
                 int n = 0, nNeg = 0; double sAbs = 0, sWs = 0, sSh = 0, sC = 0, sFin = 0;
                 for (int x = -23_000_000; x <= 23_000_000; x += 2_000_000) {

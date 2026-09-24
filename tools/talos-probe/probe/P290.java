@@ -94,8 +94,8 @@ public class P290 {
                     StringBuilder sb = new StringBuilder();
                     int[] lats = {10, 20, 30, 45, -10, -20, -30, -45};
                     for (int latDeg : lats) {
-                        int za = (int) (Math.abs((double) latDeg) / 90.0 * (ZC / 2));
-                        double lat = WorldContract.latOf((int) ((double) latDeg / 90.0 * (ZC / 2)), ZC);
+                        int za = WorldContract.zOfLat(Math.abs((double) latDeg));
+                        double lat = WorldContract.latOf(WorldContract.zOfLat(latDeg), ZC);
                         double f = WorldContract.coriolis(lat);
                         double hcv = hc[Math.max(0, Math.min(NM - 1, za * NM / ZC))];
                         double mm = CoastalLayer.eastBandContribution(hcv, f, W) * 1000;

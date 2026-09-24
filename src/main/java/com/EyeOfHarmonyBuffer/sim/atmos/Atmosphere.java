@@ -106,12 +106,6 @@ public final class Atmosphere {
      */
     public static double subsolarLat(double theta) { return OBLIQUITY * Math.cos(theta); }
 
-    /** 海平面气压（Pa）= 外生纬向平均（随直射点迁移）+ 热力距平。 */
-    public static double seaLevelPressure(int x, int z, long seed, int cell, double theta) {
-        double lat = WorldContract.latOf(z);
-        double shifted = Math.toDegrees(lat - subsolarLat(theta));
-        return ZonalTables.pRef(shifted) + pressureAnomaly(x, z, seed, cell, theta);
-    }
 
     /**
      * ★★★ **§451：`pzRef` 进 `v` 的替代方案（§422 选项 D）。**

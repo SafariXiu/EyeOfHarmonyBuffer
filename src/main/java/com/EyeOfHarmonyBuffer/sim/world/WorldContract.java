@@ -144,8 +144,8 @@ public final class WorldContract {
     //   R_EFF 与全部 MAX_D 派生式**一个字都不用改**（这正是先解耦 MAX_D 的目的）。
     // ==================================================================================
 
-    /** D1 的周期：一条完整子午圈 = 4 ×（极到赤道）。 */
-    public static final int Z_CYCLE_D1 = Z_CYCLE;   // 已落地；保留为别名
+    // D1 的周期：一条完整子午圈 = 4 ×（极到赤道）。
+    // 原别名 Z_CYCLE_D1 已于 §7199 合并入 Z_CYCLE（用户裁决 D-5；零外部读者，本类 3 处自显示改用正名）。
 
     /**
      * D1 的纬度（弧度）：沿子午圈**匀速**行走的线性三角波。
@@ -171,7 +171,7 @@ public final class WorldContract {
     public static String d1SelfCheck() {
         java.util.Locale L = java.util.Locale.ROOT;
         StringBuilder b = new StringBuilder();
-        int zc = Z_CYCLE_D1;
+        int zc = Z_CYCLE;
         b.append(String.format(L, "  Z_CYCLE_D1 = %d  ( = 4 x MAX_D )%n", zc));
         double rD1 = zc / (2.0 * Math.PI);
         b.append(String.format(L, "  R_EFF(现行) = %.3f km    R = Z_CYCLE_D1/(2*pi) = %.3f km    差 = %.3f km%n",

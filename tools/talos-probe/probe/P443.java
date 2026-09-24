@@ -85,7 +85,7 @@ public class P443 {
         say("A. 恒等式自检（**值和梯度都要过**）");
         double eVal = 0, ePx = 0, ePz = 0, pMax = 0, pzMax = 0;
         for (double latDeg = -80; latDeg <= 80.0001; latDeg += 5) {
-            int z = (int) (latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             double lat = WorldContract.latOf(z);
             for (int x = -6_000_000; x <= 6_000_000; x += 1_500_000) {
                 double kC = kap(x, z);
@@ -126,7 +126,7 @@ public class P443 {
         double gL = 0, gZm = 0, gS = 0, gC = 0, gTot = 0, gFix = 0, gRes = 0;
 
         for (double latDeg = -62.5; latDeg <= 62.5 + 1e-9; latDeg += LATSTEP) {
-            int z = (int) (latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             double lat = WorldContract.latOf(z);
             double latP = WorldContract.latOf(z + GRAD), latM = WorldContract.latOf(z - GRAD);
             int li;

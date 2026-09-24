@@ -30,7 +30,7 @@ public class P976 {
         say(rep, String.format(LF, "  %-6s %6s %6s %9s %9s %11s %11s %11s %11s",
             "latN", "nLand", "nOcean", "k<0.02@Land", "k>0.98@Ocn", "T_land K", "T_ocean K", "T(k<.02) K", "T(k>.98) K"));
         for (int latDeg = 5; latDeg <= 65; latDeg += 5) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             int nL = 0, nO = 0, kLowOnLand = 0, kHighOnOcean = 0;
             double sTL = 0, sTO = 0; int cTL = 0, cTO = 0;
             double sKLow = 0, sKHigh = 0; int cKLow = 0, cKHigh = 0;

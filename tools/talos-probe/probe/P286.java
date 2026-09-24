@@ -50,7 +50,7 @@ public class P286 {
             for (int li = 0; li < 17; li++) {
                 int latSign = li < 9 ? 1 : -1;
                 int latDeg = 5 + (li % 9) * 5;
-                int z = (int) (latSign * latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latSign * latDeg);
                 for (int q = 0; q < 6; q++) {
                     int x = (q * 2_300_000 + li * 97_000) % 9_000_000;
                     GyreRow.Params p = params();
@@ -105,7 +105,7 @@ public class P286 {
             double[] hc = CoastalLayer.steadySmoothed(tauRow, (double) ZC / NM);
             StringBuilder sb = new StringBuilder();
             for (int latDeg : new int[]{0, 2, 5, 10, 20, 30}) {
-                int z = (int) (latDeg / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(latDeg);
                 double lat = WorldContract.latOf(z, ZC);
                 double f = WorldContract.coriolis(lat);
                 double hcv = hc[Math.min(NM - 1, (int) ((double) z / ZC * NM))];

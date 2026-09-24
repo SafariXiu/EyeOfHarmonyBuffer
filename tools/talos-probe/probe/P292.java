@@ -94,7 +94,7 @@ public class P292 {
         int cInvalid = 0, cTrunc = 0, cNarrow = 0;
         int oInvalid = 0, oEdge = 0, oNarrow = 0, oOk = 0;
         for (int li = 0; li < LATS.length; li++) {
-            int z = (int) ((double) LATS[li] / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(LATS[li]);   // ★ §727 两倍纬度修正
             int maxRow = 24_000_000;
             java.util.ArrayList<Integer> ocean = new java.util.ArrayList<Integer>();
             for (int x = -maxRow; x < maxRow; x += 25_000) {

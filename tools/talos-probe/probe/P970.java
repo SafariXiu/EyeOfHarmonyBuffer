@@ -42,7 +42,7 @@ public class P970 {
         double bandMinOld = 1e30, bandMinNew = 1e30, bandMinProd = 1e30;
         int nTot = 0;
         for (int latDeg = 20; latDeg <= 62; latDeg += 5) {
-            int z = (int) ((double) latDeg / 90.0 * (WorldContract.Z_CYCLE / 2));
+            int z = WorldContract.zOfLat(latDeg);   // ★ §734 两倍纬度修正
             double lat = WorldContract.latOf(z);
             double sOld = 0, sNew = 0; int n = 0; double minNew = 1e30;
             for (int x = -23_000_000; x <= 23_000_000; x += 2_000_000) {

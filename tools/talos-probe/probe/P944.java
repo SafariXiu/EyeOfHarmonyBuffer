@@ -57,7 +57,7 @@ public class P944 {
         // 盆地表只建一次 => 四格逐盆对齐
         ArrayList<int[]> rows = new ArrayList<>();
         for (int latDeg : LATS) {
-            int z = (int)((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);   // §776: was (int)(latDeg/90.0*(ZC/2)) = 2x latitude
             for (int[] b : basinsAt(z)) { if (b[1]-b[0] >= 200_000) rows.add(new int[]{latDeg, b[0], b[1]}); }
         }
         int nb = rows.size();
@@ -70,7 +70,7 @@ public class P944 {
             int step = Math.max(5_000, width / 3000); int m = width / step + 1;
             int[] xx = new int[m]; for (int k = 0; k < m; k++) xx[k] = wx + k*step;
             xs[i] = xx; ms[i] = m;
-            zs[i] = (int)((double) rows.get(i)[0] / 90.0 * (ZC / 2));
+            zs[i] = WorldContract.zOfLat(rows.get(i)[0]);
         }
         String[] tags = {"B(legacy,legacy)", "C(legacy,newDt)", "D(newAir,legacyDt)", "A(new,new)"};
         boolean[] leg = {true, true, false, false};
@@ -81,7 +81,7 @@ public class P944 {
             setCell(leg[c], frc[c]);
             double[] wW = new double[nb]; int nW = 0; double[] wC = new double[nb]; int nC = 0; double[] fW = new double[nb];
             for (int i = 0; i < nb; i++) {
-                int z = (int)((double) rows.get(i)[0] / 90.0 * (ZC / 2));
+                int z = WorldContract.zOfLat(rows.get(i)[0]);
                 int m = ms[i]; int[] xx = xs[i];
                 double[] tv = new double[m];
                 for (int k = 0; k < m; k++) tv[k] = OceanField.anomalyAt(xx[k], z, SEED);

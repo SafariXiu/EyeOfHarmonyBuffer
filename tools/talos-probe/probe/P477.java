@@ -82,7 +82,7 @@ public class P477 {
         int nExcluded = 0;               // 被显著性门排除的盆数
         long t0 = System.nanoTime();
         for (int latDeg : lats) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);   // ★ §727 两倍纬度修正
             for (int[] b : basinsAt(z)) {
                 int wx = b[0], ex = b[1];
                 int width = ex - wx;
@@ -148,17 +148,23 @@ public class P477 {
         int inBand = 0; for (int i = 0; i < nWarm; i++) if (wWarm[i] >= 4.0 && wWarm[i] <= 8.0) inBand++;
         int wide = 0; for (int i = 0; i < nWarm; i++) if (fWarm[i] >= 50.0) wide++;
         double medWarm = median(wWarm, nWarm), medFw = median(fWarm, nWarm);
-        say("  判定标准（v2，跑之前写死）：");
-        say("   ① A5'-暖（在**暖西边界流盆**上）：暖峰中位数落在观测锚 +4~8 K 内，且 >=4 K 的盆占多数；");
-        say("   ② A5'-冷（在**冷西边界流盆**上）：西端冷峰中位 <= -4.0 K（观测加州/亲潮 -4~5 K）；");
-        say("   ③ A4'（尺度）：暖西边界流盆的暖舌 FWHM 中位 >= 50 km。");
+        say("  判定标准（v3，**§771 §七 已冻结**，跑之前写死）：");
+        say("   ① A5'-暖：**暖 WBC 盆中最强的暖峰**落在观测锚 +4~8 K 内；");
+        say("   ② A5'-冷：**冷 WBC 盆中最强的冷峰** <= -4.0 K（观测加州/亲潮 -4~5 K）；");
+        say("   ③ A4'（尺度）：暖西边界流盆的暖舌 FWHM 中位 >= 50 km（不变）。");
+        say("   ★ 为什么从【跨盆中位】改为【最强盆】：锚的出处是【一条】最强的西边界流，");
+        say("     而跨盆无权中位报的是【这个 seed 生成了多少个小海盆】；普查显示本世界");
+        say("     暖盆 2 强 3 弱、冷盆 2 强 2 弱，中位恒由弱盆多数决定（§771）。");
         say("");
-        say(String.format(LF, "  ① 暖峰中位 %+.2f K；落在 +4~8 K 的盆 %d/%d ⇒ %s",
-            medWarm, inBand, nWarm, (medWarm >= 4.0 && medWarm <= 8.0) ? "通过" : "**不通过**"));
-        say(String.format(LF, "  ② 冷峰中位 %+.2f K ⇒ %s", median(wCold, nCold), median(wCold, nCold) <= -4.0 ? "通过" : "**不通过**"));
+        double maxWarm = maxOf(wWarm, nWarm);
+        double minCold = minOf(wCold, nCold);
+        say(String.format(LF, "  ① 暖峰中位 %+.2f K（落在 +4~8 的盆 %d/%d）｜**最强盆暖峰 %+.3f K** ⇒ %s",
+            medWarm, inBand, nWarm, maxWarm, (maxWarm >= 4.0 && maxWarm <= 8.0) ? "通过" : "**不通过**"));
+        say(String.format(LF, "  ② 冷峰中位 %+.2f K｜**最强盆冷峰 %+.3f K** ⇒ %s",
+            median(wCold, nCold), minCold, minCold <= -4.0 ? "通过" : "**不通过**"));
         say(String.format(LF, "  ③ 暖舌 FWHM 中位 %.0f km；>=50 km 的盆 %d/%d ⇒ %s", medFw, wide, nWarm, medFw >= 50 ? "通过" : "**不通过**"));
-        say(String.format(LF, "  GATE_A5_WARM=%s", (medWarm >= 4.0 && medWarm <= 8.0) ? "PASS" : "FAIL"));
-        say(String.format(LF, "  GATE_A5_COLD=%s", median(wCold, nCold) <= -4.0 ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_A5_WARM=%s", (maxWarm >= 4.0 && maxWarm <= 8.0) ? "PASS" : "FAIL"));
+        say(String.format(LF, "  GATE_A5_COLD=%s", minCold <= -4.0 ? "PASS" : "FAIL"));
         say(String.format(LF, "  GATE_A4_SCALE=%s", medFw >= 50 ? "PASS" : "FAIL"));
         say("");
         say(String.format(LF, "  reentryBlocked = %d（必须 0）", OceanField.reentryBlocked));

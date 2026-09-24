@@ -43,7 +43,7 @@ public class P471 {
         int n = 0;
         int[] xs = new int[4000], zs = new int[4000];
         for (int latDeg = -80; latDeg <= 80 && n < 4000; latDeg += 7) {
-            int z0 = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z0 = WorldContract.zOfLat(latDeg);
             for (int i = 0; i < 400 && n < 4000; i++) {
                 int x0 = -9_000_000 + i * 45_000;
                 int[][] off = {{0, 0}, {GRAD, 0}, {-GRAD, 0}, {2 * GRAD, 0}, {-2 * GRAD, 0},

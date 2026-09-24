@@ -56,6 +56,47 @@ public class P683 {
         return n == 0 ? Double.NaN : s / n;
     }
 
+    /** ★ §721：同时回收 dth(θ_e 门控诊断)。返回 {P均, dth均, g<0.01 占比, n}。 */
+    static double[] bmDiag(long sd, int cell, double th, int b) {
+        // ★ §723：把 dth 拆成两半：teConv（海温阈值）与 teBl（境界层 θ_e）。
+        double sp = 0, sdt = 0, scv = 0, sbl = 0; long n = 0, nb = 0;
+        double latR = 0;
+        for (double latd = BX[b][2] + 2.5; latd <= BX[b][3]; latd += 2.5) {
+            int z = zOfLat(latd);
+            for (int c = 0; c < 72; c++) {
+                double lon = (c + 0.5) * 5.0;
+                if (lon < BX[b][0] || lon > BX[b][1]) continue;
+                double pv = PrecipField.mmPerDay(xOfLon(lon), z, sd, cell, th, GRAD);
+                double dt = PrecipField.blqLastDh;
+                latR = WorldContract.latOf(z);
+                double sstC = Atmosphere.seaSurfaceTemp(latR, th) + Atmosphere.sstAnom(xOfLon(lon), z, th) - 273.15;
+                double cv = PrecipField.thetaEConv(sstC);
+                scv += cv; sbl += (dt + cv);
+                sp += pv; sdt += dt; n++;
+                if (PrecipField.smoothstep01b(dt) < 0.01) nb++;
+            }
+        }
+        return new double[]{ sp / n, sdt / n, (double) nb / n, n, scv / n, sbl / n };
+    }
+
+    /** ★ §724：同纬度同季节，模型【海洋】与【陆地】的边界层 θ_e。
+     *  返回 {seaN, seaTeBl, seaTeConv, lndN, lndTeBl, lndTeConv}。用 kappa 分海陆（§671 已证与 isLandWithCell 逐纬零分歧）。 */
+    static double[] seaLandBl(long sd, int cell, double th, double latd) {
+        int z = zOfLat(latd);
+        double sBl = 0, sCv = 0, lBl = 0, lCv = 0; long sn = 0, ln = 0;
+        for (int xx = -WorldContract.Z_CYCLE / 2; xx < WorldContract.Z_CYCLE / 2; xx += 500_000) {
+            double k = Atmosphere.kappaMemo(xx, z, sd, cell);
+            PrecipField.mmPerDay(xx, z, sd, cell, th, GRAD);
+            double dt = PrecipField.blqLastDh;
+            double cv = PrecipField.thetaEConv(Atmosphere.seaSurfaceTemp(WorldContract.latOf(z), th)
+                        + Atmosphere.sstAnom(xx, z, th) - 273.15);
+            if (k < 0.02) { sBl += dt + cv; sCv += cv; sn++; }
+            else if (k > 0.5) { lBl += dt + cv; lCv += cv; ln++; }
+        }
+        return new double[]{ sn, sn == 0 ? Double.NaN : sBl / sn, sn == 0 ? Double.NaN : sCv / sn,
+                             ln, ln == 0 ? Double.NaN : lBl / ln, ln == 0 ? Double.NaN : lCv / ln };
+    }
+
     public static void main(String[] args) throws Exception {
         rep = new PrintStream(new File(ROOT, "build/eoh_probe/mtn/p683_report.txt"), "UTF-8");
         say("P683 常驻门：降水季节循环的相位 + 幅度（§477）—— * = in-sample，其余为留出集");
@@ -114,6 +155,34 @@ public class P683 {
         for (int i = 0; i < nL; i++)
             say(String.format(LF, "     %-7.1f %10.3f %10.3f %10.3f | %10.3f %10.3f %10.3f",
                 la[i], j1[i], j0[i], j1[i] - j0[i], w1[i], w0[i], w1[i] - w0[i]));
+        // ★ §721 量测（纯新增，不进判据）：BLQ θ_e 门控在四盒上的实际形态。
+        //   dth = θ_e(BL) - θ_e,conv(SST 代理)；g = smoothstep01b(dth/BLQ_SMOOTH_K)，BLQ_SMOOTH_K = 1.0
+        //   ⇒ g 实质是 dth = 0~1 K 的阶跃。blk = 被压到 g<0.01 的格点占比。
+        say("");
+        say("F. §721 BLQ θ_e 门控在四盒上的实际形态");
+        say(String.format(LF, "     %-10s | %8s %8s %8s %6s | %8s %8s %8s %6s", "盒子", "JJA_teConv", "JJA_teBl", "JJA_dth", "blk", "DJF_teConv", "DJF_teBl", "DJF_dth", "blk"));
+        for (int b = 0; b < BX.length; b++) {
+            double[] dj = bmDiag(sd, cell, thS, b), dw = bmDiag(sd, cell, thW, b);
+            say(String.format(LF, "     %-10s | %8.2f %8.2f %8.2f %6.2f | %8.2f %8.2f %8.2f %6.2f",
+                NM[b], dj[4], dj[5], dj[1], dj[2], dw[4], dw[5], dw[1], dw[2]));
+        }
+        // ★ §724 纯新增：同纬度同季节下模型海洋 vs 陆地的边界层 θ_e。
+        //   判读：海洋能到 ~334 K 而陆地到不了 ⇒ 阈值可达，缺陷在陆地水文；
+        //         两者都到不了 334 K ⇒ 阈值（及其海温代理）不可达，是阈值的问题。
+        say("");
+        say("G. §724 模型 BL θ_e：海洋 vs 陆地（同纬度、JJA）");
+        say(String.format(LF, "     %-6s | %6s %9s %10s | %6s %9s %10s", "latN", "sea_n", "sea_teBl", "sea_teConv", "lnd_n", "lnd_teBl", "lnd_teConv"));
+        for (double ld2 = 0.0; ld2 <= 40.0; ld2 += 5.0) {
+            double[] q2 = seaLandBl(sd, cell, thS, ld2);
+            say(String.format(LF, "     %-6.1f | %6.0f %9.2f %10.2f | %6.0f %9.2f %10.2f",
+                ld2, q2[0], q2[1], q2[2], q2[3], q2[4], q2[5]));
+        }
+        say("     —— DJF");
+        for (double ld2 = 0.0; ld2 <= 40.0; ld2 += 5.0) {
+            double[] q2 = seaLandBl(sd, cell, thW, ld2);
+            say(String.format(LF, "     %-6.1f | %6.0f %9.2f %10.2f | %6.0f %9.2f %10.2f",
+                ld2, q2[0], q2[1], q2[2], q2[3], q2[4], q2[5]));
+        }
         rep.flush();
         System.out.println("JAVA_EXIT=0");
     }

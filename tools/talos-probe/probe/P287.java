@@ -85,8 +85,8 @@ public class P287 {
                 double[] hc = CoastalLayer.steadySmoothed(tauRow, (double) ZC / NM);
                 StringBuilder sb = new StringBuilder();
                 for (int latDeg : new int[]{10, 20, 30, 45, -10, -20, -30}) {
-                    int zs = (int) ((double) latDeg / 90.0 * (ZC / 2));
-                    int za = (int) (Math.abs((double) latDeg) / 90.0 * (ZC / 2));
+                    int zs = WorldContract.zOfLat(latDeg);
+                    int za = WorldContract.zOfLat(Math.abs((double) latDeg));
                     double lat = WorldContract.latOf(zs, ZC);
                     double f = WorldContract.coriolis(lat);
                     double hcv = hc[Math.max(0, Math.min(NM - 1, (int) ((double) za / ZC * NM)))];

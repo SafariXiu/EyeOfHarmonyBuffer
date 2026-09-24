@@ -87,7 +87,7 @@ public class P444 {
             say(String.format(LF, "  x = %d", x));
             say(String.format(LF, "    %-9s %14s %14s %12s", "纬度线", "v(线-1m)", "v(线+1m)", "阶跃 m/s"));
             for (int L = -60; L <= 60; L += 10) {
-                int zLine = (int) (L / 90.0 * (ZC / 2));
+                int zLine = WorldContract.zOfLat(L);
                 double vM = Atmosphere.windAt(x, zLine - 1, SD, CELL, 0.0, GRAD)[1];
                 double vP = Atmosphere.windAt(x, zLine + 1, SD, CELL, 0.0, GRAD)[1];
                 double j = Math.abs(vP - vM);
@@ -98,7 +98,7 @@ public class P444 {
             // 与「不在 10 度线上的地方」对照：取 5 度线
             say("    对照（5 度线，不应有阶跃）：");
             for (int L = -55; L <= 55; L += 10) {
-                int zLine = (int) (L / 90.0 * (ZC / 2));
+                int zLine = WorldContract.zOfLat(L);
                 double vM = Atmosphere.windAt(x, zLine - 1, SD, CELL, 0.0, GRAD)[1];
                 double vP = Atmosphere.windAt(x, zLine + 1, SD, CELL, 0.0, GRAD)[1];
                 say(String.format(LF, "    %-9d %14.4f %14.4f %12.4f", L, vM, vP, Math.abs(vP - vM)));
@@ -112,7 +112,7 @@ public class P444 {
         double mxS = 0, mxC = 0, mzS = 0, mzC = 0, sS = 0, sC = 0, szS = 0, szC = 0;
         int n = 0;
         for (double latDeg = -60; latDeg <= 60.0001; latDeg += 2.5) {
-            int z = (int) (latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);
             double lat = WorldContract.latOf(z);
             double latP = WorldContract.latOf(z + GRAD), latM = WorldContract.latOf(z - GRAD);
             for (int x = -10_000_000; x <= 10_000_000; x += 400_000) {

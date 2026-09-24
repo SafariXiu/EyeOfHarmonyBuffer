@@ -82,7 +82,7 @@ public class P480 {
         int n = 0;
         long t0 = System.nanoTime();
         for (int latDeg : lats) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);   // ★ §727 两倍纬度修正
             double lat = WorldContract.latOf(z, ZC);
             double beta = WorldContract.betaForLatitude(lat, ZC);
             double delta = Math.cbrt(OceanField.A_H / beta);

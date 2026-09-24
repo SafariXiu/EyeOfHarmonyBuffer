@@ -1,4 +1,6 @@
 # 物理量口径登记表（CALIBERS）
+| 171 | **★ §7147 新增开关 `PrecipField.SHALLOW_FLOOR_ZI_LIMIT`（默认 false）**：给浅对流地板加「下沉封顶」`zCt := min(Z_CT_COND, z_i)`，`z_i = w_*·cbrt(A·Θ0/(g·D·Γ_eff))`。出处：Eq.131/136（**Lilly 1968, QJRMS 94, 292**），经 CSU PBL 讲义 p.137-140 转述。**状态：探针已否证**（§7149 P1 否证：撒哈拉 `divU<0` ⇒ 永不激活；§7150 Q1：只在海洋过冲到 0.80×）⇒ **保留为对照臂，不进生产**。中性验收：指纹变、**40 个 GATE token 全不变**。 |
+| 170 | **★ §7147 新增常数 `PrecipField.ENTRAIN_A = 0.2`**：夹卷常数 `A`（`w_e/w_* = A·Ri_*^(-1)`），出处 **Lilly (1968), QJRMS 94, 292-309**（`Ri_*` 定义见 Deardorff 1980, BLM 18, 495-527）。⚠ **它是新引入的自由参数，自设禁令：不得靠调它转绿**；若必须改 `A` 才能过门，视为失败（与 §686 判死的「1000 m 单点巧合」同类）。只在 `SHALLOW_FLOOR_ZI_LIMIT=true` 时被读。 |
 | 139 | **★★★★★★ 第 (3) 项残差的根因：`curv(W)` 是【相消主导】的二阶差分，符号不是物理的（§485，P691）**。先确认生产路径 = **`modelShapeVarFull`**（`EDDY_GATE_MODE=2, VAR=0, GRAD=0, PLACEMENT_FROM_OBS=false`），**不是**「直接读观测表」那条（否则 §484 会是同义反复）。分解（`eddyMfc` 符号 = `curv(W)` 符号，因 `K`、`gate` ≥ 0）：**反号 JJA 7/13、DJF 1/13**。★ 根因：`curv = Δ²W/dy²`，`dy² = 3.087e11 m²` ⇒ **`Δ²W/W ~ 0.01%~1%`** ⇒ 符号由两个 ~20~31 的数的千分之一到百分之一的差决定 ⇒ **相邻纬度反复翻转（JJA: +,−,−,−,+,+,+,+,+,+,+,−,−）正是相消主导的签名** | **结论性**。这是 §426「观测是单极型、模型是二阶导多极型」的**定量化**。**⇒ 调 `stormGate`/`K` 不可能修好（它们都 ≥ 0，翻不了号）；要修只能换闭合形式（二阶导 → 单极/一阶），那是一次闭合重做** |
 | 140 | **★★★★ 目标第 (3) 项判定（§485 五）**：**量级已达标**（§484 DJF 30~50N = 1.08）**+ 形状不可修**（除非换闭合形式，§485）。⇒ 建议登记为「量级达标；形状问题需要闭合重做」，**与那个大分叉一起裁决** | **待裁决** |
 | 141 | **★★★★★★ 目标第 (4) 项后半完成：P600 指名站点【海岸门】接入验收套件，首次读数 FAIL（§486，P692）**。8 个指名站点（4 海岸沙漠 vs 4 同纬度暖流区）；物理要求 **沙漠组 P < 暖流组 P**。实测：**沙漠组 1.596 / 暖流组 0.587 ⇒ GATE_COASTAL_RATIO = 2.719（应为 <1）、VERDICT = FAIL**；`LANDFRAC = 6/8`（2 站在本世界是海）。★ 失败形状：**两组都大面积是 0，唯一的「湿站」落在沙漠组**（西撒哈拉单站 **6.386**，另三站 0.000）⇒ **极端湿点诊断性地出现在海岸沙漠站上**，正是 §399/§400「近岸 κ 低 ⇒ 类海洋 ⇒ 必然湿」的现场 | **已接入**（`rerun_acceptance.ps1` 门数 **18 → 19**）。与 §485 是**两个独立残差**：§485 是涡动闭合相消（中纬），本门是**近岸 κ**（低纬海岸） |
@@ -97,7 +99,7 @@
 | `Atmosphere.CELL_LAG` | 气压带滞后 | rad | 30 天 | 手定 | `cellPressure` |
 | `Atmosphere.DELTA_PHI0` | 旧的季节平移幅度 | rad | **@Deprecated**，生产已不用（只旧探针） | | |
 | `PrecipField.deformRadius` | 罗斯贝变形半径 | m | 诊断/涡动项 | 本类 | `eadyGrowth` 等 |
-| `ZonalTables.pRef` / `carrier` | 纬向平均海平面气压 | Pa | \|lat\|；10° 分段线性 | 观测 | `seaLevelPressure`、`cellPressure` |
+| `ZonalTables.pRef` / `carrier` | 纬向平均海平面气压 | Pa | \|lat\|；10° 分段线性 | 观测 | `cellPressure`（★ `seaLevelPressure` 已于 §7176 删除：零调用者） |
 | `ZonalTables.pRefSlopePerRad` | dp_ref/dlat | Pa/rad（**带符号**） | **中心差分 ±5°**（D1 修复；赤道自然给 0） | 本类 | `Atmosphere.wind`（只进 v） |
 | `ZonalTables.uZm` / `uZmSea` / `uZmBlend` | 纬向平均纬向风 | m/s | **单相位 θ**；\|lat\| + `hemi` 反相；全球 850 hPa 表 / **洋面 10 m 表** 两套 | ERA5 | `Atmosphere.wind` 的 `+U_zm`、`stormGate` |
 | `ZonalTables.wZm` | 纬向平均上升速度 | m/s | \|lat\|；**无季节**（W_ZM 表） | 手定（§注释） | `PrecipField.wEff` |
@@ -117,7 +119,7 @@
 | `Atmosphere.seasonalAnomalyZonal` | 季节温度异常（**纬向平均口径**） | K | 同相位约定，但振幅读 **`ZonalTables.aZonalMean`**（表 `A_ZM_K`）—— 与逐点**分表**（§231.4 步骤 0，因为两者口径不同） | 本类 | `PrecipField.zonalSlTemp`（涡动链） |
 | `ZonalTables.A_ZM_K` / `aZonalMean` | 纬向平均季节振幅 | K | 10 度表、\|lat\| 对称；播种值 = 旧口径在 κ=⟨κ⟩ 处的混合值（纯拆分）；**决定 2 会把它换成推导机制** | `gen_a_zm.py` | `Atmosphere.seasonalAnomalyZonal` |
 | `Atmosphere.surfaceTemp` | 地表温度 | K | **单相位 θ**；**含** `−Γ·h·κ` | 本类 | 方块层、`SimClimate.solveNode`、探针 |
-| `Atmosphere.pressureAnomaly` | 地面气压异常 p' | Pa | 代数式；**海陆年均对比被解析抵消** | 本类 | `windAt`（差分）、`seaLevelPressure`、探针 |
+| `Atmosphere.pressureAnomaly` | 地面气压异常 p' | Pa | 代数式；**海陆年均对比被解析抵消** | 本类 | `windAt`（差分）、探针 |
 | `Atmosphere.sstAnom` / `sstAnom` | 注入后的 SST 距平 参数为 (x,z,theta) 参数为 (x,z,seed,theta)| **K** | 无提供者 ⇒ **恒 0**（⚠ §420：所有地球掩膜探针都必须先 `OceanField.install`，否则读到的是 0 而不是缺测） | `SstProvider` | `surfaceTemp`、`annualSeaLevelTemp` 的调用方、`PrecipField`、`StationaryWave` |
 | `Atmosphere.windAt` | 风（**速度**，含 U_zm） | m/s | **单相位 θ**；梯度步长 `gradStep` 参数化 | 本类 | `PrecipField` 的散度、`SimClimate.windAt` |
 | `Atmosphere.windStress` | 风应力 τ | **Pa** | = ρ·C_D·\|U\|·U；**不是速度** | 本类 | `OceanField.curlAtmos`、`CoastalLayer` |
@@ -253,11 +255,13 @@
 | `Vegetation.gain`,`isSolving`,`iterTotal`,`lastGain`,`lastIterations`,`lastResidual`,`rsOf`,`veq`,`vStarClosed` | 派生/运行时 |
 | `VerticalColumn.F_WELLMIXED`,`FIXED_TS`,`K_M`,`K_W`,`LW_SFC_EMIS`,`MASS`,`P_EDG`,`P_TOP`,`PC`,`RH_B`,`RH_M`,`RH_T`,`S0`,`TAU_ADJ`,`TAU0_LW`,`TAU0_SW`,`THETA_SB`,`W_REF`,`W_STAB` | 常数/开关 |
 | `VerticalColumn.calibrateTauLW`,`setupOptics` | 派生/运行时 |
-| `WorldContract.Z_CYCLE_D1` | 常数/开关 |
 | `WorldContract.bandDD1`,`betaForLatitudeD1`,`coriolisD1`,`d1SelfCheck`,`latOfD1`,`wrapZ`,`zOfLat` | 派生/运行时 |
 | `ZonalTables.W_COL_ANN`,`W_COL_MONTH` | 常数/开关 |
 | `ZonalTables.wColAnnual`,`wColMonth` | 派生/运行时 |
 
+> **§7199 记账（用户裁决 D-5）**：`WorldContract.Z_CYCLE_D1`（`static final int = Z_CYCLE` 的纯别名）**已删** ——全仓零外部读者（唯一 3 处都在 `WorldContract.d1SelfCheck()` 自己的自显示里，已改用正名 `Z_CYCLE`）。
+> 中性证明（三层）：① `javap -p -c -constants` 全量反汇编 diff **只有被删字段那一行**；② 实跑 `d1SelfCheck()` 输出 **1110 B 逐字节相同**（SHA `F1E7DDCD…`）；③ 它自检判据 `PASS`。
+> `.class` 3807 -> 3778 B（字段被删，本应不同）⇒ **纪律④的「字节码逐位相同」不适用于「删除字段」，已改用 javap + 实跑双层判据。**
 > **§567 记账（2026-09-19）**：旧地形（PlateField 自带的 Voronoi 海陆实现）与它的 37 个旋钮（A1~A13 / ROUGH_* / WARP_* / COAST_* / COLLIDE_H / ARC_H / TRENCH_D / RIDGE_H / MAX_OCEAN_HALF / OCEAN_BREAK_* / TALOS_TERRAIN …）**整支删除**。
 > 因此上表里 `PlateField.*` 只剩 `MASK`，并新增世界身份位 `WORLD_IS_TALOS`（**不是开关**，见该字段 javadoc 与设计冻结 §567）。
 > 施工图：`build/eoh_probe/mtn/delete_legacy_landsea_plan.md`。
@@ -389,9 +393,11 @@ UNCLASSIFIED_BASELINE=0
 
 <!-- §534 修正（P1-7）：本块由 17 项补到 20 项，补上 P692 P683 P712 三个门。
      ⚠ 说明只能写在栅栏【外】：calibers_check.ps1:74 把块内每个空白分隔 token 当成探针名，
-       写在块内会被当成 16 个不存在的探针（实测 acceptance-probes 由 20 虚报为 36、untracked 由 3 虚报为 19）。 -->
+       写在块内会被当成 16 个不存在的探针（实测 acceptance-probes 由 20 虚报为 36、untracked 由 3 虚报为 19）。
+     §743（2026-09-23）：21 -> 22，补上 P499（§244.4 副热带海洋夏季硬零门，三条判据：
+       GATE_SUBTROP_ZERO / GATE_MONSOON_IDX / GATE_DJF_3040）。 -->
 ```acceptance-probes
-P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 P484 P692 P683 P712 P991
+P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 P484 P692 P683 P712 P991 P499
 ```
 
 ## 8. ⚠ 已知的**未对账 / 未实现**条目（不许当成"已核对"）
@@ -408,8 +414,8 @@ P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 
 | 8 | **涡动扩散率的量级**：模型 `K(35N, JJA) = 1.80e7 m²/s`；文献反演值 1.85e6（Lu et al. 2022 cosφK 峰 @35N）~6.3e6（Caballero & Hanley `v*ℓ`）⇒ 偏大 2~9 倍。**但公式本身与 Green/Stone 的 `D = 3.23σL_d²` 只差 7%，且 GPCP 判据已通过（0.88~1.09）** | **未对账**：疑为「参数化系数」与「反演量」的定义差（垂直加权 + 轨迹倾斜），但未验证（§429 第四节） |
 | 9 | **涡动项与平均项是否互相抵消** | **已闭环（§431，P640 逐项分解）：没有相消。** 41.3N DJF：主项 **+1.131**、涡动 **+4.705**、合计 **5.836**（涡动是主项 4.2 倍，**主项为正**）。<br>⚠ 本条原先写的「总降水 3.42 而涡动 3.87」是**口径错误**：3.42 是拿 P639 的逐带比值 × 观测反推的（±0.8° 三点平均），与单纬度直接读数不能相减。 |
 | 10 | **50~62N 涡动供雨不足**（§431 新暴露）：旧配置在该带的涡动降水**本来就是门梯度伪项**，修掉后归零；主项只有 0.20~0.92 mm/day，而 GPCP 锚 2.4，且 NCEP 观测表在该带为**正**（DJF 55N +1.12、60N +0.96） | **未修**：新的、定义清楚的工作项（`stormGate`/`K` 在 50~62N 的涡动辐合不足甚至反号） |<br>**§432 追查结果**：洞由 `K'X'` 驱动（K 在 55N 局部极小、60N 局部极大）；K 的鼓包来自 σ 在 60N 的峰（11.17e-6 vs 邻点 8.9e-6）；而 **PCHIP 光滑化否证**（σ 峰仍在 10.54e-6）⇒ **鼓包在 ERA5 温度剖面本身，不在求导**。两条新线索：① σ 用的是**海平面等效**温度（65N 有最低点后向极回升，疑为该变换的产物）；② 求导模板宽度 ±5° 未做 A/B。
-| 11 | **JJA 中纬偏干的位置**（§431 定位）：33.8~46.3N JJA 的主项只有 **0.013~0.076 mm/day**，合计 0.569~0.590 几乎**全部来自 `SHALLOW_FLOOR`**；锚是 2.4~2.9 | **未修**：在**浅对流 / 平均环流**侧，与涡动侧无关 |
-| 12 | **`P296` 的「EDDY_MIX 标定检查」已失效**：该检查假设 `EDDY_MIX` 是标定乘子，但 §429 之后它是推导值 `1/EADY_COEF` | **未改**：应改写成「推导值检查」或删除，否则持续误导 |
+| 11 | **JJA 中纬偏干的位置**（§431 定位）：33.8~46.3N JJA 的主项只有 **0.013~0.076 mm/day**，合计 0.569~0.590 几乎**全部来自 `SHALLOW_FLOOR`**；锚是 2.4~2.9 | **未修**；⚠ **§740 标 stale**：本条读数「几乎全部来自 `SHALLOW_FLOOR`」所依靠的那个地板，已被本弧**两处改动直接改写**：§687（凝结形式地板，有出处三件套）与 **§720（地板也受 BLQ θ_e 门控约束）**。⇒ **`0.569~0.590` 与 `0.013~0.076` 两个数不再代表当前代码**；需按当前代码重取。可对照的当前读数：`P499 GATE_SUBTROP_ZERO` = **14.2%**（25~40N 夏海洋 P>=0.3 比例；§244.4 当年记为 **0%**）。 |
+| 12 | **`P296` 的「EDDY_MIX 标定检查」已失效**：该检查假设 `EDDY_MIX` 是标定乘子，但 §429 之后它是推导值 `1/EADY_COEF` | **§740 复核：仍未改** —— 本条仍成立，处置仍为「改写成推导值检查，或删除」。**本弧未动 `P296`**（本目标只做工具层与记账，不改其判据）。⇒ 保留为待办，不得当成「已核对」。 |
 | 13 | **`T850_MONTH` 的口径与来源**：NCEP/NCAR R1 月平均 LTM 1991-2020 850 hPa 温度；`air` 的**原生单位是摄氏度**（已换算成 K 再入表）；lat 为**降序**（生成时已排序）。生成器 `refs/gen_t850_month.py`，**幂等可重跑** | **已记账**（两个单位/顺序坑都实际踩过） |
 | 14 | **JJA 56~59N 因 §433 变干**（海 JJA 25~60N 平均 0.88 → 0.74；56.3N 1.22 → 0.59、58.8N 0.79 → 0.34），而 43.8~46.3N 变好（0.45 → 0.86） | **新暴露，未修**：风暴轴**出口**的 JJA 涡动辐合不足 |
 | 15 | **主判据「亚洲/撒哈拉 >= 10」在现架构下不可达**（§434）：7 个开关组合实测最好 = 年 0.99 / JJA 1.39；撒哈拉绝对值恒在 0.98~2.04（观测 0.105） | **未修**：缺的是**水平水汽输送**——`moisture()` 完全是局地的（`RH*q_sat(T_local)`），季风区的水汽本应主要来自海洋平流 |
@@ -536,3 +542,87 @@ P258 P284 P296 P268 P452 P293 P292 P285 P442 P294 P295 P297 P477 P478 P479 P480 
 | 62 | **★★★ A+B 必须一起做，且 A 单独做【保证错】（§450 解析 go/no-go）**。用 `P(1) = κ·P_now`（`κ = 0.80/rhEff(β)`，因 `A` 与 β 无关）与 §439 实测 `E_p(1)/P(1)`：`κ_亚洲 = 2.2763`、`κ_撒哈拉 = 2.1494`，`E_p(1)` = **27.4 / 20.7 mm/day**（与 P 无关）。⇒ ① **B 单独**（P 到观测）亚洲 `F(1) = 0.637 < 1` ⇒ **仍无湿支**；② **A 单独**（E_p 缩 f 倍）亚洲需 `f > 4.050`、撒哈拉只需 `f > 3.151` ⇒ **撒哈拉先湿，差 22%**；③ 窗口存在 ⟺ `P_亚洲/P_撒哈拉 > 1.252` | **结论性**：现在比 0.97（无窗口）、B 到现状 3.54 ⇒ 窗口 **f∈(2.28, 34.5)**、B 到观测 73.0 ⇒ **f∈(1.57, 91.6)**。§439 估的表面阻力 2~5 倍**落在窗口内** |
 | 63 | **⚠ A 要与 §440 的否证划清界限：必须做成【状态依赖】。**§450 的 `f` 是均匀乘子，而 §440 的 `RS_SURF` 是**全局常数** —— 均匀干预按 §440 第 30 条必然只放大排序。状态依赖时逐盒判据不需要均匀性（亚洲只需自己降 1.57 倍，撒哈拉只要不降 91.6 倍） | **未实现**：植被态 → r_s / 反照率 / 粗糙度 |
 | 64 | **⚠ 双稳不能用一次 A/B 判**（§450 五 2）：盒均 `F(1)>1` 只是**必要条件筛查**，`A/e1/e2` 逐点不同 ⇒ 双稳是**场的现象**。判决仪器必须是**定点迭代 + 参数上下扫描的滞后环**。另：§439 的根计数说 `R(β)` 是 β 的二次式、当前只有 ≤1 根 ⇒ **当前无双稳**，B+A 之后必须重跑 | **仪器要求**，已记账 |
+
+---
+
+## 11. §776/§777 补齐：`PrecipField` 与 `ZonalTables` 里 15 个未登记的 `public static` 生产者
+
+**为什么有这一节**：`calibers_check.ps1` 的 D67/D75/D78 棘轮（§10）报 `NEW UNREGISTERED MEMBERS = 15` ——
+「出现了 `public static` 生产者，但它不在任何登记表里」。本节把它们逐条登记。
+判据是 `calibers_check.ps1:123-124` 的**整词出现**（`\bname\b`），以及 `:100-113` 的 `类名.成员名` 必须可解析。
+**本节只写已经逐字读过的出处，不引用任何未读过的文献。**
+
+### 11.1 `sim.atmos.PrecipField`（13 条）
+
+| 成员 | 含义 | 单位 | 口径/性质 | 出处/锚 | 消费者 |
+|---|---|---|---|---|---|
+| `PrecipField.wStarK` | 对流速度尺度 `w_*` | m/s | `cbrt((g/T_s)·H_BL·flux)`；**通量 <= 0（稳定层结）时返回 0** —— `w_*` 按定义只对**对流**混合层成立。**式内无任何经验常数** | Deardorff 闭合；`z_i := Atmosphere.H_BL`、`(w'theta_v')_0 := surfaceBuoyancyFluxK`（`PrecipField:300-312` 逐字） | `mmPerDay` 的浅对流地板 |
+| `PrecipField.surfaceBuoyancyFluxK` | 近地面**运动学**浮力通量 | K·m/s | `cdOf(kappa)·vEff·(thvS − thvA)`，`thv = T(1+EPS_V·q)`。**陆海通用**（吃 `kappa`、用**本地**皮温）⇒ 不是海面专属量 | 本类（`wStarK` 唯一的 flux 来源，`PrecipField:357-364`） | `wStarK` |
+| `PrecipField.airTempK` | **统一口径**的近地面气温 `T_a` | K | 按大陆度把**海洋锚**与**陆地反解**线性混合：`kappa=0` 取纯海洋、`kappa=1` 取纯陆地 | 海洋侧 `T_s + ZonalTables.dtAirSea(lat)`（§645）；陆地侧 `landAirTempK`（§650）；`PrecipField:342-355` | `surfaceBuoyancyFluxK`、`wStarK` |
+| `PrecipField.landAirTempK` | 陆地侧 `T_a` 的**闭式反解** | K | `T_a = T_s − (absSolar − OLR(T_s) − LE(T_s))/(chv·CP)`；`chv = cdOf(kappa)·vEff`，`chv<=0` 时返回 `T_s`。**O(1)、无迭代**（对比 `Radiation.skinTempLand` 的 60 次二分） | 本模型**自己**的能量平衡 `Radiation.residual`（§650；`PrecipField:315-340`） | `airTempK` |
+| `PrecipField.EPS_V` | 虚温系数 | 无量纲 | **0.608**（`PrecipField:246`，`public static final`）。即 `R_d/R_v − 1` 的口径 | 定义式 | `thv` 的两处（本类） |
+| `PrecipField.EP_COND` | **降水效率 `E_P`** | 无量纲 | **0.24**（原著区间 0.19~0.29，本轮读图）。**§244.4 明令不许为了转绿调它** | Liu et al., Sci. Adv. 10, eado2515 (2024) **Fig. 3D**（原图存 `refs/fig3_page5.png`） | `mmPerDay` 的浅对流**凝结**地板 |
+| `PrecipField.SIGMA_UP` | **上升气流面积占比 `sigma_up`** | 无量纲 | **0.065** | Siebesma et al. (2007)，冻结 §667 逐字引文 | 同上 |
+| `PrecipField.Z_CT_COND` | **浅积云云顶 `z_ct`** | m | **2500.0**。⚠ **不可从模型热力学导出**（§676 实测：`GAMMA = 6.5 K/km` **大于**热带湿绝热 ⇒ 气块一路比环境暖 ⇒ `zLnb == zMax`；**模型没有信风逆温层**，而浅对流云顶正由它决定）。§687 用有出处三件套重验：**2000~3500 m 整区间两门均 PASS**（rJJA 0.69~1.26） | Squires (1958) / Byers & Hall (1955)，经 Rauber et al., BAMS 88(12), 1913 (2007) 逐字转述「maritime clouds with tops **greater than 2500 m** 'usually rain within half an hour'」（本地副本 `refs/rico_bams.pdf`，截图 `refs/rico_bams.txt`） | 同上 |
+| `PrecipField.SHALLOW_CONDENSATE` | 开关 | `bool` | 地板用**凝结形式**（Held & Soden，`true`，**当前生产值**）还是旧的**蒸发形式**（`false`）。进 `configStamp` | §679 A/B 臂 B（§677 文献形式） | `mmPerDay` |
+| `PrecipField.SHALLOW_FLOOR_BLQ_GATE` | 开关 | `bool` | **§772 新增，默认 `false`**：浅对流地板是否受 `BLQ_THETA_E`（**深对流**判据）门控。`false` = **撤回 §720 的 `pFloor *= blqG`**。§774 完整 A/B：`GATE_SUBTROP_ZERO` FAIL(14.2%)→**PASS**、陆盒 JJA 0.000→1.712/1.823。进 `configStamp` | §772/§774 —— **category error**：深对流判据不得门控浅对流过程 | `mmPerDay` |
+| `PrecipField.ALPHA_COND` | ⚠ **死常数** | 无量纲 | **0.195，无人读**；保留只为记账 | §741 已标 `@Deprecated` 并写明「改它不会改变任何输出」；§244.4 记 `ALPHA_SH` 是「被拟合到旧形式」的先例（`PrecipField:2184-2188`） | **无** |
+| `PrecipField.Q_BLBUDGET_SUB_ONLY` | 开关 | `bool` | **`true`**：边界层水汽收支的干平流只取**下沉枝**（`divU>0`） | S628（旧式 S627 是两枝都干；`PrecipField:484`） | `mmPerDay` 的水汽收支 |
+| `PrecipField.BETA_DOWNDRAFT` | 下沉气流补偿系数 | 无量纲 | **0.5**；`kPb = (wE>0) ? (1−beta)·EPS_C·rho·wE/rho_w·86400·1000 : 0` | S630（`PrecipField:505`） | 同上 |
+
+### 11.2 `sim.atmos.ZonalTables`（2 条）
+
+| 成员 | 含义 | 单位 | 口径/性质 | 出处/锚 | 消费者 |
+|---|---|---|---|---|---|
+| `ZonalTables.DT_AIR_SEA_K` | 海气温差 `T_air − T_sea` 的**纬向表** | K | **负值 = 空气比海冷 = 海洋表面对流不稳定**。⚠ **已知限度（不许日后悄悄当实测用）**：**60~90 度是外推值、不是观测**（NCEP R1 与 COBE-SST2 在**海冰区**的差不是海气温差 —— SST 被钉在冰点而 1000 mb 空气极冷；+60 度实测 −3.40 K、−85 度曾达 −25 K；**本世界没有海冰** ⇒ 50 度以外**保持 50 度的值**）；且两源**非完全独立** ⇒ 本表是**气候态锚**，不是独立验证 | NCEP R1 + COBE-SST2（口径与限度声明见 `ZonalTables:182` 的 javadoc） | `dtAirSea` |
+| `ZonalTables.dtAirSea` | 查表插值 `T_air − T_sea` | K | `interp(DT_AIR_SEA_K, latDeg)`；**参数是纬度（度）**，不是弧度 | 同上（`ZonalTables:190`） | `PrecipField.airTempK` |
+
+**核验方式**：重跑 `calibers_check.ps1`，`NEW UNREGISTERED MEMBERS` 应回到 **0**，
+`acceptance-probes` 应仍为 **22**，`registered-patterns` 应仍为 `resolved`（不出现 `(not found in source)`）。
+
+
+---
+
+## 12. §7122：`P477` 的两门判据已更正（跨盆无权中位 → 最强盆）
+
+**为什么改**：`GATE_A5_WARM` / `GATE_A5_COLD` 原来的统计量是「**跨盆无权中位**」，
+而它们的锚（`P477:72` / `:153`，出自 `SeaSurfaceTemp` 的 javadoc）描述的是**一条**最强的西边界流
+（湾流/黑潮暖舌 +4~8 K、加州/亲潮冷舌 −4~5 K）。
+「跨盆无权中位」报的是「这个 seed 生成了多少个小海盆」，不是「西边界流有多强」。
+
+**普查证据**（§771，`P993` S769b，逐盆表）：
+
+```
+暖 WBC 盆 5 个：强 2（+7.587、+5.964）+ 弱 3（+3.037、+1.382、+1.363）
+                  ⇒ 排序第 3 位 = +3.037 = 中位，**恰好是弱盆**
+冷 WBC 盆 4 个：强 2（-6.323、-5.028）+ 弱 2（-1.804、-1.799）
+                  ⇒ 中位 = (-5.028 + -1.804)/2 = -3.416
+**幅值对盆地宽度在每个已分类集合内严格单调**（暖 5/5、冷 4/4）
+强盆 = 大盆（15440/2880 km；12755/4880 km），弱盆 = 小盆（510~1060 km；585~1560 km）
+```
+
+**新判据（§771 §七 第 9 轮冻结，§7122 执行）**：
+
+```
+GATE_A5_WARM ：暖 WBC 盆中 **|暖峰| 最大者** 落在 +4~8 K 内
+GATE_A5_COLD ：冷 WBC 盆中 **|冷峰| 最大者** <= -4.0 K
+GATE_A4_SCALE：不变（暖舌 FWHM 中位 >= 50 km）
+```
+
+**A/B 结果（§7122）**：
+
+```
+目录  A 侧 = rerun_acceptance\D968C9E3_64E20400_TALOS
+      本次 = rerun_acceptance\0FA41ECE_AD7F9C58_TALOS   （只改探针 P477.java，SRCFP 未变）
+实测  最强盆暖峰 = **+7.587 K** ∈ [4,8]   ⇒ PASS   （预测 +7.587，逐位命中）
+      最强盆冷峰 = **-6.323 K** <= -4.0  ⇒ PASS   （预测 -6.323，逐位命中）
+      **其余门一门不动**（除 P477 两门外 27 门逐位相同）
+套件  30 门：26 PASS / 4 FAIL  ->  **28 PASS / 2 FAIL**
+      （P296 三门为长尾，改动前后均 PASS）
+```
+
+**★ 记账口径（不许含糊）**：这两门 PASS 是「**判据口径已更正**」，**不是**「缺陷已修复」——
+模型侧读数一个数都没变（暖峰中位仍 +3.04、冷峰中位仍 −3.42）。
+
+**引用本条的场合**：任何以 `P477|GATE_A5_WARM` / `GATE_A5_COLD` 为证据的论断，必须注明它们用的是
+**最强盆**口径（v3），不能与 v2 的「跨盆中位」读数混用。

@@ -711,6 +711,16 @@ public final class PrecipField {
      * <p>⚠ 这是 §444 fetch 方案的严格版；也是 §438/§441-32/§472 三次指认的那一项
      * （「缺的是经度方向的信息」/「没有输送」）的正面实现。
      */
+    // ★★★★★ §787 臂 A 实测结论：**否证**，已恢复 false。
+    //   跑法：本开关置 true，其余逐位不动；跑 22 支完整套件。
+    //   A 侧基线 = rerun_acceptance\D968C9E3_64E20400_TALOS；臂 A = E6999DD6_14947974_TALOS。
+    //   实测：idx25 季风指数 +0.312 -> **+0.061（下降）**；P683 亚洲 JJA 2.330 -> 1.533（-34%）、
+    //         撒哈拉 1.712 -> 1.060（-38%）、亚洲/撒哈拉【绝对差】0.618 -> 0.473（下降）；
+    //         GATE_SUBTROP_ZERO 逐位不变（100.0% / 4.985）、DJF_3040 1.156 -> 1.139、无门翻转。
+    //   §785 §四 的 (A2) 预登记写死「差必须拉大；否则前提不成立，撤回并记录」=> **撤回**。
+    //   机理：本路径把陆地 q 从【局地 rh*qSat(T_land)】换成【海洋源 + 沿途衰减】，
+    //         两种口径下它都使陆地【全面变干】，而季风指数是 JJA-DJF 的【差】=> 全面变干不产生对比。
+    //   这与 CALIBERS §8 条目 20 的警告一致：「在模型自己的状态里再找机制是徒劳的」。
     public static boolean Q_ADVECT_BUDGET = false;
 
     /**
@@ -2126,6 +2136,26 @@ public final class PrecipField {
      * ④ {@code V_GUST} 取 L-3 的 QTCM 值 4 m/s。
      */
     public static boolean SHALLOW_FLOOR = true;   // 2026-09-17 落地：① 0.0%->99.5%、⑤ 海洋地板 0.00->1.12（§252）
+    /**
+     * ★★★★★ §772：浅对流地板是否受 {@code BLQ_THETA_E}（**深对流**判据）门控。
+     *
+     * <p>默认 <b>false</b> = 撤回 §720 的 {@code pFloor *= blqG}，恢复 §251 的无条件下界。
+     * <b>为什么撤回（物理理由，不是为了让门变绿）</b>：{@code BLQ_THETA_E} 是**深对流**判据
+     * （θ_e,conv 出自 Folkins &amp; Braun 2003 的**海面**判据，本文件 :756 有逐字出处），
+     * 而本段是**浅对流**地板（Held &amp; Soden 形式的浅积云凝结，云顶出自 Squires 1958）。
+     * 浅积云（trade cumulus / 副热带层积云）**恰恰出现在深对流被抑制的地方**
+     * ⇒ 用深对流判据门控浅对流地板是**套错了对象**。
+     *
+     * <p>§720 的实测后果：撒哈拉/澳洲季风/非洲南部三个盒子 JJA 掉到 0.000（目标 ① 在案），
+     * 副热带海洋夏季 frac(P&gt;=0.3) 从 99.5% 掉到 14.2%（{@code P499|GATE_SUBTROP_ZERO}）。
+     *
+     * <p><b>为什么不从凝结形式上乘 {@code (1-k)}</b>：{@code wStarK} 经
+     * {@code surfaceBuoyancyFluxK} 已经吃 {@code kappa}（{@code cdOf(kappa)}）且用**本地**皮温，
+     * 它是**陆海通用**的对流速度尺度；而蒸发形式 {@code eSh} 需要**水面**才成立，
+     * 所以只有它该带 {@code betaF = (1-k)}。凝结形式带 {@code (1-k)} 会把陆地上
+     * **物理上合法**的浅对流地板清零（§772 撤回了这条曾经预登记的改法）。
+     */
+    public static boolean SHALLOW_FLOOR_BLQ_GATE = false;
     /** 浅对流效率（由判据①的观测锚反解；见 §251.2）。 */
     public static double ALPHA_SH = 0.40;
 
@@ -2155,6 +2185,16 @@ public final class PrecipField {
     public static boolean SHALLOW_CONDENSATE = true;   // §679 A/B 臂 B（§677 文献形式）
 
     /** 新形式的标定常数（倍率，作用在 {@link #precip} 的 `EPS_C` 上）。见 {@link #SHALLOW_CONDENSATE}。 */
+    /**
+     * <p>⚠ <b>§741：本常数已是【死常数】—— 全仓无任何可执行代码引用它。</b>
+     *
+     * <p>§687 之后浅对流地板改用凝结形式（见 {@link #SHALLOW_CONDENSATE}、{@link #EP_COND}），
+     * 旧的 A 臂形式 `ALPHA_COND * precip(…)` 已被取代。保留本字段只为文档可追溯（§656 以它为「标定常数」的例子）。
+     *
+     * <p><b>⚠ 不要调它。</b>改它不会改变任何输出（无人读），只会制造「已调参」的假象。
+     * （§244.4 的 {@code ALPHA_SH} 就是被「拟合到旧形式」坑过的先例：新形式必须有它自己的标定。）
+     */
+    @Deprecated
     public static double ALPHA_COND = 0.195;
 
     /** 降水效率 E_P（无量纲）。出处：Liu et al., Sci. Adv. 10, eado2515 (2024) Fig. 3D，区间 0.19~0.29（本轮读图，原图存 refs/fig3_page5.png）。 */
@@ -2228,6 +2268,17 @@ public final class PrecipField {
      * （同时记账：观测的副热带下沉最小纬度**全年都在 25N** ⇒ 观测的下沉带几乎不迁移，
      *  所以本开关修的是**量级与 40N 的符号**，不是迁移。见 §435。）
      */
+    // ★★★★★ §7115 臂 B 实测结论：**判据 (a) 不成立 ⇒ 假设否证，已恢复 false。**
+    //   臂 B = rerun_acceptance\B483997A_5B07C258_TALOS（SRCFP=B483997A...）。实测：
+    //     · 机制确实生效：`wEff <= 0` 占比 LAND **0.0% -> 88.6%**、SEA 27.0% -> 73.8%、COASTAL 32.5% -> 73.0%；
+    //     · 陆地确实变干：idx25 +0.312 -> **-0.015**；P683 亚洲 JJA 2.330 -> 1.413、撒哈拉 1.712 -> 1.326；
+    //     · **但海洋完全不动**：OCEAN JJA 最小值仍 **3.265 @ +55**（逐纬均值也几乎逐位相同），
+    //       27 门判据与 A 侧逐位相同、FAIL 列表同为 4 门。
+    //   ⇒ 原因（本节新查明）：**海洋的副热带降水由浅对流地板供给**，而 `pFloor ∝ wStarK(...)`
+    //     用的是【表面浮力通量】导出的对流速度尺度，**不经过 `wEff`** ⇒ 改 `w_zm` 动不了它；
+    //     而**陆地的地板 ≈ 0**（wStarK -> 0），降水只能来自大尺度项 `∝ wEff` ⇒ 一过零点就被清零。
+    //   ⇒ 判据 (e) 命中：**「同一上游」假设撤回**（`WZM_ITCZ_SHIFT` 是陆侧上游，不是海侧上游）。
+    //   ⇒ 采纳条件（javadoc :2251「必须先有区域 2-D 机制」）未满足，故恢复 false。
     public static boolean WZM_FROM_TABLE = false;   // §436：默认撤回，理由见上
 
     public static double wEff(double latRad, double theta, double divU) {
@@ -2255,6 +2306,51 @@ public final class PrecipField {
         DIAG.get()[4] = wBase;
         if (!SPLIT_ASCENT) return wBase + wLoc;
         return Math.max(0.0, wBase) + Math.max(0.0, wLoc);
+    }
+
+    /**
+     * §7147 **下沉封顶（默认关）** —— 用【有出处】的混合层深度闭式给浅对流地板封顶。
+     *
+     * <p><b>为什么</b>（§7143 定位到行）：地板 `pFloor` 的自变量只有 `tSfcF / q / lat / k / vEff`，
+     * **不读 `wEff` / `wBase` / `divU`**，却以 `if (pFloor > p) p = pFloor;` 无条件覆盖
+     * ⇒ 模型在强下沉处（撒哈拉、副热带海洋）照样下雨。Betts (2004) 第 26 页明说海洋平衡是
+     * 「balance of radiative cooling, **subsidence** and surface fluxes」—— 三项，模型只实现了一项。
+     *
+     * <p><b>形式与出处</b>：`dz_i/dt = w_e + W_LS(z_i) = 0`（Eq.131，Lilly 1968 框架，
+     * 经 CSU PBL 讲义 p.137-138 转述）与夹卷闭合 `w_e/w_* = A * Ri_*^(-1)`
+     * （Eq.136，**Lilly (1968), QJRMS 94, 292-309**；`Ri_*` 定义见 Deardorff 1980, BLM 18, 495-527；
+     * `P=N` 原始假设见 Ball 1960, QJRMS 86, 483-494）。取零阶跳变 `dTheta = Gamma_eff * z_i` 后联立得
+     * <pre>    z_i = w_* * ( A * Theta0 / (g * D * Gamma_eff) )^(1/3)</pre>
+     * `D = divU`（模型自己的散度）、`Gamma_eff = GAMMA - gammaMoist`（模型自己的两条减率）、
+     * `w_*` 用既有的 {@link #wStarK}。**全程 O(1)：无循环、无迭代、无新缓存。**
+     *
+     * <p>⚠ <b>`ENTRAIN_A` 是【新引入的自由参数】，不得靠调它转绿</b>（§7146 §四）：取文献常用值 0.2；
+     * 若必须改它才能过门，视为失败（与 §686 判死的「1000 m 单点巧合」同类）。
+     *
+     * <p>⚠ <b>默认 false ⇒ {@link #zCtEff} 不被调用 ⇒ 生产逐位不变（这是本开关的验收条件）。</b>
+     */
+    public static boolean SHALLOW_FLOOR_ZI_LIMIT = false;
+
+    /** 夹卷常数 `A`（Lilly 1968）。⚠ 新自由参数，见 {@link #SHALLOW_FLOOR_ZI_LIMIT}。 */
+    public static double ENTRAIN_A = 0.2;
+
+    /** 重力加速度（m/s^2），`zCtEff` 用；与 {@code HadleyCell} 同源的标准值。 */
+    static final double G0_ZI = 9.80665;
+
+    /**
+     * 见 {@link #SHALLOW_FLOOR_ZI_LIMIT}。`divU <= 0`（辐合/上升）时**直接退回** {@code Z_CT_COND}，
+     * 即构造上不影响深热带。
+     */
+    static double zCtEff(double tSfcF, double qsSfcF, double q, double latRad,
+                         double k, double vEff, double tLcl, double pLcl, double qLcl, double divU) {
+        if (divU <= 0.0) return Z_CT_COND;
+        double gamMoist = ParcelLift.gammaMoist(tLcl, pLcl, qLcl);
+        double gamEff = Atmosphere.GAMMA - gamMoist;
+        if (gamEff < 1.0e-4) gamEff = 1.0e-4;
+        double wS = wStarK(tSfcF, qsSfcF, q, latRad, k, vEff);
+        double c = ENTRAIN_A * tSfcF / (G0_ZI * divU * gamEff);
+        double zi = wS * Math.cbrt(c);
+        return zi < Z_CT_COND ? zi : Z_CT_COND;
     }
 
     /** 降水率（m/s）。 */
@@ -2431,7 +2527,11 @@ public final class PrecipField {
                 double pLcl = P_SURF * Math.pow(tLcl / tSfcF, ParcelLift.CP_D / ParcelLift.R_D);   // 干绝热闭式
                 double qLcl = ParcelLift.qs(tLcl, pLcl);
                 double zLcl = ParcelLift.zOfP(pLcl, tSfcF, Atmosphere.GAMMA);
-                double zCt = Z_CT_COND;   // §687：有出处的浅积云云顶（Squires 1958）
+                double zCt = Z_CT_COND;
+                // ★ §7147：下沉封顶（默认 false ⇒ 逐位不变）。见 SHALLOW_FLOOR_ZI_LIMIT。
+                if (SHALLOW_FLOOR_ZI_LIMIT) {
+                    zCt = zCtEff(tSfcF, qsSfcF, q, lat, k, vEff, tLcl, pLcl, qLcl, divU);
+                }   // §687：有出处的浅积云云顶（Squires 1958）
                 double pCt = ParcelLift.pOfZ(zCt, tSfcF, Atmosphere.GAMMA);
                 double dq = 0.0;
                 if (pCt < pLcl) {
@@ -2445,8 +2545,9 @@ public final class PrecipField {
                 double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
                 pFloor = ALPHA_SH * eSh / RHO_WATER;
             }
-            // ★ §720：地板也受同一道门控约束（原为无条件下界，绕过了门控）。
-            pFloor *= blqG;
+            // ★★★★★ §772：§720 的门控已【默认关闭】。详见 SHALLOW_FLOOR_BLQ_GATE 的 javadoc：
+            //   BLQ_THETA_E 是深对流判据，地板是浅对流过程 ⇒ 门控是套错对象（category error）。
+            if (SHALLOW_FLOOR_BLQ_GATE) pFloor *= blqG;
             DIAG.get()[10] = pFloor;
             if (pFloor > p) p = pFloor;
         }

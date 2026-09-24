@@ -166,13 +166,35 @@ $acceptList = @(
             #    so it needs NO Earth magnitude and cannot be tuned into passing.
             #    Baseline (current, FAILING): ASIA Qdiv=+144.787 P=3.525 ;
             #                                 SAHARA Qdiv=+202.371 P=4.029  (1/3)
-  'P991'    # 5  SS682 tropical precipitation vs same-mask GPCP anchor
+  'P991',   # 5  SS682 tropical precipitation vs same-mask GPCP anchor
             #    WHY: the suite had NO criterion for 0-25N precipitation (SS680/SS681),
             #    so it was BLIND to the SS677 shallow-floor change.  It measures
             #    PRODUCTION mmPerDay, so it judges whichever floor is active.
             #    Caliber matches refs/_eqpeak_masked.py (ocean, 0-25N, argmax).
             #    Baseline: GATE_NTP_MAGNITUDE=1.179 PASS, GATE_NTP_SEASONAL=0.617 PASS.
+  'P499'    # 3  SS244.4 subtropical-ocean summer HARD-ZERO gate (25-40N ocean)
+            #    WHY: the suite had NO criterion for the 25-40N OCEAN summer hard zero,
+            #    which the source itself calls the LARGEST SINGLE ERROR in the
+            #    precipitation field (SS244.4).  P499 already carried the three
+            #    criteria in its javadoc; SS739 only exposed them as machine-readable
+            #    GATE tokens -- PURE ADDITION, no computation changed.
+            #    Caliber: 25-40N, ocean, JJA, frac(P>=0.3 mm/day) >= 90%; anchor 2.356.
+            #    Baseline (current): SUBTROP_ZERO=FAIL (14.2% vs 90%) ;
+            #                       MONSOON_IDX=FAIL (+0.182 vs 1.87~3.88) ;
+            #                       DJF_3040=PASS (1.139 in 0.90~1.86).
 )
+
+# ---- RETIRED SCRIPT: rerun_acceptance2.ps1 (deleted 2026-09-24, user ruling D-6) ----
+# It ran a second batch of three probes: @('P295','P297','P261').
+#   P295 / P297 are already in the acceptance list above, so nothing is lost for them.
+#   P261 is NOT an acceptance probe, so it is deliberately NOT added to the list
+#   (adding it would change the suite probe count and the gate inventory).
+#   To run P261 by hand:
+#       cd tools\talos-probe
+#       runprobe4.bat P261 > ..\..\build\eoh_probe\mtn\rerun_acceptance\log_P261.txt 2>&1
+# Why it was deleted: zero references anywhere under src/ or tools/ (the file did not
+# even contain its own name), and it wrote its SUMMARY.txt into the SAME directory as
+# this script, so the two could overwrite each other.
 $runList   = $acceptList
 $isPartial = $false
 if ($Only -ne '') {

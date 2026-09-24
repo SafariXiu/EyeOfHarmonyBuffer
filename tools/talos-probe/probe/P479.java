@@ -75,7 +75,7 @@ public class P479 {
         int nPassAll = 0, nTotAll = 0;
         long t0 = System.nanoTime();
         for (int latDeg : lats) {
-            int z = (int) ((double) latDeg / 90.0 * (ZC / 2));
+            int z = WorldContract.zOfLat(latDeg);   // ★ §727 两倍纬度修正
             for (int[] b : basinsAt(z)) {
                 int wx = b[0], ex = b[1];
                 if (ex - wx < 200_000) continue;
