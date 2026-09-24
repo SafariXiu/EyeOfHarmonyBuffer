@@ -54,7 +54,7 @@ public final class SoilMoisture {
 
     /**
      * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （4 个 false：HadleyCell/SoilMoisture/StationaryWave/Vegetation；2 个 true：OceanField/SimTerrain）。
+     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
      * **本份的含义是：SoilMoisture（土壤湿度桶 / S3）。** 引用时务必写全类名（如 `SoilMoisture.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
      */
@@ -71,6 +71,38 @@ public final class SoilMoisture {
     public static double W_FC = 150.0;
     /** 「完全干表面之上」的近地面相对湿度（沙漠边界层观测 10~30%）。 */
     public static double RH_DRY = 0.20;
+
+    /**
+     * ★★★ **§7216：把【涡动 MFC】并入桶的强迫**（治「桶用 P 的子集驱动」）。默认 **false**。
+     *
+     * <p><b>历史（两次改判，都留着）</b>：§7214 判「{@code mfc} 与 {@code rhEff} 无关」；
+     * §7215 改判为「严格正比」，并按 `(A+dA)*rh` 实现；**P995 实测把它否证了** ——
+     * 50~65 带 {@code q} 涨 43.7% 而 {@code P} 只涨 1.3%，只有「{@code mfc} 与 beta 无关」
+     * 才解释得通。§7216 查清根因：{@code PrecipField:2414} 在算完 {@code q} 之后
+     * <b>立刻还原了 {@code BETA_OVERRIDE}</b>，而 {@code eddyMfc} 是到 {@code :2509} 才被调用
+     * ⇒ {@code mfc} 看到的是常数 {@code RH_SEA} ⇒ <b>§7214 的原话是对的</b>。
+     *
+     * <p><b>正确形式</b>：{@code P_bucket = A*rh + C}，{@code C} 是**加性常数**（不是并进 A）。
+     * 对 {@code rhEff} 仍是仿射；而且自旋本身是**显式欧拉时间积分**（不是闭式解），
+     * 预计算仍在年循环之外 ⇒ <b>「逐年纯标量代数」这个性能性质完全不受影响</b>
+     * （P995 实测：{@code spinupCount} 与 {@code evalCount} 在开关两侧<b>完全相同</b>）。
+     *
+     * <p><b>⚠ 覆盖不到的地方（必须记账）</b>：生产 {@code PrecipField:2508-2510} 只取 {@code mfc > 0}
+     * （辐合侧），而<b>副热带正是辐散侧</b> ⇒ 本项在副热带恒为 0（P995 实测：副热带 145 点
+     * <b>逐位不同 0 点</b>）。副热带真正的供给者是<b>浅对流地板</b>（{@code pFloor}），
+     * 而它对 {@code rhEff} 非线性（{@code wStarK} 含立方根、外面还有 {@code max}）
+     * ⇒ 无法预算到年循环之外，只能靠改变架构（每步重跑 mmPerDay）解决，
+     * 而那条路已被 §466 实测否证（18.1 ms/列且 6 年不收敛）。
+     *
+     * <p><b>疗效诚实记账（P995 实测）</b>：风暴轴带 50~65 的 {@code beta} 0.1118 -> 0.5023、
+     * {@code q} +87.1%，但<b>生产 {@code P} 只 +3.5%</b>（因为那里的 P 有 ~96% 来自
+     * <b>涡动 MFC 本身</b>，而它在生产侧<b>不随 beta 变</b>；随 q 变的只有占 ~4% 的大尺度项）。
+     * ⇒ <b>对「副热带 -78%」这条主战场基本无疗效</b>。
+     *
+     * <p><b>默认 false ⇒ 逐位不变</b>（{@code C[kk] = 0.0}，且 {@code A*rh + 0.0} 与 {@code A*rh}
+     * 在正数域逐位相同；P995 的 OFF 列在两种实现下逐位一致）。
+     */
+    public static boolean MFC_IN_BUCKET = false;
 
     /**
      * ★★★ **§440：表面阻力（canopy / surface resistance）**，单位 s/m。默认 **0**（无阻力）。
@@ -196,6 +228,10 @@ public final class SoilMoisture {
         // => 每列只需 N 次昂贵求值（windAt/kappaMemo），自旋的年循环是纯标量代数。
         //    （第一版每季都重跑 mmPerDay，18.1 ms/列且 6 年都收不敛 —— 那是白花的。）
         double[] A = new double[N], e1 = new double[N], e2 = new double[N];
+        // ★ §7216：与 rhEff 【无关】的那部分降水（目前只有涡动 MFC）—— 必须是**加性常数**，
+        //   不能并入 A。理由见 MFC_IN_BUCKET 的 javadoc：「并入 A」等于假设它 ∝ rhEff，
+        //   而 §7216 实测它【不】随 beta 变（P995：50-65 带 q +43.7% 而 P 只 +1.3%）。
+        double[] C = new double[N];
         double lat = WorldContract.latOf(z);
         double k = Atmosphere.kappaMemo(x, z, seed, cell);
         double depl = 1.0;                       // 由 upwindElev 给出，见下
@@ -241,6 +277,23 @@ public final class SoilMoisture {
             A[kk]  = (wEff <= 0.0) ? 0.0
                    : PrecipField.EPS_C * Atmosphere.RHO_AIR * qsTQ * depl / PrecipField.RHO_WATER
                      * wEff * 86400.0 * 1000.0;       // mm/day per unit rhEff
+            // ★ §7216（默认 OFF ⇒ 逐位不变）：把涡动 MFC 作为【加性常数】并入桶的强迫。
+            //   ① 生产路径里 mfc 是在 BETA_OVERRIDE 被【还原之后】才调的（PrecipField:2414 还原、
+            //      :2509 才调用）⇒ mfc 看到的是常数 RH_SEA ⇒ **mfc 与 beta 无关**（§7214 原话正确）。
+            //   ② 所以正确形式是 P = A*rh + C，不是 (A+dA)*rh（§7215 曾按后者实现，被 P995 否证）。
+            //   ③ 取 mfc 时仍显式清空 BETA_OVERRIDE —— 与生产调用点的状态【逐字对齐】，
+            //      不依赖「此刻恰好是 null」这个巧合。
+            C[kk] = 0.0;
+            if (MFC_IN_BUCKET) {
+                Double savedBo = PrecipField.BETA_OVERRIDE.get();
+                PrecipField.BETA_OVERRIDE.remove();
+                double mfc = PrecipField.eddyMfc(lat, theta);
+                if (savedBo != null) PrecipField.BETA_OVERRIDE.set(savedBo);
+                if (mfc > 0.0) {                       // 生产同样只取辐合侧（PrecipField:2510）
+                    C[kk] = mfc * depl * PrecipField.depletionCol(hUp, k)
+                          / PrecipField.RHO_WATER * 86400.0 * 1000.0;
+                }
+            }
             e1[kk] = chvE * qsTs / PrecipField.RHO_WATER * 86400.0 * 1000.0;
             e2[kk] = chvE * qsTQ * depl / PrecipField.RHO_WATER * 86400.0 * 1000.0;
             evalCount++;
@@ -252,11 +305,20 @@ public final class SoilMoisture {
         double relResid = -1;
         for (; years < MAX_YEARS; years++) {
             double[] prev = w.clone();
-            double cur = w[0];
+            // ★ §7247：状态取【年末】而不是 w[0]。
+            //   w[kk] 是在推进【之后】赋值的（见下方 w[kk] = cur），所以
+            //   w[kk] 对应 theta = (kk+1)*dt：w[0] 是 theta=dt，而 w[N-1] 才是
+            //   theta = N*dt = 2pi = 年末 = 下一年年初。原先取 w[0] 等于让「年推进」
+            //   退化成【单步】（只用 A[0]/e1[0]/e2[0]，步长 365.25/N = 15.21875 天），
+            //   与本方法 javadoc「按 theta 等距步进一年」直接矛盾，且 MAX_YEARS 名义 60 年
+            //   实际只推进了 60 步。
+            //   实测（P1023/P1024，双半球 144 点，NTHETA=24）：收敛 123/144 -> 144/144；
+            //   收敛解对 MAX_YEARS in {20,60,240} 逐位不敏感；与 F^24 二分根一致到 5.5e-12。
+            double cur = w[N - 1];
             for (int kk = 0; kk < N; kk++) {
                 double beta = betaOfFrac(cur);
                 double rh = PrecipField.RH_SEA * beta + RH_DRY * (1.0 - beta);
-                double pMm = A[kk] * rh;
+                double pMm = A[kk] * rh + C[kk];
                 double epMm = Math.max(0.0, e1[kk] - e2[kk] * rh);
                 double dW = (pMm - beta * epMm) * dtDays / W_FC;
                 cur += dW;

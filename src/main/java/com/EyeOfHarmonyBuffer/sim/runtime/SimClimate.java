@@ -371,6 +371,9 @@ public final class SimClimate {
         h = h * 31 + (PrecipField.EDDY_FULL_DIVERGENCE ? 1 : 0);
         // §269.5：掩码放在散度外面。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.EDDY_MASK_OUTSIDE ? 1 : 0);
+        // §7215：把涡动 MFC 并入土壤桶的强迫 A。改了结果 ⇒ 必须进指纹（D58）。
+        // ★ 用【条件折入】而不是 `h*31 + (X?1:0)`：默认 false 时指纹与历史【完全一致】。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.MFC_IN_BUCKET) h = h * 31 + 0x7A135L;
         // §567：地形已唯一（TalosField）。原先这里折入【全部旧 PlateField 旋钮】
         //   （A1/A2/A3、CONT_WAV、CS_W、WARP_W/AMP、A_PLAIN/A_MTN/FEAT_GATE、CONT_OCT、
         //    MAX_OCEAN_HALF、OCEAN_BREAK_H/FRAC、A4/A5/A6、RIFT_FRAC、NOISE_FADE、L2、
@@ -397,6 +400,11 @@ public final class SimClimate {
             h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_VAR;
             h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GRAD;
             h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GATE_MODE;
+        }
+        // §7220 涡动闭合的【形式】（0 = 现状 / 1 = 闭式）。改了结果 ⇒ 必须进指纹（D58）。
+        // ★ 与上面那块同一个模式：按条件折入 ⇒ 默认 0 时指纹与历史【完全一致】。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_CLOSURE_FORM != 0) {
+            h = h * 31 + 0x7A136L;
         }
         // §496 BLQ 对流判据：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_GATE) {
@@ -878,7 +886,7 @@ public final class SimClimate {
         f.logP[k] = Math.log10(Math.max(mmYr, P_MIN_MM_YR));
 
         // ★★ S1a + S3（§385/§387）：把【诊断】皮温换成【表面能量平衡 + 地表湿润度 beta】解出的皮温。
-        //   为什么放在最后：桶的 beta = min(1, P/E_p) 需要本节点的 pMmDay（上面刚算完）。
+        //   为什么放在最后：本块的 beta = min(1, P/E_p)（Radiation 稳态互补桶）需要 pMmDay（上面刚算完）。
         //   为什么用年平风：T_s -> p' -> 风 -> T_s 本来会成环；ux/uz 已经算好 ⇒
         //   这里【不新增任何 windAt 调用】，也不引入新的迭代。
         //   §387 定案：沙漠的「干」必须由 beta 表达（不是低 q_a）—— P569 实测降 q_a 反而增大蒸发。

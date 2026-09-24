@@ -33,7 +33,7 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
  * </ul>
  *
  * <h3>⚠⚠ 可达性横幅（审计 D51 的处置，2026-09-13）</h3>
- * <b>本类在 src 里是零引用</b>（grep 全树：除了本文件自身的声明，没有任何一处 new/调用/读字段）。
+ * <b>本类物理上零引用</b>（2026-09-24 更正：SimClimate:557 读 EKMAN_ENABLED 进配置指纹，除此无 new/调用/读字段）。
  * 它只被探针 P253/P254 用来说明「表层强化倍率」这个独立话题。
  * ⇒ <b>本类的任何常量都不在任何生产路径、也不在任何验收路径上。</b>
  * 之所以要写这一条：本类与 {@link CoastalLayer} 曾经共享两个常量名（H_THERMOCLINE / F_MIN），

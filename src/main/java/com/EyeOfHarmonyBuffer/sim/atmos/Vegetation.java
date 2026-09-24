@@ -37,7 +37,7 @@ public final class Vegetation {
     /** 总开关。默认 false ⇒ vegAt 恒返回 1.0（无裸地）⇒ 反照率与旧行为逐位相同。 */
     /**
      * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （4 个 false：HadleyCell/SoilMoisture/StationaryWave/Vegetation；2 个 true：OceanField/SimTerrain）。
+     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
      * **本份的含义是：Vegetation（植被—干旱度 §459）。** 引用时务必写全类名（如 `Vegetation.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
      */

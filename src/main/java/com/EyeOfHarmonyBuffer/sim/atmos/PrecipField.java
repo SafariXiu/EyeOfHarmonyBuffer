@@ -1613,6 +1613,29 @@ public final class PrecipField {
      */
     public static int EDDY_GRAD = 0;
 
+    /**
+     * ★★★ **§7220：涡动闭合的【形式】**。0 = 现状；1 = **闭式（无求导步长）**。默认 **0**。
+     *
+     * <p><b>为什么必须有一个闭式</b>（§7219 实测）：现状 `modelShapeVarMasked` 在 `c±d` 两点上
+     * 求 `K·X'` 再相减，`d = dphiDeg()`。P998 实测：只把 `EDDY_DPHI_DEG_V` 从 5 改成 15，
+     * `eddyMfc` 剖面的**中位相对差 92.75%**、**7/22 个纬度符号翻转**。
+     * 即【决定涡动供雨的场上有一个量级 100% 的自由参数】。
+     * <p>而 `EDDY_DPHI_DEG_V = 15` 的来历是 `:187` 那句
+     * `// S619: P617 scan gave best sign agreement at 15 deg (30/34 vs 25/34 at 5 deg)`
+     * ⇒ **步长是对着观测锚扫出来的**，用它产生符号再论证符号可信，是循环。
+     *
+     * <p><b>形式 1 是什么</b>：令 `P(y) = K(y)·X'(y)`（X' 取 PCHIP 解析导数，本身不含步长），
+     * 在同样的 5 度节点上对 `P` 做 PCHIP 并取**解析导数**：
+     * <pre>  MFC = gate(lat) · P'(lat) </pre>
+     * 与现状 `gate·d(K·X')/dy` **同构**，但闭式里【根本没有 d 这个量】。
+     * <p>★ 它不是「换一个拟合」，而是**删掉一个自由参数** —— 这正是 §7219 判据 U1 的内容：
+     * 新形式上改任何步长旋钮，`P'` 必须【逐位不变】（gate 仍共用，故判据用 `eddyMfc/gateOf` 表述）。
+     *
+     * <p><b>默认 0 ⇒ 逐位不变</b>（不进新分支）。成本：与 `eddyNodeSlopes` 同级（19 次节点求值，
+     * 纯记忆化在 `SLOPE_CACHE_P`，键 = theta，与既有 `SLOPE_CACHE` 同一套纪律）。
+     */
+    public static int EDDY_CLOSURE_FORM = 0;
+
     /** 涡动链的 5 度节点数（0..90 度，共 19 个）。 */
     public static final int EDDY_NN = 19;
 
@@ -1639,8 +1662,55 @@ public final class PrecipField {
     private static final class SlopeCache {
         boolean valid; double theta; int var;
         final double[] m = new double[EDDY_NN];
+        final double[] y = new double[EDDY_NN];   // §7220：节点值（乘积 P 用）
     }
     private static final ThreadLocal<SlopeCache> SLOPE_CACHE = new ThreadLocal<SlopeCache>();
+    /** §7220：乘积 `P = K*X'` 的节点缓存。与 SLOPE_CACHE 同一个类、同一套纯记忆化纪律。 */
+    private static final ThreadLocal<SlopeCache> SLOPE_CACHE_P = new ThreadLocal<SlopeCache>();
+
+    /** 等距 5 度节点上的 PCHIP 节点导数（Fritsch-Carlson）。与 {@link #eddyNodeSlopes} 同构。 */
+    static void pchipSlopes(double[] y, double[] m) {
+        double h = Math.toRadians(5.0) * WorldContract.R_EFF;
+        double[] dl = new double[EDDY_NN - 1];
+        for (int k = 0; k < EDDY_NN - 1; k++) dl[k] = (y[k + 1] - y[k]) / h;
+        m[0] = pchipEnd(dl[0], dl[1]);
+        for (int k = 1; k < EDDY_NN - 1; k++) {
+            double d0 = dl[k - 1], d1 = dl[k];
+            if (d0 * d1 <= 0.0) { m[k] = 0.0; continue; }
+            m[k] = 2.0 / (1.0 / d0 + 1.0 / d1);
+        }
+        m[EDDY_NN - 1] = pchipEnd(dl[EDDY_NN - 2], dl[EDDY_NN - 3]);
+    }
+
+    /** PCHIP 重建在 latRad 处的解析导数（任意节点值）。与 {@link #eddySlopePchip} 同构。 */
+    static double pchipSlopeOf(double[] node, double[] m, double latRad) {
+        double a = Math.abs(Math.toDegrees(latRad));
+        if (a >= 90.0) return 0.0;
+        double fr = a / 5.0;
+        int i = (int) Math.floor(fr);
+        if (i > EDDY_NN - 2) i = EDDY_NN - 2;
+        double t = fr - i;
+        double h = Math.toRadians(5.0) * WorldContract.R_EFF;
+        double y0 = node[i], y1 = node[i + 1];
+        double dHdt = y0 * (6.0 * t * t - 6.0 * t) + h * m[i] * (3.0 * t * t - 4.0 * t + 1.0)
+                    + y1 * (-6.0 * t * t + 6.0 * t) + h * m[i + 1] * (3.0 * t * t - 2.0 * t);
+        return dHdt / h;
+    }
+
+    /** §7220：`P = K*X'` 的节点值与节点导数（纯记忆化，键 = theta）。 */
+    private static SlopeCache eddyProdNodes(double theta) {
+        SlopeCache c = SLOPE_CACHE_P.get();
+        if (c == null) { c = new SlopeCache(); SLOPE_CACHE_P.set(c); }
+        if (c.valid && c.theta == theta) return c;
+        for (int k = 0; k < EDDY_NN; k++) {
+            double lat = Math.toRadians(k * 5.0);
+            // ★ 必须用 eddySlopePchip（不含步长），不能用 eddyDXdy（EDDY_GRAD=0 时会带回步长）
+            c.y[k] = kAt(lat, theta) * eddySlopePchip(lat, theta);
+        }
+        pchipSlopes(c.y, c.m);
+        c.valid = true; c.theta = theta; c.var = 0;
+        return c;
+    }
 
     /** 端点导数：标准三点公式 + Fritsch-Carlson 保形限幅。 */
     static double pchipEnd(double d0, double d1) {
@@ -1722,6 +1792,11 @@ public final class PrecipField {
      * <p>⚠ {@code EDDY_MASK_OUTSIDE = false}（默认）时**逐位不变** —— 调用点仍走 `modelShapeVarFull`。
      */
     static double modelShapeVarMasked(double latRad, double theta) {
+        // ★ §7220：闭式（无求导步长）。默认 EDDY_CLOSURE_FORM=0 ⇒ 不进本分支 ⇒ 逐位不变。
+        if (EDDY_CLOSURE_FORM == 1) {
+            SlopeCache pc = eddyProdNodes(theta);
+            return gateOf(latRad, theta) * pchipSlopeOf(pc.y, pc.m, latRad);
+        }
         double d = Math.toRadians(dphiDeg());
         double lim = Math.PI / 2.0 - d;
         double c = latRad > lim ? lim : (latRad < -lim ? -lim : latRad);

@@ -10,8 +10,8 @@ package com.EyeOfHarmonyBuffer.sim.world;
  *   地形   在 Z 上不重复
  * </pre>
  *
- * <p>纬度用**帐篷函数**：z=0 是赤道，z=MAX_D 是极点，z=Z_CYCLE 又回到赤道。
- * ⚠ 极点在 z=MAX_D 处是 N/S 焊死的折返点 —— 这就是裁决项 D1（极点分离）要改的东西。
+ * <p>纬度用**带符号的 4 段线性三角波**（裁决项 D1 已落地）。z=0 赤道 → MAX_D 北极 → 2·MAX_D 赤道
+ * → 3·MAX_D 南极 → 4·MAX_D 赤道；两个极点已真正分开，见 {@link #latOf(int)} 与下方 Z_CYCLE 条目。
  */
 public final class WorldContract {
 
@@ -32,7 +32,7 @@ public final class WorldContract {
      * <p><b>裁决：1,000,000 -> 20,000,000</b>（设计冻结 §29）。理由：
      * <ul>
      *   <li>极到赤道 = MAX_D = 10,000 km ⇒ 行星半径 6,366 km，**与地球 6,371 km 差 0.1%**；</li>
-     *   <li>东边界沿岸上升流层 T_E = tau*L_along/(2*rho*f) **正比于 L_along** ⇒ x20；</li>
+     *   <li>⚠ **本条论证已随 §77 失效**：沿岸累积闭合已退役，现行 T_E = g'H1*tau*T_up/(rho*f^2*L_x) ∝ 1/f²，与 L_along 无关；</li>
      *   <li>风带宽度/L_R 从 0.20 升到 4.07 ⇒ **斜压不稳定（风暴轴）从「不存在」变成「与地球同级」**；</li>
      *   <li>**西边界流完全不受影响**：curl ∝ 1/MAX_D 且 beta ∝ 1/MAX_D ⇒ curl/beta 不变。</li>
      * </ul>
