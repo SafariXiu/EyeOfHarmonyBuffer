@@ -1322,8 +1322,45 @@ public final class PrecipField {
     }
     private static final ThreadLocal<TSlopeCache> T_SLOPE = new ThreadLocal<TSlopeCache>();
 
+    // ==================== ★★★★★ §7363：四个斜率缓存的【配置失效入口】 ====================
+    /**
+     * ★★★★★ <b>§7363（挂账 2 的修法）：四个斜率缓存的【配置指纹】。</b>
+     *
+     * <p><b>修的 bug</b>（§7361/§7362）：{@link #T_SLOPE} · {@link #T850_SLOPE} ·
+     * {@link #SLOPE_CACHE} · {@link #SLOPE_CACHE_P} 的有效性判据【只有 theta（+ var）】，
+     * 而它们缓存的值**依赖配置** —— 例：{@code T_SLOPE} 缓存 {@code zonalSlTemp(lat, theta)}，
+     * 后者经 {@code Atmosphere.zonalMeanSeaLevelK → landMinusOceanSLK} 依赖
+     * {@link ClimlabEBM#ENABLED}（P1105 实测：45 度处 +0.108169 K）。
+     * <b>⟹ 切换配置后缓存仍命中 = 用了旧配置的值</b>（§7354 实测偏移 ~0.013）。
+     *
+     * <p><b>修法</b>：每次进入这四个填充函数时核对 {@code SimClimate.configStamp()}；
+     * 变了就 {@code remove()} 掉四个 ThreadLocal（下一次调用自然重建）。
+     * <b>零新常数</b> —— 复用既有的配置指纹机制（D58 的准入判据本来就是「改了结果的旋钮
+     * 就得让缓存失效」）。**不枚举开关** ⟹ 将来新增开关也不会再漏（候选 B 的理由）。
+     *
+     * <p><b>开销</b>：{@code configStamp()} = <b>104.9 ns/次</b>（P1106 实测），
+     * 相对 {@code mmPerDay} 的 <b>13.086 ms/次</b> = <b>0.0008%</b> ⟹ 可忽略（硬前提②）。
+     *
+     * <p><b>生产影响</b>：生产【不切换配置】⟹ 指纹不变 ⟹ 缓存只填一次 ⟹ <b>逐位不变</b>。
+     * 本修法只让【同 JVM 切换配置的探针 A/B】变可靠。
+     */
+    private static final ThreadLocal<Long> CFG_SEEN = new ThreadLocal<Long>();
+
+    private static void ensureCfg() {
+        Long seen = CFG_SEEN.get();
+        long now = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.configStamp();
+        if (seen == null || seen.longValue() != now) {
+            CFG_SEEN.set(Long.valueOf(now));
+            T_SLOPE.remove();
+            T850_SLOPE.remove();
+            SLOPE_CACHE.remove();
+            SLOPE_CACHE_P.remove();
+        }
+    }
+
     /** 37 个节点的 PCHIP 节点导数（dT/dy，K/m）。等距 ⇒ 权重 W1 = W2 = 3h。 */
     static double[] tNodeSlopes(double theta) {
+        ensureCfg();
         TSlopeCache c = T_SLOPE.get();
         if (c == null) { c = new TSlopeCache(); T_SLOPE.set(c); }
         if (c.valid && c.theta == theta) return c.m;
@@ -1373,6 +1410,7 @@ public final class PrecipField {
 
     /** 37 个节点的 PCHIP 节点导数（dT850/dy，K/m）。等距 ⇒ 权重 W1 = W2 = 3h。 */
     static double[] t850NodeSlopes(double theta) {
+        ensureCfg();
         T850SlopeCache c = T850_SLOPE.get();
         if (c == null) { c = new T850SlopeCache(); T850_SLOPE.set(c); }
         if (c.valid && c.theta == theta) return c.m;
@@ -1847,6 +1885,7 @@ public final class PrecipField {
 
     /** §7220：`P = K*X'` 的节点值与节点导数（纯记忆化，键 = theta）。 */
     private static SlopeCache eddyProdNodes(double theta) {
+        ensureCfg();
         SlopeCache c = SLOPE_CACHE_P.get();
         if (c == null) { c = new SlopeCache(); SLOPE_CACHE_P.set(c); }
         if (c.valid && c.theta == theta) return c;
@@ -1876,6 +1915,7 @@ public final class PrecipField {
      * 纯记忆化、不改任何读数。
      */
     static double[] eddyNodeSlopes(double theta) {
+        ensureCfg();
         SlopeCache c = SLOPE_CACHE.get();
         if (c == null) { c = new SlopeCache(); SLOPE_CACHE.set(c); }
         if (c.valid && c.theta == theta && c.var == EDDY_VAR) return c.m;
