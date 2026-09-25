@@ -367,13 +367,15 @@ public final class SoilMoisture {
         return w;
     }
 
-    /** 与 {@code PrecipField.mmPerDay} 同源的散度（中央差分，步长同 UPWIND 口径）。 */
+    /** 与 {@code PrecipField.mmPerDay} 同源的散度（中央差分，步长同 UPWIND 口径）。
+     *  ★ §7303：【外层】步长跟 `PrecipField.DIV_OUTER_STEP`（默认 0 = 逐位不变）。 */
     private static double diverge(int x, int z, long seed, int cell, double theta, int gradStep) {
-        double[] ux = Atmosphere.windAt(x + gradStep, z, seed, cell, theta, gradStep);
-        double[] uw = Atmosphere.windAt(x - gradStep, z, seed, cell, theta, gradStep);
-        double[] un = Atmosphere.windAt(x, z + gradStep, seed, cell, theta, gradStep);
-        double[] us = Atmosphere.windAt(x, z - gradStep, seed, cell, theta, gradStep);
-        return (ux[0] - uw[0]) / (2.0 * gradStep) + (un[1] - us[1]) / (2.0 * gradStep);
+        int os = (PrecipField.DIV_OUTER_STEP > 0) ? PrecipField.DIV_OUTER_STEP : gradStep;
+        double[] ux = Atmosphere.windAt(x + os, z, seed, cell, theta, gradStep);
+        double[] uw = Atmosphere.windAt(x - os, z, seed, cell, theta, gradStep);
+        double[] un = Atmosphere.windAt(x, z + os, seed, cell, theta, gradStep);
+        double[] us = Atmosphere.windAt(x, z - os, seed, cell, theta, gradStep);
+        return (ux[0] - uw[0]) / (2.0 * os) + (un[1] - us[1]) / (2.0 * os);
     }
 
     /**

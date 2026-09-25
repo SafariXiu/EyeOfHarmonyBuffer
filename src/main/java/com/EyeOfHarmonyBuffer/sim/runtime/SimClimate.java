@@ -421,6 +421,20 @@ public final class SimClimate {
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.WZM_FROM_QNET) {
             h = h * 31 + 0x7A124L;
         }
+        // §7303 散度的【外层】差分步长（0 = 用 gradStep ⇒ 关闭时指纹与历史完全一致，D58）。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.DIV_OUTER_STEP != 0) {
+            h = h * 31 + 0x7A13BL;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.DIV_OUTER_STEP;
+        }
+        // §7294 M 改由真垂直积分（Neelin & Zeng 2000）：按条件折入 ⇒ 关闭时指纹与历史完全一致（D58）。
+        //   数值离散参数也折入：它们会改变结果，不折入会让气候瓦片命中旧缓存。
+        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_FROM_VINT) {
+            h = h * 31 + 0x7A13AL;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_STEPS;
+            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_DT);
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_ADI_STEPS;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_A1STEPS;
+        }
         // §473 平流口径：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_ADVECT_BUDGET) {
             h = h * 31 + 0x7A123L;

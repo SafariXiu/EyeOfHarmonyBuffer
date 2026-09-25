@@ -97,6 +97,24 @@ public final class PrecipField {
     public static final double H_BL = Atmosphere.H_BL;
     /** w_loc 的截断（m/s）。 */
     public static double W_LOC_MAX = 2.0e-3;
+    /**
+     * ★ §7303：求【散度】用的【外层】差分步长（blocks；0 = 关，用 `gradStep` ⇒ 逐位不变）。
+     *
+     * <p>为什么需要（本会话 P1047/P1048 实测）：
+     * `gradStep` 默认 500 km = 4.5°经度。而**风场本身是长波主导的**
+     * （`u`/`v` 的 k1-4 占 0.56~0.89），**但 500 km 差分后 `divU` 变成短波主导**
+     * （k10-18 占 0.40~0.69）—— 因为一阶导数的谱权重是 `k`，短波被系统性放大。
+     * 把外层步长放到 **2000 km = 18°**（低通到波长 >= 36°）后，`divU` 回到长波主导
+     * （0.64~0.82），且**季风/沙漠的 `wLoc` 符号在 20/25/30N 上从 1/3 变成 3/3**，
+     * 在 2000~4000 km 上稳定。
+     *
+     * <p><b>选值规则（不是扫描出来的数）</b>：步长必须大到使 `divU` 的谱由长波主导。
+     * 该规则**可验证**（看谱），而不是「结果好不好」。
+     *
+     * <p>⚠ 坐标换算：`CIRC = 40_000_000` blocks ↔ 360°，Minecraft 一格 ~ 1 m
+     * ⇒ 世界周长 ~ 40 000 km（与地球同量级）⇒ 500 km = 4.5°、 2000 km = 18°。
+     */
+    public static int DIV_OUTER_STEP = 0;
 
     // ================= 风暴轴：瞬变斜压涡动的**水汽通量辐合** =================
 
@@ -658,6 +676,54 @@ public final class PrecipField {
     public static double M_FT_FRAC = 0.5;
 
     /**
+     * ★★★★★★ **§7294：`M` 改用 Neelin & Zeng (2000) 的【真垂直积分】口径。** 默认 false => 逐位不变。
+     *
+     * <p><b>为什么</b>（§7286/§7293）：`CALIBERS.md` 第 132/133/134 条已判定两层口径不足 ——
+     * 两层把 `M = ⟨Omega d_p h⟩` 退化成一个受 `M_FT_FRAC` 控制的数，其符号由建模选择决定
+     * （`M > 0 <=> q_BL > 0.00846`，§481），而**要修的沙漠恰好落在 `M < 0` 一侧**
+     * => `F_net/M` 在那里回落到旧闭合（陆海开关）=> 同纬度分不出季风与沙漠（§7280/§7286）。
+     *
+     * <p><b>形式（NZ2000 逐字，§7293 已定）</b>
+     * <pre>
+     *   (3.2)   A_1^+(p) = INT_p^{p_rs} A_1(p') d ln p'      （权重 d ln p'，无归一化因子）
+     *   (3.10)  V_1(p)   = a_1^+(p) - a_1^c
+     *           Omega_1(p) = -V_1(p)
+     *   Table 1 V1s = V_1(p_rs) = -a_1^c = -0.20  =>  a_1^c = 0.20
+     * </pre>
+     * `M = <Omega d_p h>` 在【高度坐标】下的等价形式，且与两层口径**同量纲**（J/m^2）：
+     * <pre>
+     *   M = RHO_AIR * INT_0^{H_EFF} Omega_1(p(z)) * (dh/dz) dz
+     * </pre>
+     * <b>一致性自检</b>：取 `Omega_1 == -1`、积分到 `zFT` 时，本式【恒等于】两层口径的
+     * `RHO_AIR * H_EFF * dh`（因为 `INT_0^{zFT} (-dh/dz) dz = h(0) - h(zFT)`）。
+     *
+     * <p>⚠ <b>两条【我们的推论】，不是文献逐字</b>（§7293 未定，实现前已声明）：
+     * <ol>
+     * <li>`A_1(p)` 的归一化取 `A_1(p_s) = 1`（「一个单位的地表温度扰动」）——
+     *     NZ2000 不给 `A_1` 的剖面，故其绝对标度无法从文献取；</li>
+     * <li>`<...>` 的积分测度取【高度】而非 `dp/g` —— 这样 `M` 与两层口径同量纲（J/m^2），
+     *     不需要引入任何归一化因子（§7293 已记「归一化因子无法判定」）。</li>
+     * </ol>
+     *
+     * <p>⚠ <b>`M_FT_FRAC` 对本路径【零影响】</b>（§7289 铁律乙）。
+     */
+    public static boolean M_FROM_VINT = false;
+
+    /** `M` 垂直积分的层数 —— **数值离散参数，非物理常数**（用不敏感判据定，不得拟合）。 */
+    public static int M_VINT_STEPS = 24;
+    /** `A_1(p)` 数值微分的地表温度增量 K —— **数值参数，非物理常数**。 */
+    public static double M_VINT_DT = 1.0;
+    /** `moistAdiabatT` 内部积分步数 —— **数值参数**。 */
+    public static int M_VINT_ADI_STEPS = 12;
+    /** `A_1^+(p)` 积分的步数 —— **数值参数**。 */
+    public static int M_VINT_A1STEPS = 24;
+
+    /** §7294：`a_1^c` —— NZ2000 Table 1 自带标签「Surface value of baroclinic wind basis function」
+     *  给出 `V1s = -0.20`，而 `(3.10)`+`(3.2)` 逐字 => `V1s = -a_1^c` => `a_1^c = 0.20`。
+     *  <b>不得取 `a_hat_1 = 0.38`</b>（§7292 那个推论已被 §7293 推翻，它误用了 `dp` 权重）。 */
+    public static final double A1C = 0.20;
+
+    /**
      * §480：`+H_bl*F_net/M`。`F_net` 与 `M` 全部用模型已有的量；**只做一次前向代入**。
      */
     public static double wEffQnet(double latRad, double theta, double divU,
@@ -673,13 +739,19 @@ public final class PrecipField {
         double pEst = precip(q, wOld) * 86400.0 * 1000.0;          // mm/day
         double qLat = Radiation.LV * pEst / 86400.0;               // W/m^2
         double fNet = qRad + qSens + qLat;
-        // ---- M = rho*H_EFF*(h_BL - h_FT)，h = cp*T + g*z + L*q ----
-        double zFT = M_FT_FRAC * Atmosphere.H_EFF;
-        double qftF = Math.exp(-zFT / H_MOIST);
-        double dh = Radiation.CP * (Atmosphere.GAMMA * zFT)
-                  - G_ACC * zFT
-                  + Radiation.LV * q * (1.0 - qftF);
-        double M = Atmosphere.RHO_AIR * Atmosphere.H_EFF * dh;
+        // ---- M：两层近似（默认，逐位不变）或 §7294 的真垂直积分 ----
+        double M;
+        if (M_FROM_VINT) {
+            // §7294：真垂直积分。**不读 M_FT_FRAC**（§7289 铁律乙）。
+            M = mVerticalIntegral(tQ, q);
+        } else {
+            double zFT = M_FT_FRAC * Atmosphere.H_EFF;
+            double qftF = Math.exp(-zFT / H_MOIST);
+            double dh = Radiation.CP * (Atmosphere.GAMMA * zFT)
+                      - G_ACC * zFT
+                      + Radiation.LV * q * (1.0 - qftF);
+            M = Atmosphere.RHO_AIR * Atmosphere.H_EFF * dh;
+        }
         qnetLastM = M; qnetLastFnet = fNet;
         if (M <= 1.0e-6) {
             qnetNegM++;
@@ -689,6 +761,82 @@ public final class PrecipField {
             return wOld;
         }
         return Atmosphere.H_BL * fNet / M;
+    }
+
+    /** §7294：对流层顶参考气压 `p_rt = p_rs - p_T`（NZ2000 Table 1: `p_T` 约 `8e4 Pa`）。 */
+    public static final double P_TROPO = P_SURF - 8.0e4;
+
+    /**
+     * §7294：`A_1(p) = dT^c/dT_sfc` —— 湿绝热扰动形状，归一化 `A_1(p_s) = 1`。
+     *
+     * <p>用 {@link ParcelLift#moistAdiabatT} 数值微分求得（NZ2000 `:99` 逐字：
+     * 「A1(p) gives the vertical shape of the moist adiabat perturbation per hb perturbation.
+     * Below the reference lifting condensation level, A1(p) is a dry adiabat.」）。
+     *
+     * <p>⚠ 归一化 `A_1(p_s) = 1` 是【我们的推论】（§7293 未定；NZ2000 不给 `A_1` 的剖面）。
+     */
+    private static double mIntA1(double tSfc, double pPa) {
+        double d = M_VINT_DT;
+        double tp = ParcelLift.moistAdiabatT(tSfc + d, P_SURF, pPa, M_VINT_ADI_STEPS);
+        double tm = ParcelLift.moistAdiabatT(tSfc - d, P_SURF, pPa, M_VINT_ADI_STEPS);
+        return (tp - tm) / (2.0 * d);
+    }
+
+    /**
+     * §7294：`a_1^+(p) = INT_p^{p_rs} A_1(p') d ln p'` —— NZ2000 `(3.2)`，**无归一化因子**。
+     *
+     * <p>中点法在 `ln p` 上等步长积分（低层分辨率更好）。
+     */
+    private static double mIntA1Plus(double tSfc, double pPa) {
+        int n = M_VINT_A1STEPS;
+        if (n < 1) n = 1;
+        double lo = Math.log(pPa), hi = Math.log(P_SURF);
+        if (!(hi > lo)) return 0.0;
+        double sum = 0.0;
+        for (int i = 0; i < n; i++) {
+            double a = lo + (hi - lo) * i / n;
+            double b = lo + (hi - lo) * (i + 1) / n;
+            sum += mIntA1(tSfc, Math.exp(0.5 * (a + b))) * (b - a);
+        }
+        return sum;
+    }
+
+    /**
+     * §7294：`Omega_1(p) = -V_1(p) = -(a_1^+(p) - a_1^c)`，在**高度坐标**下乘以 `H_EFF`（带长度量纲）。
+     *
+     * <p>为什么必须带 `H_EFF`：NZ2000 的结构函数是无量纲的，而本模型的 `M` 量纲是 `J/m^2`
+     * （两层式 `RHO_AIR*H_EFF*dh` 里 `dh` 是 `J/kg`）。乘 `H_EFF` 后，
+     * **`V_1 == -1` 时本路径【恒等】于两层式** —— 这是可验证的自洽性判据。
+     */
+    private static double mIntOmega(double tSfc, double pPa) {
+        return -(mIntA1Plus(tSfc, pPa) - A1C) * Atmosphere.H_EFF;
+    }
+
+    /**
+     * §7294：`M = RHO_AIR * INT_0^{H_EFF} Omega_1(p(z)) * (-dh/dz) dz`。
+     *
+     * <p>MSE 廓线用**模型自己的环境廓线**（与两层式同一套，逐字对应 `:677-681`）：
+     * `h(z) = cp*(tQ - GAMMA*z) + g*z + L*q*exp(-z/H_MOIST)`
+     * => `dh/dz = -cp*GAMMA + g - (L*q/H_MOIST)*exp(-z/H_MOIST)`。
+     *
+     * <p>**自检**：`Omega_1 == H_EFF`（即 `V_1 == -1`）时 `M = RHO_AIR*H_EFF*(h(0)-h(H_EFF))`
+     * —— 与两层式 `RHO_AIR*H_EFF*dh` 恒等（取 `M_FT_FRAC = 1`）。
+     */
+    private static double mVerticalIntegral(double tQ, double q) {
+        int n = M_VINT_STEPS;
+        if (n < 1) n = 1;
+        double zTop = Atmosphere.H_EFF;
+        double dz = zTop / n;
+        double sum = 0.0;
+        for (int i = 0; i < n; i++) {
+            double z = (i + 0.5) * dz;
+            double p = ParcelLift.pOfZ(z, tQ, Atmosphere.GAMMA);
+            if (!(p > 0.0) || p > P_SURF) break;
+            double dhdz = -Radiation.CP * Atmosphere.GAMMA + G_ACC
+                        - Radiation.LV * q * Math.exp(-z / H_MOIST) / H_MOIST;
+            sum += mIntOmega(tQ, p) * (-dhdz) * dz;
+        }
+        return Atmosphere.RHO_AIR * sum;
     }
     /**
      * ★★★★★★ **§473：稳态【平流】水汽收支 —— §472 那个局地平衡的严格版。** 默认 false ⇒ 逐位不变。
@@ -2488,11 +2636,14 @@ public final class PrecipField {
         }
         if (savedBeta == null) BETA_OVERRIDE.remove(); else BETA_OVERRIDE.set(savedBeta);
         DIAG.get()[5] = q; DIAG.get()[6] = tSl; DIAG.get()[13] = betaUsed;
-        double[] ux = Atmosphere.windAt(x + gradStep, z, seed, cell, theta, gradStep);
-        double[] uw = Atmosphere.windAt(x - gradStep, z, seed, cell, theta, gradStep);
-        double[] un = Atmosphere.windAt(x, z + gradStep, seed, cell, theta, gradStep);
-        double[] us = Atmosphere.windAt(x, z - gradStep, seed, cell, theta, gradStep);
-        double divU = (ux[0] - uw[0]) / (2.0 * gradStep) + (un[1] - us[1]) / (2.0 * gradStep);
+        // ★ §7303：【外层】步长可单独放大（`windAt` 内部仍用 `gradStep`）。
+        //   `DIV_OUTER_STEP = 0` 时 `os == gradStep` ⇒ 与历史【逐位相同】。
+        int os = (DIV_OUTER_STEP > 0) ? DIV_OUTER_STEP : gradStep;
+        double[] ux = Atmosphere.windAt(x + os, z, seed, cell, theta, gradStep);
+        double[] uw = Atmosphere.windAt(x - os, z, seed, cell, theta, gradStep);
+        double[] un = Atmosphere.windAt(x, z + os, seed, cell, theta, gradStep);
+        double[] us = Atmosphere.windAt(x, z - os, seed, cell, theta, gradStep);
+        double divU = (ux[0] - uw[0]) / (2.0 * os) + (un[1] - us[1]) / (2.0 * os);
         DIAG.get()[0] = divU;                       // 诊断：原始 divU（只来自 cellPressure）
         // ★ S2 接线（设计冻结 393）：把【定常波】的辐合场 div(V) 叠进来。
         //   为什么：现在 divU 完全来自 cellPressure，而 352/356 已实测那是个【陆海开关】
