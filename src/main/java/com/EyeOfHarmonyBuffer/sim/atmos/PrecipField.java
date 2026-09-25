@@ -2672,7 +2672,7 @@ public final class PrecipField {
         if (WZM_FROM_QNET) {
             double chvQ = Radiation.bulkCoeff(k, Math.hypot(u0[0], u0[1]));
             double decQ = Atmosphere.subsolarLat(theta);
-            double asrQ = Radiation.insolation(lat, decQ) * (1.0 - Radiation.albedo(k > 0.5, tQ));
+            double asrQ = Radiation.absSolarSurface(lat, decQ, Radiation.albedo(k > 0.5, tQ));   // §7353 单源
             wE = wEffQnet(lat, theta, divU, q, tQ, depl, k,
                           SoilMoisture.ENABLED ? betaUsed : 1.0, chvQ, asrQ);
         } else {

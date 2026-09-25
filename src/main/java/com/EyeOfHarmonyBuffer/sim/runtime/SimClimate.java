@@ -345,6 +345,7 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(Atmosphere.PLATEAU_AMP);
         h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);   // ★ S1a（§385）
         h = h * 31 + (Radiation.BUCKET_BETA ? 1 : 0);                      // ★ S3（§387）
+        h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
         h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.ENABLED ? 1 : 0);   // ★ S2（§393）
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
@@ -909,7 +910,7 @@ public final class SimClimate {
             double chv0 = Radiation.bulkCoeff(kap, Math.hypot(ux, uz));
             double alb0 = Radiation.ALB_SEA
                         + Atmosphere.clamp01(kap) * (Radiation.ALB_LAND - Radiation.ALB_SEA);
-            double absS0 = (1.0 - alb0) * Radiation.insolation(lat, Atmosphere.subsolarLat(SEASON[0]));
+            double absS0 = Radiation.absSolarSurface(lat, Atmosphere.subsolarLat(SEASON[0]), alb0);   // §7353 单源
             double qa0 = PrecipField.moisture(tSea, 0.0, kap);
             double beta0 = 1.0;
             if (Radiation.BUCKET_BETA) {

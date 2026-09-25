@@ -393,7 +393,12 @@ public final class Atmosphere {
      * **回答不了「换一个陆地分布会怎样」**。把它拆成 {@code T_OCEAN} 与 {@code T_LAND} 两个
      * 独立事实之后，用本世界自己的 {@code kappa} 重新混合 —— 这才是能搬运的东西。
      */
-    public static double oceanBaseK(double latRad) { return ZonalTables.tOceanK(latRad); }
+    public static double oceanBaseK(double latRad) {
+        // ★ §7344/§7345：climlab EBM 稳态解（内生）。默认关 ⇒ 逐位不变。
+        //   为什么要有它：本方法的 javadoc 自己指出「只有一个外生 T_zm 就回答不了『换一个陆地分布会怎样』」。
+        //   内生化之后纬向温度不再依赖地球的观测表；且 §7345 实测该解与 ERA5 观测支逐点差 ~2 K（最大 5.66 K）。
+        return ClimlabEBM.ENABLED ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
+    }
 
     /**
      * **陆地相对海洋的海平面年均温差（K）**：{@code T_LAND_SL − T_OCEAN}。
@@ -402,10 +407,41 @@ public final class Atmosphere {
      * （陆面平均约 840 m）。而本模型另外还要减一次 {@code Γ*h}（每列自己的精确高程）
      * ⇒ 不剥出来就是**同一份海拔减两次**（在 75 度能差 10 K 以上）。
      * 剥出来之后，「海平面上的陆地」比海洋暖/冷这么多，模型的 {@code -Γ*h*κ} 再把它降到位。
+     *
+     * <p>★★★★★ <b>§7350 口径裁决（<u>推翻 §7347 的相反裁决</u>）：这里的 {@code tOceanK} <u>必须</u>与
+     * {@link #oceanBaseK} 走【同一个】开关。</b>
+     *
+     * <p><b>为什么 §7347 的裁决是错的</b>：当时论证「{@code Δ} 是观测事实，所以保持观测的陆海温差」——
+     * 但真正发生的代数不是那样。{@link #annualSeaLevelTemp} 是
+     * <pre>  T = oceanBaseK + kappa * Delta + (1-kappa) * sstAnom  </pre>
+     * 若 {@code oceanBaseK} 内生而 {@code Delta} 用观测的 {@code tOceanK}，则陆地上（{@code kappa = 1}）
+     * <pre>  T_land = oceanBaseK_endo + (tLandK + GAMMA*zbar - tOceanK_obs)  </pre>
+     * ⟹ **陆地把「内生海洋相对观测海洋的偏差」整个继承了下来**，而**观测的陆地温度里并没有那个偏差**
+     * ⟹ **这才是混口径**（一个分量含内生偏差、另一个不含，却把它们相加）。
+     *
+     * <p><b>P1086 实测（该偏差逐位精确地传给了陆地）</b>：
+     * <pre>
+     *   lat   oceanBaseK_endo  tOceanK_obs   偏差      陆地年温 false -> true
+     *    15      297.87         298.84      -0.97      302.74 -> 301.78  (-0.97)
+     *    25      293.73         295.85      -2.12      300.06 -> 297.94  (-2.12)
+     *    30      291.02         293.57      -2.55      296.97 -> 294.42  (-2.55)
+     *    90      263.61         260.23      +3.38      237.42 -> 240.81  (+3.38)
+     * </pre>
+     * 15~30N 平均 −1.775 K ⟹ {@code qSat} 比 0.8518（水汽 −14.8%）
+     * ⟹ **P499 的 {@code GATE_MONSOON_IDX} 从 +0.205 掉到 +0.155（−24.4%）** —— 这就是那 −24.4% 的机理。
+     *
+     * <p><b>正确形式</b>：{@code Delta} 的两个分量必须【同源】。{@code tLandK} 与 {@code tOceanK} 都来自
+     * 同一份 ERA5 观测 ⟹ 当海洋支被换成内生解时，{@code Delta} 也必须用同一个内生海洋，
+     * 这样陆地上 {@code T_land = tLandK + GAMMA*zbar} —— **陆地保持观测的绝对水平、海洋用内生**，
+     * 两个分量各自与自己的来源自洽。
+     *
+     * <p>★ 附带正确性：{@code Delta = T_LAND_SL − T_OCEAN} 因此变大（极地尤其），
+     * 而 §7349 实测「陆面能量平衡只给出观测陆海温差的 ~60%」⟹ 这个方向是对的。
      */
     public static double landMinusOceanSLK(double latRad) {
-        return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad)
-             - ZonalTables.tOceanK(latRad);
+        // ★ §7350：与 oceanBaseK 走【同一个】开关（两个分量必须同源）—— 见上方口径裁决。
+        double tOcean = ClimlabEBM.ENABLED ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
+        return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad) - tOcean;
     }
 
     /**

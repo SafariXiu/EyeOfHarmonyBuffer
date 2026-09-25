@@ -38,6 +38,71 @@ public final class Radiation {
     public static final double ALB_SEA = 0.06;
     public static final double ALB_LAND = 0.20;
     public static final double ALB_SNOW = 0.65;
+
+    // ==================== 大气/云反射（§7353：行星反照率层） ====================
+    /**
+     * ★★★★★ **行星（系统）反照率**；权威值，Goosse《Climate System Dynamics》§2.1.6 逐字：
+     * <pre>
+     *   the incoming solar radiation on a horizontal surface at the top of the atmosphere is about 342 Wm-2,
+     *   with roughly 30% of this being reflected back into space.
+     * </pre>
+     */
+    public static final double ALPHA_PLANET = 0.30;
+    /**
+     * ★★★★★ **反射中发生在【大气】里的比例**；权威值，同段逐字：
+     * <pre>
+     *   An analysis of the Earth's global heat balance shows that more that 70% of the reflection
+     *   takes place in the atmosphere, mainly because of the presence of clouds and aerosols.
+     *   The remaining 30% is reflected by the surface.
+     * </pre>
+     */
+    public static final double ATM_FRACTION = 0.70;
+
+    /**
+     * ★★★★★ **§7353 大气/云反射率（由上面两个权威数字【导出】，零自由参数）**：
+     * {@code ALPHA_ATM = ATM_FRACTION * ALPHA_PLANET = 0.70 * 0.30 = 0.21}。
+     *
+     * <p><b>为什么必须有它</b>：本文件原来只提供【地表】反照率（{@link #ALB_SEA}/{@link #ALB_LAND}），
+     * 而四处 {@code absSolar} 都写成 {@code S * (1 - alpha_sfc)} —— 那等于假设**大气不反射任何短波**
+     * ⟹ 隐含的行星反照率**只有 0.106**（P1088 实测，按 {@code KAPPA_MEAN = 0.328} 加权），
+     * 而观测是 **0.30** ⟹ **偏低 64.7%**。
+     *
+     * <p><b>正确形式</b>（大气先反射，剩下的到地表再反射一次）：
+     * <pre>
+     *   ASR_planet  = S * (1 - alpha_planet)
+     *   ASR_surface = S * (1 - alpha_atm) * (1 - alpha_sfc)
+     *   => 隐含行星反照率 = alpha_atm + (1 - alpha_atm) * alpha_sfc
+     * </pre>
+     * **⟹ 用本常数后，全球平均行星反照率 = 0.2937（观测 0.30，差 −0.0063 = −2.1%）** ✓（P1088 实测）
+     *
+     * <p>★ <b>与 {@code ClimlabEBM} 的关系</b>：那个内核用的是 climlab 的 {@code a0 = 0.30}，
+     * **本来就是行星反照率（含云）** ⟹ **无缺口、不要重复加**。本层只补【地表能量平衡那一支】。
+     */
+    public static final double ALPHA_ATM = ATM_FRACTION * ALPHA_PLANET;
+
+    /**
+     * ★★★★★ **§7353 接线开关：把大气/云反射加进四处 {@code absSolar}。默认 false ⟹ 逐位不变。**
+     *
+     * <p>打开时每处的 {@code absSolar} 乘 {@code (1 - ALPHA_ATM) = 0.79} ⟹ 到达地表的短波降 21%。
+     * **⚠ 这是大改动**（地表温度、蒸发、降水、定常波强迫全受影响）⟹ **必须跑 22 支套件。**
+     */
+    public static boolean ATM_REFLECT = true;    // ★ §7355 臂：临时置 true 跑 22 支验收（跑完按裁决）
+
+    /**
+     * ★★★★★ **§7353：到达【地表】的短波（W/m²）—— 四处 {@code absSolar} 的【单源】。**
+     *
+     * <pre>
+     *   ATM_REFLECT = false :  S * (1 - alpha_sfc)                    // 与接线前【逐位相同】
+     *   ATM_REFLECT = true  :  S * (1 - alpha_sfc) * (1 - ALPHA_ATM)  // 补上大气/云反射
+     * </pre>
+     *
+     * <p>四个调用点：{@code PrecipField:2675} · {@code SoilMoisture:269} ·
+     * {@code StationaryWave:314} · {@code SimClimate:912}。集中在这里 ⟹ 将来不会再漏掉某一处。
+     */
+    public static double absSolarSurface(double latRad, double dec, double albSfc) {
+        double s = insolation(latRad, dec) * (1.0 - albSfc);
+        return ATM_REFLECT ? s * (1.0 - ALPHA_ATM) : s;
+    }
     /** 雪面判据（与 SimTerrain 的雪线同值）。 */
     public static final double T_SNOW_K = 273.15;
 

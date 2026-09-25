@@ -266,8 +266,7 @@ public final class SoilMoisture {
             //   E_p 取 beta=1（潜在表面）=> 与 beta 无关 => 下面的仿射分解仍然成立。
             double qa1 = PrecipField.RH_SEA * qsTQ * depl;
             double dec = Atmosphere.subsolarLat(theta);
-            double absSolar = Radiation.insolation(lat, dec)
-                            * (1.0 - Radiation.albedo(k > 0.5, tSl));
+            double absSolar = Radiation.absSolarSurface(lat, dec, Radiation.albedo(k > 0.5, tSl));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
             //   RS_BARE=0（默认）⇒ rsTot==RS_SURF ⇒ 逐位不变。

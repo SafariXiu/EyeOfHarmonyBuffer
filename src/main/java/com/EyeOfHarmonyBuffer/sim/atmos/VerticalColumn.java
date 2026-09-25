@@ -259,7 +259,12 @@ public final class VerticalColumn {
         // 短波（纯吸收，地面反照率一次反射）
         double mu = Math.max(0.05, cosZenith);
         double[] sDn = new double[N + 1];
-        sDn[0] = S0 * mu;
+        // ★★★★★ §7357b：大气/云反射（与 Radiation.ATM_REFLECT 同一个开关、同一个常数）。
+        //   本类原来写 sDn[0] = S0*mu —— 那等于假设大气不反射任何短波 ⟹
+        //   行星反照率 = ALBEDO = 0.12（P1073 实测 asr=403.55 / sDn[0]=415.4 ⟹ 只有 2.85%）
+        //   而观测是 0.30（Goosse §2.1.6）。这里让大气先反射 (1 - ALPHA_ATM)，剩下的再到地表反射一次。
+        //   ★ 下游【自动继承】：sDn[k+1] 由 sDn[k] 递推（:263）⟹ sDn[N] / swSfcDown / sUp / asr 全部随之修正。
+        sDn[0] = Radiation.ATM_REFLECT ? S0 * mu * (1.0 - Radiation.ALPHA_ATM) : S0 * mu;
         for (int k = 0; k < N; k++) sDn[k + 1] = sDn[k] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])) / mu);
         double[] sUp = new double[N + 1];
         sUp[N] = ALBEDO * sDn[N];

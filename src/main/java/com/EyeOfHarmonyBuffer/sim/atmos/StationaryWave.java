@@ -311,7 +311,7 @@ public final class StationaryWave {
         double albHere = Radiation.albedo(isLandHere, ta)
                        + (isLandHere ? Vegetation.albedoAdd(veg) : 0.0);
         if (albHere > 0.95) albHere = 0.95;
-        double absSolar = Radiation.insolation(lat, dec) * (1.0 - albHere);
+        double absSolar = Radiation.absSolarSurface(lat, dec, albHere);   // §7353 单源
         double qa = PrecipField.Q_FROM_SOURCE
                   ? PrecipField.moistureFromSource(x, z, seed, cell, theta, gradStep, ta, 0.0, k, u[0], u[1])
                   : PrecipField.moisture(ta, 0.0, k);
