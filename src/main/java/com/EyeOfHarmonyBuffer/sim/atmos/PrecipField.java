@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
 
 import com.EyeOfHarmonyBuffer.sim.hydro.WaterField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.litho.TalosField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
@@ -2575,6 +2576,87 @@ public final class PrecipField {
     //   ⇒ 采纳条件（javadoc :2251「必须先有区域 2-D 机制」）未满足，故恢复 false。
     public static boolean WZM_FROM_TABLE = false;   // §436：默认撤回，理由见上
 
+    /**
+     * ★★★★★★★★ §7587（2026-09-27）：**迎风坡增雨 —— 地形强迫的垂直速度**。默认 **false**。
+     *
+     * <h3>缺的是什么</h3>
+     * <p>本仓的降水驱动量只有 {@code w_eff = w_zm(φ−δ) + clamp(−H_bl·∇·U, ±2e-3)}：
+     * 纬向平均上升支 + **气压梯度驱动的辐合**。而 {@code ∇·U} 来自
+     * {@code cellPressure}（海陆对比），**不含地形** ⟹ 山**不会**逼空气爬升
+     * ⟹ 高山拿不到增雨。实测（P1225）：中位 P 从低地的 1.608 mm/d 单调降到
+     * 1600-2500 m 的 0.596（只剩 **37%**），而真实地球是**山地多于低地**。
+     *
+     * <h3>缺的那一项（逐字出处）</h3>
+     * <p>Smith &amp; Barstad (2004, AMS preprint，本仓 {@code refs/oro_smith_barstad_ams.pdf}:33-54}) 逐字：
+     * <pre>
+     *   The source term (S) in (1a) can be the classical upslope form
+     *       S = Cw · ρ · U · ∇h(x, y)
+     *   …As lifting in front of a mountain drives S positive, the transformation term
+     *   in (1a) converts cloud water to hydrometeors in (1b). S gets the opposite sign
+     *   in downslope regions, drying the air and evaporating hydrometeors.
+     * </pre>
+     * 同一份报告的量级核对（:261-264 逐字）：raw upslope model 在迎风坡给
+     * **P = 15 mm/hr 的常值**，而在背风坡给**等量的负值**。
+     *
+     * <h3>接线形式（零新常数）</h3>
+     * <p>本仓已有 {@code P_conv = EPS_C·ρ_a·q·max(0, w_eff)/ρ_w}，而 {@code w_eff} **就是**那个
+     * 「rate of ascent」⟹ 只需给它加一项地形：
+     * <pre>
+     *   w_terrain = U · ∇h          （量纲 (m/s)·(无量纲) = m/s，与 w 同量纲 ✓）
+     *   ⟹ 迎风坡（U·∇h &gt; 0）⟹ w_eff 增大 ⟹ P_conv 增大 ✓
+     *   ⟹ 背风坡（U·∇h &lt; 0）⟹ max(0,·) 自然截断 ⟹ 不增 ✓   （与上面 S 反号那句一致）
+     * </pre>
+     * 差分步长取 {@link #UPWIND_STEP}（= 150 km）—— **与 {@link #upwindElev} 同一套地形尺度**，
+     * 所以**零新尺度**。
+     *
+     * <p>{@code U} 与 {@code ∇h} 都是本仓已有的量 ⟹ **零新常数** ✓
+     */
+    public static boolean TERRAIN_W = true;      // ★ §7588：打开（迎风坡增雨）
+
+    /**
+     * 地形强迫的垂直速度 {@code U·∇h}（m/s）。形式取自 Smith &amp; Barstad (2004) 的
+     * classical upslope form（见 {@link #TERRAIN_W} 的 javadoc，逐字）。
+     *
+     * <p>中心差分，步长 {@link #UPWIND_STEP}。地形量用 {@link PlateField#elevationWithCell}。
+     */
+    public static double wTerrain(int x, int z, long seed, int cell, double u, double v) {
+        // ★★★★★★★★ §7589：差分步长【不能用 UPWIND_STEP（150 km）】—— 那比最短地形波长还大 3 倍，
+        //   山脉会被完全混叠掉（M3-大气层设计调研:638 逐字：「Δs = 25 km（**必须显著小于
+        //   PlateField.OROGEN_W = 90 km**，否则山脉会被混叠掉）」）。
+        //   这里改用【本仓自己的地形最短波长的一半】：TalosField.HF_WL_MIN/2 = 23,437.5 m
+        //   —— 由 hf 的 oct=7 与 wl0=3e6 【逐字导出】⟹ 零新常数。
+        final int h = (int) (TalosField.HF_WL_MIN * 0.5);
+        // ★★★★★★★★ §7589：云水/降水物的延迟（Smith & Barstad 2004 方程 1a/1b 逐字）：
+        //     (1a)  U·∇q_c = S − q_c/τ_c
+        //     (1b)  U·∇q_h = q_c/τ_c − q_h/τ_h
+        //   两条串联的指数延迟，地面降水相对抬升点沿风下移 |U|·(τ_c + τ_h)。
+        //   τ_c = τ_h = 1000 s（该报告 :257-258 逐字：「τ_c = τ_f = 1000 s」）。
+        //   所以「本地抬升」应换成「上游 Δs 处的抬升」，而 Δs = |U|·(τ_c+τ_h)
+        //   由 U 与逐字的 τ 导出，零新常数。
+        //   为什么需要：:261-276 逐字说 raw upslope model 过强（背风坡拿到等量负值），
+        //   而 "The effect of cloud delay reduces the precipitation further, and shifts
+        //   the precipitation peak downstream."
+        double sp = Math.hypot(u, v);
+        int xd = x, zd = z;
+        if (TERRAIN_W_DELAY && sp > 0.1) {
+            double dsDelay = sp * (TERRAIN_TAU_C + TERRAIN_TAU_H);   // = |U|·(τ_c+τ_h)
+            xd = x - (int) Math.round(u / sp * dsDelay);
+            zd = z - (int) Math.round(v / sp * dsDelay);
+        }
+        double dhdx = (PlateField.elevationWithCell(xd + h, zd, seed, cell)
+                     - PlateField.elevationWithCell(xd - h, zd, seed, cell)) / (2.0 * h);
+        double dhdz = (PlateField.elevationWithCell(xd, zd + h, seed, cell)
+                     - PlateField.elevationWithCell(xd, zd - h, seed, cell)) / (2.0 * h);
+        return u * dhdx + v * dhdz;
+    }
+
+    /** 云水转换时标 τ_c（s）。Smith & Barstad (2004) 该报告 :257-258 逐字：τ_c = τ_f = 1000 s。 */
+    public static double TERRAIN_TAU_C = 1000.0;
+    /** 降水物落地时标 τ_h（s）。同上逐字（报告里 τ_c = τ_f，两者同值）。 */
+    public static double TERRAIN_TAU_H = 1000.0;
+    /** 是否启用延迟下移（默认 true）。false 则用本地抬升（= 纯 raw upslope，B4 过强）。 */
+    public static boolean TERRAIN_W_DELAY = true;
+
     public static double wEff(double latRad, double theta, double divU) {
         double shifted = Math.toDegrees(latRad - precipSubsolarLat(theta));
         // ⚠ 2026-09-13 修正（审计 D39，用户裁决）：原来是**硬截断**
@@ -2751,6 +2833,13 @@ public final class PrecipField {
                           SoilMoisture.ENABLED ? betaUsed : 1.0, chvQ, asrQ);
         } else {
             wE = wEff(lat, theta, divU);
+        }
+        // ★★★★★★★★ §7587：地形强迫项（迎风坡增雨）。默认 false ⟹ 整段跳过 ⟹ 逐位不变。
+        //   形式逐字取自 Smith & Barstad (2004) 的 classical upslope form  S = Cw*rho*U·∇h；
+        //   本仓的 w_eff 就是那个 "rate of ascent" ⟹ 直接加一项 U·∇h（量纲同为 m/s）。
+        //   迎风坡 U·∇h>0 ⟹ 增雨；背风坡 U·∇h<0 ⟹ 被下游的 max(0,wEff) 自然截断 ⟹ 不增。
+        if (TERRAIN_W) {
+            wE += wTerrain(x, z, seed, cell, u0[0], u0[1]);
         }
         DIAG.get()[3] = wE;                         // 诊断：wEff
         // ★★★ §472：边界层水汽【收支口径】。E = P + V ⇒ q 的闭式解（无新常数、零迭代）。

@@ -477,7 +477,17 @@ public final class TalosField {
     }
 
     /** 细节层（宏观海岸线粗糙度）。 */
-    public static double hf(double x, double z, long seed) { return fbm(x, z, seed ^ 0x99L, 7, 3_000_000.0, GHH); }
+    /** hf 的八度数（原来写死在 hf 里）。提到常量只为让【别的类能引用同一个尺度】。 */
+    public static final int HF_OCT = 7;
+    /** hf 的最粗波长（m）（原来写死在 hf 里）。 */
+    public static final double HF_WL0 = 3_000_000.0;
+    /**
+     * ★ §7589：hf 的【最短】波长（m）= 最粗波长 / 2^(OCT-1) = 3,000,000 / 64 = 46,875。
+     * 这是地形的最短特征尺度；任何【地形差分】的步长都必须与它同量级或更小，否则山脉会被混叠掉。
+     */
+    public static final double HF_WL_MIN = HF_WL0 / (double) (1L << (HF_OCT - 1));
+
+    public static double hf(double x, double z, long seed) { return fbm(x, z, seed ^ 0x99L, HF_OCT, HF_WL0, GHH); }
     /** 洋壳年龄场（与骨架解耦，E114）。 */
     public static double age(double x, double z, long seed) {
         double t = 0.5 + 0.5 * fbm(x, z, seed ^ 0xAAL, 3, 9_000_000.0, G08);

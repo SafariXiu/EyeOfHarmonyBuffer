@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.hydro;
 
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 
 import java.util.PriorityQueue;
@@ -96,8 +97,23 @@ public final class WaterField {
 
     // ==================== 网格 ====================
 
-    /** 格距（block）：150 km —— 与 {@link PrecipField#UPWIND_STEP} 同值（§7495）。 */
-    public static final int STEP = 150_000;
+    /**
+     * 格距（block）。**§7613：从 150 km 改为 10 km。**
+     *
+     * <p><b>旧依据（150 km）</b>：与 {@code PrecipField.UPWIND_STEP} 同值（§7495）—— 那是
+     * <b>地形采样</b>的尺度。
+     *
+     * <p><b>新依据（10 km）</b>：与 {@link SimClimate#CELL} <b>同值</b>。理由（P1243-P1259 实测）：
+     * <ul>
+     *   <li>河网的判据（河道宽度）需要 10 km 分辨率；150 km 上一个「河宽」是 15 个格距，无意义。</li>
+     *   <li>产流深 Rr 的输入（降水 P、气温 T）**本来就定义在 SimClimate 的 10 km 格点上**
+     *       （{@code SimClimate.CELL = 10_000}）⟹ 用 10 km 采样它们<b>不跨界、不重建</b>。</li>
+     *   <li>P1259 实测：在 10 km 上取 Rr 的两个输入只要 <b>0.2 ms / 256 格</b>；
+     *       而在 150 km 上取同一批格点要 <b>103 秒</b>（P1243）⟹ 旧值下<b>不可用</b>。</li>
+     * </ul>
+     * <p><b>不是可调旋钮</b>：它等于另一个已有的主格点间距（零新尺度）。
+     */
+    public static final int STEP = 10_000;
 
     /** 每 tile 的格数（一维）。tile = {@code TILE x TILE} 格。 */
     public static int TILE = 16;
@@ -186,6 +202,46 @@ public final class WaterField {
         return cell(x, z, seed)[1];
     }
 
+
+    // ==================== 河网（§7613 落地） ====================
+
+    /** 一年的秒数（m^3/yr -> m^3/s）。与探针 P1228 同值。 */
+    private static final double SEC_PER_YEAR = 3.155693e7;
+
+    /**
+     * ★★★★★★★★ <b>河道宽度（米）</b> —— W = 6.289 * Q^0.46。
+     *
+     * <h3>出处（全链逐字）</h3>
+     * <ul>
+     *   <li><b>形式</b>：govinfo_hydraulic_geometry.pdf Table 5.3（p322 目视）
+     *       「Downstream(1) Sand bed: W = Q_b^0.46」。</li>
+     *   <li><b>Q_b 的口径</b>：Table 5.2（:32791 逐字）「Average Downstream Relations
+     *       <b>(bank-full or mean annual flow)</b>」⟹ 用年平流量合法。</li>
+     *   <li><b>锚点</b>：:36764-36765 逐字「At bankfull discharge conditions
+     *       <b>Q1 = 8000 cfs</b> … is <b>W1 = 250 ft</b>」⟹
+     *       W = 76.2*(Q/226.5)^0.46 = 6.289*Q^0.46（Q in m^3/s, W in m）。</li>
+     *   <li><b>连续性约束</b>：:32674 a*c*k=1 与 :32888 b+f+m=1 都满足
+     *       （0.46+0.08+0.46 = 1.00）。</li>
+     * </ul>
+     *
+     * <p>⚠ <b>旧式 W = 2.5*sqrt(Q) 已被否决</b>：它在 Table 5.3 里不存在（那是早先对
+     * 扫描件的误读），且与锚点差 2 倍（§7603 实测对比）。
+     *
+     * @return 河宽（米）。0 表示该格不产流也不接收上游水。
+     */
+    public static double riverWidthM(int x, int z, long seed) {
+        return cell(x, z, seed)[2];
+    }
+
+    /**
+     * <b>是不是河道</b>：riverWidthM >= minWidthM。
+     *
+     * <p>阈值由调用方给（默认建议见设计冻结 §7599：60 m 在 10 km 网格上给出合理的河网密度）。
+     * 本函数<b>不引入任何常数</b>。
+     */
+    public static boolean isRiver(int x, int z, long seed, double minWidthM) {
+        return cell(x, z, seed)[2] >= minWidthM;
+    }
     // ==================== 内部 ====================
 
     private static int floorDiv(int a, int b) { int q = a / b; return ((a % b) != 0 && ((a ^ b) < 0)) ? q - 1 : q; }
@@ -222,7 +278,7 @@ public final class WaterField {
         int lj = floorDiv(z - tj * tileBlocks, STEP);
         if (li < 0) li = 0; else if (li >= TILE) li = TILE - 1;
         if (lj < 0) lj = 0; else if (lj >= TILE) lj = TILE - 1;
-        return new double[]{ t[0][li * TILE + lj], t[1][li * TILE + lj] };
+        return new double[]{ t[0][li * TILE + lj], t[1][li * TILE + lj], t[2][li * TILE + lj] };
     }
 
     /**
@@ -311,15 +367,60 @@ public final class WaterField {
             acc[ni * W + nj] += acc[k];
         }
 
+        // ---- ④ 产流深 Rr（米/年）与【累积径流】Qacc（m^3/yr）----
+        //   §7612/§7613：Rr 的两个输入全部走 SimClimate 的【瓦片缓存】（10 km 格点，与 STEP 同值）
+        //   ⟹ P1259 实测 0.2 ms / 256 格（而在 150 km 上要 103 秒，P1243）。
+        //   P  = SimClimate.annualPrecipMmPerYear（= f.logP 的 4 季平均，已在瓦片里）
+        //   Tw/Tc = SimClimate.surfaceTempK ± SimTerrain.seasonalAmpK  （融水用，§7582）
+        int wsi = installedSeed;
+        double[] rr = new double[W * W];
+        for (int i = 0; i < W; i++) {
+            for (int j = 0; j < W; j++) {
+                int k = i * W + j;
+                if (f[k] < PlateField.SEA_LEVEL) continue;          // 只在陆地
+                int wx = (i0 + i) * STEP, wz = (j0 + j) * STEP;
+                double P = SimClimate.annualPrecipMmPerYear(wx, wz, wsi);          // mm/yr
+                double tSfc = SimClimate.surfaceTempK(wx, wz, wsi);
+                double amp = SimTerrain.seasonalAmpK(wx, wz, wsi);
+                double Tc = tSfc - amp, Tw = tSfc + amp;
+                double zM = Math.max(0.0, e[k]);
+                // 融水：M = DDF(z)*TDD（ddf_snow_tc2023:408-418 逐字），DDF 两点 :1369 逐字
+                double DDF = Math.max(0.0, 2.7 + 4.6 * (zM - 1750.0) / 2000.0);
+                double tdd = 0.0;
+                for (int day = 0; day < 365; day++) {
+                    double Td = Tc + (Tw - Tc) / 2.0 * (1.0 + Math.cos(2 * Math.PI * (day - 182) / 365.0));
+                    if (Td > 273.15) tdd += (Td - 273.15);
+                }
+                rr[k] = (P / 1000.0) + DDF * tdd / 1000.0;          // m/yr（降水已是年值）
+            }
+        }
+        // 沿 D8 树累积（按高程降序 = 上游先算；与 acc 同一遍历顺序）
+        final double CELL_AREA = (double) STEP * (double) STEP;
+        double[] qacc = new double[W * W];
+        for (int oi = 0; oi < W * W; oi++) {
+            int k = order[oi];
+            if (rr[k] == 0.0 && f[k] < PlateField.SEA_LEVEL) continue;
+            qacc[k] += rr[k] * CELL_AREA;
+            int d = dir[k];
+            if (d < 0) continue;
+            int ni = k / W + DI[d], nj = k % W + DJ[d];
+            if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+            qacc[ni * W + nj] += qacc[k];
+        }
+
         // ---- 只取中心 TILE x TILE ----
-        double[] fill = new double[TILE * TILE], facc = new double[TILE * TILE];
+        double[] fill = new double[TILE * TILE], facc = new double[TILE * TILE], fwid = new double[TILE * TILE];
         for (int i = 0; i < TILE; i++) {
             for (int j = 0; j < TILE; j++) {
                 int src = (HALO + i) * W + (HALO + j);
                 fill[i * TILE + j] = f[src] - e[src];
                 facc[i * TILE + j] = acc[src];
+                // ⑤ 河宽 W = 6.289 * Q^0.46（Table 5.3 downstream/sand-bed + 锚点 Q1=8000cfs,W1=250ft）
+                //    Q = Qacc / SEC  （m^3/s）
+                double Q = qacc[src] / 3.155693e7;
+                fwid[i * TILE + j] = 6.289 * Math.pow(Math.max(0.0, Q), 0.46);
             }
         }
-        return new double[][]{ fill, facc };
+        return new double[][]{ fill, facc, fwid };
     }
 }

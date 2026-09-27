@@ -942,6 +942,44 @@ public final class SimClimate {
      *
      * <p>与 {@link #sample} **共用同一份瓦片缓存**（不会算第二遍）；无分配。
      */
+    /**
+     * ★★★★★★★★ §7612：**年平降水（mm/yr）** —— f.logP 的双线性采样。
+     *
+     * <p>f.logP 就是「PrecipField.mmPerDay 的 4 季平均」的 log10（见 Field#logP 的 javadoc
+     * 与 solveNode 里的赋值）。而它【已经在瓦片里】⟹ 本访问器**不触发任何新计算**，只做双线性插值。
+     *
+     * <p>这是【水系层】需要的量：产流深 Rr 的降水项就是它。走这里而不是再调
+     * {@code PrecipField.mmPerDay}，是因为后者**每次新坐标要 13-17 ms**
+     * （PrecipField:1343 逐字：P1106 实测 mmPerDay = 13.086 ms/次），
+     * 而本访问器是 **warm 0.16 ms/次**（P1245 实测）。
+     *
+     * <p>与 {@link #sample} **共用同一份瓦片缓存**；无分配。
+     */
+    public static double annualPrecipMmPerYear(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        return Math.pow(10.0, bl(f.logP, k00, k10, k01, k11, tx, tz));
+    }
+
+    /** 大陆度 kappa 的双线性采样（与 kappaAt 同源，但走瓦片缓存）。 */
+    public static double kappaFromTile(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        return bl(f.kap, k00, k10, k01, k11, tx, tz);
+    }
+
     public static double surfaceTempK(int x, int z, int worldSeedInt) {
         Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
         double fx = (x - f.originX) / (double) f.cell - 0.5;
