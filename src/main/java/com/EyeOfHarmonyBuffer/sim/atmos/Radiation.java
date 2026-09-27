@@ -23,6 +23,14 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
  * <p><b>OLR 取 {@code eps*sigma*T^4} 而不是 {@code A + B*T}</b>：§354 已证各来源的 A/B
  * 不一致且依赖参考态；{@code eps*sigma*T^4} 只需**一个**有效发射率，
  * 且直接由 Trenberth et al. (2009) 的观测 OLR 238.5 W/m^2 @ 288.15 K **定标**。
+ *
+ * <p><b>⚠ §7432 修订（2026-09-26）</b>：上面那条「不取 {@code A + B*T}」的决定**仍然有效**，
+ * 但 {@link #residual} 的**长波项**已从单点的 {@code EPS*SIGMA*Ts^4} 改为
+ * **逐层灰体**（{@link VerticalColumn}）给出的**净**地表长波 {@code SIGMA*Ts^4 - L_down}。
+ * 理由：{@code EPS} 是 **TOA 有效发射率**（238.5/σ288.15⁴），拿它当地表净长波会**高估 1.8 倍**，
+ * 于是 {@code Ts} 被解偏低、{@code qSens} 偏负。逐层方案与 Isca Frierson 同参数
+ * （{@code TAU0_LW = 6.0} ⇔ {@code ir_tau_eq = 6.0}），且本仓的光学厚度用**质量路径**
+ * （{@code tau = OLR_K*W(p)}）⇒ 有真实水汽反馈。详见 {@link #TL_VC}。
  */
 public final class Radiation {
 
@@ -151,6 +159,30 @@ public final class Radiation {
         return Atmosphere.RHO_AIR * Atmosphere.cdOf(kappa) * windSpeed;
     }
 
+    /**
+     * ★★★★★★★ §7432：**逐层灰体长波的工作列**（ThreadLocal 复用，避免每次 `new` 的 60 层分配）。
+     *
+     * <p><b>为什么加它</b>：{@link #residual} 原来用 `EPS*sigma*Ts^4`（{@link #EPS}），
+     * 那是【TOA 有效发射率】，用它当【地表净长波损失】会**高估 1.8 倍**
+     * （实测：`EPS*sigma*300.2^4 = 280.9` 而逐层的净地表长波 = `sigma*Ts^4 - lwSfcDown` = **156.4** W/m^2）。
+     * 后果：`Ts` 被解**偏低** ⇒ `qSens = chv*CP*(Ts-Ta)` 偏负。
+     *
+     * <p><b>用的形式</b>：{@link VerticalColumn} 的逐层灰体双流（与 Isca Frierson 同方案，
+     * `TAU0_LW = 6.0` ⇔ Isca 的 `ir_tau_eq = 6.0`；且本仓的光学厚度用**质量路径**
+     * `tau = OLR_K*W(p)` 而非 Isca 的气压四次式 ⇒ **有真实水汽反馈**）。
+     *
+     * <p><b>已核对（§7431/§7432）</b>：
+     * <ol>
+     *   <li>`wind` **不进长波**（只用在地表通量）⇒ 传 0.0；</li>
+     *   <li>`cosZenith` **只影响短波** ⇒ 传 0.0；</li>
+     *   <li>{@link VerticalColumn#THETA_SB} 与 {@link #SIGMA} **逐位相同**；</li>
+     *   <li>**单调性保持**（P1142：4 个 case 全部 18/18 无违例）⇒ `skinTempLand` 的二分前提不破；</li>
+     *   <li>开销 **+280.9 us/点 = `mmPerDay` 的 0.8%**（P1141）。</li>
+     * </ol>
+     */
+    private static final ThreadLocal<VerticalColumn> TL_VC =
+        ThreadLocal.withInitial(VerticalColumn::new);
+
     /** 表面能量平衡残差（W/m^2），`beta = 1`（饱和表面）。**对 T_s 单调递减** ⇒ 二分法唯一根。 */
     public static double residual(double ts, double absSolar, double ta, double qa, double chv) {
         return residual(ts, absSolar, ta, qa, chv, 1.0);
@@ -167,10 +199,21 @@ public final class Radiation {
      * `beta -> 0` ⇒ 没有潜热冷却 ⇒ 皮温升高 ⇒ **`H` 翻正**（`P570` 实测在 `beta ~ 0.3` 处翻正）。
      */
     public static double residual(double ts, double absSolar, double ta, double qa, double chv, double beta) {
-        double olr = EPS * SIGMA * ts * ts * ts * ts;
+        // ★★★★★★★ §7432：长波改用【逐层灰体】（VerticalColumn），替代原来的单点 EPS*SIGMA*ts^4。
+        //   物理：地表能量平衡里的长波项是【净】损失 = sigma*Ts^4 - L_down，
+        //        而 L_down（大气向下长波）必须由【大气廓线的辐射传输】给出。
+        //   原式 EPS*SIGMA*ts^4 用的是 EPS = 238.5/(sigma*288.15^4)，那是【TOA 有效发射率】，
+        //   拿它当地表净长波会【高估 1.8 倍】（实测 280.9 vs 逐层的 156.4 W/m^2 @ ts=300.2）
+        //   ⇒ Ts 被解偏低 ⇒ qSens = chv*CP*(Ts-Ta) 偏负。见 §7405/§7432。
+        //   已核对：wind / cosZenith 都不进长波（故传 0.0）；单调性保持（P1142）；
+        //          开销 +280.9 us/点 = mmPerDay 的 0.8%（P1141）。
+        VerticalColumn vc = TL_VC.get();
+        vc.init(ts, qa, beta, 0.0);
+        vc.radiation(0.0, 0.0);
+        double lwNet = SIGMA * ts * ts * ts * ts - vc.lwSfcDown;
         double h = chv * CP * (ts - ta);
         double le = beta * chv * LV * Math.max(0.0, PrecipField.qSat(ts) - qa);
-        return absSolar - olr - h - le;
+        return absSolar - lwNet - h - le;
     }
 
     /** 解陆地皮温（K），`beta = 1`。二分，60 次足够 double 收敛。 */

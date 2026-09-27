@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.hydro.WaterField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
@@ -2374,6 +2375,36 @@ public final class PrecipField {
     public static boolean Q_AT_SURFACE_TEMP = false;
 
     /**
+     * **水系接线（设计冻结 §7497）：湖泊 / 湿地的水面是【饱和面】⟹ {@code beta = 1}。**
+     *
+     * <p><b>为什么这不需要任何新公式</b>：本仓的水汽链早就是
+     * {@code RH_eff = RH_SEA*beta + RH_DRY*(1-beta)}（本文件 {@code :62} 逐字），
+     * 而 {@code beta} 的定义是「蒸发效率因子」（{@code SoilMoisture:34} 逐字
+     * {@code beta = min(1, W/(WK_OVER_WFC*W_FC))}）。水面不受土壤水限制 ⟹
+     * 取 {@code beta = 1} ⟹ {@code RH_eff = RH_SEA = 0.80}。**没有新常数、没有新公式。**
+     *
+     * <p><b>判据也不需要阈值</b>：湖 / 湿地 = {@code WaterField.fillDepthM > 0}。
+     * P1165 实测 640x640 格上「fillDepth 恰为 1 步 ε」的格是 <b>0 个</b> ——
+     * 150 km 网格上 {@code hyp} 插值让网格点几乎不等高，ε 只在 Priority-Flood 的
+     * 传播路径上起作用，<b>不会造出「被 ε 抬过的平地」</b>。
+     *
+     * <p><b>开销</b>：P1163 实测 WaterField 查询 <b>0.36 us/次</b>（热缓存、无锁），
+     * 对照 {@code mmPerDay} 的 35.5 ms/点 ⟹ 约 <b>0.001%</b>。
+     *
+     * <p>⚠ <b>本开关会改变气候输出</b> ⟹ 打开必须跑 22 支套件 + 四门。
+     */
+    // ★★★★★ §7521（2026-09-26）**已否决并撤回**（预登记判据 (f2) 触发）：
+    //   22 支套件（CA4F2DED_..._Vwater2，干净 run）的 REAL_VERDICT：pass=14 fail=3（基线 15/2）
+    //   ⚠ 新增的 FAIL = P692（GATE_COASTAL_VERDICT）：
+    //        判据是 geoRatio < 1.0；基线 0.9730（余量仅 2.7%）-> 水系臂 1.0697 ⇒ 翻门。
+    //   §7498 §四 预登记 (f2) 写死「fail 增加 ⇒ 撤回」⇒ 本开关【撤回】✓
+    //   ★ 而同时 C1~C4 全部改善（NH 平均 R -0.401 -> +0.525、NH AREA 9->13、SH AREA 15->22、
+    //     50E dP +0.127 -> +0.186、295E/300E/95E/105E 四盒转正），V3 湖点 beta=1 PASS 10/12、
+    //     V1 湖点 q 上升 10/12（+176.57%）、非湖点逐位不变 12/12。
+    //   ⟹ 所以【方向是对的，但它撞翻了一个余量只有 2.7% 的常驻门】⟹ 要采纳必须先弄清那个门该不该那么脆。
+    public static boolean Q_FROM_WATER = false;
+
+    /**
      * **候选 S-1（设计冻结 §251）：浅对流地板。**
      *
      * <p>⚠ <b>§533 修正（P1-10）</b>：本条曾写「{@code false}（默认）」，但**实际默认已是 {@code true}**
@@ -2655,6 +2686,9 @@ public final class PrecipField {
         double betaUsed = 1.0;
         if (SoilMoisture.ENABLED && !SoilMoisture.isSpinningUp()) {
             betaUsed = SoilMoisture.betaAt(x, z, seed, cell, theta, gradStep);
+            // ★ §7497 水系接线：湖 / 湿地 = 饱和面 ⟹ beta = 1（见 Q_FROM_WATER 的 javadoc）。
+            //   放在 set() 之前 ⟹ 下游（moisture 的 rhEff、DIAG[13]、路径点）全部一致地看到它。
+            if (Q_FROM_WATER && WaterField.isWater(x, z, seed)) betaUsed = 1.0;
             BETA_OVERRIDE.set(betaUsed);
         } else if (savedBeta != null) {
             betaUsed = savedBeta;

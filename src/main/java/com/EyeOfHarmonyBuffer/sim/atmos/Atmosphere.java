@@ -916,7 +916,20 @@ public final class Atmosphere {
      * 幅度对齐：CELL_MIG_SENS 由首次调用时自标定，使 JJA 在 25N 的迁移量与旧式完全相同
      * => 只换形状，不动幅度（§398 的教训：归一化方式必须说清）。
      */
-    public static boolean CELL_PHASE_FROM_TEMP = false;
+    // ★★★★★★★ §7462（2026-09-26 采纳）：**默认改为 true** —— 热低压位置的季节位相由模型自己的陆海温差驱动。
+    //   为什么采纳（22 支套件 + 生产接口对账，详见 §7461/§7462）：
+    //     ① (b) NH AREA 8 -> 9；(c) SH AREA 10 -> 15（升 5，未破「不得降超 2」）；
+    //     ② (d) 套件 fail 2 -> 1、FAILED=0、22/22；
+    //     ③ (e) 只动一个已有开关，未调任何常数；
+    //     ④ 50E 的 dP 从 -0.178 **转正为 +0.127**，而高原对照（95E/105E/90E）**全部保持负** => 判别力保持；
+    //     ⑤ 它**正命中**用户 objective 的「**不人为平移**」那一条：替换掉 `CELL_MIGRATION*cos(theta-CELL_LAG)`
+    //        这个【与模型温度场完全无关的正弦】（`:908-909` 逐字）。
+    //   ⚠ 诚实记账（未满足的那一条）：(a) NH 平均 R **微降**（-0.374 -> -0.401）。
+    //     => 但那与 (b) NH AREA 上升并不矛盾：AREA 数的是季节反转的【段数】，R 是【强度均值】。
+    //   ⚠ 自标定承诺已验证（P1153）：JJA 在 25N 的 cellPressure 两臂**逐位相同**（-386.21 Pa）。
+    //   ⚠ 仍存的局限（`:911` 逐字）：landSeaTempContrast 用的 landSurfaceTemp/seaSurfaceTemp
+    //      **仍来自 ZonalTables（地球表）** => 「真正的升级要等 RCE 落地（§396）」仍然成立。
+    public static boolean CELL_PHASE_FROM_TEMP = true;
     /** 陆海温差 -> 迁移纬度的灵敏度（度/K）。<=0 时首次调用自标定。 */
     public static double CELL_MIG_SENS = 0.0;
     /** 自标定参考纬度（度）。 */

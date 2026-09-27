@@ -164,6 +164,25 @@ public final class SoilMoisture {
     /** 诊断：最近一次自旋的【归一化】残差 = 年际差 / 年振幅（无量纲）。 */
     public static double lastSpinRelResid = -1;
 
+    /**
+     * ★★★★★ §7567（2026-09-27）：**【径流不再丢弃】** —— 最近一次求解里，桶循环中被
+     * {@code if (cur > 1.0) cur = 1.0;} 截掉的那部分之和，单位是 {@link #W_FC} 的分数（每年）。
+     *
+     * <h3>为什么它必须存在</h3>
+     * <p>桶模型的收支是 {@code W' = P − E − R}（类头逐字），而实现里 {@code R} 只被【截断】——
+     * 那部分水【永久消失】。对整个水循环而言，那是一条【单向的断头路】。
+     *
+     * <h3>它同时是【河道的物理判据】</h3>
+     * <p>河道 = 「坡面无法再吸收的水必须沿坡面流走」。而「无法吸收」的判据就是本量 {@code > 0}
+     * —— 它是【产流的定义】，因此【零阈值】。且它随 {@code P} 与 {@code beta} 变，
+     * 于是【湿的地方产流多 ⇒ 河网密】（用户要的纬度依赖）。
+     *
+     * <h3>为什么它是【纯加法】（零行为变化）</h3>
+     * <p>本字段只【读取】{@code cur − 1.0} 并累加；{@code cur = 1.0} 的截断行为【逐字未改】。
+     * 因此 {@code w[]}、{@code beta}、以及所有下游量【逐位不变】。
+     */
+    public static double runoffFrac = 0.0;
+
     private static final int MEMO_MAX = 1_000_000;
     /** (x,z) -> W(θ) 的 NTHETA 个采样（相对 W_FC）。 */
     private static final ThreadLocal<HashMap<Long, double[]>> MEMO =
@@ -314,6 +333,7 @@ public final class SoilMoisture {
             //   实测（P1023/P1024，双半球 144 点，NTHETA=24）：收敛 123/144 -> 144/144；
             //   收敛解对 MAX_YEARS in {20,60,240} 逐位不敏感；与 F^24 二分根一致到 5.5e-12。
             double cur = w[N - 1];
+            double runYear = 0.0;                                  // ★ §7567 本年累积的径流
             for (int kk = 0; kk < N; kk++) {
                 double beta = betaOfFrac(cur);
                 double rh = PrecipField.RH_SEA * beta + RH_DRY * (1.0 - beta);
@@ -322,7 +342,7 @@ public final class SoilMoisture {
                 double dW = (pMm - beta * epMm) * dtDays / W_FC;
                 cur += dW;
                 if (cur < 0.0) cur = 0.0;
-                if (cur > 1.0) cur = 1.0;                 // 超出 W_FC = 径流
+                if (cur > 1.0) { runYear += (cur - 1.0); cur = 1.0; }   // ★ §7567 超出 W_FC = 径流（累积而不是丢弃）
                 w[kk] = cur;
             }
             // ★ 收敛判据看【整年】的最大变化，不是只看 theta=0（第一版只看 w[0]，会假收敛）
@@ -333,6 +353,7 @@ public final class SoilMoisture {
                 if (w[kk] > wMax) wMax = w[kk];
                 if (w[kk] < wMin) wMin = w[kk];
             }
+            runoffFrac = runYear;                                  // ★ §7567 保留最后一年的（= 收敛后的）
             // ★★★ §573：改用【无量纲】判据。强季风气候是极限环 ⇒ 绝对残差永不收敛。
             //   振幅退化（恒定桶）时 relResid 回落到 resid 本身 ⇒ 与旧行为一致。
             double amp = wMax - wMin;

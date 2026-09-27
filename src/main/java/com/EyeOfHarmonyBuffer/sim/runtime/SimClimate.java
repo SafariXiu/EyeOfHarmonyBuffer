@@ -362,6 +362,7 @@ public final class SimClimate {
         h = h * 31 + (PrecipField.SPLIT_ASCENT ? 1 : 0);
         // 候选 R-2（§249）：q 用局地真实地表温度。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.Q_AT_SURFACE_TEMP ? 1 : 0);
+        h = h * 31 + (PrecipField.Q_FROM_WATER ? 1 : 0);   // ★ §7497 水系接线（湖/湿地 beta=1）
         // 候选 S-1（§251）：浅对流地板。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.SHALLOW_FLOOR ? 1 : 0);
         if (PrecipField.SHALLOW_CONDENSATE) h = h * 31 + 0x7A139L;   // §655 浅对流凝结形式

@@ -10,10 +10,13 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
  * 把接线逻辑搬到这里，探针就能**和跑生产完全同一段代码**来装 SST，口径不可能漂。
  * `WorldChunkManagerTalos2` 只剩一行调用。
  *
- * <h3>它做两件事</h3>
+ * <h3>它做三件事</h3>
  * <ol>
  *   <li>{@link OceanField#install(int)} —— 装 {@code Atmosphere.SST_PROVIDER}；</li>
- *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热 64 条纬度行**。</li>
+ *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热 64 条纬度行**；</li>
+ *   <li>★ <b>§7503</b>：{@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField#install(int)} ——
+ *       把地表水系场也记到同一个世界上（清掉上一个世界的 tile 缓存）。
+ *       <b>它不改变任何气候输出</b>（只清缓存 + 记种子），所以这一步不需要单独验收。</li>
  * </ol>
  *
  * <p>为什么预热是必须的而不是优化：单行首解 1~7 s（P466/P467 实测），而查询发生在
@@ -31,6 +34,8 @@ public final class OceanWiring {
     /** 世界级接线入口。可重复调用（同一个种子只启一次预热线程）。 */
     public static synchronized void onWorld(int worldSeedInt) {
         OceanField.install(worldSeedInt);
+        // ★ §7503：水系场也跟同一个世界走。这里【只清缓存 + 记种子】，不产生气候效应。
+        com.EyeOfHarmonyBuffer.sim.hydro.WaterField.install(worldSeedInt);
         if (!OceanField.ENABLED) return;
         if (startedFor == worldSeedInt && worker != null && worker.isAlive()) return;
         if (worker != null && worker.isAlive()) worker.interrupt();
