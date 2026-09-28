@@ -2839,7 +2839,15 @@ public final class PrecipField {
         //   本仓的 w_eff 就是那个 "rate of ascent" ⟹ 直接加一项 U·∇h（量纲同为 m/s）。
         //   迎风坡 U·∇h>0 ⟹ 增雨；背风坡 U·∇h<0 ⟹ 被下游的 max(0,wEff) 自然截断 ⟹ 不增。
         if (TERRAIN_W) {
-            wE += wTerrain(x, z, seed, cell, u0[0], u0[1]);
+            // ★★★★★★★★ §7616（丙）：地形项【只加正的】。
+            //   为什么：w_terrain = U·∇h 在背风坡为负 ⟹ 若直接相加，wEff 变负 ⟹
+            //   下游的 max(0,wEff) 把它截成 0 ⟹ 背风坡【完全无雨】⟹ B4（迎风/背风比）
+            //   从 4.083（基线，余量 0.4%）推到 4.341 ⟹ 越过锚带上限 4.1。
+            //   P7604 实测：低地 P 掉到 0.52~0.63 倍（背侧太干）。
+            //   修法：只加 max(0, w_terrain) ⟹ 背风坡【不受地形项影响】⟹ 保留原有的
+            //   wBase + wLoc ⟹ P 不会被清零。**零新常数**（就是取正）。
+            //   同族先例：SPLIT_ASCENT（本文件 :2601 逐字「max(0,w_zm) + max(0,w_loc)」）。
+            wE += Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
         }
         DIAG.get()[3] = wE;                         // 诊断：wEff
         // ★★★ §472：边界层水汽【收支口径】。E = P + V ⇒ q 的闭式解（无新常数、零迭代）。

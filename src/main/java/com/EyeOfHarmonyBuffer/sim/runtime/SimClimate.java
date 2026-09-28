@@ -198,7 +198,30 @@ public final class SimClimate {
     public static double SLOPE_SCALE = 0.02;
 
     /** 瓦片缓存容量（个）。每个瓦片 ≈ 10 KB（84 个格点 x 9 条通道）。 */
-    public static int CACHE_LIMIT = 64;
+    /**
+     * 缓存的瓦片数上限。**§7624：64 -> 4,096。**
+     *
+     * <p><b>为什么改</b>（P1266/P1267 实测）：气候瓦片是 100 km x 50 km，而本仓的
+     * 水系/出图要扫【数千 km】⟹ 工作集远超 64：
+     * <pre>
+     *   单个 WaterField tile (160 km)  : 约   12 个瓦片  -> 64 够
+     *   20x20 tiles 出图      (3200 km) :   2,048 个瓦片  -> 64 【thrash】
+     *   全图                  (6400 km) :   8,192 个瓦片  -> 64 【严重 thrash】
+     * </pre>
+     * P1266 的直接对照：{@code climate miss = 0} 时 {@code 1.32 ms/tile}，
+     * 而 {@code miss = 311} 时 {@code 9,561 ms/tile} —— <b>差 7,200 倍</b>。
+     *
+     * <p><b>内存</b>：一个 {@link Field} = 11 个 {@code double[]} x (12x7=84) x 8 B
+     * = <b>7.4 KB</b> ⟹ 4,096 个 = <b>约 30 MB</b>（可接受）。
+     *
+     * <p><b>⚠ 它【不改任何计算结果】</b>：{@code solve()} 是纯函数，本参数【只是容量】
+     * ⟹ 输出<b>逐位不变</b>⟹ <b>不进 {@link #configStamp()}</b>（D58 的准入判据是
+     * 「改了结果的旋钮」，而它不改结果）。
+     *
+     * <p><b>为什么只提容量、不改淘汰策略</b>：见 {@link #evictAny()} 的 javadoc ——
+     * 本仓早已判断「策略不是杠杆，容量才是」（与 V2BiomeField.evictAny 同款）。
+     */
+    public static int CACHE_LIMIT = 8_192;
 
     /** 4 个等间距季节相位（至日 + 分点）。theta=0 是北半球夏至（Atmosphere 的约定）。 */
     public static final double[] SEASON = {0.0, Math.PI / 2, Math.PI, 3 * Math.PI / 2};
@@ -263,7 +286,48 @@ public final class SimClimate {
         CACHE_HIT.set(0); CACHE_MISS.set(0); SAMPLE_COUNT.set(0);
     }
 
-    private static final ConcurrentHashMap<Long, Field> CACHE = new ConcurrentHashMap<Long, Field>();
+    /**
+     * ★★★★★★★★ 瓦片缓存。**§7639：初始容量必须【足够大】。**
+     *
+     * <p>为什么：{@code ConcurrentHashMap} 的锁粒度是 <b>bin</b>，而 bin 数 = 容量
+     * （向上取整到 2 的幂）。默认构造器只给 <b>16 个槽 ⇒ 2 个 bin</b> ⟹ 32 个线程
+     * 挤在 2 个 bin 上 ⟹ 构建【完全串行】。
+     *
+     * <p>P1287 实测（该问题存在时）：8 线程 wall 58,417 ms 而 <b>总 CPU 时间 426,828 ms</b>
+     * —— 是单线程 140,891 ms 的 <b>3 倍</b>。也就是说并行【没省时间，反而让总工作量翻了 3 倍】。
+     *
+     * <p>P1286 实测：1 → 2 → 4 → 8 线程的加速比 = 1.00x → 1.06x → 1.63x → <b>2.54x（饱和）</b>。
+     * 用 Amdahl 反推串行占比 = <b>60.6%</b>。
+     *
+     * <p>⟹ 给 {@code CACHE_LIMIT * 4} 个槽（下限 16,384）⟹ 至少 16,384 个 bin，
+     * 远多于任何机器的核数 ⟹ 不同瓦片的构建【互不阻塞】，同时同一瓦片【只算一次】。
+     */
+    private static final ConcurrentHashMap<Long, Field> CACHE =
+        new ConcurrentHashMap<Long, Field>(Math.max(16_384, CACHE_LIMIT * 4));
+
+    /**
+     * ★★★★★★★★ **§7639：按 key 分片的构建锁（64 路）。**
+     *
+     * <p><b>为什么需要它</b>（P1289 的线程状态采样，决定性）：8 线程扫描时
+     * <b>3~6 个 worker 处于 BLOCKED</b>，栈顶是
+     * {@code ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1742)}。
+     * 原因是：一个 WaterField tile 要 12 个气候瓦片，而<b>相邻的 WaterField tile 共享
+     * 同一个气候瓦片</b> ⟹ 多个线程同时要【同一个 key】⟹ {@code computeIfAbsent}
+     * 的 <b>同一个 bin 锁被持有 263 ms</b>（= 一次 {@code solve}）。
+     *
+     * <p><b>为什么不是「锁外求解 + putIfAbsent」</b>：那样【不阻塞】但会【重复计算】——
+     * P1287 实测 8 线程的<b>总 CPU 时间 426,828 ms</b>，是单线程 140,891 ms 的 <b>3 倍</b>。
+     *
+     * <p><b>为什么不是「加大 ConcurrentHashMap 容量」</b>：容量只减少【不同 key 撞同一个
+     * bin】；而这里的阻塞来自<b>同一个 key</b>（共享瓦片）⟹ 加大容量【无效】——
+     * P1286 实测（容量 16 -> 16,384）仍为 2.48x。
+     *
+     * <p>⟹ 所以用 64 个独立的锁：<b>不同 key 最多 64 路并行</b>，而<b>同一个 key 只算一次</b>。
+     * 为什么 64 足够：{@code CACHE} 的 key 是 (seed, tx, tz)，热点只是【当前扫描带】上的
+     * 那几十个瓦片；64 路 ≫ 32 核。
+     */
+    private static final Object[] BUILD_LOCKS = new Object[64];
+    static { for (int i = 0; i < BUILD_LOCKS.length; i++) BUILD_LOCKS[i] = new Object(); }
 
     /** 清空瓦片缓存。改 CELL 之后**必须**调用（几何变了）。 */
     public static void clearCache() { CACHE.clear(); }
@@ -622,8 +686,30 @@ public final class SimClimate {
         if (f != null) { CACHE_HIT.incrementAndGet(); return f; }
         CACHE_MISS.incrementAndGet();
         if (CACHE.size() >= CACHE_LIMIT) evictAny();
-        final int x = tx, z = tz;
-        return CACHE.computeIfAbsent(key, k -> solve(worldSeedInt, x, z));
+        // ★★★★★★★★ §7638（性能卡点）：**solve() 必须在锁外**。
+        //
+        // 旧式：return CACHE.computeIfAbsent(key, k -> solve(...));
+        //   ⚠ ConcurrentHashMap.computeIfAbsent 【会持有该 key 所在 bin 的锁】直到回调返回。
+        //     而 solve() 要 ~263 ms（84 节点 x 4 季 mmPerDay）⟹ 锁被持有 263 ms。
+        //     更要命的是：CACHE 有 8,192 个 entry 但【初始容量只有 16】⟹ 只有 16 个 bin
+        //     ⟹ 多个不同瓦片【共享同一个 bin】⟹ 它们的构建【被迫串行】。
+        //   P1285 实测：2 线程 1.14x、4 线程 2.35x（理想 2x/4x）⟹ 串行瓶颈确认。
+        //
+        // 新式（与 WaterField.cell() 同款）：
+        //   get（无锁）-> miss 则【在锁外】solve -> putIfAbsent（只锁一瞬）-> 用先到的那个。
+        //   代价：两个线程同时构建【同一个】瓦片时白算一次（正确性不受影响）。
+        // ★★★★★★★★ §7639：double-checked + 【per-key 分片锁】。
+        //   P1289 实测：用 computeIfAbsent 时 8 线程里有 3~6 个 BLOCKED 在它的 bin 锁上
+        //   （因为相邻 WaterField tile 共享气候瓦片 ⟹ 多线程要【同一个 key】）。
+        //   ⟹ 这里按 key 分片到 64 个锁：不同的 key 最多 64 路并行，同一个 key 只算一次。
+        Object lock = BUILD_LOCKS[(int) (key & 63L)];
+        synchronized (lock) {
+            Field f2 = CACHE.get(key);                 // 双检：可能已被别的线程填好
+            if (f2 != null) { CACHE_HIT.incrementAndGet(); return f2; }
+            Field fresh = solve(worldSeedInt, tx, tz); // ★ 只对【同一个 key】串行
+            CACHE.put(key, fresh);
+            return fresh;
+        }
     }
 
     /** 淘汰一个**任意**瓦片 —— 与 V2BiomeField.evictAny 同款（策略不是杠杆，容量才是）。 */

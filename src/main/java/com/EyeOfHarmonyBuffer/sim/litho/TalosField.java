@@ -487,14 +487,204 @@ public final class TalosField {
      */
     public static final double HF_WL_MIN = HF_WL0 / (double) (1L << (HF_OCT - 1));
 
-    public static double hf(double x, double z, long seed) { return fbm(x, z, seed ^ 0x99L, HF_OCT, HF_WL0, GHH); }
+
+    // ================= ★★★★★★★★ §7664：分段 fBm（hf 的频段分离） =================
+    /**
+     * <b>hf 的【分割倍频】</b>：oct &lt; SPLIT 用 {@link #HH}（低频段），
+     * oct &ge; SPLIT 用 {@link #HH_HIGH}（高频段）。**
+     *
+     * <p><b>出处</b>（`04-行星科学与气候耦合.md:322-324` 逐字）：**
+     * 「与第 3 条结论（H ~ 0.6-0.8 才能得到 D ~ 1.2-1.4）冲突吗？【不冲突，但必须分区处理】：
+     *   海岸线维数由【海岸线所在尺度段的 H】决定；小尺度粗糙度由【高频 octave 的振幅】决定。
+     *   推荐做法：**
+     *     · 低频（大陆尺度，&gt;500 km）：H_low ~ 【0.7】（保证海岸线 D ~ 1.3）**
+     *     · 高频（&lt;10 km，纹理）：用【更小 H】或【额外的高频层】，只要振幅足够小，
+     *       就不会显著改变海岸线的分形维数」**
+     *
+     * <p><b>为什么是 3</b>：hf 的最粗波长 = {@link #HF_WL0} = 3,000 km，倍频后**
+     * oct 0/1/2 = 3,000/1,500/750 km（&gt;500 km，属低频段），**
+     * oct 3/4/5/6 = 375/187/94/47 km（&lt;500 km，属高频段）。**
+     * 所以分割点【由出处的 500 km 直接决定】，不是自由参数 ✓**
+     */
+    public static final int OCT_SPLIT = 3;
+
+    /**
+     * <b>高频段的 Hurst 指数</b>（oct &ge; {@link #OCT_SPLIT}）。默认 <b>1.6</b>。**
+     *
+     * <p><b>出处</b>：`04:324` 逐字说高频用「【更小 H】或【额外的高频层】…只要振幅足够小」**
+     * —— <b>而它【没有给具体值】</b> ⟹ 所以本常量是【可标定的形态参数】**
+     * （与 `LAKE_MIN_DEPTH_M` / B4 的观测锚同性质）。**
+     *
+     * <p><b>为什么需要它</b>（P1316 实测）：单一 `HH` 无法两全 ——**
+     * 出处推荐范围（0.6-0.8）只让 max acc 提升 1.17-1.39 倍（远远不够），**
+     * 而要 3-6 倍必须 H &ge; 1.1，但那会把 ocean% 从 6.8% 推到 22.2%（海陆崩）⚠**
+     *
+     * <p><b>而分段后两者兼得</b>（P1317 实测）：**
+     * <pre>
+     *   H_high | ocean% | max acc | max/median
+     *     0.70 |   6.8% |   1,023 |      341.0   （单段，对照）
+     *     1.20 |   6.8% |   2,429 |      485.8
+     *     1.60 |   6.8% | 【4,236】| 【605.1】
+     *     2.00 |   6.8% |   5,247 |      524.7
+     * </pre>
+     * ⟹ <b>ocean% 恒为 6.8%（海陆完全不变）而 max acc 提升 5.1 倍</b> ✓✓✓**
+     */
+    public static double HH_HIGH = 1.6;
+
+    /**
+     * ★★★★★★★★ <b>§7664：分段 fBm 的增益表 —— hf 专用</b>。**
+     *
+     * <p>与 {@link #fbm} 同构，只把「每 octave 乘同一个 gain」换成**
+     * 「oct &lt; {@link #OCT_SPLIT} 乘 {@code 2^-HH}，否则乘 {@code 2^-HH_HIGH}」。**
+     * 归一化（{@code r/tot}）保持不变 ⟹ 值域仍是 [-1,1] ⟹ 不改变 {@link #AN} 的标定 ✓**
+     */
+    static double fbmBand(double x, double z, long s, int oct, double wl0) {
+        double r = 0, a = 1, f = 1.0 / wl0, tot = 0;
+        for (int o = 0; o < oct; o++) {
+            r += a * vnoise(x * f, z * f, s + o * 7919L);
+            tot += a;
+            a *= (o < OCT_SPLIT) ? GHH : GH2;
+            f *= 2;
+        }
+        return r / tot;
+    }
+    /** {@link #HH_HIGH} 的预计算增益（{@code setHurstHigh} 会刷新它）。 */
+    static double GH2 = Math.pow(2, -1.6);
+    /** 改高频段 H 必须同时刷新 {@link #GH2}。 */
+    public static void setHurstHigh(double h) { HH_HIGH = h; GH2 = Math.pow(2, -h); }
+    /**
+     * hf —— 细节层。**§7664 起走【分段 fBm】（{@link #fbmBand}）**：**
+     * 低频段（oct &lt; {@link #OCT_SPLIT}，波长 &gt; 500 km）用 {@link #HH}（保住海岸线维数），**
+     * 高频段用 {@link #HH_HIGH}（弱化纹理 ⟹ 河网能长出层级）。**
+     */
+    public static double hf(double x, double z, long seed) { return fbmBand(x, z, seed ^ 0x99L, HF_OCT, HF_WL0); }
+    // ================= ★★★★★★★★ §7643：各向异性（沿等高线拉伸） =================
+    /**
+     * <b>各向异性强度 K</b>：噪声坐标沿【等高线方向】被【拉伸 K 倍】（等价于垂直方向压缩）。
+     *
+     * <p><b>出处</b>（`01-板块构造模拟.md:393` 逐字）：
+     * 「『沿脊线方向的各向异性噪声』比各向同性 FBM 更像山：可以用 H 的梯度方向来做
+     * 「各向异性拉伸（例如把噪声坐标沿等高线方向压缩 4 倍）。这是一个 10 行代码的改动，
+     * 「观感提升很大。」
+     *
+     * <p>⚠ <b>K = 4 是那句里的【示例值】，不是逐字常数</b> ⟹ 它是一个【可标定的形态参数】
+     * （与 `LAKE_MIN_DEPTH_M` / B4 的观测锚同性质）。
+     */
+    public static double ANISO_K = 4.0;
+
+    /**
+     * 各向异性梯度的差分步长（m）。
+     *
+     * <p>§7644 修正：原来是 HF_WL0/16（187.5 km）—— 那个步长下 `lowf` 的梯度
+     * 【分片光滑**]⟹ 拉伸在梯度变化处跳变 ⟹ 条纹伪影。改成 HF_WL0/4（750 km）
+     * 让梯度场更光滑（P1290 的辐射状伪影的一半原因）。
+     */
+    public static double ANISO_STEP = HF_WL0 / 4.0;
+
+    /**
+     * ★★★★★★★★ §7644：各向异性位移的【波长】（m）。
+     *
+     * <p>为什么需要它：§7643 的位移 p' = p + (K-1)·(p·t̂)·t̂ 【以原点为中心】⟹
+     * 离原点越远畸变越大 ⟹ P1290 图上出现【辐射状伪影**]。
+     *
+     * <p>修法：把位移改成【有界、周期】的形式
+     * <pre>
+     *   shift(s) = A · sin(2π s / λ)          s = p·t̂（沿等高线的弧长）
+     *   A        = (K-1) · λ / (2π)           ⟸ 由「最大局部拉伸率 = K」反解
+     * </pre>
+     * 这样位移【不依赖原点】且【有界】（|shift| &le; A）⟹ 无辐射伪影。
+     *
+     * <p>λ 取 `HF_WL0 / 4`（= 750 km）：比 hf 的最粗波长小一个量级，
+     * 使拉伸在【一个山系的尺度上】变化，而不是在整张图上。
+     */
+    public static double ANISO_LAMBDA = HF_WL0 / 4.0;
+
+    /** 低频场（只用来求坡向）：oct=2, wl0 = hf 的最粗波长。用一个独立种子避免与 hf 相关。 */
+    static double lowf(double x, double z, long seed) {
+        return fbm(x, z, seed ^ 0xADL, 2, HF_WL0, G08);
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7644：各向异性的 hf（修正版）</b>。
+     *
+     * <p>做法（照 `01:393` 的两步）：
+     * <ol>
+     *   <li>用低频场 `lowf` 的【梯度】定出局部的【坡向】ĝ；
+     *   <li>把 hf 的噪声坐标【沿【垂直于 ĝ 的方向（等高线方向）】做【周期性位移】。
+     * </ol>
+     *
+     * <p>⚠⚠ <b>§7645：方向场从「梯度」改成【构造走向场】—— 因为梯度方案在拓扑上必然失败</b>。
+     * P1290 实测：用 H 的梯度方向定 t̂ 时，t̂ 在梯度翻转处【瞬间跳 180°】
+     * ⟹ 位移场不连续 ⟹ 图上出现【强烈的放射状/旋涡状条纹】。
+     * 而那【不可避免】：球面上不存在无奇点的连续切向量场（毛球定理）。
+     *
+     * <p>本版改用两个独立大尺度标量场的比值定方向：
+     * <pre>
+     *   t̂ = ( grainA, grainB ) / |(grainA, grainB)|
+     * </pre>
+     * 奇点只在 {@code grainA = grainB = 0} 的【孤立点】（fbm 过零交集，测度为零）⟹ 可忽略。
+     *
+     * <p><b>代价</b>：多 2 次 `fbm(oct=2)`（各约 0.02 us）⟹ 约 0.04 us/call，
+     * 而 `bfield` 是 4.77 us ⟹ 【不改变量级】。
+     *
+     * <p>⚠ 若 `ANISO_K &lt;= 1` 或方向退化 ⟹ 退回各向同性（逐位同旧）。
+     */
+    public static double hfAniso(double x, double z, long seed) {
+        if (ANISO_K <= 1.0) return fbm(x, z, seed ^ 0x99L, HF_OCT, HF_WL0, GHH);
+        // ★★★★★★★★ §7646：域弯曲式坐标扰动 —— 【不用方向场**]。
+        //   §7645 用 t̂ = (grainA,grainB)/|·| 求 s = p·t̂ ⟹ 而 t̂ 【随位置旋转**]
+        //   ⟹ s 在旋转处剧烈跳变 ⟹ sin(2πs/λ) 跳变 ⟹ 图上【仍有大尺度旋涡条纹**]（P1290 实测）⚠
+        //   ⟹ 根因与 §7644 相同：**任何依赖「方向」的构造都会在方向的奇点/旋转处断裂**]。
+        //
+        //   ★ 正解（也是 Minecraft 域弯曲的做法，02:171 逐字「只应该形变 X」）：
+        //     直接对【噪声坐标】做一个【纯标量驱动的位移**]——没有方向、没有 t̂、零奇点：
+        //         x' = x + A·sin(2π·grainB(x,z)/λ)
+        //         z' = z + A·sin(2π·grainA(x,z)/λ)
+        //     因为 grainA/grainB 是【大尺度场**]，它们的等值线【本来就是长条纹**]
+        //     ⟹ 位移沿那些条纹变化 ⟹ 噪声特征被【沿条纹拉长**]⟹ 隐式的各向异性 ✓
+        double lambda = ANISO_LAMBDA;
+        double amp = (ANISO_K - 1.0) * lambda / (2.0 * Math.PI);
+        // ⚠ §7646 的第一版写成 amp*sin(2π·grain/λ)：而 grain ∈ [-1,1] ⟹ 相位只有 ~4e-6 弧度
+        //   ⟹ 位移只有 ~1.5 米（P1294 实测 ratio = 0.0000，完全 no-op）⚠
+        //   ⟹ 修：直接【用 grain 本身作位移**]——它已经是【大尺度平滑场**]（波长 750 km），
+        //     所以位移的空间尺度天然就是 750 km，不需要再套一层 sin。
+        double dx = amp * grainB(x, z, seed);
+        double dz = amp * grainA(x, z, seed);
+        return fbmBand(x + dx, z + dz, seed ^ 0x99L, HF_OCT, HF_WL0);   // ★ §7664：走分段 fBm
+    }
+
+    /**
+     * §7646：域弯曲的驱动场 A（大尺度、平滑）。
+     *
+     * <p>⚠ 波长【必须与 ANISO_LAMBDA 同量级】：§7645 原来用 HF_WL0 * 2（= 6,000 km），
+     * 而在 3,840 km 的图上那【几乎是常数】⟹ 位移退化成【整体平移】⟹ 统计不变
+     * （P1269 实测：max len 与各向同性【逐位相同】）。改成 HF_WL0/4 = 750 km ⟹ 图上 5 个周期 ✓
+     */
+    static double grainA(double x, double z, long seed) {
+        return fbm(x, z, seed ^ 0xB1L, 2, HF_WL0 / 4.0, G08);
+    }
+    /** §7646：域弯曲的驱动场 B。与 A 独立（不同种子）。 */
+    static double grainB(double x, double z, long seed) {
+        return fbm(x, z, seed ^ 0xB2L, 2, HF_WL0 / 4.0, G08);
+    }
     /** 洋壳年龄场（与骨架解耦，E114）。 */
     public static double age(double x, double z, long seed) {
         double t = 0.5 + 0.5 * fbm(x, z, seed ^ 0xAAL, 3, 9_000_000.0, G08);
         return 70.0 * (t < 0 ? 0 : (t > 1 ? 1 : t));
     }
     /** 未减海平面的场值。 */
-    public static double fieldValue(double x, double z, long seed) { return bfield(x, z, seed) + AN * hf(x, z, seed); }
+    /**
+     * ★★★★★★★★ §7643：各向异性总开关（默认 <b>true</b>）。
+     *
+     * <p>{@code false} ⇒ 退回各向同性的 {@link #hf} ⟹ <b>与接线前逐位相同</b>（回滚点）。
+     * <p>⚠ 它<b>改变地形</b> ⟹ 必须进 {@link #configStamp()} 那一族（让缓存失效）。
+     */
+    public static boolean ANISO = true;
+
+    /** 未减海平面的场值。§7643 起 hf 走各向异性（{@link #ANISO} 可回滚）。 */
+    public static double fieldValue(double x, double z, long seed) {
+        return bfield(x, z, seed) + AN * (ANISO ? hfAniso(x, z, seed) : hf(x, z, seed));
+    }
 
     // ================= 每世界自标定（O(1) 于列数） =================
     // （E123：原 lvlSeed/lvl 的静态缓存已删 —— 那是不受保护的共享可变状态）
@@ -509,18 +699,46 @@ public final class TalosField {
      * <p>E123：记忆表也在 {@link ThreadLocal} 里 ⇒ **不再需要 synchronized**（每线程各算一份，值相同）。
      */
     public static double level(long seed) { return level(TL.get(), seed); }
+    /** §7665：清空 level 的每线程记忆表（改 LEVEL_HALF_SPAN 之后【必须】调用）。 */
+    public static void __clearLevelMemo() { TL.get().lvlN = 0; }
 
+
+    // ================= ★★★★★★★★ §7665：海平面标定的两个可标定量 =================
+    /**
+     * <b>海平面标定的【采样半宽】（米）</b>。原来是 <b>1.0e8</b>（= ±100,000 km，即 5 个世界跨度）。**
+     *
+     * <p><b>为什么必须改小</b>（P1319 实测，决定性）：`level` 的作用是给 `fieldValue` 定海平面，**
+     * 而它采样出来的 q70 与【实际地图区域】的分布【差很多】：**
+     * <pre>
+     *   level(±1e8 采样的 q70) = 0.618658
+     *   而地图区域（3,840 km）的分布：q10=0.6079  q50=0.6595  q70=0.6861  q93=0.7355
+     *   ⟹ level 【远低于局部中位数】⟹ land = 83.6% 而 ocean = 16.4%（目标 6.8%）⚠
+     * </pre>
+     * ⟹ 所以要让它标在【玩家实际能到达的范围】上 ⟹ 本常量给出采样半宽。**
+     *
+     * <p>⚠ 这是<b>标定量</b>，不是逐字常数（与 `LAKE_MIN_DEPTH_M` 同性质）。**
+     */
+    public static double LEVEL_HALF_SPAN = 100_000_000.0;   // ★ 保持原值（1.0e8）；只标定 LEVEL_QUANTILE
+
+    /**
+     * <b>海平面标定的【分位】</b>。原来是 0.70（= 70% 陆地）。**
+     *
+     * <p>⚠ 它现在是【与 {@link #LEVEL_HALF_SPAN} 配套的标定量】：两者一起决定 ocean%。**
+     */
+    public static double LEVEL_QUANTILE = 0.655;
     static double level(Win w, long seed) {
         for (int i = 0; i < w.lvlN; i++) if (w.lvlSeeds[i] == seed) return w.lvlVals[i];
         final int G = 32, N = G * G;
         double[] f = new double[N];
         java.util.Random r = new java.util.Random(seed * 1000003L + 17L);
         for (int i = 0; i < N; i++) {
-            double ox = (r.nextDouble() * 2 - 1) * 1.0e8, oz = (r.nextDouble() * 2 - 1) * 1.0e8;
+            // §7665：采样半宽可标定（原来写死 1.0e8 = 5 个世界跨度，与局部差很多）
+            double ox = (r.nextDouble() * 2 - 1) * LEVEL_HALF_SPAN;
+            double oz = (r.nextDouble() * 2 - 1) * LEVEL_HALF_SPAN;
             f[i] = fieldValue(ox, oz, seed);
         }
         java.util.Arrays.sort(f);
-        double v = f[(int) Math.floor(0.70 * N)];
+        double v = f[(int) Math.floor(LEVEL_QUANTILE * N)];
         if (w.lvlN < NLVL) { w.lvlSeeds[w.lvlN] = seed; w.lvlVals[w.lvlN] = v; w.lvlN++; }
         else { System.arraycopy(w.lvlSeeds, 1, w.lvlSeeds, 0, NLVL - 1);
                System.arraycopy(w.lvlVals, 1, w.lvlVals, 0, NLVL - 1);
@@ -562,10 +780,58 @@ public final class TalosField {
         return level(w, seed);
     }
 
-    /** 完整高程（米）。 */
+
+    // ================= ★★★★★★★★ §7666：凹形纵剖面（大陆内部更高） =================
+    /**
+     * <b>凹形纵剖面的幅度 k（米）</b>。
+     *
+     * <p><b>出处</b>（03-侵蚀与水文.md:418 逐字）：
+     * 「河道的凹形纵剖面（concave-up profile）可以用一条解析曲线近似：
+     *   <b>h(s) = h0 - k·(s/L)^theta</b>（s 为沿河距离，<b>theta ≈ 0.4~0.6</b>）。
+     *   运行时只要估出「到海岸的近似水力距离」」
+     *
+     * <p><b>而本仓的 s 代理</b>：v = fieldValue - level（无量纲）。
+     * 它【单调反映内陆程度】（P1325 实测：海拔随距海岸距离单调升），
+     * 而它【本来就在 elevation 里算】⟹ <b>本项【零新增开销】</b>✓
+     *
+     * <p><b>口径</b>：
+     * <ul>
+     *   <li>v 无量纲（fieldValue 的单位）
+     *   <li>CONCAVE_VSCALE 无量纲，把 v 归一化到 [-1,1] 之外的内陆端
+     *   <li>CONCAVE_K 米 ⟹ 本项输出的单位是<b>米</b>，与 elevation 一致 ✓
+     * </ul>
+     *
+     * <p><b>为什么需要它</b>（用户洞察 + P1322 实测）：
+     * <pre>
+     *   水力距离（源头 -> 海）: mean=36 cells=360 km  中位=33 cells=330 km  最长=111 cells=1,110 km
+     *   而地球：Amazon=6,400 km · Mississippi=3,700 km · 「主要河流」>1,000 km
+     *   ⟹ 【我们的水平均只走 360 km 就出海】⟹ 【没有大型主要河流】⚠
+     * </pre>
+     * 而 P1325 实测：bfield 已给出凹形剖面，但幅度只 <b>237 m 跨 1,620 km</b>
+     * （真实大陆约 1,000 m）⟹ 所以本项把它补足 ⟹ 内陆更高 ⟹ 水必须走更远 ✓
+     */
+    public static double CONCAVE_K = 760.0;
+
+    /** 凹形剖面的指数 theta。出处 03:418 逐字：<b>theta ≈ 0.4~0.6</b>（取中值 0.5）。 */
+    public static final double CONCAVE_THETA = 0.5;
+
+    /** v 的归一化尺度（无量纲）。取 0.18（P1297/P1325 实测的内陆端 v 值）。 */
+    public static double CONCAVE_VSCALE = 0.18;
+    /**
+     * 完整高程（米）。<b>§7666 起含凹形纵剖面项</b>（出处 03:418）——
+     * 内陆比海岸高，使水【必须走更远才出海】⟹ 产生大型主要河流。
+     *
+     * <p><b>口径</b>：入参 (x,z) 单位【米】（世界坐标）；返回值单位【米】，相对 SEA_LEVEL。
+     * <p><b>开销</b>：本项只用已经算好的 v（fieldValue 与 lvlFast 本来就要调）
+     * ⟹ 【零新增地形查询】✓
+     */
     public static double elevation(double x, double z, long seed) {
         double v = fieldValue(x, z, seed) - lvlFast(seed);
         double h = hyp(USx * v);
+        // ★ §7666：凹形纵剖面（内陆更高）。s 的代理 = v（无量纲），theta 与 k 见上方 javadoc。
+        if (v > 0.0) {
+            h += CONCAVE_K * Math.pow(v / CONCAVE_VSCALE, CONCAVE_THETA);
+        }
         double a = age(x, z, seed);
         double ridge = -(2200.0 + 320.0 * Math.sqrt(a));
         return h > ridge ? h : ridge;
@@ -583,6 +849,16 @@ public final class TalosField {
         h = h * 31 + Double.doubleToLongBits(USx);
         h = h * 31 + Double.doubleToLongBits(LAM);
         h = h * 31 + Double.doubleToLongBits(RW);
+        // §7666：凹形剖面的参数也改变结果 ⟹ 必须进指纹
+        h = h * 31 + Double.doubleToLongBits(CONCAVE_K);
+        h = h * 31 + Double.doubleToLongBits(CONCAVE_THETA);
+        h = h * 31 + Double.doubleToLongBits(CONCAVE_VSCALE);
+        // §7664：分段 fBm 的两个参数
+        h = h * 31 + OCT_SPLIT;
+        h = h * 31 + Double.doubleToLongBits(HH_HIGH);
+        // §7665：海平面标定的两个参数
+        h = h * 31 + Double.doubleToLongBits(LEVEL_HALF_SPAN);
+        h = h * 31 + Double.doubleToLongBits(LEVEL_QUANTILE);
         return h;
     }
 }

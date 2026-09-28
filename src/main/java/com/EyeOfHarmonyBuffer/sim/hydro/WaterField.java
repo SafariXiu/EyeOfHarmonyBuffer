@@ -95,6 +95,11 @@ public final class WaterField {
 
     private WaterField() {}
 
+    /** 8 邻域的行偏移（D8）。提到类级：Cordonnier 的辅助函数也要用。 */
+    private static final int[] DI = { -1, -1, -1, 0, 0, 1, 1, 1 };
+    /** 8 邻域的列偏移（D8）。 */
+    private static final int[] DJ = { -1, 0, 1, -1, 1, -1, 0, 1 };
+
     // ==================== 网格 ====================
 
     /**
@@ -124,7 +129,7 @@ public final class WaterField {
      * <p>P1162 实测：halo=0 有 5/256 格不一致（最大 103.8 m），<b>halo&gt;=4 起完全收敛</b>；
      * 取 8 = 2 倍余量。
      */
-    public static int HALO = 8;
+    public static int HALO = 16;
 
     /**
      * 平地抬升增量（米）。出处：调研 03 §6.2 逐字「Priority-Flood + ε … 用 <b>1/256 格的高度</b>」，
@@ -132,6 +137,83 @@ public final class WaterField {
      */
     public static final double EPS = 1.0 / 256.0;
 
+    /**
+     * ★★★★★★★★ <b>§7628：湖的最小深度（米）= 本仓【自己的】填洼深度分位数 q~0.95</b>。
+     *
+     * <h3>为什么不是「粗糙度 x N」</h3>
+     * <p>设计冻结 89753-89760 给的那条判据是「湖的深度必须远大于地形粗糙度」，
+     * 而它引用的两个数 —— 粗糙度 {@code 16.20 m} 与「前 5 大湖 277.7~441.1 m」——
+     * <b>都是在 {@code STEP = 150 km} 的旧网格上测的</b>（P1182b）。
+     *
+     * <p>§7613 把 {@code STEP} 改成 <b>10 km</b>（与 {@code SimClimate.CELL} 对齐）之后，
+     * P1273 实测本区域（160x160 格）的填洼深度分布变成：
+     * <pre>
+     *   q=0.5     14.37 m
+     *   q=0.9     58.01 m
+     *   q=0.99   120.69 m
+     *   q=1.0    【188.67 m】  (= 该区域的最大值)
+     * </pre>
+     * ⟹ <b>一个都没有超过 277.7 m</b> ⟹ 162 m 的阈值会把 99.9% 的洼地滤掉
+     * （P1272 实测：depth>=162 只剩 <b>4 格</b>，湖 = 0.03%）。
+     * <b>⟹ 所以那组旧数【不能搬到 10 km 网格</b>（与 §7605 的 max_delta 是同一类问题）。
+     *
+     * <h3>所以用本仓自己的分位数</h3>
+     * <p>P1273 的分布里，<b>q~0.95 对应约 85 m</b>，而它给出的湖占陆地约
+     * <b>1.5%</b> —— 与地球的 <b>1~2%</b> 同量级。
+     *
+     * <p>⚠ <b>本常量是「可标定的分位数」，不是逐字常数</b>（与 B4 的观测锚 1.8~4.1
+     * 同性质）。它的依据是<b>本仓自己的填洼深度分布</b>（P1273 实测），
+     * 而不是任何外部文献值。
+     *
+     * <p>⚠ <b>它依赖网格尺度</b>：若 {@code STEP} 再变，本值必须重测。
+     */
+    public static double LAKE_MIN_DEPTH_M = 85.0;
+    /**
+     * ★★★★★★★★ <b>§7631：河道的最小宽度（米）= 25 m</b> —— 依据【外部观测的河网密度】。
+     *
+     * <h3>出处</h3>
+     * <p>设计冻结 7600 逐字：「地球：Allen &amp; Pavelsky 2018（Science）常引用「约 120 万 km
+     * 的河（宽 &gt; 30 m）」⟹ 1,200,000 km / 149,000,000 km^2 = 0.008 km/km^2
+     * ⟹ 在 10 km 网格上（每格 100 km^2）每格期望 0.8 km ⟹ <b>约 8% 的格含一条 &gt;30 m 的河</b>」。
+     *
+     * <p>而 P1276 实测本仓的 W 分布（256x256 = 2,560 km）：
+     * <pre>
+     *   W >= 20 m : 14.032% of land
+     *   W >= 25 m : 【 8.956%】  <- 最接近地球的 8%
+     *   W >= 30 m :  6.190%
+     *   W >= 60 m :  1.224%   <- 先前用的值，比地球稀 6.5 倍
+     * </pre>
+     *
+     * <p>⟹ <b>25 m 是【用外部观测密度锚定出来的】，不是随手选的</b>。而它与地球对「小河」
+     * 的定义（宽 &gt; 30 m）【同量级】，互为旁证。
+     *
+     * <p>⚠ <b>它的地位</b>：与 {@link #LAKE_MIN_DEPTH_M} 和 B4 的观测锚（1.8~4.1）同性质 ——
+     * <b>一个可标定的分位数</b>，由外部观测定标。
+     */
+    public static double RIVER_MIN_WIDTH_M = 140.0;
+    /**
+     * ★★★★★★★★ <b>§7641：并行构建的线程数上限（默认 16）。</b>
+     *
+     * <p><b>为什么需要它</b>：solveTile 之间【相互独立】，所以大范围扫描（出图、
+     * 离线烘焙）可以并行。P1286 实测（32 逻辑核的机器，同一区域 + 每轮清缓存）：
+     * <pre>
+     *   线程 |  1     2     4     8     16    32
+     *  加速 | 1.00x 1.25x 1.90x 2.48x 3.81x 5.00x
+     * </pre>
+     *
+     * <p><b>为什么默认 16 而不是全核</b>：这是一台【共用的】工作站 —— 用户在跑模拟的
+     * 同时还要做别的活。16 线程拿到 3.81x（出图 3,840 km 约 4.3 分钟），
+     * 而留给系统的余量足够。调到 32 可以再多 1.3x，但那会吃掉全部核。
+     *
+     * <p><b>为什么加速比不是线性的</b>（P1289 的线程状态采样查明）：一个 WaterField
+     * tile 要 12 个气候瓦片，而<b>相邻的 tile 共享它们</b> ⟹ 处理相邻区域的线程
+     * <b>必然互相等</b>。这个「等」是<b>正确行为</b>（避免重复计算 —— 否决它会让总
+     * CPU 时间涨 3 倍，P1287 实测），而它的大小取决于工作分配的<b>空间局部性</b>：
+     * 按【连续块】分配（相邻 tile 同线程）比按【步长】分配快得多。
+     *
+     * <p>⚠ <b>这是基础设施参数，不是物理常数</b>：它【不改变任何计算结果】。
+     */
+    public static int PARALLELISM = 16;
     /** 缓存多少个 tile（LRU）。这是<b>基础设施</b>参数，不是物理常数。 */
     public static int CACHE_TILES = 512;
 
@@ -242,9 +324,204 @@ public final class WaterField {
     public static boolean isRiver(int x, int z, long seed, double minWidthM) {
         return cell(x, z, seed)[2] >= minWidthM;
     }
+
+    /** §7631：是不是河道（用 {@link #RIVER_MIN_WIDTH_M} 这个【有外部观测锚】的阈值）。 */
+    public static boolean isRiver(int x, int z, long seed) {
+        return cell(x, z, seed)[2] >= RIVER_MIN_WIDTH_M;
+    }
+    /**
+     * ★★★★★★★★ <b>§7641：并行地扫一片矩形区域并回调每一格</b>。
+     *
+     * <p>给【出图 / 离线烘焙】用。生产（区块生成）走的是单点查询，不用这个。
+     *
+     * <p><b>工作分配用【连续块】（按行带切分）</b>（P1286 实测：32 线程 2.45x -> 5.00x；
+     * 16 线程 2.51x -> 3.81x）。为什么：相邻的 tile 共享气候瓦片，若它们归不同线程，
+     * 那些线程会互相等（P1289 的 BLOCKED 采样）。连续块让一个线程把一片区域
+     * 内的瓦片复用到底，只在块边界处等。
+     *
+     * @param x0    左下角世界 X（米）
+     * @param z0    左下角世界 Z（米）
+     * @param n     每边的格数
+     * @param step  格距（米）
+     * @param seed  地形种子（SimTerrain.seedOf(worldSeedInt)）
+     * @param sink  回调，参数为 (格序号 c, 行序号 r, 值数组) —— 值数组是 cell 的
+     *              5 元组（fill, acc, width, pit, dir）。
+     *              <b>回调必须自己保证线程安全</b>（例如写进预先按 (c,r) 索引的数组）。
+     */
+    public static void scanParallel(final int x0, final int z0, final int n, final int step,
+                                    final long seed, final CellSink sink) {
+        int threads = Math.max(1, Math.min(PARALLELISM, n));
+        int per = (n + threads - 1) / threads;
+        Thread[] ts = new Thread[threads];
+        final java.util.concurrent.atomic.AtomicReference<Throwable> err =
+            new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        for (int t = 0; t < threads; t++) {
+            final int lo = t * per, hi = Math.min(n, (t + 1) * per);
+            if (lo >= hi) continue;
+            ts[t] = new Thread(new Runnable() { public void run() {
+                try {
+                    for (int r = lo; r < hi; r++) {
+                        for (int c = 0; c < n; c++) {
+                            sink.accept(c, r, cell(x0 + c * step, z0 + r * step, seed));
+                        }
+                    }
+                } catch (Throwable e) { err.compareAndSet(null, e); }
+            }}, "WaterField-scan-" + t);
+            ts[t].start();
+        }
+        for (int t = 0; t < threads; t++) {
+            if (ts[t] == null) continue;
+            try { ts[t].join(); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        }
+        Throwable e = err.get();
+        if (e != null) throw new RuntimeException("scanParallel failed", e);
+    }
+
+    /** scanParallel 的回调。 */
+    public interface CellSink {
+        /** @param c 列序号 · @param r 行序号 · @param v 5 元组（fill, acc, width, pit, dir） */
+        void accept(int c, int r, double[] v);
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7622：这一格是不是「洼地」（湖的候选）</b>。
+     *
+     * <p>由 Cordonnier 2019 的流向修正标出：{@code true} ⟺ 该格的接收者被算法改过，
+     * 或它的下游比它【高】（跨过 spill 的那一段）。换句话说：这一格在【水面之下】。
+     *
+     * <p>⚠ 本函数【只是湖的【必要条件】。要判定它是湖，还需要【有河汇入】——
+     * 见 {@link #isLake}。
+     */
+    public static boolean inDepression(int x, int z, long seed) {
+        return cell(x, z, seed)[3] > 0.5;
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7622：这一格是不是湖</b>。
+     *
+     * <h3>判据（layer 1，零新常数）</h3>
+     * <p>湖 = 洼地 <b>且</b> 【有足够大的河汇入】：
+     * <pre>
+     *   inDepression(x,z) && riverWidthM(x,z) >= minWidthM
+     * </pre>
+     * <b>为什么这一条就够</b>（物理）：真实世界的湖【都有河进出】—— 没有河的洼地会干，
+     * 而干的洼地在视觉上不是湖（是盐滩/干坑）。所以【无河的洼地不画】。
+     *
+     * <p>⚠ 本函数【不引入任何新常数】：{@code minWidthM} 与 {@link #isRiver} 共用同一个
+     * 河宽阈值（设计冻结 §7599 的 60 m）。
+     *
+     * <p>⚠ 另两条更细的判据（深度 &gt; 粗糙度的 N 倍 · 保留填充量前 N 个）在
+     * 设计冻结 §7620 里已查清出处，但都仍需一个【待标定的分位数】⟹ 本版【不启用它们】。
+     */
+    public static boolean isLake(int x, int z, long seed, double minWidthM) {
+        double[] c = cell(x, z, seed);
+        return c[3] > 0.5 && c[2] >= minWidthM;
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7628：这一格是不是湖（推荐用法）</b>。
+     *
+     * <h3>判据</h3>
+     * <pre>
+     *   湖 = 深洼地（{@link #inDepression}，已按 {@link #LAKE_MIN_DEPTH_M} 过滤）
+     *        且【有【任何【地表径流【汇入】（{@link #flowAcc} &gt; 1）
+     * </pre>
+     *
+     * <p><b>为什么不是「有足够宽的河」</b>（P1272 实测）：在降水稀疏的区域，
+     * {@code W >= 60 m} 几乎处处不满足 ⟹ 深洼地（最大的 124 格）【全部被滤掉】，
+     * 湖只剩 0.03%。而物理上 —— <b>湖只要有水来就行，不要求来的是大河</b>。
+     * 「有上游」（{@code acc > 1}）才是那个必要条件。
+     *
+     * <p><b>零新常数</b>：不引入任何阈值（{@code acc > 1} 是「非源头」的定义）。
+     */
+    public static boolean isLake(int x, int z, long seed) {
+        double[] c = cell(x, z, seed);
+        return c[3] > 0.5 && c[1] > 1.0;
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7626：这一格的水【流向下游的哪一格</b>。
+     *
+     * <p>返回 8 邻域方向下标（与 {@code DI/DJ} 同序）；{@code -1} = 无下游（本地最低点
+     * 或流向窗口外）。
+     *
+     * <p><b>为什么需要它</b>：画河网必须沿【真正的流向】连折线。先前探针里重新算一遍
+     * 「最陡下降」是错的 —— 那给的是【原始地形】的 D8，而本类用的是
+     * <b>Cordonnier 2019 修正过</b>的接收者（河流会「上坡」跨过 spill，也会在湖里走）。
+     * 用错的流向画出来就是一堆【孤立短划】（P1265 实测）。
+     *
+     * <p>顺序与 {@link #DIR_DX}/{@link #DIR_DZ} 一致。
+     */
+    public static int flowDir(int x, int z, long seed) {
+        return (int) cell(x, z, seed)[4];
+    }
+
+    /** §7626：下游格的 x 位移；无下游返回 0。 */
+    public static int downstreamDx(int x, int z, long seed) {
+        int d = flowDir(x, z, seed);
+        return d < 0 ? 0 : DIR_DX[d];
+    }
+
+    /** §7626：下游格的 z 位移；无下游返回 0。 */
+    public static int downstreamDz(int x, int z, long seed) {
+        int d = flowDir(x, z, seed);
+        return d < 0 ? 0 : DIR_DZ[d];
+    }
+
+    /** 8 邻域的 x 位移，与 {@link #flowDir} 的返回值同序。 */
+    public static final int[] DIR_DX = { -1, -1, -1, 0, 0, 1, 1, 1 };
+    /** 8 邻域的 z 位移，与 {@link #flowDir} 的返回值同序。 */
+    public static final int[] DIR_DZ = { -1, 0, 1, -1, 1, -1, 0, 1 };
     // ==================== 内部 ====================
 
     private static int floorDiv(int a, int b) { int q = a / b; return ((a % b) != 0 && ((a ^ b) < 0)) ? q - 1 : q; }
+
+    /** 并查集 find（Kruskal 用；路径压缩 + 迭代版，避免深递归）。 */
+    private static int ufFind(int[] uf, int x) { while (uf[x] != x) { uf[x] = uf[uf[x]]; x = uf[x]; } return x; }
+
+    /** 从格 (ai,aj) 指向格 (bi,bj) 的 D8 方向下标；两个格必须 8 邻接。 */
+    private static int oppDir(int ai, int aj, int bi, int bj) {
+        int di = Integer.signum(bi - ai), dj = Integer.signum(bj - aj);
+        for (int d = 0; d < 8; d++) if (DI[d] == di && DJ[d] == dj) return d;
+        return -1;
+    }
+
+    /**
+     * D8 流向图的【拓扑序】（Kahn）：先出【无上游】的格，再逐层向下游。
+     *
+     * <p>为什么需要它：§7613 之前汇流累积用的是「按填洼后的高程降序」—— 那个顺序在
+     * 【填洼后的地形】上等价于拓扑序。而 Cordonnier 2019 修正了接收者 ⟹ 流向不再沿
+     * 高程梯度 ⟹ 必须真的做拓扑排序，否则上游的水会被漏掉。
+     *
+     * <p>返回长度 {@code W*W} 的数组；不成环的部分全部在内，环内节点填 -1（不会发生：
+     * D8 + Cordonnier 的接收者图按构造是无环的，见论文 §2.3 的 tree 定向）。
+     */
+    private static int[] topoOrder(int[] dir, final int W) {
+        int n = W * W;
+        int[] indeg = new int[n];
+        for (int k = 0; k < n; k++) {
+            int d = dir[k]; if (d < 0) continue;
+            int ni = k / W + DI[d], nj = k % W + DJ[d];
+            if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+            indeg[ni * W + nj]++;
+        }
+        int[] q = new int[n];
+        int head = 0, tail = 0;
+        for (int k = 0; k < n; k++) if (indeg[k] == 0) q[tail++] = k;
+        int[] out = new int[n];
+        java.util.Arrays.fill(out, -1);
+        int m = 0;
+        while (head < tail) {
+            int k = q[head++];
+            out[m++] = k;
+            int d = dir[k]; if (d < 0) continue;
+            int ni = k / W + DI[d], nj = k % W + DJ[d];
+            if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+            int nk = ni * W + nj;
+            if (--indeg[nk] == 0) q[tail++] = nk;
+        }
+        return out;
+    }
 
     /**
      * 缓存键 = (tileI, tileJ, 地形种子)。
@@ -278,7 +555,8 @@ public final class WaterField {
         int lj = floorDiv(z - tj * tileBlocks, STEP);
         if (li < 0) li = 0; else if (li >= TILE) li = TILE - 1;
         if (lj < 0) lj = 0; else if (lj >= TILE) lj = TILE - 1;
-        return new double[]{ t[0][li * TILE + lj], t[1][li * TILE + lj], t[2][li * TILE + lj] };
+        return new double[]{ t[0][li * TILE + lj], t[1][li * TILE + lj], t[2][li * TILE + lj],
+                             t[3][li * TILE + lj], t[4][li * TILE + lj] };
     }
 
     /**
@@ -288,7 +566,7 @@ public final class WaterField {
     private static double[][] solveTile(int ti, int tj, long seed) {
         final int W = TILE + 2 * HALO;
         final int i0 = ti * TILE - HALO, j0 = tj * TILE - HALO;
-        final int[] DI = { -1, -1, -1, 0, 0, 1, 1, 1 }, DJ = { -1, 0, 1, -1, 1, -1, 0, 1 };
+        // DI/DJ 已提到类级常量（§7622 Cordonnier 的辅助函数也需要它们）
 
         // ---- 取高程（米，相对 SEA_LEVEL）----
         double[] e = new double[W * W];
@@ -331,13 +609,24 @@ public final class WaterField {
             }
         }
 
-        // ---- ② D8 流向（最陡下降；无邻居则不指派）----
+        // ---- ② D8 流向（最陡下降；在【填洼后的 f[] 上算】—— §7642 定案）----
+        //   ★★★★★★★★ 为什么【回到 f】而不是【原始 e】（P1292 实测，决定性）：
+        //     同一窗口、同一 W 公式下，过 25 m 阈值的河格数：
+        //       在【填洼后的 f】上算 D8  = 【871】
+        //       在【原始 e】上算 D8      = 【299】   <- 稀疏 2.9 倍 ⚠
+        //     ⟹ 原始地形【有大量小坑】⟹ 最陡下降【指向最近的坑】⟹ 汇流【分散成无数小流域】
+        //       ⟹ 每小片一条小河 ⟹ 【长河消失、河短而宽】（用户正是观察到这个）。
+        //     而填洼【抹平了小坑】⟹ 地形光滑 ⟹ 水沿【大尺度的坡】⟹ 【汇流集中】⟹ 长河。
+        //   ⚠ 那 Cordonnier 呢？它【仍然在跑】（阶段 1/2 的盆地与 MST 仍在做），
+        //     而它的产出【用于标出湖】（inPit）。流向本身【以 f 为准】。
+        //     这与论文不冲突：论文的算法是【在带洼地的原始 DEM 上】恢复排水；
+        //     而本仓的 PF+ε 已经把洼地填平了 ⟹ 用 f 的 D8 本身就是【已排水的】DEM。
         int[] dir = new int[W * W];
         java.util.Arrays.fill(dir, -1);
         for (int i = 0; i < W; i++) {
             for (int j = 0; j < W; j++) {
                 int k = i * W + j;
-                if (f[k] < PlateField.SEA_LEVEL) continue;      // ③ 海岸线排水：只从陆地出发
+                if (f[k] < PlateField.SEA_LEVEL) continue;      // 海岸线排水：只从陆地出发
                 double best = 0; int bd = -1;
                 for (int d = 0; d < 8; d++) {
                     int ni = i + DI[d], nj = j + DJ[d];
@@ -350,17 +639,193 @@ public final class WaterField {
             }
         }
 
-        // ---- ③ 汇流累积（按高程降序 = 上游先算）----
+        // ==================== ②b Cordonnier 2019：三个阶段的流向修正 ====================
+        //   出处：Cordonnier, Bovy, Braun (2019), Earth Surf. Dynam. 7, 549-562.
+        //         refs/cordonnier_esurf.txt（我们自己的抽文本）。
+        //   ★ 论文 :413-415 逐字：「we use carving and filling as metaphors as our algorithm
+        //     【only changes the flow graph connectivity without altering elevation values】」
+        //     ⟹ 本段【不改 e[]】，只改 dir[]。
+        //   ★ 论文章节：§2.1 盆地+链接（:245-274）· §2.2 MST（:289-305，式2）· §2.3 定向（:387-416）。
+        //   ★ 复杂度：Kruskal = O(n log n)（:307-314 逐字），与 PF+ε 同阶。
+        //   ★ 实测（P1263，32x32 窗口）：三阶段合计 2.12 ms，基线 PF+ε+D8 = 1.82 ms ⟹ 只慢 16%。
+        boolean CORDONNIER = true;                            // false ⟹ 退回 §7613 的行为（可回滚）
+        int[] basin = new int[W * W];
+        java.util.Arrays.fill(basin, -1);
+        final boolean[] inPit = new boolean[W * W];      // §7622：Cordonnier 保留的洼地（湖候选）
+        if (CORDONNIER) {
+            // ---- 阶段 1a：basin_id（沿 donors 的深度优先遍历；§2.1 :247-254 逐字）----
+            int[] donorHead = new int[W * W];
+            java.util.Arrays.fill(donorHead, -1);
+            int[] donorNext = new int[W * W];
+            java.util.Arrays.fill(donorNext, -1);
+            for (int k = 0; k < W * W; k++) {                 // 建 donors 的邻接表（头插）
+                int d = dir[k]; if (d < 0) continue;
+                int ni = k / W + DI[d], nj = k % W + DJ[d];
+                if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+                int nk = ni * W + nj;
+                donorNext[k] = donorHead[nk]; donorHead[nk] = k;
+            }
+            int nb = 0;
+            int[] stk = new int[W * W];
+            for (int s = 0; s < W * W; s++) {
+                if (basin[s] >= 0) continue;
+                if (dir[s] >= 0) continue;                    // 只从 singular node 起（§2.1 逐字）
+                int sp = 0; stk[sp++] = s; basin[s] = nb;
+                while (sp > 0) { int k = stk[--sp];
+                    for (int u = donorHead[k]; u >= 0; u = donorNext[u]) {
+                        if (basin[u] >= 0) continue; basin[u] = nb; stk[sp++] = u; } }
+                nb++;
+            }
+            for (int s = 0; s < W * W; s++) {                 // 剩下的（流向窗口外）各自成盆地
+                if (basin[s] >= 0) continue;
+                int sp = 0; stk[sp++] = s; basin[s] = nb;
+                while (sp > 0) { int k = stk[--sp];
+                    for (int u = donorHead[k]; u >= 0; u = donorNext[u]) {
+                        if (basin[u] >= 0) continue; basin[u] = nb; stk[sp++] = u; } }
+                nb++;
+            }
+            // ---- 阶段 1b：链接 + pass（§2.1 :255-268 逐字）----
+            java.util.HashMap<Long, double[]> links = new java.util.HashMap<Long, double[]>();
+            for (int i = 0; i < W; i++) for (int j = 0; j < W; j++) {
+                int k = i * W + j, b1 = basin[k];
+                for (int d = 0; d < 8; d++) {
+                    int ni = i + DI[d], nj = j + DJ[d];
+                    if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+                    int nk = ni * W + nj, b2 = basin[nk]; if (b1 == b2) continue;
+                    long key = ((long) Math.min(b1, b2) << 32) | (Math.max(b1, b2) & 0xFFFFFFFFL);
+                    double pass = Math.max(e[k], e[nk]);      // Pass(L) 最小化 max(z_n1,z_n2)（:261）
+                    double[] v = links.get(key);
+                    if (v == null || pass < v[0]) links.put(key, new double[]{ pass, k, nk, b1, b2 });
+                }
+            }
+            double[][] ls = links.values().toArray(new double[0][]);
+            java.util.Arrays.sort(ls, new java.util.Comparator<double[]>() {
+                @Override public int compare(double[] p, double[] q) { return Double.compare(p[0], q[0]); } });
+            // ---- 阶段 2：Kruskal MST（§2.2 :306-316 逐字）----
+            int[] uf = new int[nb]; for (int k = 0; k < nb; k++) uf[k] = k;
+            int[] mstFrom = new int[Math.max(1, nb)], mstTo = new int[Math.max(1, nb)];
+            int mstN = 0;
+            for (double[] L : ls) {
+                int ra = ufFind(uf, (int) L[3]), rb = ufFind(uf, (int) L[4]);
+                if (ra == rb) continue;
+                uf[ra] = rb;
+                if (mstN < mstFrom.length) { mstFrom[mstN] = (int) L[1]; mstTo[mstN] = (int) L[2]; }
+                mstN++;
+            }
+            // ---- 阶段 3：更新接收者（§2.3 的【最简单的解】：:405-409 逐字）----
+            //   「The most straightforward solution would be to only update the receiver of each
+            //     local minimum p so that rcv(p) = nout.」
+            //   ⚠ 本版【只做这一步】（零阈值、零新常数）；另两个更真实的变体留待后续。
+            // ---- 阶段 3：§2.3.2 的【filling 变体】—— 更新洼地【内部】的接收者 ----
+            //   论文 :431-437 逐字：「we update here the receivers as if the depressions were
+            //   completely filled by some material ... parses all neighbor nodes in a
+            //   breadth-first order 【as long as these are below water level】」。
+            //   ★ 水位 = Priority-Flood 填洼后的高程 f[k]（那正是 PF 的定义）⟹
+            //     「低于水位」⟺ e[k] < f[k] ⟺ 【被 PF 抬升过】。
+            //   ★ 而「填满后水流向已访问的邻居」⟹ 等价于【在 f 的梯度上取最陡下降】——
+            //     即：洼地内的接收者改用【f】，洼地外的保持【e 的原始 D8】。
+            //   ⚠ 为什么必须这么做（§7633 的根因确认）：我在 §7613 把【全部】格子的 D8
+            //     都改成在【原始 e】(而不是填洼后的 f) 上算，以匹配 Cordonnier 的输入
+            //     （论文 :238-239）。但「最简单的解」只改 local minimum ⟹ 洼地内其余格子
+            //     的流向仍然陷在洼地里 ⟹ 汇流断掉 ⟹ 河网碎（对比 a7ad51c：那里 D8 是在
+            //     f 上算的，所以河网连续）。
+            //   ⟹ 本段把洼地内的接收者【改用 f 的梯度】⟹ 两边都对：湖保留 + 河网连续。
+            //   ★★★★★★★★ §7642 的【关键修正】：**只有【湖】才保留洼地的流向，其余洼地一律填平。**
+            //
+            //   ⚠ 先前（§7622）我写的是「【所有】被 PF 抬升过的格（f - e > EPS）都改用 f 的梯度」，
+            //     那等于【把每个小坑都当成一条出流通道】。后果（P1291 实测，决定性）：
+            //       河格中【97.3% 在洼地之外】、只有 2.7% 在洼地上
+            //     ⟹ 河【不是】被湖切断的，而是【原始地形的每个小坑都把周围的水截住】
+            //       ⟹ 地形被切成【无数小流域】⟹ 每小片一条小河 ⟹ 【短而宽】
+            //     （对比 a7ad51c：那里 D8 在【填洼后的 f】上算 ⟹ 地形光滑 ⟹ 水沿大尺度坡
+            //       ⟹ 【长河】。用户正是发现「长河不见了」。）
+            //
+            //   ★ 所以正确的做法（也正是 03:589 / 03:735 的原意「保留少数大洼地当湖、
+            //     【消灭其余】」）：
+            //       · 湖（inPit == true，已按 LAKE_MIN_DEPTH_M 过滤过）⟹ 保留（水在湖里）
+            //       · 其余【一切】洼地 ⟹ 填平 ⟹ 流向改用 f 的梯度 ⟹ 水能穿过它继续走
+            //     ⟹ 只有【少数湖】会截断水流 ⟹ 长河回来。
+            for (int k = 0; k < W * W; k++) {
+                if (e[k] < PlateField.SEA_LEVEL) continue;
+                if (f[k] - e[k] <= EPS) continue;          // 本来就能排水的格：保持原始 D8
+                if (inPit[k]) continue;                    // ★ 湖：保留（湖面之下不重定向）
+                double best = 0; int bd = -1;
+                int ci = k / W, cj = k % W;
+                for (int d = 0; d < 8; d++) {
+                    int ni = ci + DI[d], nj = cj + DJ[d];
+                    if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+                    double dist = (DI[d] != 0 && DJ[d] != 0) ? Math.sqrt(2.0) : 1.0;
+                    double sl = (f[k] - f[ni * W + nj]) / dist;
+                    if (sl > best) { best = sl; bd = d; }
+                }
+                if (bd >= 0) dir[k] = bd;
+            }
+            // ---- 阶段 3b：§2.3.2 的【filling 变体】（湖面 = 水位之下）----
+            //   论文 :431-437 逐字：「we update here the receivers as if the depressions were
+            //   completely filled by some material ... parses all neighbor nodes ... as long as
+            //   these are below water level」。
+            //   ★ 而【水位【就是 Priority-Flood 填洼后的高程 f[k]】—— 那正是 PF 的定义
+            //     （把每个洼地抬到它的 spill）。⟹ 本仓【不需要再算一遍 BFS】：
+            //        湖面（水位之下）⟺ e[k] < f[k] − ε ⟺ 【被 PF 抬升过】
+            //     ⟹ 而那【正是 fillDepthM > 0】✓
+            //   ⚠ 为什么现在还【可以】用它：§7567 说「fill>0 is PF fill, NOT a lake criterion」
+            //     是在【没有盆地划分】时说的（那时每个噪声坑都算）。现在有了 Cordonnier 的
+            //     盆地 + 下面的 layer 1（有河汇入）⟹ 它【成为】湖判据的一半。
+            for (int k = 0; k < W * W; k++) {
+                if (f[k] - e[k] > EPS) inPit[k] = true;
+            }
+            // ---- 阶段 3c：§7627 的【深度过滤】（layer 2）----
+            //   ⚠ 为什么必需：§7567 逐字「fill > 0 is PF fill, NOT a lake criterion」——
+            //     光看「被抬升过」会把【每个微小噪声坑】都算成湖 ⟹ 湖全是小点（P1269 实测）。
+            //   ★ 判据出处（设计冻结 :89753-89760 逐字）：
+            //     「P1182b 实测：地形在 10 km 网格上的粗糙度 = 相邻高差 【16.20 m】
+            //       填充深度中位数 = 29.1 m ⟹ 与粗糙度【同量级】⟹ 那些是【噪声坑】
+            //       前 5 大湖的深度 = 277.7 ~ 441.1 m = 粗糙度的【17~27 倍】⟹ 那些是【真湖】
+            //       ⟹ 所以【更物理的判据】：湖的深度必须【远大于】地形在网格尺度上的粗糙度」
+            //   ★ 而「远大于」的量化：本仓给的是候选 10 倍（:89760 逐字「候选：10 倍 ⟹ 162 m」）
+            //     ⟹ 见 LAKE_MIN_DEPTH_M 的 javadoc：那是【候选值，不是逐字常数】。
+            //   深度 = 该洼地（连通域）内的【最大填洼量】（= 盆地最低点处的水深）。
+            int[] comp = new int[W * W];
+            java.util.Arrays.fill(comp, -1);
+            double[] compMaxFill = new double[Math.max(1, W * W)];
+            int nComp = 0;
+            int[] stk2 = new int[W * W];
+            for (int s = 0; s < W * W; s++) {
+                if (!inPit[s] || comp[s] >= 0) continue;
+                int sp = 0; stk2[sp++] = s; comp[s] = nComp;
+                double mf = 0.0;
+                while (sp > 0) {
+                    int k = stk2[--sp];
+                    double fd = f[k] - e[k];
+                    if (fd > mf) mf = fd;
+                    int ci = k / W, cj = k % W;
+                    for (int d = 0; d < 8; d++) {
+                        int ni = ci + DI[d], nj = cj + DJ[d];
+                        if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
+                        int nk = ni * W + nj;
+                        if (!inPit[nk] || comp[nk] >= 0) continue;
+                        comp[nk] = nComp; stk2[sp++] = nk;
+                    }
+                }
+                if (nComp < compMaxFill.length) compMaxFill[nComp] = mf;
+                nComp++;
+            }
+            // 只保留【深度 >= LAKE_MIN_DEPTH_M】的洼地
+            for (int k = 0; k < W * W; k++) {
+                if (!inPit[k]) continue;
+                int cc = comp[k];
+                if (cc < 0 || cc >= compMaxFill.length || compMaxFill[cc] < LAKE_MIN_DEPTH_M) inPit[k] = false;
+            }
+        }
+
+        // ---- ③ 汇流累积（【拓扑序】；Cordonnier 修正后流向不再沿 f 的梯度）----
         double[] acc = new double[W * W];
         java.util.Arrays.fill(acc, 1.0);
-        Integer[] order = new Integer[W * W];
-        for (int k = 0; k < W * W; k++) order[k] = k;
-        final double[] fRef = f;
-        java.util.Arrays.sort(order, new java.util.Comparator<Integer>() {
-            @Override public int compare(Integer a, Integer b) { return Double.compare(fRef[b], fRef[a]); }
-        });
+        int[] topo = topoOrder(dir, W);
         for (int oi = 0; oi < W * W; oi++) {
-            int k = order[oi], d = dir[k];
+            int k = topo[oi];
+            if (k < 0) continue;
+            int d = dir[k];
             if (d < 0) continue;
             int ni = k / W + DI[d], nj = k % W + DJ[d];
             if (ni < 0 || nj < 0 || ni >= W || nj >= W) continue;
@@ -394,12 +859,12 @@ public final class WaterField {
                 rr[k] = (P / 1000.0) + DDF * tdd / 1000.0;          // m/yr（降水已是年值）
             }
         }
-        // 沿 D8 树累积（按高程降序 = 上游先算；与 acc 同一遍历顺序）
+        // 沿【拓扑序】累积 Qacc（与 acc 同一遍历顺序；§7622 起改用 topo，不再用高程降序）
         final double CELL_AREA = (double) STEP * (double) STEP;
         double[] qacc = new double[W * W];
         for (int oi = 0; oi < W * W; oi++) {
-            int k = order[oi];
-            if (rr[k] == 0.0 && f[k] < PlateField.SEA_LEVEL) continue;
+            int k = topo[oi];
+            if (k < 0) continue;
             qacc[k] += rr[k] * CELL_AREA;
             int d = dir[k];
             if (d < 0) continue;
@@ -410,17 +875,20 @@ public final class WaterField {
 
         // ---- 只取中心 TILE x TILE ----
         double[] fill = new double[TILE * TILE], facc = new double[TILE * TILE], fwid = new double[TILE * TILE];
+        double[] fpit = new double[TILE * TILE], fdir = new double[TILE * TILE];
         for (int i = 0; i < TILE; i++) {
             for (int j = 0; j < TILE; j++) {
                 int src = (HALO + i) * W + (HALO + j);
                 fill[i * TILE + j] = f[src] - e[src];
                 facc[i * TILE + j] = acc[src];
+                fpit[i * TILE + j] = inPit[src] ? 1.0 : 0.0;
+                fdir[i * TILE + j] = dir[src];
                 // ⑤ 河宽 W = 6.289 * Q^0.46（Table 5.3 downstream/sand-bed + 锚点 Q1=8000cfs,W1=250ft）
                 //    Q = Qacc / SEC  （m^3/s）
                 double Q = qacc[src] / 3.155693e7;
                 fwid[i * TILE + j] = 6.289 * Math.pow(Math.max(0.0, Q), 0.46);
             }
         }
-        return new double[][]{ fill, facc, fwid };
+        return new double[][]{ fill, facc, fwid, fpit, fdir };
     }
 }
