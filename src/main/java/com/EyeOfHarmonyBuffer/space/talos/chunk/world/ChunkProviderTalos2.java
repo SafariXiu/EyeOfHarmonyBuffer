@@ -4,14 +4,12 @@ import com.EyeOfHarmonyBuffer.space.talos.BiomeDecoratorTalos2;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceProfile;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api.TalosCaveSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveDecorator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMath;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import ganymedes01.etfuturum.ModBlocks;
 import galaxyspace.core.dimension.ChunkProviderSpaceLakes;
 import gregtech.api.GregTechAPI;
@@ -20,6 +18,7 @@ import micdoodle8.mods.galacticraft.api.prefab.world.gen.BiomeDecoratorSpace;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.MapGenBaseMeta;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -35,14 +34,118 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     private final int worldSeedInt;
 
-    private static final boolean DEBUG_COASTLINE = true;
-
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.world = world;
-        this.worldSeedInt = TalosLandMask.getWorldSeedInt(world);
+        this.worldSeedInt = TalosSeed.of(world);
         this.worldHeight = world.getActualHeight();
     }
+
+    // ================= 岩性场缓存（性能关键） =================
+    //
+    // 岩性变体 rockVariant3D 是 3D fBm（每石头方块一次，实测 ~59ns/方块），
+    // 每列 ~95 个石头方块 → 每区块约 1.4ms，是全流程最大热点。
+    // 该场的特征尺度是 240 格，因此每区块只按 8/8/16 格采样一次（3×3×17 = 153 次），
+    // 其余方块三线性插值 → 每区块约 9µs（150× 减少），阈值判定仍在逐方块进行。
+
+    private static final int RF_XZ_STEP = 8;
+    private static final int RF_Y_STEP = 16;
+    private static final int RF_NXZ = 3;
+    private static final int RF_NY = 17;   // 0,16,...,256
+
+    /** 岩性对（懒初始化：EFR 方块可能晚于本类加载）。 */
+    private static volatile BlockMetaPair[] rockPairs;
+
+    private static BlockMetaPair[] rockPairs() {
+        BlockMetaPair[] p = rockPairs;
+        if (p == null) {
+            p = new BlockMetaPair[] {
+                new BlockMetaPair(GregTechAPI.sBlockStones, (byte) 8),      // 0 玄武岩
+                new BlockMetaPair(GregTechAPI.sBlockGranites, (byte) 0),    // 1 黑花岗岩
+                new BlockMetaPair(GregTechAPI.sBlockGranites, (byte) 8),    // 2 红花岗岩
+                new BlockMetaPair(GregTechAPI.sBlockStones, (byte) 0),      // 3 大理石
+                efrRockPair(ModBlocks.DEEPSLATE),                           // 4 深板岩
+                efrRockPair(ModBlocks.TUFF),                                // 5 凝灰岩
+            };
+            rockPairs = p;
+        }
+        return p;
+    }
+
+    /**
+     * 每区块的岩性 3D 场（线程本地复用）。
+     *
+     * 两级缓存：
+     *   1. 区块级 3×3×17 的 fBm 网格（每区块 153 次采样）；
+     *   2. **逐列**把 y=0..maxY 的岩性一次算好存进 colVar（17 次 x/z 插值 + 逐格 y 插值 + 阈值），
+     *      方块查询退化成一次数组读（~1ns）。
+     */
+    private static final class RockField {
+        final double[] v = new double[RF_NXZ * RF_NXZ * RF_NY];
+        final double[] node = new double[RF_NY];
+        final byte[] colVar = new byte[256];
+        int ox, oz;
+        BlockMetaPair[] pairs;
+
+        void build(int originX, int originZ, int worldSeed) {
+            ox = originX;
+            oz = originZ;
+            pairs = rockPairs();
+            for (int ix = 0; ix < RF_NXZ; ix++) {
+                int wx = originX + ix * RF_XZ_STEP;
+                for (int iz = 0; iz < RF_NXZ; iz++) {
+                    int wz = originZ + iz * RF_XZ_STEP;
+                    int base = (ix * RF_NXZ + iz) * RF_NY;
+                    for (int iy = 0; iy < RF_NY; iy++) {
+                        v[base + iy] = CaveMath.rockValue3D(wx, iy * RF_Y_STEP, wz, worldSeed);
+                    }
+                }
+            }
+        }
+
+        /** 为当前列预计算 y=0..maxY 的岩性（每个区块每列一次）。 */
+        void column(int wx, int wz, int maxY) {
+            double fx = (wx - ox) / (double) RF_XZ_STEP;
+            double fz = (wz - oz) / (double) RF_XZ_STEP;
+            int ix = (int) fx, iz = (int) fz;
+            if (ix < 0) ix = 0;
+            if (iz < 0) iz = 0;
+            if (ix > RF_NXZ - 2) ix = RF_NXZ - 2;
+            if (iz > RF_NXZ - 2) iz = RF_NXZ - 2;
+            double tx = fx - ix, tz = fz - iz;
+            int b00 = (ix * RF_NXZ + iz) * RF_NY;
+            int b10 = ((ix + 1) * RF_NXZ + iz) * RF_NY;
+            int b01 = (ix * RF_NXZ + iz + 1) * RF_NY;
+            int b11 = ((ix + 1) * RF_NXZ + iz + 1) * RF_NY;
+            for (int iy = 0; iy < RF_NY; iy++) {
+                double c00 = v[b00 + iy] + (v[b10 + iy] - v[b00 + iy]) * tx;
+                double c01 = v[b01 + iy] + (v[b11 + iy] - v[b01 + iy]) * tx;
+                node[iy] = c00 + (c01 - c00) * tz;
+            }
+            int top = maxY < 255 ? maxY : 255;
+            for (int y = 0; y <= top; y++) {
+                int iy = y / RF_Y_STEP;
+                if (iy > RF_NY - 2) {
+                    iy = RF_NY - 2;
+                }
+                double ty = (y - iy * RF_Y_STEP) / (double) RF_Y_STEP;
+                double n = node[iy] + (node[iy + 1] - node[iy]) * ty;
+                colVar[y] = CaveMath.rockVariantFromValue(n, y);
+            }
+        }
+
+        /** 当前列的方块岩性（需先调用 {@link #column}）。 */
+        BlockMetaPair pairAt(int wy) {
+            return pairs[colVar[wy & 255] & 7];
+        }
+    }
+
+    private static final ThreadLocal<RockField> RF = new ThreadLocal<RockField>() {
+        @Override
+        protected RockField initialValue() {
+            return new RockField();
+        }
+    };
 
     @Override
     public String makeString() {
@@ -59,261 +162,231 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         return new net.minecraft.world.biome.BiomeGenBase[0];
     }
 
+    /**
+     * **地形只有一个入口、一条链。**
+     *
+     * 这里曾经是二选一分派：{@code V2TerrainConfigSection.terrainV2Enabled}（**默认 false**）
+     * 为假走旧轨（TectonicWorld 海陆 + TalosMacroClimate 宏群系 + TalosTerrainHeights 预设高度
+     * + RVR2 河网 + CaveCarver/CaveDecorator 洞穴），为真走 V2 轨 ——
+     * 同一份代码能生成**两个完全不同的世界**，而且下游还有 7 处各自再判一次"我在哪条轨上"。
+     * 旧轨、分派、开关与那 7 处分支已全部删除。
+     */
     @Override
     public void onChunkProvider(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
         clearChunkBlocks(blocks, meta);
-
-        TalosChunkContext ctx = TalosChunkContext.create(
-            chunkX, chunkZ, worldSeedInt, getWaterLevel(), worldHeight
-        );
-
-        generateTerrainWithBaseHeightSimple(ctx, blocks, meta);
+        generateTerrainV2(chunkX, chunkZ, blocks, meta);
     }
 
     /**
-     * 使用统一最终高度场（TalosTerrainHeights）生成基础陆地/海洋高度，并填充方块。
-     *
-     * 流程概述：
-     *   1. 每列经 TalosTerrainHeights.sampleColumn(...) 取最终高度：
-     *        基础高度 → 海岸塑形 → 裂谷塑形 → 山脉抬升 → 河岸/泛洪平原 → 河谷下切；
-     *   2. 对最终高度 h 执行 clamp 到 [1, worldHeight-2]，避免越界；
-     *   3. 按 isLand 决定填充：
-     *        - 陆地：基岩 + [1, h) 石头 + 顶层方块；水面由水场
-     *          （TalosWaterField）授权，仅当「水面高于地表」时才灌水；
-     *        - 海洋：基岩 + [1, seabedY] 石头 + [seabedY+1, 水面] 水（水面=海平面）。
-     *
-     * 注意：高度链实现只存在于 terrain_layer.api.TalosTerrainHeights，
-     * 本方法不重复任何塑形逻辑，只做方块铺设。
+     * V2 轨方块铺设（integration-worklist T1.3）：每列一次 OrographyField.sample →
+     * 高度映射（V2TerrainGen，D30）→ 按 isLand 铺方块。
+     * 海洋：海床由海残差深度映射；陆地：基岩 + 岩性变体 + 表层（群系 profile / 沙滩 / 雪）。
+     * 无河网/湖（T3.4）、无洞穴（T3.2）、水面 = 海平面（T3.1 水场 v1）。
      */
-    private void generateTerrainWithBaseHeightSimple(TalosChunkContext ctx,
-                                                     Block[] blocks, byte[] meta) {
-        final int seaLevel = ctx.seaLevel;
+    private void generateTerrainV2(int chunkX, int chunkZ, Block[] blocks, byte[] meta) {
+        final int seaLevel = getWaterLevel();
+        final int worldX0 = chunkX * CHUNK_SIZE;
+        final int worldZ0 = chunkZ * CHUNK_SIZE;
+        final int seed = worldSeedInt;
 
-        final int worldX0 = ctx.chunkX * CHUNK_SIZE;
-        final int worldZ0 = ctx.chunkZ * CHUNK_SIZE;
-
-        final LandMask16 landMask = ctx.landMask;
-
-        // 洞穴数据：每区块取一次（系统未启用时返回 null，直接跳过雕刻）
-        CaveChunkData caveData = TalosCaveSystem.dataForChunk(
-            ctx.chunkX, ctx.chunkZ, worldSeedInt
-        );
+        // 岩性 3D 场：每区块建一次（3×3×17 采样），逐方块三线性插值
+        RockField rf = RF.get();
+        rf.build(worldX0, worldZ0, seed);
 
         for (int localX = 0; localX < CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < CHUNK_SIZE; localZ++) {
-                final int colIndex = localX * CHUNK_SIZE + localZ;
                 final int worldX = worldX0 + localX;
                 final int worldZ = worldZ0 + localZ;
 
-                final boolean isLandFromMask =
-                    (landMask != null && landMask.get(localX, localZ));
+                blocks[getIndex(localX, 0, localZ)] = Blocks.bedrock;
+                meta[getIndex(localX, 0, localZ)] = 0;
 
-                TalosLandMask.Sample landSample = ctx.land[colIndex];
-
-                final boolean isLand = isLandFromMask;
-                final double shelfWeight =
-                    (landSample != null ? landSample.shelfWeight : 0.0);
-
-                // 最终高度场统一出口：基础 → 海岸 → 裂谷 → 山脉 → 河岸 → 河谷下切。
-                TalosTerrainHeights.TerrainHeightSample ts =
-                    TalosTerrainHeights.sampleColumn(ctx.terrainInputs(colIndex));
-                double coastShapedHeightD = ts.coastD;
-                double riverShapedHeightD = ts.preRiverD;
-                double channelShapedHeightD = ts.surfaceD;
-
-                boolean riverCarved = channelShapedHeightD < riverShapedHeightD - 0.01;
-
-                int h = (int) Math.round(channelShapedHeightD);
-                if (h < 1) {
-                    h = 1;
-                } else if (h > worldHeight - 2) {
-                    h = worldHeight - 2;
-                }
-                // 水面高度：水场权威输出（Double.NEGATIVE_INFINITY = 无水）。
-                // 激进版规则：陆地默认无水，只有海洋 / 河道 / 水体 / 近海浅水带
-                // 显式授权水面；干盆地等低于海平面的新地形天然不灌水。
-                double waterLevel = ts.waterLevel;
-                int waterSurfaceYInt = (int) Math.floor(waterLevel);
-
-                // 只有真正低于水面的列才走“挖成河床/湖床”的填充；
-                // 高于水面的岸滩、外坡和湿地干丘走正常地表（草/泥土），
-                // 岸滩方块由 lakeMat 单独铺。
-                boolean underwaterCarved = riverCarved && waterLevel > h;
-
-                int bedrockIndex = getIndex(localX, 0, localZ);
-                blocks[bedrockIndex] = Blocks.bedrock;
-                meta[bedrockIndex] = 0;
-
-                if (isLand) {
-                    TalosSurfaceProfile profile =
-                        TalosSurfaceRegistry.get(ctx.biomes[colIndex]);
-
-                    // 源头湖岸 / 滩涂：湖区干岸和浅水底换方块（宏群系预设）。
-                    // 水面传水场输出（带水位偏移的湖也用正确水面分类）；
-                    // 无水列（干盆地等）不查滩涂方块，走正常地表。
-                    int topSolidY = underwaterCarved ? h - 1 : h;
-                    BlockMetaPair lakeMat =
-                        (waterLevel != Double.NEGATIVE_INFINITY)
-                            ? TalosRiverSystem.getLakeSurfaceMaterial(
-                                topSolidY, waterSurfaceYInt, worldX, worldZ,
-                                ctx.hydro[colIndex], ctx.macroPkg[colIndex])
-                            : null;
-
-                    if (underwaterCarved) {
-                        // 河床：只露出深层（石头 / 砂岩…），不铺表层 / 填充层
-                        for (int y = 1; y < h; y++) {
-                            putBlock(blocks, meta, localX, y, localZ,
-                                rockPair(profile.deepBlock,
-                                    worldX, y, worldZ, worldSeedInt));
-                        }
-                        // 源头湖：湖床顶两格换成滩涂 / 干岸方块
-                        if (lakeMat != null && h >= 2) {
-                            putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
-                            putBlock(blocks, meta, localX, h - 2, localZ, lakeMat);
-                        } else if (h >= 2) {
-                            // 河道：床顶铺斑块底料（砂砾 / 沙 / 黏土等，宏群系预设）
-                            TalosRiverSystem.RiverbedMaterial rb =
-                                TalosRiverSystem.getRiverbedMaterialAt(
-                                    worldX, worldZ, worldSeedInt,
-                                    ctx.macroPkg[colIndex]
-                                );
-                            if (rb != null) {
-                                int top = h - 1;
-                                int n = Math.min(rb.depth, top);
-                                for (int i = 0; i < n; i++) {
-                                    putBlock(blocks, meta, localX, top - i,
-                                        localZ, rb.block);
-                                }
-                            }
-                        }
-                    } else {
-                        int surfaceStart = h - profile.surfaceDepth + 1;
-                        int fillerStart = surfaceStart - profile.fillerDepth;
-
-                        for (int y = 1; y < h; y++) {
-                            BlockMetaPair pair;
-                            if (y < fillerStart) {
-                                pair = rockPair(profile.deepBlock,
-                                    worldX, y, worldZ, worldSeedInt);
-                            } else if (y < surfaceStart) {
-                                // 填充层也走岩性变体：rockPair 只对普通石头生效
-                                // （泥土 / 沙岩等原样返回）。高原 / 高山等
-                                // fillerBlock=STONE 的群系因此从地表下 1 格起
-                                // 就是变体岩，避免河岸过渡带出现
-                                // 「纯石头填充层 + 深层变体」的断层观感。
-                                pair = rockPair(profile.fillerBlock,
-                                    worldX, y, worldZ, worldSeedInt);
-                            } else {
-                                pair = profile.surfaceBlock;
-                            }
-                            putBlock(blocks, meta, localX, y, localZ, pair);
-                        }
-
-                        putBlock(blocks, meta, localX, h, localZ,
-                            profile.surfaceBlock);
-                        if (lakeMat != null) {
-                            putBlock(blocks, meta, localX, h, localZ, lakeMat);
-                            if (h >= 2) {
-                                putBlock(blocks, meta, localX, h - 1, localZ, lakeMat);
-                            }
-                        }
-                    }
-
-                    // 灌水：只有「水面高于地表」的列才灌（水场授权）。
-                    // 干盆地 / 干裂谷等无水列 waterLevel = -inf，天然跳过。
-                    if (waterLevel > h) {
-                        int waterStart = riverCarved ? h : h + 1;
-
-                        for (int y = waterStart; y <= waterSurfaceYInt; y++) {
-                            int idx = getIndex(localX, y, localZ);
-                            blocks[idx] = Blocks.water;
-                            meta[idx] = 0;
-                        }
-                    }
-
-                    // 洞穴雕刻：方块填充完成后进行。
-                    // 地表封层 / 入口竖井 / 水体避让规则都在 CaveCarver 内。
-                    if (caveData != null) {
-                        CaveCarver.carveColumn(
-                            worldX, worldZ, localX, localZ,
-                            topSolidY, waterSurfaceYInt, ts.riverMask, ts.body,
-                            caveData, blocks, meta, worldHeight, worldSeedInt
-                        );
-                    }
-
+                OrographyField.OroSample oro = OrographyField.sample(worldX, worldZ, seed);
+                // ⚠ 2026-09-13 修正（审计 D16-a）：方块海陆判定从**旧场** OrographyField.isLand
+                // 改成**新场** PlateField —— 与群系（V2BiomeField:332）和高度（V2TerrainGen:369）
+                // 同源。两个场实测错位 38~57%（V2BiomeField:326-331 的自述），
+                // 错位的方向正是最坏的：「旧说陆 / 新说海」走 fillLandColumnV2，
+                // 高度取 SimTerrain 的**海洋分支**，而该函数**不铺水** ⇒ 海面下的干坑。
+                // SimTerrain.ENABLED=false 时保持旧路径**逐位不变**（回滚点）。
+                // 注：c.land 与 bias/scale 无关（SimTerrain.compose 只看 elevationWithCell），
+                // 所以这里判一次、fillLandColumnV2 里再 compose 一次，两次的 land 必然一致。
+                boolean land = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED
+                    ? com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(
+                        worldX, worldZ,
+                        com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(seed),
+                        com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL)
+                    : oro.isLand;
+                if (land) {
+                    fillLandColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, oro, rf);
                 } else {
-                    int seabedY = TalosSeafloorShaper.computeSeabedY(
-                        seaLevel,
-                        false,
-                        shelfWeight,
-                        coastShapedHeightD,
-                        worldX,
-                        worldZ,
-                        worldSeedInt,
-                        worldHeight
-                    );
-
-                    TalosSeafloorShaper.SeafloorFill sf =
-                        TalosSeafloorShaper.computeSeafloorFill(
-                            shelfWeight, worldX, worldZ, worldSeedInt);
-                    TalosSeafloorShaper.SeafloorMaterial surfaceMat =
-                        TalosSeafloorShaper.SeafloorMaterial.ROCK;
-                    TalosSeafloorShaper.SeafloorMaterial fillerMat =
-                        TalosSeafloorShaper.SeafloorMaterial.ROCK;
-                    int surfaceDepth = 0;
-                    int fillerDepth = 0;
-                    if (sf != null) {
-                        surfaceMat = sf.surface;
-                        fillerMat = sf.filler;
-                        surfaceDepth = Math.min(sf.surfaceDepth, seabedY);
-                        fillerDepth = Math.min(
-                            sf.fillerDepth, seabedY - surfaceDepth);
-                    }
-                    int fillerTop = seabedY - surfaceDepth;
-                    int fillerBottom = fillerTop - fillerDepth + 1;
-
-                    for (int y = 1; y <= seabedY; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        BlockMetaPair pair = null;
-                        if (y > fillerTop) {
-                            pair = seafloorPair(surfaceMat);
-                        } else if (y >= fillerBottom) {
-                            pair = seafloorPair(fillerMat);
-                        }
-                        if (pair != null) {
-                            putBlock(blocks, meta, localX, y, localZ, pair);
-                        } else {
-                            putRock(blocks, meta, idx,
-                                worldX, y, worldZ, worldSeedInt);
-                        }
-                    }
-
-                    // 海洋列水面 = 海平面（水场对海洋恒授权），与陆地共用同一水面口径。
-                    for (int y = seabedY + 1; y <= waterSurfaceYInt; y++) {
-                        int idx = getIndex(localX, y, localZ);
-                        blocks[idx] = Blocks.water;
-                        meta[idx] = 0;
-                    }
-
-                    // 海床下方也雕刻洞穴（含近海平滑带）：
-                    // 按海床高度 + 2 格缓冲，网络在海陆交界处连续且不挖穿海床。
-                    if (caveData != null && seabedY > 1) {
-                        CaveCarver.carveColumn(
-                            worldX, worldZ, localX, localZ,
-                            seabedY, waterSurfaceYInt, 1.0, null,
-                            caveData, blocks, meta, worldHeight, worldSeedInt
-                        );
-                    }
+                    // ⚠ 2026-09-13 修正（审计 D16-b）：海列的海床原来取自**旧场**的
+                    // V2TerrainGen.seaDepthBlocks —— 于是「海陆判定用新场、海床用旧场」，
+                    // 同一列两套口径。现在改成**同一个列高来源** composeColumn().h，
+                    // 两种 ENABLED 状态下都与地形场逐位一致。
+                    V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+                        worldX, worldZ, seed, seaLevel, oro, 0.5, 0.5, worldHeight - 2);
+                    fillSeaColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, col.h, rf);
                 }
             }
         }
+    }
 
-        // 洞穴风格化：雕刻完成后整块装饰（洞底铺层 / 钟乳石 / 塌方 / 入口碎石环）
-        if (caveData != null) {
-            CaveDecorator.decorateChunk(
-                ctx.chunkX, ctx.chunkZ, worldSeedInt,
-                blocks, meta, worldHeight, caveData
-            );
+    /** V2 轨陆地列：高度 = V2TerrainGen 映射（单次成型，无宏包/河网子级）。 */
+    private void fillLandColumnV2(Block[] blocks, byte[] meta,
+                                  int localX, int localZ, int worldX, int worldZ,
+                                  int seed, int seaLevel, OrographyField.OroSample oro,
+                                  RockField rf) {
+        // 群系 LUT 查询（V2BiomeField.CELL=250m 网格 + 平滑）：无分配、~20ns/列
+        //（本列已知是陆地 → 直接取陆地口径）；kind 供后面的表面材质档案使用。
+        V2BiomeField.Sample bs = V2BiomeField.sample(worldX, worldZ, seed, true);
+        final V2BiomeSelect.Kind bKind = bs.kind;
+        // V2 高度链（D34/D38）：**唯一入口** V2TerrainGen.composeColumn。
+        // 口径 = 群系 bias/scale → 基础地形分解(name=plain/mtnComp) → 山层权威权重 w 仲裁
+        //        → 块级细节（强度随山体强度并按山层坡度调制）→ 软封顶。
+        // 立刻把要用的字段拷进局部变量：composeColumn 返回的是**每线程复用对象**，
+        // 而下面的 columnSlope() 会连着调它 4 次（会覆盖这个对象）。
+        V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+            worldX, worldZ, seed, seaLevel, oro, bs.bias, bs.scale, worldHeight - 2);
+        final double hD = col.hCapped;
+        final int h = col.h;
+        final boolean snow = col.snow;
+        final boolean beach = col.beach;
+
+        BlockMetaPair surface;
+        int surfaceDepth;
+        BlockMetaPair filler;
+        int fillerDepth;
+        if (snow) {
+            // 雪线以上：陡坡露岩、缓坡积雪（雪只挂在缓坡上 → 山体有纹理与明暗，不再一片白平）
+            boolean steep = columnSlope(worldX, worldZ, seed, seaLevel) > 0.62;
+            surface = steep
+                ? new BlockMetaPair(Blocks.stone, (byte) 0)
+                : new BlockMetaPair(Blocks.snow, (byte) 0);
+            surfaceDepth = 1;
+            filler = new BlockMetaPair(Blocks.stone, (byte) 0);
+            fillerDepth = 3;
+        } else if (beach) {
+            surface = new BlockMetaPair(Blocks.sand, (byte) 0);
+            surfaceDepth = 1;
+            filler = new BlockMetaPair(Blocks.sand, (byte) 0);
+            fillerDepth = 2;
+        } else {
+            TalosSurfaceProfile profile = TalosSurfaceRegistry.get(V2BiomePicker.biomeOf(bKind));
+            surface = profile.surfaceBlock;
+            surfaceDepth = profile.surfaceDepth;
+            filler = profile.fillerBlock;
+            fillerDepth = profile.fillerDepth;
+        }
+
+        final int surfaceStart = h - surfaceDepth + 1;
+        final int fillerStart = surfaceStart - fillerDepth;
+
+        // 逐列预计算岩性（y=1..h）→ 方块循环里只剩数组读
+        rf.column(worldX, worldZ, h);
+
+        for (int y = 1; y < h; y++) {
+            BlockMetaPair pair;
+            if (y < fillerStart) {
+                pair = rf.pairAt(y);                        // 深层恒为石头 → 岩性变体
+            } else if (y < surfaceStart) {
+                pair = (filler.getBlock() == Blocks.stone && filler.getMetadata() == 0)
+                    ? rf.pairAt(y) : filler;
+            } else {
+                pair = surface;
+            }
+            putBlock(blocks, meta, localX, y, localZ, pair);
+        }
+        putBlock(blocks, meta, localX, h, localZ, surface);
+
+        // V2 水场 v1：陆地默认无水（无湖/河授权），水面只出现在海洋列（T3.1 后续接 basinMask）。
+    }
+
+    /** 列坡度估计（blocks/block）：用 ±4 格的合成高度差。仅雪线附近列调用（成本可控）。 */
+    private double columnSlope(int worldX, int worldZ, int seed, int seaLevel) {
+        final int d = 4;
+        double hx = columnHeight(worldX + d, worldZ, seed, seaLevel)
+            - columnHeight(worldX - d, worldZ, seed, seaLevel);
+        double hz = columnHeight(worldX, worldZ + d, seed, seaLevel)
+            - columnHeight(worldX, worldZ - d, seed, seaLevel);
+        return Math.sqrt(hx * hx + hz * hz) / (2.0 * d);
+    }
+
+    /**
+     * 单列合成高度，取 {@code composeColumn} 的**未软封顶**口径（{@code hDetail}）—— 坡度估计专用。
+     *
+     * 刻意不封顶：软封顶会把接近世界高度的山顶压平，用它算坡度会让雪线附近的
+     * "陡坡露岩 / 缓坡积雪"分支整片倒向积雪。这条差异是**有意的**：
+     * 本方法取 hDetail，其它所有调用方一律取 hCapped。
+     */
+    private double columnHeight(int x, int z, int seed, int seaLevel) {
+        OrographyField.OroSample o = OrographyField.sample(x, z, seed);
+        return V2TerrainGen.composeColumn(x, z, seed, seaLevel, o, worldHeight - 2).hDetail;
+    }
+
+    /** V2 轨海洋列：海床深度 = 海残差映射；浅海沙/砂砾底，深海直接岩性变体；水面 = 海平面。 */
+    private void fillSeaColumnV2(Block[] blocks, byte[] meta,
+                                 int localX, int localZ, int worldX, int worldZ,
+                                 int seed, int seaLevel, int seabedCol, RockField rf) {
+        // 审计 D16-b：海床由调用方从 composeColumn().h 传入（与地形场同源）。
+        int seabed = seabedCol;
+        if (seabed < 1) {
+            seabed = 1;
+        }
+        if (seabed > seaLevel - 1) {
+            seabed = seaLevel - 1;
+        }
+        double depth = seaLevel - seabed;
+
+        rf.column(worldX, worldZ, seabed);
+
+        // 海底表层：浅沙 → 砂砾 → 岩石变体（深层其余由岩性场铺）
+        for (int y = 1; y <= seabed; y++) {
+            BlockMetaPair pair = null;
+            if (y == seabed) {
+                if (depth <= V2TerrainGen.SAND_SEA_DEPTH) {
+                    pair = SEAFLOOR_SAND;
+                } else if (depth <= V2TerrainGen.GRAVEL_SEA_DEPTH) {
+                    pair = SEAFLOOR_GRAVEL;
+                }
+            } else if (y == seabed - 1 && depth <= V2TerrainGen.SAND_SEA_DEPTH) {
+                pair = SEAFLOOR_SAND;
+            }
+            if (pair != null) {
+                putBlock(blocks, meta, localX, y, localZ, pair);
+            } else {
+                BlockMetaPair rp = rf.pairAt(y);
+                int idx = getIndex(localX, y, localZ);
+                blocks[idx] = rp.getBlock();
+                meta[idx] = rp.getMetadata();
+            }
+        }
+
+        // ⚠⚠ **海冰：按海表温度判，不按纬度带判**（审计 D72，2026-09-15）。
+        //
+        // 改之前：`PolarZone.isPolar(PolarZone.band(...))` —— 那是一条**几何纬度带**，
+        // 而且它用的纬度是 `ClimateLatitudes.LAT_CYCLE = 1M / MAX_D = 500k`（赤道->极点 500 km），
+        // 而**世界契约**是 `WorldContract.Z_CYCLE = 20M / MAX_D = 10M`（赤道->极点 10,000 km）
+        // ⇒ 两套纬度差 **20 倍** ⇒ 一个 20M 周期里出现 **20 条**等距冰带（纬度 +4.05, +13.05,
+        //   +22.05, ... , -4.95），**铺满所有纬度**。P483 实测：在纬度 +4.05 度、
+        //   最冷月海温 **+25.55 C** 的海面上真的铺了冰；而 5 个「该结冰却没冰」的反向漏点。
+        //   玩家看到的「浮冰带像把两块大陆切开」就是这 20 条错位冰带。
+        //
+        // 物理判据：海冰在**最冷月海温低于海水冰点**（-1.8 C = 271.35 K，盐度 35）时形成。
+        // 于是冰**自动**落在真极地，**自动**让暖流海域不结冰（真实世界正是如此：
+        // 北大西洋 70N 不结冰，同纬度的加拿大群岛结冰）。
+        //
+        // 为什么现在做得到（当年做不到的理由已经失效）：原来的注释说「世界生成必须与 237MB 的
+        // 环流窗口解耦」——那个 237MB 窗口是**旧栈 RelaxedClimate**（见设计冻结 §195.2）。
+        // 新场 `OceanField` 是**行惰性 + 有界 + 种子纯函数**，而且**同一段代码的陆地分支早就在逐列
+        // 查气候**（SimTerrain.compose -> warmestMonthTempK -> SimClimate，见 D38 的记账）
+        // ⇒ 海列不查气候才是那个异常项。查了之后：**确定性仍然成立**（同一 seed 同一个世界），
+        // 代价与陆地列同类（每进入一个新的 SimClimate 瓦片，第一列等一次瓦片求解）。
+        boolean floe = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.coldestMonthTempK(worldX, worldZ, seed)
+            < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SEA_ICE_T;
+        for (int y = seabed + 1; y <= seaLevel; y++) {
+            int idx = getIndex(localX, y, localZ);
+            blocks[idx] = floe && y == seaLevel ? Blocks.ice : Blocks.water;
+            meta[idx] = 0;
         }
     }
 
@@ -357,6 +430,40 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
         chunk.generateSkylightMap();
         chunk.func_150809_p();
+
+        // 洞厅是地下巨型空腔（cy≈34，ry≈29，顶约 60~63），洞厅上方覆盖层
+        // 可能只剩几格石头。generateSkylightMap 在这种薄覆盖层下可能把
+        // 洞厅内部的天光算成满值（15），客户端渲染成"整块像被太阳照到"，
+        // 而实体/手持物品用的是实时光照数组（暗）→ 只有地形亮、物品暗。
+        // 这里把洞厅覆盖列的天空光强制清零：洞厅在地下，本就不该有天空光；
+        // 玩家若真的挖通到地表，实时光照传播会重新把光送进来（恢复正常）。
+        zeroMegaHallSkyLight(chunk, x, z);
+    }
+
+    /**
+     * 把洞厅覆盖列的天空光清零（洞厅 = 地下空腔，无天空光）。
+     * 只对含洞厅的区块生效，洞厅占超级格约 0.5%，其余区块零开销。
+     */
+    private void zeroMegaHallSkyLight(Chunk chunk, int chunkX, int chunkZ) {
+        // 只查本区块所在超级格（洞厅被限制在超级格内部）
+        CaveMegaHall hall = CaveGenerator.megaHallAt(
+            chunkX * 16 + 8, chunkZ * 16 + 8, worldSeedInt);
+        if (hall == null) {
+            return;
+        }
+        int y0 = Math.max(1, (int) Math.floor(hall.minY));
+        int y1 = Math.min(worldHeight - 1, (int) Math.ceil(hall.maxY));
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                if (!hall.insideHorizontal(chunkX * 16 + lx + 0.5,
+                    chunkZ * 16 + lz + 0.5)) {
+                    continue;
+                }
+                for (int y = y0; y <= y1; y++) {
+                    chunk.setLightValue(EnumSkyBlock.Sky, lx, y, lz, 0);
+                }
+            }
+        }
     }
 
     @Override
@@ -450,23 +557,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         new BlockMetaPair(Blocks.sand, (byte) 0);
     private static final BlockMetaPair SEAFLOOR_GRAVEL =
         new BlockMetaPair(Blocks.gravel, (byte) 0);
-    private static final BlockMetaPair SEAFLOOR_CLAY =
-        new BlockMetaPair(Blocks.clay, (byte) 0);
-
-    /** 海床材质 -> 方块；ROCK 返回 null（保持深层岩石变体）。 */
-    private static BlockMetaPair seafloorPair(
-        TalosSeafloorShaper.SeafloorMaterial m) {
-        switch (m) {
-            case SAND:
-                return SEAFLOOR_SAND;
-            case GRAVEL:
-                return SEAFLOOR_GRAVEL;
-            case CLAY:
-                return SEAFLOOR_CLAY;
-            default:
-                return null;
-        }
-    }
+    // 【已删除】海床材质映射 seafloorPair(TalosSeafloorShaper.SeafloorMaterial) 与 SEAFLOOR_CLAY：
+    // 那是旧海床系统的枚举（旧轨退役后已无人产生那种材质），V2 的海床表层直接按
+    // V2TerrainGen.SAND_SEA_DEPTH / GRAVEL_SEA_DEPTH 两个深度阈值选 SEAFLOOR_SAND/GRAVEL。
+    // 保留一个"旧枚举 → 新方块"的翻译层，等于把两套海床材质系统同时留在代码里。
 
     @Override
     protected BlockMetaPair getWaterBlock() {

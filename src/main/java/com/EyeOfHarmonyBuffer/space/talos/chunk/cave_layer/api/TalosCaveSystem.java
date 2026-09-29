@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.api;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.integration.CaveCarver;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChamber;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
@@ -10,8 +9,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveGenerator
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveWorldState;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.api.TalosLandMask;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.api.TalosTerrainHeights;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.world.World;
 
 import java.util.List;
@@ -56,7 +57,11 @@ public final class TalosCaveSystem {
             return null;
         }
         CaveWorldState state = stateFor(worldSeedInt);
-        return state != null ? state.dataForChunk(chunkX, chunkZ) : null;
+        return state != null
+            ? state.dataForChunk(
+                CaveGenerator.wrapChunkX(chunkX),
+                CaveGenerator.wrapChunkZ(chunkZ))
+            : null;
     }
 
     /**
@@ -74,8 +79,8 @@ public final class TalosCaveSystem {
             return disabled;
         }
         java.util.List<CaveTag> tags = CaveFlavorRegistry.tagsForCell(
-            Math.floorDiv(worldX, 256),
-            Math.floorDiv(worldZ, 256),
+            CaveGenerator.cellOfX(worldX),
+            CaveGenerator.cellOfZ(worldZ),
             worldSeedInt
         );
         if (CaveGenerator.megaHallAt(
@@ -105,11 +110,13 @@ public final class TalosCaveSystem {
         if (state == null) {
             return -1.0;
         }
-        CaveChunkData data = state.dataForChunk(worldX >> 4, worldZ >> 4);
+        CaveChunkData data = state.dataForChunk(
+            CaveGenerator.wrapChunkX(Math.floorDiv(worldX, 16)),
+            CaveGenerator.wrapChunkZ(Math.floorDiv(worldZ, 16)));
         if (data == null) {
             return -1.0;
         }
-        return CaveCarver.sampleExcess(data, worldX, worldY, worldZ,
+        return CaveGenerator.sampleExcess(data, worldX, worldY, worldZ,
             worldSeedInt);
     }
 
@@ -118,17 +125,30 @@ public final class TalosCaveSystem {
         if (!isEnabled()) {
             return;
         }
-        int seed = TalosLandMask.getWorldSeedInt(world);
+        int seed = TalosSeed.of(world);
         stateFor(seed);
     }
 
     /** 世界卸载：释放缓存。 */
     public static void onWorldUnload(World world) {
-        int seed = TalosLandMask.getWorldSeedInt(world);
+        int seed = TalosSeed.of(world);
         CaveWorldState state = STATES.remove(seed);
         if (state != null) {
             state.clear();
         }
+    }
+
+    /**
+     * 调试 / 探针用：取指定 256 单元内的入口（不做 usableLandmarkColumn 过滤——
+     * 探针需要看到「不可用」入口来诊断为什么入口没雕刻 / 落海上）。
+     */
+    public static CaveEntrance debugEntranceAt(
+        int cellX, int cellZ, int worldSeedInt
+    ) {
+        java.util.Map<Long, java.util.List<CaveNode>> nodeCache =
+            new java.util.HashMap<Long, java.util.List<CaveNode>>();
+        return CaveGenerator.entranceForCell(
+            cellX, cellZ, worldSeedInt, nodeCache);
     }
 
     /**
@@ -141,29 +161,23 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveEntrance> out =
             new java.util.ArrayList<CaveEntrance>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
+        java.util.Map<Long, java.util.List<CaveNode>> nodeCache =
+            new java.util.HashMap<Long, java.util.List<CaveNode>>();
         for (int dz = -radiusCells; dz <= radiusCells; dz++) {
             for (int dx = -radiusCells; dx <= radiusCells; dx++) {
-                for (CaveNode n : state.nodesForCell(ccx + dx, ccz + dz)) {
-                    if (!n.isEntranceLike()) {
-                        continue;
-                    }
-                    int ex = (int) Math.floor(n.x);
-                    int ez = (int) Math.floor(n.z);
-                    // 入口列必须能用：陆地且不在河道 / 湖体内，
-                    // 否则竖井不会被雕刻，TP 过去只会落在海上。
-                    if (!usableLandmarkColumn(ex, ez, worldSeedInt)) {
-                        continue;
-                    }
-                    out.add(new CaveEntrance(
-                        ex,
-                        ez,
-                        (int) Math.floor(n.y),
-                        n.shaftRadius,
-                        n.kind == CaveNode.KIND_SINKHOLE
-                    ));
+                CaveEntrance e = CaveGenerator.entranceForCell(
+                    ccx + dx, ccz + dz, worldSeedInt, nodeCache);
+                if (e == null) {
+                    continue;
                 }
+                // 入口开口列必须能用：陆地且不在河道 / 湖体内，
+                // 否则通道不会被雕刻，TP 过去只会落在海上。
+                if (!usableLandmarkColumn(e.x, e.z, worldSeedInt)) {
+                    continue;
+                }
+                out.add(e);
             }
         }
         return out;
@@ -176,8 +190,8 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveChamber> out =
             new java.util.ArrayList<CaveChamber>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
         for (int dz = -radiusCells; dz <= radiusCells; dz++) {
             for (int dx = -radiusCells; dx <= radiusCells; dx++) {
                 for (CaveNode n : state.nodesForCell(ccx + dx, ccz + dz)) {
@@ -243,8 +257,8 @@ public final class TalosCaveSystem {
         java.util.ArrayList<CaveNode> out =
             new java.util.ArrayList<CaveNode>();
         CaveWorldState state = stateFor(worldSeedInt);
-        int ccx = Math.floorDiv(worldX, 256);
-        int ccz = Math.floorDiv(worldZ, 256);
+        int ccx = CaveGenerator.cellOfX(worldX);
+        int ccz = CaveGenerator.cellOfZ(worldZ);
         for (int r = 0; r <= radiusCells; r++) {
             for (int dz = -r; dz <= r; dz++) {
                 for (int dx = -r; dx <= r; dx++) {
@@ -280,13 +294,16 @@ public final class TalosCaveSystem {
      */
     private static boolean usableLandmarkColumn(int worldX, int worldZ,
                                                 int worldSeedInt) {
-        TalosTerrainHeights.TerrainHeightSample ts =
-            TalosTerrainHeights.sample(worldX, worldZ, worldSeedInt, 64, 256);
-        return ts.isLand
-            && ts.riverMask <= 0.7
-            && ts.body == null
-            // 地表必须高于海平面：否则入口井口会开在水线 / 水下
-            && Math.round(ts.surfaceD) >= 65;
+        // 走**唯一海陆判定 + 唯一高度链**。原先读旧轨 TalosTerrainHeights 的
+        // isLand / riverMask / body / surfaceD —— 海陆与地表都是另一套地形算出来的。
+        // 河道/湖体两个条件随旧河网一起消失（V2 世界没有河网；T3.4 接入新水体后再补）。
+        OrographyField.OroSample o = OrographyField.sample(worldX, worldZ, worldSeedInt);
+        if (!o.isLand) {
+            return false;
+        }
+        // 地表必须高于海平面：否则入口井口会开在水线 / 水下
+        return V2TerrainGen.composeColumn(worldX, worldZ, worldSeedInt,
+            LandformField.SEA_LEVEL, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
     }
 
     /** 调试汇总（/talcave 用，只经 api 暴露）。 */
@@ -304,9 +321,11 @@ public final class TalosCaveSystem {
             return lines;
         }
 
-        int cellX = Math.floorDiv(worldX, 256);
-        int cellZ = Math.floorDiv(worldZ, 256);
-        CaveChunkData data = state.dataForChunk(worldX >> 4, worldZ >> 4);
+        int cellX = CaveGenerator.cellOfX(worldX);
+        int cellZ = CaveGenerator.cellOfZ(worldZ);
+        CaveChunkData data = state.dataForChunk(
+            CaveGenerator.wrapChunkX(Math.floorDiv(worldX, 16)),
+            CaveGenerator.wrapChunkZ(Math.floorDiv(worldZ, 16)));
         lines.add(String.format(
             "[TALCAVE] pos=(%d,%d) seed=%d cell=(%d,%d) cachedCells=%d",
             worldX, worldZ, worldSeedInt, cellX, cellZ,
@@ -326,18 +345,20 @@ public final class TalosCaveSystem {
         }
 
         List<CaveNode> nodes = state.nodesForCell(cellX, cellZ);
-        int entrance = 0;
         int chamber = 0;
         for (CaveNode n : nodes) {
-            if (n.isEntranceLike()) {
-                entrance++;
-            }
             if (n.kind == CaveNode.KIND_CHAMBER) {
                 chamber++;
             }
         }
+        // 入口 = 从真实节点延伸的通道（entranceForCell 按单元哈希决定）
+        java.util.Map<Long, List<CaveNode>> tmpCache =
+            new java.util.HashMap<Long, List<CaveNode>>();
+        CaveEntrance cellEnt = CaveGenerator.entranceForCell(
+            cellX, cellZ, worldSeedInt, tmpCache);
         lines.add("  本单元: 节点=" + nodes.size()
-            + " 入口=" + entrance + " 大厅=" + chamber);
+            + " 入口=" + (cellEnt != null ? 1 : 0)
+            + " 大厅=" + chamber);
 
         java.util.List<CaveEntrance> ents = debugEntrancesNear(
             worldX, worldZ, worldSeedInt, 2
