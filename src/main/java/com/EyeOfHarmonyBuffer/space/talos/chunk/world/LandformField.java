@@ -231,21 +231,67 @@ public final class LandformField {
         if (i > NX - 1) { i = NX - 1; tx = 1; }
         if (j < -1) { j = -1; tz = 0; }
         if (j > NZ - 1) { j = NZ - 1; tz = 1; }
-        int i1 = i + 1, j1 = j + 1;
-        int k00 = (j + 1) * SX + (i + 1), k10 = (j + 1) * SX + (i1 + 1), k01 = (j1 + 1) * SX + (i + 1), k11 = (j1 + 1) * SX + (i1 + 1);
-        s.low = bilerp(f.low, k00, k10, k01, k11, tx, tz);
-        s.hill = bilerp(f.hill, k00, k10, k01, k11, tx, tz);
-        s.plat = bilerp(f.plat, k00, k10, k01, k11, tx, tz);
-        s.mtn = bilerp(f.mtn, k00, k10, k01, k11, tx, tz);
-        s.peak = bilerp(f.peak, k00, k10, k01, k11, tx, tz);
-        s.mtnAmt = bilerp(f.mtnAmt, k00, k10, k01, k11, tx, tz);
-        s.h0 = bilerp(f.h0, k00, k10, k01, k11, tx, tz);
+        // ★ §7728：用 4x4 Catmull-Rom（丙）替代 2x2 bilerp。
+        //   用户放大图确认：格折痕是【直线段 + 折角】的多边形（200-400 格），
+        //   正是 250 m 网格的插值折痕 —— smoothstep（甲）只降 4 倍不够。
+        s.low = crSample(f.low, i, j, tx, tz);
+        s.hill = crSample(f.hill, i, j, tx, tz);
+        s.plat = crSample(f.plat, i, j, tx, tz);
+        s.mtn = crSample(f.mtn, i, j, tx, tz);
+        s.peak = crSample(f.peak, i, j, tx, tz);
+        s.mtnAmt = crSample(f.mtnAmt, i, j, tx, tz);
+        s.h0 = crSample(f.h0, i, j, tx, tz);
         return s;
+    }
+
+    /**
+     * ★ §7728：<b>4x4 Catmull-Rom 张量积插值（丙）</b>。
+     *
+     * <p><b>为什么需要</b>：{@code §7725} 的 smoothstep 只保证一阶导连续（C1），
+     * 二阶导在格边界仍跳变 ⟹ 图上【仍能看到细的对角折痕】。
+     * Catmull-Rom 的插值核在【采样点上】是 C1 的（二阶导仅在节点处不连续），
+     * 折痕强度显著低于 bilerp/smoothstep。
+     *
+     * <p>需要 4x4 邻域。{@link #solve} 算了 [-1, NX] 的 halo ⟹
+     * 只要 {@code i-1 >= -1 && i+2 <= NX} 就够；越界时【clamp 端点】（等价于重复边界格）。
+     *
+     * @param g 场地数组（索引 (j+1)*SX + (i+1)）
+     */
+    private static double crSample(float[] g, int i, int j, double tx, double tz) {
+        int i0 = i - 1, i3 = i + 2, j0 = j - 1, j3 = j + 2;
+        if (i0 < -1) i0 = -1;
+        if (i3 > NX) i3 = NX;
+        if (j0 < -1) j0 = -1;
+        if (j3 > NZ) j3 = NZ;
+        int ia = Math.max(-1, i0), ib = Math.max(-1, i), ic = Math.min(NX, i + 1), id = Math.min(NX, i3);
+        int ja = Math.max(-1, j0), jb = Math.max(-1, j), jc = Math.min(NZ, j + 1), jd = Math.min(NZ, j3);
+        double r0 = cr1(g[(ja + 1) * SX + (ia + 1)], g[(ja + 1) * SX + (ib + 1)],
+                        g[(ja + 1) * SX + (ic + 1)], g[(ja + 1) * SX + (id + 1)], tx);
+        double r1 = cr1(g[(jb + 1) * SX + (ia + 1)], g[(jb + 1) * SX + (ib + 1)],
+                        g[(jb + 1) * SX + (ic + 1)], g[(jb + 1) * SX + (id + 1)], tx);
+        double r2 = cr1(g[(jc + 1) * SX + (ia + 1)], g[(jc + 1) * SX + (ib + 1)],
+                        g[(jc + 1) * SX + (ic + 1)], g[(jc + 1) * SX + (id + 1)], tx);
+        double r3 = cr1(g[(jd + 1) * SX + (ia + 1)], g[(jd + 1) * SX + (ib + 1)],
+                        g[(jd + 1) * SX + (ic + 1)], g[(jd + 1) * SX + (id + 1)], tx);
+        return cr1(r0, r1, r2, r3, tz);
+    }
+
+    /** 1D 均匀 Catmull-Rom。 */
+    private static double cr1(double p0, double p1, double p2, double p3, double t) {
+        double t2 = t * t, t3 = t2 * t;
+        return 0.5 * ((2.0 * p1)
+                + (-p0 + p2) * t
+                + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+                + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3);
     }
 
     private static double bilerp(float[] g, int k00, int k10, int k01, int k11, double tx, double tz) {
         double v00 = g[k00], v10 = g[k10], v01 = g[k01], v11 = g[k11];
-        return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
+        // ★ §7725：smoothstep 加权 —— 裸双线性的【对角折痕】会在图上连成长直线。
+        //   （本类的 mtnPlusPeak() 是侵蚀的门控，所以折痕会直接进地形。）
+        double sx = tx * tx * (3.0 - 2.0 * tx);
+        double sz = tz * tz * (3.0 - 2.0 * tz);
+        return (v00 * (1 - sx) + v10 * sx) * (1 - sz) + (v01 * (1 - sx) + v11 * sx) * sz;
     }
 
     // ================= 权重公式（唯一来源） =================

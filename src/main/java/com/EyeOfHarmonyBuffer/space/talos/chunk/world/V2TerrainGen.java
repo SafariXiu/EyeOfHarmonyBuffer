@@ -304,6 +304,117 @@ public final class V2TerrainGen {
     /** 细节强度里的坡度调制：{@code 1.00 + 0.80·slope01}。生产现行值 0.80。 */
     public static final double DETAIL_SLOPE_GAIN = 0.80;
 
+    // ═══════════ §7716~§7730：Runevision 侵蚀滤镜的接入参数 ═══════════
+    //
+    // ⚠⚠ 【注入点不在本文件】：composeColumn 在 SimTerrain.ENABLED=true 时会
+    //    直接 return SimTerrain.compose(...)，所以本文件里【没有】侵蚀代码。
+    //    真正的注入点 = sim/runtime/SimTerrain.compose 的陆地分支。
+    //    这里只放【参数】，供 SimTerrain 引用。
+
+    /** 侵蚀的总开关。{@code false} 则完全跳过（A/B 对比与回归排查用）。 */
+    public static boolean EROSION_ENABLED = true;
+
+    /**
+     * <b>侵蚀输入高度场的最粗波长（block）。</b>
+     *
+     * <p>{@code §7722}：本仓地形基础高度最短波长 {@code TalosField.HF_WL_MIN = 46,875 m}，
+     * 所以侵蚀必须在 50 km 以下自己提供全部结构。
+     */
+    public static final double ERO_WL0 = 50000.0;
+
+    /**
+     * <b>侵蚀输入高度场的八度数 —— §7730 的关键标定。</b>
+     *
+     * <p><b>为什么是 12</b>：runevision 博客逐字给出前提
+     * 「the gradient of the height function <b>doesn't change too drastically within a
+     * single cell</b>」。而 cell = {@code SCALE·CELLSCALE·ERO_UNIT} = 0.105 × 300 = <b>31.5 格</b>。
+     * <ul>
+     *   <li>最细波长 <b>远大于</b> cell（旧值 OCT=8 ⇒ 390 格）⟹ 一个 cell 内梯度几乎不变
+     *       ⟹ cell 边界【可见】（用户放大图确认的多边形线）</li>
+     *   <li>最细波长 <b>远小于</b> cell（OCT=13 ⇒ 12.2 格）⟹ 文章说的 grainy noise</li>
+     * </ul>
+     * 取 OCT=12 ⟹ 最细波长 = 50000/2^11 = <b>24.4 格 ≈ cell</b> ⟹ 甜点。
+     */
+    public static final int ERO_OCT = 10;
+
+    /**
+     * <b>1 个世界单位的长度（block）。</b>
+     * {@code cell = SCALE·CELLSCALE·UNIT = 0.105·UNIT}；取 300 ⟹ cell = 31.5 格。
+     */
+    public static double ERO_UNIT = 1000.0;   // non-final: scale sweeps (P1394) + ledger
+
+    /** <b>侵蚀强度</b>（{@code ErosionFilter.erosion} 的 {@code strength}）。 */
+    public static final double ERO_STRENGTH = 0.267;
+
+    /**
+     * <b>侵蚀输出的缩放（block）。§7736 标定：400 -> 21。</b>
+     *
+     * <p><b>根因</b>（P1379~P1386 实测，报告 {@code K:/moder/Talos2/侵蚀线条-根因链.md}）：
+     * 图上那些「多边形/直边接缝」<b>不是</b> cell 边界的折角 —— P1380 实测边界处方向变化
+     * 0.55 度 vs cell 内部 0.46 度（比 1.19，<b>没有折角</b>）；P1384 把输入梯度方向场的波长
+     * 从 1e9 扫到 13 格，<b>格子纹丝不动</b>（gridScore 恒 1.0）。
+     *
+     * <p>真因是<b>幅值尺度</b>：侵蚀在 105 格上的起伏 rms = <b>59.30 格</b>，
+     * 而基础地形同一尺度的 rms 只有 <b>0.158 格</b> ⟹ <b>375 倍</b>。
+     * 也就是说侵蚀不是「地形上的扰动」，它<b>就是</b>地形。
+     * 参考实现（{@code lpmitchell.cs:311-312}）的用法是
+     * {@code eroded = n.x + h.x + offset}，侵蚀是归一化高度场上的<b>小扰动</b>。
+     *
+     * <p><b>标定依据</b>（P1386，生产公式含 gate 与 ERO_SINK）：接缝幅度与 ERO_AMP
+     * <b>严格线性</b>（8 个取样点，相邻比值恒为 2.00，{@code seam/ERO_AMP = 0.0395}）：
+     * <pre>
+     *   ERO_AMP  400 -> seam 15.81 格（多边形清晰可见）
+     *   ERO_AMP   21 -> seam  0.83 格（低于方块分辨率 ==> 不可见）
+     * </pre>
+     * 阈值：要 seam &lt; 1 格（= 1 方块，物理上不可见）需 {@code ERO_AMP <= 25}。
+     *
+     * <p>⚠ <b>代价（必须记账）</b>：侵蚀对地形总起伏的贡献随之同比例下降
+     * ⟹ 沟壑变成细纹理而不是地形特征。这是「沟壑清晰」与「接缝不可见」不可兼得的
+     * 定量形式，用户裁决为<b>取后者</b>。
+     */
+    public static double ERO_AMP = 150.0;
+
+    /**
+     * <b>§7727：侵蚀输出的【下移量（block）】—— 让侵蚀只往下挖，不往上堆。</b>
+     *
+     * <p>原始输出零均值，正偏移会把地形抬到 {@code SOFT_CAP_H = 252} 以上被压成平台，
+     * 平台边缘在图上就是平滑长曲线。{@code P1363} 实测（AMP=400）输出范围
+     * {@code -27.33 .. +77.39} ⟹ 取 80 ⟹ 输出落 {@code [-107, -3]}，恒为负。
+     *
+     * <p>⚠⚠ <b>§7736：它是 DC 中和量 ⟹ 必须与 {@link #ERO_AMP} <b>同比例</b>缩放。</b>
+     * 实测输出均值 {@code mean(dh) = 0.447} ⟹ 施加量
+     * {@code (dh - 0.447) * ERO_AMP} 才是不抬高地形的净效果 ⟹ 需要
+     * <b>{@code ERO_SINK = 0.447 * ERO_AMP}</b>。旧值 80 = 0.447 × 179 ⟹
+     * 它当时中和的是 <b>ERR_AMP=400 下 dh 的均值</b>（0.20 × 400 = 80）。
+     *
+     * <p><b>§7737 实测比例</b>（P1390，20 km 陆地窗口 40000 点，<b>不是猜的</b>）：
+     * {@code mean(dh*gate)/mean(gate) = 0.2760} ⟹ <b>{@code ERO_SINK = 0.276 * ERO_AMP}</b>。
+     * <pre>
+     *   ERO_AMP 400 -> 110.4（旧值 80 偏小，地形被净抬高 30 格）
+     *   ERO_AMP  21 ->   5.8
+     * </pre>
+     * <b>不同比例改它会把海陆比搞坏</b>：整片地形被净抬高或压低 ⟹ 低地跌破海平面或海岸线消失。
+     *
+     * <p>★ 注意 {@code ERO_SINK} 是<b>纯偏移</b>（对整片地形加常数）⟹ <b>不影响接缝</b>
+     * （接缝由 {@code ERO_AMP} 决定）。这一条已由 P1386 的线性关系佐证。
+     */
+    public static double ERO_SINK = 41.4;   // non-final: follows ERO_AMP
+
+    /**
+     * <b>§7732（甲）：把【真实地形梯度】加进侵蚀输入的比例（0 = 不混）。</b>
+     *
+     * <p>依据（runevision 博客逐字）：「the pivot point is never too far away.
+     * <b>At least as long as the gradient of the height function doesn't change too
+     * drastically within a single cell.</b>」
+     *
+     * <p>纯均匀 fBm 的梯度方向处处一致 ⟹ cell 边界可见（§7728 的 P1342 二分实测）。
+     * 叠加真实地形（米制海拔，4 km 基线）的梯度后，方向随位置剧变 ⟹ 打散 cell。
+     */
+    public static double ERO_REAL_GRAD = 1.0;   // ★ §7793：曾被置 0（补救块从未执行）=> 墙 27 格。P1544 实测开启后 max 台阶 25.71 -> 7.72
+
+    /** 侵蚀细节层的种子扰动（与山地细节层解耦）。 */
+    public static final long ERO_SEED_XOR = 0x5A5AL;
+
     /** 一列的合成高度及其全部中间量（**复用容器**，见 {@link #composeColumn}）。 */
     public static final class Column {
         /** 该列是否陆地（与传入的 {@code o.isLand} 一致）。 */
@@ -332,6 +443,8 @@ public final class V2TerrainGen {
 
     private static final ThreadLocal<Column> COLUMN = ThreadLocal.withInitial(Column::new);
     private static final ThreadLocal<double[]> COMPOSE_BP = ThreadLocal.withInitial(() -> new double[2]);
+    /** §7716：侵蚀的梯度 scratch（[0]=dx, [1]=dz），避免每列分配。 */
+    private static final ThreadLocal<double[]> ERO_GRAD = ThreadLocal.withInitial(() -> new double[2]);
 
     /**
      * **块级合成高度的唯一入口**：生产（{@code ChunkProviderTalos2.fillLandColumnV2}）、

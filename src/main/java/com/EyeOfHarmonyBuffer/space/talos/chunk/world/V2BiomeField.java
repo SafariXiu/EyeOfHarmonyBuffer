@@ -352,9 +352,12 @@ public final class V2BiomeField {
         return (byte) (v < 0 ? 0 : (v > 255 ? 255 : v));
     }
 
-    private static double bilerpByte(byte[] g, int k00, int k10, int k01, int k11, double tx, double tz) {
+    private static double bilerpByte(byte[] g, int k00, int k10, int k01, int k11, double tx, double tz) {  // §7725
         double v00 = u(g[k00]), v10 = u(g[k10]), v01 = u(g[k01]), v11 = u(g[k11]);
-        return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
+        // ★ §7725：smoothstep 加权 —— 裸双线性的【对角折痕】会连成长直线。
+        double sx = tx * tx * (3.0 - 2.0 * tx);
+        double sz = tz * tz * (3.0 - 2.0 * tz);
+        return (v00 * (1 - sx) + v10 * sx) * (1 - sz) + (v01 * (1 - sx) + v11 * sx) * sz;
     }
 
     /**
@@ -407,7 +410,10 @@ public final class V2BiomeField {
 
     private static double bilerp(float[] g, int k00, int k10, int k01, int k11, double tx, double tz) {
         double v00 = g[k00], v10 = g[k10], v01 = g[k01], v11 = g[k11];
-        return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
+        // ★ §7725：smoothstep 加权 —— 裸双线性的【对角折痕】会连成长直线。
+        double sx = tx * tx * (3.0 - 2.0 * tx);
+        double sz = tz * tz * (3.0 - 2.0 * tz);
+        return (v00 * (1 - sx) + v10 * sx) * (1 - sz) + (v01 * (1 - sx) + v11 * sx) * sz;
     }
 
     // ================= 离线求解 =================

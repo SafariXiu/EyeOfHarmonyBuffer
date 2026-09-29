@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.litho;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.SimplexNoise2D;
+
 /**
  * TalosField —— V8 陆地生成器的 Java 落地版（设计冻结 §305~§310）。
  *
@@ -20,6 +22,40 @@ public final class TalosField {
 
     private TalosField() {}
 
+    // ================= §7753：黄金角旋转（与 DetailNoise 同一套） =================
+    /** 黄金角（弧度）：{@code 2*pi*(1 - 1/phi)} = 137.507764... 度。出处见 {@code DetailNoise.GOLDEN_ANGLE}。 */
+    public static final double GOLDEN_ANGLE = 2.399963229728653;
+    static final double GOLDEN_COS = Math.cos(GOLDEN_ANGLE);
+    static final double GOLDEN_SIN = Math.sin(GOLDEN_ANGLE);
+
+    /**
+     * ★★★★★★★★ <b>§7754：Simplex 实例缓存 —— 性能必需。</b>
+     *
+     * <p>{@code new SimplexNoise2D(seed)} 要填充 512 字节的置换表，实测<b>约 0.73 us</b>，
+     * 而 {@code fbmBand}/{@code hfExtra} 是<b>每列每 octave</b> 调用 ⟹ 若每次新建，
+     * 整列成本从 6.6 us 涨到 <b>15.4 us（+2.3 倍）</b>。所以必须复用。
+     *
+     * <p><b>键 = 种子</b>。这些函数的调用点种子是<b>固定的有限集合</b>
+     * （{@code seed ^ 0x99}、{@code seed ^ 0xAD}、{@code seed ^ 0xB1}、{@code seed ^ 0xB2}、
+     * {@code seed + 0xE77}，以及少量 {@code seed ^ 0xAA}），所以命中率接近 100%。
+     *
+     * <p>⚠ <b>有界</b>（{@link #SN_CACHE_MAX}）：满了就整体清空重填。
+     * 不用 {@code ThreadLocal} —— 实例本身无状态（只读 perm 表），可安全跨线程共享。
+     */
+    private static final int SN_CACHE_MAX = 64;
+    private static final long[] SN_SEED = new long[SN_CACHE_MAX];
+    private static final SimplexNoise2D[] SN_INST = new SimplexNoise2D[SN_CACHE_MAX];
+    private static int snN = 0;
+
+    /** 取（或建）该种子的 Simplex 实例。调用方<b>不得</b>修改返回对象。 */
+    static SimplexNoise2D simplexFor(long seed) {
+        for (int i = 0; i < snN; i++) if (SN_SEED[i] == seed) return SN_INST[i];
+        SimplexNoise2D sn = new SimplexNoise2D(seed);
+        if (snN >= SN_CACHE_MAX) snN = 0;      // 满了整体清空（简单且绝不无限增长）
+        SN_SEED[snN] = seed; SN_INST[snN] = sn; snN++;
+        return sn;
+    }
+
     // ================= 世界尺度 =================</br>
     /** 世界跨度（block）：对应原型里的 L = 20,000 km。 */
     public static final double L = 20_000_000.0;
@@ -27,8 +63,44 @@ public final class TalosField {
     public static final double DCELL = L / 9.0;
     public static final double SWS = 1200.0 * 1000.0;   // 顶点弯曲（km -> block）
     public static final double JIT = 0.40;
-    public static double AN = 0.320;                 // 可调：海岸线粗糙度振幅（默认 0.320）
-    public static double HH = 0.55;                  // 可调：细节层 Hurst（默认 0.55）
+    /**
+     * <b>细节层（hf）的振幅。§7735 由 ETOPO 实测标定（不再是「可调旋钮」）。</b>
+     *
+     * <p><b>标定方法</b>：在 ETOPO 2022 15 arc-sec 瓦片（463 m/px，8 块）上量
+     * <b>结构函数</b> {@code S(d) = <(h(x+d)-h(x))^2>}（自仿射面的干净标定器；
+     * {@code max-min} 会饱和，不能用），再用同一统计量量本仓地形，取跨尺度最小二乘振幅因子。
+     *
+     * <pre>
+     *   d(格)  | 本仓 (m) | ETOPO (m) | 比
+     *     463  |     38.9 |      48.3 | 0.805
+     *     926  |     58.4 |      82.3 | 0.709
+     *    1852  |     73.2 |     126.1 | 0.580
+     *    4167  |     92.0 |     186.0 | 0.495
+     *   ==> 振幅因子 1.51 ==> 0.320 x 1.51 = <b>0.4833</b>
+     * </pre>
+     *
+     * <p><b>实测脚本</b>：{@code K:/moder/TT/etopo_spectrum/extract_H.py}（结构函数 + H）、
+     * {@code extract_relief.py}（起伏 vs 窗口）。<b>探针</b>：P1377 / P1378（FIT-1，
+     * logRMS 0.186）。完整报告：{@code K:/moder/Talos2/AN标定-ETOPO实测.md}。
+     *
+     * <p>⚠ <b>改它会改变海陆比</b>：{@code level()} 是 {@code fieldValue} 的分位，而本项进
+     * {@code fieldValue} ⟹ 必须重新核对 land/ocean 占比。
+     *
+     * <p>旧值 0.320 无出处（接手说明 §4.4 已标记为「没有出处的可调旋钮」），偏小 1.51 倍。
+     */
+    public static double AN = 0.4833;
+    /**
+     * <b>细节层低频段 Hurst 指数。</b>
+     *
+     * <p><b>§7712 标定（ETOPO 实测，不是拍脑袋）：</b>
+     * 对 {@code terrain-diffusion/data/global/etopo_10m.tif}（10 arc-min 全球，
+     * 18.55 km/px，拟合频段 75.8–3562.2 km）做径向平均功率谱 + log-log 最小二乘：
+     * <b>beta = 2.8193，R² = 0.9983</b>。二维分形面 {@code beta = 2H + 2}
+     * ⟹ <b>H = 0.4097</b>。脚本：{@code K:/moder/TT/etopo_spectrum/extract_psd.py}。
+     *
+     * <p>旧值 0.55 是早期估计（无出处），会让 beta = 3.10，比地球陡 0.34。
+     */
+    public static double HH = 0.4097;
     /** 改 H 必须同时刷新预计算的倍频增益。 */
     public static void setHurst(double h) { HH = h; GHH = Math.pow(2, -h); }
     public static final double USx = 3.0;
@@ -477,8 +549,20 @@ public final class TalosField {
     }
 
     /** 细节层（宏观海岸线粗糙度）。 */
-    /** hf 的八度数（原来写死在 hf 里）。提到常量只为让【别的类能引用同一个尺度】。 */
-    public static final int HF_OCT = 7;
+    /**
+     * hf 的八度数。<b>§7733：7 → 13</b>。
+     *
+     * <p><b>为什么改</b>：{@code P1362} 实测基础高度在 <b>4096 格（4 km）内只变 1.14 格</b>
+     * —— 也就是【地形在 46.9 km 以下完全没有能量】。后果是侵蚀滤镜的
+     * {@code cell} 结构（每个 cell 中心必有一条白纹，见 runevision 博客）<b>没有任何
+     * 大尺度地形去淹没它</b> ⟹ 在 {@code /talosmap} 与游戏里表现为多边形线
+     * （{@code §7728} 的 {@code P1342} 二分实测：关掉侵蚀 ⟹ 线完全消失）。
+     *
+     * <p><b>为什么是 13</b>：{@code HF_WL_MIN = 3,000,000 / 2^12 = } <b>732 m</b>
+     * —— 覆盖到 km 量级，正好落在侵蚀 cell（105 格）与侵蚀最细波长（97.7 格）
+     * 的【上一级】，两者不再互相顶替，而是各管一段。
+     */
+    public static final int HF_OCT = 13;
     /** hf 的最粗波长（m）（原来写死在 hf 里）。 */
     public static final double HF_WL0 = 3_000_000.0;
     /**
@@ -529,7 +613,20 @@ public final class TalosField {
      * </pre>
      * ⟹ <b>ocean% 恒为 6.8%（海陆完全不变）而 max acc 提升 5.1 倍</b> ✓✓✓**
      */
-    public static double HH_HIGH = 1.6;
+    /**
+     * <b>细节层高频段 Hurst 指数。</b>
+     *
+     * <p><b>§7712 标定（ETOPO 2022 实测）：</b>
+     * 8 块 15 arc-sec 瓦片（463 m/px，拟合频段 1–1667 km）逐块径向谱 + 平均：
+     * <b>beta = 2.7100，R² = 0.9960</b>；与 10 arc-min 的重叠区间（75–1667 km）
+     * <b>几乎完全重合 ⟹ 地球在 1–3562 km 是【单一幂律】</b>。
+     * {@code beta = 2H + 2} ⟹ <b>H = 0.3550</b>。
+     * 脚本：{@code K:/moder/TT/etopo_spectrum/extract_15s.py}。
+     *
+     * <p>旧值 1.6 是早期估计（无出处），会让 beta = 5.20，比地球陡 2.44 ——
+     * 后果是 375 km 以下几乎没有能量，地形过光滑，侵蚀滤镜没有东西可咬。
+     */
+    public static double HH_HIGH = 0.3549;
 
     /**
      * ★★★★★★★★ <b>§7664：分段 fBm 的增益表 —— hf 专用</b>。**
@@ -539,17 +636,29 @@ public final class TalosField {
      * 归一化（{@code r/tot}）保持不变 ⟹ 值域仍是 [-1,1] ⟹ 不改变 {@link #AN} 的标定 ✓**
      */
     static double fbmBand(double x, double z, long s, int oct, double wl0) {
+        // ★ §7753：vnoise -> Simplex + 每 octave 黄金角旋转。
+        //   依据（§7714 逐字 + P1452/P1453 实测）：value noise（双线性）有格状晶格，
+        //   会在【整列/整行】上产生贯穿的直线（P1453 的 fix_vnoise.png 拍到了一条完美的
+        //   竖直直线，位置正好在 vnoise 的格点边界 x = -2,000,000）。
+        //   实测方向性：vnoise 3.05 / 5.12  ->  Simplex 1.45（= 各向同性标定值）。
+        //   黄金角旋转让各 octave 的晶格朝向互相抵消（DetailNoise 已在用同一套）。
+        SimplexNoise2D sn = simplexFor(s);
         double r = 0, a = 1, f = 1.0 / wl0, tot = 0;
+        double ca = 1.0, sa = 0.0;
+        final double cR = GOLDEN_COS, sR = GOLDEN_SIN;
         for (int o = 0; o < oct; o++) {
-            r += a * vnoise(x * f, z * f, s + o * 7919L);
+            double xx = x * ca - z * sa, zz = x * sa + z * ca;
+            r += a * sn.noise2(xx * f, zz * f);
             tot += a;
             a *= (o < OCT_SPLIT) ? GHH : GH2;
             f *= 2;
+            double nc = ca * cR - sa * sR, ns = ca * sR + sa * cR;
+            ca = nc; sa = ns;
         }
         return r / tot;
     }
     /** {@link #HH_HIGH} 的预计算增益（{@code setHurstHigh} 会刷新它）。 */
-    static double GH2 = Math.pow(2, -1.6);
+    static double GH2 = Math.pow(2, -HH_HIGH);
     /** 改高频段 H 必须同时刷新 {@link #GH2}。 */
     public static void setHurstHigh(double h) { HH_HIGH = h; GH2 = Math.pow(2, -h); }
     /**
@@ -558,6 +667,45 @@ public final class TalosField {
      * 高频段用 {@link #HH_HIGH}（弱化纹理 ⟹ 河网能长出层级）。**
      */
     public static double hf(double x, double z, long seed) { return fbmBand(x, z, seed ^ 0x99L, HF_OCT, HF_WL0); }
+
+    /**
+     * ★★★★★★★★ <b>§7738：把频谱【向下延伸】—— 补上 {@link #HF_WL_MIN} 以下的 octave。</b>
+     *
+     * <p><b>为什么需要</b>（P1379~P1391 实测）：本仓地形的最细波长是 {@code HF_WL_MIN = 732 m}，
+     * 而侵蚀的 cell 只有 {@code 0.105 x ERO_UNIT = 105 格}。也就是说<b>侵蚀作用的尺度比地形
+     * 最细的结构还小 7 倍</b> ⟹ 侵蚀 cell 的接缝【没有东西可以掩盖】⟹ 图上出现规则多边形。
+     *
+     * <p><b>实测约束</b>：接缝幅度 = {@code 0.0395 x ERO_AMP}（格，严格线性），
+     * 要它被地形掩盖，需要地形在 105 格上的 rms 粗糙度不少于接缝幅度。
+     * 而现在该粗糙度只有 <b>0.158 格</b>（对应 {@code ERO_AMP <= 4}，即侵蚀等于没有）。
+     *
+     * <p><b>本方法</b>：继续用 {@link #HH_HIGH} 的增益阶梯，在 {@code HF_WL_MIN} 之下
+     * 再加 {@code extra} 个 octave（波长 366 / 183 / 92 / 46 m ...）。
+     * <b>这不是新旋钮</b>：它的增益沿用已由 ETOPO 标定的 {@code HH_HIGH}，
+     * 只是把<b>已经存在的频段</b>延长，而不是引入新的可调量。
+     *
+     * <p><b>归一化口径</b>：返回 {@code sum(a_o * vnoise)}，<b>不做 tot 归一化</b> ⟹
+     * 量级与 {@link #hf} 的分子一致，可直接乘 {@link #AN} 后相加。
+     *
+     * @param extra 额外 octave 数（0 = 与今天逐位相同）
+     */
+    public static double hfExtra(double x, double z, long seed, int extra) {
+        if (extra <= 0) return 0.0;
+        // ★ §7753：同上，vnoise -> Simplex + 黄金角旋转（理由见 fbmBand）。
+        SimplexNoise2D sn = simplexFor(seed + 0xE77L);
+        double r = 0, a = 1.0, wl = HF_WL_MIN;
+        double ca = 1.0, sa = 0.0;
+        final double cR = GOLDEN_COS, sR = GOLDEN_SIN;
+        for (int o = 0; o < extra; o++) {
+            wl *= 0.5;
+            a *= GH2;
+            double xx = x * ca - z * sa, zz = x * sa + z * ca;
+            r += a * sn.noise2(xx / wl, zz / wl);
+            double nc = ca * cR - sa * sR, ns = ca * sR + sa * cR;
+            ca = nc; sa = ns;
+        }
+        return r;
+    }
     // ================= ★★★★★★★★ §7643：各向异性（沿等高线拉伸） =================
     /**
      * <b>各向异性强度 K</b>：噪声坐标沿【等高线方向】被【拉伸 K 倍】（等价于垂直方向压缩）。
@@ -682,9 +830,41 @@ public final class TalosField {
     public static boolean ANISO = true;
 
     /** 未减海平面的场值。§7643 起 hf 走各向异性（{@link #ANISO} 可回滚）。 */
+    /**
+     * ★ <b>§7738：{@link #hfExtra} 的振幅（相对 {@link #AN} 的倍数）。0 = 与今天逐位相同。</b>
+     *
+     * <p><b>为什么要它</b>（P1379~P1394 实测）：侵蚀的 cell 是 {@code 0.105 x ERO_UNIT} 格，
+     * 而本仓地形最细波长只有 {@code HF_WL_MIN = 732 m} ⟹ 侵蚀作用的尺度上地形几乎是平面
+     * ⟹ 侵蚀 cell 的接缝没有东西可掩盖（图上就是那些多边形线）。
+     *
+     * <p><b>标定依据</b>：要把 {@code ERO_AMP} 提到能做出 60~100 格起伏，
+     * 地形在 105 格尺度上的 rms 粗糙度必须同量级。P1393 实测：
+     * {@code ERO_EXTRA_AMP} 从 0 到 0.60，该粗糙度从 <b>0.213 格</b> 涨到 <b>12.18 格</b>（57 倍），
+     * 而 {@code seam/地形粗糙度} 从 <b>74 倍</b> 降到 <b>1.30 倍</b>。
+     *
+     * <p><b>不是新旋钮</b>：它只缩放 {@link #hfExtra}，而后者的增益阶梯沿用已由 ETOPO
+     * 标定的 {@link #HH_HIGH}；它补的是<b>本来就该有、现在缺失</b>的频段（366 m 以下）。
+     */
+    public static double ERO_EXTRA_AMP = 0.25;
+
+    /** 未减海平面的场值。§7643 起 hf 走各向异性（{@link #ANISO} 可回滚）。 */
     public static double fieldValue(double x, double z, long seed) {
-        return bfield(x, z, seed) + AN * (ANISO ? hfAniso(x, z, seed) : hf(x, z, seed));
+        return fieldValue(x, z, seed, ERO_EXTRA_AMP);
     }
+
+    /**
+     * ★ <b>§7739：允许调用方【自己指定】细频段振幅</b>（用于「细结构随坡度变化」）。
+     *
+     * <p>{@code extraAmp = 0} ⟹ 与接线前逐位相同（回滚点）。
+     * 传 {@link #ERO_EXTRA_AMP} 则与无参版本逐位相同。
+     */
+    public static double fieldValue(double x, double z, long seed, double extraAmp) {
+        return bfield(x, z, seed) + AN * (ANISO ? hfAniso(x, z, seed) : hf(x, z, seed))
+             + (extraAmp > 0.0 ? AN * extraAmp * hfExtra(x, z, seed, HF_EXTRA_OCT) : 0.0);
+    }
+
+    /** {@link #ERO_EXTRA_AMP} 使用的额外 octave 数（1 = 366 m）。 */
+    public static int HF_EXTRA_OCT = 1;
 
     // ================= 每世界自标定（O(1) 于列数） =================
     // （E123：原 lvlSeed/lvl 的静态缓存已删 —— 那是不受保护的共享可变状态）
@@ -826,7 +1006,12 @@ public final class TalosField {
      * ⟹ 【零新增地形查询】✓
      */
     public static double elevation(double x, double z, long seed) {
-        double v = fieldValue(x, z, seed) - lvlFast(seed);
+        return elevation(x, z, seed, ERO_EXTRA_AMP);
+    }
+
+    /** ★ §7739：同 {@link #fieldValue(double, double, long, double)}，供坡度调制的调用方使用。 */
+    public static double elevation(double x, double z, long seed, double extraAmp) {
+        double v = fieldValue(x, z, seed, extraAmp) - lvlFast(seed);
         double h = hyp(USx * v);
         // ★ §7666：凹形纵剖面（内陆更高）。s 的代理 = v（无量纲），theta 与 k 见上方 javadoc。
         if (v > 0.0) {
@@ -845,6 +1030,8 @@ public final class TalosField {
         h = h * 31 + Double.doubleToLongBits(SWS);
         h = h * 31 + Double.doubleToLongBits(JIT);
         h = h * 31 + Double.doubleToLongBits(AN);
+        h = h * 31 + Double.doubleToLongBits(ERO_EXTRA_AMP);
+        h = h * 31 + HF_EXTRA_OCT;
         h = h * 31 + Double.doubleToLongBits(HH);
         h = h * 31 + Double.doubleToLongBits(USx);
         h = h * 31 + Double.doubleToLongBits(LAM);

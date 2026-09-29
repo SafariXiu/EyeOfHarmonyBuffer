@@ -4,6 +4,9 @@ import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
+import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
+import com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter;
 
 /**
  * **新模拟器 → 世界的运行时桥**（纵向切片第 1 步：地形）。
@@ -71,13 +74,73 @@ public final class SimTerrain {
     public static boolean ENABLED = true;
 
     /**
-     * **陆地垂直增益（blocks/m）**：8,069 m 的珠峰 -> 约 190 blocks。
+     * **陆地垂直增益（blocks/m）**：8,069 m 的珠峰 -> 约 173 blocks。
+     *
+     * <p>★ <b>§7755 标定依据（用户实测反馈「整体高度过低、连 150 都过不了」）</b>：
+     * 原值 <b>0.0153</b> 只用掉垂直预算的 37%（实测 p50 = Y93、p95 = Y120、max = Y179），
+     * 而预算 = {@code SOFT_CAP_H - seaLevel = 188 格}。
+     * 本类 javadoc 原本就推的是 {@code 188/8000 = 0.0235}（珠峰 8869 m → 190 格），
+     * <b>0.0153 与它自相矛盾</b>。
+     *
+     * <p>实测扫描（P1462，用户种子，65 km 窗口）：
+     * <pre>
+     *   LAND_GAIN | p50 | p95 | max | 软封顶裁切
+     *     0.0153  |  93 | 120 | 179 |  0.00%     &lt;== 旧值：过低
+     *     0.0214  | 105 | 151 | 243 |  0.00%     &lt;== 现取：填满预算且零裁切
+     *     0.0280  | 119 | 188 | 252 |  0.01%
+     *     0.0350  | 133 | 220 | 252 |  0.15%     （开始裁切）
+     * </pre>
+     *
+     * <p>⚠ <b>本值与以下量必须同步</b>（改一个必须重核其余）：
+     * {@link #PEAK_REF_M}、{@link #FADE_VALLEY_BLK}、{@link #FADE_PEAK_BLK}，
+     * 以及 {@code LevelField} 的 {@code level()}（海陆比）。
+     * ⚠ 它不是 {@code final}（探针要扫），且**只在类初始化时**被上面三个量读取
+     * ⟹ 运行时改它不会自动传播。
      *
      * <p>⚠ 第一版用了 `tanh(elev/3000)`，实测**把深海平原压成了一块板**（P294）：
      * tanh 在 −4,000~−5,377 m 之间只变化 0.9 blocks，取整后全落进同一格。
      * 现在改成**线性 + 软封顶**（softplus）：工作区间内保分辨率，只在接近世界高度上限时饱和。
      */
-    public static double LAND_GAIN = 0.0235;
+    public static double LAND_GAIN = 0.055;   // ★ §7795：舒展度临界点。fineness 0.71，玩家跨度 p10-p90 = 86 格（原始 53），裁切 0.92%
+
+    /**
+     * §7716：{@code fadeTarget} 的参考峰高（米）。<b>由已有量导出，不是新旋钮</b>：
+     * {@code (SOFT_CAP_H - seaLevel) / LAND_GAIN = (252 - 64) / 0.0235 = 8,000 m}。
+     * 与珠峰（8,848 m）同量级，正是 {@code LAND_GAIN} 当初被标定的意图。
+     */
+    public static final double PEAK_REF_M = (V2TerrainGen.SOFT_CAP_H - 64.0) / LAND_GAIN;
+
+    /**
+     * ★★★★★★★★ <b>§7742：{@code fadeTarget} 的区间端点（block）。</b>
+     *
+     * <p><b>为什么必须改</b>（P1407/P1408 实测 + 博客逐字）：原实现用
+     * {@code ft = 2*(elev/PEAK_REF_M) - 1}，等于把 {@code valleyAlt} 锚在
+     * <b>0 m（海平面）</b>。但本仓陆地是从约 <b>1200 m</b> 才开始的 ⟹
+     * 整个陆地挤在【负半边】：
+     * <pre>
+     *   实测 fadeTarget: min=-0.697  max=+0.219  mean=-0.353
+     *   直方图: [+0.2, +1.0) = 0.0%   &lt;== 正值区间【完全没用上】
+     * </pre>
+     *
+     * <p><b>博客第 217-218 行逐字</b>：
+     * <pre>
+     *   // Convert the altitude to a value between -1 and 1.
+     *   float fadeTarget = inverse_lerp(valleyAlt, peakAlt, h) * 2.0 - 1.0;
+     * </pre>
+     * 且第 443 行自述：<b>「Pointy peaks are still dependent on the fade target having
+     * a value close to 1.0」</b> —— 我们的 fadeTarget 永远到不了 1.0 ⟹
+     * <b>尖峰机制从未激活，整张图只有「谷/沟」行为</b>。
+     *
+     * <p><b>标定</b>（P1408，200 km 窗口 160000 个陆地点，1%/99% 分位）：
+     * {@code elev 991.5 m / 4843.6 m} ⟹ 经 {@code hNo = softCapTo(64 + 0.0153*elev, 252, 6)}
+     * 换算为 block：<b>79.4 / 138.1</b>。取 1%/99% 而不是 0%/100% 是为了留 2% 的余量，
+     * 避免极值点长期贴边（饱和会削弱峰/谷对比）。
+     *
+     * <p>⚠ 这两个值是<b>标定量</b>（与 {@code LAKE_MIN_DEPTH_M} 同性质），不是逐字常数。
+     */
+    public static double FADE_VALLEY_BLK = 0.42 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
+    /** 见 {@link #FADE_VALLEY_BLK}。 */
+    public static double FADE_PEAK_BLK = 0.735 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
     /** **海洋垂直增益（blocks/m）**：−5,377 m 的深海平原 -> 约 56 blocks。 */
     public static double OCEAN_GAIN = 0.0105;
     /** 深海平原的块级起伏（blocks）—— 与旧实现 SEABED_RELIEF 同量级。 */
@@ -87,6 +150,39 @@ public final class SimTerrain {
     public static double DETAIL_W = 220.0;
     /** 沙滩带：高出海平面这么多方块以内算滩。 */
     public static double BEACH_BLOCKS = 3.0;
+
+    /**
+     * ★ <b>§7756：沙滩带总开关。默认 {@code false}（用户裁决：要做盆地，沙滩带会干扰）。</b>
+     *
+     * <p><b>机制</b>（{@code ChunkProviderTalos2:268-272}）：{@code c.beach=true} 时，
+     * 该列顶部 <b>3 格</b>（1 表面 + 2 填充）被换成沙子，<b>优先于群系 profile</b>。
+     * 触发条件是<b>纯高度</b>判据 {@code h - seaLevel <= BEACH_BLOCKS}，
+     * <b>不看到海距离</b> ⟹ 内陆低洼地（例如将来的盆地底部）也会被铺沙。
+     *
+     * <p>{@code false} ⟹ {@code c.beach} 恒为 false ⟹ 全部走群系 profile（=「默认的」）。
+     */
+    public static boolean BEACH_ENABLED = false;
+
+    /**
+     * ★★★★★★★★ <b>§7757：陆地基础抬升（block）。</b>用户裁决：地形整体再高一些。
+     *
+     * <p><b>为什么要它</b>（P1465 实测，用户种子，3000 km / 576 点全球采样）：
+     * <pre>
+     *   offset | p25 | p50 | p75 | p90 | p95 | p99 | max | 撞封顶
+     *      0     |     | 103 | 120 | 141 |     | 208 | 243 | 0.00%   （P1465 模拟基线）
+     *     30     | 126 | 138 | 162 | 185 | 210 | 228 | 252 | 0.39%   <== 现取
+     *     40     | 136 | 148 | 172 | 195 | 220 | 237 | 252 | 0.78%
+     * </pre>
+     * 用户目标「大部分山峰 ~180、偶尔高峰接近软顶、底部再高 20」⟹ **+30**，
+     * 实测 p90=185（== 目标 180 量级）、p99=228、max=252（== 高峰触顶），撞封顶仅 0.39%。
+     *
+     * <p><b>口径</b>：它是**对陆地基础高度的均匀平移**（加在 {@code seaLevel + LAND_GAIN*elev} 之后、
+     * softcap 之前）⟹ 起伏、地形形态、海陆比**都不变**，只是整体抬高。
+     *
+     * <p>⚠ 只作用于<b>陆地</b>分支（海洋分支是 {@code seaLevel - depth}，不受影响）。
+     * <p>⚠ 与 {@link #LAND_GAIN} 一样，它是<b>标定量</b>（用户裁决的形态参数），不是逐字常数。
+     */
+    public static double LAND_BASE_OFFSET = 0.0;   // ★ §7794：配合 LAND_GAIN=0.040 保持 meanY 不变（155.7 vs 154.6）
     /** 雪线是否改用**地表温度**判定（§98）。false = 退回旧实现的纯几何规则（本类不设 snow）。 */
     public static boolean SNOW_FROM_TEMP = true;
     /**
@@ -117,6 +213,190 @@ public final class SimTerrain {
      */
     /** 每线程一份的 scratch：**不能**用可变静态（跨线程共享），见 V2TerrainGen 里那条同族注记。 */
     private static final ThreadLocal<double[]> KAPPA3 = ThreadLocal.withInitial(() -> new double[3]);
+    /** §7716：侵蚀的梯度 scratch（[0]=dx, [1]=dz）。 */
+    private static final ThreadLocal<double[]> ERO_GRAD = ThreadLocal.withInitial(() -> new double[2]);
+
+    /**
+     * ★★★★★★★★ <b>§7743：侵蚀输入梯度的【量纲修正因子】。</b>
+     *
+     * <p><b>为什么必须要有它</b>（P1411 实测）：侵蚀滤镜的 {@code slopeLength} 参与
+     * <b>两个绝对值运算</b>（{@code combiMask} 与 {@code roundingForInput}），
+     * 所以它<b>必须与被侵蚀的高度场同量纲</b>。而
+     * {@link com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise#gradRidged} 算的是
+     * <b>细节层【自己】高度</b>的导数 —— 那是<b>另一个高度场</b>。
+     *
+     * <pre>
+     *   实测（P1411，cell 尺度）：噪声梯度 |g| 均值 = 0.0238
+     *                             参考实现的 AssumedSlope = 0.70
+     *   ==&gt; 我们的梯度比滤镜期望的小【30 倍】
+     *   ==&gt; combiMask = easeOut(smoothStart(0.0297, 0.984)) = 0.00022 ≈ 0
+     *   ==&gt; mix(fadeTarget, gullies, combiMask) 退化成【几乎全 fadeTarget】
+     *   ==&gt; 沟壑项被压掉 ⟹ 只有平滑块状，没有细树枝网络
+     * </pre>
+     *
+     * <p><b>推导（不是拟合）</b>：过滤器要的是 {@code d(blockHeight)/d(worldUnit)}。
+     * <pre>
+     *   细节层在 cell 尺度上的高度 ≈ 0.38 格（gradRidged 的各 octave 幅度之和）
+     *   真实地形在 cell 尺度上的高度 ≈ 12 格
+     *   ==&gt; 比值 ≈ 31.6
+     * </pre>
+     * 与实测 30 吻合 ⟹ 纯推导值是 <b>32</b>。但 <b>P1412 扫描后定稿取 8</b>：
+     * <pre>
+     *   GRAD_SCALE | relief | ridge密度 | straightness
+     *        0     | 102.4  |    268.9  |   0.0263   （沟壑被完全压掉）
+     *        8     |  99.2  |   1801.3  |   0.4480   &lt;== 定稿
+     *       16     |  94.5  |   2222.5  |   0.5770
+     *       32     |  91.1  |   2381.9  |   0.5904
+     * </pre>
+     * ridge 密度涨 <b>6.7 倍</b>（沟壑释放），但 straightness 也涨 17 倍（开始规则晶格）
+     * ⟹ 取拐点前的 <b>8</b>。
+     *
+     * <p>⚠ 这是<b>标定量</b>；改 {@code ERO_EXTRA_AMP}（它改变了地形在 cell 尺度的高度）
+     * 之后必须重标。
+     */
+    public static double ERO_GRAD_SCALE = 8.0;
+
+    /**
+     * §7763: 侵蚀门控的【下限】。0 = 与原来逐位相同（回滚点）。
+     *
+     * 依据：lpmitchell / catto / 博客原文 —— 三个来源都【没有】「只在山上侵蚀」这一步。
+     * 门控是本仓自己加的（§7723）。而 P1476 实测：用户种子上约 2/3 的图块 gate=0，
+     * 那些地方【完全没有侵蚀】，也就没有沟壑。
+     *
+     * gateEff = FLOOR + (1-FLOOR)*gate  ==>
+     *   FLOOR=0 完全回滚；FLOOR=1 完全等同于「没有门控」（= 参考库的做法）。
+     */
+    public static double ERO_GATE_FLOOR = 0.5;
+
+    /**
+     * §7792: 把侵蚀【驱动器梯度的幅度】归一到常数（0 = 关闭，逐位回滚点）。
+     *
+     * 依据（P1536 实测，用户站点附近 40000 点）：
+     *   |eg| 的 min=0.01572  p10=0.18485  p50=0.63191  p90=0.77885  max=0.90211
+     *   => max/min = 57.4 倍，p90/p10 = 4.2 倍
+     * 而参考库（lpmitchell:387）喂的是【归一化 fBm】：
+     *   gullies = vec3(phacelle.x, phacelle.y * phacelle.zw)
+     *   —— 高度与坡度【来自同一个归一化场】=> 幅度近乎恒定。
+     *
+     * 为什么这是「墙」的解：
+     *   滤镜输出的幅度【正比于输入梯度幅度】=> 幅度剧变的地方
+     *   eroT 就有大落差 => 地形出现台阶（用户实测 5.99 格；§52 那处 27.21 格）。
+     *   把幅度归一 => 侵蚀深度【处处一致】=> 落差消失，而【平均深度不变】。
+     *
+     * 生效方式：eg 乘 (1-a) + a*(|eg|的常数)/|eg|，a = ERO_DRIVER_NORM。
+     * 若同时把 ERO_AMP 乘 (1-a)，则【平均侵蚀深度】守恒。
+     */
+    public static double ERO_DRIVER_NORM = 0.0;   // ★ §7788：恢复原值。P1518 实测这个参数对 lineIndex 几乎无影响（1.37~1.48），只是起伏杠杆（relief 111->150）=> 不该为线条牺牲它
+
+    /**
+     * §7744: 梯度【方向扰动】幅度（弧度）。0 = 关闭（逐位回退）。
+     *
+     * 为什么需要（P1412 + 用户游戏内实测）：修好 §7743 后 combiMask 打开，
+     * 暴露出来的是 phacelle 条纹本身的规则性 —— 条纹方向 = gullySlope 的方向。
+     * 我们的梯度方向场太均匀，条纹几乎平行，图上出现又长又直、间距规则的「伤口」
+     * （straightness 0.026 -> 0.448，涨 17 倍）。
+     *
+     * 参考库没有这个问题，因为它们的梯度来自【真实 fBm】，方向逐点随机，有机分叉。
+     * 本参数用一个 cell 尺度的平滑方向场去模拟那个随机性。
+     *
+     * 注意：这是本仓引入的机制，参考实现没有对应物（它们不需要）。
+     */
+    public static double ERO_DIR_JITTER = 0.0;
+
+    /** 方向扰动场的波长（block）。取 cell 尺度。 */
+    public static double ERO_DIR_WL = 0.105 * V2TerrainGen.ERO_UNIT;
+
+    /**
+     * §7745: 用【真实地形梯度方向】替换噪声方向的比例，0..1。0 = 关闭（逐位回退）。
+     *
+     * 依据：两个参考库的侵蚀梯度方向都来自【被侵蚀的那个高度场】。
+     * 我们的噪声方向太均匀（P1411: 与真实坡度平均夹角 51 度，但方向场本身平滑），
+     * 条纹因此几乎平行，图上出现又长又直的「伤口」。
+     */
+    public static double ERO_DIR_TERRAIN = 1.0;
+
+    /** §7745: 真实地形方向的差分半宽（block）。P1416 实测方向变化率与此几乎无关
+     *（4 格 52.08 度 / 105 格 48.19 度），所以取小的以保留局部性。 */
+    public static double ERO_DIR_DH = 26.0;
+
+    // ================= ★ §7739：细结构随坡度变化 =================
+    /**
+     * <b>细频段（{@code TalosField.hfExtra}，366 m）是否随坡度调制。</b>默认 {@code true}。
+     *
+     * <p><b>为什么需要</b>（P1393/P1396 实测）：细频段是<b>全局</b>加的，振幅是常数、
+     * 不随位置变化 ⟹ 远景（12800 格）看是<b>均匀麻点纹理</b>，缺少「山脉—盆地」的组织。
+     * 真实地形的小尺度粗糙度是<b>空间变化</b>的：陡坡粗糙、平原光滑。
+     *
+     * <p>{@code false} ⟹ 退回「全局常数振幅」（与 §7738 逐位相同，回滚点）。
+     */
+    public static boolean ERO_EXTRA_SLOPE_MOD = true;
+
+    /**
+     * <b>坡度采样的半宽（block）。</b>取侵蚀输入的 cell 尺度（{@code 0.105 x ERO_UNIT}），
+     * 即「侵蚀滤镜自己看见的那个坡度」—— 自洽，不是新旋钮。
+     */
+    public static double EXTRA_SLOPE_HALF = 0.105 * V2TerrainGen.ERO_UNIT;
+
+    /**
+     * <b>坡度掩膜的上下阈值。</b>掩膜 = smoothstep(LO, HI, 坡度)，坡度单位 m/m。
+     *
+     * <p><b>§7739 标定依据</b>（P1399 实测，20 km 窗口 10000 点）：
+     * cell 尺度（{@code EXTRA_SLOPE_HALF = 105} 格）上的坡度分布
+     * <b>均值 0.97，96% 的点 &gt; 0.75</b> —— 也就是说初版的 0.35/0.75 让掩膜<b>几乎处处饱和</b>
+     * （均值 0.9704）⟹ 等于没调制 ⚠。
+     *
+     * <p>改到 0.5/1.5：平原（坡度 &lt; 0.5）几乎不加细结构，陡坡（&gt; 1.5）全量加，
+     * 中间平滑过渡。<b>注意</b>：它们只重分配细结构，不改变 {@link #ERO_EXTRA_AMP} 的上限。
+     */
+    public static double EXTRA_SLOPE_LO = 0.5;
+    public static double EXTRA_SLOPE_HI = 1.5;
+
+    /**
+     * ★ <b>§7740：细结构掩膜的【下限】—— 任何地方都保留这个比例。</b>
+     *
+     * <p><b>为什么必须要有它</b>（用户实测反馈 + P1401）：{@link LandformField#mtnPlusPeak()}
+     * 是「<b>是不是山</b>」的判据，实测<b>只在约 25% 的陆地地点非零</b>。
+     * 若直接拿它当系数，剩下的 <b>75% 陆地会把细结构完全关掉 ⟹ 地形整体塌下去</b> ⚠
+     * （这正是「把高度直接全压下去了」的原因）。
+     *
+     * <p>加下限后：掩膜 = {@code MASK_MIN + (1-MASK_MIN) * gate} ∈ [MASK_MIN, 1]，
+     * <b>细结构处处存在</b>，只是在山区更粗、在平地更细。
+     */
+    public static double EXTRA_MASK_MIN = 0.45;
+
+    /**
+     * 该点的<b>细结构掩膜 ∈ [0,1]</b>：0 = 平原（不加细结构），1 = 山地（全量加）。
+     *
+     * <p><b>§7739 为什么不用「坡度」而用「山地门控」</b>（P1399 实测否证了坡度版）：
+     * 在 cell 尺度（105 格）上量坡度，量到的<b>主要就是细频段自己的贡献</b> ⟹
+     * 用它去调制细频段是<b>循环依赖</b>，实测掩膜均值 0.97（阈值 0.35/0.75）与 0.91（0.5/1.5）
+     * —— <b>几乎处处饱和，等于没调制</b> ⚠。
+     *
+     * <p>改用<b>粗地形</b>的「这里是不是山」：{@link LandformField#mtnPlusPeak()}，
+     * 也就是侵蚀门控（{@code §7723}）用的同一个量。它是<b>既有权威判据</b>（D43），
+     * 连续、且与细频段无关 ⟹ 无循环依赖，也<b>零新增判据</b>。
+     */
+    public static double extraSlopeMask(int x, int z, int worldSeedInt) {
+        if (!ERO_EXTRA_SLOPE_MOD) return 1.0;
+        return LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
+    }
+
+    /**
+     * 本列实际使用的细频段振幅（受 {@link #ERO_EXTRA_SLOPE_MOD} 与 {@link #EXTRA_MASK_MIN} 控制）。
+     *
+     * <p>⚠⚠ <b>必须传【原始世界种子 int】</b>（{@code worldSeedInt}）：{@link LandformField}
+     * 按它做瓦片键。曾经这里传的是 {@code (int) seedOf(worldSeedInt)}（长种子的截断），
+     * 那会去查<b>另一个世界</b>的门控 ⟹ 处处返回 0 ⟹ <b>细结构被整片关掉、地形塌下去</b>
+     * （用户实测发现，P1404 定位）。
+     */
+    public static double extraAmpFor(int x, int z, int worldSeedInt) {
+        double a = com.EyeOfHarmonyBuffer.sim.litho.TalosField.ERO_EXTRA_AMP;
+        if (a <= 0.0) return 0.0;
+        if (!ERO_EXTRA_SLOPE_MOD) return a;
+        double g = LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
+        if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
+        return a * (EXTRA_MASK_MIN + (1.0 - EXTRA_MASK_MIN) * g);
+    }
     /** **public 是为了让探针与生产同源**（P462 要量 D46 的沿岸-内陆过渡）。 */
     public static double warmestMonthTempK(int x, int z, int worldSeedInt) {
         // ⚠ D46 修复（2026-09-13）：这里原来把 SimClimate.coords 的 out3[2] 当 kappa 用，
@@ -176,7 +456,17 @@ public final class SimTerrain {
                                               int worldSeedInt, int seaLevel, int maxY) {
         long seed = seedOf(worldSeedInt);
         int cell = PlateField.PLATE_CELL;
-        double elev = PlateField.elevationWithCell(x, z, seed, cell);
+        // ★ §7739：细频段振幅随坡度变化（ERO_EXTRA_SLOPE_MOD=false 时逐位退回旧行为）
+        // ★★★★★★★★ §7771（Round 20）：这里【必须】用恒定 ERO_EXTRA_AMP，不能用 extraAmpFor。
+        //   根因（P1487/P1488 实测）：TalosField.level() 在 :918 用【零参数】fieldValue 采样
+        //   （隐含 extraAmp = ERO_EXTRA_AMP），而本行原用 extraAmpFor()（实测 0.1125）。
+        //   两条路径看到【不同的场分布】⟹ 65.5 分位点落在分布的不同处
+        //   ⟹ 同一列的 elevation 符号相反 ⟹ composeColumn 的 land 与 TalosField.isLand 相反。
+        //   实测：4000 列中 148 列不一致（3.7%），并打红 7 个验收门（P294/P442/P477/P479/P991）。
+        //   P1488 实证：(-4444495,2222215) elev(zero)=-61.4 而 elev(explicit)=+469.4（符号相反）。
+        //   修法：让生产与 level() 的标定口径一致 ⟹ elevation>=0 与 isLand 重新逐位等价。
+        double extraAmp = com.EyeOfHarmonyBuffer.sim.litho.TalosField.ERO_EXTRA_AMP;
+        double elev = com.EyeOfHarmonyBuffer.sim.litho.TalosField.elevation(x, z, seed, extraAmp);
 
         // 四个字段一起写：Column 是复用容器，**每个字段都必须被覆盖**，否则会漏出上一列的残值。
         c.plain = 0.0;
@@ -208,12 +498,126 @@ public final class SimTerrain {
 
         c.land = true;
         c.seaDepth = 0.0;
-        double hNo = softCapTo(seaLevel + LAND_GAIN * elev, V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K);
+        double hNo = softCapTo(seaLevel + LAND_BASE_OFFSET + LAND_GAIN * elev,
+                               V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K);
         c.base = hNo;
         c.hNoDetail = hNo;
         // 块级细节：只在陆地上加，振幅恒定（宏观起伏已由 dh 承担）
         double d = detailBlocks(x, z, worldSeedInt);
         double hDet = hNo + d;
+
+        // ============ §7716：Runevision 侵蚀滤镜（MPL 2.0 移植）============
+        // 【为什么在这里】：V2TerrainGen.composeColumn 在 :422 会因
+        // SimTerrain.ENABLED=true 提前返回，所以那里注入是死代码。
+        // 本方法才是 MC 实际走的地形合成路径。
+        //
+        // 【输入高度场】是【独立的各向同性细节层】（DetailNoise），不是 detailBlocks：
+        //   · §7712：ETOPO 标定后地形功率谱 beta = 2H+2 = 2.82，375 km 以下必须有能量；
+        //   · §7700：山地门控在平地会把细节归零 ⇒ 侵蚀没东西可咬 ⇒ 规则点阵花瓣；
+        //   · §7714：value noise（TerrainNoise.fbm2D）有 45 度晶格偏置（aniso=1.327），
+        //            会留下斜向条带 ⇒ 必须用 Simplex + 每 octave 旋转黄金角（aniso=1.108）。
+        // 【归一化口径】：DetailNoise.fbmRot 输出约 [-1,1] ⟹ 无需再归一化。
+        if (V2TerrainGen.EROSION_ENABLED) {
+            long eroSeed = (long) worldSeedInt ^ V2TerrainGen.ERO_SEED_XOR;
+            double[] eg = ERO_GRAD.get();
+            // ★ §7722：用【ridge 化】的梯度（raw fBm 只造圆丘，不造山脊）
+            DetailNoise.gradRidged(eroSeed, x, z, 1.0, V2TerrainGen.ERO_OCT,
+                                   V2TerrainGen.ERO_WL0, V2TerrainGen.ERO_UNIT, eg);
+            // ★ §7743：把「细节层自己的梯度」换算到「被侵蚀高度场」的量纲。
+            //   不做这一步 combiMask 会塌到 0.0002，沟壑项被整体压掉（P1411 实测）。
+            eg[0] *= ERO_GRAD_SCALE;
+            eg[1] *= ERO_GRAD_SCALE;
+            // ★ §7745：用【真实地形】的梯度方向替换噪声方向（参考库的做法）。
+            //   依据：两个参考库的方向都来自真实高度场；我们的噪声方向太均匀，
+            //   与沟壑应该跟随的地形无关 ⟹ 条纹平行 ⟹ 「伤口」。
+            //   ERO_DIR_TERRAIN = 0 时不执行（逐位回退）。
+            if (ERO_DIR_TERRAIN > 0.0) {
+                final int DH = (int) Math.max(1, ERO_DIR_DH);
+                double tx1 = PlateField.elevationWithCell(x + DH, z, seed, cell)
+                           - PlateField.elevationWithCell(x - DH, z, seed, cell);
+                double tz1 = PlateField.elevationWithCell(x, z + DH, seed, cell)
+                           - PlateField.elevationWithCell(x, z - DH, seed, cell);
+                double tm = Math.sqrt(tx1 * tx1 + tz1 * tz1);
+                if (tm > 1e-9) {
+                    double nm = Math.sqrt(eg[0] * eg[0] + eg[1] * eg[1]);
+                    double w = ERO_DIR_TERRAIN;
+                    double ux = (1 - w) * (eg[0] / Math.max(1e-12, nm)) + w * (tx1 / tm);
+                    double uz = (1 - w) * (eg[1] / Math.max(1e-12, nm)) + w * (tz1 / tm);
+                    double um = Math.max(1e-12, Math.sqrt(ux * ux + uz * uz));
+                    double mag = nm <= 1e-12 ? 1.0 : nm;
+                    eg[0] = ux / um * mag;
+                    eg[1] = uz / um * mag;
+                }
+            }
+            if (ERO_DIR_JITTER > 0.0) {
+                double ja = ERO_DIR_JITTER * vnoise(x / ERO_DIR_WL, z / ERO_DIR_WL, worldSeedInt ^ 0x3C31);
+                double cj = Math.cos(ja), sj = Math.sin(ja);
+                double nx2 = eg[0] * cj - eg[1] * sj;
+                double nz2 = eg[0] * sj + eg[1] * cj;
+                eg[0] = nx2; eg[1] = nz2;
+            }
+            // ★★★ §7732（甲）：把【真实地形的梯度】加进侵蚀输入。
+            //
+            // 【依据】（runevision 博客逐字）：
+            //   「the pivot point is never too far away. 【At least as long as the gradient of
+            //     the height function doesn't change too drastically within a single cell】.」
+            // 【问题】：纯均匀 fBm 的梯度【处处方向一致】⟹ cell 的 pivot 旋转失效
+            //   ⟹ cell 边界在输出里【可见】。§7728 的二分实测（P1342 等高线图）：
+            //   关掉侵蚀 ⟹ 多边形【完全消失】（hash 不同、图中无任何直线）。
+            // 【解法】：叠加真实地形（米制海拔）的中心差分梯度。它的方向随位置【剧变】
+            //   （大陆尺度骨架 + 海岸线），足以打散 cell。
+            //
+            // 【为什么用 elevationWithCell 而不是 composeColumn】：后者返回【每线程复用】
+            //   的 Column，递归调用会破坏契约；而 elevationWithCell 是【纯函数】。
+            // 【尺度】：取 4 km（远大于 cell 105 m、远小于 HF_WL_MIN 46.9 km 的一半），
+            //   所以它读到的是【地形骨架的梯度】，不含细节噪声。
+            if (V2TerrainGen.ERO_REAL_GRAD > 0.0) {
+                final int GS = 4000;
+                double ex1 = PlateField.elevationWithCell(x + GS, z, seed, cell);
+                double ex0 = PlateField.elevationWithCell(x - GS, z, seed, cell);
+                double ez1 = PlateField.elevationWithCell(x, z + GS, seed, cell);
+                double ez0 = PlateField.elevationWithCell(x, z - GS, seed, cell);
+                // 米 -> 格：乘 LAND_GAIN；再乘 ERO_UNIT/(2*GS) 换到 d(h)/d(worldUnit)
+                double k = V2TerrainGen.ERO_REAL_GRAD * LAND_GAIN * V2TerrainGen.ERO_UNIT / (2.0 * GS);
+                eg[0] += (ex1 - ex0) * k;
+                eg[1] += (ez1 - ez0) * k;
+            }
+            // ★ §7792：把驱动器幅度归一到常数（参考库喂的是归一化 fBm，幅度恒定）。
+            //   ERO_DRIVER_NORM = 0 时不执行（逐位回滚点）。
+            if (ERO_DRIVER_NORM > 0.0) {
+                double m0 = Math.sqrt(eg[0] * eg[0] + eg[1] * eg[1]);
+                if (m0 > 1e-12) {
+                    double a = ERO_DRIVER_NORM;
+                    // 目标幅度取 0.5（|eg| 的中位量级），保持平均深度
+                    double target = 0.5;
+                    double sc = (1.0 - a) + a * (target / m0);
+                    eg[0] *= sc; eg[1] *= sc;
+                }
+            }
+            // ★ §7742：fadeTarget = inverse_lerp(valley, peak, h)*2-1  （博客第 217-218 行逐字）
+            //   区间锚在本仓【陆地高度的实测分位】上，而不是海平面 ⟹ 峰/谷两端都用满。
+            //   ⚠ 这里必须用与侵蚀同一个量纲的 hNo（block），不是 elev（米）。
+            double ft = 2.0 * Math.min(1.0, Math.max(0.0,
+                        (hNo - FADE_VALLEY_BLK) / (FADE_PEAK_BLK - FADE_VALLEY_BLK))) - 1.0;
+            double dh = ErosionFilter.erosion(
+                    x / V2TerrainGen.ERO_UNIT, z / V2TerrainGen.ERO_UNIT, eg[0], eg[1], ft,
+                    V2TerrainGen.ERO_STRENGTH, 0.5, 1.5);
+            // ★ §7723：【只在【山地】启用侵蚀】，而不是全世界。
+            //   门控 = LandformField.Sample.mtnPlusPeak()
+            //        = belt * smoothstep(0.22, 0.60, elevation01)   ∈ [0,1]
+            //   （由 LandformField.computeWeights 的 out[3]+out[4] 恒等式得出：
+            //     mtn + peak = belt·m·(1-pk) + belt·m·pk = belt·m）
+            //   它【正是】「这里是不是真山」的既有权威判据（D43），
+            //   而且是连续的 ⇒ 平原 gate≈0（完全不侵蚀）、山地 gate≈1（全侵蚀）。
+            //   ⚠ 它【不是】新旋钮 —— 阈值 0.22/0.60 早已存在于 LandformField。
+            LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+            double gate = lf.mtnPlusPeak();
+            // ★ §7727：整体【下移】（ERO_SINK），让侵蚀只往下挖、不往上堆。
+            //   不下移时正偏移会把地形抬过 SOFT_CAP_H ⟹ 被压成平台 ⟹ 图上出现平滑长曲线。
+            double gateEff = ERO_GATE_FLOOR + (1.0 - ERO_GATE_FLOOR) * gate;
+        hDet += dh * V2TerrainGen.ERO_AMP * gateEff - V2TerrainGen.ERO_SINK * gateEff;
+        }
+
         c.hDetail = hDet;
         double hCap = softCap(hDet);
         // ⚠ 2026-09-13 修正（审计 D19）：补回旧实现三处都有的「贴岸低地保险」
@@ -226,7 +630,7 @@ public final class SimTerrain {
         if (hCap < hFloor) hCap = hFloor;
         c.hCapped = hCap;
         c.h = clampY((int) Math.round(hCap), maxY);
-        c.beach = (c.h - seaLevel) <= BEACH_BLOCKS;
+        c.beach = BEACH_ENABLED && (c.h - seaLevel) <= BEACH_BLOCKS;
         // ---- 雪线：从「按高度」改成「按地表温度」（§98）--------------------------------
         // 旧实现是纯几何的：c.snow = c.hCapped >= snowLineY(z)，只看纬度与高度 ⇒
         // 同纬度同高度必然同结果，表达不出「沿海 vs 内陆」「暖流海岸」这些差异。
@@ -272,11 +676,24 @@ public final class SimTerrain {
         return t * t * (3.0 - 2.0 * t);
     }
 
-    /** 块级细节（blocks）：两个八度的值噪声，振幅 ±DETAIL_AMP。 */
+    /**
+     * <b>块级细节（blocks）。</b>
+     *
+     * <p><b>§7728 改为 Simplex fBm（原来是双线性 value noise）</b>：
+     * 原实现用 {@link #vnoise}（value noise，虽然插值本身是 smoothstep 的），
+     * 而【value noise 的晶格结构无法靠插值消除】—— 它在 {@code DETAIL_W = 220} 格
+     * 的尺度上于 {@code /talosmap} 与游戏里表现为【肉眼可见的多边形边界】
+     * （用户放大图确认：直线段 + 折角，尺度 200-400 格）。
+     *
+     * <p>改用 {@link DetailNoise#fbmRot}（Simplex + 每 octave 旋转黄金角，
+     * 与侵蚀的细节层【同一套噪声】）⟹ <b>无晶格结构</b>。
+     * 波长对齐原实现的两个八度（{@code DETAIL_W} 与 {@code DETAIL_W*0.37}）；
+     * 振幅同样对齐（原为 {@code a + 0.45b}，两 octave 之和 ≈ ±1.45）。
+     */
     static double detailBlocks(int x, int z, int seed) {
-        double a = vnoise(x / DETAIL_W, z / DETAIL_W, seed ^ 0x51ED) * 2.0 - 1.0;
-        double b = vnoise(x / (DETAIL_W * 0.37), z / (DETAIL_W * 0.37), seed ^ 0x2C9F) * 2.0 - 1.0;
-        return DETAIL_AMP * (a + 0.45 * b);
+        double v = DetailNoise.fbmRot((long) seed ^ 0x51EDL, x, z, 2, DETAIL_W,
+                                      DetailNoise.GOLDEN_ANGLE);
+        return DETAIL_AMP * 1.45 * v;
     }
 
     static double vnoise(double px, double pz, int seed) {

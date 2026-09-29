@@ -2614,6 +2614,31 @@ public final class PrecipField {
     public static boolean TERRAIN_W = true;      // ★ §7588：打开（迎风坡增雨）
 
     /**
+     * ★★★★★★★★ <b>§7778：是否允许地形项作用于【海洋列】。默认 {@code false}。</b>
+     *
+     * <p><b>为什么必须关</b>（P1498 实测，1600 点全球普查，DJF）：
+     * <pre>
+     *                       p50   p90   p99      max
+     *   TERRAIN_W=ON  :    1.37  5.28  8.44   33193.14   mm/day
+     *   TERRAIN_W=OFF :    1.37  5.28  8.44       9.24
+     *   spikes &gt;50 : ON 5/1600   OFF 0/1600
+     *   OCEAN mean : ON 2.982  OFF 2.975  (ratio 1.00)
+     *   LAND  mean : ON 40.796 OFF 1.949  (ratio 20.93)
+     * </pre>
+     *
+     * <p>{@code wTerrain = U·∇h} 在海洋列上用的 ∇h 是<b>海底坡度</b>
+     * （{@link PlateField#elevationWithCell} 的海床分支）。实测
+     * {@code (-23.4M, 7.5N)}：elev −4439.66 m、|U| ≈ 6.5 m/s ⟹ {@code U·∇h = 0.316 m/s}，
+     * 而真实的 {@code w_eff} 只有 0.002~0.02 m/s ⟹ <b>放大 100 倍</b> ⟹ P 达 424 mm/day。
+     *
+     * <p>⚠ 但地形项是<b>陆地增雨的唯一来源</b>（陆地均值 ×20.93）⟹ <b>不能整体关掉</b>，
+     * 只能压制非陆地列。
+     *
+     * <p>{@code true} = 原行为（逐位不变，回滚点）。
+     */
+    public static boolean OCEAN_TERRAIN_W = false;
+
+    /**
      * 地形强迫的垂直速度 {@code U·∇h}（m/s）。形式取自 Smith &amp; Barstad (2004) 的
      * classical upslope form（见 {@link #TERRAIN_W} 的 javadoc，逐字）。
      *
@@ -2847,7 +2872,20 @@ public final class PrecipField {
             //   修法：只加 max(0, w_terrain) ⟹ 背风坡【不受地形项影响】⟹ 保留原有的
             //   wBase + wLoc ⟹ P 不会被清零。**零新常数**（就是取正）。
             //   同族先例：SPLIT_ASCENT（本文件 :2601 逐字「max(0,w_zm) + max(0,w_loc)」）。
-            wE += Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
+            // ★★★★★★★★ §7778（Round 26）：地形项【只对陆地生效】。
+            //   P1498 实测（1600 点全球普查）：TERRAIN_W 在【海洋列】上用【海底坡度】算 U·∇h，
+            //   而风把 6.5 m/s 吹过陡峭的海底斜坡 ⟹ w_terrain 达 0.3 m/s（真实 w_eff 只有 0.002）
+            //   ⟹ P 的 max 从 9.24 飙到 **33193.14 mm/day**（地球纪录 ~1800）。
+            //   而 p50/p90/p99 完全不变 ⟹ 是【极端尾部污染】，不是整体偏移。
+            //   同时：陆地均值 1.949 -> 40.796（×20.93）⟹ 地形项是陆地增雨的【唯一来源】，不能关。
+            //   ⟹ 修法：只压制【非陆地】列上的这一项。
+            //   OCEAN_TERRAIN_W=false 时逐位等于原行为（回滚点）。
+            //   ⚠ 判据【不能】用 kappa：P1499 实测 kappa 在海洋上 99% 的列都 > 0
+            //   （n=201，min=0.0，max=1.0，frac(k>0)=0.99）⟹ k>0 对海洋几乎恒真，不筛掉任何东西。
+            //   用【真正的陆地判据】PlateField.isLand（P1499 实测：全部尖峰点 land=false）。
+            if (OCEAN_TERRAIN_W || PlateField.isLand(x, z, seed)) {
+                wE += Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
+            }
         }
         DIAG.get()[3] = wE;                         // 诊断：wEff
         // ★★★ §472：边界层水汽【收支口径】。E = P + V ⇒ q 的闭式解（无新常数、零迭代）。

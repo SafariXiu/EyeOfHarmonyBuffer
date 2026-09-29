@@ -368,7 +368,28 @@ public final class MountainLayerV2 {
         int r0 = j * NX, r1 = j1 * NX;
         double v00 = g[r0 + i], v10 = g[r0 + i1];
         double v01 = g[r1 + i], v11 = g[r1 + i1];
-        return (v00 * (1 - tx) + v10 * tx) * (1 - tz) + (v01 * (1 - tx) + v11 * tx) * tz;
+        return bilerpSmooth(v00, v10, v01, v11, tx, tz);
+    }
+
+    /**
+     * ★ §7725：<b>smoothstep 加权的双线性插值</b>（替换裸 bilerp）。
+     *
+     * <p><b>为什么</b>：裸双线性在<b>每个格的【对角线】上二阶导不连续</b>
+     * （{@code d2/dxdz} 跳变），相邻格的折痕连成<b>长直线</b> —— 在
+     * {@code /talosmap} 图上表现为「很平滑但明显是解析式的斜线」，
+     * 而它【会】影响高度（本类的 auth/uplift 直接进地形）。
+     *
+     * <p>改用 {@code smoothstep} 权重后 {@code d/dx} 与 {@code d/dz} 在格边界连续
+     * （C1），折痕消失。代价：每格 +6 次乘法，<b>零新增查表</b>。
+     *
+     * <p>注意：smoothstep 只在 {@code t ∈ [0,1]} 上有定义，调用方已经保证
+     * {@code tx/tz} 落在 [0,1]（越界分支会把比例归位到 0 或 1）。
+     */
+    static double bilerpSmooth(double v00, double v10, double v01, double v11,
+                               double tx, double tz) {
+        double sx = tx * tx * (3.0 - 2.0 * tx);
+        double sz = tz * tz * (3.0 - 2.0 * tz);
+        return (v00 * (1 - sx) + v10 * sx) * (1 - sz) + (v01 * (1 - sx) + v11 * sx) * sz;
     }
 
     // ==================== 求解 ====================
