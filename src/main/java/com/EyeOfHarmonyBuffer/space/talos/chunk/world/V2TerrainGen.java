@@ -520,11 +520,16 @@ public final class V2TerrainGen {
         c.base = bp[0];
         c.plain = bp[1];
         c.mtnComp = c.base > c.plain ? c.base - c.plain : 0.0;
-        c.auth = MountainLayerV2.auth(x, z, worldSeedInt);
-        c.uplift = MountainLayerV2.uplift(x, z, worldSeedInt);
+        // ★★★★★★★ 2026-10-08：旧山脉层（MountainLayerV2）已删除，造山改由海陆分布层派生。
+        //   ⚠ 本分支在 SimTerrain.ENABLED=true 时【不可达】（第 494 行提前返回）。
+        c.auth = OrographyField.orogeny01(x, z, worldSeedInt);
+        c.uplift = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK
+            * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * c.auth;
         c.hNoDetail = c.plain + (1.0 - c.auth) * c.mtnComp + c.auth * c.uplift;
         double mtnAmt = Math.max(c.auth, Math.min(1.0, c.mtnComp / DETAIL_MTNCOMP_SCALE));
-        double slope01 = MountainLayerV2.slope01(x, z, worldSeedInt);
+        // ★ 旧山层的 slope01 随 MountainLayerV2 一起删除（新造山场没有独立的坡度场），
+        //   取 0 ⟹ detailStrength = mtnAmt（原为 mtnAmt*(1+0.8*slope)）。
+        double slope01 = 0.0;
         c.detailStrength = Math.min(1.0, mtnAmt * (1.00 + DETAIL_SLOPE_GAIN * slope01));
         c.hDetail = c.hNoDetail + mountainDetail(x, z, worldSeedInt, c.detailStrength);
         c.hCapped = c.hDetail;

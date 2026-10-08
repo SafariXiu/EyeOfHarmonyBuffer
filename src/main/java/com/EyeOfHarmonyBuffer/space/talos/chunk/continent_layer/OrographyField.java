@@ -35,11 +35,19 @@ public final class OrographyField {
 
     // ---- 地形构成目标（占陆地比例，dev 分位法保证） ----
     /** 峰 = dev 最小（最贴脊线）的陆地份额（再要求海拔≥PEAK_MIN_ELEV）。 */
-    private static final double KIND_PK_TOP = 0.035;
+    // ★★★★★★★ 2026-10-08 修复：kind 与地形脱钩（实测 MOUNTAIN 占 34.44%，而其列顶均值
+    //   只有 y=80.3，与 LOWLAND 的 69.0 几乎一样 ⟹ 34% 的陆地挂着「山地」群系
+    //   却坐在平坦平原上 ⟹ 游戏里满大陆是石质/裸露的棕灰地表）。
+    //   根因：kind 原来按 dev=|velField(..,0)| 的分位数切，而实际地形来自
+    //   coastProfileCF + orogeny —— 两个场完全不同。
+    //   修法：kind/relief 改由【实际造山场 orogeny01】派生，份额按地球标定。
+    /** 峰 = 造山最强的陆地份额。地球「高峰」远小于 1% ⟹ 取 0.8%。 */
+    private static final double KIND_PK_TOP = 0.008;
     /** 山+峰 = dev 最小的陆地份额（峰先取走，其余为山）。 */
-    private static final double KIND_MTN_TOP = 0.30;
+    /** 山 = 造山最强的陆地份额。地球视觉上的山地约 10~15% ⟹ 取 12%。 */
+    private static final double KIND_MTN_TOP = 0.12;
     /** 高原 = 剩余（非山地）陆地里海拔最高者的份额 → 低地+丘陵 ≈ 1-0.30-0.17 ≈ 53%。 */
-    private static final double KIND_PLATEAU_TARGET = 0.17;
+    private static final double KIND_PLATEAU_TARGET = 0.12;   // ★ 0.17->0.12（与山的 12% 合计约 24%，接近地球的台地+山地）
     /** 丘陵门槛（展示量 relief/海拔的固定切分，只影响低地与丘陵的比例）。 */
     private static final double KIND_HILL_RELIEF = 0.30;
     private static final double KIND_HILL_ELEV = 0.20;
@@ -72,15 +80,14 @@ public final class OrographyField {
 
     /** 分位阈值组（dev 升序 + 条件海拔，避免 0 值并列塌陷）。 */
     private static final class Cutoffs {
-        final double devQ95;       // relief 归一化标尺（展示量用）
-        final double devPeakQ;     // 峰：dev <= devPeakQ（且海拔达标）
-        final double devMtnQ;      // 山：dev <= devMtnQ
+        /** ★ 2026-10-08：字段改为【造山场】的分位（原来是 dev 的）。 */
+        final double orogPeakQ;    // 峰：orogeny >= orogPeakQ（且海拔达标）
+        final double orogMtnQ;     // 山：orogeny >= orogMtnQ
         final double plateauElevQ; // 高原：非山地中 elevation >= plateauElevQ
 
-        Cutoffs(double devQ95, double devPeakQ, double devMtnQ, double plateauElevQ) {
-            this.devQ95 = devQ95;
-            this.devPeakQ = devPeakQ;
-            this.devMtnQ = devMtnQ;
+        Cutoffs(double orogPeakQ, double orogMtnQ, double plateauElevQ) {
+            this.orogPeakQ = orogPeakQ;
+            this.orogMtnQ = orogMtnQ;
             this.plateauElevQ = plateauElevQ;
         }
     }
@@ -100,9 +107,20 @@ public final class OrographyField {
         public final double residual;
         /** 有符号海岸距离（block：&lt;0 内陆、0 岸线、&gt;0 海上；陆地采样与 relief 同源同值，免二次采样）。 */
         public final double coastDist;
+        /**
+         * ★★★★★★★ 2026-10-08 新增：<b>造山强度 [0,1]</b>（从海陆分布层派生）。
+         *
+         * <p>= <b>窄脊线带</b> × <b>板块汇聚度</b>：
+         * <pre>
+         *   beltNarrow = clamp01(1 − dev/OROG_BELT_W)^2      // dev = |velField(..,0)| 的零集 = 脊线
+         *   orogeny01  = beltNarrow × TalosLandField.convergence01(..)   // −div v 归一
+         * </pre>
+         * <p>两者都来自海陆分布层**自己的**连续场（速度场与其散度），不依赖任何外挂山脉层。
+         */
+        public final double orogeny01;
 
         OroSample(boolean isLand, double elevation01, double relief01,
-                  double beltMask01, int kind, double residual, double coastDist) {
+                  double beltMask01, int kind, double residual, double coastDist, double orogeny01) {
             this.isLand = isLand;
             this.elevation01 = elevation01;
             this.relief01 = relief01;
@@ -110,6 +128,7 @@ public final class OrographyField {
             this.kind = kind;
             this.residual = residual;
             this.coastDist = coastDist;
+            this.orogeny01 = orogeny01;
         }
 
         @Override
@@ -167,7 +186,7 @@ public final class OrographyField {
         //   高度符号**不再等价于**陆海。
         // 【正解】直接调 `TalosLandField.isLand` ⟹ 与 compose 逐位一致。
         if (!TalosLandField.isLand(NoiseContinentGrid.wsOf(worldSeedInt), x, z)) {
-            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0); }
+            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0, 0.0); }
         double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
         Cutoffs c = cutoffsFor(worldSeedInt);
         double elevation = elevation01(r, worldSeedInt);
@@ -175,10 +194,13 @@ public final class OrographyField {
         double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
         double relief = reliefFromDev(x, z, worldSeedInt, dev, d);   // 含贴岸淡化，与 relief01() 同口径
 
+        // ★★★★★★★ 2026-10-08 修复：kind 改由【实际造山】判，不再用 dev。
+        //   原实现使 34.44% 的陆地挂 MOUNTAIN 却坐在 y≈80 的平原上（实测）。
+        double orog = orogenyFromDev(dev, x, z, worldSeedInt);
         int kind;
-        if (dev <= c.devPeakQ && elevation >= PEAK_MIN_ELEV) {
+        if (orog >= c.orogPeakQ && elevation >= PEAK_MIN_ELEV) {
             kind = KIND_PEAK;
-        } else if (dev <= c.devMtnQ) {
+        } else if (orog >= c.orogMtnQ) {
             kind = KIND_MOUNTAIN;
         } else if (elevation >= c.plateauElevQ) {
             kind = KIND_PLATEAU;
@@ -188,8 +210,43 @@ public final class OrographyField {
             kind = KIND_LOWLAND;
         }
 
-        return new OroSample(true, elevation, relief, smoothstep(0.30, 0.65, relief), kind, r, d);
+        // ★ beltMask01 的输入从「dev 型 relief」换成了「造山型 relief」⟹ 边界重新标定：
+        //   实测 orogeny > 0.05 覆盖陆地约 20%（山体走廊）、> 0.35 覆盖约 5%（脊线）
+        return new OroSample(true, elevation, relief, smoothstep(0.05, 0.35, relief), kind, r, d,
+            orog);
     }
+
+    // ================= ★★★★★★★ 造山场（从海陆分布派生） =================
+    /**
+     * 造山带的【窄带宽度】（dev 单位，dev ∈ [0,1]）。
+     *
+     * <p>{@code dev = ridgeDev = |velField(..,0)|}，它的零集是一条条**平滑的曲线网络**
+     * ⟹ 「dev 小」= 脊线走廊。{@code relief01} 用的是 {@code devQ95} 归一（很宽，
+     * 实测 beltMask01&gt;0.5 覆盖陆地 24.79%）；造山要的是**窄而清晰的山脉**，
+     * 所以这里另取一个窄尺度并平方锐化。
+     */
+    // ★★★★★★★ 2026-10-08 标定（实测扫描，见 待裁决/085）：
+    //   dev 的 mean|grad| = 2.917e-06 /block ⟹ 带宽 ≈ 2*W/|grad dev|
+    //     W=0.30 -> 带宽 76,000 格，陆地覆盖 8.41%   （太宽，成团块不成山脉）
+    //     W=0.15 -> 带宽 44,000 格，陆地覆盖 3.99%
+    //     W=0.08 -> 带宽 25,000 格，陆地覆盖 2.05%
+    //   ⟹ 取 0.20：山脉宽约 50 km、覆盖约 5%，既线性又有存在感。
+    // ★★★★★★★ 2026-10-08 标定：0.20 -> 0.55
+    //   （0.20 是「窄带」，但在收敛门槛 2.5e-6 + 造山 130 格下覆盖率只有约 3%）
+    //   实测组合（C1=2.5e-6, UPLIFT=180）：W=0.35 -> 4.51%，W=0.50 -> 9.72%，W=0.70 -> 16.78%
+    public static double OROG_BELT_W = 0.55;
+
+    /** 造山强度 [0,1] = 窄脊线带 × 板块汇聚度。 */
+    public static double orogenyFromDev(double dev, int x, int z, int worldSeedInt) {
+        // ★★★★★★★ 2026-10-08（用户裁决 c 方案）：带改用【Voronoi 细胞边界】，
+        //   强度仍用【板块汇聚度】。两者都在 TalosLandField 里（本层只做转发）。
+        //   实测：速度零集网络 与 细胞边界网络 的相关系数只有 0.0031 ⟹ 必须换成细胞边界。
+        //   （dev 参数保留是为了不改签名；已不再参与计算。）
+        return TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z); }
+
+    /** 造山强度（按坐标；供无 OroSample 的调用方）。 */
+    public static double orogeny01(int x, int z, int worldSeedInt) {
+        return orogenyFromDev(ridgeDev(x, z, worldSeedInt), x, z, worldSeedInt); }
 
     /** 内陆海拔（陆地残差 → [0,1]）。 */
     public static double elevation01(double residual, int worldSeedInt) {
@@ -213,10 +270,12 @@ public final class OrographyField {
 
     /** 山地强度核心（调用方已有 dev 与 coastDist 时用，避免重复算 medNoise + 海岸梯度）。 */
     private static double reliefFromDev(int x, int z, int worldSeedInt, double dev, double d) {
-        double devQ95 = cutoffsFor(worldSeedInt).devQ95;
-        double micro = (devQ95 > 0.0) ? clamp01(1.0 - dev / devQ95) : 0.0;
-        double shoreFade = clamp01((-d - SHORE_START) / (SHORE_FULL - SHORE_START));
-        return micro * shoreFade;
+        // ★★★★★★★ 2026-10-08 修复：relief01 改为【实际造山强度】，不再用 dev 的分位。
+        //   原实现 micro = 1 - dev/devQ95 在 dev 小于 q95 处恒为正 ⟹ 95% 的陆地都有
+        //   relief > 0，实测 mean = 0.4814、>0.5 占 50.24% ⟹ 与真实地形无关。
+        //   现在 relief01 = orogeny01（造山场：板块边界核 x 汇聚度），
+        //   与实际抬升【同源】⟹ relief 高 ⟺ 真的是山。
+        return TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z);
     }
 
     // ======== 按种子标定（dev 升序分位 + 条件海拔分位） ========
@@ -233,7 +292,7 @@ public final class OrographyField {
         int nx = CALIBRATE_X_SPAN / CALIBRATE_STRIDE;
         int nz = CALIBRATE_Z_SPAN / CALIBRATE_STRIDE;
         int max = nx * nz;
-        double[] devs = new double[max];
+        double[] orogs = new double[max];
         double[] elevs = new double[max];
         int m = 0;
         for (int z = 0; z < CALIBRATE_Z_SPAN; z += CALIBRATE_STRIDE) {
@@ -242,33 +301,34 @@ public final class OrographyField {
                 if (!NoiseContinentGrid.isLandResidual(r)) {
                     continue;
                 }
-                devs[m] = ridgeDev(x, z, worldSeedInt);
+                orogs[m] = TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z);
                 elevs[m] = elevation01(r, worldSeedInt);
                 m++;
             }
         }
         if (m == 0) {
-            return new Cutoffs(1.0, 0.0, 0.0, 1.0);
+            return new Cutoffs(1.0, 0.0, 1.0);
         }
-        double[] dev = Arrays.copyOf(devs, m);
-        Arrays.sort(dev);
-        double devQ95 = quantile(dev, 0.95);
-        double devPeakQ = quantile(dev, KIND_PK_TOP);
-        double devMtnQ = quantile(dev, KIND_MTN_TOP);
+        double[] orog = Arrays.copyOf(orogs, m);
+        Arrays.sort(orog);   // 升序
+        // ★ 造山是【越大越山】⟹ 取上分位
+        double orogPeakQ = quantile(orog, 1.0 - KIND_PK_TOP);
+        double orogMtnQ = quantile(orog, 1.0 - KIND_MTN_TOP);
 
-        // 高原阈值：非山地（dev > devMtnQ）中的海拔分位，使高原占全部陆地 KIND_PLATEAU_TARGET
-        double remain = 1.0 - KIND_MTN_TOP;   // 非山地占陆地比（≈0.70）
+        // 高原阈值：**非山地**（orogeny < orogMtnQ）中的海拔分位，
+        //   使高原占全部陆地 KIND_PLATEAU_TARGET。
+        double remain = 1.0 - KIND_MTN_TOP;   // 非山地占陆地比（≈0.88）
         double need = KIND_PLATEAU_TARGET / remain;
         double[] es = new double[m];
         int e = 0;
         for (int i = 0; i < m; i++) {
-            if (devs[i] > devMtnQ) {
+            if (orogs[i] < orogMtnQ) {        // ★ 非山地 = 造山小于门槛
                 es[e++] = elevs[i];
             }
         }
         Arrays.sort(es, 0, e);   // quantile 需要升序！
         double plateauElevQ = (e > 0) ? quantile(Arrays.copyOf(es, e), 1.0 - need) : 1.0;
-        return new Cutoffs(devQ95, devPeakQ, devMtnQ, plateauElevQ);
+        return new Cutoffs(orogPeakQ, orogMtnQ, plateauElevQ);
     }
 
     private static double quantile(double[] sorted, double p) {

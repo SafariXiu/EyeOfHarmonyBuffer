@@ -14,12 +14,18 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
  *   新实现（TalosLandField）用【超格 + 实心块 + 三级域扭曲】
  *   ⟹ 形态确定性更好、海岸线自然、且有完整的高度剖面（-10,497 ~ +8,161 m）
  *
- * 【量纲与符号约定】（与旧实现一致，已逐条核对）
- *   · {@link #height}           —— 米，海平面 = 0
- *   · {@link #coastDistBlocks}  —— block，**陆上 < 0**
- *   · {@link #landResidual}     —— 陆上 > 0（= 海拔米数），海上 <= 0
- *   · {@link #residualScale}    —— = 1.0（因为 landResidual 已是米）
+ * 【量纲与符号约定】（★ 2026-10-08 口径统一 #1 后逐条重核）
+ *   · {@link #height}           —— 米，海平面 = 0；★ 已与地形同源 = coastProfileCF(signedCoastDistCF)
+ *   · {@link #coastDistBlocks}  —— block，**陆上 < 0**；★ 已是**真几何距离**（岸线精确过零）
+ *   · {@link #landResidual}     —— 陆上 > 0（= 海拔米数），海上 <= 0；★ 符号与地形判陆**逐点一致**
+ *   · {@link #residualScale}    —— ★ = CF_LAND_H（陆地剖面饱和值），使 elevation01 落在 [0,1]
+ *   · {@link #seaResidualScale} —— ★ = 海洋剖面饱和值（架+坡+深海）
  *   · {@link #medNoise}/{@link #bandNoise} —— [0,1]
+ *
+ * ⚠ 注意 {@link #landScore} 与 {@code TalosLandField.landScore} **不是同一个量**：
+ *   前者 = 2*kappa−1（由**高度**派生的大陆度），只供 {@code Atmosphere.kappaAt}；
+ *   后者是**判陆**用的 block 级连续场（{@code TalosLandField.isLand} 的输入）。
+ *   ★ 判陆的**唯一权威**是 {@code TalosLandField.isLand} / {@link #isLand}。
  */
 public final class NoiseContinentGrid {
 
@@ -56,13 +62,37 @@ public final class NoiseContinentGrid {
     public static boolean CD_MEMO_ON = true;
     public static void clearCdMemo() { CD_MEMO.get().clear(); }
 
+    /**
+     * ★★★★★★★ 2026-10-08（口径统一 #1）：改用【真正的几何到岸距离】。
+     *
+     * <p><b>改前</b>：{@code -signedCoastDist(..)} —— 那是「到最近【异类细胞中心】的物理距离」，
+     * 细胞尺度 25 km ⟹ 它在**岸线两侧都约等于 22,900**，只有**符号**有意义
+     * （待裁决/065 已证：「岸线是布尔场的边界，不是连续场的等值线」）。
+     * 拿它当距离用的消费者（山带 COAST_MIN 闸门 / shoreFade / V2BiomeSelect / ThermalForcing）
+     * 全部落在无意义的量程上。
+     *
+     * <p><b>改后</b>：{@code -signedCoastDistCF(..)} —— 由连续 field 的解析梯度给出的
+     * <b>真几何距离</b>（block），岸线处精确过零、处处连续、内陆单调。
+     * 与 {@code SimTerrain.compose} 判陆用的 {@code sig >= 0} <b>同源同号</b>。
+     *
+     * <p><b>性能</b>：旧实现内部是 625 细胞的扫描（实测约 400 us/点）；
+     * 新实现是 5 次 landScore（cnoise）⟹ 快约两个数量级（且仍有本方法的记忆化）。
+     *
+     * <p><b>回滚</b>：{@code COASTDIST_FROM_CF = false} ⟹ 逐位回到旧行为。
+     */
+    public static boolean COASTDIST_FROM_CF = true;
+
+    static double coastDistBlocks0(int x, int z, int worldSeedInt) {
+        if (COASTDIST_FROM_CF) return -TalosLandField.signedCoastDistCF(ws(worldSeedInt), x, z);
+        return -TalosLandField.signedCoastDist(ws(worldSeedInt), x, z); }
+
     public static double coastDistBlocks(int x, int z, int worldSeedInt) {
-        if (!CD_MEMO_ON) return -TalosLandField.signedCoastDist(ws(worldSeedInt), x, z);
+        if (!CD_MEMO_ON) return coastDistBlocks0(x, z, worldSeedInt);
         java.util.HashMap<Long, Double> m = CD_MEMO.get();
         long key = (((long) x << 32) ^ (z & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + worldSeedInt;
         Double v = m.get(key);
         if (v != null) return v;
-        double r = -TalosLandField.signedCoastDist(ws(worldSeedInt), x, z);
+        double r = coastDistBlocks0(x, z, worldSeedInt);
         if (m.size() > 262144) m.clear();
         m.put(key, r);
         return r; }
@@ -74,8 +104,27 @@ public final class NoiseContinentGrid {
     public static boolean isLandResidual(double residual) { return residual > 0.0; }
 
     // ================= 5. 残差标尺（= 1.0，因为已是米） =================
-    public static double residualScale(int worldSeedInt) { return 1.0; }
-    public static double seaResidualScale(int worldSeedInt) { return 1.0; }
+    /**
+     * ★★★★★★★ 2026-10-08（口径统一 #1）：回归文档写明的契约 —— **「每种子 q93 标尺」**。
+     *
+     * <p><b>改前</b>：返回常量 {@code 1.0}（注释写「因为 landResidual 已是米」）。
+     * 但 {@code OrographyField.elevation01} 的用法是
+     * {@code smoothstep(0.10, 1.25, residual / residualScale)} —— 那是给
+     * <b>[0,1] 归一量</b>设计的边界。残差是**米**（可达 +7,249）⟹ 只要 residual &gt; 1.25
+     * 就饱和。实测：陆地 elevation01 <b>61.31% 恰为 0、38.61% 恰为 1</b>，中间只有 0.08%
+     * ⟹ elevation01 退化成 0/1 二值，kind 分档随之失真（LOWLAND 52% / PLATEAU 34%）。
+     *
+     * <p><b>改后</b>：陆地剖面的解析饱和值 {@code CF_LAND_H}。因为
+     * {@code residual = coastProfileCF(sig) = CF_LAND_H * sqrt(sig/CF_LAND_U)}
+     * ⟹ {@code residual / CF_LAND_H = sqrt(sig/CF_LAND_U)} 天然落在 <b>[0,1]</b>，
+     * 无需任何采样标定即可让 {@code elevation01} 恢复连续。
+     * <p>⚠ 它必须与 {@code TalosLandField.CF_LAND_H} 保持一致（同一常量）。
+     */
+    public static double residualScale(int worldSeedInt) { return TalosLandField.CF_LAND_H; }
+
+    /** 海上 |残差| 的标尺：整条海洋剖面（大陆架+坡+深海）的饱和值。 */
+    public static double seaResidualScale(int worldSeedInt) {
+        return TalosLandField.CF_SHELF_H + TalosLandField.CF_SLOPE_H + TalosLandField.CF_DEEP_H; }
 
     // ================= 6. 噪声（[0,1]） =================
     public static double medNoise(int x, int z, int worldSeedInt) {
@@ -103,7 +152,11 @@ public final class NoiseContinentGrid {
      *   用途：{@code gammaOf}/{@code cdOf} 的连续插值、{@code landSeaAnnualAnomaly}
      *   ★ 由【高度】派生：海平面 ⟹ 0.5，深海 ⟹ 0，内陆高地 ⟹ 1
      */
-    public static double KAPPA_H = 8000.0;
+    // ★★★★★★★ 2026-10-08（口径统一 #1）：8000 -> 2000。
+    //   高度已改为 CF 剖面（陆 +1973 / 海 −4000 米），KAPPA_H 必须跟着改，
+    //   否则 kappa 只用到 [0.25, 0.62] 的窄带（实测改前 mean=0.4606）。
+    //   KAPPA_H = 2000 ≈ CF_LAND_H ⟹ 海平面 0.5、内陆饱和 1.0、深海饱和 0.0。
+    public static double KAPPA_H = 2000.0;
 
     public static double kappa(int x, int z, int worldSeedInt) {
         double h = TalosLandField.height(ws(worldSeedInt), x, z) / KAPPA_H;

@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.handler;
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.MountainLayerV2;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
@@ -35,8 +34,9 @@ public class ClimatePreheat {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-                // 山层（每格 50km×200km 离线求解抬升 + 侵蚀，250m 网格）
-                MountainLayerV2.ensure(seed);
+                // ★★★★★★★ 2026-10-08：原此处调 MountainLayerV2.ensure(seed) —— 旧山脉层已【物理删除】。
+                //   山脉改由海陆分布层派生（OrographyField.orogeny01 = 窄脊线带 × 板块汇聚度），
+                //   那是**逐点纯函数**，没有需要预热的离线网格。
                 // 地貌场（250m 网格，唯一权威：地形与群系共用）
                 LandformField.ensure(seed);
                 // ★★ 2026-09-18 退役（用户裁决「必须顶死一套」）★★

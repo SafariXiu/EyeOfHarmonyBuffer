@@ -249,6 +249,272 @@ public static int OPP_R = 4;
         double w = velWL();
         return (cnoise(ci*DS()/w + 61.3, cj*DS()/w - 23.7, 1.0, ws ^ 0x55L) - 0.5) * 2.0 * V_MAX; }
 
+    // ================= ★★★★★★★ 造山场：板块汇聚度（从海陆分布层派生） =================
+    //
+    // 【为什么要在这里】山脉 = 两个块体挤压。而「挤压」的物理量是速度场的**散度**：
+    //     conv = −∇·v        （汇聚为正，张裂为负）
+    // 本层已经有速度场（{@link #velField}，波长 velWL() = 300,000），它是**连续**的
+    //   ⟹ 它的散度也是连续的、与「细胞身份」无关。
+    //
+    // 【与旧实现（已废弃）的区别】旧实现（方案 A）把 conv 定义成 |∇d|（距离场的梯度模长），
+    //   那是**几何量不是物理量**：实测 |∇d| 属于 [0, 98.09]、27.8% 恰为 0，
+    //   而 −∇·v 在步长 500~50,000 之间结果一致（实测）。见 待裁决/084。
+    //
+    // 【为什么旧实现会失败】[038] 记录的 4 次失败都是从【逐细胞速度】(cellVX/cellVZ) 构造，
+    //   而相邻细胞的速度差是随机量。本实现直接用【连续场 velField】⟹ 不存在该问题。
+    /** 求散度的差分步长（block）。★ 实测在 500~50,000 之间结果一致 ⟹ 取 DS()/2。 */
+    public static double OROG_DH = 12_500.0;
+
+    /** 汇聚度 = −∇·v（单位：1/block；板块挤压为正）。 */
+    public static double convergence(long ws, double px, double pz) {
+        final double h = OROG_DH;
+        double dvx = (velField(ws, px + h, pz, 0) - velField(ws, px - h, pz, 0)) / (2.0 * h);
+        double dvz = (velField(ws, px, pz + h, 1) - velField(ws, px, pz - h, 1)) / (2.0 * h);
+        return -(dvx + dvz); }
+
+    /**
+     * 归一化的汇聚度 ∈ [0,1]：0 = 张裂/中性，1 = 强汇聚。
+     *
+     * <p>标定依据（实测 20,000 点，h=12,500）：conv 属于 [−1.066e−5, +1.138e−5]，
+     * mean|div| = 2.837e−6，汇聚占 49.3%。
+     * ⟹ C0 = 0（只有【净汇聚】才造山），C1 = 5.0e−6（约 1.8 × mean|div|，让强汇聚区饱和）。
+     */
+    public static double OROG_C0 = 0.0;
+    // ★★★★★★★ 2026-10-08 标定：5.0e-6 -> 2.5e-6
+    //   实测（±240km，步长 1.5km）：陆地 h>=150 的占比
+    //     C1=5.00e-6 -> 4.87%      C1=2.50e-6 -> 9.72%      C1=1.25e-6 -> 11.75%
+    //   ⟹ 5e-6 只承认「强汇聚」，山地太稀疏；2.5e-6（≈ mean|div|）是合适的门槛。
+    public static double OROG_C1 = 2.5e-6;
+
+    public static double convergence01(long ws, double px, double pz) {
+        double t = (convergence(ws, px, pz) - OROG_C0) / (OROG_C1 - OROG_C0);
+        if (t < 0.0) t = 0.0; else if (t > 1.0) t = 1.0;
+        return t * t * (3.0 - 2.0 * t); }
+
+    // ================= ★★★★★★★ 造山带 = 【Voronoi 细胞边界】(c 方案) =================
+    //
+    // 【为什么用细胞边界而不是速度零集】实测（400km x 400km, 100 万点）：
+    //   速度零集网络 与 Voronoi 细胞边界 的相关系数 = 0.0031、Jaccard 相似度 = 0.00%
+    //   ⟹ 两者【毫无关系】。用户要的是「两个细胞挤压」⟹ 山必须长在【细胞边界】上。
+    //
+    // 【怎么算】scanOpp 的 bd[0..2] 是【类型无关】的最近 3 个细胞的加权距离 phys/√b
+    //   ⟹ bd[0]==bd[1] 的位置就是第 1/第 2 近细胞的 Voronoi 边界。
+    //   用【无量纲】归一化，避免依赖细胞尺寸：
+    //       tn = (bd[1] − bd[0]) / (bd[1] + bd[0])     0 = 正好在边界上，→1 = 细胞核心
+    //   ⟹ 边界核 = clamp01(1 − tn/OROG_BND_W)^2
+    /** 细胞边界核的带宽（tn 的量纲，0.05~0.3 之间；越小带越窄）。 */
+    public static double OROG_BND_W = 0.10;
+
+    /** 到最近【Voronoi 细胞边界】的接近度 [0,1]（1 = 正好在边界上）。 */
+    public static double cellBoundary01(long ws, double px, double pz) {
+        double[] w = warp(ws, px, pz);
+        Q q = scan(ws, w[0], w[1]);
+        double b0 = q.bd[0], b1 = q.bd[1];
+        if (b1 >= 1e17 || b0 >= 1e17) return 0.0;
+        double tn = (b1 - b0) / (b1 + b0 + 1e-9);
+        double t = 1.0 - tn / OROG_BND_W;
+        if (t <= 0.0) return 0.0;
+        return t * t; }
+
+    // ================= ★★★★★★★ 造山带 = 【板块（超格）边界】 =================
+    //
+    // 【为什么不用 25 km 细胞的 Voronoi 边界】实测（60,000 点）：
+    //     tie = |bd[1]-bd[0]| : p50 = 798，tie<1000 占 【51.97%】
+    //     ⟹ cellBoundary01 均值 0.4834、>0.99 占 【42.10%】
+    //   即：25 km 细胞的位置抖动 ±0.85·DS、尺寸因子 b 属于 [1,4] ⟹ 格点近乎随机
+    //   ⟹ 「到边界距离」在半个地图上都≈0 ⟹ 边界核退化成常数 1，带结构消失。
+    //
+    // 【正解】用【板块】= 超格（SUPER x DS = 125 km）。
+    //   依据：cellContAt 的判据就是 cellContAtMemo(floorDiv(ci,SUPER), floorDiv(cj,SUPER))
+    //   ⟹ 超格才是本模型里真正的「板块」单元，它的边界才是「两个板块的接缝」。
+    /** 沿板块边的造山带半宽（block）。带总宽 = 2 x 本值。 */
+    // ★ 2026-10-08 定稿：20000 -> 30000（带总宽 60 km，让山系更连绵；用户反馈「确实少」）
+    public static double OROG_PLATE_BAND = 22000.0;
+
+    // ================= ★★★★★★★ 板块中心（抖动） =================
+    //
+    // 【为什么必须抖动】诊断图 run/talos_maps/cell_diag.png 证明：
+    //   · 超格类型（面板1）= 规整方块
+    //   · 不抖动的超格边界（面板3）= 【横平竖直的正方网格】 <-- 用户看到「直溜溜的山脉」
+    //   · 25 km 细胞的 Voronoi（面板2）= 不规则，但 tie=|bd1-bd0| 在半个地图上都约等于 0
+    //     （实测 p50=2068，p15=0）⟹ 太乱，做不出窄带
+    //   ⟹ 正解：**让超格中心也抖动**，则超格的 Voronoi 边界 = 不规则多边形（像板块）。
+    /** 超格中心的抖动幅度（占超格边长的比例）。 */
+    // ★ 2026-10-08：0.40 -> 0.90。
+    //   0.40 时种子仍贴着方格 ⟹ Voronoi 边【贴着格边走】⟹ 山带呈「一横一竖」
+    //   （用户：「正常地球上的山脉也没有这种吧」）。
+    //   0.90 时种子近似泊松分布 ⟹ 边方向接近各向同性 ⟹ 山带方向随机。
+    public static double SUP_JITTER = 0.90;
+    /** 超格的尺寸因子范围（加权 Voronoi）。 */
+    public static double SUP_BSPREAD = 0.8;
+    static double supCell() { return SUPER * (double) DS(); }
+    static double supX(long ws, long si, long sj) {
+        double c = supCell();
+        return (si + 0.5) * c + (rnd01(ws, si, sj, 71L) - 0.5) * c * SUP_JITTER; }
+    static double supZ(long ws, long si, long sj) {
+        double c = supCell();
+        return (sj + 0.5) * c + (rnd01(ws, si, sj, 72L) - 0.5) * c * SUP_JITTER; }
+    static double supB(long ws, long si, long sj) {
+        return 1.0 + SUP_BSPREAD * rnd01(ws, si, sj, 73L); }
+
+    /**
+     * 到最近【板块（超格）Voroni 边界】的距离（block）。
+     *
+     * <p>做法与 {@link #signedCoastDistCF} 完全同构：取最近两个抖动超格中心，
+     * 令 {@code phi = r1 - r0}（r = |x-c|/sqrt(b) 加权半径），则
+     * <pre>
+     *   phi = 0  ⟺  正在两块的 Voronoi 边界上（不规则多边形网络）
+     *   dist = |phi| / |grad phi|        // 解析距离
+     * </pre>
+     * ★ 穿越边界时 c0/c1 互换 ⟹ phi 与 grad phi 同时变号 ⟹ 取绝对值后【处处连续】。
+     */
+    public static double plateBoundaryDist(long ws, double px, double pz) {
+        syncSuper();
+        double[] w = warp(ws, px, pz);
+        double qx = w[0], qz = w[1];
+        double cell = supCell();
+        long si0 = (long) Math.floor(qx / cell), sj0 = (long) Math.floor(qz / cell);
+        double b0 = 1e18, b1 = 1e18, bb0 = 1.0, bb1 = 1.0, c0x = 0, c0z = 0, c1x = 0, c1z = 0;
+        for (long dj = -1; dj <= 1; dj++) {
+            for (long di = -1; di <= 1; di++) {
+                long si = si0 + di, sj = sj0 + dj;
+                double cx = supX(ws, si, sj), cz = supZ(ws, si, sj);
+                double b = supB(ws, si, sj);
+                double ex = qx - cx, ez = qz - cz;
+                double r = Math.sqrt(ex * ex + ez * ez) / Math.sqrt(b);
+                if (r < b0) { b1 = b0; c1x = c0x; c1z = c0z; bb1 = bb0;
+                              b0 = r;  c0x = cx;  c0z = cz;  bb0 = b; }
+                else if (r < b1) { b1 = r; c1x = cx; c1z = cz; bb1 = b; } } }
+        if (b1 > 1e17) return 1e9;
+        double d0x = qx - c0x, d0z = qz - c0z, d1x = qx - c1x, d1z = qz - c1z;
+        double phi = b1 - b0;
+        // dr/dx = (x-cx)/(r*b)
+        double gx = d1x / (b1 * bb1) - d0x / (b0 * bb0);
+        double gz = d1z / (b1 * bb1) - d0z / (b0 * bb0);
+        double gm = Math.sqrt(gx * gx + gz * gz);
+        if (gm < 1e-12) return 1e9;
+        return Math.abs(phi) / gm; }
+
+    /** 板块边界核 [0,1]（1 = 正在板块接缝上）。 */
+    public static double plateBoundary01(long ws, double px, double pz) {
+        double t = 1.0 - plateBoundaryDist(ws, px, pz) / OROG_PLATE_BAND;
+        if (t <= 0.0) return 0.0;
+        return t * t; }
+
+    // ================= ★★★★★★★ 造山带 = 【Voronoi 细胞边界】（正解） =================
+    //
+    // 【为什么弃用 plateBoundary01（超格栅格）】诊断图（run/talos_maps/cell_diag.png）：
+    //   · 面板1 超格类型  = 规整方块
+    //   · 面板3 plateBoundary01 = 【横平竖直的正方网格】  <-- 用户看到「直溜溜的山脉」
+    //   · 面板2 tie=|bd[1]-bd[0]| = 【不规则 Voronoi 细胞网络】
+    //   ⟹ 超格是 floorDiv(ci,SUPER) 的规整格点（边长 100 km），不是细胞边界。
+    //
+    // 【正解】用 tie = bd[1] - bd[0]（cell 的加权距离差）：
+    //   · 它的零集 【就是】细胞的 Voronoi 边界网络（面板2 已验证）
+    //   · 穿越边界时 bd[0]/bd[1] 互换 ⟹ tie 只变号 ⟹ 取绝对值后【连续】
+    //   · 于是可以像 signedCoastDistCF 一样求【解析距离】：dist = |tie| / |grad tie|
+    /** 求 cellEdgeDist 的差分步长（block）。 */
+    public static double OROG_EDGE_DH = 4000.0;
+    /** 造山带半宽（block，到细胞边界的距离）。 */
+    public static double OROG_EDGE_BAND = 15000.0;
+
+    /** 原始的 tie = bd[1] - bd[0]（★ 传入的必须是【已扭曲】的坐标）。 */
+    private static double tieW(long ws, double qx, double qz) {
+        double[] q = nearTieDbg(ws, qx, qz);
+        if (q[1] >= 1e17 || q[0] >= 1e17) return 1e9;   // 扫不到足够细胞
+        return q[1] - q[0]; }
+
+    /** 到最近【Voronoi 细胞边界】的距离（block）。 */
+    public static double cellEdgeDist(long ws, double px, double pz) {
+        double[] w = warp(ws, px, pz);
+        double qx = w[0], qz = w[1];
+        final double h = OROG_EDGE_DH;
+        double t0 = tieW(ws, qx, qz);
+        double tx = tieW(ws, qx + h, qz) - tieW(ws, qx - h, qz);
+        double tz = tieW(ws, qx, qz + h) - tieW(ws, qx, qz - h);
+        double gm = Math.sqrt(tx * tx + tz * tz) / (2.0 * h);
+        if (gm < 1e-12) return 1e9;                     // 平场（远离任何边界）
+        double d = Math.abs(t0) / gm;
+        double cap = 4.0 * OROG_EDGE_BAND;
+        return d > cap ? cap : d; }
+
+    /** 细胞边界核 [0,1]（1 = 正在细胞边界上）。 */
+    public static double cellEdge01(long ws, double px, double pz) {
+        double t = 1.0 - cellEdgeDist(ws, px, pz) / OROG_EDGE_BAND;
+        if (t <= 0.0) return 0.0;
+        return t * t; }
+
+    // ================= ★★★★★★★ 造山（米） =================
+    /**
+     * 造山开关。false ⟹ height() 不含造山项（逐位回到纯海岸剖面）。
+     * <p>⚠ 它同时影响气候层（height 是气候读到的海拔）与地形层（同一个 height 乘系数）。
+     */
+    public static boolean OROG_ON = true;
+    /**
+     * 造山抬升上限（<b>米</b>）。
+     *
+     * <p>标定目标（用户给的约束）：
+     * <ul>
+     *   <li>山脉最高【不超过 10,240 米】；</li>
+     *   <li>与 {@link #CF_LAND_H}（大陆基底饱和高度，默认 900 米）相加后落在该上限内。</li>
+     * </ul>
+     * 900 + 9,000 = 9,900 米 &lt; 10,240 ✓
+     */
+    // ★ 2026-10-08 标定定稿：9000 -> 7500（把 >8000 m 那一档压下去）
+    //   实测（CF_LAND_H=1100, PLATE_BAND=20000, GAMMA=1.3）：
+    //     UMAX=9000 -> >8000m 占 1.75%，max 9873
+    //     UMAX=8500 -> >8000m 占 0.88%
+    //     ★ UMAX=7500 -> >8000m 占 0.05%，max 8371（接近珠峰 8849）
+    public static double OROG_MAX_M = 7500.0;
+
+    /**
+     * 造山剖面的形状指数（幂）。1 = 线性；越大 ⟹ 山体越集中于脊线、山麓越缓。
+     *
+     * <p><b>为什么需要</b>：{@code 边界核 × 汇聚度} 是两个 [0,1] 掩码的乘积，
+     * 两者都在大范围内接近 1 ⟹ 乘积有一个【大平顶】。实测（γ=1）陆地高程分布：
+     * <pre>
+     *   &gt;8000 m 占 12.54%     （地球 0.10%）   ← 平顶的直接后果
+     *   1000-2000 m 只占 3.22%（地球 15%）
+     * </pre>
+     * 而真实山脉是【脊线高、山麓缓】。取 γ=3 后：
+     * <pre>
+     *   raw 0.3 -&gt; 0.027 -&gt;  243 m
+     *   raw 0.5 -&gt; 0.125 -&gt; 1125 m
+     *   raw 0.7 -&gt; 0.343 -&gt; 3087 m
+     *   raw 1.0 -&gt; 1.000 -&gt; 9000 m
+     * </pre>
+     */
+    // ★ 2026-10-08 标定定稿：1.0 -> 1.3（山体稍向脊线集中）
+    public static double OROG_GAMMA = 1.3;
+
+    /**
+     * ★ 2026-10-08：造山带的【最小宽度比例】。
+     *
+     * <p><b>为什么需要</b>：原实现里带宽是常数 {@link #OROG_PLATE_BAND}，
+     * 汇聚度只调制【幅度】不调制【宽度】⟹ 汇聚强与弱的地方一样宽
+     * ⟹ 渲染出来是一条**等宽的蠕虫**（用户：「山脉地区怪怪的」）。
+     * 真实造山带是**汇聚越强、带越宽越高**。
+     * <pre>
+     *   band = OROG_PLATE_BAND * (OROG_BAND_MIN + (1-OROG_BAND_MIN) * convergence01)
+     * </pre>
+     */
+    public static double OROG_BAND_MIN = 0.30;
+
+    /** 造山强度 [0,1] = 边界核（宽度随汇聚度变化） × 板块汇聚度，再取 OROG_GAMMA 次幂。 */
+    public static double orogeny01(long ws, double px, double pz) {
+        double c01 = convergence01(ws, px, pz);
+        if (c01 <= 0.0) return 0.0;
+        // ★ 宽度随汇聚度变化：弱汇聚 = 窄带，强汇聚 = 宽带
+        double band = OROG_PLATE_BAND * (OROG_BAND_MIN + (1.0 - OROG_BAND_MIN) * c01);
+        double t = 1.0 - plateBoundaryDist(ws, px, pz) / band;
+        if (t <= 0.0) return 0.0;
+        double raw = t * t * c01;
+        return Math.pow(raw, OROG_GAMMA); }
+
+    /** 造山抬升（米）。 */
+    public static double orogenyM(long ws, double px, double pz) {
+        return OROG_MAX_M * orogeny01(ws, px, pz); }
+
     // ================= ★★★★★★★ 平滑速度场（用于连续的 conv） =================
     //
     // 【为什么必须有】conv 原来是：
@@ -541,8 +807,26 @@ public static int OPP_R = 4;
     public static double landScore(long ws, double px, double pz) {
         double a = cnoise(px / LS_WL, pz / LS_WL, 1.0, ws ^ 0xA17L) - 0.5;
         double b = cnoise(px / LS_WL2 + 31.7, pz / LS_WL2 - 17.3, 1.0, ws ^ 0xB28L) - 0.5;
-        double f = LS_TARGET + LS_AMP * 2.0 * a + LS_AMP2 * 2.0 * b;
-        return f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f); }
+        // ★★★★★★★ 2026-10-08 修复：**去掉 [0,1] 硬钳位**。
+        //
+        // 【原代码】return f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f);
+        //   而 f = LS_TARGET(0.47) ± LS_AMP(0.55) ± LS_AMP2(0.25) ⟹ f 属于 [-0.33, 1.27]
+        //   ⟹ 两端各有大片区域被【钳成常数】⟹ 那里 ∇f == 0。
+        //
+        // 【后果（实测量化）】signedCoastDistCF = (f-0.5)/|∇f|，而它的实现里有
+        //   「|∇f| < 1e-12 ⟹ return 0.0」，于是在饱和区 sig 恒为 0 ⟹
+        //       coastProfileCF(0) = 0 ⟹ h = seaLevel = 64
+        //   ⟹ ★ 约 4.3% 的世界（陆地内部 + 深海盆）变成 **y=64 的平坦台地**。
+        //   实测：signedCoastDistCF==0 而 f!=0.5 占 4.34%；"判陆但 height<=0" 占 1.23%。
+        //
+        // 【为什么去掉钳位是安全的】landScore 只有 3 个消费者，全部对钳位不敏感：
+        //   ① isLand      : f >= 0.5      —— 钳位只在 f<0 / f>1 处生效，判定不变 ⟹ 陆地占比【逐位不变】
+        //   ② landness    : smoothstep01(0.5 + (f-0.5)/0.02) —— 在 |f-0.5| >= 0.01 处已饱和，不变
+        //   ③ signedCoastDistCF : 需要【真实的 ∇f】—— 这正是要去掉钳位的原因
+        //   ⟹ 唯一变化的是 ③ 的距离幅值（以及由它导出的地形高度），判定与混合权重不变。
+        //
+        // 【回滚】恢复上面那行 return 即可。
+        return LS_TARGET + LS_AMP * 2.0 * a + LS_AMP2 * 2.0 * b; }
 
     /** 陆地占比目标（0.5 = 一半）。 */
     public static double LS_TARGET = 0.47;
@@ -617,9 +901,17 @@ public static int OPP_R = 4;
         return shelf + slope + deep; }
 
     /** 陸侧目标高度（米）。 */
-    public static double CF_LAND_H  = 1973.0;    // ★ 标定：h = 64 + 0.075*profile
+    // ★★★★★★★ 2026-10-08 重新标定：1973 -> 900（米）
+    //   【为什么】用户裁决：本层输出的是【米】，要给两层用 ——
+    //     ① 气候层用原生的米（多少米就是多少米）⟹ 必须是地球量级；
+    //     ② 地形层通过一个系数换成 MC 的格。
+    //   地球陆地高程中位数约 500 m、均值约 840 m ⟹ 大陆基底饱和值取 900 m 与之相称。
+    //   （山地由 OROG_MAX_M 单独提供，见下。）
+    // ★ 2026-10-08 标定：900 -> 650（对照地球陆地高程：中位数约 500 m、均值约 840 m）
+    public static double CF_LAND_H  = 1100.0;
     /** 陸侧上升尺度（block）。 */
-    public static double CF_LAND_U  = 45000.0;   // ★ sqrt 曲线的饱和尺度（标定后）
+    // ★ 2026-10-08 标定：45000 -> 90000（让 0-200 m 的海岸平原占比接近地球的 25%）
+    public static double CF_LAND_U  = 90000.0;   // ★ sqrt 曲线的饱和尺度（标定后）
     /** 大陆架深度（米）。 */
     public static double CF_SHELF_H = 200.0;
     /** 大陆架宽度（block）。 */
@@ -1819,8 +2111,39 @@ public static int OPP_R = 4;
         public static boolean HEIGHT_MEMO_ON = true;
     public static void clearHeightMemo() { HEIGHT_MEMO.get().clear(); }
 
+    /**
+     * ★★★★★★★ 2026-10-08（口径统一 #1）：地形高度改为【与地形同源】。
+     *
+     * <p><b>改前的问题</b>：本方法返回 {@code eval(..)[3]}，而 {@code eval} 内部的陆海判据是
+     * {@code q.c[0]}（<b>125 km 超格级布尔</b>），与地形实际使用的
+     * {@link #signedCoastDistCF}（<b>block 级连续场</b>）实测 <b>48.06% 不一致</b>
+     * （641,601 点）。后果：height 的符号与地形相反，符号钳位把 <b>20.19%</b> 的世界
+     * 钉成常数 −1.0，而 {@code elevation01} 因此退化成 0/1 二值。
+     *
+     * <p><b>改法</b>：直接返回地形用的那一条链 —— {@code coastProfileCF(signedCoastDistCF(..))}
+     * （米，海平面 = 0），与 {@code SimTerrain.compose} 的 USE_CF_PROFILE 分支【逐位同源】：
+     * <pre>
+     *   SimTerrain: sig = signedCoastDistCF(..); prof = coastProfileCF(sig);
+     *               h = seaLevel + ELEV_TO_BLK*CF_GAIN*prof;  land = sig >= 0
+     *   本方法:     return coastProfileCF(signedCoastDistCF(..));   // 同一个 prof
+     * </pre>
+     * ⟹ {@code landResidual > 0} ⟺ {@code sig > 0} ⟺ 地形判陆 ⟹ 三套口径收敛成一套。
+     *
+     * <p><b>回滚</b>：置 {@code HEIGHT_FROM_CF = false} ⟹ 逐位回到旧行为。
+     */
+    public static boolean HEIGHT_FROM_CF = true;
+
+    /** height 的实际实现（记忆化之外）。 */
+    private static double height0(long ws, double px, double pz) {
+        if (HEIGHT_FROM_CF) {
+            double h = coastProfileCF(signedCoastDistCF(ws, px, pz));
+            // ★ 造山只加在【陆地】（h > 0 = 海岸剖面判陆）。海上不加。
+            if (OROG_ON && h > 0.0) h += orogenyM(ws, px, pz);
+            return h; }
+        return eval(ws, px, pz)[3]; }
+
     public static double height(long ws, double px, double pz) {
-        if (!HEIGHT_MEMO_ON) return eval(ws, px, pz)[3];
+        if (!HEIGHT_MEMO_ON) return height0(ws, px, pz);
         LongDblMap m = HEIGHT_MEMO.get();
         // 坐标按 1 格量化（同一格点应得同一答案；缓存与精度无关）
         long kx = (long) Math.floor(px), kz = (long) Math.floor(pz);
@@ -1831,7 +2154,7 @@ public static int OPP_R = 4;
         long key = ((kx << 32) ^ (kz & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + ws;
         double[] tmp = ctx().tmp1;
         if (m.get(key, tmp)) return tmp[0];
-        double r = eval(ws, px, pz)[3];
+        double r = height0(ws, px, pz);
         if (m.size() > 262144) m.clear();
         m.put(key, r);
         return r; }

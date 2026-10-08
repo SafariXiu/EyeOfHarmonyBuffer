@@ -155,7 +155,10 @@ public final class SimTerrain {
     public static boolean DETAIL_ENABLED = false;
     public static boolean SEABED_ENABLED = false;
 
-    public static double ELEV_TO_BLK = 0.025;
+    // ★★★★★★★ 2026-10-08 重新标定：0.025 -> 0.018（米 -> MC 格）
+    //   海陆分布层的米制范围现在是 [−4000, +9900]（大陆基底 900 + 造山 9000）。
+    //   0.018 × 9900 = 178 格 ⟹ 峰顶约 y=242（海平面 64），不撞 maxY=254。
+    public static double ELEV_TO_BLK = 0.018;
 
     // ================= ★★★★★★★ B 方案：统一海岸剖面（无墙） =================
     //
@@ -172,7 +175,51 @@ public final class SimTerrain {
     public static boolean USE_CF_PROFILE = true;
 
     /** 统一剖面的幅度缩放（标定：让高度分布与旧 elev 一致）。 */
-    public static double CF_GAIN = 3.0;
+    // ★ 2026-10-08：3.0 -> 1.0。系数现在【只有一个】ELEV_TO_BLK，本项保留为回滚/微调位。
+    public static double CF_GAIN = 1.0;
+
+    // ================= ★★★★★★★ 造山项（2026-10-08：山脉改由海陆分布层派生） =================
+    /** 造山开关（回滚点：false ⟹ 逐位回到「纯海岸剖面」行为）。 */
+    public static boolean OROG_ON = true;
+    /**
+     * 造山抬升上限（blocks）。
+     * <p>海平面 64、软上限 SOFT_CAP_H=252 ⟹ 基底约 64~212，造山在其上叠加。
+     * <p>标定入口：见 待裁决/085。
+     */
+    // ★ 2026-10-08 标定：110 -> 130（配合 CF_TERRAIN_GAIN=0.35 与 OROG_BELT_W=0.55，
+    //   让峰顶落在 240 附近而不是撞 maxY=254 上限）。
+    public static double OROG_UPLIFT_BLK = 130.0;
+    /**
+     * 造山带【内部起伏】的幅度系数（× V2TerrainGen.mountainDetail 的输出）。
+     * <p>mountainDetail 的原始幅度约 34 格（r1*24 + r2*10）⟹ 1.0 时山带内部起伏 ±34 格。
+     */
+    public static double OROG_DETAIL_BLK = 1.0;
+
+    /**
+     * ★★★★★★★ 2026-10-08：<b>地形侧的额外增益</b>（把「气候用的米」映射到「MC 的格」）。
+     *
+     * <h3>为什么必须把这两件事解耦</h3>
+     * <p>{@code coastProfileCF} 的输出同时被两个口径消费，而它们要的东西不同：
+     * <ul>
+     *   <li><b>气候层</b>要的是**真实米**（温度递减率、降水、水系都要它）——
+     *       由 {@code PlateField.elevation} 读走，<b>本常量不影响它</b>；</li>
+     *   <li><b>地形层</b>要的是**MC 的格**。而 {@code 0.075 × 1973 = 148 格} 的内陆穹顶
+     *       + 最多 90 格的造山 ⟹ <b>穹顶是主体、山脉是涟漪</b>，
+     *       用户实测观感：「整个大陆全是深褐色的山」。</li>
+     * </ul>
+     *
+     * <p><b>做法</b>：只在地形侧乘一个 &lt;1 的增益，把穹顶压平，让造山项成为相对主体。
+     * <pre>
+     *   hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * CF_TERRAIN_GAIN * prof   // 穹顶 148 -> 52 格
+     *                 + OROG_UPLIFT_BLK * orogeny01                       // 山脉 0 -> 110 格
+     * </pre>
+     * ⟹ 平原 64~116、山脉 150~226 ⟹ 对比度从 1.6:1 提到 ~4:1。
+     *
+     * <p><b>回滚</b>：置 1.0 ⟹ 逐位回到旧行为。
+     */
+    // ★ 2026-10-08：本常量【已删除】（是我多加的旋钮）。
+    //   既有的「米 -> MC 格」系数链 = ELEV_TO_BLK * CF_GAIN，不需要第三个因子。
+    @Deprecated public static final double CF_TERRAIN_GAIN = 1.0;
 
     /**
      * ★★★★★★★★ §7552：<b>侵蚀驱动器的「米 -> 方块」量纲换算</b>（原 {@code LAND_GAIN} 的第二个用法）。
@@ -619,9 +666,42 @@ public final class SimTerrain {
             long cfWs = ((long) worldSeedInt) & 0xFFFFFFFFL;
             double sig = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
                 .signedCoastDistCF(cfWs, x, z);
-            double prof = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
-                .coastProfileCF(sig);
-            double hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * prof;
+            // ★★★★★★★ 2026-10-08（用户裁决：高度分两层口径）
+            //   ① 海陆分布层输出【原生米】—— 气候层读的就是它（PlateField.elevation -> height），
+            //      多少米就是多少米，不再有任何增益；
+            //   ② 地形层把同一个米值乘【一个系数】ELEV_TO_BLK 换成 MC 的格。
+            //   ⟹ 造山项已并入 height()（米），本处不再单独加，避免重复计算。
+            double hM = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
+                .height(cfWs, x, z);
+            // ★★★★★★★ 2026-10-08：**造山项**（山脉改由海陆分布层派生）
+            //
+            // 【为什么必须加在这里】本分支在第 634 行直接 return ⟹ 上面第 601 行算的
+            //   elev（整套板块高程模型）从未被使用 ⟹ 实测 60,000 点，
+            //   列顶 == 64 + 0.075*coastProfileCF(sig) 【0 个不符】⟹ 地形是
+            //   「到海岸线距离」的纯径向剖面，**不含任何板块结构**，山无处可长。
+            //   见 待裁决/084。
+            //
+            // 【造山项从哪来】OrographyField.orogeny01 = 窄脊线带 × 板块汇聚度(−div v)，
+            //   两者都来自海陆分布层自己的连续场（速度场 velField 及其散度）。
+            //   ⚠ 海上恒为 0（OroSample 对海点直接返回 0）⟹ 不会把山加进海里。
+            //
+            // 【回滚】OROG_ON = false ⟹ 逐位回到旧行为。
+            double orog = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_ON
+                ? com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField
+                    .sample(x, z, worldSeedInt).orogeny01
+                : 0.0;
+            c.auth = orog;
+            c.uplift = ELEV_TO_BLK * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer
+                .TalosLandField.OROG_MAX_M * orog;          // 米 -> 格
+            // ★★★★★★★ 2026-10-08：给造山带加【内部起伏】（山脊/沟谷）。
+            //   【为什么必须有】DETAIL_ENABLED 与 EROSION_ENABLED 都是 false
+            //   ⟹ 地形 = 64 + 0.018*(剖面 + 7500*orogeny) 是一个【纯光滑场】
+            //   ⟹ 山带渲染出来是一条光溜溜的等宽蠕虫（用户实测观感）。
+            //   真实的造山带内部有山峰、沟谷、平行山脊，尺度 200~1100 m。
+            //   这里用 V2TerrainGen.mountainDetail（λ 210~1100 m 的 ridged 噪声），
+            //   强度取 orogeny01 ⟹ 平原上恒为 0（mountainDetail 内部有 s<=0.01 的快速返回）。
+            double orogDet = V2TerrainGen.mountainDetail(x, z, worldSeedInt, orog);
+            double hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * hM + OROG_DETAIL_BLK * orogDet;
             boolean landCF = sig >= 0.0;
             c.land = landCF;
             c.seaDepth = landCF ? 0.0 : Math.max(0.0, seaLevel - hCF);

@@ -387,7 +387,6 @@ public final class LandformField {
         Field f = new Field();
         double[] w = new double[5];
         double[] bp = new double[2];
-        double[] au = new double[3];   // ★ authAll 的输出缓冲（复用）
 
         for (int j = -1; j <= NZ; j++) {
             int z = originZ + j * CELL + CELL / 2;
@@ -405,10 +404,15 @@ public final class LandformField {
                 long _d = System.nanoTime(); tBP += _d - _c;
                 // ★ 2026-10-08：一次取齐（原为两次独立调用，各含 HashMap 查 + 3 次 doubleToLongBits）
                 double mtnComp0 = bp[0] > bp[1] ? bp[0] - bp[1] : 0.0;
-                MountainLayerV2.authAll(x, z, seed, au);
+                // ★★★★★★★ 2026-10-08：旧山脉层（MountainLayerV2）已删除。
+                //   造山强度改由【海陆分布层】派生：OroSample.orogeny01
+                //     = 窄脊线带(dev) × 板块汇聚度(−div v)   —— 两者都来自本层自己的连续场。
+                //   ⟹ 零额外调用（o 已在上面算好）+ 零 HashMap 查（旧 authAll 每次 1 次查表 + 3 次 doubleToLongBits）。
+                double auth = o.orogeny01;
+                // 造山强度 [0,1] -> 抬升【格】：米制上限 OROG_MAX_M × 米->格系数
+                double uplift = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK
+                    * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * auth;
                 long _e = System.nanoTime(); tAuth += _e - _d;
-                double auth = au[0];
-                double uplift = au[1];
                 double rise = (1.0 - auth) * mtnComp0 + auth * uplift;
                 double amt = rise / MTN_RISE_SCALE;
                 if (amt > 1.0) {
