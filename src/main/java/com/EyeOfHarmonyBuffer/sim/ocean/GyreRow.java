@@ -102,7 +102,7 @@ public final class GyreRow {
          * 于是「东边界」根本不存在（P273 实测：64 条纬线里只有 19 条有真海岸，
          * 且这些纬线的沿岸风剖面大面积为零）。已提到 24M。
          */
-        public int maxRow = 24_000_000;
+        public int maxRow = 600_000;   // ★ 2026-10-08 缩 40x（原 24,000,000）
         /** 手动 beta 下的 delta_M。未设 beta 时返回 NaN —— 请改用 `deltaAt(z)`。 */
         public double delta() { return Math.cbrt(aH / beta); }
     }

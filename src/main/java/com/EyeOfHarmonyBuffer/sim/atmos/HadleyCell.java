@@ -42,7 +42,7 @@ public final class HadleyCell {
     public static boolean ENABLED = false;
 
     public static final double OM = 7.2921e-5;                       // s^-1
-    public static final double R_EFF = 10_000_000.0 / (Math.PI / 2.0); // m（2*pi*R = 40,000 km）
+    public static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
     public static final double G = 9.80665;                          // m s^-2
     /** 外流层厚度 H（对流层顶高度）。 */
     public static double H_TROP = 10_000.0;

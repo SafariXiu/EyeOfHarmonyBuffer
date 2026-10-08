@@ -22,7 +22,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer;
  */
 public final class PeriodicNoise {
 
-    public static final double PERIOD_X = 100_000.0;
+    public static final double PERIOD_X = 100_000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
     /**
      * ⚠ 2026-09-18（顶死一套·第 2 段）：**本常量是惰性的**。
      *
@@ -36,7 +36,7 @@ public final class PeriodicNoise {
      * <p>退役计划：第 6 段删旧栈时，本常量与 {@code TalosContract} 里那条
      * 「PERIOD_Z == LAT_CYCLE」的自检一起删除（那条自检是在给一套死代码做自检）。
      */
-    public static final double PERIOD_Z = 1_000_000.0;
+    public static final double PERIOD_Z = 1_000_000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
     private static final double INV_PX = 1.0 / PERIOD_X;
     private static final double INV_PZ = 1.0 / PERIOD_Z;
 

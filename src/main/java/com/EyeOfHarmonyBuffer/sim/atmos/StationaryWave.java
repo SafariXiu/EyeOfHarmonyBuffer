@@ -126,7 +126,7 @@ public final class StationaryWave {
     public static double Q_WM2_TO_SW = 3.5e-5;
 
     private static final double OM = 7.2921e-5;
-    private static final double R_EFF = 10_000_000.0 / (Math.PI / 2.0);
+    private static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
     private static long cacheKey = Long.MIN_VALUE;
     private static double[] divCache;

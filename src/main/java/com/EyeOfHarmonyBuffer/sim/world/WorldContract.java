@@ -24,7 +24,10 @@ public final class WorldContract {
      * <p>2026-09-18 口径解耦（D1 第一步）：原来是 {@code Z_CYCLE / 2} 的派生量，
      * 现在独立成常量，**值不变（10,000,000）⇒ 行为逐位不变**。
      */
-    public static final int MAX_D = 10_000_000;
+    // ★★★★★★★★ 2026-10-08：全体缩小 40×（与地形层 SC=1/40 一致）
+    //   裁决：地形缩了 40 倍（SC=0.00625），行星契约同步缩 40 倍 ⟹ **所有尺度比保持**。
+    //   配套：OMEGA ×40（必须！否则大气变形半径 > 行星半径 ⟹ 气候层塌掉）
+    public static final int MAX_D = 250_000;   // ★ 原 10,000,000 ÷ 40
 
     /**
      * 气候在 z 上的周期（block）。
@@ -42,12 +45,19 @@ public final class WorldContract {
      * **逐位不变**。D1（极点分离）落地时本行改成 <b>{@code 4 * MAX_D}</b>（= 40,000,000），
      * 届时极点在 {@code Z_CYCLE / 4}、赤道在 {@code 0} 与 {@code 2 * MAX_D}。见下方 D1 暂存段。
      */
-    public static final int Z_CYCLE = 4 * MAX_D;   // ★ D1（2026-09-18）：一条完整子午圈
-    public static final double OMEGA = 7.2921e-5;
+    public static final int Z_CYCLE = 4 * MAX_D;   // ★ 2026-10-08：= 1,000,000（原 40,000,000 ÷ 40）
+    // ★★★★★★★★ 2026-10-08：Ω ×40（**必须**）
+    //   依据：大气/海洋的变形半径 ∝ √(gH)/Ω。地形与 R_EFF 缩了 40 倍，
+    //   若 Ω 不变，则 R_d/R_EFF 会 ×40（实测 0.337 -> 13.494）⟹ 罗斯贝波/哈得来环流全塌。
+    //   Ω ×40 后 R_d/R_EFF 精确保持（实测 0.337 -> 0.337），Rhines 比也保持（0.104）。
+    //   代价：日长 23.93 h -> 35.9 分钟（MC 的昼夜由游戏自己管，不受影响）。
+    public static final double OMEGA = 7.2921e-5 * 40.0;   // = 2.91684e-3
     /** 有效行星半径（m）：R_eff = MAX_D/(pi/2) = 6366 km —— 与地球 6371 km 差 0.1%。 */
-    public static final double R_EFF = MAX_D / (Math.PI / 2.0);
+    public static final double R_EFF = MAX_D / (Math.PI / 2.0);   // ★ 自动 = 159,154.9 m（原 6,366,197.7 ÷ 40）
     /** 一年多少「天」（季节相位的时间单位，纯约定）。 */
-    public static final double DAYS_PER_YEAR = 365.25;
+    // ★ 2026-10-08：一年 = 365.25「新日」；因日长缩了 40 倍，一「年」也缩 40 倍。
+    //   物理时间尺度：一年 = 365.25 × 35.9 min = 9.09 天（原 365.25 天）
+    public static final double DAYS_PER_YEAR = 365.25;   // ★ 保持（它是「天」的计数，不是物理时间）
 
     /**
      * ★ D1（2026-09-18）：**带符号**纬度（弧度）—— 沿子午圈匀速行走的**线性三角波**。

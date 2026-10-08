@@ -36,13 +36,13 @@ public final class BasinFinder {
     private BasinFinder() {}
 
     /** 粗采样间距（block）。20 km 与求解器粗格同量级。 */
-    public static final int SAMPLE = 20_000;
+    public static final int SAMPLE = 500;   // ★ 缩 40x（原 20,000）
     /** 单方向搜索半径（格）=> 1600 km。超过则标记 truncated。 */
     public static final int MAX_R = 80;
     /** 诊断：D57 的早退与掩膜中心格**不一致**的次数。正常恒为 0（不一致就是等价性论证有洞）。 */
     public static long earlyOutMismatch = 0;
     /** 西墙相邻行允许的位移（block）。与 P243 的 WALL_TOL 一致。 */
-    public static final int WALL_TOL = 60_000;
+    public static final int WALL_TOL = 1_500;   // ★ 缩 40x（原 60,000）⟹ tolSteps = 1500/500 = 3（与原来一致）
     /** CFL 安全系数（§11：余量 ~3 必发散，取 10）。 */
     public static final double CFL_SAFETY = 10.0;
 

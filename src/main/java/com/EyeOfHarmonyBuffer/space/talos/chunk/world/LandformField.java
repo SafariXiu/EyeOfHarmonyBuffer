@@ -38,9 +38,9 @@ public final class LandformField {
     public static final int CELL = 250;
 
     /** 窗口宽度（blocks）：世界沿 X 无限 → 每窗口独立求解（绝对坐标，不换种子）。 */
-    public static final int TILE_X = 100_000;
+    public static final int TILE_X = 100_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）（曾误缩到 2,500 ⟹ 网格 10x5 ⟹ 地形被抹平）
 
-    public static final int TILE_Z = 50_000;
+    public static final int TILE_Z = 50_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     // 必须跟着 TILE_X/TILE_Z 走：曾经硬编码 400_000/200_000，1/4 缩放后 TILE_X 变成 100_000
     // 而这里没跟着改，于是 solve() 算满 1600x800 而 sample() 只读前 400x200 —— 白算 16 倍。
@@ -348,24 +348,34 @@ public final class LandformField {
         checkSolveCap(sn, tileX, tileZ);
         final int originX = tileX * TILE_X, originZ = tileZ * TILE_Z;
         long t0 = System.nanoTime();
+        // ★★★★★★★ 分段计时（定位真热点）
+        long tOro = 0, tW = 0, tBP = 0, tAuth = 0;
         int n = SX * SZ;
         Field f = new Field();
         double[] w = new double[5];
         double[] bp = new double[2];
+        double[] au = new double[3];   // ★ authAll 的输出缓冲（复用）
 
         for (int j = -1; j <= NZ; j++) {
             int z = originZ + j * CELL + CELL / 2;
             for (int i = -1; i <= NX; i++) {
                 int x = originX + i * CELL + CELL / 2;
                 int k = (j + 1) * SX + (i + 1);
+                long _a = System.nanoTime();
                 OrographyField.OroSample o = OrographyField.sample(x, z, seed);
+                long _b = System.nanoTime(); tOro += _b - _a;
                 computeWeights(o.beltMask01, o.relief01, o.elevation01, w);
+                long _c = System.nanoTime(); tW += _c - _b;
 
                 // 中性 bias 的骨架高度（**含中尺度纹理**）→ 真实的"相对平原抬升量"
                 V2TerrainGen.basePlainFromWeights(w, x, z, seed, SEA_LEVEL, 0.5, 0.5, bp);
+                long _d = System.nanoTime(); tBP += _d - _c;
+                // ★ 2026-10-08：一次取齐（原为两次独立调用，各含 HashMap 查 + 3 次 doubleToLongBits）
                 double mtnComp0 = bp[0] > bp[1] ? bp[0] - bp[1] : 0.0;
-                double auth = MountainLayerV2.auth(x, z, seed);
-                double uplift = MountainLayerV2.uplift(x, z, seed);
+                MountainLayerV2.authAll(x, z, seed, au);
+                long _e = System.nanoTime(); tAuth += _e - _d;
+                double auth = au[0];
+                double uplift = au[1];
                 double rise = (1.0 - auth) * mtnComp0 + auth * uplift;
                 double amt = rise / MTN_RISE_SCALE;
                 if (amt > 1.0) {
@@ -385,7 +395,11 @@ public final class LandformField {
         }
         long ms = (System.nanoTime() - t0) / 1_000_000;
         SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
-        System.out.println("[Landform] seed=" + seed + " solved in " + ms + "ms  ("
+        System.out.println(String.format(
+            "[Landform] seed=%d solved in %dms  (%dx%d @ %dm)  [oro=%.0f w=%.0f bp=%.0f auth=%.0f]ms",
+            seed, ms, NX, NZ, CELL,
+            tOro / 1e6, tW / 1e6, tBP / 1e6, tAuth / 1e6));
+        if (false) System.out.println("[Landform] seed=" + seed + " solved in " + ms + "ms  ("
             + NX + "x" + NZ + " @ " + CELL + "m)");
         return f;
     }

@@ -97,7 +97,7 @@ public class WorldGenYuanShiDoubleConeCluster {
         new ConcurrentHashMap<Long, List<Cone>>();
 
     public void generate(World world, Random rand, int chunkX, int chunkZ) {
-        int seed = (int) (world.getSeed() & 0x7FFFFFFFL);
+        int seed = com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.of(world);   // ★ 统一入口
 
         for (int dz = -OWNER_SEARCH_RADIUS_CHUNKS;
              dz <= OWNER_SEARCH_RADIUS_CHUNKS; dz++) {

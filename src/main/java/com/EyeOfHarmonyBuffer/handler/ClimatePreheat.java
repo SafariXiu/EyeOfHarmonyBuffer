@@ -31,7 +31,7 @@ public class ClimatePreheat {
         }
         // 这里曾经有个 "V2 轨没开就不预热" 的提前返回。旧轨已删除 ⇒ 地形链唯一，
         // 这四层在任何世界里都是被消费的，预热条件只剩"是不是 Talos 维度"。
-        final int seed = (int) (world.getSeed() & 0x7FFFFFFFL);
+        final int seed = com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.of(world);   // ★ 统一入口
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {

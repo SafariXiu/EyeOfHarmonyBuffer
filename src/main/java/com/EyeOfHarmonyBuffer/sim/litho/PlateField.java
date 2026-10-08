@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.litho;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+
 /**
  * ★ L1（地形/海陆 + 海岸）的**公开门面**与**度量钩子**。
  *
@@ -90,8 +92,13 @@ public final class PlateField {
      */
     public interface LandMask { boolean isLand(int x, int z); }
 
-    /** 见 {@link LandMask}。默认 null（生产与全部既有探针的行为都不变）。 */
-    public static LandMask MASK = null;
+    /**
+     * ★★★ **已废弃并删除**（2026-10-08 接入新海陆）。
+     *   新海陆（{@link NoiseContinentGrid} -> TalosLandField）是**唯一**来源，
+     *   不再需要外部掩膜钩子。原字段保留为编译期常量 {@code null} 语义，
+     *   以便仍在读它的探针（P597 等）不报错。
+     */
+    @Deprecated public static final LandMask MASK = null;
 
     /**
      * ★★ 地球验证层的【地形注入点】。**生产恒为 null。**
@@ -110,13 +117,16 @@ public final class PlateField {
      *   <li>地球掩膜与高程的加载、以及全部地球观测锚，都住在 {@code tools/talos-probe/probe/EarthRef.java}
      *       这一个文件里；</li>
      *   <li>{@code null} 时下面只多一次空判断，**逐位不变**（P293 复验）；</li>
-     *   <li>{@code P597} 是常驻的「生产纯度」门：断言 {@code MASK/ELEV} 全在默认态。</li>
+     *   <li>★ 2026-10-08：<b>本机制已整支作废并删除</b>。海陆层换成 {@link NoiseContinentGrid}
+     *       （-> TalosLandField）后是唯一来源，不再需要外部掩膜/高程钩子。
+     *       {@code MASK/ELEV} 现在是 {@code @Deprecated static final = null}，
+     *       {@code SimClimate} 的指纹位改为折入 {@link #configStamp()}。</li>
      * </ul>
      */
     public interface ElevSource { double elevMeters(int x, int z); }
 
-    /** 见 {@link ElevSource}。默认 null（生产与全部既有探针的行为都不变）。 */
-    public static ElevSource ELEV = null;
+    /** ★★★ **已废弃并删除**（2026-10-08）。见 {@link #MASK}。 */
+    @Deprecated public static final ElevSource ELEV = null;
 
     /**
      * 海平面（高程基准）。
@@ -126,6 +136,20 @@ public final class PlateField {
      * （{@code elevation >= 0}），并被既有探针（P505）与登记表引用。
      */
     public static final double SEA_LEVEL = 0.0;
+
+    // ==================== 侵蚀参数常量（从已删除的 TalosField 迁来） ====================
+    /**
+     * ★ 高频外推额外 octave 的振幅（侵蚀用）。
+     *   ★ 2026-10-08 从 `TalosField.ERO_EXTRA_AMP` **原值迁来**（= 0.25）。
+     *   `TalosField` 已删除（旧地形生成器，生产零调用）。
+     */
+    public static final double ERO_EXTRA_AMP = 0.25;
+
+    /**
+     * ★ 最细波长 = HF_WL0 / 2^(HF_OCT-1) = 3,000,000 / 2^12 = **732.421875 m**。
+     *   ★ 2026-10-08 从 `TalosField.HF_WL_MIN` **原值迁来**。
+     */
+    public static final double HF_WL_MIN = 3_000_000.0 / (double) (1L << 12);
 
     // ==================== 大陆度（连续、带符号、O(1)） ====================
 
@@ -185,7 +209,11 @@ public final class PlateField {
     }
 
     public static double landScoreWithCell(int x, int z, long seed, int cell) {
-        return 2.0 * landFractionWithCell(x, z, seed, cell, COAST_BLEND) - 1.0;
+        // ★★★★★★ 2026-10-08：改由【大陆度】派生（连续、与 isLand 同源、且在本世界尺度下正确）
+        //   ★ 原实现（半径 COAST_BLEND=800 km 的加权陆地占比）在本世界失效：
+        //     特征只有 125 km、海洋无边 ⟹ 任何半径都采样到几乎全是海 ⟹ kappa 永不 > 0.5
+        //   ★ 新：kappa 由高度派生（海平面 ⟹ 0.5，深海 ⟹ 0，内陆 ⟹ 1）
+        return NoiseContinentGrid.landScore(x, z, (int) seed);
     }
 
     /** 半径 radius 内的加权陆地占比，[0,1]。 */
@@ -223,14 +251,36 @@ public final class PlateField {
      * 理由见 {@link #PLATE_CELL}）。
      */
     public static double elevationWithCell(int x, int z, long seed, int cell) {
-        ElevSource es = ELEV;                 // 先取局部，避免与 install/uninstall 竞态
-        if (es != null) return es.elevMeters(x, z);
-        return TalosField.elevation(x, z, seed);
+        // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）
+        //   旧的 TalosField V8 生成器路径与 MASK/ELEV 钩子已删除（用户裁决：全接过去，更干净）
+        return NoiseContinentGrid.height(x, z, (int) seed);
     }
 
-    /** 是否陆地。 */
+    /**
+     * ★ 2026-10-08 新增：**double 坐标**重载（供沿岸二分搜索用）。
+     *   ★ 为什么需要：`CommandTalosCoast` 的二分把海岸线细化到约 4 block，
+     *     若强制取整会失去精度。旧 `TalosField.isLand` 是 `(double,double,long)`。
+     */
+    public static boolean isLand(double x, double z, long seed) {
+        return NoiseContinentGrid.isLand((int) Math.floor(x), (int) Math.floor(z), (int) seed);
+    }
+
+    /**
+     * ★ 2026-10-08 新增：4 参数 `elevation` 重载（兼容旧的 `TalosField.elevation(x,z,seed,extraAmp)`）。
+     *   ★ `extraAmp` 在新海陆里**无对应量**（旧 TalosField 的侵蚀外推振幅），故忽略。
+     */
+    public static double elevation(int x, int z, long seed, double extraAmp) {
+        return elevation(x, z, seed);
+    }
+
+    /**
+     * 是否陆地。
+     *     *   ★★★★★★ 2026-10-08：改为直接委托（原来是 `elevation >= SEA_LEVEL`）。
+     *   理由：新海陆的 `isLand` 是权威判定，而 `elevation` 经过增益/钳制后
+     *   在海岸处可能与之不逐位等价 ⟹ 直接委托消除该风险。
+     */
     public static boolean isLand(int x, int z, long seed) {
-        return elevation(x, z, seed) >= SEA_LEVEL;
+        return isLandWithCell(x, z, seed, PLATE_CELL);
     }
 
     /**
@@ -242,9 +292,8 @@ public final class PlateField {
      * 会让 MASK 影响 {@code isLand} 的读数）；要修就单独一刀 + 单独验收。
      */
     public static boolean isLandWithCell(int x, int z, long seed, int cell) {
-        // ★ 物理线验证：外部掩膜优先（默认 null ⇒ 逐位不变）。见 {@link LandMask}。
-        if (MASK != null) return MASK.isLand(x, z);
-        return TalosField.isLand(x, z, seed);
+        // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）
+        return NoiseContinentGrid.isLand(x, z, (int) seed);
     }
 
     /**
@@ -266,27 +315,20 @@ public final class PlateField {
      * 搜索窗内没有任何海岸时返回 {@code ±2*maxSearch}（远处视为「极内陆 / 极深海」），不是 0 ——
      * 返回 0 会让深海与内陆都得到 continent = 0，那是错的。
      */
+    /**
+     * ★★★ 配置戳（供 SimClimate 的瓦片缓存失效用）。
+     *   ★ 2026-10-08：海陆层已整支换成 {@link NoiseContinentGrid}（-> TalosLandField），
+     *     所以戳也必须换 —— 否则旧瓦片缓存不会失效。
+     */
+    public static long configStamp() {
+        long h = 0x9E3779B97F4A7C15L;
+        h = h * 31 + NoiseContinentGrid.configStamp();
+        h = h * 31 + 1L;   // 版本位：接入新海陆
+        return h;
+    }
+
     public static double coastDistanceNew(int x, int z, long seed, int cell, int maxSearch) {
-        boolean land0 = isLandWithCell(x, z, seed, cell);
-        double best = Double.MAX_VALUE;
-        for (int k = 0; k < 8; k++) {
-            double a = Math.PI * k / 4.0;
-            double dx = Math.cos(a), dz = Math.sin(a);
-            double found = -1;
-            for (double d = 250; d <= maxSearch; d *= 2) {
-                int sx = x + (int) Math.round(dx * d), sz = z + (int) Math.round(dz * d);
-                if (isLandWithCell(sx, sz, seed, cell) != land0) { found = d; break; }
-            }
-            if (found < 0) continue;
-            double lo = found * 0.5, hi = found;
-            for (int it = 0; it < 12; it++) {
-                double mid = 0.5 * (lo + hi);
-                int sx = x + (int) Math.round(dx * mid), sz = z + (int) Math.round(dz * mid);
-                if (isLandWithCell(sx, sz, seed, cell) != land0) hi = mid; else lo = mid;
-            }
-            if (hi < best) best = hi;
-        }
-        if (best == Double.MAX_VALUE) best = 2.0 * maxSearch;
-        return land0 ? -best : best;
+        // ★★★★★★ 2026-10-08 接入新海陆：直接用新场的【有符号海岸距离】（比 8 射线二分更精确、更快）
+        return NoiseContinentGrid.coastDistBlocks(x, z, (int) seed);
     }
 }

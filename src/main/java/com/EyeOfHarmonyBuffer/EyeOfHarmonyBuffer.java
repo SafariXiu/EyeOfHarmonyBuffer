@@ -232,6 +232,11 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
         event.registerServerCommand(new CommandTalosHere());
+        event.registerServerCommand(new CommandTalosTp());   // ★ /talos_tp：TP 到海陆分布的指定地形区域
+        // §7557：把玩家直接送到最近的【海岸线】。Talos2 的大陆是大陆级的
+        // （DCELL = 2,222,222 方块），站在内陆时海岸可能在几千公里外，手动找不现实。
+        // 判据用 TalosField.isLand —— 与 ChunkProviderTalos2 的方块海陆判定同一个入口。
+        event.registerServerCommand(new CommandTalosCoast());
         event.registerServerCommand(new CommandReactorVideo());
         event.registerServerCommand(new CommandGasEnvironment());
         event.registerServerCommand(new CommandComputeDebug());

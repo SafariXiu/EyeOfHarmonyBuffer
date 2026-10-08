@@ -128,8 +128,26 @@ public final class SoilMoisture {
      */
     public static double RS_SURF = 0.0;
 
-    /** 一年离散成多少个 theta（沿季节积分）。 */
-    public static int NTHETA = 24;
+    /**
+     * 一年离散成多少个 theta（沿季节积分）。
+     *
+     * <p>★★★★★ §7526：<b>24 -> 12</b>（性能）。依据（P1572 实测，两臂各 24 个全冷点）：
+     * <pre>
+     *   NTHETA | dt(天) | 建气候瓦片 ms/点 | 收敛   | 未收敛 | 平均年数
+     *     24   |  15.2  |         671.3    | 2016   |    0   |   4.2
+     *     12   |  30.4  |         459.6    | 2013   |    3   |   3.9
+     * </pre>
+     * ⟹ <b>快 32%，而收敛只从 100% 降到 99.85%（3/2016 未收敛）</b>。
+     *
+     * <p>⚠ 「未收敛」<b>不是崩溃</b>：那时 {@code spinup} 用跑满 {@code MAX_YEARS} 的状态返回
+     * （一个退化的解）。3/2016 = 0.15% 的格子会拿到退化解。
+     *
+     * <p>⚠ 原依据（{@code :333}）是「双半球 144 点，NTHETA=24：收敛 123/144 -> 144/144」。
+     * 本次在 2016 点上复测，24 给 100%、12 给 99.85% ⟹ **24 的余量比 12 大，但 12 仍够**。
+     *
+     * <p>⚠ 它<b>改数值</b> ⟹ 按 §7498 预登记纪律，<b>必须跑 22 支套件</b>。
+     */
+    public static int NTHETA = 12;
     /** 自旋上限（年）。周期稳态通常 1~3 年就够。 */
     public static int MAX_YEARS = 60;
     /** 收敛判据：|W(2pi) - W(0)| / W_FC。 */
@@ -151,6 +169,22 @@ public final class SoilMoisture {
 
     /** 诊断。 */
     public static long spinupCount = 0, evalCount = 0, SPINUP_NANOS = 0;
+    /**
+     * ★★★★★ §7525：<b>spinup 收敛统计</b>（供探针量 NTHETA 等离散化参数的影响）。
+     *
+     * <p>为什么要它：{@code NTHETA}（一年离散成多少个 theta）是**已验证过的**参数
+     * （{@code :333} 逐字「双半球 144 点，NTHETA=24：收敛 123/144 -> 144/144」），
+     * 而它**直接决定 spinup 的成本**（每个 theta 一次 {@code skinTempLand} = 60 次气柱辐射）。
+     * 要判断「能否降 NTHETA」，**必须能测收敛率**，否则只能靠猜。
+     *
+     * <p>口径：{@code SPINUP_TOTAL} 计总次数；{@code SPINUP_NOT_CONVERGED} 计
+     * 「跑满 {@code MAX_YEARS} 仍不满足 {@code SPIN_TOL/SPIN_TOL_REL}」的次数。
+     * {@code SPINUP_YEARS_SUM} 是收敛年限之和（用于看平均年限）。
+     */
+    public static long SPINUP_TOTAL = 0, SPINUP_NOT_CONVERGED = 0, SPINUP_YEARS_SUM = 0;
+
+    /** 复位收敛统计（探针用）。 */
+    public static void resetSpinupStats() { SPINUP_TOTAL = 0; SPINUP_NOT_CONVERGED = 0; SPINUP_YEARS_SUM = 0; }
     /** §466：自旋返回的年均植被盖度 V̄（ENABLED=false 时恒为 1.0）。 */
     public static double lastV = 1.0;
     /** §466：两 pass 之间 V̄ 的变化量（<0 = 只有一遍）。这是【准静态一拍滞后】的度量。 */
@@ -321,6 +355,7 @@ public final class SoilMoisture {
         for (int kk = 0; kk < N; kk++) w[kk] = W_INIT_FRAC;
         double dtDays = WorldContract.DAYS_PER_YEAR / (double) N;
         double relResid = -1;
+        boolean converged = false;
         for (; years < MAX_YEARS; years++) {
             double[] prev = w.clone();
             // ★ §7247：状态取【年末】而不是 w[0]。
@@ -358,8 +393,12 @@ public final class SoilMoisture {
             //   振幅退化（恒定桶）时 relResid 回落到 resid 本身 ⇒ 与旧行为一致。
             double amp = wMax - wMin;
             relResid = (amp > 1.0e-6) ? (resid / amp) : resid;
-            if (resid < SPIN_TOL || relResid < SPIN_TOL_REL) { years++; break; }
+            if (resid < SPIN_TOL || relResid < SPIN_TOL_REL) { years++; converged = true; break; }
         }
+        // ★ §7525：记收敛统计（供探针量 NTHETA 等离散化参数的影响）
+        SPINUP_TOTAL++;
+        SPINUP_YEARS_SUM += years;
+        if (!converged) SPINUP_NOT_CONVERGED++;
         // ★ §466：用【收敛后的状态】算 V —— 输入 P 就用年循环里已经算出来的那个量（§465）。
         //   零额外自旋：这里只是把 A[kk]*rh 与闭式解再走一遍（纯标量）。
         if (Vegetation.ENABLED) {

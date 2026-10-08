@@ -163,7 +163,7 @@ public final class SimClimate {
      * 24 km 处只到 0.038 而旧语义要 0.60 ⇒ **端点对不上、量程差一个数量级**）。
      * 引这段旧推导请先读 §118.9。
      */
-    public static int COAST_FINE = 40_000;
+    public static int COAST_FINE = 1_000;   // ★ 缩 40x（原 40,000）
 
     /**
      * 瓦片尺寸（m）。
@@ -184,17 +184,17 @@ public final class SimClimate {
      * <p>原句的后续：
      * 瓦片内** ⇒ 一次求解一个气候瓦片。2:1 是对齐关系里最小的可行值。
      */
-    public static final int TILE_X = 100_000;
-    public static final int TILE_Z = 50_000;
+    public static final int TILE_X = 100_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
+    public static final int TILE_Z = 50_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     /** 风/气压的差分步长（m）。**必须与生产 Atmosphere.windAt 的实参一致**（500 km）。 */
-    public static int GRAD_STEP = 500_000;
+    public static int GRAD_STEP = 12_500;   // ★ 缩 40x（原 500,000）
 
     /** 上风取样距离（m）—— 只用于 onshore 这个诊断位。 */
-    public static int UPWIND_OFFSET = 15_000;
+    public static int UPWIND_OFFSET = 375;   // ★ 缩 40x（原 15,000）
 
     /** 坡度诊断的差分步长（m）与饱和尺度（无量纲坡度）。2% = 20 m/km = 典型山前坡度。 */
-    public static int SLOPE_STEP = 2_000;
+    public static int SLOPE_STEP = 50;   // ★ 缩 40x（原 2,000）
     public static double SLOPE_SCALE = 0.02;
 
     /** 瓦片缓存容量（个）。每个瓦片 ≈ 10 KB（84 个格点 x 9 条通道）。 */
@@ -450,7 +450,9 @@ public final class SimClimate {
         // §315/§566 的地形身份项现在是**无条件**折入：生产态（TalosField）这一段的贡献
         //   与翻转默认之后的取值**逐位相同**，所以本刀没有额外改动指纹。
         h = h * 31 + 0x7A105L;
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.TalosField.configStamp();
+        // ★★★★★★ 2026-10-08：海陆层已换成 TalosLandField（经 NoiseContinentGrid + PlateField）
+        //   ⟹ 配置戳必须换源，否则旧瓦片缓存不会失效（D58 的教训）
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.PlateField.configStamp();
         // §401 地球验证层：换掩膜/地形 = 换配置 ⇒ 瓦片必须失效（D58 的教训）。
         // ★ 与 §315/§566 的地形身份同一套纪律：**按条件**折入 ⇒ 两者都为 null 时
         //   指纹与历史【完全一致】（严格 bit-neutral，生产不受任何影响）。
@@ -604,11 +606,17 @@ public final class SimClimate {
             h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.W_FC);
             h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.RH_DRY);
         }
-        if (PlateField.MASK != null || PlateField.ELEV != null) {
-            h = h * 31 + 0x7A10EL;
-            h = h * 31 + System.identityHashCode(PlateField.MASK);
-            h = h * 31 + System.identityHashCode(PlateField.ELEV);
-        }
+        // ★★★★★★★ 2026-10-08：原 P597「生产纯度」钩子位【已作废并删除】。
+        //   原因：海陆层整支换成 TalosLandField（经 NoiseContinentGrid + PlateField），
+        //         PlateField.MASK / ELEV 已改为 `@Deprecated static final = null`
+        //         ⟹ 上面那段 `!= null` 判定是【编译期必然为假】的死代码。
+        //   ★ 按本项目纪律（「改了结果就必须让瓦片失效」，D58 的教训），
+        //     这里的指纹位改为折入【新海陆层的配置戳】—— 它才是真正驱动结果的东西：
+        //         DS / SUPER_ABS / N_TARGET / LAND_THRESHOLD / CELL_WARP /
+        //         H_GAIN_LAND / H_GAIN_SEA / KAPPA_H
+        //   ⟹ 改动其中任何一个，瓦片缓存都会正确失效。
+        h = h * 31 + 0x7A10EL;
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.PlateField.configStamp();
         // ★★★★★★★ §527 补漏（审计面 3 的 B4）：以下 10 个开关【会改变结果】却【从未进指纹】
         //   ⇒ 翻它们瓦片缓存不失效、继续吃旧结果 ⇒ 【静默给错结果】。
         //   项目自己的纪律（Atmosphere.java:230）：「改了结果就必须让瓦片失效（D58 的教训）」。
@@ -847,10 +855,10 @@ public final class SimClimate {
      * ⚠ 局限：1 年、0.25°、距离用「最近海洋」、山脉未剔除 ⇒ 只当**量级**用，
      * 用户批准的取值带是 **200~400 km**，取观测值 **200 km**。
      */
-    public static double MARITIME_SCALE = 200_000.0;
+    public static double MARITIME_SCALE = 5_000.0;   // ★ 缩 40x（原 200,000）
 
     /** **大量程海岸距离的搜索半窗（m）** —— 必须 >= 3 x {@link #MARITIME_SCALE}（D46 / E20）。 */
-    public static int COAST_FAR = 1_600_000;
+    public static int COAST_FAR = 40_000;   // ★ 缩 40x（原 1,600,000）
 
     /**
      * **海洋影响权重**：海岸 = 0（完全海洋性），内陆 ≳3 个 {@link #MARITIME_SCALE} 后 → 1（完全大陆性）。
@@ -870,6 +878,32 @@ public final class SimClimate {
         double d = bl(f.coastFar, k00, k00 + 1, k00 + f.sx, k00 + f.sx + 1, tx, tz);
         return 1.0 - Math.exp(-Math.max(0.0, -d) / MARITIME_SCALE);
     }
+
+    /**
+     * ★★★★★★★★ <b>§7523（解环）：本线程是否正在【建气候瓦片】。</b>
+     *
+     * <h3>为什么必须有它</h3>
+     * <p>打开 {@code PrecipField.Q_FROM_WATER} 后，{@code mmPerDay} 会去问
+     * {@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField#isWater}。而 {@code WaterField}
+     * 在解自己的 tile 时需要年平降水 ⟹ 调 {@link #annualPrecipMmPerYear} ⟹ 可能触发
+     * <b>新建气候瓦片</b> ⟹ 瓦片里 {@code solveNode:989} 又调 {@code mmPerDay} ⟹ <b>成环</b>。
+     * <p>实测（run {@code ECA03CFB_69FF9B4A_TALOS}）：22 支探针里 <b>14 支 StackOverflowError</b>。
+     *
+     * <h3>解法（时序分离）</h3>
+     * <p><b>瓦片永远按【无水系耦合】建</b>（{@code logP} 是纯气候量），
+     * <b>水耦合只作用在 {@code mmPerDay} 的最终输出上</b>。
+     * <p>⟹ 本标志在建瓦片期间为 true，{@code PrecipField} 据此跳过水耦合。
+     * 这【恢复了】{@link #annualPrecipMmPerYear} 的 javadoc 前提
+     * 「本访问器<b>不触发任何新计算</b>」——它只做双线性插值。
+     *
+     * <p>⚠ thread-local ⟹ 对其它线程零影响；嵌套安全（与 {@code Atmosphere.beginMemo} 同款）。
+     * <p>⚠ 它<b>不改变</b>任何瓦片数值：瓦片本来就【不该】含水系耦合
+     * （耦合是「水体是饱和面」的边界条件，属局地输出，不属气候态）。
+     */
+    private static final ThreadLocal<int[]> TILE_BUILD = ThreadLocal.withInitial(() -> new int[1]);
+
+    /** 本线程是否正在建瓦片（供 {@code PrecipField} 解环用）。 */
+    public static boolean isBuildingTile() { return TILE_BUILD.get()[0] > 0; }
 
     /** 只取气候坐标（省一个 Coords 分配；探针/出图用）。 */
     public static void coords(int x, int z, int worldSeedInt, double[] out3) {
@@ -894,6 +928,9 @@ public final class SimClimate {
         //   ★ §373：memo 的逐位不变已由 P566 定案（全部模板点预热后 0/750）。
         //   thread-local ⇒ 对其它线程零影响；beginMemo 已开着时返回 false，嵌套安全。
         boolean memoCreated = Atmosphere.beginMemo();
+        // ★ §7523 解环：建瓦片期间【关掉水系耦合】（见 isBuildingTile 的 javadoc）。
+        int[] tb = TILE_BUILD.get();
+        tb[0]++;
         try {
             for (int j = -1; j <= nz; j++) {
                 int z = f.originZ + j * cell + cell / 2;
@@ -907,6 +944,7 @@ public final class SimClimate {
                 }
             }
         } finally {
+            tb[0]--;
             Atmosphere.endMemo(memoCreated);
         }
         SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
@@ -1051,6 +1089,43 @@ public final class SimClimate {
         j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
         int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
         return Math.pow(10.0, bl(f.logP, k00, k10, k01, k11, tx, tz));
+    }
+
+    /**
+     * ★★★★★★★★ <b>§7524（性能）：把整块气候瓦片交给调用方，让它在【同一块瓦片】上批量采样。</b>
+     *
+     * <h3>为什么需要它</h3>
+     * <p>{@code WaterField.solveTile} 在 48x48 = <b>2304 个格</b>的循环里逐格调
+     * {@link #annualPrecipMmPerYear}。而那 48 格在 10 km 格距下只跨 <b>480 km</b>，
+     * 对照 {@code TILE_X = 2_400_000}（2400 km）⟹ <b>整个窗口只落在 1~4 块气候瓦片里</b>。
+     * <p>逐格调 {@code annualPrecipMmPerYear} 每次都做 {@code Math.floorDiv} x2 +
+     * {@code ConcurrentHashMap} 查表 + 完整的坐标换算，**这 2304 次查表全是冗余的**。
+     *
+     * <p>实测（run {@code ECA03CFB_69FF9B4A_TALOS}）：打开水耦合后 22 支探针的套件
+     * <b>43 分钟只完成 5 支</b>（基线整套约 5 分钟）⟹ 本优化直接针对这条热路径。
+     *
+     * <p>⚠ <b>纯性能改动，不改任何数值</b>：调用方用与 {@link #annualPrecipMmPerYear}
+     * <b>逐字相同</b>的双线性公式即可（见 {@link #logPAt}）。
+     */
+    public static Field fieldFor(int x, int z, int worldSeedInt) {
+        return field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+    }
+
+    /**
+     * ★ 与 {@link #annualPrecipMmPerYear} <b>逐字相同</b>的双线性公式，但调用方
+     * 已经持有瓦片 {@code f}（见 {@link #fieldFor}）⟹ 省掉查表与坐标换算。
+     *
+     * @return log10(mm/yr)，<b>未取幂</b>（调用方常只需相对值）
+     */
+    public static double logPAt(Field f, int x, int z) {
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        return bl(f.logP, k00, k10, k01, k11, tx, tz);
     }
 
     /** 大陆度 kappa 的双线性采样（与 kappaAt 同源，但走瓦片缓存）。 */

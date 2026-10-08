@@ -26,9 +26,9 @@ public final class V2TerrainGen {
 
     // ===== 高度档案五档（全部共享同一组频率 → 权重插值无接缝；仅 带限/三层幅度/台地强度 不同） =====
 
-    private static final double LOW_FREQ = 1.0 / 3000.0;
-    private static final double MID_FREQ = 1.0 / 1100.0;
-    private static final double HIGH_FREQ = 1.0 / 260.0;
+    private static final double LOW_FREQ = 1.0 / 3000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
+    private static final double MID_FREQ = 1.0 / 1100.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
+    private static final double HIGH_FREQ = 1.0 / 260.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     // 可选周期噪声的格数（波长 → 格数，见 PeriodicNoise；当前 INFINITE_X/Z=true ⇒ 取负号、不折叠）
     private static final int LOW_NX = PeriodicNoise.cellsXFromFreq(LOW_FREQ);
@@ -88,7 +88,7 @@ public final class V2TerrainGen {
     public static double mtnTexAmp = 200.0;
     public static double mtnTexPow = 2.0;
     /** 纹理基准波长倒数（1/blocks）：三个八度 = 1x / 2.5x / 6.25x。 */
-    public static double mtnTexFreq = 1.0 / 3000.0;
+    public static double mtnTexFreq = 1.0 / 3000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     // ===== 查询 =====
 
@@ -312,7 +312,20 @@ public final class V2TerrainGen {
     //    这里只放【参数】，供 SimTerrain 引用。
 
     /** 侵蚀的总开关。{@code false} 则完全跳过（A/B 对比与回归排查用）。 */
-    public static boolean EROSION_ENABLED = true;
+    // ★★★★★★★ 2026-10-08：**用户要求先关掉侵蚀**，以便确认普通地形（海陆分布层）的样子。
+    //
+    // 【为什么关】用户在【海边平原】也看到了侵蚀效果，而设计意图是「只在山地侵蚀」。
+    //   根因在 SimTerrain.java:317 的 ERO_GATE_FLOOR = 0.5：
+    //     gateEff = ERO_GATE_FLOOR + (1 - ERO_GATE_FLOOR) * gate = 0.5 + 0.5*gate
+    //     ⟹ 平原（gate=0）仍然有 gateEff = ★ 0.5 的侵蚀
+    //   而 SimTerrain.java:664 的注释写的是「平原 gate≈0（完全不侵蚀）」⟹ **注释与常量矛盾**。
+    //
+    // ★ 后续计划（用户）：侵蚀只用在【海陆分布输出为山地】的位置。
+    //   届时需要：① 修正 ERO_GATE_FLOOR（或让门控真正门控）
+    //             ② 门控信号来自「海陆层输出的山地标记」
+    //
+    // ★ 关闭方式：这是【总开关】，false 时整段侵蚀代码不执行（含 ERO_GATE_FLOOR）
+    public static boolean EROSION_ENABLED = false;
 
     /**
      * <b>侵蚀输入高度场的最粗波长（block）。</b>
@@ -320,7 +333,7 @@ public final class V2TerrainGen {
      * <p>{@code §7722}：本仓地形基础高度最短波长 {@code TalosField.HF_WL_MIN = 46,875 m}，
      * 所以侵蚀必须在 50 km 以下自己提供全部结构。
      */
-    public static final double ERO_WL0 = 50000.0;
+    public static final double ERO_WL0 = 50000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     /**
      * <b>侵蚀输入高度场的八度数 —— §7730 的关键标定。</b>
@@ -341,7 +354,7 @@ public final class V2TerrainGen {
      * <b>1 个世界单位的长度（block）。</b>
      * {@code cell = SCALE·CELLSCALE·UNIT = 0.105·UNIT}；取 300 ⟹ cell = 31.5 格。
      */
-    public static double ERO_UNIT = 1000.0;   // non-final: scale sweeps (P1394) + ledger
+    public static double ERO_UNIT = 1000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）   // non-final: scale sweeps (P1394) + ledger
 
     /** <b>侵蚀强度</b>（{@code ErosionFilter.erosion} 的 {@code strength}）。 */
     public static final double ERO_STRENGTH = 0.267;

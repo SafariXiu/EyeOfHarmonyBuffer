@@ -26,6 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * 一切由 (seed, cellX, cellZ, index) 哈希决定，跨区块可复现、无接缝。
  */
 public final class CaveGenerator {
+    /** ★ 2026-10-08 统一：CaveGenerator 内的 seed 派生收敛到 TalosSeed。 */
+    private static int wsOf(long seed) {
+        return com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.ofLong(seed);
+    }
 
     /**
      * 水平单元边长（blocks）。
@@ -176,7 +180,7 @@ public final class CaveGenerator {
             // 于是干洞的"离地表 10~20 格"深度带会整体错位。
             int wx = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
             int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
-            int ws = (int) (seed & 0x7FFFFFFFL);
+            int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
             y = V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
@@ -198,7 +202,7 @@ public final class CaveGenerator {
         try {
             // 同 surfaceRefAt：**必须走 V2 高度链**。入口 y 用错地形链会让竖井开口
             // 开在比真实地表高/低几十格的位置（悬空或挖不到）。
-            int ws = (int) (seed & 0x7FFFFFFFL);
+            int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
             return V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
@@ -263,7 +267,7 @@ public final class CaveGenerator {
     private static int depthLayersForCell(int cellX, int cellZ, long seed) {
         int wx = cellX * CELL_BLOCKS + CELL_BLOCKS / 2;
         int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
-        int kind = OrographyField.sample(wx, wz, (int) (seed & 0x7FFFFFFFL)).kind;
+        int kind = OrographyField.sample(wx, wz, wsOf(seed)).kind;
         if (kind == OrographyField.KIND_PLATEAU || kind == OrographyField.KIND_MOUNTAIN
             || kind == OrographyField.KIND_PEAK) {
             return 3;

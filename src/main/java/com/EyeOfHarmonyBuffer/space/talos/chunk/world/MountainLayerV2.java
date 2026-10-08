@@ -40,9 +40,17 @@ public final class MountainLayerV2 {
      * 山带按 X 格子确定性布点、并**完全落在格内**（见 {@link #BELT_X_FIT}），
      * 于是"每格独立求解"与"全域一起求解"结果一致（实验 P92 验证下切是严格局地的）。
      */
-    public static final int BELT_CELL_X = 50_000;
+    // ★★★★★★★ 2026-10-08 T2-a（用户裁决「壮观版」）：山带水平尺度放大回去
+    // 【为什么】缩放 40x 后山带只剩 ~470 格长（2 个网格点）⟹ 垂直不缩（MC 的 Y 限制）
+    //   ⟹ 坡度 93%（垂直尖钉）。要让坡度回到 ~2%，只能把【水平长度】放大。
+    //   · BELT_CELL 1,250 -> 5,000（cell 数 ÷16 ⟹ 性能↑）
+    //   · halfL     1,125~2,500 -> 10,000~20,000
+    //   · halfW     200~375     -> 2,000~3,750
+    //   · BELT_X_FIT 468.75     -> 7,500（允许带跨格 ⟹ 连绵山脉）
+    //   ⚠ minSep 自动跟随（= BELT_CELL × 1.2 = 6,000）
+    public static final int BELT_CELL_X = 25_000;   // ★ T2-a 定稿：25 km/cell（山脉更壮观）
     /** Z 方向山带格（无限平面 → Z 必须分格，否则远离原点的 z 上根本没有山带）。 */
-    public static final int BELT_CELL_Z = 50_000;
+    public static final int BELT_CELL_Z = 25_000;   // ★ T2-a 定稿
     /**
      * 每格网格尺寸（格）：X = BELT_CELL_X / CELL = 200 格；Z = CARVE_DOMAIN_Z / CELL = 800 行。
      *
@@ -63,10 +71,28 @@ public final class MountainLayerV2 {
      *
      * 提成具名常量只是为了让"这个 200_000 从哪来"可检索；**不要**把它改成 BELT_CELL_Z。
      */
-    public static final int CARVE_DOMAIN_Z = 200_000;
+    public static final int CARVE_DOMAIN_Z = 5_000;   // ★ T2-a：保持 5,000（≈ 1 个 cell）
     public static final int NZ = CARVE_DOMAIN_Z / CELL;
     /** 山带在 X/Z 方向的落位上限：距格角不超过此值（留出 ≥25km 的下切 margin）。 */
-    private static final double BELT_X_FIT = 18_750.0;
+    // ★ T2-a：468.75 -> 7,500（= 1.5 × BELT_CELL ⟹ 允许山带跨格 ⟹ 连绵山脉）
+    //   ⚠ 原文注释是「山带完全落在格内」，但那使 halfL 被压到 ~0.09×cell；
+    //     现在故意让 7,500 > 5,000 ⟹ 带可延伸到邻格（minSep 仍保证中心间距）
+    // ★ T2-a 修正：7,500 -> 3,750（= 0.375 × BELT_CELL，与原始设计的比例一致）
+    //   ⚠ 我一度设成 7,500（= 1.5 × cell）⟹ 山带中心能跑出 cell 1.5 倍
+    //     ⟹ 74% 的 cell 空白、山带挤在别处 ⟹ 分布失控
+    private static final double BELT_X_FIT = 9_375.0;   // ★ T2-a 定稿：= 0.375 × 25,000
+
+    /**
+     * ★★★★★★★ cell 级海岸距离门槛（陆上为负）。
+     *   `coastDist > COAST_MIN` ⟹ 整格不生成山带。
+     *   ★ 原为循环内的硬编码 -20_000（未随缩放同步）。
+     *   实测（cell 中心 160,801 点）：通过 -20,000 的比例 = 61.11%。
+     *   ⚠ 保持 -20,000 以【不改变山带的有无语义】。
+     */
+    // ★ 2026-10-08 T2-a：-20,000 -> -5,000
+    //   实测：cell 中心是陆的里面，41% 因 coastDist > -20,000 被拒
+    //   ⟹ 通过率只有 59% ⟹ 覆盖率上不去。放宽到 -5,000。
+    public static double COAST_MIN = -5_000.0;
 
     /** 每格山带数量上限（历史：旧版在"全域 400k×200k"上放 5 条；现值按每格 50km×200km 折算）。 */
     private static final int BELTS_PER_CELL = 3;
@@ -79,7 +105,9 @@ public final class MountainLayerV2 {
         /** 下切预算（blocks）：河道满额时的下切量。 */
         public static double carve = 50.0;
         /** 下切闸门（汇水面积，单位 250m 格）：A ≤ aGateLo 完全不切，A ≥ aGateHi 满额。 */
-        public static double aGateLo = 100.0, aGateHi = 4000.0;
+        // 下切闸门（汇水面积，单位 250m 格）：A <= aGateLo 完全不切，A >= aGateHi 满额。
+// ★ 2026-10-08 缩 40x（原 100 / 4000）：汇水面积的【相对尺度】应与行星一致
+public static double aGateLo = 2.5, aGateHi = 100.0;
         /** 下切不得超过本格抬升的比例（谷底不穿底盘）。 */
         public static double carveMaxFrac = 0.60;
         /** 下切后的热力平滑轮数 / 系数。 */
@@ -118,7 +146,17 @@ public final class MountainLayerV2 {
      * 16 = 一个瓦片（12）+ 邻瓦片共享列（4）余量；无山带的格共享 {@link #ZERO} 不占内存，
      * 故最坏 ~16×1.92 MB ≈ 31 MB。
      */
-    private static final int CACHE_LIMIT = 16;
+    // ★★★★★★★★ 2026-10-08：16 -> 1024
+//   根因：BELT_CELL_X 从 50,000 缩到 1,250（40 倍）⟹ 覆盖同区域需要的 cell 数 ×40
+//   ⟹ CACHE_LIMIT=16 秒爆 ⟹ 每次 auth()/uplift() 都重新 solve()（92ms）
+//   ★ 而 LandformField 的每个格点都调 auth()+uplift() ⟹ 84 × 2 × 92ms = 15 秒/瓦片
+//   一个 Layer 约 3×NX×NZ float ≈ 6 KB ⟹ 1024 个 ≈ 6 MB，可接受
+// ★★★★★★★ 2026-10-08：8192 -> 262144
+//   根因：evictOldest() 是 O(n) 全表扫描 ⟹ 每次 cache miss 遍历 CACHE_LIMIT 项（约 1~2ms）
+//         × 约 27,000 个唯一 cell = 27~54 秒 ⟹ 这正是 auth 段的 2400~5100ms 的来源
+//   ★ 一个 Layer = 3×(NX*NZ) float = 3×100×4 = 1.2 KB ⟹ 262144 × 1.2KB = 315 MB（上限）
+//   ★ 实际 cell 数约 27,000 ⟹ 约 32 MB
+private static final int CACHE_LIMIT = 262144;   // ★ 2026-10-08：1024 -> 8192（一个瓦片有 80x40=3200 个 cell，1024 仍会抖动）
 
     /**
      * 诊断计数器（探针 P168 用，生产恒定只加两个 long，无行为影响）：
@@ -212,7 +250,9 @@ public final class MountainLayerV2 {
      */
     private static final ConcurrentHashMap<Long, Boolean> EMPTY_CELLS =
         new ConcurrentHashMap<Long, Boolean>();
-    private static final int EMPTY_LIMIT = 512;
+    // ★ 2026-10-08：512 -> 400000
+//   根因：belts=0 的 cell 占 71%（38797/54581）⟹ 512 太小 ⟹ 空 cell 反复被重解
+private static final int EMPTY_LIMIT = 400000;
 
     public static boolean isEnabled() {
         return V2TerrainConfigSection.mountainV2Enabled;
@@ -239,14 +279,38 @@ public final class MountainLayerV2 {
      * 一个 belt 列的"边缘列"（i=-1 与 i=NX 那两列）每行只被访问 1 次，而主体列每行被访问
      * 200 次；任意淘汰会先把主体格踢出去 → 下一行再来 200 次未命中 → 每行重解 4 格。
      */
+    /**
+     * ★★★★★★★ 2026-10-08：改为【采样淘汰】而不是【全表扫描】。
+     *   原实现在每次 cache miss 时遍历全部 CACHE_LIMIT 项（O(n)）⟹ 容量越大越慢。
+     *   现改为：一次遍历最多看 SAMPLE 项，取其中 lastUse 最小的淘汰。
+     *   ⟹ O(SAMPLE)，与容量无关。
+     */
+    private static final int EVICT_SAMPLE = 64;
+    // ★ 诊断计数器（累计，供日志打印）
+    private static final java.util.concurrent.atomic.AtomicLong ATT = new java.util.concurrent.atomic.AtomicLong();
+    private static final java.util.concurrent.atomic.AtomicLong R_INLAND = new java.util.concurrent.atomic.AtomicLong();
+    private static final java.util.concurrent.atomic.AtomicLong R_COAST = new java.util.concurrent.atomic.AtomicLong();
+    private static final java.util.concurrent.atomic.AtomicLong R_CLOSE = new java.util.concurrent.atomic.AtomicLong();
+    private static int attempts, rejInland, rejCoast, rejClose;
+    /** ★ 空 cell 的采样淘汰（O(64)），替代原来的 clear() 全清 */
+    private static void evictOldestEmpty() {
+        int seen = 0;
+        java.util.Iterator<Long> it = EMPTY_CELLS.keySet().iterator();
+        while (it.hasNext() && seen < EVICT_SAMPLE) { it.next(); it.remove(); seen++; }
+    }
+
     private static void evictOldest() {
         Long worst = null;
         long worstUse = Long.MAX_VALUE;
+        int seen = 0;
         for (java.util.Map.Entry<Long, Layer> e : CACHE.entrySet()) {
             long u = e.getValue().lastUse;
             if (u < worstUse) {
                 worstUse = u;
                 worst = e.getKey();
+            }
+            if (++seen >= EVICT_SAMPLE) {
+                break;
             }
         }
         if (worst != null) {
@@ -276,8 +340,12 @@ public final class MountainLayerV2 {
         if (solved == ZERO) {
             // 全零解不占 CACHE 槽位（否则 16 个槽会被 16 MB 的零数组占满，真解反而被淘汰）
             CACHE.remove(key);
+            // ★★★★★★★ 2026-10-08：不再 clear() 全清！
+            //   根因：71% 的 cell 是空的（38797/54581），全清会周期性丢掉【所有】空 cell 记忆
+            //         ⟹ 大规模重解 ⟹ MountainV2 被调 48,964 次
+            //   改为：采样淘汰（O(64)），保留绝大多数记忆
             if (EMPTY_CELLS.size() >= EMPTY_LIMIT) {
-                EMPTY_CELLS.clear();
+                evictOldestEmpty();
             }
             EMPTY_CELLS.put(key, Boolean.TRUE);
             return ZERO;
@@ -309,6 +377,19 @@ public final class MountainLayerV2 {
         return l == null ? 0.0 : bilinear(l.auth, x, z);
     }
 
+
+    /**
+     * ★★★★★★★ 2026-10-08：**一次取齐** auth + uplift + slope（热路径专用）。
+     *   动机：LandformField.solve 的每个格点都调 auth() + uplift()，各含 3 次
+     *   doubleToLongBits 的 key 计算 + HashMap 查。改为一次调用 + 一次查表。
+     *   `out[0]=auth, out[1]=uplift, out[2]=slope`
+     */
+    public static void authAll(int x, int z, int worldSeedInt, double[] out) {
+        Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
+        if (l == null) { out[0]=0.0; out[1]=0.0; out[2]=0.0; return; }
+        out[0] = bilinear(l.auth,   x, z);
+        out[1] = bilinear(l.uplift, x, z);
+        out[2] = bilinear(l.slope,  x, z); }
     /** 坡度 [0,1]（0=平，1≈陡坡）。 */
     public static double slope01(int x, int z, int worldSeedInt) {
         Layer l = layer(worldSeedInt, cellOfX(x), cellOfZ(z));
@@ -412,11 +493,14 @@ public final class MountainLayerV2 {
         long sn = SOLVE_COUNT.incrementAndGet();
         checkSolveCap(sn, cellX, cellZ);
         SOLVE_SEED = seed;
+        long _t0 = System.nanoTime();
         Belt[] belts = layout(seed, cellX, cellZ);
+        long _tLayout = System.nanoTime() - _t0;
         if (belts.length == 0) {
             // 该格一条山带都没有 → 解恒为全零（见 ZERO 的说明），跳过整片 160k 格的计算
             SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
-            System.out.println("[MountainV2] seed=" + seed + " solved in "
+            if (ATT.incrementAndGet() % 5000 == 0) System.out.println("[MountainV2-REJ] att=" + ATT.get() + " inland=" + R_INLAND.get() + " coast=" + R_COAST.get() + " close=" + R_CLOSE.get());
+        System.out.println("[MountainV2] seed=" + seed + " layout=" + (_tLayout/1000) + "us fill=" + ((System.nanoTime()-t0-_tLayout)/1000) + "us solved in "
                 + ((System.nanoTime() - t0) / 1_000_000) + "ms  belts=0 (empty)");
             return ZERO;
         }
@@ -539,11 +623,31 @@ public final class MountainLayerV2 {
         double cellCZ = cellZ * (double) BELT_CELL_Z;
         Belt[] out = new Belt[BELTS_PER_CELL];
         int made = 0;
+        // ★ 诊断计数器（定位拒绝原因）
+        attempts = 0; rejInland = 0; rejCoast = 0; rejClose = 0;
+
+        // ★★★★★★★ 2026-10-08 修复 1：cell 级判据【移出循环】
+        //
+        // 【原算法的浪费】
+        //   循环内 400 次尝试，每次都调 OrographyField.sample(cx,cz)（4.09 us），
+        //   而 cx/cz 只在 fit(=468.75) 范围内抖动（相对 1,250 的 cell 约 75%）。
+        //   判据「!isLand || coastDist > COAST_MIN」只依赖【cell 中心】的宏观位置，
+        //   与那点抖动无关 ⟹ 本质是【问同一个问题 400 遍】。
+        //   实测：layout = 898 us，而 400 × 2.25 us ≈ 900 us ⟹ 完全吻合。
+        //
+        // 【修复】在循环【外】用 cell 中心判一次；不通过就整格放弃。
+        //   ⟹ 400 次采样 → 1 次采样（约 400 倍）
+        //   ⚠ 这是【近似】：原算法检查每条山带的实际位置，现在只看 cell 中心。
+        //     对『这个 cell 能不能有山带』这个宏观问题，中心是代表点。
+        OrographyField.OroSample oc = OrographyField.sample((int) cellCX, (int) cellCZ, seed);
+        if (!oc.isLand || oc.coastDist > COAST_MIN) {
+            return new Belt[0];   // cell 级判据不过 ⟹ 整格无山带（★ 一次采样搞定）
+        }
         for (int attempt = 0; attempt < 400 && made < BELTS_PER_CELL; attempt++) {
             double ang = rng.nextDouble() * Math.PI * 2.0;
             double ca = Math.cos(ang), sa = Math.sin(ang);
-            double halfL = 45_000.0 + rng.nextDouble() * 55_000.0;
-            double halfW = 8_000.0 + rng.nextDouble() * 7_000.0;      // 略窄 → 更陡
+            double halfL = 25_000.0 + rng.nextDouble() * 15_000.0;   // ★ T2-a 定稿：半长 25,000~40,000（山带 50~80 km）
+            double halfW = 6_000.0 + rng.nextDouble() * 4_000.0;   // ★ T2-a 定稿：半宽 6,000~10,000（山带 12~20 km 宽）
             // 约束：包围盒必须落在格内（X、Z 都要，留 ≥25km 下切 margin）
             double ex = Math.abs(ca) * halfL + Math.abs(sa) * halfW;
             double ez = Math.abs(sa) * halfL + Math.abs(ca) * halfW;
@@ -551,15 +655,14 @@ public final class MountainLayerV2 {
             if (ex > fit || ez > fit) {
                 double s = Math.min(fit / Math.max(1e-6, ex), fit / Math.max(1e-6, ez));
                 halfL *= s;
+                halfW *= s;   // ★ 2026-10-08 修复：原来漏了这一行（halfW 未同步缩 ⟹ 包围盒不一致）
                 ex *= s;
                 ez *= s;
             }
             double cx = cellCX + (rng.nextDouble() * 2.0 - 1.0) * Math.max(0.0, fit - ex);
             double cz = cellCZ + (rng.nextDouble() * 2.0 - 1.0) * Math.max(0.0, fit - ez);
-            OrographyField.OroSample o = OrographyField.sample((int) cx, (int) cz, seed);
-            if (!o.isLand || o.coastDist > -20_000.0) {
-                continue;
-            }
+            attempts++;
+            // ★ 修复 1：cell 级判据已移到循环外 ⟹ 这里不再采样
             Belt b = new Belt();
             b.cx = cx;
             b.cz = cz;
@@ -575,18 +678,33 @@ public final class MountainLayerV2 {
             b.peakPhase2 = rng.nextDouble() * Math.PI * 2.0;
             // 与已有山带保持距离，避免重叠成一片
             boolean ok = true;
+            // ★★★★★★★ 2026-10-08 修复 A：重叠判据随 cell 缩放
+            //
+            // 【原 bug】判据硬编码 60,000，未随 BELT_CELL 缩放：
+            //   BELT_CELL_X/Z: 50,000 -> 1,250（缩 40 倍）
+            //   而 60,000 没缩 ⟹ 一个 1,250 格的 cell 里永远放不下
+            //   「间距 >= 60,000」的两条山带
+            //   ⟹ made 最多到 1，BELTS_PER_CELL=3 永远达不到
+            //   ⟹ ★★ 循环必然跑满 400 次（每次一个 OrographyField.sample）
+            //   ⟹ 实测 layout=898us，× 26,558 格 = 23.8 秒（= Landform 的 91.3%）
+            //   ⟹ 且 belts 恒为空 ⟹ auth/uplift=0 ⟹ mtnPlusPeak=0
+            //     ⟹ ★★ 侵蚀滤镜的门控恒为 0 ⟹ 侵蚀完全不生效
+            //
+            // 【修复】按 cell 尺寸的固定比例（原 60,000/50,000 = 1.2 倍）
+            //   ★ 这只恢复【设计意图的比例】，不改山的形态语义
+            double minSep = BELT_CELL_X * 1.2;   // = 1,500（原 60,000 / 50,000 × 1,250）
+            double minSep2 = minSep * minSep;
             for (int i = 0; i < made; i++) {
                 double dx = out[i].cx - b.cx, dz = out[i].cz - b.cz;
-                if (dx * dx + dz * dz < 60_000.0 * 60_000.0) {
+                if (dx * dx + dz * dz < minSep2) {
                     ok = false;
                     break;
                 }
             }
-            if (!ok) {
-                continue;
-            }
+            if (!ok) { rejClose++; continue; }
             out[made++] = b;
         }
+        ATT.addAndGet(attempts); R_INLAND.addAndGet(rejInland); R_COAST.addAndGet(rejCoast); R_CLOSE.addAndGet(rejClose);
         if (made < BELTS_PER_CELL) {
             Belt[] trimmed = new Belt[made];
             System.arraycopy(out, 0, trimmed, 0, made);

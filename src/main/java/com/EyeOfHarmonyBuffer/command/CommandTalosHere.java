@@ -96,6 +96,44 @@ public class CommandTalosHere extends CommandBase {
             "[V2] 山层: w=%.2f  uplift=%.1f  细节强度=%.2f  → 合成高度=%.1f（封顶前 %.1f）  列顶 y=%d  雪线=%.1f  %s",
             w, up, detail, hCap, hDetail, topY, snowY, snow ? "(雪线以上)" : ""
         )));
+        // ★★★★★★★ 2026-10-08 诊断追加：把「可能出错的每一环」都打出来
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] world.getSeed()=%d  TalosSeed.of=%d  PlateField.PLATE_CELL=%d",
+            world.getSeed(), worldSeedInt,
+            com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL)));
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] SimTerrain.ENABLED=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
+            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED,
+            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, LandformField.SEA_LEVEL)));
+        long ls = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeedInt);
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] seedOf(worldSeedInt)=%d  (int)=%d", ls, (int) ls)));
+        double e1 = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(blockX, blockZ, ls,
+            com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP);
+        double e2 = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(blockX, blockZ, worldSeedInt,
+            com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP);
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] PlateField.elev(seedOf)=%.1f 米  elev(worldSeedInt)=%.1f 米", e1, e2)));
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] ELEV_TO_BLK=%.4f  LAND_BASE_OFFSET=%.2f  SOFT_CAP_H=%.1f",
+            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK,
+            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.LAND_BASE_OFFSET,
+            V2TerrainGen.SOFT_CAP_H)));
+        // 逐列扫 5 格，看有没有台阶
+        StringBuilder sb = new StringBuilder("[DIAG] x-2..x+2 列顶: ");
+        for (int dx = -2; dx <= 2; dx++) {
+            V2TerrainGen.Column cc = V2TerrainGen.composeColumn(
+                blockX + dx, blockZ, worldSeedInt, LandformField.SEA_LEVEL,
+                OrographyField.sample(blockX + dx, blockZ, worldSeedInt),
+                V2TerrainGen.MC_WORLD_HEIGHT - 2);
+            sb.append(cc.h).append(" "); }
+        sender.addChatMessage(new ChatComponentText(sb.toString()));
+        // 实际方块表面（从世界里读，最可靠）
+        int surf = -1;
+        for (int y = world.getActualHeight() - 1; y >= 1; y--) {
+            if (!world.isAirBlock(blockX, y, blockZ)) { surf = y; break; } }
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[DIAG] ★ 实际方块表面 y=%d   (包内 blockX=%d, blockZ=%d)", surf, blockX, blockZ)));
     }
 
     private static String kindLabel(int kind) {

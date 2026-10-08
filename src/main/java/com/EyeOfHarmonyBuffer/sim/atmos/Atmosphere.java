@@ -997,7 +997,7 @@ public final class Atmosphere {
     /** 沿岸风速幅值（m/s），由观测的 0.09 Pa 反推。 */
     public static double COAST_WIND_V = 7.5;
     /** 沿岸风的生效宽度（m）：只在离岸这么近的地方补。 */
-    public static double COAST_WIND_W = 400_000.0;
+    public static double COAST_WIND_W = 10_000.0;   // ★ 缩 40x（原 400,000）
     /** 上升流有利纬度的形状（副热带最强）。 */
     public static double SUM_SHAPE(double latRad) {
         double d = (Math.toDegrees(Math.abs(latRad)) - 30.0) / 25.0;
@@ -1101,7 +1101,7 @@ public final class Atmosphere {
     /** 打开地表干暖项（§409）：见 pressureAnomaly 内的推导。默认 false => 逐位不变。 */
     public static boolean PA_DRY_WARMTH = false;
     /** 干暖项里取 beta 用的差分步长（与生产同口径）。 */
-    public static int SOIL_GRAD_STEP = 500_000;
+    public static int SOIL_GRAD_STEP = 12_500;   // ★ 缩 40x（原 500,000）
 
     public static double pressureAnomaly(int x, int z, long seed, int cell, double theta) {
         double lat = WorldContract.latOf(z);

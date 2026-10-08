@@ -80,7 +80,7 @@ public final class OceanField {
      */
     public static int ROWS = 128;
     /** 行网格间距（block）—— 必须能分辨 Munk 层。 */
-    public static double ROW_H = 5_000.0;
+    public static double ROW_H = 125.0;   // ★ 2026-10-08 缩 40x（原 5,000）
     /**
      * Sverdrup 积分用的总深度（m）。
      *
@@ -105,7 +105,7 @@ public final class OceanField {
      */
     public static boolean PHASE_SEASONAL = false;
 
-    public static int GRAD = 500_000;
+    public static int GRAD = 12_500;   // ★ 缩 40x（原 500,000）
     /** 东边界急流作用范围（R_d 的倍数）。 */
     public static double JET_RANGE_RD = 4.0;
     /** curl 的季节相位。 */
@@ -135,7 +135,7 @@ public final class OceanField {
      */
     private static final HashMap<Long, double[]> BAND = new HashMap<>();
     /** A7/A2 口径的「带」宽度（m）：与 §23.2 的真实参照（30 Sv / 100 km x 4000 m）同口径。 */
-    public static double BAND_W = 100_000.0;
+    public static double BAND_W = 2_500.0;   // ★ 缩 40x（原 100,000）
     /**
      * **按 zIdx 分桶的海盆索引（审计 D55）**：zIdx -> [SPAN 的键]。
      *
@@ -191,7 +191,7 @@ public final class OceanField {
     public static synchronized int installedSeed() { return installedSeed; }
 
     /** 预热扫描步长（block）：枚举海盆用。海盆宽 ~10^4 km，500 km 不会漏。 */
-    public static int WARM_SCAN = 500_000;
+    public static int WARM_SCAN = 12_500;   // ★ 缩 40x（原 500,000）
 
     /**
      * **预热：把 64 条纬度行全部解出来**（一次性 O(分钟)，见 §162 的代价记账）。

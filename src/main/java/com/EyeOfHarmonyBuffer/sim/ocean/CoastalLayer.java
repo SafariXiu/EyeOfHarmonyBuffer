@@ -79,7 +79,11 @@ public final class CoastalLayer {
     private CoastalLayer() {}
 
     /** 约化重力（m/s^2）。地球上层海洋典型值 0.02。 */
-    public static double G_PRIME = 0.02;
+    public static double G_PRIME = 0.02;   // ★ 2026-10-08：**保持不变**
+    //   ★ 为什么不变：R_docn/R_EFF = sqrt(g'H)/(2·Ω·R_EFF)。
+    //     Ω 升 40 倍 与 R_EFF 降 40 倍 【精确抵消】⟹ 分母不变。
+    //     ⟹ 要保持比值，只需 sqrt(g'H) 不变 ⟹ g' 不变。
+    //   ★ 我最初误判为「÷40」，反解后确认应为 0.02。
     /**
      * **沿岸上升流层厚度（m）** —— 沿岸层占的厚度。**不是**全水深，
      * 也**不是** {@link SurfaceLayer} 里那个输运层（审计 D51）。
@@ -109,7 +113,7 @@ public final class CoastalLayer {
      * 注意：改成 3,000 km 会让旧累积的方向正确率**下降**（44% -> 25%）——
      * 这正是「缩短记忆不是修法」的证据，见 §77.1。
      */
-    public static double L_RELAX = 3_000_000.0;
+    public static double L_RELAX = 75_000.0;   // ★ 缩 40x（原 3,000,000）
     /**
      * |f| 下限（s^-1），避免赤道发散。锚点 = **3.93 度纬度**
      * （见 {@code hcLocal} 的 javadoc：这条下限只在 |lat| &lt; asin(F_MIN/(2*Omega)) = 3.93 度 起作用）。
@@ -171,7 +175,7 @@ public final class CoastalLayer {
      *
      * <p><b>取 A3 的验收带宽 W = 100 km，不引入新参数</b> —— 沿岸层就是这个 100 km 带。
      */
-    public static double UPWELL_WIDTH = 100_000.0;
+    public static double UPWELL_WIDTH = 2_500.0;   // ★ 缩 40x（原 100,000）
 
     /**
      * **沿岸层的唯一入口**：由局地沿岸风应力给出温跃层位移 h_c（m，负 = 抬升 = 上升流）。
@@ -239,13 +243,13 @@ public final class CoastalLayer {
     // ---- 局地海岸切向（用户裁决：开） ----
 
     /** 求切向时的纬向步长（m）。 */
-    public static int COAST_TAN_DZ = 125_000;
+    public static int COAST_TAN_DZ = 3_125;   // ★ 缩 40x（原 125,000）
     /** 求切向时向 ±z 取的步数（共 2*N+1 个海岸位置做最小二乘）。 */
     public static int COAST_TAN_N = 2;
     /** 每个 z 上找海岸的扫描半窗（m）。 */
-    public static int COAST_TAN_WIN = 300_000;
+    public static int COAST_TAN_WIN = 7_500;   // ★ 缩 40x（原 300,000）
     /** 扫描步长（m）。 */
-    public static int COAST_TAN_STEP = 5_000;
+    public static int COAST_TAN_STEP = 125;   // ★ 缩 40x（原 5,000）
 
     /**
      * **局地海岸切向**（沿岸单位向量，指向 +z）。

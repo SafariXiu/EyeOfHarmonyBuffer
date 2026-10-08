@@ -37,6 +37,19 @@ public final class OceanWiring {
         // ★ §7503：水系场也跟同一个世界走。这里【只清缓存 + 记种子】，不产生气候效应。
         com.EyeOfHarmonyBuffer.sim.hydro.WaterField.install(worldSeedInt);
         if (!OceanField.ENABLED) return;
+        // ★★★★★ §7556：探针模式跳过预热。
+        //
+        // 为什么：warmAll 会预热全部 64 条纬度行，注释自己说"单行首解 1~7 s"。
+        // 实测（2026-10-02，验收套件 run ECA03CFB_5167B0F3_TALOS）：Talos-SST-Warmup 线程
+        // 烧了 3355 s CPU（= 全程 100% 占一个核），而 main 线程只用 220 s —— main 全程在等它。
+        // 11 个探针并行 ⟹ 机器被预热线程吃满 ⟹ 一个批次跑了 60+ 分钟还没完。
+        //
+        // 而预热对【探针】毫无价值：它只是为了让游戏内区块生成不卡顿；
+        // 探针直接调 OceanField.anomalyAt，值本来就是懒算的（solveRow 自己加锁）。
+        // 关掉它不会改变任何被测量的数值，只会让探针跑得快得多。
+        //
+        // 用系统属性而不是硬编码，这样生产（游戏）路径默认不变。
+        if (Boolean.getBoolean("eoh.probe")) return;
         if (startedFor == worldSeedInt && worker != null && worker.isAlive()) return;
         if (worker != null && worker.isAlive()) worker.interrupt();
         startedFor = worldSeedInt;

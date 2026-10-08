@@ -62,7 +62,36 @@ public final class ClimateCoords {
     }
 
     /** 单点采样（陆地；海上只需 temp/moist 的话也可调用）。 */
+    // ================= ★★★★★★★★ 采样记忆化 =================
+    //
+    // 【为什么必须有】
+    //   sample() -> SimClimate.sample() = 完整气候链（PrecipField/Atmosphere/OceanField/kappa）
+    //   V2BiomeField.solve 对【每个格点】调 accumulateWeights 【两次】
+    //     （一次 asLand=true，一次 asLand=false），而两次都传【同一个 oro】
+    //     ⟹ 完全重复的气候求值。
+    //   实测：BiomeField = 22~38 秒（80,000 点 × 2 次 = 160,000 次气候求值）。
+    //
+    // 【为什么可以记忆化】
+    //   入参 (x, z, worldSeedInt, oro) 中 oro 只用于传递 isLand/elevation 等，
+    //   而同一 (x,z,seed) 的 oro 必然相同 ⟹ 键 (x, z, seed) 足够。
+    //   ⚠ 返回的是【共享对象】⟹ 调用方不得修改（现有调用方只读）。
+    private static final ThreadLocal<java.util.HashMap<Long, Coords>> SAMPLE_MEMO =
+        ThreadLocal.withInitial(java.util.HashMap::new);
+    public static boolean SAMPLE_MEMO_ON = true;
+    public static void clearSampleMemo() { SAMPLE_MEMO.get().clear(); }
+
     public static Coords sample(int x, int z, int worldSeedInt, OrographyField.OroSample oro) {
+        if (!SAMPLE_MEMO_ON) return sampleRaw(x, z, worldSeedInt, oro);
+        java.util.HashMap<Long, Coords> m = SAMPLE_MEMO.get();
+        long key = ((((long) x) << 32) ^ (z & 0xFFFFFFFFL)) * 31L + worldSeedInt;
+        Coords hit = m.get(key);
+        if (hit != null) return hit;
+        Coords r = sampleRaw(x, z, worldSeedInt, oro);
+        if (m.size() > 262144) m.clear();
+        m.put(key, r);
+        return r; }
+
+    private static Coords sampleRaw(int x, int z, int worldSeedInt, OrographyField.OroSample oro) {
         // ---- 新模拟器的运行时分派（纵向切片第 2 步：气候 -> 群系，§97）----------------
         // 这是本文件里**唯一**为接线而加的东西：一行分派。SimClimate.ENABLED=false 时，
         // 下面每一行都与接线前**逐位相同**（实测校验和 17ead228bdf6f150 两侧一致）；

@@ -101,14 +101,111 @@ public final class SimTerrain {
      * tanh 在 −4,000~−5,377 m 之间只变化 0.9 blocks，取整后全落进同一格。
      * 现在改成**线性 + 软封顶**（softplus）：工作区间内保分辨率，只在接近世界高度上限时饱和。
      */
-    public static double LAND_GAIN = 0.055;   // ★ §7795：舒展度临界点。fineness 0.71，玩家跨度 p10-p90 = 86 格（原始 53），裁切 0.92%
+    /**
+     * ★★★★★★★★ §7552：<b>层 1（虚拟高度，米）到 层 2（方块）的映射比例。</b>
+     *
+     * <p>原名 {@code LAND_GAIN}，§7552 拆成两个常量 —— 因为它原先背了<b>两个职责</b>：
+     * <ol>
+     *   <li>{@code SimTerrain:506} 的「米 -> 方块」映射（本常量）</li>
+     *   <li>{@code SimTerrain:586} 的「侵蚀驱动器量纲换算」（{@link #ERO_M_TO_BLK}）</li>
+     * </ol>
+     * 后果：改「地形看起来多高」会连带改「侵蚀强度」，反之亦然。
+     *
+     * <p><b>取值依据（P1671，5 种子 x 4000 随机点 = 20000）</b>：
+     * <pre>
+     *   ELEV_TO_BLK | hNo p50 | p90  | max | 压平(>=251)%
+     *      0.055    |   252   | 252  | 252 |  49.9%   &lt;- 一半陆地是平台
+     *      0.030    |   179   | 252  | 252 |  23.8%
+     *      0.025    |   160   | 239  | 251 |   0.0%   &lt;- 采用
+     * </pre>
+     * <p>⚠ 与 {@link #LAND_BASE_OFFSET} 一样是<b>标定量</b>（用户裁决的形态参数）。
+     * <p>⚠ 改它【不影响】水系/大气/气候/洋流 —— 那些只读层 1 的 {@code elevationM}。
+     */
+    // ★★★★★★★ 2026-10-08：**原始地形模式**（用户要求：停掉海陆分布之外的所有高度修饰）
+    //
+    // 【用途】看清「海陆分布层本身」的地形长什么样。
+    //   开启后：地形高度 = 纯 elev（海陆分布层的原始输出，米；1:1 当作方块高度）
+    //   去掉：ELEV_TO_BLK 映射 / seaLevel / LAND_BASE_OFFSET / softCapTo /
+    //         detailBlocks（220 格细节）/ SEABED_RELIEF / OCEAN_GAIN / maxDepth
+    //   ⚠ 海陆判定仍在（elev >= 0 = 陆）⟹ 海岸线仍由海陆分布层决定
+    //   【回滚】置 false ⟹ 逐位回到原行为
+    // ★★★★★★★ 2026-10-08 修正：**RAW_ELEV_MODE = false**
+    //   我最初理解错了：把 `ELEV_TO_BLK * elev + seaLevel`（米->格映射）也停掉了，
+    //   结果地形高度变成 216 格（= elev 的原始米数）。
+    //   ★ 用户要的是：**保留映射**，只停掉【给地形提供起伏的噪声层】。
+    //   ⟹ 映射路径照旧；噪声改用下面的 NOISE_* 开关控制。
+    public static boolean RAW_ELEV_MODE = false;
+
+    // ★★★★★★★ 2026-10-08：**地形噪声层总开关**（用户要求：看纯海陆分布的地形）
+    //
+    // 【停掉的是】海陆分布层 elev 之上的【一切噪声起伏】：
+    //   · DETAIL_ENABLED=false   ⟹ 停 `detailBlocks`（DetailNoise.fbmRot，220 格 / 5.8 格）
+    //   · SEABED_ENABLED=false   ⟹ 停 `SEABED_RELIEF`（vnoise，880 格 / 3 格，仅海洋）
+    //   · 侵蚀本来就已关（V2TerrainGen.EROSION_ENABLED=false）
+    //   · `V2TerrainGen.baseAndPlain` / `TerrainBaseHeight`（旧系统的 PeriodicNoise
+    //     频率分层）本来就是【死代码】—— `SimTerrain.ENABLED=true` 时 composeColumn
+    //     提前返回，那条路一行都不走。
+    //
+    // 【保留的】`ELEV_TO_BLK * elev + seaLevel` 映射（这是海陆分布层 -> MC 方块的必要换算）
+    //   ⟹ 地形 = 海陆分布的骨架，但**没有**噪声起伏
+    //
+    // 【回滚】两个都置 true ⟹ 逐位回到原行为
+    public static boolean DETAIL_ENABLED = false;
+    public static boolean SEABED_ENABLED = false;
+
+    public static double ELEV_TO_BLK = 0.025;
+
+    // ================= ★★★★★★★ B 方案：统一海岸剖面（无墙） =================
+    //
+    // 【为什么】原实现是【硬分支】：
+    //     if (!PlateField.isLand(x,z,seed)) { 海：h = seaLevel − depth;  return; }
+    //     陆：h = seaLevel + ELEV_TO_BLK·elev;
+    //   ⟹ 两岸用不同的公式 ⟹ 在岸线上【永远不可能相遇】⟹ **墙**
+    //
+    // 【正解（用户方案）】用【连续的有符号到岸距离】做**统一剖面**：
+    //   sigDist = (landScore−0.5)/|∇landScore|   ← 处处连续、岸线处 =0
+    //   profile = coastProfileCF(sigDist)        ← 两侧同一公式 ⟹ 必然相遇
+    //   h = seaLevel + ELEV_TO_BLK · CF_GAIN · profile
+    //   ⟹ 岸线处 profile=0 ⟹ 两侧 h 都是 seaLevel ⟹ **无墙**
+    public static boolean USE_CF_PROFILE = true;
+
+    /** 统一剖面的幅度缩放（标定：让高度分布与旧 elev 一致）。 */
+    public static double CF_GAIN = 3.0;
 
     /**
-     * §7716：{@code fadeTarget} 的参考峰高（米）。<b>由已有量导出，不是新旋钮</b>：
-     * {@code (SOFT_CAP_H - seaLevel) / LAND_GAIN = (252 - 64) / 0.0235 = 8,000 m}。
-     * 与珠峰（8,848 m）同量级，正是 {@code LAND_GAIN} 当初被标定的意图。
+     * ★★★★★★★★ §7552：<b>侵蚀驱动器的「米 -> 方块」量纲换算</b>（原 {@code LAND_GAIN} 的第二个用法）。
+     *
+     * <p>用于 {@code SimTerrain:586}：把 4 km 中心差分的真实地形梯度（米）换算到
+     * 「被侵蚀高度场」（方块）的量纲。
+     *
+     * <p><b>为什么独立（P1675，5 种子 x 400 点 = 2000 样本）</b>：
+     * 该项在侵蚀驱动器里的占比只有 <b>3.5%</b>（主导项是噪声梯度）：
+     * <pre>
+     *   ERO_M_TO_BLK | 真实梯度占比 | 方向偏转 | 合成幅度
+     *      0.055     |    3.5%      |  1.3 度  |  0.549
+     *      0.025     |    1.6%      |  0.6 度  |  0.505（-8%）
+     * </pre>
+     * ⟹ 它【可以独立取值】，不必跟着 {@link #ELEV_TO_BLK} 走。
+     * <p>初值 = 拆分前的 {@code LAND_GAIN}（0.055）⟹ 拆分本身是【零行为变化】的重构。
      */
-    public static final double PEAK_REF_M = (V2TerrainGen.SOFT_CAP_H - 64.0) / LAND_GAIN;
+    public static double ERO_M_TO_BLK = 0.055;
+
+    /**
+     * §7552：<b>兼容字段</b>。约 63 支既存探针读它 ⟹ 保留。
+     *
+     * <p><b>它不再被生产代码使用</b>：生产读 {@link #ELEV_TO_BLK}（映射）与
+     * {@link #ERO_M_TO_BLK}（侵蚀换算）。用法点见 {@code SimTerrain:506} 与 {@code :586}。
+     * <p>初值 = {@link #ERO_M_TO_BLK}（= 拆分前的 0.055）⟹ 旧探针取到的仍是它们历史期望的那个数。
+     * <p>⚠ 探针若<b>写</b>它，不会影响生产（生产读的是那两个常量）。要改行为请写那两者。
+     * @deprecated 用 {@link #ELEV_TO_BLK} 或 {@link #ERO_M_TO_BLK}。
+     */
+    @Deprecated
+    public static double LAND_GAIN = 0.055;
+
+    /**
+     * §7552（S6）：PEAK_REF_M 已删除 —— 全仓 grep 确认它是【死代码】（只有定义与两处 javadoc 引用，
+     * 零消费点）。它原本要用于 {@code ft = 2*(elev/PEAK_REF_M)-1}，但 §7742 改成了 FADE_*_BLK。
+     */
 
     /**
      * ★★★★★★★★ <b>§7742：{@code fadeTarget} 的区间端点（block）。</b>
@@ -138,9 +235,9 @@ public final class SimTerrain {
      *
      * <p>⚠ 这两个值是<b>标定量</b>（与 {@code LAKE_MIN_DEPTH_M} 同性质），不是逐字常数。
      */
-    public static double FADE_VALLEY_BLK = 0.42 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
+    public static double FADE_VALLEY_BLK = 0.36 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
     /** 见 {@link #FADE_VALLEY_BLK}。 */
-    public static double FADE_PEAK_BLK = 0.735 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
+    public static double FADE_PEAK_BLK = 1.306 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
     /** **海洋垂直增益（blocks/m）**：−5,377 m 的深海平原 -> 约 56 blocks。 */
     public static double OCEAN_GAIN = 0.0105;
     /** 深海平原的块级起伏（blocks）—— 与旧实现 SEABED_RELIEF 同量级。 */
@@ -257,16 +354,28 @@ public final class SimTerrain {
     public static double ERO_GRAD_SCALE = 8.0;
 
     /**
-     * §7763: 侵蚀门控的【下限】。0 = 与原来逐位相同（回滚点）。
+     * 侵蚀门控的【下限】。**0 = 门控真正生效**（平原完全不侵蚀）。
      *
-     * 依据：lpmitchell / catto / 博客原文 —— 三个来源都【没有】「只在山上侵蚀」这一步。
-     * 门控是本仓自己加的（§7723）。而 P1476 实测：用户种子上约 2/3 的图块 gate=0，
-     * 那些地方【完全没有侵蚀】，也就没有沟壑。
+     * <h3>★ 2026-10-08 用户裁决：改成 0</h3>
+     * <p>用户原话：「后续侵蚀滤镜我打算**单独用在海陆分布中输出为山地**的位置」。
+     * <p>原值 0.5 的历史原因（§7763）：P1476 实测用户种子上约 2/3 的图块 gate=0
+     * （那些地方完全没有侵蚀、没有沟壑），于是加了 FLOOR=0.5 让「平地也有 50% 侵蚀」。
      *
-     * gateEff = FLOOR + (1-FLOOR)*gate  ==>
-     *   FLOOR=0 完全回滚；FLOOR=1 完全等同于「没有门控」（= 参考库的做法）。
+     * <p>⚠ 但那与「只在山地侵蚀」的意图**直接矛盾**：
+     * <pre>
+     *   本文件的门控注释写的是「平原 gate≈0（完全不侵蚀）」
+     *   而 FLOOR=0.5 让平原恒有 50% ⟹ 用户在【海边平原】也看到了侵蚀（已确认）
+     * </pre>
+     *
+     * <p><b>为什么现在可以改成 0</b>：gate = LandformField.Sample.mtnPlusPeak() = belt·m，
+     * 而 belt 来自 OrographyField.beltMask01 ⟸ 山带层（MountainLayerV2）。
+     * 修复 A 之后山带真的产生了（auth 可达 1.0、uplift 可达 436 格）
+     * ⟹ ★ gate 现在真能区分「山地 / 平原」⟹ 可以让它真正门控。
+     *
+     * <p><b>后果</b>：平原 gate=0 ⟹ 完全不侵蚀；山地 gate→1 ⟹ 全侵蚀。
+     * <p><b>回滚</b>：置回 0.5 ⟹ 逐位回到旧行为。
      */
-    public static double ERO_GATE_FLOOR = 0.5;
+    public static double ERO_GATE_FLOOR = 0.0;
 
     /**
      * §7792: 把侵蚀【驱动器梯度的幅度】归一到常数（0 = 关闭，逐位回滚点）。
@@ -390,7 +499,7 @@ public final class SimTerrain {
      * （用户实测发现，P1404 定位）。
      */
     public static double extraAmpFor(int x, int z, int worldSeedInt) {
-        double a = com.EyeOfHarmonyBuffer.sim.litho.TalosField.ERO_EXTRA_AMP;
+        double a = com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP;
         if (a <= 0.0) return 0.0;
         if (!ERO_EXTRA_SLOPE_MOD) return a;
         double g = LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
@@ -398,7 +507,26 @@ public final class SimTerrain {
         return a * (EXTRA_MASK_MIN + (1.0 - EXTRA_MASK_MIN) * g);
     }
     /** **public 是为了让探针与生产同源**（P462 要量 D46 的沿岸-内陆过渡）。 */
+    // ★★★★★★★ 2026-10-08 性能修复：**加记忆化**
+    // 【为什么】`V2BiomeSelect.accumulateWeights` 对**每一格**都调本方法进 Snow 判定，
+    //   而 `BiomeField.solve` = 81,000 格/次 ⟹ 大量重复计算。
+    private static final ThreadLocal<java.util.HashMap<Long, Double>> WMT_MEMO =
+        ThreadLocal.withInitial(java.util.HashMap::new);
+    public static boolean WMT_MEMO_ON = true;
+    public static void clearWmtMemo() { WMT_MEMO.get().clear(); }
+
     public static double warmestMonthTempK(int x, int z, int worldSeedInt) {
+        if (!WMT_MEMO_ON) return warmestMonthTempK0(x, z, worldSeedInt);
+        java.util.HashMap<Long, Double> m = WMT_MEMO.get();
+        long key = (((long) x << 32) ^ (z & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + worldSeedInt;
+        Double v = m.get(key);
+        if (v != null) return v;
+        double r = warmestMonthTempK0(x, z, worldSeedInt);
+        if (m.size() > 262144) m.clear();
+        m.put(key, r);
+        return r; }
+
+    private static double warmestMonthTempK0(int x, int z, int worldSeedInt) {
         // ⚠ D46 修复（2026-09-13）：这里原来把 SimClimate.coords 的 out3[2] 当 kappa 用，
         // 但 out3[2] 是 **continent**（= clamp01(-coastD / 40 km)，一个 40 km 就饱和的**到岸距离**坡），
         // **不是大陆度 κ**。两者在**岸线上**分别是 0 与 **0.5**（κ 在岸线 = 0.5）。
@@ -465,8 +593,8 @@ public final class SimTerrain {
         //   实测：4000 列中 148 列不一致（3.7%），并打红 7 个验收门（P294/P442/P477/P479/P991）。
         //   P1488 实证：(-4444495,2222215) elev(zero)=-61.4 而 elev(explicit)=+469.4（符号相反）。
         //   修法：让生产与 level() 的标定口径一致 ⟹ elevation>=0 与 isLand 重新逐位等价。
-        double extraAmp = com.EyeOfHarmonyBuffer.sim.litho.TalosField.ERO_EXTRA_AMP;
-        double elev = com.EyeOfHarmonyBuffer.sim.litho.TalosField.elevation(x, z, seed, extraAmp);
+        double extraAmp = com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP;
+        double elev = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(x, z, seed, extraAmp);
 
         // 四个字段一起写：Column 是复用容器，**每个字段都必须被覆盖**，否则会漏出上一列的残值。
         c.plain = 0.0;
@@ -477,20 +605,57 @@ public final class SimTerrain {
         c.snow = false;
         c.beach = false;
 
-        if (elev < 0.0) {
+        // ★★★★★ §7541：海陆分支改用 TalosField.isLand（= lowPass(fieldValue) > lvlFast），
+        //   与 ChunkProviderTalos2:213 的【方块海陆判定】同一个函数。
+        //   历史：这里原来用 elev < 0.0，而 isLand 自 §7541 起含 1 km 低通 ⟹ 两条口径在
+        //   海岸线上有 2/4000 的差异（P294 GATE_LAND_CONSISTENT 实测）。
+        //   elev 仍用于【连续量】（水深/高度），只有布尔分支换成单一来源。
+        // ★★★★★★★ B 方案：统一剖面（在硬分支之前返回）
+        if (USE_CF_PROFILE) {
+            long cfWs = ((long) worldSeedInt) & 0xFFFFFFFFL;
+            double sig = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
+                .signedCoastDistCF(cfWs, x, z);
+            double prof = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
+                .coastProfileCF(sig);
+            double hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * prof;
+            boolean landCF = sig >= 0.0;
+            c.land = landCF;
+            c.seaDepth = landCF ? 0.0 : Math.max(0.0, seaLevel - hCF);
+            c.base = hCF;
+            c.hNoDetail = hCF;
+            double dCF = DETAIL_ENABLED ? detailBlocks(x, z, worldSeedInt) : 0.0;
+            c.hDetail = hCF + dCF;
+            c.hCapped = c.hDetail < 1.0 ? 1.0 : c.hDetail;
+            c.h = clampY((int) Math.round(c.hCapped), maxY);
+            return c; }
+
+        if (!com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand(x, z, seed)) {
             c.land = false;
+            if (RAW_ELEV_MODE) {
+                // ★ 原始模式：海面高度 = elev（负值），无 OCEAN_GAIN / 无 SEABED_RELIEF / 无 maxDepth
+                c.seaDepth = 0.0;
+                c.base = 0.0;
+                c.hNoDetail = elev;
+                c.hDetail = elev;
+                c.hCapped = elev < 1.0 ? 1.0 : elev;
+                c.h = clampY((int) Math.round(c.hCapped), maxY);
+                return c;
+            }
             double maxDepth = seaLevel - 1.0;
             if (maxDepth < 1.0) maxDepth = 1.0;
             double dBase = softCapTo(OCEAN_GAIN * (-elev), maxDepth, 6.0);
             // 深海平原起伏：在岸边**连续地**消失（smoothstep），所以浅滩/沙滩不受影响
-            double relief = SEABED_RELIEF * (vnoise(x / (DETAIL_W * 4.0), z / (DETAIL_W * 4.0), worldSeedInt ^ 0x7A11) * 2.0 - 1.0);
-            double depth = dBase + relief * smoothstep01(dBase / 8.0);
+            // 深海平原起伏：在岸边**连续地**消失（smoothstep），所以浅滩/沙滩不受影响
+            //   ★ 2026-10-08：原式是 `SEABED_RELIEF * vnoise(px,pz,seed) * smoothstep01(dBase/8.0)`；
+            //     本次编辑一度把 smoothstep 误当成 vnoise 的第 4 个参数 —— 已改回乘法。
+            double relief = (SEABED_ENABLED ? SEABED_RELIEF : 0.0)   // ★ 括号必需（三元优先级低于 *）
+                * vnoise(x / (DETAIL_W * 4.0), z / (DETAIL_W * 4.0), worldSeedInt ^ 0x5A5A)
+                * smoothstep01(dBase / 8.0);
+            double depth = dBase + relief;
             c.seaDepth = depth;
             c.base = 0.0;
             c.hNoDetail = seaLevel - depth;
             c.hDetail = c.hNoDetail;
-            // 同一族的一致性（审计 D19）：SEABED_RELIEF 可以把 depth 推过 maxDepth 一点，
-            // 于是 hCapped 可能 < 1 而 h 已被 clampY 夹到 1 —— 让两者对齐。
             c.hCapped = c.hNoDetail < 1.0 ? 1.0 : c.hNoDetail;
             c.h = clampY((int) Math.round(c.hCapped), maxY);
             return c;
@@ -498,12 +663,17 @@ public final class SimTerrain {
 
         c.land = true;
         c.seaDepth = 0.0;
-        double hNo = softCapTo(seaLevel + LAND_BASE_OFFSET + LAND_GAIN * elev,
-                               V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K);
+        // ★ 原始模式：陆地高度 = elev（**海陆分布层的原始输出，米，1:1 当方块高度**）
+        //   去掉：ELEV_TO_BLK（米->格映射）、seaLevel、LAND_BASE_OFFSET、softCapTo
+        final double hNo = RAW_ELEV_MODE
+            ? elev
+            : softCapTo(seaLevel + LAND_BASE_OFFSET + ELEV_TO_BLK * elev,
+                        V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K);
         c.base = hNo;
         c.hNoDetail = hNo;
         // 块级细节：只在陆地上加，振幅恒定（宏观起伏已由 dh 承担）
-        double d = detailBlocks(x, z, worldSeedInt);
+        // ★ 原始模式：关掉（220 格 / 5.8 格的 MC 级细节不属于海陆分布层）
+        double d = DETAIL_ENABLED ? detailBlocks(x, z, worldSeedInt) : 0.0;   // ★ 噪声层开关
         double hDet = hNo + d;
 
         // ============ §7716：Runevision 侵蚀滤镜（MPL 2.0 移植）============
@@ -577,8 +747,8 @@ public final class SimTerrain {
                 double ex0 = PlateField.elevationWithCell(x - GS, z, seed, cell);
                 double ez1 = PlateField.elevationWithCell(x, z + GS, seed, cell);
                 double ez0 = PlateField.elevationWithCell(x, z - GS, seed, cell);
-                // 米 -> 格：乘 LAND_GAIN；再乘 ERO_UNIT/(2*GS) 换到 d(h)/d(worldUnit)
-                double k = V2TerrainGen.ERO_REAL_GRAD * LAND_GAIN * V2TerrainGen.ERO_UNIT / (2.0 * GS);
+                // 米 -> 格：乘 ERO_M_TO_BLK（§7552 起独立于 ELEV_TO_BLK）；再乘 ERO_UNIT/(2*GS) 换到 d(h)/d(worldUnit)
+                double k = V2TerrainGen.ERO_REAL_GRAD * ERO_M_TO_BLK * V2TerrainGen.ERO_UNIT / (2.0 * GS);
                 eg[0] += (ex1 - ex0) * k;
                 eg[1] += (ez1 - ez0) * k;
             }
@@ -619,15 +789,19 @@ public final class SimTerrain {
         }
 
         c.hDetail = hDet;
-        double hCap = softCap(hDet);
+        // ★ 原始模式：硬夹到 [1, maxY-2]，不用 softCap（软上限会把高处压平）
+        double hCap = RAW_ELEV_MODE ? Math.min(hDet, maxY - 2) : softCap(hDet);
         // ⚠ 2026-09-13 修正（审计 D19）：补回旧实现三处都有的「贴岸低地保险」
         //   V2TerrainGen:133 / :171-172 / :282 都是  h < seaLevel + 1 ? seaLevel + 1 : h。
         // 新链路漏了它，而块级细节噪声（|d| < 1.45*DETAIL_AMP = 5.8 格）**没有海岸淡化**、
         // 直接加在 seaLevel 上 ⇒ elev < 268 m 的陆地列都可能落到海平面以下；
         // 与「ChunkProviderTalos2.fillLandColumnV2 不铺水」叠加就是**海面下的干坑**。
         // ⇒ 这是 D16-a 的前置条件：谁走陆地分支由 D16-a 决定，保证不低于海面由这里决定。
-        final int hFloor = Math.min(seaLevel + 1, maxY);
-        if (hCap < hFloor) hCap = hFloor;
+        // ★ 原始模式：不加海面保底（要让 elev<64 的陆地按真实值显示）
+        if (!RAW_ELEV_MODE) {
+            final int hFloor = Math.min(seaLevel + 1, maxY);
+            if (hCap < hFloor) hCap = hFloor;
+        }
         c.hCapped = hCap;
         c.h = clampY((int) Math.round(hCap), maxY);
         c.beach = BEACH_ENABLED && (c.h - seaLevel) <= BEACH_BLOCKS;
@@ -644,10 +818,24 @@ public final class SimTerrain {
     }
 
     /** 世界种子（int）→ PlateField 的 long 种子。纯函数、逐位可复现。 */
+    /**
+     * ★★★★★★★ 2026-10-08 统一：**改为恒等**（不再二次哈希）。
+     *
+     * <p><b>原实现是历史上最严重的 bug 之一</b>：它对 {@code worldSeedInt} 再哈希一次，
+     * 于是同一世界里存在两套种子 ——
+     * <pre>
+     *   worldSeedInt          = 179054954   ← 地形骨架 / 群系 / 山带
+     *   seedOf(worldSeedInt)  = 1556270468  ← 地形高度 / 方块海陆判定 / 洋流 / 气候
+     * </pre>
+     * 实测：两者在**同一点**的**海陆判定 48.1% 互相矛盾**
+     * （群系说「山地」，而高度算出来是海底）。
+     *
+     * <p>现在恒等 ⟹ 13 个调用点自动对齐到 {@link TalosSeed#of}。
+     * <p>保留本方法（而不是删除）是为了**不改调用点**；它现在是纯类型提升。
+     * <p>⚠ 绝对不要再往里加哈希。
+     */
     public static long seedOf(int worldSeedInt) {
-        long h = worldSeedInt * 0x9E3779B97F4A7C15L + 0x5EED_0001L;
-        h ^= (h >>> 30); h *= 0xBF58476D1CE4E5B9L; h ^= (h >>> 27);
-        return h;
+        return com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.widen(worldSeedInt);
     }
 
     static int clampY(int y, int maxY) { return y < 1 ? 1 : (y > maxY ? maxY : y); }

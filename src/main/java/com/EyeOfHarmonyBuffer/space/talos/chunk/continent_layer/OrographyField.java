@@ -54,7 +54,7 @@ public final class OrographyField {
     private static final double SHORE_START = 200.0;
     private static final double SHORE_FULL = 875.0;
     // ---- 标定 ----
-    private static final int CALIBRATE_STRIDE = 2000;
+    private static final int CALIBRATE_STRIDE = 2000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
     /**
      * 标定扫描域（blocks）。**这是旧环面世界留下的常量，不是从任何现值派生的** —— 提成具名
      * 常量只是为了让"这两个 400k/200k 从哪来"可检索。
@@ -63,8 +63,8 @@ public final class OrographyField {
      * 进而影响地形。**改扫描域 = 改世界生成**，所以本轮只做"值不变、改成具名常量"，是否要换域
      * 需要单独拍板（见交付报告里的 flag）。
      */
-    private static final int CALIBRATE_X_SPAN = 400_000;
-    private static final int CALIBRATE_Z_SPAN = 200_000;
+    private static final int CALIBRATE_X_SPAN = 400_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
+    private static final int CALIBRATE_Z_SPAN = 200_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     /** 每种子标定结果缓存。 */
     private static final ConcurrentHashMap<Integer, Cutoffs> CUTOFF_CACHE =
@@ -125,12 +125,50 @@ public final class OrographyField {
         return Math.abs(2.0 * med - 1.0);
     }
 
+    // ================= ★★★★★★★★ 采样级记忆化 =================
+    //
+    // 【为什么必须有】
+    //   sample() 每点调用：landResidual + ridgeDev(->medNoise) + coastDistBlocks + reliefFromDev
+    //   其中 coastDistBlocks 内部是 625 细胞的扫描 ⟹ 实测约 400 us/点。
+    //   LandformField.solve 有 400x200 = 80,000 点 ⟹ 32 秒 ⟹ 与实测 27~44 秒吻合。
+    //
+    // 【关键：多处重复计算同一坐标】
+    //   relieveFromDev 需要 coastDist，而 sample 也算一次 ⟹ 同一坐标被重复调用。
+    //   且 V2BiomeField.solve / LandformField.solve 会在相邻瓦片重复采样同一区域。
+    //   ⟹ ThreadLocal 记忆化（多线程各自一份，无锁）
+    private static final ThreadLocal<java.util.HashMap<Long, OroSample>> SAMPLE_MEMO =
+        ThreadLocal.withInitial(java.util.HashMap::new);
+    public static boolean SAMPLE_MEMO_ON = true;
+
+    public static void clearSampleMemo() { SAMPLE_MEMO.get().clear(); }
+
     /** 单点采样（世界 block 坐标，任意范围）。 */
     public static OroSample sample(int x, int z, int worldSeedInt) {
-        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-        if (!NoiseContinentGrid.isLandResidual(r)) {
-            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0);
+        // ★ 记忆化：同一坐标只算一次（键 = x,z 打包）
+        long mkey = 0;
+        java.util.HashMap<Long, OroSample> memo = null;
+        if (SAMPLE_MEMO_ON) {
+            memo = SAMPLE_MEMO.get();
+            mkey = (((long) x) << 32) ^ (z & 0xFFFFFFFFL);
+            OroSample hit = memo.get(mkey);
+            if (hit != null) return hit;
         }
+        OroSample res = sampleRaw(x, z, worldSeedInt);
+        if (memo != null) { if (memo.size() > 65536) memo.clear(); memo.put(mkey, res); }
+        return res; }
+
+    private static OroSample sampleRaw(int x, int z, int worldSeedInt) {
+        // ★★★★★★★ 2026-10-08 修复【两套口径】：陆海判定必须用【同一个函数】
+        //
+        // 【原 bug】这里用 `landResidual > 0`（= 高度符号）判陆海，
+        //   而 `SimTerrain.compose` 用 `PlateField.isLand`（B 方案后 = landScore ≥ 0.5）。
+        //   后果：`/talos_tp hill` 说「陆」，传送过去却是**深海**（实测）。
+        // 【为什么不能用高度符号】新架构里 height = (base+hfeat)×gain（连续混合），
+        //   高度符号**不再等价于**陆海。
+        // 【正解】直接调 `TalosLandField.isLand` ⟹ 与 compose 逐位一致。
+        if (!TalosLandField.isLand(NoiseContinentGrid.wsOf(worldSeedInt), x, z)) {
+            return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0); }
+        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
         Cutoffs c = cutoffsFor(worldSeedInt);
         double elevation = elevation01(r, worldSeedInt);
         double dev = ridgeDev(x, z, worldSeedInt);

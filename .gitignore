@@ -84,6 +84,13 @@ layout.json
 .tmp-*
 tmp-clone*
 
+# ============ DSH 沙箱权限修复的备份目录：不入库 ============
+# 为什么会有它：本工作区的 Windows 文件权限曾缺 WRITE_OWNER，导致沙箱无法给
+#   工作区与 build\ 建立写入授权（Gradle 连 wrapper 的 .lck 都建不了）。
+#   修复脚本会把【改动前的权限记录】和一份可执行的回滚脚本写在这里（见 acl-report-*.jsonl）。
+# 为什么不入库：它是本机权限状态的快照，与源码无关；且每修一次就多一对文件。
+.dsh-acl-recovery/
+
 # Python 字节码缓存（生成器跑一次就会出现）
 __pycache__/
 *.pyc

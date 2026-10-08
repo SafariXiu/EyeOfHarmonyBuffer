@@ -2,7 +2,8 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
 
 import com.EyeOfHarmonyBuffer.sim.hydro.WaterField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
-import com.EyeOfHarmonyBuffer.sim.litho.TalosField;
+import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
@@ -79,7 +80,7 @@ public final class PrecipField {
      */
     public static double ITCZ_MIGRATION = Math.toRadians(10.0);
     /** 取「上风方向」地形的步长（m）：雨影必须用上风地形，不能用本地地形。 */
-    public static double UPWIND_STEP = 150_000.0;
+    public static double UPWIND_STEP = 3_750.0;   // ★ 缩 40x（原 150,000）
 
     /** 用于降水的「有效直射点纬度」：按 ITCZ_MIGRATION 缩放。 */
     public static double precipSubsolarLat(double theta) {
@@ -577,9 +578,9 @@ public final class PrecipField {
     //   but beta (SoilMoisture) stays in the numerator => LAND dryness is preserved.
 
     /** 水汽从海岸向内陆的 e 折输送尺度（m）。P656 扫的三个值：1e6 / 2e6 / 3e6。 */
-    public static double SOURCE_FETCH_L = 1.5e6;
+    public static double SOURCE_FETCH_L = 37500.0;   // ★ 缩 40x（原 1.5e6）
     /** 逆推的最大距离（m）；超过则回落到原式。 */
-    public static double SOURCE_FETCH_MAX = 4.0e6;
+    public static double SOURCE_FETCH_MAX = 100000.0;   // ★ 缩 40x（原 4.0e6）
 
     /**
      * ★★★ **§448：水汽源温度要不要带季节项。** 默认 **false**（逐位不变）。
@@ -2403,7 +2404,23 @@ public final class PrecipField {
     //     50E dP +0.127 -> +0.186、295E/300E/95E/105E 四盒转正），V3 湖点 beta=1 PASS 10/12、
     //     V1 湖点 q 上升 10/12（+176.57%）、非湖点逐位不变 12/12。
     //   ⟹ 所以【方向是对的，但它撞翻了一个余量只有 2.7% 的常驻门】⟹ 要采纳必须先弄清那个门该不该那么脆。
-    public static boolean Q_FROM_WATER = false;
+    // ★★★★★ §7522（2026 复测，run ECA03CFB_69FF9B4A_TALOS）：**仍然撤回**，但根因换了。
+    //   ❌ 不是「门太脆」：当前 P692:GATE_COASTAL_VERDICT 的 geoRatio = 0.2167（余量 79%），
+    //      而撤回时基线是 0.9730（余量仅 2.7%）⟹ 那个理由【已不存在】。
+    //   ★★★ 真因：**无限递归环**。打开后 22 支探针里 **14 支 StackOverflowError**：
+    //        PrecipField.mmPerDay(:2804) -> WaterField.isWater(:279) -> cell(:549) -> solveTile(:847)
+    //        -> SimClimate.annualPrecipMmPerYear(:1045->field()) -> solve/solveNode(:709/:906/:919)
+    //        -> PrecipField.mmPerDay  ← 回到起点
+    //      而 SimClimate:1031-1043 的 javadoc 明写「本访问器【不触发任何新计算】」——
+    //      打开本开关恰好打破了这个前提（mmPerDay 依赖 WaterField，WaterField 又需要【已建好的瓦片】）。
+    //   ⟹ **要采纳必须先解环**：把「建瓦片」与「水耦合」在时序上分开
+    //      （瓦片永远按【无水系】建，水耦合只在 mmPerDay 的最终输出上叠加）。
+    //   ⚠ 另注（P1559 实测）：isWater() 在 10 km 网格上把 30% 的陆地判为湖（地球 1~2%），
+    //      根因是【地形闭合洼地占 32~43%】（P1509/P1559 两个独立探针一致）。解环后仍需处理。
+    // ★★★★★ §7523（2026 复测 #2）：解环后重新打开。
+    //   解环方式：SimClimate.isBuildingTile() 护栏 —— 建瓦片期间跳过本耦合
+    //   （瓦片永远按【无水系】建，logP 是纯气候量；耦合只作用在 mmPerDay 的最终输出上）。
+    public static boolean Q_FROM_WATER = true;
 
     /**
      * **候选 S-1（设计冻结 §251）：浅对流地板。**
@@ -2648,9 +2665,9 @@ public final class PrecipField {
         // ★★★★★★★★ §7589：差分步长【不能用 UPWIND_STEP（150 km）】—— 那比最短地形波长还大 3 倍，
         //   山脉会被完全混叠掉（M3-大气层设计调研:638 逐字：「Δs = 25 km（**必须显著小于
         //   PlateField.OROGEN_W = 90 km**，否则山脉会被混叠掉）」）。
-        //   这里改用【本仓自己的地形最短波长的一半】：TalosField.HF_WL_MIN/2 = 23,437.5 m
+        //   这里改用【本仓自己的地形最短波长的一半】：PlateField.HF_WL_MIN/2 = 23,437.5 m
         //   —— 由 hf 的 oct=7 与 wl0=3e6 【逐字导出】⟹ 零新常数。
-        final int h = (int) (TalosField.HF_WL_MIN * 0.5);
+        final int h = (int) (PlateField.HF_WL_MIN * 0.5);
         // ★★★★★★★★ §7589：云水/降水物的延迟（Smith & Barstad 2004 方程 1a/1b 逐字）：
         //     (1a)  U·∇q_c = S − q_c/τ_c
         //     (1b)  U·∇q_h = q_c/τ_c − q_h/τ_h
@@ -2760,7 +2777,40 @@ public final class PrecipField {
         return EPS_C * RHO_AIR * q * wEff / RHO_WATER;
     }
 
-    /** 世界坐标上的降水（mm/day）。O(1)（需要 4 次风场取样算散度）。 */
+    /**
+     * 世界坐标上的降水（mm/day）。O(1)（需要 4 次风场取样算散度）。
+     *
+     * <h3>★★★★★ §7527（G1）：本函数的【耦合契约】—— 谁负责水耦合</h3>
+     *
+     * <p>水耦合（湖/湿地 = 饱和面 ⟹ {@code beta = 1}，见 {@link #Q_FROM_WATER}）
+     * <b>只在【最终消费者】这一层生效</b>，不在【气候瓦片建设】里生效。判定方式是
+     * {@link SimClimate#isBuildingTile()}：
+     *
+     * <table border=1>
+     * <tr><th>调用场景</th><th>{@code isBuildingTile()}</th><th>耦合</th><th>为什么</th></tr>
+     * <tr><td>建气候瓦片（{@code SimClimate.solveNode:1013}）</td><td>true</td><td><b>否</b></td>
+     *     <td>{@code logP} 必须是【纯气候量】；且否则会成环（见下）</td></tr>
+     * <tr><td>最终消费者（{@code GlobalClimate:102} 渲染/群系、探针）</td><td>false</td><td><b>是</b></td>
+     *     <td>湖/湿地的湿润效应是【局地边界条件】，属输出层</td></tr>
+     * </table>
+     *
+     * <h3>为什么必须这样切（§7523 实测）</h3>
+     * <p>若让耦合进入建瓦片路径，会形成环：
+     * <pre>
+     *   mmPerDay -> WaterField.isWater -> solveTile
+     *     -> SimClimate.annualPrecipMmPerYear -> field() -> solve -> solveNode
+     *     -> mmPerDay  &lt;- 回到起点
+     * </pre>
+     * <p>run {@code ECA03CFB_69FF9B4A_TALOS} 实测：22 支探针里 <b>14 支 StackOverflowError</b>。
+     * 解环护栏见 {@link SimClimate#isBuildingTile()}。
+     *
+     * <h3>⚠ 已知的性能后果（§7.13/§8.13）</h3>
+     * <p>开启 {@code Q_FROM_WATER} 后，<b>最终消费者每调一次本函数都可能触发一次水系 tile 求解</b>
+     * （{@code WaterField} 冷 tile 24.8 s，其中 99.95% 是建气候瓦片）。
+     * 实测：22 支探针的套件在开耦合后 <b>25~43 分钟仍跑不完</b>（完整套件基线约 5 分钟）。
+     * <p><b>⟹ 这是【依赖方向】的问题，不是常数问题。</b>下一轮要做的是把「湖/湿地」预建为
+     * 一个像气候瓦片那样的按需位图（候选 G2），让最终消费者只做查询、不触发求解。
+     */
     public static double mmPerDay(int x, int z, long seed, int cell, double theta, int gradStep) {
         return mmPerDay(x, z, seed, cell, theta, gradStep, true);
     }
@@ -2795,7 +2845,12 @@ public final class PrecipField {
             betaUsed = SoilMoisture.betaAt(x, z, seed, cell, theta, gradStep);
             // ★ §7497 水系接线：湖 / 湿地 = 饱和面 ⟹ beta = 1（见 Q_FROM_WATER 的 javadoc）。
             //   放在 set() 之前 ⟹ 下游（moisture 的 rhEff、DIAG[13]、路径点）全部一致地看到它。
-            if (Q_FROM_WATER && WaterField.isWater(x, z, seed)) betaUsed = 1.0;
+            // ★★★★★ §7523 解环：建气候瓦片期间【必须跳过】这一段。
+            //   否则 SimClimate.solve -> solveNode(:989) -> mmPerDay -> WaterField.isWater
+            //   -> WaterField.solveTile -> SimClimate.annualPrecipMmPerYear -> field()
+            //   -> 又要建瓦片 ⟹ 无限递归（实测 14/22 探针 StackOverflowError）。
+            //   时序分离：瓦片按【无水系】建（logP 是纯气候量），耦合只作用在最终输出上。
+            if (Q_FROM_WATER && !SimClimate.isBuildingTile() && WaterField.isWater(x, z, seed)) betaUsed = 1.0;
             BETA_OVERRIDE.set(betaUsed);
         } else if (savedBeta != null) {
             betaUsed = savedBeta;

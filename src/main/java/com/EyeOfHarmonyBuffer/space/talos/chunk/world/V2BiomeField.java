@@ -34,9 +34,9 @@ public final class V2BiomeField {
     public static final int CELL = 250;
 
     /** 窗口宽度（blocks）：与 LandformField/气候一致，按绝对坐标窗口求解。 */
-    public static final int TILE_X = 100_000;
+    public static final int TILE_X = 100_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
-    public static final int TILE_Z = 50_000;
+    public static final int TILE_Z = 50_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     /**
      * 暴露区格数（不含 halo）= 400 × 200。
@@ -437,6 +437,8 @@ public final class V2BiomeField {
         byte[] shelfW = new byte[n];
         double[] w = new double[KINDS];
 
+        long nsOro = 0, nsLand = 0, nsSea = 0;
+        long tA = System.nanoTime();
         // 1) 逐格算 16 通道候选权重（陆地口径，**全定义域，含 1 格 halo**）
         float[] chan = new float[n * KINDS];
         for (int j = -1; j <= NZ; j++) {
@@ -444,10 +446,13 @@ public final class V2BiomeField {
             for (int i = -1; i <= NX; i++) {
                 int x = originX + i * CELL + CELL / 2;
                 int k = (j + 1) * SX + (i + 1);
+                long a0 = System.nanoTime();
                 OrographyField.OroSample o = OrographyField.sample(x, z, seed);
                 Arrays.fill(w, 0.0);
+                long a1 = System.nanoTime(); nsOro += a1 - a0;
                 V2BiomeSelect.accumulateWeights(x, z, seed, o, true, w);
                 int base = k * KINDS;
+                long a2 = System.nanoTime(); nsLand += a2 - a1;
                 for (int q = 0; q < KINDS; q++) {
                     chan[base + q] = (float) w[q];
                 }
@@ -455,9 +460,11 @@ public final class V2BiomeField {
                 Arrays.fill(w, 0.0);
                 V2BiomeSelect.accumulateWeights(x, z, seed, o, false, w);
                 shelfW[k] = toByte(w[V2BiomeSelect.Kind.SHELF.ordinal()]);
+                long a3 = System.nanoTime(); nsSea += a3 - a2;
             }
         }
 
+        long tB = System.nanoTime();
         // 2) 平滑：对 **16 通道权重场**做可分离盒滤波（半径 BLUR_R）。
         //    比"对 argmax 做众数滤波"更正确：边界落在权重交叉处，强地貌不会被
         //    少量高置信邻居的多数票搬走（那正是"低山被标成 MOUNTAINS"的原因）。
@@ -501,6 +508,7 @@ public final class V2BiomeField {
             System.arraycopy(out, 0, chan, 0, n * KINDS);
         }
 
+        long tC = System.nanoTime();
         // 3) argmax + 加权高度倾向
         Field f = new Field();
         for (int k = 0; k < n; k++) {
@@ -525,7 +533,13 @@ public final class V2BiomeField {
         SOLVE_NANOS.addAndGet(System.nanoTime() - t0);
         long ms = (System.nanoTime() - t0) / 1_000_000;
         System.out.println("[BiomeField] seed=" + seed + " solved in " + ms + "ms  ("
-            + NX + "x" + NZ + " @ " + CELL + "m)");
+            + NX + "x" + NZ + " @ " + CELL + "m)  [oro=" + (nsOro/1_000_000)
+            + " land=" + (nsLand/1_000_000) + " sea=" + (nsSea/1_000_000)
+            + " blur=" + ((tC-tB)/1_000_000) + " tail=" + ((System.nanoTime()-tC)/1_000_000) + "]ms");
+        System.out.println("            ↳ [细] coords=" + (V2BiomeSelect.AW_NS[0]/1_000_000)
+            + " landform=" + (V2BiomeSelect.AW_NS[1]/1_000_000)
+            + " snow=" + (V2BiomeSelect.AW_NS[2]/1_000_000)
+            + " coastDist=" + (V2BiomeSelect.AW_NS[3]/1_000_000) + "ms");
         return f;
     }
 }
