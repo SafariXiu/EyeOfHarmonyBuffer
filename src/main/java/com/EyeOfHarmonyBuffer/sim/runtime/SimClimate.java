@@ -688,6 +688,28 @@ public final class SimClimate {
         return h;
     }
 
+    // ★★★★★★★ 2026-10-08 性能优化：**「上次 Field」线程本地缓存**
+    //
+    // 【为什么】`sample()` 对**每一格**都调 `field()`，而 `field()` 要做：
+    //     WindowKey.of（3 次 mix64）+ ConcurrentHashMap.get + configStamp()
+    //   而 `V2BiomeField.solve` 遍历一个瓦片（81,000 格）时**只用 1~2 个 SimClimate 瓦片**
+    //   ⟹ 同一个 Field 被反复查找 81,000 次 ⟹ 纯浪费。
+    //
+    // 【修复】记住上一次 (seed,tx,tz)→Field ⟹ 顺序访问时 99.99% 命中。
+    //   ⚠ 只是【加速层】，正确性仍由 CACHE 保证（miss 时走原路径）。
+    private static final ThreadLocal<Field> LAST_F = new ThreadLocal<>();
+    private static final ThreadLocal<int[]> LAST_KEY = ThreadLocal.withInitial(() -> new int[]{0, 0, 0});
+
+    private static Field fieldCached(int worldSeedInt, int tx, int tz) {
+        int[] lk = LAST_KEY.get();
+        if (lk[0] == worldSeedInt && lk[1] == tx && lk[2] == tz) {
+            Field lf = LAST_F.get();
+            if (lf != null) { CACHE_HIT.incrementAndGet(); return lf; } }
+        Field f = field(worldSeedInt, tx, tz);
+        lk[0] = worldSeedInt; lk[1] = tx; lk[2] = tz;
+        LAST_F.set(f);
+        return f; }
+
     private static Field field(int worldSeedInt, int tx, int tz) {
         long key = WindowKey.of(worldSeedInt, tx, tz) ^ configStamp();
         Field f = CACHE.get(key);
@@ -736,7 +758,7 @@ public final class SimClimate {
      */
     public static ClimateCoords.Coords sample(int x, int z, int worldSeedInt, OrographyField.OroSample oro) {
         SAMPLE_COUNT.incrementAndGet();
-        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        Field f = fieldCached(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
         long seed = SimTerrain.seedOf(worldSeedInt);
 
         double fx = (x - f.originX) / (double) f.cell - 0.5;

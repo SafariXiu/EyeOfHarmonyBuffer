@@ -219,7 +219,40 @@ public final class LandformField {
         return Math.floorDiv(z, TILE_Z);
     }
 
+    // ★★★★★★★ 2026-10-08 性能修复：**加记忆化**（原来每次调用都算 7×4×4 Catmull-Rom）
+    //
+    // 【为什么】`V2BiomeSelect.accumulateWeights` 对**每一格**都调本方法，
+    //   而 `V2BiomeField.solve` = 400×200 = **81,000 格/次**。
+    //   更糟的是【同一格会被调用两次】：
+    //     V2BiomeSelect:117  ClimateCoords.sample → SimClimate → ... → sample()
+    //     V2BiomeSelect:155  lf = LandformField.sample(...)        ← 同一格
+    //   实测日志：[BiomeField] land=5762ms，其中 landform=5672ms（★ 98%）。
+    //
+    // 【缓存】ThreadLocal + 坐标键（含 seed）。80,000 个工作集 ⟹ 上限 262,144。
+    //   ⚠ 存【不可变数组】而不是 Sample（Sample 是复用的可变对象）。
+    // ★ 2026-10-08 **回退**：曾试过「8 个 LongDblMap」，但每次命中要 8 次查找 ⟹ 不划算。
+    //   保留原来的 `HashMap<Long,double[]>`（一次查找取 7 个值）。
+    private static final ThreadLocal<java.util.HashMap<Long, double[]>> SAMPLE_MEMO =
+        ThreadLocal.withInitial(java.util.HashMap::new);
+    public static boolean SAMPLE_MEMO_ON = true;
+    public static void clearSampleMemo() { SAMPLE_MEMO.get().clear(); }
+
     public static Sample sample(int x, int z, int worldSeedInt) {
+        if (!SAMPLE_MEMO_ON) return sampleRaw(x, z, worldSeedInt);
+        java.util.HashMap<Long, double[]> m = SAMPLE_MEMO.get();
+        long key = ((((long) x) << 32) ^ (z & 0xFFFFFFFFL)) * 31L + worldSeedInt;
+        double[] v = m.get(key);
+        Sample s = TL.get();
+        if (v != null) {
+            s.low = v[0]; s.hill = v[1]; s.plat = v[2]; s.mtn = v[3];
+            s.peak = v[4]; s.mtnAmt = v[5]; s.h0 = v[6];
+            return s; }
+        Sample r = sampleRaw(x, z, worldSeedInt);
+        if (m.size() > 262144) m.clear();
+        m.put(key, new double[]{ r.low, r.hill, r.plat, r.mtn, r.peak, r.mtnAmt, r.h0 });
+        return r; }
+
+    private static Sample sampleRaw(int x, int z, int worldSeedInt) {
         int tile = tileOfX(x), tileZ = tileOfZ(z);
         Field f = field(worldSeedInt, tile, tileZ);
         Sample s = TL.get();

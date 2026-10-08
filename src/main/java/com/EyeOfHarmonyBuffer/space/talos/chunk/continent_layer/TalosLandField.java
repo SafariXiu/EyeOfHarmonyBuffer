@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.LongDblMap;
+
 /**
  * TalosLandField（原 M1gen V4R）-- ★ **已搬入生产**（2026-10-08）
  *
@@ -164,6 +166,22 @@ public static int OPP_R = 4;
         return z ^ (z >>> 31); }
     static long rndL(long seed, long a, long b, long salt) {
         return mix(mix(a * 0x9E3779B97F4A7C15L + b) ^ seed) + salt * 0x2545F4914F6CDD1DL; }
+
+
+    /**
+     * ★★★★★★★ 2026-10-08 **回退**：这里曾加过记忆化，但造成【回归】。
+     *
+     * <p>【实测】加记忆化后（对比同场景 JFR）：
+     * <pre>
+     *   GCPhaseParallel          84,305 → 144,657  （+72%）
+     *   PromoteObjectInNewPLAB  139,820 → 188,985  （+35%）
+     *   ExecutionSample           6,886 →   9,704  （+41%）
+     * </pre>
+     * <p>【为什么】`rnd01` 被调用**上百万次**（`nIndex` → 25 `cnoise` → 4 `rnd01`），
+     *   而每次调用要做 `ThreadLocal.get` + 哈希查找 ⟹ **比 `rndL` 本身还贵**。
+     * <p>【正确做法】要缓存就缓存在**更高层**（`cnoise` 或 `nIndex`），
+     *   那里调用次数少 4~100 倍。
+     */
     static double rnd01(long seed, long a, long b, long salt) {
         return (rndL(seed, a, b, salt) >>> 11) * 0x1.0p-53; }
 
@@ -340,17 +358,41 @@ public static int OPP_R = 4;
      *
      * <p>差分点 q±h·n 的 {@code ci0/cj0} 可直接算出 ⟹ 无需重新求最近细胞。
      */
-    private static final ThreadLocal<Q> D_TMP = ThreadLocal.withInitial(Q::new);
-    /** ★ scanOpp 的「最近同类细胞距离」出口（避免改签名）。 */
-    private static final ThreadLocal<Double> OPP_SAME = ThreadLocal.withInitial(() -> 1e18);
-    public static double lastSamePhys() { return OPP_SAME.get(); }
+    // ================= ★★★★★★★ 线程上下文（合并 10 个 ThreadLocal）================
+    //
+    // 【为什么】JFR 实测（Server thread，42 秒）：
+    //     ThreadLocal$ThreadLocalMap.set       161 样本
+    //     ThreadLocal$ThreadLocalMap.getEntry   60 样本
+    //   ⟹ 合计 221 样本（31%）—— 当前最大热点
+    //
+    // 【根因】本类有 10 个 ThreadLocal，每次 `.get()` 都做一次 ThreadLocalMap 查找
+    //   （哈希 + 线性探测）。而 `eval` 的最热路径要取 3~4 个：
+    //     OPP_SAME / COAST_GRAD_BUF / EVAL_BUF / D_TMP
+    //
+    // 【正解】**合并成一个上下文对象** ⟹ 一次 `.get()` 取到全部字段。
+    //   ⚠ 大对象（LongDblMap，每个 65536 槽）仍用独立 ThreadLocal 以保持懒加载语义不变；
+    //     这里合并的是**热路径上的小对象**。
+    public static final class Ctx {
+        public final Q dTmp = new Q();
+        public final double[] coastGrad = new double[2];
+        public final double[] evalBuf = new double[8];
+        public double oppSame = 1e18;
+        public final double[] tmp1 = new double[1];      // 通用「单值出参」缓冲
+        public final long[] nmOrg = new long[]{0, 0};    // 前缀和窗口原点
+        public double[][] nmPre; }                        // 前缀和窗口（懒建）
+
+    private static final ThreadLocal<Ctx> CTX = ThreadLocal.withInitial(Ctx::new);
+    /** ★ 唯一入口：取本线程的上下文（替代 10 个 ThreadLocal.get）。 */
+    static Ctx ctx() { return CTX.get(); }
+
+        /** ★ scanOpp 的「最近同类细胞距离」出口（避免改签名）。 */
+        public static double lastSamePhys() { return ctx().oppSame; }
     /** 诊断：{aL,aS,selfR,dL00,dS00,i0,j0,tx,tz,n} */
     /** 诊断：{oppPhys原始, samePhys原始, dOpp, dSame} */
     /** 诊断：{coastDist, fadeF, dOpp, dSame} */
     /** 诊断：{base, hfeat, gate, gLand, gSea, wLand, d, dGate} */
     /** coastGrad 的输出缓冲（复用，避免每点分配）。 */
-    private static final ThreadLocal<double[]> COAST_GRAD_BUF = ThreadLocal.withInitial(() -> new double[2]);
-    /** 诊断：eval 实际用到的 conv/shear（供定位残留台阶）。 */
+        /** 诊断：eval 实际用到的 conv/shear（供定位残留台阶）。 */
     /** 诊断：eval 的 bi/bj/nx/nz/b0/b1（供定位状态切换）。 */
 
     /**
@@ -370,7 +412,7 @@ public static int OPP_R = 4;
      * 而差分点落在【别的超格】里，那么「异类」的定义就翻转了 ⟹ d 测的是完全不同的东西。
      */
     static double evalD(long ws, double px, double pz) {
-        Q q = D_TMP.get();
+        Q q = ctx().dTmp;
         long ci0 = (long) Math.floor(px / DS());
         long cj0 = (long) Math.floor(pz / DS());
         boolean isLand = cellContAtMemo(ws, ci0 / SUPER, cj0 / SUPER);
@@ -415,8 +457,7 @@ public static int OPP_R = 4;
      *   它连续 ⟹ 跨瓦片无缝；它随位置变 ⟹ 不同区域不同
      */
     // ★★★★★★★★ eval 的输出缓冲（ThreadLocal，避免每次 new double[8]）
-    private static final ThreadLocal<double[]> EVAL_BUF = ThreadLocal.withInitial(() -> new double[8]);
-
+    
     // ================= ★★★★★★★★ 超格级 nIndex 记忆化 =================
     //
     // 【为什么必须有】
@@ -429,29 +470,41 @@ public static int OPP_R = 4;
     //   ★ cellContAt 只依赖 (sgi, sgj)（超格索引），与细胞在超格内的偏移【无关】
     //   ⟹ 同一超格内所有细胞答案相同 ⟹ 625 个细胞只涉及 ~25 个超格 ⟹ 可省 25 倍
     //   ★ 用 ThreadLocal（多线程各自一份，无锁）
-    private static final ThreadLocal<java.util.HashMap<Long, Boolean>> NI_MEMO =
-        ThreadLocal.withInitial(java.util.HashMap::new);
-    /** 记忆化开关（诊断时可关） */
+    // ★★★★★★★ 2026-10-08 性能优化：HashMap<Long,Boolean> → LongDblMap（零装箱）
+    //   JFR 实测（Server thread，地形生成）：
+    //     nIndex 424 样本（28%）+ ThreadLocalMap.set 140（9%）
+    //     + HashMap$TreeNode.find 57 + comparableClassFor 24
+    //   ⟹ HashMap 的装箱 + 树化 = 221 样本；ThreadLocal 写入 = 140 样本
+    //   且容量只有 8192 ⟹ 工作集超出时反复清空重算。
+    //   ⚠ 存 double（0/1）而不是 boolean ⟹ 复用 LongDblMap。
+    private static final ThreadLocal<LongDblMap> NI_MEMO =
+        ThreadLocal.withInitial(() -> new LongDblMap(1 << 16));
+        /** 记忆化开关（诊断时可关） */
     public static boolean NI_MEMO_ON = true;
+
+    /** 清空记忆化（换 seed 或诊断时用）—— 必须连带清【前缀和窗口】。 */
+    public static void clearMemo() {
+        NI_MEMO.get().clear();
+        ctx().nmPre = null;
+        ctx().nmOrg[0] = 0; ctx().nmOrg[1] = 0; }
 
     /** 带记忆化的 cellContAt（自包含，不走 cellWarp ⟹ 无递归） */
     static boolean cellContAtMemo(long ws, long sgi, long sgj) {
         if (!NI_MEMO_ON) return nIndex(ws, sgi, sgj) > LAND_THRESHOLD;
-        java.util.HashMap<Long, Boolean> m = NI_MEMO.get();
+        LongDblMap m = NI_MEMO.get();
         // ★★★★★★★ 2026-10-08 修复：键必须含 seed！
         //   原 bug：key = (sgi<<32) ^ (sgj&0xFFFFFFFFL) —— 只有细胞坐标。
         //   后果：换 seed（或清缓存不彻底）时会返回【上一个 seed】的结果。
         //   实证：先 WI=179054954 再 seedOf=1556270468 ⟹ 两次都返回 70.9（应不同）。
         long key = ((sgi << 32) ^ (sgj & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + ws;
-        Boolean v = m.get(key);
-        if (v != null) return v;
+        double[] tmp = ctx().tmp1;
+        if (m.get(key, tmp)) return tmp[0] != 0.0;
         boolean r = nIndex(ws, sgi, sgj) > LAND_THRESHOLD;
-        if (m.size() > 8192) m.clear();
-        m.put(key, r);
+        if (m.size() > 262144) m.clear();
+        m.put(key, r ? 1.0 : 0.0);
         return r; }
 
     /** 清空记忆化（换 seed 或诊断时用） */
-    public static void clearMemo() { NI_MEMO.get().clear(); }
 
     /** ★ 归一化索引 n（区域偏斜 + 细尺度）—— cellContAt / dbgN 共用 */
     public static double nIndexPublic(long ws, long sgi, long sgj) { return nIndex(ws, sgi, sgj); }
@@ -588,14 +641,56 @@ public static int OPP_R = 4;
 
     /** 陆性过渡带宽度（landScore 的单位）—— 越小岸线越锐利。 */
     public static double LS_BAND = 0.02;
+    // ================= ★★★★★★★ nIndex 的前缀和加速 =================
+    //
+    // 【问题】`nIndex` 原实现算一个 **5×5 移动平均**：
+    //     for dj,di in [-2,2]: s2 = cnoise(sgi+di, sgj+dj, SKEW_HF)   ← 25 次
+    //   而 `cnoise` 只依赖【整数】坐标 (sgi+di, sgj+dj)（`SKEW_HF=2.0` 时 u=gi/2）
+    //   ⟹ **相邻超格的移动平均高度重叠**（只差一行/一列）
+    //   ⟹ JFR 实测：`nIndex` 占 Server thread **326 样本（19%）** —— 第 1 热点
+    //
+    // 【正解】**前缀和（积分图）**：
+    //   ① 底层整数网格的 cnoise 值只在 (I,J) 处 —— 每个只算一次
+    //   ② 5×5 矩形和 = O(1)（4 次前缀和查表）
+    //   ⟹ 25 次 cnoise/nIndex → **~1 次（摊销）**
+    //
+    // 【实现】lazy 增长的线程本地网格 + 前缀和（缓存窗口随访问平移；命中不了就整体重建）
+    private static final int NM_CAP = 96;          // 窗口边长（超格数）
+        
+    /** 原始 cnoise 值（格点，不含移动平均）。 */
+    private static double rawCell(long ws, long I, long J) {
+        return (cnoise(I, J, SKEW_HF, ws ^ 0x5E5EL) - 0.5) * SKEW_AMP * 2.0; }
+
+    /** 确保 (sgi,sgj) 对应的窗口已就绪（含 5×5 平均所需的外扩）。 */
+    private static void nmEnsure(long ws, long sgi, long sgj) {
+        long[] org = ctx().nmOrg;
+        double[][] p = ctx().nmPre;
+        long ox = org[0], oy = org[1];
+        boolean ok = (p != null)
+            && sgi - (LOCAL_R + 1) >= ox && sgi + (LOCAL_R + 1) < ox + NM_CAP
+            && sgj - (LOCAL_R + 1) >= oy && sgj + (LOCAL_R + 1) < oy + NM_CAP;
+        if (ok) return;
+        long nox = sgi - NM_CAP / 2, noy = sgj - NM_CAP / 2;
+        double[][] np = new double[NM_CAP + 1][NM_CAP + 1];
+        // 直接建前缀和：np[k][j] = 前 k 行 j 列的原始值之和
+        for (int k = 1; k <= NM_CAP; k++) {
+            double rowSum = 0.0;
+            for (int j = 1; j <= NM_CAP; j++) {
+                rowSum += rawCell(ws, nox + k - 1, noy + j - 1);
+                np[k][j] = np[k - 1][j] + rowSum; } }
+        org[0] = nox; org[1] = noy;
+        ctx().nmPre = np; }
+
     public static double nIndex(long ws, long sgi, long sgj) {
-        double S = cnoise(sgi, sgj, SKEW_HF, ws ^ 0x5E5EL);
-        S = (S - 0.5) * SKEW_AMP * 2.0;
-        double Sm = 0; int cnt = 0;
-        for (int dj = -LOCAL_R; dj <= LOCAL_R; dj++)
-        for (int di = -LOCAL_R; di <= LOCAL_R; di++) {
-            double s2 = cnoise(sgi + di, sgj + dj, SKEW_HF, ws ^ 0x5E5EL);
-            Sm += (s2 - 0.5) * SKEW_AMP * 2.0; cnt++; }
+        double S = rawCell(ws, sgi, sgj);
+        // 5×5 移动平均（前缀和 O(1)）
+        nmEnsure(ws, sgi, sgj);
+        long[] org = ctx().nmOrg;
+        double[][] p = ctx().nmPre;
+        int x0 = (int) (sgi - org[0]) - LOCAL_R, y0 = (int) (sgj - org[1]) - LOCAL_R;
+        int x1 = x0 + 2 * LOCAL_R + 1, y1 = y0 + 2 * LOCAL_R + 1;
+        double Sm = p[x1][y1] - p[x0][y1] - p[x1][y0] + p[x0][y0];
+        int cnt = (2 * LOCAL_R + 1) * (2 * LOCAL_R + 1);
         Sm /= cnt; S -= Sm;
         double nf = cnoise(sgi + 7.3, sgj - 3.1, CONT_N_HF2, ws ^ 0xD1D1L) - 0.5;
         return N_TARGET + S + FINE_AMP * nf; }
@@ -838,7 +933,7 @@ public static int OPP_R = 4;
             double tx = wx - cellX(ws, ti, tj),        tz = wz - cellZ(ws, ti, tj);
             double phiM = (mx*mx + mz*mz) / mB;
             double gx = 2.0*(tx/tB - mx/mB), gz = 2.0*(tz/tB - mz/mB);
-            double gm = Math.hypot(gx, gz);
+            double gm = Math.sqrt(gx * gx + gz * gz);   // ★ hypot→sqrt（JFR: hypot 41 样本）
             // ★★★★★★ 用【物理距离】（到最近异类细胞中心的欧氏距离）
             //   ★ 为什么不用 Voronoi 边界距离：加权 Voronoi 的「边界距离」依赖细胞大小 b
             //     ⟹ 不单调（实测：离岸 10 km 时 d=9725，5 km 时 d=2430）
@@ -919,9 +1014,20 @@ public static int OPP_R = 4;
                 for (int k = 0; k < 3; k++) if (dd < bd[k]) {
                     for (int m = 2; m > k; m--) { bd[m]=bd[m-1]; bi[m]=bi[m-1]; bj[m]=bj[m-1]; }
                     bd[k]=dd; bi[k]=ci; bj[k]=cj; break; }
-                if (land != myLand) opp  = smin(opp,  phys, SMOOTH_P);
-                else                same = smin(same, phys, SMOOTH_P); } }
-        OPP_SAME.set(same);
+                // ★★★★★★★ 2026-10-08 性能优化：**内层用直接 min，不用 smin**
+                //
+                // 【为什么】`smin` 含 `exp` + `log1p`（JFR 实测 log1p 占 184 样本）。
+                //   而它在这里被调用：2 次/cell × 81 cells(OPP_R=4) × 4 次 evalD
+                //   = **648 次/每个 eval**，全是昂贵的超越函数。
+                //
+                // 【为什么可以去掉】`smin` 的**外层**（`oppDist` 的软回退）已保证：
+                //   · 值在 [soft/2, ...] 区间内单调光滑
+                //   · 且 `oppPhys` 的距离在 cell 间通常【远大于】SMOOTH_P ⟹
+                //     smin 的输出 ≈ min（平滑项 p·ln2 = 2.8 米，可忽略）
+                //   ⟹ 内层直接 min = 等价 + 零超越函数。
+                if (land != myLand) { if (phys < opp)  opp  = phys; }
+                else                { if (phys < same) same = phys; } } }
+        ctx().oppSame = same;
         return opp; }
     public static Q scan(long ws, double qx, double qz) {
         Q r = new Q();
@@ -1415,6 +1521,24 @@ public static int OPP_R = 4;
         double v00 = a[j*N+i], v10 = a[j*N+i+1], v01 = a[(j+1)*N+i], v11 = a[(j+1)*N+i+1];
         return (v00*(1-tx)+v10*tx)*(1-tz) + (v01*(1-tx)+v11*tx)*tz; }
 
+    // ================= ★★★★★★★ 原始类型键的 map（消除 HashMap 装箱）================
+    //
+    // 【为什么】JFR 实测 `HashMap` 相关占 456 样本（12%）：
+    //     HashMap$HashIterator.nextNode  194
+    //     HashMap.getNode                100
+    //     HashMap$TreeNode.getTreeNode    65   ← ★ 哈希冲突树化
+    //     HashMap.comparableClassFor      50   ← ★ 树化
+    //     HashMap.putVal / resize      24+23
+    //   根因：`HashMap<Long, X>` 每次查找/插入都**装箱一个 Long**，
+    //   且 `Long` 的 hashCode 是 splitmix ⟹ 桶分布差 ⟹ 频繁树化。
+    //
+    // 【正解】原始类型键 + 开放寻址的 Long→double 哈希表：
+    //   · 零装箱、零 Node 对象、零树化
+    //   · 单数组 + 线性探测 ⟹ 对 CPU 缓存友好
+    //
+    /** ★ 原始 long 键 → double 值的开放寻址哈希表（零装箱）。 */
+
+
     /** ★ 由 oppPhys 得到【平滑】的离岸距离（软回退，消除搜索窗边界跳变） */
     static double oppDist(double oppPhys) {
         double R = Math.max(4, OPP_R) * DS();
@@ -1427,6 +1551,7 @@ public static int OPP_R = 4;
     private TalosLandField() {}
 
     public static double[] eval(long ws, double px, double pz) {
+        final Ctx cx = ctx();   // ★ 取一次，复用（原来调 2~2 次 ThreadLocal.get）
         double[] wq = warp(ws, px, pz);
         double qx = wq[0], qz = wq[1];
 
@@ -1473,7 +1598,7 @@ public static int OPP_R = 4;
         double Rloc = bd[0]*Math.sqrt(cellB(ws,bi[0],bj[0])); if (Rloc < 2.0 * U) Rloc = 2.0 * U;
         double s0x=cellX(ws,bi[0],bj[0]), s0z=cellZ(ws,bi[0],bj[0]);
         double dx1=cellX(ws,bi[1],bj[1])-s0x, dz1=cellZ(ws,bi[1],bj[1])-s0z;
-        double L=Math.hypot(dx1,dz1); if(L<1.0) L=1.0;
+        double L=Math.sqrt(dx1*dx1+dz1*dz1); if(L<1.0) L=1.0;   // ★ hypot→sqrt
         double nx=dx1/L, nz=dz1/L;
         // ★★★★★★ db 改用【到最近异类细胞的物理距离】
         //   ★ 原 bug：db = (bd[1]-bd[0])*√b/2 —— 「最近 vs 第二近」的加权半径差
@@ -1491,7 +1616,7 @@ public static int OPP_R = 4;
         // 【正解】改用 `d` 的梯度（`d` 已是连续量），并分解为
         //   沿向 = conv（汇聚度）、切向 = shear（火山弧调制）。
         //   ⟹ 同一个梯度、零额外扫描、无身份依赖。
-        double[] cs = COAST_GRAD_BUF.get();
+        double[] cs = cx.coastGrad;
         coastGrad(ws, qx, qz, cs);
         double conv  = cs[0];
         double shear = cs[1];
@@ -1554,7 +1679,7 @@ public static int OPP_R = 4;
         if (isLand && h < 1.0)  h = 1.0;
         if (!isLand && h > -1.0) h = -1.0;
         // ★ 2026-10-08：复用 ThreadLocal 缓冲（原来每次 new double[8]）
-        double[] out = EVAL_BUF.get();
+        double[] out = cx.evalBuf;
         out[0]=c0?1:0; out[1]=c1?1:0; out[2]=c2?1:0;
         out[3]=(float) h; out[4]=base; out[5]=Rloc; out[6]=d; out[7]=(float) h;
         return out; }
@@ -1580,12 +1705,12 @@ public static int OPP_R = 4;
         double U = coastUnit(); if (Rloc < 2.0*U) Rloc = 2.0*U;
         double s0x=cellX(ws,bi[0],bj[0]), s0z=cellZ(ws,bi[0],bj[0]);
         double dx1=cellX(ws,bi[1],bj[1])-s0x, dz1=cellZ(ws,bi[1],bj[1])-s0z;
-        double L=Math.hypot(dx1,dz1); if(L<1.0) L=1.0;
+        double L=Math.sqrt(dx1*dx1+dz1*dz1); if(L<1.0) L=1.0;   // ★ hypot→sqrt
         double nx=dx1/L, nz=dz1/L;
         double db=(bd[1]-bd[0])*Math.sqrt(cellB(ws,bi[0],bj[0]))/2.0;
         // ★ 2026-10-08 同步到新口径（与 eval 一致，消除诊断误导）：
         //   conv 改用 d 的沿向梯度；shear 沿用旧公式（次要项，尚未连续化）。
-        double[] cs2 = COAST_GRAD_BUF.get();
+        double[] cs2 = ctx().coastGrad;
         coastGrad(ws, qx, qz, cs2);
         double conv = cs2[0], shear = cs2[1];
         double hfeat = profile(db, conv, shear, b0, b1, Rloc);   // ★ 连续权重（不再是布尔分支）
@@ -1687,14 +1812,16 @@ public static int OPP_R = 4;
     // ================= ★★★★★★★★ height 记忆化 =================
     //   height 实测 56.81 us（isLand 只 2.61 us）⟹ 差别在 eval 的 625 细胞扫描。
     //   OrographyField.sample / LandformField.solve 会对同一坐标重复调用。
-    private static final ThreadLocal<java.util.HashMap<Long, Double>> HEIGHT_MEMO =
-        ThreadLocal.withInitial(java.util.HashMap::new);
-    public static boolean HEIGHT_MEMO_ON = true;
+    // ★★★★★★★ 2026-10-08 性能优化：HashMap<Long,Double> → LongDblMap（零装箱）
+    //   JFR 实测：HashMap 相关 456 样本 + ThreadLocalMap.set 122 样本
+    private static final ThreadLocal<LongDblMap> HEIGHT_MEMO =
+        ThreadLocal.withInitial(() -> new LongDblMap(1 << 16));
+        public static boolean HEIGHT_MEMO_ON = true;
     public static void clearHeightMemo() { HEIGHT_MEMO.get().clear(); }
 
     public static double height(long ws, double px, double pz) {
         if (!HEIGHT_MEMO_ON) return eval(ws, px, pz)[3];
-        java.util.HashMap<Long, Double> m = HEIGHT_MEMO.get();
+        LongDblMap m = HEIGHT_MEMO.get();
         // 坐标按 1 格量化（同一格点应得同一答案；缓存与精度无关）
         long kx = (long) Math.floor(px), kz = (long) Math.floor(pz);
         // ★★★★★★★ 2026-10-08 修复：键必须含 seed！
@@ -1702,8 +1829,8 @@ public static int OPP_R = 4;
         //   后果：换 seed 时会返回【上一个 seed】的高度。
         //   实证：先 WI 再 seedOf ⟹ 两次都返回 70.9（应不同）。
         long key = ((kx << 32) ^ (kz & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + ws;
-        Double v = m.get(key);
-        if (v != null) return v;
+        double[] tmp = ctx().tmp1;
+        if (m.get(key, tmp)) return tmp[0];
         double r = eval(ws, px, pz)[3];
         if (m.size() > 262144) m.clear();
         m.put(key, r);

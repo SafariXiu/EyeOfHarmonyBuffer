@@ -438,6 +438,7 @@ public final class V2BiomeField {
         double[] w = new double[KINDS];
 
         long nsOro = 0, nsLand = 0, nsSea = 0;
+        V2BiomeSelect.awReset();   // ★ 每次 solve 重置细分计时（原来是累积的）
         long tA = System.nanoTime();
         // 1) 逐格算 16 通道候选权重（陆地口径，**全定义域，含 1 格 halo**）
         float[] chan = new float[n * KINDS];

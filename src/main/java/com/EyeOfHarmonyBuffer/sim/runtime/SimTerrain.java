@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.runtime;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.LongDblMap;
+
 import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
@@ -510,17 +512,19 @@ public final class SimTerrain {
     // ★★★★★★★ 2026-10-08 性能修复：**加记忆化**
     // 【为什么】`V2BiomeSelect.accumulateWeights` 对**每一格**都调本方法进 Snow 判定，
     //   而 `BiomeField.solve` = 81,000 格/次 ⟹ 大量重复计算。
-    private static final ThreadLocal<java.util.HashMap<Long, Double>> WMT_MEMO =
-        ThreadLocal.withInitial(java.util.HashMap::new);
+    // ★ 2026-10-08：HashMap<Long,Double> → LongDblMap（零装箱）
+    private static final ThreadLocal<LongDblMap> WMT_MEMO =
+        ThreadLocal.withInitial(() -> new LongDblMap(1 << 16));
+    private static final ThreadLocal<double[]> WMT_TMP = ThreadLocal.withInitial(() -> new double[1]);
     public static boolean WMT_MEMO_ON = true;
     public static void clearWmtMemo() { WMT_MEMO.get().clear(); }
 
     public static double warmestMonthTempK(int x, int z, int worldSeedInt) {
         if (!WMT_MEMO_ON) return warmestMonthTempK0(x, z, worldSeedInt);
-        java.util.HashMap<Long, Double> m = WMT_MEMO.get();
+        LongDblMap m = WMT_MEMO.get();
         long key = (((long) x << 32) ^ (z & 0xFFFFFFFFL)) * 0x9E3779B97F4A7C15L + worldSeedInt;
-        Double v = m.get(key);
-        if (v != null) return v;
+        double[] tmp = WMT_TMP.get();
+        if (m.get(key, tmp)) return tmp[0];
         double r = warmestMonthTempK0(x, z, worldSeedInt);
         if (m.size() > 262144) m.clear();
         m.put(key, r);

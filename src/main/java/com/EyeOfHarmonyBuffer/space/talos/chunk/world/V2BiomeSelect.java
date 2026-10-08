@@ -99,15 +99,23 @@ public final class V2BiomeSelect {
      * 同上，但可强制按"陆地"口径算（asLand=true）。
      * LUT 求解时对**每一格**都算陆地候选（用于海岸线精确取用），海格另存 OCEAN/SHELF。
      */
+    /** 诊断计时（纳秒）：[0]=Coords.sample [1]=Landform.sample [2]=warmestMonthTempK [3]=coastDist */
+    public static final long[] AW_NS = new long[4];
+    public static void awReset() { java.util.Arrays.fill(AW_NS, 0L); }
+
     public static double accumulateWeights(int x, int z, int worldSeedInt,
                                             OrographyField.OroSample oro, boolean asLand,
                                             double[] out) {
         if (!asLand) {
+            long _c0 = System.nanoTime();
             double cd = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
+            AW_NS[3] += System.nanoTime() - _c0;
             out[(cd < SHELF_BLOCKS ? Kind.SHELF : Kind.OCEAN).ordinal()] += 1.0;
             return 1.0;
         }
+        long _c1 = System.nanoTime();
         ClimateCoords.Coords c = ClimateCoords.sample(x, z, worldSeedInt, oro);
+        AW_NS[0] += System.nanoTime() - _c1;
 
         // 坐标夹到带心覆盖范围内：否则极端值（如 moist=1.0 超出末端带心+跨度）会
         // 一个候选都匹配不到 → argmax 落到数组默认值 0（= OCEAN），陆地列被误判成海。
@@ -143,7 +151,9 @@ public final class V2BiomeSelect {
         }
 
         // Tier-2：地貌变体 —— 唯一权威是 LandformField（地形同源，不再自己定阈值）
+        long _c2 = System.nanoTime();
         LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+        AW_NS[1] += System.nanoTime() - _c2;
         double mtnW = lf.mtnAmt;
         // 高山 = 真山 × 冷 × **常年有雪**。
         // ⚠ 审计 D73（2026-09-15）：这一项原来是**几何**雪线 `V2TerrainGen.snowLineY(z)` ——
@@ -153,10 +163,12 @@ public final class V2BiomeSelect {
         //   §98 改雪线时写的理由（表达不出「沿海 vs 内陆」「暖流海岸」）对群系层**逐字适用**。
         //   ⇒ 现在**共用同一个判据**（`SimTerrain.SNOW_FROM_TEMP` 开关也一起尊重），
         //     单一事实来源；`SNOW_FROM_TEMP = false` 时逐位回退到原来的几何式（回滚点）。
+        long _c3 = System.nanoTime();
         double snow = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP
             ? (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.warmestMonthTempK(x, z, worldSeedInt)
                 < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_T ? 1.0 : 0.0)
             : ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, lf.h0);
+        AW_NS[2] += System.nanoTime() - _c3;
         double alpineW = mtnW * ss(ALPINE_TEMP_HI, ALPINE_TEMP_LO, temp) * snow;
         double mtnOnlyW = mtnW - alpineW;
         double platW = lf.plat * (1.0 - mtnW);
