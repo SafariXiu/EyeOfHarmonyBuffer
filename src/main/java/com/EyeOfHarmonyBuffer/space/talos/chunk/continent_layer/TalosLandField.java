@@ -468,6 +468,29 @@ public static int OPP_R = 4;
     public static double OROG_MAX_M = 7500.0;
 
     /**
+     * ★ 造山项的【海岸淡化尺度】（米）。
+     *
+     * <h3>为什么必须有</h3>
+     * 原实现：{@code if (h > 0.0) h += orogenyM(...)} —— 造山项【没有任何海岸淡化】。
+     * <ul>
+     *   <li>{@code sig 约等于 0} 时 {@code coastProfileCF(0) = 0} ⟹ {@code h = 0} ⟹ 不加造山 ⟹ <b>0 米</b></li>
+     *   <li>{@code sig} 只要大于 0 一点点 ⟹ {@code h > 0} ⟹ <b>加 7500 x orogeny01</b></li>
+     * </ul>
+     * 实测（[131]）：在造山带里 {@code orogeny01 = 0.185} 的海岸线上，
+     * <b>1 格水平距离内高度从 0 米跳到 1389 米</b>；全图普查的最大跳变是
+     * <b>74.4 格（约 4130 米）</b>，且跳变高度与 {@code orogeny01} 严格正相关。
+     * 这就是用户报的<b>「海岸墙」</b>。
+     *
+     * <p>★ 注意：这个墙<b>与 LEM 无关</b> —— 实测 LEM 开与关的墙<b>完全一样大</b>（都是 74.4 格）。
+     *
+     * <p>淡化做法与 NA_AMP 同款：{@code taper = smoothstep(0, OROG_COAST_TAPER_M, h)}，
+     * 即海岸处造山贡献到 0，离岸 {@code OROG_COAST_TAPER_M} 米以上才全量。
+     *
+     * <p>⚠ 改它会影响<b>全世界</b>的海岸地形 ⟹ 必须重新标定高度分布。
+     */
+    public static volatile double OROG_COAST_TAPER_M = 300.0;
+
+    /**
      * 造山剖面的形状指数（幂）。1 = 线性；越大 ⟹ 山体越集中于脊线、山麓越缓。
      *
      * <p><b>为什么需要</b>：{@code 边界核 × 汇聚度} 是两个 [0,1] 掩码的乘积，
@@ -500,7 +523,19 @@ public static int OPP_R = 4;
      */
     public static double OROG_BAND_MIN = 0.30;
 
-    /** 造山强度 [0,1] = 边界核（宽度随汇聚度变化） × 板块汇聚度，再取 OROG_GAMMA 次幂。 */
+    /**
+     * 造山强度 [0,1] = 边界核（宽度随汇聚度变化） × 板块汇聚度，再取 OROG_GAMMA 次幂。
+     *
+     * <p>⚠⚠ <b>本方法【不区分陆海】</b>：实测海上也有 21.19% 的点 orogeny01 大于 0.01，
+     * 最大可达 0.9999。调用方<b>必须自己做陆上门控</b>，见 height0：
+     * <pre>
+     *   double h = coastProfileCF(signedCoastDistCF(ws, px, pz));
+     *   if (OROG_ON &amp;&amp; h &gt; 0.0) h += orogenyM(ws, px, pz);   // 这个 h 大于 0 就是门控
+     * </pre>
+     * ★ 若直接 base + 7500*orogeny01 而不门控，会把约 <b>6%</b> 的海点抬到海平面以上，
+     * <b>海陆分布会变</b>（本会话的 Vl.java 探针就踩过这个坑，两张图的陆海对不上）。
+     * <p>生产路径是安全的：OrographyField.sampleRaw 与 height0 都在陆上分支内调用。
+     */
     public static double orogeny01(long ws, double px, double pz) {
         double c01 = convergence01(ws, px, pz);
         if (c01 <= 0.0) return 0.0;
@@ -2138,7 +2173,17 @@ public static int OPP_R = 4;
         if (HEIGHT_FROM_CF) {
             double h = coastProfileCF(signedCoastDistCF(ws, px, pz));
             // ★ 造山只加在【陆地】（h > 0 = 海岸剖面判陆）。海上不加。
-            if (OROG_ON && h > 0.0) h += orogenyM(ws, px, pz);
+            // ★★ 并且做【海岸淡化】（[131]）：否则造山会在海岸线上跳变式全量加入，
+            //    实测在造山带里 1 格水平距离内高度跳 1389 米 = 海岸墙。
+            if (OROG_ON && h > 0.0) {
+                double ot = OROG_COAST_TAPER_M > 0.0 ? smoothstep(0.0, OROG_COAST_TAPER_M, h) : 1.0;
+                if (ot > 0.0) h += orogenyM(ws, px, pz) * ot;
+            }
+            // ★★★ 唯一接入点：地貌演化层（LEM / stream power）。
+            //   它把「抬升场」演化到稳态，得到自带树枝状河谷网络的地形。
+            //   TalosLandErosion.ENABLED 默认 false ⟹ 这一行不执行 ⟹ 逐位回到现状。
+            //   ⚠ 接入点【唯一】⟹ 气候层、地形层、水系自动全部一致（不会重演多口径问题）。
+            if (TalosLandErosion.ENABLED && h > 0.0) h = TalosLandErosion.height(ws, px, pz);
             return h; }
         return eval(ws, px, pz)[3]; }
 

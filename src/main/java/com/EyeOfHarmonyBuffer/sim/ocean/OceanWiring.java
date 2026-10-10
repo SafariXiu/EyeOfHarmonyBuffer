@@ -36,6 +36,9 @@ public final class OceanWiring {
         OceanField.install(worldSeedInt);
         // ★ §7503：水系场也跟同一个世界走。这里【只清缓存 + 记种子】，不产生气候效应。
         com.EyeOfHarmonyBuffer.sim.hydro.WaterField.install(worldSeedInt);
+        // ★★★ 地貌演化层（LEM）也跟同一个世界走（记种子 + 清瓦片缓存）。
+        //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
+        com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.install(worldSeedInt);
         if (!OceanField.ENABLED) return;
         // ★★★★★ §7556：探针模式跳过预热。
         //

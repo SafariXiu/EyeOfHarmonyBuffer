@@ -298,8 +298,51 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
         putBlock(blocks, meta, localX, h, localZ, surface);
 
-        // V2 水场 v1：陆地默认无水（无湖/河授权），水面只出现在海洋列（T3.1 后续接 basinMask）。
+        // ★★★ 水系：河 / 湖放水（TalosLandErosion.ENABLED 时才执行；关掉逐位回到现状）
+        //   分类优先级：海（本函数不管）> 湖 > 河 > 地形
+        //   水面 = round(filled)（Priority-Flood 的水力面，沿流向单调不增 -> 水不倒流）
+        //   河床 = 水面 - 河深；先把 [河床+1, 水面] 挖空，再填水。
+        if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.ENABLED) {
+            // ★ 用【本函数拿到的世界种子】，不用 TalosLandErosion.installedSeed()。
+            //   实测踩过：某个占位世界 onWorld(0) 把 installedSeed 覆盖成 0，
+            //   于是这里会拿 0 去查询 ⟹ 水系全空。缓存键含 seed，直接用 seed 最稳。
+            final long ws = (long) seed;
+            {
+                final double surf = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        .riverSurfaceBlocks(ws, worldX, worldZ);
+                if (!Double.isNaN(surf)) {
+                    final int sy = (int) Math.round(surf);
+                    double bedF;
+                    if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                            .isLake(ws, worldX, worldZ)) {
+                        bedF = surf - com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                                .lakeDepthBlocks(ws, worldX, worldZ);
+                    } else {
+                        final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                                .channelAccAt(ws, worldX, worldZ);
+                        bedF = surf - com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                                .riverDepth(acc);
+                    }
+                    final int by = (int) Math.floor(bedF);
+                    if (sy > by) {
+                        final int top = Math.max(h, sy);
+                        for (int y = by + 1; y <= top; y++) {
+                            if (y < 1 || y >= worldHeight) continue;
+                            putBlock(blocks, meta, localX, y, localZ, AIR_PAIR);
+                        }
+                        for (int y = by + 1; y <= sy; y++) {
+                            if (y < 1 || y >= worldHeight) continue;
+                            putBlock(blocks, meta, localX, y, localZ, WATER_PAIR);
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    /** 放水用的常量对（避免每列分配）。 */
+    private static final BlockMetaPair AIR_PAIR = new BlockMetaPair(Blocks.air, (byte) 0);
+    private static final BlockMetaPair WATER_PAIR = new BlockMetaPair(Blocks.water, (byte) 0);
 
     /** 列坡度估计（blocks/block）：用 ±4 格的合成高度差。仅雪线附近列调用（成本可控）。 */
     private double columnSlope(int worldX, int worldZ, int seed, int seaLevel) {

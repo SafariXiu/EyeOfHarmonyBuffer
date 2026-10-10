@@ -57,6 +57,17 @@ public class CommandTalosTp extends CommandBase {
     /** 海岸判据：|coastDist| 小于此值算「海岸」。 */
     private static final double COAST_BAND = 2_000.0;
 
+    /** ★ 河流类目的搜索步长（格）。河宽只有 3 到 45 格，用 250 会大量漏掉。 */
+    private static final int RIVER_STEP = 50;
+    /** ★ 河流类目的默认搜索半径（格）= 20 km。这个范围内几乎必有河。 */
+    private static final int RIVER_RADIUS = 20_000;
+    /** ★ 干流判据：汇流面积（平方公里）大于等于它算「主干」，否则算「支流」。 */
+    private static final double TRUNK_ACC = 500.0;
+
+    /** 是否河流类目。 */
+    private static boolean isRiverKind(String w) {
+        return "river".equals(w) || "trunk".equals(w) || "tributary".equals(w) || "lake".equals(w); }
+
     @Override
     public String getCommandName() {
         return "talos_tp";
@@ -64,7 +75,15 @@ public class CommandTalosTp extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/talos_tp <lowland|hill|plateau|mountain|peak|high|low|coast|shelf|ocean|any> [半径] [高度(米)]";
+        return "/talos_tp <lowland|hill|plateau|mountain|peak|high|low|coast|shelf|ocean|any"
+            + " | river|trunk|tributary|lake> [半径] [阈值]"
+            + "\n  ★ 水系类目（需 TalosLandErosion.ENABLED）："
+            + "\n    river      任意河道"
+            + "\n    trunk      主干（汇流面积 大于等于 " + (int) TRUNK_ACC + " 平方公里）"
+            + "\n    tributary  支流（汇流面积 小于 " + (int) TRUNK_ACC + " 平方公里）"
+            + "\n    lake       湖面"
+            + "\n  河流类目默认半径 " + (RIVER_RADIUS / 1000) + " km、步长 " + RIVER_STEP + " 格；"
+            + "\n  第二参数若是公里数则当半径（乘 1000）。";
     }
 
     @Override
@@ -85,9 +104,13 @@ public class CommandTalosTp extends CommandBase {
         int worldSeedInt = TalosSeed.of(world);
 
         String what = args[0].toLowerCase();
-        int radius = DEFAULT_RADIUS;
+        // ★ 河流类目用细步长 + 小默认半径（河宽 3 到 45 格，250 格步长会漏）
+        final int step = isRiverKind(what) ? RIVER_STEP : STEP;
+        int radius = isRiverKind(what) ? RIVER_RADIUS : DEFAULT_RADIUS;
         if (args.length >= 2) {
-            radius = parseIntBounded(sender, args[1], STEP, MAX_RADIUS);
+            radius = parseIntBounded(sender, args[1], step, MAX_RADIUS);
+            // 河流类目：第二参数若 <= 2000 视为【公里】，乘 1000
+            if (isRiverKind(what) && radius <= 2000) { radius *= 1000; }
         }
         // high/low 的阈值（米）；缺省 2000
         double threshold = 2000.0;
@@ -102,12 +125,21 @@ public class CommandTalosTp extends CommandBase {
         final int px = MathHelper.floor_double(player.posX);
         final int pz = MathHelper.floor_double(player.posZ);
         sender.addChatMessage(new ChatComponentText(String.format(
-            "[TalosTp] 从 (%d, %d) 开始螺旋搜索 \"%s\"，半径 %d 格，步长 %d...",
-            px, pz, what, radius, STEP)));
+            "[TalosTp] 从 (%d, %d) 开始螺旋搜索 \"%s\"，半径 %d 格（%d km），步长 %d...",
+            px, pz, what, radius, radius / 1000, step)));
 
+        dbgTried = 0; dbgHit = 0; dbgTileNull = 0; dbgErr = 0; dbgFirstErr = null;
         long t0 = System.nanoTime();
-        int[] hit = spiralSearch(px, pz, radius, what, threshold, worldSeedInt);
+        int[] hit = spiralSearch(px, pz, radius, what, threshold, worldSeedInt, step);
         long ms = (System.nanoTime() - t0) / 1_000_000L;
+        if (isRiverKind(what)) {
+            sender.addChatMessage(new ChatComponentText(String.format(
+                "[TalosTp] ★ 诊断: 尝试 %d 点  命中 %d  installedSeed=%d  worldSeed=%d  seedMismatch=%d  异常=%d%s",
+                dbgTried, dbgHit,
+                com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.installedSeed(),
+                worldSeedInt, dbgTileNull, dbgErr,
+                dbgFirstErr == null ? "" : ("  首个异常: " + dbgFirstErr))));
+        }
 
         if (hit == null) {
             sender.addChatMessage(new ChatComponentText(String.format(
@@ -133,6 +165,32 @@ public class CommandTalosTp extends CommandBase {
                 "[TalosTp] 该点: land=%s kind=%d elev01=%.3f relief01=%.3f belt01=%.3f coastDist=%.0f",
                 o.isLand ? "陆" : "海", o.kind, o.elevation01, o.relief01, o.beltMask01, o.coastDist)));
         } catch (Throwable ignored) { }
+        // ★ 水系类目：补一份水系信息（宽度 / 汇流面积 / 水面试探）
+        try {
+            final long ews = (long) worldSeedInt;
+            final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .channelAccAt(ews, tx, tz);
+            final double w = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .riverWidthBlocks(ews, tx, tz);
+            final double surf = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .riverSurfaceBlocks(ews, tx, tz);
+            final double dep = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .riverDepth(acc);
+            final boolean lake = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .isLake(ews, tx, tz);
+            if (w > 0.0 || lake) {
+                sender.addChatMessage(new ChatComponentText(String.format(
+                    "[TalosTp] ★ 水系: %s  河宽=%.1f 格  汇流=%.0f 平方公里  河深=%.1f 格  水面y=%s  湖深=%.1f 格",
+                    lake ? "湖" : (acc >= TRUNK_ACC ? "主干" : "支流"),
+                    w, acc, dep,
+                    Double.isNaN(surf) ? "-" : String.valueOf((int) Math.round(surf)),
+                    com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                            .lakeDepthBlocks(ews, tx, tz))));
+            } else {
+                sender.addChatMessage(new ChatComponentText(
+                    "[TalosTp] 该点不是水系（可能 LEM 未开启或该点恰在岸边）。"));
+            }
+        } catch (Throwable ignored) { }
         sender.addChatMessage(new ChatComponentText("提示：用 /talos_here 看完整高度分解。"));
     }
 
@@ -141,6 +199,7 @@ public class CommandTalosTp extends CommandBase {
         switch (what) {
             case "lowland": case "hill": case "plateau": case "mountain": case "peak":
             case "high": case "low": case "coast": case "shelf": case "ocean": case "any":
+            case "river": case "trunk": case "tributary": case "lake":
                 return true;
             default:
                 return false;
@@ -152,21 +211,22 @@ public class CommandTalosTp extends CommandBase {
      * <p>「一圈」= 正方形环。环内按周长顺序遍历，保证结果近似「最近」。
      */
     private static int[] spiralSearch(int px, int pz, int radius, String what,
-                                      double threshold, int seed) {
-        int maxRing = radius / STEP;
+                                      double threshold, int seed, int step) {
+        final int st = Math.max(1, step);
+        int maxRing = radius / st;
         // 先看原点
         if (matches(px, pz, what, threshold, seed)) { return new int[]{ px, pz }; }
         for (int ring = 1; ring <= maxRing; ring++) {
-            int d = ring * STEP;
+            int d = ring * st;
             // 上边 + 下边
             for (int i = -ring; i <= ring; i++) {
-                int x = px + i * STEP;
+                int x = px + i * st;
                 if (matches(x, pz - d, what, threshold, seed)) { return new int[]{ x, pz - d }; }
                 if (matches(x, pz + d, what, threshold, seed)) { return new int[]{ x, pz + d }; }
             }
             // 左边 + 右边（去掉角，避免重复）
             for (int j = -ring + 1; j <= ring - 1; j++) {
-                int z = pz + j * STEP;
+                int z = pz + j * st;
                 if (matches(px - d, z, what, threshold, seed)) { return new int[]{ px - d, z }; }
                 if (matches(px + d, z, what, threshold, seed)) { return new int[]{ px + d, z }; }
             }
@@ -174,8 +234,46 @@ public class CommandTalosTp extends CommandBase {
         return null;
     }
 
+    /** ★ 诊断计数器（每次搜索重置）。 */
+    private static int dbgTried = 0, dbgHit = 0, dbgTileNull = 0, dbgErr = 0;
+    private static String dbgFirstErr = null;
+
     /** 单点判据。 */
     private static boolean matches(int x, int z, String what, double threshold, int seed) {
+        if (isRiverKind(what)) {
+            dbgTried++;
+            try {
+                boolean r = matchesRiver(x, z, what, seed);
+                if (r) dbgHit++;
+                return r;
+            } catch (Throwable t) {
+                dbgErr++;
+                if (dbgFirstErr == null) { dbgFirstErr = t.getClass().getSimpleName() + ": " + t.getMessage(); }
+                return false;
+            }
+        }
+        return matchesPlain(x, z, what, threshold, seed);
+    }
+
+    private static boolean matchesRiver(int x, int z, String what, int seed) {
+        if (!com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.ENABLED) {
+            return false; }
+        final long ws = (long) seed;
+        if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.installedSeed()
+                != seed) { dbgTileNull++; return false; }
+        if ("lake".equals(what)) {
+            return com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .isLake(ws, x, z); }
+        if (!com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                .isRiver(ws, x, z)) { return false; }
+        if ("river".equals(what)) { return true; }
+        final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                .accAt(ws, x, z);
+        if ("trunk".equals(what)) { return acc >= TRUNK_ACC; }
+        return acc < TRUNK_ACC;                 // tributary
+    }
+
+    private static boolean matchesPlain(int x, int z, String what, double threshold, int seed) {
         OrographyField.OroSample o = OrographyField.sample(x, z, seed);
         switch (what) {
             case "lowland":  return o.isLand && o.kind == OrographyField.KIND_LOWLAND;
