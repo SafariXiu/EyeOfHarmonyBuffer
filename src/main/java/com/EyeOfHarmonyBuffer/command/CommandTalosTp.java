@@ -63,6 +63,8 @@ public class CommandTalosTp extends CommandBase {
     private static final int RIVER_RADIUS = 20_000;
     /** ★ 干流判据：汇流面积（平方公里）大于等于它算「主干」，否则算「支流」。 */
     private static final double TRUNK_ACC = 500.0;
+    /** ★ 吸附半径（格）：搜索点离河道中心线小于它就算命中。接入蜿蜒后必须要，否则会漏。 */
+    private static final double SNAP_BLOCKS = 250.0;
 
     /** 是否河流类目。 */
     private static boolean isRiverKind(String w) {
@@ -148,7 +150,18 @@ public class CommandTalosTp extends CommandBase {
             return;
         }
 
-        final int tx = hit[0], tz = hit[1];
+        int tx = hit[0], tz = hit[1];
+        // ★★ 水系类目：吸附到【中心线上】的点 —— 保证落点一定在水上
+        if (isRiverKind(what)) {
+            double[] pt = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .nearestChannelPoint((long) worldSeedInt, tx, tz);
+            if (pt != null) {
+                sender.addChatMessage(new ChatComponentText(String.format(
+                    "[TalosTp] ★ 吸附到中心线: (%d, %d) -> (%.0f, %.0f)  汇流 %.0f 平方公里",
+                    tx, tz, pt[0], pt[1], pt[2])));
+                tx = (int) Math.floor(pt[0]);
+                tz = (int) Math.floor(pt[1]);
+            } }
         int y = world.getTopSolidOrLiquidBlock(tx, tz);
         if (y <= 0) { y = LandformField.SEA_LEVEL + 1; }
         y = Math.min(y, 250);   // 防越界
@@ -264,8 +277,11 @@ public class CommandTalosTp extends CommandBase {
         if ("lake".equals(what)) {
             return com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                     .isLake(ws, x, z); }
-        if (!com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
-                .isRiver(ws, x, z)) { return false; }
+        // ★ 接入蜿蜒后，河道格的中心可能【不在河上】（中心线横移最多 120 格）。
+        //   所以这里用「到中心线的距离 <= 吸附半径」判定，而不是 isRiver(格中心)。
+        final double cd = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                .channelDistance(ws, x, z);
+        if (!(cd <= SNAP_BLOCKS)) { return false; }
         if ("river".equals(what)) { return true; }
         final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                 .accAt(ws, x, z);

@@ -120,7 +120,77 @@ public final class TalosLandErosion {
     public static volatile double WIDTH_MAX = 60.0;
     /** ★ 河道段内横向鼓出振幅（格）—— 让 MC 尺度的 1 km 直线段有蜿蜒感。
      *  必须是【段内鼓出】形状（端点处为 0），否则「到折线的距离场」在格边界断裂。 */
-    public static volatile double MEANDER_AMP = 20.0;   // 已废弃（常数幅度会撕裂窄河），保留仅为兼容
+    // ==================== ★ 河道蜿蜒（谱合成 / 相位积分）====================
+    //
+    // off(s) = A(s) * sin(Phi(s))
+    //     lambda(s) = MEANDER_LAMK * W(s)                  （谱峰波长，Leopold & Wolman: 11 W）
+    //     Phi(s)    = 2 pi * Integral ds / lambda(s)       （★ 相位必须积分：lambda 随河宽变）
+    //     A(s)      = MEANDER_AMP * W(s) * (1 + MOD*sin(2 pi s/(MODW*lambda) + psi))
+    //
+    // ★ 为什么不用单一正弦：真实河流的蜿蜒【非周期、幅度变化、波长变化】。
+    //   因为 lambda 正比于【局部河宽】，而河宽沿程从 2 格变到 60 格（30 倍），
+    //   相位累积极不均匀 ⟹ 波形天然非周期 ✓ 再叠加慢变幅度调制给出"有的弯大有的弯小"。
+    //
+    // ★ 为什么是【弧长的函数】：跨格天然连续（顶点不需要固定）⟹ 单一中心线口径。
+    //
+    // ★ 与旧 MEANDER_AMP 的区别：旧的是【常数 20 格 + 段长周期的 bulge + 逐格翻符号】，
+    //   那会让窄河消失、并造成每 1000 格一次的"呼吸"。新版三个毛病都没有。
+
+    /** ★ 总开关。关掉 ⟹ off 恒为 0 ⟹ 逐位回到直线中心线。 */
+    public static volatile boolean MEANDER_ENABLED = true;
+    /** 蜿蜒幅度 = MEANDER_AMP × 河宽（真实蜿蜒带宽度是河宽的 2 到 5 倍）。 */
+    public static volatile double MEANDER_AMP = 2.0;
+    /** 谱峰波长 = MEANDER_LAMK × 河宽（Leopold & Wolman 实测 10 到 14）。 */
+    public static volatile double MEANDER_LAMK = 11.0;
+    /** 波长下限（格）。防止小河的 lambda 落到亚格尺度（W=2 ⟹ 22 格太密）。 */
+    public static volatile double MEANDER_LAM_MIN = 40.0;
+    /** 幅度调制深度（0 = 不调制）。 */
+    public static volatile double MEANDER_MOD = 0.45;
+    /** 调制波长 = MEANDER_MODW × lambda。 */
+    public static volatile double MEANDER_MODW = 3.7;
+    /** ★ 每段折线的采样数（精测阶段用）。越大越准，成本线性。 */
+    public static volatile int MEANDER_SAMPLES = 12;
+
+    // ---- ★ 顶点平滑（Taubin，去掉 D8 的 45 度折角）----
+    /** 平滑轮数（每轮一次 λ 步 + 一次 μ 步）。 */
+    public static volatile int SMOOTH_ROUNDS = 4;
+    /** Taubin λ（正向平滑系数）。 */
+    public static volatile double SMOOTH_LAMBDA = 0.5;
+    /** Taubin μ（反向收缩补偿，必须为负且 |mu| 略大于 lambda）。 */
+    public static volatile double SMOOTH_MU = -0.53;
+
+    private static final ThreadLocal<int[]>    CAND_K = new ThreadLocal<int[]>() {
+        protected int[] initialValue() { return new int[3]; } };
+    private static final ThreadLocal<double[]> CAND_D = new ThreadLocal<double[]>() {
+        protected double[] initialValue() { return new double[3]; } };
+    /** ★ channelDistance 顺手记下的【中心线上最近点】：{x, z, acc}。 */
+    private static final ThreadLocal<double[]> TL_PT = new ThreadLocal<double[]>() {
+        protected double[] initialValue() { return new double[3]; } };
+
+    /**
+     * ★★★ 找【中心线上】离 (px,pz) 最近的点。返回 {x, z, acc}（世界坐标），找不到返回 null。
+     *
+     * <h3>为什么需要它</h3>
+     * 接入蜿蜒之后，中心线会横移最多 MEANDER_AMP x 河宽（主干可达 120 格）。
+     * 于是<b>河道格的中心不再在河上</b> —— 在格中心调 {@link #isRiver} 会返回 false。
+     * {@code /talos_tp} 正是按格中心判定的，会「定位到河道格却没有水」。
+     *
+     * <p>语义区分：
+     * <ul>
+     *   <li>{@code isRiver(x,z)} = 「这个点在不在水上」 —— <b>语义没变，是对的</b></li>
+     *   <li>{@code nearestChannelPoint(x,z)} = 「最近的中心线点在哪」 —— <b>TP 用这个</b></li>
+     * </ul>
+     */
+    public static double[] nearestChannelPoint(long ws, double px, double pz) {
+        double[] pt = TL_PT.get();
+        pt[2] = 0.0;
+        double d = channelDistance(ws, px, pz);
+        if (d == Double.MAX_VALUE || pt[2] <= 0.0) return null;
+        return new double[]{ pt[0], pt[1], pt[2] };
+    }
+
+    /** 已废弃：旧常数幅度会撕裂窄河，保留仅为兼容。 */
+    public static volatile double MEANDER_AMP_OLD = 20.0;
     /**
      * ★ 段内横向蜿蜒幅度【相对河宽】的比例（0 到 0.5）。
      *
@@ -132,7 +202,7 @@ public final class TalosLandErosion {
      * <p>改成比例后：河宽 1.7 格 ⟹ 偏移 ±0.4 格；河宽 60 格 ⟹ 偏移 ±15 格。
      * <b>任何河宽下都不会消失，也不会胀。</b>
      */
-    public static volatile double MEANDER_FRAC = 0.25;
+    public static volatile double MEANDER_FRAC_UNUSED = 0.25;   // 已被 MEANDER_AMP 取代
 
     // ==================== 河深 ====================
 
@@ -317,8 +387,23 @@ public final class TalosLandErosion {
         double oz = t.tz * outBlk - BUFFER_CELLS * STEP_BLK;
         int gi = (int) Math.floor((px - ox) / STEP_BLK);
         int gj = (int) Math.floor((pz - oz) / STEP_BLK);
-        double best = Double.MAX_VALUE;
-        double bestAcc = 0.0;
+        // ==================== 两阶段：粗筛 + 精测 ====================
+        //
+        // ★★★ 为什么必须这么做（实测踩过的坑）：
+        //   曾经写成  de = dist − w/2 − off  ——  那是把 off 当成【宽度修正】，
+        //   而 off 的真实语义是【中心线横移】。后果：
+        //       off > 0 时 de = dist − w/2 − off  变得很负 ⟹ 河道胀到 (w + 2*off) 宽
+        //       off < 0 时 de 恒为正               ⟹ 河道【整段消失】
+        //   主干 A = 2*60 = 120 格 ⟹ 出图是一节一节的团块 + 扇形碎片。
+        //
+        //   正确做法：off 移动【线本身】，然后测到【移动后的折线】的距离。
+        //   为了不把 25 段 x NS 次采样全算一遍，分两阶段：
+        //       ① 对 5x5 邻域的 25 段做【直线】粗筛（便宜），保留最好的 CANDS 段
+        //       ② 只对候选段做【密集采样折线】精测
+        final int CANDS = 3;
+        int[] candK = CAND_K.get();
+        double[] candD = CAND_D.get();
+        int nCand = 0;
         for (int dj = -2; dj <= 2; dj++) {
             for (int di = -2; di <= 2; di++) {
                 int i = gi + di, j = gj + dj;
@@ -331,31 +416,89 @@ public final class TalosLandErosion {
                 if (d < 0) continue;
                 int ni = i + DX[d], nj = j + DZ[d];
                 if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
-                double ax = ox + (i + 0.5) * STEP_BLK, az = oz + (j + 0.5) * STEP_BLK;
-                double bx = ox + (ni + 0.5) * STEP_BLK, bz = oz + (nj + 0.5) * STEP_BLK;
+                // ★ 段两端用【Taubin 平滑后的顶点】⟹ 消除 D8 的 45 度折角
+                double ax, az, bx, bz;
+                final int oa2 = (t.chOrd != null) ? t.chOrd[k] : -1;
+                final int ob2 = (t.chOrd != null) ? t.chOrd[nj * W + ni] : -1;
+                if (oa2 >= 0 && ob2 >= 0) {
+                    ax = t.mVX[oa2]; az = t.mVZ[oa2];
+                    bx = t.mVX[ob2]; bz = t.mVZ[ob2];
+                } else {
+                    ax = ox + (i + 0.5) * STEP_BLK; az = oz + (j + 0.5) * STEP_BLK;
+                    bx = ox + (ni + 0.5) * STEP_BLK; bz = oz + (nj + 0.5) * STEP_BLK;
+                }
                 double vx = bx - ax, vz = bz - az;
                 double vl = vx * vx + vz * vz;
-                double tt = vl > 0.0 ? ((px - ax) * vx + (pz - az) * vz) / vl : 0.0;
+                if (vl <= 0.0) continue;
+                double tt = ((px - ax) * vx + (pz - az) * vz) / vl;
                 tt = tt < 0.0 ? 0.0 : (tt > 1.0 ? 1.0 : tt);
                 double qx = ax + vx * tt - px, qz = az + vz * tt - pz;
                 double dist = Math.sqrt(qx * qx + qz * qz);
-                // ---- 段内横向蜿蜒 ----
-                // ★★★ 幅度必须【正比于河宽】，不能是常数！
-                //   实测踩过的坑：MEANDER_AMP 是常数 20 格，而 acc=3 的支流只有 1.7 格宽
-                //   ⟹ sign = +1 时河道胀到 40 格，sign = -1 时 de 恒为正 ⟹ 河道【完全消失】。
-                //   而 bulge = 4t(1-t) 在每个格中心为 0、段中间为 1，sign 又逐格翻转，
-                //   ⟹ 河道【每 1 个 LEM 格（1000 格）就消失又出现一次】——
-                //     这正是用户报的「几百格一次，越来越窄然后突然放大」。
-                final double wK = widthOf(t.acc[k]);
-                // ★★★ 偏移必须是【位置的连续函数】，绝不能带【段内起伏】。
-                //   实测踩过的坑：原来用 bulge = 4t(1-t)，它的周期是【1 个 LEM 格 = 1000 格】，
-                //   于是河道中心线每 1000 格就左右摆一次 —— 从固定视角看就是
-                //   「越来越窄然后突然放大」，周期约 1000 格（用户报的"几百格一次"）。
-                //   改成纯位置的正弦（周期约 18 km）后：格边界处天然连续（它是位置的函数），
-                //   而且没有 1 km 周期的呼吸。
-                double off = (MEANDER_FRAC * wK) * Math.sin(px * 0.00035 + pz * 0.00027);
-                double de = dist - wK * 0.5 - off;
-                if (de < best) { best = de; bestAcc = t.acc[k]; }
+                double rough = dist - widthOf(t.acc[k]) * 0.5;
+                // 插入候选（按 rough 升序，最多 CANDS 个）
+                int ins = nCand;
+                for (int c = 0; c < nCand; c++) { if (rough < candD[c]) { ins = c; break; } }
+                if (ins < CANDS) {
+                    int lim = Math.min(nCand, CANDS - 1);
+                    for (int c = lim; c > ins; c--) { candD[c] = candD[c-1]; candK[c] = candK[c-1]; }
+                    candK[ins] = k; candD[ins] = rough;
+                    if (nCand < CANDS) nCand++;
+                }
+            }
+        }
+        double best = Double.MAX_VALUE;
+        double bestAcc = 0.0;
+        final int NS = MEANDER_SAMPLES;
+        for (int c = 0; c < nCand; c++) {
+            final int k = candK[c];
+            final int i = k % W, j = k / W;
+            final int d = t.dir[k];
+            final int ni = i + DX[d], nj = j + DZ[d];
+            double ax2, az2, bx2, bz2;
+            final int oa3 = (t.chOrd != null) ? t.chOrd[k] : -1;
+            final int ob3 = (t.chOrd != null) ? t.chOrd[nj * W + ni] : -1;
+            if (oa3 >= 0 && ob3 >= 0) {
+                ax2 = t.mVX[oa3]; az2 = t.mVZ[oa3]; bx2 = t.mVX[ob3]; bz2 = t.mVZ[ob3];
+            } else {
+                ax2 = ox + (i + 0.5) * STEP_BLK; az2 = oz + (j + 0.5) * STEP_BLK;
+                bx2 = ox + (ni + 0.5) * STEP_BLK; bz2 = oz + (nj + 0.5) * STEP_BLK;
+            }
+            final double ax = ax2, az = az2, bx = bx2, bz = bz2;
+            final double vx = bx - ax, vz = bz - az;
+            final double vl = vx * vx + vz * vz;
+            final double wK = widthOf(t.acc[k]);
+            final double ux = vx / Math.sqrt(vl), uz = vz / Math.sqrt(vl);
+            final double pnx = -uz, pnz = ux;               // 段的法向
+            // ★ 对【移动后的折线】做密集采样，取点到折线的最小距离
+            double prevQx = 0, prevQz = 0;
+            boolean has = false;
+            double segBest = Double.MAX_VALUE;
+            double nearX = 0, nearZ = 0;
+            for (int s = 0; s <= NS; s++) {
+                final double tt = (double) s / NS;
+                final double off = meanderOff(t, k, tt);
+                final double qx = ax + vx * tt + pnx * off;
+                final double qz = az + vz * tt + pnz * off;
+                if (has) {
+                    double ex = qx - prevQx, ez = qz - prevQz;
+                    double el = ex * ex + ez * ez;
+                    double u = el > 0 ? ((px - prevQx) * ex + (pz - prevQz) * ez) / el : 0.0;
+                    u = u < 0 ? 0 : (u > 1 ? 1 : u);
+                    double cxq = prevQx + ex * u, czq = prevQz + ez * u;
+                    double dx = cxq - px, dz = czq - pz;
+                    double dd = Math.sqrt(dx * dx + dz * dz);
+                    if (dd < segBest) { segBest = dd; nearX = cxq; nearZ = czq; }
+                } else {
+                    double dd = Math.hypot(qx - px, qz - pz);
+                    if (dd < segBest) { segBest = dd; nearX = qx; nearZ = qz; }
+                }
+                prevQx = qx; prevQz = qz; has = true;
+            }
+            double de = segBest - wK * 0.5;
+            if (de < best) {
+                best = de; bestAcc = t.acc[k];
+                double[] pt = TL_PT.get();
+                pt[0] = nearX; pt[1] = nearZ; pt[2] = t.acc[k];
             }
         }
         // ★ 把最近河道格【自己的】 acc 存进 ThreadLocal，供 riverWidthBlocks / channelAccAt 用。
@@ -559,6 +702,13 @@ public final class TalosLandErosion {
         final byte[] dir;
         final boolean[] sea, done;
         final int[] par;
+        /** ★ 蜿蜒场（只对河道格分配，见 meanderField）。chOrd[k] = 河道序号，-1 = 非河道。 */
+        int[] chOrd;
+        int nCh;
+        /** 按河道序号索引：弧长 / 累积相位 / 幅度 / 河宽。 */
+        double[] mS, mPhi, mA, mW, mMod;
+        /** ★ Taubin 平滑后的顶点位置（世界坐标）。段两端用它 ⟹ 消除 D8 的 45 度折角。 */
+        double[] mVX, mVZ;
         Tile(int tx, int tz, int w) {
             this.tx = tx; this.tz = tz; this.W = w;
             this.z = new double[w * w]; this.acc = new double[w * w];
@@ -621,9 +771,177 @@ public final class TalosLandErosion {
             carveLakes(ws, t, ox, oz);
             fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);
         }
+        meanderField(ws, t);          // ★ 蜿蜒场（只读 acc/dir/sea/filled，不改变任何地形）
         tilesSolved++;
         solveNanos += (System.nanoTime() - t0);
         return t;
+    }
+
+    /** ★ 确定性的单格随机相位（用【全局格坐标】，保证跨瓦片一致）。 */
+    private static double headPhase(long ws, Tile t, int k) {
+        int gx = t.tx * OUT_CELLS + (k % t.W) - BUFFER_CELLS;
+        int gz = t.tz * OUT_CELLS + (k / t.W) - BUFFER_CELLS;
+        long h = ws * 0x9E3779B97F4A7C15L
+               + gx * 0xC2B2AE3D27D4EB4FL
+               + gz * 0x165667B19E3779F9L;
+        h ^= (h >>> 30); h *= 0xBF58476D1CE4E5B9L;
+        h ^= (h >>> 27); h *= 0x94D049BB133111EBL; h ^= (h >>> 31);
+        return (h >>> 11) * 0x1.0p-53 * 2.0 * Math.PI;
+    }
+
+    /**
+     * ★★★ 蜿蜒场：给每个河道格算【弧长 s、累积相位 Phi、幅度 A、调制相位】。
+     *
+     * <pre>
+     *   lambda = clamp(MEANDER_LAM_MIN, inf, MEANDER_LAMK * W)
+     *   Phi    = 上游 Phi + 2 pi * 段长 / lambda(上游)      <- 相位【积分】
+     *   A      = MEANDER_AMP * W * (1 + MOD * sin(Mod))
+     *   Mod    = 上游 Mod + 2 pi * 段长 / (MODW * lambda)   <- 调制相位也【积分】
+     *   off(t) = A(t) * sin(Phi(t))                          <- 段内线性插值
+     * </pre>
+     *
+     * <p>★ 传播顺序 = <b>acc 升序</b>（上游到下游）。用 4096 桶的计数排序，O(N)。
+     *
+     * <p>★ <b>只读</b>：acc / dir / sea / filled / z 都不改动 ⟹ 地形逐位不变。
+     */
+    private static void meanderField(long ws, Tile t) {
+        final int W = t.W, N = W * W;
+        if (!MEANDER_ENABLED) { t.chOrd = null; t.nCh = 0; return; }
+        final int[] ch = new int[N];
+        Arrays.fill(ch, -1);
+        int n = 0; double maxAcc = 1.0;
+        for (int k = 0; k < N; k++) {
+            if (t.sea[k]) continue;
+            if (!(t.acc[k] >= ACC_MIN)) continue;
+            if (LAKES_ENABLED && t.filled[k] - t.z[k] > LAKE_MIN_FILL) continue;
+            ch[k] = 0; n++;
+            if (t.acc[k] > maxAcc) maxAcc = t.acc[k];
+        }
+        t.chOrd = ch; t.nCh = n;
+        if (n == 0) { t.mS = new double[0]; t.mPhi = new double[0]; t.mA = new double[0];
+                      t.mW = new double[0]; t.mMod = new double[0]; return; }
+        final int NB = 4096;
+        int[] head = new int[NB + 1];
+        for (int k = 0; k < N; k++) {
+            if (ch[k] != 0) continue;
+            int b = (int) (t.acc[k] / maxAcc * (NB - 1));
+            if (b < 0) b = 0; if (b >= NB) b = NB - 1;
+            head[b + 1]++;
+        }
+        for (int b = 0; b < NB; b++) head[b + 1] += head[b];
+        int[] pos = head.clone();
+        int[] bucket = new int[n];
+        for (int k = 0; k < N; k++) {
+            if (ch[k] != 0) continue;
+            int b = (int) (t.acc[k] / maxAcc * (NB - 1));
+            if (b < 0) b = 0; if (b >= NB) b = NB - 1;
+            bucket[pos[b]++] = k;
+        }
+        for (int i = 0; i < n; i++) ch[bucket[i]] = i;
+        t.mS = new double[n]; t.mPhi = new double[n]; t.mA = new double[n];
+        t.mW = new double[n]; t.mMod = new double[n];
+        t.mVX = new double[n]; t.mVZ = new double[n];
+        // ---- 顶点初值 = 格中心；并建上下游链（供 Taubin 用）----
+        final double ox = t.tx * (double) OUT_CELLS * STEP_BLK - BUFFER_CELLS * STEP_BLK;
+        final double oz = t.tz * (double) OUT_CELLS * STEP_BLK - BUFFER_CELLS * STEP_BLK;
+        final int[] dnOf = new int[n];
+        final int[] upOf = new int[n];
+        Arrays.fill(dnOf, -1); Arrays.fill(upOf, -1);
+        for (int i = 0; i < n; i++) {
+            final int k = bucket[i];
+            t.mVX[i] = ox + (k % W + 0.5) * STEP_BLK;
+            t.mVZ[i] = oz + (k / W + 0.5) * STEP_BLK;
+        }
+        for (int i = 0; i < n; i++) {
+            final int k = bucket[i];
+            final int d = t.dir[k]; if (d < 0) continue;
+            final int ni = k % W + DX[d], nj = k / W + DZ[d];
+            if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
+            final int ob = ch[nj * W + ni];
+            if (ob < 0) continue;
+            dnOf[i] = ob;
+            // upOf 取 acc 最大的上游（bucket 已按 acc 升序 ⟹ 后写覆盖前写即为最大）
+            upOf[ob] = i;
+        }
+        // ---- Taubin 平滑（λ 步 + μ 步），保持体积、去除阶梯 ----
+        if (SMOOTH_ROUNDS > 0) {
+            final double[] tx = new double[n], tz = new double[n];
+            for (int rd = 0; rd < SMOOTH_ROUNDS; rd++) {
+                for (int pass = 0; pass < 2; pass++) {
+                    final double coef = (pass == 0) ? SMOOTH_LAMBDA : SMOOTH_MU;
+                    for (int i = 0; i < n; i++) tx[i] = t.mVX[i];
+                    for (int i = 0; i < n; i++) tz[i] = t.mVZ[i];
+                    for (int i = 0; i < n; i++) {
+                        final int u = upOf[i], v = dnOf[i];
+                        if (u < 0 || v < 0) continue;          // 端点/汇流口不动
+                        final double lx = (tx[u] + tx[v]) * 0.5 - tx[i];
+                        final double lz = (tz[u] + tz[v]) * 0.5 - tz[i];
+                        t.mVX[i] = tx[i] + coef * lx;
+                        t.mVZ[i] = tz[i] + coef * lz;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            final int k = bucket[i];
+            final double wk = widthOf(t.acc[k]);
+            double lam = MEANDER_LAMK * wk;
+            if (lam < MEANDER_LAM_MIN) lam = MEANDER_LAM_MIN;
+            // 上游 = dir 指向 k 的河道格中 acc 最大者
+            int up = -1; double ua = -1;
+            final int ki = k % W, kj = k / W;
+            for (int q = 0; q < 8; q++) {
+                int mi = ki + DX[q], mj = kj + DZ[q];
+                if (mi < 0 || mi >= W || mj < 0 || mj >= W) continue;
+                int mk = mj * W + mi;
+                if (ch[mk] < 0) continue;
+                int d = t.dir[mk]; if (d < 0) continue;
+                if (mk % W + DX[d] != ki || mk / W + DZ[d] != kj) continue;
+                if (t.acc[mk] > ua) { ua = t.acc[mk]; up = mk; }
+            }
+            double s, phi, mod;
+            if (up < 0) { s = 0.0; phi = headPhase(ws, t, k); mod = headPhase(ws, t, k) * 1.7; }
+            else {
+                final int ou = ch[up];
+                // ★ 段长用【平滑后的顶点】—— 与 channelDistance 完全同口径
+                final double ddx = t.mVX[ch[k]] - t.mVX[ou];
+                final double ddz = t.mVZ[ch[k]] - t.mVZ[ou];
+                final double dl = Math.sqrt(ddx * ddx + ddz * ddz);
+                double lamUp = MEANDER_LAMK * widthOf(t.acc[up]);
+                if (lamUp < MEANDER_LAM_MIN) lamUp = MEANDER_LAM_MIN;
+                s   = t.mS[ou]   + dl;
+                phi = t.mPhi[ou] + 2.0 * Math.PI * dl / lamUp;
+                mod = t.mMod[ou] + 2.0 * Math.PI * dl / (MEANDER_MODW * lamUp);
+            }
+            double A = MEANDER_AMP * wk;
+            if (MEANDER_MOD != 0.0) A *= (1.0 + MEANDER_MOD * Math.sin(mod));
+            final int ok = ch[k];
+            t.mS[ok] = s; t.mPhi[ok] = phi; t.mA[ok] = A; t.mW[ok] = wk; t.mMod[ok] = mod;
+        }
+    }
+
+    /**
+     * ★ 某个河道格沿其下游段的横向偏移（格）。tt = 段内参数 [0,1]。
+     * 段两端的 A 与 Phi 都已知 ⟹ 线性插值 ⟹ 只需【1 次 sin】。
+     */
+    static double meanderOff(Tile t, int k, double tt) {
+        if (!MEANDER_ENABLED || t.chOrd == null) return 0.0;
+        final int oa = t.chOrd[k];
+        if (oa < 0) return 0.0;
+        double A = t.mA[oa], phi = t.mPhi[oa];
+        final int d = t.dir[k];
+        if (d >= 0) {
+            final int W = t.W;
+            final int ni = k % W + DX[d], nj = k / W + DZ[d];
+            if (ni >= 0 && ni < W && nj >= 0 && nj < W) {
+                final int ob = t.chOrd[nj * W + ni];
+                if (ob >= 0) {
+                    A   += (t.mA[ob]   - A)   * tt;
+                    phi += (t.mPhi[ob] - phi) * tt;
+                }
+            }
+        }
+        return A * Math.sin(phi);
     }
 
     /** 湖泊层：裂谷选位，挖碗 + 环形 rim。 */
