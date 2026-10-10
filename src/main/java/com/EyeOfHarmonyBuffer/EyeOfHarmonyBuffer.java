@@ -32,6 +32,7 @@ import com.EyeOfHarmonyBuffer.example.ExampleQuestRegistration;
 import com.EyeOfHarmonyBuffer.handler.AutoHealHandler;
 import com.EyeOfHarmonyBuffer.handler.AutoInstantHealHandler;
 import com.EyeOfHarmonyBuffer.handler.ArknightsMobDropRegister;
+import com.EyeOfHarmonyBuffer.handler.ClimatePreheat;
 import com.EyeOfHarmonyBuffer.handler.CommonEventHandler;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
 import com.EyeOfHarmonyBuffer.Config.ItemConfig;
@@ -40,10 +41,6 @@ import com.EyeOfHarmonyBuffer.Recipe.AssemblyLineRecipesLoad;
 import com.EyeOfHarmonyBuffer.client.ClientJoinWorldHandler;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosSurfaceRegistry;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.river_layer.api.TalosRiverSystem;
-import com.EyeOfHarmonyBuffer.space.talos.MountainLifecycleHandler;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.mountain_layer.integration.MountainBiomeOverrideProvider;
 import com.EyeOfHarmonyBuffer.utils.FoodHelper;
 import com.EyeOfHarmonyBuffer.utils.GemErgodic;
 import com.EyeOfHarmonyBuffer.Loader.RecipeLoader;
@@ -98,8 +95,6 @@ public class EyeOfHarmonyBuffer {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-
-        TalosRiverSystem.onPreInit(event);
 
         File configDir = new File(event.getModConfigurationDirectory(), "EyeOfHarmonyBuffer");
         TextHandler.initLangMap(isInDevMode);
@@ -168,13 +163,14 @@ public class EyeOfHarmonyBuffer {
         MinecraftForge.EVENT_BUS.register(new GlobalOrundumWorldSavedData());
         // 洞穴层：世界加载 / 卸载时维护节点缓存
         MinecraftForge.EVENT_BUS.register(new CaveLifecycleHandler());
-        // 山地层：WorldEvent 走 Forge 总线，WorldTickEvent 走 FML 总线
-        MinecraftForge.EVENT_BUS.register(new MountainLifecycleHandler());
-        FMLCommonHandler.instance().bus().register(new MountainLifecycleHandler());
-        // 群系覆盖钩子（依赖倒置：气候层只认接口，实现由组合根注册）
-        TalosMacroClimate.setBiomeOverrideProvider(
-            new MountainBiomeOverrideProvider()
-        );
+        // 【已删除】MountainLifecycleHandler 的注册：它驱动的 TalosMountainSystem 是旧 DLA 山层
+        // （后台预构建线程 + 跟随玩家的预构建中心）。山层现在是 MountainLayerV2：
+        // 离线求解 + 缓存，由 ClimatePreheat 预热、按需求解，不需要世界生命周期钩子。
+        // 【已删除】这里曾经注册"群系覆盖钩子"：
+        //     TalosMacroClimate.setBiomeOverrideProvider(new MountainBiomeOverrideProvider())
+        // 它把山层群系注入**旧宏气候**。世界群系现在唯一走 V2BiomePicker
+        // （WorldChunkManagerTalos2.pickBiomeFor → V2BiomeField → V2BiomeSelect），
+        // 没有任何生产代码再消费这个钩子 ⇒ 整段删除（不是注释掉，注释掉的调用照样是第二套系统）。
 
         ExampleQuestRegistration.registerAll();
 
@@ -184,6 +180,7 @@ public class EyeOfHarmonyBuffer {
         if (event.getSide().isClient()) {
             MinecraftForge.EVENT_BUS.register(new OverdomainFogHandler());
         }
+        MinecraftForge.EVENT_BUS.register(new ClimatePreheat());
         MinecraftForge.EVENT_BUS.register(new CommonEventHandler());
         MinecraftForge.EVENT_BUS.register(new AutoHealHandler());
         MinecraftForge.EVENT_BUS.register(new AutoInstantHealHandler());
@@ -234,22 +231,24 @@ public class EyeOfHarmonyBuffer {
         event.registerServerCommand(new CommandWarp());
         event.registerServerCommand(new CommandOrundum());
         event.registerServerCommand(new CommandShowConfigLinks());
-        event.registerServerCommand(new CommandTalosRiverNearest());
         event.registerServerCommand(new CommandTalosHere());
+        event.registerServerCommand(new CommandTalosTp());   // ★ /talos_tp：TP 到海陆分布的指定地形区域
+        // §7557：把玩家直接送到最近的【海岸线】。Talos2 的大陆是大陆级的
+        // （DCELL = 2,222,222 方块），站在内陆时海岸可能在几千公里外，手动找不现实。
+        // 判据用 TalosField.isLand —— 与 ChunkProviderTalos2 的方块海陆判定同一个入口。
+        event.registerServerCommand(new CommandTalosCoast());
         event.registerServerCommand(new CommandReactorVideo());
         event.registerServerCommand(new CommandGasEnvironment());
         event.registerServerCommand(new CommandComputeDebug());
         event.registerServerCommand(new CommandDysonSphere());
-        event.registerServerCommand(new CommandTalosSuperCenter());
-        event.registerServerCommand(new CommandTalosRiverSource());
-        event.registerServerCommand(new CommandTalosRiverMouth());
-        event.registerServerCommand(new CommandTalosRiverConfluence());
-        event.registerServerCommand(new CommandTalosRiverBody());
-        event.registerServerCommand(new CommandTalosContinent());
+        // 【已删除】9 条旧系统调试指令的注册（/talosRiverNearest /talosSuperCenter
+        // /talosRiverSource /talosRiverMouth /talosRiverConfluence /talosRiverBody
+        // /talosContinent /talosBoundary /talosMountain）：它们报告的是 TectonicWorld /
+        // 超级大陆 / RVR2 河网 / DLA 山层的数据，而这些系统已随 T4.3 删除 ——
+        // 留着它们只会打印一份与自己世界无关的数字。
         event.registerServerCommand(new CommandTalosBiome());
-        event.registerServerCommand(new CommandTalosBoundary());
-        event.registerServerCommand(new CommandTalosMountain());
         event.registerServerCommand(new CommandTalosCave());
+        event.registerServerCommand(new CommandTalosMap());
     }
 
     @Mod.EventHandler

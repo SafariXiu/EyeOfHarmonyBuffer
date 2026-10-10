@@ -1,7 +1,8 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
+import com.EyeOfHarmonyBuffer.sim.ocean.OceanWiring;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.climate_layer.api.TalosMacroClimate;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -22,13 +23,22 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     private final World world;
     private final int worldSeedInt;
 
+    /** 群系查询缓存（有界：超过上限整体清空，避免长会话下无限增长）。 */
+    private static final int CACHE_LIMIT = 8192;
     private final Long2ObjectOpenHashMap<BiomeGenBase> biomeCache =
         new Long2ObjectOpenHashMap<>();
 
     public WorldChunkManagerTalos2(World world) {
         super();
         this.world = world;
-        this.worldSeedInt = TalosMacroClimate.getWorldSeedInt(world);
+        this.worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
+
+        // ── 第三步接线（§162）：把 OceanField 装成 Atmosphere.SST_PROVIDER ──
+        // 这里是**唯一**一处知道 worldSeedInt 的世界级入口。装在这里 ⇒
+        // 地形/气候/群系/降水 四条链拿到的 SST' 全部同源（口径不会漂）。
+        // ⚠ 装上之后 SimClimate.configStamp() 会变 ⇒ 旧瓦片缓存自动失效（这是设计意图）。
+        // ⚠ 首解一行 1~7 s：预热必须放在后台线程，否则世界生成会卡。
+        OceanWiring.onWorld(this.worldSeedInt);
     }
 
     private static long packXZ(int x, int z) {
@@ -38,15 +48,8 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     /**
      * 为某个世界坐标 (x,z) 选择群系。
      *
-     * 现在的逻辑：
-     *   - 使用 TalosMacroClimate：
-     *       * 原始层：MacroPackageLayer + MacroSites.SubPatch 决定大块 Biome；
-     *       * 平滑层：BiomeRegionLayer 在 tile 上对 Biome 做小块吞并；
-     *   - 结果在 biomeCache 中缓存。
-     *
-     * 注意：
-     *   - 坐标 x,z 均为世界方块坐标（与海陆 / 板块系统一致）；
-     *   - 不再有 BIOME_SHIFT 降采样。
+     * V2 轨：{@link V2BiomePicker#biomeAt} → {@link V2BiomeField}（1km LUT + 平滑），
+     * 与地形生成同源；旧轨：TalosMacroClimate 宏群系。结果按坐标缓存（有上限）。
      */
     private BiomeGenBase pickBiomeFor(int x, int z) {
         long key = packXZ(x, z);
@@ -56,16 +59,14 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
             return cached;
         }
 
-        BiomeGenBase biome;
-        try {
-            biome = TalosMacroClimate.getBiome(x, z, worldSeedInt);
-            if (biome == null) {
-                biome = DEFAULT_BIOME;
-            }
-        } catch (Throwable t) {
-            biome = DEFAULT_BIOME;
-        }
+        // 群系 = L1/L1b 场直接映射（与 ChunkProviderTalos2 同源）。
+        // 这里曾经按 terrainV2Enabled 二选一，另一支走 TalosMacroClimate（旧宏气候）——
+        // 现在是**同一条链**，不可能再出现"世界群系管理器与地形用两套海陆/气候"。
+        BiomeGenBase biome = V2BiomePicker.biomeAt(x, z, worldSeedInt);
 
+        if (biomeCache.size() >= CACHE_LIMIT) {
+            biomeCache.clear();
+        }
         biomeCache.put(key, biome);
         return biome;
     }

@@ -3,6 +3,14 @@
 /.idea/
 /.vscode/
 /run/
+# ============ build/：整体忽略（2026-09-24 用户裁决，选项 C）============
+# build/ 下的【一切】都不入库 —— 包含 build/eoh_probe/refs/ 的证据链
+#   （426 文件 / 342.7 MB：降水标定 ALPHA_COND / EP_COND / ALPHA_SH / ENTRAIN_A 的全部证据）。
+# ★ 已知代价（如实记账，不掩盖）：外部审计点名过「清一次 build 就销毁」，该风险【已被接受】。
+#   refs/ 里的脚本与读数只存在本机；`gradlew clean` 或手工清 build/ 会一并销毁。
+#   备查：撤销前的完整规则集与实测数字记在 设计冻结 §7207。
+#   ★ 要反悔时注意：/build/ 是【目录级】忽略，子目录里的否定规则【不生效】；
+#     必须改成 /build/* 再逐级 ! 放行（曾踩过这个坑）。
 /build/
 /eclipse/
 .classpath
@@ -29,9 +37,60 @@ whitelist.json
 *.bat
 *.DS_Store
 !gradlew.bat
+# probe harness is version-controlled on purpose: build\ and run\ are gitignored, so
+# keeping it under build\ meant clearing build\ destroyed the whole evidence suite.
+!tools/talos-probe/*.bat
 .factorypath
 addon.local.gradle
 addon.local.gradle.kts
 addon.late.local.gradle
 addon.late.local.gradle.kts
 layout.json
+
+# ============ research/：只入库【交付物】，不入库草稿纸 ============
+# 本仓库的既有约定见上：build\ 被忽略，取数/参考脚本就留在那里（build\eoh_probe\refs\*.py
+# 因此不受版本控制）。research\ 沿用同一条约定。实测体量：
+#   全部 455 个文件 / 328.4 MB —— 其中 pdfs\ 是 348 个已下载 PDF = 328.1 MB，
+#   另有 89 个一次性抓取脚本（oa2/citecheck1-6/meta1-4/probe1-4/_bulk1-4 ...）与 12 个 spec dump。
+# 入库的【交付物】：STEADY_STATE_MODEL_EQUATIONS.md、sections\*.md、pdfs\_report_*.md、
+#   B-climate-engineering-survey.md，以及三个被点名的可复用取数工具。
+# 若还要留下别的脚本，加一行 `!research/<名字>.py` 即可。
+/research/pdfs/*
+!/research/pdfs/*.md
+/research/__pycache__/
+/research/we/
+/research/*.py
+/research/*.json
+!research/oa2.py
+!research/wb.py
+!research/fetch_pdf.py
+
+# ============ 探针/命令行的临时日志：不入库 ============
+# 为什么需要：交付物是 build/ 下的 *_report.txt 与 tools/talos-probe/CALIBERS.md；
+# 而 runp.bat 的【命令行重定向】（例如 > p701.txt）过去写在源码目录，
+# 导致 79 个调试日志变成未跟踪文件、会被手工提交带进仓库。这里一次性忽略。
+# 若确有需要入库的 .txt，用 !tools/talos-probe/<名字>.txt 显式放行。
+/*.txt
+/tools/talos-probe/*.txt
+
+# ============ 嵌套 git 仓库：必须忽略（§7208）============
+# 为什么不忽略会出事：.tmp-fmg 曾是 Azgaar FMG 的一个 git clone（内含它自己的 .git）。
+# 在 VS Code 里「全部添加」时，git 不会加它里面的 504 个文件，而是把【整个嵌套仓库】
+# 记成一个 gitlink（mode 160000，与子模块同一种记录）。之后那个目录一被删，
+# VS Code 的 git 扩展仍按「子模块」去打开 .tmp-fmg/.git，于是报：
+#     Error updating changes: '.tmp-fmg/.git' not recognized as a git repository
+# ⇒ 凡【会把别人的仓库 clone 到工作区】的临时目录，名字一律在这里排除。
+.tmp-fmg
+.tmp-*
+tmp-clone*
+
+# ============ DSH 沙箱权限修复的备份目录：不入库 ============
+# 为什么会有它：本工作区的 Windows 文件权限曾缺 WRITE_OWNER，导致沙箱无法给
+#   工作区与 build\ 建立写入授权（Gradle 连 wrapper 的 .lck 都建不了）。
+#   修复脚本会把【改动前的权限记录】和一份可执行的回滚脚本写在这里（见 acl-report-*.jsonl）。
+# 为什么不入库：它是本机权限状态的快照，与源码无关；且每修一次就多一对文件。
+.dsh-acl-recovery/
+
+# Python 字节码缓存（生成器跑一次就会出现）
+__pycache__/
+*.pyc
