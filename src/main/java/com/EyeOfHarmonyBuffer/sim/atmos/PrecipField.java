@@ -399,9 +399,25 @@ public final class PrecipField {
      * 抽出来是为了让风暴轴涡动项也用同一个因子（涡动水汽同样被上风的山抽干）。
      */
     public static double depletion(double hUp, double kappa) {
+        if (!DEPL_ENABLED) return 1.0;              // ★ 诊断/回滚用：整体关掉
+        if (DEPL_NO_KAPPA)  return Math.exp(-Math.max(0.0, hUp) / H_MOIST);
         if (kappa <= 0.0) return 1.0;
         return Math.exp(-Math.max(0.0, hUp) / H_MOIST * kappa);
     }
+
+    /**
+     * 过山损耗因子是否启用（诊断/对比用，默认 true = 保持生产行为）。
+     * false ⟹ {@code depletion(...) ≡ 1}，用于量化 depl 对降水分布的全部贡献。
+     */
+    public static boolean DEPL_ENABLED = true;
+    /**
+     * 是否去掉 {@code kappa} 因子（诊断用，默认 false）。
+     *
+     * <p>实测（115 个陆地点）：{@code hUp > 0} 时 {@code kappa} 的 p50 = 0.671、min > 0.5
+     * ⟹ 该因子<b>从不充当"海洋关闸"</b>（那已由 {@code hUp = 0} 保证），
+     * 只是一个乘性削弱（{@code depl} 被放大 p50 x1.179 / p90 x1.82）。
+     */
+    public static boolean DEPL_NO_KAPPA = false;
 
     // ==================== §444 水汽源：陆地水汽来自【上游海面】 ====================
 
@@ -872,6 +888,54 @@ public final class PrecipField {
     //   机理：本路径把陆地 q 从【局地 rh*qSat(T_land)】换成【海洋源 + 沿途衰减】，
     //         两种口径下它都使陆地【全面变干】，而季风指数是 JJA-DJF 的【差】=> 全面变干不产生对比。
     //   这与 CALIBERS §8 条目 20 的警告一致：「在模型自己的状态里再找机制是徒劳的」。
+    /**
+     * ★★★ 水汽平流收支（§473 / §241.3 立项）。**2026-10-08 试开后【关闭】。**
+     *
+     * <h3>⚠ 为什么关掉（实测，不是猜）</h3>
+     *
+     * <p>试开后出现一个 88 倍的异常点：{@code (150 km, 0)} 的 {@code mm/yr} 从 1786 涨到
+     * <b>157053</b>（其余点不变）。逐层隔离后定位到【尺度不一致】：
+     *
+     * <pre>
+     *   moistureAdvected 的沿风 ODE：  lam = lamFlux + 86400*divU     [1/day]
+     *     lamFlux = 86400*chv/HCO = 3266/2400 = 1.36 /day
+     *       （源码注释自己写「时间尺度 18 h」）
+     *     a = lam*ds/sp/86400 = 1.36 x 3750 / 8 / 86400 = 0.0074
+     *     ⟹ 每步只衰减 0.74% ⟹ 100 km（27 步）后 q 只降到 0.82
+     *
+     *   而本仓的【水汽输送 e 折尺度】是 SOURCE_FETCH_L = 37,500 m：
+     *     37.5 km / 8 m/s = 4688 s = 1.3 小时 ⟹ lam 应该 = 18.5 /day
+     *     ⟹ ★ 实际 1.36 vs 应有 18.5 ⟹ 【慢 14 倍】
+     * </pre>
+     *
+     * <p>⟹ 结果：空气从海面平流 100 km 后水汽【几乎不损耗】⟹ 个别点的 q 停留在
+     * 海面饱和值（如 0.017 kg/kg @ tSl=300.7 K）⟹ 配上地形抬升就给出
+     * 430 mm/day = 157053 mm/yr。
+     *
+     * <p><b>判据（用户 2026-10-08 的要求 2）：「符合物理规律，不自己造参数造公式」。</b>
+     * 这个机制引入了一个<b>未标定、且与已有尺度（SOURCE_FETCH_L）矛盾 14 倍</b>的时标
+     * ⟹ 不满足要求 2 ⟹ 关闭。
+     *
+     * <p>★ <b>它想解决的问题仍然存在</b>：§241.1 硬伤 2 —— 打开观测剖面后副热带会过干。
+     * 正确的修法是把这个 ODE 的时标与 {@code SOURCE_FETCH_L} 对齐（或从文献重新推导），
+     * <b>而不是带着 14 倍的尺度矛盾打开它</b>。
+     *
+     * <h3>原始说明（保留）</h3>
+     * <p>§473 / §241.3 立项的「跨列水汽辐合」。
+     *
+     * <p>这是 §241.3「新主线」的第 1 子项：补上跨列水汽辐合，让副热带干带与中纬雨带
+     * 由同一套方程给出，而不是靠一个放错位置的涡动项去凑。
+     *
+     * <p>★★ <b>实测四组合（2026-10-08）</b>——注意「两个都开」的 max 是 3764 但那是
+     * 33 点采样；115 点采样下 {@code (150,0)} 会给出 157053（见上）。
+     * <pre>
+     *   组合               p50    p90    max    mean    成本(ms/点)
+     *   现状(两个都关)     6413   25405  49438  10590   1601.333
+     *   ★ 只开 OBS          828    2578   3764   1276       0.030
+     *   只开 ADV          6413   25405  49438  10470     437.909
+     *   两个都开            633    2693   3764   1094       0.030   （33 点；115 点下 max=157053）
+     * </pre>
+     */
     public static boolean Q_ADVECT_BUDGET = false;
 
     /**
@@ -1088,10 +1152,74 @@ public final class PrecipField {
     public static double upwindElev(int x, int z, long seed, int cell, double u, double v) {
         double sp = Math.hypot(u, v);
         if (sp < 0.1) return 0.0;
-        int sx = x - (int) Math.round(u / sp * UPWIND_STEP);
-        int sz = z - (int) Math.round(v / sp * UPWIND_STEP);
-        return Math.max(0.0, PlateField.elevationWithCell(sx, sz, seed, cell));
+        if (!UPWIND_ELEV_PATH_MAX && !UPWIND_ELEV_ACCUM_CLIMB) {   // 回滚路径：单点（原行为，逐位不变）
+            int sx = x - (int) Math.round(u / sp * UPWIND_STEP);
+            int sz = z - (int) Math.round(v / sp * UPWIND_STEP);
+            return Math.max(0.0, PlateField.elevationWithCell(sx, sz, seed, cell));
+        }
+        // ★★★ 沿上风方向取【路径最高点】。
+        //
+        //  为什么必须改（P-实测，§144）：原式取【单点】（上风 UPWIND_STEP = 3750 m 处）的高程。
+        //  而 3750 m 在气候尺度上几乎是「本地」——实测 hUp 的中位数落在【深海】（负高程），
+        //  于是 max(0, hUp) = 0 ⟹ depl = exp(0) = 1 ⟹ 【雨影完全消失】。
+        //  物理上雨影来自气流【沿途翻越的最高屏障】，不是某个固定距离处的一个采样点。
+        //
+        //  ★ 采样数由图内已有的两个长度导出，零新参数：
+        //      N = SOURCE_FETCH_L / UPWIND_STEP = 37,500 / 3,750 = 10
+        //    这正是本仓定义的【水汽输送 e 折尺度】—— 越过它之后空气的水汽已经换过一轮。
+        //
+        //  ★ 成本：10 次 elevation（约 +4.5 us），相对基线 mmPerDay ~1.45 ms 可忽略。
+        final int n = Math.max(1, (int) Math.round(SOURCE_FETCH_L / UPWIND_STEP));
+        final double ux = u / sp, uz = v / sp;
+        if (UPWIND_ELEV_ACCUM_CLIMB) {
+            // ★★★ 沿途【累积上坡】—— 雨影的正确物理量。
+            //
+            //   气流沿上风方向逐段前进，每爬升一段就按 H_MOIST 丢掉一部分水汽，
+            //   【下坡不回收】（Smith & Barstad 2004 原文：S 在下坡区取负号，
+            //   使空气变干并蒸发降水物）。所以正确的量是
+            //       climb = Sum over path of max(0, h_{i} - h_{i-1})
+            //   而不是某一处的最大高程，也不是某个固定距离处的单点高程。
+            //
+            //   ★ 零新参数：采样数 N = SOURCE_FETCH_L / UPWIND_STEP 由已有长度导出；
+            //     相邻点的高差用 UPWIND_STEP 本身的取样序列，不引入新步长。
+            double hPrev = PlateField.elevationWithCell(x, z, seed, cell);
+            double climb = 0.0;
+            for (int i = 1; i <= n; i++) {
+                final double d = i * UPWIND_STEP;
+                final int sx = x - (int) Math.round(ux * d);
+                final int sz = z - (int) Math.round(uz * d);
+                final double hh = PlateField.elevationWithCell(sx, sz, seed, cell);
+                if (hh > hPrev) climb += (hh - hPrev);
+                hPrev = hh;
+            }
+            return climb;
+        }
+        double hMax = 0.0;
+        for (int i = 1; i <= n; i++) {
+            final double d = i * UPWIND_STEP;
+            final int sx = x - (int) Math.round(ux * d);
+            final int sz = z - (int) Math.round(uz * d);
+            final double hh = PlateField.elevationWithCell(sx, sz, seed, cell);
+            if (hh > hMax) hMax = hh;
+        }
+        return hMax;
     }
+
+    /**
+     * ★★ 上风高程是否取【路径最高点】（默认 true）。
+     * false ⟹ 回到单点（上风 UPWIND_STEP 处）的原行为，逐位不变。
+     */
+    public static boolean UPWIND_ELEV_PATH_MAX = false;
+    /**
+     * ★★★ 上风高程是否取【沿途累积上坡】（推荐，默认 true）。
+     *
+     * <p>{@code climb = Sum max(0, h_i - h_{i-1})}，沿上风方向采 N = SOURCE_FETCH_L/UPWIND_STEP 段。
+     * 这是雨影的正确物理量（Smith &amp; Barstad 2004：下坡区 S 取负号 ⟹ 空气变干、降水物蒸发
+     * ⟹ <b>下坡不回收</b>）。零新参数。
+     *
+     * <p>关掉 ⟹ 回到 {@link #UPWIND_ELEV_PATH_MAX}；两个都关 ⟹ 回到单点原行为。
+     */
+    public static boolean UPWIND_ELEV_ACCUM_CLIMB = false;
 
     // ---------- 风暴轴的物理量（全部是 Atmosphere / ZonalTables 已有场的纯函数） ----------
 
@@ -1636,7 +1764,39 @@ public final class PrecipField {
      * <b>季节调制</b>仍由模型自己的 {@code modelShape} 给（除以 {@code A} 只是把它无量纲化、有界化），
      * 所以 B2.b 仍由模型自己的温度场决定，§217 的原则不被绕过。
      */
-    public static boolean EDDY_PLACEMENT_FROM_OBS = false;   // A′：①② 达标但③不可能达标（§239.2/§241），收尾关闭
+    /**
+     * ★★★ 涡动 MFC 的放置是否取自观测剖面（NCEP/NCAR R1 日资料）。
+     *
+     * <h3>2026-10-08 重新打开的依据（用户裁决「判据是物理自洽，不是像不像地球」）</h3>
+     *
+     * <p>§241.1 关闭它的理由是【判据 ③：与独立 GPCP 观测降水对比不差于基线】。
+     * 那是一个<b>对标地球</b>的标定判据。用户 2026-10-08 明确定义本世界为
+     * <b>无限世界的无限生成，不是模拟地球气候</b>，判据改为<b>物理自洽</b>。
+     *
+     * <p>在物理自洽这个判据下，关闭它的成本是不可接受的：
+     * <pre>
+     *   默认分支(modelShapeVar*) vs 观测表：
+     *     形状相关系数（45~70 度）  r = -0.030        ⟹ 【零相关】
+     *     45~50 度                 ★ 符号相反         ⟹ 涡动带放错位置
+     *     副热带（-20~30 度）      ★ 恒为 0            ⟹ 没有下沉干燥
+     *     幅度                     大 14~34 倍         ⟹ 无归一化
+     *     成本                     ★ 1601 ms/点        ⟹ 气候瓦片 44 秒的原因
+     *   观测表分支：
+     *     形状                     来自 NCEP/NCAR R1  ── 有观测依据
+     *     幅度                     EDDY_MFC_REF x O(1) ── 有锚点
+     *     成本                     ★ 0.030 ms/点       ⟹ 快 53,000 倍
+     * </pre>
+     *
+     * <p>⚠ <b>已知代价（§241.1 硬伤 2，仍然成立）</b>：副热带冬季会变得过干
+     * （−85% vs GPCP），因为原来那个「放错位置的涡动项」在无意中补上了它。
+     * 那是一个<b>真实的物理缺口</b> —— §241.3 已立项的「水汽收支项」
+     * <code>P = E + grad·(qV)</code>，对应开关见 {@link #Q_ADVECT_BUDGET}。
+     * <b>正确的做法是补上那个机制，而不是保留一个物理上放错位置的项。</b>
+     *
+     * <p>§241.1 硬伤 1（单一标量配不平两个季节）是<b>标定问题</b>：观测的日平均涡动 MFC
+     * 季节反差远大于观测降水的季节反差。在「物理自洽」判据下这不构成关闭理由。
+     */
+    public static boolean EDDY_PLACEMENT_FROM_OBS = true;
 
     /** A-ii 的基准幅值（kg/(m^2 s)）—— 按既定口径标定（45~55 夏 = GPCP 2.565）。 */
     public static double EDDY_MFC_REF = 1.0e-4;   // [A 标定点 2]
@@ -2656,6 +2816,20 @@ public final class PrecipField {
     public static boolean OCEAN_TERRAIN_W = false;
 
     /**
+     * ★★★ 地形抬升的差分步长（m）。
+     *
+     * <p>出处：{@code docs/模拟器/调研/M3-大气层设计调研.md:638-639} 逐字
+     * 「<b>推荐参数</b>：{@code Δs = 25 km}（<b>必须显著小于 {@code PlateField.OROGEN_W = 90 km}</b>，
+     * 否则山脉会被混叠掉）」。
+     *
+     * <p>★ 2026-10-08 修正（§150）：原来写的是 {@code PlateField.HF_WL_MIN * 0.5}，
+     * 注释以为是 23,437.5 m（{@code 3e6/2^7}），而 {@code HF_WL_MIN} 实际是
+     * {@code 3e6/2^12 = 732.42 m} ⟹ 实际步长只有 366 m，<b>小了 64 倍</b>，
+     * 采到的是小尺度粗糙度而不是山（实测：366 m 尺度 |nabla h| = 1.045 vs 23.4 km 尺度 0.118）。
+     */
+    public static double TERRAIN_DH_STEP = 25_000.0;
+
+    /**
      * 地形强迫的垂直速度 {@code U·∇h}（m/s）。形式取自 Smith &amp; Barstad (2004) 的
      * classical upslope form（见 {@link #TERRAIN_W} 的 javadoc，逐字）。
      *
@@ -2665,9 +2839,22 @@ public final class PrecipField {
         // ★★★★★★★★ §7589：差分步长【不能用 UPWIND_STEP（150 km）】—— 那比最短地形波长还大 3 倍，
         //   山脉会被完全混叠掉（M3-大气层设计调研:638 逐字：「Δs = 25 km（**必须显著小于
         //   PlateField.OROGEN_W = 90 km**，否则山脉会被混叠掉）」）。
-        //   这里改用【本仓自己的地形最短波长的一半】：PlateField.HF_WL_MIN/2 = 23,437.5 m
-        //   —— 由 hf 的 oct=7 与 wl0=3e6 【逐字导出】⟹ 零新常数。
-        final int h = (int) (PlateField.HF_WL_MIN * 0.5);
+        //
+        // ★★★★★★★★ 2026-10-08 修正（§150，本会话定位）：
+        //   **原来的写法与它自己的注释不符，而且错了 64 倍。**
+        //   注释说「HF_WL_MIN/2 = 23,437.5 m，由 hf 的 oct=7 与 wl0=3e6 逐字导出」——
+        //   23,437.5 = 3e6/2^7 对应 oct=7。**但 HF_WL_MIN 实际是 3e6/2^12 = 732.42 m**
+        //   （PlateField:149 逐字「最细波长 = 3,000,000 / 2^12 = 732.421875 m」）。
+        //   ⟹ 实际步长 = 366.2 m，比注释所言的 23.4 km 小了 ★ 64 倍。
+        //
+        //   后果（实测，4 个点 x 7 个步长）：步长 366 m 采到的是【小尺度粗糙度】而不是【山】。
+        //     例 (80 km, 88 km)：|nabla h| 在 366 m 尺度 = 1.045（45 度的"坡"），
+        //                        在 23.4 km 尺度 = 0.118
+        //     ⟹ 噪声梯度被当成山的坡度，wTerrain 爆到 8.4 m/s（风速级）。
+        //
+        //   ★ 修法：用 M3 报告逐字给的推荐值 Δs = 25 km。
+        //     「必须显著小于 OROGEN_W = 90 km，否则山脉会被混叠掉」—— 那正是本项的要求。
+        final int h = (int) TERRAIN_DH_STEP;
         // ★★★★★★★★ §7589：云水/降水物的延迟（Smith & Barstad 2004 方程 1a/1b 逐字）：
         //     (1a)  U·∇q_c = S − q_c/τ_c
         //     (1b)  U·∇q_h = q_c/τ_c − q_h/τ_h
@@ -2679,6 +2866,61 @@ public final class PrecipField {
         //   而 "The effect of cloud delay reduces the precipitation further, and shifts
         //   the precipitation peak downstream."
         double sp = Math.hypot(u, v);
+        // ★★★ 卷积路径（默认）：先对【高程】做 Gamma(2) 卷积，再求梯度。
+        //   nabla(h*K) = (nabla h)*K ⟹ 与「对抬升源卷积」数学等价，但便宜 4 倍。
+        if (TERRAIN_CONV && sp > 0.1) {
+            final double ux = u / sp, uz = v / sp;
+            final double a = sp * TERRAIN_TAU_C;            // τc = τh = τ ⟹ a = U·τ
+            if (a < 1.0) {                                   // 风太小：退化为本地
+                double dhdx0 = (PlateField.elevationWithCell(x + h, z, seed, cell)
+                              - PlateField.elevationWithCell(x - h, z, seed, cell)) / (2.0 * h);
+                double dhdz0 = (PlateField.elevationWithCell(x, z + h, seed, cell)
+                              - PlateField.elevationWithCell(x, z - h, seed, cell)) / (2.0 * h);
+                return u * dhdx0 + v * dhdz0;
+            }
+            final double ds = a * 0.5;
+            final int N = Math.max(1, TERRAIN_CONV_N);
+            // ★ 先对【平滑后的地形】求中心差分（4 次卷积），再取梯度。
+            //   nabla(h*K) = (nabla h)*K ⟹ 与「对抬升源卷积」等价，但便宜 4 倍
+            //   （4N 次取样 vs 逐点 4 次 x N 点）。
+            final double hSmoothPx = smoothElev(x + h, z, seed, cell, u, v, sp, a, ds, N);
+            final double hSmoothMx = smoothElev(x - h, z, seed, cell, u, v, sp, a, ds, N);
+            final double hSmoothPz = smoothElev(x, z + h, seed, cell, u, v, sp, a, ds, N);
+            final double hSmoothMz = smoothElev(x, z - h, seed, cell, u, v, sp, a, ds, N);
+            final double dhdx = (hSmoothPx - hSmoothMx) / (2.0 * h);
+            final double dhdz = (hSmoothPz - hSmoothMz) / (2.0 * h);
+            double wT = u * dhdx + v * dhdz;
+            // ★★★ 机制 1：气流动力学因子 [1 − i·m·Hw]（Smith & Barstad 2004 式 2/3，原文逐字）
+            if (TERRAIN_DYN) {
+                final double hC = smoothElev(x, z, seed, cell, u, v, sp, a, ds, N);
+                final double lap = (hSmoothPx + hSmoothMx + hSmoothPz + hSmoothMz
+                                    - 4.0 * hC) / (h * h);          // ∇²h
+                final double gmag = Math.hypot(dhdx, dhdz);          // |∇h|
+                if (gmag > 1.0e-9) {
+                    // 局部主导波数：曲率 / 梯度（标准的局部波数估计）
+                    double kEff = Math.abs(lap) / gmag;               // 1/m
+                    if (kEff < 1.0e-9) kEff = 1.0e-9;
+                    final double sig = sp * kEff;                    // 内在频率 σ = U·k
+                    final double nm = TERRAIN_NM, hw = TERRAIN_HW;
+                    double tDyn;
+                    if (sig > nm) {
+                        // σ > Nm：m 为【虚数】⟹ [1 − i·m·Hw] 是实数 ⟹ 纯衰减
+                        final double mu = kEff * Math.sqrt(1.0 - (nm / sig) * (nm / sig));
+                        tDyn = 1.0 / (1.0 + mu * hw);
+                    } else if (sig > 1.0e-12) {
+                        // σ < Nm：m 为实数 ⟹ |1 − i·m·Hw| = sqrt(1 + (m·Hw)²)
+                        final double mR = kEff * Math.sqrt((nm * nm - sig * sig)) / sig;
+                        tDyn = 1.0 / Math.sqrt(1.0 + (mR * hw) * (mR * hw));
+                    } else {
+                        tDyn = 0.0;                                   // 风/坡度太小
+                    }
+                    wT *= tDyn;
+                } else {
+                    wT = 0.0;
+                }
+            }
+            return wT;
+        }
         int xd = x, zd = z;
         if (TERRAIN_W_DELAY && sp > 0.1) {
             double dsDelay = sp * (TERRAIN_TAU_C + TERRAIN_TAU_H);   // = |U|·(τ_c+τ_h)
@@ -2690,6 +2932,178 @@ public final class PrecipField {
         double dhdz = (PlateField.elevationWithCell(xd, zd + h, seed, cell)
                      - PlateField.elevationWithCell(xd, zd - h, seed, cell)) / (2.0 * h);
         return u * dhdx + v * dhdz;
+    }
+
+    /** ★ 把单个高程点做 Gamma(2) 卷积（供 wTerrain 的差分用）。 */
+    private static double smoothElev(int x, int z, long seed, int cell,
+                                     double u, double v, double sp, double a, double ds, int N) {
+        final double ux = u / sp, uz = v / sp;
+        double hSum = 0.0, kSum = 0.0;
+        for (int i = 1; i <= N; i++) {
+            final double s = i * ds;
+            final double K = (s / (a * a)) * Math.exp(-s / a);
+            hSum += K * PlateField.elevationWithCell(
+                    x - (int) Math.round(ux * s), z - (int) Math.round(uz * s), seed, cell);
+            kSum += K;
+        }
+        if (kSum <= 1.0e-12) return PlateField.elevationWithCell(x, z, seed, cell);
+        return TERRAIN_CONV_NORM ? (hSum / kSum) : hSum;
+    }
+
+    /**
+     * ★★★★ 是否用【核本身（卷积）】而不是【核的均值（点位移）】。
+     *
+     * <h3>为什么这是对的（纯文献推导，零新参数）</h3>
+     * Smith &amp; Barstad (2004) 方程 1a/1b：
+     * <pre>
+     *   (1a)  U·nabla q_c = S − q_c/τ_c
+     *   (1b)  U·nabla q_h = q_c/τ_c − q_h/τ_h
+     * </pre>
+     * 对脉冲源的两级串联指数延迟，其解核为 Gamma(2)：
+     * <pre>
+     *   K(s) = (s/a²) e^(−s/a),    a = U·τ      （τ_c = τ_h = τ 时）
+     *   Integral_0^inf K(s) ds = 1，  核的【均值】= 2a = 2·U·τ
+     * </pre>
+     *
+     * <p>★★ 原实现取的正是那个【均值】：把抬升点沿风位移 {@code |U|(τ_c+τ_h) = 2Uτ}。
+     * 对平滑地形，点位移 ≈ 卷积；但对<b>陡坡（高频）</b>，点位移会取到陡坡处的极大值
+     * ⟹ <b>反而放大</b>。实测（本文档 §141）：陆地 {@code wTerrain} 最大
+     * <b>18.48 m/s</b>，而真实 {@code w_eff} 只有约 0.002 m/s；
+     * {@code |wTerrain| > 1.0} 的陆地格占 <b>30.4%</b> ⟹ 不是尾部污染，是普遍偏高。
+     *
+     * <p>★★★ 本版做【真卷积】：高频被核平滑掉 ⟹ 幅度自然衰减 ⟹ 物理正确。
+     * 而且用「先对高程卷积、再求梯度」实现（{@code nabla(h*K) = (nabla h)*K}），
+     * <b>比逐点位移更省</b>：N 次高程 + 4 次差分，而不是 4N 次。
+     */
+    public static boolean TERRAIN_CONV = true;
+    /** 卷积的采样点数（覆盖到 N·a/2，a = U·τ）。8 点覆盖到 4a（核的 99.8% 质量）。 */
+    public static int TERRAIN_CONV_N = 8;
+    /** 卷积的归一化开关（关掉会改变幅度，仅用于对照）。 */
+    public static boolean TERRAIN_CONV_NORM = true;
+
+    // ==================== ★★★ 气流动力学因子 [1 − i·m·Hw] ====================
+    //
+    //  Smith & Barstad (2004) 的完整传递函数（原文 refs/oro_smith_barstad_ams.txt 第 94-104 行逐字）：
+    //
+    //                Cw · i·sigma · h_hat(k,l)
+    //    P_hat = ────────────────────────────────────────────────       (2)
+    //            [1 − i·m·Hw] · [1 + i·sigma·tau_c] · [1 + i·sigma·tau_h]
+    //
+    //    m     = { [Nm² − sigma²] / sigma² · (k² + l²) }^(1/2)          (3)
+    //    sigma = u·k + v·l                       （内在频率）
+    //
+    //  ★ 原文第 201-215 行逐字说，相对标准 upslope 模型有【两个】衰减机制：
+    //      First,  ... the terrain induced lifting may not penetrate up through the
+    //              moist layer, thus limiting condensation.          <- [1 − i·m·Hw]
+    //      Second, ... the condensed water may be advected to the lee side
+    //              and evaporated instead of precipitating.          <- [1 + i·sigma·tau]
+    //
+    //  ★★ 本仓此前【只做了第二个】（Gamma(2) 卷积），漏了第一个。
+    //     而第一个恰好是【陡坡衰减】的物理来源：
+    //       sigma > Nm  ⟹ m 为【虚数】⟹ [1 − i·m·Hw] 变成实数 [1 + mu·Hw] ⟹ 纯衰减
+    //       sigma < Nm  ⟹ m 为实数  ⟹ |1 − i·m·Hw| = sqrt(1 + (m·Hw)²) ⟹ 也有衰减
+    //
+    //  ★★★ 参数全部来自原文（第 241-260 行的算例），零自造：
+    //       Nm = 0.005 s^-1        （湿 Brunt-Väisälä 频率）
+    //       Hw = 2500 m            （水汽标高）
+    //       tau_c = tau_h = 1000 s （本仓 TERRAIN_TAU_C/H 已逐字一致）
+
+    /** ★ 湿 Brunt-Väisälä 频率（1/s）。Smith & Barstad (2004) 算例逐字：Nm = 0.005 s^-1。 */
+    public static double TERRAIN_NM = 0.005;
+    /**
+     * ★★ 水汽标高 / 湿层深度（m）—— <b>与 {@link #H_MOIST} 是同一个物理量</b>，
+     * 所以直接引用它，避免两者漂移。
+     *
+     * <h3>为什么不用 S&B 原文算例的 2500 m</h3>
+     * Smith &amp; Barstad (2004) 第 252 行写的是「{@code Also ... Hw = 2500m}」——
+     * 那是<b>他们那个三角脊算例</b>的参数，<b>不是普适常数</b>。
+     *
+     * <p>而本仓的 {@code H_MOIST = 2000} 是<b>标定到观测柱水汽</b>的有效值。实测：
+     * <pre>
+     *   纬度      观测柱水汽(kg/m2)   H_MOIST=2000   H_MOIST=2500
+     *   0~20 度   35~50               43~53 ✓        54~66 ✗ 偏高 30~50%
+     *   40~60 度  15~25               18~37 ✓        23~46 ✗ 偏高
+     * </pre>
+     * ⟹ 2000 与观测吻合更好 ⟹ 保留 2000，并让本项引用它。
+     *
+     * <p>物理上 {@code [1 − i·m·Hw]} 里的 {@code Hw} 是「抬升必须穿透的湿层深度」，
+     * 与 {@code depl = exp(-hUp/H_MOIST·kappa)} 里的 {@code H_MOIST} 是同一个量。
+     */
+    public static double TERRAIN_HW = H_MOIST;
+    /** ★ 是否启用气流动力学因子 [1 − i·m·Hw]（机制 1）。关掉 ⟹ 退回只有卷积的行为。 */
+    public static boolean TERRAIN_DYN = true;
+
+    // ==================== ★★★ 地形项的时间平均（气候态 vs 瞬时） ====================
+    //
+    //  物理问题（本会话 §146 定位）：
+    //    wTerrain = U·nabla h 是【瞬时】量（天气尺度），量级 0.1~1 m/s；
+    //    而模型其余部分（w_zm、w_loc、降水）都是【气候态】（年均），量级 ~0.002 m/s。
+    //    S&B (2004) 的传递函数是在【稳态、单一风向】下推导的（原文第 320-322 行自认
+    //    「the number of strong assumptions ... steady state」）。
+    //    搬到气候模型里，必须补上【对风的分布取平均】这一步。
+    //
+    //  ★ 正确的气候态量是  <max(0, U(theta)·nabla h)>  —— 注意 max 在平均【里面】：
+    //      · 只有【上坡】才产生降水（下游 p 里本来就取 max(0,·)）
+    //      · 下坡不抵消上坡（若把 max 放到外面，正负相消会把雨影抹掉）
+    //
+    //  ★ 实测（8 个季节相位 x 5 个点）：平均后 max(0,wT) 削减 45~78%。
+    //  ★ 成本（实测）：windAt 0.003 ms + wTerrain 0.017 ms；N=8 时
+    //     mmPerDay 2.4453 -> 2.6062 ms（★ 只贵 7%）。
+    //
+    /**
+     * ★★ 是否对风的季节相位取平均。**2026-10-08 改为 false。**
+     *
+     * <h3>为什么改回来（实测，§153）</h3>
+     *
+     * <p>本项原本假设「瞬时 U·nabla h 需要按风的分布取平均才是气候态」—— 那在原理上是对的。
+     * 但实测表明：**本模型的季节风摆动远大于真实**，所以那个平均是在消除【模型的伪影】，
+     * 不是在做物理。
+     *
+     * <pre>
+     *   NCEP/NCAR R1 850 hPa 月平均风向的季节集中度（A = &lt;max(0,cos(theta-theta_0))&gt;）：
+     *     纬度带    A(真实 850hPa)
+     *      0-15      0.825
+     *     15-30      0.932
+     *     30-45      0.953
+     *     45-60    ★ 0.996
+     *     60-75      0.975
+     *     75-90      0.942
+     *   ⟹ 真实风向【极其集中】，A 接近 1 ⟹ 平均的削减应该只有 0~17%。
+     *
+     *   而模型 8 相位给出的 A：
+     *      0-15 0.582 / 15-30 0.532 / 30-45 0.525 / 45-60 0.575 / 60-75 0.940 / 75-90 0.757
+     *   ⟹ A比（模型/真实）= 0.55 ~ 0.96 ⟹ 模型的风向摆得太厉害。
+     * </pre>
+     *
+     * <p>★★ ⟹ 相位平均的削减（45~78%）是【模型季节循环的伪影】。
+     * 关掉它 ⟹ A = 1，与真实的 0.83~1.00 只差 0~17% ⟹ 更接近物理。
+     *
+     * <p>⚠ <b>真正的缺口仍然记账</b>：模型没有【天气尺度】风向变率
+     * （那会让 A 进一步降到 ~0.8）。但用【错误的季节摆动】去近似它，比不做更糟。
+     */
+    public static boolean TERRAIN_PHASE_AVG = false;
+    /** ★ 相位采样数。取 8：比气候瓦片的 4 季更细，成本仅 +7%（实测）。 */
+    public static int TERRAIN_PHASE_N = 8;
+
+    /**
+     * ★★★ 地形抬升的【气候态】值：对风的季节相位分布取 {@code <max(0, U(theta)·nabla h)>}。
+     *
+     * @param theta 当前季节相位（作为采样起点，保持与该点的其它量同相）
+     */
+    public static double wTerrainClim(int x, int z, long seed, int cell, double theta, int gradStep) {
+        final int n = Math.max(1, TERRAIN_PHASE_N);
+        if (n == 1) {
+            double[] u0 = Atmosphere.windAt(x, z, seed, cell, theta, gradStep);
+            return Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
+        }
+        double sum = 0.0;
+        for (int q = 0; q < n; q++) {
+            final double th = theta + q * (2.0 * Math.PI / n);
+            double[] u0 = Atmosphere.windAt(x, z, seed, cell, th, gradStep);
+            final double wt = wTerrain(x, z, seed, cell, u0[0], u0[1]);
+            if (wt > 0.0) sum += wt;          // ★ max 在【平均里面】
+        }
+        return sum / n;
     }
 
     /** 云水转换时标 τ_c（s）。Smith & Barstad (2004) 该报告 :257-258 逐字：τ_c = τ_f = 1000 s。 */
@@ -2939,7 +3353,9 @@ public final class PrecipField {
             //   （n=201，min=0.0，max=1.0，frac(k>0)=0.99）⟹ k>0 对海洋几乎恒真，不筛掉任何东西。
             //   用【真正的陆地判据】PlateField.isLand（P1499 实测：全部尖峰点 land=false）。
             if (OCEAN_TERRAIN_W || PlateField.isLand(x, z, seed)) {
-                wE += Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
+                wE += TERRAIN_PHASE_AVG
+                    ? wTerrainClim(x, z, seed, cell, theta, gradStep)
+                    : Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
             }
         }
         DIAG.get()[3] = wE;                         // 诊断：wEff

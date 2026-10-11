@@ -313,6 +313,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 if (!Double.isNaN(surf)) {
                     final int sy = (int) Math.round(surf);
                     double bedF;
+                    // ★★ 水位（整数）。湖与常流河 = sy；干河道会因为 wetness 下降而低于 sy。
+                    int wy = sy;
                     if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                             .isLake(ws, worldX, worldZ)) {
                         bedF = surf - com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
@@ -320,20 +322,31 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     } else {
                         final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                                 .channelAccAt(ws, worldX, worldZ);
-                        bedF = surf - com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        final double depth = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                                 .riverDepth(acc);
+                        // ★★★ 干河道过渡带（见 TalosLandErosion.wetness01 的 javadoc）：
+                        //   t = 1 常流  -> 河床 = 水面-深度，水位 = 水面       （满水）
+                        //   t = 0 全干  -> 河床 = 水面-0.5深度，水位 = 水面-深度（水位 < 河床 => 不铺水）
+                        //   t 在过渡带内连续变化 ⟹ 水从满到浅到无，水头不突兀。
+                        final double t = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                                .wetness01(ws, worldX, worldZ);
+                        bedF = surf - depth * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer
+                                .TalosLandErosion.bedFrac01(t);
+                        wy = (int) Math.round(surf - (1.0 - t) * depth);
                     }
                     final int by = (int) Math.floor(bedF);
-                    if (sy > by) {
-                        final int top = Math.max(h, sy);
+                    // 挖：无论干湿都要把河道挖出来（"要挖"），上界取 max(地表, 水位, 初水位)
+                    final int top = Math.max(Math.max(h, sy), wy);
+                    if (top > by) {
                         for (int y = by + 1; y <= top; y++) {
                             if (y < 1 || y >= worldHeight) continue;
                             putBlock(blocks, meta, localX, y, localZ, AIR_PAIR);
                         }
-                        for (int y = by + 1; y <= sy; y++) {
-                            if (y < 1 || y >= worldHeight) continue;
-                            putBlock(blocks, meta, localX, y, localZ, WATER_PAIR);
-                        }
+                    }
+                    // 铺水：只铺到【水位】为止。干河道 wy <= by ⟹ 不铺水。
+                    for (int y = by + 1; y <= wy; y++) {
+                        if (y < 1 || y >= worldHeight) continue;
+                        putBlock(blocks, meta, localX, y, localZ, WATER_PAIR);
                     }
                 }
             }

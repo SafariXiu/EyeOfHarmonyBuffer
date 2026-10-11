@@ -45,8 +45,45 @@ public final class NoiseContinentGrid {
         return TalosLandField.isLand(ws(worldSeedInt), x, z); }
 
     // ================= 2. 高度场（米） =================
+    /**
+     * ★★★★★★★ 2026-10-08 性能修复 #3（同 §165/§166 的家族）：**不再走 LEM**。
+     *
+     * <h3>改前（最严重的一处）</h3>
+     * <pre>
+     *   PlateField.elevationWithCell  ->  本方法  ->  TalosLandField.height
+     *                                 ->  height0  ->  ★ TalosLandErosion.height（LEM 瓦片求解）
+     *   ⟹ 而本方法的调用面是【整个气候/降水层】：
+     *      Atmosphere.kappaElev（elev 那半）、PrecipField.upwindElev / wTerrain / mmPerDay 的 elev、
+     *      SimClimate 的高程与梯度（5 处）、WaterField.solveTile 的高程场。
+     *   ⟹ 实测后果：验收探针 P296 的 B 段（Zonal.profile 沿 40,000,000 格采样）
+     *      跨越约 78 个 LEM 瓦片（512 km each, 冷瓦片 5~9 秒）
+     *      ⟹ 单行 500 次 mmPerDay 超过 6 分钟仍未完成
+     *      （而 Zonal.java 的 javadoc 记的历史值是 B 段共 1160 秒）。
+     * </pre>
+     *
+     * <h3>修法（有物理依据）</h3>
+     * <p>改用 {@link TalosLandErosion#baseHeight} —— 「海岸剖面 + 造山 + 中尺度扰动」，
+     * 即 {@code height0} <b>不含 LEM 的那一部分</b>，且源码逐字声明与 {@code height0} 逐位同口径。
+     *
+     * <p>★ 为什么这在物理上【更对】：
+     * <ul>
+     *   <li><b>降水</b>：雨影由 <b>大尺度</b>地形决定（{@code OROGEN_W = 90 km}），
+     *       LEM 的河谷是<b>小尺度</b>细节 ⟹ 不需要。</li>
+     *   <li><b>气候</b>：{@code SimClimate} 的高程用于温度/气压/降水的大尺度场 ⟹ 不需要。</li>
+     * </ul>
+     *
+     * <p>★★ <b>而 LEM 的【唯一正当消费者】是地形生成</b>（{@code SimTerrain:674}），
+     * 它【直接】调 {@code TalosLandField.height}，<b>不经过本方法</b> ⟹ 不受本开关影响 ✓
+     *
+     * <p>★ 回滚：{@code ELEV_WITHOUT_LEM = false} ⟹ 逐位回到旧行为。
+     */
+    public static boolean ELEV_WITHOUT_LEM = true;
+
     public static double height(int x, int z, int worldSeedInt) {
-        return TalosLandField.height(ws(worldSeedInt), x, z); }
+        final long w = ws(worldSeedInt);
+        return ELEV_WITHOUT_LEM
+             ? TalosLandErosion.baseHeight(w, x, z)
+             : TalosLandField.height(w, x, z); }
 
     // ================= 3. 有符号海岸距离（block，陆上 <0） =================
     // ★★★★★★★ 2026-10-08 性能修复：**加记忆化**
@@ -98,8 +135,40 @@ public final class NoiseContinentGrid {
         return r; }
 
     // ================= 4. 残差（陆上 >0 = 海拔米数） =================
+    /**
+     * ★★★★★★★ 2026-10-08 性能修复 #2（同 §165 的家族）：**不再走 LEM**。
+     *
+     * <h3>改前</h3>
+     * <pre>
+     *   本方法 -> TalosLandField.height -> height0
+     *          -> if (TalosLandErosion.ENABLED && h>0) h = TalosLandErosion.height(..)
+     *   ⟹ 每次调用都可能触发一次 LEM 瓦片求解（512 km 窗口，冷瓦片 5~9 秒）。
+     * </pre>
+     *
+     * <h3>消费者与它们真正需要的东西</h3>
+     * <table border=1>
+     * <tr><th>消费者</th><th>用途</th><th>需要 LEM 的河谷细节吗</th></tr>
+     * <tr><td>{@code OrographyField.elevation01}（:190/:300）</td>
+     *     <td>地形 kind 分档（LOWLAND/PLATEAU/…）</td>
+     *     <td><b>否</b> —— 那是气候/群系层的大尺度分类</td></tr>
+     * <tr><td>{@code ClimateCoords:114}</td><td>同上（转发）</td><td><b>否</b></td></tr>
+     * <tr><td>{@code V2TerrainGen:607}</td>
+     *     <td>源码逐字注释「{@code r<0 = 海上}」⟹ <b>只用符号</b></td>
+     *     <td><b>否</b> —— LEM 只重塑陆地细节，不改海陆分布</td></tr>
+     * </table>
+     *
+     * <p>★★ ⟹ 全部消费者都走 {@code TalosLandErosion.baseHeight}（不含 LEM，
+     * 且源码逐字声明与 {@code height0} 逐位同口径）即可。
+     *
+     * <p>★ 回滚：{@code LAND_RESIDUAL_WITHOUT_LEM = false} ⟹ 逐位回到旧行为。
+     */
+    public static boolean LAND_RESIDUAL_WITHOUT_LEM = true;
+
     public static double landResidual(int x, int z, int worldSeedInt) {
-        return TalosLandField.height(ws(worldSeedInt), x, z); }
+        final long w = ws(worldSeedInt);
+        return LAND_RESIDUAL_WITHOUT_LEM
+             ? TalosLandErosion.baseHeight(w, x, z)
+             : TalosLandField.height(w, x, z); }
 
     public static boolean isLandResidual(double residual) { return residual > 0.0; }
 
@@ -158,8 +227,41 @@ public final class NoiseContinentGrid {
     //   KAPPA_H = 2000 ≈ CF_LAND_H ⟹ 海平面 0.5、内陆饱和 1.0、深海饱和 0.0。
     public static double KAPPA_H = 2000.0;
 
+    /**
+     * ★★★★★★★ 2026-10-08 性能修复：**不再走 LEM**。
+     *
+     * <h3>改前的灾难（实测）</h3>
+     * <pre>
+     *   调用链：landScore -> kappa -> TalosLandField.height
+     *           -> height0 -> if (TalosLandErosion.ENABLED && h>0) h = TalosLandErosion.height(..)
+     *   ⟹ 每一次 kappa 查询都可能触发一次【LEM 瓦片求解】（512 km 窗口，冷瓦片 5~9 秒）。
+     *   ⟹ 验收探针 P296（每纬线 500 个 x 采样 x 40,000 km = 跨约 78 个 LEM 瓦片）
+     *      实测 ~27 分钟才输出一行（原本应在秒级）。
+     *   ⟹ 而 kappaAt 的 javadoc 记的 56.6 us（P469 实测）是【LEM 接入之前】的数字。
+     * </pre>
+     *
+     * <h3>修法（有物理依据，不只是提速）</h3>
+     * <p>改用 {@link TalosLandErosion#baseHeight} —— 它是
+     * <b>「海岸剖面 + 造山 + 中尺度扰动」</b>，即 {@code TalosLandField.height0}
+     * <b>不含 LEM 的那一部分</b>，且源码逐字声明「必须与 TalosLandField.height0 逐位同口径，
+     * 否则 LEM 开/关之间会出现台阶」。
+     *
+     * <p>★ 为什么这在物理上【更对】而不是妥协：{@code kappa}（大陆度）的消费者是
+     * {@code Atmosphere.gammaOf}/{@code cdOf} 的连续插值、海陆年均对比 —— 那是
+     * <b>气候层的大尺度量</b>。而 LEM 只重塑<b>陆地上的河谷细节</b>，
+     * <b>不改变海陆分布</b> ⟹ 用 baseHeight 得到的 kappa 与用 height 得到的
+     * 在气候层语义上【同义】，却省掉了整条 LEM 链。
+     *
+     * <p>★ 回滚：{@code KAPPA_WITHOUT_LEM = false} ⟹ 逐位回到旧行为。
+     */
+    public static boolean KAPPA_WITHOUT_LEM = true;
+
     public static double kappa(int x, int z, int worldSeedInt) {
-        double h = TalosLandField.height(ws(worldSeedInt), x, z) / KAPPA_H;
+        final long w = ws(worldSeedInt);
+        final double h0 = KAPPA_WITHOUT_LEM
+                        ? TalosLandErosion.baseHeight(w, x, z)
+                        : TalosLandField.height(w, x, z);
+        double h = h0 / KAPPA_H;
         if (h >  1.0) h =  1.0;
         if (h < -1.0) h = -1.0;
         return 0.5 + 0.5 * h; }

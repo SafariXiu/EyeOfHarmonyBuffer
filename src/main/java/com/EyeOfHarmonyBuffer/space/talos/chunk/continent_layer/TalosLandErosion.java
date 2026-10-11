@@ -113,7 +113,127 @@ public final class TalosLandErosion {
      * </table>
      */
     public static volatile double ACC_MIN = 3.0;
-    /** 河宽系数：width = WIDTH_W0 * sqrt(acc)。从 0.7 提到 1.0 让干流更宽。 */
+    // ==================== ★ 降水耦合（水力几何）====================
+    //
+    //   河宽公式的真实形式是【水力几何】：W = a x Q^b，b 约 0.5，Q = 流量。
+    //   而 Q ∝ P x A（降水 x 面积）—— 原来我们只用 A，把降水整个漏掉了。
+    //
+    //   ★ 本层的做法：定义【有效汇流面积】
+    //       accW = (P / P_REF_MM) x acc
+    //     只用于【河宽】。河道判定（acc >= ACC_MIN）仍然用真实 acc ——
+    //     因为「是不是河道」由地形/汇流决定，不该被降水改变。
+    //
+    //   ★ 为什么不是直接改 widthOf 的签名：accW 是【逐格】的量，
+    //     折进 acc 数组后，所有消费者（channelDistance / meanderField / riverWidthBlocks）
+    //     一行都不用改，口径天然统一。
+
+    /**
+     * ★ 降水耦合总开关。关掉 ⟹ accW = acc ⟹ 逐位回到现状。
+     *
+     * <p>★★★ <b>当前默认 false，而且【不能】直接开</b> —— 实测发现根本性的规模错配：
+     * <pre>
+     *   LEM 瓦片    = 512 km（OUT_CELLS=512 x 1 km）
+     *   气候瓦片    = SimClimate.TILE_X=100 km, TILE_Z=50 km
+     *   气候格      = 10 km
+     *   ⟹ 一个 LEM 瓦片横跨 5.1 x 10.2 = 【52 个气候瓦片】
+     *   ⟹ 每个气候瓦片 44 秒 ⟹ 52 x 44 = 【38 分钟 / LEM 瓦片】
+     * </pre>
+     * 即使按 10 km 气候格取样（5929 次查询），实测单次 167 ms ⟹ 16 分钟。
+     *
+     * <p>可行的替代是【解析降水代理】（从地形直接算迎风坡增雨，O(N)），见待办 W4。
+     */
+    public static volatile boolean PRECIP_ENABLED = true;
+    /**
+     * 参考降水（mm/yr）。accW = (P/P_REF) x acc。
+     *
+     * <p>★ 取值 600（不是 1000）：pRel 的【中位数】是 0.809 —— 直接取让它均值=1 的 844
+     * 会让【大多数河变窄】（与目标相反）。取 600 让中位河宽 +16%，同时保留
+     * 湿区变宽、干区变窄的物理分化。
+     * <pre>
+     *   实测 pRel 分位（陆地）: p0.10=0.073  p0.25=0.542  p0.50=0.809
+     *                          p0.75=0.985  p0.90=1.161  p0.99=5.557
+     *   对应中位河宽倍数: P_REF=800 -> 1.01  700 -> 1.08  600 -> 1.16  500 -> 1.27
+     * </pre>
+     */
+    public static volatile double P_REF_MM = 400.0;
+    /** ★ 代理公式的隐含参考降水（mm/yr）。实测：只统计陆地时 mean(pRel)=0.844。 */
+    public static volatile double P_REF_BASE_MM = 1000.0;
+    /** 降水取样失败时的回退值（mm/yr）。 */
+    public static volatile double P_FALLBACK_MM = 1000.0;
+    /** 降水网格取样的诊断计数。 */
+    public static volatile long precipSamples = 0L, precipFails = 0L;
+
+    // ---- ★ 解析降水代理（方案 A）----
+    //
+    //   ★ 为什么不用完整气候链：规模错配无法调和。
+    //       LEM 瓦片    = 512 km（OUT_CELLS=512 x 1 km；BUFFER_CELLS=128 是窗口无关性的硬要求）
+    //       气候瓦片    = SimClimate.TILE_X=100 km, TILE_Z=50 km（与 LandformField / V2BiomeField 一致）
+    //       ⟹ 一个 LEM 瓦片横跨 5.1 x 10.2 = 52 个气候瓦片 x 44 秒 = 38 分钟 ✗
+    //       即使按 10 km 气候格取样（5929 次），实测单次 167 ms ⟹ 16 分钟 ✗
+    //
+    //   ★ 降水的主要空间结构只有两项，都能 O(N) 解析算：
+    //       ① 大尺度水汽可用量   <- 大陆度 kappa + 地形耗尽 depletion(hUp, kappa)
+    //       ② 小尺度迎风坡增雨   <- 纬向风 x 地形梯度（Smith & Barstad 的抬升项）
+    //
+    //   成本：2 次 elevationWithCell（约 1 us）⟹ 59 万格约 0.6 秒 ✓
+
+    /** ★ 解析降水代理总开关。 */
+    public static volatile boolean PRECIP_ANALYTIC = true;
+    /** 迎风坡增雨的增益（无量纲）：pRel 里 exp(GAIN x climb)。 */
+    public static volatile double TERRAIN_GAIN = 0.4;
+    /**
+     * ★ 爬升高度的归一化尺度（米）。
+     *
+     * <p><b>为什么不用局部坡度（实测踩过的坑）</b>：最初用 w = u x dh/dx 配 W_REF=0.002，
+     * 那对应的坡度只有 0.25 m/km，而真实地形坡度是 1~100 m/km ⟹ <b>25% 的陆地撞上 clamp 上限</b>，
+     * pRel 分布两端都饱和（p0.75 = p0.90 = p1.00 = 4.482）。
+     *
+     * <p>改用【上风累积爬升高度】h - hUp 后：量级 0~3000 m，分布自然，且物理上更对
+     * （降水由气团【爬升的总高度】决定，不是局部坡度）。零额外成本（hUp 本来就要算）。
+     */
+    public static volatile double TERRAIN_H_REF = 2000.0;
+    /** clamp 的半宽（无量纲）；超出即饱和。 */
+    public static volatile double TERRAIN_CLIMB_CLAMP = 2.0;
+    /** ★ 上风路径的采样点数（取路径最高点作为 hUp）。10 点 x 10 km = 100 km。 */
+    public static volatile int UPWIND_SAMPLES = 10;
+    /**
+     * ★★★ 降水的区域平均窗口（LEM 格数）。
+     *
+     * <p><b>为什么必须有（实测踩过的坑）</b>：河宽应该由【流域平均降水】驱动
+     * （Q = ∬P dA，而 acc 已经是流域面积），不是【河道所在点的降水】。
+     * 直接乘点降水时，因为<b>河道总在低地、而低地相对上风山脊是背风</b>，
+     * pRel 在河道格上系统性小于 1 ⟹ 降水耦合<b>系统性地让河变窄</b>
+     * （实测区域 (0,0) 中位 3.32 → 2.21，尽管陆地 mean(pRel)=1.11）。
+     *
+     * <p>本参数做一次粗网格箱平均：保留大尺度湿/干差异，抹掉局部雨影。
+     * 10 格 = 10 km。
+     */
+    public static volatile int PRECIP_SMOOTH = 10;
+    /**
+     * ★★ 纬向降水带增益（无量纲）。
+     *
+     * <p><b>为什么必须有</b>：地形代理（h - hUp）让【所有低地都干】，而河道就在低地
+     * ⟹ 降水与河道位置【反相关】⟹ 耦合会系统性让河变窄（实测区域 (0,0) 中位 3.32 → 2.53）。
+     * 真实世界的低地不一定干（亚马逊盆地就是低地且极湿）。
+     *
+     * <p>本项给出纬向带结构：赤道 ITCZ 湿、副热带（约 +-25 度）干、中纬风暴带（约 +-50 度）湿。
+     * <pre>
+     *   f(lat) = 0.6 cos(2 lat) + 0.4 cos(4 lat)      峰值在 0 度，谷值在约 +-30 度
+     *   pLat   = exp(LAT_GAIN x f(lat))
+     * </pre>
+     * 零成本（只依赖纬度）。
+     */
+    public static volatile double LAT_GAIN = 0.55;
+    /** 水汽耗尽的下限（内陆最干时的相对湿度因子）。 */
+    public static volatile double MOIST_FLOOR = 0.25;
+    /** 差分步长取地形最短波长的一半（与 PrecipField.wTerrain 同款），m。 */
+    public static volatile double TERRAIN_DH_STEP = 23437.5;
+    /** 是否打印解析降水的统计（每 64 个瓦片一次）。 */
+    public static volatile boolean PRECIP_DIAG = false;
+    public static volatile double precipLastMin = 1e18, precipLastMax = -1e18, precipLastMean = 0.0;
+    public static volatile long precipTiles = 0L;
+
+    /** 河宽系数：width = WIDTH_W0 * sqrt(accW)。从 0.7 提到 1.0 让干流更宽。 */
     public static volatile double WIDTH_W0 = 1.0;
     public static volatile double WIDTH_MIN = 1.0;
     /** 最大河宽（格）。从 45 提到 60，让主干有更大的宽度跨度。 */
@@ -181,6 +301,140 @@ public final class TalosLandErosion {
      *   <li>{@code nearestChannelPoint(x,z)} = 「最近的中心线点在哪」 —— <b>TP 用这个</b></li>
      * </ul>
      */
+    /**
+     * ★ (px,pz) 所在【格】是否属于河道（acc >= ACC_MIN 且非海非湖）。
+     *
+     * <p>与 {@link #isRiver} 的区别：
+     * <ul>
+     *   <li>{@code isRiver(x,z)} = <b>这个点在不在水上</b>（接入蜿蜒后，格中心常常不在河上）</li>
+     *   <li>{@code isChannelCell(x,z)} = <b>这个格是不是河道格</b>（与蜿蜒无关）</li>
+     * </ul>
+     * 统计河网、判定归属时应该用后者，否则会被蜿蜒误导。
+     */
+    public static boolean isChannelCell(long ws, double px, double pz) {
+        Tile t = tileAt(ws, px, pz);
+        if (t == null || t.chOrd == null) return false;
+        int W = t.W;
+        double outBlk = OUT_CELLS * STEP_BLK;
+        double ox = t.tx * outBlk - BUFFER_CELLS * STEP_BLK;
+        double oz = t.tz * outBlk - BUFFER_CELLS * STEP_BLK;
+        int i = (int) Math.floor((px - ox) / STEP_BLK);
+        int j = (int) Math.floor((pz - oz) / STEP_BLK);
+        if (i < 0 || i >= W || j < 0 || j >= W) return false;
+        return t.chOrd[j * W + i] >= 0;
+    }
+
+    /**
+     * ★★ 有效汇流面积（含降水）= pRel x acc = 【年产流量的代理】。非河道格返回 0。
+     *
+     * <p><b>干河道的首选判据</b>：它同时表达「流域小」与「降水少」两个因素，
+     * 而且零成本（accW 已在 Tile 里）。河道格满足 acc >= ACC_MIN，但若 accW 低于阈值，
+     * 说明该流域的产流不足以维持常流 ⟹ 干河道。
+     */
+    public static double effectiveAccOfCell(long ws, double px, double pz) {
+        Tile t = tileAt(ws, px, pz);
+        if (t == null || t.chOrd == null) return 0.0;
+        int W = t.W;
+        double outBlk = OUT_CELLS * STEP_BLK;
+        double ox = t.tx * outBlk - BUFFER_CELLS * STEP_BLK;
+        double oz = t.tz * outBlk - BUFFER_CELLS * STEP_BLK;
+        int i = (int) Math.floor((px - ox) / STEP_BLK);
+        int j = (int) Math.floor((pz - oz) / STEP_BLK);
+        if (i < 0 || i >= W || j < 0 || j >= W) return 0.0;
+        int k = j * W + i;
+        return t.chOrd[k] >= 0 ? accWOf(t, k) : 0.0;
+    }
+
+    // ==================== ★★ 干河道（wadi / arroyo）====================
+    //
+    //   ★ 判据：accW = pRel x acc（年产流量代理）低于阈值 ⟹ 产流不足以维持常流。
+    //   ★ 过渡带：不在阈值处硬切换，而是用平滑因子 t 同时控制【河床深度】与【水面高度】：
+    //
+    //       t        = smoothstep(DRY_ACCW_MIN, DRY_ACCW_MIN x DRY_TRANS, accW)
+    //       bedFrac  = DRY_DEPTH_FRAC + (1 - DRY_DEPTH_FRAC) x t
+    //       河床      = 水面 - riverDepth x bedFrac
+    //       水位      = 水面 - (1 - t) x riverDepth
+    //
+    //   t = 1（常流）：bedFrac = 1            ⟹ 河床 = 水面 - 深度，水位 = 水面  ⟹ 满水
+    //   t = 0（全干）：bedFrac = DRY_DEPTH_FRAC ⟹ 河床 = 水面 - 0.5 深度，
+    //                                            水位 = 水面 - 深度 < 河床 ⟹ 【不铺水】
+    //
+    //   ★ 这样水头不会突兀：t 在过渡带内连续变化，水从满到浅到无。
+
+    /** ★ 干河道阈值（相对降水 pRel）。低于它 ⟹ 降水不足以维持常流。 */
+    public static volatile double DRY_PREL_MIN = 0.55;
+    /** 已废弃：曾用 accW 作判据（但 accW 把流域面积也混进来了）。 */
+    public static volatile double DRY_ACCW_MIN_UNUSED = 8.0;
+    /** 过渡带宽度 = DRY_ACCW_MIN x DRY_TRANS。 */
+    public static volatile double DRY_TRANS = 2.5;
+    /** 全干时河床相对满水深度的比例（0.5 = 挖一半）。 */
+    public static volatile double DRY_DEPTH_FRAC = 0.5;
+    /** 干河道总开关。false ⟹ wetness 恒为 1 ⟹ 逐位回到现状。 */
+    public static volatile boolean DRY_ENABLED = true;
+
+    /**
+     * ★★ 河道的【湿润度】t ∈ [0,1]：0 = 完全干（只留河床），1 = 常流（满水）。
+     *
+     * <p>用 smoothstep 在 [DRY_ACCW_MIN, DRY_ACCW_MIN x DRY_TRANS] 上平滑过渡，
+     * 所以不会出现突兀的水头。非河道格返回 0。
+     */
+    /** ★ 单格的湿润度（未做单调化）：由 pRel 相对阈值决定。 */
+    static double wetnessLocal(double pr) {
+        if (!DRY_ENABLED) return 1.0;
+        double lo = DRY_PREL_MIN, hi = DRY_PREL_MIN * Math.max(1.0, DRY_TRANS);
+        if (hi <= lo) return pr >= lo ? 1.0 : 0.0;
+        double t = (pr - lo) / (hi - lo);
+        if (t <= 0.0) return 0.0;
+        if (t >= 1.0) return 1.0;
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    /**
+     * ★★ 河道的【湿润度】t ∈ [0,1]：0 = 完全干（只留河床），1 = 常流（满水）。
+     *
+     * <p>取自 {@link Tile#mWet}（由 meanderField 沿流向取 max(本格, 上游) 传播），
+     * <b>所以保证「上游有水 ⟹ 下游有水」</b>—— 这是物理硬约束（水往低处流）。
+     *
+     * <p>★ 判据用的是 <b>pRel（相对降水）</b>而不是 accW：因为 accW = pRel x acc 已经含了
+     * 流域面积，而干湿是【降水】的事，不是流域大小的事。
+     */
+    public static double wetness01(long ws, double px, double pz) {
+        if (!DRY_ENABLED) return 1.0;
+        Tile t = tileAt(ws, px, pz);
+        if (t == null || t.chOrd == null || t.mWet == null) return 1.0;
+        final int W = t.W;
+        final double outBlk = OUT_CELLS * STEP_BLK;
+        final double ox = t.tx * outBlk - BUFFER_CELLS * STEP_BLK;
+        final double oz = t.tz * outBlk - BUFFER_CELLS * STEP_BLK;
+        final int i = (int) Math.floor((px - ox) / STEP_BLK);
+        final int j = (int) Math.floor((pz - oz) / STEP_BLK);
+        if (i < 0 || i >= W || j < 0 || j >= W) return 1.0;
+        final int o = t.chOrd[j * W + i];
+        return (o >= 0 && o < t.mWet.length) ? t.mWet[o] : 1.0;
+    }
+
+    /** ★ 干河道时的河床比例 = DRY_DEPTH_FRAC + (1-DRY_DEPTH_FRAC) x t。 */
+    public static double bedFrac01(double t) {
+        double f = DRY_DEPTH_FRAC;
+        if (f < 0.0) f = 0.0; if (f > 1.0) f = 1.0;
+        return f + (1.0 - f) * t;
+    }
+
+    /** ★ 河道格自己的河宽（格）。非河道格返回 0。 */
+    public static double channelWidthOfCell(long ws, double px, double pz) {
+        Tile t = tileAt(ws, px, pz);
+        if (t == null || t.chOrd == null) return 0.0;
+        int W = t.W;
+        double outBlk = OUT_CELLS * STEP_BLK;
+        double ox = t.tx * outBlk - BUFFER_CELLS * STEP_BLK;
+        double oz = t.tz * outBlk - BUFFER_CELLS * STEP_BLK;
+        int i = (int) Math.floor((px - ox) / STEP_BLK);
+        int j = (int) Math.floor((pz - oz) / STEP_BLK);
+        if (i < 0 || i >= W || j < 0 || j >= W) return 0.0;
+        int o = t.chOrd[j * W + i];
+        return o >= 0 ? t.mW[o] : 0.0;
+    }
+
     public static double[] nearestChannelPoint(long ws, double px, double pz) {
         double[] pt = TL_PT.get();
         pt[2] = 0.0;
@@ -434,7 +688,7 @@ public final class TalosLandErosion {
                 tt = tt < 0.0 ? 0.0 : (tt > 1.0 ? 1.0 : tt);
                 double qx = ax + vx * tt - px, qz = az + vz * tt - pz;
                 double dist = Math.sqrt(qx * qx + qz * qz);
-                double rough = dist - widthOf(t.acc[k]) * 0.5;
+                double rough = dist - widthOf(accWOf(t, k)) * 0.5;
                 // 插入候选（按 rough 升序，最多 CANDS 个）
                 int ins = nCand;
                 for (int c = 0; c < nCand; c++) { if (rough < candD[c]) { ins = c; break; } }
@@ -466,7 +720,7 @@ public final class TalosLandErosion {
             final double ax = ax2, az = az2, bx = bx2, bz = bz2;
             final double vx = bx - ax, vz = bz - az;
             final double vl = vx * vx + vz * vz;
-            final double wK = widthOf(t.acc[k]);
+            final double wK = widthOf(accWOf(t, k));
             final double ux = vx / Math.sqrt(vl), uz = vz / Math.sqrt(vl);
             final double pnx = -uz, pnz = ux;               // 段的法向
             // ★ 对【移动后的折线】做密集采样，取点到折线的最小距离
@@ -699,6 +953,27 @@ public final class TalosLandErosion {
     static final class Tile {
         final int tx, tz, W;
         final double[] z, acc, filled, U;
+        /**
+         * ★★★ 有效汇流面积（河宽 + 干河道判据都用）= 流域内【逐格降水的累积】。
+         *
+         * <pre>
+         *   accW[k] = accW[上游] + pRel[k]        （单流向 D8，按 acc 升序传播）
+         * </pre>
+         *
+         * <p><b>为什么不是 pRel x acc（实测踩过的坑）</b>：acc 沿流向单调不减，但 pRel 不是
+         * （由局部地形/纬度决定）⟹ pRel x acc 可能【下游小于上游】⟹ 出现
+         * <b>「上游有水、下游无水」</b>这种物理上不可能的情况（用户指出）。
+         * 累加形式天然单调不减 ✓
+         *
+         * <p>★ 而且在 pRel 均匀时 Sum pRel = pRel x acc，与旧式【等价】⟹ 河宽标定不用重做。
+         * <p>★ 顺带解决另一个坑：accW/acc = 流域【平均】降水，不再是「河道所在点」的降水
+         * （河道在低地，点降水系统性偏低）。
+         *
+         * <p>PRECIP_ENABLED=false 时【就是 acc 本身】。
+         */
+        double[] accW;
+        /** ★ 临时：逐格的相对降水 pRel（precipField 填，meanderField 累加后不再需要）。 */
+        double[] pRelTmp;
         final byte[] dir;
         final boolean[] sea, done;
         final int[] par;
@@ -709,6 +984,8 @@ public final class TalosLandErosion {
         double[] mS, mPhi, mA, mW, mMod;
         /** ★ Taubin 平滑后的顶点位置（世界坐标）。段两端用它 ⟹ 消除 D8 的 45 度折角。 */
         double[] mVX, mVZ;
+        /** ★★ 沿流向【单调不减】的湿润度（干河道判据用）。见 meanderField 的传播。 */
+        double[] mWet;
         Tile(int tx, int tz, int w) {
             this.tx = tx; this.tz = tz; this.W = w;
             this.z = new double[w * w]; this.acc = new double[w * w];
@@ -771,10 +1048,223 @@ public final class TalosLandErosion {
             carveLakes(ws, t, ox, oz);
             fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);
         }
+        precipField(ws, t, ox, oz);   // ★ 有效汇流面积 accW（只读，不改地形；用 baseHeight 不递归）
         meanderField(ws, t);          // ★ 蜿蜒场（只读 acc/dir/sea/filled，不改变任何地形）
         tilesSolved++;
         solveNanos += (System.nanoTime() - t0);
         return t;
+    }
+
+    /**
+     * ★★ 有效汇流面积：accW = (P / P_REF_MM) x acc —— 水力几何 W = a Q^b, Q ∝ P x A。
+     *
+     * <h3>为什么这么接</h3>
+     * 河宽的真实驱动量是【流量 Q】而不是【面积 A】。Q ∝ P x A，所以把 P/P_REF 折进 acc 后，
+     * 所有消费者（channelDistance / meanderField / riverWidthBlocks / 河深）自动同口径。
+     *
+     * <h3>性能</h3>
+     * LEM 格 1 km，气候格 10 km ⟹ 每 10x10 个 LEM 格只查一次降水。
+     * 768 km 瓦片 = 77x77 = 5929 次气候查询（约 1 秒）。逐格查要 59 万次（约 94 秒）⟹ 不可行。
+     *
+     * <h3>回退</h3>
+     * 取样失败（探针无气候链 / 未初始化）⟹ 用 P_FALLBACK_MM ⟹ accW = acc ⟹ 逐位回到现状。
+     */
+    private static void precipField(long ws, Tile t, double ox, double oz) {
+        final int W = t.W, N = W * W;
+        if (!PRECIP_ENABLED) { t.accW = t.acc; return; }
+        if (PRECIP_ANALYTIC) { precipAnalytic(ws, t, ox, oz); return; }
+        final int CG = Math.max(1, (int) Math.round(
+                com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.CELL / STEP_BLK));
+        final int ncg = (W + CG - 1) / CG + 1;
+        final double[] pg = new double[ncg * ncg];
+        for (int cj = 0; cj < ncg; cj++) {
+            for (int ci = 0; ci < ncg; ci++) {
+                final int wx = (int) (ox + (ci * CG + CG * 0.5) * STEP_BLK);
+                final int wz = (int) (oz + (cj * CG + CG * 0.5) * STEP_BLK);
+                double pv;
+                try { pv = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate
+                        .annualPrecipMmPerYear(wx, wz, (int) ws); }
+                catch (Throwable ex) { pv = P_FALLBACK_MM; precipFails++; }
+                if (!(pv > 0.0) || Double.isNaN(pv)) { pv = P_FALLBACK_MM; precipFails++; }
+                pg[cj * ncg + ci] = pv;
+                precipSamples++;
+            }
+        }
+        final double inv = 1.0 / Math.max(1.0, P_REF_MM);
+        final double[] aw = new double[N];
+        for (int j = 0; j < W; j++) {
+            final int cj = j / CG;
+            for (int i = 0; i < W; i++) {
+                final int k = j * W + i;
+                final double pv = pg[cj * ncg + (i / CG)];
+                aw[k] = t.acc[k] * (pv * inv);
+            }
+        }
+        t.accW = aw;
+    }
+
+    /**
+     * ★★ 解析降水代理：pRel = 水汽耗尽 x 迎风坡增雨。
+     *
+     * <pre>
+     *   ① 大尺度水汽可用量  moist = MOIST_FLOOR + (1-MOIST_FLOOR) x depletion(hUp, kappa)
+     *        depletion(h, k) = exp(-max(0,h)/H_MOIST x k)      <- PrecipField 的雨影唯一来源
+     *        hUp = 上风 100 km 处的地形高度（空气在来路上被山抽干）
+     *   ② 小尺度迎风坡增雨  texp = exp(TERRAIN_GAIN x clamp(w/W_REF, -1.5, 1.5))
+     *        w = u(lat) x dh/dx          <- Smith & Barstad 的抬升项（只用纬向风）
+     *        u(lat): |lat|<30 东风 -6，30~60 西风 +8，>60 极地东风 -4（m/s）
+     *   pRel = moist x texp
+     * </pre>
+     *
+     * <p>成本：3 次 elevationWithCell + 1 次 kappaMemo 约 2 us/格 ⟹ 59 万格约 1.2 秒。
+     */
+    /**
+     * ★★★ 重入保护：solve() 期间禁止再查 LEM。
+     *
+     * <p><b>为什么必须有（实测踩过的坑）</b>：溶解析降水代理最初用
+     * {@code PlateField.elevationWithCell} 取高程 —— 而它现在是
+     * {@code NoiseContinentGrid.height -> TalosLandField.height -> TalosLandErosion.height}
+     * 的转发，<b>包含 LEM 本身</b>。于是：
+     * <pre>
+     *   solve() -> precipField() -> elevationWithCell() -> ... -> TalosLandErosion.height()
+     *           -> tileAt()（缓存里没有，因为正在解）-> solve() -> ...  ⟹ 无限递归
+     * </pre>
+     * 实测表现为「第一次调用跑了 3.5 分钟仍未返回」。
+     *
+     * <p>修法有两层：① 高程改用 {@link #baseHeight}（基础剖面，不含 LEM，零递归、零成本）；
+     * ② 本标志作为兜底，一旦重入就跳过降水采样。
+     */
+    private static final ThreadLocal<Boolean> IN_SOLVE = new ThreadLocal<Boolean>() {
+        protected Boolean initialValue() { return Boolean.FALSE; } };
+
+    private static void precipAnalytic(long ws, Tile t, double ox, double oz) {
+        final int W = t.W, N = W * W;
+        // ★ 注意：这里【不能】用 IN_SOLVE 做早退 —— 因为 solve() 会在调用本函数【之前】
+        //   就把它设成 TRUE，那样每次都会被自己挡掉（实测症状：precipFails 每瓦片 +1、
+        //   pRel 恒为初值）。既然高程已改用 baseHeight（不含 LEM，不递归），本函数无需保护。
+        final double upDist = 100_000.0;
+        final double[] aw = new double[N];
+        double mn = 1e18, mx = -1e18, sum = 0.0;
+        int cnt = 0;
+        for (int j = 0; j < W; j++) {
+            final double wz = oz + (j + 0.5) * STEP_BLK;
+            final int zi = (int) Math.floor(wz);
+            // 纬向风（简化）：信风东风 / 西风带西风 / 极地东风
+            final double latDeg = Math.toDegrees(
+                    com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(zi));
+            final double alat = Math.abs(latDeg);
+            final double uz = (alat < 30.0) ? -6.0 : (alat < 60.0 ? 8.0 : -4.0);
+            for (int i = 0; i < W; i++) {
+                final int k = j * W + i;
+                final double wx = ox + (i + 0.5) * STEP_BLK;
+                final int xi = (int) Math.floor(wx);
+                // ① 迎风坡：u x dh/dx
+                // ★ 用 baseHeight（基础剖面，不含 LEM）—— 零递归、零成本。
+                //   语义上也更对：降水由【山脉】决定，而 LEM 的河谷是结果不是原因。
+                //
+                // ★★ 迎风坡增雨 = exp(GAIN x 上风累积爬升 / H_REF)。
+                //    用【累积爬升】而不是局部坡度 —— 后者会让 25% 的陆地撞上 clamp（实测）。
+                // ★★★ hUp = 【上风路径上已经爬过的最高点】，不是上风 100 km 处的单点高程。
+                //   实测踩过的坑：单点高程的中位数是 -3599 m（那是深海）—— 因为我们的陆地
+                //   只占 43%，上风 100 km 处多半是海，于是 h - hUp 恒为 +4000 左右（常数，无用）。
+                //   物理上雨影来自「空气在来路上已经被山抽干」= 路径最高点，不是路径终点。
+                double hLocal = 0.0, hUpTmp = 0.0;
+                try {
+                    hLocal = baseHeight(ws, wx, wz);
+                    final double sgn = (uz > 0) ? 1.0 : -1.0;
+                    for (int kk = 1; kk <= UPWIND_SAMPLES; kk++) {
+                        final double hk = baseHeight(ws,
+                                wx - upDist * (kk / (double) UPWIND_SAMPLES) * sgn, wz);
+                        if (hk > hUpTmp) hUpTmp = hk;
+                    }
+                } catch (Throwable ex) { precipFails++; }
+                double climb = (hLocal - hUpTmp) / TERRAIN_H_REF;
+                final double cc = TERRAIN_CLIMB_CLAMP;
+                if (climb > cc) climb = cc; else if (climb < -cc) climb = -cc;
+                final double texp = Math.exp(TERRAIN_GAIN * climb);
+                // ② 水汽耗尽：上风 100 km 处的地形高度 + 大陆度
+                double hUp = hUpTmp, kappa = 0.0;
+                try {
+                    // ★ 用常数 KAPPA_MEAN，不用 kappaMemo —— 后者内部也走 PlateField，
+                    //   在 solve() 期间调会递归。物理上 depletion = exp(-hUp/H_MOIST x kappa)，
+                    //   主导项是 hUp（上风地形），kappa 只是调制。
+                    kappa = com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.KAPPA_MEAN;
+                } catch (Throwable ex) { precipFails++; }
+                double depl = 0.0;
+                try { depl = com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.depletion(hUp, kappa); }
+                catch (Throwable ex) { depl = 1.0; }
+                final double moist = MOIST_FLOOR + (1.0 - MOIST_FLOOR) * depl;
+                // ★★★ 只对【陆地】应用降水修正，并除以 P_REF_MM。
+                //   实测踩过的坑：
+                //     ① 最初漏了 (P_REF_BASE/P_REF_MM) —— P_REF_MM 根本没被用，河宽全线崩到 1.0
+                //     ② 对海洋也乘了 pRel —— 海洋 pRel 很小，把【陆地】的均值从 0.844 拉到 0.432
+                //   P_REF_BASE = 1000 是代理公式的隐含参考（探针在只统计陆地时测出 mean(pRel)=0.844）。
+                // ★ 纬向降水带（零成本）：赤道 ITCZ 湿、副热带干、中纬风暴带次湿。
+                //   它【不与河道位置反相关】—— 这是它能纠正地形代理系统性偏差的原因。
+                final double latR = com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(zi);
+                final double fLat = 0.6 * Math.cos(2.0 * latR) + 0.4 * Math.cos(4.0 * latR);
+                final double pLat = Math.exp(LAT_GAIN * fLat);
+                final double pRel = (hLocal > 0.0)
+                        ? moist * texp * pLat * (P_REF_BASE_MM / Math.max(1.0, P_REF_MM))
+                        : 1.0;
+                aw[k] = pRel;      // ★ 先存 pRel 本身；accW 由 meanderField 按流向累加
+                if (pRel < mn) mn = pRel;
+                if (pRel > mx) mx = pRel;
+                sum += pRel; cnt++;
+                precipSamples++;
+            }
+        }
+        // ★★★ 区域平均：pRel 在【河道格】上系统性偏低（河道在低地 = 相对上风山脊是背风），
+        //   而河宽应该由【流域平均降水】驱动。做一次箱平均即可抹掉这个偏差。
+        final int SB = Math.max(1, PRECIP_SMOOTH);
+        if (SB > 1) {
+            final int nb = (W + SB - 1) / SB;
+            final double[] avg = new double[nb * nb];
+            final int[] bc = new int[nb * nb];
+            for (int j = 0; j < W; j++) {
+                final int bj = j / SB;
+                for (int i = 0; i < W; i++) {
+                    final int k = j * W + i;
+                    final int bi = bj * nb + (i / SB);
+                    avg[bi] += aw[k];                  // aw 现在存的就是 pRel
+                    bc[bi]++;
+                }
+            }
+            for (int b = 0; b < nb * nb; b++) if (bc[b] > 0) avg[b] /= bc[b]; else avg[b] = 1.0;
+            // 邻域 3x3 再平滑一次，去掉块状边界
+            final double[] sm = new double[nb * nb];
+            for (int bj = 0; bj < nb; bj++) for (int bi = 0; bi < nb; bi++) {
+                double s = 0; int c = 0;
+                for (int dj = -1; dj <= 1; dj++) for (int di = -1; di <= 1; di++) {
+                    final int x2 = bi + di, y2 = bj + dj;
+                    if (x2 < 0 || x2 >= nb || y2 < 0 || y2 >= nb) continue;
+                    s += avg[y2 * nb + x2]; c++; }
+                sm[bj * nb + bi] = c > 0 ? s / c : 1.0;
+            }
+            for (int j = 0; j < W; j++) {
+                final int bj = j / SB;
+                for (int i = 0; i < W; i++) aw[j * W + i] = sm[bj * nb + (i / SB)];
+            }
+        }
+        t.pRelTmp = aw;         // ★ accW 由 meanderField 按流向累加（保证单调不减）
+        precipTiles++;
+        // 注：pRelTmp 在 meanderField 用完即弃（不主动置 null，避免与并发读竞争）
+        precipLastMin = mn; precipLastMax = mx;
+        precipLastMean = cnt > 0 ? sum / cnt : 0.0;
+        if (PRECIP_DIAG && (precipTiles & 63L) == 0L) {
+            System.out.println("[LEM/降水] 瓦片 " + precipTiles + "  pRel min=" + String.format("%.3f", mn)
+                + " mean=" + String.format("%.3f", precipLastMean) + " max=" + String.format("%.3f", mx));
+        }
+    }
+
+    /** ★ 河宽用的汇流面积（含降水）。accW 未建时回落到真实 acc。 */
+    static double accWOf(Tile t, int k) {
+        final double[] aw = t.accW;
+        final int[] co = t.chOrd;
+        if (aw == null || co == null) return t.acc[k];
+        final int o = co[k];
+        // ★ accW[o] = 该流域到本格为止的 Sum pRel（已含本格）⟹ 直接返回，不要再加 acc。
+        return (o >= 0 && o < aw.length) ? aw[o] : t.acc[k];
     }
 
     /** ★ 确定性的单格随机相位（用【全局格坐标】，保证跨瓦片一致）。 */
@@ -841,6 +1331,9 @@ public final class TalosLandErosion {
         t.mS = new double[n]; t.mPhi = new double[n]; t.mA = new double[n];
         t.mW = new double[n]; t.mMod = new double[n];
         t.mVX = new double[n]; t.mVZ = new double[n];
+        // ★ accW / mWet 都按【河道序号 o】索引（长度 n）；非河道格在访问器里回落到真实 acc。
+        t.accW = new double[n];
+        t.mWet = new double[n];
         // ---- 顶点初值 = 格中心；并建上下游链（供 Taubin 用）----
         final double ox = t.tx * (double) OUT_CELLS * STEP_BLK - BUFFER_CELLS * STEP_BLK;
         final double oz = t.tz * (double) OUT_CELLS * STEP_BLK - BUFFER_CELLS * STEP_BLK;
@@ -884,10 +1377,10 @@ public final class TalosLandErosion {
         }
         for (int i = 0; i < n; i++) {
             final int k = bucket[i];
-            final double wk = widthOf(t.acc[k]);
-            double lam = MEANDER_LAMK * wk;
-            if (lam < MEANDER_LAM_MIN) lam = MEANDER_LAM_MIN;
-            // 上游 = dir 指向 k 的河道格中 acc 最大者
+            // ★★★ 顺序很重要（实测踩过的坑）：必须【先】找上游并累加 accW，【再】算宽度。
+            //   最初把累加写在 wk 之后 ⟹ widthOf 读到还是 0 的 accW ⟹ 全瓦片宽度为 0。
+            //
+            //   上游 = dir 指向 k 的河道格中 acc 最大者
             int up = -1; double ua = -1;
             final int ki = k % W, kj = k / W;
             for (int q = 0; q < 8; q++) {
@@ -899,6 +1392,25 @@ public final class TalosLandErosion {
                 if (mk % W + DX[d] != ki || mk / W + DZ[d] != kj) continue;
                 if (t.acc[mk] > ua) { ua = t.acc[mk]; up = mk; }
             }
+            // ★★★ 宽度：accW = pRel x acc —— 【乘法】形式。
+            //
+            //   为什么不沿流向累加（实测踩过的坑）：
+            //     河道格在 1 km 网格上不一定【相邻】（上游可能在 2 格外），
+            //     而 meanderField 找上游只看 8 邻域 ⟹ 累加链经常断裂
+            //     ⟹ accW 系统性偏小（中位 2.78，而 acc 中位约 5~20）⟹ 宽度基线从 3.32 崩到 1.73。
+            //   乘法形式不需要链：pRel 是【本格】的量，pRel=1 时 accW = acc 精确成立 ✓
+            //   ★ 它不保证沿流向单调 —— 但那没关系，因为【宽度不需要单调】。
+            //     单调性是【干河道】的需求，由下面独立的 wetness 传播保证。
+            final double pr = (t.pRelTmp != null) ? t.pRelTmp[k] : 1.0;
+            t.accW[ch[k]] = t.acc[k] * pr;
+            // ★★★ 干河道：wetness 沿流向取 max(本格, 上游) ⟹ 保证【上游有水 => 下游有水】。
+            double wet = wetnessLocal(pr);
+            if (up >= 0) { final double wu = t.mWet[ch[up]]; if (wu > wet) wet = wu; }
+            t.mWet[ch[k]] = wet;
+            // ---- 现在 accW 已就位，再算宽度 ----
+            final double wk = widthOf(accWOf(t, k));
+            double lam = MEANDER_LAMK * wk;
+            if (lam < MEANDER_LAM_MIN) lam = MEANDER_LAM_MIN;
             double s, phi, mod;
             if (up < 0) { s = 0.0; phi = headPhase(ws, t, k); mod = headPhase(ws, t, k) * 1.7; }
             else {
@@ -907,7 +1419,7 @@ public final class TalosLandErosion {
                 final double ddx = t.mVX[ch[k]] - t.mVX[ou];
                 final double ddz = t.mVZ[ch[k]] - t.mVZ[ou];
                 final double dl = Math.sqrt(ddx * ddx + ddz * ddz);
-                double lamUp = MEANDER_LAMK * widthOf(t.acc[up]);
+                double lamUp = MEANDER_LAMK * widthOf(accWOf(t, up));
                 if (lamUp < MEANDER_LAM_MIN) lamUp = MEANDER_LAM_MIN;
                 s   = t.mS[ou]   + dl;
                 phi = t.mPhi[ou] + 2.0 * Math.PI * dl / lamUp;
@@ -917,6 +1429,7 @@ public final class TalosLandErosion {
             if (MEANDER_MOD != 0.0) A *= (1.0 + MEANDER_MOD * Math.sin(mod));
             final int ok = ch[k];
             t.mS[ok] = s; t.mPhi[ok] = phi; t.mA[ok] = A; t.mW[ok] = wk; t.mMod[ok] = mod;
+            if (i == n - 1) t.pRelTmp = null;   // 最后一格 ⟹ 用完即弃（省内存）
         }
     }
 

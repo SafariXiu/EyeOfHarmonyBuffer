@@ -132,12 +132,41 @@ public final class ZonalTables {
      * （本世界没有海冰）。50 度取 5.0（ERA5 在 45~60 度之间非单调，做了轻微平滑）。
      * <b>0 度同样必须精确为 0</b>（半球相位翻转 ⇒ 赤道年谐波为零），理由见 A_LAND_K。
      */
-    public static final double[] A_SEA_K = {0.0, 0.6, 2.1, 4.3, 6.2, 5.2, 8.1, 10.9, 11.6, 13.3};
+    public static final double[] A_SEA_K = {0.0, 0.9, 1.8, 3.6, 5.3, 4.0, 4.2, 2.8, 0.4, 0.0};
+
+    // ★★★★★★★★ 2026-10-08 修正（§157，本会话）：上表原来写的是
+    //   {0.0, 0.6, 2.1, 4.3, 6.2, 5.2, 8.1, 10.9, 11.6, 13.3}
+    // —— 那是【单调递增】的形状（像旧的 10*sin^2(phi) 实现），
+    // 而它【自己的 javadoc】写的是另一套值，那套值与 ERA5 实测吻合。
+    //
+    // 实测核对（refs/sst.mon.ltm.1991-2020.nc，ERA5 月平均，北半球纬向平均）：
+    //   纬度带    ERA5 A(K)   旧表值    比值
+    //    40- 50     4.94       6.20    1.25
+    //    50- 60     4.02       5.20    1.29
+    //    60- 70     3.17       8.10   ★ 2.56
+    //    70- 80     1.78      10.90   ★ 6.11
+    //    80- 90     0.29      11.60   ★ 39.81
+    // ⟹ 旧表在 60 度以上【严重偏大】，而真实是【45 度达峰后向极快速回落】。
+    //
+    // ★ 这是本会话 §156 追踪的「模型季节风变率比真实大 3~5 倍」的一环：
+    //   A_SEA_K 偏大 ⟹ seasonalAnomaly 偏大 ⟹ p' 偏大 ⟹ 风变率偏大。
+    //   而 uZmBlend 在陆地上会按 (1-κ) 混入洋面口径 ⟹ 影响所有点。
+    //
+    // ★ 新值 = javadoc 里那套（10/20/30/40/50/60/70/80 度 = 0.9/1.8/3.6/5.3/4.0/4.2/2.8/0.4，
+    //   其中 45 度的峰值 5.4 由 40 与 50 之间的插值体现）。
+    //   90 度取 0（极点是端点，且与 0 度的硬约束同族）。
+    /** ★ 是否用修正后的 A_SEA_K（默认 true）。false ⟹ 回到旧的单调递增表（可回滚）。 */
+    public static boolean ASEA_FIXED = true;
+
+    /** 旧表（仅用于回滚对照，不参与生产）。 */
+    public static final double[] A_SEA_K_OLD = {0.0, 0.6, 2.1, 4.3, 6.2, 5.2, 8.1, 10.9, 11.6, 13.3};
 
     /** 陆地季节振幅（K）。 */
     public static double aLand(double latDeg) { return interp(A_LAND_K, latDeg); }
     /** 海洋季节振幅（K）。 */
-    public static double aSea(double latDeg) { return interp(A_SEA_K, latDeg); }
+    public static double aSea(double latDeg) {
+        return interp(ASEA_FIXED ? A_SEA_K : A_SEA_K_OLD, latDeg);
+    }
 
     /**
      * **海气温差 `DT = T_air - T_sea`（K，负 = 空气比海冷）** —— 海洋侧近地面气温与海表的分隔锚。
@@ -323,10 +352,63 @@ public final class ZonalTables {
      * <code>U_DIF(0) = 0</code>，lat=0 处**没有跳变**。
      */
     public static double uZm(double latDeg, double theta) {
+        if (UZM_FROM_12MON) return uZm12(latDeg, theta);
         double uj = interp(U_ZM_JAN, latDeg);
         double ul = interp(U_ZM_JUL, latDeg);
         double hemi = latDeg >= 0.0 ? 1.0 : -1.0;
         return 0.5 * (uj + ul) + 0.5 * (ul - uj) * Math.cos(theta) * hemi;
+    }
+
+    // ==================== ★★★ 12 个月拟合的 u_zm（2026-10-08） ====================
+    //
+    //  为什么需要（§154 实测，数据来源 refs/uwnd.mon.ltm.1991-2020.nc）：
+    //
+    //  旧表用 【1 月/7 月两点】 + cos(theta) 插值，即
+    //      U_ANN = (JAN+JUL)/2,   U_DIF = (JUL-JAN)/2
+    //  但真实季节循环【不是纯余弦】，而且 1/7 月【不是极值月】⟹ 那两个量都偏。
+    //
+    //  实测（把 NCEP/NCAR R1 850 hPa 的 12 个月纬向平均投影到 cos(theta)）：
+    //      纬度   U_ANN(12月均)  旧(JAN+JUL)/2   A1(一次谐波)  旧(JUL-JAN)/2   判定
+    //       0- 10      -3.06         -3.50          1.64          0.00      ✗ 模型没有季节循环
+    //      10- 20      -3.61         -3.00          2.37          3.60      ✗ 过摆 1.5 倍
+    //      20- 30      -1.39         -2.40         -0.18          0.00      ✓
+    //      30- 40       2.95          1.85         -1.59         -2.35      ✗ 过摆 1.5 倍
+    //      40- 50       4.67          4.10         -1.54         -1.50      ✓
+    //      50- 60       3.84          3.40         -1.29          0.30      ✗✗ 符号相反
+    //      60- 70       1.70          1.35         -0.39         -0.95      ✗ 过摆 2.4 倍
+    //      70- 80       0.88          1.50          0.18         -0.40      ✗✗ 符号相反
+    //      80- 90       0.60          1.80          0.28          0.30      ✓
+    //
+    //  ★ 这解释了本会话 §153 的观测：模型 8 相位的风向集中度 A = 0.53~0.94，
+    //    而真实（NCEP 850 hPa）是 0.83~1.00 ⟹ 模型的风向摆得太厉害。
+    //
+    //  ★ 本表由 build/lat_probe/gen_uzm.py 从 refs/uwnd.mon.ltm.1991-2020.nc 生成，
+    //    每 10 度节点，0..90。相位约定与旧表相同（theta=0 是北半球夏至）。
+    //  ★ 半球反相仍用 hemi（真实南北不对称已记账、未实现，与旧表同一取舍）。
+    //  ⚠ 二次谐波 A2（实测 -0.49 ~ +0.39，非零）**本版未实现** —— 需要先验证
+    //    它的半球反相性质，留待后续。
+
+    /** ★ u_zm 的 12 个月平均（12 月均，每 10 度 0..90）。来源：NCEP/NCAR R1 850 hPa uwnd 1991-2020。 */
+    public static final double[] U_ANN_12 = {
+        -3.06, -3.61, -1.39, 2.95, 4.67, 3.84, 1.70, 0.88, 0.60, 0.01
+    };
+    /** ★ u_zm 的一次季节谐波振幅 A1 = &lt;u·cos(theta)&gt;/&lt;cos^2&gt;。同上来源。 */
+    public static final double[] U_DIF_12 = {
+        1.64, 2.37, -0.18, -1.59, -1.54, -1.29, -0.39, 0.18, 0.28, 0.00
+    };
+
+    /**
+     * ★★★ 是否用【12 个月拟合】的 u_zm 代替旧的 JAN/JUL 两表（默认 true）。
+     * false ⟹ 逐位回到旧行为（可回滚）。
+     */
+    public static boolean UZM_FROM_12MON = true;
+
+    /** 12 个月拟合的 u_zm。相位与旧表一致：theta=0 是北半球夏至。 */
+    public static double uZm12(double latDeg, double theta) {
+        double ann = interp(U_ANN_12, latDeg);
+        double dif = interp(U_DIF_12, latDeg);
+        double hemi = latDeg >= 0.0 ? 1.0 : -1.0;
+        return ann + dif * Math.cos(theta) * hemi;
     }
     public static double wZm(double latDeg) { return interp(W_ZM, latDeg); }
 
