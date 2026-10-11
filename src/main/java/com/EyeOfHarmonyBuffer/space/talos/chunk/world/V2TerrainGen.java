@@ -352,7 +352,22 @@ public final class V2TerrainGen {
 
     /**
      * <b>1 个世界单位的长度（block）。</b>
-     * {@code cell = SCALE·CELLSCALE·UNIT = 0.105·UNIT}；取 300 ⟹ cell = 31.5 格。
+     *
+     * <p>{@code cell = SCALE·CELLSCALE·UNIT}，其中 {@code SCALE = 0.15}、{@code CELLSCALE = 0.7}
+     * （见 {@link com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter}）⟹ {@code cell = 0.105·UNIT}。
+     *
+     * <p>★ <b>2026-10-11 口径更正（同 §785 的处置方式：保留正确的值，更正文档）</b>：
+     * 原文写「取 <b>300</b> ⟹ cell = 31.5 格」，而 <b>值自始至终是 1000</b>。
+     * 证据：{@code git log -S "ERO_UNIT = 300" --all} <b>零命中</b>
+     * ⟹ 「300」是【从未落地的设计意图】，不是历史值 ✗（与 {@code CF_LAND_H} 的「650」同一模式）。
+     *
+     * <p><b>实际值</b>：{@code UNIT = 1000} ⟹ {@code cell = 0.105 x 1000 = } <b>105 格</b>。
+     * 本文件下游的两处都【引用本常量】而不是硬编码 31.5，所以它们自动跟着走、始终自洽：
+     * <ul>
+     *   <li>{@code SimTerrain.ERO_DIR_WL}（:465）「方向扰动场的波长。取 cell 尺度」</li>
+     *   <li>{@code SimTerrain.EXTRA_SLOPE_HALF}（:496）「坡度采样的半宽。取侵蚀输入的 cell 尺度，
+     *       即『侵蚀滤镜自己看见的那个坡度』—— 自洽，不是新旋钮」</li>
+     * </ul>
      */
     public static double ERO_UNIT = 1000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）   // non-final: scale sweeps (P1394) + ledger
 

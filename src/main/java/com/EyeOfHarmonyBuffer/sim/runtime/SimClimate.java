@@ -163,7 +163,30 @@ public final class SimClimate {
      * 24 km 处只到 0.038 而旧语义要 0.60 ⇒ **端点对不上、量程差一个数量级**）。
      * 引这段旧推导请先读 §118.9。
      */
-    public static int COAST_FINE = 1_000;   // ★ 缩 40x（原 40,000）
+    // ★★★★★★★ 2026-10-11 修复（气候层适配第一批）：**撤销 40x 缩减，恢复 40,000**。
+    //
+    // 【为什么 1,000 是错的】上面那条 javadoc 自己写明本常量的语义是【绝对的】：
+    //   「与旧 ClimateCoords:94 逐字同式的『距离』量」，且旧语义是
+    //   **「岸线 0、14 km 0.35、24 km 0.60」** —— 而 0.35 = 14,000/40,000、0.60 = 24,000/40,000
+    //   ⟹ **40,000 就是这个语义的锚**，它不是「可随世界整体缩放的相对量」。
+    //   缩成 1,000 后语义变成「0.35 km 0.35、0.6 km 0.60」⟹ **整个过渡带塌进 1 km**。
+    //
+    // 【实测证据（本会话，400 采样点）】
+    //   continent = clamp01(-coastD / COAST_FINE) 的分布：
+    //     ★ 饱和到 0 = 59.8%   饱和到 1 = 39.0%   ⟹ **98.8% 的点完全饱和**
+    //     p10=0.000 p25=0.000 p50=0.000 p75=1.000 p90=1.000
+    //   ⟹ continent 实际退化成【二值场】
+    //   ⟹ 而 V2BiomeSelect:175 的
+    //        basinW = ss(BASIN_INLAND_LO=0.35, BASIN_INLAND_HI=0.60, c.continent) * ...
+    //      也随之退化成【硬开关】✗
+    //
+    // 【新场的实际距离量程（本会话实测，4000 点）】
+    //   陆地：p10=609  p25=1753  p50=3821  p75=13611  p90=60000  max=60000
+    //   海上：p10=3396 p25=6471  p50=13488 p75=21757  p90=40036  max=41035
+    //   ⟹ 取 40,000 时 continent 的分布良好（p50 约 0.10、p75 约 0.34、p90 约 1.0）
+    //
+    // ★ 回滚：把本行改回 1_000 即逐位回到旧行为。
+    public static int COAST_FINE = 40_000;   // ★ 撤销 2026-10-08 的 40x 缩减
 
     /**
      * 瓦片尺寸（m）。
@@ -187,8 +210,20 @@ public final class SimClimate {
     public static final int TILE_X = 100_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
     public static final int TILE_Z = 50_000;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
-    /** 风/气压的差分步长（m）。**必须与生产 Atmosphere.windAt 的实参一致**（500 km）。 */
-    public static int GRAD_STEP = 12_500;   // ★ 缩 40x（原 500,000）
+    /**
+     * 风/气压的差分步长（m）。**必须与生产 {@code Atmosphere.windAt} 的实参一致**。
+     *
+     * <p>★ 2026-10-11 更正：步长现在是 <b>12,500 m（12.5 km）</b>，
+     * 原文的「（500 km）」是 2026-10-08「全体缩小 40 倍」之前的旧值。
+     *
+     * <p>本类自己就是生产实参的来源（{@code :1044} 与 {@code :1066} 把本常量直接传给
+     * {@code windAt} / {@code mmPerDay}）⟹ 自洽 ✓
+     *
+     * <p>★ 而缩 40x 在这里是<b>改进</b>：本会话实测 {@code p'} 的 1/e 相关长度是 <b>30~40 km</b>，
+     * 于是 12.5 km 是相关长度的 <b>36%</b>（差分足够）；而旧值 500 km 是它的 <b>14 倍</b>
+     * ⟹ 那种步长下中心差分已失去意义。与 {@code GyreRow.maxRow} 那类「破坏」不同。
+     */
+    public static int GRAD_STEP = 12_500;   // ★ 缩 40x（原 500,000）—— 见上，本例是改进
 
     /** 上风取样距离（m）—— 只用于 onshore 这个诊断位。 */
     public static int UPWIND_OFFSET = 375;   // ★ 缩 40x（原 15,000）
@@ -685,6 +720,58 @@ public final class SimClimate {
         if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.ZMSLK_LEGACY) {
             h = h * 31 + 0x7A134L;
         }
+        // ★★★★★★★ 2026-10-11（气候层适配 · D58 准入判据补漏）：**岸距口径的两个常量**。
+        //   本方法的准入判据（由 :447 等多处注释给出）：「改了结果 ⇒ 必须进指纹（D58）」。
+        //   · COAST_FINE 是 `sample()` 里 `c.continent = clamp01(-coastD / COAST_FINE)` 的**分母**，
+        //     直接决定 continent（一个被群系层消费的量）。
+        //   · COAST_FAR 是 `f.coastFar[]` 的搜索半窗，决定 maritimeInland 的输入。
+        //   ⚠ §176 把 COAST_FINE 从 1,000 改到 40,000（continent 饱和率 39.0% -> 2.5%）时
+        //     **未折入指纹** ✗ ⟹ 本条是那次修改的 D58 补漏。
+        h = h * 31 + 0x7A137L;
+        h = h * 31 + COAST_FINE;
+        h = h * 31 + COAST_FAR;
+        h = h * 31 + Double.doubleToLongBits(MARITIME_SCALE);
+        // ★★★★★★★ 2026-10-11 补全（用户裁决 A 的延伸：同一个 D58 纪律，其他类也要补）
+        //   判据同上：「改了结果 ⇒ 必须进指纹」。
+        //
+        //   ① 群系判据（V2BiomeSelect）—— 直接决定群系权重
+        h = h * 31 + 0x7A138L;
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.TEMP_SPAN);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.MOIST_SPAN);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.ALPINE_TEMP_HI);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.ALPINE_TEMP_LO);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.BASIN_MOIST_LO);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.BASIN_MOIST_HI);
+        //   ② 纬向表口径（ZonalTables）—— ASEA_FIXED 决定 A_SEA 的来源；UZM_FROM_12MON 决定 U_zm 的来源
+        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.ASEA_FIXED ? 1 : 0);
+        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.UZM_FROM_12MON ? 1 : 0);
+        //   ③ 群系气候坐标的纬度权重（ClimateCoords）
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.W_LAT);
+        //   ④ 细节噪声（DetailNoise）—— 被 SimTerrain 的侵蚀链直接消费
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise.STEP_SCALE);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise.RIDGE_SIGN_EPS);
+        //   ⑤ 土壤桶自旋（SoilMoisture）—— ★ 它们【确实】影响解出来的 W：
+        //      javadoc 自己说「实测（P905）：亚洲在 MAX_YEARS=60 **撞顶**」
+        //      ⟹ 存在【未收敛】的情况 ⟹ 迭代上限与初值都会改变最终 W ✗
+        h = h * 31 + 0x7A139L;
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.NTHETA;
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.MAX_YEARS;
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL_REL);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.W_INIT_FRAC);
+        //   ⑥ 水系求解（WaterField）—— 改收敛性/判据 ⟹ 改结果；
+        //      ⚠ PARALLELISM 与 CACHE_TILES **不加**（并行度与缓存大小只影响速度）。
+        h = h * 31 + 0x7A13AL;
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.HALO;
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.RIVER_MIN_WIDTH_M);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.A_MIN_CELLS);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.LAKE_MIN_INFLOW_CELLS);
+        //   ⑦ 群系 LUT 的平滑与抖动（V2BiomeField）—— 直接改 LUT 的值；
+        //      ⚠ SOLVE_HARD_CAP / SOLVE_WARN_EVERY **不加**（求解护栏与告警，不改结果）。
+        h = h * 31 + 0x7A13BL;
+        h = h * 31 + com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.BLUR_R;
+        h = h * 31 + com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.BLUR_PASSES;
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.JITTER_AMP);
         return h;
     }
 

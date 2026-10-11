@@ -103,22 +103,56 @@ public final class WaterField {
     // ==================== 网格 ====================
 
     /**
-     * 格距（block）。**§7613：从 150 km 改为 10 km。**
+     * 格距（block）。**§7613：从 150 km 改为 10 km；2026-10-08 再改为 250 m。**
      *
-     * <p><b>旧依据（150 km）</b>：与 {@code PrecipField.UPWIND_STEP} 同值（§7495）—— 那是
-     * <b>地形采样</b>的尺度。
+     * <h3>历史（三代）</h3>
+     * <ol>
+     *   <li><b>150 km</b>：与 {@code PrecipField.UPWIND_STEP} 同值（§7495）—— 那是<b>地形采样</b>的尺度。</li>
+     *   <li><b>10 km</b>（§7613）：与 {@link SimClimate#CELL} <b>同值</b>。理由（P1243-P1259 实测）：
+     *     <ul>
+     *       <li>河网的判据（河道宽度）需要 10 km 分辨率；150 km 上一个「河宽」是 15 个格距，无意义。</li>
+     *       <li>产流深 Rr 的输入（降水 P、气温 T）本来就定义在 SimClimate 的 10 km 格点上
+     *           ⟹ 用 10 km 采样它们<b>不跨界、不重建</b>。</li>
+     *       <li>P1259 实测：在 10 km 上取 Rr 的两个输入只要 <b>0.2 ms / 256 格</b>；
+     *           而在 150 km 上取同一批格点要 <b>103 秒</b>（P1243）⟹ 旧值下<b>不可用</b>。</li>
+     *     </ul></li>
+     *   <li>★ <b>250 m</b>（2026-10-08「全体缩小 40 倍」）：10,000 / 40 = 250。</li>
+     * </ol>
      *
-     * <p><b>新依据（10 km）</b>：与 {@link SimClimate#CELL} <b>同值</b>。理由（P1243-P1259 实测）：
+     * <h3>★★★ 2026-10-11 口径更正（用户裁决：保持 250；同 §785 的处置方式：保留值，更正文档）</h3>
+     *
+     * <p><b>原文写的「与 {@code SimClimate.CELL} 同值」与「不是可调旋钮：它等于另一个已有的
+     * 主格点间距（零新尺度）」—— 那两句话【已与事实不符】</b> ✗：
+     * <pre>
+     *   SimClimate.CELL = 10,000（未随 40x 缩减）
+     *   WaterField.STEP =    250（缩了 40x）
+     *   ⟹ 两者从「同值」变成【差 40 倍】
+     * </pre>
+     *
+     * <p>★ 而 <b>250 是【有意的】</b>，不是误缩 —— 证据是本项目自己的【多尺度网格体系】：
+     * <pre>
+     *   SimClimate.CELL           = 10,000   （10 km，气候场）
+     *   TalosLandErosion.STEP_BLK =  1,000   （1 km，LEM）
+     *   V2BiomeField.CELL         =    250   （群系 LUT 的离线求解网格）
+     *   WaterField.STEP           =    250   （本值，水系）
+     *   TalosLandField.CF_DH      =    200   （岸距中心差分）
+     * </pre>
+     * ⟹ <b>250 m 是本项目的「细网格标准」</b>（与 {@code V2BiomeField.CELL} 一致）✓
+     *
+     * <p><b>为什么 250 在物理上更好</b>：本类的唯一实质消费者是
+     * {@code PrecipField:3276} 的<b>布尔查询</b>「这个点是不是水体」（用于水面蒸发不受土壤限制，
+     * {@code betaUsed = 1.0}）。而 {@code RIVER_MIN_WIDTH_M = 140}：
      * <ul>
-     *   <li>河网的判据（河道宽度）需要 10 km 分辨率；150 km 上一个「河宽」是 15 个格距，无意义。</li>
-     *   <li>产流深 Rr 的输入（降水 P、气温 T）**本来就定义在 SimClimate 的 10 km 格点上**
-     *       （{@code SimClimate.CELL = 10_000}）⟹ 用 10 km 采样它们<b>不跨界、不重建</b>。</li>
-     *   <li>P1259 实测：在 10 km 上取 Rr 的两个输入只要 <b>0.2 ms / 256 格</b>；
-     *       而在 150 km 上取同一批格点要 <b>103 秒</b>（P1243）⟹ 旧值下<b>不可用</b>。</li>
+     *   <li>在 10 km 格上：140 / 10,000 = <b>0.014 格距</b> ⟹ 判据无意义；</li>
+     *   <li>在 250 m 格上：140 / 250 = <b>0.56 格距</b> ⟹ 判据有意义 ✓</li>
      * </ul>
-     * <p><b>不是可调旋钮</b>：它等于另一个已有的主格点间距（零新尺度）。
+     *
+     * <p>⚠ <b>代价未实测</b>：{@code tileBlocks = TILE * STEP} 从 16 x 10,000 = 160 km
+     * 变成 16 x 250 = 4 km ⟹ tile 数增 1,600 倍。而 {@code CACHE_TILES = 512}
+     * ⟹ 覆盖 512 x 4 km = 2,048 km（本世界海盆 600~850 km ⟹ 够用）。
+     * P1259 已实测 10 km 上取 Rr 只要 0.2 ms/256 格；<b>250 m 的代价未测</b>。
      */
-    public static final int STEP = 250;   // ★ 缩 40x（原 10,000）
+    public static final int STEP = 250;   // ★ 缩 40x（原 10,000）—— 见上：250 是有意的（细网格标准）
 
     /** 每 tile 的格数（一维）。tile = {@code TILE x TILE} 格。 */
     public static int TILE = 16;
@@ -126,10 +160,18 @@ public final class WaterField {
     /**
      * 窗口向外扩张的 halo（格）。窗口边长 = {@code TILE + 2*HALO}。
      *
-     * <p>P1162 实测：halo=0 有 5/256 格不一致（最大 103.8 m），<b>halo&gt;=4 起完全收敛</b>；
-     * 取 8 = 2 倍余量。
+     * <p>P1162 实测：halo=0 有 5/256 格不一致（最大 103.8 m），<b>halo&gt;=4 起完全收敛</b>。
+     *
+     * <p>★ <b>2026-10-11 口径更正（同 §785 的处置方式：保留正确的值，更正文档）</b>：
+     * 原文写「取 8 = 2 倍余量」，而现值是 <b>16</b>（= 4 倍余量）。
+     * 证据：{@code git log -S "int HALO = 8" --all} 命中 {@code 817eb38「引入河网」}
+     * ⟹ 那个 8 是【真实的历史值】，在 {@code 5ee4f35「新的地形」} 里被改成 16 而注释未同步。
+     * （与 {@code CF_LAND_H} 的「650」/ {@code ERO_UNIT} 的「300」不同 —— 那两个是
+     * {@code git log -S} <b>零命中</b>的「从未落地的设计意图」。）
+     *
+     * <p>⟹ <b>现值 16 是【有意的、余量更大的】</b>（4 倍而不是 2 倍）✓
      */
-    public static int HALO = 16;
+    public static int HALO = 16;   // ★ 收敛只需 >=4；本值 16 = 4 倍余量
 
     /**
      * 平地抬升增量（米）。出处：调研 03 §6.2 逐字「Priority-Flood + ε … 用 <b>1/256 格的高度</b>」，

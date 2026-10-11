@@ -99,8 +99,23 @@ public final class GlobalClimate {
         com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.Coords c =
             com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.sample(x, z, worldSeedInt, null);
 
+        // ★★★★★★★ 2026-10-11 修复（气候层适配 · 口径分叉）：gradStep 的硬编码 500_000
+        //   -> 引用 SimClimate.GRAD_STEP。
+        //
+        // 【改前】本行把 gradStep 传成字面量 **500_000**，而 SimClimate.GRAD_STEP 是 **12,500**。
+        //   证据（git）：`git log -S "theta(0.0), 12_500" --all` **零命中**
+        //   ⟹ 那个 500_000 从引入时就有，**从未跟随 GRAD_STEP 的 40x 缩减** ✗
+        //   ⟹ 与本会话已修的 HadleyCell.OM / StationaryWave.OM **完全同类**（硬编码副本未同步）。
+        //
+        // 【为什么 12,500 才对】§188 已判定：composeColumn/风/气压的差分步长应与 p' 的
+        //   1/e 相关长度（实测 30~40 km）同量级 ⟹ 12.5 km = 相关长度的 36% ✓；
+        //   而 500 km = 相关长度的 14 倍 ⟹ 中心差分已失去意义 ✗
+        //
+        // 【影响面】本方法的消费者只有 CommandTalosMap（:186 / :271）——**不是区块生成路径**。
+        //   ⟹ 本修复【不改游戏性能】，只让「/talos map」命令显示的气候值与生产口径一致 ✓
         double rainMm = com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.mmPerDay(
-            x, z, seed, cell, com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.theta(0.0), 500_000);
+            x, z, seed, cell, com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.theta(0.0),
+            com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.GRAD_STEP);
         double rain = clamp01(rainMm / RAIN_FULL_MM);
 
         // ClimateCoords.Coords.airMass: 0=mT 1=cT 2=mP 3=cP（见其字段注释）

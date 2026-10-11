@@ -125,7 +125,15 @@ public final class StationaryWave {
     /** §397 的量纲桥：W/m^2 -> m^2/s^3（子代理三源核实的推荐值）。 */
     public static double Q_WM2_TO_SW = 3.5e-5;
 
-    private static final double OM = 7.2921e-5;
+    // ★★★★★★★ 2026-10-11 修复（气候层适配 · 口径分叉）：**与下一行同族，但上一轮审计漏了它**。
+    //
+    // 【证据】下一行 R_EFF 的注释写「★ 2026-10-08：消除副本」，而本行 OM 是同族的副本却没被消除。
+    // 【改前】OM = 7.2921e-5（地球值）；而 WorldContract.OMEGA = 7.2921e-5 * 40（本世界值）。
+    // 【用途】:545  fOf[j] = ZERO_F ? 0.0 : 2 * OM * Math.sin(phi);
+    //   —— 那是【科氏参数 f】，必须与世界契约同口径，否则 f 小 40 倍 ⟹ 定常波的物理全错 ✗
+    //
+    // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
+    private static final double OM = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
     private static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
     private static long cacheKey = Long.MIN_VALUE;

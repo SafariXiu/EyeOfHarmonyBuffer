@@ -171,11 +171,58 @@ public final class CoastalLayer {
     public static double UPWELL_SEASON_DAYS = 90.0;
 
     /**
-     * 离岸宽度 L_x（m）：上升流把水从多宽的带里抽走。
+     * 离岸宽度 L_x（m）：上升流把水从多宽的带里抽走。**物理带宽**，不是判据域。
      *
-     * <p><b>取 A3 的验收带宽 W = 100 km，不引入新参数</b> —— 沿岸层就是这个 100 km 带。
+     * <h3>★★★ 2026-10-11 更正：本字段原来的 javadoc 是【错的口径】</h3>
+     * <p><b>原文</b>：「取 A3 的验收带宽 W = 100 km，不引入新参数 —— 沿岸层就是这个 100 km 带」。
+     * <p><b>为什么错</b>：它把 <b>A3 的【判据域】</b>（验收时统计的 100 km 带）
+     * 当成了 <b>本常量要表达的【物理带宽】</b> —— 两者是不同的量。
+     *
+     * <h3>正确口径：L_x = Rossby 变形半径量级</h3>
+     * <p><b>权威依据（逐字）</b>：
+     * <pre>
+     *   「The offshore scale for dynamic ocean processes such as coastal upwelling
+     *     is the Rossby radius of deformation」
+     *     —— horizon.documentation.ird.fr/exl-doc/pleins_textes/divers20-05/010027489.pdf
+     * 
+     *   w * L_x = U_Ekman  ⟹  w = U_E / L_x = 0.7 / (15e3) = 0.5e-4 m/s
+     *     —— marine.rutgers.edu/dmcs/ms503/COD-2005-LectureNotes.pdf   （该例用 L_x = 15 km）
+     * 
+     *   「The mean values for the internal Rossby radius for the May and June (OSU)
+     *     data are 16 and 20 km」
+     *     —— apps.dtic.mil/sti/tr/pdf/ADA212113.pdf   （★ 真实观测：R_d = 16~20 km）
+     * </pre>
+     *
+     * <p><b>本世界的 R_d</b>：{@code R_d = sqrt(G_PRIME * H_THERMOCLINE) / f}
+     * <pre>
+     *   纬度  5: R_d = 3406.6 m      纬度 30: R_d = ★ 593.8 m
+     *   纬度 10: R_d = 1709.8 m      纬度 45: R_d =  419.9 m
+     *   纬度 20: R_d =  868.1 m      纬度 60: R_d =  342.8 m
+     * </pre>
+     * ★ 与真实一致：真实 16~20 km，而本世界 f 被放大 40x（OMEGA x 40）
+     *   ⟹ 16~20 km / 40 = <b>0.4~0.5 km</b>，与上表的 342.8~1709.8 m 同量级 ✓
+     *
+     * <h3>取值核对</h3>
+     * <table border=1>
+     * <tr><th>L_x</th><th>与 R_d(30 度 = 593.8 m) 的比</th><th>判定</th></tr>
+     * <tr><td><b>2,500（本值）</b></td><td><b>4.2 x</b></td><td>✓ 与「约 1x R_d」同量级</td></tr>
+     * <tr><td>100,000（原 javadoc 主张）</td><td>168 x</td><td>✗ 大 168 倍</td></tr>
+     * </table>
+     *
+     * <h3>量级交叉验证（h_c = tauAlong * T / (RHO * f * L_x)）</h3>
+     * <pre>
+     *   tau = 0.05 Pa（纬度 10/20/30/45）：
+     *     L_x = 100 km ⟹ h_c =  3.74 /  1.90 /  1.30 /  0.92 m
+     *     L_x = 2.5 km ⟹ h_c = 149.8 / 76.0 / 52.0 / 36.8 m
+     *   本类 javadoc 自给的参考：「真实沿岸上升流抬升 50~150 m」
+     *   ⟹ ★ **只有 2.5 km 落在真实范围内** ✓
+     * </pre>
+     *
+     * <p>⚠ <b>遗留</b>：模型的 {@code windStress} 偏小 2.7~10 倍
+     * （实测 mean 0.0186 Pa / max 0.110 Pa，真实典型 0.05~0.2 Pa）。
+     * 那是【风】那边的问题，**不应该**用本常量去补偿。
      */
-    public static double UPWELL_WIDTH = 2_500.0;   // ★ 缩 40x（原 100,000）
+    public static double UPWELL_WIDTH = 2_500.0;   // ★ 缩 40x（原 100,000）—— 值正确，原 javadoc 错
 
     /**
      * **沿岸层的唯一入口**：由局地沿岸风应力给出温跃层位移 h_c（m，负 = 抬升 = 上升流）。

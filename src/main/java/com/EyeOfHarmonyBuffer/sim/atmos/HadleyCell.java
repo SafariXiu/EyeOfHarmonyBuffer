@@ -41,7 +41,19 @@ public final class HadleyCell {
     //   【短路】（§690的 SPLIT_ASCENT）保住了 —— 下沉永远无法被表达。下一个候选是 `SPLIT_ASCENT`。
     public static boolean ENABLED = false;
 
-    public static final double OM = 7.2921e-5;                       // s^-1
+    // ★★★★★★★ 2026-10-11 修复（气候层适配 · 口径分叉）：**与下一行同族，但上一轮审计漏了它**。
+    //
+    // 【证据】下一行 R_EFF 的注释写「★ 2026-10-08：消除副本，统一到 WorldContract」，
+    //   而本行 OM 是【同一族的副本】却没被消除 ⟹ 同一个量纲组合里两个口径 ✗
+    //
+    // 【改前】OM = 7.2921e-5（**地球**自转速率）
+    //   而 WorldContract.OMEGA = 7.2921e-5 * 40 = 2.91684e-3（本世界值）
+    //   （「全体缩小 40 倍」的配套：OMEGA x40，否则大气变形半径 > 行星半径 ⟹ 气候层塌掉）
+    // 【用途】:105  return G * H_TROP * dH / (OM*OM * R_EFF*R_EFF);
+    //   —— 一个【量纲组合】，OM 与 R_EFF 必须同口径。
+    //
+    // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
+    public static final double OM = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
     public static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
     public static final double G = 9.80665;                          // m s^-2
     /** 外流层厚度 H（对流层顶高度）。 */

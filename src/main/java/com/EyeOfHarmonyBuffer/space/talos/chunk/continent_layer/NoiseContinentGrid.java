@@ -292,6 +292,112 @@ public final class NoiseContinentGrid {
         h = h * 31 + Double.doubleToLongBits(TalosLandField.H_GAIN_LAND);
         h = h * 31 + Double.doubleToLongBits(TalosLandField.H_GAIN_SEA);
         h = h * 31 + Double.doubleToLongBits(KAPPA_H);
+        // ★★★★★★★ 2026-10-11 补全（用户裁决 A：「补全 —— 逐个判定那 78 个」）
+        //
+        // 【背景】本方法的 javadoc 承诺「把当前海陆层的【全部行为相关】参数编码成一个 long」，
+        //   而实现只折入了 8 个，而 `TalosLandField` 有 88 个非 final 常量 ⟹ 80 个缺口 ✗
+        //   ⟹ 本条按 D58 的准入判据「改了结果 ⇒ 必须进指纹」逐个判定后补全。
+        //
+        // 【判定：不加的（已核实其 javadoc 自证不改结果）】
+        //   · `SCAN`        —— 「SCAN 8 -> 3（**逐位等价**，但快 5~7 倍）」
+        //   · `OPP_R`       —— 「实测：OPP_R 从 1 到 12，coastDist **偏差全是 0.0**」
+        //   · `OPP_R_TIGHT` —— 两级扫描的小半径（`OPP_R` 的加速位，同上逐位等价）
+        //   · `DIFF_OPP_R`  —— 「实测：R 从 4 降到 2，断崖指标**不变**（仍 0/16445）」
+        //   · `NI_MEMO_ON` / `HEIGHT_MEMO_ON` —— 「记忆化开关（诊断时可关）」，只影响速度
+        //   · `BLOCK_DT_*`  —— block 级 DT 的**分块粒度**；DT 值由 `DT_R` 决定（见下）
+        //
+        // 【判定：加的】—— 全部是【参与求解/剖面/造山/距离变换计算】的参数。
+        //   分六组（按物理含义），每组一行注释：
+        //
+        //   ① 单元与聚集（决定细胞/Voronoi 的几何）
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SC);
+        h = h * 31 + TalosLandField.SUPER;
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CLUSTER_FRAC_MIN);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CLUSTER_FRAC_MAX);
+        h = h * 31 + TalosLandField.CLUSTER_MIN;
+        h = h * 31 + TalosLandField.CLUSTER_MAX;
+        h = h * 31 + TalosLandField.CLUSTER;
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SUP_JITTER);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SUP_BSPREAD);
+        //   ② 场形（偏斜/细节/预算/波数）
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SKEW_AMP);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SKEW_HF);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.FINE_AMP);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.N_SIGMA);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CONT_N_HF2);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LOCAL_R);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CONT_BUDGET);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CELL_WL);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.H_GAIN);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CONT_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SMOOTH_P);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.VEL_WL_R);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SHEAR_SCALE);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CONV_SCALE);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CAP_MULT);
+        //   ③ 造山（OROG 族）
+        h = h * 31 + (TalosLandField.OROG_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_DH);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_C0);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_C1);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_BND_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_PLATE_BAND);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_EDGE_DH);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_EDGE_BAND);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_MAX_M);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_GAMMA);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_BAND_MIN);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.REL_OROG);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.REL_OCEA);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.REL_RIDGE);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.REL_RIFT);
+        //   ④ 大尺度场（LS 族）+ 基底切换
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_WL);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_WL2);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_TARGET);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_AMP);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_AMP2);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LS_BAND);
+        h = h * 31 + (TalosLandField.USE_CONT_FIELD ? 1 : 0);
+        h = h * 31 + (TalosLandField.USE_NEW_BASE ? 1 : 0);
+        h = h * 31 + (TalosLandField.HEIGHT_FROM_CF ? 1 : 0);
+        //   ⑤ 海岸剖面（CF 族）—— ★ CF_SAT / CF_LAND_U / CF_LAND_H 见下（§195 补漏）
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_DH);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_SHELF_H);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_SHELF_U);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_SLOPE_H);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_SLOPE_U);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_DEEP_OFF);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_DEEP_H);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_DEEP_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.COAST_FADE_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LAND_TARGET);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.LAND_DEEP);
+        //   ⑥ 剖面族（NB/T/D 三组）+ 距离变换 + 门控
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_LAND_U1);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_LAND_U2);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_SHELF);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_SLOPE);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_DEEP_OFF);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NB_DEEP_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SHELF_T);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SLOPE_T);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.DEEP_T);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SHELF_D);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SLOPE_D);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.DEEP_D);
+        h = h * 31 + TalosLandField.DT_R;
+        h = h * 31 + (TalosLandField.USE_DT_BASE ? 1 : 0);
+        h = h * 31 + (TalosLandField.USE_SELFR ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.DT_GATE_W);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SAT_D);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.NEAR_GATE);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.FAR_LIMIT);
+        //
+        //   ⑦ ★ §195 的 D58 补漏（CF_SAT 改动未折入指纹）
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_SAT);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_U);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_H);
         return h; }
 
     // ================= 9. 统计缓存清理（兼容旧签名） =================

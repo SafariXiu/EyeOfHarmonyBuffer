@@ -134,8 +134,41 @@ public final class OceanField {
      * ⇒ 在这里把生产解出来的带均速度存下来，探针只读，**与生产同一个解**。
      */
     private static final HashMap<Long, double[]> BAND = new HashMap<>();
-    /** A7/A2 口径的「带」宽度（m）：与 §23.2 的真实参照（30 Sv / 100 km x 4000 m）同口径。 */
-    public static double BAND_W = 2_500.0;   // ★ 缩 40x（原 100,000）
+    /**
+     * ★★★★★★★ 2026-10-11 修复（气候层适配）：A7/A2 的「带」宽度改由 **Munk 层厚 {@code delta_M}** 决定。
+     *
+     * <h3>改前的错</h3>
+     * <p>原 javadoc 说「与 §23.2 的真实参照（30 Sv / 100 km x 4000 m）同口径」，
+     * 即把带固定成 <b>100 km</b>（地球观测的西边界流带宽）。而 2026-10-08 的「缩 40x」
+     * 把它改成 2,500，于是实际带只有 <b>2.5 km</b>。
+     *
+     * <p>★★ 但两者【都不对】，因为本世界的西边界流带宽由 {@code delta_M} 决定，
+     * 而 {@code delta_M} 随纬度变（beta ∝ cos(lat)），**不是一个常数**：
+     * <pre>
+     *   纬度    delta_M(m)      2500/dM    100000/dM
+     *     0.0      8,033         0.31        12.45
+     *    30.0      8,428         0.30        11.87
+     *    45.0      9,017         0.28        11.09
+     *    60.0     10,121         0.25         9.88
+     *    80.0     14,399         0.17         6.95
+     *   ⟹ delta_M 范围 = 8,033 ~ 14,399 m
+     * </pre>
+     *
+     * <h3>依据（本仓库自己的口径）</h3>
+     * <p>{@link #solveRow} 里 {@code OceanField.java:505} 的注释逐字：
+     * <pre>
+     *   // Munk 解应当满足 v_band ~ psi_max / delta，delta = (A_H/beta)^(1/3)。
+     * </pre>
+     * <p>⟹ 「带」的宽度【就是】{@code delta_M}。所以本方法改为
+     * {@code q = max(1, (int)(deltaAt(zRow) / g.h))}，按纬度自动取值。
+     *
+     * <h3>回滚</h3>
+     * <p>{@code BAND_W_FROM_DELTA = false} ⟹ 逐位回到用 {@code BAND_W} 常量的旧行为。
+     * {@code BAND_W} 本身保留（旧行为要它）。
+     */
+    public static boolean BAND_W_FROM_DELTA = true;
+    /** 旧口径的固定带宽度（m）。仅当 {@link #BAND_W_FROM_DELTA} = false 时使用。 */
+    public static double BAND_W = 2_500.0;   // ★ 缩 40x（原 100,000）—— 旧口径，见上
     /**
      * **按 zIdx 分桶的海盆索引（审计 D55）**：zIdx -> [SPAN 的键]。
      *
@@ -190,7 +223,13 @@ public final class OceanField {
     /** 当前安装的世界种子；未安装返回 {@link Integer#MIN_VALUE}。**探针用它自证口径。** */
     public static synchronized int installedSeed() { return installedSeed; }
 
-    /** 预热扫描步长（block）：枚举海盆用。海盆宽 ~10^4 km，500 km 不会漏。 */
+    /**
+     * 预热扫描步长（block）：枚举海盆用。
+     *
+     * <p>★ 2026-10-11 更正：原文说「海盆宽 ~10^4 km，500 km 不会漏」——
+     * 那是<b>旧海陆层</b>的海盆宽度。本会话实测【新场】的海盆宽是 <b>600~850 km</b>。
+     * 而步长现在是 <b>12,500 格 = 12.5 km</b>，远小于 600 km ⟹ <b>不会漏</b> ✓
+     */
     public static int WARM_SCAN = 12_500;   // ★ 缩 40x（原 500,000）
 
     /**
@@ -202,10 +241,13 @@ public final class OceanField {
      * 所以预热期间其它线程仍可查询，只是会等待正在解的那一行）。
      *
      * <p>⚠⚠ <b>预热窗口是人为选的，不是「全球」</b>：扫描范围是
-     * {@code x ∈ [-MAX_D, +MAX_D]} = [-10,000, +10,000] km。
+     * {@code x ∈ [-MAX_D, +MAX_D]}。
+     * ★ 2026-10-11 更正：{@code MAX_D = 250_000} 格、1 格 = 1 m
+     * ⟹ 实际范围是 <b>±250 km</b>（原文误写为「±10,000 km」—— 那是
+     * 2026-10-08「全体缩小 40 倍」之前的旧值）。
      * 因为 {@code WorldContract} 的裁决是 **X 无限、无周期**，
      * 「全部海盆」这个概念**根本不存在**（走到 x=+30,000 km 就是全新的地方、全新的海盆）。
-     * 所以：玩家在 ±10,000 km 带内时预热有效；出了这个带，行会被**懒解**
+     * 所以：玩家在 ±250 km 带内时预热有效；出了这个带，行会被**懒解**
      * （单行 ~2.3 s，有护栏与缓存，不会失控）。
      * 想做更大范围的离线导出，就自己调大这里，或者接受线性增长（见 §164.1）。
      *
@@ -281,6 +323,16 @@ public final class OceanField {
         // S621 (P945): DTDZ_MODE changes the thermal-wind gradient ITSELF (poleward sign + 5-degree
         // scale) => it changes the solved SST-prime and must enter the configuration fingerprint.
         h = h * 31 + 0x7A136L; h = h * 31 + DTDZ_MODE;
+        // ★★★★★★★ 2026-10-11（气候层适配 · D58 准入判据补漏）：**带宽口径**。
+        //   按本方法的准入判据（:312-313 的注释）：「改解出来的量 ⟹ 必须进指纹」。
+        //   而 BAND / BAND_BY_ROW 存的正是「带内算术平均速度」—— 那是 `bandMeansAt` 的返回值，
+        //   被 `GlobalClimate:120` 用作洋流速度 ⟹ **改带宽就改结果**。
+        //   ⚠ 而 §182 把 `BAND_W` 从固定 2,500 改成按纬度的 `delta_M`（8.0~14.4 km）时**未折入指纹** ✗
+        //   ⟹ 本条是那次修改的 D58 补漏。
+        //   ★ 注意：`BAND_W` 是**【回滚点】**（`BAND_W_FROM_DELTA = false` 时启用），
+        //     所以两个都要折入 —— 切换开关同样改结果。
+        h = h * 31 + Double.doubleToLongBits(BAND_W);
+        h = h * 31 + (BAND_W_FROM_DELTA ? 1 : 0);
         return h;
     }
 
@@ -496,7 +548,14 @@ public final class OceanField {
                 a[i] = SeaSurfaceTemp.anomaly(vs, dTdz);
             }
             // A7：西带/东带深度平均速度（生产解本身，探针只读）
-            int q = Math.max(1, (int) (BAND_W / g.h));
+            // ★ 2026-10-11：带宽 = Munk 层厚 delta_M = cbrt(A_H/beta)，按纬度取值
+            //   （依据：本方法 :505 的注释「v_band ~ psi_max / delta」）。
+            //   旧口径是固定常量 BAND_W（100 km 的地球参照，被缩 40x 后成了 2.5 km）。
+            final double bandW = BAND_W_FROM_DELTA
+                ? Math.cbrt(A_H / WorldContract.betaForLatitude(
+                      WorldContract.latOf(zRow), WorldContract.Z_CYCLE))
+                : BAND_W;
+            int q = Math.max(1, (int) (bandW / g.h));
             if (g.n >= 2 * q) {
                 double ws = 0, es = 0;
                 for (int i = 0; i < q; i++) ws += g.v[i];
@@ -559,7 +618,8 @@ public final class OceanField {
     /**
      * 该点所在海盆的 { 西带均速度, 东带均速度, psi_max }（m/s, m/s, m^2/s）；未解出时返回 null。
      *
-     * <p>口径：带宽 = {@link #BAND_W}（默认 100 km），带内**算术平均**，
+     * <p>口径（★ 2026-10-11 更新）：带宽 = **Munk 层厚 {@code delta_M = (A_H/beta)^(1/3)}**，
+     * 按该行的纬度取值（8.0~14.4 km），带内**算术平均**，
      * 由生产解 `GyreRow.Row.v[]` 直接取，**不重解、不复制公式**（探针与生产同一个解）。
      * 它服务 A7（西/东强化比）与 A2（西边界量级）。
      */
