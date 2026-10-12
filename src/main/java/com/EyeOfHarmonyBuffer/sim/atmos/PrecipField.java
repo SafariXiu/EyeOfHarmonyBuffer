@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
-import com.EyeOfHarmonyBuffer.sim.hydro.WaterField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
@@ -2597,7 +2596,72 @@ public final class PrecipField {
     // ★★★★★ §7523（2026 复测 #2）：解环后重新打开。
     //   解环方式：SimClimate.isBuildingTile() 护栏 —— 建瓦片期间跳过本耦合
     //   （瓦片永远按【无水系】建，logP 是纯气候量；耦合只作用在 mmPerDay 的最终输出上）。
+    // ★★★★★ 2026-10-12 用户裁决【关闭】（待裁决/328）：
+    //   关闭理由（实测 + 仓库记录双重印证）：
+    //     ① PrecipField:2595-2596 记「P1559 实测：isWater() 在 10 km 网格上把
+    //        【30% 的陆地】判为湖（地球 1~2%），根因是地形闭合洼地占 32~43%」；
+    //     ② 本轮独立实测（CatchWin2/ResChk）：LEM-free 地形上 D8 汇流被中尺度噪声切碎，
+    //        1000x1000 km 范围内最大流域只有 42 格、且【与窗口无关】（1000->2000 km 分布不变）
+    //        ⟹ 两个独立测量指向同一根因，互相印证。
+    //   ⟹ 这个耦合带来的【错误】（30% 陆地被强制 beta=1）远大于它带来的【物理效应】
+    //      （湖面蒸发不受土壤限制，局地小范围）⟹ 关掉比开着更准。
+    //   ★ 正确的「湖面 = 饱和面」效应要等新湖能接进气候层之后再打开（见 待裁决/328 的设计）。
+    //   ★ 回滚：置 true 即逐位回到打开状态。
+    // ★★★★★ 2026-10-12（待裁决/329）：在 LAKE_SOURCE = 2（isLakePeek，不建瓦片）落地后【重新打开】。
+    //   为什么现在安全（实测 PeekChk）：
+    //     · 游戏里：地形瓦片在地形生成时已建 ⟹ peek 命中 ⟹ 与完整 isLake 【4096/4096 = 100% 一致】
+    //     · 探针里：瓦片未建 ⟹ peek 恒返回 false ⟹ 退化到「无耦合」⟹ 与关闭等效、★ 不改变验收结果
+    //     · 全球采样 22000 点跨 529 块瓦片 = ★ 5 毫秒（若走 isLake 会建瓦片 = 2.2 小时）
+    //     · peekTile 【不建瓦片】⟹ 结构上不可能形成 mmPerDay -> solve -> SimClimate 的递归环
     public static boolean Q_FROM_WATER = true;
+    /**
+     * ★★★★★ 2026-10-12（待裁决/330）：**上风湖的【水汽反哺】**。
+     *
+     * <p><b>要解决的问题</b>：活的比湿路径是 {@code moisture(tSfcSl, elev, kappa)} ——
+     * <b>纯局地</b>，不走上风。所以湖现在只能饱和<b>它自己那一格</b>，
+     * 水汽<b>不会</b>被送到下风 ⟹ 不符合「湖反哺大气水汽」。
+     *
+     * <p><b>做法</b>：沿上风方向采 {@code N = SOURCE_FETCH_L / UPWIND_STEP = 10} 个点
+     *               （★ 与 {@link #upwindElev} 完全同一套采样，<b>零新参数</b>），
+     *               统计其中【是湖】的比例 {@code lakeFrac}，然后
+     * <pre>
+     *   betaEff = beta + (1 - beta) * lakeFrac
+     * </pre>
+     * <p>★ 为什么这个插值是对的：{@code rhEff(b) = RH_SEA*b + RH_DRY*(1-b)} 是 <b>线性</b>的
+     * ⟹ {@code betaEff} 恰好把 RH 从本地点向 {@code RH_SEA}（水面饱和值）拉近 {@code lakeFrac} 的比例。
+     * <ul>
+     *   <li>{@code lakeFrac = 1}（上风全是湖）⟹ {@code betaEff = 1} ⟹ {@code rh = RH_SEA} ✓</li>
+     *   <li>{@code lakeFrac = 0} ⟹ 逐位回到原值 ✓</li>
+     * </ul>
+     * <p>★★ <b>「湖面积」自动进来</b>：湖越大 ⟹ 上风 10 点命中越多 ⟹ {@code lakeFrac} 越大 ⟹ 水汽反哺越强。
+     * <p>★ 回滚：置 {@code false} ⟹ 逐位回到现状。
+     */
+    public static boolean LAKE_MOISTURE_UPWIND = true;
+
+    /**
+     * ★ 上风路径上【是湖】的采样比例 ∈ [0,1]。
+     *
+     * <p>采样点与 {@link #upwindElev} 完全一致（{@code N = SOURCE_FETCH_L / UPWIND_STEP}），
+     * 所以两者描述的是<b>同一段路径</b>，不会出现口径不一致。
+     *
+     * <p>★ 用 {@code isLakePeek}（不建瓦片）：游戏里命中真值，探针里快速返回 false。
+     */
+    public static double upwindLakeFrac(int x, int z, long seed, int cell, double u, double v) {
+        if (!LAKE_MOISTURE_UPWIND) return 0.0;
+        double sp = Math.hypot(u, v);
+        if (sp < 0.1) return 0.0;
+        final int n = Math.max(1, (int) Math.round(SOURCE_FETCH_L / UPWIND_STEP));
+        final double ux = u / sp, uz = v / sp;
+        int hit = 0;
+        for (int i = 1; i <= n; i++) {
+            final double d = i * UPWIND_STEP;
+            final int sx = x - (int) Math.round(ux * d);
+            final int sz = z - (int) Math.round(uz * d);
+            if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    .isLakePeek(seed, sx, sz)) hit++;
+        }
+        return (double) hit / n;
+    }
 
     /**
      * ★★★★★★★ <b>湖判据的来源（2026-10-11 新增，见 待裁决/283）</b>
@@ -2617,10 +2681,18 @@ public final class PrecipField {
      * （{@code TILE=16, HALO=16}），相邻 tile 的解不保证一致 ⟹ tile 边界附近产生单格假湖。
      * 而 {@code TalosLandErosion} 的瓦片是 <b>768 km</b>（{@code SOLVE_CELLS}），远大于 4 km。
      *
-     * <p><b>取值</b>：{@code 0 = WaterField.isWater}（旧，回滚用）/ {@code 1 = TalosLandErosion.isLake}（新）
-     * <p><b>回滚</b>：设 {@code LAKE_SOURCE = 0} ⟹ 逐位回到旧行为。
+     * <p><b>取值</b>（2026-10-12，待裁决/331）：
+     * <ul>
+     *   <li>{@code 2 = isLakePeek} —— ★ <b>默认</b>。不建瓦片：游戏里瓦片已建 ⟹ 命中真值
+     *       （实测与完整 isLake <b>4096/4096 = 100% 一致</b>）；探针里未建 ⟹ 快速返回 false
+     *       （22000 点跨 529 块瓦片实测 <b>5 ms</b>，若建瓦片需 2.2 小时）。</li>
+     *   <li>{@code 1 = isLake} —— 会建瓦片（冷瓦片 14.7 s）。<b>只用于诊断/受控对照。</b></li>
+     * </ul>
+     * <p>⚠⚠ 旧的 {@code 0 = WaterField.isWater} 态已【删除】—— {@code WaterField} 已整类删除
+     * （它把 <b>30% 的陆地判为湖</b>，根因是 LEM-free 地形上闭合洼地占 32~43%）。
+     * ⟹ 回滚只能回到 {@code 1}，回不到旧湖。
      */
-    public static int LAKE_SOURCE = 0;   // ★ 2026-10-11 回滚：LEM 冷启动 5.7 s，在 mmPerDay 里被高频调用 ⟹ 探针卡死 90 分钟
+    public static int LAKE_SOURCE = 2;   // ★ 默认：isLakePeek（不建瓦片）
 
     /**
      * **候选 S-1（设计冻结 §251）：浅对流地板。**
@@ -3318,11 +3390,23 @@ public final class PrecipField {
                 //   ⚠ 护栏 isBuildingTile() 对两条路【都必须保留】——
                 //     TalosLandErosion.isLake 也会触发它的 solve()，
                 //     而 solve() -> precipAnalytic -> SimClimate ⟹ 同一个环。
+                // ★★★★★ 2026-10-12（待裁决/328）：三态
+                //   2 = ★ 新湖（不建瓦片）—— 生产路径：游戏里地形瓦片已建 ⟹ 正确；探针里未建 ⟹ 不卡死
+                //   1 =   新湖（会建瓦片，14.7 s/块）—— 只用于诊断/受控对照
+                //   ★★★ 2026-10-12（待裁决/331）：旧的 0 态（WaterField.isWater）已【删除】——
+                //       它把 30% 的陆地判为湖，是错的；且 WaterField 整类已删除。
                 final boolean lake = (LAKE_SOURCE == 1)
                     ? com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                         .isLake((long) seed, x, z)
-                    : WaterField.isWater(x, z, seed);
+                    : com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        .isLakePeek((long) seed, x, z);
                 if (lake) betaUsed = 1.0;
+                // ★★★★★ 2026-10-12（待裁决/330）：上风湖的水汽反哺。
+                //   lakeFrac = 上风 10 个采样点里是湖的比例（★ 与 upwindElev 同一套采样）
+                //   betaEff = beta + (1-beta)*lakeFrac —— 把 RH 向水面饱和值拉近 lakeFrac 的比例。
+                //   ★ 湖面积自动进来：湖越大 ⟹ 命中越多 ⟹ lakeFrac 越大。
+                final double lakeFrac = upwindLakeFrac(x, z, seed, cell, u0[0], u0[1]);
+                if (lakeFrac > 0.0) betaUsed = betaUsed + (1.0 - betaUsed) * lakeFrac;
             }
             BETA_OVERRIDE.set(betaUsed);
         } else if (savedBeta != null) {

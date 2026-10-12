@@ -223,6 +223,33 @@ public final class SoilMoisture {
             ThreadLocal.withInitial(HashMap::new);
     /** 自旋中标志：切断「解 W -> 调 mmPerDay -> 又要 beta -> 再解 W」的递归。 */
     private static final ThreadLocal<Boolean> IN_SPINUP = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    /**
+     * ★★★★★ 2026-10-12（待裁决/343）：**湖面标志** —— 让 {@code spinup} 对湖泊使用
+     * <b>水面</b>的反照率与拖曳系数，而不是陆面的。
+     *
+     * <p><b>缺陷</b>（用户指出的）：{@code lakeEvapMmPerDay} 复用陆地的 {@code spinup}，而后者用
+     * <pre>
+     *   chv      = Radiation.bulkCoeff(k, sp)                       // k = 大陆度
+     *   absSolar = Radiation.absSolarSurface(lat, dec,
+     *                  Radiation.albedo(k &gt; 0.5, tSl))              // k&gt;0.5 ⟹ 陆地
+     * </pre>
+     * 而湖在内陆 ⟹ {@code k ≈ 1} ⟹ 湖面被当作<b>陆地</b>：
+     * <pre>
+     *   反照率：用 ALB_LAND = 0.20   ，而水面应为 ALB_SEA = 0.06（★ 差 3.3 倍）
+     *   拖曳  ：用 CD_LND   = 3.0e-3 ，而水面应为 CD_OCN  = 1.3e-3（★ 差 2.3 倍）
+     * </pre>
+     *
+     * <p><b>两个错误方向相反</b>（反照率高 ⟹ 吸收太阳少 ⟹ E 偏小 ⟹ 湖偏大；
+     * 拖曳大 ⟹ 交换强 ⟹ E 偏大 ⟹ 湖偏小）⟹ <b>必须实测净效应</b>，不能拍脑袋。
+     *
+     * <p><b>为什么用这两个常量</b>：湖<b>就是</b>水面 ⟹ 仓内已有的水面常量
+     * {@code ALB_SEA} / {@code CD_OCN} 正是其语义 ⟹ ★ <b>零新参数</b>。
+     *
+     * <p>★ 回滚：置 {@code false} ⟹ 逐位回到「湖按陆面处理」。
+     */
+    public static volatile boolean LAKE_WATER_SURFACE = true;
+    /** 湖面标志（仅 {@link #lakeEvapMmPerDay} 期间为 true）。 */
+    private static final ThreadLocal<Boolean> LAKE_SURFACE = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     public static boolean isSpinningUp() { return IN_SPINUP.get(); }
 
@@ -312,14 +339,18 @@ public final class SoilMoisture {
             double divU = diverge(x, z, seed, cell, theta, gradStep);
             double wEff = PrecipField.wEff(lat, theta, divU);
             double qsTQ = PrecipField.qSat(tSl);          // tQ == tSl（Q_AT_SURFACE_TEMP 默认关）
-            double chv = Radiation.bulkCoeff(k, sp);
+            // ★★★★★ 待裁决/343：湖面用【水面】拖曳（CD_OCN），而不是陆面（CD_LND）。
+            final boolean waterSurf = LAKE_WATER_SURFACE && LAKE_SURFACE.get();
+            double chv = Radiation.bulkCoeff(waterSurf ? 0.0 : k, sp);
             // ★ E_p 必须在【解出的皮温】上求值 —— 那才是能量限制（Radiation 原文如此）。
             //   第一版直接用 tSl，等于只有空气动力学需求、没有能量上限 => E_p 偏大
             //   => 桶把陆地全抽干（实测亚洲 beta=0.113，解析式 0.2A/(Ep-0.6A)=0.103 吻合）。
             //   E_p 取 beta=1（潜在表面）=> 与 beta 无关 => 下面的仿射分解仍然成立。
             double qa1 = PrecipField.RH_SEA * qsTQ * depl;
             double dec = Atmosphere.subsolarLat(theta);
-            double absSolar = Radiation.absSolarSurface(lat, dec, Radiation.albedo(k > 0.5, tSl));   // §7353 单源
+            // ★★★★★ 待裁决/343：湖面反照率用 ALB_SEA（水面），而不是 ALB_LAND（陆面）。
+            double absSolar = Radiation.absSolarSurface(lat, dec,
+                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tSl));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
             //   RS_BARE=0（默认）⇒ rsTot==RS_SURF ⇒ 逐位不变。
@@ -456,13 +487,19 @@ public final class SoilMoisture {
     public static double lakeEvapMmPerDay(int x, int z, long seed, int cell, int gradStep) {
         if (!ENABLED) return Double.NaN;
         HashMap<Long, double[]> m = MEMO.get();
-        long kk = key(x, z) ^ (Double.doubleToLongBits(RS_SURF) * 0x9E3779B97F4A7C15L);
+        // ★★★★★ 待裁决/343：memo 的 key 必须含【所有影响结果的输入】。
+        //   原 key 只有 坐标 ^ RS_SURF ⟹ 改 LAKE_WATER_SURFACE 不会失效 ⟹
+        //   实测（LakeSurf）：开/关两组读数【完全相同】（湖 5380 / 湿地 33342）—— 就是被它挡住的。
+        //   ⚠ 注意 :541 的 betaAt（陆地桶）【不】加这一项 —— 它不走湖面分支。
+        long kk = key(x, z) ^ (Double.doubleToLongBits(RS_SURF) * 0x9E3779B97F4A7C15L)
+                ^ (LAKE_WATER_SURFACE ? 0x5A5A5A5A5A5A5A5AL : 0L);
         if (m.size() > MEMO_MAX) m.clear();
         double[] w = m.get(kk);
         if (w == null) {
             IN_SPINUP.set(Boolean.TRUE);
+            LAKE_SURFACE.set(Boolean.TRUE);   // ★ 待裁决/343：湖面 = 水面
             try { w = spinup(x, z, seed, cell, gradStep); }
-            finally { IN_SPINUP.set(Boolean.FALSE); }
+            finally { IN_SPINUP.set(Boolean.FALSE); LAKE_SURFACE.set(Boolean.FALSE); }
             m.put(kk, w); }
         return w[NTHETA];
     }

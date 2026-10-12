@@ -546,7 +546,40 @@ public final class TalosLandErosion {
     /** ★ 环形抬升（相对碗深）。没有它时碗在斜坡上装不住水（湖面 0.44% 到 1.52%）。 */
     public static volatile double BOWL_RIM = 0.90;
     public static volatile double BOWL_MIN_RIFT = 0.40;
-    public static volatile double LAKE_MIN_FILL = 0.3;
+    /**
+     * ★★★★★ 2026-10-12（待裁决/341）：湖泊的最小水深门槛（格）。0.3 -> 0.6。
+     *
+     * <p><b>语义</b>：{@code filled − z > LAKE_MIN_FILL} 才算「湖」；否则是
+     * <b>湿地 / 沼泽</b>（有水但不计为湖）。
+     *
+     * <p><b>为什么必须提高</b>（实测，tile(-3,2)，见 待裁决/341）：
+     * <pre>
+     *   湖深分位: p10=0.03  p25=0.09  ★ p50=0.23  p75=0.49  p90=0.79  max=3.16 格
+     *   ⟹ ★ 湖深中位数只有 0.23 格 = 12.8 米 —— 这些是「湿地/水塘」，不是湖
+     * </pre>
+     * 三块瓦片合计的湖占比扫描（1 格 = 55.56 m）：
+     * <pre>
+     *   0.30 格 (16.7 m) ⟹ 3.79%   ← 旧值：远高于地球锚 1~2%
+     *   0.50 格 (27.8 m) ⟹ 1.98%
+     *   ★ 0.60 格 (33.3 m) ⟹ 1.51%   ← ★ 新值：落在地球锚中点
+     *   0.70 格 (38.9 m) ⟹ 1.08%
+     *   0.80 格 (44.4 m) ⟹ 0.73%
+     * </pre>
+     *
+     * <p>⚠ <b>不只是显示阈值</b>：本常量还用在 {@code solveLakeLevels} 的 BFS 种子判定里
+     * ⟹ 改它会<b>同时改水位解</b>（不只是改计数口径）。
+     *
+     * <p>⚠ <b>出处</b>：旧值 0.3 <b>没有任何注释/出处</b>（旁边几个常量都有）；
+     * 新值 0.6 是<b>由「落在地球锚 1~2%」反推</b>的，<b>不是</b>从湖的物理定义导出。
+     * ⟹ 「地球湖泊约占陆地 1~2%」这条锚本身<b>未引文献</b>。
+     *
+     * <p>★ <b>后续（方案 B）</b>：真实的平原微洼地靠<b>沉积填平</b>而消失，
+     * 而本仓的 LEM 是<b>纯侵蚀、无沉积</b> ⟹ 洼地永远存在 ⟹ 只能靠本门槛过滤。
+     * 给 LEM 加沉积项才是更物理的解（需要出处，见 待裁决/340 §五）。
+     *
+     * <p>★ 回滚：改回 0.3。
+     */
+    public static volatile double LAKE_MIN_FILL = 0.6;
 
     /** ★★★★★ N1（2026-10-11）：裂谷 = 造山的镜像（同一张板块接缝网的【张裂侧】）。总开关。 */
     public static volatile boolean RIFT_ENABLED = true;
@@ -1105,6 +1138,39 @@ public final class TalosLandErosion {
      * 与其再加一道会误伤的门控，不如直接用查询传进来的 ws。
      * installedSeed 只保留作【诊断显示】。
      */
+    /**
+     * ★★★★★ 2026-10-12（待裁决/328）：**不触发建瓦片**的湖查询。
+     *
+     * <p><b>为什么需要</b>：{@link #isLake} 会触发 LEM 瓦片求解（实测冷瓦片 <b>14.7 秒</b>），
+     * 而 {@code mmPerDay} 在气候层被高频调用 ⟹ 全球采样（如 P452 的 110x200 网格跨 <b>529 块</b>瓦片）
+     * 需要 <b>2.16 小时</b>。
+     *
+     * <p><b>语义</b>：瓦片【已建】⟹ 给出真实答案；瓦片【未建】⟹ 返回 {@code false}（保守当作无湖）。
+     * <ul>
+     *   <li>游戏里：地形瓦片在地形生成时已经建好 ⟹ 查询命中 ⟹ <b>正确</b></li>
+     *   <li>探针里：大多数瓦片未建 ⟹ 快速返回 false ⟹ <b>不卡死</b>（代价是低估湖）</li>
+     *   <li>★ {@code SimClimate.isBuildingTile()} 期间也走这条路 ⟹ <b>结构上不可能成环</b></li>
+     * </ul>
+     *
+     * <p>⚠ 与 {@link #isLake} 的区别：那条会建瓦片（诊断用），这条不会（生产用）。
+     */
+    public static boolean isLakePeek(long ws, double px, double pz) {
+        if (!LAKES_ENABLED) return false;
+        Tile t = peekTile(ws, px, pz);
+        if (t == null) return false;
+        return sample(t.filled, t, px, pz) - sample(t.z, t, px, pz) > LAKE_MIN_FILL;
+    }
+
+    /** 只查缓存，<b>不建瓦片</b>。未命中返回 {@code null}。 */
+    private static Tile peekTile(long ws, double px, double pz) {
+        if (!ENABLED) return null;
+        int ob = outBlocks();
+        if (ob <= 0 || SOLVE_CELLS < OUT_CELLS + 2 * BUFFER_CELLS) return null;
+        int tx = (int) Math.floorDiv((long) Math.floor(px), (long) ob);
+        int tz = (int) Math.floorDiv((long) Math.floor(pz), (long) ob);
+        return CACHE.get(tileKey(ws, tx, tz));
+    }
+
     private static Tile tileAt(long ws, double px, double pz) {
         if (!ENABLED) return null;
         int ob = outBlocks();
@@ -1187,6 +1253,35 @@ public final class TalosLandErosion {
     //   ⟹ 在 LEM 的平衡态里「闭合洼地」与「河流下切」互斥，非调参可解。
     //   ⟹ 湖必须由 LEM 之外的机制提供（N1b）。本开关保留 = false/0，供回滚对照。
     public static volatile double RIFT_SINK = 0.0;
+    /**
+     * ★★★★★ 2026-10-12（待裁决/340）：**构造活动门控** —— 让 LEM 只在构造活跃带演化。
+     *
+     * <p><b>根因</b>（§339 实测 + 本轮读码）：LEM 的抬升项
+     * <pre>
+     *   up = DTU * UREF * ((U - SEA_BLK) / UREF)^GAMMA
+     * </pre>
+     * 是<b>海拔的函数</b>，而<b>不是构造活动的函数</b> ⟹ 任何高出海平面的格子都<b>持续抬升</b>
+     * ⟹ LEM 必须靠下切来平衡（定点 z_k − zd = up/al）⟹ <b>处处起伏</b>。
+     * <p>实测（ScaleRelief，深内陆 80x80 km，1 km 网格）：
+     * <pre>
+     *   窗  2 km: 不含 LEM 起伏 17 m（<100m 占 91.3%） →  含 LEM 150 m（<100m 23.9%）
+     *   窗 10 km: 不含 LEM 起伏 92 m（<100m 占 57.1%） →  含 LEM 379 m（<100m  0.0%）
+     *   ⟹ ★★ 底场本来就是大平原，是 LEM 把它切碎的
+     * </pre>
+     * <p><b>物理依据</b>：真实世界的抬升来自<b>构造</b>（板块运动）。稳定大陆内部
+     * （如华北平原、北美大平原）抬升 ≈ 0 ⟹ <b>没有持续下切</b> ⟹ 河流达到均衡 ⟹ 平原。
+     *
+     * <p><b>修法</b>：up_eff = upBase * activity，activity ∈ [0,1] 由<b>构造活动</b>给出：
+     * <pre>
+     *   activity = clamp01( orogenyM / OROG_MAX_M ) + clamp01( |riftProfile| )
+     * </pre>
+     * ★ <b>零新参数</b>：orogenyM 的尺度用现成的 OROG_MAX_M（7500 m）归一化；
+     * riftProfile 本身就在 [-1, 1]。
+     * ★ 处处连续（不产生掩码边界的不连续）。
+     *
+     * <p>★ 回滚：置 false ⟹ 逐位回到现状。
+     */
+    public static volatile boolean TECTONIC_GATE = true;
     /**
      * ★★ 修法 B2（待裁决/310）：裂谷**不得把陆地压成海** —— 抬升场的最低高度（米）。
      * <p>为什么必须钳：{@code t.sea[k] = (baseHeight <= 0)} ⟹ 裂谷把陆地压到 0 以下
@@ -1335,6 +1430,27 @@ public final class TalosLandErosion {
         // ★ 2026-10-11（待裁决/308）：裂谷沉降因子【逐格预计算一次】。
         //   ⚠ 绝不能放进 ITER 循环：riftProfile 约 0.4 us/次，200 次迭代 x 590k 格 = 47 秒。
         //   这里只算一次：590k x 0.4 us = 0.24 s（相对瓦片求解 6~10 s 约 3%）。
+        // ★★★★★ 2026-10-12（待裁决/340）：构造活动权重【逐格预计算一次】。
+        //   ⚠ 绝不能放进 ITER 循环：orogenyM ~0.18us + riftProfile ~0.21us，
+        //     200 次迭代 x 590k 格 = 46 秒。这里只算一次：590k x 0.39us = 0.23 s（约 3%）。
+        double[] actBuf = null;
+        if (TECTONIC_GATE) {
+            actBuf = new double[N];
+            for (int j = 0; j < W; j++) {
+                final double gz = oz + j * STEP_BLK;
+                for (int i = 0; i < W; i++) {
+                    final int k = j * W + i;
+                    final double gx = ox + i * STEP_BLK;
+                    double aTmp = 0.0;
+                    if (TalosLandField.OROG_ON && TalosLandField.OROG_MAX_M > 0.0) {
+                        double om = TalosLandField.orogenyM(ws, gx, gz);
+                        if (om > 0.0) aTmp += om / TalosLandField.OROG_MAX_M;
+                    }
+                    aTmp += Math.abs(TalosLandField.riftProfile(ws, gx, gz, RIFT_SHOULDER));
+                    actBuf[k] = aTmp > 1.0 ? 1.0 : aTmp;
+                }
+            }
+        }
         double[] sinkBuf = null;
         if (RIFT_SINK > 0.0) {
             sinkBuf = new double[N];
@@ -1369,7 +1485,17 @@ public final class TalosLandErosion {
                 if (sinkBuf != null) up += DTU * UREF * sinkBuf[k];
                 double nb = t.z[nj * W + ni];
                 double zd = nb > SEA_BLK ? nb : SEA_BLK;
-                t.z[k] = (t.z[k] + up + al * zd) / (1.0 + al);
+                // ★★★★★ 2026-10-12（待裁决/340）：构造活动门控。
+                //   ⚠⚠ 第一版写成「up *= actBuf」是【错的】（实测 gate_on.png）：
+                //      up=0 时定点 z_k=(z_k+al*zd)/(1+al) 仍向 zd 塌陷 ⟹ 地形【数学上完全平】
+                //      ⟹ D8 流向退化 ⟹ 河网变成【人工放射状扇形】、湖从 3600 掉到 158。
+                //   ★ 正确做法：非构造区【完全不演化】= 保持底场高度 t.U[k]。
+                //     用【按活动度插值】实现，处处连续（不产生掩码边界的不连续）：
+                //        activity=1 ⟹ 完整 LEM 演化（山地）
+                //        activity=0 ⟹ z 保持底场（平原 ✓ 底场自身有 17~92 m 的微起伏，D8 正常）
+                double zNew = (t.z[k] + up + al * zd) / (1.0 + al);
+                if (actBuf != null) zNew = t.z[k] + actBuf[k] * (zNew - t.z[k]);
+                t.z[k] = zNew;
             }
         }
         fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);

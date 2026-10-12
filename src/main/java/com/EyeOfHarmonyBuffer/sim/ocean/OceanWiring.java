@@ -34,8 +34,8 @@ public final class OceanWiring {
     /** 世界级接线入口。可重复调用（同一个种子只启一次预热线程）。 */
     public static synchronized void onWorld(int worldSeedInt) {
         OceanField.install(worldSeedInt);
-        // ★ §7503：水系场也跟同一个世界走。这里【只清缓存 + 记种子】，不产生气候效应。
-        com.EyeOfHarmonyBuffer.sim.hydro.WaterField.install(worldSeedInt);
+        // ★★★ 2026-10-12（待裁决/331）：`WaterField` 已整类删除（它把 30% 陆地判为湖）。
+        //   水系现在只有一套：`TalosLandErosion`（见 待裁决/327、/329）。
         // ★★★ 地貌演化层（LEM）也跟同一个世界走（记种子 + 清瓦片缓存）。
         //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
         com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.install(worldSeedInt);

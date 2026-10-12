@@ -58,5 +58,16 @@
  *       ⟹ 误报「地形差 2425 m」。</li>
  * </ol>
  * <p><b>⟹ 规则：读到任何「高度 / 水面 / 河道」的 API，先确认它属于上图的哪一支。</b>
+ *
+ * <h2>四、★★★ 后续（2026-10-12）：{@code WaterField} 已【整类删除】</h2>
+ * <p>它曾把 <b>30% 的陆地判为湖</b>（地球 1~2%），根因是 LEM-free 地形上闭合洼地占 32~43%
+ * ⟹ D8 汇流被中尺度噪声切碎（本轮独立实测：1000x1000 km 内最大流域只有 42 格、且与窗口无关）。
+ * <p>现在水系<b>只有一套</b>：本包的 {@link TalosLandErosion}（见 待裁决/327、/329、/331）：
+ * <pre>
+ *   湖的产生：裂谷(N1a) -> LEM 演化 -> 盆地(N1b) -> 收支解水位(solveLakeLevels) -> filled
+ *   渲染      ：ChunkProviderTalos2 读 riverSurfaceBlocks / isLake
+ *   气候层    ：PrecipField 读 isLakePeek（★ 不建瓦片）—— 与渲染读【同一份 filled】
+ *   水汽反哺  ：upwindLakeFrac（上风湖比例）-> beta 插值 -> RH 向水面饱和值靠拢
+ * </pre>
  */
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;

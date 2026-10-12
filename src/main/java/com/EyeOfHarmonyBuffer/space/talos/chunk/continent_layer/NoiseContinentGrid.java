@@ -225,7 +225,15 @@ public final class NoiseContinentGrid {
     //   高度已改为 CF 剖面（陆 +1973 / 海 −4000 米），KAPPA_H 必须跟着改，
     //   否则 kappa 只用到 [0.25, 0.62] 的窄带（实测改前 mean=0.4606）。
     //   KAPPA_H = 2000 ≈ CF_LAND_H ⟹ 海平面 0.5、内陆饱和 1.0、深海饱和 0.0。
-    public static double KAPPA_H = 2000.0;
+    // ★★★★★ 2026-10-12（待裁决/338）：2000 -> 200，【与 CF_LAND_H 同步】。
+    //   为什么必须同步：kappa = clamp(h0 / KAPPA_H)，而 landScore = 2*kappa-1；
+    //     设计意图是「内陆饱和(h0=CF_LAND_H) ⟹ landScore = 1.0」⟹ 要求 KAPPA_H = CF_LAND_H。
+    //   ⚠ 实测这条关系【已经断了】：CF_LAND_H 从 1973 改到 1100 时 KAPPA_H 没跟着改
+    //     ⟹ 比值只有 0.55 ⟹ 内陆 kappa 只到 0.775（而非 1.0）⟹ 大陆度被系统性低估。
+    //   本次 CF_LAND_H=1100->200，故 KAPPA_H 同步 2000->200 ⟹ 比值恢复 1.0 ✓
+    //   ★ 注意：kappa 的【符号】不受 KAPPA_H 影响（h0>=0 ⟺ h>=0）⟹ 不改陆海分布 ✓
+    //   ⚠ 回滚：改回 2000.0（但那时 CF_LAND_H 也要改回 1100.0）。
+    public static double KAPPA_H = 200.0;
 
     /**
      * ★★★★★★★ 2026-10-08 性能修复：**不再走 LEM**。

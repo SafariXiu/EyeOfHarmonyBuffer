@@ -781,11 +781,9 @@ public final class SimClimate {
         //        · STEP —— 格距，直接影响 Priority-Flood 的窗口物理尺度 ⚠ 原先不在指纹里
         //        · TILE —— 窗口边长（W = TILE + 2*HALO）⚠ 原先不在指纹里
         //        两者改动会改 isWater 的结果，却【不清缓存】⟹ 那是一个真实的指纹缺口。
+        // ★★★ 2026-10-12（待裁决/331）：`WaterField` 已【整类删除】⟹ 它那 4 个指纹项（STEP/TILE/HALO/
+        //   LAKE_MIN_DEPTH_M）随之移除。盐 0x7A13AL 保留，保证这一段的位置在指纹流里不变。
         h = h * 31 + 0x7A13AL;
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.STEP;   // ★ 补入
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.TILE;   // ★ 补入
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.HALO;
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.LAKE_MIN_DEPTH_M);
         //   ⑦ 群系 LUT 的平滑与抖动（V2BiomeField）—— 直接改 LUT 的值；
         //      ⚠ SOLVE_HARD_CAP / SOLVE_WARN_EVERY **不加**（求解护栏与告警，不改结果）。
         h = h * 31 + 0x7A13BL;
