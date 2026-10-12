@@ -2600,6 +2600,29 @@ public final class PrecipField {
     public static boolean Q_FROM_WATER = true;
 
     /**
+     * ★★★★★★★ <b>湖判据的来源（2026-10-11 新增，见 待裁决/283）</b>
+     *
+     * <p><b>为什么换</b>：旧的 {@code WaterField.isWater} 实测在 <b>250 m 网格</b>上给出：
+     * <pre>
+     *   占比 6.66%   游程段 168   平均游程 1.59 格 = 398 m   ★ 中位 1 格 = 250 m
+     * </pre>
+     * ⟹ <b>那是【散点噪声】，不是湖</b>（真实的湖是成片的，几 km 到几十 km）。
+     * <p>而 {@code TalosLandErosion.isLake} 在同一区域给出：
+     * <pre>
+     *   占比 1.82%   游程段  24   平均游程 3.04 格 = 3.04 km  ★ 中位 3 格 = 3 km
+     * </pre>
+     * ⟹ <b>占比落在地球的 1~2% 内，且是【成片的湖】</b> ✓
+     *
+     * <p><b>为什么两者差这么多</b>：{@code WaterField} 是【每 4 km tile 独立解 Priority-Flood】
+     * （{@code TILE=16, HALO=16}），相邻 tile 的解不保证一致 ⟹ tile 边界附近产生单格假湖。
+     * 而 {@code TalosLandErosion} 的瓦片是 <b>768 km</b>（{@code SOLVE_CELLS}），远大于 4 km。
+     *
+     * <p><b>取值</b>：{@code 0 = WaterField.isWater}（旧，回滚用）/ {@code 1 = TalosLandErosion.isLake}（新）
+     * <p><b>回滚</b>：设 {@code LAKE_SOURCE = 0} ⟹ 逐位回到旧行为。
+     */
+    public static int LAKE_SOURCE = 0;   // ★ 2026-10-11 回滚：LEM 冷启动 5.7 s，在 mmPerDay 里被高频调用 ⟹ 探针卡死 90 分钟
+
+    /**
      * **候选 S-1（设计冻结 §251）：浅对流地板。**
      *
      * <p>⚠ <b>§533 修正（P1-10）</b>：本条曾写「{@code false}（默认）」，但**实际默认已是 {@code true}**
@@ -3290,7 +3313,17 @@ public final class PrecipField {
             //   -> WaterField.solveTile -> SimClimate.annualPrecipMmPerYear -> field()
             //   -> 又要建瓦片 ⟹ 无限递归（实测 14/22 探针 StackOverflowError）。
             //   时序分离：瓦片按【无水系】建（logP 是纯气候量），耦合只作用在最终输出上。
-            if (Q_FROM_WATER && !SimClimate.isBuildingTile() && WaterField.isWater(x, z, seed)) betaUsed = 1.0;
+            if (Q_FROM_WATER && !SimClimate.isBuildingTile()) {
+                // ★ 2026-10-11：判据可切换（见 LAKE_SOURCE 的 javadoc）。
+                //   ⚠ 护栏 isBuildingTile() 对两条路【都必须保留】——
+                //     TalosLandErosion.isLake 也会触发它的 solve()，
+                //     而 solve() -> precipAnalytic -> SimClimate ⟹ 同一个环。
+                final boolean lake = (LAKE_SOURCE == 1)
+                    ? com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        .isLake((long) seed, x, z)
+                    : WaterField.isWater(x, z, seed);
+                if (lake) betaUsed = 1.0;
+            }
             BETA_OVERRIDE.set(betaUsed);
         } else if (savedBeta != null) {
             betaUsed = savedBeta;

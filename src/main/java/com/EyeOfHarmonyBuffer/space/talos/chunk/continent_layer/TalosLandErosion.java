@@ -8,6 +8,26 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * TalosLandErosion —— **地貌演化层（LEM / stream power）**。
  *
+ * <h2>★★★★★ 2026-10-11：本类【就是】生产环境的河道系统（定位声明）</h2>
+ *
+ * <p>全仓有**两个**类名字里带「水」，容易认错。分工是：
+ *
+ * <table border="1">
+ *   <tr><th></th><th>类</th><th>判据</th><th>用途</th></tr>
+ *   <tr><td>★ <b>河道</b></td><td><b>本类</b></td>
+ *       <td>{@code chOrd[k] >= 0}；{@code riverWidthBlocks}；{@code wetness01}（干河道）</td>
+ *       <td><b>挖河、河宽、干河道、入海</b></td></tr>
+ *   <tr><td>★ <b>湖 / 湿地</b></td>
+ *       <td>{@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField}</td>
+ *       <td>{@code fillDepth > 0}（Priority-Flood 洼地）</td>
+ *       <td><b>只有一个</b>：{@code PrecipField:3293} 的 {@code betaUsed = 1.0}</td></tr>
+ * </table>
+ *
+ * <p>⚠ {@code WaterField} 的 {@code flowAcc}/{@code riverWidthM}/{@code isRiver}
+ * 是**死代码**（见下面的「为什么需要它」）。<b>量化河宽/流域必须用本类</b>，
+ * 用 {@code WaterField} 会得出错误结论（实测踩过：曾报「最大河宽 18 m」，
+ * 而本类的实际最大值是 60 格）。
+ *
  * <h3>它是什么</h3>
  * 在 {@link TalosLandField} 的「抬升场」上跑 <b>Braun &amp; Willett (2013) 的 O(n) 隐式
  * stream power</b>，演化到稳态，得到<b>自带树枝状河谷网络</b>的地形。
@@ -237,7 +257,25 @@ public final class TalosLandErosion {
     public static volatile double WIDTH_W0 = 1.0;
     public static volatile double WIDTH_MIN = 1.0;
     /** 最大河宽（格）。从 45 提到 60，让主干有更大的宽度跨度。 */
-    public static volatile double WIDTH_MAX = 60.0;
+    // ★★★ 2026-10-11：60 -> 200（见 待裁决/277 的查证）。
+    //
+    //   依据链（全部是外部观测，零自造）：
+    //     · 形式 W = WIDTH_W0·sqrt(A) 是 Leopold & Maddock (1953) 的下游水力几何
+    //       （W = a·Q^b, b≈0.5）配上 Q ∝ A ⟹ W ∝ A^0.5。
+    //     · 系数用地球 7 条大河反算 W/sqrt(A)：亚马逊 3.02、刚果 1.56、叶尼塞 1.25、
+    //       长江 1.12、莱茵 0.93、密西西比 0.89、泰晤士 0.63 ⟹ 典型 ~1.0
+    //       ⟹ WIDTH_W0 = 1.0 正好落在典型值上 ✓
+    //     · 缩放不变性：W_e = c·sqrt(A_e)，W_e = 40·W_mc、A_e = 1600·A_mc
+    //       ⟹ W_mc = c·sqrt(A_mc) —— 【同一个公式、同一个系数】✓
+    //     · 所以本世界的物理上界 = 地球最大河（亚马逊 8,000 m）÷ 40 = 200 blocks。
+    //
+    //   ⚠ 为什么旧的 60 是错的：实测 max W = 65.5（acc = 4,287 km²，正好对应亚马逊的流域），
+    //     p99.9 = 59.5 已经贴在 60 上 ⟹ 【它在触顶，把真实的大河人工削平了】，
+    //     而 javadoc 从未说明 60 从哪来。
+    //
+    //   ★ 改 60 -> 200 【不改变任何现有结果】（实测 max 只有 65.5）——
+    //     它只是【去掉一个没有依据的天花板】。
+    public static volatile double WIDTH_MAX = 200.0;
     /** ★ 河道段内横向鼓出振幅（格）—— 让 MC 尺度的 1 km 直线段有蜿蜒感。
      *  必须是【段内鼓出】形状（端点处为 0），否则「到折线的距离场」在格边界断裂。 */
     // ==================== ★ 河道蜿蜒（谱合成 / 相位积分）====================
@@ -272,8 +310,26 @@ public final class TalosLandErosion {
     public static volatile int MEANDER_SAMPLES = 12;
 
     // ---- ★ 顶点平滑（Taubin，去掉 D8 的 45 度折角）----
-    /** 平滑轮数（每轮一次 λ 步 + 一次 μ 步）。 */
-    public static volatile int SMOOTH_ROUNDS = 4;
+    /** 平滑轮数（每轮一次 λ 步 + 一次 μ 步）。
+     *
+     * <h3>★ 2026-10-11：4 -> 0（Taubin 与【亚格尺度的河】不可调和）</h3>
+     * <p><b>实测</b>：Taubin 的顶点位移【平均 102.8 格、最大 725.8 格】（blocks），
+     * 而河宽【平均只有 5.2 格】（blocks）⟹ ★ <b>位移是河宽的 96 倍</b>。
+     * <p><b>后果</b>：格心落在河道外 ⟹ <b>60% 的河道格被判为非河道</b>
+     * （修法 A2 之后实测 52.8%；关掉 Taubin 后 99.7%）。
+     *
+     * <p><b>为什么不可调和</b>：Taubin 的位移量级 = 【D8 阶梯的固有幅度】
+     * （45 度折角处 `(up+dn)/2` 与格心差 1 个格距 = 1000 blocks，λ=0.5 ⟹ 500 blocks）。
+     * 而本模型的河宽只有 5 blocks = <b>格距的 1/200</b> ⟹ 任何【按格距尺度】的平滑
+     * 都会把河道线搬到 100 倍河宽之外。
+     *
+     * <p><b>而 Taubin 的存在理由不成立</b>：它的目的是「消除 D8 的 45 度折角」，
+     * 但在 1 km 网格上，折角是<b>离散化的必然</b>且<b>视觉不可见</b>（河宽/格距 = 1/200）；
+     * 而【蜿蜒】已由 {@code meanderOff} 独立提供（依据 Leopold &amp; Wolman，见 :243-257）。
+     *
+     * <p><b>回滚</b>：改回 {@code 4} 即可（但那样河道会重新碎片化）。
+     */
+    public static volatile int SMOOTH_ROUNDS = 0;
     /** Taubin λ（正向平滑系数）。 */
     public static volatile double SMOOTH_LAMBDA = 0.5;
     /** Taubin μ（反向收缩补偿，必须为负且 |mu| 略大于 lambda）。 */
@@ -468,6 +524,22 @@ public final class TalosLandErosion {
     // ==================== 湖泊层 ====================
 
     public static volatile boolean LAKES_ENABLED = true;
+    // ★★★★★ 2026-10-11 曾调成 {SPACING=48, R=16, DEPTH=64}（见 待裁决/290、291）—— ★ 已回滚。
+    //
+    //   收益（协议测量，128 km / 1 km / 4 区块）：
+    //     覆盖率 4.40% -> 1.88%（落进地球 1~2%）、游程段 148 -> 57、p90 3.50 -> 4.50 km
+    //
+    //   ✗ 回滚原因（待裁决/292 实测）：
+    //     DEPTH 16 -> 64 把【碗的地形改造放大了 4 倍】：
+    //       最大抬升 11.3 -> ★ 45.07 格（环形土墙）
+    //       最大挖深 16   -> ★ 64.00 格
+    //     （理论 rim = BOWL_RIM*BOWL_DEPTH = 57.6，但实测 45.07 ——
+    //      因为 dz = D*(rim*rimp - w) 的最大值在 r2≈0.61 处，那里 w 不为 0；
+    //      手算 f(x) = 0.9*4x(1-x) - (1-x)^2 的最大值 = 0.705 => 64*0.705 = 45.1 ✓）
+    //     ⟹ ★ 用户裁决：「不能接受」（45 格高的环墙）
+    //
+    //   ⚠ 而验收【零回归】—— 那 16 个门覆盖不到这个尺度的地形变化，
+    //     所以「零回归」不能证明该改动无害。
     public static volatile int BOWL_SPACING = 24;
     public static volatile double BOWL_R = 8.0;
     public static volatile double BOWL_DEPTH = 16.0;
@@ -475,6 +547,38 @@ public final class TalosLandErosion {
     public static volatile double BOWL_RIM = 0.90;
     public static volatile double BOWL_MIN_RIFT = 0.40;
     public static volatile double LAKE_MIN_FILL = 0.3;
+
+    /** ★★★★★ N1（2026-10-11）：裂谷 = 造山的镜像（同一张板块接缝网的【张裂侧】）。总开关。 */
+    public static volatile boolean RIFT_ENABLED = true;
+    /**
+     * ★ N1a / N1b 的分配比例：**进抬升场（LEM 能平衡）的那一份**占多少；
+     * 剩下 {@code 1 - RIFT_SPLIT} 由 LEM 之后叠加 —— 那一份才是**把水留下**的。
+     *
+     * <p><b>为什么必须分两份</b>：LEM 的不动点满足 {@code z_k - zd = up/al >= 0}
+     * （待裁决/302 §一 的推导）⟹ 平衡态沿流向**单调不增** ⟹ 放进抬升场的裂谷会被【解掉】：
+     * 【谷地形态留下，闭合盆地不会】。
+     *
+     * <p>用户裁决 2026-10-11：**1:1 先试**。⚠ <b>此值无外部出处，是试验起点</b>。
+     */
+    public static volatile double RIFT_SPLIT = 0.5;
+    /**
+     * ★ 2026-10-11（待裁决/304，V3b）：**按水量收支解湖的水位**，覆盖 {@code t.filled}。
+     * <p>关掉 ⟹ 逐位回到「填满到溢出口」。
+     */
+    public static volatile boolean LAKE_SOLVE_ENABLED = true;
+    /**
+     * ★ 裂谷【肩 / 轴】比（无量纲）。
+     *
+     * <p><b>为什么不是沿用 {@code BOWL_RIM = 0.90}</b>：那是当年【环形土墙】的高度比，
+     * 语义完全不同 —— 搬过来会让翼部抬升只有轴部沉降的 0.4 倍。
+     *
+     * <p><b>出处的锚</b>（待裁决/301 §7.1 锚 1 逐字）：
+     * 「It is generally assumed that rift (or fault block) subsidence is
+     * <b>approximately balanced by uplift of the flanks</b>」
+     * —— Phil. Trans. R. Soc. Lond. A 294(1409), 125 (1980), doi 10.1098/rsta.1980.0020
+     * ⟹ 肩/轴 ≈ <b>1.0</b>。
+     */
+    public static volatile double RIFT_SHOULDER = 1.0;
 
     // ==================== 缓存 ====================
 
@@ -486,6 +590,9 @@ public final class TalosLandErosion {
     static final double EPS = 1.0 / 256.0;
 
     // ==================== 内部状态 ====================
+
+    /** ★ 诊断计时（待裁决/304 §11.4）：湖水位解的三段耗时（ns，累积）。 */
+    public static volatile long LAKE_SOLVE_NANOS = 0L, LAKE_CLIM_NANOS = 0L, LAKE_AFTER_NANOS = 0L;
 
     private static final ConcurrentHashMap<Long, Tile> CACHE = new ConcurrentHashMap<Long, Tile>();
     private static volatile int installedSeed = Integer.MIN_VALUE;
@@ -748,7 +855,37 @@ public final class TalosLandErosion {
                 }
                 prevQx = qx; prevQz = qz; has = true;
             }
-            double de = segBest - wK * 0.5;
+            // ★★★ 2026-10-11 修法 A2：判据必须把【蜿蜒包络】算进去（见 待裁决/269）。
+            //
+            //   【为什么旧判据是错的】
+            //     meanderOff 把段横移 off = A(tt) * sin(phi)，而 A 在【段两端之间线性插值】
+            //     （:1452 `A += (t.mA[ob] - A) * tt`），mA = MEANDER_AMP * W（Leopold & Wolman）。
+            //     ⟹ |off| <= max(A_self, A_dn) = MEANDER_AMP * max(W_self, W_dn)。
+            //     而旧判据只允许 W_self/2 ⟹ 横移量是阈值的 4 倍
+            //     ⟹ 84% 的河道格被判为【非河道】（实测 84.0%，与理论 84.1% 吻合）。
+            //
+            //   【实测】（SMOOTH_ROUNDS=0，tile (0,-1)，288 个河道格，用真实 meanderOff）：
+            //     旧判据 segBest - W/2                       : 73/288  = 25.3%
+            //     只用【本格】A                              : 255/288 = 88.5%
+            //     ★ 用【max(本格, 下游)】                     : 287/288 = 99.7%
+            //   ⟹ 必须用两端的 max —— 因为段内插值让 |off| 可以【超过本格的 A】
+            //     （实测 max|off| = 153.15 > maxA = 120.00）。
+            //
+            //   【为什么这不是自造公式】包络 = 两端极值 + 半宽，全部由几何与已有常量导出；
+            //     零新增常量（MEANDER_AMP / widthOf / accWOf 都是既有的）。
+            //
+            //   【回滚】恢复 `double de = segBest - wK * 0.5;` 即可。
+            // ★★★ 2026-10-11 修正（第二版）：必须用【预计算的 mA】，不要重算 MEANDER_AMP*W。
+            //   为什么：mA 里还含【幅度调制】——`:1429` 的
+            //     `if (MEANDER_MOD != 0.0) A *= (1.0 + MEANDER_MOD * Math.sin(mod));`
+            //   实测：mA = 7.460 而 MEANDER_AMP*W = 5.305（差 1.41 倍 = 1 + MEANDER_MOD）。
+            //   全瓦片抽查：mA != MEANDER_AMP*W 的占【100%】，最大差 53.99。
+            //   ⟹ 用 mA 直接取两端极值，既准确又不会与调制公式脱节。
+            final double wKDn = (ob3 >= 0) ? widthOf(accWOf(t, nj * W + ni)) : wK;
+            final double aSelf = (oa3 >= 0) ? t.mA[oa3] : MEANDER_AMP * wK;
+            final double aDn   = (ob3 >= 0) ? t.mA[ob3] : aSelf;
+            final double env  = Math.max(aSelf, aDn) + Math.max(wK, wKDn) * 0.5;
+            double de = segBest - env;
             if (de < best) {
                 best = de; bestAcc = t.acc[k];
                 double[] pt = TL_PT.get();
@@ -836,6 +973,101 @@ public final class TalosLandErosion {
 
     // ==================== 瓦片与采样 ====================
 
+    /**
+     * ★★★★★★★★★ 2026-10-11：本类的【配置指纹】—— 折进 {@link #tileKey}。
+     *
+     * <h3>为什么必须有（实测缺口）</h3>
+     * <p>原先 {@code tileKey} 只含 {@code (seed, tx, tz)} ⟹ <b>改任何常量都不会让缓存失效</b>。
+     * 而本类的瓦片缓存是【长驻进程】里的（{@code CACHE} 只在 {@code install/uninstall} 时清），
+     * 所以实机里改了 {@code SMOOTH_ROUNDS} / {@code WIDTH_MAX} / {@code MEANDER_*} 之后，
+     * <b>旧瓦片会被继续复用</b> ⟹ 「改了代码但游戏里没变」。</p>
+     *
+     * <p>★ 对照：{@code SimClimate.configStamp()} / {@code WaterField}（经 SimClimate）
+     * 都有指纹，本类原先【没有】—— 那是一处真实的架构缺口。</p>
+     *
+     * <h3>折叠什么</h3>
+     * <p>只折叠【影响结果】的量。<b>不折叠</b>：
+     * {@code CACHE_TILES}（缓存大小）、{@code PRECIP_DIAG}（诊断开关）、
+     * 以及三个已废弃的 {@code *_UNUSED} / {@code _OLD} 常量。</p>
+     */
+    public static long configStamp() {
+        long h = 0x7A14L;   // 版本位
+        // ---- 网格与求解窗口 ----
+        h = h * 31 + (ENABLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(STEP_BLK);
+        h = h * 31 + SOLVE_CELLS;
+        h = h * 31 + OUT_CELLS;
+        h = h * 31 + BUFFER_CELLS;
+        h = h * 31 + Double.doubleToLongBits(SEA_BLK);
+        h = h * 31 + Double.doubleToLongBits(ELEV_TO_BLK);
+        // ---- LEM 演化 ----
+        h = h * 31 + ITER;
+        h = h * 31 + FLOW_EVERY;
+        h = h * 31 + Double.doubleToLongBits(DK);
+        h = h * 31 + Double.doubleToLongBits(M);
+        h = h * 31 + Double.doubleToLongBits(DTU);
+        h = h * 31 + Double.doubleToLongBits(GAMMA);
+        h = h * 31 + Double.doubleToLongBits(UREF);
+        h = h * 31 + Double.doubleToLongBits(COAST_TAPER_M);
+        // ---- 抬升噪声 ----
+        h = h * 31 + Double.doubleToLongBits(NA_AMP);
+        h = h * 31 + Double.doubleToLongBits(NA_WL);
+        h = h * 31 + NA_OCT;
+        h = h * 31 + Double.doubleToLongBits(NA_TAPER);
+        // ---- 降水（影响流量 -> 河宽）----
+        h = h * 31 + (PRECIP_ENABLED ? 1 : 0);
+        h = h * 31 + (PRECIP_ANALYTIC ? 1 : 0);
+        h = h * 31 + PRECIP_SMOOTH;
+        h = h * 31 + Double.doubleToLongBits(P_REF_MM);
+        h = h * 31 + Double.doubleToLongBits(P_REF_BASE_MM);
+        h = h * 31 + Double.doubleToLongBits(P_FALLBACK_MM);
+        h = h * 31 + Double.doubleToLongBits(TERRAIN_GAIN);
+        h = h * 31 + Double.doubleToLongBits(TERRAIN_H_REF);
+        h = h * 31 + Double.doubleToLongBits(TERRAIN_DH_STEP);
+        h = h * 31 + Double.doubleToLongBits(TERRAIN_CLIMB_CLAMP);
+        h = h * 31 + Double.doubleToLongBits(LAT_GAIN);
+        h = h * 31 + Double.doubleToLongBits(MOIST_FLOOR);
+        h = h * 31 + UPWIND_SAMPLES;
+        // ---- 河道判定与河宽 ----
+        h = h * 31 + Double.doubleToLongBits(ACC_MIN);
+        h = h * 31 + Double.doubleToLongBits(WIDTH_W0);
+        h = h * 31 + Double.doubleToLongBits(WIDTH_MIN);
+        h = h * 31 + Double.doubleToLongBits(WIDTH_MAX);
+        h = h * 31 + Double.doubleToLongBits(DEPTH_D0);
+        h = h * 31 + Double.doubleToLongBits(DEPTH_MIN);
+        h = h * 31 + Double.doubleToLongBits(DEPTH_MAX);
+        // ---- 蜿蜒（含 Taubin 顶点平滑）----
+        h = h * 31 + (MEANDER_ENABLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(MEANDER_AMP);
+        h = h * 31 + Double.doubleToLongBits(MEANDER_LAMK);
+        h = h * 31 + Double.doubleToLongBits(MEANDER_LAM_MIN);
+        h = h * 31 + Double.doubleToLongBits(MEANDER_MOD);
+        h = h * 31 + Double.doubleToLongBits(MEANDER_MODW);
+        h = h * 31 + MEANDER_SAMPLES;
+        h = h * 31 + SMOOTH_ROUNDS;
+        h = h * 31 + Double.doubleToLongBits(SMOOTH_LAMBDA);
+        h = h * 31 + Double.doubleToLongBits(SMOOTH_MU);
+        // ---- 干河道 ----
+        h = h * 31 + (DRY_ENABLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(DRY_DEPTH_FRAC);
+        h = h * 31 + Double.doubleToLongBits(DRY_PREL_MIN);
+        h = h * 31 + Double.doubleToLongBits(DRY_TRANS);
+        // ---- 湖泊 ----
+        h = h * 31 + (LAKES_ENABLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(LAKE_MIN_FILL);
+        h = h * 31 + BOWL_SPACING;
+        h = h * 31 + Double.doubleToLongBits(BOWL_R);
+        h = h * 31 + Double.doubleToLongBits(BOWL_DEPTH);
+        h = h * 31 + Double.doubleToLongBits(BOWL_RIM);
+        h = h * 31 + Double.doubleToLongBits(BOWL_MIN_RIFT);
+        // ---- ★ N1 裂谷（2026-10-11）----
+        h = h * 31 + (RIFT_ENABLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(RIFT_SPLIT);
+        h = h * 31 + Double.doubleToLongBits(RIFT_SHOULDER);
+        h = h * 31 + (LAKE_SOLVE_ENABLED ? 1 : 0);   // ★ 湖水位解（待裁决/304）
+        return h;
+    }
+
     static int outBlocks() { return (int) Math.round(OUT_CELLS * STEP_BLK); }
 
     /**
@@ -849,6 +1081,10 @@ public final class TalosLandErosion {
     private static long tileKey(long ws, int tx, int tz) {
         long h = ws * 0x9E3779B97F4A7C15L;
         h ^= (((long) tx) << 32) ^ (tz & 0xFFFFFFFFL);
+        // ★★★ 2026-10-11：并入配置指纹（原先【没有】—— 那是真实的缺口）。
+        //   没有它时，改 SMOOTH_ROUNDS / WIDTH_MAX / MEANDER_* 等都不会让缓存失效，
+        //   实机（长驻进程）里会继续复用旧瓦片 ⟹ 「改了代码但游戏里没变」。
+        h ^= configStamp() * 0xC2B2AE3D27D4EB4FL;
         return h;
     }
 
@@ -919,8 +1155,74 @@ public final class TalosLandErosion {
 
     // ==================== 抬升场 ====================
 
-    /** 抬升场（米）= 海岸剖面 + 造山 + 中尺度扰动（海岸淡化）。 */
+    /**
+     * ★★★ 实验开关（待裁决/307）：让 LEM 能产生【天然闭合洼地】（= 天然湖）的前置条件。
+     * <ul>
+     *   <li>{@code RIFT_SEA_DECOUPLED} —— 陆海判定用【不含裂谷】的场 ⟹ 允许「海平面以下的陆地」</li>
+     *   <li>{@code RIFT_NEGATIVE_UPLIFT} —— 允许【负抬升】= 真正的构造沉降（原实现 clamp 在 0）</li>
+     * </ul>
+     * <p><b>为什么必须两个一起</b>：不动点 {@code z_k - zd = up / al}，只要 {@code up >= 0}
+     * 就【永不产生坑】；而陆地上 {@code uu = (U - SEA_BLK)/UREF > 0} 恒成立
+     * ⟹ 原来的 clamp 从不生效 ⟹ 定理锁死。要松开它，必须让【非海格】也能有 {@code uu < 0}。
+     */
+    public static volatile boolean RIFT_SEA_DECOUPLED = false;
+    public static volatile boolean RIFT_NEGATIVE_UPLIFT = false;
+    /**
+     * ★★★★★ 2026-10-11（待裁决/308）：**裂谷沉降因子**（乘在抬升上，与海拔无关）。
+     *
+     * <p><b>为什么必须这样</b>：原式 {@code uu = (U - SEA_BLK)/UREF} 把「抬升速率」与「海拔」
+     * 混成了一个量 ⟹ {@code up < 0} 只在 {@code U < 海平面} 时发生
+     * ⟹ ★ 只有沿海低地能成坑（实测：天然湖格 **100% 在离岸 20 km 内**、中位 **1.4 km**）。
+     *
+     * <p>现在：{@code up = upBase * (1 + RIFT_SINK * riftProfile)}。
+     * 轴部 {@code riftProfile = -1} ⟹ {@code up = upBase*(1 - RIFT_SINK)}，
+     * {@code RIFT_SINK > 1} 时轴部【真的下沉】，**与海拔无关** ⟹ 湖可以出现在任何高度。
+     *
+     * <p><b>取值出处</b>：真实裂谷沉降 **150~800 m/Ma**（Lake Albert 实测，见 待裁决/302 §二），
+     * 与造山带抬升速率【同量级】⟹ {@code RIFT_SINK ~ 1~2}。0 = 关。
+     */
+    // ★★★ 2026-10-11 裁决：本路线【已否决】—— 实测内陆永远形不成坑（`309`）：
+    //   乘因子路线：SINK=1.5 完全无效；扫到 100 仍 100% 沿海、高程 p50 = 57 格。
+    //   绝对沉降路线：SINK 扫到 2.0，全图 417 个坑【无一在离岸 20 km 之外】。
+    //   ⟹ 在 LEM 的平衡态里「闭合洼地」与「河流下切」互斥，非调参可解。
+    //   ⟹ 湖必须由 LEM 之外的机制提供（N1b）。本开关保留 = false/0，供回滚对照。
+    public static volatile double RIFT_SINK = 0.0;
+    /**
+     * ★★ 修法 B2（待裁决/310）：裂谷**不得把陆地压成海** —— 抬升场的最低高度（米）。
+     * <p>为什么必须钳：{@code t.sea[k] = (baseHeight <= 0)} ⟹ 裂谷把陆地压到 0 以下
+     * ⟹ 那一格【变成海】⟹ ★ 把大陆劈成两块（用户实测指认）。
+     * <p>钳在 1 米 ⟹ 永远是陆地；且接近海平面时是【平地】⟹ {@code fill()} 不会给它积水
+     * ⟹ 「被切了但没成湖的那块地」还回来了。
+     */
+    public static volatile double RIFT_FLOOR_M = 1.0;
+
+    /** 抬升场（米）= 海岸剖面 + 造山 + 中尺度扰动（海岸淡化）+ ★ 裂谷。 */
     public static double baseHeight(long ws, double px, double pz) {
+        double h = baseHeightRaw(ws, px, pz);
+        // ★★★★★ N1a（2026-10-11）：裂谷下沉【进抬升场】。
+        //   本方法就是 LEM 的抬升场 U（见 solve 里的 t.U[k] = SEA_BLK + m*ELEV_TO_BLK），
+        //   所以加在这里 ⟹ LEM 会自己把裂谷谷地【演化】出来（不是事后挖）。
+        //   ★ 幅值沿用 BOWL_DEPTH（16 格 = 889 m）、肩/轴比沿用 RIFT_SHOULDER ⟹ 零新参数。
+        if (RIFT_ENABLED && RIFT_SPLIT != 0.0 && h > 0.0) {
+            // ★★★ 修法 D（待裁决/310）：**海岸淡化**。照抄造山当年为【同一个问题】做的处置
+            //   （TalosLandField:2249-2252 逐字：「否则造山会在海岸线上跳变式全量加入，
+            //     实测在造山带里 1 格水平距离内高度跳 1389 米 = 海岸墙」）⟹ 零新参数。
+            //   ★ 为什么裂谷也必须淡化：裂谷贴着海岸时会把陆地压到海平面以下
+            //     ⟹ sea[] 翻面 ⟹ 【把大陆劈成两块】。
+            double ta = TalosLandField.OROG_COAST_TAPER_M > 0.0
+                    ? TalosLandField.smoothstep(0.0, TalosLandField.OROG_COAST_TAPER_M, h) : 1.0;
+            if (ta > 0.0) {
+                h += ta * RIFT_SPLIT * (BOWL_DEPTH / ELEV_TO_BLK)
+                   * TalosLandField.riftProfile(ws, px, pz, RIFT_SHOULDER);
+                // ★ 修法 B2：裂谷不得把陆地压成海（钳在 1 米 ⟹ 永远是陆地）。
+                if (h < RIFT_FLOOR_M) h = RIFT_FLOOR_M;
+            }
+        }
+        return h;
+    }
+
+    /** ★ 不含裂谷项的抬升场（米）—— 用于【陆海判定】（待裁决/307 实验）。 */
+    public static double baseHeightRaw(long ws, double px, double pz) {
         double sig = TalosLandField.signedCoastDistCF(ws, px, pz);
         double b = TalosLandField.coastProfileCF(sig);
         if (b <= 0.0) return b;
@@ -1011,11 +1313,15 @@ public final class TalosLandErosion {
             double wz = oz + j * STEP_BLK;
             for (int i = 0; i < W; i++) {
                 int k = j * W + i;
-                double m = baseHeight(ws, ox + i * STEP_BLK, wz);
+                final double gx = ox + i * STEP_BLK;
+                double m = baseHeight(ws, gx, wz);
                 // ★ U 必须存【格】，与更新式同一量纲（米会把 uu 放大 55.6 倍 -> 地形被抬飞）
                 t.U[k] = SEA_BLK + m * ELEV_TO_BLK;
                 t.z[k] = SEA_BLK + m * ELEV_TO_BLK;
-                t.sea[k] = (m <= 0.0);
+                // ★ 实验（待裁决/307）：陆海判定改用【不含裂谷】的场
+                //   ⟹ 允许「海平面以下的陆地」⟹ U 可以 < SEA_BLK ⟹ up 允许负值
+                //   ⟹ LEM 真正【下沉】⟹ 才可能演化出天然闭合洼地（天然湖）。
+                t.sea[k] = (RIFT_SEA_DECOUPLED ? baseHeightRaw(ws, gx, wz) <= 0.0 : m <= 0.0);
             }
         }
 
@@ -1025,6 +1331,22 @@ public final class TalosLandErosion {
         int[] tmp = new int[N];
         int[] cnt = new int[256];
         double[] uBuf = new double[N];
+
+        // ★ 2026-10-11（待裁决/308）：裂谷沉降因子【逐格预计算一次】。
+        //   ⚠ 绝不能放进 ITER 循环：riftProfile 约 0.4 us/次，200 次迭代 x 590k 格 = 47 秒。
+        //   这里只算一次：590k x 0.4 us = 0.24 s（相对瓦片求解 6~10 s 约 3%）。
+        double[] sinkBuf = null;
+        if (RIFT_SINK > 0.0) {
+            sinkBuf = new double[N];
+            for (int j = 0; j < W; j++) {
+                final double gz = oz + j * STEP_BLK;
+                for (int i = 0; i < W; i++) {
+                    final int k = j * W + i;
+                    sinkBuf[k] = RIFT_SINK
+                            * TalosLandField.riftProfile(ws, ox + i * STEP_BLK, gz, RIFT_SHOULDER);
+                }
+            }
+        }
 
         for (int it = 0; it < ITER; it++) {
             if (it % fe == 0) { fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt); }
@@ -1038,6 +1360,13 @@ public final class TalosLandErosion {
                 double al = DK * Math.pow(t.acc[k], M);
                 double uu = (t.U[k] - SEA_BLK) / UREF;
                 double up = uu > 0.0 ? DTU * UREF * Math.pow(uu, GAMMA) : 0.0;
+                // ★★★★★ 2026-10-11（待裁决/308）：裂谷沉降 = 乘在抬升上的因子，与海拔无关。
+                //   轴部 riftProfile = -1 ⟹ up = upBase*(1 - RIFT_SINK)。RIFT_SINK > 1 ⟹ 真的下沉。
+                // ★ 沉降是【绝对量】：与海拔无关 ⟹ 任何高度都能压成负。
+                //   ⚠ 乘因子路线已实测失败：upBase ∝ uu^GAMMA ∝ 离海平面高度 ⟹ 越高越压不动
+                //     （实测湖格 100% 仍在离岸 20 km 内、高程 p50 = 57~63 格）。
+                //   DTU*UREF = uu=1 时的抬升量，是现成的量 ⟹ 除 RIFT_SINK 外零新参数。
+                if (sinkBuf != null) up += DTU * UREF * sinkBuf[k];
                 double nb = t.z[nj * W + ni];
                 double zd = nb > SEA_BLK ? nb : SEA_BLK;
                 t.z[k] = (t.z[k] + up + al * zd) / (1.0 + al);
@@ -1049,6 +1378,20 @@ public final class TalosLandErosion {
             fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);
         }
         precipField(ws, t, ox, oz);   // ★ 有效汇流面积 accW（只读，不改地形；用 baseHeight 不递归）
+        // ★★★★★ 2026-10-11（待裁决/304，V3b）：按水量收支解每个盆地的水位，覆盖 t.filled。
+        //   ★★ 必须放在 precipField 【之后】：precipField 会把本瓦片用到的【气候瓦片全部建好】，
+        //      而湖解每个盆地要查一次 P 与一次 E。放在它之前 ⟹ 那几十块气候瓦片会在这里【冷建】
+        //      ⟹ 实测（待裁决/304 §11.4）solveLake = 6769 ms，其中 6760 ms 全花在气候查询上。
+        //   ★ 也必须在 fill() 之后（盆地是按 filled - z 认的，而 filled 要先由新 z 算出来）。
+        //   ★ precipField 与 meanderField 都【只读】filled ⟹ 夹在两者之间是安全的。
+        if (LAKES_ENABLED && LAKE_SOLVE_ENABLED) {
+            final long ls0 = System.nanoTime();
+            solveLakeLevels(ws, t, ox, oz);
+            final long ls1 = System.nanoTime();
+            dirs(t); accOf(t, ord, tmp, cnt);
+            LAKE_SOLVE_NANOS += ls1 - ls0;
+            LAKE_AFTER_NANOS += System.nanoTime() - ls1;
+        }
         meanderField(ws, t);          // ★ 蜿蜒场（只读 acc/dir/sea/filled，不改变任何地形）
         tilesSolved++;
         solveNanos += (System.nanoTime() - t0);
@@ -1296,7 +1639,15 @@ public final class TalosLandErosion {
      */
     private static void meanderField(long ws, Tile t) {
         final int W = t.W, N = W * W;
-        if (!MEANDER_ENABLED) { t.chOrd = null; t.nCh = 0; return; }
+        // ★★★ 2026-10-11 解耦（原为 `if (!MEANDER_ENABLED) { t.chOrd = null; ... return; }`）
+        //   为什么改：`chOrd`【不只是】蜿蜒用的 —— 它同时是
+        //     · `accWOf`（河宽）的索引
+        //     · `mWet`（干河道）的索引 —— `wetness01` 用 `chOrd[...]` 取湿润度
+        //     · `channelDistance` 判定「k 是否河道格」的依据
+        //   ⟹ 旧写法让 `MEANDER_ENABLED = false` 变成【水系整体失效】（实测 NPE），
+        //     而那个开关的语义只是「off 恒为 0 ⟹ 逐位回到直线中心线」（见 :259）。
+        //   现在：`chOrd`/`accW`/`mWet` 始终建立；只有蜿蜒量（mS/mPhi/mA/mMod）在
+        //   开关关闭时不被消费（`meanderOff` 自己 return 0）⟹ 语义正确。
         final int[] ch = new int[N];
         Arrays.fill(ch, -1);
         int n = 0; double maxAcc = 1.0;
@@ -1457,33 +1808,134 @@ public final class TalosLandErosion {
         return A * Math.sin(phi);
     }
 
-    /** 湖泊层：裂谷选位，挖碗 + 环形 rim。 */
+    /**
+     * 湖泊层（★ N1b，2026-10-11 重写）：沿【裂谷场】叠加连续剖面。
+     *
+     * <p><b>改前</b>：按 {@code BOWL_SPACING = 24} 格的**规则网格**撒圆盘 + 环形 rim
+     * ⟹ 用户不接受的两件事：24 km 网格的规律性、圆环形土墙。
+     *
+     * <p><b>改后</b>：在**每一格**上取 {@code r = plateBoundary01 x (1 - convergence01)}，
+     * 叠加 {@code (1 - RIFT_SPLIT) x A x (k*4r(1-r) - r)} ⟹ **位置与宽度全由场决定**。
+     * ★ {@code BOWL_SPACING} / {@code BOWL_R} / {@code BOWL_MIN_RIFT} 在本路径上【不再使用】。
+     *
+     * <p>★ <b>为什么这一份不能并进 N1a</b>：LEM 的不动点 {@code z_k - zd = up/al >= 0}
+     * ⟹ 平衡态沿流向单调不增 ⟹ 进抬升场的那一份会被【解掉】（待裁决/302 §一）。
+     * 这一份是在 LEM **之后**叠加的，LEM 看不见它 ⟹ 它才能留下一个闭合盆地。
+     *
+     * <p>⚠ 成本实测（待裁决/303）：场调用 0.21 us/格 ⟹ **0.12 s/瓦片**，
+     * 对照瓦片求解 6~8 s ≈ **1.6%**。
+     */
     private static void carveLakes(long ws, Tile t, double ox, double oz) {
-        int W = t.W;
-        int sp = Math.max(2, BOWL_SPACING);
-        double R = BOWL_R, D = BOWL_DEPTH, rim = BOWL_RIM;
-        int Ri = (int) Math.ceil(R);
-        if (Ri < 1 || D <= 0.0 || R <= 0.0) return;
-        for (int cj = sp / 2; cj < W; cj += sp) {
-            for (int ci = sp / 2; ci < W; ci += sp) {
-                int ck = cj * W + ci;
-                if (t.sea[ck]) continue;
-                double pb = TalosLandField.plateBoundary01(ws, ox + ci * STEP_BLK, oz + cj * STEP_BLK);
-                double cv = TalosLandField.convergence01(ws, ox + ci * STEP_BLK, oz + cj * STEP_BLK);
-                if (pb * (1.0 - cv) < BOWL_MIN_RIFT) continue;
-                for (int dj = -Ri; dj <= Ri; dj++) {
-                    for (int di = -Ri; di <= Ri; di++) {
-                        int i = ci + di, j = cj + dj;
-                        if (i < 0 || i >= W || j < 0 || j >= W) continue;
-                        int k = j * W + i;
-                        if (t.sea[k]) continue;
-                        double r2 = (di * di + dj * dj) / (R * R);
-                        if (r2 >= 1.0) continue;
-                        double w = (1.0 - r2) * (1.0 - r2);
-                        double rimp = 4.0 * r2 * (1.0 - r2);
-                        t.z[k] += D * (rim * rimp - w);
-                    }
+        if (!RIFT_ENABLED) return;
+        final double share = 1.0 - RIFT_SPLIT;
+        if (share == 0.0) return;
+        // ★★★★★ 2026-10-12 修 BUG：这里【曾经写成 BOWL_DEPTH / ELEV_TO_BLK】——
+        //   那是【格 -> 米】的换算，而 t.z 的单位是【格】⟹ 叠加被放大了 1/ELEV_TO_BLK = 55.6 倍！
+        //   实测后果（待裁决/311）：carveLakes 阶段平均 |dz| = 1277 m、max = 482 格（26,797 m），
+        //   而它本来只该叠加 <= 16 格 ⟹ 表现为「大陆被切开」「地形被削平 6286 格」。
+        //   ★ 根因：baseHeight 的单位是【米】（那里用 /ELEV_TO_BLK 是对的），carveLakes 改的是
+        //     【格】的 t.z，我照抄了同一个表达式却没核对目标量纲。
+        final double A = BOWL_DEPTH;                    // 幅值：格（与 t.z 同量纲）
+        if (A <= 0.0) return;
+        final int W = t.W;
+        for (int j = 0; j < W; j++) {
+            final double wz = oz + j * STEP_BLK;
+            for (int i = 0; i < W; i++) {
+                int k = j * W + i;
+                if (t.sea[k]) continue;
+                double dz = share * A * TalosLandField.riftProfile(ws, ox + i * STEP_BLK, wz, RIFT_SHOULDER);
+                // ★ 修法 D（待裁决/310）：N1b 也做海岸淡化（理由同 baseHeight：不得劈开大陆）
+                if (dz < 0.0) {
+                    double hM = baseHeightRaw(ws, ox + i * STEP_BLK, wz);
+                    if (hM > 0.0) {
+                        double ta = TalosLandField.OROG_COAST_TAPER_M > 0.0
+                                ? TalosLandField.smoothstep(0.0, TalosLandField.OROG_COAST_TAPER_M, hM) : 1.0;
+                        dz *= ta;
+                    } else dz = 0.0;
                 }
+                if (dz != 0.0) {
+                    double nz = t.z[k] + dz;
+                    // ★★★★★ 修法 B（待裁决/309）：裂谷【不得把陆地压到海平面以下】。
+                    //   为什么必须钳：sea[] 是在瓦片 init 时按 baseHeight 定死的，而 N1b 只改 z 不改 sea
+                    //   ⟹ 会出现「非海，但低于海平面」的格 ⟹ fill() 从【海格种子】把它们填到 SEA_BLK
+                    //   ⟹ 伪湖（实测占湖格 35%，且 100% 挤在离岸 20 km 内 —— 见 待裁决/306）。
+                    //   ★ 钳在 SEA_BLK 之后：盆地若【高于海平面】，fill() 给出的 filled 就是【溢出口高度】
+                    //     ⟹ 湖出现在任何海拔、水位由溢出口定 —— 这正是「湖不必低于海平面」。
+                    //   本钳只在沿海低地生效（裂谷幅值 share*A = 444 m，内陆高地根本碰不到）。
+                    if (nz < SEA_BLK) nz = SEA_BLK;
+                    t.z[k] = nz;
+                }
+            }
+        }
+    }
+
+    /**
+     * ★★★★★ 2026-10-11（待裁决/304，V3b）：**按水量收支解每个盆地的水位**，覆盖 {@code t.filled}。
+     *
+     * <pre>
+     *   一个盆地： A_lake(L) x E  =  P x A_catch
+     *     · 若 A_lake(溢出口) x E &lt;= P x A_catch  =&gt; 溢流湖：水位不动（= 溢出口）
+     *     · 否则解出 L &lt; 溢出口             =&gt; 终端湖：把 filled 压到 L
+     *     · 若连最深处都装不下               =&gt; 干涸：filled = z（自动不再是湖）
+     * </pre>
+     *
+     * <p>★ 为什么覆盖 {@code filled} 就够了：{@code riverSurfaceBlocks = round(filled)}、
+     * {@code isLake = filled - z > 阈值}、{@code ChunkProviderTalos2} 全部读 {@code filled}
+     * ⟹ 一处改、全线生效。
+     *
+     * <p>⚠ 本遍【不做级联】（各自独立）—— 级联的意思是「减掉上游湖的蒸发损失」，
+     * 实测影响 &lt; 2%（见 待裁决/304 §十）。
+     *
+     * <p>★ 成本：每盆地一次 {@code annualPrecipMmPerYear} + 一次 {@code lakeEvapMmPerYear}，
+     * 两者都是**瓦片内双线性插值**（E 在建气候瓦片时已顺手算好）⟹ 边际成本≈0。
+     */
+    private static void solveLakeLevels(long ws, Tile t, double ox, double oz) {
+        if (!LAKE_SOLVE_ENABLED) return;
+        final int W = t.W;
+        final int lo = BUFFER_CELLS, hi = lo + OUT_CELLS;
+        final int NS = hi - lo;
+        if (NS <= 0) return;
+        final int[] st = new int[NS * NS];
+        final int[] cells = new int[NS * NS];
+        final double[] zs = new double[NS * NS];
+        final boolean[] vis = new boolean[W * W];
+        for (int j = lo; j < hi; j++) {
+            for (int i = lo; i < hi; i++) {
+                final int q0 = j * W + i;
+                if (vis[q0] || t.sea[q0]) continue;
+                if (!(t.filled[q0] - t.z[q0] > LAKE_MIN_FILL)) continue;
+                int sp = 0; st[sp++] = q0; vis[q0] = true;
+                int n = 0; double accMax = 0.0, spill = 0.0; int outlet = q0;
+                while (sp > 0) {
+                    final int c = st[--sp];
+                    cells[n] = c; zs[n] = t.z[c]; n++;
+                    if (t.filled[c] > spill) spill = t.filled[c];
+                    if (t.acc[c] > accMax) { accMax = t.acc[c]; outlet = c; }
+                    final int ci = c % W, cj = c / W;
+                    if (ci > lo)     { final int x = c - 1; if (!vis[x] && !t.sea[x] && t.filled[x] - t.z[x] > LAKE_MIN_FILL) { vis[x] = true; st[sp++] = x; } }
+                    if (ci < hi - 1) { final int x = c + 1; if (!vis[x] && !t.sea[x] && t.filled[x] - t.z[x] > LAKE_MIN_FILL) { vis[x] = true; st[sp++] = x; } }
+                    if (cj > lo)     { final int x = c - W; if (!vis[x] && !t.sea[x] && t.filled[x] - t.z[x] > LAKE_MIN_FILL) { vis[x] = true; st[sp++] = x; } }
+                    if (cj < hi - 1) { final int x = c + W; if (!vis[x] && !t.sea[x] && t.filled[x] - t.z[x] > LAKE_MIN_FILL) { vis[x] = true; st[sp++] = x; } }
+                }
+                final double aSpill = n;
+                final double bx = ox + (outlet % W) * STEP_BLK, bz = oz + (outlet / W) * STEP_BLK;
+                double P = 0.0, E = Double.NaN;
+                final long c0 = System.nanoTime();
+                try { P = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.annualPrecipMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
+                try { E = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.lakeEvapMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
+                LAKE_CLIM_NANOS += System.nanoTime() - c0;
+                final double inflow = P * accMax;
+                double aFin;
+                if (!(E > 0.0) || aSpill * E <= inflow) aFin = aSpill;
+                else {
+                    final double kf = inflow / E;
+                    aFin = (kf >= aSpill) ? aSpill : (kf <= 1.0 ? 0.0 : Math.floor(kf)); }
+                if (aFin >= aSpill) continue;                       // 溢流：水位不动
+                if (aFin <= 0.0) { for (int q = 0; q < n; q++) t.filled[cells[q]] = t.z[cells[q]]; continue; }
+                Arrays.sort(zs, 0, n);
+                final double level = zs[(int) aFin - 1];
+                for (int q = 0; q < n; q++) { final int c = cells[q];
+                    if (t.z[c] <= level) t.filled[c] = level; else t.filled[c] = t.z[c]; }
             }
         }
     }

@@ -412,6 +412,74 @@ public static int OPP_R = 4;
         if (t <= 0.0) return 0.0;
         return t * t; }
 
+    /**
+     * ★★★★★ N1（2026-10-11）：**裂谷剖面**（无量纲）。
+     *
+     * <p>造山与裂谷是**同一张板块接缝网络的两个方向**：
+     * <pre>
+     *   汇聚侧（convergence01 -&gt; 1）  =&gt; 造山（orogeny01，抬升）
+     *   张裂侧（r = plateBoundary01 x (1 - convergence01) -&gt; 1） =&gt; 裂谷（下沉）
+     * </pre>
+     *
+     * <p>返回 {@code k*4r(1-r) - r}：轴部（r=1）取 -1，两翼（r=0.5）取 +k。
+     * ★ 零新参数：{@code k}（肩/轴比）与幅值都由调用方传入。
+     *
+     * <p>⚠ 本方法【不判陆海】—— 与 {@link #orogeny01} 一样，调用方必须自己门控。
+     * <p>★ 成本实测（待裁决/303）：0.21 us/次（= plateBoundary01 0.166 + convergence01 0.041）。
+     */
+    public static double riftProfile(long ws, double px, double pz, double k) {
+        // ---- (1) 3x3 抖动超格扫描：取最近【三个】（加权距离 b0 <= b1 <= b2）----
+        //   ★ 查证：plateBoundaryDist 的 3x3 扫描本来就访问 9 个超格，只是只留了最近两个。
+        //     多留一个 b2 就能判「Voronoi 顶点」（三格等距处）⟹ 分段可行，且零新参数。
+        double[] w = warp(ws, px, pz);
+        double qx = w[0], qz = w[1];
+        double cell = supCell();
+        long si0 = (long) Math.floor(qx / cell), sj0 = (long) Math.floor(qz / cell);
+        double b0 = 1e18, b1 = 1e18, b2 = 1e18, bb0 = 1.0, bb1 = 1.0;
+        double c0x = 0, c0z = 0, c1x = 0, c1z = 0;
+        for (long dj = -1; dj <= 1; dj++) {
+            for (long di = -1; di <= 1; di++) {
+                long si = si0 + di, sj = sj0 + dj;
+                double cx = supX(ws, si, sj), cz = supZ(ws, si, sj), b = supB(ws, si, sj);
+                double ex = qx - cx, ez = qz - cz;
+                double rr = Math.sqrt(ex * ex + ez * ez) / Math.sqrt(b);
+                if (rr < b0) { b2 = b1; b1 = b0; c1x = c0x; c1z = c0z; bb1 = bb0;
+                               b0 = rr; bb0 = b; c0x = cx; c0z = cz; }
+                else if (rr < b1) { b2 = b1; b1 = rr; bb1 = b; c1x = cx; c1z = cz; }
+                else if (rr < b2) { b2 = rr; } } }
+        if (b1 > 1e17) return 0.0;
+        // ---- (2) 到接缝的【解析距离】（与 plateBoundaryDist 同构，单位 = block）----
+        double d0x = qx - c0x, d0z = qz - c0z, d1x = qx - c1x, d1z = qz - c1z;
+        double phi = b1 - b0;
+        double gx = d1x / (b1 * bb1) - d0x / (b0 * bb0);
+        double gz = d1z / (b1 * bb1) - d0z / (b0 * bb0);
+        double gm = Math.sqrt(gx * gx + gz * gz);
+        if (gm < 1e-12) return 0.0;
+        double d = Math.abs(phi) / gm;
+        // ---- (3) 汇聚侧门控：只在【张裂侧】放裂谷（这是旧判据 pb*(1-cv) 的同一语义）----
+        double gate = 1.0 - convergence01(ws, px, pz);
+        if (gate <= 0.0) return 0.0;
+        // ---- (4) ★★ 分段：一条 Voronoi 边 = 一个裂谷盆地 ----
+        //   ★ 沿轴坐标就是 b0【自己】：几何上 b0（到最近超格的加权距离）在
+        //     【边中点最小（=0）】、【顶点最大】⟹ b0 天然就是「到段中心的距离」。
+        //   ★ 归一化常数 1/sqrt(3) 是【几何导出】的，不是调出来的：
+        //     规则格点上顶点到三个种子等距 ⟹ b0_vertex = cell/sqrt(3) ⟹
+        //     seg = 1 - b0*sqrt(3)/cell  正好在 中点=1、顶点=0。
+        //   ⟹ 实测（RiftSeg 第一版）：用 (b2-b0)/(b2+b0)/0.10 会【饱和】，主干仍连成网（最大段 298x254 km）。
+        double seg = 1.0;
+        double cellRef = supCell();
+        if (cellRef > 0.0) {
+            double sv = 1.0 - b0 * 1.7320508075688772 / cellRef;
+            seg = sv <= 0.0 ? 0.0 : (sv >= 1.0 ? 1.0 : sv); }
+        if (seg <= 0.0) return 0.0;
+        // ---- (5) 剖面：u = d / 半宽（★ 用【解析距离】而不是平方核 ⟹ 槽宽 = 半宽量级）----
+        //   槽：-(1-u)^2  （轴部 -1，边缘 0）          ⟹ 槽全宽 = 2 x OROG_PLATE_BAND = 44 km
+        //   肩：+k*4u(1-u)（峰 +k 在 u=0.5）           ⟹ 翼峰在 11 km
+        double u = d / OROG_PLATE_BAND;
+        if (u >= 1.0) return 0.0;
+        double t1 = 1.0 - u;
+        return seg * gate * (k * 4.0 * u * t1 - t1 * t1); }
+
     // ================= ★★★★★★★ 造山带 = 【Voronoi 细胞边界】（正解） =================
     //
     // 【为什么弃用 plateBoundary01（超格栅格）】诊断图（run/talos_maps/cell_diag.png）：
@@ -858,6 +926,12 @@ public static int OPP_R = 4;
     /** 陆海标量场的相关长度（block）—— 决定岸线的光滑尺度。 */
     public static double LS_WL   =  60_000.0;   // 大尺度（大陆/大洋）—— 目标：岸线在万格尺度起伏
     /** 细节层波长。 */
+    // ★★★★★ 2026-10-11 试过 {LS_WL2=150_000, LS_AMP2=0.05, LS_TARGET=0.473}（陆地聚集）：
+    //   收益：平均块长 60.0 -> 102.2 km（+70%）、碎块 10819 -> 6359（-41%）、陆占 42.1% 保持；
+    //         ⟹ 还让 GATE_A3_DIRECTION 从 FAIL 变 PASS（目标里的已知症状）。
+    //   ✗ 回滚原因：GATE_B4_INBAND 从 PASS(3.879) 退化到 FAIL(5.857)（+51%，超出观测锚点 1.8~4.1 上限）；
+    //         GATE_NTP_SEASONAL 1.985 -> 2.012（擦边翻转）。
+    //   详见 待裁决/259（改动）与 260（验收结果）。
     public static double LS_WL2  =  18_000.0;
     /** 细节层幅度。 */
     public static double LS_AMP2 = 0.25;

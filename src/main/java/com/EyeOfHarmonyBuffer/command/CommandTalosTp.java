@@ -57,7 +57,15 @@ public class CommandTalosTp extends CommandBase {
     /** 海岸判据：|coastDist| 小于此值算「海岸」。 */
     private static final double COAST_BAND = 2_000.0;
 
-    /** ★ 河流类目的搜索步长（格）。河宽只有 3 到 45 格，用 250 会大量漏掉。 */
+    /**
+     * ★ 河流类目的搜索步长（格）。
+     *
+     * <p>实测（2026-10-12，tile(-3,2) 核心区 512x512 km，39,829 个河道格）：
+     * 河宽 p10=2.2 p50=4.2 p90=14.1 p99=44.8 <b>max=118.1 格</b>。
+     * ⚠ 旧注释写的「河宽只有 3 到 45 格」<b>已过时</b> ——
+     * {@code WIDTH_MAX} 从 60 改到 200 之后河宽可以到 118 格。
+     * 河道格占陆地的 28.7% ⟹ 50 格步长几乎必命中。
+     */
     private static final int RIVER_STEP = 50;
     /** ★ 河流类目的默认搜索半径（格）= 20 km。这个范围内几乎必有河。 */
     private static final int RIVER_RADIUS = 20_000;
@@ -151,8 +159,10 @@ public class CommandTalosTp extends CommandBase {
         }
 
         int tx = hit[0], tz = hit[1];
-        // ★★ 水系类目：吸附到【中心线上】的点 —— 保证落点一定在水上
-        if (isRiverKind(what)) {
+        // ★★ 水系类目：吸附到【中心线上】的点 —— 保证落点一定在水上。
+        //   ⚠ 但 lake 【不吸附】（待裁决/312 适配）：湖是【面】不是【线】，
+        //     湖上不一定有河道 ⟹ 吸附会把玩家从湖心带走到附近的河道上。
+        if (isRiverKind(what) && !"lake".equals(what)) {
             double[] pt = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
                     .nearestChannelPoint((long) worldSeedInt, tx, tz);
             if (pt != null) {
@@ -171,6 +181,9 @@ public class CommandTalosTp extends CommandBase {
         sender.addChatMessage(new ChatComponentText(String.format(
             "[TalosTp] ★ 已传送到 \"%s\"：dist=%.1f 格, pos=(%d, %d, %d), 用时 %d ms",
             what, dist, tx, y + 1, tz, ms)));
+        if (isRiverKind(what)) {
+            sender.addChatMessage(new ChatComponentText("[TalosTp] " + switchLine()));
+        }
         // 落地后补一份地形信息
         try {
             OrographyField.OroSample o = OrographyField.sample(tx, tz, worldSeedInt);
@@ -205,6 +218,19 @@ public class CommandTalosTp extends CommandBase {
             }
         } catch (Throwable ignored) { }
         sender.addChatMessage(new ChatComponentText("提示：用 /talos_here 看完整高度分解。"));
+    }
+
+    /**
+     * ★ 适配（待裁决/312）：把水系相关开关拼一行。
+     * <p>为什么需要：找不到水时必须能分清「开关关了」与「地形上就没有」。
+     * 参考占比（2026-10-12 实测，512x512 km 核心区）：河道格 28.7% 陆地、湖格 0.31%。
+     */
+    private static String switchLine() {
+        return String.format("开关: LAKES=%s LAKE_SOLVE=%s RIFT=%s RIFT_SPLIT=%.1f   (参考: 河道格 28.7%% 陆地、湖格 0.31%%)",
+            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.LAKES_ENABLED,
+            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.LAKE_SOLVE_ENABLED,
+            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.RIFT_ENABLED,
+            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.RIFT_SPLIT);
     }
 
     /** 名字是否已知。 */

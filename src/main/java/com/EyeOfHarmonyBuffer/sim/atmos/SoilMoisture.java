@@ -423,7 +423,48 @@ public final class SoilMoisture {
         }   // end pass（§466）
         lastV = vBar;
         lastVResid = (vBarFirst < 0.0) ? -1.0 : Math.abs(vBar - vBarFirst);
-        return w;
+        // ★★★★★★★★ 2026-10-11（待裁决/304 §三，V2）：把【水面潜在蒸发的年均值】一并带出去。
+        //   为什么是 e1：e1[kk] = chvE*qSat(tsPot)/rho_w*86400*1000，而
+        //   tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0) 是【潜在水面】的皮温
+        //   ⟹ e1 就是「水面潜在蒸发 mm/day」，且与 beta 无关（仿射分解的前提）。
+        //   ⚠ 为什么不用 surfaceTempK 现搭一套：那会撞上「同名不同口径」——
+        //     surfaceTempK 含海拔直减、而 qa 由海平面等效温度算出 ⟹ qSat(ts)-qa 常为负 ⟹ E_p=0
+        //     （2026-10-11 实测：p50 = 165 mm/yr、10% 的点恰为 0，明显偏低）。
+        //   存放：w[NTHETA]（数组尾多一格）⟹ 不动物理、不动插值（插值只用 [0, NTHETA)）。
+        //   ★★ 但它【不是蒸发本身】：桶里的实际蒸发是 epMm = e1 - e2*rh（SoilMoisture:376）。
+        //      e1 只是【饱和项】。2026-10-11 实测：只用 e1 会得到 E p50 = 7851 mm/yr（偏高 4~8 倍）。
+        //      水面 = beta 1 ⟹ rh = RH_SEA（rhEff(1) = RH_SEA）⟹ 正确形式：
+        //          E_water(mm/day) = e1 - RH_SEA * e2
+        double eBar = 0.0;
+        for (int kk = 0; kk < N; kk++) eBar += Math.max(0.0, e1[kk] - PrecipField.RH_SEA * e2[kk]);
+        double[] out = new double[N + 1];
+        System.arraycopy(w, 0, out, 0, N);
+        out[N] = eBar / N;
+        return out;
+    }
+
+    /**
+     * ★★★★★★★★ <b>水面潜在蒸发的【年均值】（mm/day）</b> —— 取自土壤桶自旋里的 {@code e1}。
+     *
+     * <p>这是「湖面年蒸发」的正确口径：{@code e1[kk] = chvE*qSat(tsPot)/rho_w*86400*1000}，
+     * 其中 {@code tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0)} 是
+     * <b>能量平衡解出的【潜在水面】皮温</b>（{@code SoilMoisture:327}）。
+     *
+     * <p>年蒸发（mm/yr）= 本值 x 365.25。配套：{@code SimClimate.annualPrecipMmPerYear}。
+     * <p><b>为什么必须用它而不是自己搭</b>：见 {@code spinup} 返回处的注释（同名不同口径）。
+     */
+    public static double lakeEvapMmPerDay(int x, int z, long seed, int cell, int gradStep) {
+        if (!ENABLED) return Double.NaN;
+        HashMap<Long, double[]> m = MEMO.get();
+        long kk = key(x, z) ^ (Double.doubleToLongBits(RS_SURF) * 0x9E3779B97F4A7C15L);
+        if (m.size() > MEMO_MAX) m.clear();
+        double[] w = m.get(kk);
+        if (w == null) {
+            IN_SPINUP.set(Boolean.TRUE);
+            try { w = spinup(x, z, seed, cell, gradStep); }
+            finally { IN_SPINUP.set(Boolean.FALSE); }
+            m.put(kk, w); }
+        return w[NTHETA];
     }
 
     /** 与 {@code PrecipField.mmPerDay} 同源的散度（中央差分，步长同 UPWIND 口径）。

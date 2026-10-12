@@ -9,7 +9,32 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * WaterField —— **地表水系**（河流 / 湖泊 / 海岸线排水）。设计冻结 §7495。
+ * WaterField —— **洼地填充场 / 湖与湿地**（Priority-Flood 填洼的产物）。设计冻结 §7495。
+ *
+ * <h2>★★★★★ 2026-10-11 定位更正（重要，防止认错系统）</h2>
+ *
+ * <p><b>本类【不是】生产环境用的河网。</b>它在 2026-10-11 之前一直自称「地表水系」，
+ * 那导致了两次严重的误判（把本类的 {@code riverWidthM} 当成生产河宽去量化，
+ * 得出「最大河宽 18 m」等错误结论）。实际的分工是：
+ *
+ * <table border="1">
+ *   <tr><th></th><th>类</th><th>判据</th><th>用途</th></tr>
+ *   <tr><td>★ <b>河道</b></td>
+ *       <td>{@link com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion}</td>
+ *       <td>{@code chOrd[k] >= 0}（{@code acc >= ACC_MIN} 且非海非湖）</td>
+ *       <td><b>挖河、河宽、干河道、入海</b></td></tr>
+ *   <tr><td>★ <b>湖 / 湿地</b></td><td><b>本类</b></td>
+ *       <td>{@code fillDepth > 0}</td>
+ *       <td><b>只有一个</b>：{@code PrecipField:3293} 的 {@code betaUsed = 1.0}
+ *           （水面蒸发不受土壤限制）</td></tr>
+ * </table>
+ *
+ * <p><b>本类的河网部分（{@link #flowAcc} / {@link #riverWidthM} / {@link #isRiver} /
+ * {@link #fillDepthM}）是<b>死代码</b></b> —— 零消费者。
+ * 原因见 {@code TalosLandErosion} 类头：「旧的 WaterField 在 12 km 窗口里算 D8 汇流，
+ * 河长上限 = 窗口 = 12 km，{@code isRiver} = 0%」。LEM 取代了它。
+ *
+ * <p>⚠ <b>唯一活的入口是 {@link #isWater}</b>（湖/湿地的布尔查询）。
  *
  * <h3>它是什么</h3>
  * 一个**按需解、按 tile 缓存**的水文条件化场：给定世界坐标，返回该点的
@@ -141,11 +166,14 @@ public final class WaterField {
      *
      * <p><b>为什么 250 在物理上更好</b>：本类的唯一实质消费者是
      * {@code PrecipField:3276} 的<b>布尔查询</b>「这个点是不是水体」（用于水面蒸发不受土壤限制，
-     * {@code betaUsed = 1.0}）。而 {@code RIVER_MIN_WIDTH_M = 140}：
+     * {@code betaUsed = 1.0}）。而 {@code RIVER_MIN_WIDTH_M = 25}：
      * <ul>
-     *   <li>在 10 km 格上：140 / 10,000 = <b>0.014 格距</b> ⟹ 判据无意义；</li>
-     *   <li>在 250 m 格上：140 / 250 = <b>0.56 格距</b> ⟹ 判据有意义 ✓</li>
+     *   <li>在 10 km 格上：25 / 10,000 = <b>0.0025 格距</b> ⟹ 判据无意义；</li>
+     *   <li>在 250 m 格上：25 / 250 = <b>0.1 格距</b> ⟹ 判据仍然偏小 ⚠</li>
      * </ul>
+     * ⚠ 而 {@code RIVER_MIN_WIDTH_M} 与 {@code isRiver} <b>都已无消费者</b>
+     * （本类的河网部分整体是死代码）⟹ 上面对它「有意义/无意义」的讨论
+     * 只对本类内部的 {@code isRiver} 成立，<b>与生产河宽无关</b>。
      *
      * <p>⚠ <b>代价未实测</b>：{@code tileBlocks = TILE * STEP} 从 16 x 10,000 = 160 km
      * 变成 16 x 250 = 4 km ⟹ tile 数增 1,600 倍。而 {@code CACHE_TILES = 512}
@@ -232,7 +260,11 @@ public final class WaterField {
      * <p>⚠ <b>它的地位</b>：与 {@link #LAKE_MIN_DEPTH_M} 和 B4 的观测锚（1.8~4.1）同性质 ——
      * <b>一个可标定的分位数</b>，由外部观测定标。
      */
-    public static double RIVER_MIN_WIDTH_M = 140.0;
+    // ★ 2026-10-11：140 -> 25，与上面 javadoc 的论证链（P1276 ⟹ 25 m 对应 8.956%）对齐。
+    //   这是第 11 处「注释写 25 而常量是 140」的不一致。
+    //   ⚠ 本常量【零消费者】（{@link #isRiver(int,int,long)} 全仓无人调用）
+    //     ⟹ 改它【不影响生产】，只是让代码与它自己的依据一致。
+    public static double RIVER_MIN_WIDTH_M = 25.0;
 
     /**
      * ★★★★★★★★ <b>§7529：河道起始阈值（格数）。`A < A_MIN_CELLS` 的格【不给河宽】（W = 0）。</b>
@@ -348,6 +380,15 @@ public final class WaterField {
 
     /**
      * <b>热路径用的布尔查询</b>：该格是不是湖 / 湿地（{@code fillDepth > 0}）。
+     *
+     * <p>★★★★★ <b>它【不是】「这一格是不是河道」</b> —— 河道判据在
+     * {@link com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion}
+     * 的 {@code chOrd}。两者的口径<b>本来就不一样</b>（洼地 vs 汇流路径），
+     * 实测在 32,400 个 1 km 格上：本查询 2.70%，河道 11.49%，交集只占河道的 8.5%
+     * —— <b>那【不是】bug，是两件不同的事。</b>
+     *
+     * <p>本类的唯一生产消费者是 {@code PrecipField:3293}：
+     * 湖/湿地 = 饱和面 ⟹ {@code betaUsed = 1.0}。
      *
      * <p>判据<b>不需要任何阈值</b>：P1165 实测 640x640 格上「fillDepth 恰为 1 步 ε」的格是
      * <b>0 个</b>，「显著 &gt; 1.5 步 ε」的占填充格的 <b>99.98%</b> —— 150 km 网格上

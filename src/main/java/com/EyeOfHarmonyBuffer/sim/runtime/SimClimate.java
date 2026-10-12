@@ -407,6 +407,12 @@ public final class SimClimate {
         final double[] logP;
         /** 近地比湿（kg/kg，4 季平均）与海温距平（K）—— 诊断用。 */
         final double[] q, sst;
+        /**
+         * ★ 2026-10-11（待裁决/304）：**水面年蒸发（mm/yr）**。
+         * <p>由 {@code solveNode} 顺手从土壤桶取（那里的桶【刚刚】被 {@code mmPerDay} 自旋过
+         * ⟹ 命中 memo、**零额外自旋**）。湖的水位解只需要双线性插值。
+         */
+        final double[] eLake;
         /** 迎风抬升 / 背风下沉（[0,1]，tanh 饱和）。 */
         final double[] up, lee;
 
@@ -417,6 +423,7 @@ public final class SimClimate {
             tSea = new double[n]; kap = new double[n]; coastD = new double[n]; coastFar = new double[n];
             wX = new double[n]; wZ = new double[n];
             logP = new double[n]; q = new double[n]; sst = new double[n]; up = new double[n]; lee = new double[n];
+            eLake = new double[n];
         }
     }
 
@@ -759,13 +766,26 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL);
         h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL_REL);
         h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.W_INIT_FRAC);
-        //   ⑥ 水系求解（WaterField）—— 改收敛性/判据 ⟹ 改结果；
+        //   ⑥ 水系求解（WaterField）—— 只折叠【影响 isWater 的量】。
         //      ⚠ PARALLELISM 与 CACHE_TILES **不加**（并行度与缓存大小只影响速度）。
+        //
+        //      ★★★ 2026-10-11 清理（原先折叠了 3 个【死路径】常量）：
+        //        · RIVER_MIN_WIDTH_M   —— 只影响 isRiver（零消费者）
+        //        · A_MIN_CELLS         —— 只影响 fwid = cell()[2]（河宽，零消费者）
+        //        · LAKE_MIN_INFLOW_CELLS —— 只影响 isLake（零消费者）
+        //        它们【都不影响 cell()[0] = fillDepth = isWater】，而 isWater 是本类
+        //        唯一的活消费者（PrecipField:3293 的 betaUsed = 1.0）
+        //        ⟹ 折叠它们只会让「改一个死常量」白白清掉全部瓦片缓存。
+        //
+        //      ★★★ 同时【补入】原先漏掉的活路径量：
+        //        · STEP —— 格距，直接影响 Priority-Flood 的窗口物理尺度 ⚠ 原先不在指纹里
+        //        · TILE —— 窗口边长（W = TILE + 2*HALO）⚠ 原先不在指纹里
+        //        两者改动会改 isWater 的结果，却【不清缓存】⟹ 那是一个真实的指纹缺口。
         h = h * 31 + 0x7A13AL;
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.STEP;   // ★ 补入
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.TILE;   // ★ 补入
         h = h * 31 + com.EyeOfHarmonyBuffer.sim.hydro.WaterField.HALO;
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.RIVER_MIN_WIDTH_M);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.A_MIN_CELLS);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.LAKE_MIN_INFLOW_CELLS);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.hydro.WaterField.LAKE_MIN_DEPTH_M);
         //   ⑦ 群系 LUT 的平滑与抖动（V2BiomeField）—— 直接改 LUT 的值；
         //      ⚠ SOLVE_HARD_CAP / SOLVE_WARN_EVERY **不加**（求解护栏与告警，不改结果）。
         h = h * 31 + 0x7A13BL;
@@ -1132,6 +1152,13 @@ public final class SimClimate {
             qSum += PrecipField.moisture(tSl, kap > 0.0 ? hUp : 0.0, kap) * 0.25;
         }
         f.q[k] = qSum;
+        // ★ 2026-10-11（待裁决/304）：水面年蒸发。这里的土壤桶【刚刚】被上面的 mmPerDay 自旋过
+        //   ⟹ lakeEvapMmPerDay 命中 memo、零额外自旋。湖解那边只做双线性插值。
+        try {
+            double ev = com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture
+                    .lakeEvapMmPerDay(x, z, seed, pc, GRAD_STEP) * 365.25;
+            f.eLake[k] = (ev > 0.0) ? ev : 0.0;
+        } catch (Throwable ex) { f.eLake[k] = 0.0; }
         double mmYr = pMmDay * 365.25;
         f.logP[k] = Math.log10(Math.max(mmYr, P_MIN_MM_YR));
 
@@ -1198,6 +1225,52 @@ public final class SimClimate {
         j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
         int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
         return Math.pow(10.0, bl(f.logP, k00, k10, k01, k11, tx, tz));
+    }
+
+    /**
+     * ★★★★★★★★ <b>年均比湿 {@code q}（kg/kg）</b> —— {@code f.q} 的双线性采样。
+     *
+     * <p>{@code f.q} 就是「{@code PrecipField.moisture(...)} 的 4 季平均」（见 {@code Field#q}
+     * 的 javadoc 与 {@code solveNode:1145-1147} 的赋值）。它<b>已经在瓦片里</b>
+     * ⟹ 本访问器<b>不触发任何新计算</b>，只做双线性插值。
+     *
+     * <p><b>为什么需要它</b>（待裁决/304 §三）：湖面<b>年蒸发</b>要用
+     * {@code Radiation.potentialEvapMmDay(ts, qa, chv)}（Manabe eq.19），其中 {@code qa}
+     * 就是本量。四个输入里 {@code ts}（{@link #surfaceTempK}）、{@code chv}
+     * （{@code Radiation.bulkCoeff} + {@link #windAt}）、公式（{@code Radiation:276}）
+     * 都已有访问器，<b>缺的就是这一个</b>。
+     *
+     * <p>与 {@link #annualPrecipMmPerYear} <b>逐字相同</b>的双线性；共用同一份瓦片缓存；无分配。
+     */
+    /**
+     * ★ 2026-10-11（待裁决/304）：**水面年蒸发（mm/yr）** —— {@code f.eLake} 的双线性采样。
+     *
+     * <p>就是 {@code SoilMoisture.lakeEvapMmPerDay(...) x 365.25}（Manabe eq.19 在【潜在水面】皮温上求值）。
+     * 与 {@link #annualPrecipMmPerYear} 共用同一份瓦片缓存；**不触发任何新计算**。
+     * 湖的水位解用它做入流/出流平衡：{@code A_lake(L) x E = P x A_catch}。
+     */
+    public static double lakeEvapMmPerYear(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        return bl(f.eLake, k00, k10, k01, k11, tx, tz);
+    }
+
+    public static double annualQ(int x, int z, int worldSeedInt) {
+        Field f = field(worldSeedInt, Math.floorDiv(x, TILE_X), Math.floorDiv(z, TILE_Z));
+        double fx = (x - f.originX) / (double) f.cell - 0.5;
+        double fz = (z - f.originZ) / (double) f.cell - 0.5;
+        int i = (int) Math.floor(fx), j = (int) Math.floor(fz);
+        double tx = fx - i, tz = fz - j;
+        i = i < -1 ? -1 : (i > f.nx ? f.nx : i);
+        j = j < -1 ? -1 : (j > f.nz ? f.nz : j);
+        int k00 = (j + 1) * f.sx + (i + 1), k10 = k00 + 1, k01 = k00 + f.sx, k11 = k01 + 1;
+        return bl(f.q, k00, k10, k01, k11, tx, tz);
     }
 
     /**
