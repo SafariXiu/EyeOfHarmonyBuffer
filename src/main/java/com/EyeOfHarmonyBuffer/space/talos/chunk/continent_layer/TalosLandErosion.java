@@ -8,25 +8,60 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * TalosLandErosion —— **地貌演化层（LEM / stream power）**。
  *
- * <h2>★★★★★ 2026-10-11：本类【就是】生产环境的河道系统（定位声明）</h2>
+ * <h2>★★★★★ 2026-10-13 用户裁决：沉积项【采用 A · 保持关闭】—— 世界 = 7d85262（逐位等价，已实测）</h2>
  *
- * <p>全仓有**两个**类名字里带「水」，容易认错。分工是：
+ * <p><b>现状一句话</b>：沉积项 {@code D = G*Qs/A}（Davy &amp; Lague 2009，出处见 {@link #SED_G} 的 javadoc）
+ * 已<b>完整实装且有文献出处</b>，但默认 {@link #SED_G} {@code = 0.0} ⟹ 那段代码<b>一行都不执行</b>。
  *
- * <table border="1">
- *   <tr><th></th><th>类</th><th>判据</th><th>用途</th></tr>
- *   <tr><td>★ <b>河道</b></td><td><b>本类</b></td>
- *       <td>{@code chOrd[k] >= 0}；{@code riverWidthBlocks}；{@code wetness01}（干河道）</td>
- *       <td><b>挖河、河宽、干河道、入海</b></td></tr>
- *   <tr><td>★ <b>湖 / 湿地</b></td>
- *       <td>{@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField}</td>
- *       <td>{@code fillDepth > 0}（Priority-Flood 洼地）</td>
- *       <td><b>只有一个</b>：{@code PrecipField:3293} 的 {@code betaUsed = 1.0}</td></tr>
- * </table>
+ * <p><b>等价性是实测的，不是推理的</b>：把 7d85262 版的本文件单独编成一棵影子类树，
+ * 用同一个基线探针（不引用任何新开关）跑同一种子，两个种子的 zSum 与 7d85262
+ * <b>吻合到小数点后 4 位</b>：
+ * <pre>
+ *   种子 1022228679：湖 2.60 / 湿地 11.00 / 洼地 13.60 / 河 26.0 / &lt;300m 82.9 / zMax 5198.5 / zSum 9121178.1450
+ *   种子 42        ：湖 3.50 / 湿地 10.31 / 洼地 13.82 / 河 26.3 / &lt;300m 80.1 / zMax 4813.4 / zSum 8598354.5582
+ *   ⟹ 新旧两版逐项相同
+ * </pre>
+ * <p>⚠ 唯一的运行时差异：{@code configStamp()} 多了 7 个键（3 个 P1 + 4 个既存漏键修复）
+ * ⟹ 部署后第一次查询会重算瓦片（一次性），<b>数值不变</b>。
  *
- * <p>⚠ {@code WaterField} 的 {@code flowAcc}/{@code riverWidthM}/{@code isRiver}
- * 是**死代码**（见下面的「为什么需要它」）。<b>量化河宽/流域必须用本类</b>，
- * 用 {@code WaterField} 会得出错误结论（实测踩过：曾报「最大河宽 18 m」，
- * 而本类的实际最大值是 60 格）。
+ * <h3>★★★ 为什么它在【本仓】不好用 —— 下一轮调研的出发点（逐条都有实测）</h3>
+ * <ol>
+ *   <li><b>和「填洼」没有耦合</b>：{@code D = G*Qs/A} 是<b>面积平均</b>量，对局部洼地几何毫无感知。
+ *       真实世界的填洼靠「输运长度在静水中趋近 0 ⟹ 泥沙就地落淤」，本仓<b>没有这个机制</b>。
+ *       实测（口径 1：沉积全境、侵蚀仍门控）：湖 2.60 → 2.47、湿地 11.00 → 10.99
+ *       —— <b>几乎零作用</b>（洼地与周围同涨，相对深度不变）。</li>
+ *   <li><b>不动点方向与直觉相反</b>：本仓隐式解的平衡态是 {@code z - zd = up/al + D(1+al)/al}
+ *       ⟹ 沉积<b>抬高</b>平衡态的相对高差，而不是抹平它。</li>
+ *   <li><b>门控架构让它没有干净的作用面</b>（本仓特有）：
+ *       口径 0 的沉积量被 {@code act=0} 整格丢弃（零作用）；
+ *       口径 1 只沉积不侵蚀 ⟹ <b>质量不守恒</b>，实测 {@code G >= 1} 时 zMax 失控到 57.8 万 ~ 123 万米；
+ *       口径 2 必须解冻侵蚀，而解冻后的主导效应变成<b>平原被整体削平</b>
+ *       （坡度 p50 27.6 → 4.1 m/km），起作用的不是沉积。</li>
+ *   <li><b>「湖」是事后分类，不是状态量</b>：本仓没有水体状态，湖 = {@code filled - z > }{@link #LAKE_MIN_FILL}
+ *       的阈值判定 ⟹ 平原一旦被削到<b>没有任何盆地深过 0.6 格</b>，湖就归零。
+ *       实测：{@code G = 1e-300}（沉积严格为零）时湖已经是 0.02%，<b>与 G 几乎无关</b>。</li>
+ *   <li><b>缺少坡面扩散</b>（下一轮首选假设，<b>尚未验证</b>）：真实平原的微洼地主要靠
+ *       <b>坡面蠕移 / 漫流</b>填平，本仓只有河流项。</li>
+ *   <li><b>{@code G} 的三个物理量在本仓都不存在</b>：{@code G = d* * vs / p0}（跃移长度 x 沉速 / 降水）
+ *       ⟹ G 只能当裸旋钮扫，无法从本仓其他参数导出或交叉验证。</li>
+ *   <li><b>没有物理时间步</b>：{@code ITER = 200} 是「步」，{@code DTU}/{@code UREF} 是标定值
+ *       ⟹ 沉积速率没有时间标定，G 的最优值只能扫描定，不能从物理推。</li>
+ * </ol>
+ * <p>★ 完整实测（5 种子 x 2 配置 + 单种子 10 档 + 判别实验 + 出图）：
+ * {@code K:\moder\Talos2\待裁决\345-P1沉积项-落地与实测-真杠杆是门控.md}
+ * <p>★ 回滚语义：{@code SED_G = 0.0} 永远逐位回到 7d85262；口径 2 分支<b>只在 SED_G &gt; 0 时</b>生效
+ * （否则逐位等于 §340 那个已证伪的写法）。
+ *
+ * <h2>★★★★★ 2026-10-11：本类【就是】生产环境的河道与水系分类系统（定位声明）</h2>
+ *
+ * <p>⚠ 2026-10-12（待裁决/331）：旧的 {@code sim.hydro.WaterField} 已<b>整类删除</b>
+ * （它把 30% 的陆地判为湖，是错的）。湖 / 湿地的判据现在<b>只在本类</b>：
+ * <pre>
+ *   湖   ：filled - z &gt; {@link #LAKE_MIN_FILL}
+ *   湿地 ：0 &lt; filled - z &lt;= {@link #LAKE_MIN_FILL}
+ *   入口 ：{@link #isLake}（建瓦片，诊断用）/ {@link #isLakePeek}（不建瓦片，生产用）
+ * </pre>
+ * 量化河宽 / 流域也用本类（{@link #riverWidthBlocks} / {@link #accAt}）。
  *
  * <h3>它是什么</h3>
  * 在 {@link TalosLandField} 的「抬升场」上跑 <b>Braun &amp; Willett (2013) 的 O(n) 隐式
@@ -571,11 +606,35 @@ public final class TalosLandErosion {
      *
      * <p>⚠ <b>出处</b>：旧值 0.3 <b>没有任何注释/出处</b>（旁边几个常量都有）；
      * 新值 0.6 是<b>由「落在地球锚 1~2%」反推</b>的，<b>不是</b>从湖的物理定义导出。
-     * ⟹ 「地球湖泊约占陆地 1~2%」这条锚本身<b>未引文献</b>。
      *
-     * <p>★ <b>后续（方案 B）</b>：真实的平原微洼地靠<b>沉积填平</b>而消失，
-     * 而本仓的 LEM 是<b>纯侵蚀、无沉积</b> ⟹ 洼地永远存在 ⟹ 只能靠本门槛过滤。
-     * 给 LEM 加沉积项才是更物理的解（需要出处，见 待裁决/340 §五）。
+     * <p>★★★★ <b>2026-10-14 更正：那条锚【用错了口径】（research/E_lake_area.md）</b>。
+     * 文献里的"湖"<b>全部是面积 / 淹没频率判据</b>，<b>没有任何一份全球湖泊清单用深度定义湖</b>：
+     * <pre>
+     *   自然湖 &gt;= 0.1 km²（Messager 2016, Nat Commun 7:13603, OA 原文）  = 1.8% of global land
+     *   上式 + 大型水库                                                  = 2.0%
+     *   同数据集外推 &gt;= 0.01 km²                                        = 2.2%
+     *   淡水+咸水湖 &gt;= 10 ha（Lehner 2025, ESSD 17:2277, OA）           = 2.0%（含水库 2.24%）
+     *   &gt; 0.002 km² 含水库（Verpoorter 2014, GRL）                       = 3.7% of nonglaciated land
+     *   任意水面含季节+河流（Pekel 2016）                                = 3.0%
+     *   ★ "1.8%" 的老祖宗：Thienemann 1925 的 2.5e6 km²（Downing 2010, Limnetica, OA 逐字）
+     * </pre>
+     * ⟹ ★ <b>本常量是【深度】判据（0.6 格 = 33 米），与上述【面积】判据不是同一个量</b>，
+     * 直接拿"1~2%"当硬门是<b>范畴错误</b>。
+     * <p>★ <b>处置（2026-10-14）</b>：该锚<b>降级为"量级监测 + 口径说明"</b>——只用于否证量级错误
+     * （例如湖占比 &gt; 5%，那无论什么口径都不对）；<b>不再用它反推本常量的值</b>。
+     * 本常量现在的正当性来自<b>物理判据</b>（"填洼深度 &gt; 33 米才叫湖，否则是湿地"）
+     * 与 §341/§342 的分布实测，<b>不是</b>来自那个锚。
+     *
+     * <p>★ <b>2026-10-14 更正（重要）</b>：这里原先写着"给 LEM 加沉积项才是更物理的解"——
+     * 那条<b>已被实测否证</b>（待裁决/345、347）：
+     * <pre>
+     *   沉积 D = G*Qs/A 是【面积平均】量，对局部洼地几何【零感知】
+     *   口径 1（沉积全境、侵蚀仍门控）：湖 2.60 -> 2.47、湿地 11.00 -> 10.99  ⟹ 几乎零作用
+     *   口径 2（解冻侵蚀）：主导效应是【平原被削平】，不是沉积在起作用
+     * </pre>
+     * ⟹ 真正解决"平原积水"的是<b>侵蚀阈值</b>（见 {@link #THETA_ON} / {@link #THETA_M}，
+     * Theodoratos &amp; Kirchner 2020）：它让缓坡停止下切，平原不再被削到海平面。
+     * <b>本常量现在只是一个【分类口径】（湖 vs 湿地），不再是给某个缺陷打的补丁。</b>
      *
      * <p>★ 回滚：改回 0.3。
      */
@@ -1042,6 +1101,17 @@ public final class TalosLandErosion {
         h = h * 31 + Double.doubleToLongBits(GAMMA);
         h = h * 31 + Double.doubleToLongBits(UREF);
         h = h * 31 + Double.doubleToLongBits(COAST_TAPER_M);
+        // ---- ⚠ 2026-10-14（待裁决/353）补的【既存】漏键 ----
+        //   这些都是【决定地形高度】的常量，却一直不在本键里 ⟹ 改它们不会让瓦片缓存失效
+        //   （同 TECTONIC_GATE 那一类；§338 改 CF_LAND_H 时也踩过）。
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_MAX_M);
+        h = h * 31 + (TalosLandField.OROG_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_COAST_TAPER_M);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_H);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_U);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_PLATE_BAND);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_BAND_MIN);
+        h = h * 31 + Double.doubleToLongBits(TalosLandField.SUPER_ABS);
         // ---- 抬升噪声 ----
         h = h * 31 + Double.doubleToLongBits(NA_AMP);
         h = h * 31 + Double.doubleToLongBits(NA_WL);
@@ -1098,6 +1168,24 @@ public final class TalosLandErosion {
         h = h * 31 + Double.doubleToLongBits(RIFT_SPLIT);
         h = h * 31 + Double.doubleToLongBits(RIFT_SHOULDER);
         h = h * 31 + (LAKE_SOLVE_ENABLED ? 1 : 0);   // ★ 湖水位解（待裁决/304）
+        // ---- ★★★★★ P1 沉积（2026-10-13）----
+        //   ⚠ 本键是【正确性】要求（D58 的准入判据：改了结果的旋钮就得让缓存失效）：
+        //     tileKey() = ... ^ configStamp()，漏一个键 ⟹ 换配置仍命中旧瓦片 ⟹ 探针看到「零变化」。
+        //     本仓已因这个漏键栽过（交接文档 §3 第 10 条：LAKE_WATER_SURFACE 漏键）。
+        h = h * 31 + Double.doubleToLongBits(SED_G);
+        h = h * 31 + SED_GATE_MODE;
+        // ---- ★★★★★ 2026-10-14 侵蚀阈值（347 §七）----
+        h = h * 31 + Double.doubleToLongBits(THETA_M);
+        h = h * 31 + (THETA_ON ? 1 : 0);
+        h = h * 31 + (UNGATE_SURFACE ? 1 : 0);
+        h = h * 31 + (NO_DEPRESSION_FILL ? 1 : 0);   // ★ 判别实验开关（进键 = 换它必须重建瓦片）
+        // ---- ⚠ 顺手补的四个【既存】漏键（不是 P1 引入的）----
+        //   TECTONIC_GATE / RIFT_SINK / RIFT_SEA_DECOUPLED / RIFT_FLOOR_M 都【改结果】却没进本键
+        //   ⟹ 同一个 JVM 里改它们再查询会命中旧瓦片。按 D58 的规则补上（不改任何物理）。
+        h = h * 31 + (TECTONIC_GATE ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(RIFT_SINK);
+        h = h * 31 + (RIFT_SEA_DECOUPLED ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(RIFT_FLOOR_M);
         return h;
     }
 
@@ -1283,6 +1371,198 @@ public final class TalosLandErosion {
      */
     public static volatile boolean TECTONIC_GATE = true;
     /**
+     * ★★★★★ P1（2026-10-13）：**沉积系数 G**（无量纲）—— LEM 的沉积项。
+     *
+     * <p><b>方程</b>（Davy &amp; Lague 2009, JGR 114, F03007；Guerit et al. 2019, Geology 47, 853-856）：
+     * <pre>
+     *   dh/dt = U - E + D
+     *     E = K * A^m * S^n         （= 本仓的 al = DK*acc^M，坡度隐式；见 solve 的隐式迭代式）
+     *     D = G * Qs / A            （Qs = 上游净侵蚀通量）
+     * </pre>
+     *
+     * <p><b>落地形式</b>（与 solve 的隐式迭代同量纲，格/步）：
+     * <pre>
+     *   z_k <- zEro_k + G * Qs_k / acc_k        Qs_k = Sum_{上游含自身} max(0, E_j)
+     * </pre>
+     * ★ Qs 用<b>本步</b>的 E 累积（不是滞后一步）；累积沿 z 的<b>反序</b>（= 上游→下游）一次 O(N) 完成。
+     * ★ E 只取正部 ⟹ 洼地的「自填」（al*(z-zd) &lt; 0）<b>不计入</b>产沙。
+     *
+     * <p><b>出处（逐条可查）</b>：
+     * <ul>
+     *   <li><b>D = G*Qs/A</b>：Yuan, Braun, Guerit, Rouby &amp; Cordonnier 2019（JGR-ES 124, 1346-1365）
+     *       式(10) 逐字：{@code + G/(p~A) * Integral_A (U - dh/dt) dA}；式(32) 逐字
+     *       {@code K'_f = K_f/(1 + G/p~)} ⟹ 沉积把<b>有效侵蚀系数</b>降为 1/(1+G)。
+     *       ★ 全文提取件：{@code K:\moder\Talos2\build\eoh_probe\refs\gfz_erosion_deposition.txt}</li>
+     *   <li><b>G 的物理定义</b>：同文式(9) {@code G = d* * vs / p0}（跃移长度 x 沉速 / 降水）⟹ 量纲为一。</li>
+     *   <li><b>G 的取值范围</b>：Guerit et al. 2019（Geology 47(9) 853-856，由 <b>29 组实验</b>流域-冲积扇
+     *       + <b>68 个自然样本</b>估计）摘要逐字：continuum from detachment-limited
+     *       (<b>G = 0</b>) to transport-limited behavior (<b>G &gt; 0.4</b>)；
+     *       Yuan et al. 2019：典型参数（p = 1e-7 m/s, vs in [1e-6, 1e-1] m/s）下 G/p~ 为
+     *       <b>order 1 or greater</b>。</li>
+     * </ul>
+     *
+     * <p>★ <b>回滚</b>：置 {@code 0.0} ⟹ <b>逐位</b>回到纯侵蚀 LEM（沉积代码路径整体不执行，零开销）。
+     *
+     * <h3>★★★★★ 2026-10-14 用户【二次裁决】：0.0 -> <b>0.6</b>（开着沉积）</h3>
+     *
+     * <p><b>第一次裁决（A：保持 0.0）为什么被推翻</b>：当时反对开沉积的<b>唯一硬理由</b>是
+     * 「它会把湖清光（1.53% -&gt; 0.10%）」——而那次扫描是<b>「解冻 + 沉积，尚无阈值」</b>。
+     * {@link #THETA_ON} 落地之后，那个理由<b>反转</b>了。
+     *
+     * <p><b>阈值之上重扫（三种子，其余全用生产默认）</b>：
+     * <pre>
+     *   G        湖%            湿地%          积水合计%      zMax m
+     *   0.0      1.07/0.98/1.99 7.31/7.67/6.41  8.37/8.65/8.41  3785
+     *   0.6      1.39/1.71/3.07 6.17/6.40/5.24  7.56/8.12/8.30  5306
+     *   ⟹ 单调：积水↓、湿地↓、湖↑、河↑（河谷切得更深）
+     * </pre>
+     *
+     * <p>⚠ <b>2026-10-14 用户裁决：完全回退【海陆/造山】改动，只保留【水系】改动</b> ⟹
+     * 造山那一线（OROG_MAX_M / OROG_PLATE_BAND / SUPER_ABS / 淡化修复）<b>已全部撤销</b>。
+     * 因此本常量现在的正当性<b>只来自水系本身</b>（下表的积水/湿地/湖），
+     * <b>不再引用任何"山高"论证</b>（那段论证对应的配置已经不存在了）。
+     *
+     * <p><b>取值出处</b>：{@code G = 0.6} 落在 Guerit et al. 2019 的连续谱内
+     * （detachment-limited G=0 → transport-limited G&gt;0.4），且高于分界值 —— 与
+     * 「本世界要有宽河谷 + 高山」的设计意图一致。★ <b>不是拟合出来的数</b>。
+     *
+     * <p>⚠ <b>代价</b>：沉积两趟 O(N) 每步都跑（热态 solve 约 +20%，实测 10.0 -&gt; 12.3 s/tile）；
+     * 山更高（zMax 3785 -&gt; 5306 @UMAX=7500）；抬高地形会同时动<b>气候侧</b>看到的高程
+     * ⟹ <b>改本值必须重跑完整验收并逐门归因</b>。
+     */
+    public static volatile double SED_G = 0.6;
+    /**
+     * ★ P1：沉积项的作用范围（与 {@link #TECTONIC_GATE} 的交互口径）。
+     * <pre>
+     *   0 = 沉积只在构造活跃区（dep *= activity）—— 与现状门控同口径（最保守）
+     *   1 = 沉积全境，抬升与侵蚀仍按现状【整体】门控（= 交接文档 P1 说的「只加 D 项」第一版）
+     *   2 = 只门控【抬升】：侵蚀与沉积全境生效（物理最自洽：稳定大陆内部无构造抬升，
+     *       但河流的侵蚀 / 沉积照常发生）
+     * </pre>
+     * <p><b>三个口径各自的问题（必须先说清楚）</b>：
+     * <ul>
+     *   <li>口径 0：act=0 的平原上沉积量恒为 0 ⟹ <b>达不到 P1 的目的</b>（平原洼地不动）。</li>
+     *   <li>口径 1：act=0 的平原上【只有沉积、没有侵蚀】⟹ <b>无平衡项</b>，平原单调抬升
+     *       （每步 +G*Qs/acc，200 步累积）⟹ 质量不守恒。</li>
+     *   <li>口径 2：物理最自洽，但它是 §340 那个<b>失败写法</b>的推广 —— SED_G = 0 且口径 2
+     *       就逐位等于那个失败版（地形数学上全平 ⟹ D8 退化 ⟹ 放射状河网）。
+     *       ⟹ 代码里口径 2 <b>只在 SED_G &gt; 0 时生效</b>，保证 SED_G = 0 永远逐位回滚。</li>
+     * </ul>
+     * ⟹ 用扫描决定（见 P1 报告）。
+     */
+    public static volatile int SED_GATE_MODE = 2;
+    /**
+     * ★★★★★ 2026-10-14（待裁决/347 §七）：**侵蚀阈值 theta** —— 修复"稳定内陆被削到海平面"的根因。
+     *
+     * <p><b>为什么需要它</b>（实测）：本仓隐式式在 {@code up_eff = 0} 的平原上不动点<b>精确等于</b>
+     * {@code z = zd}，而 {@code zd} 有海平面地板 ⟹ 整个平原【代数上必然】收敛到正好等于海平面
+     * （实测：湿地高程 p10/p50/p90 = 0/0/3 米，三个种子一致；44% 陆地坡度 &lt; 2 m/km，
+     * 其中 89% 是 1 米级浅坑）。文献侧同一结论：无阈值时地形衰减 tau ~ 2~3 Myr（Braun &amp; Deal 2023）。
+     *
+     * <p><b>形式</b>（Theodoratos &amp; Kirchner 2020, ESurf 8:505 <b>Eq.1</b>，开放获取）：
+     * <pre>
+     *   sqrt(A)*|grad z| &lt;= theta ⟹ dz/dt = D*lap(z) + U          （坡面：零下切）
+     *   sqrt(A)*|grad z| &gt;  theta ⟹ dz/dt = -K*(sqrt(A)*|grad z| - theta) + D*lap(z) + U
+     * </pre>
+     * ★ {@code sqrt(A)*|grad z|} 就是<b>归一化陡峭指数 k_sn = S * A^(m/n)</b>，本仓 m/n = 0.5（M = 0.5）
+     * ⟹ theta 的物理含义 = <b>阈值陡峭指数</b>，量纲 = <b>长度（米）</b>（T&amp;K 原文逐字：
+     * "theta must have the same dimensions as sqrt(A)|grad z|, i.e., dimensions of H"）。
+     *
+     * <p><b>落地形式（我推导，含自洽性验算）</b>：阈值在驱动量上等价于<b>减一个常数</b>
+     * <pre>
+     *   c = DK * THETA_M * ELEV_TO_BLK                 [格/步]
+     *   zNew = (z + upEff + c + al*zd)/(1+al)          // 超阈值：正常下切
+     *   若 al*(z - zd + upEff) &lt;= c ⟹ zNew = z + upEff  // ★ 零侵蚀区
+     * </pre>
+     * ★ 不动点从 {@code z - zd = up/al} 变成 {@code z - zd = (up + c)/al}
+     * ⟹ <b>平原（up = 0）也获得有限正坡度</b>：{@code Delta_z = c/al = theta*ELEV_TO_BLK/sqrt(acc)}
+     * ⟹ 换成物理量就是 <b>S = theta / sqrt(A)</b> —— 与 T&amp;K 判据在等号处完全一致（自洽性检验）。
+     * 数值例：theta = 25 m 时，acc = 100 km² ⟹ 平衡坡度 2.5 m/km；acc = 1 km² ⟹ 25 m/km。
+     *
+     * <p><b>取值与出处</b>：T&amp;K 2020 <b>Table 2</b>（共同参数 K = 2e-6 /a、D = 0.005 m²/a、
+     * U = 5e-5 m/a，原文注明为 "typical in the literature"）：
+     * <pre>
+     *   N_theta = K*theta/U :  0   0.1  0.2  0.4  0.8  1    1.6  2    4
+     *   theta (m)           :  0   2.5  5    10   20   25   40   50   100
+     * </pre>
+     * ★ 同文逐字："the incision threshold values theta of some of the nine landscapes are
+     * <b>significantly higher than natural values reported in the literature</b>
+     * (e.g., Prosser &amp; Dietrich, 1995)" ⟹ <b>自然值 &lt; 25 m</b>。
+     *
+     * <p>⚠ <b>两个必须承认的坑</b>：
+     * <ol>
+     *   <li>★★ <b>分辨率依赖（已实测，2026-10-14）</b>：theta 的判据在 T&amp;K 的 <b>50 m 尺度</b> TIN 上
+     *       标定，而我们的 {@code |grad z|} 是 <b>1 km 格尺度</b>。
+     *       实测（同一块 256 km 的地、四档格距、陆地面积四档相同）：
+     *       <pre>
+     *         STEP_BLK   2000 m   1000 m   500 m   250 m
+     *         坡度 p50    10.6     18.8    34.6    63.6   [m/km]
+     *         拟合        |grad z| ∝ dx^(-0.86)      （2000→250 预测 5.98x，实测 6.00x）
+     *       </pre>
+     *       ⟹ <b>theta 只对【当前 STEP_BLK = 1000 m】成立</b>；若改格距，必须按
+     *       {@code theta_new = theta_old * (dx_new/dx_old)^(-0.86)} 换算，否则零侵蚀区的面积会变
+     *       （格变细 ⟹ 判据更难过 ⟹ 零侵蚀区缩小）。<b>这不是从文献换来的，是本仓实测的。</b>
+     *       <p>★ 同一实测还有一个副产品：<b>本仓地形的粗糙度指数 H ≈ 0.14</b>（由 |grad z| ∝ dx^(H-1)），
+     *       而真实地形 H ≈ 0.7~0.8 ⟹ 我们的地表在格尺度上"过糙"，这正是<b>缺坡面扩散</b>的表现
+     *       （扩散会把 H 抬向真实值，也会让判据对分辨率更稳健）。</li>
+     *   <li><b>{@code N_theta = K*theta/U} 对本仓退化</b>：内陆 {@code U = 0} ⟹ 按它定义 theta 得 0
+     *       ⟹ 平原不受保护。⟹ <b>必须用绝对 theta（米）</b>。</li>
+     * </ol>
+     * <p>★ 尺度自洽旁证（不是出处）：本仓平原坡度 p50 = 26.5 m/km、1 km 格 = 10^6 m²
+     * ⟹ k_sn = 26.5 m ⟹ <b>theta = 25 m 恰好卡在这个数上</b>。
+     *
+     * <p>★ 回滚：{@link #THETA_ON} = false ⟹ 逐位回到改动前。
+     */
+    public static volatile double THETA_M = 25.0;
+    /**
+     * ★ 阈值总开关。默认 <b>false = 逐位回滚位</b>。
+     * <p>⚠ 关闭时【连"零侵蚀区分支"都不走】—— 因为无阈值时那条分支会改掉
+     * "自填/淤积"分支的行为（z_new &gt; z + up 的那一支），破坏逐位等价。
+     */
+    public static volatile boolean THETA_ON = true;   // ★ 2026-10-14 实测定案（347 §八）：默认打开
+    /**
+     * ★★ 2026-10-14：**把"解除门控"从 SED_G 里解耦出来**（接口修复，347 §七）。
+     *
+     * <p><b>为什么要解耦</b>：P1 把"口径 2（只门控抬升）"写成 {@code sedOn && sedMode == 2}
+     * ⟹ 打开沉积会【顺带】解除平原的侵蚀门控，两者绑死。后果：① 无法单独测"门控 vs 阈值"；
+     * ② 外部看像是"沉积把平原变成湿地"（实测：G=1e-300 时湿地 46%，与沉积无关）。
+     *
+     * <p><b>语义</b>：
+     * <pre>
+     *   false（默认）：现状 —— up 不乘 activity，整个更新最后按 activity 插值（平原冻结）
+     *   true        ：只门控【抬升】—— up 乘 activity，侵蚀 / 沉积 / 阈值全境生效
+     * </pre>
+     * ★ 默认 false ⟹ 逐位回到改动前。★ 旧行为（SED_G &gt; 0 且口径 2）现在等价于
+     * {@code SED_G &gt; 0 且 UNGATE_SURFACE = true}（**有意的行为变更**）。
+     */
+    public static volatile boolean UNGATE_SURFACE = true;   // ★ 2026-10-14 实测定案：默认打开（只门控抬升）
+    /**
+     * ★★★ 判别实验（2026-10-13，P1 的最后一个缺口）：**禁止"洼地自填"**。
+     *
+     * <p><b>要判别什么</b>：口径 2（只门控抬升）会把湖【全部】清掉（湖 1.53% -> 0.10%），
+     * 但"清掉"有两个互相竞争的候选原因，只看结果分不开：
+     * <pre>
+     *   候选 ① 洼地自填：洼地格的 dir 指向溢出口（t.par）⟹ zd = 溢出口高度 > 自身
+     *          ⟹ al*(z-zd) &lt; 0 ⟹ 该格每步被【抬高】⟹ 200 步内填平。
+     *          ⟹ 本开关【关掉它】。
+     *   候选 ② 平原被整体侵蚀削平：解冻后平原朝下游下切、起伏被抹平，盆地被河流切穿。
+     *          ⟹ 本开关【不影响它】（上游来水方向的下切照旧）。
+     * </pre>
+     *
+     * <p><b>实现</b>：{@code if (zd &gt; z[k]) zd = z[k]} ⟹ 下游比本格高的格子（= 洼地/湖格）
+     * 只保留抬升项，不再被抬高；正常下坡格的 {@code zd &lt; z[k]} ⟹ 钳位不生效 ⟹ <b>侵蚀逐位不变</b>。
+     *
+     * <p><b>判读</b>（口径 2 + 极小 G 使沉积严格为零，即 §340 的失败写法作底）：
+     * <pre>
+     *   NO_DEPRESSION_FILL=false ⟹ 湖 ~0.02%（已知）
+     *   NO_DEPRESSION_FILL=true  ⟹ 若湖【回来】（&gt;1%）⟹ 候选 ① 成立，"湖 = 自填被门控冻结的产物"
+     *                              若湖仍然 ~0   ⟹ 候选 ② 才是主因，P1 的因果判断要改写
+     * </pre>
+     * ★ 默认 {@code false} ⟹ 逐位不改动现状（回滚位）。
+     * ⚠ 本开关**不是**一个"物理选项"，是一次性的判别工具；判读完应删或永久置 false。
+     */
+    public static volatile boolean NO_DEPRESSION_FILL = false;
+    /**
      * ★★ 修法 B2（待裁决/310）：裂谷**不得把陆地压成海** —— 抬升场的最低高度（米）。
      * <p>为什么必须钳：{@code t.sea[k] = (baseHeight <= 0)} ⟹ 裂谷把陆地压到 0 以下
      * ⟹ 那一格【变成海】⟹ ★ 把大陆劈成两块（用户实测指认）。
@@ -1427,6 +1707,21 @@ public final class TalosLandErosion {
         int[] cnt = new int[256];
         double[] uBuf = new double[N];
 
+        // ★★★★★ P1（2026-10-13）：沉积项（Davy & Lague 2009）的局部配置与缓冲。
+        //   ★ SED_G = 0 时两个缓冲都是 null ⟹ 热循环里只多一次 null 判断，且【逐位】等于改动前。
+        //   ★ 配置在这里【读一次】存成局部量：热循环 200 x 590k 次，volatile 读不能进循环（铁律①）。
+        final double sedG = SED_G;
+        final int sedMode = SED_GATE_MODE;
+        final boolean sedOn = sedG > 0.0;
+        final boolean noSelfFill = NO_DEPRESSION_FILL;   // ★ 判别实验（见该常量的 javadoc）
+        // ★★★★★ 2026-10-14（347 §七）：侵蚀阈值的局部配置。
+        //   cThr = DK * THETA_M * ELEV_TO_BLK（推导见 THETA_M 的 javadoc；格/步）。
+        final boolean thetaOn = THETA_ON;
+        final boolean ungateSurface = UNGATE_SURFACE;
+        final double cThr = thetaOn ? DK * THETA_M * ELEV_TO_BLK : 0.0;
+        final double[] eBuf = sedOn ? new double[N] : null;    // 本步逐格净侵蚀量（格/步，只取正部）
+        final double[] qsBuf = sedOn ? new double[N] : null;   // 上游累积产沙 Qs（格/步）
+
         // ★ 2026-10-11（待裁决/308）：裂谷沉降因子【逐格预计算一次】。
         //   ⚠ 绝不能放进 ITER 循环：riftProfile 约 0.4 us/次，200 次迭代 x 590k 格 = 47 秒。
         //   这里只算一次：590k x 0.4 us = 0.24 s（相对瓦片求解 6~10 s 约 3%）。
@@ -1469,6 +1764,7 @@ public final class TalosLandErosion {
             orderAsc(t.z, N, ord, tmp, cnt);
             for (int oi = 0; oi < N; oi++) {
                 int k = ord[oi];
+                if (eBuf != null) eBuf[k] = 0.0;   // ★ P1：默认本步无产沙（下面的 continue 会跳过赋值）
                 if (t.sea[k]) continue;
                 int d = t.dir[k]; if (d < 0) continue;
                 int ni = k % W + DX[d], nj = k / W + DZ[d];
@@ -1485,6 +1781,9 @@ public final class TalosLandErosion {
                 if (sinkBuf != null) up += DTU * UREF * sinkBuf[k];
                 double nb = t.z[nj * W + ni];
                 double zd = nb > SEA_BLK ? nb : SEA_BLK;
+                // ★★★ 判别实验：禁止"洼地自填" ⟹ 下游高于本格时钳到本格。
+                //   正常下坡格 zd < z[k] ⟹ 本行不生效 ⟹ 侵蚀逐位不变。
+                if (noSelfFill && zd > t.z[k]) zd = t.z[k];
                 // ★★★★★ 2026-10-12（待裁决/340）：构造活动门控。
                 //   ⚠⚠ 第一版写成「up *= actBuf」是【错的】（实测 gate_on.png）：
                 //      up=0 时定点 z_k=(z_k+al*zd)/(1+al) 仍向 zd 塌陷 ⟹ 地形【数学上完全平】
@@ -1493,9 +1792,53 @@ public final class TalosLandErosion {
                 //     用【按活动度插值】实现，处处连续（不产生掩码边界的不连续）：
                 //        activity=1 ⟹ 完整 LEM 演化（山地）
                 //        activity=0 ⟹ z 保持底场（平原 ✓ 底场自身有 17~92 m 的微起伏，D8 正常）
-                double zNew = (t.z[k] + up + al * zd) / (1.0 + al);
-                if (actBuf != null) zNew = t.z[k] + actBuf[k] * (zNew - t.z[k]);
+                // ★★★★★ P1（2026-10-13）：口径 2 = 只门控【抬升】——
+                //   up 乘 activity，而侵蚀（al 项）与沉积全境生效。
+                //   ★ 只在 sedOn 时走这条：SED_G = 0 且口径 2 会逐位等于 §340 的失败写法
+                //     （up=0 时定点塌向 zd ⟹ 地形数学上全平 ⟹ D8 退化 ⟹ 放射状河网）。
+                // ★★★★★ 2026-10-14：门控口径与侵蚀阈值（解耦后各自独立）。
+                //   upEff = 真正进入更新的抬升：解除门控时 up 乘 activity，否则 up 原样
+                //   （整体门控在下面用【按活动度插值】统一施加）。
+                final double upEff = (ungateSurface && actBuf != null) ? up * actBuf[k] : up;
+                double zNew;
+                if (thetaOn) {
+                    // ★ T&K 2020 Eq.1：分子加阈值常数 c；驱动量不超过 c 的格子进入【零侵蚀区】
+                    zNew = (t.z[k] + upEff + cThr + al * zd) / (1.0 + al);
+                    if (al * (t.z[k] - zd + upEff) <= cThr) zNew = t.z[k] + upEff;
+                } else {
+                    zNew = (t.z[k] + upEff + al * zd) / (1.0 + al);
+                }
+                if (!ungateSurface && actBuf != null) zNew = t.z[k] + actBuf[k] * (zNew - t.z[k]);
+                if (eBuf != null) {
+                    final double e = t.z[k] - zNew;      // >0 = 净侵蚀
+                    eBuf[k] = e > 0.0 ? e : 0.0;         // ★ 只取正部：洼地自填不计入产沙
+                }
                 t.z[k] = zNew;
+            }
+            // ★★★★★ P1：沉积项 D = G * Qs / A（Davy & Lague 2009；见 SED_G 的 javadoc）
+            //   ① 累积：沿 z 反序（= 上游→下游）一次 O(N)。Qs[k] = Sum_{上游含自身} max(0, E_j)
+            //   ② 沉积：z += G * Qs / acc            （口径 0 时再乘 activity）
+            //   ⚠ 用【本步】的 E，不是滞后一步（累积就在本步的更新之后马上做）。
+            if (eBuf != null) {
+                Arrays.fill(qsBuf, 0.0);
+                for (int oi = N - 1; oi >= 0; oi--) {
+                    final int k = ord[oi];
+                    final double q = qsBuf[k] + eBuf[k];
+                    qsBuf[k] = q;
+                    final int d = t.dir[k];
+                    if (d < 0) continue;
+                    final int ni = k % W + DX[d], nj = k / W + DZ[d];
+                    if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
+                    qsBuf[nj * W + ni] += q;
+                }
+                for (int oi = 0; oi < N; oi++) {
+                    final int k = ord[oi];
+                    if (t.sea[k]) continue;
+                    final double a = t.acc[k] > 1.0 ? t.acc[k] : 1.0;
+                    double dep = sedG * qsBuf[k] / a;
+                    if (sedMode == 0 && actBuf != null) dep *= actBuf[k];
+                    t.z[k] += dep;
+                }
             }
         }
         fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);
