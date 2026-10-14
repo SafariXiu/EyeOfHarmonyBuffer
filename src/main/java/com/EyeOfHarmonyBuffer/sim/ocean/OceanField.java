@@ -106,6 +106,37 @@ public final class OceanField {
     public static boolean PHASE_SEASONAL = false;
 
     public static int GRAD = 12_500;   // ★ 缩 40x（原 500,000）
+
+    /**
+     * ★★★★★ 2026-10-14（工作目录/短期-洋流问题 §八）：**F1 —— 用【带状旋度】驱动海洋**。
+     *
+     * <h3>为什么需要</h3>
+     * 实测（探针 PSYM / PZM / PCURLF，四相位口径）：
+     * <pre>
+     *   局地旋度的纬向均值 / RMS 只有 ~0.10 ⟹ 旋度被【空间驻留涡旋】主导
+     *   curl = d(tau_z)/dx - d(tau_x)/dz：
+     *     d(tau_x)/dz ← 带状结构（尺度 2,000~3,000 km）
+     *     d(tau_z)/dx ← 经向驻留涡旋（波长 ~1,000 km）⟹ 微分把它放大约 3~6 倍
+     *   地球的海洋靠【时间平均】把涡旋旋度抹掉；本仓的涡旋是**空间驻留**的、抹不掉 ✗
+     * </pre>
+     *
+     * <h3>★ 必须用【带状】而不是【宽窗采样平均】（实测踩过）</h3>
+     * <pre>
+     *   宽窗采样平均 <curl>_W = <d(tau_z)/dx>_W - d<tau_x>/dz
+     *     第一项在【有限窗口】里不会平均到 0（世界在 x 上无限、非周期）
+     *     ⟹ 它混进 tau_z 残差，**南半球符号整个反掉**（实测 6 档 BAD）
+     *   纯带状 -d<tau_x>/dz（对 tau_x 先做纬向平均、再对纬度求导）：
+     *     |lat| 15~30 两半球 **8/8 符号全部正确** ✓✓
+     * </pre>
+     *
+     * <h3>成本</h3>
+     * 每行缓存一次；单行的纬向平均 = ZM_SAMPLES x 4 相位次 windStress。
+     * 默认 {@code false} ⟹ **逐位回到改动前** ✓
+     * ⚠ 打开会改 SST' ⟹ 已进 {@link #configStamp()} ✓
+     */
+    public static volatile boolean CURL_ZONAL_BAND = true;   // ★ 2026-10-14 用户裁决后打开
+    /** 纬向平均的经度采样数（性能/精度权衡；48000 km / N 为采样间距）。 */
+    public static int ZM_SAMPLES = 48;
     /** 东边界急流作用范围（R_d 的倍数）。 */
     public static double JET_RANGE_RD = 4.0;
     /** curl 的季节相位。 */
@@ -312,10 +343,16 @@ public final class OceanField {
         // ⚠ 2026-09-16（用户裁决 A）：风应力旋度的采样步长也**改解出来的 SST'** ⇒ 按本方法的准入判据
         // 必须进指纹。它落在 GyreRow 里（求解发生的地方），所以从那里取。
         h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.GyreRow.CURL_STRIDE;
+        h = h * 31 + (CURL_ZONAL_BAND ? 1 : 0);        // ★ F1（会改 SST' ⟹ 必须进键，D58）
+        h = h * 31 + ZM_SAMPLES;
         // §447：相位分辨会换掉解出来的 SST' ⇒ 按本方法的准入判据必须进指纹。
         if (PHASE_SEASONAL) h = h * 31 + 0x7A11DL;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
+        // ★ 2026-10-14（B-4）：二维闭合环流（BasinGyre2D）的旋钮折进来。
+        //   ¤ENABLED¤ 默认 false ⟹ 此项是【常数】⟹ 不改任何物理 ✓，但将来一开开关
+        //   就会自动让所有按 configStamp 的缓存失效 ✓（这是必须的，因为它会改 SST' 链 ✓）
+        h = h * 31 + BasinGyre2D.configStamp();
         // S620 (P944 attribution): DTDZ_FORCE re-routes ONLY the thermal-wind gradient, leaving the
         // airT/wind path on Atmosphere.ZMSLK_LEGACY. It changes the solved SST-prime => must enter
         // the configuration fingerprint (and, via resetIfStale, invalidate ANOM/SPAN/SPAN_BY_ROW/BAND).
@@ -437,7 +474,52 @@ public final class OceanField {
         final long seed; final int cell; final int phase;
         Curl(long seed, int cell) { this(seed, cell, -1); }
         Curl(long seed, int cell, int phase) { this.seed = seed; this.cell = cell; this.phase = phase; }
-        @Override public double at(int x, int z) { return curlAtmos(x, z, seed, cell, phase); }
+        @Override public double at(int x, int z) {
+            if (CURL_ZONAL_BAND) return bandCurl(z, seed, cell, phase);
+            return curlAtmos(x, z, seed, cell, phase);
+        }
+    }
+
+    // ==================== ★ F1：带状旋度（按行缓存） ====================
+    private static final java.util.concurrent.ConcurrentHashMap<Long, Double> ZM_BAND =
+            new java.util.concurrent.ConcurrentHashMap<Long, Double>();
+
+    /** 纬向平均的 tau_x（Pa）。phase < 0 = 4 相位平均（与 curlAtmos 同口径）。 */
+    private static double zmTauX(int z, long seed, int cell, int phase) {
+        final int XMAX = 30_000_000;
+        double s = 0;
+        if (phase >= 0) {
+            double th = PH4[phase];
+            for (int i = 0; i < ZM_SAMPLES; i++) {
+                int x = -XMAX + (int) (2L * XMAX * i / ZM_SAMPLES);
+                s += Atmosphere.windStress(x, z, seed, cell, th, GRAD)[0];
+            }
+            return s / ZM_SAMPLES;
+        }
+        for (int i = 0; i < ZM_SAMPLES; i++) {
+            int x = -XMAX + (int) (2L * XMAX * i / ZM_SAMPLES);
+            for (double th : PH4)
+                s += Atmosphere.windStress(x, z, seed, cell, th, GRAD)[0] / PH4.length;
+        }
+        return s / ZM_SAMPLES;
+    }
+
+    /**
+     * ★ F1：**带状旋度** = {@code -d<tau_x>/dz}（Pa/m）。
+     * <p>差分步长 = **现有的行间距** {@code Z_CYCLE/ROWS}（零新参数 ✓）。
+     * <p>键里含 {@link #configStamp()} ⟹ 配置一变缓存自动失效。
+     */
+    private static double bandCurl(int z, long seed, int cell, int phase) {
+        long key = configStamp() * 131L + (((long) rowIndexOf(z)) << 4) + (phase + 1);
+        Double c = ZM_BAND.get(key);
+        if (c != null) return c;
+        double dz = Math.max(1.0, (double) WorldContract.Z_CYCLE / ROWS);
+        double zN = z + dz * 0.5, zS = z - dz * 0.5;
+        double v = -(zmTauX((int) Math.round(zN), seed, cell, phase)
+                   - zmTauX((int) Math.round(zS), seed, cell, phase)) / (zN - zS);
+        ZM_BAND.put(key, v);
+        if (ZM_BAND.size() > 4096) ZM_BAND.clear();       // 防无界增长（多世界/多相位）
+        return v;
     }
 
     private static GyreRow.Params params() {
@@ -546,6 +628,13 @@ public final class OceanField {
                 if (d > 0 && d < JET_RANGE_RD * rd) vs += vJet * Math.exp(-d / rd);
                 vv[i] = vs;
                 a[i] = SeaSurfaceTemp.anomaly(vs, dTdz);
+                // ★ 2026-10-14（B-4c）：二维距平（开关默认关 ⟹ 上面一行就是全部行为 ✓）
+                //   开着时用【二维平流-松弛】解出的场替换局地平衡 ⟹ 距平被纬向搬运 ⟹ 冷暖交汇 ✓
+                //   取不到（域外/未算）时保持一维值 ⟹ 永远不会因为拿不到而变差 ✓
+                if (BasinGyre2D.T2D_ENABLED) {
+                    double tp = BasinGyre2D.tprimeAt((int) g.xAt(i), zRow, worldSeedInt);
+                    if (!Double.isNaN(tp)) a[i] = tp;
+                }
             }
             // A7：西带/东带深度平均速度（生产解本身，探针只读）
             // ★ 2026-10-11：带宽 = Munk 层厚 delta_M = cbrt(A_H/beta)，按纬度取值
@@ -665,7 +754,17 @@ public final class OceanField {
         int zk = zkey(zIdx, phase);
         Object[] h = hitVel(x, zk);
         if (h == null) {
-            h = solveRow(rowZ(zIdx), zIdx, phase, seed, worldSeedInt, x);
+            solveRow(rowZ(zIdx), zIdx, phase, seed, worldSeedInt, x);
+            // ★★★★★ 2026-10-14（P0 根因修复）：**必须重新查缓存**，不能直接用 solveRow 的返回值。
+            //   ¤solveRow¤ 是【两条链共用】的（ANOM 与 VEL），而它的返回值固定是
+            //   ¤new Object[]{a, g.westX}¤ —— 其中 a 是【海温距平 T'（K）】✗。
+            //   ⟹ 旧写法在【缓存未命中】时把 T' 当成【速度 v（m/s）】返回 ✗✗
+            //      （实测：vAt 在每盆的第一个采样点返回 −6.80 / −5.75 这种量级，
+            //        而同一盆的 VEL 数组 max|a| 只有 0.025 ✓ —— 两者都是 K vs m/s 的混淆）
+            //   ⟹ 症状：任何【按点采样】的探针（P477/P478）都会踩中；
+            //      而【按带均值】的门（P479）走缓存命中路径，所以看起来是好的 ✓
+            //   修法：solveRow 只负责"把结果写进缓存"，返回值一律【重新命中】取 ✓ 零口径变更 ✓
+            h = hitVel(x, zk);
             if (h == null) return 0.0;
         }
         return lerpX(h, x);
@@ -685,6 +784,29 @@ public final class OceanField {
      * 给出完全不同的 |T-prime|。P946 实测：模型的速度场中位 |v| 在 0.050~0.531 m/s 之间
      * （纬度无关），而 |dTds| 变 9 倍 ⇒ 旧的 T-prime 判据等价于要求 |v| 随纬度变 9 倍。
      */
+    /**
+     * 该点的**风应力旋度**（Pa/m）—— 供 {@link BasinGyre2D}（二维闭合环流）取力项。
+     *
+     * <p>★ 它走的是本类既有的 {@code curlAtmos(x,z,seed,cell,-1)} 通路，因此
+     * <b>自动尊重 {@link #CURL_ZONAL_BAND}（F1）</b> ✓ —— 带状开关开着时返回带状旋度，
+     * 关着时返回局地旋度，与生产口径完全一致 ✓（不引入第二份实现 ✓）。
+     *
+     * <p>2026-10-14 加：原 ¤curlAtmos¤ 是 private，二维类拿不到 ⟹ 只能开口子。
+     * 这是**拓宽**API（不改任何既有行为）✓。
+     */
+    public static synchronized double curlAt(int x, int z, int worldSeedInt) {
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        int cell = PlateField.PLATE_CELL;
+        // ★★★★★ 2026-10-14（B-2d 对照实验抓到）：**必须尊重 F1 开关** ✗✗
+        //   初版直接调 ¤curlAtmos¤ ⟹ 拿到的是【局地旋度】✗（随 x 变化）
+        //   而生产链走 ¤new Curl(...).at()¤ ⟹ 那里才判 ¤CURL_ZONAL_BAND¤ ⟹ 拿到【带状旋度】✓
+        //   实测（探针 B2CUR，同一行）：curlAt @xa = +5.02e-6，@xa+100km = −1.57e-8 ✗（本不该随 x 变）
+        //     ⟹ 喂错强迫 ⟹ psi_max 符号都反 ✗（−31.5 vs 生产 +15.2）
+        //   修法：在这里复刻 ¤Curl.at¤ 的分派 ✓（不引入第二份实现 —— 只是同一分派 ✓）
+        if (CURL_ZONAL_BAND) return bandCurl(z, seed, cell, -1);
+        return curlAtmos(x, z, seed, cell, -1);
+    }
+
     public static synchronized double vAt(int x, int z, int worldSeedInt) {
         if (inSolve()) { reentryBlocked++; return 0.0; }
         long seed = SimTerrain.seedOf(worldSeedInt);
