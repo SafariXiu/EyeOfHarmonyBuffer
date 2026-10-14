@@ -11,6 +11,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
 /**
  * {@code /talos_tp <区域> [半径] [首选方向]} —— TP 到【海陆分布层】的指定地形区域。
@@ -111,7 +113,7 @@ public class CommandTalosTp extends CommandBase {
         }
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.getEntityWorld();
-        int worldSeedInt = TalosSeed.of(world);
+        int worldSeedInt = TalosSeedMc.of(world);
 
         String what = args[0].toLowerCase();
         // ★ 河流类目用细步长 + 小默认半径（河宽 3 到 45 格，250 格步长会漏）
@@ -146,7 +148,7 @@ public class CommandTalosTp extends CommandBase {
             sender.addChatMessage(new ChatComponentText(String.format(
                 "[TalosTp] ★ 诊断: 尝试 %d 点  命中 %d  installedSeed=%d  worldSeed=%d  seedMismatch=%d  异常=%d%s",
                 dbgTried, dbgHit,
-                com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.installedSeed(),
+                TalosLandErosion.installedSeed(),
                 worldSeedInt, dbgTileNull, dbgErr,
                 dbgFirstErr == null ? "" : ("  首个异常: " + dbgFirstErr))));
         }
@@ -163,7 +165,7 @@ public class CommandTalosTp extends CommandBase {
         //   ⚠ 但 lake 【不吸附】（待裁决/312 适配）：湖是【面】不是【线】，
         //     湖上不一定有河道 ⟹ 吸附会把玩家从湖心带走到附近的河道上。
         if (isRiverKind(what) && !"lake".equals(what)) {
-            double[] pt = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            double[] pt = TalosLandErosion
                     .nearestChannelPoint((long) worldSeedInt, tx, tz);
             if (pt != null) {
                 sender.addChatMessage(new ChatComponentText(String.format(
@@ -173,7 +175,7 @@ public class CommandTalosTp extends CommandBase {
                 tz = (int) Math.floor(pt[1]);
             } }
         int y = world.getTopSolidOrLiquidBlock(tx, tz);
-        if (y <= 0) { y = LandformField.SEA_LEVEL + 1; }
+        if (y <= 0) { y = LandformField.SEA_LEVEL_BLK + 1; }
         y = Math.min(y, 250);   // 防越界
         player.setPositionAndUpdate(tx + 0.5, y + 1.5, tz + 0.5);
 
@@ -194,15 +196,15 @@ public class CommandTalosTp extends CommandBase {
         // ★ 水系类目：补一份水系信息（宽度 / 汇流面积 / 水面试探）
         try {
             final long ews = (long) worldSeedInt;
-            final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            final double acc = TalosLandErosion
                     .channelAccAt(ews, tx, tz);
-            final double w = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            final double w = TalosLandErosion
                     .riverWidthBlocks(ews, tx, tz);
-            final double surf = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            final double surf = TalosLandErosion
                     .riverSurfaceBlocks(ews, tx, tz);
-            final double dep = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            final double dep = TalosLandErosion
                     .riverDepth(acc);
-            final boolean lake = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            final boolean lake = TalosLandErosion
                     .isLake(ews, tx, tz);
             if (w > 0.0 || lake) {
                 sender.addChatMessage(new ChatComponentText(String.format(
@@ -210,7 +212,7 @@ public class CommandTalosTp extends CommandBase {
                     lake ? "湖" : (acc >= TRUNK_ACC ? "主干" : "支流"),
                     w, acc, dep,
                     Double.isNaN(surf) ? "-" : String.valueOf((int) Math.round(surf)),
-                    com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    TalosLandErosion
                             .lakeDepthBlocks(ews, tx, tz))));
             } else {
                 sender.addChatMessage(new ChatComponentText(
@@ -227,10 +229,10 @@ public class CommandTalosTp extends CommandBase {
      */
     private static String switchLine() {
         return String.format("开关: LAKES=%s LAKE_SOLVE=%s RIFT=%s RIFT_SPLIT=%.1f   (参考: 河道格 28.7%% 陆地、湖格 0.31%%)",
-            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.LAKES_ENABLED,
-            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.LAKE_SOLVE_ENABLED,
-            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.RIFT_ENABLED,
-            com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.RIFT_SPLIT);
+            TalosLandErosion.LAKES_ENABLED,
+            TalosLandErosion.LAKE_SOLVE_ENABLED,
+            TalosLandErosion.RIFT_ENABLED,
+            TalosLandErosion.RIFT_SPLIT);
     }
 
     /** 名字是否已知。 */
@@ -295,21 +297,21 @@ public class CommandTalosTp extends CommandBase {
     }
 
     private static boolean matchesRiver(int x, int z, String what, int seed) {
-        if (!com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.ENABLED) {
+        if (!TalosLandErosion.ENABLED) {
             return false; }
         final long ws = (long) seed;
-        if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.installedSeed()
+        if (TalosLandErosion.installedSeed()
                 != seed) { dbgTileNull++; return false; }
         if ("lake".equals(what)) {
-            return com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            return TalosLandErosion
                     .isLake(ws, x, z); }
         // ★ 接入蜿蜒后，河道格的中心可能【不在河上】（中心线横移最多 120 格）。
         //   所以这里用「到中心线的距离 <= 吸附半径」判定，而不是 isRiver(格中心)。
-        final double cd = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+        final double cd = TalosLandErosion
                 .channelDistance(ws, x, z);
         if (!(cd <= SNAP_BLOCKS)) { return false; }
         if ("river".equals(what)) { return true; }
-        final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+        final double acc = TalosLandErosion
                 .accAt(ws, x, z);
         if ("trunk".equals(what)) { return acc >= TRUNK_ACC; }
         return acc < TRUNK_ACC;                 // tributary

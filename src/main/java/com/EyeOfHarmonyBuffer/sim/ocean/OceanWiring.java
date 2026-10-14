@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
+
 /**
  * **第三步接线的唯一世界级入口**（设计冻结 §162）。
  *
@@ -13,7 +15,8 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
  * <h3>它做三件事</h3>
  * <ol>
  *   <li>{@link OceanField#install(int)} —— 装 {@code Atmosphere.SST_PROVIDER}；</li>
- *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热 64 条纬度行**；</li>
+ *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热全部纬度行**
+ *       （行数 = {@link OceanField#ROWS}；⚠ 原文写"64 条"✗，那已过期 —— 见下方 §7556 段）；</li>
  *   <li>★ <b>§7503</b>：{@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField#install(int)} ——
  *       把地表水系场也记到同一个世界上（清掉上一个世界的 tile 缓存）。
  *       <b>它不改变任何气候输出</b>（只清缓存 + 记种子），所以这一步不需要单独验收。</li>
@@ -38,11 +41,13 @@ public final class OceanWiring {
         //   水系现在只有一套：`TalosLandErosion`（见 待裁决/327、/329）。
         // ★★★ 地貌演化层（LEM）也跟同一个世界走（记种子 + 清瓦片缓存）。
         //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
-        com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.install(worldSeedInt);
+        TalosLandErosion.install(worldSeedInt);
         if (!OceanField.ENABLED) return;
         // ★★★★★ §7556：探针模式跳过预热。
         //
-        // 为什么：warmAll 会预热全部 64 条纬度行，注释自己说"单行首解 1~7 s"。
+        // 为什么：warmAll 会预热【全部】纬度行（行数 = OceanField.ROWS；
+        //   ⚠ 此处原文写"64 条"✗ —— 2026-10-14 审查实测 ROWS = 128，那个数字已过期 ✗。
+        //   故本注释**不再硬写行数**，改为引用常量 ✓ 以免再次过期），单行首解 1~7 s。
         // 实测（2026-10-02，验收套件 run ECA03CFB_5167B0F3_TALOS）：Talos-SST-Warmup 线程
         // 烧了 3355 s CPU（= 全程 100% 占一个核），而 main 线程只用 220 s —— main 全程在等它。
         // 11 个探针并行 ⟹ 机器被预热线程吃满 ⟹ 一个批次跑了 60+ 分钟还没完。

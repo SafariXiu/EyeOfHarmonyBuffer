@@ -25,6 +25,10 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 
 import java.util.*;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
+import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
 public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
@@ -37,7 +41,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
     public ChunkProviderTalos2(World world, long seed, boolean flag) {
         super(world, seed, flag);
         this.world = world;
-        this.worldSeedInt = TalosSeed.of(world);
+        this.worldSeedInt = TalosSeedMc.of(world);
         this.worldHeight = world.getActualHeight();
     }
 
@@ -210,11 +214,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 // SimTerrain.ENABLED=false 时保持旧路径**逐位不变**（回滚点）。
                 // 注：c.land 与 bias/scale 无关（SimTerrain.compose 只看 elevationWithCell），
                 // 所以这里判一次、fillLandColumnV2 里再 compose 一次，两次的 land 必然一致。
-                boolean land = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED
-                    ? com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(
+                boolean land = SimTerrain.ENABLED
+                    ? PlateField.isLandWithCell(
                         worldX, worldZ,
-                        com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(seed),
-                        com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL)
+                        SimTerrain.seedOf(seed),
+                        PlateField.PLATE_CELL)
                     : oro.isLand;
                 if (land) {
                     fillLandColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, oro, rf);
@@ -302,33 +306,33 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         //   分类优先级：海（本函数不管）> 湖 > 河 > 地形
         //   水面 = round(filled)（Priority-Flood 的水力面，沿流向单调不增 -> 水不倒流）
         //   河床 = 水面 - 河深；先把 [河床+1, 水面] 挖空，再填水。
-        if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion.ENABLED) {
+        if (TalosLandErosion.ENABLED) {
             // ★ 用【本函数拿到的世界种子】，不用 TalosLandErosion.installedSeed()。
             //   实测踩过：某个占位世界 onWorld(0) 把 installedSeed 覆盖成 0，
             //   于是这里会拿 0 去查询 ⟹ 水系全空。缓存键含 seed，直接用 seed 最稳。
             final long ws = (long) seed;
             {
-                final double surf = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                final double surf = TalosLandErosion
                         .riverSurfaceBlocks(ws, worldX, worldZ);
                 if (!Double.isNaN(surf)) {
                     final int sy = (int) Math.round(surf);
                     double bedF;
                     // ★★ 水位（整数）。湖与常流河 = sy；干河道会因为 wetness 下降而低于 sy。
                     int wy = sy;
-                    if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    if (TalosLandErosion
                             .isLake(ws, worldX, worldZ)) {
-                        bedF = surf - com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        bedF = surf - TalosLandErosion
                                 .lakeDepthBlocks(ws, worldX, worldZ);
                     } else {
-                        final double acc = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        final double acc = TalosLandErosion
                                 .channelAccAt(ws, worldX, worldZ);
-                        final double depth = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        final double depth = TalosLandErosion
                                 .riverDepth(acc);
                         // ★★★ 干河道过渡带（见 TalosLandErosion.wetness01 的 javadoc）：
                         //   t = 1 常流  -> 河床 = 水面-深度，水位 = 水面       （满水）
                         //   t = 0 全干  -> 河床 = 水面-0.5深度，水位 = 水面-深度（水位 < 河床 => 不铺水）
                         //   t 在过渡带内连续变化 ⟹ 水从满到浅到无，水头不突兀。
-                        final double t = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                        final double t = TalosLandErosion
                                 .wetness01(ws, worldX, worldZ);
                         bedF = surf - depth * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer
                                 .TalosLandErosion.bedFrac01(t);
@@ -437,8 +441,8 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         // 查气候**（SimTerrain.compose -> warmestMonthTempK -> SimClimate，见 D38 的记账）
         // ⇒ 海列不查气候才是那个异常项。查了之后：**确定性仍然成立**（同一 seed 同一个世界），
         // 代价与陆地列同类（每进入一个新的 SimClimate 瓦片，第一列等一次瓦片求解）。
-        boolean floe = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.coldestMonthTempK(worldX, worldZ, seed)
-            < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SEA_ICE_T;
+        boolean floe = SimTerrain.coldestMonthTempK(worldX, worldZ, seed)
+            < SimTerrain.SEA_ICE_T;
         for (int y = seabed + 1; y <= seaLevel; y++) {
             int idx = getIndex(localX, y, localZ);
             blocks[idx] = floe && y == seaLevel ? Blocks.ice : Blocks.water;

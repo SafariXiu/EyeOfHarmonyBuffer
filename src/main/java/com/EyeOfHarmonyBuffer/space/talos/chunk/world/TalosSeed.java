@@ -1,9 +1,17 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
-import net.minecraft.world.World;
-
 /**
  * 世界种子派生的【唯一权威】。
+ *
+ * <p>⚠⚠ <b>2026-10-14 审计：本类必须保持【MC-free】</b> ✗ ——
+ * 本文件在探针 harness 的复制清单里 ✓（{@code runprobe4.bat}），而那个 harness 的 javac
+ * **没有 classpath** ✗（{@code javac -encoding UTF-8 -nowarn -d out @srcs.txt} ✓）
+ * ⟹ 清单里的类**只要 import 了 MC 就编译不过** ✗。
+ * 原本这里的 {@code import net.minecraft.world.World}（只为 {@code of(World)} ✓）
+ * 违反了该约定 ✗，长期被 staging 的陈旧副本掩盖 ✓；2026-10-14 清空 staging 后暴露 ✓。
+ * ⟹ 处置：{@code of(World)} 已搬到 MC 侧的 {@code com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc.of(world)} ✓
+ *   （见 {@link com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc} ✓），
+ *   本类**不得**再引入任何 MC 依赖 ✗。
  *
  * <h3>★ 2026-10-08 统一（用户裁决：「让种子统一到一个接口统一调用 不能再出现这种问题了」）</h3>
  *
@@ -17,7 +25,7 @@ import net.minecraft.world.World;
  *
  * <p><b>调研发现的 5 个派生点</b>（现已全部收敛到本类）：
  * <ol>
- *   <li>{@code TalosSeed.of(world)} —— 官方入口（9 个调用点，已合规）</li>
+ *   <li>{@code com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc.of(world)} —— 官方入口（9 个调用点，已合规）</li>
  *   <li>{@code ClimatePreheat:34} 内联 {@code (int)(getSeed() & 0x7FFFFFFF)} —— <b>已改</b></li>
  *   <li>{@code WorldGenYuanShiDoubleConeCluster:96} 同上 —— <b>已改</b></li>
  *   <li>{@code CaveGenerator:163,236} 同上 —— <b>已改</b></li>
@@ -38,10 +46,8 @@ public final class TalosSeed {
 
     private TalosSeed() {}
 
-    /** ★ 唯一派生规则：{@code World.getSeed() → 非负 int}。 */
-    public static int of(World world) {
-        return ofLong(world.getSeed());
-    }
+    // ★ 2026-10-14：`of(World)` 已搬到 MC 侧的 com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc.of(world) ✓
+    //   （原因：本类必须 MC-free ✓，见类 javadoc ✓）
 
     /** ★ 唯一派生规则（long 版）：{@code rawSeed → 非负 int}。 */
     public static int ofLong(long rawSeed) {

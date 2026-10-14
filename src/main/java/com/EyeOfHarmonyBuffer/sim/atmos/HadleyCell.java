@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 // S1：纬向平均翻转环流（Held-Hou 1980 轴对称 Hadley 胞）—— **求解**，不是查表。
 //
 // 为什么要有它（设计冻结 347/395）：现有 PrecipField.wEff 里的 W_ZM 是一张照抄地球的表，
@@ -29,10 +31,15 @@ public final class HadleyCell {
     private HadleyCell() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
      * **本份的含义是：HadleyCell（哈得来环流）。** 引用时务必写全类名（如 `HadleyCell.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     *
+     * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，实测已是
+     * 【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、true 5 个
+     * （ClimlabEBM / SoilMoisture / OceanField / SimTerrain / TalosLandErosion）——
+     * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
+     * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      */
     // ★ §714：§713 的 A/B 实验已做完并撤销。`ENABLED=true` 使 `GATE_PHASE_ALL` 3/4→2/4、
     //   留出集 2/2→1/2，`GATE_VERDICT` 仍 FAIL ⇒ 部分进入条件失败，恢复原值。
@@ -53,12 +60,23 @@ public final class HadleyCell {
     //   —— 一个【量纲组合】，OM 与 R_EFF 必须同口径。
     //
     // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
-    public static final double OM = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
-    public static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
+    public static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
+    public static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
     public static final double G = 9.80665;                          // m s^-2
     /** 外流层厚度 H（对流层顶高度）。 */
     public static double H_TROP = 10_000.0;
-    /** 参考位温 T0（用于把温差化成无量纲 dH）。 */
+    /**
+     * 参考位温 T0（用于把温差化成无量纲 dH）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：本字段与
+     * {@link Atmosphere#T0}（288.15）<b>同名但完全不同义</b></b> ✗ ——
+     * <ul>
+     *   <li>本字段 = <b>无量纲化的参考位温</b>（300 K，只用于把温差化成 dH）✓</li>
+     *   <li>{@code Atmosphere.T0} = <b>地球观测的全球平均地表气温</b>（288.15 K，
+     *       是纬向平均气温勒让德拟合的常数项）✓</li>
+     * </ul>
+     * ⟹ 引用时必须写全类名 ✓；<b>不要</b>把两者"统一"或互相代入 ✗。
+     */
     public static double T0 = 300.0;
 
     public static int lastBisectIters = 0;

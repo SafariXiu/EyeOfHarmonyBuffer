@@ -5,6 +5,8 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainProfile;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.TerrainBaseHeight;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
  * V2 轨 · 块级高度层（design.md D30/D43）。
@@ -73,7 +75,15 @@ public final class V2TerrainGen {
     public static final double BASIN_EXTRA_AFTER = 1.25;
     public static final double BASIN_EXTRA_PER_UNIT = 14.0;
     public static final double BASIN_EXTRA_CAP = 9.0;
-    /** 海床中频起伏幅度上限（blocks）。 */
+    /**
+     * 海床中频起伏幅度上限（blocks）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：与
+     * {@link com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain#SEABED_RELIEF}
+     * <b>是同一物理量的两份独立定义</b></b> ✗（两处都是 3.0 ✓）。
+     * 本处是 {@code final}（海岸剖面内使用 ✓），SimTerrain 那处是可变（探针要扫 ✓）。
+     * ⟹ ★ 改动其一时**必须同步另一处** ✓；两处值相同是刻意的 ✓（但无强制机制 ✗）。
+     */
     public static final double SEABED_RELIEF = 3.0;
     /** 陆侧沙滩半宽（blocks，配合最终地表高度 ≤ 海面+5 判定）。 */
     public static final double BEACH_LAND_BLOCKS = 10.0;
@@ -330,8 +340,20 @@ public final class V2TerrainGen {
     /**
      * <b>侵蚀输入高度场的最粗波长（block）。</b>
      *
-     * <p>{@code §7722}：本仓地形基础高度最短波长 {@code TalosField.HF_WL_MIN = 46,875 m}，
-     * 所以侵蚀必须在 50 km 以下自己提供全部结构。
+     * <p>{@code §7722}：本仓地形基础高度最短波长 {@code TalosField.HF_WL_MIN}。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查更正（约定 4/9）：这里原文写「= 46,875 m」——【错了 64 倍】</b> ✗✗
+     * 实测（本仓唯一来源）：{@code PlateField.HF_WL_MIN = 3_000_000 / (1L &lt;&lt; 12)}
+     * = <b>732.42 m</b> ✓（{@code PlateField:164} 注明它由 {@code TalosField.HF_WL_MIN}
+     * <b>原值迁来</b> ✓ ⟹ 两者是同一物理量 ✓）。
+     * ★ 而且**同一个坑在本仓已被修过一次** ✓：{@code PrecipField:2962-2983} 早就记载
+     * 「注释以为是 23,437.5 m（3e6/2^7），而 HF_WL_MIN 实际是 3e6/2^12 = 732.42 m」
+     * ⟹ 那处修了 ✓，但**本处与 {@code SimTerrain:862} 两处漏了** ✗（本轮一并修 ✓）。
+     *
+     * <p>⚠ <b>原结论的前提因此不再成立，需要重推</b> ✗：
+     * 原文由「最短波长 46.9 km」推出「侵蚀必须在 50 km 以下自己提供全部结构」——
+     * 而真值是 732 m ⟹ 该论断<b>不能沿用</b> ✗。
+     * （本轮只更正数值与标注 ✓，<b>不擅自给出新结论</b> ✗ —— 按约定 9，新结论须先实测 ✓。）
      */
     public static final double ERO_WL0 = 50000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
@@ -506,8 +528,8 @@ public final class V2TerrainGen {
         // ---- 新模拟器的运行时分派（§83）--------------------------------------------
         // 这是本文件里**唯一**为接线而加的东西：一行分派。ENABLED=false 时，
         // 下面每一行都与接线前**逐位相同**；旧实现一个方法、一个常量都没有改动或删除。
-        if (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED) {
-            return com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.compose(c, x, z, worldSeedInt, seaLevel, maxY);
+        if (SimTerrain.ENABLED) {
+            return SimTerrain.compose(c, x, z, worldSeedInt, seaLevel, maxY);
         }
         // --------------------------------------------------------------------------
         if (!o.isLand) {
@@ -538,7 +560,7 @@ public final class V2TerrainGen {
         // ★★★★★★★ 2026-10-08：旧山脉层（MountainLayerV2）已删除，造山改由海陆分布层派生。
         //   ⚠ 本分支在 SimTerrain.ENABLED=true 时【不可达】（第 494 行提前返回）。
         c.auth = OrographyField.orogeny01(x, z, worldSeedInt);
-        c.uplift = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK
+        c.uplift = SimTerrain.ELEV_TO_BLK
             * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * c.auth;
         c.hNoDetail = c.plain + (1.0 - c.auth) * c.mtnComp + c.auth * c.uplift;
         double mtnAmt = Math.max(c.auth, Math.min(1.0, c.mtnComp / DETAIL_MTNCOMP_SCALE));
@@ -648,7 +670,7 @@ public final class V2TerrainGen {
         // 现改用 WorldContract.bandD（与方块、与气候同一个纬度周期）。
         // ⚠ 仍未统一的是**判据本身**（这里几何、方块温度）—— 那要把 SimClimate 引进群系 LUT 求解，
         //   代价高，单独一批。本修正只消掉 20 倍的周期错。
-        double b = clamp01(com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(worldZ));
+        double b = clamp01(WorldContract.bandD(worldZ));
         return SNOW_POLE_Y + (SNOW_EQUATOR_Y - SNOW_POLE_Y) * (1.0 - b);
     }
 

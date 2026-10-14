@@ -13,6 +13,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
+import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 
 public class CommandTalosHere extends CommandBase {
 
@@ -44,7 +47,7 @@ public class CommandTalosHere extends CommandBase {
         int blockY = MathHelper.floor_double(player.posY);
         int blockZ = MathHelper.floor_double(player.posZ);
 
-        int worldSeedInt = TalosSeed.of(world);
+        int worldSeedInt = TalosSeedMc.of(world);
 
         // 旧轨面板已删除（世界只有 V2 链）：本指令只输出 V2 信息面板。
         showV2Info(sender, world, blockX, blockY, blockZ, worldSeedInt);
@@ -77,7 +80,7 @@ public class CommandTalosHere extends CommandBase {
         // 这里曾经少算 mountainDetail（也没软封顶），却打印"→ 合成高度"和"(雪线以上)"——
         // 显示值比世界里的列顶低 10~40 blocks，而"(雪线以上)"几乎永远为假。
         V2TerrainGen.Column col = V2TerrainGen.composeColumn(
-            blockX, blockZ, worldSeedInt, LandformField.SEA_LEVEL, o,
+            blockX, blockZ, worldSeedInt, LandformField.SEA_LEVEL_BLK, o,
             V2TerrainGen.MC_WORLD_HEIGHT - 2);
         // 立刻拷进局部变量：composeColumn 返回**每线程复用对象**（与生产同一条纪律）。
         final double plain = col.plain, base = col.base, mtnComp = col.mtnComp;
@@ -100,30 +103,30 @@ public class CommandTalosHere extends CommandBase {
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] world.getSeed()=%d  TalosSeed.of=%d  PlateField.PLATE_CELL=%d",
             world.getSeed(), worldSeedInt,
-            com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL)));
+            PlateField.PLATE_CELL)));
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] SimTerrain.ENABLED=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
-            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED,
-            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, LandformField.SEA_LEVEL)));
-        long ls = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeedInt);
+            SimTerrain.ENABLED,
+            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, LandformField.SEA_LEVEL_BLK)));
+        long ls = SimTerrain.seedOf(worldSeedInt);
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] seedOf(worldSeedInt)=%d  (int)=%d", ls, (int) ls)));
-        double e1 = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(blockX, blockZ, ls,
-            com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP);
-        double e2 = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(blockX, blockZ, worldSeedInt,
-            com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP);
+        double e1 = PlateField.elevation(blockX, blockZ, ls,
+            PlateField.ERO_EXTRA_AMP);
+        double e2 = PlateField.elevation(blockX, blockZ, worldSeedInt,
+            PlateField.ERO_EXTRA_AMP);
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] PlateField.elev(seedOf)=%.1f 米  elev(worldSeedInt)=%.1f 米", e1, e2)));
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] ELEV_TO_BLK=%.4f  LAND_BASE_OFFSET=%.2f  SOFT_CAP_H=%.1f",
-            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK,
-            com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.LAND_BASE_OFFSET,
+            SimTerrain.ELEV_TO_BLK,
+            SimTerrain.LAND_BASE_OFFSET,
             V2TerrainGen.SOFT_CAP_H)));
         // 逐列扫 5 格，看有没有台阶
         StringBuilder sb = new StringBuilder("[DIAG] x-2..x+2 列顶: ");
         for (int dx = -2; dx <= 2; dx++) {
             V2TerrainGen.Column cc = V2TerrainGen.composeColumn(
-                blockX + dx, blockZ, worldSeedInt, LandformField.SEA_LEVEL,
+                blockX + dx, blockZ, worldSeedInt, LandformField.SEA_LEVEL_BLK,
                 OrographyField.sample(blockX + dx, blockZ, worldSeedInt),
                 V2TerrainGen.MC_WORLD_HEIGHT - 2);
             sb.append(cc.h).append(" "); }

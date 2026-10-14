@@ -10,6 +10,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 
 /**
  * /talos_coast [方向] [最大搜索千格] -- 沿指定方向找到最近的【海岸线】并把玩家传送过去。
@@ -64,7 +65,7 @@ public class CommandTalosCoast extends CommandBase {
         final int px = MathHelper.floor_double(player.posX);
         final int pz = MathHelper.floor_double(player.posZ);
 
-        final int worldSeedInt = TalosSeed.of(world);
+        final int worldSeedInt = TalosSeedMc.of(world);
         final long seed = SimTerrain.seedOf(worldSeedInt);
 
         // ---- 参数 ----

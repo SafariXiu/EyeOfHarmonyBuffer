@@ -17,6 +17,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 
 public class CommandTalosBiome extends CommandBase {
 
@@ -111,7 +112,7 @@ public class CommandTalosBiome extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
 
-        int worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
+        int worldSeedInt = TalosSeedMc.of(world);   // 世界种子派生唯一入口
 
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);

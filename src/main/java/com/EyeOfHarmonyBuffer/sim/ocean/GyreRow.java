@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
  * 一维 Munk 行求解器 —— M2 海洋层的**物理内核**（设计冻结 §3.1'''' / §18）。
@@ -51,17 +52,17 @@ public final class GyreRow {
     /** 地球自转速率（世界契约的一部分）。
      *  ⚠ 2026-09-13（审计 D5 同族）：这里原来是**第三份** 7.2921e-5 字面量（且全仓库零引用）。
      *  现引用世界契约的单一来源；保留本字段只为兼容探针签名。 */
-    public static final double OMEGA = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;
+    public static final double OMEGA = WorldContract.OMEGA;
 
     /** 世界契约的纬度。**实现委托给 WorldContract，保持单一真相来源。** */
     public static double latOf(int z, int zCycle) {
-        return com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(z, zCycle);
+        return WorldContract.latOf(z, zCycle);
     }
 
     /** beta(phi) = 2*Omega*pi/Z_CYCLE*cos(phi)。
      *  **不要再用常数 3.24e-10 —— 那是 45 度的值。** 见 §23.0 的仪器错误。 */
     public static double betaForLatitude(double latRad, int zCycle) {
-        return com.EyeOfHarmonyBuffer.sim.world.WorldContract.betaForLatitude(latRad, zCycle);
+        return WorldContract.betaForLatitude(latRad, zCycle);
     }
 
     /** 求解参数。 */
@@ -71,7 +72,7 @@ public final class GyreRow {
          *  只有合成算例才手动设它；设了就以手动值为准。 */
         public double beta = Double.NaN;
         /** 世界契约的气候周期（block），用于推导纬度与 beta。 */
-        public int zCycle = com.EyeOfHarmonyBuffer.sim.world.WorldContract.Z_CYCLE;
+        public int zCycle = WorldContract.Z_CYCLE;
         /** 手动 beta 是否已设置。 */
         public boolean hasBeta() { return !Double.isNaN(beta) && beta > 0.0; }
         /** 某条纬度行的 beta（手动优先，否则按纬度推导）。 */
@@ -169,7 +170,7 @@ public final class GyreRow {
      * 纬度分带读数会变，属【修正】而非回归。
      */
     static double bandD(int z, int zc) {
-        return com.EyeOfHarmonyBuffer.sim.world.WorldContract.bandD(z, zc);
+        return WorldContract.bandD(z, zc);
     }
 
     /** 一行的解。 */
@@ -208,7 +209,8 @@ public final class GyreRow {
      * 而一条纬度行的格点数 = 海盆宽度 / 5 km。最宽的盆（13,510 km）要 **2,703 次求风 ≈ 994 ms**
      * —— 这**就是** P284 那 50 分钟的全部来源（§212/§213）。
      *
-     * <p>而风场在**几百公里**尺度上才变化（{@code GRAD = 500 km} 的中心差分、
+     * <p>而风场在**十几公里**尺度上才变化（{@code OceanField.GRAD = 12,500 m = 12.5 km} ✓；
+     * ⚠ 原文写 "{@code GRAD = 500 km}" ✗ —— 那是世界缩放 40 倍【之前】的值，已过期 ✗）、
      * {@code PlateField.PLATE_CELL = 2,400 km} 的板块结构）⇒ **5 公里采样过采样约 20~50 倍**。
      *
      * <h3>代价：有实测上界的力项扰动（P488 的 A/B）</h3>

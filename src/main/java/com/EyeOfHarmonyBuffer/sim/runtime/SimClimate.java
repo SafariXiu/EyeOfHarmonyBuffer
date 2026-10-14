@@ -11,6 +11,19 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM;
+import com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell;
+import com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture;
+import com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave;
+import com.EyeOfHarmonyBuffer.sim.atmos.Vegetation;
+import com.EyeOfHarmonyBuffer.sim.atmos.VerticalColumn;
+import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
+import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
+import com.EyeOfHarmonyBuffer.sim.ocean.OceanField;
+import com.EyeOfHarmonyBuffer.sim.ocean.SurfaceLayer;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect;
 
 /**
  * **新模拟器 → 世界的运行时桥**（纵向切片第 2 步：气候 → 群系）。
@@ -232,9 +245,10 @@ public final class SimClimate {
     public static int SLOPE_STEP = 50;   // ★ 缩 40x（原 2,000）
     public static double SLOPE_SCALE = 0.02;
 
-    /** 瓦片缓存容量（个）。每个瓦片 ≈ 10 KB（84 个格点 x 9 条通道）。 */
     /**
-     * 缓存的瓦片数上限。**§7624：64 -> 4,096。**
+     * 缓存的瓦片数上限（个）。每个瓦片 ≈ 10 KB（84 个格点 x 9 条通道）。
+     *
+     * <p><b>§7624：64 -> 4,096。</b>
      *
      * <p><b>为什么改</b>（P1266/P1267 实测）：气候瓦片是 100 km x 50 km，而本仓的
      * 水系/出图要扫【数千 km】⟹ 工作集远超 64：
@@ -438,8 +452,13 @@ public final class SimClimate {
      *
      * <p>做法：**每次 field() 现算**（几十次算术，相对 sample 的 668 ns 可忽略），
      * 异或进键 ⇒ 旋钮一变、键就变 ⇒ 自动失效，不需要调用方守纪律。
+     *
+     * <p>★ <b>public 是为了让海洋场复用同一个配置指纹</b>（第三步接线；避免两套 stamp 漂移）。
+     *
+     * <p>⚠ 2026-10-14 审查（#19）：上面这两段原本是**两份紧邻的 javadoc** ✗ ——
+     * Java 只认**最后一份** ⟹ 那份 12 行的实质说明（含 P447 的 43% 实测）**原本静默失效** ✗
+     * ⟹ 已合并为一份 ✓。
      */
-    /** **public 是为了让海洋场复用同一个配置指纹**（第三步接线；避免两套 stamp 漂移）。 */
     public static long configStamp() {
         long h = 1125899906842597L;
         h = h * 31 + CELL; h = h * 31 + GRAD_STEP; h = h * 31 + UPWIND_OFFSET; h = h * 31 + SLOPE_STEP;
@@ -452,8 +471,8 @@ public final class SimClimate {
         h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);   // ★ S1a（§385）
         h = h * 31 + (Radiation.BUCKET_BETA ? 1 : 0);                      // ★ S3（§387）
         h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
-        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.ENABLED ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
-        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.ENABLED ? 1 : 0);   // ★ S2（§393）
+        h = h * 31 + (ClimlabEBM.ENABLED ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
+        h = h * 31 + (StationaryWave.ENABLED ? 1 : 0);   // ★ S2（§393）
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
@@ -482,7 +501,7 @@ public final class SimClimate {
         h = h * 31 + (PrecipField.EDDY_MASK_OUTSIDE ? 1 : 0);
         // §7215：把涡动 MFC 并入土壤桶的强迫 A。改了结果 ⇒ 必须进指纹（D58）。
         // ★ 用【条件折入】而不是 `h*31 + (X?1:0)`：默认 false 时指纹与历史【完全一致】。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.MFC_IN_BUCKET) h = h * 31 + 0x7A135L;
+        if (SoilMoisture.MFC_IN_BUCKET) h = h * 31 + 0x7A135L;
         // §567：地形已唯一（TalosField）。原先这里折入【全部旧 PlateField 旋钮】
         //   （A1/A2/A3、CONT_WAV、CS_W、WARP_W/AMP、A_PLAIN/A_MTN/FEAT_GATE、CONT_OCT、
         //    MAX_OCEAN_HALF、OCEAN_BREAK_H/FRAC、A4/A5/A6、RIFT_FRAC、NOISE_FADE、L2、
@@ -494,159 +513,159 @@ public final class SimClimate {
         h = h * 31 + 0x7A105L;
         // ★★★★★★ 2026-10-08：海陆层已换成 TalosLandField（经 NoiseContinentGrid + PlateField）
         //   ⟹ 配置戳必须换源，否则旧瓦片缓存不会失效（D58 的教训）
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.PlateField.configStamp();
+        h = h * 31 + PlateField.configStamp();
         // §401 地球验证层：换掩膜/地形 = 换配置 ⇒ 瓦片必须失效（D58 的教训）。
         // ★ 与 §315/§566 的地形身份同一套纪律：**按条件**折入 ⇒ 两者都为 null 时
         //   指纹与历史【完全一致】（严格 bit-neutral，生产不受任何影响）。
         //   用 identityHashCode 而不是 boolean：换一份掩膜也必须失效，不能只认"有没有装"。
         // §425 柱水汽 C1 光滑：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.CW_SMOOTH) {
+        if (PrecipField.CW_SMOOTH) {
             h = h * 31 + 0x7A114L;
         }
         // §427 涡动扩散的变量/梯度构造（用户裁决 A）：按条件折入 ⇒ 默认（0/0）指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_VAR != 0
-                || com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GRAD != 0
-                || com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GATE_MODE != 0) {
+        if (PrecipField.EDDY_VAR != 0
+                || PrecipField.EDDY_GRAD != 0
+                || PrecipField.EDDY_GATE_MODE != 0) {
             h = h * 31 + 0x7A115L;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_VAR;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GRAD;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_GATE_MODE;
+            h = h * 31 + PrecipField.EDDY_VAR;
+            h = h * 31 + PrecipField.EDDY_GRAD;
+            h = h * 31 + PrecipField.EDDY_GATE_MODE;
         }
         // §7220 涡动闭合的【形式】（0 = 现状 / 1 = 闭式）。改了结果 ⇒ 必须进指纹（D58）。
         // ★ 与上面那块同一个模式：按条件折入 ⇒ 默认 0 时指纹与历史【完全一致】。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_CLOSURE_FORM != 0) {
+        if (PrecipField.EDDY_CLOSURE_FORM != 0) {
             h = h * 31 + 0x7A136L;
         }
         // §496 BLQ 对流判据：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_GATE) {
+        if (PrecipField.BLQ_GATE) {
             h = h * 31 + 0x7A125L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_SMOOTH_K);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.BLQ_SMOOTH_K);
         }
         // ★ §577 θ_e 阈值判据（Folkins & Braun 2003）：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         //   ⚠ 必须折入：它改变降水 ⇒ 不折入会让气候瓦片命中旧缓存（本项目已有的缺陷类）。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_THETA_E) {
+        if (PrecipField.BLQ_THETA_E) {
             h = h * 31 + 0x7A130L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BLQ_SMOOTH_K);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.BLQ_SMOOTH_K);
         }
         // §480 wEff 改由 F_net/M 驱动：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.WZM_FROM_QNET) {
+        if (PrecipField.WZM_FROM_QNET) {
             h = h * 31 + 0x7A124L;
         }
         // §7303 散度的【外层】差分步长（0 = 用 gradStep ⇒ 关闭时指纹与历史完全一致，D58）。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.DIV_OUTER_STEP != 0) {
+        if (PrecipField.DIV_OUTER_STEP != 0) {
             h = h * 31 + 0x7A13BL;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.DIV_OUTER_STEP;
+            h = h * 31 + PrecipField.DIV_OUTER_STEP;
         }
         // §7294 M 改由真垂直积分（Neelin & Zeng 2000）：按条件折入 ⇒ 关闭时指纹与历史完全一致（D58）。
         //   数值离散参数也折入：它们会改变结果，不折入会让气候瓦片命中旧缓存。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_FROM_VINT) {
+        if (PrecipField.M_FROM_VINT) {
             h = h * 31 + 0x7A13AL;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_STEPS;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_DT);
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_ADI_STEPS;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.M_VINT_A1STEPS;
+            h = h * 31 + PrecipField.M_VINT_STEPS;
+            h = h * 31 + Double.doubleToLongBits(PrecipField.M_VINT_DT);
+            h = h * 31 + PrecipField.M_VINT_ADI_STEPS;
+            h = h * 31 + PrecipField.M_VINT_A1STEPS;
         }
         // §473 平流口径：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_ADVECT_BUDGET) {
+        if (PrecipField.Q_ADVECT_BUDGET) {
             h = h * 31 + 0x7A123L;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.ADVB_MAX_EVAL;
+            h = h * 31 + PrecipField.ADVB_MAX_EVAL;
         }
         // §472 边界层水汽收支口径：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_FROM_BLBUDGET) {
+        if (PrecipField.Q_FROM_BLBUDGET) {
             h = h * 31 + 0x7A122L;
             // S628: the entrainment branch changes q => must invalidate climate tiles.
-            if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_BLBUDGET_SUB_ONLY) {
+            if (PrecipField.Q_BLBUDGET_SUB_ONLY) {
                 h = h * 31 + 0x7A137L;
             }
             // S630: the downdraft return fraction changes q => must invalidate climate tiles.
             h = h * 31 + 0x7A138L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.BETA_DOWNDRAFT);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.BETA_DOWNDRAFT);
         }
         // §459 植被/干旱度状态：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.ENABLED) {
+        if (Vegetation.ENABLED) {
             h = h * 31 + 0x7A121L;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.configStamp();
+            h = h * 31 + Vegetation.configStamp();
         }
         // §455 柱净辐射改用 ASR-OLR：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.QRAD_ASR_MINUS_OLR) {
+        if (StationaryWave.QRAD_ASR_MINUS_OLR) {
             h = h * 31 + 0x7A120L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.OLR_K);
+            h = h * 31 + Double.doubleToLongBits(StationaryWave.OLR_K);
         }
         // §451 pzRef 进 v 的替代（§422 选项 D）：非 0 时折入 ⇒ 默认 0 时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PZREF_VZ_MODE != 0) {
+        if (Atmosphere.PZREF_VZ_MODE != 0) {
             h = h * 31 + 0x7A11FL;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PZREF_VZ_MODE;
+            h = h * 31 + Atmosphere.PZREF_VZ_MODE;
         }
         // §447 逐相位海洋 SST：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         // 为什么必须有这一位：打开后解出来的 SST' 真的变了，而 OceanField 自己的
         // configStamp 只清它自己的 ANOM/SPAN/BAND 缓存，**清不掉 SimClimate 的瓦片**
         // ⇒ 瓦片会拿旧 SST' 继续算（这正是 D58 抓到的那个缺陷的形状）。
-        if (com.EyeOfHarmonyBuffer.sim.ocean.OceanField.PHASE_SEASONAL) {
+        if (OceanField.PHASE_SEASONAL) {
             h = h * 31 + 0x7A11DL;
         }
         // §444 水汽源：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.Q_FROM_SOURCE) {
+        if (PrecipField.Q_FROM_SOURCE) {
             h = h * 31 + 0x7A11CL;
             // §448 水汽源温度的季节项：非 false 时折入 ⇒ 关闭时指纹与 §444 完全一致。
-            if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.SOURCE_SEASONAL_T) {
+            if (PrecipField.SOURCE_SEASONAL_T) {
                 h = h * 31 + 0x7A11EL;
             }
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.SOURCE_FETCH_L);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.SOURCE_FETCH_L);
         }
         // §443 柱长波吸收的水汽系数：非 0 时折入 ⇒ 默认 0 时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.WVLW_K != 0.0) {
+        if (StationaryWave.WVLW_K != 0.0) {
             h = h * 31 + 0x7A11BL;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.WVLW_K);
+            h = h * 31 + Double.doubleToLongBits(StationaryWave.WVLW_K);
         }
         // §441 陆地反照率偏移：非 0 时折入 ⇒ 默认 0 时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Radiation.ALB_LAND_ADD != 0.0) {
+        if (Radiation.ALB_LAND_ADD != 0.0) {
             h = h * 31 + 0x7A11AL;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.Radiation.ALB_LAND_ADD);
+            h = h * 31 + Double.doubleToLongBits(Radiation.ALB_LAND_ADD);
         }
         // §440 表面阻力（Monteith）：非 0 时折入 ⇒ 默认 0 时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.RS_SURF != 0.0) {
+        if (SoilMoisture.RS_SURF != 0.0) {
             h = h * 31 + 0x7A119L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.RS_SURF);
+            h = h * 31 + Double.doubleToLongBits(SoilMoisture.RS_SURF);
         }
         // §436 纬向平均上升支是否改用观测月表：按条件折入（默认 true ⇒ 折入一次，行为已改变）。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.WZM_FROM_TABLE) {
+        if (PrecipField.WZM_FROM_TABLE) {
             h = h * 31 + 0x7A118L;
         }
         // §433 Eady 增长率的温度梯度是否改用 850 hPa：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_SIGMA_T850) {
+        if (PrecipField.EDDY_SIGMA_T850) {
             h = h * 31 + 0x7A117L;
         }
         // §432 纬向平均温度的经向梯度是否走 PCHIP 解析导数：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_T_SMOOTH) {
+        if (PrecipField.EDDY_T_SMOOTH) {
             h = h * 31 + 0x7A116L;
         }
         // §422 p_ref 经向斜率是否进 v：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (!com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PZREF_IN_V) {
+        if (!Atmosphere.PZREF_IN_V) {
             h = h * 31 + 0x7A113L;
         }
         // §409 地表干暖项：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PA_DRY_WARMTH) {
+        if (Atmosphere.PA_DRY_WARMTH) {
             h = h * 31 + 0x7A112L;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.SOIL_GRAD_STEP;
+            h = h * 31 + Atmosphere.SOIL_GRAD_STEP;
         }
         // §407 陆海热容对比：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.SEASON_FROM_HEAT_CAPACITY) {
+        if (Atmosphere.SEASON_FROM_HEAT_CAPACITY) {
             h = h * 31 + 0x7A111L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.C_SEA);
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.C_LAND);
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.BETA_LAND_REF);
+            h = h * 31 + Double.doubleToLongBits(Atmosphere.C_SEA);
+            h = h * 31 + Double.doubleToLongBits(Atmosphere.C_LAND);
+            h = h * 31 + Double.doubleToLongBits(Atmosphere.BETA_LAND_REF);
         }
         // §405 环流侧：cellPressure 的位相是否由陆海温差驱动。按条件折入。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.CELL_PHASE_FROM_TEMP) {
+        if (Atmosphere.CELL_PHASE_FROM_TEMP) {
             h = h * 31 + 0x7A110L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.CELL_MIG_SENS);
+            h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_MIG_SENS);
         }
         // §405 S3 土壤湿度桶：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.ENABLED) {
+        if (SoilMoisture.ENABLED) {
             h = h * 31 + 0x7A10FL;
-            h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.NTHETA;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.W_FC);
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.RH_DRY);
+            h = h * 31 + SoilMoisture.NTHETA;
+            h = h * 31 + Double.doubleToLongBits(SoilMoisture.W_FC);
+            h = h * 31 + Double.doubleToLongBits(SoilMoisture.RH_DRY);
         }
         // ★★★★★★★ 2026-10-08：原 P597「生产纯度」钩子位【已作废并删除】。
         //   原因：海陆层整支换成 TalosLandField（经 NoiseContinentGrid + PlateField），
@@ -658,7 +677,7 @@ public final class SimClimate {
         //         H_GAIN_LAND / H_GAIN_SEA / KAPPA_H
         //   ⟹ 改动其中任何一个，瓦片缓存都会正确失效。
         h = h * 31 + 0x7A10EL;
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.litho.PlateField.configStamp();
+        h = h * 31 + PlateField.configStamp();
         // ★★★★★★★ §527 补漏（审计面 3 的 B4）：以下 10 个开关【会改变结果】却【从未进指纹】
         //   ⇒ 翻它们瓦片缓存不失效、继续吃旧结果 ⇒ 【静默给错结果】。
         //   项目自己的纪律（Atmosphere.java:230）：「改了结果就必须让瓦片失效（D58 的教训）」。
@@ -669,34 +688,34 @@ public final class SimClimate {
         //     · 默认 false 的开关用 if (FLAG)      ⇒ 关闭时指纹与历史完全一致
         //     · 默认 true  的开关用 if (!FLAG)     ⇒ 照 PZREF_IN_V 的先例，同样保住当前指纹
         //   ⇒ 本次补漏【不改变当前指纹】，只让「翻开关」这件事被指纹看见。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PA_NO_CELL) {
+        if (Atmosphere.PA_NO_CELL) {
             h = h * 31 + 0x7A126L;
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.PA_NO_THERMAL) {
+        if (Atmosphere.PA_NO_THERMAL) {
             h = h * 31 + 0x7A127L;
         }
-        if (!com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.KEEP_EDDY_OUTSIDE) {
+        if (!HadleyCell.KEEP_EDDY_OUTSIDE) {
             h = h * 31 + 0x7A128L;
         }
-        if (!com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.WZM_ITCZ_SHIFT) {
+        if (!PrecipField.WZM_ITCZ_SHIFT) {
             h = h * 31 + 0x7A129L;
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.Q_NET_HEATING) {
+        if (StationaryWave.Q_NET_HEATING) {
             h = h * 31 + 0x7A12AL;
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.ZERO_F) {
+        if (StationaryWave.ZERO_F) {
             h = h * 31 + 0x7A12BL;
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.CLOSED_LOOP) {
+        if (StationaryWave.CLOSED_LOOP) {
             h = h * 31 + 0x7A12CL;
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.VerticalColumn.FIXED_TS) {
+        if (VerticalColumn.FIXED_TS) {
             h = h * 31 + 0x7A12DL;
         }
-        if (com.EyeOfHarmonyBuffer.sim.ocean.SurfaceLayer.EKMAN_ENABLED) {
+        if (SurfaceLayer.EKMAN_ENABLED) {
             h = h * 31 + 0x7A12EL;
         }
-        if (!com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP) {
+        if (!SimTerrain.SNOW_FROM_TEMP) {
             h = h * 31 + 0x7A12FL;
         }
         // ★★★★★★★ §589 复查补漏：以下 2 个开关【会改变结果】却【不在指纹里】——
@@ -705,26 +724,26 @@ public final class SimClimate {
         //   · COAST_WIND_ON：Atmosphere:265 会给风场叠加沿岸风项 ⇒ 改风应力 ⇒ 改海洋。
         //   折入约定沿用 §527（:521-524）：默认 false ⇒ 用 if (FLAG) ⇒ 关闭时指纹与历史完全一致。
         //   ⇒ 本次补漏【不改变当前指纹】，只让「翻这两个开关」这件事被指纹看见。
-        if (com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.ENABLED) {
+        if (HadleyCell.ENABLED) {
             h = h * 31 + 0x7A131L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.H_TROP);
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.T0);
+            h = h * 31 + Double.doubleToLongBits(HadleyCell.H_TROP);
+            h = h * 31 + Double.doubleToLongBits(HadleyCell.T0);
         }
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.COAST_WIND_ON) {
+        if (Atmosphere.COAST_WIND_ON) {
             h = h * 31 + 0x7A132L;
         }
         // S619 (A1 scan, third configStamp gap): EDDY_DPHI_DEG_V changes the differencing step used
         // by the whole eddy chain (X-prime and MFC), so it MUST invalidate climate tiles.
         // Conditional fold => the default -1 keeps the fingerprint bit-identical to history.
-        if (com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V > 0.0) {
+        if (PrecipField.EDDY_DPHI_DEG_V > 0.0) {
             h = h * 31 + 0x7A133L;
-            h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.EDDY_DPHI_DEG_V);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_DPHI_DEG_V);
         }
         // S620 (P944 attribution): ZMSLK_LEGACY swaps zonalMeanSeaLevelK between the observed
         // sea-level annual table and the old reconstruction. It feeds airT = (tSea - tzm)/AIRT_SCALE
         // (SimClimate:634/:775) AND the OceanField thermal-wind gradient, so it MUST invalidate
         // climate tiles. Conditional fold => the default (false) keeps production bit-identical.
-        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.ZMSLK_LEGACY) {
+        if (Atmosphere.ZMSLK_LEGACY) {
             h = h * 31 + 0x7A134L;
         }
         // ★★★★★★★ 2026-10-11（气候层适配 · D58 准入判据补漏）：**岸距口径的两个常量**。
@@ -743,29 +762,29 @@ public final class SimClimate {
         //
         //   ① 群系判据（V2BiomeSelect）—— 直接决定群系权重
         h = h * 31 + 0x7A138L;
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.TEMP_SPAN);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.MOIST_SPAN);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.ALPINE_TEMP_HI);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.ALPINE_TEMP_LO);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.BASIN_MOIST_LO);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect.BASIN_MOIST_HI);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.TEMP_SPAN);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.MOIST_SPAN);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.ALPINE_TEMP_HI);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.ALPINE_TEMP_LO);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.BASIN_MOIST_LO);
+        h = h * 31 + Double.doubleToLongBits(V2BiomeSelect.BASIN_MOIST_HI);
         //   ② 纬向表口径（ZonalTables）—— ASEA_FIXED 决定 A_SEA 的来源；UZM_FROM_12MON 决定 U_zm 的来源
-        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.ASEA_FIXED ? 1 : 0);
-        h = h * 31 + (com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables.UZM_FROM_12MON ? 1 : 0);
+        h = h * 31 + (ZonalTables.ASEA_FIXED ? 1 : 0);
+        h = h * 31 + (ZonalTables.UZM_FROM_12MON ? 1 : 0);
         //   ③ 群系气候坐标的纬度权重（ClimateCoords）
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.ClimateCoords.W_LAT);
+        h = h * 31 + Double.doubleToLongBits(ClimateCoords.W_LAT);
         //   ④ 细节噪声（DetailNoise）—— 被 SimTerrain 的侵蚀链直接消费
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise.STEP_SCALE);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise.RIDGE_SIGN_EPS);
+        h = h * 31 + Double.doubleToLongBits(DetailNoise.STEP_SCALE);
+        h = h * 31 + Double.doubleToLongBits(DetailNoise.RIDGE_SIGN_EPS);
         //   ⑤ 土壤桶自旋（SoilMoisture）—— ★ 它们【确实】影响解出来的 W：
         //      javadoc 自己说「实测（P905）：亚洲在 MAX_YEARS=60 **撞顶**」
         //      ⟹ 存在【未收敛】的情况 ⟹ 迭代上限与初值都会改变最终 W ✗
         h = h * 31 + 0x7A139L;
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.NTHETA;
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.MAX_YEARS;
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.SPIN_TOL_REL);
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.W_INIT_FRAC);
+        h = h * 31 + SoilMoisture.NTHETA;
+        h = h * 31 + SoilMoisture.MAX_YEARS;
+        h = h * 31 + Double.doubleToLongBits(SoilMoisture.SPIN_TOL);
+        h = h * 31 + Double.doubleToLongBits(SoilMoisture.SPIN_TOL_REL);
+        h = h * 31 + Double.doubleToLongBits(SoilMoisture.W_INIT_FRAC);
         //   ⑥ 水系求解（WaterField）—— 只折叠【影响 isWater 的量】。
         //      ⚠ PARALLELISM 与 CACHE_TILES **不加**（并行度与缓存大小只影响速度）。
         //
@@ -787,9 +806,9 @@ public final class SimClimate {
         //   ⑦ 群系 LUT 的平滑与抖动（V2BiomeField）—— 直接改 LUT 的值；
         //      ⚠ SOLVE_HARD_CAP / SOLVE_WARN_EVERY **不加**（求解护栏与告警，不改结果）。
         h = h * 31 + 0x7A13BL;
-        h = h * 31 + com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.BLUR_R;
-        h = h * 31 + com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.BLUR_PASSES;
-        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField.JITTER_AMP);
+        h = h * 31 + V2BiomeField.BLUR_R;
+        h = h * 31 + V2BiomeField.BLUR_PASSES;
+        h = h * 31 + Double.doubleToLongBits(V2BiomeField.JITTER_AMP);
         return h;
     }
 
@@ -1153,7 +1172,7 @@ public final class SimClimate {
         // ★ 2026-10-11（待裁决/304）：水面年蒸发。这里的土壤桶【刚刚】被上面的 mmPerDay 自旋过
         //   ⟹ lakeEvapMmPerDay 命中 memo、零额外自旋。湖解那边只做双线性插值。
         try {
-            double ev = com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture
+            double ev = SoilMoisture
                     .lakeEvapMmPerDay(x, z, seed, pc, GRAD_STEP) * 365.25;
             f.eLake[k] = (ev > 0.0) ? ev : 0.0;
         } catch (Throwable ex) { f.eLake[k] = 0.0; }
@@ -1277,7 +1296,14 @@ public final class SimClimate {
      * <h3>为什么需要它</h3>
      * <p>{@code WaterField.solveTile} 在 48x48 = <b>2304 个格</b>的循环里逐格调
      * {@link #annualPrecipMmPerYear}。而那 48 格在 10 km 格距下只跨 <b>480 km</b>，
-     * 对照 {@code TILE_X = 2_400_000}（2400 km）⟹ <b>整个窗口只落在 1~4 块气候瓦片里</b>。
+     * 对照本类的 {@code TILE_X = 100_000}（= <b>100 km</b> ✓）
+     * ⟹ <b>整个窗口落在约 5 块气候瓦片里</b>（480/100 = 4.8 ✓）。
+     * <p>⚠ <b>2026-10-14 审查更正（②类：当前状态断言）</b>：原文写
+     * 「{@code TILE_X = 2_400_000}（2400 km）⟹ 整个窗口只落在 1~4 块」✗ ——
+     * 那个 2,400,000 是<b>世界缩放 40 倍之前</b>的值 ✗（2,400,000 ÷ 40 ≠ 100,000，
+     * 见 {@code WaveField}/{@code TILE_X} 的当前声明 ✓）。
+     * <b>结论也要改</b>：不是"1~4 块"，而是<b>约 5 块</b> ✓ ——
+     * 但这<b>不影响本优化的正当性</b> ✓（2304 次逐格查表仍然绝大部分冗余 ✓）。
      * <p>逐格调 {@code annualPrecipMmPerYear} 每次都做 {@code Math.floorDiv} x2 +
      * {@code ConcurrentHashMap} 查表 + 完整的坐标换算，**这 2304 次查表全是冗余的**。
      *

@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.space.talos;
 
 import com.EyeOfHarmonyBuffer.common.GTCMItemList;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.block.Block;
@@ -97,7 +98,7 @@ public class WorldGenYuanShiDoubleConeCluster {
         new ConcurrentHashMap<Long, List<Cone>>();
 
     public void generate(World world, Random rand, int chunkX, int chunkZ) {
-        int seed = com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.of(world);   // ★ 统一入口
+        int seed = TalosSeedMc.of(world);   // ★ 统一入口
 
         for (int dz = -OWNER_SEARCH_RADIUS_CHUNKS;
              dz <= OWNER_SEARCH_RADIUS_CHUNKS; dz++) {
@@ -169,7 +170,7 @@ public class WorldGenYuanShiDoubleConeCluster {
             // **必须走 V2 高度链**：原先读旧轨 TalosTerrainHeights —— 那是另一套地形，
             // 与世界的列顶可以差上百 blocks，于是"平地才放锥簇"的判据会落在错误的位置上。
             OrographyField.OroSample o = OrographyField.sample(x, z, seed);
-            return V2TerrainGen.composeColumn(x, z, seed, LandformField.SEA_LEVEL, o,
+            return V2TerrainGen.composeColumn(x, z, seed, LandformField.SEA_LEVEL_BLK, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             return -1; // 极端情况（模板未加载等）：放弃该落点

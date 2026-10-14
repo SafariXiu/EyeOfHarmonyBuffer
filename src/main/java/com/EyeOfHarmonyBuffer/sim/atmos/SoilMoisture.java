@@ -53,10 +53,16 @@ public final class SoilMoisture {
     private SoilMoisture() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
      * **本份的含义是：SoilMoisture（土壤湿度桶 / S3）。** 引用时务必写全类名（如 `SoilMoisture.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     *
+     * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
+     * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
+     * true 5 个（ClimlabEBM / SoilMoisture / OceanField / SimTerrain / TalosLandErosion）——
+     * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
+     * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
+     * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
     // ★★★ §574：默认改为 true（用户裁决）。
     //   文献锚：Manabe 1969 的桶（W_FC=15cm, W_K=0.75·W_FC）与 Isca GMD 2018 §5.4 逐字

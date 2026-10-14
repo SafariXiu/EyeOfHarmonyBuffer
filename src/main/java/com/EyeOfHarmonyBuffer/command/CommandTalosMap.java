@@ -23,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 
 /**
  * /talosmap - V2 海陆/环流/气团/洋流出图（docs/TerrainV2/design.md 十：测试方案）。
@@ -94,7 +95,7 @@ public class CommandTalosMap extends CommandBase {
         }
         String layer = args[0].toLowerCase();
         World world = player.worldObj;
-        int worldSeedInt = TalosSeed.of(world);
+        int worldSeedInt = TalosSeedMc.of(world);
 
         int cx = (int) Math.floor(player.posX);
         int cz = (int) Math.floor(player.posZ);
@@ -287,7 +288,7 @@ public class CommandTalosMap extends CommandBase {
                         : mix(rgb(42, 85, 128), rgb(10, 22, 48), clamp((d - 5) / 36.0, 0, 1));
                 }
                 V2TerrainGen.Column col = V2TerrainGen.composeColumn(
-                    wx, wz, seed, LandformField.SEA_LEVEL, o,
+                    wx, wz, seed, LandformField.SEA_LEVEL_BLK, o,
                     V2TerrainGen.MC_WORLD_HEIGHT - 2);
                 // 传 hCapped（连续、已软封顶）而不是 col.h：heightColor 的雪线判定
                 // 在生产里用的也是未取整的连续高度，这样两边的雪线边界逐列一致。

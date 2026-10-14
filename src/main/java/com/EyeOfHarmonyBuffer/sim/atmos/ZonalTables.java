@@ -403,12 +403,69 @@ public final class ZonalTables {
      */
     public static boolean UZM_FROM_12MON = true;
 
-    /** 12 个月拟合的 u_zm。相位与旧表一致：theta=0 是北半球夏至。 */
+    /**
+     * ★★★★ <b>2026-10-14 新增：二次谐波 A2 的【双半球表】</b>（u_zm 的 cos(2θ) 系数，m/s ✓）。
+     *
+     * <p><b>为什么必须两张表（不能用 hemi 一个符号 ✗）</b>：
+     * 实测（375 独立计算 + 388 生成器，两套算法互证 ✓）证明 **A2 不是半球反相** ✗ ——
+     * <pre>
+     *   50-60 度：北 −0.30 ｜ 南 **−0.85** ✗
+     *   60-70 度：北 −0.26 ｜ 南 **−1.07** ✗
+     *   40-50 度：北 +0.27 ｜ 南 **+0.15** ✓（这里反而接近 ✓）
+     * </pre>
+     * ⟹ 沿用 {@code hemi} 会得到错误结果 ✗（这正是本仓 :387 那句
+     * 「半球反相仍用 hemi（真实南北不对称已记账、未实现）」所指的那笔账 ✓）。
+     *
+     * <p><b>来源与算法 ✓</b>：{@code build/lat_probe/gen_uzm_a2.py}（本次新增 ✓）——
+     * 在当年的 {@code gen_uzm.py} 基础上：① 对齐 {@code day0=171}（与 :570 的相位约定一致 ✓）
+     * ② 扩展到双半球 ✓；数据 = {@code refs/uwnd.mon.ltm.1991-2020.nc}（850 hPa ✓）。
+     * <p>★ 校验（388 ✓）：本生成器算出的 A0/A1 与代码现有表**几乎逐字相同** ✓
+     * （0-10 度：A0 −3.06 vs 表 −3.06 ✓；A1 1.61 vs 表 1.64 ✓）⟹ 算法与当年落表时一致 ✓。
+     *
+     * <p>⚠ 量级：|A2| = 0.01 ~ 1.07（≈ A1 的 20~40% ✓）。
+     */
+    public static final double[] U_2ND_NORTH = {
+        -0.30, -0.51, -0.01, 0.39, 0.27, -0.30, -0.26, -0.05, -0.01, 0.00
+    };
+    /** 同上的**南半球表**（0..90 对应 −0..−90 ✓）。⚠ 与北表**不成反相** ✗（见上 ✓）。 */
+    public static final double[] U_2ND_SOUTH = {
+        -0.11, 0.06, 0.22, 0.47, 0.15, -0.85, -1.07, -0.06, 0.28, 0.00
+    };
+
+    /**
+     * ★★★ A2（二次谐波）是否接入 u_zm。
+     *
+     * <p>⚠⚠ <b>2026-10-14 实测：<code>true</code> 会打翻 P452 雨影门</b> ✗ ⟹ <b>默认 false</b> ✓
+     * <pre>
+     *   接线（表 + 本函数里的 A2 项）**已完成** ✓，但打开后完整验收是
+     *   **pass=7 / fail=1** ✗ —— **P452 FAIL** ✗（与 κ=0.183 那次**同一个门** ✓）。
+     *   ⟹ 处置：把本开关置 **false** ✓（逐位回到 A0+A1 —— 验收恢复 pass=8 ✓），
+     *     **但表与接线全部保留** ✓ ⟹ 将来只需把本行改成 true 即可启用 ✓（一行 ✓）。
+     * </pre>
+     *
+     * <p>★★ <b>为什么打翻：这与 386/387 是同一个根因</b> ✗ ——
+     * P452 雨影门要求「否证 B4 >= 5」✓，而**雨影在现状下本来就接近 5** ✗
+     * （386 实测：κ 只降 0.145 就把 B4 推到 **6.757** ✗）。
+     * A2 改的是风场 ⟹ 水汽输送 ⟹ 雨影 ✗ ⟹ 同样把它推过线 ✓。
+     * ⟹ ★★ <b>先查清「雨影为什么这么强」（待裁决/387 的记账 ✓），再回来打开本开关</b> ✓。
+     */
+    public static boolean U2ND_ON = false;
+
+    /**
+     * 12 个月拟合的 u_zm。相位与旧表一致：theta=0 是北半球夏至。
+     *
+     * <p>★ 2026-10-14：加上**二次谐波 A2** ✓ ——
+     * {@code u(θ) = A0 + A1·cos(θ)·hemi + A2·cos(2θ)} ✓
+     * ⚠ A2 **不带 hemi** ✗（它不是反相 ✓，按半球取表 ✓）。
+     */
     public static double uZm12(double latDeg, double theta) {
         double ann = interp(U_ANN_12, latDeg);
         double dif = interp(U_DIF_12, latDeg);
         double hemi = latDeg >= 0.0 ? 1.0 : -1.0;
-        return ann + dif * Math.cos(theta) * hemi;
+        double a2 = interp(latDeg >= 0.0 ? U_2ND_NORTH : U_2ND_SOUTH, latDeg);
+        double v = ann + dif * Math.cos(theta) * hemi;
+        if (U2ND_ON) v += a2 * Math.cos(2.0 * theta);
+        return v;
     }
     public static double wZm(double latDeg) { return interp(W_ZM, latDeg); }
 

@@ -65,7 +65,15 @@ public final class ClimlabEBM {
     public static boolean ENABLED = true;    // ★ §7347 完整接入：§7346 已过 22 支验收（门中性）
 
     // ==================== climlab 常数（逐字，见类头出处） ====================
-    /** 太阳常数（W/m2）—— climlab const.S0，insolation.py L251。 */
+    /**
+     * 太阳常数（W/m2）—— climlab const.S0，insolation.py L251。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：与本仓自己的
+     * {@link Radiation#S0}（1361.0）<b>值不同</b></b> ✗ —— 本值 1365.2 是
+     * <b>逐字取自 climlab</b> ✓（EBM 的稳态解要求与 climlab 同参数 ✓），
+     * 而 1361.0 是现代 TSI 标准 ✓。
+     * ⟹ ★ <b>不要</b>把本值改成 1361.0 ✗（会改 EBM 的稳态解）；引用时写全类名 ✓。
+     */
     public static final double S0 = 1365.2;
     /** 日射的 P2 系数 —— climlab P2Insolation，insolation.py L251。 */
     public static final double S2 = -0.48;

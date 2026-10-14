@@ -3,6 +3,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.sim.ocean.OceanWiring;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import micdoodle8.mods.galacticraft.api.prefab.world.gen.WorldChunkManagerSpace;
 import net.minecraft.world.World;
@@ -31,7 +32,7 @@ public class WorldChunkManagerTalos2 extends WorldChunkManagerSpace {
     public WorldChunkManagerTalos2(World world) {
         super();
         this.world = world;
-        this.worldSeedInt = TalosSeed.of(world);   // 世界种子派生唯一入口
+        this.worldSeedInt = TalosSeedMc.of(world);   // 世界种子派生唯一入口
 
         // ── 第三步接线（§162）：把 OceanField 装成 Atmosphere.SST_PROVIDER ──
         // 这里是**唯一**一处知道 worldSeedInt 的世界级入口。装在这里 ⇒

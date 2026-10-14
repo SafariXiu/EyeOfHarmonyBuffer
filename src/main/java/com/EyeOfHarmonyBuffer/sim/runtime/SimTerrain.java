@@ -9,6 +9,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
 import com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 
 /**
  * **新模拟器 → 世界的运行时桥**（纵向切片第 1 步：地形）。
@@ -19,13 +22,23 @@ import com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter;
  * 旧路径在 {@link #ENABLED} 为 false 时**一行都不变**。
  *
  * <h3>世界契约的换代（必须记账）</h3>
+ *
+ * <p>⚠⚠ <b>2026-10-14 审查更正（阶段 4 · 过期数字猎捕）：下表是【两代之前】的记录</b> ✗ ——
+ * 它停在"10,000 km 那代"，而世界后来<b>又整体缩放了 40 倍</b>（见 {@code WorldContract.MAX_D}
+ * 的「原 10,000,000 ÷ 40」✓）。<b>当前真值</b>（以 {@code WorldContract} 为准 ✓）：
  * <pre>
- *              旧（ClimateLatitudes）        新（WorldContract）
- *   Z 周期      LAT_CYCLE = 1,000,000          Z_CYCLE = 20,000,000
- *   极到赤道    MAX_D     =   500,000          MAX_D   = 10,000,000
+ *   MAX_D   = **250,000**（= 250 km 极到赤道）
+ *   Z_CYCLE = 4 * MAX_D = **1,000,000**
  * </pre>
- * ⇒ 接线意味着**纬度方向放大 20 倍**：旧世界 500 km 从赤道走到极点，新世界是 10,000 km。
- * 这是"重写成地球尺度"的直接后果，不是接线引入的。
+ * （下表里的 20,000,000 / 10,000,000 都是【缩放前】的值 ✗；1,000,000 那个则是更早的一代 ✓。）
+ *
+ * <pre>
+ *      （历史）     旧（ClimateLatitudes）        那一次的"新"（WorldContract）
+ *   Z 周期      LAT_CYCLE = 1,000,000          Z_CYCLE = 20,000,000   ✗ 已过期
+ *   极到赤道    MAX_D     =   500,000          MAX_D   = 10,000,000   ✗ 已过期
+ * </pre>
+ * ⇒ 那一次接线意味着**纬度方向放大 20 倍**：旧世界 500 km 从赤道走到极点，当时的新世界是 10,000 km。
+ * 这是"重写成地球尺度"的直接后果，不是接线引入的。（★ 后来世界又缩回 250 km 极到赤道 ✓。）
  *
  * <h3>垂直映射（smooth、单调、饱和，零阈值）</h3>
  * <pre>
@@ -66,12 +79,19 @@ public final class SimTerrain {
 
     private SimTerrain() {}
 
-    /** 总开关。false ⇒ {@code composeColumn} 一行都不走这里，与接线前逐位相同。 */
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
+     * 总开关。false ⇒ {@code composeColumn} 一行都不走这里，与接线前逐位相同。
+     *
+     * <p>⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
      * **本份的含义是：SimTerrain（地形/运行时）。** 引用时务必写全类名（如 `SimTerrain.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     *
+     * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
+     * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
+     * true 5 个（ClimlabEBM / SoilMoisture / OceanField / SimTerrain / TalosLandErosion）——
+     * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
+     * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
+     * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
     public static boolean ENABLED = true;
 
@@ -186,7 +206,9 @@ public final class SimTerrain {
      * <p>海平面 64、软上限 SOFT_CAP_H=252 ⟹ 基底约 64~212，造山在其上叠加。
      * <p>标定入口：见 待裁决/085。
      */
-    // ★ 2026-10-08 标定：110 -> 130（配合 CF_TERRAIN_GAIN=0.35 与 OROG_BELT_W=0.55，
+    // ★ 2026-10-08 标定：110 -> 130（**当时**配合 CF_TERRAIN_GAIN=0.35 与 OROG_BELT_W=0.55，
+    //   ⚠ 2026-10-14 审查（约定 4）：CF_TERRAIN_GAIN 的**当前值是 1.0**（不是 0.35 ✗）⟹
+    //     本句是【历史标定记录】✓，不要当作现行配套关系 ✗。
     //   让峰顶落在 240 附近而不是撞 maxY=254 上限）。
     public static double OROG_UPLIFT_BLK = 130.0;
     /**
@@ -289,7 +311,16 @@ public final class SimTerrain {
     public static double FADE_PEAK_BLK = 1.306 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
     /** **海洋垂直增益（blocks/m）**：−5,377 m 的深海平原 -> 约 56 blocks。 */
     public static double OCEAN_GAIN = 0.0105;
-    /** 深海平原的块级起伏（blocks）—— 与旧实现 SEABED_RELIEF 同量级。 */
+    /**
+     * 深海平原的块级起伏（blocks）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：与
+     * {@link com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen#SEABED_RELIEF}
+     * <b>是同一物理量的两份独立定义</b></b> ✗（两处都是 3.0 ✓，但一个是可变、一个是 final ✗）。
+     * 两处负责的是**不同阶段**的海床起伏（本处 = SimTerrain 的合成 ✓；
+     * V2TerrainGen = 海岸剖面里的中频起伏 ✓）⟹ 值相同**是刻意的**✓，但**不是强制**✗。
+     * ⟹ ★ 改动其一时**必须同步另一处** ✓；引用时写全类名 ✓。
+     */
     public static double SEABED_RELIEF = 3.0;
     /** 块级细节振幅（blocks）与波长（m）—— 让山有纹理，不是光滑高地。 */
     public static double DETAIL_AMP = 4.0;
@@ -356,6 +387,16 @@ public final class SimTerrain {
      * `T_annual` 取自 {@link SimClimate#surfaceTempK}（含本列自己的海拔直减）；
      * `A` 用 {@link ZonalTables#aLand}/{@link ZonalTables#aSea} 的表，**不需要任何额外气候求值**。
      * `kappa` 从 {@link SimClimate#coords} 拿（同一个缓存、命中级代价）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（#19）：本段描述的【主体已经不存在了】</b> ✗ ——
+     * 它是"该点的**最暖月**地表温度（K）"的公式说明，但**那个函数已不在本类** ⟹
+     * 本段既无主体、内容也静默失效 ✗（它上面紧邻的另一份 javadoc 才是生效的 ✓）。
+     * 保留它只为史料（与 {@link SimClimate#warmestMonthTempK} 那条链有关 ✓）。
+     *
+     * <p><b>（历史）</b>该点的最暖月地表温度（K）：
+     * <pre>
+     *   T_warm = T_annual + A(phi, kappa)      （季节项 A*cos(theta - psi) 的极大值）
+     * </pre>
      */
     /** 每线程一份的 scratch：**不能**用可变静态（跨线程共享），见 V2TerrainGen 里那条同族注记。 */
     private static final ThreadLocal<double[]> KAPPA3 = ThreadLocal.withInitial(() -> new double[3]);
@@ -548,7 +589,7 @@ public final class SimTerrain {
      * （用户实测发现，P1404 定位）。
      */
     public static double extraAmpFor(int x, int z, int worldSeedInt) {
-        double a = com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP;
+        double a = PlateField.ERO_EXTRA_AMP;
         if (a <= 0.0) return 0.0;
         if (!ERO_EXTRA_SLOPE_MOD) return a;
         double g = LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
@@ -644,8 +685,8 @@ public final class SimTerrain {
         //   实测：4000 列中 148 列不一致（3.7%），并打红 7 个验收门（P294/P442/P477/P479/P991）。
         //   P1488 实证：(-4444495,2222215) elev(zero)=-61.4 而 elev(explicit)=+469.4（符号相反）。
         //   修法：让生产与 level() 的标定口径一致 ⟹ elevation>=0 与 isLand 重新逐位等价。
-        double extraAmp = com.EyeOfHarmonyBuffer.sim.litho.PlateField.ERO_EXTRA_AMP;
-        double elev = com.EyeOfHarmonyBuffer.sim.litho.PlateField.elevation(x, z, seed, extraAmp);
+        double extraAmp = PlateField.ERO_EXTRA_AMP;
+        double elev = PlateField.elevation(x, z, seed, extraAmp);
 
         // 四个字段一起写：Column 是复用容器，**每个字段都必须被覆盖**，否则会漏出上一列的残值。
         c.plain = 0.0;
@@ -664,14 +705,14 @@ public final class SimTerrain {
         // ★★★★★★★ B 方案：统一剖面（在硬分支之前返回）
         if (USE_CF_PROFILE) {
             long cfWs = ((long) worldSeedInt) & 0xFFFFFFFFL;
-            double sig = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
+            double sig = TalosLandField
                 .signedCoastDistCF(cfWs, x, z);
             // ★★★★★★★ 2026-10-08（用户裁决：高度分两层口径）
             //   ① 海陆分布层输出【原生米】—— 气候层读的就是它（PlateField.elevation -> height），
             //      多少米就是多少米，不再有任何增益；
             //   ② 地形层把同一个米值乘【一个系数】ELEV_TO_BLK 换成 MC 的格。
             //   ⟹ 造山项已并入 height()（米），本处不再单独加，避免重复计算。
-            double hM = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField
+            double hM = TalosLandField
                 .height(cfWs, x, z);
             // ★★★★★★★ 2026-10-08：**造山项**（山脉改由海陆分布层派生）
             //
@@ -686,8 +727,8 @@ public final class SimTerrain {
             //   ⚠ 海上恒为 0（OroSample 对海点直接返回 0）⟹ 不会把山加进海里。
             //
             // 【回滚】OROG_ON = false ⟹ 逐位回到旧行为。
-            double orog = com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_ON
-                ? com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField
+            double orog = TalosLandField.OROG_ON
+                ? OrographyField
                     .sample(x, z, worldSeedInt).orogeny01
                 : 0.0;
             c.auth = orog;
@@ -713,7 +754,7 @@ public final class SimTerrain {
             c.h = clampY((int) Math.round(c.hCapped), maxY);
             return c; }
 
-        if (!com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand(x, z, seed)) {
+        if (!PlateField.isLand(x, z, seed)) {
             c.land = false;
             if (RAW_ELEV_MODE) {
                 // ★ 原始模式：海面高度 = elev（负值），无 OCEAN_GAIN / 无 SEABED_RELIEF / 无 maxDepth
@@ -823,7 +864,12 @@ public final class SimTerrain {
             //
             // 【为什么用 elevationWithCell 而不是 composeColumn】：后者返回【每线程复用】
             //   的 Column，递归调用会破坏契约；而 elevationWithCell 是【纯函数】。
-            // 【尺度】：取 4 km（远大于 cell 105 m、远小于 HF_WL_MIN 46.9 km 的一半），
+            // 【尺度】：取 4 km（远大于 cell 105 m、⚠**远小于 HF_WL_MIN 46.9 km 的一半**✗ —— 该值错了 64 倍，真值 732.42 m ✗）、
+             //   ★ 2026-10-14 审查更正（约定 4/9）：原文写"远小于 HF_WL_MIN 46.9 km 的一半"✗✗，
+             //     HF_WL_MIN 的真值是 **732.42 m**（PlateField:166 = 3e6/2^12 ✓）⟹
+             //     4 km 其实【大于】它 ✗ ⟹ 原句方向完全反了 ✓。
+             //     同一错误值另见 V2TerrainGen:341 ✓（本轮一并更正 ✓）。
+             //     按约定 9：本轮只更正数值 ✗，**不擅自断言**"4 km 到底读到了什么" ✓；
             //   所以它读到的是【地形骨架的梯度】，不含细节噪声。
             if (V2TerrainGen.ERO_REAL_GRAD > 0.0) {
                 final int GS = 4000;
@@ -919,7 +965,7 @@ public final class SimTerrain {
      * <p>⚠ 绝对不要再往里加哈希。
      */
     public static long seedOf(int worldSeedInt) {
-        return com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.widen(worldSeedInt);
+        return TalosSeed.widen(worldSeedInt);
     }
 
     static int clampY(int y, int maxY) { return y < 1 ? 1 : (y > maxY ? maxY : y); }

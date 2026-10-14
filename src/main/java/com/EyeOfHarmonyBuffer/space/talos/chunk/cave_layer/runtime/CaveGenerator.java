@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 
 /**
  * 洞穴网络生成器（纯函数，无状态、无随机流）。
@@ -28,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CaveGenerator {
     /** ★ 2026-10-08 统一：CaveGenerator 内的 seed 派生收敛到 TalosSeed。 */
     private static int wsOf(long seed) {
-        return com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed.ofLong(seed);
+        return TalosSeed.ofLong(seed);
     }
 
     /**
@@ -182,7 +183,7 @@ public final class CaveGenerator {
             int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            y = V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
+            y = V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL_BLK, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             // 地形链不可用（探针 / 未初始化）时退化为海平面，仍确定。
@@ -204,7 +205,7 @@ public final class CaveGenerator {
             // 开在比真实地表高/低几十格的位置（悬空或挖不到）。
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            return V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL, o,
+            return V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL_BLK, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             return 64.0;
@@ -593,7 +594,7 @@ public final class CaveGenerator {
      */
     private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
         OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
-        return V2TerrainGen.composeColumn(wx, wz, seed, LandformField.SEA_LEVEL, o,
+        return V2TerrainGen.composeColumn(wx, wz, seed, LandformField.SEA_LEVEL_BLK, o,
             V2TerrainGen.MC_WORLD_HEIGHT - 2).h > 100;
     }
 

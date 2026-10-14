@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 /**
  * 诊断式**表层流速** —— 玩家看到、感受到的那一层。
  *
@@ -45,7 +47,7 @@ public final class SurfaceLayer {
     private SurfaceLayer() {}
 
     /** ⚠ 2026-09-13（审计 D5 同族）：原来是第二份 7.2921e-5 字面量，现引用世界契约的单一来源。 */
-    public static final double OMEGA = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;
+    public static final double OMEGA = WorldContract.OMEGA;
     /**
      * **风生环流输运层厚度（m）** —— 风生输运集中在这一层里，
      * 所以 u_surface = u_barotropic x (H_total / 本值)。
@@ -74,6 +76,16 @@ public final class SurfaceLayer {
     public static double EKMAN_MAX = 0.35;
     /** 埃克曼项开关。**默认关闭**（用户裁决；理由见类注释）。 */
     public static boolean EKMAN_ENABLED = false;
+    /**
+     * 海水密度（kg/m^3）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：本字段与
+     * {@link CoastalLayer#RHO} <b>是同一物理量的两份独立定义</b></b> ✗（两处都是 1025.0 ✓）。
+     * {@code CoastalLayer.RHO} 的 javadoc 自称是"ocean/ 包内的单一来源"✓，
+     * 而本字段是它的副本 ✗ —— 今天值相同所以行为一致 ✓，但**可以漂移** ✗。
+     * ⟹ ★ 改动其一时**必须同步另一处** ✓；引用时写全类名 ✓。
+     * （审计建议：如同 {@code ELEV_TO_BLK} 那样，保留一处详述 + 另一处指针即可 ✓。）
+     */
     public static double RHO = 1025.0;
 
     /**

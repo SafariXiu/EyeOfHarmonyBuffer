@@ -4,6 +4,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
+import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
  * TalosLandErosion —— **地貌演化层（LEM / stream power）**。
@@ -466,10 +470,27 @@ public final class TalosLandErosion {
     /**
      * ★★ 河道的【湿润度】t ∈ [0,1]：0 = 完全干（只留河床），1 = 常流（满水）。
      *
-     * <p>用 smoothstep 在 [DRY_ACCW_MIN, DRY_ACCW_MIN x DRY_TRANS] 上平滑过渡，
+     * <p>⚠⚠ <b>2026-10-14 审查（#19）：本段是【静默失效的实质文档】</b> ✗ ——
+     * 它与下一段（生效的 ✓「单格的湿润度…由 pRel 相对阈值决定」）紧邻成**两份 javadoc** ✗，
+     * Java 只认最后一份 ⟹ 本段内容**原本无效** ✗。
+     * ★ 且它里面的**参数名已过期** ✗：原文写 {@code DRY_ACCW_MIN}，
+     * 而 {@code wetnessLocal} 实际用的是 {@link #DRY_PREL_MIN} ✓（见函数体 ✓）。
+     * ⟹ 已把有用信息并入下一段 ✓（本段其余保留为史料 ✓）。
+     *
+     * <p><b>（历史）</b>用 smoothstep 在 [DRY_ACCW_MIN, DRY_ACCW_MIN x DRY_TRANS] 上平滑过渡，
      * 所以不会出现突兀的水头。非河道格返回 0。
      */
-    /** ★ 单格的湿润度（未做单调化）：由 pRel 相对阈值决定。 */
+    /**
+     * ★ 单格的湿润度（未做单调化）：由 pRel 相对阈值决定。
+     *
+     * <p>取值 t ∈ [0,1]：0 = 完全干（只留河床），1 = 常流（满水）✓。
+     * 用 smoothstep 在 [DRY_PREL_MIN, DRY_PREL_MIN * max(1, DRY_TRANS)] 上平滑过渡 ✓
+     * ⟹ 不会出现突兀的水头 ✓；非河道格返回 0 ✓。
+     *
+     * <p>⚠ 2026-10-14 审查（#19）：上面那段（写 DRY_ACCW_MIN 的历史说明 ✗）
+     * 原本因"两份紧邻 javadoc"而**静默失效** ✗ ⟹ 其有效内容已并入本段 ✓，
+     * 且参数名已按函数体更正为 {@link #DRY_PREL_MIN} ✓。
+     */
     static double wetnessLocal(double pr) {
         if (!DRY_ENABLED) return 1.0;
         double lo = DRY_PREL_MIN, hi = DRY_PREL_MIN * Math.max(1.0, DRY_TRANS);
@@ -1886,7 +1907,7 @@ public final class TalosLandErosion {
         if (!PRECIP_ENABLED) { t.accW = t.acc; return; }
         if (PRECIP_ANALYTIC) { precipAnalytic(ws, t, ox, oz); return; }
         final int CG = Math.max(1, (int) Math.round(
-                com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.CELL / STEP_BLK));
+                SimClimate.CELL / STEP_BLK));
         final int ncg = (W + CG - 1) / CG + 1;
         final double[] pg = new double[ncg * ncg];
         for (int cj = 0; cj < ncg; cj++) {
@@ -1894,7 +1915,7 @@ public final class TalosLandErosion {
                 final int wx = (int) (ox + (ci * CG + CG * 0.5) * STEP_BLK);
                 final int wz = (int) (oz + (cj * CG + CG * 0.5) * STEP_BLK);
                 double pv;
-                try { pv = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate
+                try { pv = SimClimate
                         .annualPrecipMmPerYear(wx, wz, (int) ws); }
                 catch (Throwable ex) { pv = P_FALLBACK_MM; precipFails++; }
                 if (!(pv > 0.0) || Double.isNaN(pv)) { pv = P_FALLBACK_MM; precipFails++; }
@@ -1963,7 +1984,7 @@ public final class TalosLandErosion {
             final int zi = (int) Math.floor(wz);
             // 纬向风（简化）：信风东风 / 西风带西风 / 极地东风
             final double latDeg = Math.toDegrees(
-                    com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(zi));
+                    WorldContract.latOf(zi));
             final double alat = Math.abs(latDeg);
             final double uz = (alat < 30.0) ? -6.0 : (alat < 60.0 ? 8.0 : -4.0);
             for (int i = 0; i < W; i++) {
@@ -2000,10 +2021,10 @@ public final class TalosLandErosion {
                     // ★ 用常数 KAPPA_MEAN，不用 kappaMemo —— 后者内部也走 PlateField，
                     //   在 solve() 期间调会递归。物理上 depletion = exp(-hUp/H_MOIST x kappa)，
                     //   主导项是 hUp（上风地形），kappa 只是调制。
-                    kappa = com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.KAPPA_MEAN;
+                    kappa = Atmosphere.KAPPA_MEAN;
                 } catch (Throwable ex) { precipFails++; }
                 double depl = 0.0;
-                try { depl = com.EyeOfHarmonyBuffer.sim.atmos.PrecipField.depletion(hUp, kappa); }
+                try { depl = PrecipField.depletion(hUp, kappa); }
                 catch (Throwable ex) { depl = 1.0; }
                 final double moist = MOIST_FLOOR + (1.0 - MOIST_FLOOR) * depl;
                 // ★★★ 只对【陆地】应用降水修正，并除以 P_REF_MM。
@@ -2013,7 +2034,7 @@ public final class TalosLandErosion {
                 //   P_REF_BASE = 1000 是代理公式的隐含参考（探针在只统计陆地时测出 mean(pRel)=0.844）。
                 // ★ 纬向降水带（零成本）：赤道 ITCZ 湿、副热带干、中纬风暴带次湿。
                 //   它【不与河道位置反相关】—— 这是它能纠正地形代理系统性偏差的原因。
-                final double latR = com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(zi);
+                final double latR = WorldContract.latOf(zi);
                 final double fLat = 0.6 * Math.cos(2.0 * latR) + 0.4 * Math.cos(4.0 * latR);
                 final double pLat = Math.exp(LAT_GAIN * fLat);
                 final double pRel = (hLocal > 0.0)
@@ -2390,8 +2411,8 @@ public final class TalosLandErosion {
                 final double bx = ox + (outlet % W) * STEP_BLK, bz = oz + (outlet / W) * STEP_BLK;
                 double P = 0.0, E = Double.NaN;
                 final long c0 = System.nanoTime();
-                try { P = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.annualPrecipMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
-                try { E = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.lakeEvapMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
+                try { P = SimClimate.annualPrecipMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
+                try { E = SimClimate.lakeEvapMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
                 LAKE_CLIM_NANOS += System.nanoTime() - c0;
                 final double inflow = P * accMax;
                 double aFin;

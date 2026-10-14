@@ -17,6 +17,7 @@ import net.minecraft.world.World;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 
 /**
  * 洞穴层统一入口（地形生成只通过这里查询）。
@@ -125,13 +126,13 @@ public final class TalosCaveSystem {
         if (!isEnabled()) {
             return;
         }
-        int seed = TalosSeed.of(world);
+        int seed = TalosSeedMc.of(world);
         stateFor(seed);
     }
 
     /** 世界卸载：释放缓存。 */
     public static void onWorldUnload(World world) {
-        int seed = TalosSeed.of(world);
+        int seed = TalosSeedMc.of(world);
         CaveWorldState state = STATES.remove(seed);
         if (state != null) {
             state.clear();
@@ -303,7 +304,7 @@ public final class TalosCaveSystem {
         }
         // 地表必须高于海平面：否则入口井口会开在水线 / 水下
         return V2TerrainGen.composeColumn(worldX, worldZ, worldSeedInt,
-            LandformField.SEA_LEVEL, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
+            LandformField.SEA_LEVEL_BLK, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
     }
 
     /** 调试汇总（/talcave 用，只经 api 暴露）。 */

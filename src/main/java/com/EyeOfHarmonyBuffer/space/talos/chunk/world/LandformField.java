@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 
 import java.util.concurrent.ConcurrentHashMap;
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 
 /**
  * 地貌场（L1c-0，D43）：**「这里是什么地貌」的唯一权威**。
@@ -54,8 +55,20 @@ public final class LandformField {
 
     public static final int SZ = NZ + 2;
 
-    /** 求解用的海平面（与 Provider 的 getWaterLevel 一致，仅用于档案带限下限）。 */
-    public static final int SEA_LEVEL = 64;
+    /**
+     * 求解用的海平面（**MC 方块 y 坐标** ✓；与 Provider 的 getWaterLevel 一致，仅用于档案带限下限）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 2 · 同名不同义）</b>：全仓有**三份** {@code SEA_LEVEL_BLK} ✗ ——
+     * <ul>
+     *   <li>{@code PlateField.SEA_LEVEL} = <b>0.0</b>（double，单位【米】，是**高程基准** ✓，
+     *       且**不参与判陆** ✗ —— 判陆走 {@code landScore >= 0.5} ✓）</li>
+     *   <li><b>本处</b> = <b>64</b>（int，单位【MC 方块 y】✓）</li>
+     *   <li>{@code EmeraldThroneTerrain.SEA_LEVEL_BLK} = <b>64</b>（int，同上 ✓，死亡之海判据 ✓）</li>
+     * </ul>
+     * ⟹ ★ 三者**同名但单位/坐标系不同** ✗（1 blk = 55.56 m ⟹ y=64 blk ≈ 3,556 m ✗，与"0 米基准"差一个换算 ✓）
+     * ⟹ <b>引用时必须写全类名</b> ✓；<b>不要</b>互相代入 ✗。
+     */
+    public static final int SEA_LEVEL_BLK = 64;
 
     /**
      * 「山体抬升量 → 强度」标尺（blocks）。**唯一使用点：{@link #solve} 里的 {@code rise / MTN_RISE_SCALE}。**
@@ -400,7 +413,7 @@ public final class LandformField {
                 long _c = System.nanoTime(); tW += _c - _b;
 
                 // 中性 bias 的骨架高度（**含中尺度纹理**）→ 真实的"相对平原抬升量"
-                V2TerrainGen.basePlainFromWeights(w, x, z, seed, SEA_LEVEL, 0.5, 0.5, bp);
+                V2TerrainGen.basePlainFromWeights(w, x, z, seed, SEA_LEVEL_BLK, 0.5, 0.5, bp);
                 long _d = System.nanoTime(); tBP += _d - _c;
                 // ★ 2026-10-08：一次取齐（原为两次独立调用，各含 HashMap 查 + 3 次 doubleToLongBits）
                 double mtnComp0 = bp[0] > bp[1] ? bp[0] - bp[1] : 0.0;
@@ -410,7 +423,7 @@ public final class LandformField {
                 //   ⟹ 零额外调用（o 已在上面算好）+ 零 HashMap 查（旧 authAll 每次 1 次查表 + 3 次 doubleToLongBits）。
                 double auth = o.orogeny01;
                 // 造山强度 [0,1] -> 抬升【格】：米制上限 OROG_MAX_M × 米->格系数
-                double uplift = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ELEV_TO_BLK
+                double uplift = SimTerrain.ELEV_TO_BLK
                     * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * auth;
                 long _e = System.nanoTime(); tAuth += _e - _d;
                 double rise = (1.0 - auth) * mtnComp0 + auth * uplift;

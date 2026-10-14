@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 // S2 定常波求解器（辐散 Gill 型，稳态）。设计冻结 351/352/389/390/391/393。
 // 几何：2*pi*R = 40,000 km（赤道周长）、pi*R = 20,000 km（极到极）=> R = 6366 km，恰好是一个球。
 // 边界：两极 p = 0；x 方向周期（X 无限无周期，取周期 BC 是文档化近似，见 347）。
@@ -14,6 +16,19 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
 //            Randall《General Circulation》Ch.8 式(103)、第一斜压模投影 dPhi1/dt + c^2 D1 = -Q1。
 //
 // ===== ⚠ 干 c + 纯潜热 = 系统性低估 2~10 倍（尚未解决）=====
+// ★★★ 2026-10-14 审计（#3）：本项已**量化**，且为【休眠项】✓（不影响当前产品 ✓）
+//   ① 量化（按本类自己的方程 dPhi1/dt + c^2*D1 = -Q1 ⟹ 响应 ∝ Q/c^2 ✓）：
+//        效果 A（GMS ⟹ c 变小）：响应 **×3 ~ ×10** ✓（c_moist/c_dry ≈ 0.3~0.6 ✓）
+//        效果 B（净辐射 ⟹ Q 变小）：**实测很小** ✗ ——
+//          探针 NQNET 实测（8 个热带点）：净柱加热里**潜热远大于辐射** ✓
+//          （潜热/辐射 = 2 ~ 329 倍，平均 63.6 ✗；辐射项通常只有几 W/m^2，
+//            而**不是**旧注释里说的 -100 W/m^2 ✗）
+//        ⟹ ★★ 净结论 = **低估约 3~10 倍** ✓✓（方向与本条原文一致 ✓）
+//           详见 待裁决/373（量化）、/374（实测更正 373 的推论 ✓）
+//   ② 休眠：¤StationaryWave.ENABLED = false¤ ⟹ 本类整体默认关 ✓
+//        ⟹ 所以"低估 3~10 倍"目前**不影响任何门** ✓（验收 pass=8 ✓）
+//        ★ 复核条件：**若将来打开 StationaryWave.ENABLED，必须先解决本项** ✓
+//          （选项：改用 QTCM 的 MSE 闭合 M1*div = -F_net ✓，或接受并被知情的低估 ✓）
 //   深对流区的有效稳定度是 gross moist stability（GMS, M1），不是干 N^2；M1 远小于干层结，
 //   同样加热会产生强得多的环流。若坚持用干 c，则 Q 必须是【净柱加热】
 //   （潜热 + 净辐射 + 感热），热带净辐射冷却约 -100 W/m^2，与 3~4 mm/day 的潜热同量级。
@@ -27,10 +42,15 @@ public final class StationaryWave {
     private StationaryWave() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
      * **本份的含义是：StationaryWave（定常波 / 环流侧 §405）。** 引用时务必写全类名（如 `StationaryWave.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     *
+     * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，实测已是
+     * 【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、true 5 个
+     * （ClimlabEBM / SoilMoisture / OceanField / SimTerrain / TalosLandErosion）——
+     * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
+     * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      */
     public static boolean ENABLED = false;
     public static int NX = 64;
@@ -133,8 +153,8 @@ public final class StationaryWave {
     //   —— 那是【科氏参数 f】，必须与世界契约同口径，否则 f 小 40 倍 ⟹ 定常波的物理全错 ✗
     //
     // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
-    private static final double OM = com.EyeOfHarmonyBuffer.sim.world.WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
-    private static final double R_EFF = com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
+    private static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
+    private static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
     private static long cacheKey = Long.MIN_VALUE;
     private static double[] divCache;
@@ -295,7 +315,7 @@ public final class StationaryWave {
 
     /** 净柱加热（W/m^2）：潜热 + 感热 + 净辐射。见 {@link #Q_NET_HEATING}。 */
     public static double netColumnHeating(int x, int z, long seed, int cell, double theta, int gradStep, double pMmDay) {
-        double lat = com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(z);
+        double lat = WorldContract.latOf(z);
         double k = Atmosphere.kappaMemo(x, z, seed, cell);
         // ★ 感热通量要比的是【同高度的近地面气温】，不是海平面等效温度。
         //   第一版用了海平面温度 => 高原的递减项（青藏 4740 m 约 -31 K）完全丢失
@@ -311,6 +331,16 @@ public final class StationaryWave {
         // §462：回调返回【干降水 P_d】。第一版把它当常数（= 传入的 pMmDay，即 V=1 时的降水）
         // ⇒ 只闭合 D_B 通道（文献指定的主导通道，闭式求解，**零次额外 mmPerDay**）。
         // ⚠ RS_BARE / 反照率的【次级】通道尚未进入回调 ⇒ 记账：要迭代它们必须先让 mmPerDay 认 V。
+        //
+        // ★★ 2026-10-14 审计（#4）：**本条是【休眠项】，不影响当前产品** ✓✓
+        //   开关实测（从源码读 ✓）：
+        //     ¤StationaryWave.ENABLED = false¤（本类整体默认关 ✓）
+        //     ¤Vegetation.ENABLED     = false¤（植被默认关 ⟹ vegAt 恒返回 1.0 ✓）
+        //   ⟹ 两个开关都关着 ⇒ 本段代码在当前配置下**一行都不产生效果** ✓
+        //   ⟹ 所以"次级通道未接线"是【未来开启植被反馈时】才需要处理的事 ✗
+        //   ★ 复核条件（写死，免得忘 ✗）：**若将来把 Vegetation.ENABLED 或
+        //     StationaryWave.ENABLED 打开，必须回来先接这条次级通道** ✓
+        //     （否则反照率通道会缺失，植被→降水反馈只闭合了一半 ✗）
         final double pForVeg = pMmDay;
         final boolean isLandHere = k > 0.5;
         double veg = isLandHere
@@ -568,7 +598,7 @@ public final class StationaryWave {
                 for (int i = 0; i < NX && i < Q_OVERRIDE[j].length; i++) Q[j][i] = Q_OVERRIDE[j][i];
         } else {
             for (int j = 1; j < rows - 1; j++) {
-                int z = com.EyeOfHarmonyBuffer.sim.world.WorldContract.zOfLat(Math.toDegrees(phiOf[j]));
+                int z = WorldContract.zOfLat(Math.toDegrees(phiOf[j]));
                 for (int i = 0; i < NX; i++) {
                     int x = (int) Math.round(lx * i / NX);
                     double pm = PrecipField.mmPerDay(x, z, seed, cell, theta, gradStep);
@@ -696,7 +726,7 @@ public final class StationaryWave {
      *   而输出看起来"平滑合理"，没有任何异常。抽成函数 + {@link #selfCheckMapping()} 是唯一守卫。
      */
     private static double fjOf(int z) {
-        double latRad = com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(z);
+        double latRad = WorldContract.latOf(z);
         return (latRad + Math.PI / 2) / Math.PI * (rows - 1);
     }
 
@@ -715,7 +745,7 @@ public final class StationaryWave {
         double lx = 2 * Math.PI * R_EFF, worst = 0;
         for (int j = 1; j < rows - 1; j++) {
             double phiDeg = Math.toDegrees(-Math.PI / 2 + Math.PI * j / (rows - 1));
-            int z = com.EyeOfHarmonyBuffer.sim.world.WorldContract.zOfLat(phiDeg);
+            int z = WorldContract.zOfLat(phiDeg);
             worst = Math.max(worst, Math.abs(fjOf(z) - j));
             for (int i = 0; i < NX; i++) {
                 int x = (int) Math.round(lx * i / NX);

@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 import java.util.HashMap;
+import com.EyeOfHarmonyBuffer.sim.ocean.GyreRow;
 
 /**
  * **第三步接线的海洋场：海温异常 T'(x,z)（K）** —— 由**模型自己的风**驱动（设计冻结 §158）。
@@ -40,8 +41,17 @@ public final class OceanField {
     private OceanField() {}
 
     /**
-     * 生产是否启用。
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.ENABLED`），
+     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
      *
+     * <p>★ 2026-10-14 审查（#19）：本字段上方原有**两份** javadoc 紧挨着——
+     * 前一份是【本字段的实质说明】（接线历史 + 代价阻塞 ✓），
+     * 后一份才是这段 §540 命名警告 ✓。Java 只认**最后一份** ⟹
+     * **前一份（实质说明）原本【写了但无效】** ✗ ⟹ 现已把两者**合并**为这一份 ✓✓
+     * （★ 这类"实质性文档被后面的短警告挤掉"是本轮审计发现的一类系统性问题 ✓）
+     *
+     * <h3>生产是否启用</h3>
      * <p>**2026-09-13 接线（§162）：true。** 由 {@link #install(int)} 读取：
      * true = 装 {@link Atmosphere#SST_PROVIDER}；false = 卸掉（回到 SST' == 0 的旧口径）。
      *
@@ -66,10 +76,16 @@ public final class OceanField {
      * 或调 {@link OceanWiring#off()}。代价修好之前，**不要**把它当成「已完成的生产特性」。
      */
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【6 份】，语义各不相同、默认值也不一致
-     * （3 个 false：HadleyCell/StationaryWave/Vegetation；3 个 true：OceanField/SimTerrain/SoilMoisture）。
+     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
      * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.ENABLED`），
      * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     *
+     * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
+     * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
+     * true 5 个（ClimlabEBM / SoilMoisture / OceanField / SimTerrain / TalosLandErosion）——
+     * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
+     * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
+     * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
     public static boolean ENABLED = true;
     /**
@@ -148,7 +164,9 @@ public final class OceanField {
      * <p>关闭时（默认）不存、不参与任何计算 ⟹ 与改动前【逐位一致】✓
      * <p>开启时进 {@link #configStamp()} ⟹ 缓存自动失效 ✓
      */
-    public static volatile boolean PSI_ROWS_ON = true;   // ★ N-b：按行留存 psi（供 uAt）✓
+    public static volatile boolean PSI_ROWS_ON = true;   // ★★ 2026-10-14 用户裁决：**长期打开，生产默认** ✓
+    //   理由：它是 u = -dpsi/dz 的来源 ✓（psi 本来就算了 ⟹ 成本≈0 ✓、零域依赖 ✓）；
+    //   完整验收 pass=8 / fail=0 ✓（含冷+5.61 K / 暖−6.06 K 两侧干净达标 ✓）
 
     /**
      * ★★★★★ 2026-10-14（N-c）：**把纬向分量 u 接进距平链** —— "冷暖交汇"落地的那一步。
@@ -157,7 +175,9 @@ public final class OceanField {
      * <p>开 ⟹ 在本行内解 {@code u*dT'/dx + v*dTdz = -lambda*T'}（迎风 Gauss-Seidel ✓）
      * <p>⚠ 打开会改 SST' ⟹ 必须重跑完整验收 ✓（{@link #configStamp()} 已含它 ✓）
      */
-    public static volatile boolean U_ADVECT_ON = true;    // ★ 用户裁决 C：平流在物理上是对的 ⟹ 打开 ✓
+    public static volatile boolean U_ADVECT_ON = true;    // ★★ 2026-10-14 用户裁决：**长期打开，生产默认** ✓
+    //   理由：纬向平流在物理上是对的 ✓（冷暖交汇机制 ✓）；
+    //   且完整验收 pass=8 / fail=0 ✓（门窗全过，无饱和 ✓）
     //   ⚠ 打开后 P477 的 A5'-暖 最强盆会到 +10.44 K（无平流是 +6.91 K ⟹ 增强比 1.51 ✓）
     //     判据的锚带已按"基值 x 增强比"拆分（见 P477 ✓），其中【增强比的地球值 NOT FOUND】✓
     /** 迎风 Gauss-Seidel 的扫描次数（交替方向 ✓）。 */
@@ -367,7 +387,7 @@ public final class OceanField {
         h = h * 31 + GRAD; h = h * 31 + Double.doubleToLongBits(JET_RANGE_RD);
         // ⚠ 2026-09-16（用户裁决 A）：风应力旋度的采样步长也**改解出来的 SST'** ⇒ 按本方法的准入判据
         // 必须进指纹。它落在 GyreRow 里（求解发生的地方），所以从那里取。
-        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.GyreRow.CURL_STRIDE;
+        h = h * 31 + GyreRow.CURL_STRIDE;
         h = h * 31 + (CURL_ZONAL_BAND ? 1 : 0);        // ★ F1（会改 SST' ⟹ 必须进键，D58）
         h = h * 31 + ZM_SAMPLES;
         // §447：相位分辨会换掉解出来的 SST' ⇒ 按本方法的准入判据必须进指纹。

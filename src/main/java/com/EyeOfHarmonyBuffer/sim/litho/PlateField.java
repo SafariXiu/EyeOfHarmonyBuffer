@@ -129,13 +129,27 @@ public final class PlateField {
     @Deprecated public static final ElevSource ELEV = null;
 
     /**
-     * 海平面（高程基准）。
+     * 海平面（高程基准，单位：米）。
      *
      * <p>§567 之后新地形路的海平面来自 {@code TalosField.level(seed)}（自标定，
-     * 见 TalosField.java:253-271,315）；本常量是 {@link #isLand} 的判据基准
-     * （{@code elevation >= 0}），并被既有探针（P505）与登记表引用。
+     * 见 TalosField.java:253-271,315）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查更正（阶段 2）：本常量【不是】判陆依据</b> ✗ ——
+     * 原文写「本常量是 {@link #isLand} 的判据基准（{@code elevation >= 0}）」，
+     * 但那正是本文件 :278 已注明「<b>改为直接委托（原来是 elevation &gt;= ELEV_DATUM_M）</b>」的那件事 ✗。
+     * 现在的判陆链是：
+     * <pre>
+     *   ¤isLand¤ / ¤isLandWithCell¤ -> NoiseContinentGrid.isLand -> TalosLandField.isLand
+     *       -> **landScore(点) &gt;= 0.5**（等值线判据 ✓ 见 TalosLandField 的 SEA_LEVEL_SCORE）
+     * </pre>
+     * ⟹ ★ 本常量今天只服务 {@link #elevation} 的**基准**与既有探针（P505）✓，
+     * <b>改它不会改海岸线</b> ✗（2026-10-14 实测：抬阈值只淹没、不合并 ✓）。
+     *
+     * <p>⚠⚠ <b>另注意同名不同义</b>：{@code LandformField.SEA_LEVEL_BLK} 与
+     * {@code EmeraldThroneTerrain.SEA_LEVEL_BLK} 是 <b>64</b>（int，<b>MC 方块 y 坐标</b> ✓），
+     * 与本常量（double，<b>米</b>）<b>单位与坐标系都不同</b> ✗ —— 引用时必须写全类名 ✓。
      */
-    public static final double SEA_LEVEL = 0.0;
+    public static final double ELEV_DATUM_M = 0.0;
 
     // ==================== 侵蚀参数常量（从已删除的 TalosField 迁来） ====================
     /**
@@ -161,11 +175,17 @@ public final class PlateField {
     public static final int COAST_BLEND = 800_000;
 
     /**
-     * 采样环半径（× COAST_BLEND）与权重。
+     * ⚠⚠ <b>2026-10-14 审查（#19）：本段是【过期的当前状态断言】</b> ✗ ——
+     * 它写「**现在用 10 环 + 高斯权重**」，而下一段（**生效的那份** ✓）写的是
+     * 「**密集极坐标网格：12 环 x 16 方向 = 192 点**」✗ ⟹ 两者不符 ✓。
+     * Java 只认最后一份 ⟹ 本段【写了但无效】✗，且它会**误导**读者以为现行是 10 环 ✗。
+     * <b>现行做法以下一段为准</b> ✓；本段仅保留其历史价值（"为什么必须多环" ✓）。
      *
-     * <p>⚠ **必须多环**：早先用 3 环（0.35/0.65/1.00R）时，κ(x) 在离岸方向上呈**阶梯状**，
+     * <p><b>（历史）</b>采样环半径（× COAST_BLEND）与权重。
+     * ⚠ **必须多环**：早先用 3 环（0.35/0.65/1.00R）时，κ(x) 在离岸方向上呈**阶梯状**，
      * 于是 dp/dx 在 240~360 km 与 480 km 处**符号相反**（P270 实测），
-     * 沿岸风被平均掉、只剩 1/8。现在用 10 环 + 高斯权重 ⇒ κ(x) 单调平滑。
+     * 沿岸风被平均掉、只剩 1/8。⟹ 当时改成了多环 + 高斯权重 ⇒ κ(x) 单调平滑。
+     * （⚠ "10 环"是**当时**的环数 ✗，不是现行值 —— 现行见下段 ✓。）
      */
     /**
      * 采样：**密集极坐标网格**（12 环 x 16 方向 = 192 点，加中心 1 点 ⇒ **N = 193**）。
@@ -237,7 +257,7 @@ public final class PlateField {
 
     // ==================== 公开查询 ====================
 
-    /** 高程（m，相对 {@link #SEA_LEVEL}）。纯函数。 */
+    /** 高程（m，相对 {@link #ELEV_DATUM_M}）。纯函数。 */
     public static double elevation(int x, int z, long seed) {
         return elevationWithCell(x, z, seed, PLATE_CELL);
     }
@@ -275,7 +295,7 @@ public final class PlateField {
 
     /**
      * 是否陆地。
-     *     *   ★★★★★★ 2026-10-08：改为直接委托（原来是 `elevation >= SEA_LEVEL`）。
+     *     *   ★★★★★★ 2026-10-08：改为直接委托（原来是 `elevation >= ELEV_DATUM_M`）。
      *   理由：新海陆的 `isLand` 是权威判定，而 `elevation` 经过增益/钳制后
      *   在海岸处可能与之不逐位等价 ⟹ 直接委托消除该风险。
      */
@@ -287,9 +307,14 @@ public final class PlateField {
      * 标定入口：与 {@link #isLand} 相同，板块格边长可调（§567 之后该形参已被忽略）。
      *
      * <p>优先级：{@link #MASK}（装了才走）→ {@link TalosField#isLand}。
-     * ⚠ 注意 {@link #isLand} 与这里**故意不对称**：{@code isLand} 走 {@code elevation}，
-     * 因此**不查 MASK**。§567 明确**不在删除刀里修**这个不对称（改它 = 改行为，
-     * 会让 MASK 影响 {@code isLand} 的读数）；要修就单独一刀 + 单独验收。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查更正（阶段 2）</b>：原文写「{@link #isLand} 与这里<b>故意不对称</b>：
+     * {@code isLand} 走 {@code elevation}，因此<b>不查 MASK</b>」—— <b>该描述已过期</b> ✗。
+     * 实测（读本文件 :282）：{@code isLand(int,int,long)} 现在**也委托到本方法**
+     * （{@code return isLandWithCell(x, z, seed, PLATE_CELL);}）⟹ 两者【走同一条链】✓，
+     * 也都经本方法（因此 MASK 的语义对两者一致 ✓）。
+     * <p>⟹ ★ 结论：<b>不存在</b>原文所说的那种不对称 ✓；§567 那句「不在删除刀里修」也因此失效 ✓。
+     * （若将来要重新引入不对称，必须当成**行为改动**走单独一刀 + 完整验收 ✗。）
      */
     public static boolean isLandWithCell(int x, int z, long seed, int cell) {
         // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）

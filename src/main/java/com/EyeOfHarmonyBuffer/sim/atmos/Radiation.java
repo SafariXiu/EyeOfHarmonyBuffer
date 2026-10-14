@@ -36,7 +36,19 @@ public final class Radiation {
 
     private Radiation() {}
 
-    /** 太阳常数（W/m^2）。 */
+    /**
+     * 太阳常数（W/m^2）= 1361.0 —— ★ <b>现代标准值</b>（TSI 观测；本仓自选，非 climlab）✓。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：全仓共有三处 S0，且值不同</b> ✗ ——
+     * <ul>
+     *   <li><b>本处</b> = 1361.0（现代 TSI 标准）✓</li>
+     *   <li>{@link VerticalColumn#S0} = 1361.0（与本处一致 ✓）</li>
+     *   <li>{@code ClimlabEBM.S0} = <b>1365.2</b> ✗ —— 那是<b>逐字取自 climlab 源码</b>
+     *       （const.S0, insolation.py L251）✓，属<b>另一套模型的口径</b> ✓</li>
+     * </ul>
+     * ⟹ ★ 两者服务不同模型，**都不算错** ✓；但引用时必须写全类名 ✓，
+     * <b>不要</b>把 climlab 的 1365.2 与本处混用 ✗（那会改 EBM 的稳态解 ✗）。
+     */
     public static final double S0 = 1361.0;
     public static final double SIGMA = 5.670374419e-8;
     public static final double CP = 1004.0;

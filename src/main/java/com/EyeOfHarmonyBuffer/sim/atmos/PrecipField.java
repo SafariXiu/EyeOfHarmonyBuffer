@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
 /**
  * 水汽与降水（M3 切片 3）—— 目标 B2（三条降水带）与 B4（雨影）。
@@ -86,9 +87,12 @@ public final class PrecipField {
         double f = Atmosphere.OBLIQUITY == 0 ? 0 : ITCZ_MIGRATION / Atmosphere.OBLIQUITY;
         return Atmosphere.subsolarLat(theta) * f;
     }
-    /** 边界层厚度（m），w_loc = -H_bl*div(U) 用。 */
     /**
-     * 边界层厚度（m）。**单源**：直接引用 {@link Atmosphere#H_BL}。
+     * 边界层厚度（m），{@code w_loc = -H_bl*div(U)} 用。**单源**：直接引用 {@link Atmosphere#H_BL}。
+     *
+     * <p>⚠ 2026-10-14 审查：本字段上方原有**两份** javadoc 紧挨着（前一份也写「边界层厚度（m），
+     * w_loc = -H_bl*div(U) 用。」）—— 内容等价，但 Java 只认**最后一份** ⟹ 前一份
+     * 【写了但无效】✗ ⟹ 已合并为这一份 ✓。
      *
      * <p>⚠ <b>2026-09-13 审计 D50</b>：这里原来是**第二个独立定义** {@code = 1000.0}（而且**可变**），
      * 与 {@code Atmosphere.H_BL}（final）是两个常量。今天值相同所以行为一致，但：
@@ -1478,7 +1482,7 @@ public final class PrecipField {
 
     private static void ensureCfg() {
         Long seen = CFG_SEEN.get();
-        long now = com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.configStamp();
+        long now = SimClimate.configStamp();
         if (seen == null || seen.longValue() != now) {
             CFG_SEEN.set(Long.valueOf(now));
             T_SLOPE.remove();
@@ -1687,6 +1691,15 @@ public final class PrecipField {
      * <p>⚠ CH12 同时证明「混合长远小于外部涡动尺度」（L ≈ 2500 km、l ≈ 700 km）
      * ⇒ **把 L_d 直接当混合长是错的**；本式通过 <code>l_e = tau_e * v*</code> 回避了这一点。
      *
+     * <p>⚠⚠ <b>2026-10-14 审查补注（阶段 3 · 过期数字猎捕）：以下是一段【历史记录】</b> ✗ ——
+     * 它描述的是 <b>2026-09-13 那次落地当时</b>的取值，<b>不是当前值</b> ✗。
+     * 当前值请以下面的字段声明为准：
+     * <ul>
+     *   <li>{@code EDDY_CLOSURE} = <b>0</b>（本文件 :1716）—— <b>§429 定案已切回 0</b> ✓
+     *       （见 :1765「本常量已不在生产路径上」与 :186「§429 起生产就是 closure 0」✓）</li>
+     *   <li>{@code EDDY_PHYS_GAIN} = <b>9.60</b>（本文件 :1768）—— 与下面历史文字里的
+     *       4.40（以及同段表格里的 5.45）<b>都不同</b> ✗，那两个是当时/更早的重标值 ✓</li>
+     * </ul>
      * <p><b>2026-09-13 落地（用户裁决「做涡动闭合的大改」）</b>：<code>EDDY_CLOSURE = 1</code>、
      * <code>EDDY_PHYS_GAIN = 4.40</code>（D48 修完后的重标值）。标定与判定见设计冻结 §146~§150（P463）：</p>
      * <pre>
@@ -2307,10 +2320,13 @@ public final class PrecipField {
      * 在 **JJA 的 u_zm 里永远达不到**（JJA 峰值约 3.6 m/s）⇒ gate 在 JJA 全程 < 0.85，
      * 0.5 交点被推到约 41 度，而 DJF 是约 27.5 度：**季节迁移有 13.5 度，其中大部分是假的**
      * （真迁移由 u = 0 的临界纬度给出）。把下边界锁在 u = 0 之后，迁移完全由模型自己的 u_zm 表决定。
-     */
-    /**
-     * **极侧边缘**（rad，带符号）：从急流向【极】扫，u_zm 由正变非正的交点。
+     *
+     * <p><b>极侧边缘</b>（rad，带符号）：从急流向【极】扫，u_zm 由正变非正的交点。
      * 找不到（一直西风到 90 度）返回 {@code NaN} ⇒ 门在极侧不闭合。
+     *
+     * <p>⚠ 2026-10-14 审查（#19）：上面两段原本紧邻成**两份 javadoc** ✗ ⟹
+     * 那份 14 行的"涡动门总体说明"（含 P636 的 13.5 度假迁移实测）**原本静默失效** ✗
+     * ⟹ 已合并为一份 ✓（现由本函数一并承载"门的总体定义 + 本函数的返回值约定" ✓）。
      */
     public static double polarEdgeLatRad(double theta, boolean north) {
         double sgn = north ? 1.0 : -1.0;
@@ -2657,7 +2673,7 @@ public final class PrecipField {
             final double d = i * UPWIND_STEP;
             final int sx = x - (int) Math.round(ux * d);
             final int sz = z - (int) Math.round(uz * d);
-            if (com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+            if (TalosLandErosion
                     .isLakePeek(seed, sx, sz)) hit++;
         }
         return (double) hit / n;
@@ -2768,9 +2784,10 @@ public final class PrecipField {
      */
     public static boolean SHALLOW_CONDENSATE = true;   // §679 A/B 臂 B（§677 文献形式）
 
-    /** 新形式的标定常数（倍率，作用在 {@link #precip} 的 `EPS_C` 上）。见 {@link #SHALLOW_CONDENSATE}。 */
     /**
-     * <p>⚠ <b>§741：本常数已是【死常数】—— 全仓无任何可执行代码引用它。</b>
+     * 新形式的标定常数（倍率，作用在 {@link #precip} 的 `EPS_C` 上）。见 {@link #SHALLOW_CONDENSATE}。
+     *
+     * <p>⚠⚠ <b>§741：本常数已是【死常数】—— 全仓无任何可执行代码引用它。</b>
      *
      * <p>§687 之后浅对流地板改用凝结形式（见 {@link #SHALLOW_CONDENSATE}、{@link #EP_COND}），
      * 旧的 A 臂形式 `ALPHA_COND * precip(…)` 已被取代。保留本字段只为文档可追溯（§656 以它为「标定常数」的例子）。
@@ -3396,9 +3413,9 @@ public final class PrecipField {
                 //   ★★★ 2026-10-12（待裁决/331）：旧的 0 态（WaterField.isWater）已【删除】——
                 //       它把 30% 的陆地判为湖，是错的；且 WaterField 整类已删除。
                 final boolean lake = (LAKE_SOURCE == 1)
-                    ? com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    ? TalosLandErosion
                         .isLake((long) seed, x, z)
-                    : com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
+                    : TalosLandErosion
                         .isLakePeek((long) seed, x, z);
                 if (lake) betaUsed = 1.0;
                 // ★★★★★ 2026-10-12（待裁决/330）：上风湖的水汽反哺。

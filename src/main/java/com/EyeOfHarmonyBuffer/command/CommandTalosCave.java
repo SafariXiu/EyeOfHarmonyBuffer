@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 
 /**
  * /talcave [tp|tpchamber|tphall|node] - 洞穴系统调试指令。
@@ -75,7 +76,7 @@ public class CommandTalosCave extends CommandBase {
         }
         EntityPlayerMP player = (EntityPlayerMP) sender;
         World world = player.worldObj;
-        int seed = TalosSeed.of(world);
+        int seed = TalosSeedMc.of(world);
         int px = (int) Math.floor(player.posX);
         int pz = (int) Math.floor(player.posZ);
 
@@ -205,7 +206,7 @@ public class CommandTalosCave extends CommandBase {
 
         // 走唯一高度链（原先读旧轨 TalosTerrainHeights —— 传送落点会按另一套地形算）
         OrographyField.OroSample oc = OrographyField.sample(e.x, e.z, seed);
-        double surface = V2TerrainGen.composeColumn(e.x, e.z, seed, LandformField.SEA_LEVEL, oc,
+        double surface = V2TerrainGen.composeColumn(e.x, e.z, seed, LandformField.SEA_LEVEL_BLK, oc,
             V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         double y = Math.round(surface) + 2.0;
         player.setPositionAndUpdate(e.x + 0.5, y, e.z + 0.5);
@@ -457,11 +458,11 @@ public class CommandTalosCave extends CommandBase {
         // 1) 地形采样（雕刻门控条件）—— 唯一海陆判定 + 唯一高度链。
         // 旧口径里的 riverMask / body / waterLevel 随旧河网删除（V2 世界无河网、水面=海平面）。
         OrographyField.OroSample oo = OrographyField.sample(tx, tz, seed);
-        int surfaceTop = V2TerrainGen.composeColumn(tx, tz, seed, LandformField.SEA_LEVEL, oo,
+        int surfaceTop = V2TerrainGen.composeColumn(tx, tz, seed, LandformField.SEA_LEVEL_BLK, oo,
             V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         player.addChatMessage(new ChatComponentText(String.format(
             "[PROBE] pos=(%d,%d) 地表≈%d isLand=%b waterLevel=%d",
-            tx, tz, surfaceTop, oo.isLand, LandformField.SEA_LEVEL
+            tx, tz, surfaceTop, oo.isLand, LandformField.SEA_LEVEL_BLK
         )));
 
         // 1.5) 光照诊断：该位置所在区块的实际 skylight / blocklight 值（按 y 采样）。
@@ -526,10 +527,10 @@ public class CommandTalosCave extends CommandBase {
 
         // 3) 雕刻门控检查（与 CaveGenerator 的雕刻逻辑同口径）
         int topSolidY = surfaceTop;
-        boolean gateSkip = topSolidY < LandformField.SEA_LEVEL + 1;
+        boolean gateSkip = topSolidY < LandformField.SEA_LEVEL_BLK + 1;
         player.addChatMessage(new ChatComponentText(String.format(
             "[PROBE] 雕刻门控: topSolidY≈%d, waterSurfaceY≈%d, %s",
-            topSolidY, LandformField.SEA_LEVEL,
+            topSolidY, LandformField.SEA_LEVEL_BLK,
             gateSkip ? "会跳过（列顶低于水面）" : "不跳过（应雕刻）"
         )));
 
