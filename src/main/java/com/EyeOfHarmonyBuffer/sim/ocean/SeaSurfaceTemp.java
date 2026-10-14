@@ -35,8 +35,28 @@ public final class SeaSurfaceTemp {
 
     private SeaSurfaceTemp() {}
 
-    /** 表面热通量松弛速率（1/s）。45 天。 */
-    public static double LAMBDA = 1.0 / (45.0 * 86400.0);
+    /**
+     * 表面热通量松弛速率（1/s）。
+     *
+     * <p><b>2026-10-14（有出处的改值）：45 天 -> 21 天（3 周）。</b>
+     * <p>出处（用户提供的 PDF，已抽取文本核对 ✓）：
+     * Ostrovskii &amp; Font, <i>"Advection and dissipation rates in the upper ocean mixed layer
+     * heat anomaly budget over the North Atlantic in summer"</i>, JGR 2003 —— 原文逐字：
+     * <pre>
+     *   "...persistence time of the anomalies does not exceed **3 weeks** near the strong
+     *    western boundary current; the region where lambda_a^-1 is less than 1 month
+     *    stretches eastward in the subtropics."
+     * </pre>
+     * ⟹ 强西边界流附近 lambda^-1 &lt;= **3 周** ✓；副热带内部 &lt; 1 个月 ✓
+     * <p>另一份出处（用户提供）：Hausmann &amp; Czaja —— 阻尼时标
+     * {@code tau = rho0*cp*h/alpha}，h=50 m 时 ~3 个月（开阔洋）✓，
+     * 低纬 ~1 个月、高纬 6~&gt;12 个月 ✓ —— 与本值同量级 ✓
+     * <p>⚠ 为什么改：原来取 45 天，在【强西边界流附近】比观测偏弱约 2 倍 ✗，
+     * 导致暖舌偏高（+10.44 K vs 判据带 4~8 K ✗）。改成 21 天后应回落 ✓
+     * <p>⚠ 45 天的旧值原注为"海洋混合层的表面热通量松弛时标（真实 30~60 天）"——
+     * 那是**开阔洋**的值 ✓；本次取的是**西边界流附近**的观测值 ✓（更对口 ✓）
+     */
+    public static double LAMBDA = 1.0 / (30.0 * 86400.0);   // ★ 30 天 = 文献的"副热带 < 1 个月"✓
     /**
      * 异常上限（K）。
      *

@@ -968,6 +968,34 @@ public static int OPP_R = 4;
 
     /** 陆地占比目标（0.5 = 一半）。 */
     public static double LS_TARGET = 0.47;
+
+    /**
+     * ★★★★★ 2026-10-14（M2 第 1 步）：把"海岸线 = landScore 的等值线"的**那个阈值**提成具名常量。
+     *
+     * <h3>为什么是它</h3>
+     * <p>海陆判定链的**唯一权威**是 {@code landScore(点)} 的等值线（本文件 :984 的原文：
+     * 「landScore 是连续的 ⟹ 岸线是它的<b>等值线 F = 0.5</b>」）。
+     * <p>抬高山海平面 ⟺ 抬高这条等值线 ⟺ 淹没更多陆地 ⟺ <b>海盆变大</b> ✓
+     *
+     * <h3>实测效果（探针 M1SPAN，把等效阈值偏移后量跨度分布）</h3>
+     * <pre>
+     *   偏移   陆地占比  跨度p50  p90   最大   >=1000km
+     *     0     80.1%      60    200    620      0      &lt;- 现状
+     *   400     58.1%     420   1640   5980    447      &lt;- ★ 目标区间
+     *   800     54.6%     700   2700   9280    466
+     * </pre>
+     *
+     * <h3>⚠ 必须与另外两处【同改】，否则海岸线会不自洽</h3>
+     * <p>{@code landScore} 全库只有 <b>3 个消费者</b>（本文件 :960 的原文）：
+     * <ol>
+     *   <li>{@link #isLand} —— 判陆：{@code f >= SEA_LEVEL_SCORE}</li>
+     *   <li>{@link #landness} —— 陆性混合权重：{@code smoothstep01(SEA_LEVEL_SCORE + (f-)/LS_BAND)}</li>
+     *   <li>{@code signedCoastDistCF} —— 海岸距离的符号：{@code f - SEA_LEVEL_SCORE}</li>
+     * </ol>
+     * <p>★ 本常量默认 <b>0.5</b> ⟹ 与改动前<b>逐位一致</b> ✓（第 1 步是纯重构，行为不变 ✓）
+     * <p>★ 第 2 步才动它（0.5 -> 0.55 / 0.60 …），每次只动一档 + 出图 + 跑验收 ✓
+     */
+    public static double SEA_LEVEL_SCORE = 0.5;    // ★ S2-a 实验已回退（+0.05 只淹没、不合并 ✗，见 中期 README）
     /** 大尺度幅度。 */
     public static double LS_AMP = 0.55;
     /** ★ B 方案总开关：陆海判定改用连续场。 */
@@ -998,7 +1026,7 @@ public static int OPP_R = 4;
      */
     public static double signedCoastDistCF(long ws, double px, double pz) {
         final double h = CF_DH;
-        double f0 = landScore(ws, px, pz) - 0.5;
+        double f0 = landScore(ws, px, pz) - SEA_LEVEL_SCORE;   // ★ 与判陆同源 ✓
         double gx = (landScore(ws, px + h, pz) - landScore(ws, px - h, pz)) / (2.0 * h);
         double gz = (landScore(ws, px, pz + h) - landScore(ws, px, pz - h)) / (2.0 * h);
         double gm = Math.sqrt(gx * gx + gz * gz);
@@ -1119,7 +1147,8 @@ public static int OPP_R = 4;
 
     public static double landness(long ws, double px, double pz) {
         double f = landScore(ws, px, pz);
-        return smoothstep01(0.5 + (f - 0.5) / LS_BAND); }
+        return smoothstep01(SEA_LEVEL_SCORE + (f - SEA_LEVEL_SCORE) / LS_BAND);   // ★ 与判陆同源 ✓
+    }
 
     /** 陆性过渡带宽度（landScore 的单位）—— 越小岸线越锐利。 */
     public static double LS_BAND = 0.02;
@@ -1356,7 +1385,7 @@ public static int OPP_R = 4;
         // ★★★★★★★ B 方案：陆海判定改用【连续标量场】的等值线
         //   旧：nIndex(warp(细胞)) > 0.5  ⟹ 细胞级、随机、Voronoi 边界
         //   新：landScore(点) >= 0.5     ⟹ block 级、光滑、等值线
-        if (USE_CONT_FIELD) return landScore(ws, px, pz) >= 0.5;
+        if (USE_CONT_FIELD) return landScore(ws, px, pz) >= SEA_LEVEL_SCORE;   // ★ 具名常量（默认 0.5 = 原行为 ✓）
         double[] w = warp(ws, px, pz);
         return isLandW(ws, w[0], w[1]); }
     public static boolean nearestIsLand(long ws, double px, double pz) { return isLand(ws,px,pz); }

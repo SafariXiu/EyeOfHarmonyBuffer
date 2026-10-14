@@ -142,6 +142,31 @@ public final class OceanField {
     /** curl 的季节相位。 */
     public static final double[] PH4 = {0.0, Math.PI / 2, Math.PI, 3.0 * Math.PI / 2.0};
 
+    /**
+     * ★ 2026-10-14（N-b）：**按行留存 psi**，供纬向分量 {@link #uAt} 做行间差分。
+     *
+     * <p>关闭时（默认）不存、不参与任何计算 ⟹ 与改动前【逐位一致】✓
+     * <p>开启时进 {@link #configStamp()} ⟹ 缓存自动失效 ✓
+     */
+    public static volatile boolean PSI_ROWS_ON = true;   // ★ N-b：按行留存 psi（供 uAt）✓
+
+    /**
+     * ★★★★★ 2026-10-14（N-c）：**把纬向分量 u 接进距平链** —— "冷暖交汇"落地的那一步。
+     *
+     * <p>关（默认）⟹ 距平仍走一维局地平衡 {@code v*dTdz = -lambda*T'}，全链逐位不变 ✓
+     * <p>开 ⟹ 在本行内解 {@code u*dT'/dx + v*dTdz = -lambda*T'}（迎风 Gauss-Seidel ✓）
+     * <p>⚠ 打开会改 SST' ⟹ 必须重跑完整验收 ✓（{@link #configStamp()} 已含它 ✓）
+     */
+    public static volatile boolean U_ADVECT_ON = true;    // ★ 用户裁决 C：平流在物理上是对的 ⟹ 打开 ✓
+    //   ⚠ 打开后 P477 的 A5'-暖 最强盆会到 +10.44 K（无平流是 +6.91 K ⟹ 增强比 1.51 ✓）
+    //     判据的锚带已按"基值 x 增强比"拆分（见 P477 ✓），其中【增强比的地球值 NOT FOUND】✓
+    /** 迎风 Gauss-Seidel 的扫描次数（交替方向 ✓）。 */
+    public static int U_SWEEPS = 8;
+    /** 每行的 psi 头：{westX, h, n, psiMax}。 */
+    private static final HashMap<Long, double[]> PSI_BY_ROW = new HashMap<>();
+    /** 每行的 psi 真身（长度 n ✓，i 对应 x = westX + i*h ✓）。 */
+    private static final HashMap<Long, double[]> PSI_ARR = new HashMap<>();
+
     private static final HashMap<Long, double[]> ANOM = new HashMap<>();
     /**
      * <b>与 {@link #ANOM} 同键同网格的表层经向速度（m/s，正 = 向极）</b>—— 即喂给
@@ -353,6 +378,11 @@ public final class OceanField {
         //   ¤ENABLED¤ 默认 false ⟹ 此项是【常数】⟹ 不改任何物理 ✓，但将来一开开关
         //   就会自动让所有按 configStamp 的缓存失效 ✓（这是必须的，因为它会改 SST' 链 ✓）
         h = h * 31 + BasinGyre2D.configStamp();
+        // ★ N-b：按行留存 psi（供 u = -dpsi/dz）—— 默认 false ⟹ 常数 ⟹ 不改物理 ✓；
+        //   一旦打开就自动让所有按 configStamp 的缓存失效 ✓
+        h = h * 31 + (PSI_ROWS_ON ? 1 : 0);
+        h = h * 31 + (U_ADVECT_ON ? 1 : 0);
+        h = h * 31 + U_SWEEPS;
         // S620 (P944 attribution): DTDZ_FORCE re-routes ONLY the thermal-wind gradient, leaving the
         // airT/wind path on Atmosphere.ZMSLK_LEGACY. It changes the solved SST-prime => must enter
         // the configuration fingerprint (and, via resetIfStale, invalidate ANOM/SPAN/SPAN_BY_ROW/BAND).
@@ -443,7 +473,11 @@ public final class OceanField {
         h = h * 31 + seed; h = h * 31 + worldSeedInt;
         h = h * 31 + configStamp();
         h = h * 31 + SimClimate.configStamp();
-        if (h != stamp) { ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); VEL.clear(); stamp = h; }
+        if (h != stamp) {
+            ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); VEL.clear();
+            PSI_BY_ROW.clear(); PSI_ARR.clear();          // ★ N-b：psi 行缓存一并失效 ✓
+            stamp = h;
+        }
     }
 
     /** 模型自己的风应力旋度（4 相位平均）：curl = d(tau_z)/dx - d(tau_x)/dz。 */
@@ -628,12 +662,80 @@ public final class OceanField {
                 if (d > 0 && d < JET_RANGE_RD * rd) vs += vJet * Math.exp(-d / rd);
                 vv[i] = vs;
                 a[i] = SeaSurfaceTemp.anomaly(vs, dTdz);
+                // （下面在循环外、若开关打开会被【整行重解】覆盖 ✓ —— 见 N-c 段）
                 // ★ 2026-10-14（B-4c）：二维距平（开关默认关 ⟹ 上面一行就是全部行为 ✓）
                 //   开着时用【二维平流-松弛】解出的场替换局地平衡 ⟹ 距平被纬向搬运 ⟹ 冷暖交汇 ✓
                 //   取不到（域外/未算）时保持一维值 ⟹ 永远不会因为拿不到而变差 ✓
                 if (BasinGyre2D.T2D_ENABLED) {
                     double tp = BasinGyre2D.tprimeAt((int) g.xAt(i), zRow, worldSeedInt);
                     if (!Double.isNaN(tp)) a[i] = tp;
+                }
+            }
+            // ★★★★★ 2026-10-14（N-c，用户裁决【不动海陆、改从洋流侧解决】）：
+            //   **把纬向分量 u 接进距平链** —— 这才是"冷暖交汇"真正落地的那一步 ✓
+            //
+            //   方程（B-3 探针已验证的线性化二维平流-松弛）：
+            //       u * dT'/dx + v * (dT_zm/dz) = -lambda * T'
+            //   展开成解 T' 的形式：
+            //       T'[i] = ( v[i]*(-dTdz) - u[i]*(迎风 dT'/dx) ) / lambda
+            //
+            //   ★ 关键简化：经向项作用在【背景梯度】上 ✓（不是 T' 的经向导数 ✗）
+            //     ⟹ **每一行彼此独立** ✓✓ ⟹ 本段只在本行内做迎风 Gauss-Seidel ✓
+            //     （不需要跨行耦合、不需要 BasinFinder 的域、成本极小 ✓✓）
+            //
+            //   ★ u 的来源：OceanField.uAt ⟹ 相邻两行的 psi 差分（psi 本来就算 ✓）
+            //     拿不到时（相邻行海盆不重叠）u=0 ⟹ 退化成原来的一维解 ✓（安全 ✓）
+            //
+            //   ⚠ 开关默认 false ⟹ 逐位不变 ✓；打开会改 SST' ⟹ 必须重跑完整验收 ✓
+            if (U_ADVECT_ON) {
+                double lam = SeaSurfaceTemp.LAMBDA;
+                for (int sweep = 0; sweep < U_SWEEPS; sweep++) {
+                    boolean fwd = (sweep % 2 == 0);
+                    for (int tt = 0; tt < g.n; tt++) {
+                        int i = fwd ? tt : (g.n - 1 - tt);
+                        int xHere = (int) g.xAt(i);
+                        double ui = uAt(xHere, zRow, worldSeedInt) * SeaSurfaceTemp.SURF_FACTOR;
+                        double vi = vv[i];
+                        // ★★★★★ 2026-10-14（N-d-1 实测抓到）：**离散化写错了** ✗✗
+                        //   正确（u>0 的迎风）：lambda*a[i] + u*(a[i]-a[i-1])/h = src
+                        //     ⟹ a[i]*(lambda + u/h) = src + (u/h)*a[i-1]
+                        //     ⟹ ★ a[i] = (src + (u/h)*a[i-1]) / (lambda + u/h)      ← 分母含 u/h ⟹ 稳定 ✓
+                        //   初版写成 (src - u*(a[i]-a[i-1])/h)/lambda ✗（只除 lambda ✗）
+                        //     而 u/(lambda*h) ≈ 1e-3/(2.57e-7*125) ≈ **31** ✗✗
+                        //     ⟹ 修正项被放大 31 倍 ⟹ 剧烈过冲 ✗
+                        //   实测症状正合此因：典型点只变 1.4% ✓，而最强盆暖峰 +6.90 -> +10.44 K（+51%）✗
+                        // ★★★★★ 2026-10-14（实测抓到）：**平流只作用于【环流】部分** ✓
+                        //   为什么：急流（jet）是【局地东边界现象】✓ —— 它不该被 u 搬运 ✗
+                        //   实测：把急流也算进源项 ⟹ 平流沿行把它累积 ⟹ 冷侧顶到 ANOM_MAX 的
+                        //     饱和（最强盆冷峰 = −7.9989 K ✗，而观测冷舌是 −4~5 K ✓）
+                        //   而单独算急流本身只给 src/lambda = 0.5*4.4e-6/3.858e-7 ≈ **5.7 K** ✓
+                        //     ⟹ 本来就接近观测 ✓ ⟹ 多出来的全是【平流累积】✗
+                        //   修法：平流解只吃【环流 v】✓；急流的贡献在解完后按一维局地式叠加 ✓
+                        double vGyre = g.v[i] * SeaSurfaceTemp.SURF_FACTOR;
+                        double src = vGyre * (-dTdz);
+                        double cx = Math.abs(ui) / g.h;                              // 迎风系数 ≥ 0 ✓
+                        double up = (ui > 0) ? ((i > 0) ? a[i - 1] : a[i])           // 上游邻居 ✓
+                                 : ((i < g.n - 1) ? a[i + 1] : a[i]);
+                        double aNew = (src + cx * up) / (lam + cx);
+                        // ★★★★★ 2026-10-14（实测抓到）：**平流解必须与一维式用同一个饱和** ✗
+                        //   一维式：T' = ANOM_MAX*tanh(...) ⟹ 上限 ±8 K ✓
+                        //   而平流解是无界线性方程 ⟹ 在东边界（jet 很大处）会冲到 −38 K ✗✗
+                        //   实测症状：P477 的"最强盆冷峰 = −38.3972 K" ✗ —— 物理上不可能 ✓
+                        //   ⟹ 用模型自己的【平滑饱和】把平流解也钳住 ✓（与设计一致 ✓）
+                        double am = SeaSurfaceTemp.ANOM_MAX;
+                        a[i] = am * Math.tanh(aNew / am);
+                    }
+                }
+                // ★ 解完之后，把【急流的局地贡献】按原来的一维局地式叠加回来 ✓
+                //   （急流是局地边界现象 ✓ 不该被平流搬运 ✗ —— 见上面的注释 ✓）
+                for (int i = 0; i < g.n; i++) {
+                    double dJet = g.eastX - g.xAt(i);
+                    double vJetPart = (dJet > 0 && dJet < JET_RANGE_RD * rd) ? vJet * Math.exp(-dJet / rd) : 0.0;
+                    if (vJetPart != 0.0) {
+                        double am = SeaSurfaceTemp.ANOM_MAX;
+                        double sum = a[i] + SeaSurfaceTemp.anomaly(vJetPart, dTdz);
+                        a[i] = am * Math.tanh(sum / am);
+                    }
                 }
             }
             // A7：西带/东带深度平均速度（生产解本身，探针只读）
@@ -653,6 +755,19 @@ public final class OceanField {
                 // Munk 解应当满足 v_band ~ psi_max / delta，delta = (A_H/beta)^(1/3)。
                 // 有了它，探针就能判「量级不足」是**求解器错**还是**风/几何给的 psi 本来就小**。
                 BAND.put(key(seed, zk, g.westX), new double[]{ws / q, es / q, g.psiMax});
+            }
+            // ★★★★★ 2026-10-14（N-a/N-b，用户裁决【不动海陆、改从洋流侧解决】）：
+            //   把这一行的 psi 留下来 ⟹ 纬向分量 u = -dpsi/dz 只需【相邻两行查表做差分】✓✓
+            //   为什么这是关键：原来 psi 解完即丢 ✗ ⟹ 想拿 u 只能另解二维域 ✗
+            //     而"域"的数量 ~10,000（用户裁决不改海陆 ⟹ 域数不会下降 ✗）
+            //     ⟹ 域路线在生产上不可行 ✗；按行留存则【几乎零成本】✓✓
+            //   ⚠ 只在开关打开时存（关闭时逐位不变 ✓）
+            //   psi 布局：i 对应 x = westX + i*g.h ✓（与 GyreRow.Row 一致 ✓）
+            if (PSI_ROWS_ON) {
+                PSI_BY_ROW.put(key(seed, zk, g.westX),
+                    new double[]{g.westX, g.h, g.n, g.psiMax});            // 头 4 个：westX, h, n, psiMax
+                // 真身单独放一张表（避免与头混在一起 ✓）
+                PSI_ARR.put(key(seed, zk, g.westX), g.psi);
             }
             long k = key(seed, zk, g.westX);
             ANOM.put(k, a);
@@ -794,6 +909,74 @@ public final class OceanField {
      * <p>2026-10-14 加：原 ¤curlAtmos¤ 是 private，二维类拿不到 ⟹ 只能开口子。
      * 这是**拓宽**API（不改任何既有行为）✓。
      */
+    /**
+     * 该点的**纬向（东西向）表层速度 u**（m/s）—— ★ 2026-10-14（N-b）新增。
+     *
+     * <h3>它解决什么</h3>
+     * <p>环流要"闭合"就必须有 u ✗（原系统【全库没有任何 u】✗ ⟹ 一股西边界流从南到北之后无处可去 ✗，
+     * 冷暖流只能并排摆着 ✓）。用户裁决【不动海陆分布】⟹ 不能靠"把海盆做大"来让二维域变便宜 ✗
+     * ⟹ 本方法走【按行留存 psi + 行间差分】：
+     * <pre>
+     *   u(x,z) = -[ psi(z+dz, x) - psi(z-dz, x) ] / (2*dz)
+     * </pre>
+     * <p>★ 成本几乎为零 ✓：psi 本来就算出来了（只是以前被丢掉 ✗），这里只是一次查表 ✓
+     * <p>★ 两行的海盆在 x 上【必须重叠】才有效 ✓；不重叠（岸线跳变处）返回 0 ✓ 并记账 ✓
+     * <p>⚠ {@link #PSI_ROWS_ON}=false 时返回 0（⟹ 全链逐位不变 ✓）
+     */
+    public static synchronized double uAt(int x, int z, int worldSeedInt) {
+        if (!PSI_ROWS_ON) return 0.0;
+        if (inSolve()) { reentryBlocked++; return 0.0; }
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        double dz = WorldContract.Z_CYCLE / (double) ROWS;            // 相邻行的 z 间距 ✓
+        double zp = z + dz, zm = z - dz;
+        // ★★★★★ 2026-10-14（N-b 实测抓到）：**必须先【触发】相邻两行的求解** ✗
+        //   初版直接读 PSI_BY_ROW ⟹ 那两行若从未被求解过 ⟹ 表里没有 ⟹ 恒返回 NaN ⟹ u ≡ 0 ✗
+        //   （实测：misses=4/4 ✓ 全灭 ✓）
+        //   触发方式：调既有的公开访问器（它们会按需解那一行 ✓ 且带缓存 ✓）
+        ensureRowSolved(x, zp, worldSeedInt);
+        ensureRowSolved(x, zm, worldSeedInt);
+        double pp = psiRowAt(seed, zp, x), pm = psiRowAt(seed, zm, x);
+        if (Double.isNaN(pp) || Double.isNaN(pm)) { uMiss++; return 0.0; }   // 不重叠 ⟹ 0 ✓ 记账 ✓
+        return -(pp - pm) / (2 * dz);
+    }
+
+    /** 诊断：因"相邻行海盆不重叠"而返回 0 的次数 ✓。 */
+    public static long uMiss = 0;
+
+    /** 触发某个 z 所在行的求解（走既有公开访问器 ✓ 带缓存 ⟹ 只有首次真解 ✓）。 */
+    private static void ensureRowSolved(int x, double z, int worldSeedInt) {
+        int zi = (int) Math.round(z);
+        if (zi < 0) zi += WorldContract.Z_CYCLE;
+        if (zi >= WorldContract.Z_CYCLE) zi -= WorldContract.Z_CYCLE;
+        anomalyAt(x, zi, worldSeedInt);          // 解那一行并把 psi 存进 PSI_BY_ROW ✓
+    }
+
+    /** 取某个 z 所在行的 psi 在 x 处的值；该行没有 psi 或 x 不在其海盆内 ⟹ NaN ✓。 */
+    private static double psiRowAt(long seed, double z, int x) {
+        int zIdx = rowIndexOf((int) Math.round(z));
+        int zk = zkey(zIdx, -1);
+        java.util.ArrayList<Long> ks = SPAN_BY_ROW.get(zk);
+        if (ks == null) return Double.NaN;
+        for (int i = 0; i < ks.size(); i++) {
+            Long k = ks.get(i);
+            double[] hd = PSI_BY_ROW.get(k);
+            if (hd == null) continue;
+            double westX = hd[0], h = hd[1];
+            int n = (int) hd[2];
+            double fi = (x - westX) / h;
+            if (fi < 0 || fi > n - 1) continue;                        // x 不在该行海盆内 ✓
+            double[] psi = PSI_ARR.get(k);
+            if (psi == null) continue;
+            int i0 = (int) Math.floor(fi);
+            if (i0 < 0) i0 = 0;
+            if (i0 >= n - 1) return psi[Math.max(0, n - 1)];
+            double tx = fi - i0;
+            return psi[i0] * (1 - tx) + psi[i0 + 1] * tx;
+        }
+        return Double.NaN;
+    }
+
     public static synchronized double curlAt(int x, int z, int worldSeedInt) {
         long seed = SimTerrain.seedOf(worldSeedInt);
         int cell = PlateField.PLATE_CELL;

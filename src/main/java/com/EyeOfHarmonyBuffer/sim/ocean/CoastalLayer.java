@@ -477,8 +477,28 @@ public final class CoastalLayer {
         double fa = Math.abs(f);
         if (fa < F_MIN) fa = F_MIN;
         double fs = f < 0.0 ? -fa : fa;
-        return (G_PRIME / fs) * (hc / rossbyRadius(fs));
+        double v = (G_PRIME / fs) * (hc / rossbyRadius(fs));
+        // ★★★★★ 2026-10-14（用户裁决乙的后续）：**钳到观测上限** ✓
+        //   出处（本文件 javadoc :47 逐字）："v_max = 0.72 m/s ⚠ 高于真实东边界流表层 0.2~0.5 m/s"
+        //   ⟹ 观测范围 0.2~0.5 m/s ✓；而本函数的解析上限 = sqrt(G'*H_THERMOCLINE) = 1.7321 m/s ✗
+        //   ⚠ 为什么要钳：冷舌靠"东带 + 急流"驱动 ✓，急流偏快 ⟹ 冷侧距平顶到
+        //     SeaSurfaceTemp.ANOM_MAX(8 K) 的饱和 ✗（实测最强盆冷峰 = −7.9989 K ✗）
+        //   ★ 只在【超过观测上限】时生效 ⟹ 弱急流逐位不变 ✓；符号保留 ✓
+        if (v > JET_VMAX_OBS) v = JET_VMAX_OBS;
+        else if (v < -JET_VMAX_OBS) v = -JET_VMAX_OBS;
+        return v;
     }
+
+    /**
+     * ★★★★★ 2026-10-14（用户裁决乙的后续）：**沿岸急流表层速度的观测上限（m/s）**。
+     *
+     * <p>出处：本文件 javadoc :47 逐字 ——
+     * <pre>
+     *   "v_max = 0.72 m/s   ⚠ 高于真实东边界流表层 **0.2~0.5 m/s**"
+     * </pre>
+     * <p>⟹ 观测上限 **0.5 m/s** ✓；本模型 {@link #jetPeak} 的解析上限是 1.7321 m/s ✗（3.5 倍 ✗）
+     */
+    public static double JET_VMAX_OBS = 0.5;
 
     /**
      * 沿岸层对「东带 W 宽、全深 H 平均」的贡献（m/s）。
