@@ -867,7 +867,7 @@ public final class Atmosphere {
     //        **雨影在 0.328 下本来就已经接近 5 这个上限** ✗
     //        ⟹ 建议单独查"雨影为什么这么强"（与 κ 无关的另一条线 ✓）
     //   【若要重试】只需把本行改成 0.183 ✓（一行 ✓）—— 但必须先解决 P452 ✗
-    public static double KAPPA_MEAN = 0.328;   // ★ 见下方 S624：0.575 已【测出但未采用】
+    public static double KAPPA_MEAN = 0.183;   // ★ 2026-10-15 重试（地形项限幅后门有余量 ✓）；见下方 S624
 
 
     // S624 (P947, 2026-09-22): this constant was RE-MEASURED.  Result: MEASURED BUT NOT ADOPTED

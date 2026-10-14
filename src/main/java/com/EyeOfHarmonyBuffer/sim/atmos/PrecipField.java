@@ -2943,6 +2943,24 @@ public final class PrecipField {
      * <p>{@code true} = 原行为（逐位不变，回滚点）。
      */
     public static boolean OCEAN_TERRAIN_W = false;
+    /**
+     * 地形项是否【加限幅】（2026-10-15 审计，用户裁决：加）。
+     *
+     * <p>问题：w_terrain = U·∇h 原本【直接相加】，而同一个 wEff 里的【局地辐合项】
+     * 有 tanh 限幅（幅值 W_LOC_MAX）⟹ 两项待遇不一致。
+     * 实测：w_terrain 在陡坡上可达 0.3 m/s，而真实 w_eff 只有 0.002 ⟹ 大 150 倍。
+     * 本文件 :2928 自己就记着实测：TERRAIN_W=ON 时 P 的 max = 33193.14 mm/day（地球纪录 ~1800），
+     * 而 p50/p90/p99 不变 ⟹ 是【极端尾部污染】。当时只压制了【海洋列】(OCEAN_TERRAIN_W)，
+     * 陆地列未修 ⟹ 陆地尖峰仍在（本次剖面实测 186.9 / 666.6 mm/day）。
+     *
+     * <p>本开关（默认 true）：地形项改用 W_LOC_MAX * tanh(wT / W_LOC_MAX)：
+     * · 零新常数（W_LOC_MAX 是模型自己的上升速度尺度）
+     * · 机制保留（小坡度 tanh(x)≈x ⟹ 迎风增雨形状不变）
+     * · 有界（|贡献| &lt; W_LOC_MAX ≈ 2e-3 m/s，与真实 w_eff 同量级）
+     *
+     * <p>回滚：置 false ⟹ 逐位回到【直接相加】（一行）。
+     */
+    public static boolean TERRAIN_W_BOUND = true;
 
     /**
      * ★★★ 地形抬升的差分步长（m）。
@@ -3513,9 +3531,25 @@ public final class PrecipField {
             //   （n=201，min=0.0，max=1.0，frac(k>0)=0.99）⟹ k>0 对海洋几乎恒真，不筛掉任何东西。
             //   用【真正的陆地判据】PlateField.isLand（P1499 实测：全部尖峰点 land=false）。
             if (OCEAN_TERRAIN_W || PlateField.isLand(x, z, seed)) {
-                wE += TERRAIN_PHASE_AVG
+                double wT = TERRAIN_PHASE_AVG
                     ? wTerrainClim(x, z, seed, cell, theta, gradStep)
                     : Math.max(0.0, wTerrain(x, z, seed, cell, u0[0], u0[1]));
+                // 2026-10-15 审计（用户裁决：加）：给地形项加【有界处理】。
+                //   问题：w_terrain = U·∇h 是【直接相加】的，而同一个 wEff 里的
+                //     【局地辐合项】有 tanh 限幅（幅值 W_LOC_MAX）⟹ 两项待遇不一致。
+                //   后果：w_terrain 在陡坡上可达 0.3 m/s（真实 w_eff 只有 0.002）
+                //     ⟹ 大 150 倍；本文件 :2928 记着实测：TERRAIN_W=ON 时 P 的 max
+                //     = 33193.14 mm/day（地球纪录 ~1800），而 p50/p90/p99 不变。
+                //   本修法：地形项改用与局地辐合项【同一个限幅】：
+                //     wE += W_LOC_MAX * tanh(wT / W_LOC_MAX)
+                //     · 零新常数（W_LOC_MAX 是模型自己的上升速度尺度）
+                //     · 机制保留（小坡度 tanh(x)≈x ⟹ 迎风增雨形状不变）
+                //     · 有界（|贡献| < W_LOC_MAX ≈ 2e-3 m/s，与真实 w_eff 同量级）
+                //   回滚：TERRAIN_W_BOUND = false ⟹ 逐位回到【直接相加】（一行）。
+                if (TERRAIN_W_BOUND) {
+                    wT = W_LOC_MAX * Math.tanh(wT / W_LOC_MAX);
+                }
+                wE += wT;
             }
         }
         DIAG.get()[3] = wE;                         // 诊断：wEff

@@ -449,7 +449,7 @@ public final class ZonalTables {
      * A2 改的是风场 ⟹ 水汽输送 ⟹ 雨影 ✗ ⟹ 同样把它推过线 ✓。
      * ⟹ ★★ <b>先查清「雨影为什么这么强」（待裁决/387 的记账 ✓），再回来打开本开关</b> ✓。
      */
-    public static boolean U2ND_ON = false;
+    public static boolean U2ND_ON = true;    // ★ 2026-10-15 重试（地形项限幅后门有余量 ✓）
 
     /**
      * 12 个月拟合的 u_zm。相位与旧表一致：theta=0 是北半球夏至。
