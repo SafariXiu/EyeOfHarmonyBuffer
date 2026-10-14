@@ -45,7 +45,7 @@ public final class BasinFinder {
      * （2026-10-14 由 B4E 探针抓到；本类此前【全 src 零引用】，所以一直没暴露。）
      *
      * <p>★ 正确做法是<b>两个网格分开</b>：本常量只管【域构造】（粗网格 + 大半径 ✓）；
-     * 求解网格用 {@link BasinGyre2D#CELL}（500 m，能分辨 delta_M ✓）。
+     * 求解网格由消费者自己定（曾用 BasinGyre2D 的 500 m；该类已按用户裁决删除 ✓）。
      */
     public static final int SAMPLE = 20_000;
     /** 单方向搜索半径（格）=> 1600 km。超过则标记 truncated。 */

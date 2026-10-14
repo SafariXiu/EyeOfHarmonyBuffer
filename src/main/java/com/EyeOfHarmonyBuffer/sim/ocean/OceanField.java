@@ -374,10 +374,9 @@ public final class OceanField {
         if (PHASE_SEASONAL) h = h * 31 + 0x7A11DL;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
-        // ★ 2026-10-14（B-4）：二维闭合环流（BasinGyre2D）的旋钮折进来。
-        //   ¤ENABLED¤ 默认 false ⟹ 此项是【常数】⟹ 不改任何物理 ✓，但将来一开开关
-        //   就会自动让所有按 configStamp 的缓存失效 ✓（这是必须的，因为它会改 SST' 链 ✓）
-        h = h * 31 + BasinGyre2D.configStamp();
+        // ★ 2026-10-14（用户裁决）：**旧的"域路线"（BasinGyre2D）已整份删除** ✓
+        //   它被【按行留存 psi + 行间差分】的新路线取代 ✓（零成本、零域依赖 ✓）
+        //   ⟹ 这里不再有它的 configStamp 项 ✓
         // ★ N-b：按行留存 psi（供 u = -dpsi/dz）—— 默认 false ⟹ 常数 ⟹ 不改物理 ✓；
         //   一旦打开就自动让所有按 configStamp 的缓存失效 ✓
         h = h * 31 + (PSI_ROWS_ON ? 1 : 0);
@@ -662,14 +661,9 @@ public final class OceanField {
                 if (d > 0 && d < JET_RANGE_RD * rd) vs += vJet * Math.exp(-d / rd);
                 vv[i] = vs;
                 a[i] = SeaSurfaceTemp.anomaly(vs, dTdz);
-                // （下面在循环外、若开关打开会被【整行重解】覆盖 ✓ —— 见 N-c 段）
-                // ★ 2026-10-14（B-4c）：二维距平（开关默认关 ⟹ 上面一行就是全部行为 ✓）
-                //   开着时用【二维平流-松弛】解出的场替换局地平衡 ⟹ 距平被纬向搬运 ⟹ 冷暖交汇 ✓
-                //   取不到（域外/未算）时保持一维值 ⟹ 永远不会因为拿不到而变差 ✓
-                if (BasinGyre2D.T2D_ENABLED) {
-                    double tp = BasinGyre2D.tprimeAt((int) g.xAt(i), zRow, worldSeedInt);
-                    if (!Double.isNaN(tp)) a[i] = tp;
-                }
+                // ★ 2026-10-14（用户裁决）：旧的"域路线"（BasinGyre2D.tprimeAt）已整份删除 ✓
+                //   冷暖交汇现由【本行内的纬向平流】实现 ✓（见下面的 U_ADVECT_ON 段 ✓）
+                //   ⟹ 距平在解完后会被整行重解（含平流 + 饱和 + 急流局地叠加 ✓）
             }
             // ★★★★★ 2026-10-14（N-c，用户裁决【不动海陆、改从洋流侧解决】）：
             //   **把纬向分量 u 接进距平链** —— 这才是"冷暖交汇"真正落地的那一步 ✓
@@ -900,7 +894,7 @@ public final class OceanField {
      * （纬度无关），而 |dTds| 变 9 倍 ⇒ 旧的 T-prime 判据等价于要求 |v| 随纬度变 9 倍。
      */
     /**
-     * 该点的**风应力旋度**（Pa/m）—— 供 {@link BasinGyre2D}（二维闭合环流）取力项。
+     * 该点的**风应力旋度**（Pa/m）—— 供"二维闭合环流"一类的消费者取力项。
      *
      * <p>★ 它走的是本类既有的 {@code curlAtmos(x,z,seed,cell,-1)} 通路，因此
      * <b>自动尊重 {@link #CURL_ZONAL_BAND}（F1）</b> ✓ —— 带状开关开着时返回带状旋度，
