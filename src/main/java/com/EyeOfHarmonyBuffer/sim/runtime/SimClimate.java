@@ -153,6 +153,13 @@ public final class SimClimate {
      * <p>10 km 的依据见类注释：气候场最细的独立尺度 ≈ 150 km（UPWIND_STEP），15 倍过采样；
      * 与 5 km / 2.5 km 的群系不一致率 0.105% / 0.080%（P383 §4）。
      */
+    // ★★ 2026-10-15 审查（待裁决/361 的 2.4 组「同名待逐条核对」✓）：
+    //   `CELL` 在**两层**里同名 ✗，但指【不同层的分辨率】，**不是语义冲突** ✓：
+    //     · 本处 = **气候瓦片**的网格 ✓（10 km ✓；上方 :65-66 有 P383 §4 的保真度实测 ✓）
+    //     · LandformField.CELL = **250 m** ✓（地形层 ✓；:42 注明「TILE/CELL 服务
+    //       MC 分辨率与地形质量，与行星尺度无关」✓）
+    //   ⟹ 引用时**务必写全类名** ✓（`SimClimate.CELL` vs `LandformField.CELL` ✓）。
+    //   ⚠ 同理 `NX`（= TILE_X / CELL）在两层里也不同值 ✓（本层 10 ✓ / 地形 400 ✓）。
     public static int CELL = 10_000;
 
     /**
@@ -303,24 +310,31 @@ public final class SimClimate {
      */
     public static boolean AIRT_SEALEVEL = false;
 
-    /**
-     * 海温距平的注入点（第 3 步接 A2/A3）。null（默认）= 无海温距平 —— 与生产一致：
-     * Atmosphere.SST_PROVIDER 在 src 里**没有任何调用方**（P380 源码扫描）。
-     *
-     * <p>⚠⚠ <b>2026-09-13 修正（审计 D3）</b>：原文写的是「它只进温度这一路（本类显式加
-     * (1-kappa)*SST'）… 第 3 步把洋流接进来时要同时设置两处」——<b>这条指导是错的</b>。
-     * 因为 {@code Atmosphere.surfaceTemp} 的返回式里已经含 (1-k)*sstAnom，
-     * 「两处都设」会得到 2(1-kappa)*SST'（P447 F 段实测差 +5.000 K）。
-     * ⇒ 现在<b>只有一个注入点：Atmosphere.SST_PROVIDER</b>；
-     * {@link #SST_PROVIDER} 保留字段只为兼容探针签名（P447 的反事实分支）。
-     *
-     * <p>⚠ <b>2026-09-13 补正（审计 D56）</b>：上一句原文只说「不再参与 <b>tSea</b> 的计算」——
-     * 措辞太窄，结果<b>另外两个读者被留在原地</b>（{@code tSl -> f.q} 与 {@code f.sst}），
-     * 它们一直读到恒 null 的字段、静静贡献 0。接线之后 tSea 有 SST'、那两个没有 ⇒ 口径分裂。
-     * 现在本类<b>没有任何一处</b>读这个字段；{@code sstAnomAt} 已删除。
-     */
-    public interface SstProvider { double anomalyAt(int x, int z); }
-    public static SstProvider SST_PROVIDER = null;
+    // ==================== ★ 历史：本类的 SST 注入点已【整体删除】====================
+    //
+    // 2026-10-15 审计（= 待裁决/408 的遗留小账 ① ✓）：**删掉了**
+    //   `public interface SstProvider { double anomalyAt(int,int); }`
+    // 与 `public static SstProvider SST_PROVIDER = null` ✓。
+    //
+    // 【为什么可以删】（三条独立证据 ✓）
+    //   ① 生产：本类**没有任何一处**读它 ✓（原文 :320 逐字自述 ✓）
+    //   ② 探针：**163 个 tracked 探针里 0 处**引用 ✓（2026-10-15 实测 ✓）
+    //   ③ 原文 :315 给的保留理由是「只为兼容探针签名（P447 的反事实分支）」✗ ——
+    //      而 ②  已经**推翻**了它 ✗ ⟹ 该理由**过期** ✓。
+    //
+    // 【历史沿革（保留，勿删 ✓ —— 约定 4：历史段落必须自证是历史）】
+    //   · 2026-09-13 修正（审计 D3）：原指导说「第 3 步接线时要同时设置两处」✗ ——
+    //     **这条指导是错的** ✗：`Atmosphere.surfaceTemp` 返回式里已含 (1-kappa)*sstAnom，
+    //     「两处都设」会得到 2(1-kappa)*SST'（P447 F 段实测差 **+5.000 K** ✗）。
+    //     ⟹ 收敛为**唯一注入点：Atmosphere.SST_PROVIDER** ✓
+    //   · 2026-09-13 补正（审计 D56）：原文只说「不再参与 tSea 的计算」✗ —— 措辞太窄，
+    //     另外两个读者（tSl -> f.q 与 f.sst）被留在原地，读到恒 null 的字段、静静贡献 0 ✗；
+    //     接线后 tSea 有 SST'、那两个没有 ⟹ **口径分裂** ✗。
+    //     ⟹ 随后 `sstAnomAt` 已删除 ✓，本类不再有任何读者 ✓。
+    //   · 2026-10-15：字段与接口**整体删除** ✓（即本段 ✓）。
+    //
+    // ★ 现行接线（唯一 ✓）：生产 = WorldChunkManagerTalos2:37；探针 = OceanWiring.onWorld ✓
+    //   —— 两者走**同一个入口** ✓（见 待裁决/408 §3.1 ✓）。
 
     // ==================== 诊断计数器 ====================
     public static final AtomicLong SOLVE_COUNT = new AtomicLong();
