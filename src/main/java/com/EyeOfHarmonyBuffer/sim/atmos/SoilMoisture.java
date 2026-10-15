@@ -356,7 +356,8 @@ public final class SoilMoisture {
             double dec = Atmosphere.subsolarLat(theta);
             // ★★★★★ 待裁决/343：湖面反照率用 ALB_SEA（水面），而不是 ALB_LAND（陆面）。
             double absSolar = Radiation.absSolarSurface(lat, dec,
-                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tSl));   // §7353 单源
+                    // ★ 2026-10-15：带纬度（海冰/雪反照率需要 ✓）；开关关时逐位不变 ✓
+                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tSl, lat));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
             //   RS_BARE=0（默认）⇒ rsTot==RS_SURF ⇒ 逐位不变。

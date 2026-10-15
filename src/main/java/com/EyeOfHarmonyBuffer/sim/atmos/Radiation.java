@@ -1,5 +1,8 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 /**
  * S1a —— **辐射闭合**（设计冻结 §358 / §360，实测见 P554）。
  *
@@ -58,6 +61,89 @@ public final class Radiation {
     public static final double ALB_SEA = 0.06;
     public static final double ALB_LAND = 0.20;
     public static final double ALB_SNOW = 0.65;
+
+    // ==================== ★★★★★ 海冰/雪反照率（2026-10-15 接线 ✓）====================
+    //
+    // 出处（全部逐字核对过 ✓，见 待裁决/410、411、412 ✓）：
+    //   · UCAR/NCAR 技术说明 484（CCSM3 的 solar parameterization ✓）——
+    //     这是本节的**主要来源** ✓；CICE 文档（CSM 的海冰模式 ✓）提供热力学参数 ✓。
+    //   · 反照率的**原始观测**：SHEBA 现场（Sturm et al. 2002 / Perovich & Grenfell 2002 ✓）
+    //     与 Grenfell & Perovich (1984), JGR 89, 3573-3580 ✓
+    //
+    // ⚠⚠ 来源**自己声明**的三处不确定性（照录，勿删 ✓）：
+    //   ① 「The **-1 degC criterion is purely arbitrary**」（UCAR 484 逐字 ✓）
+    //   ② 「The .075 decline for ponded ice is simply an **educated guess**,
+    //        constrained by SHEBA measurements（Perovich et al. 2002）」（逐字 ✓）
+    //   ③ 「this relatively simple method … **may not include enough physics** to
+    //        accurately describe the feedback」
+    //        （引 Maykut & Perovich 1987 / Curry et al. 1995 / Holland & Bitz 2003 ✓）
+    //
+    /** 裸冰反照率（可见 < 700 nm ✓）。出处：CICE 文档 p28（CCSM3 的 ccsm3 方案 ✓）。 */
+    public static final double ALB_ICE_VIS = 0.78;
+    /** 裸冰反照率（近红外 > 700 nm ✓）。出处：CICE 文档 p28 ✓。 */
+    public static final double ALB_ICE_NIR = 0.36;
+    /**
+     * **冷雪（Tsf &lt; -1 degC）的单带（broadband）反照率** ✓ —— 0.86 ✓。
+     *
+     * <p>出处：UCAR 484 逐字「If we take the **65%/35%** vs and ni partition,
+     * the **broadband albedos are 0.86(x1)** and 0.81(x3)」✓（取 x1 = 单层 ✓）。
+     */
+    public static final double ALB_SNOW_BB_COLD = 0.86;
+    /**
+     * **近融化雪（Tsf 到 0 degC）的单带反照率** ✓ —— 0.745 ✓。
+     *
+     * <p>出处：UCAR 484 逐字「at 0 degC the near-melting albedos are .86, .53 vs and ni
+     * respectively (x1) … with a **broadband 65%/35% value of 0.745(x1)**」✓。
+     */
+    public static final double ALB_SNOW_BB_MELT = 0.745;
+    /**
+     * 可见/近红外的**能量分配比**（可见占比 ✓）—— 默认 **0.65** = UCAR 484 的
+     * 「A **mean overcast sky partition would be 65%/35%**」✓。
+     *
+     * <p>⚠ UCAR 484 逐字：该分配「depends mainly on **solar zenith angle, cloudiness and
+     * surface albedo**」✓ —— 本常数是它的**均值** ✓；
+     * 文档另给 clear sky：雪 52/48、**海冰 51/49**、深池 50/50 ✓（留作后续可切换 ✓）。
+     */
+    public static double PART_VIS = 0.65;
+    /** 冰反照率的厚度因子常数（m^-1 ✓）。出处：UCAR 484 **方程 (6)** 逐字 `c_fh = 4 m^-1` ✓。 */
+    public static final double C_FH = 4.0;
+    /** 方程 (6) 里的参考冰厚（m ✓）—— UCAR 484 逐字「The **0.5 m** sea ice thickness
+     *  between thin and thick albedos is somewhat arbitrary, being loosely based on
+     *  measurements」✓。 */
+    public static final double H_ICE_REF = 0.5;
+    /** 融化判据温度（K ✓）= **-1 degC**。出处：UCAR 484 逐字（⚠ 它自称 purely arbitrary ✓）。 */
+    public static final double T_MELT_K = 272.15;
+    /** 冰反照率随温度（-1 -> 0 degC）的下降量（每个带 ✓）。出处：CICE p28 / UCAR 484 ✓（⚠ 自称 educated guess ✓）。 */
+    public static final double ALB_ICE_DECLINE = 0.075;
+    /** 淡水冰的**热导率**（W/m/K ✓）—— Stefan 解用。出处：CICE 文档 **方程 62** `K_0 = 2.03` ✓。 */
+    public static final double K_ICE = 2.03;
+    /** 海冰**密度**（kg/m3 ✓）。出处：CICE 文档 p68 `rhoi = 917. kg/m3` ✓。 */
+    public static final double RHO_ICE = 917.0;
+    /** 淡水冰的**熔化潜热**（J/kg ✓）。出处：CICE 文档 **方程 61** `L_0 = 3.34e5` ✓。 */
+    public static final double L_FUSION = 3.34e5;
+    /**
+     * ★★★★★ **海冰/雪反照率开关**（2026-10-15 ✓）—— 默认 **false** ⟹ **逐位不变** ✓。
+     *
+     * <p><b>它补的是什么</b>：原实现里海洋分支**直接返回 {@link #ALB_SEA}** ✗ ——
+     * 即「结冰了也不改反照率」✗。这正是 {@code SimTerrain} 那句自述所指的缺口 ✓：
+     * 「陆地的最冷月还要考虑**雪/冰反照率**，**本模型没有那套反馈**」✓。
+     *
+     * <p><b>回路（现成的 ✓，不必新建）</b>：反照率 -&gt; {@code netColumnHeating}
+     * 的感热与辐射两项 -&gt; S2 定常波的强迫 ✓（{@link #ALB_LAND_ADD} 的注释已论证过 ✓）。
+     *
+     * <p>⚠ 本开关改变气候输出 ⟹ **必须折进 {@code SimClimate.configStamp()}**（已折 ✓）。
+     */
+    // ★★★★★ 2026-10-15：**用户裁决打开** ✓ —— 用于实测这个反馈的效果 ✓
+    //   （关闭态的全量验收已通过 ✓：pass=8 / fail=0 ✓，见 待裁决/413 ✓）
+    public static boolean SEA_ICE_ALBEDO_ON = true;
+    /**
+     * 冰反照率的**温度过渡偏移**（K ✓）：`DTs = max(0, tSurfK - T_MELT_K)` ✓。
+     * 出处：UCAR 484 **方程 (3)** 逐字「DTs = 0, Ts &lt; -1 degC ｜ = Ts + 1, Ts &gt; -1 degC」✓。
+     */
+    static double meltDeltaK(double tSurfK) {
+        double d = tSurfK - T_MELT_K;
+        return d > 0.0 ? d : 0.0;
+    }
 
     // ==================== 大气/云反射（§7353：行星反照率层） ====================
     /**
@@ -178,10 +264,130 @@ public final class Radiation {
      */
     public static double ALB_LAND_ADD = 0.0;
 
-    /** 地表反照率。 */
+    /** 地表反照率（**旧签名，保留** ✓ —— 需要纬度时用下面那个重载 ✓）。 */
     public static double albedo(boolean isLand, double tSurfK) {
-        if (!isLand) return ALB_SEA;
-        return tSurfK < T_SNOW_K ? ALB_SNOW : ALB_LAND + ALB_LAND_ADD;
+        return albedo(isLand, tSurfK, Double.NaN);
+    }
+
+    /**
+     * 地表反照率（**带纬度** ✓）—— 海冰/雪的反馈需要纬度才算得出冰厚 ✓。
+     *
+     * <p>★ {@code latRad} 为 NaN 或开关关闭时，**与旧实现逐位相同** ✓
+     * （海洋 → {@link #ALB_SEA} ✓；陆地 → 雪判据 ✓）。
+     */
+    public static double albedo(boolean isLand, double tSurfK, double latRad) {
+        if (!isLand) {
+            if (!SEA_ICE_ALBEDO_ON || Double.isNaN(latRad)) return ALB_SEA;
+            return seaIceAlbedo(latRad, tSurfK);
+        }
+        if (!SEA_ICE_ALBEDO_ON || Double.isNaN(latRad)) {
+            return tSurfK < T_SNOW_K ? ALB_SNOW : ALB_LAND + ALB_LAND_ADD;
+        }
+        // ★ 陆地：雪反照率升级为【温度连续】版 ✓（有出处：UCAR 484 方程 3 ✓）
+        if (tSurfK >= T_SNOW_K) return ALB_LAND + ALB_LAND_ADD;
+        return snowBroadband(tSurfK);
+    }
+
+    /**
+     * ★★★★★ **冻结度日**（FDD ✓，K·s ✓）—— 用本仓自己的 **ERA5 月温度表**精确积分 ✓。
+     *
+     * <pre>
+     *   FDD(lat) = SUM_{m=0..11} max( 0, T_f - tZmSlMonth(lat, theta_m) ) * dt
+     * </pre>
+     *
+     * <p><b>为什么可以这么做</b> ✓：
+     * <ul>
+     *   <li>{@link ZonalTables#T_ZM_SL_MONTH} 是 **ERA5 月平均海平面温度**（12 个月 ✓），
+     *       有出处 ✓（生成脚本见 ZonalTables 的头注释 ✓）。</li>
+     *   <li>{@code dt} 用本仓已有的 {@code WorldContract.DAYS_PER_YEAR} 与 86400 s ✓
+     *       ⟹ **零新常数** ✓。</li>
+     *   <li>它是**逐点纯函数** ✓ ⟹ 不破坏本模型「无状态、纯函数」的架构 ✓。</li>
+     *   <li>先例：{@code Atmosphere:641} 已在做同类的「月表 - 年表」运算 ✓。</li>
+     * </ul>
+     *
+     * <p>⚠ 这是 **Stefan 解**要的驱动量 ✓ —— 见 {@link #iceThicknessM} ✓。
+     */
+    public static double fddK(double latRad) {
+        double tf = SimTerrain.SEA_ICE_T;                       // 海水冰点 271.35 K ✓（本仓已有 ✓）
+        double dt = WorldContract.DAYS_PER_YEAR * 86400.0 / 12.0;
+        double sum = 0.0;
+        for (int m = 0; m < 12; m++) {
+            double theta = 2.0 * Math.PI * (m + 0.5) / 12.0;    // 月中点 ✓
+            double t = ZonalTables.tZmSlMonth(latRad, theta);
+            double d = tf - t;
+            if (d > 0.0) sum += d * dt;
+        }
+        return sum;
+    }
+
+    /**
+     * ★★★★ **冰厚**（m ✓）—— **Stefan 解** ✓，由 {@link #fddK} 驱动 ✓。
+     *
+     * <pre>
+     *   dH/dt = -( k / (H * rho * L) ) * (T_s - T_f)      （Stefan 定律 ✓ 微分形式）
+     *   =&gt;  H = sqrt( 2 * k * FDD / ( rho * L ) )
+     * </pre>
+     *
+     * <p>出处 ✓：JGR 2008（DOI 10.1029/2008JC005223）给出微分形式 ✓；
+     * 度日—冰厚关系见 **Anderson (1961)**, J. Glaciology **3**, 1170-1172 ✓
+     * （DOI 10.3189/S0022143000017676 ✓）与 **Maykut (1986)**, The Geophysics of Sea Ice,
+     * p 395-463 ✓（DOI 10.1007/978-1-4899-5352-0_6 ✓）。
+     *
+     * <p>⚠ Stefan 解的假设（Taylor &amp; Francis 1993 逐字 ✓）：「no thermal inertia ｜
+     * no internal heat source ｜ a known temperature」⟹ 本模型的**逐点诊断**正合适 ✓。
+     */
+    public static double iceThicknessM(double latRad) {
+        double fdd = fddK(latRad);
+        if (fdd <= 0.0) return 0.0;
+        return Math.sqrt(2.0 * K_ICE * fdd / (RHO_ICE * L_FUSION));
+    }
+
+    /**
+     * ★★★★★ **海冰反照率**（单带 / broadband ✓）—— CCSM3 的结构 ✓。
+     *
+     * <pre>
+     *   f_h   = min( atan(C_FH * h_i) / atan(C_FH * H_ICE_REF), 1 )    （UCAR 484 方程 6 ✓）
+     *   a_ice = ALB_SEA + ( a_ice_cold - ALB_SEA ) * f_h              （薄冰趋海洋值 ✓）
+     * </pre>
+     *
+     * <p>{@code a_ice_cold} 由**带值**按 {@link #PART_VIS} 合成 ✓：
+     * {@code PART_VIS*ALB_ICE_VIS + (1-PART_VIS)*ALB_ICE_NIR} ✓；
+     * 融化时两个带**同时**降 {@link #ALB_ICE_DECLINE}·DTs ✓（UCAR 484 方程 7 ✓）。
+     *
+     * <p>⚠ UCAR 484 逐字：「**no explicit pond fraction or depth, and no explicit pond albedo**」
+     * ⟹ 融化池在本方案里是**隐式**的 ✓（与 CICE p28 一致 ✓）—— 本实现照此 ✓。
+     *
+     * <p>★ 验证点 ✓：DTs = 1 K 时，文档给的 broadband 冰反照率 = **0.515** ✓
+     * （UCAR 484 逐字：「The spectral albedos at 0 degC are 0.655, 0.255(x1) …
+     * with the broadband albedo at 65%/35% partition of 0.515(x1)」✓）。
+     */
+    public static double seaIceAlbedo(double latRad, double tSurfK) {
+        double hi = iceThicknessM(latRad);
+        if (hi <= 0.0) return ALB_SEA;                    // 无冰 ⟹ 海洋值 ✓（= 旧行为 ✓）
+        double x = C_FH * hi, xr = C_FH * H_ICE_REF;
+        double fh = Math.atan(x) / Math.atan(xr);
+        if (fh > 1.0) fh = 1.0;
+        double ds = meltDeltaK(tSurfK);
+        double vis = ALB_ICE_VIS - ALB_ICE_DECLINE * ds;
+        double nir = ALB_ICE_NIR - ALB_ICE_DECLINE * ds;
+        if (vis < ALB_SEA) vis = ALB_SEA;
+        if (nir < ALB_SEA) nir = ALB_SEA;
+        double cold = PART_VIS * vis + (1.0 - PART_VIS) * nir;
+        return ALB_SEA + (cold - ALB_SEA) * fh;
+    }
+
+    /**
+     * **雪的单带反照率**（✓ 温度连续 ✓）—— UCAR 484 方程 (3) 的 broadband 版 ✓。
+     *
+     * <p>UCAR 484 逐字：「DTs = 0, Ts &lt; -1 degC ｜ = Ts + 1, Ts &gt; -1 degC」✓；
+     * 可见带每 K 降 **0.10**、近红外降 **0.15** ✓ ⟹ 按 {@link #PART_VIS} 合成后，
+     * 单带端点即文档给的 **0.86（冷）/ 0.745（0 degC）** ✓。
+     */
+    public static double snowBroadband(double tSurfK) {
+        double ds = meltDeltaK(tSurfK);
+        if (ds <= 0.0) return ALB_SNOW_BB_COLD;
+        if (ds >= 1.0) return ALB_SNOW_BB_MELT;
+        return ALB_SNOW_BB_COLD + (ALB_SNOW_BB_MELT - ALB_SNOW_BB_COLD) * ds;
     }
 
     /** 体块通量系数 {@code rho_a * C_D(kappa) * |V|}（W/(m^2 K) 或 kg/(m^2 s) 视用途）。 */

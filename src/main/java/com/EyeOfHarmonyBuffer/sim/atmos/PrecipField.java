@@ -675,7 +675,13 @@ public final class PrecipField {
      *
      * <p>⚠ **一次前向代入，不迭代**（§464/§466 纪律）：`F_net` 的 `qLat` 用【旧闭合】的 `w` 估出的 `P`。
      */
-    public static boolean WZM_FROM_QNET = false;
+    // ★★★★★ 2026-10-15 用户裁决：**打开**（验证降水链条能否用上地表反照率）
+    //   背景：Q_NET_HEATING 打开后 divAt 已全面响应 ✓（见 待裁决/415），
+    //         但降水仍逐位不变，因为 divU 叠加 dWave 的那段只在 WZM_FROM_QNET 时才…
+    //         ⚠ 更正：那段的条件是 STATIONARY_WAVE_ON（已 true），本开关控制的是
+    //         【纬向平均项】的口径（见 :498 的配对说明）—— 开启后 wEffQnet 支路才会执行。
+    //   ⚠ 本条**已在 SimClimate.configStamp() 里**（:488 附近）⟹ 缓存会自动失效 ✓
+    public static boolean WZM_FROM_QNET = true;
 
     /** 诊断：`M <= 0` 而回落到旧闭合的次数（正常应为 0；非 0 说明没配对）。 */
     public static long qnetNegM = 0;
@@ -3500,7 +3506,8 @@ public final class PrecipField {
         if (WZM_FROM_QNET) {
             double chvQ = Radiation.bulkCoeff(k, Math.hypot(u0[0], u0[1]));
             double decQ = Atmosphere.subsolarLat(theta);
-            double asrQ = Radiation.absSolarSurface(lat, decQ, Radiation.albedo(k > 0.5, tQ));   // §7353 单源
+            // ★ 2026-10-15：带纬度（海冰/雪反照率需要 ✓）；开关关时逐位不变 ✓
+        double asrQ = Radiation.absSolarSurface(lat, decQ, Radiation.albedo(k > 0.5, tQ, lat));   // §7353 单源
             wE = wEffQnet(lat, theta, divU, q, tQ, depl, k,
                           SoilMoisture.SOIL_MOISTURE_ON ? betaUsed : 1.0, chvQ, asrQ);
         } else {

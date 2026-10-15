@@ -214,7 +214,12 @@ public final class StationaryWave {
      * <p>守卫：陆地取到 `beta = 1` 回落时会累加 {@link #betaFallbackLandCalls} 并在首次打印一次
      * 警告。**验收与探针必须断言它为 0**（{@link #betaGuardTripped()}）。
      */
-    public static boolean Q_NET_HEATING = false;
+    // ★★★★★ 2026-10-15 用户裁决（甲）：**打开** ✓
+    //   目的：验证「反照率 → netColumnHeating → 定常波强迫 → 环流」这条回路能否闭合 ✓
+    //   （关闭态的实测结论见 工作目录/短期/强迫到环流无响应.md ✓：
+    //     Q_NET_HEATING=false 时 Q = Q_PER_MMDAY*pm，**完全不含反照率** ✗ ⟹ 回路断开 ✓）
+    //   ⚠ 本条**已在 stamp() 里**（:509）⟹ 缓存键自动跟着变 ✓
+    public static boolean Q_NET_HEATING = true;
 
     /**
      * ★★★★★ **§456 a″：配对守卫的计数器** —— 陆地上取到 `beta = 1` 回落的次数。
@@ -274,10 +279,26 @@ public final class StationaryWave {
     //   ★ 为什么不能直接用这一次的：建强迫本身要调 mmPerDay，而那会读 divAt；
     //     用同一轮的值就成了自指。用上一轮的值才是标准的不动点迭代。
     //   ★ 为什么默认 false：默认状态不得改变任何现有行为（目标 3）。
-    public static boolean CLOSED_LOOP = false;
+    // ★★★★★ 2026-10-15 用户裁决（甲）：**打开** ✓
+    //   目的：让「反照率 → 强迫 → 环流 → 降水」整条回路闭合 ✓
+    //   为什么必须有它（`:825`/`:882`/`:709` 三处合起来读 ✓）：
+    //     · `divPrevField` 只在【多轮】里被设置（:825 ✓）
+    //     · 求解期间 `divAt` 读到的是 `divPrevField`（:881 ✓），null 时返回 0（:882 ✓）
+    //     · 而 `itMax = CLOSED_LOOP ? LOOP_MAX_ITER : 1`（:709 ✓）
+    //   ⟹ CLOSED_LOOP=false 时永远只有一轮 ⟹ divPrevField 永远 null
+    //      ⟹ mmPerDay 内部的 divAt 恒为 0 ⟹ 降水永远看不到定常波（实测见 415/416）
+    //   ⚠ 代价：迭代最多 LOOP_MAX_ITER(40) 轮 ⟹ 会明显变慢
+    //   ⚠ 本条**已在 stamp() 里**（:517）⟹ 缓存键自动跟着变 ✓
+    public static boolean CLOSED_LOOP = true;
     public static int LOOP_MAX_ITER = 40;
     /** 收敛判据：相邻两轮 div(V) 的最大相对变化。 */
-    public static double LOOP_TOL = 1.0e-3;
+    // ★★ 2026-10-15 用户裁决（甲的延续）：**收紧到 1e-9** ✓
+    //   为什么：实测发现 CLOSED_LOOP=true 后结果与开环【逐位相同】✗ ⟹ 说明
+    //   第一轮后 `lastLoopChange < 1e-3` 就 break 了 ✗ ⟹ 等于只有一轮 ✗
+    //   ⟹ `divPrevField` 从未在 Q 构建前被设置 ⟹ mmPerDay 内部的 divAt 恒为 0 ✗
+    //   收紧容差可以【强制】它真正迭代，从而回答「这个反馈到底多弱」✓
+    //   ⚠ 代价：迭代轮数上升 ⟹ 更慢（LOOP_MAX_ITER=40 是上限 ✓）
+    public static double LOOP_TOL = 1.0e-9;
     /** 松弛因子 (0,1]：<1 时按下松弛，用来压住正反馈的振荡。 */
     public static double LOOP_RELAX = 1.0;
     public static int lastIterations = 0;
@@ -436,7 +457,8 @@ public final class StationaryWave {
         double veg = isLandHere
                   ? Vegetation.vegAt(x, z, seed, cell, vv -> pForVeg)
                   : 1.0;
-        double albHere = Radiation.albedo(isLandHere, ta)
+        // ★ 2026-10-15：带纬度（海冰/雪反照率需要纬度算冰厚 ✓）；开关关时逐位不变 ✓
+        double albHere = Radiation.albedo(isLandHere, ta, lat)
                        + (isLandHere ? Vegetation.albedoAdd(veg) : 0.0);
         if (albHere > 0.95) albHere = 0.95;
         double absSolar = Radiation.absSolarSurface(lat, dec, albHere);   // §7353 单源
@@ -512,6 +534,23 @@ public final class StationaryWave {
         h = h * 31 + LOOP_MAX_ITER;
         h = h * 31 + Double.doubleToLongBits(LOOP_TOL);
         h = h * 31 + Double.doubleToLongBits(LOOP_RELAX);
+        // ★★★★★ 2026-10-15 审计抓到（与 :511 的 ZERO_F 是【同一族】缺陷 ✗）：
+        //   `Q_NET_HEATING = true` 时，强迫 Q 直接由 `Radiation.netColumnHeating` 算出
+        //   ⇒ **任何影响地表反照率的量都会改 Q** ⇒ 必须进缓存键 ✗
+        //   ⚠ 症状（实测 ✓）：改了 `Radiation.SEA_ICE_ALBEDO_ON` 后，
+        //     `netColumnHeating` 明确变了（29.6% 格点、最大 114 W/m²），
+        //     但 `divAt` **逐位不变** ✗ —— 因为缓存键没变、求解器直接复用旧场 ✓。
+        //   ★ 这就是 :511 注释警告的那种「探针读到假结果」✗。
+        h = h * 31 + (Radiation.SEA_ICE_ALBEDO_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_SNOW_BB_COLD);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_SNOW_BB_MELT);
+        h = h * 31 + Double.doubleToLongBits(Radiation.PART_VIS);
+        h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);
+        h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_SEA);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_LAND);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_SNOW);
+        h = h * 31 + Double.doubleToLongBits(Radiation.ALB_LAND_ADD);
         return h;
     }
 

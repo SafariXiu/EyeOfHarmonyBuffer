@@ -485,6 +485,7 @@ public final class SimClimate {
         h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);   // ★ S1a（§385）
         h = h * 31 + (Radiation.BUCKET_BETA ? 1 : 0);                      // ★ S3（§387）
         h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
+        h = h * 31 + (Radiation.SEA_ICE_ALBEDO_ON ? 1 : 0);                // ★ 2026-10-15 海冰/雪反照率（同上 ⇒ 进指纹）
         h = h * 31 + (ClimlabEBM.EBM_ON ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
         h = h * 31 + (StationaryWave.STATIONARY_WAVE_ON ? 1 : 0);   // ★ S2（§393）
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）

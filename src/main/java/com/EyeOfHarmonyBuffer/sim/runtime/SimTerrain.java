@@ -649,8 +649,17 @@ public final class SimTerrain {
     /**
      * 该点的**最冷月**地表温度（K）= 年平 − A(phi, kappa)。**海冰判据用它**（审计 D72）。
      *
-     * <p>⚠ 海面用它与 {@link #SEA_ICE_T} 比较；陆地列不要用它（陆地的最冷月还要考虑雪/冰反照率，
-     * 本模型没有那套反馈，所以只把它用于「这片海会不会结冰」这一个问题）。
+     * <p>⚠ 海面用它与 {@link #SEA_ICE_T} 比较；陆地列不要用它（陆地的最冷月还要考虑雪/冰反照率）。
+     *
+     * <p>★★★★★ <b>2026-10-15 更新</b>：上面原来写着「<b>本模型没有那套反馈</b>」——
+     * <b>那句现在不再成立</b> ✓：海冰/雪的反照率反馈已接线 ✓，见
+     * {@link com.EyeOfHarmonyBuffer.sim.atmos.Radiation#SEA_ICE_ALBEDO_ON} ✓。
+     * <ul>
+     *   <li>冰厚由 <b>Stefan 解</b>诊断给出 ✓（{@code Radiation.iceThicknessM} ✓，
+     *       驱动量是本方法所用的同一套月表 ⟹ 两者**同源** ✓）。</li>
+     *   <li>⚠ 但**本方法仍只服务「这片海会不会结冰」** ✓ —— 它的返回值语义未变 ✓，
+     *       反馈走的是反照率那一路 ✓（不是改这里的判据 ✓）。</li>
+     * </ul>
      */
     public static double coldestMonthTempK(int x, int z, int worldSeedInt) {
         return SimClimate.surfaceTempK(x, z, worldSeedInt) - seasonalAmpK(x, z, worldSeedInt);
