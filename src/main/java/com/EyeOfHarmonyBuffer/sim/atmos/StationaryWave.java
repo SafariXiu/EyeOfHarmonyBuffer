@@ -79,7 +79,74 @@ public final class StationaryWave {
     public static int NX = 64;
     public static int NPHI = 46;
     public static double DAMPING = 1.0 / (1.5 * 86400.0);
+    // ⚠⚠ 2026-10-15：本常量【没有 javadoc】= **没有出处** ✗（铁律 2 ✗）。
+    //   它是【干】大气的第一斜压模重力波速 ✓ —— 而深对流区的有效稳定度应是
+    //   **GMS（gross moist stability）**✗，其值远小于干层结 ⟹ 本常量使响应偏弱 ✓。
+    //   核实（2026-10-15 ✓）：QTCM 官方手册（CSDMS, Qtcm_manv2.3.pdf ✓）的方程是
+    //     a1*(d_t + D_T1)T1 + **M_S1 * div** ...  ⟹ M_S1 扮演的正是本处 c^2 的角色 ✓✓
+    //   ⟹ 已备好接入点（见下面的 USE_MOIST_STABILITY / M_S1 ✓），
+    //     但 **M_S1 的数值【尚未找到有出处的来源】** ✗ ⟹ 见 M_S1 的注释 ✓。
     public static double C_GRAV = 70.0;
+
+    /**
+     * ★★★ 是否用【湿静力稳定度 M_S1】代替 {@code C_GRAV^2}（默认 **false** ⟹ 逐位不变 ✓）。
+     *
+     * <p><b>为什么有它</b>：QTCM 的方程是 {@code a1*(d_t + D_T1)T1 + M_S1*div = ...}
+     * （CSDMS 官方手册 Qtcm_manv2.3.pdf ✓）—— 其中 {@code M_S1} 与本类的 {@code c^2}
+     * **位置完全相同** ✓ ⟹ 换过去是【结构性的一处替换】✓，不是新物理 ✗。
+     *
+     * <p>⚠ <b>前提未满足</b>：{@link #M_S1} 的数值**没有找到有出处的来源** ✗（见其注释 ✓）
+     * ⟹ 本开关**保持 false** ✗；即使有人置 true，只要 {@code M_S1} 仍是 NaN，
+     * {@link #c2Eff()} 会**自动回落到 {@code C_GRAV^2}** ✓（防呆 ✓）。
+     */
+    public static boolean USE_MOIST_STABILITY = false;
+
+    /**
+     * ★ 湿静力稳定度 {@code M_S1}（单位应与 {@code c^2} 同：m^2/s^2 ✓）。
+     *
+     * <p>★★★★★★★ <b>2026-10-15 结案：本接入点的【前提已被否证】</b> ✗ ——
+     * 所以**不必再找这个数值** ✗，字段保留只为记账 ✓。
+     *
+     * <h4>查证过程（全部有出处 ✓）</h4>
+     * <ol>
+     *   <li>CSDMS 官方 QTCM 手册（Qtcm_manv2.3.pdf ✓，用 PyMuPDF 提取了 144,394 字符 ✓）
+     *       给出了**完整定义**：
+     *       <pre>
+     *         A.11（MSE 方程）：b_a1(d_t+D_T1)T1 + b_b1(d_t+D_q1)q1 + **M_1*div** = (g/p_T)F_net
+     *         A.12：            **M_1 = ∫_{p_t}^{p_s} ∂_p h dp**（= h_sfc - h_top ✓ 基本定理 ✓）
+     *         A.13（温度方程）：c_a1(d_t+D_T1)T1 + **M_S1*div** = &lt;Q_c&gt; + ...
+     *         p54-55：          **M_1 = M_S1 - M_q1** ｜ M_S1 单位 **K** ｜ M_1 是 gross moist stability
+     *       </pre></li>
+     *   <li>★ 代入本仓的**量纲桥**（:132/:213：W/m² → m²/s³ ✓，中心值 ~1.0e−3 ✓）：
+     *       方程的系数口径是 **m²/s²** ✓，而 A.12 的 {@code ∫∂_p h dp} 正是 m²/s² ✓
+     *       ⟹ **{@code h_sfc - h_top} 可以【直接】替换 {@code c^2}** ✓（量纲合法 ✓）。</li>
+     *   <li>✗✗ 但数值给出**相反的方向**：正常热带柱 ⟹ {@code h_sfc - h_top} ≈ **1.45e5**，
+     *       而 {@code C_GRAV^2 = 4900} ⟹ 比值 **约 30 倍** ⟹ 代入会让本类**弱 30 倍** ✗。</li>
+     * </ol>
+     *
+     * <h4>★ 结论：原前提错在两处</h4>
+     * <pre>
+     *   ① 「干 c + 纯潜热 ⟹ 低估 3~10 倍」✗ —— 【纯潜热】那半早已修好：
+     *      netColumnHeating 现在返回 qLat + qSens + qRad ✓（:440/:462 ✓），
+     *      且 QRAD_ASR_MINUS_OLR = F_net = ASR - OLR + LH + SH ✓（§455 ✓）。
+     *   ② ★★ 把 {@code c^2} 与 {@code M_1} 当成**同一个量** ✗ —— 它们只是【位置相同】✓：
+     *      · {@code c^2} = 重力波速的平方（干第一斜压模 ✓，地球 ~50~70 m/s ✓）
+     *      · {@code M_1} = gross moist stability（≈1e5 m²/s² ✓，是【另一个】物理量）✗
+     *      而 A.11 原文「acts as an effective stability **in moist regions**」✓
+     *      说的是它在湿区使系统更稳 ✓ —— **不是**说换成它环流会更强 ✗。
+     * </pre>
+     * <p>⟹ 故 {@link #USE_MOIST_STABILITY} **保持 false** ✓（本字段保持 NaN ✓）。
+     */
+    public static double M_S1 = Double.NaN;
+
+    /**
+     * 求解内核用的 {@code c^2}：默认 {@code C_GRAV^2} ✓；
+     * 只有在 {@link #USE_MOIST_STABILITY} 为 true **且** {@link #M_S1} 已填时才用 M_S1 ✓。
+     * <p>★ 抽成一个函数 ⟹ 内核（:505）与自证诊断（:560/561）**必然同源** ✓。
+     */
+    static double c2Eff() {
+        return (USE_MOIST_STABILITY && !Double.isNaN(M_S1)) ? M_S1 : C_GRAV * C_GRAV;
+    }
     /** 潜热换算：1 mm/day 降水 <=> 28.356 W/m^2（= 1 kg m^-2 day^-1 * 2.45e6 J/kg / 86400 s）。 */
     public static final double LV_W = 28.356;
 
@@ -433,6 +500,9 @@ public final class StationaryWave {
         h = h * 31 + NX; h = h * 31 + NPHI;
         h = h * 31 + Double.doubleToLongBits(DAMPING);
         h = h * 31 + Double.doubleToLongBits(C_GRAV);
+        // 2026-10-15：湿稳定度开关也折入指纹 ✓（未启用时【不折】⟹ 逐位不变 ✓）
+        h = h * 31 + (USE_MOIST_STABILITY ? 1 : 0);
+        if (USE_MOIST_STABILITY) h = h * 31 + Double.doubleToLongBits(M_S1);
         h = h * 31 + Double.doubleToLongBits(Q_SCALE);
         h = h * 31 + Double.doubleToLongBits(Q_PER_MMDAY);
         h = h * 31 + (Q_NET_HEATING ? 1 : 0);
@@ -486,7 +556,7 @@ public final class StationaryWave {
         double ur = (nur * dr + nui * di) / m2, ui = (nui * dr - nur * di) / m2;
         double[] vm = vAt(j - 1), vp = vAt(j + 1);
         double vpr = (vp[0] - vm[0]) / (2 * dy_), vpi = (vp[1] - vm[1]) / (2 * dy_);
-        double c2 = C_GRAV * C_GRAV;
+        double c2 = c2Eff();   // 2026-10-15：默认 = C_GRAV^2（逐位不变 ✓）；见 c2Eff 的注释 ✓
         double[] out = new double[2];
         out[0] = (ar * pjr - ai * pji) + c2 * (0.0 - kk_ * ui + vpr) + qre[j];
         out[1] = (ar * pji + ai * pjr) + c2 * (kk_ * ur + vpi) + qim[j];
@@ -541,8 +611,9 @@ public final class StationaryWave {
         double qEff = qc - qbar;
         Q_OVERRIDE = savedQ; ZERO_F = savedF; STATIONARY_WAVE_ON = savedE;
         invalidate();   // 清掉自证用的场，避免污染调用方
-        double ratio = Math.abs(dc) * C_GRAV * C_GRAV / qEff;
-        double budget = C_GRAV * C_GRAV * dc + DAMPING * pc + qEff;   // 必须 ~0
+        double c2d = c2Eff();   // 2026-10-15：与求解内核【同源】✓（否则自证会误判 ✗）
+        double ratio = Math.abs(dc) * c2d / qEff;
+        double budget = c2d * dc + DAMPING * pc + qEff;   // 必须 ~0
         double pass = (dc < 0 && pc < 0 && ratio > 0.90 && ratio < 1.05
                        && Math.abs(budget) < 1e-9 * qEff) ? 1.0 : 0.0;
         return new double[]{dc, pc, qc, ratio, pass, qEff, budget};
