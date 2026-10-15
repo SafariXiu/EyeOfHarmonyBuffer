@@ -3348,6 +3348,24 @@ public final class PrecipField {
     }
 
     /** 降水率（m/s）。 */
+    /**
+     * ★ 2026-10-15 诊断访问器：返回上一次 mmPerDay 的诊断数组副本。
+     *
+     * <pre>
+     *   [0] divU_raw    风场差分给出的散度（不含定常波）
+     *   [1] dWave       叠加进来的 StationaryWave.divAt
+     *   [2] divU_total  [0] + [1]
+     *   [3] wEff        最终上升速度（进 diag 与 precip 的那个）
+     * </pre>
+     * <p>用途：回答「为什么降水不响应反照率」—— 需要看 wEff 是否已被 tanh 限幅饱和。
+     * 出处：待裁决/419、420。
+     */
+    public static double[] diagSnapshot() {
+        double[] d = DIAG.get();
+        return d == null ? new double[0] : d.clone();
+    }
+
+    /** 降水率（m/s）。 */
     public static double precip(double q, double wEff) {
         if (wEff <= 0) return 0.0;
         return EPS_C * RHO_AIR * q * wEff / RHO_WATER;

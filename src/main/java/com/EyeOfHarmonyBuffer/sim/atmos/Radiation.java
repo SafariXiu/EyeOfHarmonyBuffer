@@ -240,7 +240,14 @@ public final class Radiation {
      *
      * <p>⚠ 本开关改变气候输出 ⇒ **必须折进 {@code SimClimate.configStamp()}**（已折）。
      */
-    public static boolean SKIN_TEMP_FROM_ENERGY_BALANCE = false;
+    // ★★★★★ 2026-10-15 用户裁决：「让它起到应该起的作用」⟹ **打开** ✓
+    //   为什么这是关键：本模型的温度链原来是【EBM(TOA) + SST'】✗，
+    //   不含【地表能量平衡】✗ ⟹ 地表反照率（含海冰/雪）**进不了温度** ✗。
+    //   打开它之后，SimClimate.buildTile 会把 tSea 换成由地表能量平衡解出的皮温
+    //   （SimClimate:1203-1218），而那里的 alb0 已接到 Radiation.albedo ✓
+    //   ⟹ **地表反照率（含海冰/雪）第一次真正进入生产温度** ✓✓
+    //   ⚠ 这是架构级改动（每个点的温度都会变）⟹ 必须全量重跑验收 ✓
+    public static boolean SKIN_TEMP_FROM_ENERGY_BALANCE = true;
 
     /** 日平均 TOA 日照（W/m^2）。{@code phi} 与 {@code dec} 为弧度。 */
     public static double insolation(double phi, double dec) {

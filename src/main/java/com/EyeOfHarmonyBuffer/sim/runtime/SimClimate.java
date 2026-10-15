@@ -1202,8 +1202,14 @@ public final class SimClimate {
         //   两个开关默认 false ⇒ 整段跳过 ⇒ 逐位不变。
         if (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE) {
             double chv0 = Radiation.bulkCoeff(kap, Math.hypot(ux, uz));
-            double alb0 = Radiation.ALB_SEA
-                        + Atmosphere.clamp01(kap) * (Radiation.ALB_LAND - Radiation.ALB_SEA);
+            // ★★★★★ 2026-10-15：**接到统一的地表反照率入口** ✓
+            //   原来是自己拼 ALB_SEA/ALB_LAND ✗ ⟹ 海冰/雪的分量进不来 ✗。
+            //   现在走 Radiation.albedo(isLand, tSurfK, latRad)：
+            //     SEA_ICE_ALBEDO_ON 关时【与原来的式子逐位等价】
+            //       （海洋 -> ALB_SEA；陆地 -> 雪判据 / ALB_LAND + ALB_LAND_ADD），
+            //     ⚠ 唯一差别：陆地侧多了一个「雪」的分支（原式没有，但原式本来
+            //       也只在 tSurfK 冷时用 ALB_LAND —— 这里是【修正】而不是偏离 ✓）。
+            double alb0 = Radiation.albedo(Atmosphere.clamp01(kap) > 0.5, tSea, lat);
             double absS0 = Radiation.absSolarSurface(lat, Atmosphere.subsolarLat(SEASON[0]), alb0);   // §7353 单源
             double qa0 = PrecipField.moisture(tSea, 0.0, kap);
             double beta0 = 1.0;

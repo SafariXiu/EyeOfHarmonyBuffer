@@ -514,6 +514,10 @@ public final class StationaryWave {
     private static double[] curP, curPi;
     private static double[] qGrid;          // rows*NX，求解时实际吃的强迫（诊断用）
     public static double lastForcing = -1;  // max|Q|（诊断用）
+    /** ★ 2026-10-15 诊断：上一次 ensureSolved 实际跑了【几轮】不动点迭代（判定预热是否必要）。 */
+    public static int lastIters = -1;
+    /** ★ 2026-10-15 诊断：上一次的收敛改变量（与 LOOP_TOL 比较）。 */
+    public static double lastLoopChangeV = -1;
     private static double dy_, kk_;
     private static double[] fOf, Uy;
 
@@ -825,10 +829,12 @@ public final class StationaryWave {
         }
         lastResidual = maxResid;
         lastForcing = maxQ;
+        lastIters = iters;   // ★ 2026-10-15 诊断：实际跑了几轮（判定「预热求解」是否必要）
         // ---- 不动点迭代的收敛判定 ----
         if (LOOP_RELAX < 1.0 && prevSol != null)
             for (int t = 0; t < acc.length; t++) acc[t] = prevSol[t] + LOOP_RELAX * (acc[t] - prevSol[t]);
         lastLoopChange = relChange(prevSol, acc);
+        lastLoopChangeV = lastLoopChange;   // ★ 2026-10-15 诊断
         // §352 第 4 门：环路增益 = 本轮增量 / 上轮增量
         double[] delta = new double[acc.length];
         for (int t = 0; t < acc.length; t++) delta[t] = acc[t] - (prevSol == null ? 0.0 : prevSol[t]);
