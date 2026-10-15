@@ -62,7 +62,12 @@ public final class GyreRow {
     /** beta(phi) = 2*Omega*pi/Z_CYCLE*cos(phi)。
      *  **不要再用常数 3.24e-10 —— 那是 45 度的值。** 见 §23.0 的仪器错误。 */
     public static double betaForLatitude(double latRad, int zCycle) {
-        return WorldContract.betaForLatitude(latRad, zCycle);
+        // ★★★★★★★★ 2026-10-15 审计（待裁决/399~404）：海洋改用【海洋口径的 beta】✓
+        //   原因：WorldContract.OMEGA 被 x40（大气必需 ✓），而几何也缩到 1/40
+        //   ⟹ beta 被放大 1600 倍 ⟹ 风生环流被压弱约 4 个数量级 ✗（实测 vPeak ~1e-4 m/s）。
+        //   定量（404 扫描）：beta /40 正是需要的那一档 ✓。
+        //   ⚠ 大气侧**不受影响**（它们用 WorldContract.OMEGA 原值 ✓）。
+        return WorldContract.betaForLatitudeOcean(latRad, zCycle);
     }
 
     /** 求解参数。 */

@@ -38,7 +38,8 @@
  *   |            |                  (ELEV_WITHOUT_LEM = true)
  *   渲染          水系河床                  |
  *   ({@link com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain})  ({@link com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion})   气候/降水/湖
- *   |            |                     ({@link com.EyeOfHarmonyBuffer.sim.atmos.PrecipField} / {@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField})
+ *   |            |                     ({@link com.EyeOfHarmonyBuffer.sim.atmos.PrecipField} / {@code WaterField}
+ *   |            |                      ★ 该类已整类删除 ✗ —— 见下方第四节 ✓)
  *   +-----+------+
  *         |
  *    ★ 实测差 0.08 m ⟹ 一致 ✓

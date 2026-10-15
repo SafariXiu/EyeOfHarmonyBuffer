@@ -4,7 +4,7 @@ import java.util.HashMap;
 
 /**
  * ★★★★★★ §462：植被 / 干旱度状态量 V(x,z) —— 文献口径（Claussen et al. 2013 谱系）。
- * 默认 ENABLED=false ⇒ 逐位不变。
+ * 默认 VEGETATION_ON=false ⇒ 逐位不变。
  *
  * 全部常数逐字取自 Groner, Claussen & Reick (2015, Clim. Past Discuss.) 对
  * Claussen et al. (2013) 概念模型的复述（refs/cp2015_veg_precip.pdf / cp2015_tables.txt），
@@ -37,9 +37,9 @@ public final class Vegetation {
     /**
      * 总开关。默认 false ⇒ vegAt 恒返回 1.0（无裸地）⇒ 反照率与旧行为逐位相同。
      *
-     * <p>⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：Vegetation（植被—干旱度 §459）。** 引用时务必写全类名（如 `Vegetation.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * <p>⚠⚠ §540（P2-18）：本字段名 `VEGETATION_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：Vegetation（植被—干旱度 §459）。** 引用时务必写全类名（如 `Vegetation.VEGETATION_ON`），
+     * 不要用静态导入或裸 `VEGETATION_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
      * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
@@ -48,7 +48,7 @@ public final class Vegetation {
      * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
-    public static boolean ENABLED = false;
+    public static boolean VEGETATION_ON = false;
 
     // ---- 文献常数（全部逐字，见类头） ----
     /** 草地/疏林草地的下阈值（Sahelian 型，150 mm/yr）。 */
@@ -107,7 +107,7 @@ public final class Vegetation {
 
     public static long configStamp() {
         long h = 1125899906842597L;
-        h = h * 31 + (ENABLED ? 1 : 0);
+        h = h * 31 + (VEGETATION_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(ALB_DESERT);
         h = h * 31 + Double.doubleToLongBits(RS_BARE);
         h = h * 31 + VEG_ITER;
@@ -159,7 +159,7 @@ public final class Vegetation {
 
     /** 该点的植被/干旱度状态 V ∈ [0,1]。未打开时恒为 1.0。 */
     public static double vegAt(int x, int z, long seed, int cell, PrecipFn pfn) {
-        if (!ENABLED) return 1.0;
+        if (!VEGETATION_ON) return 1.0;
         if (depthGet() > 0) { reentryBlocked++; double[] c = CUR.get(); return c == null ? 1.0 : c[0]; }
         long k = key(x, z, seed, cell);
         synchronized (Vegetation.class) {
@@ -200,14 +200,14 @@ public final class Vegetation {
 
     /** 反照率相对 ALB_LAND 的增量：(ALB_DESERT - ALB_LAND)*(1 - V)。 */
     public static double albedoAdd(double v) {
-        if (!ENABLED) return 0.0;
+        if (!VEGETATION_ON) return 0.0;
         double a = (ALB_DESERT - Radiation.ALB_LAND) * (1.0 - v);
         return a < 0.0 ? 0.0 : a;
     }
 
     /** 表面阻力（s/m）：RS_BARE*(1 - V)。 */
     public static double rsOf(double v) {
-        if (!ENABLED) return 0.0;
+        if (!VEGETATION_ON) return 0.0;
         return RS_BARE * (1.0 - v);
     }
 }

@@ -17,7 +17,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
  *   <li>{@link OceanField#install(int)} —— 装 {@code Atmosphere.SST_PROVIDER}；</li>
  *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热全部纬度行**
  *       （行数 = {@link OceanField#ROWS}；⚠ 原文写"64 条"✗，那已过期 —— 见下方 §7556 段）；</li>
- *   <li>★ <b>§7503</b>：{@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField#install(int)} ——
+ *   <li>★ <b>§7503</b>：地表水系场的安装入口（★ 该 {@code WaterField} 类已整类删除 ✗，见 待裁决/331） ——
  *       把地表水系场也记到同一个世界上（清掉上一个世界的 tile 缓存）。
  *       <b>它不改变任何气候输出</b>（只清缓存 + 记种子），所以这一步不需要单独验收。</li>
  * </ol>
@@ -42,7 +42,7 @@ public final class OceanWiring {
         // ★★★ 地貌演化层（LEM）也跟同一个世界走（记种子 + 清瓦片缓存）。
         //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
         TalosLandErosion.install(worldSeedInt);
-        if (!OceanField.ENABLED) return;
+        if (!OceanField.OCEAN_ON) return;
         // ★★★★★ §7556：探针模式跳过预热。
         //
         // 为什么：warmAll 会预热【全部】纬度行（行数 = OceanField.ROWS；

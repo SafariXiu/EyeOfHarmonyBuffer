@@ -211,10 +211,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 // 同源。两个场实测错位 38~57%（V2BiomeField:326-331 的自述），
                 // 错位的方向正是最坏的：「旧说陆 / 新说海」走 fillLandColumnV2，
                 // 高度取 SimTerrain 的**海洋分支**，而该函数**不铺水** ⇒ 海面下的干坑。
-                // SimTerrain.ENABLED=false 时保持旧路径**逐位不变**（回滚点）。
+                // SimTerrain.TERRAIN_ON=false 时保持旧路径**逐位不变**（回滚点）。
                 // 注：c.land 与 bias/scale 无关（SimTerrain.compose 只看 elevationWithCell），
                 // 所以这里判一次、fillLandColumnV2 里再 compose 一次，两次的 land 必然一致。
-                boolean land = SimTerrain.ENABLED
+                boolean land = SimTerrain.TERRAIN_ON
                     ? PlateField.isLandWithCell(
                         worldX, worldZ,
                         SimTerrain.seedOf(seed),
@@ -302,11 +302,11 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
         putBlock(blocks, meta, localX, h, localZ, surface);
 
-        // ★★★ 水系：河 / 湖放水（TalosLandErosion.ENABLED 时才执行；关掉逐位回到现状）
+        // ★★★ 水系：河 / 湖放水（TalosLandErosion.EROSION_ON 时才执行；关掉逐位回到现状）
         //   分类优先级：海（本函数不管）> 湖 > 河 > 地形
         //   水面 = round(filled)（Priority-Flood 的水力面，沿流向单调不增 -> 水不倒流）
         //   河床 = 水面 - 河深；先把 [河床+1, 水面] 挖空，再填水。
-        if (TalosLandErosion.ENABLED) {
+        if (TalosLandErosion.EROSION_ON) {
             // ★ 用【本函数拿到的世界种子】，不用 TalosLandErosion.installedSeed()。
             //   实测踩过：某个占位世界 onWorld(0) 把 installedSeed 覆盖成 0，
             //   于是这里会拿 0 去查询 ⟹ 水系全空。缓存键含 seed，直接用 seed 最稳。

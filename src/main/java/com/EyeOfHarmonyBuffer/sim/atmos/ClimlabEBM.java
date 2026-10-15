@@ -47,7 +47,7 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
  * <p><b>性能</b>：一次 O(19) 三对角（Thomas）+ 冰反照率迭代 ⟹ 首次调用时算一次、之后缓存。
  * 相对 {@code ZonalTables} 的查表只多一次数组索引，**可忽略**。
  *
- * <p><b>默认关闭</b>（{@link #ENABLED} = false）⟹ {@link Atmosphere#oceanBaseK} 逐位不变。
+ * <p><b>默认关闭</b>（{@link #EBM_ON} = false）⟹ {@link Atmosphere#oceanBaseK} 逐位不变。
  */
 public final class ClimlabEBM {
 
@@ -62,7 +62,7 @@ public final class ClimlabEBM {
      * <p>★ 口径注意：{@link Atmosphere#landMinusOceanSLK} 的 {@code Δ} **故意不走本开关** ——
      * 那段 javadoc 记了裁决理由（观测的相对差 + 内生的绝对水平）。
      */
-    public static boolean ENABLED = true;    // ★ §7347 完整接入：§7346 已过 22 支验收（门中性）
+    public static boolean EBM_ON = true;    // ★ §7347 完整接入：§7346 已过 22 支验收（门中性）
 
     // ==================== climlab 常数（逐字，见类头出处） ====================
     /**

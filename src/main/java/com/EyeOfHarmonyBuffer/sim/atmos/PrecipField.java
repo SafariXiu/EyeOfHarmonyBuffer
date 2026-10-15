@@ -48,7 +48,7 @@ public final class PrecipField {
     /**
      * 诊断读数（**只给探针用，生产不读**）。线程隔离，避免多线程下互相踩。
      * [0] 原始 divU（只来自 cellPressure）  [1] 叠加进来的 div(V)  [2] 叠加后的 divU  [3] wEff
-     * [4] wBase（纬向平均上升支：默认取 ZonalTables.wZm；HadleyCell.ENABLED 时取求解值）
+     * [4] wBase（纬向平均上升支：默认取 ZonalTables.wZm；HadleyCell.SOLVED_ON 时取求解值）
      * [5] q 比湿  [6] tSl 海平面等效温度  [7] kappa  [8] precip 主项(m/s)
      * [13] beta（土壤湿度桶给出的表面湿润度；未启用时恒 1.0）
      * [14] wDiag = -(H_EFF/pi)*(divU + div(V)) —— **真正的诊断垂直速度**（m/s），
@@ -3290,7 +3290,7 @@ public final class PrecipField {
         double wLat = WZM_ITCZ_SHIFT ? shifted : Math.toDegrees(latRad);
         // §436：改用观测月表时【不叠加】人工平移（表自带迁移）；默认 true ⇒ 走上一支。
         double wBase = WZM_FROM_TABLE ? ZonalTables.wZmMonth(Math.toDegrees(latRad), theta)
-                     : (HadleyCell.ENABLED ? HadleyCell.wZmSolved(wLat) : ZonalTables.wZm(wLat));
+                     : (HadleyCell.SOLVED_ON ? HadleyCell.wZmSolved(wLat) : ZonalTables.wZm(wLat));
         DIAG.get()[4] = wBase;
         if (!SPLIT_ASCENT) return wBase + wLoc;
         return Math.max(0.0, wBase) + Math.max(0.0, wLoc);
@@ -3411,7 +3411,7 @@ public final class PrecipField {
         //   （自旋中不设 —— 那时 beta 由 SoilMoisture 自己显式给出，设了会覆盖它、导致递归）。
         Double savedBeta = BETA_OVERRIDE.get();
         double betaUsed = 1.0;
-        if (SoilMoisture.ENABLED && !SoilMoisture.isSpinningUp()) {
+        if (SoilMoisture.SOIL_MOISTURE_ON && !SoilMoisture.isSpinningUp()) {
             betaUsed = SoilMoisture.betaAt(x, z, seed, cell, theta, gradStep);
             // ★ §7497 水系接线：湖 / 湿地 = 饱和面 ⟹ beta = 1（见 Q_FROM_WATER 的 javadoc）。
             //   放在 set() 之前 ⟹ 下游（moisture 的 rhEff、DIAG[13]、路径点）全部一致地看到它。
@@ -3480,7 +3480,7 @@ public final class PrecipField {
         //   默认 ENABLED=false => 整段跳过 => 逐位不变。
         //   isSolving() 守卫切断「求解器建强迫场 -> mmPerDay -> 再求解」的递归。
         double dWave = 0.0;
-        if (StationaryWave.ENABLED) {
+        if (StationaryWave.STATIONARY_WAVE_ON) {
             // 递归守卫：求解自身建强迫时会再进 mmPerDay，这里不能再调 ensureSolved。
             // 但 divAt 必须【照常调用】—— 闭环正是靠"求解期间读上一轮的场"来闭合反馈的。
             if (!StationaryWave.isSolving()) StationaryWave.ensureSolved(seed, cell, theta, gradStep);
@@ -3502,7 +3502,7 @@ public final class PrecipField {
             double decQ = Atmosphere.subsolarLat(theta);
             double asrQ = Radiation.absSolarSurface(lat, decQ, Radiation.albedo(k > 0.5, tQ));   // §7353 单源
             wE = wEffQnet(lat, theta, divU, q, tQ, depl, k,
-                          SoilMoisture.ENABLED ? betaUsed : 1.0, chvQ, asrQ);
+                          SoilMoisture.SOIL_MOISTURE_ON ? betaUsed : 1.0, chvQ, asrQ);
         } else {
             wE = wEff(lat, theta, divU);
         }
@@ -3654,7 +3654,7 @@ public final class PrecipField {
         double pMm = p * 86400.0 * 1000.0;
         // ★ §462：植被的【降水反馈通道】 P_eff = P_d + D_B*V（文献：Liu et al. 2006a; Claussen et al. 2013）。
         //   ABI 是非对称的：若本线程正在解 V（V_OVERRIDE 非 null），**直接读覆盖值** ⇒ 绝不重入 vegAt。
-        if (Vegetation.ENABLED) {
+        if (Vegetation.VEGETATION_ON) {
             double[] ov = Vegetation.V_OVERRIDE.get();
             double vv;
             if (ov != null) {

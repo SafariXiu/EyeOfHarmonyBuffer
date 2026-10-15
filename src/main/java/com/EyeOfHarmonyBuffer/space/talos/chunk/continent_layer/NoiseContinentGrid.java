@@ -141,7 +141,7 @@ public final class NoiseContinentGrid {
      * <h3>改前</h3>
      * <pre>
      *   本方法 -> TalosLandField.height -> height0
-     *          -> if (TalosLandErosion.ENABLED && h>0) h = TalosLandErosion.height(..)
+     *          -> if (TalosLandErosion.EROSION_ON && h>0) h = TalosLandErosion.height(..)
      *   ⟹ 每次调用都可能触发一次 LEM 瓦片求解（512 km 窗口，冷瓦片 5~9 秒）。
      * </pre>
      *
@@ -241,7 +241,7 @@ public final class NoiseContinentGrid {
      * <h3>改前的灾难（实测）</h3>
      * <pre>
      *   调用链：landScore -> kappa -> TalosLandField.height
-     *           -> height0 -> if (TalosLandErosion.ENABLED && h>0) h = TalosLandErosion.height(..)
+     *           -> height0 -> if (TalosLandErosion.EROSION_ON && h>0) h = TalosLandErosion.height(..)
      *   ⟹ 每一次 kappa 查询都可能触发一次【LEM 瓦片求解】（512 km 窗口，冷瓦片 5~9 秒）。
      *   ⟹ 验收探针 P296（每纬线 500 个 x 采样 x 40,000 km = 跨约 78 个 LEM 瓦片）
      *      实测 ~27 分钟才输出一行（原本应在秒级）。

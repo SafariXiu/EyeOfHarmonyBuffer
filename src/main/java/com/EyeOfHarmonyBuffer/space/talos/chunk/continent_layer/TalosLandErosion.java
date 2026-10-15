@@ -104,7 +104,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * 因此每瓦片是 {@code (seed, tileX, tileZ)} 的<b>纯函数</b>，可无限外推。
  *
  * <h3>开关与回滚</h3>
- * {@link #ENABLED} 默认 <b>false</b>。关掉后 {@link TalosLandField#height0} 里
+ * {@link #EROSION_ON} 默认 <b>false</b>。关掉后 {@link TalosLandField#height0} 里
  * 那一行短路判断不执行，<b>逐位回到现状</b>。
  *
  * <h3>许可证</h3>
@@ -117,7 +117,7 @@ public final class TalosLandErosion {
     // ==================== 开关 ====================
 
     /** ★ 总开关。关掉后 {@link TalosLandField#height0} 里那一行短路判断不执行，逐位回到现状。 */
-    public static volatile boolean ENABLED = true;
+    public static volatile boolean EROSION_ON = true;
 
     // ==================== 网格与窗口 ====================
 
@@ -736,7 +736,7 @@ public final class TalosLandErosion {
      *   所以正式接入时应先 warmAround 再让玩家靠近。
      */
     public static synchronized void warmAround(double px, double pz) {
-        if (!ENABLED) return;
+        if (!EROSION_ON) return;
         int ob = outBlocks();
         if (ob <= 0) return;
         Thread old = worker;
@@ -1106,7 +1106,7 @@ public final class TalosLandErosion {
     public static long configStamp() {
         long h = 0x7A14L;   // 版本位
         // ---- 网格与求解窗口 ----
-        h = h * 31 + (ENABLED ? 1 : 0);
+        h = h * 31 + (EROSION_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(STEP_BLK);
         h = h * 31 + SOLVE_CELLS;
         h = h * 31 + OUT_CELLS;
@@ -1272,7 +1272,7 @@ public final class TalosLandErosion {
 
     /** 只查缓存，<b>不建瓦片</b>。未命中返回 {@code null}。 */
     private static Tile peekTile(long ws, double px, double pz) {
-        if (!ENABLED) return null;
+        if (!EROSION_ON) return null;
         int ob = outBlocks();
         if (ob <= 0 || SOLVE_CELLS < OUT_CELLS + 2 * BUFFER_CELLS) return null;
         int tx = (int) Math.floorDiv((long) Math.floor(px), (long) ob);
@@ -1281,7 +1281,7 @@ public final class TalosLandErosion {
     }
 
     private static Tile tileAt(long ws, double px, double pz) {
-        if (!ENABLED) return null;
+        if (!EROSION_ON) return null;
         int ob = outBlocks();
         if (ob <= 0 || SOLVE_CELLS < OUT_CELLS + 2 * BUFFER_CELLS) return null;
         // 只为诊断记录：谁最近被查询过（不参与正确性）

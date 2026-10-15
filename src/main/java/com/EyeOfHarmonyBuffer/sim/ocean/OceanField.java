@@ -41,9 +41,9 @@ public final class OceanField {
     private OceanField() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * ⚠⚠ §540（P2-18）：本字段名 `OCEAN_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.OCEAN_ON`），
+     * 不要用静态导入或裸 `OCEAN_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查（#19）：本字段上方原有**两份** javadoc 紧挨着——
      * 前一份是【本字段的实质说明】（接线历史 + 代价阻塞 ✓），
@@ -76,9 +76,9 @@ public final class OceanField {
      * 或调 {@link OceanWiring#off()}。代价修好之前，**不要**把它当成「已完成的生产特性」。
      */
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * ⚠⚠ §540（P2-18）：本字段名 `OCEAN_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：OceanField（海洋场）。** 引用时务必写全类名（如 `OceanField.OCEAN_ON`），
+     * 不要用静态导入或裸 `OCEAN_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
      * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
@@ -87,7 +87,7 @@ public final class OceanField {
      * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
-    public static boolean ENABLED = true;
+    public static boolean OCEAN_ON = true;
     /**
      * 纬度行数。★ D1（2026-09-18）：Z_CYCLE 20M -> 40M ⇒ **64 -> 128**，
      * 以保住每行 312.5 km（= 2.81° 纬度）的分辨率。
@@ -270,7 +270,7 @@ public final class OceanField {
     /**
      * **接线入口（生产唯一一处）**：把本场装成 {@link Atmosphere#SST_PROVIDER}。
      *
-     * <p>{@link #ENABLED}=false 时**卸掉**提供者（回到 SST' == 0 的旧口径）。
+     * <p>{@link #OCEAN_ON}=false 时**卸掉**提供者（回到 SST' == 0 的旧口径）。
      *
      * <p>为什么提供者要闭包一个种子：{@code  Atmosphere.SstProvider.anomalyAt(int,int)}
      * 的签名**不带种子**（这是既有接口，改它会牵动所有调用方），而本场必须有种子。
@@ -280,7 +280,7 @@ public final class OceanField {
      * <p>线程安全：{@code synchronized}，与 {@link #anomalyAt}/{@link #spanOf}/{@code solveRow} 同一把锁。
      */
     public static synchronized void install(int worldSeedInt) {
-        if (!ENABLED) { uninstall(); return; }
+        if (!OCEAN_ON) { uninstall(); return; }
         final int s = worldSeedInt;
         installedSeed = s;
         Atmosphere.SST_PROVIDER = new Atmosphere.SstProvider() {
@@ -376,7 +376,7 @@ public final class OceanField {
      *   <li>进：`ROWS / ROW_H / H_TOTAL / A_H / GRAD / JET_RANGE_RD`（都会改解出来的 `SST'`），
      *       以及 `SeaSurfaceTemp` 与 `CoastalLayer` 的指纹（同样改 `SST'`）；</li>
      *   <li><b>不进</b>：`WARM_SCAN`（只影响**预热覆盖面**，不改任何点的值 ——
-     *       把它放进去只会让缓存白白失效）、`ENABLED`（不是值，且它只通过 `install()` 生效，
+     *       把它放进去只会让缓存白白失效）、`OCEAN_ON`（不是值，且它只通过 `install()` 生效，
      *       `SST_PROVIDER` 的那个 0/1 位已经覆盖了）。</li>
      * </ul>
      */

@@ -20,7 +20,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
  * 站在大陆内部时海岸线可能在几千公里之外，手动飞过去不现实。
  *
  * <h3>判据必须与生产一致</h3>
- * 本指令用 {@link TalosField#isLand(double, double, long)} —— 与 {@code ChunkProviderTalos2:213} 的
+ * 本指令用 {@link PlateField#isLand(double, double, long)} —— 与 {@code ChunkProviderTalos2:213} 的
  * 方块海陆判定【同一个入口】（{@code PlateField.isLandWithCell} 最终就调它）。
  * 所以指令报告的海岸线就是游戏里真正看到的那条线，不存在口径漂移。
  *

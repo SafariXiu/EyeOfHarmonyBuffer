@@ -2369,9 +2369,9 @@ public static int OPP_R = 4;
             }
             // ★★★ 唯一接入点：地貌演化层（LEM / stream power）。
             //   它把「抬升场」演化到稳态，得到自带树枝状河谷网络的地形。
-            //   TalosLandErosion.ENABLED 默认 false ⟹ 这一行不执行 ⟹ 逐位回到现状。
+            //   TalosLandErosion.EROSION_ON 默认 false ⟹ 这一行不执行 ⟹ 逐位回到现状。
             //   ⚠ 接入点【唯一】⟹ 气候层、地形层、水系自动全部一致（不会重演多口径问题）。
-            if (TalosLandErosion.ENABLED && h > 0.0) h = TalosLandErosion.height(ws, px, pz);
+            if (TalosLandErosion.EROSION_ON && h > 0.0) h = TalosLandErosion.height(ws, px, pz);
             return h; }
         return eval(ws, px, pz)[3]; }
 

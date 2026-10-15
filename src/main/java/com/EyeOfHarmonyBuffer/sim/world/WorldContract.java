@@ -129,6 +129,52 @@ public final class WorldContract {
     }
 
     /**
+     * ★★★★★★★★ <b>2026-10-15 审计：海洋专用的自转速率 = **地球真值**</b>（不做 x40 ✓）。
+     *
+     * <h3>为什么需要它（本文是那串调查的落点 ✓）</h3>
+     * <p>起因：P292 的 A3 方向门 FAIL（38% vs 判据 80%）。追查链条（待裁决/399~404）：
+     * <ol>
+     *   <li>东带速度量级 = 1e-5 ~ 1e-4 m/s，比观测（0.2~0.5 m/s）**弱 4 个数量级** ✗</li>
+     *   <li>不是探针 artifact：直接调 {@code GyreRow.solve}（生产口径）量到同一量级 ✓</li>
+     *   <li>参数自洽（aH/rhoH/h 与世界尺度同量级 ✓，delta_M/L 与地球相当 ✓）</li>
+     *   <li>★ 真因：{@code beta = 2*Omega*(2*pi/zCycle)*cos(phi)} 的**两个因子同向叠加**：
+     *       {@code OMEGA} 被 x40（:67，大气必需 ✓），而几何 {@code zCycle = 4*MAX_D} 缩到 1/40
+     *       ⟹ **beta 被放大 40x40 = 1600 倍** ✗
+     *       ⟹ Sverdrup {@code V = curl(tau)/(rho0*beta)} ⟹ 风生环流被系统性压弱 ✗</li>
+     *   <li>定量（待裁决/404 的扫描 ✓，玩具三带风 + 手动 beta）：
+     *       <pre>
+     *         beta x1     + tau0 x1  ⟹ vPeak 4.5e-4（观测的 0.09%）
+     *         beta /40    + tau0 x1  ⟹ vPeak 5.0e-3（1.0%）
+     *         beta /40    + tau0 x40 ⟹ vPeak **0.199**（**39.9%**）✓ 落在观测 0.2~0.5 内 ✓
+     *         beta /1600  + tau0 x40 ⟹ vPeak 1.18（236%，过头 ✗）
+     *       </pre>
+     *       ⟹ 需要 **beta /40** 那一档 ✓（tau0 那半由风的经向尺度自动给出，见下 ✓）</li>
+     * </ol>
+     *
+     * <h3>⚠ 为什么不直接改 OMEGA</h3>
+     * <p>因为 {@code WorldContract:29} 有明文：「OMEGA x40（**必须！**否则大气变形半径 > 行星半径
+     * ⟹ **气候层塌掉**）」✗ ⟹ 动 OMEGA 会**打塌大气** ✗。
+     * <p>⟹ 本常量是**工程妥协**：<b>大气继续感受 x40，海洋单独感受地球自转</b> ✓。
+     * 它**物理上不自洽**（同一个世界两套自转）✗ —— 但它是**唯一同时让两边都活**的做法 ✓
+     * （待裁决/404 列了四个方案，(i) 解耦是唯一可行的 ✓）。
+     *
+     * <p><b>用它的地方</b>：{@link #betaForLatitudeOcean} ⟹ 被 {@code GyreRow.betaForLatitude} 引用
+     * ⟹ 只影响**风生环流**（Munk 行求解）✓；大气、辐射、Hadley 等**一律仍用 {@link #OMEGA}** ✓。
+     */
+    public static final double OMEGA_OCEAN = 7.2921e-5;   // 地球真值 ✓（= OMEGA / 40）
+
+    /**
+     * 海洋口径的 beta(phi) = 2*Omega_ocean*cos(phi)/R（R = zCycle/(2*pi) ✓）。
+     *
+     * <p>★ 与 {@link #betaForLatitude} 的唯一区别是**用 {@link #OMEGA_OCEAN}** 而不是 {@link #OMEGA} ✓。
+     * <p>⟹ 相对旧值恰好缩小 40 倍 ✓（那正是 404 扫描里 vPeak 从 4.5e-4 升到 5.0e-3 的那一档 ✓）。
+     * <p>⚠ 其余一切（{@code zCycle} 的几何、cos 的纬度依赖）**完全不变** ✓。
+     */
+    public static double betaForLatitudeOcean(double latRad, int zCycle) {
+        return 2.0 * OMEGA_OCEAN * (2.0 * Math.PI) / zCycle * Math.cos(latRad);
+    }
+
+    /**
      * 纬度（度）→ z（block）。**探针不许再手写 {@code lat/90 * Z_CYCLE/2}**（D1 后会静默错位）。
      * <p>北纬走第一支 [0, MAX_D]，南纬走第三支 [2·MAX_D, 3·MAX_D]。
      */

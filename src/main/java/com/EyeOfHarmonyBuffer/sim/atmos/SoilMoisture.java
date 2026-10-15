@@ -41,11 +41,11 @@ import java.util.Map;
  * {@code RH_DRY} 是「完全干表面之上的近地面相对湿度」，沙漠边界层观测值 10~30%（取 0.20）。
  *
  * <p><b>★ §785 更正：本字段现值是 <code>true</code>（<code>:62</code>），不是 false。</b>
- * 原注释写「默认 ENABLED=false ⇒ 逐位不变」，那是**接线前**的状态；默认值后来被翻成 true 而注释未同步，
+ * 原注释写「默认 SOIL_MOISTURE_ON=false ⇒ 逐位不变」，那是**接线前**的状态；默认值后来被翻成 true 而注释未同步，
  * 会让人（包括审计者）误判「土壤湿度没接」。**现状：beta 路径是活的** ——
- * {@code PrecipField:2327-2332} 在 {@code ENABLED && !isSpinningUp()} 时会算 {@code betaAt} 并设好
+ * {@code PrecipField:2327-2332} 在 {@code SOIL_MOISTURE_ON && !isSpinningUp()} 时会算 {@code betaAt} 并设好
  * {@code BETA_OVERRIDE}，于是 {@code moisture()} 走 {@code SoilMoisture.rhEff(beta)} 而不是全球常数 0.80。
- * 但请注意 {@code PrecipField:2326} 的兜底值是 {@code betaUsed = 1.0}（最湿）⇒ ENABLED 一旦为 false
+ * 但请注意 {@code PrecipField:2326} 的兜底值是 {@code betaUsed = 1.0}（最湿）⇒ SOIL_MOISTURE_ON 一旦为 false
  * 就等价于「处处 RH_SEA」。</p>
  */
 public final class SoilMoisture {
@@ -53,9 +53,9 @@ public final class SoilMoisture {
     private SoilMoisture() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：SoilMoisture（土壤湿度桶 / S3）。** 引用时务必写全类名（如 `SoilMoisture.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * ⚠⚠ §540（P2-18）：本字段名 `SOIL_MOISTURE_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：SoilMoisture（土壤湿度桶 / S3）。** 引用时务必写全类名（如 `SoilMoisture.SOIL_MOISTURE_ON`），
+     * 不要用静态导入或裸 `SOIL_MOISTURE_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
      * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
@@ -71,7 +71,7 @@ public final class SoilMoisture {
     //   陆地上的「沙漠级」干旱只靠两件事 —— (i) 一个会归零的土壤水库，(ii) 陆地反照率高于海洋。
     //   关着时 beta 恒为 1（潜在蒸发）⇒ 源码自己的注释写着「模型里没有『干燥』这个状态」。
     //   代价：每个点都要自旋一次桶（见 SPIN_TOL_REL），会显著变慢。
-    public static boolean ENABLED = true;
+    public static boolean SOIL_MOISTURE_ON = true;
 
     /** 田间持水（mm）—— Manabe 桶的标准取值。 */
     public static double W_FC = 150.0;
@@ -191,7 +191,7 @@ public final class SoilMoisture {
 
     /** 复位收敛统计（探针用）。 */
     public static void resetSpinupStats() { SPINUP_TOTAL = 0; SPINUP_NOT_CONVERGED = 0; SPINUP_YEARS_SUM = 0; }
-    /** §466：自旋返回的年均植被盖度 V̄（ENABLED=false 时恒为 1.0）。 */
+    /** §466：自旋返回的年均植被盖度 V̄（SOIL_MOISTURE_ON=false 时恒为 1.0）。 */
     public static double lastV = 1.0;
     /** §466：两 pass 之间 V̄ 的变化量（<0 = 只有一遍）。这是【准静态一拍滞后】的度量。 */
     public static double lastVResid = -1.0;
@@ -328,7 +328,7 @@ public final class SoilMoisture {
         //   这里 pass=1 只多算一次 A/e1/e2 块（evalCount +N），spinupCount【不变】。
         double rsTot = RS_SURF;
         int passes = 1;
-        if (Vegetation.ENABLED && Vegetation.RS_BARE > 0.0) passes = 1 + Math.max(0, Vegetation.RS_PASS);
+        if (Vegetation.VEGETATION_ON && Vegetation.RS_BARE > 0.0) passes = 1 + Math.max(0, Vegetation.RS_PASS);
         double[] w = null;
         double resid = Double.NaN;
         int years = 0;
@@ -438,7 +438,7 @@ public final class SoilMoisture {
         if (!converged) SPINUP_NOT_CONVERGED++;
         // ★ §466：用【收敛后的状态】算 V —— 输入 P 就用年循环里已经算出来的那个量（§465）。
         //   零额外自旋：这里只是把 A[kk]*rh 与闭式解再走一遍（纯标量）。
-        if (Vegetation.ENABLED) {
+        if (Vegetation.VEGETATION_ON) {
             double sv = 0;
             for (int kk = 0; kk < N; kk++) {
                 double beta = betaOfFrac(w[kk]);
@@ -491,7 +491,7 @@ public final class SoilMoisture {
      * <p><b>为什么必须用它而不是自己搭</b>：见 {@code spinup} 返回处的注释（同名不同口径）。
      */
     public static double lakeEvapMmPerDay(int x, int z, long seed, int cell, int gradStep) {
-        if (!ENABLED) return Double.NaN;
+        if (!SOIL_MOISTURE_ON) return Double.NaN;
         HashMap<Long, double[]> m = MEMO.get();
         // ★★★★★ 待裁决/343：memo 的 key 必须含【所有影响结果的输入】。
         //   原 key 只有 坐标 ^ RS_SURF ⟹ 改 LAKE_WATER_SURFACE 不会失效 ⟹
@@ -546,7 +546,7 @@ public final class SoilMoisture {
      * <b>自旋中调用会直接返回 NaN</b>（调用方应当已经设好 BETA_OVERRIDE）。
      */
     public static double betaAt(int x, int z, long seed, int cell, double theta, int gradStep) {
-        if (!ENABLED || isSpinningUp()) return 1.0;
+        if (!SOIL_MOISTURE_ON || isSpinningUp()) return 1.0;
         HashMap<Long, double[]> m = MEMO.get();
         // §440：把 RS_SURF 折进键（RS_SURF = 0 时 doubleToLongBits(0.0) = 0 ⇒ 键与历史【逐位相同】）。
         long kk = key(x, z) ^ (Double.doubleToLongBits(RS_SURF) * 0x9E3779B97F4A7C15L);

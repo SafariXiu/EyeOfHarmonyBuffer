@@ -25,15 +25,15 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 //      零点：phi^2 = R/3 与 5R/3  => 正是 phi_0 与 phi_H（自洽）
 //      把 R = 3*phi_H^2/5 代入 => <w> ∝ (1/6)(1 - 6X^2 + 5X^4) = (1/6) dPsi/dX   ← 与 (3) 完全一致
 //
-// 默认 ENABLED=false => 不改变任何现有行为。
+// 默认 SOLVED_ON=false => 不改变任何现有行为。
 public final class HadleyCell {
 
     private HadleyCell() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：HadleyCell（哈得来环流）。** 引用时务必写全类名（如 `HadleyCell.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * ⚠⚠ §540（P2-18）：本字段名 `SOLVED_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：HadleyCell（哈得来环流）。** 引用时务必写全类名（如 `HadleyCell.SOLVED_ON`），
+     * 不要用静态导入或裸 `SOLVED_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，实测已是
      * 【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、true 5 个
@@ -41,12 +41,12 @@ public final class HadleyCell {
      * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
      * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      */
-    // ★ §714：§713 的 A/B 实验已做完并撤销。`ENABLED=true` 使 `GATE_PHASE_ALL` 3/4→2/4、
+    // ★ §714：§713 的 A/B 实验已做完并撤销。`SOLVED_ON=true` 使 `GATE_PHASE_ALL` 3/4→2/4、
     //   留出集 2/2→1/2，`GATE_VERDICT` 仍 FAIL ⇒ 部分进入条件失败，恢复原值。
     //   关键发现：撒哈拉 DJF 在开关前后逐位相同（都是 0.950），JJA 只降 12%
     //   ⇒ 撒哈拉的雨主要不来自 `wBase`，而是被 `wEff = max(0,wBase)+max(0,wLoc)` 的
     //   【短路】（§690的 SPLIT_ASCENT）保住了 —— 下沉永远无法被表达。下一个候选是 `SPLIT_ASCENT`。
-    public static boolean ENABLED = false;
+    public static boolean SOLVED_ON = false;
 
     // ★★★★★★★ 2026-10-11 修复（气候层适配 · 口径分叉）：**与下一行同族，但上一轮审计漏了它**。
     //
@@ -59,7 +59,7 @@ public final class HadleyCell {
     // 【用途】:105  return G * H_TROP * dH / (OM*OM * R_EFF*R_EFF);
     //   —— 一个【量纲组合】，OM 与 R_EFF 必须同口径。
     //
-    // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
+    // ⚠ 本类 SOLVED_ON = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
     public static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
     public static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
     public static final double G = 9.80665;                          // m s^-2

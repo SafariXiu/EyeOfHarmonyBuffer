@@ -405,7 +405,7 @@ public final class Atmosphere {
         // ★ §7344/§7345：climlab EBM 稳态解（内生）。默认关 ⇒ 逐位不变。
         //   为什么要有它：本方法的 javadoc 自己指出「只有一个外生 T_zm 就回答不了『换一个陆地分布会怎样』」。
         //   内生化之后纬向温度不再依赖地球的观测表；且 §7345 实测该解与 ERA5 观测支逐点差 ~2 K（最大 5.66 K）。
-        return ClimlabEBM.ENABLED ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
+        return ClimlabEBM.EBM_ON ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
     }
 
     /**
@@ -448,7 +448,7 @@ public final class Atmosphere {
      */
     public static double landMinusOceanSLK(double latRad) {
         // ★ §7350：与 oceanBaseK 走【同一个】开关（两个分量必须同源）—— 见上方口径裁决。
-        double tOcean = ClimlabEBM.ENABLED ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
+        double tOcean = ClimlabEBM.EBM_ON ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
         return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad) - tOcean;
     }
 
@@ -1187,7 +1187,7 @@ public final class Atmosphere {
         //     lambda = 4*EPS*sigma*T^3 + beta*chv*LV*dqSat/dT   线性化反馈
         //   beta=1 => ΔT=0（逐位不变）；beta=0 => 把全部缺失的蒸发冷却转成升温。
         double dryWarmth = 0.0;
-        if (PA_DRY_WARMTH && SoilMoisture.ENABLED) {
+        if (PA_DRY_WARMTH && SoilMoisture.SOIL_MOISTURE_ON) {
             double beta = SoilMoisture.betaAt(x, z, seed, cell, theta, SOIL_GRAD_STEP);
             double ta = annualSeaLevelTemp(lat, k, 0.0) + seasonalAnomaly(lat, k, theta);
             double qa = PrecipField.moisture(ta, 0.0, k);

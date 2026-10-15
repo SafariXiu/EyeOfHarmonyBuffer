@@ -316,7 +316,7 @@ public final class V2TerrainGen {
 
     // ═══════════ §7716~§7730：Runevision 侵蚀滤镜的接入参数 ═══════════
     //
-    // ⚠⚠ 【注入点不在本文件】：composeColumn 在 SimTerrain.ENABLED=true 时会
+    // ⚠⚠ 【注入点不在本文件】：composeColumn 在 SimTerrain.TERRAIN_ON=true 时会
     //    直接 return SimTerrain.compose(...)，所以本文件里【没有】侵蚀代码。
     //    真正的注入点 = sim/runtime/SimTerrain.compose 的陆地分支。
     //    这里只放【参数】，供 SimTerrain 引用。
@@ -528,7 +528,7 @@ public final class V2TerrainGen {
         // ---- 新模拟器的运行时分派（§83）--------------------------------------------
         // 这是本文件里**唯一**为接线而加的东西：一行分派。ENABLED=false 时，
         // 下面每一行都与接线前**逐位相同**；旧实现一个方法、一个常量都没有改动或删除。
-        if (SimTerrain.ENABLED) {
+        if (SimTerrain.TERRAIN_ON) {
             return SimTerrain.compose(c, x, z, worldSeedInt, seaLevel, maxY);
         }
         // --------------------------------------------------------------------------
@@ -558,7 +558,7 @@ public final class V2TerrainGen {
         c.plain = bp[1];
         c.mtnComp = c.base > c.plain ? c.base - c.plain : 0.0;
         // ★★★★★★★ 2026-10-08：旧山脉层（MountainLayerV2）已删除，造山改由海陆分布层派生。
-        //   ⚠ 本分支在 SimTerrain.ENABLED=true 时【不可达】（第 494 行提前返回）。
+        //   ⚠ 本分支在 SimTerrain.TERRAIN_ON=true 时【不可达】（第 494 行提前返回）。
         c.auth = OrographyField.orogeny01(x, z, worldSeedInt);
         c.uplift = SimTerrain.ELEV_TO_BLK
             * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * c.auth;

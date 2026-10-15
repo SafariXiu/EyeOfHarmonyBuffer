@@ -25,9 +25,9 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 //            而**不是**旧注释里说的 -100 W/m^2 ✗）
 //        ⟹ ★★ 净结论 = **低估约 3~10 倍** ✓✓（方向与本条原文一致 ✓）
 //           详见 待裁决/373（量化）、/374（实测更正 373 的推论 ✓）
-//   ② 休眠：¤StationaryWave.ENABLED = false¤ ⟹ 本类整体默认关 ✓
+//   ② 休眠：¤StationaryWave.STATIONARY_WAVE_ON = false¤ ⟹ 本类整体默认关 ✓
 //        ⟹ 所以"低估 3~10 倍"目前**不影响任何门** ✓（验收 pass=8 ✓）
-//        ★ 复核条件：**若将来打开 StationaryWave.ENABLED，必须先解决本项** ✓
+//        ★ 复核条件：**若将来打开 StationaryWave.STATIONARY_WAVE_ON，必须先解决本项** ✓
 //          （选项：改用 QTCM 的 MSE 闭合 M1*div = -F_net ✓，或接受并被知情的低估 ✓）
 //   深对流区的有效稳定度是 gross moist stability（GMS, M1），不是干 N^2；M1 远小于干层结，
 //   同样加热会产生强得多的环流。若坚持用干 c，则 Q 必须是【净柱加热】
@@ -42,9 +42,9 @@ public final class StationaryWave {
     private StationaryWave() {}
 
     /**
-     * ⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：StationaryWave（定常波 / 环流侧 §405）。** 引用时务必写全类名（如 `StationaryWave.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * ⚠⚠ §540（P2-18）：本字段名 `STATIONARY_WAVE_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：StationaryWave（定常波 / 环流侧 §405）。** 引用时务必写全类名（如 `StationaryWave.STATIONARY_WAVE_ON`），
+     * 不要用静态导入或裸 `STATIONARY_WAVE_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，实测已是
      * 【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、true 5 个
@@ -52,7 +52,7 @@ public final class StationaryWave {
      * 原文漏了 ClimlabEBM 与 TalosLandErosion，计数也已过期 ✗。
      * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      */
-    public static boolean ENABLED = false;
+    public static boolean STATIONARY_WAVE_ON = false;
     public static int NX = 64;
     public static int NPHI = 46;
     public static double DAMPING = 1.0 / (1.5 * 86400.0);
@@ -108,7 +108,7 @@ public final class StationaryWave {
      * 因为诊断温度没有蒸发冷却、会偏高（§385 的 P568 实测陆地上 H 是负的）。
      *
      * <p>★★★★★ <b>§456 a″ 配对要求（必读）</b>：本支路的物理前提是**陆地上的 `beta` 来自土壤桶**
-     * （{@link SoilMoisture#ENABLED} = true）。
+     * （{@link SoilMoisture#STATIONARY_WAVE_ON} = true）。
      *
      * <p>为什么：`beta = 1` 是**饱和面**（对海洋是对的），用在陆地上等于「处处湿地」⇒
      * `le = beta*chv*LV*(qSat(Ts)-qa)` 潜热冷却过量 ⇒ 皮温被压到空气**之下** ⇒ `Q_sens` 为负。
@@ -117,7 +117,7 @@ public final class StationaryWave {
      *   S3 关 (beta=1.000)：ts-ta = -5.43 K, Q_sens = -179.98 W/m2, F_net = -44.65 / -75.87   <- 处处强下沉
      *   S3 开 (beta=0.252)：ts-ta = -0.74 K, Q_sens =  -40.46 W/m2, F_net = +62.43 / +35.30   <- 两盒都上升
      * </pre>
-     * ⇒ **`Q_NET_HEATING = true` 而 `SoilMoisture.ENABLED = false` 是一个【物理上不一致的配置】**，
+     * ⇒ **`Q_NET_HEATING = true` 而 `SoilMoisture.SOIL_MOISTURE_ON = false` 是一个【物理上不一致的配置】**，
      * 且它不会报错、只会静默给出一套错的 `F_net`（与 §444「水汽源必须与水汽长波配对」同型：
      * **一个开关的物理前提由另一个开关提供**）。
      *
@@ -131,7 +131,7 @@ public final class StationaryWave {
      *
      * <p>`beta = 1` 只在**海洋**上是正确的；陆地上它代表「饱和面」，会让潜热冷却过量、
      * `Q_sens` 翻负、`F_net` 全错（见 {@link #Q_NET_HEATING} 的配对要求）。
-     * **正常配置（`SoilMoisture.ENABLED = true`）下它恒为 0；探针与验收必须断言 0。**
+     * **正常配置（`SoilMoisture.SOIL_MOISTURE_ON = true`）下它恒为 0；探针与验收必须断言 0。**
      */
     public static long betaFallbackLandCalls = 0;
     private static volatile boolean betaWarned = false;
@@ -152,7 +152,7 @@ public final class StationaryWave {
     // 【用途】:545  fOf[j] = ZERO_F ? 0.0 : 2 * OM * Math.sin(phi);
     //   —— 那是【科氏参数 f】，必须与世界契约同口径，否则 f 小 40 倍 ⟹ 定常波的物理全错 ✗
     //
-    // ⚠ 本类 ENABLED = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
+    // ⚠ 本类 STATIONARY_WAVE_ON = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
     private static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
     private static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
@@ -269,7 +269,7 @@ public final class StationaryWave {
     //  为什么改默认（用户裁决「按照最物理最正确的方向做」）：旧式 qRad = sigma*Ts^4*(1-2*EPS)
     //  是一个**纯长波项**、且**短波（absSolar = 372~404 W/m²）从未接入**（§454）。
     //  新式 qRad = ASR - OLR（olrClear 是推导的单层灰体，唯一常数 OLR_K 由观测锚定）。
-    //  ⚠ 生产影响：netColumnHeating 目前只被 StationaryWave.ENABLED（默认 false）消费 ⇒
+    //  ⚠ 生产影响：netColumnHeating 目前只被 StationaryWave.STATIONARY_WAVE_ON（默认 false）消费 ⇒
     //  【默认为 true 在实践中是无操作】，但它使该函数在被动用时物理正确（防御性正确）。
 
     /** OLR 的宽带吸收系数（m²/kg）。由观测锚定，**不是拟合目标量**。 */
@@ -334,12 +334,12 @@ public final class StationaryWave {
         //
         // ★★ 2026-10-14 审计（#4）：**本条是【休眠项】，不影响当前产品** ✓✓
         //   开关实测（从源码读 ✓）：
-        //     ¤StationaryWave.ENABLED = false¤（本类整体默认关 ✓）
-        //     ¤Vegetation.ENABLED     = false¤（植被默认关 ⟹ vegAt 恒返回 1.0 ✓）
+        //     ¤StationaryWave.STATIONARY_WAVE_ON = false¤（本类整体默认关 ✓）
+        //     ¤Vegetation.VEGETATION_ON     = false¤（植被默认关 ⟹ vegAt 恒返回 1.0 ✓）
         //   ⟹ 两个开关都关着 ⇒ 本段代码在当前配置下**一行都不产生效果** ✓
         //   ⟹ 所以"次级通道未接线"是【未来开启植被反馈时】才需要处理的事 ✗
-        //   ★ 复核条件（写死，免得忘 ✗）：**若将来把 Vegetation.ENABLED 或
-        //     StationaryWave.ENABLED 打开，必须回来先接这条次级通道** ✓
+        //   ★ 复核条件（写死，免得忘 ✗）：**若将来把 Vegetation.VEGETATION_ON 或
+        //     StationaryWave.STATIONARY_WAVE_ON 打开，必须回来先接这条次级通道** ✓
         //     （否则反照率通道会缺失，植被→降水反馈只闭合了一半 ✗）
         final double pForVeg = pMmDay;
         final boolean isLandHere = k > 0.5;
@@ -355,7 +355,7 @@ public final class StationaryWave {
                   : PrecipField.moisture(ta, 0.0, k);
         // §456 a″：配对守卫 —— 陆地上 beta 必须来自桶，否则 Q_sens / F_net 全错。
         double beta;
-        if (SoilMoisture.ENABLED) {
+        if (SoilMoisture.SOIL_MOISTURE_ON) {
             beta = SoilMoisture.betaAt(x, z, seed, cell, theta, gradStep);
         } else {
             beta = 1.0;
@@ -364,7 +364,7 @@ public final class StationaryWave {
                 if (!betaWarned) {
                     betaWarned = true;
                     System.err.println("[StationaryWave] §456 pairing guard: Q_NET_HEATING with"
-                        + " SoilMoisture.ENABLED=false fell back to beta=1 on LAND => Q_sens / F_net unusable.");
+                        + " SoilMoisture.SOIL_MOISTURE_ON=false fell back to beta=1 on LAND => Q_sens / F_net unusable.");
                 }
             }
         }
@@ -503,8 +503,8 @@ public final class StationaryWave {
                 q[j][i] = Math.exp(-(di * di / 2.0 + dj * dj / 5.0));
             }
         double[][] savedQ = Q_OVERRIDE;
-        boolean savedF = ZERO_F, savedE = ENABLED;
-        Q_OVERRIDE = q; ZERO_F = false; ENABLED = true;
+        boolean savedF = ZERO_F, savedE = STATIONARY_WAVE_ON;
+        Q_OVERRIDE = q; ZERO_F = false; STATIONARY_WAVE_ON = true;
         invalidate();
         ensureSolved(1L, 0, 0.0, 500_000);
         double dc = divCache[j0 * NX + i0], pc = pGrid[j0 * NX + i0], qc = q[j0][i0];
@@ -516,7 +516,7 @@ public final class StationaryWave {
         for (int i = 0; i < NX; i++) qbar += q[j0][i];
         qbar /= NX;
         double qEff = qc - qbar;
-        Q_OVERRIDE = savedQ; ZERO_F = savedF; ENABLED = savedE;
+        Q_OVERRIDE = savedQ; ZERO_F = savedF; STATIONARY_WAVE_ON = savedE;
         invalidate();   // 清掉自证用的场，避免污染调用方
         double ratio = Math.abs(dc) * C_GRAV * C_GRAV / qEff;
         double budget = C_GRAV * C_GRAV * dc + DAMPING * pc + qEff;   // 必须 ~0
@@ -762,7 +762,7 @@ public final class StationaryWave {
         // ★ 求解期间（含闭环建强迫的那一段）必须读【上一次迭代】的场：
         //   读 divCache 就成了自指，读 0 就退回开环。
         double[] src = IN_SOLVE.get() ? divPrevField : divCache;
-        if (!ENABLED || src == null) return 0.0;
+        if (!STATIONARY_WAVE_ON || src == null) return 0.0;
         double fx = fxOf(x);
         double fj = fjOf(z);
         int i0 = (int) Math.floor(fx), j0 = (int) Math.floor(fj);

@@ -6,10 +6,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGr
  * ★ L1（地形/海陆 + 海岸）的**公开门面**与**度量钩子**。
  *
  * <h3>本类现在是什么（§567 之后）</h3>
- * 地形本体已唯一：{@link TalosField}（V8 生成器）。本类**不再生成任何地形**，只留三件事：
+ * 地形本体已唯一：{@link NoiseContinentGrid}（V8 生成器）。本类**不再生成任何地形**，只留三件事：
  * <ol>
  *   <li><b>委托</b>：{@link #elevation} / {@link #elevationWithCell} / {@link #isLand} /
- *       {@link #isLandWithCell} 全部转给 {@link TalosField}；</li>
+ *       {@link #isLandWithCell} 全部转给 {@link NoiseContinentGrid}；</li>
  *   <li><b>度量钩子</b>：{@link LandMask} / {@link ElevSource}（地球验证层用，生产恒 {@code null}）；</li>
  *   <li><b>海岸度量的采样图案</b>：{@link #landScore} / {@link #landFractionWithCell}
  *       （建在 {@code isLandWithCell} 之上）与 {@link #coastDistanceNew}。</li>
@@ -34,7 +34,7 @@ public final class PlateField {
     // ==================== 常量 ====================
 
     /**
-     * 板块格边长（block）——**只作为既有调用点的形参保留；新地形路（{@link TalosField}）不用这个值**。
+     * 板块格边长（block）——**只作为既有调用点的形参保留；新地形路（{@link NoiseContinentGrid}）不用这个值**。
      *
      * <p>§567 之后地形本体是 {@code TalosField}，它有**自己的**格边长
      * {@code TalosField.DCELL = L/9 = 2,222,222 m}（TalosField.java:25-27），
@@ -56,7 +56,7 @@ public final class PlateField {
     public static final int PLATE_CELL = 2_400_000;
 
     /**
-     * ★ <b>世界身份位：本世界的地形实现是 {@link TalosField}（新路）。</b>
+     * ★ <b>世界身份位：本世界的地形实现是 {@link NoiseContinentGrid}（新路）。</b>
      *
      * <p><b>这是给测量溯源系统读世界身份用的位，不是开关。</b>
      * 它没有「另一半」——旧实现（本类自带的 Voronoi 板块地形）已按用户裁决「旧的完全删除」
@@ -266,8 +266,10 @@ public final class PlateField {
      * 标定入口：**板块格边长可调**。生产恒走 {@link #PLATE_CELL}（即 {@link #elevation}），
      * 本入口只给探针做尺度扫描 —— 依然是纯函数，没有静态可变状态。
      *
-     * <p>§567 之后函数体只剩两条路：{@link ElevSource} 钩子（装了才走，生产恒 {@code null}）
-     * 与 {@link TalosField}。{@code cell} 形参**已被忽略**（保留只为不改 ~200 支探针的调用点，
+     * <p>★ 2026-10-15：正文里的 {@code TalosField} 是【历史名】✗ —— 该类已删除 ✓，
+ *   职责并入 {@link NoiseContinentGrid} ✓（见 :275 的删除记录 ✓）。
+ * <p>§567 之后函数体只剩两条路：{@link ElevSource} 钩子（装了才走，生产恒 {@code null}）
+     * 与 {@link NoiseContinentGrid}。{@code cell} 形参**已被忽略**（保留只为不改 ~200 支探针的调用点，
      * 理由见 {@link #PLATE_CELL}）。
      */
     public static double elevationWithCell(int x, int z, long seed, int cell) {
@@ -306,7 +308,7 @@ public final class PlateField {
     /**
      * 标定入口：与 {@link #isLand} 相同，板块格边长可调（§567 之后该形参已被忽略）。
      *
-     * <p>优先级：{@link #MASK}（装了才走）→ {@link TalosField#isLand}。
+     * <p>优先级：{@link #MASK}（装了才走）→ {@link NoiseContinentGrid#isLand}。
      *
      * <p>⚠⚠ <b>2026-10-14 审查更正（阶段 2）</b>：原文写「{@link #isLand} 与这里<b>故意不对称</b>：
      * {@code isLand} 走 {@code elevation}，因此<b>不查 MASK</b>」—— <b>该描述已过期</b> ✗。

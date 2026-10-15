@@ -19,7 +19,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
  * <h3>为什么是这个形状</h3>
  * 旧实现里 {@code V2TerrainGen.composeColumn} 被称为「**块级合成高度的唯一入口**」
  * （生产、/talosmap、/talos_here 三处都走它）。所以接线只需要在**那一个点**做一次分派，
- * 旧路径在 {@link #ENABLED} 为 false 时**一行都不变**。
+ * 旧路径在 {@link #TERRAIN_ON} 为 false 时**一行都不变**。
  *
  * <h3>世界契约的换代（必须记账）</h3>
  *
@@ -72,7 +72,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
  * </ul>
  * ⇒ 洋流**有**生产来源了；§102.8 是当时的事实，已被后续的接线步骤取代。
  *
- * <p>纯函数：给定 (seed, x, z) 结果逐位可复现；无静态可变字段（{@link #ENABLED} 等
+ * <p>纯函数：给定 (seed, x, z) 结果逐位可复现；无静态可变字段（{@link #TERRAIN_ON} 等
  * 是**开关注入点**，与旧实现的 {@code ClimateCoords.ENABLE_ORO} 同类）。
  */
 public final class SimTerrain {
@@ -82,9 +82,9 @@ public final class SimTerrain {
     /**
      * 总开关。false ⇒ {@code composeColumn} 一行都不走这里，与接线前逐位相同。
      *
-     * <p>⚠⚠ §540（P2-18）：本字段名 `ENABLED` 在全工程有【多份】，语义各不相同、默认值也不一致。
-     * **本份的含义是：SimTerrain（地形/运行时）。** 引用时务必写全类名（如 `SimTerrain.ENABLED`），
-     * 不要用静态导入或裸 `ENABLED` —— 那正是「同名不同义」的温床。
+     * <p>⚠⚠ §540（P2-18）：本字段名 `TERRAIN_ON` 在全工程有【多份】，语义各不相同、默认值也不一致。
+     * **本份的含义是：SimTerrain（地形/运行时）。** 引用时务必写全类名（如 `SimTerrain.TERRAIN_ON`），
+     * 不要用静态导入或裸 `TERRAIN_ON` —— 那正是「同名不同义」的温床。
      *
      * <p>★ 2026-10-14 审查更正（阶段 2）：原文写「全工程有【6 份】（3 false + 3 true）」，
      * 实测已是【8 份】：false 3 个（HadleyCell / StationaryWave / Vegetation）、
@@ -93,7 +93,7 @@ public final class SimTerrain {
      * ⟹ ★ 本条【不再报具体份数】（新增类会让它再次过期 ✗），只保留规则本身 ✓
      * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
-    public static boolean ENABLED = true;
+    public static boolean TERRAIN_ON = true;
 
     /**
      * **陆地垂直增益（blocks/m）**：8,069 m 的珠峰 -> 约 173 blocks。
@@ -165,7 +165,7 @@ public final class SimTerrain {
     //   · SEABED_ENABLED=false   ⟹ 停 `SEABED_RELIEF`（vnoise，880 格 / 3 格，仅海洋）
     //   · 侵蚀本来就已关（V2TerrainGen.EROSION_ENABLED=false）
     //   · `V2TerrainGen.baseAndPlain` / `TerrainBaseHeight`（旧系统的 PeriodicNoise
-    //     频率分层）本来就是【死代码】—— `SimTerrain.ENABLED=true` 时 composeColumn
+    //     频率分层）本来就是【死代码】—— `SimTerrain.TERRAIN_ON=true` 时 composeColumn
     //     提前返回，那条路一行都不走。
     //
     // 【保留的】`ELEV_TO_BLK * elev + seaLevel` 映射（这是海陆分布层 -> MC 方块的必要换算）
@@ -803,7 +803,7 @@ public final class SimTerrain {
 
         // ============ §7716：Runevision 侵蚀滤镜（MPL 2.0 移植）============
         // 【为什么在这里】：V2TerrainGen.composeColumn 在 :422 会因
-        // SimTerrain.ENABLED=true 提前返回，所以那里注入是死代码。
+        // SimTerrain.TERRAIN_ON=true 提前返回，所以那里注入是死代码。
         // 本方法才是 MC 实际走的地形合成路径。
         //
         // 【输入高度场】是【独立的各向同性细节层】（DetailNoise），不是 detailBlocks：

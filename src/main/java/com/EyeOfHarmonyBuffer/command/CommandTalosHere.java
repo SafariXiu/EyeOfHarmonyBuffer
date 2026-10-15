@@ -105,8 +105,8 @@ public class CommandTalosHere extends CommandBase {
             world.getSeed(), worldSeedInt,
             PlateField.PLATE_CELL)));
         sender.addChatMessage(new ChatComponentText(String.format(
-            "[DIAG] SimTerrain.ENABLED=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
-            SimTerrain.ENABLED,
+            "[DIAG] SimTerrain.TERRAIN_ON=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
+            SimTerrain.TERRAIN_ON,
             V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, LandformField.SEA_LEVEL_BLK)));
         long ls = SimTerrain.seedOf(worldSeedInt);
         sender.addChatMessage(new ChatComponentText(String.format(

@@ -89,7 +89,7 @@ public class CommandTalosTp extends CommandBase {
     public String getCommandUsage(ICommandSender sender) {
         return "/talos_tp <lowland|hill|plateau|mountain|peak|high|low|coast|shelf|ocean|any"
             + " | river|trunk|tributary|lake> [半径] [阈值]"
-            + "\n  ★ 水系类目（需 TalosLandErosion.ENABLED）："
+            + "\n  ★ 水系类目（需 TalosLandErosion.EROSION_ON）："
             + "\n    river      任意河道"
             + "\n    trunk      主干（汇流面积 大于等于 " + (int) TRUNK_ACC + " 平方公里）"
             + "\n    tributary  支流（汇流面积 小于 " + (int) TRUNK_ACC + " 平方公里）"
@@ -297,7 +297,7 @@ public class CommandTalosTp extends CommandBase {
     }
 
     private static boolean matchesRiver(int x, int z, String what, int seed) {
-        if (!TalosLandErosion.ENABLED) {
+        if (!TalosLandErosion.EROSION_ON) {
             return false; }
         final long ws = (long) seed;
         if (TalosLandErosion.installedSeed()

@@ -471,8 +471,8 @@ public final class SimClimate {
         h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);   // ★ S1a（§385）
         h = h * 31 + (Radiation.BUCKET_BETA ? 1 : 0);                      // ★ S3（§387）
         h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
-        h = h * 31 + (ClimlabEBM.ENABLED ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
-        h = h * 31 + (StationaryWave.ENABLED ? 1 : 0);   // ★ S2（§393）
+        h = h * 31 + (ClimlabEBM.EBM_ON ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
+        h = h * 31 + (StationaryWave.STATIONARY_WAVE_ON ? 1 : 0);   // ★ S2（§393）
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
@@ -582,7 +582,7 @@ public final class SimClimate {
             h = h * 31 + Double.doubleToLongBits(PrecipField.BETA_DOWNDRAFT);
         }
         // §459 植被/干旱度状态：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (Vegetation.ENABLED) {
+        if (Vegetation.VEGETATION_ON) {
             h = h * 31 + 0x7A121L;
             h = h * 31 + Vegetation.configStamp();
         }
@@ -661,7 +661,7 @@ public final class SimClimate {
             h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_MIG_SENS);
         }
         // §405 S3 土壤湿度桶：按条件折入 ⇒ 关闭时指纹与历史完全一致。
-        if (SoilMoisture.ENABLED) {
+        if (SoilMoisture.SOIL_MOISTURE_ON) {
             h = h * 31 + 0x7A10FL;
             h = h * 31 + SoilMoisture.NTHETA;
             h = h * 31 + Double.doubleToLongBits(SoilMoisture.W_FC);
@@ -720,11 +720,11 @@ public final class SimClimate {
         }
         // ★★★★★★★ §589 复查补漏：以下 2 个开关【会改变结果】却【不在指纹里】——
         //   与 §527 补的那 10 个是【同一个缺陷类】（漏网，不是设计豁免）。
-        //   · HadleyCell.ENABLED：换掉 wEff 里的 wBase（PrecipField:1742）⇒ 改降水 ⇒ 改气候瓦片。
+        //   · HadleyCell.SOLVED_ON：换掉 wEff 里的 wBase（PrecipField:1742）⇒ 改降水 ⇒ 改气候瓦片。
         //   · COAST_WIND_ON：Atmosphere:265 会给风场叠加沿岸风项 ⇒ 改风应力 ⇒ 改海洋。
         //   折入约定沿用 §527（:521-524）：默认 false ⇒ 用 if (FLAG) ⇒ 关闭时指纹与历史完全一致。
         //   ⇒ 本次补漏【不改变当前指纹】，只让「翻这两个开关」这件事被指纹看见。
-        if (HadleyCell.ENABLED) {
+        if (HadleyCell.SOLVED_ON) {
             h = h * 31 + 0x7A131L;
             h = h * 31 + Double.doubleToLongBits(HadleyCell.H_TROP);
             h = h * 31 + Double.doubleToLongBits(HadleyCell.T0);
@@ -1030,7 +1030,7 @@ public final class SimClimate {
      *
      * <h3>为什么必须有它</h3>
      * <p>打开 {@code PrecipField.Q_FROM_WATER} 后，{@code mmPerDay} 会去问
-     * {@link com.EyeOfHarmonyBuffer.sim.hydro.WaterField#isWater}。而 {@code WaterField}
+     * 水系场（★ 原 {@code WaterField#isWater} 已删除 ✗ —— 现由 {@code TalosLandErosion.isLake} 承担 ✓，见 待裁决/331）。而 {@code WaterField}
      * 在解自己的 tile 时需要年平降水 ⟹ 调 {@link #annualPrecipMmPerYear} ⟹ 可能触发
      * <b>新建气候瓦片</b> ⟹ 瓦片里 {@code solveNode:989} 又调 {@code mmPerDay} ⟹ <b>成环</b>。
      * <p>实测（run {@code ECA03CFB_69FF9B4A_TALOS}）：22 支探针里 <b>14 支 StackOverflowError</b>。

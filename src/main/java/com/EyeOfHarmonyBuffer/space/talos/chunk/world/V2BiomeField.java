@@ -327,8 +327,8 @@ public final class V2BiomeField {
         // 否则会出现「真陆地被判成海」，大片陆地刷 OCEAN/SHELF 群系。
         // 实测错位 38.49% / 57.35% / 53.64%（三个窗口；两场独立时期望 ≈44% ⇒ 几乎不相关），
         // 其中「真陆地被判成海」占 10.6% / 48.6% / 40.2%。
-        // SimTerrain.ENABLED=false 时下面一行逐位回退到原实现。
-        if (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.ENABLED) {
+        // SimTerrain.TERRAIN_ON=false 时下面一行逐位回退到原实现。
+        if (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.TERRAIN_ON) {
             return sample(x, z, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(
                 x, z, com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeedInt),
                 com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL));

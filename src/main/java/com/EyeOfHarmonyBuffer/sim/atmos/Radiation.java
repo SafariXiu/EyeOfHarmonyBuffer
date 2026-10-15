@@ -115,7 +115,7 @@ public final class Radiation {
      *
      * <p>★ <b>2026-10-11 口径更正（同 §785 的处置方式：保留正确的值，更正文档）</b>：
      * 原文写「默认 false ⟹ 逐位不变」，那是 **§7355 臂之前的接线前状态**。
-     * <b>现值是 {@code true}</b> —— 与 {@code SoilMoisture.ENABLED} 完全同一模式
+     * <b>现值是 {@code true}</b> —— 与 {@code SoilMoisture.SOIL_MOISTURE_ON} 完全同一模式
      * （默认值被翻成 true 而注释未同步）。
      * <h3>★★★ 用户裁决（2026-10-11）</h3>
      * <p><b>裁决：保持 {@code true}</b>。
