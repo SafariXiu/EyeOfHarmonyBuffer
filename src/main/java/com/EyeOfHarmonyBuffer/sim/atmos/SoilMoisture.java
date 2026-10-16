@@ -121,6 +121,20 @@ public final class SoilMoisture {
      * 典型量级：`r_a ≈ 80~120 s/m`（|V| = 8 m/s、C_H = 1.3e-3）；完全植被覆盖 50~150 s/m、
      * 稀疏植被 200~500、裸土/结皮 1000~4000。**⇒ 这个乘子能给出 2~25 倍。**
      *
+     * <p>★★ 2026-10-16 取证更正（<b>纯注释，零行为影响</b> ✓；出处见 `build/h_lit/VEG_RS_BARE_FORENSICS.md` ✓）：
+     * 上句的「裸土/结皮 1000~4000 s/m」**只对应干土** ✓（θ/θsat ≲ 0.2 ✓）；
+     * <b>湿润裸土的文献值是 10~50 s/m</b> ✓ —— <b>比任何植被值都低</b> ✓（IFS `rsoil,min = 50 s/m` ✓
+     * Cy38r1 Part IV Ch.8 §8.2.2 印刷页 115-116 ✓；van de Griend &amp; Owe 1994 WRR 30(2) 摘要逐字
+     * 「≈10 s/m for a wet … several thousand … for a dry top layer」✓）。
+     * 且 IFS 的 `(1-veg)` 权重方向与本仓的 `RS_BARE*(1-V)` <b>相反</b> ✗：
+     * `θmin = veg*θpwp + (1-veg)*θres`（θres&lt;θpwp ⟹ 越裸阻力越低 ⟹ 蒸发越强 ✓；
+     * Balsamo et al. 2011 ECMWF Newsletter 127 逐字「the bare ground evaporation has been **enhanced**
+     * over deserts by adopting a **lower** stress threshold than for vegetation」✓）。
+     * ⚠ 本仓的加性线性形式 `RS_SURF + RS_BARE*(1-V)` 在可达文献中 <b>NOT FOUND</b> ✗
+     * （HESS 19, 3287-3299, 2015 摘要逐字：叶-土阻力是 <b>parallel sum</b> ✓）。
+     * ⟹ 结论：`RS_BARE`（当前 0.0 ✓）<b>不宜</b>按本注释的量级设值 ✗；若要用，应改成
+     * IFS 的**状态依赖**式 `rsoil = rsoil,min/f2b(θ1)`（式 8.14-8.15 ✓）。详见短期目标 01 ✓。
+     *
      * <p><b>为什么需要它（§439 的解析结论）</b>：桶的稳态是 `beta = F(beta)`，
      * `F(beta) = A*rh/(e1 - e2*rh)`，`rh = RH_DRY + (RH_SEA-RH_DRY)*beta`。
      * `F` 单调增且**凹**，`F(0) = 0.20A/e1 > 0`。**双稳（沙漠 / 草原两条支）的必要条件是

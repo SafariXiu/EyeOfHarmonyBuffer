@@ -25,8 +25,9 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 //            而**不是**旧注释里说的 -100 W/m^2 ✗）
 //        ⟹ ★★ 净结论 = **低估约 3~10 倍** ✓✓（方向与本条原文一致 ✓）
 //           详见 待裁决/373（量化）、/374（实测更正 373 的推论 ✓）
-//   ② 休眠：¤StationaryWave.STATIONARY_WAVE_ON = false¤ ⟹ 本类整体默认关 ✓
-//        ⟹ 所以"低估 3~10 倍"目前**不影响任何门** ✓（验收 pass=8 ✓）
+//   ② ★ 2026-10-16 更正（原写「休眠：= false ⟹ 本类整体默认关」✗，与代码不符）：
+//        ¤StationaryWave.STATIONARY_WAVE_ON = true¤（:78 逐字 ✓）⟹ 本类**已启用** ✓
+//        ⟹ 所以「低估 3~10 倍」**已经可能影响门** ⟹ 下面 :30 的复核条件**已经触发** ✗（见 §443/§454）
 //        ★ 复核条件：**若将来打开 StationaryWave.STATIONARY_WAVE_ON，必须先解决本项** ✓
 //          （选项：改用 QTCM 的 MSE 闭合 M1*div = -F_net ✓，或接受并被知情的低估 ✓）
 //   深对流区的有效稳定度是 gross moist stability（GMS, M1），不是干 N^2；M1 远小于干层结，
@@ -247,7 +248,8 @@ public final class StationaryWave {
     // 【用途】:545  fOf[j] = ZERO_F ? 0.0 : 2 * OM * Math.sin(phi);
     //   —— 那是【科氏参数 f】，必须与世界契约同口径，否则 f 小 40 倍 ⟹ 定常波的物理全错 ✗
     //
-    // ⚠ 本类 STATIONARY_WAVE_ON = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
+    // ⚠ 2026-10-16 更正：本类 STATIONARY_WAVE_ON = **true**（:78 逐字 ✓）⟹ 本类**已启用** ✓
+    //   （原文写「= false ⟹ 未启用」✗ 是过期注释；本修复本身仍只拆地雷、不改读数。）
     private static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
     private static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
@@ -380,8 +382,9 @@ public final class StationaryWave {
     //  为什么改默认（用户裁决「按照最物理最正确的方向做」）：旧式 qRad = sigma*Ts^4*(1-2*EPS)
     //  是一个**纯长波项**、且**短波（absSolar = 372~404 W/m²）从未接入**（§454）。
     //  新式 qRad = ASR - OLR（olrClear 是推导的单层灰体，唯一常数 OLR_K 由观测锚定）。
-    //  ⚠ 生产影响：netColumnHeating 目前只被 StationaryWave.STATIONARY_WAVE_ON（默认 false）消费 ⇒
-    //  【默认为 true 在实践中是无操作】，但它使该函数在被动用时物理正确（防御性正确）。
+    //  ⚠ 2026-10-16 更正：消费方 StationaryWave.STATIONARY_WAVE_ON **= true**（原文写「默认 false」✗）。
+    //  （下句的「默认为 true」指的是另一个开关 QRAD_ASR_MINUS_OLR，与前者不是同一件事 ✓。）
+    //  生产影响：netColumnHeating **现在确实被消费** ⟹ 【在实践中是无操作】这句已不再成立 ✗。
 
     /** OLR 的宽带吸收系数（m²/kg）。由观测锚定，**不是拟合目标量**。 */
     public static double OLR_K = 0.0667;
@@ -445,11 +448,21 @@ public final class StationaryWave {
         //
         // ★★ 2026-10-14 审计（#4）：**本条是【休眠项】，不影响当前产品** ✓✓
         //   开关实测（从源码读 ✓）：
-        //     ¤StationaryWave.STATIONARY_WAVE_ON = false¤（本类整体默认关 ✓）
-        //     ¤Vegetation.VEGETATION_ON     = false¤（植被默认关 ⟹ vegAt 恒返回 1.0 ✓）
-        //   ⟹ 两个开关都关着 ⇒ 本段代码在当前配置下**一行都不产生效果** ✓
-        //   ⟹ 所以"次级通道未接线"是【未来开启植被反馈时】才需要处理的事 ✗
-        //   ★ 复核条件（写死，免得忘 ✗）：**若将来把 Vegetation.VEGETATION_ON 或
+        //     ¤StationaryWave.STATIONARY_WAVE_ON = **true**¤（2026-10-16 更正；原文写 false ✗）⟹ 本类已启用
+        //     ¤Vegetation.VEGETATION_ON     = **true**¤（2026-10-16 二次更正；原文写 false ✗，
+        //       我是照抄了过期注释才写错的 ✗）⟹ vegAt / albedoAdd 的 !VEGETATION_ON 短路**都不生效** ✓
+        //   ✗ 无效原文（保留以免后人再抄）：「两个开关都关着 ⇒ 本段代码…一行都不产生效果」
+        //   ★★★ 2026-10-16 更正（两处开关都从源码核实过 ✓）：
+        //     StationaryWave.STATIONARY_WAVE_ON = **true**（:78 ✓）
+        //     Vegetation.VEGETATION_ON        = **true**（Vegetation.java:68 ✓）
+        //   ⟹ **两个开关都开着** ⇒ 本段代码在生产里**确实有效果** ✗（原「休眠项」定性作废 ✗）
+        //   ⟹ 于是 §462/:447 记的那条**次级通道缺失**是**活的** ✗：
+        //      已闭合：D_B 通道（文献指定的主导通道 ✓，`vegAt(..., vv -> pForVeg)` ✓，零额外 mmPerDay ✓）
+        //      未闭合：RS_BARE / 反照率的**次级**通道 ✗（`pForVeg` 是**常数** `pMmDay` ⇒
+        //              回调看不到 V 对降水的影响 ⟹ 植被↔降水反馈只闭合了一半 ✗）
+        //   ★ 待办（真·物理缺口，不是文档）：要迭代次级通道必须先让 `mmPerDay` 认 V（§447 ✓）
+        //     ⟹ 需要设计去环（否则递归）⟹ 属 B 类工作，先出数再落地。
+        //   ★ 原复核条件（保留原文）：**若将来把 Vegetation.VEGETATION_ON 或
         //     StationaryWave.STATIONARY_WAVE_ON 打开，必须回来先接这条次级通道** ✓
         //     （否则反照率通道会缺失，植被→降水反馈只闭合了一半 ✗）
         final double pForVeg = pMmDay;

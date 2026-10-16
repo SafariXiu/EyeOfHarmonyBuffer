@@ -4,7 +4,9 @@ import java.util.HashMap;
 
 /**
  * ★★★★★★ §462：植被 / 干旱度状态量 V(x,z) —— 文献口径（Claussen et al. 2013 谱系）。
- * 默认 VEGETATION_ON=false ⇒ 逐位不变。
+ * ★ 2026-10-16 更正：字段实际值 **= true**（:68 逐字 ✓）；原写「默认 VEGETATION_ON=false」是过期文案 ✗。
+ *   （「关闭时逐位不变」这一性质仍成立 ✓ —— 见 :179 `if (!VEGETATION_ON) return 1.0;` 与 :220 `return 0.0;`；
+ *     只是它现在不是默认态。）
  *
  * 全部常数逐字取自 Groner, Claussen & Reick (2015, Clim. Past Discuss.) 对
  * Claussen et al. (2013) 概念模型的复述（refs/cp2015_veg_precip.pdf / cp2015_tables.txt），
