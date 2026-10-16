@@ -94,7 +94,15 @@ public final class PrecipField {
      *
      *  <p>实测依据（目标档 §88）：内带 50~35S 的湿度亏缺，海表锚给 DJF-high（JJA/DJF 0.936），
      *  气温锚给 **JJA-high（1.051）**，而观测降水（GPCP）是 JJA-high（1.266）。符号因此翻正。 */
-    public static boolean Q_AIR_ANCHOR = true;   // A/B combo
+    public static boolean Q_AIR_ANCHOR = true;
+
+    /** ★ 2026-10-16（goal-8b827fd3）：空气口径支路是否**同时尊重**桶的状态（{@code BETA_OVERRIDE}）。
+     *  <p>默认 <b>false</b> ⟹ 逐位不变 ✓（走下面的原返回 ✓）。
+     *  <p>为什么需要：`Q_AIR_ANCHOR` 的支路**提前返回** ✗ ⟹ `BETA_OVERRIDE` 失效 ✗ ⟹
+     *  生产 P 对 RS/beta 完全不敏感（实测见调用点注释 ✓）。
+     *  <p>形式：`q = RH_AIR_OBS * (rhEff(bo)/RH_SEA) * qSat(tAir) * depl` —— 用的是**已有**的量 ✓，
+     *  **零新常数** ✓。 */
+    public static boolean Q_AIR_ANCHOR_BETA = true;   // 先出数   // A/B combo
 
     /** 该点纬度（**度**）—— 仅当 {@link #Q_AIR_ANCHOR} 打开时由 {@code mmPerDay} 提供，
      *  用完立刻清除（与 {@link #BETA_OVERRIDE} 同一套 ThreadLocal 机制）。 */
@@ -291,6 +299,15 @@ public final class PrecipField {
         Double qa = Q_AIR_LAT.get();
         if (Q_AIR_ANCHOR && qa != null) {
             double tAir = airTempK(tSfcSl, Math.toRadians(qa), kappa);
+            // ★ 2026-10-16（goal-8b827fd3）：让空气口径也尊重桶的状态。默认 false ⟹ 逐位不变 ✓。
+            //   实测（探针 P1030 ✓）：本支路提前返回 ⟹ BETA_OVERRIDE 失效 ✗ ⟹ 生产 P 对 RS/beta
+            //   **完全不敏感** ✗（Q_AIR_ANCHOR=false 时 P 随 RS 变 4.58855→4.59121 ✓；
+            //   true 时四个臂全为 5.28778 ✗）。
+            //   修法：用**已有的** rhEff/RH_SEA 作比例 ✓，**不引入任何新常数** ✓。
+            if (Q_AIR_ANCHOR_BETA && bo != null) {
+                double ratio = SoilMoisture.rhEff(bo) / RH_SEA;
+                return RH_AIR_OBS * ratio * qSat(tAir) * depletion(elev, kappa);
+            }
             return RH_AIR_OBS * qSat(tAir) * depletion(elev, kappa);
         }
         double rh = (bo == null) ? RH_SEA : SoilMoisture.rhEff(bo);

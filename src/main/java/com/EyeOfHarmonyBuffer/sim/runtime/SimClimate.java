@@ -525,6 +525,8 @@ public final class SimClimate {
 
         // ★ 2026-10-16（goal-3355454e）：水汽的空气口径（RH_AIR_OBS 配气温）⟹ 改了结果 ⟹ 进指纹 ✓
         h = h * 31 + (PrecipField.Q_AIR_ANCHOR ? 1 : 0);
+        // ★ 2026-10-16（goal-8b827fd3）：空气口径是否尊重桶状态 ⟹ 会改结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.Q_AIR_ANCHOR_BETA ? 1 : 0);
         h = h * 31 + (PrecipField.Q_FROM_WATER ? 1 : 0);   // ★ §7497 水系接线（湖/湿地 beta=1）
         // 候选 S-1（§251）：浅对流地板。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.SHALLOW_FLOOR ? 1 : 0);
