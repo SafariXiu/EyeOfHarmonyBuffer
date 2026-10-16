@@ -122,7 +122,7 @@ public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
 
     @Override
     public int getWaterLevel() {
-        return EmeraldThroneTerrain.SEA_LEVEL;
+        return EmeraldThroneTerrain.SEA_LEVEL_BLK;
     }
 
     @Override
@@ -163,7 +163,7 @@ public class ChunkProviderEmeraldThrone extends ChunkProviderSpaceLakes {
                 // —— 死亡之海（y≤64）：ETF 深板岩（塔罗斯-2 同款获取，找不到时兜底石头）——
                 // —— 生之大陆（y>64）：石头 ——
                 Block fillBlock;
-                if (h <= EmeraldThroneTerrain.SEA_LEVEL) {
+                if (h <= EmeraldThroneTerrain.SEA_LEVEL_BLK) {
                     Block deepslate = ModBlocks.DEEPSLATE.get();
                     fillBlock = deepslate != null ? deepslate : Blocks.stone;
                 } else {
