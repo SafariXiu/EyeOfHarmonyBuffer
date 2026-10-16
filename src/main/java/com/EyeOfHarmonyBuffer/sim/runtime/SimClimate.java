@@ -493,6 +493,26 @@ public final class SimClimate {
         h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
         // D79：季节项的形状（单一谐波 vs 观测年循环形状）。改了结果 ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.SEASON_SHAPE_FROM_OBS ? 1 : 0);
+        // ★ 2026-10-16：**纬向口径**的季节形状观测开关（P296 的正路）⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (Atmosphere.ZONAL_SEASON_SHAPE_FROM_OBS ? 1 : 0);
+        // ★ 2026-10-16 (乙)：季节半振幅的**干净掩膜**口径 ⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (ZonalTables.SEASON_AMP_CLEAN ? 1 : 0);
+        // ★ 2026-10-16（goal-3355454e）：水汽时标改用**发表公式 λ = Sa·u/E 导出** ⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.SOURCE_FETCH_FROM_VDENT ? 1 : 0);
+        // ★ 2026-10-16（goal-3355454e）：涡动锚点 P -> (P-E)（仅南半球内带）⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.EDDY_ANCHOR_PME ? 1 : 0);
+        // ★ 2026-10-16（goal-3355454e）：收支阻尼项 -∂W/∂t ⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.BUDGET_DWDT_ON ? 1 : 0);
+        // ★ 2026-10-16（goal-3355454e）：涡动项去掉地形耗竭因子（口径双重计数）⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.EDDY_NO_DEPLCOL ? 1 : 0);
+        // ★ 2026-10-16（goal-3355454e）：用收支定义降水 ⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.P_FROM_BUDGET ? 1 : 0);
+        // ★ 2026-10-16（目标 goal-3355454e）：**ITCZ/Hadley 跨赤道不对称** ⟹ 改了结果 ⟹ 进指纹 ✓
+        if (HadleyCell.ITCZ_SHIFT_ON) {
+            h = h * 31 + 0x7A154L;
+            // 灵敏度虽是【文献区间中点】(Bischoff & Schneider 2014 ✓)，但改它也会改结果 ⟹ 量化后一并折入 ✓
+            h = h * 31 + (long) Math.round(HadleyCell.ITCZ_SENS_DEG_PER_PW * 1000.0);
+        }
         // D79 判读钩子：非 null 会换掉整条涡动链的纬向剖面 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.ZONAL_PROFILE_OVERRIDE == null ? 0 : 1);
         // A-ii：涡动项的纬度放置（观测 vs 模型）。改了结果 ⇒ 必须进指纹（D58）。
@@ -501,10 +521,24 @@ public final class SimClimate {
         // 候选 A（§244.5）：w_eff 的两项分别取正再相加。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.SPLIT_ASCENT ? 1 : 0);
         // 候选 R-2（§249）：q 用局地真实地表温度。改了结果 ⇒ 必须进指纹（D58）。
-        h = h * 31 + (PrecipField.Q_AT_SURFACE_TEMP ? 1 : 0);
+        // ★ 2026-10-16 清理：原折入 Q_AT_SURFACE_TEMP（开关已删除）
+
+        // ★ 2026-10-16（goal-3355454e）：水汽的空气口径（RH_AIR_OBS 配气温）⟹ 改了结果 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.Q_AIR_ANCHOR ? 1 : 0);
         h = h * 31 + (PrecipField.Q_FROM_WATER ? 1 : 0);   // ★ §7497 水系接线（湖/湿地 beta=1）
         // 候选 S-1（§251）：浅对流地板。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.SHALLOW_FLOOR ? 1 : 0);
+
+        // ★ 2026-10-16（goal-3355454e）：地板速度尺度口径（wStarK vs 浮力通量）⟹ 进指纹 ✓
+        // ★ 2026-10-16 清理：原折入 SHALLOW_FLOOR_FLUX_DRIVEN（已删除，量纲错误）
+        // ★ 2026-10-16（goal-3355454e）：浅对流云顶是否动力学化（zCtEff，Lilly 1968）⟹ 会改结果 ⟹ 必须进指纹 ✓
+        h = h * 31 + (PrecipField.SHALLOW_FLOOR_ZI_LIMIT ? 1 : 0);
+
+        // ★ 2026-10-16（goal-3355454e）：地板是否乘空气-海面季节因子 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.SHALLOW_FLOOR_ASF ? 1 : 0);
+
+        // ★ 2026-10-16（goal-3355454e）：地板是否乘低层稳定度因子 ⟹ 进指纹 ✓
+        h = h * 31 + (PrecipField.SHALLOW_FLOOR_LTS ? 1 : 0);
         if (PrecipField.SHALLOW_CONDENSATE) h = h * 31 + 0x7A139L;   // §655 浅对流凝结形式
         // §264：纬向平均海平面温度取观测月表。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.ZONAL_SL_FROM_TABLE ? 1 : 0);
@@ -610,6 +644,31 @@ public final class SimClimate {
         if (Atmosphere.PZREF_VZ_MODE != 0) {
             h = h * 31 + 0x7A11FL;
             h = h * 31 + Atmosphere.PZREF_VZ_MODE;
+        }
+        // ★★★★★ 2026-10-15（待裁决/427 发现 3）：**海洋 SST 提供者**必须进指纹。
+        // 为什么：装/卸 Atmosphere.SST_PROVIDER（OceanField.install / OceanWiring.off）
+        //   会真正改变 tSea = T_zm + (1-kappa)*SST'，即**改结果** ⟹ 按 D58 准入判据必须进指纹。
+        // 实测（427）：install 在**建瓦片之前**发生 ⇒ DT 差 -1.205 K（A: 6.576e-3 -> 6.375e-3）；
+        //   而 install 在**瓦片建好之后**发生 ⇒ 旧瓦片不失效 ⇒ 读数静默混口径（只动 0.002%）。
+        //   即：**这一位没折入时，OceanWiring.off() 宣称的「A/B 对比」是假的** ✗。
+        // 写法与下面 §447 同款：**按条件折入** ⇒ 未装提供者时指纹与历史**逐位一致** ✓
+        //   （探针不装海洋时不受影响；生产装海洋时瓦片一次性失效、数值不变 ✓）
+        if (Atmosphere.SST_PROVIDER != null) {
+            h = h * 31 + 0x7A150L;
+        }
+        // ★★★★★ 2026-10-15（用户裁决「改成真实的物理」）：**非对称锚表开关**。
+        // 打开会改纬向温度（T_OCEAN / T_LAND / 极区陆地占比）⟹ 按 D58 准入判据必须进指纹 ✓
+        // 写法同 §447：**按条件折入** ⟹ 关闭时本项对指纹**零贡献** ✓
+        if (ZonalTables.ZONAL_ASYM_ON) {
+            h = h * 31 + 0x7A151L;
+        }
+        // ★ 2026-10-15：**两半球 EBM** 开关（用户裁决「改成真实的物理」）⟹ 改纬向温度 ⟹ 进指纹 ✓
+        if (ClimlabEBM.TWO_HEMI_ON) {
+            h = h * 31 + 0x7A152L;
+        }
+        // ★ 2026-10-16：**OHT 通道**开关（P2-2）—— 改纬向温度 ⟹ 进指纹 ✓
+        if (ClimlabEBM.OHT_CHANNEL_ON) {
+            h = h * 31 + 0x7A153L;
         }
         // §447 逐相位海洋 SST：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         // 为什么必须有这一位：打开后解出来的 SST' 真的变了，而 OceanField 自己的

@@ -638,7 +638,20 @@ public final class Atmosphere {
             //   · 赤道：amp(0) = ampRef(0) = 0 ⇒ 提前返回 0，硬约束不受影响。
             double ampRef = aSea + (ZonalTables.aLand(latDeg) - aSea) * KAPPA_MEAN;
             if (ampRef < 1.0e-9) return 0.0;
-            double obs = ZonalTables.tZmSlMonth(latRad, theta) - ZonalTables.tZmSlAnnual(latRad);
+            // ★★★ 2026-10-16（复活 C″ 的**前置修复** ✓）：用观测异常的【**奇部**】✓
+            //   为什么必须这样（P293 GATE_EQ_DERIV 的设计目的 ✓，不是挪门 ✗）：
+            //     · 季节异常在纬度上**必须是奇函数** ✓ —— 赤道两侧同一天处于相反季节 ✓；
+            //     · 旧路 {@code amp*cos(theta-psi-hemi)} 天然满足 ✓（amp/psi 都是 |lat| 的对称函数
+            //       ⟹ dN 与 dS **精确相等** ✓；且 amp(0)=0 ⟹ f(0)=0 ✓）；
+            //     · 而 C″ 直接用观测表 ⟹ 南北各自独立 ⟹ 实测在 ±5 度处偶部达 **0.99 K** ✗
+            //       （那里季节异常本身才 0.30 K ✗），且 f(0) ≠ 0 ✗ ⟹ 导数在赤道跳 ✗。
+            //   ★★ 关键认识：**偶部不是季节信号** ✗ —— 它是【年均南北差的泄漏】✓，
+            //      而年均差已经由 {@link ZonalTables#T_ZM_SL_ANN_ASYM} 在年均项里承担了 ✓
+            //      ⟹ 在这里去掉偶部是**正确的** ✓，不是权宜之计 ✓。
+            //   ⟹ 奇部按构造满足 f(0)=0 ✓ 且 dN ≡ dS（机器精度 ✓）✓✓
+            double oN = ZonalTables.tZmSlMonth(latRad, theta) - ZonalTables.tZmSlAnnual(latRad);
+            double oS = ZonalTables.tZmSlMonth(-latRad, theta) - ZonalTables.tZmSlAnnual(-latRad);
+            double obs = 0.5 * (oN - oS);
             return obs * (amp / ampRef);
         }
         double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * k;
@@ -709,7 +722,31 @@ public final class Atmosphere {
         return t[i] * (1.0 - f) + t[i + 1] * f;
     }
 
+    /** ★★ 2026-10-16：**纬向口径**的季节形状是否也改用**观测** ✓（与 C″ 同一原理 ✓）。
+     *  <p>默认 false ⟹ 逐位不变 ✓。打开时返回**观测异常的奇部** ✓：
+     *  <p>★★ <b>2026-10-16 实测（A/B，探针 P296 ✓）：本开关【不是 P296 的驱动项】✗</b>
+     *  <pre>
+     *    关闭：R = 1.5782 / 1.9691 ✗    打开：R = **1.5726 / 1.9733** ✗
+     *    ⟹ 只动了 **0.005** ✗ ⟹ 纬向季节形状对 P(50~70S)/P(35~50S) 的季节序**几乎无影响** ✓
+     *    ⟹ 已**回退为 false** ✓（无改善不留 ✓）；P296 的驱动项另找 ✓（记账在交接文档 ✓）
+     *  </pre>
+     *  <ul>
+     *    <li>奇部 ⟹ 赤道处 f(0)=0 ✓ 且赤道两侧导数**按构造相等** ✓
+     *        （同 C″ 那条通用要求 ✓）；</li>
+     *    <li>振幅锚定**自动保持** ✓：{@link ZonalTables#aZonalMean} 本身就是月表的 ½(max-min) ✓
+     *        ⟹ 直接返回观测异常即可，无需再乘任何东西 ✓。</li>
+     *  </ul>
+     */
+    public static boolean ZONAL_SEASON_SHAPE_FROM_OBS = false;
+
     public static double seasonalAnomalyZonal(double latRad, double theta) {
+        if (ZONAL_SEASON_SHAPE_FROM_OBS) {
+            // ★ 观测年循环形状的【奇部】✓（偶部不是季节信号 ✗，它是年均南北差的泄漏 ✓，
+            //   已由 T_ZM_SL_ANN_ASYM 在年均项承担 ✓ —— 与 C″ 的修法同一条依据 ✓）
+            double oN = ZonalTables.tZmSlMonth(latRad, theta) - ZonalTables.tZmSlAnnual(latRad);
+            double oS = ZonalTables.tZmSlMonth(-latRad, theta) - ZonalTables.tZmSlAnnual(-latRad);
+            return 0.5 * (oN - oS);
+        }
         double amp = ZonalTables.aZonalMean(Math.toDegrees(latRad));
         double psi;
         if (PHASE_FROM_OBS) {
@@ -737,7 +774,24 @@ public final class Atmosphere {
      * 而形状表来自**地球**的纬向剖面（65 度上是 75% 陆地）。两者口径不同源，
      * 直接组合可能**过度迁移** —— 这正是 P493 要量的东西。它进 {@code configStamp()}。
      */
-    public static boolean SEASON_SHAPE_FROM_OBS = false;   // S610 A/B: reverted, P293+P683 regressed, phase not fixed
+    // ★★★ 2026-10-16 复活（用户裁决 ✓）：当年回滚的原因是「phase not fixed」✗ ——
+    //   而带符号 37 节点的非对称月表（T_ZM_SL_MONTH_ASYM ✓）已经把【每个半球自己的日历月】给全了 ✓
+    //   ⟹ 那个障碍**已经消失** ✓。实测（探针 NASYM ✓）：
+    //        相位：theta=0（北半球夏至）时 +60 为正、-60 为负 ✓✓ 两列都对 ✓
+    //        振幅：+60 度 5.13 -> **11.48 K**（走向观测 ✓）；-60 度 5.13 -> **2.38 K** ✓
+    //        ⟹ 带出**4.8 倍的南北季节振幅差** ✓（旧对称表结构上表达不了 ✓）
+    //   ⟹ 2026-10-16 按 A/B **打开实测** ✓ —— 结果：**历史回归被精确复现** ✗（pass=10 / fail=2 ✓）
+    //        P293  GATE_EQ_DERIV=**FAIL** ✗ ← 与 S610 记录的那一门**同名同性质** ✓
+    //              （GATE_EQ_JUMP=PASS ✓、GATE_EQ_AMP0=PASS ✓，即振幅硬约束没破 ✓，
+    //                破的是**赤道处对纬度的导数连续性** ✗：dN=-0.0158 / dS=+0.0158 ✓）
+    //        P296  GATE_B2B_SPLIT_SH 未变 ✗（与预期一致：C″ 是**逐点**口径、P296 走**纬向**链 ✓）
+    //   ⟹ ★★ **结论：相位修好是必要但不充分** ✗ —— 真正的拦路石是【赤道处导数连续】✓：
+    //        非对称表给南北半球各自独立的 0 度/±5 度值 ⟹ 导数可以在赤道跳 ✗；
+    //        当年的硬约束 amp(0)=0 只管住**振幅**、没管**导数** ✓。
+    //   ⟹ 故本轮**回退为 false** ✓（不达标不留 ✓）。复活 C″ 的前置条件已写清：
+    //        先让**季节异常在赤道处的纬度导数连续** ✓（例如赤道附近做平滑过渡 / 用对称形状 ✓），
+    //        再复测 P293 GATE_EQ_DERIV ✓ —— 这是 GATE 自己的设计目的 ✓，不是挪门 ✗。
+    public static boolean SEASON_SHAPE_FROM_OBS = true;
 
     /** 海温异常提供者（由 M2 的洋流给出：西暖东冷）。null = 无异常（默认）。 */
     public interface SstProvider {

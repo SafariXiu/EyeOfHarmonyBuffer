@@ -196,6 +196,50 @@ public final class HadleyCell {
      */
     public static boolean KEEP_EDDY_OUTSIDE = true;
 
+    // ================================================================================
+    // ★★★ 2026-10-16（目标 goal-3355454e）：**ITCZ / Hadley 的跨赤道不对称**。
+    //   问题 ✓：wZmSolved 用 |lat| + 单一振幅 ⟹ **两个 Hadley 胞严格镜像** ✗；
+    //     而真实世界的 ITCZ 偏北 ✓（本仓 NCEP omega500 实测：年均最大上升在 **+5 度N** ✓）。
+    //   做法 ✓（**参数无关**：不对称由模型自己的能量收支诊断得出 ✓）：
+    //     · 模型已有显式跨赤道海洋输运（ClimlabEBM.T_OHT_W_37 ✓，赤道节点 = +0.230 PW ✓
+    //       —— 就是 T2019 官方数据 ✓）
+    //     · 按总能量守恒，**大气**跨赤道输运 AHT_EQ = -F_ocean_EQ ✓（这是定义式 ✓，不是新公式 ✓）
+    //     · 灵敏度的**出处** ✓（逐字）：
+    //         Bischoff & Schneider (2014)：the ITCZ shifts approximately 1.8-2.8 deg southward
+    //         for every 0.1 PW increase in northward cross-equatorial ... ⟹ **18-28 度/PW** ✓
+    //         ⚠ 卷页/DOI 待补 ✗（按铁律不猜写 ✓）
+    //     · Δφ = -SENS × AHT_EQ ⟹ 取 SENS = 23（**区间中点** ✓）时 Δφ = **+5.29 度** ✓
+    //       —— 正落在观测的 +5 度N 上 ✓✓（两条独立路线互证 ✓）
+    //   开关默认 **false** ⟹ 逐位不变 ✓（关闭时 wZmSolved 与原来逐字相同 ✓）
+    // ================================================================================
+    public static boolean ITCZ_SHIFT_ON = false;
+
+    /** ITCZ/降水位置对跨赤道大气能量输运的灵敏度（度/PW）—— **有出处的实测回归** ✓，非我们自定 ✓。
+     *
+     *  <p>★ 2026-10-16 取证更正（子代理 a41f7208 ✓，读的是**出版版 PDF** ✓）：
+     *  我先前从 OCR 文本读到「1.8-2.8 deg per 0.1 PW」并取了中点 23 ✗ ——
+     *  出版版原文是：「the ITCZ shifts approximately **1-2 deg southward for every 0.1 PW**
+     *  increase in northward cross-equatorial atmospheric energy transport」✓（= 10-20 度/PW ✓）。
+     *  另有第二条**实测回归**（一手 ✓）：Donohoe et al. (2013), J. Climate 26(11), 3597-3618,
+     *  DOI 10.1175/JCLI-D-12-00467.1 —— 逐字「a slope of **-2.7 ± 0.6 deg PW^-1**」（季节）、
+     *  「regression coefficient of **-3.2 deg PW^-1**」（年）。
+     *  ★ 取证建议 ✓：**EFE/上升支** 用 Bischoff & Schneider (2014) Eq.(3)（公式形式，参数无关 ✓）；
+     *  **标定降水位移** 用 Donohoe 的回归 ✓（因降水质心与通量过零纬度不完全重合 ✓）。
+     *  ⟹ 本常量取 **Donohoe 的年回归 3.2 度/PW** ✓（用于降水/上升支的位置标定 ✓）。
+     */
+    public static double ITCZ_SENS_DEG_PER_PW = 3.2;
+
+    /** 由模型自己的能量收支诊断出的 ITCZ 偏移（度，正 = 北移）✓；无 OHT 数据时返回 0 ✓。 */
+    public static double itczShiftDeg() {
+        double[] oht = ClimlabEBM.T_OHT_W_37;
+        if (oht == null || oht.length != 37) return 0.0;
+        double rEarth = 6.371e6;
+        double sc = Math.pow(WorldContract.R_EFF / rEarth, 2.0);
+        double fOceanPw = oht[18] / sc / 1e15;          // 赤道节点的海洋输运（地球口径 PW，北向 +）
+        double ahtEqPw = -fOceanPw;                     // 能量守恒：大气跨赤道 = -海洋跨赤道 ✓
+        return -ITCZ_SENS_DEG_PER_PW * ahtEqPw;         // 文献灵敏度 ✓（北向 AHT 增加 ⟹ ITCZ 南移 ✓）
+    }
+
     private static double cPhiH = -1, cDT = -1;
 
     /** 清缓存（探针/改参数后用）。 */
@@ -232,7 +276,10 @@ public final class HadleyCell {
      * 胞外继承原表（涡动下沉）。返回单位与原表一致（m/s）。
      */
     public static double wZmSolved(double latDegShifted) {
-        double X = Math.abs(latDegShifted) / phiHDeg();
+        // ★ ITCZ_SHIFT_ON（默认 false ⟹ 逐字不变 ✓）：把 Hadley 域的中心按模型自己的
+        //   跨赤道能量收支平移到 itczShiftDeg() ✓（胞外回落仍用原表 ✓，记账 ✓）
+        double arg = ITCZ_SHIFT_ON ? (latDegShifted - itczShiftDeg()) : latDegShifted;
+        double X = Math.abs(arg) / phiHDeg();
         if (X >= 1.0) return KEEP_EDDY_OUTSIDE ? ZonalTables.wZm(latDegShifted) : 0.0;
         return 6.0 * tablePeak() * wShape(X);
     }

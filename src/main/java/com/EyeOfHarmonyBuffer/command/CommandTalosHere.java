@@ -15,6 +15,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.TalosSeedMc;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 
 public class CommandTalosHere extends CommandBase {
@@ -137,6 +138,27 @@ public class CommandTalosHere extends CommandBase {
             if (!world.isAirBlock(blockX, y, blockZ)) { surf = y; break; } }
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] ★ 实际方块表面 y=%d   (包内 blockX=%d, blockZ=%d)", surf, blockX, blockZ)));
+        // ★★★★★ 2026-10-15（待裁决/427）：温盐环流（Stommel 2-box）诊断线。
+        //   ★ 开关默认 false ⟹ 这里只打印「未启用」，且 worldState() 在那条路上
+        //     **不采样、不计算**（成本 0、不改变任何输出）。
+        //   ★ 打开 THERMOHALINE_ON 后给出世界的热/盐驱动对比：
+        //     首次调用会建所需气候瓦片（世界级一次性成本），之后走缓存。
+        double[] thc = Thermohaline.worldState(worldSeedInt);
+        int thcState = (int) thc[Thermohaline.W_STATE];
+        String thcName;
+        switch (thcState) {
+            case Thermohaline.STATE_OFF:     thcName = "未启用 (THERMOHALINE_ON=false)"; break;
+            case Thermohaline.STATE_THERMAL: thcName = "热主导"; break;
+            case Thermohaline.STATE_SALINE:  thcName = "盐主导"; break;
+            default:                         thcName = "临界"; break;
+        }
+        sender.addChatMessage(new ChatComponentText(String.format(
+            "[THC] %s  A=%.4e  (E-P)=%+.3f mm/d  B=%.4e  disc=%+.3e  h=%.2f m  h_crit=%.3e m",
+            thcName,
+            thc[Thermohaline.W_A], thc[Thermohaline.W_EP_MM_PER_DAY], thc[Thermohaline.W_B],
+            thc[Thermohaline.W_DISC], thc[Thermohaline.W_H],
+            Thermohaline.criticalMixedLayerM(thc[Thermohaline.W_A],
+                                             thc[Thermohaline.W_EP_MM_PER_DAY]))));
     }
 
     private static String kindLabel(int kind) {

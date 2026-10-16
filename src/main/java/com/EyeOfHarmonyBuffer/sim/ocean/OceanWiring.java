@@ -42,6 +42,10 @@ public final class OceanWiring {
         // ★★★ 地貌演化层（LEM）也跟同一个世界走（记种子 + 清瓦片缓存）。
         //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
         TalosLandErosion.install(worldSeedInt);
+        // ★★★ 2026-10-15（待裁决/427）：温盐环流（Stommel 2-box）跟同一个世界走。
+        //   它同样【不改变任何输出】：THERMOHALINE_ON 默认 false ⟹ worldState() 直接返回
+        //   OFF 哨兵、**不采样不计算**（成本 0）；打开后它也只是【诊断出口】，不反哺气候场。
+        Thermohaline.install(worldSeedInt);
         if (!OceanField.OCEAN_ON) return;
         // ★★★★★ §7556：探针模式跳过预热。
         //
