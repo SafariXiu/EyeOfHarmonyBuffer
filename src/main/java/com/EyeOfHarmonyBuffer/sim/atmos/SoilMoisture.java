@@ -108,6 +108,14 @@ public final class SoilMoisture {
      * <p><b>默认 false ⇒ 逐位不变</b>（{@code C[kk] = 0.0}，且 {@code A*rh + 0.0} 与 {@code A*rh}
      * 在正数域逐位相同；P995 的 OFF 列在两种实现下逐位一致）。
      */
+    // ★★★ 2026-10-18 地质 Phase 1（默认关 ⟹ 逐位不变）
+    /** 把土壤质地接进 IFS 的 rsoil 表面阻力路径。默认 <b>false</b>。 */
+    public static boolean RS_IFS_ON = false;
+    /** IFS rsoil,min = 50 s/m（Cy47r3 Part IV §8.2.3 印刷页 139，有出处）。 */
+    public static final double IFS_RSOIL_MIN = 50.0;
+    /** 数值护栏：仅防 θ1=θmin 时的除零，<b>不是物理参数</b>（文档无 clamp，取证 Q4）。 */
+    private static final double IFS_TEX_EPS = 1e-6;
+
     public static boolean MFC_IN_BUCKET = false;
 
     /**
@@ -288,9 +296,29 @@ public final class SoilMoisture {
      */
     public static void invalidate() { MEMO.get().clear(); }
 
+    /**
+     * ★ 2026-10-17（地质子系统，消费者 A 的接线第一步）：**逐点质地覆盖**。
+     *
+     * <p>由调用方在自旋前设置；<b>{@code null} = 不启用</b> ⟹ 行为与接线前<b>逐位相同</b>。
+     * 机制照搬本仓已有的 {@code PrecipField.BETA_OVERRIDE} ThreadLocal 模式。
+     *
+     * <p>⚠ 为什么要它：{@code Radiation.WK_OVER_WFC} 是 {@code static final}（0.75），
+     * 而 IFS 的质地类给的是 θcap/θpwp ⟹ 用<b>比值 θpwp/θcap</b> 得到逐点 wk，
+     * <b>不动那个编译期常量</b>（改动面最小）。
+     *
+     * <p>⚠ 目前<b>还没有任何调用方设置它</b>（setter 需要自旋时的 (x,z)），
+     * ⟹ 生产读数不变。
+     */
+    public static final ThreadLocal<com.EyeOfHarmonyBuffer.sim.litho.GeologyField.TextureClass> TEXTURE_OVERRIDE =
+            new ThreadLocal<>();
+
     /** beta = min(1, W / (WK_OVER_WFC * W_FC))（Manabe eq.20）。W 与返回均为相对 W_FC 的分数。 */
     public static double betaOfFrac(double wFrac) {
-        double wk = Radiation.WK_OVER_WFC;
+        // ★ 逐点质地覆盖（null = 关闭 ⟹ 与接线前逐位相同）
+        com.EyeOfHarmonyBuffer.sim.litho.GeologyField.TextureClass tex = TEXTURE_OVERRIDE.get();
+        double wk = (tex == null) ? Radiation.WK_OVER_WFC
+                                  : (com.EyeOfHarmonyBuffer.sim.litho.GeologyField.thetaPwp(tex)
+                                     / com.EyeOfHarmonyBuffer.sim.litho.GeologyField.thetaCap(tex));
         if (wk <= 0) return 1.0;
         double b = wFrac / wk;
         return b < 0.0 ? 0.0 : (b > 1.0 ? 1.0 : b);
@@ -340,6 +368,16 @@ public final class SoilMoisture {
         //   ⇒ 下面每一句算式都与接线前【逐位相同】。
         //   为什么是 pass 而不是迭代：§464 实测一次桶自旋 4.378 ms/点，迭代会被性能否证；
         //   这里 pass=1 只多算一次 A/e1/e2 块（evalCount +N），spinupCount【不变】。
+        // ★★★ 2026-10-18（地质 Phase 1）：质地 -> IFS rsoil 的**设计已定**，实现暂缓（见下）。
+        //   IFS 原文（Cy47r3 Part IV §8.2.3 印刷页 139，式 8.15-8.17）：
+        //     rsoil = rsoil_min * f2b(fliq*theta1)，1/f2b = (theta1-theta_min)/(theta_cap-theta_min)
+        //     theta_min = veg*theta_pwp + (1-veg)*theta_res
+        //   代数等价式：rsoil = rsoil_min*(theta_cap-theta_min)/(fliq*theta1-theta_min)
+        //   theta_cap/theta_min：IFS Table 8.9（印刷页 153）；fliq=1（本仓无冻土）
+        //   ⚠ 文档【无 clamp】（取证 Q4 NOT FOUND）：theta1→theta_min+ 时 rsoil→∞ ⟹ 需数值护栏（非物理参数）
+        //   ✗ 为什么暂缓实现：theta1 必须用【桶的实际含水量 w[kk]】，而它只在 pass 循环内可得；
+        //     在循环外只能用占位值（那会是个假实现）。正确的落点是把 rsoil 的更新移进 pass 循环
+        //     （与 :488 的 rsTot 更新同处），并先出数确认量级与性能，再谈默认关的开关。
         double rsTot = RS_SURF;
         int passes = 1;
         if (Vegetation.VEGETATION_ON && Vegetation.RS_BARE > 0.0) passes = 1 + Math.max(0, Vegetation.RS_PASS);
@@ -374,6 +412,26 @@ public final class SoilMoisture {
                     waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tSl, lat));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
+            // ★★★ 2026-10-18 地质 Phase 1：把质地接进 IFS 的 rsoil（表面阻力），不是 Manabe 分母。
+            //   IFS Cy47r3 Part IV §8.2.3 印刷页 139 式 8.15-8.17；θcap/θmin 取 Table 8.9 印刷页 153。
+            //   数值已先出数：θ1=0.2~0.6 时 rsoil 落在 17~200 s/m（物理量级）。
+            //   ⚠ 文档无 clamp（取证 Q4 NOT FOUND）⟹ θ1 夹到 θmin+EPS：此时 chvE->0（干土不蒸发），
+            //     这是「无自由参数的物理边界」，不是标定值；EPS 仅防除零（非物理参数）。
+            if (RS_IFS_ON) {
+                double wBar = 0.0;
+                for (int kq = 0; kq < N; kq++) wBar += w[kq];
+                wBar /= N;
+                double th1 = betaOfFrac(wBar);
+                com.EyeOfHarmonyBuffer.sim.litho.GeologyField.TextureClass tc =
+                        com.EyeOfHarmonyBuffer.sim.litho.GeologyField.textureClassAt(x, z, seed, cell);
+                double tcCap = com.EyeOfHarmonyBuffer.sim.litho.GeologyField.thetaCap(tc);
+                double tcPwp = com.EyeOfHarmonyBuffer.sim.litho.GeologyField.thetaPwp(tc);
+                double tcRes = com.EyeOfHarmonyBuffer.sim.litho.GeologyField.thetaRes(tc);
+                double tcVeg = Vegetation.VEGETATION_ON ? 1.0 : 0.0;
+                double tcMin = tcVeg * tcPwp + (1.0 - tcVeg) * tcRes;
+                double tcDen = Math.max(th1 - tcMin, IFS_TEX_EPS);
+                rsTot += IFS_RSOIL_MIN * Math.max(0.0, tcCap - tcMin) / tcDen;
+            }
             //   RS_BARE=0（默认）⇒ rsTot==RS_SURF ⇒ 逐位不变。
             double chvE = (rsTot > 0.0) ? chv / (1.0 + chv * rsTot) : chv;
             double tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0);
@@ -518,9 +576,13 @@ public final class SoilMoisture {
         double[] w = m.get(kk);
         if (w == null) {
             IN_SPINUP.set(Boolean.TRUE);
+        // ★ 2026-10-17 消费者 A：默认关（GEOLOGY_ON=false）⟹ 不设置 ⟹ 逐位不变
+        if (com.EyeOfHarmonyBuffer.sim.litho.GeologyField.GEOLOGY_ON) {
+            TEXTURE_OVERRIDE.set(com.EyeOfHarmonyBuffer.sim.litho.GeologyField.textureClassAt(x, z, seed, cell));
+        }
             LAKE_SURFACE.set(Boolean.TRUE);   // ★ 待裁决/343：湖面 = 水面
             try { w = spinup(x, z, seed, cell, gradStep); }
-            finally { IN_SPINUP.set(Boolean.FALSE); LAKE_SURFACE.set(Boolean.FALSE); }
+            finally { TEXTURE_OVERRIDE.remove(); IN_SPINUP.set(Boolean.FALSE); LAKE_SURFACE.set(Boolean.FALSE); }
             m.put(kk, w); }
         return w[NTHETA];
     }
@@ -570,9 +632,14 @@ public final class SoilMoisture {
         if (w == null) {
             long t0 = System.nanoTime();
             IN_SPINUP.set(Boolean.TRUE);
+        // ★ 2026-10-17 消费者 A：默认关（GEOLOGY_ON=false）⟹ 不设置 ⟹ 逐位不变
+        if (com.EyeOfHarmonyBuffer.sim.litho.GeologyField.GEOLOGY_ON) {
+            TEXTURE_OVERRIDE.set(com.EyeOfHarmonyBuffer.sim.litho.GeologyField.textureClassAt(x, z, seed, cell));
+        }
             try {
                 w = spinup(x, z, seed, cell, gradStep);
             } finally {
+                TEXTURE_OVERRIDE.remove();
                 IN_SPINUP.set(Boolean.FALSE);
             }
             SPINUP_NANOS += System.nanoTime() - t0;
