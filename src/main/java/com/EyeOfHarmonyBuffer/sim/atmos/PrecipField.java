@@ -2877,7 +2877,8 @@ public final class PrecipField {
      *
      * <p>一句话：把 {@code mmPerDay} 里那个「地表温度」{@code tQ} 从**海平面等效温度** {@code tSl}
      * 换成**该点真实地表温度**（{@code surfaceTemp = tSl - GAMMA*max(0,elev)*kappa}）。
-     * 默认 {@code false} ⇒ {@code tQ} 逐位等于 {@code tSl}（同一变量、不做任何减法）⇒ 全局零变化（§N5）。
+     * **2026-10-19 用户裁决：默认 {@code true}**；置 {@code false} ⇒ {@code tQ} 逐位等于 {@code tSl}
+     * ⇒ 逐位回到打开前的历史（{@code configStamp} 的条件折入保证两态指纹不同）。
      *
      * <p><b>为什么这是 bug</b>（沿数据流确认，2026-10-19）：{@code tSl} 是不含海拔的「海平面等效温度」，
      * 而降水链上的 RH 锚是**地表 / 近地面**的相对湿度（默认口径 {@code Q_AIR_ANCHOR=true}：
@@ -2907,12 +2908,15 @@ public final class PrecipField {
      * ⚠ 因此：**不得**在 {@code Q_AIR_ANCHOR=false} 的组合下打开本开关（那会退化为
      * {@code RH_SEA × qSat(T_s)}，正是 §648 判定过的错配组合）。
      *
-     * <p><b>⚠ 已知耦合缺口（2026-10-19 实测发现，未修，需单独裁决）</b>：
-     * {@code SoilMoisture.spinup}（{@code SoilMoisture:395-412}）有**自己的一份温度链**，
-     * 仍写死 {@code tSl}（源码逐字：{@code qsTQ = qSat(tSl); // tQ == tSl（Q_AT_SURFACE_TEMP 默认关）}）。
-     * ⟹ 本开关打开时，{@code mmPerDay} 的地表温度变了，但桶自旋算出的 β 仍按**旧口径**的 q 标定，
-     * 二者不一致（NPRST 实测：两臂 β 逐位相同）。要真正采纳必须把同一个开关接进那条路径，
-     * 并单独做 A/B（β 的反馈会放大影响）。**在那之前，本开关只能作为「口径实验」打开。**
+     * <p><b>✅ 已知耦合缺口 —— 已接线（选项 C，2026-10-19）</b>：
+     * {@code SoilMoisture.spinup}（{@code SoilMoisture:395-412}）原有**自己的一份温度链**、
+     * 写死 {@code tSl}（逐字：{@code qsTQ = qSat(tSl);}）。现改为**同一个开关**：
+     * <pre>
+     *   tQ = PRECIP_USE_SURFACE_T ? tSl - GAMMA*max(0,elev)*kappa : tSl
+     * </pre>
+     * ⚠ 注意口径：spinup 的 {@code tSl} 用 {@code sstAnom = 0}（刻意的气候自旋口径），
+     * 所以这里**只减海拔递减、不引入 sstAnom** —— 等价于「sstAnom=0 的 surfaceTemp」，
+     * 不把 SST 异常偷带进桶的自旋。`betaAt` 的 memo 键在 ON 时多折一位，避免同 JVM 换开关读到旧 β。
      *
      * <p><b>⚠ 仪器坑（2026-10-19 实测）</b>：{@code DIAG[]} 会被 {@code StationaryWave.ensureSolved}
      * 内部的嵌套 {@code mmPerDay} 覆盖（实测首个点 DIAG[6] 回读 265.70 K，该点自己的 tSl 是 302.55 K）。
@@ -2925,7 +2929,7 @@ public final class PrecipField {
      * <p>进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}（按条件折入 ⇒
      * OFF 时指纹与历史完全一致）。
      */
-    public static boolean PRECIP_USE_SURFACE_T = false;
+    public static boolean PRECIP_USE_SURFACE_T = true;
 
     /**
      * **水系接线（设计冻结 §7497）：湖泊 / 湿地的水面是【饱和面】⟹ {@code beta = 1}。**

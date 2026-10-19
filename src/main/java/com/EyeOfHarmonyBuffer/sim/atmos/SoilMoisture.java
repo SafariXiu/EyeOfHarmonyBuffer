@@ -1,5 +1,6 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 import java.util.HashMap;
@@ -259,7 +260,7 @@ public final class SoilMoisture {
      * <pre>
      *   chv      = Radiation.bulkCoeff(k, sp)                       // k = 大陆度
      *   absSolar = Radiation.absSolarSurface(lat, dec,
-     *                  Radiation.albedo(k &gt; 0.5, tSl))              // k&gt;0.5 ⟹ 陆地
+     *                  Radiation.albedo(k &gt; 0.5, tQ))               // k&gt;0.5 ⟹ 陆地；tQ 见 §C（2026-10-19）
      * </pre>
      * 而湖在内陆 ⟹ {@code k ≈ 1} ⟹ 湖面被当作<b>陆地</b>：
      * <pre>
@@ -362,6 +363,8 @@ public final class SoilMoisture {
         double[] C = new double[N];
         double lat = WorldContract.latOf(z);
         double k = Atmosphere.kappaMemo(x, z, seed, cell);
+        // ★ 2026-10-19（选项 C）：海拔只算一次（与 theta 无关）。口径见 PrecipField.PRECIP_USE_SURFACE_T。
+        final double elev = PlateField.elevationWithCell(x, z, seed, cell);
         double depl = 1.0;                       // 由 upwindElev 给出，见下
         double hUp = 0.0;
         // ★ §466：pass 循环。Vegetation 关闭（或 RS_BARE=0）时 passes=1 且 rsTot==RS_SURF
@@ -394,9 +397,15 @@ public final class SoilMoisture {
             depl = PrecipField.depletion(hUp, k);
             double tSl = Atmosphere.annualSeaLevelTemp(lat, k, 0.0)
                        + Atmosphere.seasonalAnomaly(lat, k, theta);
+            // ★ 2026-10-19（选项 C）：与 mmPerDay 用**同一个开关**。spinup 的 tSl 用 sstAnom=0
+            //   （刻意的气候自旋口径）⟹ 这里只减海拔递减，等价于「sstAnom=0 的 surfaceTemp」，
+            //   不把 SST 异常偷带进桶的自旋。OFF 时 tQ == tSl（逐位不变）。
+            double tQ = PrecipField.PRECIP_USE_SURFACE_T
+                      ? tSl - Atmosphere.GAMMA * Math.max(0.0, elev) * k
+                      : tSl;
             double divU = diverge(x, z, seed, cell, theta, gradStep);
             double wEff = PrecipField.wEff(lat, theta, divU);
-            double qsTQ = PrecipField.qSat(tSl);          // tQ == tSl（Q_AT_SURFACE_TEMP 默认关）
+            double qsTQ = PrecipField.qSat(tQ);           // ★ 2026-10-19：tQ（含海拔递减）
             // ★★★★★ 待裁决/343：湖面用【水面】拖曳（CD_OCN），而不是陆面（CD_LND）。
             final boolean waterSurf = LAKE_WATER_SURFACE && LAKE_SURFACE.get();
             double chv = Radiation.bulkCoeff(waterSurf ? 0.0 : k, sp);
@@ -409,7 +418,7 @@ public final class SoilMoisture {
             // ★★★★★ 待裁决/343：湖面反照率用 ALB_SEA（水面），而不是 ALB_LAND（陆面）。
             double absSolar = Radiation.absSolarSurface(lat, dec,
                     // ★ 2026-10-15：带纬度（海冰/雪反照率需要 ✓）；开关关时逐位不变 ✓
-                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tSl, lat));   // §7353 单源
+                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tQ, lat));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
             // ★★★ 2026-10-18 地质 Phase 1：把质地接进 IFS 的 rsoil（表面阻力），不是 Manabe 分母。
@@ -434,7 +443,7 @@ public final class SoilMoisture {
             }
             //   RS_BARE=0（默认）⇒ rsTot==RS_SURF ⇒ 逐位不变。
             double chvE = (rsTot > 0.0) ? chv / (1.0 + chv * rsTot) : chv;
-            double tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0);
+            double tsPot = Radiation.skinTempLand(absSolar, tQ, qa1, chvE, 1.0);
             double qsTs = PrecipField.qSat(tsPot);
             A[kk]  = (wEff <= 0.0) ? 0.0
                    : PrecipField.EPS_C * Atmosphere.RHO_AIR * qsTQ * depl / PrecipField.RHO_WATER
@@ -535,11 +544,13 @@ public final class SoilMoisture {
         lastVResid = (vBarFirst < 0.0) ? -1.0 : Math.abs(vBar - vBarFirst);
         // ★★★★★★★★ 2026-10-11（待裁决/304 §三，V2）：把【水面潜在蒸发的年均值】一并带出去。
         //   为什么是 e1：e1[kk] = chvE*qSat(tsPot)/rho_w*86400*1000，而
-        //   tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0) 是【潜在水面】的皮温
+        //   tsPot = Radiation.skinTempLand(absSolar, tQ, qa1, chvE, 1.0) 是【潜在水面】的皮温
         //   ⟹ e1 就是「水面潜在蒸发 mm/day」，且与 beta 无关（仿射分解的前提）。
         //   ⚠ 为什么不用 surfaceTempK 现搭一套：那会撞上「同名不同口径」——
         //     surfaceTempK 含海拔直减、而 qa 由海平面等效温度算出 ⟹ qSat(ts)-qa 常为负 ⟹ E_p=0
         //     （2026-10-11 实测：p50 = 165 mm/yr、10% 的点恰为 0，明显偏低）。
+        //   ✅ 2026-10-19（选项 C）：qa1 与 tsPot **两侧同时**换成 tQ（含海拔递减）⟹ 口径重新配对，
+        //     上面那条「一冷一暖」的失配不再发生；OFF 时 tQ == tSl，逐位回到历史。
         //   存放：w[NTHETA]（数组尾多一格）⟹ 不动物理、不动插值（插值只用 [0, NTHETA)）。
         //   ★★ 但它【不是蒸发本身】：桶里的实际蒸发是 epMm = e1 - e2*rh（SoilMoisture:376）。
         //      e1 只是【饱和项】。2026-10-11 实测：只用 e1 会得到 E p50 = 7851 mm/yr（偏高 4~8 倍）。
@@ -557,7 +568,7 @@ public final class SoilMoisture {
      * ★★★★★★★★ <b>水面潜在蒸发的【年均值】（mm/day）</b> —— 取自土壤桶自旋里的 {@code e1}。
      *
      * <p>这是「湖面年蒸发」的正确口径：{@code e1[kk] = chvE*qSat(tsPot)/rho_w*86400*1000}，
-     * 其中 {@code tsPot = Radiation.skinTempLand(absSolar, tSl, qa1, chvE, 1.0)} 是
+     * 其中 {@code tsPot = Radiation.skinTempLand(absSolar, tQ, qa1, chvE, 1.0)} 是
      * <b>能量平衡解出的【潜在水面】皮温</b>（{@code SoilMoisture:327}）。
      *
      * <p>年蒸发（mm/yr）= 本值 x 365.25。配套：{@code SimClimate.annualPrecipMmPerYear}。
@@ -627,6 +638,9 @@ public final class SoilMoisture {
         HashMap<Long, double[]> m = MEMO.get();
         // §440：把 RS_SURF 折进键（RS_SURF = 0 时 doubleToLongBits(0.0) = 0 ⇒ 键与历史【逐位相同】）。
         long kk = key(x, z) ^ (Double.doubleToLongBits(RS_SURF) * 0x9E3779B97F4A7C15L);
+        // ★ 2026-10-19（选项 C）：本开关改了 spinup 的温度链 ⇒ ON 时键必须不同，
+        //   否则同 JVM 换开关会读到旧 β。OFF 时键与历史【逐位相同】。
+        if (PrecipField.PRECIP_USE_SURFACE_T) kk ^= 0x7A160L;
         if (m.size() > MEMO_MAX) m.clear();
         double[] w = m.get(kk);
         if (w == null) {
