@@ -288,7 +288,9 @@ public final class PrecipField {
     /**
      * 比湿（kg/kg）。
      *
-     * @param tSfcSl 该点的**海平面**温度（K）—— 陆地要先加回递减率
+     * @param tSfcSl 该点的**海平面**温度（K）—— 陆地要先加回递减率。
+     *               ⚠ 2026-10-19：{@code PRECIP_USE_SURFACE_T=true} 时 {@code mmPerDay} 改传
+     *               **实际地表温度** {@code Atmosphere.surfaceTemp}（海拔递减已减掉）—— 见该开关的 javadoc。
      * @param elev   海拔（m）
      * @param kappa  大陆度 [0,1]
      */
@@ -2083,6 +2085,44 @@ public final class PrecipField {
      *  理由见调用点注释 ✓：涡动 MFC 表的 q 是观测值 ✓，已含真实耗竭 ⟹ 再乘模型化耗竭是**双重计数** ✗。 */
     public static boolean EDDY_NO_DEPLCOL = true;   // A/B
 
+    /**
+     * ★★★ **2026-10-19：涡动项的幅度按【本地水汽可用度】重标（2026-10-19 用户裁决：默认 true）。**
+     *
+     * <p><b>问题</b>（NPRST + NEDDY 实测）：{@code EDDY_PLACEMENT_FROM_OBS=true} 时
+     * {@link #eddyMfc} 返回 {@code EDDY_MFC_REF * eddyMfcObsMonth(lat, theta)} —— **只是纬度×季节**；
+     * 海拔只通过上风单点 {@code depl} 进入。宽高原上 {@code depl} 停在 0.4~0.7
+     * ⟹ 4 km 高原仍拿到与同纬度海洋同量级的涡动辐合（实测 2~4 km 陆地 P = 2.45 mm/d，
+     * 其中地板前基值 2.05 全部来自涡动项）。详见
+     * {@code 工作目录/中期/涡动项与高海拔降水-诊断【2026-10-19】.md}。
+     *
+     * <p><b>本开关做的事</b>：{@code mfc *= qSat(T_s) / qSat(tSl)}，其中 {@code T_s} =
+     * {@code Atmosphere.surfaceTemp}（含 {@code -Γ·max(0,elev)·κ}）。
+     *
+     * <p><b>为什么是这个因子（零新常数）</b>：
+     * <ol>
+     *   <li>本仓自己的涡动闭合是 {@code MFC = K·∇²W}（Green 1970 / Stone 1972）⟹ MFC 正比于**柱水汽 W**，
+     *       而本地 {@code W ∝ qSat(T_s)}（RH 近常数）。观测放置路径只保留了**纬向** W ⟹ 本地项丢了；
+     *       乘这个比值是把「本地 W」补回一阶。</li>
+     *   <li>只用到模型已有的两个量：{@code qSat(T_s)} 与 {@code qSat(tSl)}；**不引入任何可调增益**。</li>
+     *   <li>与 {@code depl} 不重复：{@code depl} 管**沿途已下过的雨**（路径过程），
+     *       {@code qSat} 比管**本地能装多少水**（热力学容量）—— 两者物理独立。
+     *       ⚠ 已知的反方意见：{@code EDDY_NO_DEPLCOL} 的注释说观测 MFC 已含真实耗竭；
+     *       本因子不是再乘一次耗竭，而是**解出纬向平均里被抹平的本地湿度**，属一阶近似（已记账）。</li>
+     * </ol>
+     *
+     * <p><b>海洋中性（解析）</b>：κ = 0 ⟹ {@code surfaceTemp == tSl} ⟹ 比值 ≡ 1
+     * ⟹ 本开关**不可能直接改变任何纯海洋点**（与 {@code PRECIP_USE_SURFACE_T} 同一个证明）。
+     * 最终 P 仍可能通过全局耦合（定常波 / 地板）间接变，引用时必须区分（2026-10-19 已记账）。
+     *
+     * <p><b>预登记判据</b>（落地前写死，见诊断文档 §五）：同纬度山/低地比降到 0.1~0.3；
+     * 海洋直接量逐位不变；不出现新的极端值；若要靠「调增益」才成立 ⟹ 机制不对。
+     *
+     * <p><b>2026-10-19 用户裁决：打开（默认 true）。</b>回滚点：置 {@code false} 即逐位回到打开前的历史
+     * （{@code configStamp} 的条件折入保证两个状态指纹不同）。ON 的验收读数见诊断文档 §八。
+     */
+    // ★★★★★ 2026-10-19 用户裁决：**打开**。回滚：置 false（一行）⇒ 逐位回到打开前的生产态。
+    public static boolean EDDY_LOCAL_Q = true;
+
     // ================================================================================
     // ★★★★★ 2026-10-16（目标 goal-3355454e）：**用收支定义降水**（§241.3 的正解 ✓）
     //
@@ -2833,27 +2873,59 @@ public final class PrecipField {
     public static boolean SPLIT_ASCENT = false;
 
     /**
-     * **候选 R-2（设计冻结 §248.6 / §249）：q 改用局地真实地表温度。**
+     * ★★★★★ **2026-10-19：降水模块复用实际地表温度 {@code Atmosphere.surfaceTemp}。**
      *
-     * <p>{@code false}（默认）⇒ 与接线前**逐位相同**（下面那个三元表达式的 else 支就是原变量）。
-     * {@code true} ⇒ 在算 q 之前先减掉 {@code GAMMA*max(0,elev)*kappa}。
+     * <p>一句话：把 {@code mmPerDay} 里那个「地表温度」{@code tQ} 从**海平面等效温度** {@code tSl}
+     * 换成**该点真实地表温度**（{@code surfaceTemp = tSl - GAMMA*max(0,elev)*kappa}）。
+     * 默认 {@code false} ⇒ {@code tQ} 逐位等于 {@code tSl}（同一变量、不做任何减法）⇒ 全局零变化（§N5）。
      *
-     * <p><b>为什么</b>（§248.2 实测）：原式喂给 {@link #moisture} 的是**海平面等效温度**，
-     * 而陆地上那个 {@code +GAMMA*z_bar_land} 修正在 30 度是 <b>+5.4 K</b>，把 qSat 抬了约 24%
-     * ⇒ 陆地 q 反而比海洋高（16.0 vs 13.3 g/kg），与真实地球**反号**。
-     * 水汽是由**有高度的真实地表**提供的，不是由「海平面上的温度」提供的。
+     * <p><b>为什么这是 bug</b>（沿数据流确认，2026-10-19）：{@code tSl} 是不含海拔的「海平面等效温度」，
+     * 而降水链上的 RH 锚是**地表 / 近地面**的相对湿度（默认口径 {@code Q_AIR_ANCHOR=true}：
+     * {@code RH_AIR_OBS} 配 {@code T_a}，而陆地上 {@code airTempK} 定义 {@code T_a = T_s}）。
+     * 拿它去乘 {@code qSat(tSl)} 等于假设「3 km 高的山顶有海平面的饱和水汽」⇒
+     * 高原 / 山脉的 q、θ_e、皮温、反照率全部按海平面算 ⇒ **高山降水系统性偏高**。
      *
-     * <p><b>海洋中性（逐位证明）</b>：P501 自检 [4] 断言
-     * {@code surfaceTemp == tSl - GAMMA*max(0,elev)*kappa} 逐点逐位成立（残差 0.00e+00）
-     * ⇒ {@code kappa = 0} 处两支完全相同 ⇒ **本开关不可能改变任何纯海洋点**。
+     * <p><b>影响面（ON 时，全部是同一件事的四个出口）</b>：
+     * <ol>
+     *   <li>{@link #moisture} / {@link #moistureFromSource} 的 q —— 主项（{@code P ∝ q}）；</li>
+     *   <li>{@link #wEffQnet} 的皮温与 {@link Radiation#albedo}（高海拔可进雪判据）；</li>
+     *   <li>{@code Q_FROM_BLBUDGET} 的 {@code qSat(T_s)}（当前默认关）；</li>
+     *   <li>{@code BLQ_THETA_E} 的 {@code thetaE(tQ,q)}（当前默认开）。</li>
+     * </ol>
+     * ⇒ A/B 读数必须同时报「q 单独的影响」与「全链的影响」，不能把后者说成前者。
      *
-     * <p><b>实测标定（P501 v2，15~45 度）</b>：陆地 q 15.96 → <b>12.55 g/kg（-21.4%）</b>、
-     * 陆地 RH 0.7843 → <b>0.5683</b>；海洋**逐位不变**。
-     * ⚠ 它同时把陆地 E 从 10.23 推到 15.81 ⇒ **R-2 要与陆面湿润度因子 β 配对使用**
-     * （实测 β = 0.60 把陆地 E 压回 2.10 mm/day）。**本切片不接线 E/β。**
-     * 进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}。
+     * <p><b>海洋中性（解析证明）</b>：{@code surfaceTemp} 与 {@code tSl} 只差
+     * {@code -GAMMA*max(0,elev)*kappa}；纯海洋 {@code kappa = 0} ⇒ 差恒为 0
+     * ⇒ **本开关不可能改变任何纯海洋点**（P501 自检 [4] 实测残差 0.00e+00）。
+     * 探针 NPRST 把这一条做成实测断言（同一格点两臂逐位相等）。
+     *
+     * <p><b>与 2026-09 的 R-2（设计冻结 §249/§250）是什么关系</b>：那是同一个物理想法，
+     * 当时的开关名 {@code Q_AT_SURFACE_TEMP}，A/B 结论是「物理方向对，但单独打开让陆地更干」；
+     * 2026-10-16 因 §648（{@code RH_SEA} 配气温属口径错配）一并删除了那个开关。
+     * 现在的默认口径已经换了：{@code Q_AIR_ANCHOR=true} 用 {@code RH_AIR_OBS × qSat(T_a)}，
+     * 陆地上 {@code T_a = T_s}，**口径是配对的** ⇒ 本开关不再重现 §648 的错配。
+     * ⚠ 因此：**不得**在 {@code Q_AIR_ANCHOR=false} 的组合下打开本开关（那会退化为
+     * {@code RH_SEA × qSat(T_s)}，正是 §648 判定过的错配组合）。
+     *
+     * <p><b>⚠ 已知耦合缺口（2026-10-19 实测发现，未修，需单独裁决）</b>：
+     * {@code SoilMoisture.spinup}（{@code SoilMoisture:395-412}）有**自己的一份温度链**，
+     * 仍写死 {@code tSl}（源码逐字：{@code qsTQ = qSat(tSl); // tQ == tSl（Q_AT_SURFACE_TEMP 默认关）}）。
+     * ⟹ 本开关打开时，{@code mmPerDay} 的地表温度变了，但桶自旋算出的 β 仍按**旧口径**的 q 标定，
+     * 二者不一致（NPRST 实测：两臂 β 逐位相同）。要真正采纳必须把同一个开关接进那条路径，
+     * 并单独做 A/B（β 的反馈会放大影响）。**在那之前，本开关只能作为「口径实验」打开。**
+     *
+     * <p><b>⚠ 仪器坑（2026-10-19 实测）</b>：{@code DIAG[]} 会被 {@code StationaryWave.ensureSolved}
+     * 内部的嵌套 {@code mmPerDay} 覆盖（实测首个点 DIAG[6] 回读 265.70 K，该点自己的 tSl 是 302.55 K）。
+     * 探针必须**先做一次丢弃的 mmPerDay 调用**，再读 DIAG；NPRST 的 SELFCHECK [3] 会验证这一点。
+     *
+     * <p><b>性能</b>：ON 时多一次 {@code Atmosphere.surfaceTemp} 调用（内部两次
+     * {@code kappaElev}，走同一个 memo）；OFF 时**零额外调用**。{@code mmPerDay} 本身是
+     * 35 ms/点量级，本项远小于 0.01%。
+     *
+     * <p>进 {@link com.EyeOfHarmonyBuffer.sim.runtime.SimClimate#configStamp()}（按条件折入 ⇒
+     * OFF 时指纹与历史完全一致）。
      */
-    // （字段本体已于 2026-10-16 删除：其 true 侧与 RH_SEA 构成口径错配，见上方 §648 记录。）
+    public static boolean PRECIP_USE_SURFACE_T = false;
 
     /**
      * **水系接线（设计冻结 §7497）：湖泊 / 湿地的水面是【饱和面】⟹ {@code beta = 1}。**
@@ -3732,7 +3804,12 @@ public final class PrecipField {
         //   所以空气湿度 q 的正确锚是**表面**温度 T_s；拿 RH_SEA 去乘 qSat(T_a) 是**口径错配**
         //   ⇒ 那个开关的 true 侧只会给出错误的配对，属「只提供错误选项」⇒ 删。
         //   （要改空气口径，用的是自洽的一对：空气 RH × 气温 —— 见 Q_AIR_ANCHOR / RH_AIR_OBS。）
-        double tQ = tSl;
+        // ★★★★★ 2026-10-19：**本模块的「地表温度」**。默认关 ⇒ `tQ` 逐位等于 `tSl`（零变化）。
+        //   打开 ⇒ 复用 Atmosphere.surfaceTemp（= tSl − Γ·max(0,elev)·kappa；P501 自检 [4] 残差 0.00e+00）。
+        //   κ=0 处减项恒为 0 ⇒ 纯海洋点逐位不变；只改陆地（完整理由 / 影响面见字段 javadoc）。
+        double tQ = PRECIP_USE_SURFACE_T
+                  ? Atmosphere.surfaceTemp(x, z, seed, cell, theta)
+                  : tSl;
         // ★ §405 S3 接线：只在这一次 moisture() 调用周围设置 beta，之后立刻还原
         //   （自旋中不设 —— 那时 beta 由 SoilMoisture 自己显式给出，设了会覆盖它、导致递归）。
         Double savedBeta = BETA_OVERRIDE.get();
@@ -3796,9 +3873,10 @@ public final class PrecipField {
         // ★ 2026-10-16（goal-3355454e）：暴露模型自己的**地表蒸发 E** [kg/(m^2 s)] ✓ 供收支闭合用 ✓
         //   式与第 3796 行（浅对流地板的通量）**同惯例** ✓：RHO_AIR * cdOf(k) * vEff * max(0, qsat*beta - q)
         //   （E = 86400*chv*(qSat(Ts)*beta - q) 见类头 javadoc ✓；此处给每秒值 ✓）
+        //   ★ 2026-10-19：Ts 用 tQ（默认关时 tQ == tSl ⇒ 与历史逐位相同；打开时改用地表温度 ✓）。
         double spE = Math.hypot(u0[0], u0[1]);
         double vEffE = Math.sqrt(spE * spE + V_GUST * V_GUST);
-        DIAG.get()[16] = RHO_AIR * Atmosphere.cdOf(k) * vEffE * Math.max(0.0, qSat(tSl) * betaUsed - q);
+        DIAG.get()[16] = RHO_AIR * Atmosphere.cdOf(k) * vEffE * Math.max(0.0, qSat(tQ) * betaUsed - q);
         // ★ §7303：【外层】步长可单独放大（`windAt` 内部仍用 `gradStep`）。
         //   `DIV_OUTER_STEP = 0` 时 `os == gradStep` ⇒ 与历史【逐位相同】。
         int os = (DIV_OUTER_STEP > 0) ? DIV_OUTER_STEP : gradStep;
@@ -3976,7 +4054,17 @@ public final class PrecipField {
             //   默认 **false** ⟹ 逐位不变 ✓
             if (mfc > 0.0) {
                 double colF = EDDY_NO_DEPLCOL ? 1.0 : depletionCol(hUp, k);
-                p += mfc * depl * colF / RHO_WATER;
+                // ★ 2026-10-19：本地水汽可用度（默认关 ⇒ localQ 恒为 1.0，逐位不变）。
+                //   见 EDDY_LOCAL_Q 的 javadoc；κ=0 处 surfaceTemp == tSl ⇒ 比值 ≡ 1（海洋中性）。
+                //   打开 PRECIP_USE_SURFACE_T 时直接复用 tQ（同一个 surfaceTemp，不重复求值）。
+                double localQ = 1.0;
+                if (EDDY_LOCAL_Q) {
+                    double tSfcE = PRECIP_USE_SURFACE_T
+                        ? tQ
+                        : Atmosphere.surfaceTemp(x, z, seed, cell, theta);
+                    localQ = qSat(tSfcE) / qSat(tSl);
+                }
+                p += mfc * depl * colF * localQ / RHO_WATER;
             }
         }
         // ★ 2026-10-16（goal-3355454e）：收支阻尼 -∂W/∂t ✓（默认关 ⟹ 逐位不变 ✓）

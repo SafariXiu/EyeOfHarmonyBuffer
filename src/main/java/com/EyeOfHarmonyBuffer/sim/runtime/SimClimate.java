@@ -522,6 +522,12 @@ public final class SimClimate {
         h = h * 31 + (PrecipField.SPLIT_ASCENT ? 1 : 0);
         // 候选 R-2（§249）：q 用局地真实地表温度。改了结果 ⇒ 必须进指纹（D58）。
         // ★ 2026-10-16 清理：原折入 Q_AT_SURFACE_TEMP（开关已删除）
+        // ★ 2026-10-19：**降水复用实际地表温度**（PRECIP_USE_SURFACE_T）。改了结果 ⇒ 进指纹（D58）。
+        //   按条件折入 ⇒ 默认 false 时指纹与历史【完全一致】（§N5 的纪律）。
+        if (PrecipField.PRECIP_USE_SURFACE_T) h = h * 31 + 0x7A160L;
+        // ★ 2026-10-19：**涡动项按本地水汽可用度重标**（EDDY_LOCAL_Q）。改了结果 ⇒ 进指纹（D58）。
+        //   按条件折入 ⇒ 默认 false 时指纹与历史【完全一致】（§N5 的纪律）。
+        if (PrecipField.EDDY_LOCAL_Q) h = h * 31 + 0x7A161L;
 
         // ★ 2026-10-16（goal-3355454e）：水汽的空气口径（RH_AIR_OBS 配气温）⟹ 改了结果 ⟹ 进指纹 ✓
         h = h * 31 + (PrecipField.Q_AIR_ANCHOR ? 1 : 0);
