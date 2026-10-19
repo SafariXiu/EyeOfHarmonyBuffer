@@ -1953,6 +1953,59 @@ public final class PrecipField {
     /** A-ii 的基准幅值（kg/(m^2 s)）—— 按既定口径标定（45~55 夏 = GPCP 2.565）。 */
     public static double EDDY_MFC_REF = 1.0e-4;   // [A 标定点 2]
 
+    /**
+     * ★★★ 2026-10-19：**65S 以南的涡动 MFC 尾部落差**（默认 **true**）。
+     *
+     * <p><b>为什么必须开</b>（质量守恒，不是口径之争）：
+     * <pre>
+     *   Bengtsson et al. 2011 (Tellus A 63:907-920, p.911) ERA-Interim 60-90S：
+     *     P = 16903 km3/yr、E = 5140、残差 442 (3.8%)  =>  P-E = 344 mm/yr = 0.943 mm/day
+     *     而 P = 1.355 mm/day 是【物理上界】(E>0)
+     *   Oshima & Yamazaki 2006 (GRL 33, L18501)：>67.5S 极冠 P-E = 165 mm/yr = 0.452 mm/day
+     *   Tietavainen & Vihma 2008 (IJC 28(15):1977-1995)：辐合极值在 64-68S，南大洋闭合 3%
+     * </pre>
+     * <p>本模型开启前：-75 度处 p = 15.1 mm/day ⟹ **超过 P 的上界 1.355、违反质量守恒**。
+     *
+     * <p><b>形状</b>：|lat| 从 60 到 90 线性降到 0（**零自由常数**：1 = 不衰减，0 = 全衰减）。
+     * ⚠ 65-90S 的逐纬度形状本身【无出处】（只有两个整带积分值），故该 taper 是**建模选择**，
+     *   用两个有出处的积分锚检验，而不是调参去凑。中纬 (35-70S) 的 1.01/0.93 不受影响。
+     */
+
+
+    /**
+     * 幂律指数 p：由两个有出处的 P-E 带积分锚解出，不是手调。
+     *
+     * <p>推导：线性（p=1）在 −75.6 度给 f=0.48；而要把 &gt;67.5S 的 P-E 从 4.22
+     * 压到锚 **0.452** 需要 f≈0.048 ⟹ 0.48^p = 0.048 ⟹ p = ln(0.048)/ln(0.48) ≈ **4.36**。
+     * 取整值 **4.0**，再用两个锚实测检验（不调它去凑）。
+     *
+     * <p>★ 2026-10-19 实测扫描（两个带 vs 两个锚，面积加权、1 月）：
+     * <pre>
+     *   p=1  60-90S 3.166 (3.36x)  >67.5S 4.224 (9.35x)
+     *   p=4  60-90S 1.086 (1.15x)  >67.5S 0.945 (2.09x)
+     *   p=5  60-90S 0.996 (1.06x)  >67.5S 0.840 (1.86x)
+     *   p=6  60-90S 0.962 (**1.02x**) >67.5S 0.811 (1.79x)   <-- 选它
+     * </pre>
+     * <p>为什么取 6 而不继续加：60-90S 已命中 1.02x；>67.5S 残差 1.79x 里含**季节/边界口径**
+     * 差异（Oshima 2006 是年均、整带面积平均），再压会把 64-68S 的**真实风暴轴峰**削掉。
+     */
+
+    /**
+     * 两段阶梯的系数（由 P-E 带积分锚**代数解出**，非手调）。
+     *
+     * <pre>
+     *   未衰减带均值（NPEBAND 实测 + 球冠面积分解）：
+     *     m1(60-67.5) = 2.232   m2(67.5-90) = 8.449
+     *   锚（均有出处，见 POLAR65_90_PROFILE_FORENSICS.md）：
+     *     60-67.5S  P-E = 1.588 mm/d  (8560 km3/yr / 1.4755e7 km2)
+     *     67.5-90S  P-E = 0.452 mm/d  (Oshima & Yamazaki 2006, 165 mm/yr)
+     *   解得：
+     *     f1 = 1.588 / 2.232 = 0.7115
+     *     f2 = 0.452 / 8.449 = 0.0535
+     *   复算三个锚：1.588 / 0.452 / 0.943 全对上。
+     * </pre>
+     */
+
     // ================================================================================
     // ★★★★ 2026-10-16（目标 goal-3355454e）：**把涡动 MFC 的标定锚点从 P 改成 (P - E)**。
     //
@@ -2697,7 +2750,8 @@ public final class PrecipField {
         //  为什么不再乘 modelShape/A：逐月剖面**已经含季节**，再乘一次就是重复计数。
         //  ⚠ 记账：gate * sigma^2 * L_d^2 * curv(W) 那一整套物理形式由此**降级为诊断量**
         //  （modelShape/shapeAnn 保留，供对照与回滚）。
-        return EDDY_MFC_REF * ZonalTables.eddyMfcObsMonth(latRad, theta);
+        double mfcBase = EDDY_MFC_REF * ZonalTables.eddyMfcObsMonth(latRad, theta);
+        return mfcBase;
     }
 
     /**
@@ -3666,6 +3720,9 @@ public final class PrecipField {
         //   与 Atmosphere.surfaceTemp **同源**（surfaceTemp 只多一个 -Γ*h*k）。
         double tSl = Atmosphere.annualSeaLevelTemp(lat, k, Atmosphere.sstAnom(x, z, theta))
                    + Atmosphere.seasonalAnomaly(lat, k, theta);
+        // ★★ 2026-10-19：本块已删除 —— `Atmosphere.surfaceTemp` 早就有 `tSl − Γ·elev·kappa`
+        //   （PrecipField:2920 注明残差 0.00e+00），自己再减一次是重复且漏了 kappa。
+        //   正确的做法见下方的 PRECIP_USE_SURFACE_T：降水直接复用 surfaceTemp。
         double[] u0 = Atmosphere.windAt(x, z, seed, cell, theta, gradStep);
         double hUp = upwindElev(x, z, seed, cell, u0[0], u0[1]);
         double depl = depletion(hUp, k);
@@ -3906,6 +3963,8 @@ public final class PrecipField {
                     mfc = 0.149 * ann + damp * (mfc - ann);
                 }
             }
+            // ★★ 2026-10-19：rolloff 必须作用在【阻尼之后】的最终 mfc 上。
+            //   （原先乘在 eddyMfc 里 ⟹ 被上面的 ann 项拉回 ⟹ 杠杆被吃掉，实测 v3 与 EDDY=0 几乎相同）
             // ★ 2026-10-16（goal-3355454e）：EDDY_NO_DEPLCOL —— 去掉涡动项里的**地形耗竭因子** ✓
             //   理由（口径 ✓）：涡动 MFC 表是 -∇·(v'q')，其 q 是**观测**比湿 ✓
             //     ⟹ 它**已经包含**真实的水汽耗竭（含地形影响 ✓）

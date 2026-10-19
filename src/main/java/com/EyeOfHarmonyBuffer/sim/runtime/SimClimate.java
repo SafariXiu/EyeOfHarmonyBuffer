@@ -639,6 +639,7 @@ public final class SimClimate {
         // ★ 2026-10-18 地质 Phase 1：质地接 rsoil 的开关。
         //   ⚠ 必须【只在开启时】折入：无条件 `h*31+0` 也会改哈希 ⟹ 默认关就不再逐位不变。
         if (SoilMoisture.RS_IFS_ON) h = h * 31 + 1L;
+
         }
         // §455 柱净辐射改用 ASR-OLR：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (StationaryWave.QRAD_ASR_MINUS_OLR) {
