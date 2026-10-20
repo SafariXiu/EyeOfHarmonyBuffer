@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
 /**
@@ -26,6 +28,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
  * 区块生成线程里 ⇒ 懒解 = 世界生成期间 64 次秒级卡顿。预热线程是 daemon + 最低优先级，
  * 解行时 {@code solveRow} 自己加锁，其它线程查询只会**等正在解的那一行**，不会读到半成品。
  */
+@Frozen(reason = "重构冻结：海洋接线等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class OceanWiring {
 
     private OceanWiring() {}

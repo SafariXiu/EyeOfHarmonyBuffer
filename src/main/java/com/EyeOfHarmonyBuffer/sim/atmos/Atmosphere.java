@@ -33,7 +33,7 @@ public final class Atmosphere {
      * 后者是"把温差化成无量纲 dH"用的<b>参考位温</b>，与本字段（观测均温）无关 ✓。
      * ⟹ 引用时必须写全类名 ✓；<b>不要</b>把两者"统一"或互相代入 ✗。
      */
-    public static final double T0 = 288.15;
+    public static final double T0 = WorldContract.ATMO_T0;
     public static final double T2 = -26.71;
     public static final double T4 = -6.29;
 
@@ -56,7 +56,7 @@ public final class Atmosphere {
      * 季风尺度的加热贯穿整个对流层。§59 实测：这样得到的 30 度海陆气压差 = **6.1 hPa**，
      * 与观测的夏季海陆气压差 10~15 hPa 同量级 ✓（原来的 3,000 m 只有 1.5 hPa，弱 4 倍）。
      */
-    public static final double H_EFF = 12_000.0;
+    public static final double H_EFF = WorldContract.ATMO_H_EFF;
     // ⚠ 2026-09-13 修正（审计 D5）：原来这里把四个量写成了**字面量**
     //     K_P = 0.55 * 1.225 * 9.807 * H_EFF / 288.15
     // —— 而 CHI / RHO_AIR / T0 就在同一个类里、G_ACC 在 PrecipField 里，
@@ -86,15 +86,15 @@ public final class Atmosphere {
 
     // ================= 风 =================
 
-    public static final double RHO_AIR = 1.225;
+    public static final double RHO_AIR = WorldContract.ATMO_RHO_AIR;
     /** 摩擦系数（1/s）。越等压线角 arctan(gamma/f)：海 13.6 度、陆 30.2 度 @45 度。 */
     public static final double GAMMA_OCN = 2.5e-5;
     public static final double GAMMA_LND = 6.0e-5;
     /** 拖曳系数。 */
-    public static final double CD_OCN = 1.3e-3;
-    public static final double CD_LND = 3.0e-3;
+    public static final double CD_OCN = WorldContract.ATMO_CD_OCN;
+    public static final double CD_LND = WorldContract.ATMO_CD_LND;
     /** 边界层厚度（m），gamma_turb = C_D*|U|/H_BL 用。 */
-    public static final double H_BL = 1000.0;
+    public static final double H_BL = WorldContract.ATMO_H_BL;
     /** 地面风速硬上限（m/s）。 */
     public static final double U_MAX = 25.0;
     /**
@@ -237,11 +237,41 @@ public final class Atmosphere {
         // §83：不再用「整体平移 6 度」，改成观测的 1 月/7 月两表 + 按 cos(Theta) 季节插值。
         // 「洋盆尺度纬向风骨架」：SEA_ONLY_UZM=false 时与原行逐位不变；打开时按 κ 混入洋面口径表。
         u += ZonalTables.uZmBlend(Math.toDegrees(latRad), theta, kappa);
+        // ★ 2026-10-20（EDDY_WIND）：**故意不在这里加**。P442 测的是纬向平均 τx 的 curl 符号，
+        //   纬向均匀的涡动风会在其经向梯度处翻转 curl（60/65° 实测 FAIL）。
+        //   EDDY_WIND 只作用于【海洋强迫】（OceanForcing / 海洋 τx），不改大气风场 ⟹ 门中性。
         // §451：纬向平均【经向】风的等价项 —— 与 u_zm 平行地加进来（而不是让 pzRef 通过 Ekman 分母放大 14 倍）。
         if (PZREF_VZ_MODE >= 1) v += vZmAt(Math.toDegrees(latRad));
         double sp = Math.hypot(u, v);
         if (sp > U_MAX) { u *= U_MAX / sp; v *= U_MAX / sp; }
         return new double[]{u, v};
+    }
+
+    /**
+     * 只读诊断：把 {@link #wind} 的动量平衡拆成 {px, pz, f, gamma0, gammaFinal,
+     * u_local, v_local, uZmBlend, u_total}。不改变任何生产行为。
+     */
+    public static double[] windDebug(int x, int z, long seed, int cell, double theta, int gradStep) {
+        double px = (pressureAnomaly(x + gradStep, z, seed, cell, theta)
+                   - pressureAnomaly(x - gradStep, z, seed, cell, theta)) / (2.0 * gradStep);
+        double pz = (pressureAnomaly(x, z + gradStep, seed, cell, theta)
+                   - pressureAnomaly(x, z - gradStep, seed, cell, theta)) / (2.0 * gradStep);
+        double lat = WorldContract.latOf(z);
+        double f = WorldContract.coriolis(lat);
+        double kappa = kappaMemo(x, z, seed, cell);
+        double g0 = gammaOf(kappa), cd = cdOf(kappa);
+        double pzRef = (PZREF_IN_V && PZREF_VZ_MODE == 0)
+                     ? ZonalTables.pRefSlopePerRad(Math.toDegrees(lat)) / WorldContract.R_EFF : 0.0;
+        double gam = g0, u = 0.0, v = 0.0;
+        for (int it = 0; it < 3; it++) {
+            double den = RHO_AIR * (gam * gam + f * f);
+            u = -(gam * px + f * pz) / den;
+            v = (f * px - gam * (pz + pzRef)) / den;
+            double gt = cd * Math.hypot(u, v) / H_BL;
+            gam = Math.sqrt(g0 * g0 + gt * gt);
+        }
+        double uZm = ZonalTables.uZmBlend(Math.toDegrees(lat), theta, kappa);
+        return new double[]{px, pz, f, g0, gam, u, v, uZm, u + uZm};
     }
 
     /**
@@ -1103,11 +1133,22 @@ public final class Atmosphere {
      */
     public static boolean PZREF_IN_V = true;
 
+    /**
+     * ★★★★★ **2026-10-20（用户裁决）：EDDY_WIND —— 天气尺度涡动风参数化。默认 false。**
+     *
+     * <p>⚠ 只作用于**海洋强迫**（{@link com.EyeOfHarmonyBuffer.sim.ocean.OceanForcing} 的 chv 与
+     * 海洋 τx），**不进** {@link #wind} 的大气风场：P442 测纬向平均 τx 的 curl 符号，
+     * 纬向均匀的涡动风会在 60/65° 翻转 curl（实测 ON 时 pass=8/fail=4）。
+     * <p>含**显式标定** {@link ThermalWind#EDDY_SAT}（按中纬 τ≈0.1 Pa 标定，非物理常数）。
+     * <p>进 {@code SimClimate.configStamp()}（按条件折入 ⟹ 默认关时指纹不变）。
+     */
+    public static boolean EDDY_WIND = false;   // ★ 2026-10-20 ON A/B: pass=8/fail=4 (P442 sign gate) ⟹ 回退默认关
+
     public static boolean COAST_WIND_ON = false;   // 裁决：继续修诊断，不用参数化（§52.2）
     /** 沿岸风速幅值（m/s），由观测的 0.09 Pa 反推。 */
     public static double COAST_WIND_V = 7.5;
     /** 沿岸风的生效宽度（m）：只在离岸这么近的地方补。 */
-    public static double COAST_WIND_W = 10_000.0;   // ★ 缩 40x（原 400,000）
+    public static double COAST_WIND_W = 400_000.0 / WorldContract.PLANET_SCALE;   // ★ 地球量级 400 km；旧小世界 = 10,000
     /** 上升流有利纬度的形状（副热带最强）。 */
     public static double SUM_SHAPE(double latRad) {
         double d = (Math.toDegrees(Math.abs(latRad)) - 30.0) / 25.0;
@@ -1216,7 +1257,7 @@ public final class Atmosphere {
     /** 打开地表干暖项（§409）：见 pressureAnomaly 内的推导。默认 false => 逐位不变。 */
     public static boolean PA_DRY_WARMTH = false;
     /** 干暖项里取 beta 用的差分步长（与生产同口径）。 */
-    public static int SOIL_GRAD_STEP = 12_500;   // ★ 缩 40x（原 500,000）
+    public static int SOIL_GRAD_STEP = (int) Math.round(500_000 / WorldContract.PLANET_SCALE);   // ★ 地球量级 500 km；旧小世界 = 12,500
 
     public static double pressureAnomaly(int x, int z, long seed, int cell, double theta) {
         double lat = WorldContract.latOf(z);

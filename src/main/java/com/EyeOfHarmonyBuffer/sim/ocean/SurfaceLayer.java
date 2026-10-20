@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
@@ -42,6 +44,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * 值却不同（800 vs 150、1.27e-5 vs 1.0e-5），而其中只有 CoastalLayer 那一份是活的 ——
  * 一个只看名字的审计者会以为「同一个量漂了 5.3 倍」。**现在名字已经分开**（见下）。
  */
+@Frozen(reason = "重构冻结：表层等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class SurfaceLayer {
 
     private SurfaceLayer() {}

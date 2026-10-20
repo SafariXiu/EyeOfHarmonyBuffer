@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 
@@ -31,6 +33,7 @@ import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
  *
  * 求解时机：山层之后、群系场之前（不需要气候场）。
  */
+@Frozen(reason = "重构冻结：地形层等待海陆分布 v2", until = "refactor: landsea v2")
 public final class LandformField {
 
     private LandformField() {}

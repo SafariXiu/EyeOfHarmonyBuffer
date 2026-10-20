@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
@@ -36,11 +38,12 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
  * <p>w_zm 因此**回归它的本义**：只代表平均经向环流（Hadley/Ferrel），
  * 不再兼任涡动替身。全工程里 w_zm 的唯一消费者就是本文件，改动面收敛。
  */
+@Frozen(reason = "重构冻结：涡动闭合拟合链（fluxAt/kAt/modelShape/A1C/EPS_C/ITCZ_MIGRATION）等待替换", until = "refactor: eddy closure")
 public final class PrecipField {
 
     private PrecipField() {}
 
-    public static final double P_SURF = 101300.0;
+    public static final double P_SURF = WorldContract.ATMO_P_SURF;
     // ⚠ 2026-09-13（审计 D5 同族）：这里原来是**第二份** 1.225 —— 与 Atmosphere.RHO_AIR 是两个独立常量，
     // 改一处不会改另一处。现改为引用**单一来源**（qualified 名，且两者都是 final ⇒ 无漂移可能）。
     public static final double RHO_AIR = Atmosphere.RHO_AIR;
@@ -74,7 +77,7 @@ public final class PrecipField {
     /** 对流效率。 */
     public static double EPS_C = 0.75;
     /** 海面相对湿度（水汽 = 饱和值 x 这个系数）。 */
-    public static double RH_SEA = 0.80;
+    public static double RH_SEA = WorldContract.ATMO_RH_SEA;
 
     /** ★ 2026-10-16（goal-3355454e）：**观测的空气相对湿度**（内带 35~50S 年均）。
      *  出处（本仓）：refs/e_obs_profile.npz 的 qa/qs = 0.00763/0.01009 = 0.756（年均）；
@@ -115,7 +118,7 @@ public final class PrecipField {
      */
     public static double ITCZ_MIGRATION = Math.toRadians(10.0);
     /** 取「上风方向」地形的步长（m）：雨影必须用上风地形，不能用本地地形。 */
-    public static double UPWIND_STEP = 3_750.0;   // ★ 缩 40x（原 150,000）
+    public static double UPWIND_STEP = 150_000.0 / WorldContract.PLANET_SCALE;   // ★ 地球量级 150 km；旧小世界 = 3,750
 
     /** 用于降水的「有效直射点纬度」：按 ITCZ_MIGRATION 缩放。 */
     public static double precipSubsolarLat(double theta) {
@@ -711,7 +714,7 @@ public final class PrecipField {
         return SOURCE_FETCH_FROM_VDENT ? SOURCE_FETCH_L_VDENT : SOURCE_FETCH_L;
     }
     /** 逆推的最大距离（m）；超过则回落到原式。 */
-    public static double SOURCE_FETCH_MAX = 100000.0;   // ★ 缩 40x（原 4.0e6）
+    public static double SOURCE_FETCH_MAX = 4.0e6 / WorldContract.PLANET_SCALE;   // ★ 地球量级 4,000 km；旧小世界 = 100,000
 
     /**
      * ★★★ **§448：水汽源温度要不要带季节项。** 默认 **false**（逐位不变）。

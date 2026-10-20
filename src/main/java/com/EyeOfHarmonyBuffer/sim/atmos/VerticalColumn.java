@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 /**
  * §500 ★★★★★★★ **完整垂直维度：单柱辐射—对流平衡（RCE）内核。**
  *
@@ -80,7 +82,7 @@ public final class VerticalColumn {
     }
 
     // ---- 辐射配置 ----
-    public static double TAU0_LW = 6.0;
+    public static double TAU0_LW = WorldContract.ATMO_TAU_LW;
     public static double F_WELLMIXED = 0.10;
     /**
      * §503 ★★★★★★★ **水汽反馈**：参考柱的水汽路径（kg/m²）。

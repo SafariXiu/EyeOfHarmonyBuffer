@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
@@ -51,6 +53,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  *
  * <p><b>默认关闭</b>（{@link #EBM_ON} = false）⟹ {@link Atmosphere#oceanBaseK} 逐位不变。
  */
+@Frozen(reason = "重构冻结：EBM 拟合常数（S0/S2/A0/A2/AI/TF_C/A_OLR/B_OLR/D）等待物理化", until = "refactor: self-computed backbone")
 public final class ClimlabEBM {
 
     private ClimlabEBM() {}
@@ -65,6 +68,31 @@ public final class ClimlabEBM {
      * 那段 javadoc 记了裁决理由（观测的相对差 + 内生的绝对水平）。
      */
     public static boolean EBM_ON = true;    // ★ §7347 完整接入：§7346 已过 22 支验收（门中性）
+
+    /**
+     * ★★★★★ **2026-10-19（目标「本世界纬向气候求解」）：物理 OLR 替换线性拟合。**
+     * 默认 **false** ⇒ {@link #solve} 走 `A_OLR + B_OLR*(T-273.15)`，**逐位不变**。
+     *
+     * <p><b>ON 时</b>：`OLR = StationaryWave.olrClear(T_s, CWV)`（仓库既有的宽带长波：
+     * `sigma*T_s^4*exp(-k*CWV) + (1-exp(-k*CWV))*sigma*T_ft^4`，`k=0.0667` 由观测
+     * `CWV=10 kg/m2 -> 340 W/m2` 锚定，`CWV=50 -> 265` 作核对；出处见该函数的 javadoc）。
+     * `CWV = RH_SEA * qSat(T_s) * RHO_AIR * H_MOIST`（Clausius-Clapeyron + **本世界**
+     * 已声明的 `RH_SEA`/`RHO_AIR`/`H_MOIST`，见 {@link WorldContract} 的 `ATMO_*` 注册表）。
+     * ⟹ **零新参数**：k 是既有观测标定，其余全是世界设定输入。
+     *
+     * <p>同时把冰点从拟合值 `TF_C = -10 C` 改成物理值 **273.15 K**（只在 ON 分支）。
+     *
+     * <p>⚠ 双稳：极点现在只比冰阈值高 0.46 K（OFF 分支）；ON 后必须盯雪球守卫。
+     * <p>进 {@code SimClimate.configStamp()}（按条件折入 ⇒ OFF 时指纹不变）。
+     */
+    public static boolean EBM_PHYS_LW = false;
+
+    /** ON 分支的 OLR(W/m2)：世界大气（Clausius-Clapeyron 水汽 + 既有宽带长波）。 */
+    public static double physicalOlr(double tsK) {
+        double q = PrecipField.RH_SEA * PrecipField.qSat(tsK);
+        double cwv = q * Atmosphere.RHO_AIR * PrecipField.H_MOIST;
+        return StationaryWave.olrClear(tsK, cwv);
+    }
 
     // ==================== climlab 常数（逐字，见类头出处） ====================
     /**
@@ -118,17 +146,27 @@ public final class ClimlabEBM {
         double[] c2 = new double[N], d2 = new double[N], tn = new double[N];
         for (int it = 0; it < 200; it++) {
             // 反照率依赖 T ⟹ 逐次迭代（climlab 的 StepFunctionAlbedo 也是逐格点判断）
+            final double tfK = EBM_PHYS_LW ? 273.15 : TF_C + 273.15;   // ON: 物理冰点
             for (int i = 0; i < N; i++) {
                 double sn = Math.sin(lat[i]);
                 double s = (S0 / 4.0) * (1.0 + S2 * p2(sn));
-                double al = (t[i] < TF_C + 273.15) ? AI : (A0 + A2 * p2(sn));
-                double f = (1.0 - al) * s - A_OLR;
+                double al = (t[i] < tfK) ? AI : (A0 + A2 * p2(sn));
+                double rhv;
+                if (EBM_PHYS_LW) {
+                    // 非线性 OLR：用 OLR(T_old) + B*(T-T_old) 的牛顿步；收敛解满足
+                    // (1-alpha)*S - OLR(T) + diffusion = 0。
+                    rhv = (1.0 - al) * s - physicalOlr(t[i]) + B_OLR * t[i];
+                } else {
+                    // ★ 原路径逐字保留（位相同）：f = ... - A_OLR; rh = f + B*273.15
+                    double f = (1.0 - al) * s - A_OLR;
+                    rhv = f + B_OLR * 273.15;
+                }
                 double c = Math.max(1.0e-6, Math.cos(lat[i]));
                 double cm = Math.cos(lat[i] - dphi / 2.0), cp = Math.cos(lat[i] + dphi / 2.0);
                 double coef = D_DIFF / (c * dphi * dphi);
                 double am = coef * cm, ap = coef * cp;
                 lo[i] = -am; up[i] = -ap; di[i] = B_OLR + am + ap;
-                rh[i] = f + B_OLR * 273.15;                        // B 的单位是 W/m2/摄氏度
+                rh[i] = rhv;
             }
             // 两头 Neumann（i=0 赤道、i=N-1 北极）
             di[0] = 1.0; up[0] = -1.0; lo[0] = 0.0; rh[0] = 0.0;
@@ -153,10 +191,11 @@ public final class ClimlabEBM {
         // 本模型的世界有海洋（kappa 由 PlateField 给）⟹ 应采用【暖支】。
         // 守卫的目的：若常数被改动、或将来接入别的分量使解翻到雪球支，**显式失败**而不是
         //            静默给出一套雪球气候（赤道 237.9 K）—— 后者会污染整个模型而无人察觉。
+        final double tfGuard = EBM_PHYS_LW ? 273.15 : TF_C + 273.15;
         for (int i = 0; i < N; i++) {
-            if (t[i] < TF_C + 273.15) {
+            if (t[i] < tfGuard) {
                 throw new IllegalStateException("ClimlabEBM: 解落在【雪球支】(T[" + (i * (int) D_LAT_DEG)
-                    + " deg] = " + t[i] + " K < " + (TF_C + 273.15) + " K)。"
+                    + " deg] = " + t[i] + " K < " + tfGuard + " K)。"
                     + "climlab EBM 是双稳的，本模型的世界有海洋，应采用暖支 —— 请检查常数是否被改动。");
             }
         }
@@ -202,6 +241,19 @@ public final class ClimlabEBM {
     // （solve37OHT 见下：它把反对称的 OHT 辐合 qExtra 交给同一个核心 ✓）
 
     /**
+     * ★ 2026-10-20：**OHT 来源开关**（默认 false = 观测剖面，逐位不变）。
+     * <p>true ⟹ 用 {@code ClimberOcean.cachedOht37()} 的内生 OHT 替代 {@link #T_OHT_W_37}；
+     * 调用方必须先用 {@code ClimberOcean.spinUpInteractive} 把海洋转起来。
+     * <p>进 {@code SimClimate.configStamp()}（按条件折入 ⟹ 默认关时指纹不变）。
+     */
+    public static boolean OHT_FROM_OCEAN = false;
+    /** 诊断/耦合实验：若非 null，优先于 cachedOht37（用于阻尼迭代，37 点）。 */
+    public static double[] OHT_OVERRIDE = null;
+
+    /** 清掉 OHT 解缓存（A/B 切换 OHT 来源时用；只影响下一次 solve37OHT）。 */
+    public static synchronized void resetOhtCache() { cache37OHT = null; }
+
+    /**
      * ★★ **带 OHT 通道的两半球解**（P2-2）：核心与 {@link #solve37()} 逐字相同，
      * 只是把【反对称的输运辐合】{@code qExtra(phi)} [W/m2] 加进地表收支 ✓。
      *
@@ -211,7 +263,16 @@ public final class ClimlabEBM {
      */
     public static synchronized double[] solve37OHT() {
         if (cache37OHT != null) return cache37OHT;
-        double[] f = T_OHT_W_37;
+        double[] f;
+        if (OHT_FROM_OCEAN) {
+            f = (OHT_OVERRIDE != null) ? OHT_OVERRIDE
+                    : com.EyeOfHarmonyBuffer.sim.ocean.ClimberOcean.cachedOht37();
+            if (f == null || f.length != N37) {
+                throw new IllegalStateException("ClimlabEBM.solve37OHT: OHT_FROM_OCEAN=true 但 ClimberOcean 尚未 spin-up");
+            }
+        } else {
+            f = T_OHT_W_37;
+        }
         if (f == null || f.length != N37) {
             throw new IllegalStateException("ClimlabEBM.solve37OHT: 观测剖面 T_OHT_W_37 尚未取证"
                 + "（按铁律 2，未取证不许编 ⟹ 本通道不可启用）");

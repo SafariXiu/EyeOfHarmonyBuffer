@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 /**
  * 海温异常（SST anomaly）—— **西边界暖舌 / 东边界冷舌**。
  *
@@ -31,6 +33,7 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
  * </pre>
  * ⇒ 两端都自然落在观测范围内，**不需要用上限去硬掰**。
  */
+@Frozen(reason = "重构冻结：SST 等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class SeaSurfaceTemp {
 
     private SeaSurfaceTemp() {}

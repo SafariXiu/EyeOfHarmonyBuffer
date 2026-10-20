@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
@@ -36,6 +38,7 @@ import com.EyeOfHarmonyBuffer.sim.ocean.GyreRow;
  *   <li>Atmosphere.SstProvider.anomalyAt(int,int) **接口不带 seed** ⇒ 本类只能服务一个世界。</li>
  * </ul>
  */
+@Frozen(reason = "重构冻结：海洋场等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class OceanField {
 
     private OceanField() {}

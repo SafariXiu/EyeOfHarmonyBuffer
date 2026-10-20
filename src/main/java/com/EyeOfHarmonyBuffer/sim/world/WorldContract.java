@@ -18,6 +18,18 @@ public final class WorldContract {
     private WorldContract() {}
 
     /**
+     * ★★★★★★★ **2026-10-21（用户裁决）：全行星缩放因子 —— 单一来源。**
+     * <pre>
+     *   PLANET_SCALE = 1  ：地球量级（当前；R=6366 km、Ω=地球、MAX_D=10,000,000）
+     *   PLANET_SCALE = 40 ：旧的小世界（R=159 km、Ω×40、MAX_D=250,000）
+     * </pre>
+     * <p>所有尺度常量都由它派生（MAX_D/Z_CYCLE/OMEGA/R_EFF/COAST_WIND_W/SOIL_GRAD_STEP/
+     * UPWIND_STEP/SOURCE_FETCH_MAX）；**禁止再出现“半套缩放”**（R 去了 Ω 没去）。
+     * <p>⚠ 地形特征尺度（{@code TalosLandField.SC}）也要跟它走，见该字段注释。
+     */
+    public static final double PLANET_SCALE = 1.0;
+
+    /**
      * <b>极到赤道的弧长</b>（block；1 格 = 1 米锁死）—— **本文件的基本尺度**。
      *
      * <p>R_EFF、beta、风带宽度、沿岸上升流层全部由它派生，**与气候在 z 上的周期无关**。
@@ -27,7 +39,7 @@ public final class WorldContract {
     // ★★★★★★★★ 2026-10-08：全体缩小 40×（与地形层 SC=1/40 一致）
     //   裁决：地形缩了 40 倍（SC=0.00625），行星契约同步缩 40 倍 ⟹ **所有尺度比保持**。
     //   配套：OMEGA ×40（必须！否则大气变形半径 > 行星半径 ⟹ 气候层塌掉）
-    public static final int MAX_D = 250_000;   // ★ 原 10,000,000 ÷ 40
+    public static final int MAX_D = (int) Math.round(10_000_000 / PLANET_SCALE);   // ★ 地球量级 = 10,000,000；旧小世界 = 250,000
 
     /**
      * 气候在 z 上的周期（block）。
@@ -64,13 +76,43 @@ public final class WorldContract {
     //   若 Ω 不变，则 R_d/R_EFF 会 ×40（实测 0.337 -> 13.494）⟹ 罗斯贝波/哈得来环流全塌。
     //   Ω ×40 后 R_d/R_EFF 精确保持（实测 0.337 -> 0.337），Rhines 比也保持（0.104）。
     //   代价：日长 23.93 h -> 35.9 分钟（MC 的昼夜由游戏自己管，不受影响）。
-    public static final double OMEGA = 7.2921e-5 * 40.0;   // = 2.91684e-3
+    public static final double OMEGA = 7.2921e-5 * PLANET_SCALE;   // 地球 = 7.2921e-5；旧小世界 = ×40
     /** 有效行星半径（m）：R_eff = MAX_D/(pi/2) = 6366 km —— 与地球 6371 km 差 0.1%。 */
     public static final double R_EFF = MAX_D / (Math.PI / 2.0);   // ★ 自动 = 159,154.9 m（原 6,366,197.7 ÷ 40）
     /** 一年多少「天」（季节相位的时间单位，纯约定）。 */
     // ★ 2026-10-08：一年 = 365.25「新日」；因日长缩了 40 倍，一「年」也缩 40 倍。
     //   物理时间尺度：一年 = 365.25 × 35.9 min = 9.09 天（原 365.25 天）
     public static final double DAYS_PER_YEAR = 365.25;   // ★ 保持（它是「天」的计数，不是物理时间）
+
+    // ================================================================================
+    // ★★★★★ 2026-10-19（用户裁决）：**本世界大气 = 地球型**。
+    //   Talos2 本质上是一颗类地行星（有自己的气候生态链、与地球相差不大）⟹
+    //   以下数值是【世界设定输入】，不是"物理公式"，也不再是隐藏的地球锚。
+    //   ★ 单一来源：消费者必须引用这里，不得再复制新副本。
+    //   ⚠ 审计（2026-10-19）：这些量此前散落在 PrecipField / Atmosphere / VerticalColumn，
+    //     值都等于下面这组；本块是它们的正式登记。与"地球拟合值"的区别：
+    //     · 气体物性（R_d / CP / L_v / ε=0.622）是**空气的属性**，随成分变；
+    //     · A_OLR/B_OLR、Radiation.EPS=238.5/(σ·288.15⁴)、D_DIFF、TF_C=-10°C 仍是
+    //       **待替换的地球拟合值**（不属于本块；见目标"本世界纬向气候求解"）。
+    // ================================================================================
+    /** 地面气压（Pa）—— 世界设定。 */
+    public static final double ATMO_P_SURF = 101300.0;
+    /** 海面相对湿度 —— 世界设定。 */
+    public static final double ATMO_RH_SEA = 0.80;
+    /** 海平面空气密度（kg/m^3）—— 世界设定。 */
+    public static final double ATMO_RHO_AIR = 1.225;
+    /** 对流层等效厚度（m）—— 世界设定（气压异常的垂直尺度）。 */
+    public static final double ATMO_H_EFF = 12_000.0;
+    /** 边界层厚度（m）—— 世界设定（湍流/浅对流尺度）。 */
+    public static final double ATMO_H_BL = 1000.0;
+    /** 海面拖曳系数 —— 世界设定。 */
+    public static final double ATMO_CD_OCN = 1.3e-3;
+    /** 陆面拖曳系数 —— 世界设定。 */
+    public static final double ATMO_CD_LND = 3.0e-3;
+    /** 参考温度（K）—— 世界设定（大气密度/气压的参考态）。 */
+    public static final double ATMO_T0 = 288.15;
+    /** 长波光学厚度 —— 世界设定（地球型大气的温室强度）。 */
+    public static final double ATMO_TAU_LW = 6.0;
 
     /**
      * ★ D1（2026-09-18）：**带符号**纬度（弧度）—— 沿子午圈匀速行走的**线性三角波**。
@@ -161,7 +203,7 @@ public final class WorldContract {
      * <p><b>用它的地方</b>：{@link #betaForLatitudeOcean} ⟹ 被 {@code GyreRow.betaForLatitude} 引用
      * ⟹ 只影响**风生环流**（Munk 行求解）✓；大气、辐射、Hadley 等**一律仍用 {@link #OMEGA}** ✓。
      */
-    public static final double OMEGA_OCEAN = 7.2921e-5;   // 地球真值 ✓（= OMEGA / 40）
+    public static final double OMEGA_OCEAN = OMEGA;   // 单一来源：海洋与大气同自转（旧实现曾用 7.2921e-5 硬编码）
 
     /**
      * 海洋口径的 beta(phi) = 2*Omega_ocean*cos(phi)/R（R = zCycle/(2*pi) ✓）。

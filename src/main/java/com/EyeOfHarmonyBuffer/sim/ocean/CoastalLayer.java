@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 /**
  * 沿岸上升流层（eastern coastal layer）—— **东边界流的真身**。
  *
@@ -83,6 +85,7 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
  * 纯积分会在净输入不为零时跨周期线性发散，所以旧版用长度尺度 L_relax 的指数核，
  * 并在**周期边界**下迭代到收敛。
  */
+@Frozen(reason = "重构冻结：沿岸层等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class CoastalLayer {
 
     private CoastalLayer() {}

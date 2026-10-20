@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
@@ -40,6 +42,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * 一维降维丢掉 d^2/dy^2 ⇒ 一条西岸在经向上结束时，本模型会丢掉那条流；
  * 相邻行之间也不严格满足二维不可压。落地时用**相邻行平滑**处理。
  */
+@Frozen(reason = "重构冻结：2.5D 风生环流等待 3D 海洋替换", until = "refactor: 3D ocean")
 public final class GyreRow {
 
     private GyreRow() {}

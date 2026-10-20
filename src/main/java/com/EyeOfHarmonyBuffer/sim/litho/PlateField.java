@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.litho;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 
 /**
@@ -27,6 +29,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGr
  * 两个度量钩子（{@link #MASK} / {@link #ELEV}）与一个身份位（{@link #WORLD_IS_TALOS}），
  * 三者都**不参与地形生成**（前两者生产恒 null，后者是给测量溯源读的刻度）。
  */
+@Frozen(reason = "重构冻结：海陆采样桥等待海陆分布 v2", until = "refactor: landsea v2")
 public final class PlateField {
 
     private PlateField() {}

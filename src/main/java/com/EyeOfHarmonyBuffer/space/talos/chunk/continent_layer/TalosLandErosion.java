@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
@@ -110,6 +112,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * <h3>许可证</h3>
  * ★ 只借鉴<b>公式</b>（公式不受版权保护），未抄任何 GPL 代码。
  */
+@Frozen(reason = "重构冻结：地形侵蚀等待海陆分布 v2", until = "refactor: landsea v2")
 public final class TalosLandErosion {
 
     private TalosLandErosion() {}

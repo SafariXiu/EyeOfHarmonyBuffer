@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 /**
  * 噪声大陆高度场 —— ★★★ **委托壳**（2026-10-08 重写）
  *
@@ -27,6 +29,7 @@ package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
  *   后者是**判陆**用的 block 级连续场（{@code TalosLandField.isLand} 的输入）。
  *   ★ 判陆的**唯一权威**是 {@code TalosLandField.isLand} / {@link #isLand}。
  */
+@Frozen(reason = "重构冻结：大陆网格等待海陆分布 v2", until = "refactor: landsea v2")
 public final class NoiseContinentGrid {
 
     // ================= 旧字段（保留，供外部读；新实现不用） =================

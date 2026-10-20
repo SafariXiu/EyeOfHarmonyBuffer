@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainProfile;
@@ -22,6 +24,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * 海洋同层：残差深度带（D30 公式作"海盆带"）+ 中频海床起伏（±3）。
  * 纯函数、无 Minecraft 依赖。
  */
+@Frozen(reason = "重构冻结：地形生成等待海陆分布 v2", until = "refactor: landsea v2")
 public final class V2TerrainGen {
 
     private V2TerrainGen() {}

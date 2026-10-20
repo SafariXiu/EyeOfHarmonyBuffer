@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
 
+import com.EyeOfHarmonyBuffer.sim.Frozen;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.LongDblMap;
 
 /**
@@ -24,6 +26,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.util.LongDblMap;
  *   · Voronoi 有符号距离（不用梯度除法）
  *   · 瓦片架构（细胞的大陆性由【细胞自己的瓦片归属】决定）
  */
+@Frozen(reason = "重构冻结：海陆场等待海陆分布 v2", until = "refactor: landsea v2")
 public final class TalosLandField {
 
     // ================= ★★★★★★ 主缩放因子（所有【水平】长度 × SC） =================

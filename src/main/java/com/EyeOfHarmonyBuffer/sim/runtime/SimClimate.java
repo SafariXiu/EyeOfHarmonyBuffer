@@ -487,6 +487,13 @@ public final class SimClimate {
         h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
         h = h * 31 + (Radiation.SEA_ICE_ALBEDO_ON ? 1 : 0);                // ★ 2026-10-15 海冰/雪反照率（同上 ⇒ 进指纹）
         h = h * 31 + (ClimlabEBM.EBM_ON ? 1 : 0);   // ★ §7363 补漏：§7347 加该开关时忘了折入（D58 准入判据）
+        // ★ 2026-10-19（目标「本世界纬向气候求解」）：EBM 的物理 OLR。改了结果 ⇒ 进指纹；
+        //   按条件折入 ⇒ 默认 false 时指纹与历史【完全一致】。
+        if (ClimlabEBM.EBM_PHYS_LW) h = h * 31 + 0x7A162L;
+        // ★ 2026-10-20：EBM 的 OHT 来源（观测表 vs 内生海洋）。默认 false ⟹ 指纹不变。
+        if (ClimlabEBM.OHT_FROM_OCEAN) h = h * 31 + 0x7A163L;
+        // ★ 2026-10-20：天气尺度涡动风参数化（默认 false ⟹ 指纹不变）。
+        if (Atmosphere.EDDY_WIND) h = h * 31 + 0x7A164L;
         h = h * 31 + (StationaryWave.STATIONARY_WAVE_ON ? 1 : 0);   // ★ S2（§393）
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
