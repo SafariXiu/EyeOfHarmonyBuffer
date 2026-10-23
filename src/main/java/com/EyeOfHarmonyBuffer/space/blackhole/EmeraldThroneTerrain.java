@@ -19,7 +19,7 @@ public final class EmeraldThroneTerrain {
      * 死亡之海的海平面（**MC 方块 y 坐标** ✓）。
      *
      * <p>⚠⚠ <b>2026-10-14 审查（阶段 2 · 同名不同义）</b>：全仓有**三份** {@code SEA_LEVEL_BLK} ✗ ——
-     * 本处与 {@code LandformField.SEA_LEVEL_BLK} 都是 <b>64</b>（MC 方块 y ✓）；
+     * 本处与 {@code com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK} 都是 <b>64</b>（MC 方块 y ✓）；
      * 而 {@code PlateField.SEA_LEVEL} 是 <b>0.0</b>（double，单位【米】的高程基准 ✓，
      * 且**不参与判陆** ✗）。⟹ <b>引用时必须写全类名</b> ✓；<b>不要</b>互相代入 ✗。
      */

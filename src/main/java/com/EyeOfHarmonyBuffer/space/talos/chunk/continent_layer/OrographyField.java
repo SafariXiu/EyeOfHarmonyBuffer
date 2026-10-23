@@ -24,6 +24,32 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class OrographyField {
 
+    /**
+     * 世界种子 → 场种子。与旧 {@code NoiseContinentGrid.wsOf} 完全同式（取低 32 位），
+     * 保证 V3 与旧场在同一坐标上取样。
+     */
+    static long wsOf(int worldSeedInt) { return ((long) worldSeedInt) & 0xFFFFFFFFL; }
+
+    /** 陆地高程标尺（米）：把 V3 高度归一成 elevation01 的分母。 */
+    public static double LAND_SCALE_M = 4_000.0;
+
+    /**
+     * 造山强度 [0,1]：由 V3 的抬升场归一而来。
+     *
+     * <p>旧实现转发 {@code TalosLandField.orogeny01}（V8 海陆的板块边界场）；
+     * V3 自带同一物理量（俯冲带抬升），直接用它 / {@code U0} 即可，
+     * 避免气候层继续依赖旧场。
+     */
+    static double orog01(int x, int z, int worldSeedInt) {
+        long w = wsOf(worldSeedInt);
+        double up = com.EyeOfHarmonyBuffer.sim2.land.LandV3.uplift(w, x, z)
+                / com.EyeOfHarmonyBuffer.sim2.land.LandV3.U0;
+        if (up < 0.0) up = 0.0;
+        if (up > 1.0) up = 1.0;
+        return up;
+    }
+
+
     private OrographyField() {}
 
     /** 地形种类（数值稳定，供映射表 / 群系 / 山生成使用）。 */
@@ -140,7 +166,7 @@ public final class OrographyField {
 
     /** 中频偏差 dev（0=脊线零交叉，越大离脊越远；λ20k 场）。 */
     public static double ridgeDev(int x, int z, int worldSeedInt) {
-        double med = NoiseContinentGrid.medNoise(x, z, worldSeedInt);
+        double med = com.EyeOfHarmonyBuffer.sim2.land.LandV3.continentality(wsOf(worldSeedInt), x, z);
         return Math.abs(2.0 * med - 1.0);
     }
 
@@ -185,13 +211,13 @@ public final class OrographyField {
         // 【为什么不能用高度符号】新架构里 height = (base+hfeat)×gain（连续混合），
         //   高度符号**不再等价于**陆海。
         // 【正解】直接调 `TalosLandField.isLand` ⟹ 与 compose 逐位一致。
-        if (!TalosLandField.isLand(NoiseContinentGrid.wsOf(worldSeedInt), x, z)) {
+        if (!com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand((double) x, (double) z, wsOf(worldSeedInt))) {
             return new OroSample(false, 0.0, 0.0, 0.0, KIND_LOWLAND, 0.0, 0.0, 0.0); }
-        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
+        double r = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(wsOf(worldSeedInt), x, z);
         Cutoffs c = cutoffsFor(worldSeedInt);
         double elevation = elevation01(r, worldSeedInt);
         double dev = ridgeDev(x, z, worldSeedInt);
-        double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
+        double d = com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(wsOf(worldSeedInt), x, z);   // 陆上 <0
         double relief = reliefFromDev(x, z, worldSeedInt, dev, d);   // 含贴岸淡化，与 relief01() 同口径
 
         // ★★★★★★★ 2026-10-08 修复：kind 改由【实际造山】判，不再用 dev。
@@ -242,7 +268,7 @@ public final class OrographyField {
         //   强度仍用【板块汇聚度】。两者都在 TalosLandField 里（本层只做转发）。
         //   实测：速度零集网络 与 细胞边界网络 的相关系数只有 0.0031 ⟹ 必须换成细胞边界。
         //   （dev 参数保留是为了不改签名；已不再参与计算。）
-        return TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z); }
+        return orog01(x, z, worldSeedInt); }
 
     /** 造山强度（按坐标；供无 OroSample 的调用方）。 */
     public static double orogeny01(int x, int z, int worldSeedInt) {
@@ -250,7 +276,7 @@ public final class OrographyField {
 
     /** 内陆海拔（陆地残差 → [0,1]）。 */
     public static double elevation01(double residual, int worldSeedInt) {
-        double rQ = NoiseContinentGrid.residualScale(worldSeedInt);
+        double rQ = LAND_SCALE_M;
         if (rQ <= 0.0) {
             rQ = 1.0;
         }
@@ -264,7 +290,7 @@ public final class OrographyField {
 
     /** 山地强度核心（调用方已有 dev 时用，避免重复算 medNoise）。 */
     private static double reliefFromDev(int x, int z, int worldSeedInt, double dev) {
-        double d = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);   // 陆上 <0
+        double d = com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(wsOf(worldSeedInt), x, z);   // 陆上 <0
         return reliefFromDev(x, z, worldSeedInt, dev, d);
     }
 
@@ -275,7 +301,7 @@ public final class OrographyField {
         //   relief > 0，实测 mean = 0.4814、>0.5 占 50.24% ⟹ 与真实地形无关。
         //   现在 relief01 = orogeny01（造山场：板块边界核 x 汇聚度），
         //   与实际抬升【同源】⟹ relief 高 ⟺ 真的是山。
-        return TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z);
+        return orog01(x, z, worldSeedInt);
     }
 
     // ======== 按种子标定（dev 升序分位 + 条件海拔分位） ========
@@ -297,11 +323,11 @@ public final class OrographyField {
         int m = 0;
         for (int z = 0; z < CALIBRATE_Z_SPAN; z += CALIBRATE_STRIDE) {
             for (int x = 0; x < CALIBRATE_X_SPAN; x += CALIBRATE_STRIDE) {
-                double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);
-                if (!NoiseContinentGrid.isLandResidual(r)) {
+                double r = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(wsOf(worldSeedInt), x, z);
+                if (!(r > 0.0)) {
                     continue;
                 }
-                orogs[m] = TalosLandField.orogeny01(NoiseContinentGrid.wsOf(worldSeedInt), x, z);
+                orogs[m] = orog01(x, z, worldSeedInt);
                 elevs[m] = elevation01(r, worldSeedInt);
                 m++;
             }

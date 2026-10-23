@@ -79,12 +79,12 @@ public final class HadleyCell {
     //
     // 【改前】OM = 7.2921e-5（**地球**自转速率）
     //   而 WorldContract.OMEGA = 7.2921e-5 * 40 = 2.91684e-3（本世界值）
-    //   （「全体缩小 40 倍」的配套：OMEGA x40，否则大气变形半径 > 行星半径 ⟹ 气候层塌掉）
+    //   （历史：旧小世界曾用 OMEGA x40 守住变形半径。现世界已永久定为地球尺度，此配套不再生效）
     // 【用途】:105  return G * H_TROP * dH / (OM*OM * R_EFF*R_EFF);
     //   —— 一个【量纲组合】，OM 与 R_EFF 必须同口径。
     //
     // ⚠ 本类 SOLVED_ON = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
-    public static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
+    public static final double OM = WorldContract.OMEGA;   // ★ s^-1（地球真值；×40 仅为论文消融实验保留）
     public static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
     public static final double G = 9.80665;                          // m s^-2
     /** 外流层厚度 H（对流层顶高度）。 */

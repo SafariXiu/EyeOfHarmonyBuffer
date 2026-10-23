@@ -1,4 +1,6 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer;
+package com.EyeOfHarmonyBuffer.sim2.land.deprecated;
+
+import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 

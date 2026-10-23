@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault;
+
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import net.minecraft.world.biome.BiomeGenBase;
 
@@ -16,7 +18,7 @@ public final class V2BiomePicker {
 
     /** 单点群系查询（WorldChunkManager / 装饰用）。 */
     public static BiomeGenBase biomeAt(int x, int z, int worldSeedInt) {
-        return biomeOf(V2BiomeField.kind(x, z, worldSeedInt));
+        return biomeOf(TalosBiomeDefault.sample(x, z, worldSeedInt, true).kind);
     }
 
     /** Kind → 群系对象。 */

@@ -1,8 +1,9 @@
 package com.EyeOfHarmonyBuffer.command;
 
+import com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault;
+
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomePicker;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
@@ -128,13 +129,13 @@ public class CommandTalosBiome extends CommandBase {
             // 而本命令要扫的是下面这张固定的旧环面区域（400k × 200k），所以按 SCAN_*_SPAN 循环，
             // 不是按瓦片尺寸。⚠️ 世界现在是 X 无限 / Z 不重复，这个扫描域与 wrapDistSq 的环绕
             // 都是旧环面的遗留；本命令只用于开发排查，改它会改变命令输出（不影响世界生成）。
-            final int half = V2BiomeField.CELL / 2;
-            final int periodNZ = SCAN_Z_SPAN / V2BiomeField.CELL;
-            final int periodNX = SCAN_X_SPAN / V2BiomeField.CELL;
+            final int half = TalosBiomeDefault.CELL / 2;
+            final int periodNZ = SCAN_Z_SPAN / TalosBiomeDefault.CELL;
+            final int periodNX = SCAN_X_SPAN / TalosBiomeDefault.CELL;
             for (int cz = 0; cz < periodNZ; cz++) {
-                int wz = cz * V2BiomeField.CELL + half;
+                int wz = cz * TalosBiomeDefault.CELL + half;
                 for (int cx = 0; cx < periodNX; cx++) {
-                    int wx = cx * V2BiomeField.CELL + half;
+                    int wx = cx * TalosBiomeDefault.CELL + half;
                     if (V2BiomePicker.biomeAt(wx, wz, worldSeedInt) != target) {
                         continue;
                     }

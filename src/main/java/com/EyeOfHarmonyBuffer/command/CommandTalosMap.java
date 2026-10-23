@@ -3,11 +3,9 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.ClimateSample;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -244,7 +242,7 @@ public class CommandTalosMap extends CommandBase {
         // **底色永远是真实海陆**，极地结构只用半透明着色标出来 —— 见 PolarZone.RENDER_RULE_VERSION。
         // 旧写法是 if (isFloeOcean(be)) return 淡青; 那是纯纬度判据，会把浮冰带里的真实陆地整片刷成海色，
         // 让看图的人以为"极地还是一条干净的带"。图层骗人比世界错了更坏。
-        boolean land = NoiseContinentGrid.isLand(wx, wz, seed);
+        boolean land = com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand((double) wx, (double) wz, seed);
         double be = PolarZone.band(wx, wz, seed);
         int base = land ? rgb(60, 150, 70) : rgb(20, 70, 140);
         switch (PolarZone.overlayCode(be, PolarZone.rawBand(wz), land)) {
@@ -288,7 +286,7 @@ public class CommandTalosMap extends CommandBase {
                         : mix(rgb(42, 85, 128), rgb(10, 22, 48), clamp((d - 5) / 36.0, 0, 1));
                 }
                 V2TerrainGen.Column col = V2TerrainGen.composeColumn(
-                    wx, wz, seed, LandformField.SEA_LEVEL_BLK, o,
+                    wx, wz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
                     V2TerrainGen.MC_WORLD_HEIGHT - 2);
                 // 传 hCapped（连续、已软封顶）而不是 col.h：heightColor 的雪线判定
                 // 在生产里用的也是未取整的连续高度，这样两边的雪线边界逐列一致。

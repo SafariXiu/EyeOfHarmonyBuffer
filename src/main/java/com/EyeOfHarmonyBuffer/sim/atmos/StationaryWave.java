@@ -250,7 +250,7 @@ public final class StationaryWave {
     //
     // ⚠ 2026-10-16 更正：本类 STATIONARY_WAVE_ON = **true**（:78 逐字 ✓）⟹ 本类**已启用** ✓
     //   （原文写「= false ⟹ 未启用」✗ 是过期注释；本修复本身仍只拆地雷、不改读数。）
-    private static final double OM = WorldContract.OMEGA;   // ★ s^-1（本世界 = 地球 x40）
+    private static final double OM = WorldContract.OMEGA;   // ★ s^-1（地球真值；×40 仅为论文消融实验保留）
     private static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本
 
     private static long cacheKey = Long.MIN_VALUE;

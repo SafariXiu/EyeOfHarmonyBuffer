@@ -10,7 +10,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveMegaHall;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveWorldState;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.world.World;
@@ -304,7 +303,7 @@ public final class TalosCaveSystem {
         }
         // 地表必须高于海平面：否则入口井口会开在水线 / 水下
         return V2TerrainGen.composeColumn(worldX, worldZ, worldSeedInt,
-            LandformField.SEA_LEVEL_BLK, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
+            com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o, V2TerrainGen.MC_WORLD_HEIGHT - 2).h >= 65;
     }
 
     /** 调试汇总（/talcave 用，只经 api 暴露）。 */

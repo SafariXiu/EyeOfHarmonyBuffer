@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.runtime;
 
+import com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault;
+
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
 import com.EyeOfHarmonyBuffer.sim.atmos.Radiation;   // ★ S1a（§385）
@@ -22,7 +24,6 @@ import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
 import com.EyeOfHarmonyBuffer.sim.ocean.OceanField;
 import com.EyeOfHarmonyBuffer.sim.ocean.SurfaceLayer;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect;
 
 /**
@@ -367,6 +368,70 @@ public final class SimClimate {
      */
     private static final ConcurrentHashMap<Long, Field> CACHE =
         new ConcurrentHashMap<Long, Field>(Math.max(16_384, CACHE_LIMIT * 4));
+
+    // ==================== disk cache (climate tiles) ====================
+    // A 512 km LEM tile touches 6 x 11 = 66 climate tiles (100 km x 50 km each) and each
+    // solve runs the whole planetary chain (~1.2 s), i.e. ~80 s of the LEM tile budget.
+    // Persisting a Field costs ~7 KB, so a visited region is paid for once, then loaded
+    // in milliseconds. Set DISK_DIR = null (default) to keep the in-memory-only behaviour.
+    public static volatile java.io.File DISK_DIR = null;
+    private static final int DISK_MAGIC = 0x54434C31;   // TCL1
+
+    private static java.io.File diskFile(long key) {
+        final java.io.File d = DISK_DIR;
+        if (d == null) return null;
+        if (!d.isDirectory() && !d.mkdirs()) return null;
+        return new java.io.File(d, Long.toHexString(key) + ".clm");
+    }
+
+    private static void readArr(java.io.DataInputStream in, double[] a) throws java.io.IOException {
+        for (int i = 0; i < a.length; i++) a[i] = in.readDouble();
+    }
+
+    private static void writeArr(java.io.DataOutputStream out, double[] a) throws java.io.IOException {
+        for (int i = 0; i < a.length; i++) out.writeDouble(a[i]);
+    }
+
+    private static Field loadFromDisk(long key) {
+        final java.io.File f = diskFile(key);
+        if (f == null || !f.isFile()) return null;
+        try (java.io.DataInputStream in = new java.io.DataInputStream(
+                new java.io.BufferedInputStream(new java.io.FileInputStream(f), 1 << 16))) {
+            if (in.readInt() != DISK_MAGIC) return null;
+            if (in.readLong() != key) return null;
+            final int cell = in.readInt(), nx = in.readInt(), nz = in.readInt();
+            final int ox = in.readInt(), oz = in.readInt();
+            final Field fl = new Field(cell, nx, nz, ox, oz);
+            readArr(in, fl.tSea); readArr(in, fl.kap); readArr(in, fl.coastD);
+            readArr(in, fl.coastFar); readArr(in, fl.wX); readArr(in, fl.wZ);
+            readArr(in, fl.logP); readArr(in, fl.q); readArr(in, fl.sst);
+            readArr(in, fl.eLake); readArr(in, fl.up); readArr(in, fl.lee);
+            DISK_READS.incrementAndGet();
+            return fl;
+        } catch (Throwable ex) { return null; }
+    }
+
+    private static void saveToDisk(long key, Field f) {
+        final java.io.File out = diskFile(key);
+        if (out == null) return;
+        final java.io.File tmp = new java.io.File(out.getPath() + ".tmp");
+        try (java.io.DataOutputStream o = new java.io.DataOutputStream(
+                new java.io.BufferedOutputStream(new java.io.FileOutputStream(tmp), 1 << 16))) {
+            o.writeInt(DISK_MAGIC);
+            o.writeLong(key);
+            o.writeInt(f.cell); o.writeInt(f.nx); o.writeInt(f.nz);
+            o.writeInt(f.originX); o.writeInt(f.originZ);
+            writeArr(o, f.tSea); writeArr(o, f.kap); writeArr(o, f.coastD);
+            writeArr(o, f.coastFar); writeArr(o, f.wX); writeArr(o, f.wZ);
+            writeArr(o, f.logP); writeArr(o, f.q); writeArr(o, f.sst);
+            writeArr(o, f.eLake); writeArr(o, f.up); writeArr(o, f.lee);
+        } catch (Throwable ex) { tmp.delete(); return; }
+        if (!tmp.renameTo(out)) tmp.delete();
+        DISK_WRITES.incrementAndGet();
+    }
+
+    public static final AtomicLong DISK_READS = new AtomicLong();
+    public static final AtomicLong DISK_WRITES = new AtomicLong();
 
     /**
      * ★★★★★★★★ **§7639：按 key 分片的构建锁（64 路）。**
@@ -899,9 +964,9 @@ public final class SimClimate {
         //   ⑦ 群系 LUT 的平滑与抖动（V2BiomeField）—— 直接改 LUT 的值；
         //      ⚠ SOLVE_HARD_CAP / SOLVE_WARN_EVERY **不加**（求解护栏与告警，不改结果）。
         h = h * 31 + 0x7A13BL;
-        h = h * 31 + V2BiomeField.BLUR_R;
-        h = h * 31 + V2BiomeField.BLUR_PASSES;
-        h = h * 31 + Double.doubleToLongBits(V2BiomeField.JITTER_AMP);
+        h = h * 31 + TalosBiomeDefault.BLUR_R;
+        h = h * 31 + TalosBiomeDefault.BLUR_PASSES;
+        h = h * 31 + Double.doubleToLongBits(TalosBiomeDefault.JITTER_AMP);
         return h;
     }
 
@@ -953,7 +1018,8 @@ public final class SimClimate {
         synchronized (lock) {
             Field f2 = CACHE.get(key);                 // 双检：可能已被别的线程填好
             if (f2 != null) { CACHE_HIT.incrementAndGet(); return f2; }
-            Field fresh = solve(worldSeedInt, tx, tz); // ★ 只对【同一个 key】串行
+            Field fresh = loadFromDisk(key);
+            if (fresh == null) { fresh = solve(worldSeedInt, tx, tz); saveToDisk(key, fresh); } // ★ 只对【同一个 key】串行
             CACHE.put(key, fresh);
             return fresh;
         }

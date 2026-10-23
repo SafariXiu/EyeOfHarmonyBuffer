@@ -1,4 +1,6 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
+package com.EyeOfHarmonyBuffer.sim2.land.deprecated;
+
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 
@@ -433,7 +435,7 @@ public final class LandformField {
                 double auth = o.orogeny01;
                 // 造山强度 [0,1] -> 抬升【格】：米制上限 OROG_MAX_M × 米->格系数
                 double uplift = SimTerrain.ELEV_TO_BLK
-                    * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * auth;
+                    * 0.0 * auth;
                 long _e = System.nanoTime(); tAuth += _e - _d;
                 double rise = (1.0 - auth) * mtnComp0 + auth * uplift;
                 double amt = rise / MTN_RISE_SCALE;

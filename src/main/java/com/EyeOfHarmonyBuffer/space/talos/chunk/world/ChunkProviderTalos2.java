@@ -242,7 +242,9 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                                   RockField rf) {
         // 群系 LUT 查询（V2BiomeField.CELL=250m 网格 + 平滑）：无分配、~20ns/列
         //（本列已知是陆地 → 直接取陆地口径）；kind 供后面的表面材质档案使用。
-        V2BiomeField.Sample bs = V2BiomeField.sample(worldX, worldZ, seed, true);
+        // 群系层占位：恒定返回塔罗斯平原（真实群系层将作为独立项目实现）
+                com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault.Sample bs =
+                        com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault.sample(worldX, worldZ, seed, true);
         final V2BiomeSelect.Kind bKind = bs.kind;
         // V2 高度链（D34/D38）：**唯一入口** V2TerrainGen.composeColumn。
         // 口径 = 群系 bias/scale → 基础地形分解(name=plain/mtnComp) → 山层权威权重 w 仲裁

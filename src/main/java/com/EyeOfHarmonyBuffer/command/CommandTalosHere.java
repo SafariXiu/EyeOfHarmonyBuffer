@@ -3,7 +3,6 @@ package com.EyeOfHarmonyBuffer.command;
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomePicker;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 import net.minecraft.command.CommandBase;
@@ -81,7 +80,7 @@ public class CommandTalosHere extends CommandBase {
         // 这里曾经少算 mountainDetail（也没软封顶），却打印"→ 合成高度"和"(雪线以上)"——
         // 显示值比世界里的列顶低 10~40 blocks，而"(雪线以上)"几乎永远为假。
         V2TerrainGen.Column col = V2TerrainGen.composeColumn(
-            blockX, blockZ, worldSeedInt, LandformField.SEA_LEVEL_BLK, o,
+            blockX, blockZ, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
             V2TerrainGen.MC_WORLD_HEIGHT - 2);
         // 立刻拷进局部变量：composeColumn 返回**每线程复用对象**（与生产同一条纪律）。
         final double plain = col.plain, base = col.base, mtnComp = col.mtnComp;
@@ -108,7 +107,7 @@ public class CommandTalosHere extends CommandBase {
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] SimTerrain.TERRAIN_ON=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
             SimTerrain.TERRAIN_ON,
-            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, LandformField.SEA_LEVEL_BLK)));
+            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK)));
         long ls = SimTerrain.seedOf(worldSeedInt);
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] seedOf(worldSeedInt)=%d  (int)=%d", ls, (int) ls)));
@@ -127,7 +126,7 @@ public class CommandTalosHere extends CommandBase {
         StringBuilder sb = new StringBuilder("[DIAG] x-2..x+2 列顶: ");
         for (int dx = -2; dx <= 2; dx++) {
             V2TerrainGen.Column cc = V2TerrainGen.composeColumn(
-                blockX + dx, blockZ, worldSeedInt, LandformField.SEA_LEVEL_BLK,
+                blockX + dx, blockZ, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK,
                 OrographyField.sample(blockX + dx, blockZ, worldSeedInt),
                 V2TerrainGen.MC_WORLD_HEIGHT - 2);
             sb.append(cc.h).append(" "); }

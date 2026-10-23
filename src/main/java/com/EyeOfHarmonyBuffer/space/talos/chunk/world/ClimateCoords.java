@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer.GlobalClimate;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
 /**
@@ -111,7 +110,7 @@ public final class ClimateCoords {
     // 而且是本文件对旧栈 ThermalForcing 的**最后一个依赖**。新气候链用它自己的一致性口径。
 
     private static double elev01(int x, int z, int worldSeedInt) {
-        return OrographyField.elevation01(NoiseContinentGrid.landResidual(x, z, worldSeedInt), worldSeedInt);
+        return OrographyField.elevation01(com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(((long) worldSeedInt) & 0xFFFFFFFFL, x, z), worldSeedInt);
     }
 
     private static double clamp01(double v) {

@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.command;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import net.minecraft.command.CommandBase;
@@ -175,7 +174,7 @@ public class CommandTalosTp extends CommandBase {
                 tz = (int) Math.floor(pt[1]);
             } }
         int y = world.getTopSolidOrLiquidBlock(tx, tz);
-        if (y <= 0) { y = LandformField.SEA_LEVEL_BLK + 1; }
+        if (y <= 0) { y = com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK + 1; }
         y = Math.min(y, 250);   // 防越界
         player.setPositionAndUpdate(tx + 0.5, y + 1.5, tz + 0.5);
 

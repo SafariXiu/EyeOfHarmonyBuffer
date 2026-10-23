@@ -4,7 +4,6 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainPreset;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
 
 import java.util.ArrayList;
@@ -183,7 +182,7 @@ public final class CaveGenerator {
             int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            y = V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL_BLK, o,
+            y = V2TerrainGen.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             // 地形链不可用（探针 / 未初始化）时退化为海平面，仍确定。
@@ -205,7 +204,7 @@ public final class CaveGenerator {
             // 开在比真实地表高/低几十格的位置（悬空或挖不到）。
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            return V2TerrainGen.composeColumn(wx, wz, ws, LandformField.SEA_LEVEL_BLK, o,
+            return V2TerrainGen.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
                 V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             return 64.0;
@@ -594,7 +593,7 @@ public final class CaveGenerator {
      */
     private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
         OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
-        return V2TerrainGen.composeColumn(wx, wz, seed, LandformField.SEA_LEVEL_BLK, o,
+        return V2TerrainGen.composeColumn(wx, wz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
             V2TerrainGen.MC_WORLD_HEIGHT - 2).h > 100;
     }
 

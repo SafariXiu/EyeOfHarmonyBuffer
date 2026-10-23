@@ -6,11 +6,9 @@ import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
 import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
 import com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 
 /**
@@ -76,6 +74,10 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
  * 是**开关注入点**，与旧实现的 {@code ClimateCoords.ENABLE_ORO} 同类）。
  */
 public final class SimTerrain {
+
+    /** 旧 V8 造山叠加层：V3 自带抬升场，此处恒定关闭（与旧回滚态一致）。 */
+    private static final boolean OROG_ON_LEGACY = false;
+    private static final double OROG_MAX_M_LEGACY = 0.0;
 
     private SimTerrain() {}
 
@@ -577,7 +579,7 @@ public final class SimTerrain {
      */
     public static double extraSlopeMask(int x, int z, int worldSeedInt) {
         if (!ERO_EXTRA_SLOPE_MOD) return 1.0;
-        return LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
+        return com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
     }
 
     /**
@@ -592,7 +594,7 @@ public final class SimTerrain {
         double a = PlateField.ERO_EXTRA_AMP;
         if (a <= 0.0) return 0.0;
         if (!ERO_EXTRA_SLOPE_MOD) return a;
-        double g = LandformField.sample(x, z, worldSeedInt).mtnPlusPeak();
+        double g = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
         if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
         return a * (EXTRA_MASK_MIN + (1.0 - EXTRA_MASK_MIN) * g);
     }
@@ -714,15 +716,13 @@ public final class SimTerrain {
         // ★★★★★★★ B 方案：统一剖面（在硬分支之前返回）
         if (USE_CF_PROFILE) {
             long cfWs = ((long) worldSeedInt) & 0xFFFFFFFFL;
-            double sig = TalosLandField
-                .signedCoastDistCF(cfWs, x, z);
+            double sig = com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(cfWs, x, z);
             // ★★★★★★★ 2026-10-08（用户裁决：高度分两层口径）
             //   ① 海陆分布层输出【原生米】—— 气候层读的就是它（PlateField.elevation -> height），
             //      多少米就是多少米，不再有任何增益；
             //   ② 地形层把同一个米值乘【一个系数】ELEV_TO_BLK 换成 MC 的格。
             //   ⟹ 造山项已并入 height()（米），本处不再单独加，避免重复计算。
-            double hM = TalosLandField
-                .height(cfWs, x, z);
+            double hM = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(cfWs, x, z);
             // ★★★★★★★ 2026-10-08：**造山项**（山脉改由海陆分布层派生）
             //
             // 【为什么必须加在这里】本分支在第 634 行直接 return ⟹ 上面第 601 行算的
@@ -736,13 +736,12 @@ public final class SimTerrain {
             //   ⚠ 海上恒为 0（OroSample 对海点直接返回 0）⟹ 不会把山加进海里。
             //
             // 【回滚】OROG_ON = false ⟹ 逐位回到旧行为。
-            double orog = TalosLandField.OROG_ON
+            double orog = OROG_ON_LEGACY
                 ? OrographyField
                     .sample(x, z, worldSeedInt).orogeny01
                 : 0.0;
             c.auth = orog;
-            c.uplift = ELEV_TO_BLK * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer
-                .TalosLandField.OROG_MAX_M * orog;          // 米 -> 格
+            c.uplift = ELEV_TO_BLK * OROG_MAX_M_LEGACY * orog;          // 米 -> 格
             // ★★★★★★★ 2026-10-08：给造山带加【内部起伏】（山脊/沟谷）。
             //   【为什么必须有】DETAIL_ENABLED 与 EROSION_ENABLED 都是 false
             //   ⟹ 地形 = 64 + 0.018*(剖面 + 7500*orogeny) 是一个【纯光滑场】
@@ -919,8 +918,7 @@ public final class SimTerrain {
             //   它【正是】「这里是不是真山」的既有权威判据（D43），
             //   而且是连续的 ⇒ 平原 gate≈0（完全不侵蚀）、山地 gate≈1（全侵蚀）。
             //   ⚠ 它【不是】新旋钮 —— 阈值 0.22/0.60 早已存在于 LandformField。
-            LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
-            double gate = lf.mtnPlusPeak();
+                        double gate = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
             // ★ §7727：整体【下移】（ERO_SINK），让侵蚀只往下挖、不往上堆。
             //   不下移时正偏移会把地形抬过 SOFT_CAP_H ⟹ 被压成平台 ⟹ 图上出现平滑长曲线。
             double gateEff = ERO_GATE_FLOOR + (1.0 - ERO_GATE_FLOOR) * gate;

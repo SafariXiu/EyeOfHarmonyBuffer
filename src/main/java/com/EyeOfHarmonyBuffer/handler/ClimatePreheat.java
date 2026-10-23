@@ -2,8 +2,6 @@ package com.EyeOfHarmonyBuffer.handler;
 
 import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.RegisterDimensions;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.LandformField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeField;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.world.World;
 import net.minecraftforge.event.world.WorldEvent;
@@ -39,7 +37,7 @@ public class ClimatePreheat {
                 //   山脉改由海陆分布层派生（OrographyField.orogeny01 = 窄脊线带 × 板块汇聚度），
                 //   那是**逐点纯函数**，没有需要预热的离线网格。
                 // 地貌场（250m 网格，唯一权威：地形与群系共用）
-                LandformField.ensure(seed);
+                // V3 海陆无宏观地貌层缓存，无需预热
                 // ★★ 2026-09-18 退役（用户裁决「必须顶死一套」）★★
                 //   原此处调 RelaxedClimate.ensure(seed) —— **旧栈**（LAT_CYCLE = 1,000,000，
                 //   赤道→极点 500 km；一次窗口构建实测 5.5~7.6 s、237 MB）。
@@ -59,7 +57,7 @@ public class ClimatePreheat {
                 //
                 // RelxCn.ensure(seed);   // 已退役
                 // 群系 LUT（250m 网格 + 平滑，依赖气候场）
-                V2BiomeField.ensure(seed);
+                // 群系层占位：TalosBiomeDefault 无 LUT，无需预热（真实群系层落地后在此接预热）
             }
         }, "EOHB-ClimatePreheat");
         t.setDaemon(true);

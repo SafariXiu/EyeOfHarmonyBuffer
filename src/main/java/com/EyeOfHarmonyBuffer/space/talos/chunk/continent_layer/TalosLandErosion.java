@@ -140,7 +140,7 @@ public final class TalosLandErosion {
 
     // ==================== LEM 参数 ====================
 
-    public static volatile int ITER = 200;
+    public static volatile int ITER = 140;
     public static volatile int FLOW_EVERY = 10;
     public static volatile double DK = 0.05;
     public static volatile double M = 0.5;
@@ -205,6 +205,121 @@ public final class TalosLandErosion {
      * <p>可行的替代是【解析降水代理】（从地形直接算迎风坡增雨，O(N)），见待办 W4。
      */
     public static volatile boolean PRECIP_ENABLED = true;
+    /** Coarse lattice step (in LEM cells = km) for the lake P/E lookup. */
+    public static volatile int LAKE_CLIM_STEP_CELLS = 50;
+    /** cross-fade width at LEM tile edges (km; must stay below BUFFER_CELLS). */
+    public static volatile double SEAM_BLEND_BLK = 0.0;
+    /**
+     * Dirichlet ring width (cells). The outermost RING cells are pinned to the BASE field
+     * every iteration, so two neighbouring tiles share identical boundary conditions.
+     * Cross-fading was tried first and made things worse (two different drainage networks
+     * blended into vertical streaks); pinning the boundary is the correct fix.
+     */
+    public static volatile int SEAM_RING = 0;
+    /**
+     * Edge taper (km). The erosion DELTA is faded to zero at the tile's own boundary.
+     *
+     * <p>Why this works where blending failed: the base field {@code baseHeight} is a GLOBAL
+     * function, so two neighbouring tiles evaluate the SAME base at a shared edge. If the
+     * delta goes to zero there, both sides converge to that same base -> the seam is exactly
+     * zero BY CONSTRUCTION (no averaging of two different drainage networks).
+     *
+     * <p>Cost: a few arithmetic ops per query. Trade-off: erosion is damped inside a band of
+     * this width along every tile edge (ET/512 of the area per side).
+     */
+    public static volatile double EDGE_TAPER_BLK = 0.0;
+    /**
+     * Cap on the erosion delta, in METRES of relief.
+     *
+     * <p>This is the "route 1" fix for the tile seam. The whole elevation is
+     * {@code base + delta}; the base is a GLOBAL smooth field, identical for every tile, while
+     * the delta is what each tile's erosion independently produces (up to +-1 km, i.e. 25% of
+     * the total). Because the delta is a chaotic outcome of each tile's own drainage network,
+     * neighbouring tiles settle at different heights (observed: 5 km vs 3 km either side of a
+     * boundary) and no boundary blend can reconcile that.
+     *
+     * <p>Capping the delta makes the GROSS elevation come from the shared base field and
+     * leaves erosion to shape detail only -- the same split the reference paper uses between
+     * crust and amplification. Set to 0 to disable.
+     */
+    public static volatile double D_CLIP_M = 0.0;
+    /**
+     * Open-boundary experiment: cells on the ARRAY border drain OUT instead of into the tile.
+     *
+     * <p>Root cause of the 512 km seam: {@code dirs()} skipped out-of-bounds neighbours, so no
+     * border cell could route water outward. Every tile therefore behaved as a CLOSED basin
+     * whose wall sits at a different absolute position, and {@code acc} piled up differently
+     * on each side. {@code accOf()} already DISCARDED water that left the array -- the wall was
+     * only ever in {@code dirs()}.
+     */
+    public static volatile boolean OPEN_BOUNDARY = true;
+    /**
+     * EXPERIMENT: external inflow seeded on the array border (cells).
+     *
+     * <p>Hypothesis under test: the seam is not caused by the closed wall (that only bought
+     * 3.4%) but by the ABSENCE of upstream area from outside the tile -- {@code accOf} starts
+     * from zero, while erosion uses {@code al = DK * acc^0.5}, so two tiles see different
+     * accumulation and therefore different erosion strength.
+     *
+     * <p>Seeding the border with a constant inflow tests this directly: if the seam collapses,
+     * the missing external inflow is the real cause and the fix is a GLOBAL, tile-independent
+     * A0(x) rather than a constant.
+     */
+    public static volatile double A0_SEED = 0.0;
+    /**
+     * EXPERIMENT: use the GLOBAL base field as the downstream reference instead of the
+     * evolved neighbour.
+     *
+     * <p>The implicit update {@code z = (z + up + al*zd)/(1+al)} couples every cell to its
+     * whole downstream chain, and the chain terminates at the tile boundary -- that is the
+     * real cause of the seam (both the closed wall and missing inflow were measured and
+     * refuted: 3.4% and 0.2%). Taking {@code zd} from {@code U} (the base field, a global
+     * function) removes the chain entirely, so two tiles can no longer disagree.
+     */
+    public static volatile boolean BASE_DOWN = true;
+
+    // --- 旧场 shim（V3 接入后旧 V8 造山/海岸剖面已停用）-----------------------------
+    // 这些常量与工具原本来自 TalosLandField。V3 自带抬升场与海岸剖面，
+    // 旧叠加层一律关闭（OROG_ON=false），保留同名符号只为不删掉历史代码路径。
+    private static final boolean OROG_ON = false;
+    private static final double OROG_MAX_M = 0.0;
+    private static final double OROG_COAST_TAPER_M = 0.0;
+    private static final double CF_LAND_H = 4_000.0;
+    private static final double CF_LAND_U = 0.0;
+    private static final double OROG_PLATE_BAND = 0.0;
+    private static final double OROG_BAND_MIN = 0.0;
+    private static final double SUPER_ABS = 0.0;
+
+    private static double smoothstep(double e0, double e1, double x) {
+        double t = (x - e0) / (e1 - e0);
+        if (t < 0.0) t = 0.0; else if (t > 1.0) t = 1.0;
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    private static double orogenyM(long ws, double x, double z) { return 0.0; }
+    private static double orogeny01(long ws, double x, double z) { return 0.0; }
+    private static double riftProfile(long ws, double x, double z, double w) { return 0.0; }
+    private static double signedCoastDistCF(long ws, double x, double z) {
+        return com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(ws, x, z);
+    }
+    private static double coastProfileCF(double sig) { return Math.max(0.0, 1.0 + sig / 400_000.0); }
+    private static double cnoise(double x, double y, double z, long seed) {
+        return com.EyeOfHarmonyBuffer.sim2.land.LandNoise.value(x, z, seed) - 0.5;
+    }
+
+
+    /**
+     * Weight on the EVOLVED neighbour when BASE_DOWN is on:
+     *   0.0 = pure global base  -> seam-free, but the drainage follows the regional slope
+     *                             (parallel herringbone pattern observed)
+     *   1.0 = pure evolved z    -> natural dendritic drainage, but the seam returns (247 m/km)
+     * In between interpolates the downstream reference used by the implicit update.
+     */
+    public static volatile double BASE_BLEND = 0.5;
+    private static final byte DIR_OUT = 8;
+    /** ceiling of the LandV3 activity gate (1.0 lets the LEM run away to ~15 km). */
+    public static volatile double ACT_MAX = 0.28;
+
     /**
      * 参考降水（mm/yr）。accW = (P/P_REF) x acc。
      *
@@ -700,9 +815,9 @@ public final class TalosLandErosion {
 
     public static volatile int CACHE_TILES = 16;
 
-    static final int[] DX = { -1, -1, -1, 0, 0, 1, 1, 1 };
-    static final int[] DZ = { -1, 0, 1, -1, 1, -1, 0, 1 };
-    static final double[] DD = { 1.41421356, 1, 1.41421356, 1, 1, 1.41421356, 1, 1.41421356 };
+    static final int[] DX = { -1, -1, -1, 0, 0, 1, 1, 1, 0 };
+    static final int[] DZ = { -1, 0, 1, -1, 1, -1, 0, 1, 0 };
+    static final double[] DD = { 1.41421356, 1, 1.41421356, 1, 1, 1.41421356, 1, 1.41421356, 1 };
     static final double EPS = 1.0 / 256.0;
 
     // ==================== 内部状态 ====================
@@ -813,11 +928,11 @@ public final class TalosLandErosion {
         if (baseM <= 0.0) return baseM;                    // ★ 海：完全不动（不改陆海）
         Tile t = tileAt(ws, px, pz);
         if (t == null) return baseM;
-        final double v = sample(t.z, t, px, pz);           // LEM 高度（格）
+        double v = seamBlend(ws, t, px, pz, sample(t.z, t, px, pz));           // LEM 高度（格）
         final double baseBlk = SEA_BLK + baseM * ELEV_TO_BLK;
         final double d = v - baseBlk;                      // ★ LEM 相对基础剖面的变化量（格）
         // ★ 海岸淡化：靠海处权重到 0 -> 与基础剖面连续 -> 无海岸墙
-        final double taper = TalosLandField.smoothstep(0.0, COAST_TAPER_M, baseM);
+        final double taper = smoothstep(0.0, COAST_TAPER_M, baseM);
         // ★★ 不许沉到海平面以下 —— 但必须用【连续】的方式限制，不能用 if 硬钳。
         //    硬钳（out 小于等于 SEA 就设成 SEA+0.5）会在海岸带制造 27 格的悬崖
         //    （实测：相邻格高差 max 从 5.63 米跳到 27.03 米）。
@@ -826,7 +941,12 @@ public final class TalosLandErosion {
         //      taper = 0 时完全不限制；
         //      对 taper 连续，对空间也连续（min 只产生拐点，不产生跳变）。
         final double dMin = -(baseBlk - SEA_BLK - 0.5);
-        final double dUse = (d < dMin) ? dMin : d;
+        double dUse = (d < dMin) ? dMin : d;
+        if (D_CLIP_M > 0.0) {
+            final double c = D_CLIP_M * ELEV_TO_BLK;
+            if (dUse > c) dUse = c; else if (dUse < -c) dUse = -c;
+        }
+        dUse *= edgeTaper(t, px, pz);
         final double out = baseBlk + dUse * taper;
         return (out - SEA_BLK) / ELEV_TO_BLK;
     }
@@ -1128,14 +1248,9 @@ public final class TalosLandErosion {
         // ---- ⚠ 2026-10-14（待裁决/353）补的【既存】漏键 ----
         //   这些都是【决定地形高度】的常量，却一直不在本键里 ⟹ 改它们不会让瓦片缓存失效
         //   （同 TECTONIC_GATE 那一类；§338 改 CF_LAND_H 时也踩过）。
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_MAX_M);
-        h = h * 31 + (TalosLandField.OROG_ON ? 1 : 0);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_COAST_TAPER_M);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_H);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.CF_LAND_U);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_PLATE_BAND);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.OROG_BAND_MIN);
-        h = h * 31 + Double.doubleToLongBits(TalosLandField.SUPER_ABS);
+        h = h * 31 + Double.doubleToLongBits(OROG_PLATE_BAND);
+        h = h * 31 + Double.doubleToLongBits(OROG_BAND_MIN);
+        h = h * 31 + Double.doubleToLongBits(SUPER_ABS);
         // ---- 抬升噪声 ----
         h = h * 31 + Double.doubleToLongBits(NA_AMP);
         h = h * 31 + Double.doubleToLongBits(NA_WL);
@@ -1308,6 +1423,51 @@ public final class TalosLandErosion {
         if (toDrop <= 0) return;
         Iterator<Map.Entry<Long, Tile>> it = CACHE.entrySet().iterator();
         while (toDrop-- > 0 && it.hasNext()) { it.next(); it.remove(); }
+    }
+
+    /**
+     * Cross-fade across LEM tile edges.
+     *
+     * <p>Neighbouring 512 km tiles are solved independently and each keeps a 128 km buffer,
+     * so a point near an edge is covered by both. Without this blend the tiles meet in a
+     * hard rectangle every 512 km (visible as straight lines in the terrain).
+     */
+    /** 0 at the tile's owned boundary, 1 at EDGE_TAPER_BLK inside it. */
+    private static double edgeTaper(Tile t, double px, double pz) {
+        final double ET = EDGE_TAPER_BLK;
+        if (ET <= 0.0) return 1.0;
+        final double ob = OUT_CELLS * STEP_BLK;
+        final double x0 = t.tx * ob, z0 = t.tz * ob;
+        final double dx = Math.min(px - x0, (x0 + ob) - px);
+        final double dz = Math.min(pz - z0, (z0 + ob) - pz);
+        double dist = Math.min(dx, dz);
+        if (dist <= 0.0) return 0.0;
+        if (dist >= ET) return 1.0;
+        final double u = dist / ET;
+        return u * u * (3.0 - 2.0 * u);
+    }
+
+    private static double seamBlend(long ws, Tile t, double px, double pz, double v) {
+        final double B = SEAM_BLEND_BLK;
+        if (B <= 0.0) return v;
+        final double ob = OUT_CELLS * STEP_BLK;
+        final double gx = (px - t.tx * ob) / STEP_BLK;
+        final double gz = (pz - t.tz * ob) / STEP_BLK;
+        final double edgeHi = OUT_CELLS - B;
+        double wx = 0.0, wz = 0.0, sx = 0.0, sz = 0.0;
+        if (gx < B) { wx = 0.5 * (1.0 - gx / B); sx = -ob; }
+        else if (gx > edgeHi) { wx = 0.5 * (gx - edgeHi) / B; sx = ob; }
+        if (gz < B) { wz = 0.5 * (1.0 - gz / B); sz = -ob; }
+        else if (gz > edgeHi) { wz = 0.5 * (gz - edgeHi) / B; sz = ob; }
+        if (wx > 0.0) {
+            Tile n = tileAt(ws, px + sx, pz);
+            if (n != null) v = v * (1.0 - wx) + sample(n.z, n, px, pz) * wx;
+        }
+        if (wz > 0.0) {
+            Tile n = tileAt(ws, px, pz + sz);
+            if (n != null) v = v * (1.0 - wz) + sample(n.z, n, px, pz) * wz;
+        }
+        return v;
     }
 
     private static double sample(double[] f, Tile t, double px, double pz) {
@@ -1597,6 +1757,13 @@ public final class TalosLandErosion {
 
     /** 抬升场（米）= 海岸剖面 + 造山 + 中尺度扰动（海岸淡化）+ ★ 裂谷。 */
     public static double baseHeight(long ws, double px, double pz) {
+        // ★ 2026-10-22：可插拔 uplift 来源（默认关，关掉时逐位不变）。
+        //   LandV3 把构造抬升建在【连续标量场】上（9 邻域速度方差 + 大陆度），
+        //   不依赖 Voronoi 距离；本方法就是 LEM 的抬升输入 U，所以接在这里
+        //   ⟹ LEM 会把这块抬升演化成排水平衡态（分叉脊 + 河谷 + 水系）。
+        if (com.EyeOfHarmonyBuffer.sim2.land.LandV3.ENABLED) {
+            return com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(ws, px, pz);
+        }
         double h = baseHeightRaw(ws, px, pz);
         // ★★★★★ N1a（2026-10-11）：裂谷下沉【进抬升场】。
         //   本方法就是 LEM 的抬升场 U（见 solve 里的 t.U[k] = SEA_BLK + m*ELEV_TO_BLK），
@@ -1608,11 +1775,11 @@ public final class TalosLandErosion {
             //     实测在造山带里 1 格水平距离内高度跳 1389 米 = 海岸墙」）⟹ 零新参数。
             //   ★ 为什么裂谷也必须淡化：裂谷贴着海岸时会把陆地压到海平面以下
             //     ⟹ sea[] 翻面 ⟹ 【把大陆劈成两块】。
-            double ta = TalosLandField.OROG_COAST_TAPER_M > 0.0
-                    ? TalosLandField.smoothstep(0.0, TalosLandField.OROG_COAST_TAPER_M, h) : 1.0;
+            double ta = OROG_COAST_TAPER_M > 0.0
+                    ? smoothstep(0.0, OROG_COAST_TAPER_M, h) : 1.0;
             if (ta > 0.0) {
                 h += ta * RIFT_SPLIT * (BOWL_DEPTH / ELEV_TO_BLK)
-                   * TalosLandField.riftProfile(ws, px, pz, RIFT_SHOULDER);
+                   * riftProfile(ws, px, pz, RIFT_SHOULDER);
                 // ★ 修法 B2：裂谷不得把陆地压成海（钳在 1 米 ⟹ 永远是陆地）。
                 if (h < RIFT_FLOOR_M) h = RIFT_FLOOR_M;
             }
@@ -1622,17 +1789,17 @@ public final class TalosLandErosion {
 
     /** ★ 不含裂谷项的抬升场（米）—— 用于【陆海判定】（待裁决/307 实验）。 */
     public static double baseHeightRaw(long ws, double px, double pz) {
-        double sig = TalosLandField.signedCoastDistCF(ws, px, pz);
-        double b = TalosLandField.coastProfileCF(sig);
+        double sig = signedCoastDistCF(ws, px, pz);
+        double b = coastProfileCF(sig);
         if (b <= 0.0) return b;
-        // ★ 必须与 TalosLandField.height0 【逐位同口径】，否则 LEM 开/关之间会出现台阶。
+        // ★ 必须与 height0 【逐位同口径】，否则 LEM 开/关之间会出现台阶。
         //   造山的海岸淡化也要一样（[131]）。
-        double ot = TalosLandField.OROG_COAST_TAPER_M > 0.0
-                ? TalosLandField.smoothstep(0.0, TalosLandField.OROG_COAST_TAPER_M, b) : 1.0;
+        double ot = OROG_COAST_TAPER_M > 0.0
+                ? smoothstep(0.0, OROG_COAST_TAPER_M, b) : 1.0;
         double h = b + (ot > 0.0
-                ? TalosLandField.OROG_MAX_M * TalosLandField.orogeny01(ws, px, pz) * ot : 0.0);
+                ? OROG_MAX_M * orogeny01(ws, px, pz) * ot : 0.0);
         if (NA_AMP != 0.0 && NA_WL > 0.0 && NA_OCT > 0) {
-            double taper = TalosLandField.smoothstep(0.0, NA_TAPER, b);
+            double taper = smoothstep(0.0, NA_TAPER, b);
             if (taper > 0.0) h += NA_AMP * taper * fbm(ws ^ 0x3CL, px, pz, NA_WL, NA_OCT);
         }
         return h;
@@ -1642,7 +1809,7 @@ public final class TalosLandErosion {
     static double fbm(long seed, double x, double y, double wl, int oct) {
         double v = 0.0, amp = 1.0, sum = 0.0, f = 1.0 / wl;
         for (int k = 0; k < oct; k++) {
-            double n = TalosLandField.cnoise(x * f, y * f, 1.0, seed + k * 0x9E3779B9L);
+            double n = cnoise(x * f, y * f, 1.0, seed + k * 0x9E3779B9L);
             v += amp * (2.0 * n - 1.0);
             sum += amp; amp *= 0.5; f *= 2.0;
         }
@@ -1699,6 +1866,7 @@ public final class TalosLandErosion {
     /** 解一个瓦片。线程安全（只用局部缓冲）。 */
     static Tile solve(long ws, int tx, int tz) {
         long t0 = System.nanoTime();
+        phT = t0;
         int W = SOLVE_CELLS;
         if (W <= 0 || OUT_CELLS <= 0 || BUFFER_CELLS < 0) return null;
         if (W < OUT_CELLS + 2 * BUFFER_CELLS) return null;
@@ -1707,6 +1875,14 @@ public final class TalosLandErosion {
         double outBlk = OUT_CELLS * STEP_BLK;
         double ox = tx * outBlk - BUFFER_CELLS * STEP_BLK;
         double oz = tz * outBlk - BUFFER_CELLS * STEP_BLK;
+        // ---- hoisted hot-loop terms (bit-identical) ----
+        // al depends only on acc (recomputed every FLOW_EVERY), up depends only on the
+        // static U field, nk on the D8 direction. Recomputing them per cell per iteration
+        // cost two Math.pow + two integer divisions on 200 x 590k = 118M updates.
+        final double[] alBuf = new double[N];
+        final double[] upBuf = new double[N];
+        final int[] nkBuf = new int[N];
+
 
         for (int j = 0; j < W; j++) {
             double wz = oz + j * STEP_BLK;
@@ -1721,9 +1897,12 @@ public final class TalosLandErosion {
                 //   ⟹ 允许「海平面以下的陆地」⟹ U 可以 < SEA_BLK ⟹ up 允许负值
                 //   ⟹ LEM 真正【下沉】⟹ 才可能演化出天然闭合洼地（天然湖）。
                 t.sea[k] = (RIFT_SEA_DECOUPLED ? baseHeightRaw(ws, gx, wz) <= 0.0 : m <= 0.0);
+                final double uu0 = (t.U[k] - SEA_BLK) / UREF;
+                upBuf[k] = uu0 > 0.0 ? DTU * UREF * Math.pow(uu0, GAMMA) : 0.0;
             }
         }
 
+        ph(PH_INIT);
         int fe = Math.max(1, FLOW_EVERY);
         long[] heap = new long[N];
         int[] ord = new int[N];
@@ -1760,13 +1939,32 @@ public final class TalosLandErosion {
                 for (int i = 0; i < W; i++) {
                     final int k = j * W + i;
                     final double gx = ox + i * STEP_BLK;
-                    double aTmp = 0.0;
-                    if (TalosLandField.OROG_ON && TalosLandField.OROG_MAX_M > 0.0) {
-                        double om = TalosLandField.orogenyM(ws, gx, gz);
-                        if (om > 0.0) aTmp += om / TalosLandField.OROG_MAX_M;
+                    // LandV3 carries its own tectonic field, so the activity gate must be
+                    // derived from the NEW uplift. The legacy orogenyM /
+                    // riftProfile path brought its own Voronoi rift network along, which was
+                    // then etched into the LandV3 terrain as a polygon mesh (observed).
+                    if (com.EyeOfHarmonyBuffer.sim2.land.LandV3.ENABLED) {
+                        // The uplift field is BROAD (f(d) spans 1800 km), so a linear gate is
+                        // ~1 almost everywhere and the relief ran to 13 km. Smoothstep it so
+                        // only the belt cores are fully active (bare field stays put).
+                        // Calibrated from the measured uplift distribution over land:
+                        //   p50=184  p80=2938 (0.07 U0)  p95=15801 (0.38 U0)  max=42825
+                        // Gate = 0 below p80, 1 above p95: the same "top ~20% of land
+                        // is active" extent the legacy gate had, but data-derived.
+                        final double a = (com.EyeOfHarmonyBuffer.sim2.land.LandV3.uplift(ws, gx, gz)
+                                - com.EyeOfHarmonyBuffer.sim2.land.LandV3.U0 * 0.07)
+                                / (com.EyeOfHarmonyBuffer.sim2.land.LandV3.U0 * 0.31);
+                        final double t01 = a > 1.0 ? 1.0 : (a < 0.0 ? 0.0 : a);
+                        actBuf[k] = ACT_MAX * t01 * t01 * (3.0 - 2.0 * t01);
+                    } else {
+                        double aTmp = 0.0;
+                        if (OROG_ON && OROG_MAX_M > 0.0) {
+                            double om = orogenyM(ws, gx, gz);
+                            if (om > 0.0) aTmp += om / OROG_MAX_M;
+                        }
+                        aTmp += Math.abs(riftProfile(ws, gx, gz, RIFT_SHOULDER));
+                        actBuf[k] = aTmp > 1.0 ? 1.0 : aTmp;
                     }
-                    aTmp += Math.abs(TalosLandField.riftProfile(ws, gx, gz, RIFT_SHOULDER));
-                    actBuf[k] = aTmp > 1.0 ? 1.0 : aTmp;
                 }
             }
         }
@@ -1778,32 +1976,57 @@ public final class TalosLandErosion {
                 for (int i = 0; i < W; i++) {
                     final int k = j * W + i;
                     sinkBuf[k] = RIFT_SINK
-                            * TalosLandField.riftProfile(ws, ox + i * STEP_BLK, gz, RIFT_SHOULDER);
+                            * riftProfile(ws, ox + i * STEP_BLK, gz, RIFT_SHOULDER);
                 }
             }
         }
 
+        if (sinkBuf != null) {
+            for (int k = 0; k < N; k++) upBuf[k] += DTU * UREF * sinkBuf[k];
+        }
+
+        ph(PH_GATE);
+        prefetchClimate(ws, tx, tz, ox, oz);
+
         for (int it = 0; it < ITER; it++) {
-            if (it % fe == 0) { fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt); }
+            if (it % fe == 0) {
+                fill(t, heap); dirs(t); accOf(t, ord, tmp, cnt);
+                for (int kk = 0; kk < N; kk++) {
+                    alBuf[kk] = DK * Math.pow(t.acc[kk], M);
+                    int d0 = t.dir[kk];
+                    if (d0 < 0 || d0 >= 8) { nkBuf[kk] = -1; continue; }
+                    int ni0 = kk % W + DX[d0], nj0 = kk / W + DZ[d0];
+                    nkBuf[kk] = (ni0 < 0 || ni0 >= W || nj0 < 0 || nj0 >= W) ? -1 : nj0 * W + ni0;
+                }
+            }
             orderAsc(t.z, N, ord, tmp, cnt);
+            if (SEAM_RING > 0) {
+                final int R = SEAM_RING;
+                for (int j = 0; j < W; j++) {
+                    for (int i = 0; i < W; i++) {
+                        if (i < R || j < R || i >= W - R || j >= W - R) {
+                            final int kk = j * W + i;
+                            t.z[kk] = t.U[kk];
+                        }
+                    }
+                }
+            }
             for (int oi = 0; oi < N; oi++) {
                 int k = ord[oi];
                 if (eBuf != null) eBuf[k] = 0.0;   // ★ P1：默认本步无产沙（下面的 continue 会跳过赋值）
                 if (t.sea[k]) continue;
-                int d = t.dir[k]; if (d < 0) continue;
-                int ni = k % W + DX[d], nj = k / W + DZ[d];
-                if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
-                double al = DK * Math.pow(t.acc[k], M);
-                double uu = (t.U[k] - SEA_BLK) / UREF;
-                double up = uu > 0.0 ? DTU * UREF * Math.pow(uu, GAMMA) : 0.0;
+                final int nk = nkBuf[k]; if (nk < 0) continue;
+                double al = alBuf[k];
+                double up = upBuf[k];
                 // ★★★★★ 2026-10-11（待裁决/308）：裂谷沉降 = 乘在抬升上的因子，与海拔无关。
                 //   轴部 riftProfile = -1 ⟹ up = upBase*(1 - RIFT_SINK)。RIFT_SINK > 1 ⟹ 真的下沉。
                 // ★ 沉降是【绝对量】：与海拔无关 ⟹ 任何高度都能压成负。
                 //   ⚠ 乘因子路线已实测失败：upBase ∝ uu^GAMMA ∝ 离海平面高度 ⟹ 越高越压不动
                 //     （实测湖格 100% 仍在离岸 20 km 内、高程 p50 = 57~63 格）。
                 //   DTU*UREF = uu=1 时的抬升量，是现成的量 ⟹ 除 RIFT_SINK 外零新参数。
-                if (sinkBuf != null) up += DTU * UREF * sinkBuf[k];
-                double nb = t.z[nj * W + ni];
+                double nb = BASE_DOWN
+                        ? (BASE_BLEND * t.z[nk] + (1.0 - BASE_BLEND) * t.U[nk])
+                        : t.z[nk];
                 double zd = nb > SEA_BLK ? nb : SEA_BLK;
                 // ★★★ 判别实验：禁止"洼地自填" ⟹ 下游高于本格时钳到本格。
                 //   正常下坡格 zd < z[k] ⟹ 本行不生效 ⟹ 侵蚀逐位不变。
@@ -1850,7 +2073,7 @@ public final class TalosLandErosion {
                     final double q = qsBuf[k] + eBuf[k];
                     qsBuf[k] = q;
                     final int d = t.dir[k];
-                    if (d < 0) continue;
+                    if (d < 0 || d >= 8) continue;
                     final int ni = k % W + DX[d], nj = k / W + DZ[d];
                     if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
                     qsBuf[nj * W + ni] += q;
@@ -1877,6 +2100,7 @@ public final class TalosLandErosion {
         //      ⟹ 实测（待裁决/304 §11.4）solveLake = 6769 ms，其中 6760 ms 全花在气候查询上。
         //   ★ 也必须在 fill() 之后（盆地是按 filled - z 认的，而 filled 要先由新 z 算出来）。
         //   ★ precipField 与 meanderField 都【只读】filled ⟹ 夹在两者之间是安全的。
+        ph(PH_ITER);
         if (LAKES_ENABLED && LAKE_SOLVE_ENABLED) {
             final long ls0 = System.nanoTime();
             solveLakeLevels(ws, t, ox, oz);
@@ -1959,7 +2183,7 @@ public final class TalosLandErosion {
      *
      * <p><b>为什么必须有（实测踩过的坑）</b>：溶解析降水代理最初用
      * {@code PlateField.elevationWithCell} 取高程 —— 而它现在是
-     * {@code NoiseContinentGrid.height -> TalosLandField.height -> TalosLandErosion.height}
+     * {@code NoiseContinentGrid.height -> height -> TalosLandErosion.height}
      * 的转发，<b>包含 LEM 本身</b>。于是：
      * <pre>
      *   solve() -> precipField() -> elevationWithCell() -> ... -> TalosLandErosion.height()
@@ -2336,13 +2560,13 @@ public final class TalosLandErosion {
             for (int i = 0; i < W; i++) {
                 int k = j * W + i;
                 if (t.sea[k]) continue;
-                double dz = share * A * TalosLandField.riftProfile(ws, ox + i * STEP_BLK, wz, RIFT_SHOULDER);
+                double dz = share * A * riftProfile(ws, ox + i * STEP_BLK, wz, RIFT_SHOULDER);
                 // ★ 修法 D（待裁决/310）：N1b 也做海岸淡化（理由同 baseHeight：不得劈开大陆）
                 if (dz < 0.0) {
                     double hM = baseHeightRaw(ws, ox + i * STEP_BLK, wz);
                     if (hM > 0.0) {
-                        double ta = TalosLandField.OROG_COAST_TAPER_M > 0.0
-                                ? TalosLandField.smoothstep(0.0, TalosLandField.OROG_COAST_TAPER_M, hM) : 1.0;
+                        double ta = OROG_COAST_TAPER_M > 0.0
+                                ? smoothstep(0.0, OROG_COAST_TAPER_M, hM) : 1.0;
                         dz *= ta;
                     } else dz = 0.0;
                 }
@@ -2382,6 +2606,72 @@ public final class TalosLandErosion {
      * <p>★ 成本：每盆地一次 {@code annualPrecipMmPerYear} + 一次 {@code lakeEvapMmPerYear}，
      * 两者都是**瓦片内双线性插值**（E 在建气候瓦片时已顺手算好）⟹ 边际成本≈0。
      */
+    /** Async climate prefetch: off -> bit-identical behaviour. */
+    public static volatile boolean PREFETCH_ON = true;
+    /** Phase timers (diagnostics only): init / gate / ITER / post. */
+    public static final java.util.concurrent.atomic.AtomicLong PH_INIT =
+            new java.util.concurrent.atomic.AtomicLong();
+    public static final java.util.concurrent.atomic.AtomicLong PH_GATE =
+            new java.util.concurrent.atomic.AtomicLong();
+    public static final java.util.concurrent.atomic.AtomicLong PH_ITER =
+            new java.util.concurrent.atomic.AtomicLong();
+    private static long phT = 0L;
+    private static void ph(java.util.concurrent.atomic.AtomicLong acc) {
+        long now = System.nanoTime();
+        if (phT != 0L) acc.addAndGet(now - phT);
+        phT = now;
+    }
+
+    private static java.util.concurrent.ExecutorService PREFETCH;
+
+    private static synchronized java.util.concurrent.ExecutorService prefetchExec() {
+        if (PREFETCH == null) {
+            PREFETCH = java.util.concurrent.Executors.newSingleThreadExecutor(new java.util.concurrent.ThreadFactory() {
+                @Override public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "Talos-LEM-ClimPrefetch");
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
+        }
+        return PREFETCH;
+    }
+
+    /**
+     * Warm the climate tiles that {@link #solveLakeLevels} is going to ask for.
+     *
+     * <p>Each lake basin used to call {@code SimClimate} synchronously; a 512 km tile touches
+     * ~67 climate tiles (100 km x 50 km) at ~0.37 s each = ~25 s. That work is independent of
+     * the erosion iterations, so it is submitted here and overlaps the ITER loop (~26 s).
+     *
+     * <p>The lattice MUST match solveLakeLevels exactly (same CG / ncg / lo / +CG/2 offsets),
+     * otherwise the cache misses and the whole point is lost.
+     */
+    private static void prefetchClimate(final long ws, int tx, int tz, final double ox, final double oz) {
+        if (!PREFETCH_ON || !LAKE_SOLVE_ENABLED || !LAKES_ENABLED) return;
+        final int CG = Math.max(1, LAKE_CLIM_STEP_CELLS);
+        final int NS = OUT_CELLS;
+        final int ncg = (NS + CG - 1) / CG + 2;
+        final int lo = BUFFER_CELLS;
+        final int seed = (int) ws;
+        final double step = STEP_BLK;
+        try {
+            prefetchExec().submit(new Runnable() {
+                @Override public void run() {
+                    for (int cj = 0; cj < ncg; cj++) {
+                        for (int ci = 0; ci < ncg; ci++) {
+                            final int gi = lo + Math.min(NS - 1, ci * CG + CG / 2);
+                            final int gj = lo + Math.min(NS - 1, cj * CG + CG / 2);
+                            final double wx = ox + gi * step, wz = oz + gj * step;
+                            try { SimClimate.annualPrecipMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
+                            try { SimClimate.lakeEvapMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
+                        }
+                    }
+                }
+            });
+        } catch (Throwable ex) { /* prefetch is best-effort */ }
+    }
+
     private static void solveLakeLevels(long ws, Tile t, double ox, double oz) {
         if (!LAKE_SOLVE_ENABLED) return;
         final int W = t.W;
@@ -2392,6 +2682,34 @@ public final class TalosLandErosion {
         final int[] cells = new int[NS * NS];
         final double[] zs = new double[NS * NS];
         final boolean[] vis = new boolean[W * W];
+        // ---- coarse climate lattice for the lake P/E inputs ----
+        // Each basin used to call SimClimate.annualPrecipMmPerYear / lakeEvapMmPerYear,
+        // and ONE such call runs the whole planetary chain (stationary wave solve +
+        // soil-moisture spin-up + radiative skin temperature). With thousands of basins
+        // per 512 km tile this cost 85 s of a 105 s solve (JFR: Radiation.residual 55%).
+        // Sampling the same fields on a coarse lattice and interpolating keeps the lake
+        // physics but drops the query count by ~CG^2. Same pattern as precipField().
+        final int CG = Math.max(1, LAKE_CLIM_STEP_CELLS);
+        final int ncg = (NS + CG - 1) / CG + 2;
+        final double[] pg = new double[ncg * ncg];
+        final double[] eg = new double[ncg * ncg];
+        {
+            final long c0 = System.nanoTime();
+            for (int cj = 0; cj < ncg; cj++) {
+                for (int ci = 0; ci < ncg; ci++) {
+                    final int gi = lo + Math.min(NS - 1, ci * CG + CG / 2);
+                    final int gj = lo + Math.min(NS - 1, cj * CG + CG / 2);
+                    final double wx = ox + gi * STEP_BLK, wz = oz + gj * STEP_BLK;
+                    double pv = 0.0, ev = Double.NaN;
+                    try { pv = SimClimate.annualPrecipMmPerYear((int) wx, (int) wz, (int) ws); } catch (Throwable ex) { }
+                    try { ev = SimClimate.lakeEvapMmPerYear((int) wx, (int) wz, (int) ws); } catch (Throwable ex) { }
+                    pg[cj * ncg + ci] = pv;
+                    eg[cj * ncg + ci] = ev;
+                }
+            }
+            LAKE_CLIM_NANOS += System.nanoTime() - c0;
+        }
+
         for (int j = lo; j < hi; j++) {
             for (int i = lo; i < hi; i++) {
                 final int q0 = j * W + i;
@@ -2411,12 +2729,18 @@ public final class TalosLandErosion {
                     if (cj < hi - 1) { final int x = c + W; if (!vis[x] && !t.sea[x] && t.filled[x] - t.z[x] > LAKE_MIN_FILL) { vis[x] = true; st[sp++] = x; } }
                 }
                 final double aSpill = n;
-                final double bx = ox + (outlet % W) * STEP_BLK, bz = oz + (outlet / W) * STEP_BLK;
-                double P = 0.0, E = Double.NaN;
-                final long c0 = System.nanoTime();
-                try { P = SimClimate.annualPrecipMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
-                try { E = SimClimate.lakeEvapMmPerYear((int) bx, (int) bz, (int) ws); } catch (Throwable ex) { }
-                LAKE_CLIM_NANOS += System.nanoTime() - c0;
+                // bilinear lookup on the coarse lattice instead of a per-basin solve
+                final double gx = ((outlet % W) - lo) / (double) CG;
+                final double gz = ((outlet / W) - lo) / (double) CG;
+                int i0 = (int) Math.floor(gx), j0 = (int) Math.floor(gz);
+                double ax = gx - i0, az = gz - j0;
+                if (i0 < 0) { i0 = 0; ax = 0.0; } else if (i0 > ncg - 2) { i0 = ncg - 2; ax = 1.0; }
+                if (j0 < 0) { j0 = 0; az = 0.0; } else if (j0 > ncg - 2) { j0 = ncg - 2; az = 1.0; }
+                final int i1 = i0 + 1, j1 = j0 + 1;
+                final double P = (pg[j0 * ncg + i0] * (1 - ax) + pg[j0 * ncg + i1] * ax) * (1 - az)
+                        + (pg[j1 * ncg + i0] * (1 - ax) + pg[j1 * ncg + i1] * ax) * az;
+                final double E = (eg[j0 * ncg + i0] * (1 - ax) + eg[j0 * ncg + i1] * ax) * (1 - az)
+                        + (eg[j1 * ncg + i0] * (1 - ax) + eg[j1 * ncg + i1] * ax) * az;
                 final double inflow = P * accMax;
                 double aFin;
                 if (!(E > 0.0) || aSpill * E <= inflow) aFin = aSpill;
@@ -2494,6 +2818,10 @@ public final class TalosLandErosion {
                     double sl = (t.filled[k] - t.filled[nj * W + ni]) / DD[q];
                     if (sl > bs) { bs = sl; best = q; }
                 }
+                if (OPEN_BOUNDARY && (i == 0 || j == 0 || i == W - 1 || j == W - 1)) {
+                    t.dir[k] = DIR_OUT;   // free outlet: leaves the tile, dropped by accOf
+                    continue;
+                }
                 t.dir[k] = (byte) best;
             }
         }
@@ -2502,12 +2830,19 @@ public final class TalosLandErosion {
     private static void accOf(Tile t, int[] ord, int[] tmp, int[] cnt) {
         int W = t.W, N = W * W;
         Arrays.fill(t.acc, 0.0);
+        if (A0_SEED > 0.0) {
+            for (int j = 0; j < W; j++) {
+                for (int i = 0; i < W; i++) {
+                    if (i == 0 || j == 0 || i == W - 1 || j == W - 1) t.acc[j * W + i] = A0_SEED;
+                }
+            }
+        }
         orderDesc(t.filled, N, ord, tmp, cnt);
         for (int q = 0; q < N; q++) {
             int k = ord[q];
             t.acc[k] += 1.0;
             int d = t.dir[k];
-            if (d < 0) continue;
+            if (d < 0 || d >= 8) continue;   // sink, or drains out of the tile
             int ni = k % W + DX[d], nj = k / W + DZ[d];
             if (ni < 0 || ni >= W || nj < 0 || nj >= W) continue;
             t.acc[nj * W + ni] += t.acc[k];

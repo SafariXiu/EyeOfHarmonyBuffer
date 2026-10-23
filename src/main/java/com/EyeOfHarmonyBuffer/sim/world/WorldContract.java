@@ -27,6 +27,13 @@ public final class WorldContract {
      * UPWIND_STEP/SOURCE_FETCH_MAX）；**禁止再出现“半套缩放”**（R 去了 Ω 没去）。
      * <p>⚠ 地形特征尺度（{@code TalosLandField.SC}）也要跟它走，见该字段注释。
      */
+    /**
+     * ★★★★★★★ 永久定为 1.0（用户裁决 2026-10-23）：世界就是地球尺度。
+     *
+     * <p>下面的「×40 / 小世界」文字全部是**历史记录**（旧 Talos 是小行星）。
+     * 现在 40 只作为**论文的消融实验开关**保留：改这一个常数即可复现旧小世界
+     * （MAX_D=250,000、Ω×40、R_EFF=159 km），用来对照「行星缩 40 倍时物理怎么崩」。
+     */
     public static final double PLANET_SCALE = 1.0;
 
     /**

@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.circulation_layer;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
 /**

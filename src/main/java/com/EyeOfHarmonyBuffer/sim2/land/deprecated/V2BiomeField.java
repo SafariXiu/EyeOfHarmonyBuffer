@@ -1,6 +1,7 @@
-package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
+package com.EyeOfHarmonyBuffer.sim2.land.deprecated;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect;
+
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.util.WindowKey;
 
@@ -28,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 与 {@link V2BiomeSelect} 的关系：求解时逐格调用 {@code accumulateWeights}，
  * 口径完全一致；运行时只查表。
  */
+@Deprecated
 public final class V2BiomeField {
 
     /** 网格分辨率（blocks，250m）。 */
@@ -334,7 +336,7 @@ public final class V2BiomeField {
                 com.EyeOfHarmonyBuffer.sim.litho.PlateField.PLATE_CELL));
         }
         // ------------------------------------------------------------------------------
-        return sample(x, z, worldSeedInt, NoiseContinentGrid.isLand(x, z, worldSeedInt));
+        return sample(x, z, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand((double) x, (double) z, ((long) worldSeedInt) & 0xFFFFFFFFL));
     }
 
     /** 只取群系种类。 */

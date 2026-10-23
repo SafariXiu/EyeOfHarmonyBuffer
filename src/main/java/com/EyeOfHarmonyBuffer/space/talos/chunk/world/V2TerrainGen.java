@@ -1,8 +1,9 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
+import com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault;
+
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainProfile;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.PeriodicNoise;
@@ -26,6 +27,9 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  */
 @Frozen(reason = "重构冻结：地形生成等待海陆分布 v2", until = "refactor: landsea v2")
 public final class V2TerrainGen {
+
+    /** 海洋剖面饱和标尺（米）：旧 seaResidualScale 的等价常量。 */
+    public static final double SEA_SCALE_M = 6_000.0;
 
     private V2TerrainGen() {}
 
@@ -123,13 +127,14 @@ public final class V2TerrainGen {
     public static double landBaseHeight(int x, int z, int worldSeedInt, int seaLevel,
                                         OrographyField.OroSample o,
                                         double biomeBias, double biomeScale) {
-        LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
         double[] w = W.get();
-        w[0] = lf.low;
-        w[1] = lf.hill;
-        w[2] = lf.plat;
-        w[3] = lf.mtn;
-        w[4] = lf.peak;
+        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
+        w[0] = 0.55 * (1.0 - mMtn);
+        w[1] = 0.25 * (1.0 - mMtn);
+        w[2] = 0.10 * (1.0 - mMtn);
+        w[3] = 0.70 * mMtn;
+        w[4] = 0.30 * mMtn;
         BaseTerrainProfile profile = new BaseTerrainProfile();
         buildProfileFromWeights(w, false, seaLevel, profile);
         double h = TerrainBaseHeight.computeBaseHeightCore(x, z, worldSeedInt, profile,
@@ -153,13 +158,14 @@ public final class V2TerrainGen {
                                     OrographyField.OroSample o, double biomeBias, double biomeScale,
                                     double[] out) {
         // 地貌场（唯一权威）→ 五档权重 → 档案 → 高度
-        LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
         double[] w = W.get();
-        w[0] = lf.low;
-        w[1] = lf.hill;
-        w[2] = lf.plat;
-        w[3] = lf.mtn;
-        w[4] = lf.peak;
+        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
+        w[0] = 0.55 * (1.0 - mMtn);
+        w[1] = 0.25 * (1.0 - mMtn);
+        w[2] = 0.10 * (1.0 - mMtn);
+        w[3] = 0.70 * mMtn;
+        w[4] = 0.30 * mMtn;
         basePlainFromWeights(w, x, z, worldSeedInt, seaLevel, biomeBias, biomeScale, out);
     }
 
@@ -280,13 +286,14 @@ public final class V2TerrainGen {
     public static double landPlainHeight(int x, int z, int worldSeedInt, int seaLevel,
                                          OrographyField.OroSample o,
                                          double biomeBias, double biomeScale) {
-        LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
         double[] w = W.get();
-        w[0] = lf.low;
-        w[1] = lf.hill;
-        w[2] = lf.plat;
-        w[3] = lf.mtn;
-        w[4] = lf.peak;
+        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
+        w[0] = 0.55 * (1.0 - mMtn);
+        w[1] = 0.25 * (1.0 - mMtn);
+        w[2] = 0.10 * (1.0 - mMtn);
+        w[3] = 0.70 * mMtn;
+        w[4] = 0.30 * mMtn;
         BaseTerrainProfile profile = new BaseTerrainProfile();
         buildProfileFromWeights(w, true, seaLevel, profile);
         double h = TerrainBaseHeight.computeBaseHeightCore(x, z, worldSeedInt, profile,
@@ -564,7 +571,7 @@ public final class V2TerrainGen {
         //   ⚠ 本分支在 SimTerrain.TERRAIN_ON=true 时【不可达】（第 494 行提前返回）。
         c.auth = OrographyField.orogeny01(x, z, worldSeedInt);
         c.uplift = SimTerrain.ELEV_TO_BLK
-            * com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandField.OROG_MAX_M * c.auth;
+            * 0.0 * c.auth;
         c.hNoDetail = c.plain + (1.0 - c.auth) * c.mtnComp + c.auth * c.uplift;
         double mtnAmt = Math.max(c.auth, Math.min(1.0, c.mtnComp / DETAIL_MTNCOMP_SCALE));
         // ★ 旧山层的 slope01 随 MountainLayerV2 一起删除（新造山场没有独立的坡度场），
@@ -587,7 +594,7 @@ public final class V2TerrainGen {
     /** 同上，但群系高度倾向由本方法自己采（{@link V2BiomeField#sample}）。 */
     public static Column composeColumn(int x, int z, int worldSeedInt, int seaLevel,
                                        OrographyField.OroSample o, int maxY) {
-        V2BiomeField.Sample bs = V2BiomeField.sample(x, z, worldSeedInt, true);
+        TalosBiomeDefault.Sample bs = TalosBiomeDefault.sample(x, z, worldSeedInt, true);
         return composeColumn(x, z, worldSeedInt, seaLevel, o, bs.bias, bs.scale, maxY);
     }
 
@@ -644,8 +651,8 @@ public final class V2TerrainGen {
      * 近岸浅坡由残差连续斜坡给出，无需额外 shelf 项。
      */
     public static double seaDepthBlocks(int x, int z, int worldSeedInt) {
-        double r = NoiseContinentGrid.landResidual(x, z, worldSeedInt);   // r<0 = 海上
-        double a = -r / NoiseContinentGrid.seaResidualScale(worldSeedInt);
+        double r = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);   // r<0 = 海上
+        double a = -r / SEA_SCALE_M;
         double d = OCEAN_MIN_DEPTH + OCEAN_MAX_DEPTH * smoothstep(DEPTH_EDGE_LO, DEPTH_EDGE_HI, a);
         if (a > BASIN_EXTRA_AFTER) {
             double extra = (a - BASIN_EXTRA_AFTER) * BASIN_EXTRA_PER_UNIT;

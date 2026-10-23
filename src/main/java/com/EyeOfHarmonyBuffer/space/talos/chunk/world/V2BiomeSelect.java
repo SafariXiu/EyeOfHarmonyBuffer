@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.space.talos.chunk.world;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 
 /**
@@ -108,7 +107,7 @@ public final class V2BiomeSelect {
                                             double[] out) {
         if (!asLand) {
             long _c0 = System.nanoTime();
-            double cd = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
+            double cd = com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
             AW_NS[3] += System.nanoTime() - _c0;
             out[(cd < SHELF_BLOCKS ? Kind.SHELF : Kind.OCEAN).ordinal()] += 1.0;
             return 1.0;
@@ -152,9 +151,10 @@ public final class V2BiomeSelect {
 
         // Tier-2：地貌变体 —— 唯一权威是 LandformField（地形同源，不再自己定阈值）
         long _c2 = System.nanoTime();
-        LandformField.Sample lf = LandformField.sample(x, z, worldSeedInt);
+        double mtnW_v3 = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
+        double h0_v3 = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
         AW_NS[1] += System.nanoTime() - _c2;
-        double mtnW = lf.mtnAmt;
+        double mtnW = mtnW_v3;
         // 高山 = 真山 × 冷 × **常年有雪**。
         // ⚠ 审计 D73（2026-09-15）：这一项原来是**几何**雪线 `V2TerrainGen.snowLineY(z)` ——
         //   只看纬度与骨架高度 ⇒ 同一个「这里常年下不下雪」的问题，方块层按**温度**答
@@ -167,14 +167,14 @@ public final class V2BiomeSelect {
         double snow = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP
             ? (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.warmestMonthTempK(x, z, worldSeedInt)
                 < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_T ? 1.0 : 0.0)
-            : ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, lf.h0);
+            : ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, h0_v3);
         AW_NS[2] += System.nanoTime() - _c3;
         double alpineW = mtnW * ss(ALPINE_TEMP_HI, ALPINE_TEMP_LO, temp) * snow;
         double mtnOnlyW = mtnW - alpineW;
-        double platW = lf.plat * (1.0 - mtnW);
+        double platW = (0.15 + 0.25 * mtnW) * (1.0 - mtnW);   // V3: 台地权重由抬升场派生
         double basinW = ss(BASIN_INLAND_LO, BASIN_INLAND_HI, c.continent)
             * ss(BASIN_MOIST_LO, BASIN_MOIST_HI, c.moist)
-            * (1.0 - mtnW) * lf.low;
+            * (1.0 - mtnW) * (1.0 - mtnW);   // V3: 低地权重由抬升场派生
 
         // 两个维度做**混合**而不是竞争：地貌置信度 d ∈ [0,1] 决定谁说话
         //   final = (1−d)·气候 + 地貌
@@ -201,7 +201,7 @@ public final class V2BiomeSelect {
         Sel s = new Sel();
         s.isLand = oro.isLand;
         if (!oro.isLand) {
-            double cd = NoiseContinentGrid.coastDistBlocks(x, z, worldSeedInt);
+            double cd = com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
             set(s, cd < SHELF_BLOCKS ? Kind.SHELF : Kind.OCEAN);
             return s;
         }

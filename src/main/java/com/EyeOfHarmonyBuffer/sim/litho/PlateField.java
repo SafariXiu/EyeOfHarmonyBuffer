@@ -2,7 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.litho;
 
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGrid;
+import com.EyeOfHarmonyBuffer.sim2.land.LandContract;
 
 /**
  * ★ L1（地形/海陆 + 海岸）的**公开门面**与**度量钩子**。
@@ -32,7 +32,26 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.NoiseContinentGr
 @Frozen(reason = "重构冻结：海陆采样桥等待海陆分布 v2", until = "refactor: landsea v2")
 public final class PlateField {
 
+    /** 海平面高度（方块 Y）：从旧 LandformField 迁来。 */
+    public static final int SEA_LEVEL_BLK = 64;
+
+    /**
+     * 山地强度 [0,1]：由 V3 抬升场归一而来，替代旧 {@code LandformField.sample().mtnPlusPeak()}。
+     */
+    public static double mountainStrength(long ws, double x, double z) {
+        double u = com.EyeOfHarmonyBuffer.sim2.land.LandV3.uplift(ws, x, z)
+                 / com.EyeOfHarmonyBuffer.sim2.land.LandV3.U0;
+        if (u < 0.0) u = 0.0;
+        if (u > 1.0) u = 1.0;
+        return u;
+    }
+
     private PlateField() {}
+
+    /** ★ 新海陆层（sim2.land）总开关：默认关 ⟹ 逐位走旧路径。 */
+
+    /** LandV3 (paper tectonic model, sim2.land). Default off -> bit-identical legacy path. */
+    public static boolean LANDV3_ENABLED = true;
 
     // ==================== 常量 ====================
 
@@ -148,7 +167,7 @@ public final class PlateField {
      * ⟹ ★ 本常量今天只服务 {@link #elevation} 的**基准**与既有探针（P505）✓，
      * <b>改它不会改海岸线</b> ✗（2026-10-14 实测：抬阈值只淹没、不合并 ✓）。
      *
-     * <p>⚠⚠ <b>另注意同名不同义</b>：{@code LandformField.SEA_LEVEL_BLK} 与
+     * <p>⚠⚠ <b>另注意同名不同义</b>：{@code com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK} 与
      * {@code EmeraldThroneTerrain.SEA_LEVEL_BLK} 是 <b>64</b>（int，<b>MC 方块 y 坐标</b> ✓），
      * 与本常量（double，<b>米</b>）<b>单位与坐标系都不同</b> ✗ —— 引用时必须写全类名 ✓。
      */
@@ -236,7 +255,12 @@ public final class PlateField {
         //   ★ 原实现（半径 COAST_BLEND=800 km 的加权陆地占比）在本世界失效：
         //     特征只有 125 km、海洋无边 ⟹ 任何半径都采样到几乎全是海 ⟹ kappa 永不 > 0.5
         //   ★ 新：kappa 由高度派生（海平面 ⟹ 0.5，深海 ⟹ 0，内陆 ⟹ 1）
-        return NoiseContinentGrid.landScore(x, z, (int) seed);
+        if (LANDV3_ENABLED) {
+            double h = com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(seed, x, z);
+            double k = 0.5 + 0.5 * (h > 1000.0 ? 1.0 : (h < -1000.0 ? -1.0 : h / 1000.0));
+            return 2.0 * k - 1.0;
+        }
+        return 0.0;   // 旧 landScore 已移除（V3 无对应量，调用方只用正负）
     }
 
     /** 半径 radius 内的加权陆地占比，[0,1]。 */
@@ -278,7 +302,7 @@ public final class PlateField {
     public static double elevationWithCell(int x, int z, long seed, int cell) {
         // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）
         //   旧的 TalosField V8 生成器路径与 MASK/ELEV 钩子已删除（用户裁决：全接过去，更干净）
-        return NoiseContinentGrid.height(x, z, (int) seed);
+        return com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(seed, x, z);
     }
 
     /**
@@ -287,7 +311,7 @@ public final class PlateField {
      *     若强制取整会失去精度。旧 `TalosField.isLand` 是 `(double,double,long)`。
      */
     public static boolean isLand(double x, double z, long seed) {
-        return NoiseContinentGrid.isLand((int) Math.floor(x), (int) Math.floor(z), (int) seed);
+        return com.EyeOfHarmonyBuffer.sim2.land.LandV3.isLand(seed, x, z);
     }
 
     /**
@@ -323,7 +347,7 @@ public final class PlateField {
      */
     public static boolean isLandWithCell(int x, int z, long seed, int cell) {
         // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）
-        return NoiseContinentGrid.isLand(x, z, (int) seed);
+        return com.EyeOfHarmonyBuffer.sim2.land.LandV3.isLand(seed, x, z);
     }
 
     /**
@@ -352,13 +376,13 @@ public final class PlateField {
      */
     public static long configStamp() {
         long h = 0x9E3779B97F4A7C15L;
-        h = h * 31 + NoiseContinentGrid.configStamp();
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim2.land.LandV3.configStamp();
         h = h * 31 + 1L;   // 版本位：接入新海陆
         return h;
     }
 
     public static double coastDistanceNew(int x, int z, long seed, int cell, int maxSearch) {
         // ★★★★★★ 2026-10-08 接入新海陆：直接用新场的【有符号海岸距离】（比 8 射线二分更精确、更快）
-        return NoiseContinentGrid.coastDistBlocks(x, z, (int) seed);
+        return com.EyeOfHarmonyBuffer.sim2.land.LandV3.coastDist(seed, x, z);
     }
 }
