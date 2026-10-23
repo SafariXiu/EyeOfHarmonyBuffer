@@ -217,7 +217,7 @@ public final class PeriodicNoise {
         return gradientFbm2(seed, wx, wz, nx, nz, octaves);
     }
 
-    /** 周期脊状噪声 [0,1]（(1-|n|)²，归一化到 [0,1]；与 V2TerrainGen.ridged 同口径）。 */
+    /** 周期脊状噪声 [0,1]（(1-|n|)²，归一化到 [0,1]；与 TerrainComposer.ridged 同口径）。 */
     public static double ridged2(long seed, double x, double z, int nx, int nz, int octaves) {
         double sum = 0.0, amp = 1.0, norm = 0.0;
         int cx = nx, cz = nz;

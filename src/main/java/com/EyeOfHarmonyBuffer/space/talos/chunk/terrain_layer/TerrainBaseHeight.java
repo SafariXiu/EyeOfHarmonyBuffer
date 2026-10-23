@@ -32,7 +32,7 @@ public final class TerrainBaseHeight {
     /**
      * **V1 口径**的三层分解（位移增益固定 0.25、不做散布调制）。
      *
-     * 生产链**不用**这个重载：{@code V2TerrainGen} 的两处调用点走的都是下面带
+     * 生产链**不用**这个重载：{@code TerrainComposer} 的两处调用点走的都是下面带
      * {@code biomeScale} 的 6 参版本。这里保留是因为历史探针 {@code Mtn6} 靠它做
      * V1/V2 对照（它要的正是"位移增益 0.25"这个旧行为）。改动前先看那个探针还在不在。
      *

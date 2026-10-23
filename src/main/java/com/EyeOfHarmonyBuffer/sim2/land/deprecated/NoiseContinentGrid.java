@@ -158,7 +158,7 @@ public final class NoiseContinentGrid {
      *     <td>地形 kind 分档（LOWLAND/PLATEAU/…）</td>
      *     <td><b>否</b> —— 那是气候/群系层的大尺度分类</td></tr>
      * <tr><td>{@code ClimateCoords:114}</td><td>同上（转发）</td><td><b>否</b></td></tr>
-     * <tr><td>{@code V2TerrainGen:607}</td>
+     * <tr><td>{@code TerrainComposer:607}</td>
      *     <td>源码逐字注释「{@code r<0 = 海上}」⟹ <b>只用符号</b></td>
      *     <td><b>否</b> —— LEM 只重塑陆地细节，不改海陆分布</td></tr>
      * </table>

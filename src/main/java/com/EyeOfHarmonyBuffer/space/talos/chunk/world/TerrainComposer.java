@@ -26,12 +26,12 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * 纯函数、无 Minecraft 依赖。
  */
 @Frozen(reason = "重构冻结：地形生成等待海陆分布 v2", until = "refactor: landsea v2")
-public final class V2TerrainGen {
+public final class TerrainComposer {
 
     /** 海洋剖面饱和标尺（米）：旧 seaResidualScale 的等价常量。 */
     public static final double SEA_SCALE_M = 6_000.0;
 
-    private V2TerrainGen() {}
+    private TerrainComposer() {}
 
     // ===== 高度档案五档（全部共享同一组频率 → 权重插值无接缝；仅 带限/三层幅度/台地强度 不同） =====
 
@@ -109,88 +109,7 @@ public final class V2TerrainGen {
 
     // ===== 查询 =====
 
-    /**
-     * 陆地列基础高度（不含山层抬升；Provider 在其上按权威权重叠加 MountainLayerV2）。
-     * 权重全部来自类型场连续量 → 类型边界高度连续、无断崖。
-     */
-    public static double landBaseHeight(int x, int z, int worldSeedInt, int seaLevel,
-                                        OrographyField.OroSample o) {
-        return landBaseHeight(x, z, worldSeedInt, seaLevel, o, 0.5, 0.5);
-    }
-
-    /**
-     * 陆地列基础高度（含群系高度倾向，D38）。
-     *
-     * @param biomeBias  群系高度倾向 [0,1]（0=带底，1=带顶，0.5=中性）
-     * @param biomeScale 群系起伏散布比例（0.5=中性）
-     */
-    public static double landBaseHeight(int x, int z, int worldSeedInt, int seaLevel,
-                                        OrographyField.OroSample o,
-                                        double biomeBias, double biomeScale) {
-        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
-        double[] w = W.get();
-        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
-        w[0] = 0.55 * (1.0 - mMtn);
-        w[1] = 0.25 * (1.0 - mMtn);
-        w[2] = 0.10 * (1.0 - mMtn);
-        w[3] = 0.70 * mMtn;
-        w[4] = 0.30 * mMtn;
-        BaseTerrainProfile profile = new BaseTerrainProfile();
-        buildProfileFromWeights(w, false, seaLevel, profile);
-        double h = TerrainBaseHeight.computeBaseHeightCore(x, z, worldSeedInt, profile,
-            biomeBias, biomeScale);
-        // 中尺度脊线纹理：基础山地/峰档也要有 0.5~3km 的脊谷起伏，
-        // 否则"山"只是一块光滑的高地（Alpine 群系观感即来源于此）。
-        double mtnW = w[3] + w[4];
-        if (mtnW > 0.01) {
-            double tex = mountainTexture(textureSeed(worldSeedInt), x, z);
-            h += mtnTexAmp * mtnW * Math.pow(tex, mtnTexPow);
-        }
-        // 贴岸低地保险：陆地列不下探到海面以下（干盆地处理留待水系阶段）
-        return h < seaLevel + 1 ? seaLevel + 1 : h;
-    }
-
-    /**
-     * 一次算 base + plain（**共享三层噪声**，省约一半列耗时）。
-     * out[0] = base，out[1] = plain。调用方复用同一数组（每区块分配一次即可）。
-     */
-    public static void baseAndPlain(int x, int z, int worldSeedInt, int seaLevel,
-                                    OrographyField.OroSample o, double biomeBias, double biomeScale,
-                                    double[] out) {
-        // 地貌场（唯一权威）→ 五档权重 → 档案 → 高度
-        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
-        double[] w = W.get();
-        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
-        w[0] = 0.55 * (1.0 - mMtn);
-        w[1] = 0.25 * (1.0 - mMtn);
-        w[2] = 0.10 * (1.0 - mMtn);
-        w[3] = 0.70 * mMtn;
-        w[4] = 0.30 * mMtn;
-        basePlainFromWeights(w, x, z, worldSeedInt, seaLevel, biomeBias, biomeScale, out);
-    }
-
-    /** 由五档权重直接算 base/plain（地貌场求解与运行期共用，无 LUT 依赖）。 */
-    public static void basePlainFromWeights(double[] w, int x, int z, int worldSeedInt,
-                                            int seaLevel, double biomeBias, double biomeScale,
-                                            double[] out) {
-        Scratch sc = TL.get();
-        buildProfileFromWeights(w, false, seaLevel, sc.base);
-        buildProfileFromWeights(w, true, seaLevel, sc.plain);
-        TerrainBaseHeight.sampleNoise(x, z, worldSeedInt, sc.base, sc.noise);
-        double hb = TerrainBaseHeight.fromNoise(sc.base, sc.noise, biomeBias, biomeScale,
-            TerrainBaseHeight.BIOME_BIAS_GAIN);
-        double hp = TerrainBaseHeight.fromNoise(sc.plain, sc.noise, biomeBias, biomeScale,
-            TerrainBaseHeight.BIOME_BIAS_GAIN);
-        double mtnW = w[3] + w[4];
-        if (mtnW > 0.01) {
-            double tex = mountainTexture(textureSeed(worldSeedInt), x, z);
-            hb += mtnTexAmp * mtnW * Math.pow(tex, mtnTexPow);
-        }
-        out[0] = hb < seaLevel + 1 ? seaLevel + 1 : hb;
-        out[1] = hp < seaLevel + 1 ? seaLevel + 1 : hp;
-    }
-
-    private static final ThreadLocal<double[]> W = new ThreadLocal<double[]>() {
+                    private static final ThreadLocal<double[]> W = new ThreadLocal<double[]>() {
         @Override
         protected double[] initialValue() {
             return new double[5];
@@ -211,97 +130,7 @@ public final class V2TerrainGen {
         }
     };
 
-    /**
-     * 五档档案权重 → 档案参数。
-     * slim=true 时把 MOUNTAIN/PEAK 权重并入丘陵（瘦身版 plain 用）。
-     *
-     * 关键：山带走廊（relief/belt）覆盖面达陆地 5~6 成，若走廊整体抬到山地带，
-     * 低海拔走廊也会变成 110+ 的大山 → 中纬大面积雪白。故"走廊×高海拔"才成山
-     * （elevation01 只在此处作为"是否真山"的门槛连续量，不直接定高）；
-     * 低海拔走廊并入丘陵档（起伏放大但不长高）。
-     *
-     * @return 山地+峰权重（供中尺度纹理使用）
-     */
-    public static void buildProfileFromWeights(double[] w, boolean slim, int seaLevel,
-                                               BaseTerrainProfile profile) {
-        double wLow = w[0];
-        double wHill = w[1];
-        double wPlat = w[2];
-        double wMtn = w[3];
-        double wPeak = w[4];
-        if (slim) {
-            // 瘦身版：山地/峰权重并入丘陵（与 sum 完全等价）
-            wHill = wHill + wMtn + wPeak;
-            wMtn = 0.0;
-            wPeak = 0.0;
-        }
-
-        double minH = wLow * LOW[0] + wHill * HILL[0] + wPlat * PLATEAU[0]
-            + wMtn * MOUNTAIN[0] + wPeak * PEAK[0];
-        double maxH = wLow * LOW[1] + wHill * HILL[1] + wPlat * PLATEAU[1]
-            + wMtn * MOUNTAIN[1] + wPeak * PEAK[1];
-        double lowAmp = wLow * LOW[2] + wHill * HILL[2] + wPlat * PLATEAU[2]
-            + wMtn * MOUNTAIN[2] + wPeak * PEAK[2];
-        double midAmp = wLow * LOW[3] + wHill * HILL[3] + wPlat * PLATEAU[3]
-            + wMtn * MOUNTAIN[3] + wPeak * PEAK[3];
-        double plateauStrength = wLow * LOW[4] + wHill * HILL[4] + wPlat * PLATEAU[4]
-            + wMtn * MOUNTAIN[4] + wPeak * PEAK[4];
-
-        profile.minHeight = Math.max(seaLevel + 1, minH);
-        profile.maxHeight = Math.max(profile.minHeight + 4, maxH);
-        profile.lowFreq = LOW_FREQ;
-        profile.lowAmp = lowAmp;
-        profile.lowOctaves = 3;
-        profile.midFreq = MID_FREQ;
-        profile.midAmp = midAmp;
-        profile.midOctaves = 3;
-        profile.highFreq = HIGH_FREQ;
-        profile.highAmp = 5.0;
-        profile.highOctaves = 2;
-        profile.plateauStrength = plateauStrength;
-        profile.oceanDepthMax = 0.0;
-        profile.lowNX = LOW_NX; profile.lowNZ = LOW_NZ;
-        profile.lowWNX = LOW_WNX; profile.lowWNZ = LOW_WNZ;
-        profile.midNX = MID_NX; profile.midNZ = MID_NZ;
-        profile.midWNX = MID_WNX; profile.midWNZ = MID_WNZ;
-        profile.hiNX = HIGH_NX; profile.hiNZ = HIGH_NZ;
-        profile.hiWNX = HIGH_WNX; profile.hiWNZ = HIGH_WNZ;
-        // 大陆骨架频率**唯一来源**是 TerrainBaseHeight.CONTINENTAL_FREQ
-        // （这里原先又硬编码了一遍 1.0/8000.0 —— 两处各自漂移就会让"档案里预热的格数"
-        //   与"采样时用的格数"不一致，而且不会有任何报错）。
-        profile.contNX = PeriodicNoise.cellsXFromFreq(TerrainBaseHeight.CONTINENTAL_FREQ);
-        profile.contNZ = PeriodicNoise.cellsZFromFreq(TerrainBaseHeight.CONTINENTAL_FREQ);
-    }
-
-    /**
-     * 瘦身版基础地形（山层仲裁用，D34）：把 MOUNTAIN/PEAK 两档权重并入丘陵，
-     * 只保留 低地/丘陵/高原（上限约 122）。与 landBaseHeight 之差即基础山地贡献 mtnComp。
-     */
-    public static double landPlainHeight(int x, int z, int worldSeedInt, int seaLevel,
-                                         OrographyField.OroSample o) {
-        return landPlainHeight(x, z, worldSeedInt, seaLevel, o, 0.5, 0.5);
-    }
-
-    /** 瘦身版基础地形（含同一份群系高度倾向，保证 mtnComp = base − plain 干净）。 */
-    public static double landPlainHeight(int x, int z, int worldSeedInt, int seaLevel,
-                                         OrographyField.OroSample o,
-                                         double biomeBias, double biomeScale) {
-        double mMtn = com.EyeOfHarmonyBuffer.sim.litho.PlateField.mountainStrength(((long) worldSeedInt) & 0xFFFFFFFFL, x, z);
-        double[] w = W.get();
-        // V3: 山体权重由抬升场给出，其余按剩余份额分配（此路径仅在 TERRAIN_ON=false 时启用）
-        w[0] = 0.55 * (1.0 - mMtn);
-        w[1] = 0.25 * (1.0 - mMtn);
-        w[2] = 0.10 * (1.0 - mMtn);
-        w[3] = 0.70 * mMtn;
-        w[4] = 0.30 * mMtn;
-        BaseTerrainProfile profile = new BaseTerrainProfile();
-        buildProfileFromWeights(w, true, seaLevel, profile);
-        double h = TerrainBaseHeight.computeBaseHeightCore(x, z, worldSeedInt, profile,
-            biomeBias, biomeScale);
-        return h < seaLevel + 1 ? seaLevel + 1 : h;
-    }
-
-    // ==================== 块级合成高度：**唯一入口** ====================
+                // ==================== 块级合成高度：**唯一入口** ====================
 
     /**
      * Minecraft 1.7.10 的世界高度（= Provider 的 {@code getActualHeight()}）。
@@ -534,61 +363,9 @@ public final class V2TerrainGen {
     public static Column composeColumn(int x, int z, int worldSeedInt, int seaLevel,
                                        OrographyField.OroSample o,
                                        double biomeBias, double biomeScale, int maxY) {
-        Column c = COLUMN.get();
-        // ---- 新模拟器的运行时分派（§83）--------------------------------------------
-        // 这是本文件里**唯一**为接线而加的东西：一行分派。ENABLED=false 时，
-        // 下面每一行都与接线前**逐位相同**；旧实现一个方法、一个常量都没有改动或删除。
-        if (SimTerrain.TERRAIN_ON) {
-            return SimTerrain.compose(c, x, z, worldSeedInt, seaLevel, maxY);
-        }
-        // --------------------------------------------------------------------------
-        if (!o.isLand) {
-            c.land = false;
-            c.seaDepth = seaDepthBlocks(x, z, worldSeedInt);
-            c.base = 0.0;
-            c.plain = 0.0;
-            c.mtnComp = 0.0;
-            c.auth = 0.0;
-            c.uplift = 0.0;
-            c.detailStrength = 0.0;
-            c.hNoDetail = seaLevel - c.seaDepth;
-            c.hDetail = c.hNoDetail;
-            c.hCapped = c.hNoDetail;
-            int hs = (int) Math.round(c.hCapped);
-            c.h = hs < 1 ? 1 : (hs > maxY ? maxY : hs);
-            c.snow = false;
-            c.beach = false;
-            return c;
-        }
-        double[] bp = COMPOSE_BP.get();
-        baseAndPlain(x, z, worldSeedInt, seaLevel, o, biomeBias, biomeScale, bp);
-        c.land = true;
-        c.seaDepth = 0.0;
-        c.base = bp[0];
-        c.plain = bp[1];
-        c.mtnComp = c.base > c.plain ? c.base - c.plain : 0.0;
-        // ★★★★★★★ 2026-10-08：旧山脉层（MountainLayerV2）已删除，造山改由海陆分布层派生。
-        //   ⚠ 本分支在 SimTerrain.TERRAIN_ON=true 时【不可达】（第 494 行提前返回）。
-        c.auth = OrographyField.orogeny01(x, z, worldSeedInt);
-        c.uplift = SimTerrain.ELEV_TO_BLK
-            * 0.0 * c.auth;
-        c.hNoDetail = c.plain + (1.0 - c.auth) * c.mtnComp + c.auth * c.uplift;
-        double mtnAmt = Math.max(c.auth, Math.min(1.0, c.mtnComp / DETAIL_MTNCOMP_SCALE));
-        // ★ 旧山层的 slope01 随 MountainLayerV2 一起删除（新造山场没有独立的坡度场），
-        //   取 0 ⟹ detailStrength = mtnAmt（原为 mtnAmt*(1+0.8*slope)）。
-        double slope01 = 0.0;
-        c.detailStrength = Math.min(1.0, mtnAmt * (1.00 + DETAIL_SLOPE_GAIN * slope01));
-        c.hDetail = c.hNoDetail + mountainDetail(x, z, worldSeedInt, c.detailStrength);
-        c.hCapped = c.hDetail;
-        if (c.hCapped > SOFT_CAP_H - 6.0 * SOFT_CAP_K) {
-            c.hCapped = SOFT_CAP_H - SOFT_CAP_K
-                * Math.log1p(Math.exp((SOFT_CAP_H - c.hCapped) / SOFT_CAP_K));
-        }
-        int h = (int) Math.round(c.hCapped);
-        c.h = h < 1 ? 1 : (h > maxY ? maxY : h);
-        c.snow = c.hCapped >= snowLineY(z);
-        c.beach = !c.snow && isBeachLand(o, c.hCapped, seaLevel);
-        return c;
+        // V2 地形合成路径已删除：地形唯一来源是 SimTerrain（V3 海陆）。
+        // 参数 o / biomeBias / biomeScale 保留只为兼容既有调用点。
+        return SimTerrain.compose(COLUMN.get(), x, z, worldSeedInt, seaLevel, maxY);
     }
 
     /** 同上，但群系高度倾向由本方法自己采（{@link V2BiomeField#sample}）。 */
@@ -612,41 +389,7 @@ public final class V2TerrainGen {
         return (r1 * 24.0 + r2 * 10.0) * (0.15 + 0.85 * s);
     }
 
-    /**
-     * 中尺度脊线纹理的**唯一**种子来源。
-     *
-     * 这里曾经是两套：{@code V2TerrainGen} 自己乘 {@code 0x9E3779B97F4A7C15L}，
-     * 而 {@code MountainLayerV2.ridgeTexture} 传的是**裸种子** —— 于是同一句注释
-     * （"山层与基础山地共用同一套频谱、脊线对齐"）在两边其实是**两个不同的噪声实现**，
-     * 山带的脊线和它所在那块高地的脊线根本对不上，过渡处自然也就谈不上自然。
-     * 现在乘法常量只活在这一个方法里，两处调用点都从这里取，物理上不可能再漂。
-     */
-    public static long textureSeed(int worldSeedInt) {
-        return worldSeedInt * 0x9E3779B97F4A7C15L;
-    }
-
-    /**
-     * 中尺度山体纹理（λ ≈ 3k / 1.2k / 480m，ridged，返回 0..1）：
-     * 山层（MountainLayerV2）与基础山地共用同一套频谱，保证"只要成山就有脊谷"。
-     *
-     * @param seed 必须来自 {@link #textureSeed(int)} —— 直接传裸种子会拿到另一套噪声。
-     */
-    public static double mountainTexture(long seed, double x, double z) {
-        double sum = 0.0, norm = 0.0, amp = 1.0, f = mtnTexFreq;
-        for (int o = 0; o < 3; o++) {
-            double n = PeriodicNoise.gradientFbm2(seed + o * 0x51ED270BL, x, z,
-                PeriodicNoise.cellsXFromFreq(f), PeriodicNoise.cellsZFromFreq(f), 2);
-            double r = 1.0 - Math.abs(n * 0.7);
-            if (r < 0.0) r = 0.0;
-            sum += amp * r * r;
-            norm += amp;
-            amp *= o == 0 ? 1.0 : 0.70;
-            f *= 2.5;
-        }
-        return sum / norm;
-    }
-
-    /**
+            /**
      * 海洋列水深（blocks，>0）：海盆带（残差 q93 归一，D30 公式）+ 中频海床起伏。
      * 近岸浅坡由残差连续斜坡给出，无需额外 shelf 项。
      */
@@ -665,12 +408,7 @@ public final class V2TerrainGen {
         return d;
     }
 
-    /** 陆侧贴岸低地是否为沙滩带（surfaceY ≤ 海面+5 才铺沙，防止山岸变沙）。 */
-    public static boolean isBeachLand(OrographyField.OroSample o, double surfaceY, int seaLevel) {
-        return o.coastDist > -BEACH_LAND_BLOCKS && surfaceY <= seaLevel + 5.0;
-    }
-
-    /** 该纬度雪线高度（赤道 {@link #SNOW_EQUATOR_Y} / 极地 {@link #SNOW_POLE_Y} 线性插值；bandD：0=赤道 1=极地）。 */
+        /** 该纬度雪线高度（赤道 {@link #SNOW_EQUATOR_Y} / 极地 {@link #SNOW_POLE_Y} 线性插值；bandD：0=赤道 1=极地）。 */
     public static double snowLineY(int worldZ) {
         // ⚠ 2026-09-13 修正（审计 D17）：原来用 GlobalCirculation.bandD —— 那条链的纬度周期是
         // ClimateLatitudes.LAT_CYCLE = 1_000_000，而世界契约 WorldContract.Z_CYCLE = 20_000_000，

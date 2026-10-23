@@ -156,7 +156,7 @@ public final class V2BiomeSelect {
         AW_NS[1] += System.nanoTime() - _c2;
         double mtnW = mtnW_v3;
         // 高山 = 真山 × 冷 × **常年有雪**。
-        // ⚠ 审计 D73（2026-09-15）：这一项原来是**几何**雪线 `V2TerrainGen.snowLineY(z)` ——
+        // ⚠ 审计 D73（2026-09-15）：这一项原来是**几何**雪线 `TerrainComposer.snowLineY(z)` ——
         //   只看纬度与骨架高度 ⇒ 同一个「这里常年下不下雪」的问题，方块层按**温度**答
         //   （SimTerrain.compose 用 `warmestMonthTempK < SNOW_T`，§98 已按物理改过），
         //   群系层却按**纬度高度**答 ⇒ 两套口径，必然出现「群系说高山雪原、方块层不铺雪」这类格子。
@@ -167,7 +167,7 @@ public final class V2BiomeSelect {
         double snow = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_FROM_TEMP
             ? (com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.warmestMonthTempK(x, z, worldSeedInt)
                 < com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.SNOW_T ? 1.0 : 0.0)
-            : ss(V2TerrainGen.snowLineY(z), V2TerrainGen.snowLineY(z) + 30.0, h0_v3);
+            : ss(TerrainComposer.snowLineY(z), TerrainComposer.snowLineY(z) + 30.0, h0_v3);
         AW_NS[2] += System.nanoTime() - _c3;
         double alpineW = mtnW * ss(ALPINE_TEMP_HI, ALPINE_TEMP_LO, temp) * snow;
         double mtnOnlyW = mtnW - alpineW;

@@ -5,7 +5,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.util.LongDblMap;
 import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
 import com.EyeOfHarmonyBuffer.sim.erosion.ErosionFilter;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
@@ -15,7 +15,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
  * **新模拟器 → 世界的运行时桥**（纵向切片第 1 步：地形）。
  *
  * <h3>为什么是这个形状</h3>
- * 旧实现里 {@code V2TerrainGen.composeColumn} 被称为「**块级合成高度的唯一入口**」
+ * 旧实现里 {@code TerrainComposer.composeColumn} 被称为「**块级合成高度的唯一入口**」
  * （生产、/talosmap、/talos_here 三处都走它）。所以接线只需要在**那一个点**做一次分派，
  * 旧路径在 {@link #TERRAIN_ON} 为 false 时**一行都不变**。
  *
@@ -165,8 +165,8 @@ public final class SimTerrain {
     // 【停掉的是】海陆分布层 elev 之上的【一切噪声起伏】：
     //   · DETAIL_ENABLED=false   ⟹ 停 `detailBlocks`（DetailNoise.fbmRot，220 格 / 5.8 格）
     //   · SEABED_ENABLED=false   ⟹ 停 `SEABED_RELIEF`（vnoise，880 格 / 3 格，仅海洋）
-    //   · 侵蚀本来就已关（V2TerrainGen.EROSION_ENABLED=false）
-    //   · `V2TerrainGen.baseAndPlain` / `TerrainBaseHeight`（旧系统的 PeriodicNoise
+    //   · 侵蚀本来就已关（TerrainComposer.EROSION_ENABLED=false）
+    //   · `TerrainComposer.baseAndPlain` / `TerrainBaseHeight`（旧系统的 PeriodicNoise
     //     频率分层）本来就是【死代码】—— `SimTerrain.TERRAIN_ON=true` 时 composeColumn
     //     提前返回，那条路一行都不走。
     //
@@ -214,7 +214,7 @@ public final class SimTerrain {
     //   让峰顶落在 240 附近而不是撞 maxY=254 上限）。
     public static double OROG_UPLIFT_BLK = 130.0;
     /**
-     * 造山带【内部起伏】的幅度系数（× V2TerrainGen.mountainDetail 的输出）。
+     * 造山带【内部起伏】的幅度系数（× TerrainComposer.mountainDetail 的输出）。
      * <p>mountainDetail 的原始幅度约 34 格（r1*24 + r2*10）⟹ 1.0 时山带内部起伏 ±34 格。
      */
     public static double OROG_DETAIL_BLK = 1.0;
@@ -308,19 +308,19 @@ public final class SimTerrain {
      *
      * <p>⚠ 这两个值是<b>标定量</b>（与 {@code LAKE_MIN_DEPTH_M} 同性质），不是逐字常数。
      */
-    public static double FADE_VALLEY_BLK = 0.36 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
+    public static double FADE_VALLEY_BLK = 0.36 * ((TerrainComposer.SOFT_CAP_H - 64.0));
     /** 见 {@link #FADE_VALLEY_BLK}。 */
-    public static double FADE_PEAK_BLK = 1.306 * ((V2TerrainGen.SOFT_CAP_H - 64.0));
+    public static double FADE_PEAK_BLK = 1.306 * ((TerrainComposer.SOFT_CAP_H - 64.0));
     /** **海洋垂直增益（blocks/m）**：−5,377 m 的深海平原 -> 约 56 blocks。 */
     public static double OCEAN_GAIN = 0.0105;
     /**
      * 深海平原的块级起伏（blocks）。
      *
      * <p>⚠⚠ <b>2026-10-14 审查（阶段 3 · 重复常量扫描）：与
-     * {@link com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen#SEABED_RELIEF}
+     * {@link com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer#SEABED_RELIEF}
      * <b>是同一物理量的两份独立定义</b></b> ✗（两处都是 3.0 ✓，但一个是可变、一个是 final ✗）。
      * 两处负责的是**不同阶段**的海床起伏（本处 = SimTerrain 的合成 ✓；
-     * V2TerrainGen = 海岸剖面里的中频起伏 ✓）⟹ 值相同**是刻意的**✓，但**不是强制**✗。
+     * TerrainComposer = 海岸剖面里的中频起伏 ✓）⟹ 值相同**是刻意的**✓，但**不是强制**✗。
      * ⟹ ★ 改动其一时**必须同步另一处** ✓；引用时写全类名 ✓。
      */
     public static double SEABED_RELIEF = 3.0;
@@ -400,7 +400,7 @@ public final class SimTerrain {
      *   T_warm = T_annual + A(phi, kappa)      （季节项 A*cos(theta - psi) 的极大值）
      * </pre>
      */
-    /** 每线程一份的 scratch：**不能**用可变静态（跨线程共享），见 V2TerrainGen 里那条同族注记。 */
+    /** 每线程一份的 scratch：**不能**用可变静态（跨线程共享），见 TerrainComposer 里那条同族注记。 */
     private static final ThreadLocal<double[]> KAPPA3 = ThreadLocal.withInitial(() -> new double[3]);
     /** §7716：侵蚀的梯度 scratch（[0]=dx, [1]=dz）。 */
     private static final ThreadLocal<double[]> ERO_GRAD = ThreadLocal.withInitial(() -> new double[2]);
@@ -505,7 +505,7 @@ public final class SimTerrain {
     public static double ERO_DIR_JITTER = 0.0;
 
     /** 方向扰动场的波长（block）。取 cell 尺度。 */
-    public static double ERO_DIR_WL = 0.105 * V2TerrainGen.ERO_UNIT;
+    public static double ERO_DIR_WL = 0.105 * TerrainComposer.ERO_UNIT;
 
     /**
      * §7745: 用【真实地形梯度方向】替换噪声方向的比例，0..1。0 = 关闭（逐位回退）。
@@ -536,7 +536,7 @@ public final class SimTerrain {
      * <b>坡度采样的半宽（block）。</b>取侵蚀输入的 cell 尺度（{@code 0.105 x ERO_UNIT}），
      * 即「侵蚀滤镜自己看见的那个坡度」—— 自洽，不是新旋钮。
      */
-    public static double EXTRA_SLOPE_HALF = 0.105 * V2TerrainGen.ERO_UNIT;
+    public static double EXTRA_SLOPE_HALF = 0.105 * TerrainComposer.ERO_UNIT;
 
     /**
      * <b>坡度掩膜的上下阈值。</b>掩膜 = smoothstep(LO, HI, 坡度)，坡度单位 m/m。
@@ -669,7 +669,7 @@ public final class SimTerrain {
 
     /**
      * 把新模拟器的地形写进旧实现的列容器。**只写字段，不分配、不返回新对象**
-     * （{@code Column} 是每线程复用的容器，见 V2TerrainGen 的纪律）。
+     * （{@code Column} 是每线程复用的容器，见 TerrainComposer 的纪律）。
      *
      * <p>⚠⚠ <b>调用前必读（审计 D38，2026-09-13）</b>：陆地分支会调
      * {@link #warmestMonthTempK} → {@link SimClimate}，而 SimClimate 是<b>按瓦片（100x50 km）缓存</b>的
@@ -683,7 +683,7 @@ public final class SimTerrain {
      * 它只写 {@code c.snow}，对 {@code c.land}/{@code c.h}/{@code c.hCapped} 等**完全无影响**，
      * 因此是<b>口径中性</b>的（P294/P295 就是这么修的）。
      */
-    public static V2TerrainGen.Column compose(V2TerrainGen.Column c, int x, int z,
+    public static TerrainComposer.Column compose(TerrainComposer.Column c, int x, int z,
                                               int worldSeedInt, int seaLevel, int maxY) {
         long seed = seedOf(worldSeedInt);
         int cell = PlateField.PLATE_CELL;
@@ -747,9 +747,9 @@ public final class SimTerrain {
             //   ⟹ 地形 = 64 + 0.018*(剖面 + 7500*orogeny) 是一个【纯光滑场】
             //   ⟹ 山带渲染出来是一条光溜溜的等宽蠕虫（用户实测观感）。
             //   真实的造山带内部有山峰、沟谷、平行山脊，尺度 200~1100 m。
-            //   这里用 V2TerrainGen.mountainDetail（λ 210~1100 m 的 ridged 噪声），
+            //   这里用 TerrainComposer.mountainDetail（λ 210~1100 m 的 ridged 噪声），
             //   强度取 orogeny01 ⟹ 平原上恒为 0（mountainDetail 内部有 s<=0.01 的快速返回）。
-            double orogDet = V2TerrainGen.mountainDetail(x, z, worldSeedInt, orog);
+            double orogDet = TerrainComposer.mountainDetail(x, z, worldSeedInt, orog);
             double hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * hM + OROG_DETAIL_BLK * orogDet;
             boolean landCF = sig >= 0.0;
             c.land = landCF;
@@ -801,7 +801,7 @@ public final class SimTerrain {
         final double hNo = RAW_ELEV_MODE
             ? elev
             : softCapTo(seaLevel + LAND_BASE_OFFSET + ELEV_TO_BLK * elev,
-                        V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K);
+                        TerrainComposer.SOFT_CAP_H, TerrainComposer.SOFT_CAP_K);
         c.base = hNo;
         c.hNoDetail = hNo;
         // 块级细节：只在陆地上加，振幅恒定（宏观起伏已由 dh 承担）
@@ -810,7 +810,7 @@ public final class SimTerrain {
         double hDet = hNo + d;
 
         // ============ §7716：Runevision 侵蚀滤镜（MPL 2.0 移植）============
-        // 【为什么在这里】：V2TerrainGen.composeColumn 在 :422 会因
+        // 【为什么在这里】：TerrainComposer.composeColumn 在 :422 会因
         // SimTerrain.TERRAIN_ON=true 提前返回，所以那里注入是死代码。
         // 本方法才是 MC 实际走的地形合成路径。
         //
@@ -820,12 +820,12 @@ public final class SimTerrain {
         //   · §7714：value noise（TerrainNoise.fbm2D）有 45 度晶格偏置（aniso=1.327），
         //            会留下斜向条带 ⇒ 必须用 Simplex + 每 octave 旋转黄金角（aniso=1.108）。
         // 【归一化口径】：DetailNoise.fbmRot 输出约 [-1,1] ⟹ 无需再归一化。
-        if (V2TerrainGen.EROSION_ENABLED) {
-            long eroSeed = (long) worldSeedInt ^ V2TerrainGen.ERO_SEED_XOR;
+        if (TerrainComposer.EROSION_ENABLED) {
+            long eroSeed = (long) worldSeedInt ^ TerrainComposer.ERO_SEED_XOR;
             double[] eg = ERO_GRAD.get();
             // ★ §7722：用【ridge 化】的梯度（raw fBm 只造圆丘，不造山脊）
-            DetailNoise.gradRidged(eroSeed, x, z, 1.0, V2TerrainGen.ERO_OCT,
-                                   V2TerrainGen.ERO_WL0, V2TerrainGen.ERO_UNIT, eg);
+            DetailNoise.gradRidged(eroSeed, x, z, 1.0, TerrainComposer.ERO_OCT,
+                                   TerrainComposer.ERO_WL0, TerrainComposer.ERO_UNIT, eg);
             // ★ §7743：把「细节层自己的梯度」换算到「被侵蚀高度场」的量纲。
             //   不做这一步 combiMask 会塌到 0.0002，沟壑项被整体压掉（P1411 实测）。
             eg[0] *= ERO_GRAD_SCALE;
@@ -876,17 +876,17 @@ public final class SimTerrain {
              //   ★ 2026-10-14 审查更正（约定 4/9）：原文写"远小于 HF_WL_MIN 46.9 km 的一半"✗✗，
              //     HF_WL_MIN 的真值是 **732.42 m**（PlateField:166 = 3e6/2^12 ✓）⟹
              //     4 km 其实【大于】它 ✗ ⟹ 原句方向完全反了 ✓。
-             //     同一错误值另见 V2TerrainGen:341 ✓（本轮一并更正 ✓）。
+             //     同一错误值另见 TerrainComposer:341 ✓（本轮一并更正 ✓）。
              //     按约定 9：本轮只更正数值 ✗，**不擅自断言**"4 km 到底读到了什么" ✓；
             //   所以它读到的是【地形骨架的梯度】，不含细节噪声。
-            if (V2TerrainGen.ERO_REAL_GRAD > 0.0) {
+            if (TerrainComposer.ERO_REAL_GRAD > 0.0) {
                 final int GS = 4000;
                 double ex1 = PlateField.elevationWithCell(x + GS, z, seed, cell);
                 double ex0 = PlateField.elevationWithCell(x - GS, z, seed, cell);
                 double ez1 = PlateField.elevationWithCell(x, z + GS, seed, cell);
                 double ez0 = PlateField.elevationWithCell(x, z - GS, seed, cell);
                 // 米 -> 格：乘 ERO_M_TO_BLK（§7552 起独立于 ELEV_TO_BLK）；再乘 ERO_UNIT/(2*GS) 换到 d(h)/d(worldUnit)
-                double k = V2TerrainGen.ERO_REAL_GRAD * ERO_M_TO_BLK * V2TerrainGen.ERO_UNIT / (2.0 * GS);
+                double k = TerrainComposer.ERO_REAL_GRAD * ERO_M_TO_BLK * TerrainComposer.ERO_UNIT / (2.0 * GS);
                 eg[0] += (ex1 - ex0) * k;
                 eg[1] += (ez1 - ez0) * k;
             }
@@ -908,8 +908,8 @@ public final class SimTerrain {
             double ft = 2.0 * Math.min(1.0, Math.max(0.0,
                         (hNo - FADE_VALLEY_BLK) / (FADE_PEAK_BLK - FADE_VALLEY_BLK))) - 1.0;
             double dh = ErosionFilter.erosion(
-                    x / V2TerrainGen.ERO_UNIT, z / V2TerrainGen.ERO_UNIT, eg[0], eg[1], ft,
-                    V2TerrainGen.ERO_STRENGTH, 0.5, 1.5);
+                    x / TerrainComposer.ERO_UNIT, z / TerrainComposer.ERO_UNIT, eg[0], eg[1], ft,
+                    TerrainComposer.ERO_STRENGTH, 0.5, 1.5);
             // ★ §7723：【只在【山地】启用侵蚀】，而不是全世界。
             //   门控 = LandformField.Sample.mtnPlusPeak()
             //        = belt * smoothstep(0.22, 0.60, elevation01)   ∈ [0,1]
@@ -922,14 +922,14 @@ public final class SimTerrain {
             // ★ §7727：整体【下移】（ERO_SINK），让侵蚀只往下挖、不往上堆。
             //   不下移时正偏移会把地形抬过 SOFT_CAP_H ⟹ 被压成平台 ⟹ 图上出现平滑长曲线。
             double gateEff = ERO_GATE_FLOOR + (1.0 - ERO_GATE_FLOOR) * gate;
-        hDet += dh * V2TerrainGen.ERO_AMP * gateEff - V2TerrainGen.ERO_SINK * gateEff;
+        hDet += dh * TerrainComposer.ERO_AMP * gateEff - TerrainComposer.ERO_SINK * gateEff;
         }
 
         c.hDetail = hDet;
         // ★ 原始模式：硬夹到 [1, maxY-2]，不用 softCap（软上限会把高处压平）
         double hCap = RAW_ELEV_MODE ? Math.min(hDet, maxY - 2) : softCap(hDet);
         // ⚠ 2026-09-13 修正（审计 D19）：补回旧实现三处都有的「贴岸低地保险」
-        //   V2TerrainGen:133 / :171-172 / :282 都是  h < seaLevel + 1 ? seaLevel + 1 : h。
+        //   TerrainComposer:133 / :171-172 / :282 都是  h < seaLevel + 1 ? seaLevel + 1 : h。
         // 新链路漏了它，而块级细节噪声（|d| < 1.45*DETAIL_AMP = 5.8 格）**没有海岸淡化**、
         // 直接加在 seaLevel 上 ⇒ elev < 268 m 的陆地列都可能落到海平面以下；
         // 与「ChunkProviderTalos2.fillLandColumnV2 不铺水」叠加就是**海面下的干坑**。
@@ -978,7 +978,7 @@ public final class SimTerrain {
     static int clampY(int y, int maxY) { return y < 1 ? 1 : (y > maxY ? maxY : y); }
 
     /**
-     * 软封顶 —— **与旧实现逐位同式**（V2TerrainGen.composeColumn 里那段 softplus）。
+     * 软封顶 —— **与旧实现逐位同式**（TerrainComposer.composeColumn 里那段 softplus）。
      *
      * <pre>
      *   hCapped = SOFT_CAP_H - SOFT_CAP_K * log1p(exp((SOFT_CAP_H - h) / SOFT_CAP_K))
@@ -986,7 +986,7 @@ public final class SimTerrain {
      * 它是 softplus 的补：处处连续（在 h = SOFT_CAP_H - 6*SOFT_CAP_K 处两侧同值），
      * 旧的 `if` 只是**远离封顶时跳过昂贵 exp 的性能守卫**，不是物理阈值。
      */
-    static double softCap(double h) { return softCapTo(h, V2TerrainGen.SOFT_CAP_H, V2TerrainGen.SOFT_CAP_K); }
+    static double softCap(double h) { return softCapTo(h, TerrainComposer.SOFT_CAP_H, TerrainComposer.SOFT_CAP_K); }
 
     /** 通用软封顶：单调、处处 C∞、以 `cap` 为渐近值。 */
     static double softCapTo(double h, double cap, double k) {

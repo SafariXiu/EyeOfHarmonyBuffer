@@ -183,7 +183,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
     /**
      * V2 轨方块铺设（integration-worklist T1.3）：每列一次 OrographyField.sample →
-     * 高度映射（V2TerrainGen，D30）→ 按 isLand 铺方块。
+     * 高度映射（TerrainComposer，D30）→ 按 isLand 铺方块。
      * 海洋：海床由海残差深度映射；陆地：基岩 + 岩性变体 + 表层（群系 profile / 沙滩 / 雪）。
      * 无河网/湖（T3.4）、无洞穴（T3.2）、水面 = 海平面（T3.1 水场 v1）。
      */
@@ -207,7 +207,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
 
                 OrographyField.OroSample oro = OrographyField.sample(worldX, worldZ, seed);
                 // ⚠ 2026-09-13 修正（审计 D16-a）：方块海陆判定从**旧场** OrographyField.isLand
-                // 改成**新场** PlateField —— 与群系（V2BiomeField:332）和高度（V2TerrainGen:369）
+                // 改成**新场** PlateField —— 与群系（V2BiomeField:332）和高度（TerrainComposer:369）
                 // 同源。两个场实测错位 38~57%（V2BiomeField:326-331 的自述），
                 // 错位的方向正是最坏的：「旧说陆 / 新说海」走 fillLandColumnV2，
                 // 高度取 SimTerrain 的**海洋分支**，而该函数**不铺水** ⇒ 海面下的干坑。
@@ -224,10 +224,10 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                     fillLandColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, oro, rf);
                 } else {
                     // ⚠ 2026-09-13 修正（审计 D16-b）：海列的海床原来取自**旧场**的
-                    // V2TerrainGen.seaDepthBlocks —— 于是「海陆判定用新场、海床用旧场」，
+                    // TerrainComposer.seaDepthBlocks —— 于是「海陆判定用新场、海床用旧场」，
                     // 同一列两套口径。现在改成**同一个列高来源** composeColumn().h，
                     // 两种 ENABLED 状态下都与地形场逐位一致。
-                    V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+                    TerrainComposer.Column col = TerrainComposer.composeColumn(
                         worldX, worldZ, seed, seaLevel, oro, 0.5, 0.5, worldHeight - 2);
                     fillSeaColumnV2(blocks, meta, localX, localZ, worldX, worldZ, seed, seaLevel, col.h, rf);
                 }
@@ -235,7 +235,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         }
     }
 
-    /** V2 轨陆地列：高度 = V2TerrainGen 映射（单次成型，无宏包/河网子级）。 */
+    /** V2 轨陆地列：高度 = TerrainComposer 映射（单次成型，无宏包/河网子级）。 */
     private void fillLandColumnV2(Block[] blocks, byte[] meta,
                                   int localX, int localZ, int worldX, int worldZ,
                                   int seed, int seaLevel, OrographyField.OroSample oro,
@@ -246,12 +246,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
                 com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault.Sample bs =
                         com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault.sample(worldX, worldZ, seed, true);
         final V2BiomeSelect.Kind bKind = bs.kind;
-        // V2 高度链（D34/D38）：**唯一入口** V2TerrainGen.composeColumn。
+        // V2 高度链（D34/D38）：**唯一入口** TerrainComposer.composeColumn。
         // 口径 = 群系 bias/scale → 基础地形分解(name=plain/mtnComp) → 山层权威权重 w 仲裁
         //        → 块级细节（强度随山体强度并按山层坡度调制）→ 软封顶。
         // 立刻把要用的字段拷进局部变量：composeColumn 返回的是**每线程复用对象**，
         // 而下面的 columnSlope() 会连着调它 4 次（会覆盖这个对象）。
-        V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+        TerrainComposer.Column col = TerrainComposer.composeColumn(
             worldX, worldZ, seed, seaLevel, oro, bs.bias, bs.scale, worldHeight - 2);
         final double hD = col.hCapped;
         final int h = col.h;
@@ -382,7 +382,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
      */
     private double columnHeight(int x, int z, int seed, int seaLevel) {
         OrographyField.OroSample o = OrographyField.sample(x, z, seed);
-        return V2TerrainGen.composeColumn(x, z, seed, seaLevel, o, worldHeight - 2).hDetail;
+        return TerrainComposer.composeColumn(x, z, seed, seaLevel, o, worldHeight - 2).hDetail;
     }
 
     /** V2 轨海洋列：海床深度 = 海残差映射；浅海沙/砂砾底，深海直接岩性变体；水面 = 海平面。 */
@@ -405,12 +405,12 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         for (int y = 1; y <= seabed; y++) {
             BlockMetaPair pair = null;
             if (y == seabed) {
-                if (depth <= V2TerrainGen.SAND_SEA_DEPTH) {
+                if (depth <= TerrainComposer.SAND_SEA_DEPTH) {
                     pair = SEAFLOOR_SAND;
-                } else if (depth <= V2TerrainGen.GRAVEL_SEA_DEPTH) {
+                } else if (depth <= TerrainComposer.GRAVEL_SEA_DEPTH) {
                     pair = SEAFLOOR_GRAVEL;
                 }
-            } else if (y == seabed - 1 && depth <= V2TerrainGen.SAND_SEA_DEPTH) {
+            } else if (y == seabed - 1 && depth <= TerrainComposer.SAND_SEA_DEPTH) {
                 pair = SEAFLOOR_SAND;
             }
             if (pair != null) {
@@ -621,7 +621,7 @@ public class ChunkProviderTalos2 extends ChunkProviderSpaceLakes {
         new BlockMetaPair(Blocks.gravel, (byte) 0);
     // 【已删除】海床材质映射 seafloorPair(TalosSeafloorShaper.SeafloorMaterial) 与 SEAFLOOR_CLAY：
     // 那是旧海床系统的枚举（旧轨退役后已无人产生那种材质），V2 的海床表层直接按
-    // V2TerrainGen.SAND_SEA_DEPTH / GRAVEL_SEA_DEPTH 两个深度阈值选 SEAFLOOR_SAND/GRAVEL。
+    // TerrainComposer.SAND_SEA_DEPTH / GRAVEL_SEA_DEPTH 两个深度阈值选 SEAFLOOR_SAND/GRAVEL。
     // 保留一个"旧枚举 → 新方块"的翻译层，等于把两套海床材质系统同时留在代码里。
 
     @Override

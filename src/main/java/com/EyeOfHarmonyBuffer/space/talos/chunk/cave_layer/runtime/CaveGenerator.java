@@ -4,7 +4,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.format.CaveTag;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveEntrance;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.terrain_layer.BaseTerrainPreset;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -182,8 +182,8 @@ public final class CaveGenerator {
             int wz = cellZ * CELL_BLOCKS + CELL_BLOCKS / 2;
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            y = V2TerrainGen.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
-                V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
+            y = TerrainComposer.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
+                TerrainComposer.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             // 地形链不可用（探针 / 未初始化）时退化为海平面，仍确定。
             y = 64.0;
@@ -204,8 +204,8 @@ public final class CaveGenerator {
             // 开在比真实地表高/低几十格的位置（悬空或挖不到）。
             int ws = wsOf(seed);
             OrographyField.OroSample o = OrographyField.sample(wx, wz, ws);
-            return V2TerrainGen.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
-                V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
+            return TerrainComposer.composeColumn(wx, wz, ws, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
+                TerrainComposer.MC_WORLD_HEIGHT - 2).h;
         } catch (Throwable t) {
             return 64.0;
         }
@@ -588,13 +588,13 @@ public final class CaveGenerator {
      *
      * 这里原先问的是**旧宏观预设表**的 {@code minHeight}（{@code TerrainMacroPresetRegistry}
      * ← 旧宏包）——那是旧轨的群系高度带，与世界的真实列顶无关。
-     * 现在直接问**唯一高度链** {@link V2TerrainGen#composeColumn}：列顶 > 100 才放洞厅
+     * 现在直接问**唯一高度链** {@link TerrainComposer#composeColumn}：列顶 > 100 才放洞厅
      * （与旧判据的阈值同值，只是从"预设表说这里高"换成"这里确实高"）。
      */
     private static boolean allowedMegaHallBiome(int wx, int wz, int seed) {
         OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
-        return V2TerrainGen.composeColumn(wx, wz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
-            V2TerrainGen.MC_WORLD_HEIGHT - 2).h > 100;
+        return TerrainComposer.composeColumn(wx, wz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
+            TerrainComposer.MC_WORLD_HEIGHT - 2).h > 100;
     }
 
     /** 洞厅中心所在单元对应的网络节点；其他单元返回 null。 */

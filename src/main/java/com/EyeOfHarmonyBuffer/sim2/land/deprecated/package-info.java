@@ -22,7 +22,7 @@
  *   <tr><td>{@code NoiseContinentGrid}</td><td>27</td><td>旧陆海/海岸距离</td></tr>
  *   <tr><td>{@code V2BiomeSelect}</td><td>27</td><td>—</td></tr>
  *   <tr><td>{@code LandformField}</td><td>38</td><td>—</td></tr>
- *   <tr><td>{@code V2TerrainGen}</td><td>65</td><td>地形合成入口</td></tr>
+ *   <tr><td>{@code TerrainComposer}</td><td>65</td><td>地形合成入口</td></tr>
  *   <tr><td>{@code TalosLandField}</td><td>155</td><td>旧 V8 海陆，最大的一块</td></tr>
  * </table>
  *
@@ -43,7 +43,7 @@
  *       （{@code TalosLandErosion}/{@code SimTerrain} 改用本地 shim + V3）。</li>
  * </ul>
  *
- * <p><b>剩余待迁</b>：{@code LandformField}（23 处）、{@code V2TerrainGen}（51 处）。
+ * <p><b>剩余待迁</b>：{@code LandformField}（23 处）、{@code TerrainComposer}（51 处）。
  *
  * <p><b>注意</b>：本包内的类不应被任何非废弃代码引用；一旦引用清零即可整包删除。
  */

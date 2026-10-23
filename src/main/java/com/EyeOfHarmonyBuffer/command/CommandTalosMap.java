@@ -6,7 +6,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.AirMassType;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.PolarZone;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -275,19 +275,19 @@ public class CommandTalosMap extends CommandBase {
             // 【已删除】"landlegacy" 图层：它画的是旧生产海陆（TectonicWorld 超级大陆多边形），
             // 那个系统已随 T4.3 删除。屏幕上同时有两套海陆正是要消除的东西。
             case "terrain": {
-                // V2 块级高度（D34）：**与生产同一个入口** V2TerrainGen.composeColumn。
+                // V2 块级高度（D34）：**与生产同一个入口** TerrainComposer.composeColumn。
                 // 这里曾经自己拼了一遍（landBaseHeight/landPlainHeight → 丢了群系 bias/scale；
                 // 细节没有 slope01 调制；没有软封顶）⇒ 画出来的"高度"不是世界里的高度。
                 // 现在只保留海洋列的配色分支（它本来就与陆地不同源）。
                 OrographyField.OroSample o = OrographyField.sample(wx, wz, seed);
                 if (!o.isLand) {
-                    double d = V2TerrainGen.seaDepthBlocks(wx, wz, seed);
+                    double d = TerrainComposer.seaDepthBlocks(wx, wz, seed);
                     return d < 5 ? mix(rgb(102, 168, 200), rgb(63, 110, 154), d / 5.0)
                         : mix(rgb(42, 85, 128), rgb(10, 22, 48), clamp((d - 5) / 36.0, 0, 1));
                 }
-                V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+                TerrainComposer.Column col = TerrainComposer.composeColumn(
                     wx, wz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
-                    V2TerrainGen.MC_WORLD_HEIGHT - 2);
+                    TerrainComposer.MC_WORLD_HEIGHT - 2);
                 // 传 hCapped（连续、已软封顶）而不是 col.h：heightColor 的雪线判定
                 // 在生产里用的也是未取整的连续高度，这样两边的雪线边界逐列一致。
                 return heightColor(col.hCapped, wz);
@@ -353,7 +353,7 @@ public class CommandTalosMap extends CommandBase {
 
     /** terrain 图层高度配色（海面 64，参考 run 渲染同款色阶）。 */
     private static int heightColor(double h, int wz) {
-        double snowY = V2TerrainGen.snowLineY(wz);
+        double snowY = TerrainComposer.snowLineY(wz);
         int hh = (int) Math.round(h);
         int c;
         if (hh < 69) {

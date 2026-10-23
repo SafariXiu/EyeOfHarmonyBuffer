@@ -5,7 +5,7 @@ import com.EyeOfHarmonyBuffer.sim2.biome.TalosBiomeDefault;
 import com.EyeOfHarmonyBuffer.space.talos.biome.TalosBiomes;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomePicker;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;

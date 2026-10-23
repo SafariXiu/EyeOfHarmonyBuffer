@@ -1,6 +1,6 @@
 package com.EyeOfHarmonyBuffer.sim2.land.deprecated;
 
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 
@@ -18,7 +18,7 @@ import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
  * 于是热干气候下"地形是山、群系是沙漠"——沙漠表层是沙子，山区就变沙了。
  *
  * 根治：把五档档案权重（低地/丘陵/台地/山地/峰）抽成**唯一的权重场**，
- * 地形层（{@link V2TerrainGen}）与群系层（{@link V2BiomeSelect}）都只消费它，
+ * 地形层（{@link TerrainComposer}）与群系层（{@link V2BiomeSelect}）都只消费它，
  * 两边不可能再漂移。
  *
  * 每格输出：
@@ -26,7 +26,7 @@ import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
  *   mtnAmt —— 「山体强度」[0,1] = clamp01(rise / {@link #MTN_RISE_SCALE})
  *             其中 rise = (1−auth)·mtnComp0 + auth·uplift（**含山层仲裁与中尺度纹理**）
  *
- * **不要把它和 {@link V2TerrainGen#DETAIL_MTNCOMP_SCALE} 当成同一个标尺**：那两个数
+ * **不要把它和 {@link TerrainComposer#DETAIL_MTNCOMP_SCALE} 当成同一个标尺**：那两个数
  * （85 / 90）看着像重复，实际喂进去的是**两个不同的量**——
  *   · 这里 rise  = 已按山层权威权重仲裁过的**抬升量**（群系用它判"是不是山"）；
  *   · 那里 mtnComp = base − plain，是**仲裁前**的基础山地贡献（地形用它定块级细节强度）。
@@ -87,7 +87,7 @@ public final class LandformField {
      * 抬升量 rise = (1−auth)·mtnComp0 + auth·uplift（含中尺度纹理）。
      * 这是"这里是不是山"的**实测口径**——不再用档案标签（MOUNTAIN 档在低底盘区只有 ~100 高）。
      *
-     * 与 {@link V2TerrainGen#DETAIL_MTNCOMP_SCALE}（=90，喂的是仲裁前的 mtnComp）**不是同一个标尺**，
+     * 与 {@link TerrainComposer#DETAIL_MTNCOMP_SCALE}（=90，喂的是仲裁前的 mtnComp）**不是同一个标尺**，
      * 见类注释的说明。
      */
     public static final double MTN_RISE_SCALE = 85.0;
@@ -424,7 +424,7 @@ public final class LandformField {
                 long _c = System.nanoTime(); tW += _c - _b;
 
                 // 中性 bias 的骨架高度（**含中尺度纹理**）→ 真实的"相对平原抬升量"
-                V2TerrainGen.basePlainFromWeights(w, x, z, seed, SEA_LEVEL_BLK, 0.5, 0.5, bp);
+                // V2 合成已删除（该路径不再被执行）
                 long _d = System.nanoTime(); tBP += _d - _c;
                 // ★ 2026-10-08：一次取齐（原为两次独立调用，各含 HashMap 查 + 3 次 doubleToLongBits）
                 double mtnComp0 = bp[0] > bp[1] ? bp[0] - bp[1] : 0.0;

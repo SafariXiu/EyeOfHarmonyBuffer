@@ -4,7 +4,7 @@ import com.EyeOfHarmonyBuffer.Config.TalosConfig.V2TerrainConfigSection;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomePicker;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
@@ -64,7 +64,7 @@ public class CommandTalosHere extends CommandBase {
             dimName, world.provider.dimensionId, blockX, blockY, blockZ, worldSeedInt
         )));
         if (!o.isLand) {
-            double depth = V2TerrainGen.seaDepthBlocks(blockX, blockZ, worldSeedInt);
+            double depth = TerrainComposer.seaDepthBlocks(blockX, blockZ, worldSeedInt);
             sender.addChatMessage(new ChatComponentText(String.format(
                 "[V2] 海洋 (L1 噪声海陆)  水深≈%.1f  biome=%s",
                 depth, biomeName(world, blockX, blockZ)
@@ -76,19 +76,19 @@ public class CommandTalosHere extends CommandBase {
             "[V2] 陆地 kind=%s(%d)  elevation01=%.2f  relief01=%.2f  beltMask01=%.2f",
             kind, o.kind, o.elevation01, o.relief01, o.beltMask01
         )));
-        // 高度链：**与生产同一个入口** V2TerrainGen.composeColumn。
+        // 高度链：**与生产同一个入口** TerrainComposer.composeColumn。
         // 这里曾经少算 mountainDetail（也没软封顶），却打印"→ 合成高度"和"(雪线以上)"——
         // 显示值比世界里的列顶低 10~40 blocks，而"(雪线以上)"几乎永远为假。
-        V2TerrainGen.Column col = V2TerrainGen.composeColumn(
+        TerrainComposer.Column col = TerrainComposer.composeColumn(
             blockX, blockZ, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, o,
-            V2TerrainGen.MC_WORLD_HEIGHT - 2);
+            TerrainComposer.MC_WORLD_HEIGHT - 2);
         // 立刻拷进局部变量：composeColumn 返回**每线程复用对象**（与生产同一条纪律）。
         final double plain = col.plain, base = col.base, mtnComp = col.mtnComp;
         final double w = col.auth, up = col.uplift, detail = col.detailStrength;
         final double hCap = col.hCapped, hDetail = col.hDetail;
         final int topY = col.h;
         final boolean snow = col.snow;
-        final double snowY = V2TerrainGen.snowLineY(blockZ);
+        final double snowY = TerrainComposer.snowLineY(blockZ);
         sender.addChatMessage(new ChatComponentText(String.format(
             "[V2] coastDist=%.0f 块(陆侧负)  biome=%s", o.coastDist, biomeName(world, blockX, blockZ)
         )));
@@ -107,7 +107,7 @@ public class CommandTalosHere extends CommandBase {
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] SimTerrain.TERRAIN_ON=%s  EROSION_ENABLED=%s  MC_WORLD_HEIGHT=%d  SEA_LEVEL=%d",
             SimTerrain.TERRAIN_ON,
-            V2TerrainGen.EROSION_ENABLED, V2TerrainGen.MC_WORLD_HEIGHT, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK)));
+            TerrainComposer.EROSION_ENABLED, TerrainComposer.MC_WORLD_HEIGHT, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK)));
         long ls = SimTerrain.seedOf(worldSeedInt);
         sender.addChatMessage(new ChatComponentText(String.format(
             "[DIAG] seedOf(worldSeedInt)=%d  (int)=%d", ls, (int) ls)));
@@ -121,14 +121,14 @@ public class CommandTalosHere extends CommandBase {
             "[DIAG] ELEV_TO_BLK=%.4f  LAND_BASE_OFFSET=%.2f  SOFT_CAP_H=%.1f",
             SimTerrain.ELEV_TO_BLK,
             SimTerrain.LAND_BASE_OFFSET,
-            V2TerrainGen.SOFT_CAP_H)));
+            TerrainComposer.SOFT_CAP_H)));
         // 逐列扫 5 格，看有没有台阶
         StringBuilder sb = new StringBuilder("[DIAG] x-2..x+2 列顶: ");
         for (int dx = -2; dx <= 2; dx++) {
-            V2TerrainGen.Column cc = V2TerrainGen.composeColumn(
+            TerrainComposer.Column cc = TerrainComposer.composeColumn(
                 blockX + dx, blockZ, worldSeedInt, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK,
                 OrographyField.sample(blockX + dx, blockZ, worldSeedInt),
-                V2TerrainGen.MC_WORLD_HEIGHT - 2);
+                TerrainComposer.MC_WORLD_HEIGHT - 2);
             sb.append(cc.h).append(" "); }
         sender.addChatMessage(new ChatComponentText(sb.toString()));
         // 实际方块表面（从世界里读，最可靠）

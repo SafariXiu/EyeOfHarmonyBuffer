@@ -9,7 +9,7 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveChunkData
 import com.EyeOfHarmonyBuffer.space.talos.chunk.cave_layer.runtime.CaveNode;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.OrographyField;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TalosSeed;
-import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2TerrainGen;
+import com.EyeOfHarmonyBuffer.space.talos.chunk.world.TerrainComposer;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -205,8 +205,8 @@ public class CommandTalosCave extends CommandBase {
 
         // 走唯一高度链（原先读旧轨 TalosTerrainHeights —— 传送落点会按另一套地形算）
         OrographyField.OroSample oc = OrographyField.sample(e.x, e.z, seed);
-        double surface = V2TerrainGen.composeColumn(e.x, e.z, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, oc,
-            V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
+        double surface = TerrainComposer.composeColumn(e.x, e.z, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, oc,
+            TerrainComposer.MC_WORLD_HEIGHT - 2).h;
         double y = Math.round(surface) + 2.0;
         player.setPositionAndUpdate(e.x + 0.5, y, e.z + 0.5);
         player.addChatMessage(new ChatComponentText(String.format(
@@ -457,8 +457,8 @@ public class CommandTalosCave extends CommandBase {
         // 1) 地形采样（雕刻门控条件）—— 唯一海陆判定 + 唯一高度链。
         // 旧口径里的 riverMask / body / waterLevel 随旧河网删除（V2 世界无河网、水面=海平面）。
         OrographyField.OroSample oo = OrographyField.sample(tx, tz, seed);
-        int surfaceTop = V2TerrainGen.composeColumn(tx, tz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, oo,
-            V2TerrainGen.MC_WORLD_HEIGHT - 2).h;
+        int surfaceTop = TerrainComposer.composeColumn(tx, tz, seed, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK, oo,
+            TerrainComposer.MC_WORLD_HEIGHT - 2).h;
         player.addChatMessage(new ChatComponentText(String.format(
             "[PROBE] pos=(%d,%d) 地表≈%d isLand=%b waterLevel=%d",
             tx, tz, surfaceTop, oo.isLand, com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK
