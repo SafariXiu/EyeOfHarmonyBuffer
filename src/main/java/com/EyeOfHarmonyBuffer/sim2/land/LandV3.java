@@ -69,8 +69,11 @@ public final class LandV3 {
     public static double ARC_GATE_W = 0.18;
     /** Radial profile of the arc band around ARC_DIST (km). Wider = softer fan at vertices. */
     public static double ARC_WIDTH_K = 1.0;
-    public static double ARC_AMP = 45_000.0, ARC_DIST = 320_000.0, ARC_WIDTH = 160_000.0;
-    public static double ARC_MASK_WL = 300_000.0, ARC_MASK_LO = 0.32, ARC_MASK_HI = 0.68;
+    // ARC_WIDTH narrowed 160 km -> 90 km: the 320 km band was a solid continent-scale mass
+// rather than a chain. Amplitude must stay high (the abyssal floor is -4 km, so ~27,000
+// thickness is needed just to emerge) -- the width was what made it a block.
+    public static double ARC_AMP = 32_000.0, ARC_DIST = 320_000.0, ARC_WIDTH = 90_000.0;
+    public static double ARC_MASK_WL = 140_000.0, ARC_MASK_LO = 0.32, ARC_MASK_HI = 0.68;
     /** Mid-ocean ridge: broad dome over a divergent boundary. */
     public static double RIDGE_OC_AMP = 8_000.0, RIDGE_OC_W = 350_000.0;
 
@@ -152,6 +155,38 @@ public final class LandV3 {
      * of letting it shift their coastline away. 0 disables the damping.
      */
     public static double COAST_FBM_DTREF = 1_500.0;
+
+    /** Put the orogenic belt on the overriding plate only (see upliftPaper). */
+    public static boolean OROG_SIDE_ON = true;
+    /** Half-width of the continentality contrast that decides which side overrides. */
+    public static double OROG_SIDE_T = 0.15;
+    /**
+     * Continentality thresholds (on bf[8] = the pair's MIN continentality) above which a
+     * boundary counts as a continent-continent collision, where BOTH sides deform.
+     * Calibrated from the measured bf[8] distribution (concentrated in 0.3..0.6), not guessed:
+     * the earlier 0.50..0.90 put `both` at 0.008, which silently disabled collisions.
+     */
+    public static double OROG_COLLIDE_LO = 0.45;
+    public static double OROG_COLLIDE_HI = 0.75;
+    /**
+     * Half-width (blocks) of the collision uplift peak. Collisions need a profile that is
+     * MAXIMUM AT the boundary: the fd shape peaks at R_S/3 and is zero at D=0, so applying
+     * it to both sides produced two parallel ranges with a valley along the boundary.
+     */
+    public static double OROG_COLLIDE_W = 1_000_000.0;
+
+    /**
+     * Oceanic trench on the SUBDUCTING side. The paper's ocean floor reaches zt = -10 km at
+     * the trench, while the abyssal plain sits at za = -6 km. `profile` is zeroed on that
+     * side by the overriding gate, so the trench needs its own (negative) profile.
+     * Amplitude is in crust-thickness units (1,000 thickness ~ 151 m).
+     */
+    // NOTE: `profile` is DIMENSIONLESS (fd is 0..1) and gets multiplied by U0 (=42,000),
+    // so this amplitude is expressed in units of U0, not in crust thickness. Using 40,000
+    // here made U0*profile ~ -1.2e9 thickness (observed h = -46,504 km).
+    public static double TRENCH_AMP = 0.90;        // 0 disables; 0.9 ~= -5.7 km of trench
+    public static double TRENCH_OFF = 60_000.0;    // blocks seaward of the bisector
+    public static double TRENCH_W   = 120_000.0;   // Gaussian half-width
     /** Diagnostics: record the components of f() for the last height() call on this thread. */
     public static volatile boolean DEBUG_COMPONENTS = false;
     private static final ThreadLocal<double[]> DBG = new ThreadLocal<double[]>() {
@@ -336,54 +371,47 @@ public final class LandV3 {
         // Wide gate: signed is a weighted average of per-pair convergence, and near a
         // junction the weights swap so it oscillates around 0 in angle -> a razor-thin 0.04
         // gate turned that into a fan of radial ridges. ARC_GATE_W makes the transition broad.
-        double wArc = smoothstep(-ARC_GATE_W, ARC_GATE_W, signed);
+        // (A) An island arc belongs to the OVERRIDING side of a CONVERGENT boundary; an
+        // oceanic ridge belongs to a DIVERGENT one. Previously the ridge used (1-wArc),
+        // i.e. the opposite side of ANY boundary, which is why every boundary showed two
+        // parallel chains (arc on one side, ridge on the other).
+        double sideArc = smoothstep(-OROG_SIDE_T, OROG_SIDE_T, bf[7]);
+        double conv = smoothstep(0.0, 0.15, bf[1]);
+        // bf[1] is frequently exactly 0, so gate on "not convergent" (<=0) instead of < 0.
+        double div = smoothstep(0.15, 0.0, bf[1]);
+        // bf[1] (force) is frequently 0, so gating the ARC on convergence killed it.
+        double wArc = sideArc;
         double extra = 0.0;
         // MONOTONIC profile from the boundary. The ring exp(-((D-320)/160)^2) wrapped around
         // every Voronoi vertex as many concentric arcs -- that IS the "fan"/terracing. A
         // monotone decay has no ring to wrap, so the artifact cannot form.
-        double ad = D / (ARC_DIST * ARC_WIDTH_K);
+        // Ring at ARC_DIST from the boundary (same profile as arcRaw). Using D directly
+        // put the whole ARC_AMP on the boundary itself.
+        double ad = (D - ARC_DIST) / ARC_WIDTH;
         double arc = Math.exp(-ad * ad);
         if (arc > 1e-4 && ARC_AMP > 0.0) {
-            // The chain must break up ALONG the arc, not in blobs: project the position on
-            // the boundary's tangent (perpendicular to its normal) and sample a 1-D noise of
-            // that arc-length. An isotropic 2-D mask produced round lumps instead of a chain.
-            double nx0 = bf[5], nz0 = bf[6];
-            double nl = Math.sqrt(nx0 * nx0 + nz0 * nz0);
-            double along;
-            if (nl > 1e-9) {
-                double tx0 = -nz0 / nl, tz0 = nx0 / nl;
-                along = (x * tx0 + z * tz0) / ARC_MASK_WL;
-            } else {
-                along = x / ARC_MASK_WL;
-            }
-            // THREE octaves along the arc: the big one decides where the major islands sit,
-            // the small ones break them into islets. A single frequency gave evenly spaced
-            // dashes, which reads as artificial.
-            // Jitter the 1-D coordinate with a slow 2-D noise: without it the mask depends
-            // only on the projection along the boundary, so its iso-lines are PERFECT STRAIGHT
-            // LINES radiating from where the tangent turns (the observed sunburst).
-            along += 0.6 * (LandNoise.value(x / 500_000.0, z / 500_000.0, ws ^ 0x7C9L) - 0.5);
-            double a1 = LandNoise.value(along, 0.37, ws ^ 0x7C1L);
-            double a2 = LandNoise.value(along * 2.7, 1.13, ws ^ 0x7C2L);
-            double a3 = LandNoise.value(along * 7.1, 2.31, ws ^ 0x7C3L);
-            double m = (a1 + 0.45 * a2 + 0.22 * a3) / 1.67;
-            // At a triple junction the weighted boundary normal passes through zero and its
-            // DIRECTION spins by 2*pi, so the along-arc coordinate sweeps and its iso-lines
-            // become a fan of rays through that point (the observed sunburst). Fade the arc
-            // out where the normal is ill-defined instead of projecting through it.
-            double mask = smoothstep(ARC_MASK_LO, ARC_MASK_HI, m)
-                        * smoothstep(0.05, 0.35, nl);
+            // World-space fBm mask. The old version projected the point on the boundary
+            // tangent and sampled a 1-D noise of that arc-length coordinate; the tangent
+            // spins at triple junctions and the projection JUMPS when the nearest boundary
+            // point switches, which produced the radiating sunburst fans and hard folds.
+            // A 2-D noise in world space is continuous everywhere.
+            double mw = ARC_MASK_WL;
+            double m = 0.60 * LandNoise.value(x / mw, z / mw, ws ^ 0x7C1L)
+                    + 0.32 * LandNoise.value(x / (mw * 0.45) + 3.1, z / (mw * 0.45) - 1.7, ws ^ 0x7C2L)
+                    + 0.24 * LandNoise.value(x / (mw * 0.20) - 2.3, z / (mw * 0.20) + 5.9, ws ^ 0x7C3L);
+            m /= 1.06;
+            double mask = smoothstep(ARC_MASK_LO, ARC_MASK_HI, m);
             // An arc sits on the OCEANIC side of a convergent boundary and must be able to
             // raise the abyssal floor above sea level, so it must NOT be multiplied by the
             // LAND gate (that suppressed it to zero in the deep ocean and left a dotted line
             // only where c happened to cross the gate). Use the oceanic weight instead.
-            extra += wArc * ARC_AMP * arc * mask * (1.0 - gate) * Math.min(1.0, Math.abs(signed));
+            extra += wArc * ARC_AMP * arc * mask * (1.0 - gate);
         }
         double rd = D / RIDGE_OC_W;
         double dome = Math.exp(-rd * rd);
         if (dome > 1e-4 && RIDGE_OC_AMP > 0.0) {
             double oceanic = 1.0 - gate;
-            extra += (1.0 - wArc) * RIDGE_OC_AMP * dome * oceanic * Math.min(1.0, Math.abs(signed));
+            extra += div * RIDGE_OC_AMP * dome * oceanic;
         }
         return extra;
     }
@@ -410,13 +438,33 @@ public final class LandV3 {
         double zPlunge = (plunge - 0.5) * 2.0;
         double zi = Math.max(0.0, Math.min(1.0, (zPlunge - Z_TRENCH_N) / (Z_CONT_N - Z_TRENCH_N)));
         double hz = zi * zi;
-        double strength = Math.min(1.0, fd * force * hz);
+        // Which side overrides? bf[7] is the per-pair continentality contrast (decisive,
+        // not a 0.5/0.5 split), bf[8] the pair's min continentality (collision case).
+        // fd is ZERO at the boundary, so a collision -- which peaks exactly there -- needs
+        // its own single-peak profile instead of fd.
+        double wSideO = 1.0, bothO = 0.0, profile = fd;
+        if (OROG_SIDE_ON && D > 0.0) {
+            wSideO = smoothstep(-OROG_SIDE_T, OROG_SIDE_T, bf[7]);
+            bothO = smoothstep(OROG_COLLIDE_LO, OROG_COLLIDE_HI, bf[8]);
+            double cd = D / OROG_COLLIDE_W;
+            profile = (1.0 - bothO) * wSideO * fd + bothO * Math.exp(-cd * cd);
+            // Subducting side gets the trench (negative), NOT a mirror-image mountain belt.
+            if (TRENCH_AMP > 0.0) {
+                double subSide = smoothstep(OROG_SIDE_T, -OROG_SIDE_T, bf[7]);
+                double td = (D - TRENCH_OFF) / TRENCH_W;
+                profile -= TRENCH_AMP * subSide * (1.0 - bothO) * Math.exp(-td * td);
+            }
+        }
+        // profile can now be NEGATIVE (trench). strength modulates the ridge detail and
+        // must stay in [0,1]: an unclamped lower bound sent detail*(0.35+0.65*strength)
+        // to -3e8 thickness (observed h = -46,504 km).
+        double strength = Math.max(0.0, Math.min(1.0, profile * force * hz));
         double extra = landformExtra(ws, x, z, bf, D, gate);
         double ridgeMod = 1.0;
         if (RIDGE_MOD > 0.0) {
             ridgeMod = (1.0 - RIDGE_MOD) + RIDGE_MOD * ridgedMF3(ws, x, z);
         }
-        return U0 * UPLIFT_GAIN * fd * force * hz * ridgeMod
+        return U0 * UPLIFT_GAIN * profile * force * hz * ridgeMod
                 + detail * (0.35 + 0.65 * strength) + extra;
     }
 
@@ -498,6 +546,10 @@ public final class LandV3 {
         final double[] pConvS = new double[36];
         final double[] pConv = new double[36];
         final double[] pCcMin = new double[36];
+        /** continentality(cellA) - continentality(cellB) for the pair. */
+        final double[] pSide = new double[36];
+        /** min(continentality(A), continentality(B)) for the pair. */
+        final double[] pContMin = new double[36];
         int nPair = 0;
         St() {
             java.util.Arrays.fill(mx, Long.MIN_VALUE);
@@ -510,7 +562,7 @@ public final class LandV3 {
     };
 
     private static final ThreadLocal<double[]> BF = new ThreadLocal<double[]>() {
-        @Override protected double[] initialValue() { return new double[7]; }
+        @Override protected double[] initialValue() { return new double[9]; }
     };
 
     /** Continuous boundary field over ALL plate pairs (softmin distance + soft-weighted force). */
@@ -555,6 +607,12 @@ public final class LandV3 {
                     st.pNx[np] = nx; st.pNz[np] = nz;
                     st.pConvS[np] = convS; st.pConv[np] = conv;
                     st.pCcMin[np] = Math.min(st.cc[a], st.cc[b]);
+                    {
+                        double cA = continentality(ws, cs[a].sx, cs[a].sz);
+                        double cB = continentality(ws, cs[b].sx, cs[b].sz);
+                        st.pSide[np] = cA - cB;
+                        st.pContMin[np] = Math.min(cA, cB);
+                    }
                     np++;
                 }
             }
@@ -566,6 +624,7 @@ public final class LandV3 {
         double dminC = 1e18;
         for (int j = 0; j < 9; j++) if (cs[j].d < dminC) dminC = cs[j].d;
         double sw = 0, sconv = 0, splunge = 0, ssign = 0, snx = 0, snz = 0;
+        double sside = 0, scontMin = 0;
         final int np = st.nPair;
         for (int q = 0; q < np; q++) {
             final int a = st.pa[q], b = st.pb[q];
@@ -578,7 +637,11 @@ public final class LandV3 {
             sconv += w * st.pConvS[q];
             splunge += w * st.pCcMin[q];
             ssign += w * st.pConv[q];
+            sside += w * st.pSide[q] * (cs[a].d < cs[b].d ? 1.0 : -1.0);
+            scontMin += w * st.pContMin[q];
         }
+        out[7] = 0.0; out[8] = 1.0;
+        if (sw >= 1e-9) { out[7] = sside / sw; out[8] = scontMin / sw; }
         if (sw < 1e-9) { out[0] = 1e9; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0; out[5] = 0; out[6] = 0; return; }
         // clamp at 0: when several pairs sit on their bisector at once, sum(w) > 1 and
         // -L*ln(sum) goes NEGATIVE, which flattened the mid-ocean ridge dome into a
