@@ -69,7 +69,7 @@ public final class LandV3 {
     public static double ARC_GATE_W = 0.18;
     /** Radial profile of the arc band around ARC_DIST (km). Wider = softer fan at vertices. */
     public static double ARC_WIDTH_K = 1.0;
-    public static double ARC_AMP = 28_000.0, ARC_DIST = 320_000.0, ARC_WIDTH = 160_000.0;
+    public static double ARC_AMP = 45_000.0, ARC_DIST = 320_000.0, ARC_WIDTH = 160_000.0;
     public static double ARC_MASK_WL = 300_000.0, ARC_MASK_LO = 0.32, ARC_MASK_HI = 0.68;
     /** Mid-ocean ridge: broad dome over a divergent boundary. */
     public static double RIDGE_OC_AMP = 8_000.0, RIDGE_OC_W = 350_000.0;
@@ -123,6 +123,35 @@ public final class LandV3 {
      * global map shows as speckle over the ocean.
      */
     public static double COAST_GATE = 0.04;
+
+    /**
+     * Coastal fade of the mid-scale detail term, in CRUST-THICKNESS units.
+     *
+     * <p>{@code det} is multiplied by {@code smoothstep(LO, HI, |base + dt|)}: no detail at
+     * the coast, full detail once the crust is HI thick relative to sea level. The paper's
+     * shoreline is the zero crossing of a smooth elevation field, not an isoline of a 42 km
+     * noise; without this fade the latter wins and coasts become wide, ragged and lobed.
+     *
+     * <p>{@code HI = 0} disables the fade (old behaviour).
+     */
+    public static double COAST_DET_LO = 0.0;
+    public static double COAST_DET_HI = 6000.0;
+
+    /**
+     * Fractal coastal detail (A). A slope-preserving fBm is added to the land/sea
+     * THRESHOLD, so the shoreline gets self-similar roughness at every scale while the
+     * land fraction and `isLand == (height > 0)` stay untouched.
+     * 0 disables it.
+     */
+    public static double COAST_FBM_AMP = 0.010;   // amplitude in continentality units
+    public static double COAST_FBM_WL = 400_000.0;  // coarsest wavelength, blocks
+    public static int COAST_FBM_OCT = 6;
+    /**
+     * Uplift scale (thickness) at which the fractal-coast amplitude is halved. Island belts
+     * live on uplift, so damping the threshold noise there keeps small islands alive instead
+     * of letting it shift their coastline away. 0 disables the damping.
+     */
+    public static double COAST_FBM_DTREF = 1_500.0;
     /** Diagnostics: record the components of f() for the last height() call on this thread. */
     public static volatile boolean DEBUG_COMPONENTS = false;
     private static final ThreadLocal<double[]> DBG = new ThreadLocal<double[]>() {
@@ -495,6 +524,14 @@ public final class LandV3 {
         long ci = (long) Math.floor(qx / PL), cj = (long) Math.floor(qz / PL);
         // The 3x3 window and its 9 cell velocities only change when the sample crosses a
         // plate-cell boundary; consecutive columns reuse them (36 noise evals saved).
+        // NOTE: cells9() also fills cs[j].d, which depends on the QUERY POINT. The cache
+        // below must therefore refresh the distances on every call (positions/ids are
+        // window-constant, distances are not). Caching them made D/force piecewise constant
+        // per PLATE_CELL -> 6,000 km square blocks and zero uplift inside each cell.
+        for (int j = 0; j < 9; j++) {
+            double ddx = qx - cs[j].sx, ddz = qz - cs[j].sz;
+            cs[j].d = Math.sqrt(ddx * ddx + ddz * ddz);
+        }
         if (key[0] != ci || key[1] != cj || key[2] != ws) {
             cells9(qx, qz, cs);
             for (int j = 0; j < 9; j++) vel(ws, cs[j], vb, j * 2);
@@ -615,12 +652,28 @@ public final class LandV3 {
 
     /** 内部：高度 = 均衡 + 低地 + 细节。 */
     static double f(long ws, double x, double z, double[] outH) {
+        // Hoisted above the land/sea decision so the fractal-coast amplitude can depend on
+        // the uplift field (island belts must keep their coastline). uplift() does not
+        // depend on su, so this is a pure reorder.
+        double up = uplift(ws, x, z) * UPLIFT_GAIN;
         double c = continentality(ws, x, z);
         double cutV = cut(ws);
-        double su = smoothstep(cutV - 0.5 * COAST_GATE, cutV + 0.5 * COAST_GATE, c);
+        // (A) fractal coastal detail: perturb the THRESHOLD, not the height
+        double dC = 0.0;
+        if (COAST_FBM_AMP > 0.0) {
+            double wl = COAST_FBM_WL, amp = COAST_FBM_AMP;
+            if (COAST_FBM_DTREF > 0.0) {
+                amp /= (1.0 + Math.abs(up) / COAST_FBM_DTREF);
+            }
+            for (int i = 0; i < COAST_FBM_OCT; i++) {
+                dC += amp * (LandNoise.value(x / wl + i * 2.7, z / wl - i * 1.9, ws ^ (0xC0L + i * 0x11L)) - 0.5) * 2.0;
+                amp *= 0.55;
+                wl *= 0.5;
+            }
+        }
+        double su = smoothstep(cutV - 0.5 * COAST_GATE + dC, cutV + 0.5 * COAST_GATE + dC, c);
         double base = LandContract.T_OCEAN
                 + (LandContract.T_CONT - LandContract.T_OCEAN) * su - LandContract.T_REF;
-        double up = uplift(ws, x, z) * UPLIFT_GAIN;
         // 低地/盆地：只在内陆生效，且不许把陆地压到海平面以下
         double lv = LandNoise.value(x / LOW_WL, z / LOW_WL, ws ^ 0xE7L);
         double low = smoothstep(0.62, 0.32, lv);
@@ -642,6 +695,10 @@ public final class LandV3 {
         // was featureless and the LEM just etched a uniform crackle into it).
         // Raised to 4000 m with slope 1.0 so mountains keep their texture.
         if (hEst > 4_000.0) det *= 4_000.0 / (4_000.0 + 1.0 * (hEst - 4_000.0));
+        if (COAST_DET_HI > 0.0) {
+            double coastRef = Math.abs(base + dt);
+            det *= smoothstep(COAST_DET_LO, COAST_DET_HI, coastRef);
+        }
         double fv = base + dt + det;
         // 软地板：低地不越海平面（连续，非 if 钳位）
         double wl = smoothstep(0.55, 0.80, su);
