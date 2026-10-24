@@ -134,9 +134,11 @@ public final class TalosLandErosion {
     public static volatile int BUFFER_CELLS = 128;
 
     /** 米 -&gt; 格（与 SimTerrain.ELEV_TO_BLK 同值）。 */
-    public static final double ELEV_TO_BLK = 0.018;
+    /** 压缩参数·陆地（与 SimTerrain.ELEV_TO_BLK_LAND 同步；CC 后可解除）。 */
+    public static final double ELEV_TO_BLK = 0.025625;
     /** 海平面（格）。 */
-    public static volatile double SEA_BLK = 64.0;
+    /** 海平面（格）。与 SimTerrain.SEA_LEVEL_Y 同步 = 50（2026-10-25）。 */
+    public static volatile double SEA_BLK = 50.0;
 
     // ==================== LEM 参数 ====================
 

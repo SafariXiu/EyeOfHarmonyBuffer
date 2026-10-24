@@ -180,7 +180,35 @@ public final class SimTerrain {
     // ★★★★★★★ 2026-10-08 重新标定：0.025 -> 0.018（米 -> MC 格）
     //   海陆分布层的米制范围现在是 [−4000, +9900]（大陆基底 900 + 造山 9000）。
     //   0.018 × 9900 = 178 格 ⟹ 峰顶约 y=242（海平面 64），不撞 maxY=254。
-    public static double ELEV_TO_BLK = 0.018;
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    // 【压缩参数 COMPRESSION — 可调，后续可解除】
+    //
+    // 世界只有 256 格，而我们的垂直跨度 = 海沟 −6,400 m ~ 山峰 +8,000 m = 14,400 m。
+    // 线性映射塞不下（0.016 已经是极限），所以【陆地/海洋各用一套压缩系数】：
+    //   陆地：205 格 / 8,000 m = 0.025625
+    //   海洋： 50 格 / 6,400 m = 0.0078125
+    // 海平面放在 50 ⟹ 海洋被压得比陆地狠 3.3 倍（深海平原只在水下 36 格）。
+    //
+    // ⚠ 这是【临时的显示压缩】，不是物理量：
+    //   - 两个系数可以随时调整；
+    //   - 等 CubicChunks 兼容版上线（可突破 256 限高），
+    //     把两个系数设成同一个值（或 1:1 物理比例）即可【解除压缩】，恢复真实比例。
+    //   - 修改任一个都必须同时改 configStamp（已包含）。
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    /** 压缩参数·陆地：米 -> 格。可调；CC 后可解除。 */
+    public static double ELEV_TO_BLK_LAND = 0.025625;
+    /** 压缩参数·海洋：米 -> 格（取绝对值）。可调；CC 后可解除。 */
+    public static double ELEV_TO_BLK_OCEAN = 0.0078125;
+    /** 海平面（格）。50 = 用户 2026-10-25 裁决。 */
+    public static int SEA_LEVEL_Y = 50;
+
+    /** 旧的单一系数（保留给历史路径）；等于陆地压缩系数。 */
+    public static double ELEV_TO_BLK = 0.025625;
+
+    /** 有符号的米 -> 格：陆地用 LAND 系数、海洋用 OCEAN 系数。 */
+    public static double mToBlk(double hM) {
+        return hM >= 0 ? ELEV_TO_BLK_LAND * hM : ELEV_TO_BLK_OCEAN * hM;
+    }
 
     // ================= ★★★★★★★ B 方案：统一海岸剖面（无墙） =================
     //
@@ -750,7 +778,7 @@ public final class SimTerrain {
             //   这里用 TerrainComposer.mountainDetail（λ 210~1100 m 的 ridged 噪声），
             //   强度取 orogeny01 ⟹ 平原上恒为 0（mountainDetail 内部有 s<=0.01 的快速返回）。
             double orogDet = TerrainComposer.mountainDetail(x, z, worldSeedInt, orog);
-            double hCF = seaLevel + ELEV_TO_BLK * CF_GAIN * hM + OROG_DETAIL_BLK * orogDet;
+            double hCF = seaLevel + CF_GAIN * mToBlk(hM) + OROG_DETAIL_BLK * orogDet;
             boolean landCF = sig >= 0.0;
             c.land = landCF;
             c.seaDepth = landCF ? 0.0 : Math.max(0.0, seaLevel - hCF);

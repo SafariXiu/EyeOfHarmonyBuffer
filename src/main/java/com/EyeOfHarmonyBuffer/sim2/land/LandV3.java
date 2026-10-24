@@ -466,6 +466,10 @@ public final class LandV3 {
     public static boolean OROG_SIDE_ON = true;
     /** Half-width of the continentality contrast that decides which side overrides. */
     public static double OROG_SIDE_T = 0.15;
+    /** 局部地壳类型耦合（P1）：用当地大陆度决定边缘形态（山在陆、沟在洋、碰撞只在陆上）。 */
+    public static boolean LOCAL_CRUST_ON = true;
+    /** 陆壳造山增益（P1 之后陆地造山需要重新标定）。 */
+    public static double MOUNTAIN_GAIN = 3.0;
     /**
      * Continentality thresholds (on bf[8] = the pair's MIN continentality) above which a
      * boundary counts as a continent-continent collision, where BOTH sides deform.
@@ -698,12 +702,17 @@ public final class LandV3 {
     }
 
     /** 地形高度（米）。不含 LEM：这是演化前的 uplift 结果。 */
-    /** Land test consistent with the terrain sign (h > 0 iff continentality > cut). */
+    /**
+     * 海陆权威判定（用户 2026-10-25 裁决）：**只看掩膜**，不看 h 的符号。
+     *
+     * <p>契约变化：负高度**仍然是陆地**（海岸洼地）；湿地/湖泊由后续的 LEM + 水系层解出来，
+     * 本层不负责。因此下游**不得**再用 {@code h > 0} 判海陆。
+     *
+     * <p>⚠ 已知后果：MC 的水位线仍然是 Y=海平面 ⟹ 这些负高度陆地点在游戏里会先显示成浅水，
+     * 直到水系层给出"不填水"的覆盖。这是刻意接受的过渡状态。
+     */
     public static boolean isLand(long ws, double x, double z) {
-        // MUST be the terrain's own sign. Using continentality > cut disagreed with h > 0
-        // at 1.75% of sampled points (up to 2830 m), i.e. SimTerrain would call a cell land
-        // while the height there is below sea level -> a step at the coast.
-        return height(ws, x, z) > 0.0;
+        return coastS(ws, x, z) > 0.0;
     }
 
     /**
@@ -743,6 +752,11 @@ public final class LandV3 {
         h = h * 31 + (ARC_ALIGN_ON ? 1 : 0);
         h = h * 31 + (COAST_FBM2_ON ? 1 : 0);
         h = h * 31 + (C_FINE_ON ? 1 : 0);
+        h = h * 31 + (LOCAL_CRUST_ON ? 1 : 0);
+        h = h * 31 + (HEIGHT_V2 ? 1 : 0);
+        h = h * 31 + (COAST_TIER_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(V2_BEACH_W);
+        h = h * 31 + Double.doubleToLongBits(V2_BEACH_H);
         h = h * 31 + (COAST_DETAIL_ON ? 1 : 0);
         h = h * 31 + (COAST_RADIAL_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(COAST_RADIAL_AMP);
@@ -832,7 +846,158 @@ public final class LandV3 {
         return (int) ((h >>> 40) & (HC_SIZE - 1));
     }
 
+    /** 新高度场（掩膜 + 浮雕）开关；关掉回到旧的混合场（用于逐位对照）。 */
+    public static boolean HEIGHT_V2 = true;
+
+    // ---- 新高度场参数（掩膜 + 浮雕）----
+    public static double V2_LAND_BASE = 250.0;     // 陆地基底（m）
+    public static double V2_HILL_AMP = 360.0;      // 丘陵起伏
+    public static double V2_MTN_AMP = 6_200.0;     // 山脉起伏（× wMountain）
+    /** 稀有高峰项（× wMountain² × ridged³）：只有最强山带的最强脊线才够高 ⟹ 9000–10000 m 的极少数峰。 */
+    public static double V2_PEAK_AMP = 1_880.0;   // 稀有高峰：重标到 max≈7,980 m ⟹ Y≈254.5（留 1 格余量）
+    /** 山带没入陆架时的抬升（m，负深度）：让山带"沉入海中"而不是硬切在岸线。 */
+    public static double V2_MTN_SHELF = 1_200.0;
+    /** 山脉靠海的 s 门宽：1e-4 ≈ 1 km。让山能走到海边（形成断崖），而不是在几十公里外消失。 */
+    public static double V2_MTN_COAST_S = 1e-4;
+    /** 山脊噪声的各向异性：沿带 / 横带 的波长比。 */
+    public static double V2_BELT_ANISO = 4.0;
+    public static double V2_PLAIN_AMP = 60.0;      // 平原微起伏
+    public static double V2_SHELF_DEPTH = 220.0;   // 海岸处水深
+    public static double V2_ABYSS = 4_600.0;       // 深海
+    public static double V2_TRENCH = 1_800.0;      // 海沟下切（× wTrench）
+    public static double V2_RIDGE = 700.0;         // 洋中脊隆起（× wRidge）
+    public static double V2_ARC = 1_200.0;         // 岛弧隆起（× wArc）
+    public static double V2_COAST_W = 0.05;        // 海岸→内陆/深海 的过渡宽度（大陆度单位）
+    // ---- tier2 海岸层（沙滩 / 断崖）----
+    public static boolean COAST_TIER_ON = true;
+    /** 沙滩带宽（m）：岸内侧 0..V2_BEACH_W 内压平到 V2_BEACH_H。 */
+    public static double V2_BEACH_W = 900.0;
+    /** 沙滩高度（m）。 */
+    public static double V2_BEACH_H = 7.0;
+    /** 判定为“断崖”的内陆高度阈值（m）：1 km 内就很高 ⟹ 不做沙滩，保留陡壁。 */
+    public static double V2_CLIFF_HI = 220.0;
+    // ---- 公共基底噪声：陆/洋共用同一套，海岸处幅度相等 ⟹ 天然连续 ----
+    /** 海岸处的公共起伏幅度（m）——两侧相等，保证接缝为零。 */
+    public static double V2_COAST_AMP = 60.0;
+    /** 内陆的公共起伏幅度（m）。 */
+    public static double V2_LAND_AMP = 320.0;
+    /** 深海的公共起伏幅度（m）（深海丘陵）。 */
+    public static double V2_SEA_AMP = 220.0;
+    /** 第二组（细尺度）公共起伏。 */
+    public static double V2_COAST_AMP2 = 15.0;
+    public static double V2_LAND_AMP2 = 45.0;
+    public static double V2_SEA_AMP2 = 25.0;
+
+    private static final ThreadLocal<double[]> W5V2 = ThreadLocal.withInitial(() -> new double[9]);
+    private static final ThreadLocal<double[]> W5V2B = ThreadLocal.withInitial(() -> new double[9]);
+
+    /** 沿带拉长的山脊噪声：u = 横带，v = 沿带。 */
+    private static double ridgedBelt(double x, double z, double nx, double nz, double wl, long seed) {
+        double u = (x * nx + z * nz) / wl;
+        double v = (-x * nz + z * nx) / (wl * V2_BELT_ANISO);
+        double sum = 0.0, a = 1.0, s = 0.0;
+        for (int o = 0; o < 3; o++) {
+            double n = 1.0 - Math.abs(LandNoise.perlin(u, v, seed + o * 0x31L));
+            sum += a * n; s += a; a *= 0.5; u *= 2.0; v *= 2.0;
+        }
+        return sum / s;
+    }
+
+    private static double fbm3(double x, double z, double wl, long seed) {
+        return 0.60 * LandNoise.perlin(x / wl, z / wl, seed)
+             + 0.30 * LandNoise.perlin(x / (wl * 0.45), z / (wl * 0.45), seed ^ 0x11L)
+             + 0.15 * LandNoise.perlin(x / (wl * 0.20), z / (wl * 0.20), seed ^ 0x22L);
+    }
+
+    private static double ridged3(double x, double z, double wl, long seed) {
+        double v = 0.0, a = 1.0, w = wl, sum = 0.0;
+        for (int o = 0; o < 3; o++) {
+            double n = 1.0 - Math.abs(LandNoise.perlin(x / w, z / w, seed + o * 0x31L));
+            v += a * n; sum += a; a *= 0.5; w *= 0.5;
+        }
+        return v / sum;
+    }
+
+    /** 新高度场：land 由掩膜唯一决定，h 只是浮雕（§77 铁律）。 */
+    /** 有符号到岸距离（米，陆正海负）：d ≈ s/|∇s|。只在海岸带内调用（5 次 coastS）。
+     *  注意：与历史方法 {@link #coastDist}（用 height 求梯度、陆负海正）是两套，别混用。 */
+    public static double coastDistM(long ws, double x, double z) {
+        double e = 200.0;
+        double s = coastS(ws, x, z);
+        double gx = (coastS(ws, x + e, z) - coastS(ws, x - e, z)) / (2 * e);
+        double gz = (coastS(ws, x, z + e) - coastS(ws, x, z - e)) / (2 * e);
+        double gl = Math.sqrt(gx * gx + gz * gz);
+        return gl > 1e-15 ? s / gl : 0.0;
+    }
+
+    /** 有符号海岸场（>0 陆，<0 海，0 = 海岸线）：与 heightV2 的 s 完全相同。 */
+    public static double coastS(long ws, double x, double z) {
+        double c = continentality(ws, x, z);
+        double dC = 0.0;
+        {
+            double wl = COAST_FBM2_ON ? COAST_FBM2_WL : COAST_FBM_WL;
+            double amp = COAST_FBM2_ON ? COAST_FBM2_AMP : COAST_FBM_AMP;
+            for (int i = 0; i < COAST_FBM_OCT; i++) {
+                dC += amp * (LandNoise.value(x / wl + i * 2.7, z / wl - i * 1.9, ws ^ (0xC0L + i * 0x11L)) - 0.5) * 2.0;
+                amp *= 0.55; wl *= 0.5;
+            }
+        }
+        return c + dC - cut(ws);
+    }
+
+    public static double heightV2(long ws, double x, double z) {
+        double c = continentality(ws, x, z);
+        double cut = cut(ws);
+        // 海岸阈值扰动（与旧路径同源：只扰动阈值，不动内部）
+        double dC = 0.0;
+        {
+            double wl = COAST_FBM2_ON ? COAST_FBM2_WL : COAST_FBM_WL;
+            double amp = COAST_FBM2_ON ? COAST_FBM2_AMP : COAST_FBM_AMP;
+            for (int i = 0; i < COAST_FBM_OCT; i++) {
+                dC += amp * (LandNoise.value(x / wl + i * 2.7, z / wl - i * 1.9, ws ^ (0xC0L + i * 0x11L)) - 0.5) * 2.0;
+                amp *= 0.55; wl *= 0.5;
+            }
+        }
+        double s = c + dC - cut;                         // >0 陆，<0 海
+        double[] w = W5V2.get();
+        RegionField.weights(ws, x, z, w);
+        // 不再用各向异性坐标（交汇点会产生扇形伪影）；带由 weight 给出，噪声各向同性。
+        double bnx = 1.0, bnz = 0.0;
+        // 公共基底（陆/洋共用，海岸处幅度相等 ⟹ 接缝为零）
+        double n1 = fbm3(x, z, 220_000.0, ws ^ 0x6B1L);
+        double n2 = fbm3(x, z, 40_000.0, ws ^ 0x6B2L);
+        if (s > 0) {
+            double lf = smoothstep(0.0, V2_COAST_W, s);  // 0 海岸 → 1 内陆
+            double a1 = V2_COAST_AMP + (V2_LAND_AMP - V2_COAST_AMP) * lf;
+            double a2 = V2_COAST_AMP2 + (V2_LAND_AMP2 - V2_COAST_AMP2) * lf;
+            double h = V2_LAND_BASE * lf;
+            h += a1 * n1 + a2 * n2;
+            // 带（w[0]）连续，幅度按汇聚强度（w[8]）变化，但不为零 ⟹ 山脉沿带连绵
+            double mAmp = 0.35 + 0.65 * (w.length > 8 ? w[8] : 1.0);
+            double rf = ridged3(x, z, 300_000.0, ws ^ 0x6A2L);
+            // 山带可以一直到海边：用很窄的 s 门（≈1 km），而不是 lf（≈500 km）
+            double mtnGate = smoothstep(0.0, V2_MTN_COAST_S, s);
+            h += V2_MTN_AMP * w[0] * mAmp * rf * mtnGate;
+            if (V2_PEAK_AMP > 0.0) {
+                double wm = w[0];
+                h += V2_PEAK_AMP * wm * wm * rf * rf * rf * lf;   // 稀有高峰
+            }
+            return Math.min(h, LandContract.MAX_PEAK_M);
+        }
+        double sf = smoothstep(0.0, V2_COAST_W, -s);     // 0 海岸 → 1 深海
+        double b1 = V2_COAST_AMP + (V2_SEA_AMP - V2_COAST_AMP) * sf;
+        double b2 = V2_COAST_AMP2 + (V2_SEA_AMP2 - V2_COAST_AMP2) * sf;
+        double depth = V2_SHELF_DEPTH + (V2_ABYSS - V2_SHELF_DEPTH) * sf;
+        depth += V2_TRENCH * w[1];
+        depth -= V2_RIDGE * w[2];
+        depth -= V2_ARC * w[3];
+        depth -= V2_MTN_SHELF * w[0];      // 山带没入陆架（水下延续）
+        double h = -Math.max(120.0, depth) + b1 * n1 + b2 * n2;
+        return Math.min(h, -1.0);                        // 掩膜权威：洋面点永不浮出
+    }
+
     public static double height(long ws, double x, double z) {
+        if (HEIGHT_V2) return heightV2(ws, x, z);
         long ax = Double.doubleToLongBits(x), az = Double.doubleToLongBits(z);
         St st = ST.get();
         int idx = hcIndex(ax, az);
@@ -1043,14 +1208,25 @@ public final class LandV3 {
         if (OROG_SIDE_ON && D > 0.0) {
             wSideO = smoothstep(-OROG_SIDE_T, OROG_SIDE_T, bf[7]);
             bothO = smoothstep(OROG_COLLIDE_LO, OROG_COLLIDE_HI, bf[8]);
+            // 局部地壳类型：以 cut 为界的锐利陆/洋判定（而不是 LAND_GATE 那种很缓的坡）
+            double ctype = smoothstep(cut(ws) - 0.06, cut(ws) + 0.06, c);
+            if (LOCAL_CRUST_ON) {
+                // 碰撞带只应出现在陆壳上，否则就是“海底碰撞山脊”
+                bothO *= ctype;
+            }
             double cd = D / OROG_COLLIDE_W;
-            profile = (1.0 - bothO) * wSideO * fd + bothO * Math.exp(-cd * cd);
+            double profM = (1.0 - bothO) * wSideO * fd + bothO * Math.exp(-cd * cd);
             // Subducting side gets the trench (negative), NOT a mirror-image mountain belt.
+            double profT = 0.0;
             if (TRENCH_AMP > 0.0) {
                 double subSide = smoothstep(OROG_SIDE_T, -OROG_SIDE_T, bf[7]);
                 double td = (D - TRENCH_OFF) / TRENCH_W;
-                profile -= TRENCH_AMP * subSide * (1.0 - bothO) * Math.exp(-td * td);
+                profT = -TRENCH_AMP * subSide * (1.0 - bothO) * Math.exp(-td * td);
             }
+            // 山只在陆壳上、海沟只在洋壳侧
+            // 陆壳造山增益：P1 把“海里的假山”关掉后，陆地造山需要单独标定（U0 原本是按混合世界定的）。
+            double mgain = LOCAL_CRUST_ON ? MOUNTAIN_GAIN : 1.0;
+            profile = LOCAL_CRUST_ON ? (profM * mgain * ctype + profT * (1.0 - ctype)) : (profM + profT);
         }
         // profile can now be NEGATIVE (trench). strength modulates the ridge detail and
         // must stay in [0,1]: an unclamped lower bound sent detail*(0.35+0.65*strength)
