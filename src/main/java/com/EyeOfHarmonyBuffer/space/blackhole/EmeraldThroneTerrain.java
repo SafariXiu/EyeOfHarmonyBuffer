@@ -15,7 +15,15 @@ import net.minecraft.world.gen.NoiseGeneratorPerlin;
 public final class EmeraldThroneTerrain {
 
     /** 死亡之海 / 生之大陆分界（y ≤ 64 = 死亡之海，y &gt; 64 = 生之大陆）。 */
-    public static final int SEA_LEVEL = 64;
+    /**
+     * 死亡之海的海平面（**MC 方块 y 坐标** ✓）。
+     *
+     * <p>⚠⚠ <b>2026-10-14 审查（阶段 2 · 同名不同义）</b>：全仓有**三份** {@code SEA_LEVEL_BLK} ✗ ——
+     * 本处与 {@code com.EyeOfHarmonyBuffer.sim.litho.PlateField.SEA_LEVEL_BLK} 都是 <b>64</b>（MC 方块 y ✓）；
+     * 而 {@code PlateField.SEA_LEVEL} 是 <b>0.0</b>（double，单位【米】的高程基准 ✓，
+     * 且**不参与判陆** ✗）。⟹ <b>引用时必须写全类名</b> ✓；<b>不要</b>互相代入 ✗。
+     */
+    public static final int SEA_LEVEL_BLK = 64;
 
     /** 高度下限：仅做越界兜底（深谷理论上限 ~10，正常不会触发）。 */
     private static final int MIN_HEIGHT = 10;
@@ -43,7 +51,7 @@ public final class EmeraldThroneTerrain {
      * 想调山峰：阈值 0.9（越低越多）、系数 300（越大越高）、封顶 85（越高越险）、频率 0.0006（越小越庞大）。
      *
      * @param maxHeight 高度上限（世界高度 - 2）
-     * @return 高度（列的最高实心方块 y）；y ≤ SEA_LEVEL 为死亡之海，否则为生之大陆
+     * @return 高度（列的最高实心方块 y）；y ≤ SEA_LEVEL_BLK 为死亡之海，否则为生之大陆
      */
     public static int sampleHeight(NoiseGeneratorPerlin continent, NoiseGeneratorPerlin detail,
         NoiseGeneratorPerlin rock, NoiseGeneratorPerlin peak, int wx, int wz, int maxHeight) {
@@ -57,7 +65,7 @@ public final class EmeraldThroneTerrain {
             boost = Math.min(85.0D, t * t * 300.0D);
         }
 
-        int h = (int) Math.round(SEA_LEVEL + c * 26.0D + d * 7.0D + boost);
+        int h = (int) Math.round(SEA_LEVEL_BLK + c * 26.0D + d * 7.0D + boost);
         if (h < MIN_HEIGHT) {
             h = MIN_HEIGHT;
         }
