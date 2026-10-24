@@ -31,6 +31,26 @@ public final class LandNoise {
      * 双线性 value noise，[0,1)，格距 = 1。
      * <p>x、y 以「波长」为单位传入（例如 {@code px / WL}）。
      */
+    /** 梯度噪声（Perlin）：海岸线用，比 value noise 平滑、没有栅格块感。 */
+    public static double perlin(double x, double y, long seed) {
+        long i = (long) Math.floor(x), j = (long) Math.floor(y);
+        double fx = x - i, fy = y - j;
+        double u = fx * fx * fx * (fx * (fx * 6.0 - 15.0) + 10.0);
+        double v = fy * fy * fy * (fy * (fy * 6.0 - 15.0) + 10.0);
+        double n00 = grad(i, j, seed, fx, fy);
+        double n10 = grad(i + 1, j, seed, fx - 1.0, fy);
+        double n01 = grad(i, j + 1, seed, fx, fy - 1.0);
+        double n11 = grad(i + 1, j + 1, seed, fx - 1.0, fy - 1.0);
+        double a = n00 + u * (n10 - n00);
+        double b = n01 + u * (n11 - n01);
+        return (a + v * (b - a)) * 1.4;
+    }
+
+    private static double grad(long i, long j, long seed, double dx, double dy) {
+        double ang = h01(seed, i, j) * 6.283185307179586;
+        return Math.cos(ang) * dx + Math.sin(ang) * dy;
+    }
+
     public static double value(double x, double y, long seed) {
         long i = (long) Math.floor(x), j = (long) Math.floor(y);
         double fx = x - i, fy = y - j;

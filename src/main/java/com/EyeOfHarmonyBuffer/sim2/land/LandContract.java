@@ -31,8 +31,12 @@ public final class LandContract {
      * <p>v5（2026-10-21）：大陆场改「克拉通核 + 脊化活动带」；大陆场在板块参考系取样；
      * 海岸线域扭曲；俯冲极性（单侧海沟 + 上覆侧岛弧）。
      * <p>v8（2026-10-21）：陆/洋分支连续化（COAST_GATE）——海岸线上 2,673 m 的崖降到 300 m/km 级。
+     * <p>v9（2026-10-24）：岛弧改按【挤压 + 速度】生成（PTP 2019 g(v)=v/v0），并加沿走向分段；
+     *     VERSION 现在真的折进 {@code LandV3.configStamp()}（之前没有任何地方读它）。
+     * <p>v10（2026-10-24）：其余构造项加板块状态门（洋脊/海沟/碰撞）；洋底年龄与洋脊隆起
+     *     改由“到离散边界的距离 / 半扩张速率”驱动（PTP 2019 §4.3 + Parsons &amp; Sclater 1977）。
      */
-    public static final int VERSION = 8;
+    public static final int VERSION = 10;
 
     // ================= 水平尺度 =================
     /** 板块格距基准（m）：2,500 km。{@code WARP_*}、{@code plateL()} 都按它的倍数给。 */
@@ -62,6 +66,19 @@ public final class LandContract {
     /** 均衡系数 (1 − ρc/ρm)，ρc=2800、ρm=3300（Turcotte &amp; Schubert；卷页待补）。 */
     public static final double K_ISO = 1.0 - 2800.0 / 3300.0;
 
+    /**
+     * 全球最高峰上限（米）。**用户 2026-10-24 裁决**：最高峰不超过 10,240 m 都可以存在，
+     * 不再要求把碰撞峰压回 4.2 km 档。
+     *
+     * <p>这个数是**表现层约束**而不是物理量：MC 1.7.10 的世界高度是 256 格，
+     * 生产换算 {@code hCF = 64 + ELEV_TO_BLK(0.018) · hM} ⟹ 10,240 m 对应
+     * {@code 64 + 184.3 = 248.3 格}，刚好在世界顶之下；再高就会被截断。
+     *
+     * <p>实现为**硬夹**（{@code min(h, MAX_PEAK_M)}）：低于它的地貌逐位不变，
+     * 只有超过的峰被削平——当前 B′ 实测最高 5,008 m，所以对现有世界零影响。
+     */
+    public static final double MAX_PEAK_M = 10_240.0;
+
     // ================= 海岸 / 构造 =================
     /** soft-min 温度（m）：海岸过渡 ≈ 2σ = 140 km。 */
     public static final double SIGMA = 70_000.0;
@@ -71,9 +88,26 @@ public final class LandContract {
     /** 海沟：最大减薄与带宽。 */
     public static final double A_TRENCH = 8_000.0;
     public static final double S_TRENCH = 150_000.0;
-    /** 裂谷：最大减薄与带宽。 */
-    public static final double A_RIFT = 8_000.0;
-    public static final double S_RIFT = 250_000.0;
+    /**
+     * 裂谷：地壳减薄量（m 厚度）与高斯半宽（m）。
+     *
+     * <p><b>出处</b>：Achauer, U., Maguire, P.K.H., Mechie, J., Green, W.V. &amp; the KRISP
+     * Working Group (1992), "Some remarks on the structure and geodynamics of the Kenya Rift",
+     * in Ziegler (Ed.) Geodynamics of Rifting Vol. II, <i>Tectonophysics</i> <b>213</b>: 257-268：
+     * <ul>
+     *   <li>纬度 0.5° 剖面：地壳从西翼 <b>40 km</b> 减薄到地堑下 <b>30 km</b>，东翼回到 35 km；
+     *       北端 Turkana 湖下进一步到 <b>20 km</b>（35 → 20）。</li>
+     *   <li>地堑是 <b>50-70 km 宽</b>的半地堑；到端点处构造<b>撒开到 200 km 以上</b>。</li>
+     *   <li>地堑底到肩部的<b>地形落差可达 1,600 m</b>。</li>
+     * </ul>
+     *
+     * <p>取值：<b>A_RIFT = 10,000 m</b>（40→30 km 的 10 km 减薄；K_ISO·10 km = 1,515 m，
+     * 与论文 1,600 m 的肩部落差同量级）；<b>S_RIFT = 100,000 m</b>（高斯半宽，全宽约 200 km，
+     * 取论文"撒开到 200 km 以上"的尺度，而非 50-70 km 的单条半地堑——世界图 22 km/px 下后者只有 3 px）。
+     * <p>⚠ 这仍是纯剪切（McKenzie 1978 式）的**几何近似**：没有沉积充填、没有挠曲回弹。
+     */
+    public static final double A_RIFT = 10_000.0;
+    public static final double S_RIFT = 100_000.0;
 
     // ================= 大陆性场 =================
     /** 大陆性：超大陆尺度（m），让陆块有「一大带几中」的分布。 */
@@ -473,6 +507,22 @@ public final class LandContract {
 
     // ================= 板块层（Worley + 核投票 + 两层扭曲） =================
     public static final double PLATE_CELL = 6_000_000.0;
+
+    // ================= 两层板块 B′（2026-10-24） =================
+    /**
+     * 粗晶格间距（m）：巨型板块的种子。40,000 km 窗口 ⟹ 约 4–9 个巨型。
+     * <p>取值 20,000 km 来自 400×400 参数扫描：L1=20,000 / L2=8,000 / BAND=400 km 得到
+     * **12 个板块**（4 巨型 15–19% + 8 中小），最接近用户要求的“~10 块”。
+     */
+    public static double TT_L1 = 20_000_000.0;
+    /** 细晶格间距（m）：中小板块的候选种子。 */
+    public static double TT_L2 = 8_000_000.0;
+    /**
+     * 细层种子的“出生带”半宽（m）：只有到【粗 Voronoi 边界】的距离小于它的细种子才存在。
+     * <p>关键：带只决定**哪些种子存在**，不决定边界——板块边界仍是两个最近种子的中垂线，
+     * 所以剖分唯一、不嵌套、无空单元。
+     */
+    public static double TT_BAND = 400_000.0;
     public static final double PLATE_GIANT_L = 16_000_000.0;
     public static final double PLATE_R = 9_700_000.0;
     /**
