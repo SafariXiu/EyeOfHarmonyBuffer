@@ -299,9 +299,46 @@ public final class PlateField {
      * 与 {@link NoiseContinentGrid}。{@code cell} 形参**已被忽略**（保留只为不改 ~200 支探针的调用点，
      * 理由见 {@link #PLATE_CELL}）。
      */
+    // ---- probe instrumentation (no effect unless TRACE_ELEV) -------------------
+    /** Set by a probe; counts elevationWithCell traffic and duplicate coordinates. */
+    public static volatile boolean TRACE_ELEV = false;
+    private static final ThreadLocal<long[]> TE_WIN = new ThreadLocal<long[]>() {
+        @Override protected long[] initialValue() { return new long[64]; }   // 32 pairs
+    };
+    private static final ThreadLocal<int[]> TE_CNT = new ThreadLocal<int[]>() {
+        @Override protected int[] initialValue() { return new int[3]; }      // calls, dup, unique
+    };
+
+    /** Zeroes the per-thread counters and the coordinate window. */
+    public static void traceReset() {
+        int[] c = TE_CNT.get(); c[0] = 0; c[1] = 0; c[2] = 0;
+        java.util.Arrays.fill(TE_WIN.get(), Long.MIN_VALUE);
+    }
+
+    /** {calls, dupHits, distinctSeen} for the current thread since the last reset. */
+    public static int[] traceResult() {
+        int[] c = TE_CNT.get();
+        return new int[]{c[0], c[1], c[2]};
+    }
+
+    private static void traceHit(int x, int z) {
+        int[] c = TE_CNT.get();
+        c[0]++;
+        long key = (((long) x) << 32) ^ (((long) z) & 0xFFFFFFFFL);
+        long[] w = TE_WIN.get();
+        for (int i = 0; i < w.length; i++) {
+            if (w[i] == key) { c[1]++; return; }
+        }
+        // dodge the Long.MIN_VALUE sentinel: shift keys by one
+        int slot = c[0] & 31;
+        w[slot * 2] = key; w[slot * 2 + 1] = key;   // keep both halves warm
+        c[2]++;
+    }
+
     public static double elevationWithCell(int x, int z, long seed, int cell) {
         // ★★★★★★ 2026-10-08 接入新海陆：直接委托 NoiseContinentGrid（-> TalosLandField）
         //   旧的 TalosField V8 生成器路径与 MASK/ELEV 钩子已删除（用户裁决：全接过去，更干净）
+        if (TRACE_ELEV) traceHit(x, z);
         return com.EyeOfHarmonyBuffer.sim2.land.LandV3.height(seed, x, z);
     }
 

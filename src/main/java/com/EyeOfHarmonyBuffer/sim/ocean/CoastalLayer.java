@@ -125,7 +125,7 @@ public final class CoastalLayer {
      * 注意：改成 3,000 km 会让旧累积的方向正确率**下降**（44% -> 25%）——
      * 这正是「缩短记忆不是修法」的证据，见 §77.1。
      */
-    public static double L_RELAX = 75_000.0;   // ★ 缩 40x（原 3,000,000）
+    public static double L_RELAX = 3_000_000.0;   // 2026-10-24 恢复 3,000 km：用户裁决值；75 km 是 2026-10-08 整体缩 40x 在裁决【之后】的回退
     /**
      * |f| 下限（s^-1），避免赤道发散。锚点 = **3.93 度纬度**
      * （见 {@code hcLocal} 的 javadoc：这条下限只在 |lat| &lt; asin(F_MIN/(2*Omega)) = 3.93 度 起作用）。

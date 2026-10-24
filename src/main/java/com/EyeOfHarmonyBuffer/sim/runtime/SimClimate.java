@@ -1160,10 +1160,10 @@ public final class SimClimate {
      * ⚠ 局限：1 年、0.25°、距离用「最近海洋」、山脉未剔除 ⇒ 只当**量级**用，
      * 用户批准的取值带是 **200~400 km**，取观测值 **200 km**。
      */
-    public static double MARITIME_SCALE = 5_000.0;   // ★ 缩 40x（原 200,000）
+    public static double MARITIME_SCALE = 200_000.0;   // 2026-10-24 恢复 200 km：javadoc 的拟合值就是 200 km，5 km 是 40x 缩放残留
 
     /** **大量程海岸距离的搜索半窗（m）** —— 必须 >= 3 x {@link #MARITIME_SCALE}（D46 / E20）。 */
-    public static int COAST_FAR = 40_000;   // ★ 缩 40x（原 1,600,000）
+    public static int COAST_FAR = 1_600_000;   // 2026-10-24 恢复：自身 javadoc 要求 >= 3 x MARITIME_SCALE，且注释写明 1600 km
 
     /**
      * **海洋影响权重**：海岸 = 0（完全海洋性），内陆 ≳3 个 {@link #MARITIME_SCALE} 后 → 1（完全大陆性）。

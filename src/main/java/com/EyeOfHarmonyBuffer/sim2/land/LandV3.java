@@ -146,11 +146,16 @@ public final class LandV3 {
 
     private static final java.util.concurrent.ConcurrentHashMap<Long, Double> CUTS =
             new java.util.concurrent.ConcurrentHashMap<Long, Double>();
+    private static volatile long CUT_LAST_WS = Long.MIN_VALUE;
+    private static volatile double CUT_LAST_V;
 
     /** 大陆度阈值：二分到目标陆占比。 */
     public static double cut(long ws) {
+        // Single-entry volatile cache: the ConcurrentHashMap lookup boxed the long and
+        // showed up as 3.7% of samples in the load profile.
+        if (ws == CUT_LAST_WS) return CUT_LAST_V;
         Double v = CUTS.get(ws);
-        if (v != null) return v.doubleValue();
+        if (v != null) { CUT_LAST_WS = ws; CUT_LAST_V = v.doubleValue(); return v.doubleValue(); }
         double lo = 0.20, hi = 0.95;
         for (int it = 0; it < 14; it++) {
             double mid = 0.5 * (lo + hi);
@@ -158,6 +163,8 @@ public final class LandV3 {
         }
         double c = 0.5 * (lo + hi);
         CUTS.put(ws, c);
+        CUT_LAST_WS = ws;
+        CUT_LAST_V = c;
         return c;
     }
 
@@ -214,14 +221,39 @@ public final class LandV3 {
         return h;
     }
 
+    /** Memo table size (power of two). */
+    private static final int HC_SIZE = 1 << 12;
+    /** Guard for the per-thread height memo (a different seed invalidates it). */
+    private static volatile long HC_WS = Long.MIN_VALUE;
+
+
+    // The key is the EXACT double bit pattern: height() is a function of the precise
+    // coordinate, so flooring would alias two sub-block positions and return a wrong value.
+    private static int hcIndex(long ax, long az) {
+        long h = ax * 0x9E3779B97F4A7C15L ^ az * 0xC2B2AE3D27D4EB4FL;
+        return (int) ((h >>> 40) & (HC_SIZE - 1));
+    }
+
     public static double height(long ws, double x, double z) {
-        double[] h = HB.get();
-        f(ws, x, z, h);
-        return h[0];
+        long ax = Double.doubleToLongBits(x), az = Double.doubleToLongBits(z);
+        St st = ST.get();
+        int idx = hcIndex(ax, az);
+        if (ws == HC_WS && st.mx[idx] == ax && st.mz[idx] == az) return st.mv[idx];
+        f(ws, x, z, st.h);
+        st.mx[idx] = ax; st.mz[idx] = az; st.mv[idx] = st.h[0];
+        HC_WS = ws;
+        return st.h[0];
     }
 
     /** Paper model (Cortial et al. 2019) vs the variance model. Default: variance. */
     public static boolean USE_PAPER = true;
+
+    // A/B note (2026-10-24): merging the two exponentials in boundaryField into
+    // exp(-(aL+aV)) was measured and REJECTED: it is only 7.5% faster (1243 -> 1149 ns)
+    // while perturbing 2.35% of world points by up to 3.4e-10 m. Keep the two-exp form.
+
+    /** Invalidate the per-thread height memo (probes only). */
+    public static void clearHeightCache() { HC_WS = Long.MIN_VALUE; }
 
     /** 构造抬升场（m 厚度）：交给 LEM 当输入 U(x)。 */
     public static double uplift(long ws, double x, double z) {
@@ -250,10 +282,9 @@ public final class LandV3 {
     /** Island-arc strength in [0,1] (same product the uplift uses, without the amplitude). */
     public static double arcRaw(long ws, double x, double z) {
         double qx = x + warpX(x, z), qz = z + warpZ(x, z);
+        // Debug-only entry point: no window cache (boundaryField does its own caching).
         Cell[] cs = SC.get();
         cells9(qx, qz, cs);
-        double[] vb = VB.get();
-        for (int j = 0; j < 9; j++) vel(ws, cs[j], vb, j * 2);
         double[] bf = BF.get();
         boundaryField(ws, x, z, bf);
         if (bf[3] <= 0.0) return 0.0;
@@ -412,6 +443,43 @@ public final class LandV3 {
         return base + landformExtra(ws, x, z, bf, D, gate);
     }
 
+    /**
+     * All per-thread scratch for the height hot path, in ONE object.
+     *
+     * <p>Profiling showed {@code ThreadLocal.get} as the single largest cost (21.8% of a
+     * world-load recording): one {@code height()} sample touched six different thread-locals
+     * (memo, h-buffer, cells, velocities, window key, continentality scratch). Fetching one
+     * state object instead cuts that to two lookups, and the memo lives here as well.
+     */
+    private static final class St {
+        final long[] mx = new long[1 << 12];
+        final long[] mz = new long[1 << 12];
+        final double[] mv = new double[1 << 12];
+        final double[] h = new double[8];
+        final Cell[] cs = new Cell[9];
+        final double[] vb = new double[18];
+        final double[] cc = new double[9];
+        final long[] key = {Long.MIN_VALUE, Long.MIN_VALUE, Long.MIN_VALUE};
+        // Precomputed, point-independent pair table (see boundaryField).
+        final int[] pa = new int[36];
+        final int[] pb = new int[36];
+        final double[] pAb = new double[36];
+        final double[] pNx = new double[36];
+        final double[] pNz = new double[36];
+        final double[] pConvS = new double[36];
+        final double[] pConv = new double[36];
+        final double[] pCcMin = new double[36];
+        int nPair = 0;
+        St() {
+            java.util.Arrays.fill(mx, Long.MIN_VALUE);
+            for (int i = 0; i < 9; i++) cs[i] = new Cell();
+        }
+    }
+
+    private static final ThreadLocal<St> ST = new ThreadLocal<St>() {
+        @Override protected St initialValue() { return new St(); }
+    };
+
     private static final ThreadLocal<double[]> BF = new ThreadLocal<double[]>() {
         @Override protected double[] initialValue() { return new double[7]; }
     };
@@ -419,46 +487,60 @@ public final class LandV3 {
     /** Continuous boundary field over ALL plate pairs (softmin distance + soft-weighted force). */
     public static void boundaryField(long ws, double x, double z, double[] out) {
         double qx = x + warpX(x, z), qz = z + warpZ(x, z);
-        Cell[] cs = SC.get();
-        cells9(qx, qz, cs);
-        double[] vb = VB.get();
-        for (int j = 0; j < 9; j++) vel(ws, cs[j], vb, j * 2);
+        St st = ST.get();
+        Cell[] cs = st.cs;
+        double[] vb = st.vb;
+        long[] key = st.key;
+        final double PL = LandContract.PLATE_CELL;
+        long ci = (long) Math.floor(qx / PL), cj = (long) Math.floor(qz / PL);
+        // The 3x3 window and its 9 cell velocities only change when the sample crosses a
+        // plate-cell boundary; consecutive columns reuse them (36 noise evals saved).
+        if (key[0] != ci || key[1] != cj || key[2] != ws) {
+            cells9(qx, qz, cs);
+            for (int j = 0; j < 9; j++) vel(ws, cs[j], vb, j * 2);
+            key[0] = ci; key[1] = cj; key[2] = ws;
+            // continentality is window-constant too
+            for (int j = 0; j < 9; j++) st.cc[j] = continentality(ws, cs[j].sx, cs[j].sz);
+            // ---- point-independent pair table ----
+            int np = 0;
+            for (int a = 0; a < 9; a++) {
+                for (int b = a + 1; b < 9; b++) {
+                    if (cs[a].id == cs[b].id) continue;
+                    double abx = cs[b].sx - cs[a].sx, abz = cs[b].sz - cs[a].sz;
+                    double ab = Math.sqrt(abx * abx + abz * abz);
+                    if (ab < 1.0) continue;
+                    double ln = ab < 1.0 ? 1.0 : ab;
+                    double nx = abx / ln, nz = abz / ln;
+                    double dvx = vb[b * 2] - vb[a * 2], dvz = vb[b * 2 + 1] - vb[a * 2 + 1];
+                    double conv = -(dvx * nx + dvz * nz);
+                    double convS = 0.5 * (conv + Math.sqrt(conv * conv + 0.01));
+                    st.pa[np] = a; st.pb[np] = b; st.pAb[np] = ab;
+                    st.pNx[np] = nx; st.pNz[np] = nz;
+                    st.pConvS[np] = convS; st.pConv[np] = conv;
+                    st.pCcMin[np] = Math.min(st.cc[a], st.cc[b]);
+                    np++;
+                }
+            }
+            st.nPair = np;
+        }
         final double Lm = SOFTMIN_L;
         // Locality gate: a cell 6000 km away can still sit near the bisector and contribute
         // a LARGE exp(-d/L), then vanish when the 3x3 window shifts -> D jumped 235 km.
         double dminC = 1e18;
         for (int j = 0; j < 9; j++) if (cs[j].d < dminC) dminC = cs[j].d;
         double sw = 0, sconv = 0, splunge = 0, ssign = 0, snx = 0, snz = 0;
-        for (int a = 0; a < 9; a++) {
-            double ccA = continentality(ws, cs[a].sx, cs[a].sz);
-            for (int b = a + 1; b < 9; b++) {
-                if (cs[a].id == cs[b].id) continue;
-                double ra = Math.max(1.0, cs[a].d), rb = Math.max(1.0, cs[b].d);
-                // Exact point-to-bisector distance: | |p-a|^2 - |p-b|^2 | / (2 |b-a|).
-                // The old |rb-ra| / |u_b - u_a| form degenerates when the two cells are
-                // nearly collinear with p (the denominator vanishes) -> d explodes -> u steps.
-                double abx = cs[b].sx - cs[a].sx, abz = cs[b].sz - cs[a].sz;
-                double ab = Math.sqrt(abx * abx + abz * abz);
-                if (ab < 1.0) continue;
-                double d = Math.abs(ra * ra - rb * rb) / (2.0 * ab);
-                double eC = cs[a].d - dminC;
-                double w = Math.exp(-d / Lm) * Math.exp(-(eC * eC) / (2.0 * VEL_L * VEL_L));
-                // NO early cutoff: exp(-d/L) < 1e-6 used to skip far pairs entirely, which
-                // zeroed the whole sum far from boundaries -> a 2.5 km step in u (measured).
-                double ex = cs[b].sx - cs[a].sx, ez = cs[b].sz - cs[a].sz;
-                double ln = Math.sqrt(ex * ex + ez * ez);
-                if (ln < 1.0) ln = 1.0;
-                double nx = ex / ln, nz = ez / ln;
-                double dvx = vb[b * 2] - vb[a * 2], dvz = vb[b * 2 + 1] - vb[a * 2 + 1];
-                double conv = -(dvx * nx + dvz * nz);
-                snx += w * nx; snz += w * nz;
-                double convS = 0.5 * (conv + Math.sqrt(conv * conv + 0.01));
-                double ccB = continentality(ws, cs[b].sx, cs[b].sz);
-                sw += w;
-                sconv += w * convS;
-                splunge += w * Math.min(ccA, ccB);
-                ssign += w * conv;
-            }
+        final int np = st.nPair;
+        for (int q = 0; q < np; q++) {
+            final int a = st.pa[q], b = st.pb[q];
+            double ra = Math.max(1.0, cs[a].d), rb = Math.max(1.0, cs[b].d);
+            double d = Math.abs(ra * ra - rb * rb) / (2.0 * st.pAb[q]);
+            double eC = cs[a].d - dminC;
+            double w = Math.exp(-d / Lm) * Math.exp(-(eC * eC) / (2.0 * VEL_L * VEL_L));
+            snx += w * st.pNx[q]; snz += w * st.pNz[q];
+            sw += w;
+            sconv += w * st.pConvS[q];
+            splunge += w * st.pCcMin[q];
+            ssign += w * st.pConv[q];
         }
         if (sw < 1e-9) { out[0] = 1e9; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0; out[5] = 0; out[6] = 0; return; }
         // clamp at 0: when several pairs sit on their bisector at once, sum(w) > 1 and

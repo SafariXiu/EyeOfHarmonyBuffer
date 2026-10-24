@@ -99,7 +99,7 @@ public final class OceanField {
      */
     public static int ROWS = 128;
     /** 行网格间距（block）—— 必须能分辨 Munk 层。 */
-    public static double ROW_H = 125.0;   // ★ 2026-10-08 缩 40x（原 5,000）
+    public static double ROW_H = 5_000.0;   // 2026-10-24 恢复：与地球尺度的 maxRow(24,000 km) 配套；125 是 2026-10-08 缩 40x 的残留
     /**
      * Sverdrup 积分用的总深度（m）。
      *

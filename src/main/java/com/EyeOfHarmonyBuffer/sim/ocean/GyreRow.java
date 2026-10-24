@@ -241,17 +241,36 @@ public final class GyreRow {
      */
     public static int CURL_STRIDE = 10;
 
+    /**
+     * 海盆边界扫描步长（block），与求解分辨率 {@link #ROW_H} <b>解耦</b>。
+     *
+     * <p>ROW_H 缩到 125 后若仍用它扫描，单侧最坏 192,000 次 {@code isLandWithCell}；
+     * 5,000 是缩步长之前的历史扫描步长。
+     */
+    public static double SCAN_H = 5_000.0;
+
     /** 沿包含 (x,z) 的那条纬度行求解。**纯函数**（除了读写传入的 wind provider）。 */
     public static Row solve(int x, int z, long seed, int cell, WindCurl wind, Params p) {
         Row r = new Row();
         double h = p.h;
         // beta 未手动设置 ⇒ 按这条纬度行的纬度推导（§23.0：绝不能再共用 45 度的常数）
         if (!p.hasBeta()) p = p.withBeta(p.betaAt(z));
-        // --- 1) 找行的两端 ---
+        // --- 1) 找行的两端（粗扫 + 精确回退）---
+        //
+        // 【为什么不能直接用 h 扫】ROW_H 在 2026-10-08 从 5000 缩到 125（为了求解分辨率），
+        //   而这里沿用它当扫描步长 ⟹ 单侧最多 24e6/125 = 192,000 次 isLand，
+        //   每次 isLand 都要算一遍完整地形（boundaryField 36 对 × 2 exp）。
+        //   JFR：气候预取线程 86.9% 的采样都停在这条 while 里的 isLand 上。
+        //   粗扫用 SCAN_H（= 历史步长 5000），命中陆地后在 SCAN_H 窗口内按 h 精确回退，
+        //   得到的边界与缩步长前的实现一致。
+        final int scan = (int) Math.max(h, SCAN_H);
+        final int step = (int) Math.max(1.0, h);
         int xw = x;
-        while (xw > -p.maxRow && !PlateField.isLandWithCell(xw - (int) h, z, seed, cell)) xw -= (int) h;
+        while (xw - scan > -p.maxRow && !PlateField.isLandWithCell(xw - scan, z, seed, cell)) xw -= scan;
+        while (xw - step > -p.maxRow && !PlateField.isLandWithCell(xw - step, z, seed, cell)) xw -= step;
         int xe = x;
-        while (xe < p.maxRow && !PlateField.isLandWithCell(xe + (int) h, z, seed, cell)) xe += (int) h;
+        while (xe + scan < p.maxRow && !PlateField.isLandWithCell(xe + scan, z, seed, cell)) xe += scan;
+        while (xe + step < p.maxRow && !PlateField.isLandWithCell(xe + step, z, seed, cell)) xe += step;
         if (PlateField.isLandWithCell(x, z, seed, cell)) { r.valid = false; return r; }
         // (D81) 这一侧的端点是被 maxRow 上限截断的、且上限外仍是海 ⇒ 墙是求解器凭空造的。
         // 行为中性：只写两个布尔，不参与任何数值。

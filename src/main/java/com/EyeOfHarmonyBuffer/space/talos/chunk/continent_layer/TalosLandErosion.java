@@ -2607,7 +2607,12 @@ public final class TalosLandErosion {
      * 两者都是**瓦片内双线性插值**（E 在建气候瓦片时已顺手算好）⟹ 边际成本≈0。
      */
     /** Async climate prefetch: off -> bit-identical behaviour. */
-    public static volatile boolean PREFETCH_ON = true;
+    // 2026-10-24 关闭：SimClimate 的 BUILD_LOCKS 是【按 key 分片、且在锁内跑完整求解】。
+// 预取线程一旦持锁求解某个气候瓦片，主线程在 solveLakeLevels 里要同一个瓦片就会阻塞——
+// JFR 实测：某次加载 Server 线程连续 65 s 零采样，机器 CPU 仅 26%，正是卡在这把锁上。
+// 预取本来想和 ITER 循环重叠，结果变成和区块生成抢锁。等改成 tryLock / 只预热主线程
+// 不需要的瓦片后再考虑打开。
+public static volatile boolean PREFETCH_ON = false;
     /** Phase timers (diagnostics only): init / gate / ITER / post. */
     public static final java.util.concurrent.atomic.AtomicLong PH_INIT =
             new java.util.concurrent.atomic.AtomicLong();
@@ -2622,6 +2627,10 @@ public final class TalosLandErosion {
         phT = now;
     }
 
+    /** Number of prefetch jobs submitted but not finished (see prefetchClimate). */
+    private static final java.util.concurrent.atomic.AtomicInteger PREFETCH_PENDING =
+            new java.util.concurrent.atomic.AtomicInteger();
+
     private static java.util.concurrent.ExecutorService PREFETCH;
 
     private static synchronized java.util.concurrent.ExecutorService prefetchExec() {
@@ -2630,6 +2639,9 @@ public final class TalosLandErosion {
                 @Override public Thread newThread(Runnable r) {
                     Thread t = new Thread(r, "Talos-LEM-ClimPrefetch");
                     t.setDaemon(true);
+                    // Speculative work: it must never outrank chunk generation. A world-load
+                    // JFR showed this thread burning ~6.5 CPU-minutes of a 13-minute load.
+                    t.setPriority(Thread.MIN_PRIORITY);
                     return t;
                 }
             });
@@ -2655,21 +2667,31 @@ public final class TalosLandErosion {
         final int lo = BUFFER_CELLS;
         final int seed = (int) ws;
         final double step = STEP_BLK;
+        // Best-effort semantics: never queue speculative work behind unfinished speculative
+        // work. During a world load tiles are solved back-to-back, so the queue used to grow
+        // without bound and the prefetch thread ended up taking the CPU the server thread
+        // needed (JFR: prefetch 51.8% vs server 6.4% of runnable samples).
+        if (PREFETCH_PENDING.get() > 0) return;
+        PREFETCH_PENDING.incrementAndGet();
         try {
             prefetchExec().submit(new Runnable() {
                 @Override public void run() {
-                    for (int cj = 0; cj < ncg; cj++) {
-                        for (int ci = 0; ci < ncg; ci++) {
-                            final int gi = lo + Math.min(NS - 1, ci * CG + CG / 2);
-                            final int gj = lo + Math.min(NS - 1, cj * CG + CG / 2);
-                            final double wx = ox + gi * step, wz = oz + gj * step;
-                            try { SimClimate.annualPrecipMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
-                            try { SimClimate.lakeEvapMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
+                    try {
+                        for (int cj = 0; cj < ncg; cj++) {
+                            for (int ci = 0; ci < ncg; ci++) {
+                                final int gi = lo + Math.min(NS - 1, ci * CG + CG / 2);
+                                final int gj = lo + Math.min(NS - 1, cj * CG + CG / 2);
+                                final double wx = ox + gi * step, wz = oz + gj * step;
+                                try { SimClimate.annualPrecipMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
+                                try { SimClimate.lakeEvapMmPerYear((int) wx, (int) wz, seed); } catch (Throwable ex) { }
+                            }
                         }
+                    } finally {
+                        PREFETCH_PENDING.decrementAndGet();
                     }
                 }
             });
-        } catch (Throwable ex) { /* prefetch is best-effort */ }
+        } catch (Throwable ex) { PREFETCH_PENDING.decrementAndGet(); }
     }
 
     private static void solveLakeLevels(long ws, Tile t, double ox, double oz) {

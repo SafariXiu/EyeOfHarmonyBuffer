@@ -3357,7 +3357,53 @@ public final class PrecipField {
      *
      * <p>中心差分，步长 {@link #UPWIND_STEP}。地形量用 {@link PlateField#elevationWithCell}。
      */
-    public static double wTerrain(int x, int z, long seed, int cell, double u, double v) {
+    // ---- probe: wTerrain call accounting (no effect unless TRACE_WT) -------------
+public static volatile boolean TRACE_WT = false;
+private static final ThreadLocal<int[]> WT_CNT = new ThreadLocal<int[]>() {
+    @Override protected int[] initialValue() { return new int[3]; }
+};
+private static final ThreadLocal<long[]> WT_WIN = new ThreadLocal<long[]>() {
+    @Override protected long[] initialValue() { return new long[512]; }
+};
+private static final ThreadLocal<java.util.HashMap<String, Integer>> WT_CALLER =
+    new ThreadLocal<java.util.HashMap<String, Integer>>() {
+        @Override protected java.util.HashMap<String, Integer> initialValue() {
+            return new java.util.HashMap<String, Integer>();
+        }
+    };
+
+public static void wtReset() {
+    int[] c = WT_CNT.get(); c[0] = 0; c[1] = 0; c[2] = 0;
+    java.util.Arrays.fill(WT_WIN.get(), Long.MIN_VALUE);
+    WT_CALLER.get().clear();
+}
+
+public static int[] wtResult() { int[] c = WT_CNT.get(); return new int[]{c[0], c[1], c[2]}; }
+
+public static java.util.Map<String, Integer> wtCallers() { return WT_CALLER.get(); }
+
+private static void wtHit(int x, int z) {
+    int[] c = WT_CNT.get();
+    c[0]++;
+    long key = (((long) x) << 32) ^ (((long) z) & 0xFFFFFFFFL);
+    long[] w = WT_WIN.get();
+    boolean dup = false;
+    for (int i = 0; i < w.length; i++) if (w[i] == key) { dup = true; break; }
+    if (dup) c[1]++;
+    w[(c[0] & 255) * 2] = key;
+    w[(c[0] & 255) * 2 + 1] = key;
+    c[2]++;
+    try {
+        StackTraceElement[] st = new Throwable().getStackTrace();
+        String who = st.length > 2 ? (st[2].getClassName() + '.' + st[2].getMethodName()) : "?";
+        java.util.HashMap<String, Integer> m = WT_CALLER.get();
+        Integer old = m.get(who);
+        m.put(who, old == null ? 1 : old + 1);
+    } catch (Throwable ignored) { }
+}
+
+public static double wTerrain(int x, int z, long seed, int cell, double u, double v) {
+    if (TRACE_WT) wtHit(x, z);
         // ★★★★★★★★ §7589：差分步长【不能用 UPWIND_STEP（150 km）】—— 那比最短地形波长还大 3 倍，
         //   山脉会被完全混叠掉（M3-大气层设计调研:638 逐字：「Δs = 25 km（**必须显著小于
         //   PlateField.OROGEN_W = 90 km**，否则山脉会被混叠掉）」）。
@@ -3464,8 +3510,15 @@ public final class PrecipField {
         for (int i = 1; i <= N; i++) {
             final double s = i * ds;
             final double K = (s / (a * a)) * Math.exp(-s / a);
-            hSum += K * PlateField.elevationWithCell(
-                    x - (int) Math.round(ux * s), z - (int) Math.round(uz * s), seed, cell);
+            {
+                int sx = x - (int) Math.round(ux * s), sz = z - (int) Math.round(uz * s);
+                if (TERRAIN_SNAP_Q > 0.5) {
+                    double q = TERRAIN_SNAP_Q;
+                    sx = (int) (Math.round(sx / q) * q);
+                    sz = (int) (Math.round(sz / q) * q);
+                }
+                hSum += K * PlateField.elevationWithCell(sx, sz, seed, cell);
+            }
             kSum += K;
         }
         if (kSum <= 1.0e-12) return PlateField.elevationWithCell(x, z, seed, cell);
@@ -3499,7 +3552,7 @@ public final class PrecipField {
      */
     public static boolean TERRAIN_CONV = true;
     /** 卷积的采样点数（覆盖到 N·a/2，a = U·τ）。8 点覆盖到 4a（核的 99.8% 质量）。 */
-    public static int TERRAIN_CONV_N = 8;
+    public static int TERRAIN_CONV_N = 8;// 2026-10-24: snap the Gamma(2) kernel LOOKUP positions to a lattice of this size (blocks).// 0 = exact (old behaviour). Must stay << the kernel scale a = |U|*TAU_C (~10 km).// Affects only where the kernel samples the terrain, never the +/-h probe positions,// so the gradient stays a difference of exact smoothed values.public static double TERRAIN_SNAP_Q = 0.0;
     /** 卷积的归一化开关（关掉会改变幅度，仅用于对照）。 */
     public static boolean TERRAIN_CONV_NORM = true;
 
