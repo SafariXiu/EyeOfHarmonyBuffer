@@ -22,7 +22,7 @@ public final class RegionField {
     /** 洋中脊半宽（m）。 */
     public static double RIDGE_RANGE = 900_000.0;
     /** 裂谷半宽（m）。 */
-    public static double RIFT_RANGE = 300_000.0;
+    public static double RIFT_RANGE = 150_000.0;
     /** 权重过渡的坡度（汇聚强度）。 */
     public static double CONV_LO = 0.0, CONV_HI = 0.20;
 
@@ -76,7 +76,9 @@ public final class RegionField {
         // 弧带在 400–900 km 外，必须用【不随距离衰减】的速率门，否则弧永远是 0
         double sA = sConv * (1.0 - ctype) * arcBand;
         // 裂谷：离散 + 陆壳（等 RIFT_ON 打开后才有实际地形）
-        double sF = sDiv * ctype * (1.0 - LandV3.smoothstepPublic(0.0, RIFT_RANGE, Dd));
+        // 裂谷带用【真实轴距离】（Dd 被 softmin 的 clamp 抹平了，会把整片区域都算成裂谷）
+        double dDivRaw = bf.length > 19 ? bf[19] : Dd;
+        double sF = sDiv * ctype * (1.0 - LandV3.smoothstepPublic(0.0, RIFT_RANGE, dDivRaw));
         // 第 6 项：到边界的距离（km）；第 7/8 项：边界法向的【双角表示】(cos2θ, sin2θ)
         // 双角表示对 ±n 不敏感，且插值天然连续 —— 山带方向用它。
         double nvx = bf[5], nvz = bf[6];
@@ -90,7 +92,8 @@ public final class RegionField {
         double pw = LandV3.smoothstepPublic(0.15, 0.45, convC)
                   * (1.0 - LandV3.smoothstepPublic(0.35 * plateauRange, plateauRange, Dc));
         v = new float[]{(float) sM, (float) sT, (float) sR, (float) sA, (float) sF,
-                        (float) (D / 1e6), (float) c2, (float) s2, (float) mtnAmp, (float) pw};
+                        (float) (D / 1e6), (float) c2, (float) s2, (float) mtnAmp, (float) pw,
+                        (float) (dDivRaw / 1e6)};
         if (nodeWs != ws) { NODES.clear(); nodeWs = ws; }
         NODES.put(key, v);
         return v;
@@ -108,7 +111,7 @@ public final class RegionField {
         double su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
         float[] a = node(ws, i, j), b = node(ws, i + 1, j);
         float[] c = node(ws, i, j + 1), d = node(ws, i + 1, j + 1);
-        for (int k = 0; k < 10; k++) {
+        for (int k = 0; k < 11; k++) {
             double top = a[k] + (b[k] - a[k]) * su;
             double bot = c[k] + (d[k] - c[k]) * su;
             out[k] = top + (bot - top) * sv;

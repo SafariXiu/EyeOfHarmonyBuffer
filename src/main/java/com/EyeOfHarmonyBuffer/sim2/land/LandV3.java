@@ -760,6 +760,17 @@ public final class LandV3 {
         h = h * 31 + Double.doubleToLongBits(V2_MTN_COAST_S);
         h = h * 31 + Double.doubleToLongBits(V2_PLATEAU_H);
         h = h * 31 + Double.doubleToLongBits(V2_PLATEAU_RELIEF);
+        h = h * 31 + (RIFT_GEOM_ON ? 1 : 0);
+        h = h * 31 + (NOISE_RIFT_ON ? 1 : 0);
+        h = h * 31 + (BASIN_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(V2_BASIN_DEPTH);
+        h = h * 31 + Double.doubleToLongBits(BASIN_CELL_LO);
+        h = h * 31 + Double.doubleToLongBits(BASIN_CELL_HI);
+        h = h * 31 + Double.doubleToLongBits(RIFT_PROV_LO);
+        h = h * 31 + Double.doubleToLongBits(RIFT_LINE_LO);
+        h = h * 31 + Double.doubleToLongBits(V2_RIFT_DEPTH);
+        h = h * 31 + Double.doubleToLongBits(V2_RIFT_FLOOR_M);
+        h = h * 31 + Double.doubleToLongBits(V2_RIFT_SHOULDER);
         h = h * 31 + Double.doubleToLongBits(DOMINANT_PAIR_P);
         h = h * 31 + (PLATE_ROUGH_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(PLATE_ROUGH_A);
@@ -874,6 +885,114 @@ public final class LandV3 {
     public static double V2_MTN_SHELF = 1_200.0;
     /** 山脉靠海的 s 门宽：1e-4 ≈ 1 km。让山能走到海边（形成断崖），而不是在几十公里外消失。 */
     public static double V2_MTN_COAST_S = 4e-4;
+    // ---- 裂谷几何（干燥地堑，不灌水）----
+    public static boolean RIFT_GEOM_ON = false;
+    /** 地堑最大深度（m）。 */
+    public static double V2_RIFT_DEPTH = 900.0;
+    /** 地堑地板的最低高程（m）——必须高于海平面 ⟹ 裂谷是【干的】。 */
+    public static double V2_RIFT_FLOOR_M = 250.0;
+    /** 裂谷肩部抬升（m）。 */
+    public static double V2_RIFT_SHOULDER = 350.0;
+
+    // ---- 噪声裂谷（不再依赖板块边界）----
+    public static boolean NOISE_RIFT_ON = true;
+    /** 裂谷“省”的阈值：低频噪声在大范围内决定哪里可能发育裂谷。 */
+    public static double RIFT_PROV_LO = 0.24, RIFT_PROV_HI = 0.55;
+    /** 线状谷噪声的阈值（越高越窄）。 */
+    public static double RIFT_LINE_LO = 0.95, RIFT_LINE_HI = 0.99;
+
+    /**
+     * 裂谷权重（含【避让】）：噪声省 × (1−造山) × (1−0.8·高原核心) × (1−海岸)。
+     * 造山 = 挤压，裂谷 = 伸展 ⟹ 互斥；高原核心留 20%（东非裂谷是反例）；海岸不切。
+     */
+    public static double riftWeight(long ws, double x, double z, double s, double[] w) {
+        if (!NOISE_RIFT_ON) return 0.0;
+        double prov = smoothstep(RIFT_PROV_LO, RIFT_PROV_HI, fbm3(x, z, 4_000_000.0, ws ^ 0x81L));
+        if (prov <= 1e-3) return 0.0;
+        // 造山避让加强：连山麓（w0 0.15–0.45）一起避开，否则山体边缘也会被压
+        double wOro = smoothstep(0.15, 0.45, w.length > 0 ? w[0] : 0.0);
+        double wPlat = smoothstep(0.55, 0.85, w.length > 9 ? w[9] : 0.0);
+        double wCoast = 1.0 - smoothstep(0.0015, 0.004, Math.abs(s));
+        return prov * (1.0 - wOro) * (1.0 - 0.8 * wPlat) * (1.0 - wCoast);
+    }
+
+    /** 裂谷横剖面：平坦谷底 + 陡壁，**严格 band-limited**（不产生长尾浅沟）。 */
+    public static double riftShape(long ws, double x, double z) {
+        double wx = x + 380_000.0 * LandNoise.perlin(x / 900_000.0, z / 900_000.0, ws ^ 0x82L);
+        double wz = z + 380_000.0 * LandNoise.perlin(x / 900_000.0 + 5.1, z / 900_000.0 - 3.3, ws ^ 0x83L);
+        double lin = 1.0 - Math.abs(LandNoise.perlin(wx / 1_600_000.0, wz / 260_000.0, ws ^ 0x84L));
+        return smoothstep(RIFT_LINE_LO, RIFT_LINE_HI, lin);   // 0 在 0.90 以下
+    }
+
+    /** 裂谷实际下切深度（m）：几何与标签共用同一个量 ⟹ "压下去的地方就是裂谷"。 */
+    public static double riftCarve(long ws, double x, double z, double s, double[] w, double h) {
+        double rw = riftWeight(ws, x, z, s, w);
+        if (rw <= 1e-4) return 0.0;
+        double sh = riftShape(ws, x, z);
+        if (sh <= 1e-4) return 0.0;
+        // 深度只由【裂谷噪声】决定，不再乘地形高程（否则高处挖得最深 ⟹ 山被挖穿）
+        return V2_RIFT_DEPTH * rw * sh;
+    }
+
+    /** 旧的合并权重（保留给探针/标签的简单用法）。 */
+    public static double noiseRift(long ws, double x, double z) {
+        return riftShape(ws, x, z) * smoothstep(RIFT_PROV_LO, RIFT_PROV_HI, fbm3(x, z, 4_000_000.0, ws ^ 0x81L));
+    }
+
+    // ---- 盆地（Voronoi 多边形内部）----
+    public static boolean BASIN_ON = true;
+    public static double V2_BASIN_DEPTH = 400.0;
+    public static double BASIN_CELL_LO = 1_800_000.0, BASIN_CELL_HI = 3_200_000.0;
+    public static double BASIN_PROV_LO = 0.22, BASIN_PROV_HI = 0.50;
+
+    private static double hash01(long ws, long i, long j, long salt) {
+        long h = ws * 0x9E3779B97F4A7C15L ^ (i * 0xBF58476D1CE4E5B9L) ^ (j * 0x94D049BB133111EBL) ^ salt;
+        h = LandNoise.mix(h);
+        return (h >>> 11) * 0x1.0p-53;
+    }
+
+    /** Voronoi 单元内部度：0 = 单元边界，→1 = 单元中心（不规则的圆角多边形）。 */
+    public static double basinEdge(long ws, double x, double z) {
+        double wx = x + 320_000.0 * LandNoise.perlin(x / 1_200_000.0, z / 1_200_000.0, ws ^ 0xA2L);
+        double wz = z + 320_000.0 * LandNoise.perlin(x / 1_200_000.0 + 4.1, z / 1_200_000.0 - 2.3, ws ^ 0xA3L);
+        double cell = BASIN_CELL_LO + (BASIN_CELL_HI - BASIN_CELL_LO)
+                    * (0.5 + 0.5 * LandNoise.perlin(x / 5_000_000.0, z / 5_000_000.0, ws ^ 0xA4L));
+        double fx = wx / cell, fz = wz / cell;
+        long i = (long) Math.floor(fx), j = (long) Math.floor(fz);
+        double f1 = 1e9, f2 = 1e9;
+        for (int dj = -1; dj <= 1; dj++) for (int di = -1; di <= 1; di++) {
+            long ci = i + di, cj = j + dj;
+            double px = ci + hash01(ws, ci, cj, 0xA5L), pz = cj + hash01(ws, ci, cj, 0xA6L);
+            double ddx = px - fx, ddz = pz - fz;
+            double d = Math.sqrt(ddx * ddx + ddz * ddz);
+            if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) { f2 = d; }
+        }
+        return (f2 - f1);   // 单元单位：0 边界 → ~0.7 中心
+    }
+
+    /** 盆地权重：省 × 单元内部 × 避让（山、高原核心、海岸、裂谷优先）。 */
+    public static double basinWeight(long ws, double x, double z, double s, double[] w) {
+        if (!BASIN_ON) return 0.0;
+        double prov = smoothstep(BASIN_PROV_LO, BASIN_PROV_HI, fbm3(x, z, 6_000_000.0, ws ^ 0xA1L));
+        if (prov <= 1e-3) return 0.0;
+        double inside = smoothstep(0.08, 0.42, basinEdge(ws, x, z));
+        if (inside <= 1e-3) return 0.0;
+        double wOro = smoothstep(0.15, 0.45, w.length > 0 ? w[0] : 0.0);
+        double wPlat = smoothstep(0.55, 0.85, w.length > 9 ? w[9] : 0.0);
+        double wCoast = 1.0 - smoothstep(0.0015, 0.004, Math.abs(s));
+        double wRift = Math.min(1.0, riftCarve(ws, x, z, s, w, 0.0) / Math.max(1.0, V2_RIFT_DEPTH));
+        // 盆地必须在内陆：离岸 <110 km = 0，>300 km 才满（s 的梯度约 2.7e-7/m，用 s 近似距离）
+        double wInland = smoothstep(0.030, 0.080, s);
+        return prov * inside * (1.0 - wOro) * (1.0 - 0.5 * wPlat) * (1.0 - wCoast) * (1.0 - wRift) * wInland;
+    }
+
+    /** 盆地实际下切深度（m）：几何与标签共用。 */
+    public static double basinCarve(long ws, double x, double z, double s, double[] w) {
+        double bw = basinWeight(ws, x, z, s, w);
+        if (bw <= 1e-4) return 0.0;
+        return V2_BASIN_DEPTH * bw * smoothstep(0.08, 0.42, basinEdge(ws, x, z));
+    }
+
     /** 高原（大陆碰撞广泛增厚）：抬升幅度与山脊压制比例。 */
     public static double V2_PLATEAU_H = 3_400.0;
     public static double V2_PLATEAU_RELIEF = 0.78;
@@ -886,11 +1005,11 @@ public final class LandV3 {
     /** 板块边界粗糙度开关（让根轴不再是直线）。 */
     public static boolean PLATE_ROUGH_ON = true;
     /** 边界位移幅度（m）。 */
-    public static double PLATE_ROUGH_A = 380_000.0;
+    public static double PLATE_ROUGH_A = 200_000.0;
     /** 位移的主波长（m）。 */
     public static double PLATE_ROUGH_WL = 1_800_000.0;
     /** 超长波弯曲（m）：让整条边界"弓"起来，而不是笔直。 */
-    public static double PLATE_BOW_A = 1_000_000.0;
+    public static double PLATE_BOW_A = 320_000.0;
     /** 超长波波长（m）。 */
     public static double PLATE_BOW_WL = 6_500_000.0;
     /** 板块形状域扭曲：开关 / 幅度（m）/ 主波长（m）。 */
@@ -1061,6 +1180,35 @@ public final class LandV3 {
             double pw = w.length > 9 ? w[9] : 0.0;
             // 用 pw² 做压制：高原【内部】几乎全平（pw→1），【边缘】保留山脉（喜马拉雅式）
             h += mtn * (1.0 - V2_PLATEAU_RELIEF * pw * pw) + V2_PLATEAU_H * pw;
+            // ---- 噪声裂谷：低频“裂谷省” + 域扭曲的拉长线状谷 ----
+            // 盆地：Voronoi 多边形内部的浅碗（裂谷优先）
+            if (BASIN_ON) {
+                double bd = basinCarve(ws, x, z, s, w);
+                if (bd > 1e-4) h -= bd;
+            }
+            if (NOISE_RIFT_ON) {
+                double depth = riftCarve(ws, x, z, s, w, h);
+                if (depth > 1e-4) {
+                    double rw = riftWeight(ws, x, z, s, w);
+                    double sh = riftShape(ws, x, z);
+                    double shoulder = V2_RIFT_SHOULDER * 4.0 * rw * sh * (1.0 - sh);
+                    h += shoulder - depth;
+                }
+            }
+            // 裂谷（板块边界版）：已按用户要求回退，保留开关
+            if (RIFT_GEOM_ON && w.length > 5) {
+                double rw = w[4];
+                if (rw > 1e-4) {
+                    // 用【到边界距离】做横剖面：窄地堑（60 km）+ 两侧肩部（~100 km 处）
+                    double d = (w.length > 10 ? w[10] : w[5]) * 1e6;   // 真实轴距离
+                    double t = d / 60_000.0;
+                    // 裂谷是【干的】凹陷：不设海平面地板，负高度仍属陆地（掩膜权威）
+                    double graben = V2_RIFT_DEPTH * Math.exp(-t * t) * Math.min(1.0, rw * 1.2);
+                    double u = t / 1.7;
+                    double shoulder = V2_RIFT_SHOULDER * 1.5 * u * Math.exp(-0.5 * u * u) * rw;
+                    h += shoulder - graben;
+                }
+            }
             return Math.min(h, LandContract.MAX_PEAK_M);
         }
         double sf = smoothstep(0.0, V2_COAST_W, -s);     // 0 海岸 → 1 深海
@@ -1598,6 +1746,7 @@ public final class LandV3 {
         double swC = 0, swD = 0, snxC = 0, snzC = 0;   // 分类 softmin：汇聚侧 / 离散侧
         double sConvNum = 0, sConvDen = 0, sDivNum = 0, sDivDen = 0;   // 分类汇聚/离散速率
         double bestConvW = -1, bestConvRate = 0, bestDivW = -1, bestDivRate = 0;   // 最近那一对的速率
+        double bestDivD = 1e18;   // 主导离散 pair 的【真实】距离（未 clamp，裂谷轴距离用它）
         double sside = 0, scontMin = 0;
         double sOroNum = 0, sOroDen = 0;   // 稳态造山：汇聚速率的加权平均（核 = exp(-d/λ)）
         // PTP 2019 §4.3: soft-min distance over the DIVERGING pairs only (= distance to the
@@ -1608,7 +1757,8 @@ public final class LandV3 {
         for (int q = 0; q < np; q++) {
             final int a = st.pa[q], b = st.pb[q];
             double ra = Math.max(1.0, cs[a].d), rb = Math.max(1.0, cs[b].d);
-            double d = Math.abs(ra * ra - rb * rb) / (2.0 * st.pAb[q]);
+            double dRaw = Math.abs(ra * ra - rb * rb) / (2.0 * st.pAb[q]);
+            double d = dRaw;
             // 边界粗糙度：给两板之间的“放射轴”加一个平滑位移。
             // 不加的话，每对板块的边界是【一条直线】（圆弧的根轴），12 块大板块 ⟹
             // 山带/海沟全是大直尺画出来的。位移用两层噪声（700 km + 250 km），
@@ -1626,7 +1776,10 @@ public final class LandV3 {
                 if (w > bestConvW) { bestConvW = w; bestConvRate = st.pConv[q]; }
             } else if (st.pConv[q] < 0.0) {
                 swD += w; sDivNum += w * (-st.pConv[q]); sDivDen += w;
-                if (w > bestDivW) { bestDivW = w; bestDivRate = -st.pConv[q]; }
+                // 裂谷轴距离用【未经粗糙度位移】的最小 dRaw 选主导 pair（不能按加了粗糙度的 w 选，
+                // 否则粗糙度把 w 都拉到 ~1，选出来的是任意一对，dRaw 可能是几百公里）
+                bestDivW = w;
+                if (dRaw < bestDivD) { bestDivD = dRaw; bestDivRate = -st.pConv[q]; }
             }
             {
                 // 稳态增厚的核与 boundary field 的 locality 核分开：λ=500 km 是造山带宽度，
@@ -1694,6 +1847,7 @@ public final class LandV3 {
             out[17] = bestConvRate;
             out[18] = bestDivRate;
         }
+        if (out.length > 19) out[19] = bestDivD;   // 真实轴距离（m）
         // 稳态造山强度（0..1）：近边界汇聚速率的加权平均 / V_REF，再乘 exp(-D/λ)。
         if (out.length > 11) {
             double convAvg = sOroDen > 1e-9 ? sOroNum / sOroDen : 0.0;

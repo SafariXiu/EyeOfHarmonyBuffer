@@ -21,11 +21,13 @@ public final class TerrainClass {
     public static final int CLIFF = 10;
     /** 高原（大陆碰撞的广泛增厚）：高 + 平。 */
     public static final int PLATEAU = 11;
+    /** 盆地（Voronoi 多边形内部的浅碗）。 */
+    public static final int BASIN = 12;
     /** id 11 预留给岩性（tier3），暂不放进本枚举。 */
 
     public static final String[] NAMES = {
         "DEEP_OCEAN", "SHELF", "TRENCH", "MID_OCEAN_RIDGE", "ISLAND_ARC",
-        "PLAIN", "HILL", "MOUNTAIN", "RIFT", "BEACH", "CLIFF", "PLATEAU"
+        "PLAIN", "HILL", "MOUNTAIN", "RIFT", "BEACH", "CLIFF", "PLATEAU", "BASIN"
     };
 
     /** 细节配方键（后续给每类接自己的细节用）。 */
@@ -53,16 +55,40 @@ public final class TerrainClass {
     public static double CLIFF_MIN_H = 120.0;
     /** 裂谷标签的最高高程（m）：裂谷是低地，不是高山。 */
     public static double RIFT_MAX_H = 1_200.0;
+    /** 裂谷权重阈值与轴半宽（1e6 m 为单位；0.10 ≈ 100 km）。 */
+    public static double RIFT_W = 0.5;
+    public static double RIFT_AXIS_KM = 0.10;
+    /** 噪声裂谷的标签阈值。 */
+    public static double RIFT_NOISE_W = 0.50;
+    /** 裂谷标签：实际下切超过这个深度（m）就算裂谷。 */
+    public static double RIFT_CARVE_LABEL_M = 30.0;
+    /** 盆地标签：下切超过这个深度（m）。 */
+    public static double BASIN_LABEL_M = 15.0;
+    /** 盆地标签的最高高程（m）：再高就算高原/山地，不叫盆地。 */
+    public static double BASIN_MAX_H = 2_500.0;
     /** 高原的最低高程（m）与权重阈值。 */
     public static double PLATEAU_MIN_H = 1_500.0;
     public static double PLATEAU_W = 0.75;
     /** 山脉的权重阈值（w[0]；0.40 ≈ 陆地 6.3%，约 2.1% 的世界）。 */
     public static double MOUNTAIN_W = 0.30;
+    /** 起伏判据（m）：±40 km 内的 max−min。 */
+    public static double RELIEF_MOUNTAIN = 350.0;
+    public static double RELIEF_HILL = 120.0;
     /** 岩性权重（tier3，连续）：rock 1 = 岩岸，0 = 沙岸。只读，不影响几何。 */
     public static double rockyWeight(long ws, double x, double z) {
         double n = 0.6 * com.EyeOfHarmonyBuffer.sim2.land.LandNoise.value(x / 2_500_000.0, z / 2_500_000.0, ws ^ 0x7E1L)
                  + 0.4 * com.EyeOfHarmonyBuffer.sim2.land.LandNoise.value(x / 900_000.0 + 3.1, z / 900_000.0 - 1.7, ws ^ 0x7E2L);
         return n;
+    }
+
+    /** 局部起伏（m）：±40 km 四点的 max−min。这是"平原/丘陵/山地"的物理判据。 */
+    public static double relief(long ws, double x, double z) {
+        final double R = 40_000.0;
+        double a = LandV3.height(ws, x + R, z), b = LandV3.height(ws, x - R, z);
+        double c = LandV3.height(ws, x, z + R), d = LandV3.height(ws, x, z - R);
+        double hi = Math.max(Math.max(a, b), Math.max(c, d));
+        double lo = Math.min(Math.min(a, b), Math.min(c, d));
+        return hi - lo;
     }
 
     public static int classify(long ws, double x, double z) {
@@ -72,12 +98,30 @@ public final class TerrainClass {
         double d = Math.abs(s) < 1.2e-3 ? LandV3.coastDistM(ws, x, z) : Double.NaN;
         double[] w = W5.get();
         RegionField.weights(ws, x, z, w);
-        return from(land, h, d, w);
+        // 裂谷权重 × 谷形：只有"真的在谷里"才算
+        // 直接传"实际下切深度"：标签与几何用同一个量
+        double carve = land ? LandV3.riftCarve(ws, x, z, s, w, h) : 0.0;
+        double basinD = land ? LandV3.basinCarve(ws, x, z, s, w) : 0.0;
+        return from(land, h, d, w, carve, relief(ws, x, z), basinD);
     }
 
-    /** 已有 h、海陆掩膜、离岸距离与权重时用这个（渲染器批量用）。海陆由 land 决定，**不看 h 的符号**。
-     *  d = NaN 表示不在海岸带内（不判沙滩）。 */
+    /** 兼容旧签名（无噪声裂谷权重）。 */
     public static int from(boolean land, double h, double d, double[] w) {
+        return from(land, h, d, w, 0.0, Double.NaN);
+    }
+
+    public static int from(boolean land, double h, double d, double[] w, double riftW) {
+        return from(land, h, d, w, riftW, Double.NaN);
+    }
+
+    /** 已有 h、海陆掩膜、离岸距离、区域权重、裂谷权重与局部起伏时用这个（渲染器批量用）。
+     *  d = NaN 表示不在海岸带内（不判沙滩）；rel = NaN 表示未提供起伏（退回高程判据）。 */
+    public static int from(boolean land, double h, double d, double[] w, double riftW, double rel) {
+        return from(land, h, d, w, riftW, rel, 0.0);
+    }
+
+    /** 完整版：带盆地下切深度（m）。 */
+    public static int from(boolean land, double h, double d, double[] w, double riftW, double rel, double basinD) {
         // —— 海侧 ——
         if (!land) {
             if (w[1] > 0.5) return TRENCH;
@@ -92,13 +136,21 @@ public final class TerrainClass {
             if (ad < CLIFF_LABEL_W && h > CLIFF_MIN_H) return CLIFF;   // 高背景 + 近岸 ⟹ 断崖
             if (ad < BEACH_LABEL_W) return BEACH;
         }
+        // 裂谷：判定与几何一致 —— 实际下切深度超过阈值就算（riftW 传的是深度，单位 m）
+        if (riftW > RIFT_CARVE_LABEL_M) return RIFT;
+        // 盆地：基础地形的一种（低地），按【区域】判，不看高程
+        if (basinD > BASIN_LABEL_M) return BASIN;
         // 高原优先于山脉：强碰撞 + 宽范围 ⟹ 又高又平
         if (w.length > 9 && w[9] > PLATEAU_W && h > PLATEAU_MIN_H) return PLATEAU;
-        // 山脉只看【山带权重】：不再用 h>=800（那会把高原边缘/抬升平原都算成山，视觉上"太肥"）
+        // 山脉 = 【造山区】（区域标签），不看高度也不看起伏：
+        // 造山把基础地形拉高，拉高的地方就是山脉；没被拉高的地方哪怕很高（高原/盆地）也不是山脉。
         if (w[0] > MOUNTAIN_W) return MOUNTAIN;
-        if (w[4] > 0.5 && h < RIFT_MAX_H) return RIFT;
-        // 山麓（w[0] 0.2–0.5）与 200 m 以上的陆地都算丘陵
-        if (w[0] > 0.2 || h >= 200.0) return HILL;
-        return PLAIN;
+        // 裂谷按【轴距离】判（高原上的裂谷地板也有 2,000–3,000 m，不能只看 h）
+        // 板块边界版裂谷已回退（RIFT_GEOM_ON=false ⟹ 标签也不再触发）
+        if (LandV3.RIFT_GEOM_ON && w[4] > RIFT_W && (w.length > 10 ? w[10] < RIFT_AXIS_KM : h < RIFT_MAX_H)) return RIFT;
+        // 丘陵：山麓 或 起伏中等；否则平原
+        if (w[0] > 0.2) return HILL;
+        if (!Double.isNaN(rel)) return rel > RELIEF_HILL ? HILL : PLAIN;
+        return h >= 200.0 ? HILL : PLAIN;
     }
 }
