@@ -757,6 +757,21 @@ public final class LandV3 {
         h = h * 31 + (COAST_TIER_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(V2_BEACH_W);
         h = h * 31 + Double.doubleToLongBits(V2_BEACH_H);
+        h = h * 31 + Double.doubleToLongBits(V2_MTN_COAST_S);
+        h = h * 31 + Double.doubleToLongBits(V2_PLATEAU_H);
+        h = h * 31 + Double.doubleToLongBits(V2_PLATEAU_RELIEF);
+        h = h * 31 + Double.doubleToLongBits(DOMINANT_PAIR_P);
+        h = h * 31 + (PLATE_ROUGH_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PLATE_ROUGH_A);
+        h = h * 31 + Double.doubleToLongBits(PLATE_ROUGH_WL);
+        h = h * 31 + Double.doubleToLongBits(PLATE_BOW_A);
+        h = h * 31 + Double.doubleToLongBits(PLATE_BOW_WL);
+        h = h * 31 + (PLATE_DOMAIN_WARP_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PLATE_DW_A);
+        h = h * 31 + Double.doubleToLongBits(PLATE_DW_WL);
+        h = h * 31 + (PLATE_SHATTER_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PLATE_SHATTER_CELL);
+        h = h * 31 + Double.doubleToLongBits(PLATE_SHATTER_A);
         h = h * 31 + (COAST_DETAIL_ON ? 1 : 0);
         h = h * 31 + (COAST_RADIAL_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(COAST_RADIAL_AMP);
@@ -852,13 +867,68 @@ public final class LandV3 {
     // ---- 新高度场参数（掩膜 + 浮雕）----
     public static double V2_LAND_BASE = 250.0;     // 陆地基底（m）
     public static double V2_HILL_AMP = 360.0;      // 丘陵起伏
-    public static double V2_MTN_AMP = 6_200.0;     // 山脉起伏（× wMountain）
+    public static double V2_MTN_AMP = 7_400.0;     // 山脉起伏（× wMountain）
     /** 稀有高峰项（× wMountain² × ridged³）：只有最强山带的最强脊线才够高 ⟹ 9000–10000 m 的极少数峰。 */
     public static double V2_PEAK_AMP = 1_880.0;   // 稀有高峰：重标到 max≈7,980 m ⟹ Y≈254.5（留 1 格余量）
     /** 山带没入陆架时的抬升（m，负深度）：让山带"沉入海中"而不是硬切在岸线。 */
     public static double V2_MTN_SHELF = 1_200.0;
     /** 山脉靠海的 s 门宽：1e-4 ≈ 1 km。让山能走到海边（形成断崖），而不是在几十公里外消失。 */
-    public static double V2_MTN_COAST_S = 1e-4;
+    public static double V2_MTN_COAST_S = 4e-4;
+    /** 高原（大陆碰撞广泛增厚）：抬升幅度与山脊压制比例。 */
+    public static double V2_PLATEAU_H = 3_400.0;
+    public static double V2_PLATEAU_RELIEF = 0.78;
+    /**
+     * 主导对锐化指数：区域权重的 pair 混合权重取 w^P。
+     * P=1 是旧的 softmin 混合（多边界处互相污染 ⟹ 圆斑）；P 越大越接近"只看最近的一对"。
+     * 平滑性由 w 本身连续保证（不会出现硬切换），P=6 时第二近的 pair 权重被压到 ~1/64 以下。
+     */
+    public static double DOMINANT_PAIR_P = 6.0;
+    /** 板块边界粗糙度开关（让根轴不再是直线）。 */
+    public static boolean PLATE_ROUGH_ON = true;
+    /** 边界位移幅度（m）。 */
+    public static double PLATE_ROUGH_A = 380_000.0;
+    /** 位移的主波长（m）。 */
+    public static double PLATE_ROUGH_WL = 1_800_000.0;
+    /** 超长波弯曲（m）：让整条边界"弓"起来，而不是笔直。 */
+    public static double PLATE_BOW_A = 1_000_000.0;
+    /** 超长波波长（m）。 */
+    public static double PLATE_BOW_WL = 6_500_000.0;
+    /** 板块形状域扭曲：开关 / 幅度（m）/ 主波长（m）。 */
+    public static boolean PLATE_DOMAIN_WARP_ON = true;
+    public static double PLATE_DW_A = 2_600_000.0;
+    public static double PLATE_DW_WL = 7_000_000.0;
+    /** “碎裂”域扭曲：粗格随机平移 + 平滑插值 ⟹ 边界在格子边上拐弯（像转换断层）。 */
+    public static boolean PLATE_SHATTER_ON = true;
+    public static double PLATE_SHATTER_CELL = 3_600_000.0;
+    public static double PLATE_SHATTER_A = 550_000.0;
+
+    /** 粗格随机平移（双线性 + smoothstep）：格子大小 SHATTER_CELL，幅度 SHATTER_A。 */
+    private static double shatterAxis(long ws, double x, double z, long salt) {
+        double c = PLATE_SHATTER_CELL;
+        double fx = x / c, fz = z / c;
+        long i = (long) Math.floor(fx), j = (long) Math.floor(fz);
+        double u = fx - i, v = fz - j;
+        double su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+        double a = hashOff(ws, i, j, salt), b = hashOff(ws, i + 1, j, salt);
+        double cc = hashOff(ws, i, j + 1, salt), d = hashOff(ws, i + 1, j + 1, salt);
+        double top = a + (b - a) * su, bot = cc + (d - cc) * su;
+        return top + (bot - top) * sv;
+    }
+
+    private static double hashOff(long ws, long i, long j, long salt) {
+        long h = ws * 0x9E3779B97F4A7C15L ^ (i * 0xBF58476D1CE4E5B9L) ^ (j * 0x94D049BB133111EBL) ^ salt;
+        h = LandNoise.mix(h);
+        return ((h >>> 11) * 0x1.0p-53) * 2.0 - 1.0;   // [-1, 1)
+    }
+
+    /** 边界位移场：三层噪声，平滑、与板块无关（对任何 pair 相同）⟹ 不会产生新的接缝。 */
+    private static double plateRough(long ws, double x, double z) {
+        double wl = PLATE_ROUGH_WL;
+        double v = 0.55 * LandNoise.perlin(x / wl, z / wl, ws ^ 0x51L)
+                 + 0.30 * LandNoise.perlin(x / (wl * 0.38) + 4.7, z / (wl * 0.38) - 2.3, ws ^ 0x52L);
+        v += 0.75 * LandNoise.perlin(x / PLATE_BOW_WL, z / PLATE_BOW_WL, ws ^ 0x53L) * (PLATE_BOW_A / PLATE_ROUGH_A);
+        return PLATE_ROUGH_A * v;
+    }
     /** 山脊噪声的各向异性：沿带 / 横带 的波长比。 */
     public static double V2_BELT_ANISO = 4.0;
     public static double V2_PLAIN_AMP = 60.0;      // 平原微起伏
@@ -888,8 +958,8 @@ public final class LandV3 {
     public static double V2_LAND_AMP2 = 45.0;
     public static double V2_SEA_AMP2 = 25.0;
 
-    private static final ThreadLocal<double[]> W5V2 = ThreadLocal.withInitial(() -> new double[9]);
-    private static final ThreadLocal<double[]> W5V2B = ThreadLocal.withInitial(() -> new double[9]);
+    private static final ThreadLocal<double[]> W5V2 = ThreadLocal.withInitial(() -> new double[12]);
+    private static final ThreadLocal<double[]> W5V2B = ThreadLocal.withInitial(() -> new double[12]);
 
     /** 沿带拉长的山脊噪声：u = 横带，v = 沿带。 */
     private static double ridgedBelt(double x, double z, double nx, double nz, double wl, long seed) {
@@ -974,14 +1044,23 @@ public final class LandV3 {
             h += a1 * n1 + a2 * n2;
             // 带（w[0]）连续，幅度按汇聚强度（w[8]）变化，但不为零 ⟹ 山脉沿带连绵
             double mAmp = 0.35 + 0.65 * (w.length > 8 ? w[8] : 1.0);
-            double rf = ridged3(x, z, 300_000.0, ws ^ 0x6A2L);
-            // 山带可以一直到海边：用很窄的 s 门（≈1 km），而不是 lf（≈500 km）
+            // 山脊：更细的脊线（140 km）+ 锐化的峰。原来的 300 km 平滑噪声 + 线性权重
+            // 等于把整条 520 km 的带均匀抬起来 ⟹ "又肥又平"。
+            // 山脊噪声：60 km 的 ridged 分形（300 km 太肥、26 km 平行条纹会摩尔纹）
+            double rf = ridged3(x, z, 60_000.0, ws ^ 0x6A2L);
+            double rfS = Math.pow(rf, 1.2);
+            // 权重也锐化：高处集中在边界附近，外缘是低缓的山麓
+            double wm = Math.pow(w[0], 1.8);
+            // 山带可以一直到海边：用很窄的 s 门（≈4 km），而不是 lf（≈500 km）
             double mtnGate = smoothstep(0.0, V2_MTN_COAST_S, s);
-            h += V2_MTN_AMP * w[0] * mAmp * rf * mtnGate;
+            double mtn = V2_MTN_AMP * wm * mAmp * rfS * mtnGate;
             if (V2_PEAK_AMP > 0.0) {
-                double wm = w[0];
-                h += V2_PEAK_AMP * wm * wm * rf * rf * rf * lf;   // 稀有高峰
+                mtn += V2_PEAK_AMP * wm * wm * rfS * rfS * rfS * lf;   // 稀有高峰
             }
+            // 高原：大陆碰撞的广泛增厚 —— 抬起基底 + 压低山脊 ⟹ 又高又平
+            double pw = w.length > 9 ? w[9] : 0.0;
+            // 用 pw² 做压制：高原【内部】几乎全平（pw→1），【边缘】保留山脉（喜马拉雅式）
+            h += mtn * (1.0 - V2_PLATEAU_RELIEF * pw * pw) + V2_PLATEAU_H * pw;
             return Math.min(h, LandContract.MAX_PEAK_M);
         }
         double sf = smoothstep(0.0, V2_COAST_W, -s);     // 0 海岸 → 1 深海
@@ -1396,7 +1475,19 @@ public final class LandV3 {
 
     /** Continuous boundary field over ALL plate pairs (softmin distance + soft-weighted force). */
     public static void boundaryField(long ws, double x, double z, double[] out) {
+        // ★ 板块形状的域扭曲：把查询点本身挪动（而不是只挪距离）。
+        //   这会让【整个板块镶嵌】变形 —— 每条边界都跟着扭曲，而不是一条直线加一点抖动。
         double qx = x + warpX(x, z), qz = z + warpZ(x, z);
+        if (PLATE_DOMAIN_WARP_ON) {
+            qx += PLATE_DW_A * (0.62 * LandNoise.perlin(x / PLATE_DW_WL, z / PLATE_DW_WL, ws ^ 0x61L)
+                             + 0.28 * LandNoise.perlin(x / (PLATE_DW_WL * 0.33) + 5.1, z / (PLATE_DW_WL * 0.33) - 2.7, ws ^ 0x62L));
+            qz += PLATE_DW_A * (0.62 * LandNoise.perlin(x / PLATE_DW_WL + 11.3, z / PLATE_DW_WL - 7.9, ws ^ 0x63L)
+                             + 0.28 * LandNoise.perlin(x / (PLATE_DW_WL * 0.33) - 3.7, z / (PLATE_DW_WL * 0.33) + 9.1, ws ^ 0x64L));
+        }
+        if (PLATE_SHATTER_ON) {
+            qx += PLATE_SHATTER_A * shatterAxis(ws, x, z, 0x71L);
+            qz += PLATE_SHATTER_A * shatterAxis(ws, x, z, 0x72L);
+        }
         St st = ST.get();
         Cell[] cs = st.cs;
         double[] vb = st.vb;
@@ -1504,6 +1595,9 @@ public final class LandV3 {
             out[12] = pDen > 1e-12 ? pNum / pDen : 0.5;
         }
         double sw = 0, sconv = 0, splunge = 0, ssign = 0, snx = 0, snz = 0;
+        double swC = 0, swD = 0, snxC = 0, snzC = 0;   // 分类 softmin：汇聚侧 / 离散侧
+        double sConvNum = 0, sConvDen = 0, sDivNum = 0, sDivDen = 0;   // 分类汇聚/离散速率
+        double bestConvW = -1, bestConvRate = 0, bestDivW = -1, bestDivRate = 0;   // 最近那一对的速率
         double sside = 0, scontMin = 0;
         double sOroNum = 0, sOroDen = 0;   // 稳态造山：汇聚速率的加权平均（核 = exp(-d/λ)）
         // PTP 2019 §4.3: soft-min distance over the DIVERGING pairs only (= distance to the
@@ -1515,10 +1609,25 @@ public final class LandV3 {
             final int a = st.pa[q], b = st.pb[q];
             double ra = Math.max(1.0, cs[a].d), rb = Math.max(1.0, cs[b].d);
             double d = Math.abs(ra * ra - rb * rb) / (2.0 * st.pAb[q]);
+            // 边界粗糙度：给两板之间的“放射轴”加一个平滑位移。
+            // 不加的话，每对板块的边界是【一条直线】（圆弧的根轴），12 块大板块 ⟹
+            // 山带/海沟全是大直尺画出来的。位移用两层噪声（700 km + 250 km），
+            // 幅度 ~120 km，远小于板块尺度 ⟹ 只弯曲边界、不改板块归属。
+            if (PLATE_ROUGH_ON) d = Math.max(0.0, d + plateRough(ws, x, z));
             double eC = cs[a].d - dminC;
-            double w = Math.exp(-d / Lm) * Math.exp(-(eC * eC) / (2.0 * VEL_L * VEL_L));
+            double w0 = Math.exp(-d / Lm) * Math.exp(-(eC * eC) / (2.0 * VEL_L * VEL_L));
+            // 主导对锐化：w^P 让最近的一对主导全部聚合量（P=1 时与原行为逐位一致）
+            double w = DOMINANT_PAIR_P > 1.0 ? Math.pow(w0, DOMINANT_PAIR_P) : w0;
             snx += w * st.pNx[q]; snz += w * st.pNz[q];
             if (st.pConv[q] < 0.0) { swRidge += w; sRate += w * (-st.pConv[q]); }
+            // 分类 softmin（主导对按功能取）：汇聚侧 / 离散侧各自的距离
+            if (st.pConv[q] > 0.0) {
+                swC += w; snxC += w * st.pNx[q]; snzC += w * st.pNz[q]; sConvNum += w * st.pConv[q]; sConvDen += w;
+                if (w > bestConvW) { bestConvW = w; bestConvRate = st.pConv[q]; }
+            } else if (st.pConv[q] < 0.0) {
+                swD += w; sDivNum += w * (-st.pConv[q]); sDivDen += w;
+                if (w > bestDivW) { bestDivW = w; bestDivRate = -st.pConv[q]; }
+            }
             {
                 // 稳态增厚的核与 boundary field 的 locality 核分开：λ=500 km 是造山带宽度，
                 // 而 w 里的 SOFTMIN_L=120 km 只是边界场的局地化。
@@ -1547,6 +1656,9 @@ public final class LandV3 {
         if (sw >= 1e-9) { out[7] = sside / sw; out[8] = scontMin / sw; }
         if (sw < 1e-9) {
             out[0] = 1e9; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0; out[5] = 0; out[6] = 0;
+            // 分类距离/速率也必须清空，否则复用 ThreadLocal 时会残留上一次的值
+            if (out.length > 14) { out[13] = 1e9; out[14] = 1e9; }
+            if (out.length > 16) { out[15] = 0.0; out[16] = 0.0; }
             if (out.length > 9) out[9] = 1.0;    // no boundary in reach: old crust
             if (out.length > 10) out[10] = 0.0;  // ... and no ridge
             if (out.length > 11) out[11] = 0.0;  // ... and no convergence
@@ -1556,13 +1668,32 @@ public final class LandV3 {
         // -L*ln(sum) goes NEGATIVE, which flattened the mid-ocean ridge dome into a
         // 6 km plateau. A distance is non-negative by definition. The clamp is C1-safe
         // for the dome (its derivative vanishes at D = 0).
-        out[0] = Math.max(0.0, -Lm * Math.log(sw));
+        // 距离 softmin 的"温度"随锐化指数一起收紧：D = -(Lm/P)·ln(Σ w^P)
+        out[0] = Math.max(0.0, -(Lm / Math.max(1.0, DOMINANT_PAIR_P)) * Math.log(sw));
         out[1] = sconv / sw;
         out[2] = splunge / sw;
         out[3] = 1.0;
         out[4] = ssign / sw;
         out[5] = snx / sw;    // weighted boundary NORMAL (normalised below)
         out[6] = snz / sw;   // SIGNED convergence: <0 = diverging (mid-ocean ridge)
+        // ---- 分类距离（主导对·按功能）----
+        // 山/沟/弧只看【最近的汇聚边界】，洋脊/裂谷只看【最近的离散边界】。
+        // 这样"附近有汇聚边界、但更近处是离散边界"时，山带不会消失（旧的单一主导对会）。
+        if (out.length > 14) {
+            double t = Math.max(1.0, DOMINANT_PAIR_P);
+            out[13] = swC > 1e-30 ? Math.max(0.0, -(Lm / t) * Math.log(swC)) : 1e9;
+            out[14] = swD > 1e-30 ? Math.max(0.0, -(Lm / t) * Math.log(swD)) : 1e9;
+        }
+        // 分类速率：汇聚侧 / 离散侧各自的加权平均（区域权重用它，不再用混合符号）
+        if (out.length > 16) {
+            out[15] = sConvDen > 1e-30 ? sConvNum / sConvDen : 0.0;
+            out[16] = sDivDen > 1e-30 ? sDivNum / sDivDen : 0.0;
+        }
+        // 最近那一对的速率（不随距离衰减）：弧带在 400–900 km 外，必须用这个
+        if (out.length > 18) {
+            out[17] = bestConvRate;
+            out[18] = bestDivRate;
+        }
         // 稳态造山强度（0..1）：近边界汇聚速率的加权平均 / V_REF，再乘 exp(-D/λ)。
         if (out.length > 11) {
             double convAvg = sOroDen > 1e-9 ? sOroNum / sOroDen : 0.0;
@@ -1584,7 +1715,7 @@ public final class LandV3 {
             // simplification: it gives ridge-parallel isobaths and reaches "old crust" well
             // before the boundary-free interior (where boundaryField short-circuits at ~2,500 km).
             double swR = Math.max(swRidge, 1e-300);
-            double dRidge = Math.max(0.0, -Lm * Math.log(swR));
+            double dRidge = Math.max(0.0, -(Lm / Math.max(1.0, DOMINANT_PAIR_P)) * Math.log(swR));
             double age01;
             if (AGE_FROM_RATE) {
                 // t = dΓ / v_half. bf[4]-style conv is the FULL relative rate; each plate
@@ -2009,6 +2140,26 @@ public final class LandV3 {
     }
 
     /** 最近板块 id（探针/诊断入口；两张种子表都支持）。 */
+    /** 与 boundaryField 完全同一套扭曲的板块归属（渲染/诊断用，非热路径）。 */
+    public static long plateIdAtWarped(long ws, double x, double z) {
+        double qx = x + warpX(x, z), qz = z + warpZ(x, z);
+        if (PLATE_DOMAIN_WARP_ON) {
+            qx += PLATE_DW_A * (0.62 * LandNoise.perlin(x / PLATE_DW_WL, z / PLATE_DW_WL, ws ^ 0x61L)
+                             + 0.28 * LandNoise.perlin(x / (PLATE_DW_WL * 0.33) + 5.1, z / (PLATE_DW_WL * 0.33) - 2.7, ws ^ 0x62L));
+            qz += PLATE_DW_A * (0.62 * LandNoise.perlin(x / PLATE_DW_WL + 11.3, z / PLATE_DW_WL - 7.9, ws ^ 0x63L)
+                             + 0.28 * LandNoise.perlin(x / (PLATE_DW_WL * 0.33) - 3.7, z / (PLATE_DW_WL * 0.33) + 9.1, ws ^ 0x64L));
+        }
+        if (PLATE_SHATTER_ON) {
+            qx += PLATE_SHATTER_A * shatterAxis(ws, x, z, 0x71L);
+            qz += PLATE_SHATTER_A * shatterAxis(ws, x, z, 0x72L);
+        }
+        Cell[] cs = SC.get();
+        cells9(qx, qz, cs);
+        int k = 0;
+        for (int j = 1; j < 9; j++) if (cs[j].d < cs[k].d) k = j;
+        return cs[k].id;
+    }
+
     public static long plateIdAt(long ws, double x, double z) {
         Cell[] cs = SC.get();
         cells9(x + warpX(x, z), z + warpZ(x, z), cs);
