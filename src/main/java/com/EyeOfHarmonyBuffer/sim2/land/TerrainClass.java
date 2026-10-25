@@ -147,8 +147,9 @@ public final class TerrainClass {
         // 裂谷按【轴距离】判（高原上的裂谷地板也有 2,000–3,000 m，不能只看 h）
         // 板块边界版裂谷已回退（RIFT_GEOM_ON=false ⟹ 标签也不再触发）
         if (LandV3.RIFT_GEOM_ON && w[4] > RIFT_W && (w.length > 10 ? w[10] < RIFT_AXIS_KM : h < RIFT_MAX_H)) return RIFT;
-        // 丘陵：山麓 或 起伏中等；否则平原
-        if (w[0] > 0.2) return HILL;
+        // 丘陵 = 山麓带（crest 0.2–0.5）或 中等地形起伏；否则平原
+        double cw = w.length > 11 ? w[11] : 0.0;
+        if (cw > 0.2 && cw <= 0.5) return HILL;
         if (!Double.isNaN(rel)) return rel > RELIEF_HILL ? HILL : PLAIN;
         return h >= 200.0 ? HILL : PLAIN;
     }
