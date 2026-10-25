@@ -20,7 +20,7 @@ public final class RegionField {
     /** 海沟带宽度（m）。 */
     public static double TRENCH_RANGE = 250_000.0;
     /** 洋中脊半宽（m）。 */
-    public static double RIDGE_RANGE = 550_000.0;
+    public static double RIDGE_RANGE = 320_000.0;
     /** 裂谷半宽（m）。 */
     public static double RIFT_RANGE = 150_000.0;
     /** 权重过渡的坡度（汇聚强度）。 */
@@ -72,9 +72,10 @@ public final class RegionField {
         // 岛弧：汇聚 + 洋壳 + 400–900 km 的带
         // 岛弧：俯冲带外侧 200–600 km（真实弧后盆地 + 火山弧的位置）
         double arcBand = LandV3.smoothstepPublic(120_000.0, 220_000.0, Dc)
-                       * (1.0 - LandV3.smoothstepPublic(380_000.0, 500_000.0, Dc));
-        // 弧带在 400–900 km 外，必须用【不随距离衰减】的速率门，否则弧永远是 0
-        double sA = sConv * (1.0 - ctype) * arcBand;
+                       * (1.0 - LandV3.smoothstepPublic(250_000.0, 320_000.0, Dc));
+        // 强度缩放（不再是符号门）：汇聚越强弧越明显，弱汇聚几乎没有弧
+        double arcGate = LandV3.smoothstepPublic(0.15, 0.55, convC);
+        double sA = arcGate * (1.0 - ctype) * arcBand;
         // 裂谷：离散 + 陆壳（等 RIFT_ON 打开后才有实际地形）
         // 裂谷带用【真实轴距离】（Dd 被 softmin 的 clamp 抹平了，会把整片区域都算成裂谷）
         double dDivRaw = bf.length > 19 ? bf[19] : Dd;
@@ -107,8 +108,11 @@ public final class RegionField {
         double province = LandV3.smoothstepPublic(0.25, 0.55, Inorm)
                         * (1.0 - LandV3.smoothstepPublic(0.55 * 1_600_000.0, 1_600_000.0, Dc));
         // 山带 = 连续汇聚场 × 边界附近窗口（不再依赖"某条边" ⟹ 可以连成长链）
+        // 顶点归一：附近汇聚边越多，单条带的权重越低（避免三叉点加宽）
+        double nConv = bf.length > 21 ? Math.max(1.0, bf[21]) : 1.0;
         double crest = LandV3.smoothstepPublic(0.15, 0.55, Cnorm)
-                     * Math.exp(-(D / 450_000.0) * (D / 450_000.0)) * ctypeM;
+                     * Math.exp(-(D / 450_000.0) * (D / 450_000.0)) * ctypeM
+                     / (1.0 + 0.5 * (nConv - 1.0));
         double pw = province;   // w[9] 现在是"省"
         v = new float[]{(float) sM, (float) sT, (float) sR, (float) sA, (float) sF,
                         (float) (D / 1e6), (float) c2, (float) s2, (float) mtnAmp, (float) pw,

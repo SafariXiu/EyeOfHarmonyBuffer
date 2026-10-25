@@ -1742,6 +1742,7 @@ public final class LandV3 {
         // ===== 5×5：在"本细胞与所有邻细胞"的边里，找最近的【汇聚】边 =====
         // 只看到 F1/F2/F3 三条边时，1,600 km 的省会被省内部无关的细胞边打碎（高原上的噪点）。
         double Dconv = 1e9, Iconv = 0.0;
+        int nConv = 0;
         {
             Cell c1 = WCELLS.get()[0];
             c1.sx = px1 * WORLEY_CELL; c1.sz = pz1 * WORLEY_CELL;
@@ -1763,7 +1764,7 @@ public final class LandV3 {
                 if (nl2 < 1e-12) continue;
                 nx2 /= nl2; nz2 /= nl2;
                 double cn = -((vv[2] - vv[0]) * nx2 + (vv[3] - vv[1]) * nz2) * WORLEY_CONV_GAIN;
-                if (cn > 0.0) { Dconv = edgeD; Iconv = cn; }
+                if (cn > 0.0) { if (edgeD < 500_000.0) nConv++; if (edgeD < Dconv) { Dconv = edgeD; Iconv = cn; } }
             }
         }
         if (out.length > 14) {
@@ -1771,6 +1772,7 @@ public final class LandV3 {
             out[14] = Math.max(0.0, D);
         }
         if (out.length > 20) out[20] = Iconv;
+        if (out.length > 21) out[21] = nConv;
         if (out.length > 19) out[19] = D;
     }
 
