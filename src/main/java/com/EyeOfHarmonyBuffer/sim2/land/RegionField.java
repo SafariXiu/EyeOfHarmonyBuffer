@@ -20,7 +20,7 @@ public final class RegionField {
     /** 海沟带宽度（m）。 */
     public static double TRENCH_RANGE = 250_000.0;
     /** 洋中脊半宽（m）。 */
-    public static double RIDGE_RANGE = 900_000.0;
+    public static double RIDGE_RANGE = 550_000.0;
     /** 裂谷半宽（m）。 */
     public static double RIFT_RANGE = 150_000.0;
     /** 权重过渡的坡度（汇聚强度）。 */
@@ -71,8 +71,8 @@ public final class RegionField {
         double sR = sDiv * (1.0 - ctype) * (1.0 - LandV3.smoothstepPublic(0.0, RIDGE_RANGE, Dd));
         // 岛弧：汇聚 + 洋壳 + 400–900 km 的带
         // 岛弧：俯冲带外侧 200–600 km（真实弧后盆地 + 火山弧的位置）
-        double arcBand = LandV3.smoothstepPublic(150_000.0, 250_000.0, Dc)
-                       * (1.0 - LandV3.smoothstepPublic(500_000.0, 650_000.0, Dc));
+        double arcBand = LandV3.smoothstepPublic(120_000.0, 220_000.0, Dc)
+                       * (1.0 - LandV3.smoothstepPublic(380_000.0, 500_000.0, Dc));
         // 弧带在 400–900 km 外，必须用【不随距离衰减】的速率门，否则弧永远是 0
         double sA = sConv * (1.0 - ctype) * arcBand;
         // 裂谷：离散 + 陆壳（等 RIFT_ON 打开后才有实际地形）
@@ -88,12 +88,31 @@ public final class RegionField {
         double s2 = 2.0 * nvx * nvz / (nn * nn);
         // 第 10 项：高原权重 —— 大陆碰撞的【广泛增厚】：强汇聚 + 宽范围（D < 1,500 km）
         // 高原半径随【汇聚强度】增大：碰撞越强、地壳越厚 ⟹ 高原扩散越远（500 → 2,600 km）
-        double plateauRange = 500_000.0 + 2_100_000.0 * Math.min(1.0, Math.max(0.0, convC) / 0.55);
-        double pw = LandV3.smoothstepPublic(0.15, 0.45, convC)
-                  * (1.0 - LandV3.smoothstepPublic(0.35 * plateauRange, plateauRange, Dc));
+        // 高原用【区域汇聚】（同一条造山带的两条边取最大），不受"最近边是离散"影响
+        double convPlateau = bf.length > 20 && bf[20] > 0.0 ? bf[20] : convC;
+        double plateauRange = 500_000.0 + 2_100_000.0 * Math.min(1.0, Math.max(0.0, convPlateau) / 0.55);
+        // 二级互斥：高原是【山带后方的环带】，山带处权重归零
+        // 环带：山带外缘 350 km 起，到 2,400 km 止（只在 Dconv 有意义时成立）
+        double ringIn = LandV3.smoothstepPublic(350_000.0, 600_000.0, Dc);
+        double ringOut = 1.0 - LandV3.smoothstepPublic(900_000.0, 1_400_000.0, Dc);
+        // 嵌套：山带 = 所有汇聚带；高原 = 只有"极强汇聚"才有，从缝合带开始（无内缝）
+        double Ireg = bf.length > 20 && bf[20] > 0.0 ? bf[20] : Math.max(0.0, convC);
+        // 连续汇聚场（ψ 的负拉普拉斯）：成片、不在边上翻转 ⟹ 山带能连成长链
+        double Cnorm = Math.min(1.0, Math.max(0.0, LandV3.convergField(ws, x, z)) / 8e-15);
+        double Inorm = Math.min(1.0, Math.max(Cnorm, Ireg / 3.0) * 0.5 + 0.5 * Cnorm);
+        // 山带空间项用【最近边的距离 D】（任何类型都连续），汇聚门用【区域汇聚】
+        // —— 否则到了多边形顶点，最近边换成另一条，conv 翻符号 ⟹ 山带被切断
+        // 构造省：一块 1,600 km 的区域；主脊是省内 D<280 km 的一条
+        // 省与主脊都用【到最近汇聚边的垂距 Dconv】⟹ 沿整条缝合带成带，不会在顶点塌成圆
+        double province = LandV3.smoothstepPublic(0.25, 0.55, Inorm)
+                        * (1.0 - LandV3.smoothstepPublic(0.55 * 1_600_000.0, 1_600_000.0, Dc));
+        // 山带 = 连续汇聚场 × 边界附近窗口（不再依赖"某条边" ⟹ 可以连成长链）
+        double crest = LandV3.smoothstepPublic(0.15, 0.55, Cnorm)
+                     * Math.exp(-(D / 450_000.0) * (D / 450_000.0)) * ctypeM;
+        double pw = province;   // w[9] 现在是"省"
         v = new float[]{(float) sM, (float) sT, (float) sR, (float) sA, (float) sF,
                         (float) (D / 1e6), (float) c2, (float) s2, (float) mtnAmp, (float) pw,
-                        (float) (dDivRaw / 1e6)};
+                        (float) (dDivRaw / 1e6), (float) crest};
         if (nodeWs != ws) { NODES.clear(); nodeWs = ws; }
         NODES.put(key, v);
         return v;
@@ -111,7 +130,7 @@ public final class RegionField {
         double su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
         float[] a = node(ws, i, j), b = node(ws, i + 1, j);
         float[] c = node(ws, i, j + 1), d = node(ws, i + 1, j + 1);
-        for (int k = 0; k < 11; k++) {
+        for (int k = 0; k < 12; k++) {
             double top = a[k] + (b[k] - a[k]) * su;
             double bot = c[k] + (d[k] - c[k]) * su;
             out[k] = top + (bot - top) * sv;

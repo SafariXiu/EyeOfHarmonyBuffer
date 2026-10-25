@@ -46,7 +46,7 @@ public final class TerrainClass {
      */
     public static double SHELF_MAX_DEPTH = 1_500.0;
 
-    private static final ThreadLocal<double[]> W5 = ThreadLocal.withInitial(() -> new double[12]);
+    private static final ThreadLocal<double[]> W5 = ThreadLocal.withInitial(() -> new double[16]);
 
     /** 沙滩标签的半宽（m）：只看离岸距离，**不压制高度**。 */
     public static double BEACH_LABEL_W = 150.0;
@@ -141,10 +141,9 @@ public final class TerrainClass {
         // 盆地：基础地形的一种（低地），按【区域】判，不看高程
         if (basinD > BASIN_LABEL_M) return BASIN;
         // 高原优先于山脉：强碰撞 + 宽范围 ⟹ 又高又平
-        if (w.length > 9 && w[9] > PLATEAU_W && h > PLATEAU_MIN_H) return PLATEAU;
-        // 山脉 = 【造山区】（区域标签），不看高度也不看起伏：
-        // 造山把基础地形拉高，拉高的地方就是山脉；没被拉高的地方哪怕很高（高原/盆地）也不是山脉。
-        if (w[0] > MOUNTAIN_W) return MOUNTAIN;
+        // 二级：山脉 = 任意汇聚边上的带（不依附于省）；高原 = 强碰撞的省
+        if (w.length > 11 && w[11] > 0.5) return MOUNTAIN;
+        if (w.length > 9 && w[9] > 0.45) return PLATEAU;
         // 裂谷按【轴距离】判（高原上的裂谷地板也有 2,000–3,000 m，不能只看 h）
         // 板块边界版裂谷已回退（RIFT_GEOM_ON=false ⟹ 标签也不再触发）
         if (LandV3.RIFT_GEOM_ON && w[4] > RIFT_W && (w.length > 10 ? w[10] < RIFT_AXIS_KM : h < RIFT_MAX_H)) return RIFT;

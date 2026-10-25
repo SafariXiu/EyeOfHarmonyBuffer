@@ -763,6 +763,8 @@ public final class LandV3 {
         h = h * 31 + (RIFT_GEOM_ON ? 1 : 0);
         h = h * 31 + (NOISE_RIFT_ON ? 1 : 0);
         h = h * 31 + (BASIN_ON ? 1 : 0);
+        h = h * 31 + (WORLEY_PLATES_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_CELL);
         h = h * 31 + Double.doubleToLongBits(V2_BASIN_DEPTH);
         h = h * 31 + Double.doubleToLongBits(BASIN_CELL_LO);
         h = h * 31 + Double.doubleToLongBits(BASIN_CELL_HI);
@@ -878,9 +880,9 @@ public final class LandV3 {
     // ---- 新高度场参数（掩膜 + 浮雕）----
     public static double V2_LAND_BASE = 250.0;     // 陆地基底（m）
     public static double V2_HILL_AMP = 360.0;      // 丘陵起伏
-    public static double V2_MTN_AMP = 7_400.0;     // 山脉起伏（× wMountain）
+    public static double V2_MTN_AMP = 3_700.0;     // 山脉起伏（骑在高原上，故降低）
     /** 稀有高峰项（× wMountain² × ridged³）：只有最强山带的最强脊线才够高 ⟹ 9000–10000 m 的极少数峰。 */
-    public static double V2_PEAK_AMP = 1_880.0;   // 稀有高峰：重标到 max≈7,980 m ⟹ Y≈254.5（留 1 格余量）
+    public static double V2_PEAK_AMP = 1_000.0;   // 稀有高峰：重标到 max≈7,980 m ⟹ Y≈254.5（留 1 格余量）
     /** 山带没入陆架时的抬升（m，负深度）：让山带"沉入海中"而不是硬切在岸线。 */
     public static double V2_MTN_SHELF = 1_200.0;
     /** 山脉靠海的 s 门宽：1e-4 ≈ 1 km。让山能走到海边（形成断崖），而不是在几十公里外消失。 */
@@ -995,7 +997,9 @@ public final class LandV3 {
 
     /** 高原（大陆碰撞广泛增厚）：抬升幅度与山脊压制比例。 */
     public static double V2_PLATEAU_H = 3_400.0;
-    public static double V2_PLATEAU_RELIEF = 0.78;
+    /** 构造省的整体抬升（m）与主脊标定。 */
+    public static double V2_PROV_H = 3_600.0;
+    public static double V2_PLATEAU_RELIEF = 0.45;
     /**
      * 主导对锐化指数：区域权重的 pair 混合权重取 w^P。
      * P=1 是旧的 softmin 混合（多边界处互相污染 ⟹ 圆斑）；P 越大越接近"只看最近的一对"。
@@ -1077,8 +1081,8 @@ public final class LandV3 {
     public static double V2_LAND_AMP2 = 45.0;
     public static double V2_SEA_AMP2 = 25.0;
 
-    private static final ThreadLocal<double[]> W5V2 = ThreadLocal.withInitial(() -> new double[12]);
-    private static final ThreadLocal<double[]> W5V2B = ThreadLocal.withInitial(() -> new double[12]);
+    private static final ThreadLocal<double[]> W5V2 = ThreadLocal.withInitial(() -> new double[16]);
+    private static final ThreadLocal<double[]> W5V2B = ThreadLocal.withInitial(() -> new double[16]);
 
     /** 沿带拉长的山脊噪声：u = 横带，v = 沿带。 */
     private static double ridgedBelt(double x, double z, double nx, double nz, double wl, long seed) {
@@ -1151,7 +1155,7 @@ public final class LandV3 {
         double[] w = W5V2.get();
         RegionField.weights(ws, x, z, w);
         // 不再用各向异性坐标（交汇点会产生扇形伪影）；带由 weight 给出，噪声各向同性。
-        double bnx = 1.0, bnz = 0.0;
+        double bnx0 = 1.0, bnz0 = 0.0;   // 旧带向（已不用）
         // 公共基底（陆/洋共用，海岸处幅度相等 ⟹ 接缝为零）
         double n1 = fbm3(x, z, 220_000.0, ws ^ 0x6B1L);
         double n2 = fbm3(x, z, 40_000.0, ws ^ 0x6B2L);
@@ -1163,13 +1167,22 @@ public final class LandV3 {
             h += a1 * n1 + a2 * n2;
             // 带（w[0]）连续，幅度按汇聚强度（w[8]）变化，但不为零 ⟹ 山脉沿带连绵
             double mAmp = 0.35 + 0.65 * (w.length > 8 ? w[8] : 1.0);
-            // 山脊：更细的脊线（140 km）+ 锐化的峰。原来的 300 km 平滑噪声 + 线性权重
-            // 等于把整条 520 km 的带均匀抬起来 ⟹ "又肥又平"。
-            // 山脊噪声：60 km 的 ridged 分形（300 km 太肥、26 km 平行条纹会摩尔纹）
-            double rf = ridged3(x, z, 60_000.0, ws ^ 0x6A2L);
+            // 山脊：沿【边界切向】拉长的 ridged 噪声 ⟹ 线状山脊，而不是等轴噪点
+            double th = (w.length > 7) ? 0.5 * Math.atan2(w[7], w[6]) : 0.0;
+            double bnx = Math.cos(th), bnz = Math.sin(th);
+            double uu = (x * bnx + z * bnz) / 45_000.0;      // 横带
+            double vv = (-x * bnz + z * bnx) / 190_000.0;    // 沿带（拉长 4:1）
+            double rfw = 0.0, rSum = 0.0, rAmp = 1.0, rF = 1.0;
+            for (int o = 0; o < 3; o++) {
+                rfw += rAmp * (1.0 - Math.abs(LandNoise.perlin(uu * rF, vv * rF, (ws ^ 0x6A2L) + o * 0x31L)));
+                rSum += rAmp; rAmp *= 0.5; rF *= 2.0;
+            }
+            double rf = rfw / rSum;
             double rfS = Math.pow(rf, 1.2);
-            // 权重也锐化：高处集中在边界附近，外缘是低缓的山麓
-            double wm = Math.pow(w[0], 1.8);
+            // 省内两种风格：整体抬升（0.45）+ 主脊（0.55）；主脊处再加山脊噪声
+            double prov = w.length > 9 ? w[9] : 0.0;
+            double crest = w.length > 11 ? w[11] : 0.0;
+            double wm = Math.pow(crest, 1.5) * prov;
             // 山带可以一直到海边：用很窄的 s 门（≈4 km），而不是 lf（≈500 km）
             double mtnGate = smoothstep(0.0, V2_MTN_COAST_S, s);
             double mtn = V2_MTN_AMP * wm * mAmp * rfS * mtnGate;
@@ -1178,8 +1191,8 @@ public final class LandV3 {
             }
             // 高原：大陆碰撞的广泛增厚 —— 抬起基底 + 压低山脊 ⟹ 又高又平
             double pw = w.length > 9 ? w[9] : 0.0;
-            // 用 pw² 做压制：高原【内部】几乎全平（pw→1），【边缘】保留山脉（喜马拉雅式）
-            h += mtn * (1.0 - V2_PLATEAU_RELIEF * pw * pw) + V2_PLATEAU_H * pw;
+            // 省：整体抬高 + 主脊
+            h += V2_PROV_H * prov * (0.45 + 0.55 * crest) + mtn;
             // ---- 噪声裂谷：低频“裂谷省” + 域扭曲的拉长线状谷 ----
             // 盆地：Voronoi 多边形内部的浅碗（裂谷优先）
             if (BASIN_ON) {
@@ -1622,7 +1635,147 @@ public final class LandV3 {
     }
 
     /** Continuous boundary field over ALL plate pairs (softmin distance + soft-weighted force). */
+    // ================= 细胞噪声（Worley）板块底图 =================
+    public static boolean WORLEY_PLATES_ON = true;    // 默认启用 Worley 底图
+    public static double WORLEY_CELL = 7_000_000.0;
+    public static double WORLEY_WARP1_A = 700_000.0, WORLEY_WARP1_WL = 3_000_000.0;
+    public static double WORLEY_WARP2_A = 260_000.0, WORLEY_WARP2_WL = 1_100_000.0;
+    /** 汇聚速率增益（ψ 代理量太小）。 */
+    public static double WORLEY_CONV_GAIN = 6.0;
+    /** Worley 版速度场：更长的波长 + 更小的逐格抖动 ⟹ 汇聚符号在多个格子上一致 ⟹ 汇聚带连成长链。 */
+    public static double WORLEY_VEL_WL = 14_000_000.0;
+    public static double WORLEY_VEL_JITTER = 0.06;
+
+    private static void velW(long ws, Cell c, double[] out, int off) {
+        double h = LandContract.VEL_FD_STEP;
+        double dX = (psiW(ws, c.sx, c.sz + h) - psiW(ws, c.sx, c.sz - h)) / (2.0 * h);
+        double dZ = (psiW(ws, c.sx + h, c.sz) - psiW(ws, c.sx - h, c.sz)) / (2.0 * h);
+        double sc = LandContract.VEL_GAIN * WORLEY_VEL_WL * 0.5;
+        out[off] = dX * sc + WORLEY_VEL_JITTER * (LandNoise.h01(0xB2L, c.id, 3L) - 0.5);
+        out[off + 1] = -dZ * sc + WORLEY_VEL_JITTER * (LandNoise.h01(0xC2L, c.id, 5L) - 0.5);
+    }
+
+    /** 连续汇聚场：C = −∇²ψ（>0 = 汇聚）。比"逐边符号"连续，能形成长带。 */
+    public static double convergField(long ws, double x, double z) {
+        double h = 250_000.0;
+        double p0 = psiW(ws, x, z);
+        double l = psiW(ws, x - h, z) + psiW(ws, x + h, z)
+                 + psiW(ws, x, z - h) + psiW(ws, x, z + h) - 4.0 * p0;
+        return -l / (h * h);
+    }
+
+    private static double psiW(long ws, double x, double z) {
+        return LandNoise.value(x / WORLEY_VEL_WL, z / WORLEY_VEL_WL, ws ^ 0xB1L) - 0.5;
+    }
+
+    private static final ThreadLocal<Cell[]> WCELLS = ThreadLocal.withInitial(() -> {
+        Cell[] a = new Cell[2];
+        a[0] = new Cell(); a[1] = new Cell();
+        return a;
+    });
+    private static final ThreadLocal<double[]> WVEL = ThreadLocal.withInitial(() -> new double[4]);
+
+    /** 细胞（=板块）边界场：与 boundaryField 同样的 out[] 约定，但几何来自 Worley。 */
+    public static void worleyPlateField(long ws, double x, double z, double[] out) {
+        double wx = x + WORLEY_WARP1_A * LandNoise.perlin(x / WORLEY_WARP1_WL, z / WORLEY_WARP1_WL, ws ^ 0x31L)
+                      + WORLEY_WARP2_A * LandNoise.perlin(x / WORLEY_WARP2_WL + 3.7, z / WORLEY_WARP2_WL - 1.9, ws ^ 0x32L);
+        double wz = z + WORLEY_WARP1_A * LandNoise.perlin(x / WORLEY_WARP1_WL + 7.1, z / WORLEY_WARP1_WL - 4.3, ws ^ 0x33L)
+                      + WORLEY_WARP2_A * LandNoise.perlin(x / WORLEY_WARP2_WL - 2.3, z / WORLEY_WARP2_WL + 5.7, ws ^ 0x34L);
+        double fx = wx / WORLEY_CELL, fz = wz / WORLEY_CELL;
+        long ci = (long) Math.floor(fx), cj = (long) Math.floor(fz);
+        double f1 = 1e9, f2 = 1e9, f3 = 1e9;
+        long a1 = 0, b1 = 0, a2 = 0, b2 = 0, a3 = 0, b3 = 0;
+        double px1 = 0, pz1 = 0, px2 = 0, pz2 = 0, px3 = 0, pz3 = 0;
+        for (int dj = -1; dj <= 1; dj++) for (int di = -1; di <= 1; di++) {
+            long ii = ci + di, jj = cj + dj;
+            double qx = ii + LandNoise.h01(0xA1L, ii, jj), qz = jj + LandNoise.h01(0xA2L, ii, jj);
+            double dx = qx - fx, dz = qz - fz;
+            double d = Math.sqrt(dx * dx + dz * dz);
+            if (d < f1) {
+                f3 = f2; a3 = a2; b3 = b2; px3 = px2; pz3 = pz2;
+                f2 = f1; a2 = a1; b2 = b1; px2 = px1; pz2 = pz1;
+                f1 = d; a1 = ii; b1 = jj; px1 = qx; pz1 = qz;
+            } else if (d < f2) {
+                f3 = f2; a3 = a2; b3 = b2; px3 = px2; pz3 = pz2;
+                f2 = d; a2 = ii; b2 = jj; px2 = qx; pz2 = qz;
+            } else if (d < f3) { f3 = d; a3 = ii; b3 = jj; px3 = qx; pz3 = qz; }
+        }
+        double D = Math.max(0.0, 0.5 * (f2 - f1) * WORLEY_CELL);   // 到边界的距离（m）
+        // 两细胞的速度（用 ψ 场在特征点处求）
+        Cell[] cc = WCELLS.get();
+        double[] vv = WVEL.get();
+        cc[0].sx = px1 * WORLEY_CELL; cc[0].sz = pz1 * WORLEY_CELL;
+        cc[0].id = a1 * 100003L ^ b1;
+        cc[1].sx = px2 * WORLEY_CELL; cc[1].sz = pz2 * WORLEY_CELL;
+        cc[1].id = a2 * 100003L ^ b2;
+        velW(ws, cc[0], vv, 0);
+        velW(ws, cc[1], vv, 2);
+        double nx = px2 - px1, nz = pz2 - pz1;
+        double nl = Math.sqrt(nx * nx + nz * nz);
+        if (nl > 1e-12) { nx /= nl; nz /= nl; }
+        // vel() 只是 ψ 场导数的代理量，量级偏小；乘一个增益让"汇聚/离散"的分布与旧系统可比
+        double conv = -((vv[2] - vv[0]) * nx + (vv[3] - vv[1]) * nz) * WORLEY_CONV_GAIN;
+        double convS = 0.5 * (conv + Math.sqrt(conv * conv + 0.01));
+        // out[] 契约
+        out[0] = D;
+        out[1] = convS;
+        out[2] = 0.0;
+        out[3] = 1.0;
+        out[4] = conv;
+        out[5] = nx;
+        out[6] = nz;
+        if (out.length > 8) out[8] = 1.0;
+        if (out.length > 9) out[9] = Math.min(1.0, D / (WORLEY_CELL * 0.5));   // 年龄代理
+        if (out.length > 10) out[10] = 0.0;
+        if (out.length > 11) out[11] = Math.max(0.0, conv) * Math.exp(-D / OROG_STEADY_LAMBDA);
+        if (out.length > 16) { out[15] = Math.max(0.0, conv); out[16] = Math.max(0.0, -conv); }
+        // 第二近的边（与 F1 同一个细胞的另一条边）：给高原一个"区域汇聚"，不受最近边符号影响
+        cc[1].sx = px3 * WORLEY_CELL; cc[1].sz = pz3 * WORLEY_CELL;
+        cc[1].id = a3 * 100003L ^ b3;
+        velW(ws, cc[1], vv, 2);
+        double nx3 = px3 - px1, nz3 = pz3 - pz1;
+        double nl3 = Math.sqrt(nx3 * nx3 + nz3 * nz3);
+        if (nl3 > 1e-12) { nx3 /= nl3; nz3 /= nl3; }
+        double conv3 = -((vv[2] - vv[0]) * nx3 + (vv[3] - vv[1]) * nz3) * WORLEY_CONV_GAIN;
+        if (out.length > 18) { out[17] = Math.max(0.0, conv); out[18] = Math.max(0.0, -conv); }
+        if (out.length > 20) out[20] = Math.max(0.0, Math.max(conv, conv3));   // 区域汇聚（高原用）
+        // ===== 5×5：在"本细胞与所有邻细胞"的边里，找最近的【汇聚】边 =====
+        // 只看到 F1/F2/F3 三条边时，1,600 km 的省会被省内部无关的细胞边打碎（高原上的噪点）。
+        double Dconv = 1e9, Iconv = 0.0;
+        {
+            Cell c1 = WCELLS.get()[0];
+            c1.sx = px1 * WORLEY_CELL; c1.sz = pz1 * WORLEY_CELL;
+            c1.id = a1 * 100003L ^ b1;
+            velW(ws, c1, vv, 0);
+            for (int dj = -2; dj <= 2; dj++) for (int di = -2; di <= 2; di++) {
+                long ii = ci + di, jj = cj + dj;
+                if (ii == a1 && jj == b1) continue;
+                double qx = ii + LandNoise.h01(0xA1L, ii, jj), qz = jj + LandNoise.h01(0xA2L, ii, jj);
+                double dxf = qx - fx, dzf = qz - fz;
+                double fn = Math.sqrt(dxf * dxf + dzf * dzf);
+                double edgeD = Math.max(0.0, 0.5 * (fn - f1) * WORLEY_CELL);
+                if (edgeD >= Dconv) continue;
+                cc[1].sx = qx * WORLEY_CELL; cc[1].sz = qz * WORLEY_CELL;
+                cc[1].id = ii * 100003L ^ jj;
+                velW(ws, cc[1], vv, 2);
+                double nx2 = qx - px1, nz2 = qz - pz1;
+                double nl2 = Math.sqrt(nx2 * nx2 + nz2 * nz2);
+                if (nl2 < 1e-12) continue;
+                nx2 /= nl2; nz2 /= nl2;
+                double cn = -((vv[2] - vv[0]) * nx2 + (vv[3] - vv[1]) * nz2) * WORLEY_CONV_GAIN;
+                if (cn > 0.0) { Dconv = edgeD; Iconv = cn; }
+            }
+        }
+        if (out.length > 14) {
+            out[13] = Dconv;
+            out[14] = Math.max(0.0, D);
+        }
+        if (out.length > 20) out[20] = Iconv;
+        if (out.length > 19) out[19] = D;
+    }
+
     public static void boundaryField(long ws, double x, double z, double[] out) {
+        if (WORLEY_PLATES_ON) { worleyPlateField(ws, x, z, out); return; }
         // ★ 板块形状的域扭曲：把查询点本身挪动（而不是只挪距离）。
         //   这会让【整个板块镶嵌】变形 —— 每条边界都跟着扭曲，而不是一条直线加一点抖动。
         double qx = x + warpX(x, z), qz = z + warpZ(x, z);
