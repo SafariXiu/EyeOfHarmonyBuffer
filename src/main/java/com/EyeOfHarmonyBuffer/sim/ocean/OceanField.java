@@ -92,6 +92,12 @@ public final class OceanField {
      */
     public static boolean OCEAN_ON = true;
     /**
+     * ADR-001 例外标注（2026-10-28）：本 OceanField 是 z 周期 2.5D 近似。
+     * 它不是“气候在 z 上周期”的证据；只是当前 L1 近似。
+     * 长期由 basin-scale ocean 替换。
+     */
+    public static final boolean OCEAN_FIELD_PERIODIC_Z = true;
+    /**
      * 纬度行数。★ D1（2026-09-18）：Z_CYCLE 20M -> 40M ⇒ **64 -> 128**，
      * 以保住每行 312.5 km（= 2.81° 纬度）的分辨率。
      * <p>降回 64 会把纬度分辨率砍半；{@code configStamp} 已含 ROWS（见本文件缓存键），

@@ -753,11 +753,9 @@ public final class PrecipField {
             if (sp < 0.1) return new double[]{-1.0, Double.NaN};
             x -= u / sp * UPWIND_STEP;
             z -= v / sp * UPWIND_STEP;
-            // ★ §527 修复（审计面 1）：原来是 clamp(z, 0, MAX_D) —— 那只保留【北半球】：
-            //   南半球点（z 约 3*MAX_D）会被夹到 MAX_D = 【北极】，而不是回到它自己的纬度。
-            //   契约下气候在 Z 上以 Z_CYCLE 周期重复 ⇒ 只能【回卷】不能【夹逼】。
-            //   回卷对北半球点 z 不变 ⇒ 两个盒子（15~35N / 20~35N）的读数与 P293 均不受影响。
-            z = WorldContract.wrapZ(z, WorldContract.Z_CYCLE);
+            // ADR-001（2026-10-28）：z 无限，只有纬度函数周期；气候/海陆不周期。
+            // 不能把轨迹卷到另一个 z 周期，否则会用错下垫面。
+            // latOf 自己会处理纬度周期；这里保留原始 z。
             int xi = (int) Math.round(x), zi = (int) Math.round(z);
             if (!PlateField.isLandWithCell(xi, zi, seed, cell)) {
                 double lat = WorldContract.latOf(zi);
@@ -1181,11 +1179,9 @@ public final class PrecipField {
             double sp = Math.hypot(u, v);
             if (sp < 0.1) return new double[]{-1.0, Double.NaN};
             x -= u / sp * UPWIND_STEP; z -= v / sp * UPWIND_STEP;
-            // ★ §527 修复（审计面 1）：原来是 clamp(z, 0, MAX_D) —— 那只保留【北半球】：
-            //   南半球点（z 约 3*MAX_D）会被夹到 MAX_D = 【北极】，而不是回到它自己的纬度。
-            //   契约下气候在 Z 上以 Z_CYCLE 周期重复 ⇒ 只能【回卷】不能【夹逼】。
-            //   回卷对北半球点 z 不变 ⇒ 两个盒子（15~35N / 20~35N）的读数与 P293 均不受影响。
-            z = WorldContract.wrapZ(z, WorldContract.Z_CYCLE);
+            // ADR-001（2026-10-28）：z 无限，只有纬度函数周期；气候/海陆不周期。
+            // 不能把轨迹卷到另一个 z 周期，否则会用错下垫面。
+            // latOf 自己会处理纬度周期；这里保留原始 z。
             int xi = (int) Math.round(x), zi = (int) Math.round(z);
             if (!PlateField.isLandWithCell(xi, zi, seed, cell)) {
                 sea = qSat(Atmosphere.annualSeaLevelTemp(WorldContract.latOf(zi), 0.0,

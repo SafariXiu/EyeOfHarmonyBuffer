@@ -6,7 +6,8 @@ package com.EyeOfHarmonyBuffer.sim.world;
  * <pre>
  *   X      无限、无周期
  *   Z      无限
- *   气候   在 Z 上以 Z_CYCLE 周期重复
+ *   纬度   在 Z 上以 LAT_CYCLE 周期重复
+ *   气候   不周期；海陆不周期
  *   地形   在 Z 上不重复
  * </pre>
  *
@@ -49,7 +50,7 @@ public final class WorldContract {
     public static final int MAX_D = (int) Math.round(10_000_000 / PLANET_SCALE);   // ★ 地球量级 = 10,000,000；旧小世界 = 250,000
 
     /**
-     * 气候在 z 上的周期（block）。
+     * 纬度在 z 上的周期（block）；不代表气候/海陆周期。
      *
      * <p>⚠⚠ <b>2026-10-14 审查补注（阶段 4 · 过期数字猎捕）：以下整段是【历史记录】</b> ✗ ——
      * 它记录的是 Z_CYCLE 扩到 20,000,000 那一次裁决（设计冻结 §29 ✓）的论证，
@@ -77,7 +78,11 @@ public final class WorldContract {
      * 极点在 {@code Z_CYCLE / 4}、赤道在 {@code 0} 与 {@code 2 * MAX_D} ✓。
      * （⚠ 原文用"落地时改成…届时…"的<b>将来时</b> ✗，已与代码不符 ✓。）
      */
-    public static final int Z_CYCLE = 4 * MAX_D;   // ★ 2026-10-08：= 1,000,000（原 40,000,000 ÷ 40）
+    public static final int Z_CYCLE = 4 * MAX_D;   // 纬度三角波周期（m）；当前 40,000,000
+    /** 纬度周期别名：只有 latOf/bandD 用它；不代表气候/海陆周期。 */
+    public static final int LAT_CYCLE = Z_CYCLE;
+    /** ADR-001（2026-10-28）：气候/海陆在 z 上不周期。 */
+    public static final boolean CLIMATE_PERIODIC_Z = false;
     // ★★★★★★★★ 2026-10-08：Ω ×40（**必须**）
     //   依据：大气/海洋的变形半径 ∝ √(gH)/Ω。地形与 R_EFF 缩了 40 倍，
     //   若 Ω 不变，则 R_d/R_EFF 会 ×40（实测 0.337 -> 13.494）⟹ 罗斯贝波/哈得来环流全塌。
@@ -159,10 +164,10 @@ public final class WorldContract {
     /**
      * ★ §527 新增：**z 的周期回卷 —— 单一来源**。
      *
-     * <p>为什么要有它：契约下气候在 Z 上以 {@code zCycle} 周期重复，所以「把 z 弄回一个周期内」
-     * 只能【回卷】，不能【夹逼】。历史上有两处用了 {@code clamp(z, 0, MAX_D)}，
-     * 那只保留北半球：南半球点（z 约 3*MAX_D）会被夹到 **MAX_D = 北极**，
-     * 而不是回到它自己的纬度。见 {@code PrecipField.upwindSea} / {@code moistureAdvected}。
+     * <p>为什么要有它：契约下**只有纬度**在 Z 上以 {@code zCycle} 周期重复；气候/海陆不周期。
+     * 回卷只能用于纬度计算，不能用于下垫面/气候场。
+     * 历史上有两处用了 {@code clamp(z, 0, MAX_D)}，那会把南半球点夹到北极；
+     * PrecipField 的两处 wrapZ 已于 ADR-001 移除。
      *
      * <p>整数版与 {@link #latOf} 内部【逐字一致】；连续版供沿风逆推这类浮点游走使用。
      */
@@ -348,7 +353,7 @@ public final class WorldContract {
     }
 
     // ---- 默认契约的便捷重载 ----
-    public static double bandD(int z) { return bandD(z, Z_CYCLE); }
-    public static double latOf(int z) { return latOf(z, Z_CYCLE); }
+    public static double bandD(int z) { return bandD(z, LAT_CYCLE); }
+    public static double latOf(int z) { return latOf(z, LAT_CYCLE); }
     public static double betaForLatitude(double latRad) { return betaForLatitude(latRad, Z_CYCLE); }
 }

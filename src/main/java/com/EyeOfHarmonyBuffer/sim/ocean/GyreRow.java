@@ -79,7 +79,7 @@ public final class GyreRow {
          *  早先默认值是 45 度的 3.24e-10，而六个纬度带共用了它）。
          *  只有合成算例才手动设它；设了就以手动值为准。 */
         public double beta = Double.NaN;
-        /** 世界契约的气候周期（block），用于推导纬度与 beta。 */
+        /** 世界契约的纬度周期（block），用于推导纬度与 beta；不代表气候/海陆周期。 */
         public int zCycle = WorldContract.Z_CYCLE;
         /** 手动 beta 是否已设置。 */
         public boolean hasBeta() { return !Double.isNaN(beta) && beta > 0.0; }

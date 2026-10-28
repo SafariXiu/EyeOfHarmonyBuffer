@@ -41,7 +41,7 @@ public final class PeriodicNoise {
     private static final double INV_PZ = 1.0 / PERIOD_Z;
 
     /**
-     * **X 方向无限**（C1 世界：X 不重复；Z 的周期只由 LAT_CYCLE 管气候，见 INFINITE_Z）。
+     * **X 方向无限**（C1 世界：X 不重复；Z 的周期只由 LAT_CYCLE 管纬度，见 INFINITE_Z）。
      *
      * true 时 {@link #cellsX}/{@link #cellsXFromFreq} 一律返回 ≤0（"不折叠"），
      * 于是所有走本原语的噪声自动变成 X 无界；Z 方向不受影响。
@@ -50,7 +50,7 @@ public final class PeriodicNoise {
     public static boolean INFINITE_X = true;
 
     /**
-     * **Z 方向也无限**（契约：Z_CYCLE = 1M 只控制【气候/纬度】，地形/海陆/洋流必须在两个方向上
+     * **Z 方向也无限**（契约：Z_CYCLE 只控制【纬度】，地形/海陆/洋流必须在两个方向上
      * 都逐块不同）。true 时 {@link #cellsZ}/{@link #cellsZFromFreq} 一律返回 ≤0（"不折叠"），
      * 于是所有走本原语的塑形噪声在 Z 上不再每 1M 复读；false = 旧行为（每 1M 逐位相同）。
      *
