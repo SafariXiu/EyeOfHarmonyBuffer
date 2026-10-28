@@ -1327,6 +1327,8 @@ public final class TalosLandErosion {
         h = h * 31 + Double.doubleToLongBits(RIFT_SINK);
         h = h * 31 + (RIFT_SEA_DECOUPLED ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(RIFT_FLOOR_M);
+        // Phase 0 (2026-10-25): LEM reads LandV3.height/uplift; fold its identity.
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim2.land.LandV3.configStamp();
         return h;
     }
 

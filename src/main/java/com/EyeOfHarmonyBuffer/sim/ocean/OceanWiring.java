@@ -1,6 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean;
 
 import com.EyeOfHarmonyBuffer.sim.Frozen;
+import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 
 import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion;
 
@@ -39,6 +40,7 @@ public final class OceanWiring {
 
     /** 世界级接线入口。可重复调用（同一个种子只启一次预热线程）。 */
     public static synchronized void onWorld(int worldSeedInt) {
+        Atmosphere.setZonalLandSeed(worldSeedInt);
         OceanField.install(worldSeedInt);
         // ★★★ 2026-10-12（待裁决/331）：`WaterField` 已整类删除（它把 30% 陆地判为湖）。
         //   水系现在只有一套：`TalosLandErosion`（见 待裁决/327、/329）。

@@ -52,10 +52,10 @@ public final class Radiation {
      * ⟹ ★ 两者服务不同模型，**都不算错** ✓；但引用时必须写全类名 ✓，
      * <b>不要</b>把 climlab 的 1365.2 与本处混用 ✗（那会改 EBM 的稳态解 ✗）。
      */
-    public static final double S0 = 1361.0;
+    public static final double S0 = WorldContract.S0_TSI;
     public static final double SIGMA = 5.670374419e-8;
-    public static final double CP = 1004.0;
-    public static final double LV = 2.45e6;
+    public static final double CP = WorldContract.ATMO_CP;
+    public static final double LV = WorldContract.ATMO_LV;
     /** 有效发射率：238.5 / (sigma * 288.15^4)。 */
     public static final double EPS = 238.5 / (SIGMA * Math.pow(288.15, 4));
     public static final double ALB_SEA = 0.06;

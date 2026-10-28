@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.atmos;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 /**
  * §498 ★★★★★★★ **气块抬升：LCL / LFC / LNB / CAPE / CIN —— 把 `M` 里那个硬编码的
  * 「FT 层 = H_EFF/2 = 6000 m」换成【模型自己的热力学算出来的中性浮力层】。**
@@ -51,17 +53,17 @@ public final class ParcelLift {
 
     // ---- 标准物理常数（全部是教科书常数，不是拟合量）----
     /** 干空气气体常数 J/(kg K)。 */
-    public static final double R_D = 287.05;
+    public static final double R_D = WorldContract.ATMO_R_D;
     /** 水汽气体常数 J/(kg K)。 */
-    public static final double R_V = 461.5;
+    public static final double R_V = WorldContract.ATMO_R_V;
     /** 分子量比 R_d/R_v。 */
-    public static final double EPS = 0.622;
+    public static final double EPS = WorldContract.ATMO_EPS;
     /** 干空气定压比热 J/(kg K)，复用 {@link Radiation#CP}。 */
-    public static final double CP_D = Radiation.CP;
+    public static final double CP_D = WorldContract.ATMO_CP;
     /** 汽化潜热 J/kg，复用 {@link Radiation#LV}。 */
-    public static final double LV = Radiation.LV;
+    public static final double LV = WorldContract.ATMO_LV;
     /** 水三相点 K（Davies-Jones 公式里的 t0）。 */
-    public static final double T_TRIPLE = 273.16;
+    public static final double T_TRIPLE = WorldContract.WATER_T_TRIPLE;
     /** 地面气压 Pa，复用 {@link PrecipField#P_SURF}。 */
     public static final double P0 = PrecipField.P_SURF;
     /** 重力 m/s^2，复用 {@link PrecipField#G_ACC}。 */

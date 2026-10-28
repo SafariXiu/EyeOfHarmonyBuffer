@@ -104,7 +104,7 @@ public final class ClimlabEBM {
      * 而 1361.0 是现代 TSI 标准 ✓。
      * ⟹ ★ <b>不要</b>把本值改成 1361.0 ✗（会改 EBM 的稳态解）；引用时写全类名 ✓。
      */
-    public static final double S0 = 1365.2;
+    public static final double S0 = WorldContract.S0_EBM;
     /** 日射的 P2 系数 —— climlab P2Insolation，insolation.py L251。 */
     public static final double S2 = -0.48;
     /** 暖态反照率（P2Albedo）—— climlab EBM 默认，ebm.py L236-239。 */

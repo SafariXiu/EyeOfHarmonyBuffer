@@ -40,7 +40,7 @@ public final class Atmosphere {
     /** 标准大气递减率（K/m）。 */
     public static final double GAMMA = 6.5e-3;
     /** 黄赤交角（弧度）。 */
-    public static final double OBLIQUITY = Math.toRadians(23.44);
+    public static final double OBLIQUITY = WorldContract.OBLIQUITY;
 
     // 季节振幅 A(phi) 已改成**观测表**：见 ZonalTables.A_LAND_K / A_SEA_K（§80）。
     // 旧的常量 A_LAND_PEAK=26 / A_SEA_PEAK=10 + sin^2(phi) 已被 ERA5 实测否证
@@ -557,10 +557,43 @@ public final class Atmosphere {
      */
     public static boolean ZMSLK_LEGACY = false;
 
+    /**
+     * Phase 1 A/B：纬向陆地占比 kbar(phi) 是否取自本世界 V3。
+     *
+     * <p>false = 旧口径 {@link #KAPPA_MEAN}（0.183，coast-distance 全球均值）；
+     * true  = {@link com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile#at(double)}。
+     * 打开前必须由 {@link #setZonalLandSeed(long)} 设置世界种子；未设置时安全回退旧口径。
+     */
+    // Phase 1 用户裁决（2026-10-25）：出数后验收门无退化 => 默认打开；-Deoh.zmslkV3=false 可回退 A/B。
+    public static boolean ZMSLK_V3_KAPPA = Boolean.parseBoolean(System.getProperty("eoh.zmslkV3", "true"));
+
+    /** V3 纬向陆地占比所用的世界种子（由 OceanWiring/探针设置）。 */
+    private static volatile long V3_KAPPA_SEED = Long.MIN_VALUE;
+
+    static {
+        // Probe-only override: -Deoh.zmslkseed=<int>. Production must use OceanWiring.onWorld().
+        String s = System.getProperty("eoh.zmslkseed");
+        if (s != null && !s.isEmpty()) {
+            try { setZonalLandSeed(Long.parseLong(s)); } catch (NumberFormatException ignored) { }
+        }
+    }
+
+    /** 世界级入口：设置 V3 kbar 的 seed（与 SST/LEM 同一个世界种子）。 */
+    public static void setZonalLandSeed(long ws) {
+        V3_KAPPA_SEED = ws;
+        com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.setSeed(ws);
+    }
+
+    public static boolean hasZonalLandSeed() { return V3_KAPPA_SEED != Long.MIN_VALUE; }
+
     /** 新式：锚在观测海平面年表上，只加本世界陆地占比那一项差。 */
     public static double zmslkNew(double latRad) {
+        double kbar = KAPPA_MEAN;
+        if (ZMSLK_V3_KAPPA && V3_KAPPA_SEED != Long.MIN_VALUE) {
+            kbar = com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.at(latRad);
+        }
         return ZonalTables.tZmSlAnnual(latRad)
-             + (KAPPA_MEAN - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
+             + (kbar - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
     }
 
     /** 旧式（重构式）：{@code T_OCEAN + KAPPA_MEAN*DELTA_SL}。仅为归因保留，不是生产路径。 */

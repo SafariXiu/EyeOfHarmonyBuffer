@@ -558,7 +558,7 @@ public final class ClimberOcean {
         for (long s = 0; s < n; s++) {
             if (s % fluxEvery == 0L) updateFlux();
             tDay += dtDays;
-            applySeason(2.0 * Math.PI * (tDay % 365.25) / 365.25);
+            applySeason(2.0 * Math.PI * (tDay % WorldContract.DAYS_PER_YEAR) / WorldContract.DAYS_PER_YEAR);
             diagnose();
             stepTS(dt);
         }
@@ -605,7 +605,7 @@ public final class ClimberOcean {
     /** 年步长的冰生长/融化 + 盐析（4 季累加）。 */
     private static void updateIce() {
         if (ICE_H == null) return;
-        double seasonSec = 365.25 / 4.0 * 86400.0;
+        double seasonSec = WorldContract.DAYS_PER_YEAR / 4.0 * 86400.0;
         for (int i = 0; i < NLAT; i++) {
             if (!hasOcean(BASIN_ATL, i)) continue;
             double h = ICE_H[i];

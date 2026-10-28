@@ -143,4 +143,28 @@ public final class RegionField {
 
     /** 缓存节点数（监控用）。 */
     public static int cachedNodes() { return NODES.size(); }
+
+    /**
+     * 区域节点算法的配置指纹（2026-10-25 Phase 0）。
+     *
+     * <p>这些常量参与 {@link #node(long,long,long)}，改任何一个都会改变高度；
+     * 之前它们既不在 {@code LandV3.configStamp()} 里，也没有清缓存入口。
+     */
+    public static long configStamp() {
+        long h = 0x52A7F13DL;
+        h = h * 31 + Double.doubleToLongBits(LATTICE);
+        h = h * 31 + Double.doubleToLongBits(MOUNTAIN_RANGE);
+        h = h * 31 + Double.doubleToLongBits(TRENCH_RANGE);
+        h = h * 31 + Double.doubleToLongBits(RIDGE_RANGE);
+        h = h * 31 + Double.doubleToLongBits(RIFT_RANGE);
+        h = h * 31 + Double.doubleToLongBits(CONV_LO);
+        h = h * 31 + Double.doubleToLongBits(CONV_HI);
+        return h;
+    }
+
+    /** 清空节点缓存（A/B 或改常量后必须调用）。 */
+    public static void clearCache() {
+        NODES.clear();
+        nodeWs = Long.MIN_VALUE;
+    }
 }

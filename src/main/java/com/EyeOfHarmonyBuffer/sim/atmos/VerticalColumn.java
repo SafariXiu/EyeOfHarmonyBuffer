@@ -137,7 +137,7 @@ public final class VerticalColumn {
     }
     public static double TAU0_SW = 0.22;
     public static double ALBEDO = 0.12;
-    public static double S0 = 1361.0;
+    public static double S0 = WorldContract.S0_TSI;
     public static double LW_SFC_EMIS = 1.0;
 
     // ---- 对流 ----

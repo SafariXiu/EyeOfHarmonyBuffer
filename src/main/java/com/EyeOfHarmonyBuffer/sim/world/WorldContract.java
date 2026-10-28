@@ -121,6 +121,36 @@ public final class WorldContract {
     /** 长波光学厚度 —— 世界设定（地球型大气的温室强度）。 */
     public static final double ATMO_TAU_LW = 6.0;
 
+    // ==================== 2026-10-25 Phase 0：世界参数单一登记 ====================
+    // 说明：这里登记的是【世界定义输入】或【明确命名的模型口径】。Phase 1 会决定
+    // S0/GRAVITY 的双口径如何统一；Phase 0 只保证不再有散落在各文件的字面量副本。
+
+    /** 辐射/地表能量平衡使用的太阳常数（W/m^2）：现代 TSI 标准 1361.0。 */
+    public static final double S0_TSI = 1361.0;
+    /** EBM 使用的 climlab 太阳常数（W/m^2）：1365.2；与 S0_TSI 的差异待 Phase 1 裁决。 */
+    public static final double S0_EBM = 1365.2;
+
+    /** 标准重力（m/s^2）：9.80665。 */
+    public static final double GRAVITY = 9.80665;
+    /** 降水链旧口径重力（m/s^2）：9.807；Phase 1 统一前保留，避免静默改数。 */
+    public static final double GRAVITY_ACCEL = 9.807;
+
+    /** 黄赤交角（弧度）：23.44°；本世界轴向倾角。 */
+    public static final double OBLIQUITY = Math.toRadians(23.44);
+
+    /** 干空气定压比热（J/(kg K)）。 */
+    public static final double ATMO_CP = 1004.0;
+    /** 水汽化潜热（J/kg）。 */
+    public static final double ATMO_LV = 2.45e6;
+    /** 干空气气体常数（J/(kg K)）。 */
+    public static final double ATMO_R_D = 287.05;
+    /** 水汽气体常数（J/(kg K)）。 */
+    public static final double ATMO_R_V = 461.5;
+    /** 水汽/干空气分子量比。 */
+    public static final double ATMO_EPS = 0.622;
+    /** 水的三相点（K）。 */
+    public static final double WATER_T_TRIPLE = 273.16;
+
     /**
      * ★ D1（2026-09-18）：**带符号**纬度（弧度）—— 沿子午圈匀速行走的**线性三角波**。
      * <p>z=0 赤道 → MAX_D 北极(+90°) → 2·MAX_D 赤道 → 3·MAX_D 南极(-90°) → 4·MAX_D 赤道。

@@ -86,7 +86,7 @@ public final class HadleyCell {
     // ⚠ 本类 SOLVED_ON = false ⟹ **未启用** ⟹ 本修复不改任何生产读数，只拆掉地雷。
     public static final double OM = WorldContract.OMEGA;   // ★ s^-1（地球真值；×40 仅为论文消融实验保留）
     public static final double R_EFF = WorldContract.R_EFF;   // ★ 2026-10-08：消除副本，统一到 WorldContract
-    public static final double G = 9.80665;                          // m s^-2
+    public static final double G = WorldContract.GRAVITY;                          // m s^-2
     /** 外流层厚度 H（对流层顶高度）。 */
     public static double H_TROP = 10_000.0;
     /**

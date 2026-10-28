@@ -458,7 +458,11 @@ public final class SimClimate {
     static { for (int i = 0; i < BUILD_LOCKS.length; i++) BUILD_LOCKS[i] = new Object(); }
 
     /** 清空瓦片缓存。改 CELL 之后**必须**调用（几何变了）。 */
-    public static void clearCache() { CACHE.clear(); }
+    public static void clearCache() {
+        CACHE.clear();
+        // Phase 0 (2026-10-25): climate tiles depend on V3 height/RegionField; clear their memos too.
+        com.EyeOfHarmonyBuffer.sim2.land.LandV3.clearHeightCache();
+    }
 
     /** 改几何的唯一推荐入口：校验整除关系并清缓存。（探针扫参用。） */
     public static void configure(int cell) {
@@ -967,6 +971,40 @@ public final class SimClimate {
         h = h * 31 + TalosBiomeDefault.BLUR_R;
         h = h * 31 + TalosBiomeDefault.BLUR_PASSES;
         h = h * 31 + Double.doubleToLongBits(TalosBiomeDefault.JITTER_AMP);
+        // ---- 2026-10-25 Phase 0: active A/B knobs that were missing from the stamp ----
+        h = h * 31 + (Atmosphere.PHASE_FROM_OBS ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_MIG_REF_LAT_DEG);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EPS_C);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ITCZ_MIGRATION);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.H_MOIST);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.W_LOC_MAX);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.U0_STORM);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.V_GUST);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ALPHA_SH);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ALPHA_COND);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.EP_COND);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.SIGMA_UP);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.Z_CT_COND);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.ENTRAIN_A);
+        h = h * 31 + (PrecipField.TERRAIN_W ? 1 : 0);
+        h = h * 31 + (PrecipField.OCEAN_TERRAIN_W ? 1 : 0);
+        h = h * 31 + (PrecipField.TERRAIN_W_BOUND ? 1 : 0);
+        h = h * 31 + (PrecipField.TERRAIN_CONV ? 1 : 0);
+        h = h * 31 + (PrecipField.TERRAIN_DYN ? 1 : 0);
+        h = h * 31 + (PrecipField.TERRAIN_PHASE_AVG ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.TERRAIN_TAU_C);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.TERRAIN_TAU_H);
+        h = h * 31 + Double.doubleToLongBits(PrecipField.TERRAIN_NM);
+        h = h * 31 + PrecipField.LAKE_SOURCE;
+        if (!PrecipField.EDDY_PLACEMENT_FROM_OBS) {
+            h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_PHYS_GAIN);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.EDDY_TAU);
+        }
+        // Phase 1: zmslkNew uses V3 kbar(phi) instead of the global KAPPA_MEAN.
+        if (Atmosphere.ZMSLK_V3_KAPPA) {
+            h = h * 31 + 0x7A180L;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.configStamp();
+        }
         return h;
     }
 
@@ -1332,10 +1370,10 @@ public final class SimClimate {
         //   ⟹ lakeEvapMmPerDay 命中 memo、零额外自旋。湖解那边只做双线性插值。
         try {
             double ev = SoilMoisture
-                    .lakeEvapMmPerDay(x, z, seed, pc, GRAD_STEP) * 365.25;
+                    .lakeEvapMmPerDay(x, z, seed, pc, GRAD_STEP) * WorldContract.DAYS_PER_YEAR;
             f.eLake[k] = (ev > 0.0) ? ev : 0.0;
         } catch (Throwable ex) { f.eLake[k] = 0.0; }
-        double mmYr = pMmDay * 365.25;
+        double mmYr = pMmDay * WorldContract.DAYS_PER_YEAR;
         f.logP[k] = Math.log10(Math.max(mmYr, P_MIN_MM_YR));
 
         // ★★ S1a + S3（§385/§387）：把【诊断】皮温换成【表面能量平衡 + 地表湿润度 beta】解出的皮温。

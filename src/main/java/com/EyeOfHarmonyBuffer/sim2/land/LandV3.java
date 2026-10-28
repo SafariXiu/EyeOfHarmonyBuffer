@@ -858,6 +858,48 @@ public final class LandV3 {
         h = h * 31 + Double.doubleToLongBits(LandContract.A_RIFT);
         h = h * 31 + Double.doubleToLongBits(LandContract.S_RIFT);
         h = h * 31 + Double.doubleToLongBits(PS_AGE_MAX_MA);
+        // ---- 2026-10-25 Phase 0: active height knobs that were missing from the stamp ----
+        h = h * 31 + Double.doubleToLongBits(A_UPLIFT);
+        h = h * 31 + Double.doubleToLongBits(COAST_FBM_AMP);
+        h = h * 31 + Double.doubleToLongBits(COAST_FBM_WL);
+        h = h * 31 + COAST_FBM_OCT;
+        h = h * 31 + Double.doubleToLongBits(V2_COAST_W);
+        h = h * 31 + Double.doubleToLongBits(V2_LAND_BASE);
+        h = h * 31 + Double.doubleToLongBits(V2_COAST_AMP);
+        h = h * 31 + Double.doubleToLongBits(V2_LAND_AMP);
+        h = h * 31 + Double.doubleToLongBits(V2_SEA_AMP);
+        h = h * 31 + Double.doubleToLongBits(V2_COAST_AMP2);
+        h = h * 31 + Double.doubleToLongBits(V2_LAND_AMP2);
+        h = h * 31 + Double.doubleToLongBits(V2_SEA_AMP2);
+        h = h * 31 + Double.doubleToLongBits(V2_MTN_AMP);
+        h = h * 31 + Double.doubleToLongBits(V2_PEAK_AMP);
+        h = h * 31 + Double.doubleToLongBits(V2_MTN_SHELF);
+        h = h * 31 + Double.doubleToLongBits(V2_PROV_H);
+        h = h * 31 + Double.doubleToLongBits(V2_SHELF_DEPTH);
+        h = h * 31 + Double.doubleToLongBits(V2_ABYSS);
+        h = h * 31 + Double.doubleToLongBits(V2_TRENCH);
+        h = h * 31 + Double.doubleToLongBits(V2_RIDGE);
+        h = h * 31 + Double.doubleToLongBits(V2_ARC);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_WARP1_A);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_WARP1_WL);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_WARP2_A);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_WARP2_WL);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_CONV_GAIN);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_VEL_WL);
+        h = h * 31 + Double.doubleToLongBits(WORLEY_VEL_JITTER);
+        h = h * 31 + Double.doubleToLongBits(CRATON_WARP_A);
+        h = h * 31 + Double.doubleToLongBits(CRATON_WARP_WL);
+        h = h * 31 + Double.doubleToLongBits(CRATON_GATE_LO);
+        h = h * 31 + Double.doubleToLongBits(CRATON_GATE_HI);
+        h = h * 31 + Double.doubleToLongBits(LAND_GATE_LO);
+        h = h * 31 + Double.doubleToLongBits(LAND_GATE_HI);
+        h = h * 31 + Double.doubleToLongBits(GHOST_OFFSET);
+        h = h * 31 + Double.doubleToLongBits(GHOST_UP_AMP);
+        h = h * 31 + Double.doubleToLongBits(RIFT_PROV_HI);
+        h = h * 31 + Double.doubleToLongBits(RIFT_LINE_HI);
+        h = h * 31 + Double.doubleToLongBits(BASIN_PROV_LO);
+        h = h * 31 + Double.doubleToLongBits(BASIN_PROV_HI);
+        h = h * 31 + RegionField.configStamp();
         return h;
     }
 
@@ -1255,8 +1297,8 @@ public final class LandV3 {
     // exp(-(aL+aV)) was measured and REJECTED: it is only 7.5% faster (1243 -> 1149 ns)
     // while perturbing 2.35% of world points by up to 3.4e-10 m. Keep the two-exp form.
 
-    /** Invalidate the per-thread height memo (probes only). */
-    public static void clearHeightCache() { HC_WS = Long.MIN_VALUE; }
+    /** Invalidate the per-thread height memo and RegionField node cache (probes/A-B only). */
+    public static void clearHeightCache() { HC_WS = Long.MIN_VALUE; RegionField.clearCache(); ZonalLandProfile.clearCache(); }
 
     /** 构造抬升场（m 厚度）：交给 LEM 当输入 U(x)。 */
     public static double uplift(long ws, double x, double z) {

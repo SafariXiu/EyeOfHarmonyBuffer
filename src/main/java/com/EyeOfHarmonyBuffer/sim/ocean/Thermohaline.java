@@ -371,8 +371,8 @@ public final class Thermohaline {
         for (int lat = lat0; lat <= lat1; lat += 5) {
             try {
                 int z = WorldContract.zOfLat(lat);
-                double p = SimClimate.annualPrecipMmPerYear(0, z, worldSeedInt) / 365.25;
-                double e = SimClimate.lakeEvapMmPerYear(0, z, worldSeedInt) / 365.25;
+                double p = SimClimate.annualPrecipMmPerYear(0, z, worldSeedInt) / WorldContract.DAYS_PER_YEAR;
+                double e = SimClimate.lakeEvapMmPerYear(0, z, worldSeedInt) / WorldContract.DAYS_PER_YEAR;
                 if (Double.isFinite(p) && Double.isFinite(e)) { s += (e - p); n++; }
             } catch (Throwable ignored) { }
         }

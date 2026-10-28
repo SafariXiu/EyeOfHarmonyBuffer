@@ -163,9 +163,9 @@ public final class PrecipField {
     // ================= 风暴轴：瞬变斜压涡动的**水汽通量辐合** =================
 
     /** 重力（m/s^2）。 */
-    public static final double G_ACC = 9.807;
+    public static final double G_ACC = WorldContract.GRAVITY_ACCEL;
     /** 定压比热（J/kg/K）。 */
-    public static final double CP_AIR = 1004.0;
+    public static final double CP_AIR = WorldContract.ATMO_CP;
     /** 干绝热递减率（K/m）= g/cp。 */
     public static final double GAMMA_D = G_ACC / CP_AIR;
     /** Eady 增长率系数（标准值 0.31）。 */
@@ -3758,7 +3758,7 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
     public static double ENTRAIN_A = 0.2;
 
     /** 重力加速度（m/s^2），`zCtEff` 用；与 {@code HadleyCell} 同源的标准值。 */
-    static final double G0_ZI = 9.80665;
+    static final double G0_ZI = WorldContract.GRAVITY;
 
     /**
      * 见 {@link #SHALLOW_FLOOR_ZI_LIMIT}。`divU <= 0`（辐合/上升）时**直接退回** {@code Z_CT_COND}，
