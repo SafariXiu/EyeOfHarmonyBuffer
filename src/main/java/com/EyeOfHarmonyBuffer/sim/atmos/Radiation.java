@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
 
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+import java.util.HashMap;
 
 /**
  * S1a —— **辐射闭合**（设计冻结 §358 / §360，实测见 P554）。
@@ -343,10 +344,18 @@ public final class Radiation {
      * <p>⚠ Stefan 解的假设（Taylor &amp; Francis 1993 逐字 ✓）：「no thermal inertia ｜
      * no internal heat source ｜ a known temperature」⟹ 本模型的**逐点诊断**正合适 ✓。
      */
+    private static final ThreadLocal<HashMap<Long, Double>> ICE_H =
+        ThreadLocal.withInitial(HashMap::new);
+
     public static double iceThicknessM(double latRad) {
+        long k = Double.doubleToLongBits(latRad);
+        Double c = ICE_H.get().get(k);
+        if (c != null) return c;
         double fdd = fddK(latRad);
-        if (fdd <= 0.0) return 0.0;
-        return Math.sqrt(2.0 * K_ICE * fdd / (RHO_ICE * L_FUSION));
+        double h = fdd <= 0.0 ? 0.0
+            : Math.sqrt(2.0 * K_ICE * fdd / (RHO_ICE * L_FUSION));
+        ICE_H.get().put(k, h);
+        return h;
     }
 
     /**
@@ -441,7 +450,8 @@ public final class Radiation {
      * （§387 的 `P569` 实测：降低 `q_a` 反而【增大】蒸发 ⇒ `H` 更负。因为干燥空气吹过湿表面蒸发更多。）
      * `beta -> 0` ⇒ 没有潜热冷却 ⇒ 皮温升高 ⇒ **`H` 翻正**（`P570` 实测在 `beta ~ 0.3` 处翻正）。
      */
-    public static double residual(double ts, double absSolar, double ta, double qa, double chv, double beta) {
+    /** [Qsw, Qlw, Qsen, Qlat]，均为 W/m²；Qnet = Qsw - Qlw - Qsen - Qlat。 */
+    public static double[] components(double ts, double absSolar, double ta, double qa, double chv, double beta) {
         // ★★★★★★★ §7432：长波改用【逐层灰体】（VerticalColumn），替代原来的单点 EPS*SIGMA*ts^4。
         //   物理：地表能量平衡里的长波项是【净】损失 = sigma*Ts^4 - L_down，
         //        而 L_down（大气向下长波）必须由【大气廓线的辐射传输】给出。
@@ -452,11 +462,16 @@ public final class Radiation {
         //          开销 +280.9 us/点 = mmPerDay 的 0.8%（P1141）。
         VerticalColumn vc = TL_VC.get();
         vc.init(ts, qa, beta, 0.0);
-        vc.radiation(0.0, 0.0);
-        double lwNet = SIGMA * ts * ts * ts * ts - vc.lwSfcDown;
+        double lwDown = vc.lwDown();
+        double lwNet = SIGMA * ts * ts * ts * ts - lwDown;
         double h = chv * CP * (ts - ta);
         double le = beta * chv * LV * Math.max(0.0, PrecipField.qSat(ts) - qa);
-        return absSolar - lwNet - h - le;
+        return new double[]{absSolar, lwNet, h, le};
+    }
+
+    public static double residual(double ts, double absSolar, double ta, double qa, double chv, double beta) {
+        double[] c = components(ts, absSolar, ta, qa, chv, beta);
+        return c[0] - c[1] - c[2] - c[3];
     }
 
     /** 解陆地皮温（K），`beta = 1`。二分，60 次足够 double 收敛。 */
@@ -470,6 +485,7 @@ public final class Radiation {
         for (int i = 0; i < 60; i++) {
             double mid = 0.5 * (lo + hi);
             if (residual(mid, absSolar, ta, qa, chv, beta) > 0.0) lo = mid; else hi = mid;
+            if (hi - lo < 1.0e-4) break;
         }
         return 0.5 * (lo + hi);
     }

@@ -460,6 +460,8 @@ public final class SimClimate {
     /** 清空瓦片缓存。改 CELL 之后**必须**调用（几何变了）。 */
     public static void clearCache() {
         CACHE.clear();
+        LAST_F.remove();   // ★ LAST_F 只按 (seed,tx,tz) 命中，清 CACHE 不够
+
         // Phase 0 (2026-10-25): climate tiles depend on V3 height/RegionField; clear their memos too.
         com.EyeOfHarmonyBuffer.sim2.land.LandV3.clearHeightCache();
     }
@@ -744,6 +746,7 @@ public final class SimClimate {
         if (Atmosphere.SST_PROVIDER != null) {
             h = h * 31 + 0x7A150L;
         }
+        h = h * 31 + OceanField.sstModeStamp();
         // ★★★★★ 2026-10-15（用户裁决「改成真实的物理」）：**非对称锚表开关**。
         // 打开会改纬向温度（T_OCEAN / T_LAND / 极区陆地占比）⟹ 按 D58 准入判据必须进指纹 ✓
         // 写法同 §447：**按条件折入** ⟹ 关闭时本项对指纹**零贡献** ✓
@@ -1335,6 +1338,7 @@ public final class SimClimate {
         f.coastFar[k] = PlateField.coastDistanceNew(x, z, seed, pc, COAST_FAR);
         f.tSea[k] = tSea;
         f.sst[k] = sstA;
+
 
         // 年平风（必须真取 4 季平均：p' 的季节项与 U_zm 的 1/7 月表插值都随 theta 变）
         double ux = 0.0, uz = 0.0;

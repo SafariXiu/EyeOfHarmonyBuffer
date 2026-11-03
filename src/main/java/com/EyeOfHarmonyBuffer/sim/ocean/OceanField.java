@@ -3,6 +3,11 @@ package com.EyeOfHarmonyBuffer.sim.ocean;
 import com.EyeOfHarmonyBuffer.sim.Frozen;
 
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
+import com.EyeOfHarmonyBuffer.sim.atmos.Radiation;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.SurfaceSalinity2DProduction;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.SurfaceTemperature2DProduction;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.StaticOceanProduction;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimClimate;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
@@ -91,6 +96,22 @@ public final class OceanField {
      * （★ 本仓共有 6 份这段警告的副本；本行的这一份是其中之一 ✓）
      */
     public static boolean OCEAN_ON = true;
+    /** 正式生产海冰约束：SST 不得低于冰点；默认 off，验证后打开。 */
+    public static boolean SEA_ICE_ON = true;
+    /** 诊断 SURF_S 是否在 solveRow 里计算；默认 off（生产盐度走 2D，不需要每行 fw）。 */
+    public static boolean SURF_S_ON = false;
+    /** 生产 SST 改用逐点 Qnet=0 能量平衡；默认 off，单行验证后再开。 */
+    public static boolean ENERGY_SST_ON = true;
+    /** OHT 松弛强度消融：1=当前，0=去掉 OHT，0.5/2=敏感性。 */
+    public static double OHT_SCALE = 1.0;
+    /** 用 ClimberOcean 的我们世界 OHT 辐合替代松弛代理。 */
+    public static boolean OHT_CLIMBER_ON = false;
+    /** 局地 2D OHT：用 u/v 与 SST 梯度算 Q_OHT(x,z)。 */
+    public static boolean OHT_LOCAL_ON = false;
+    /** 生产 3D 静态海洋（B）。 */
+    public static boolean STATIC3D_ON = false;
+    /** 生产 2D 温度（B）。 */
+    public static boolean OHT_T2D_ON = false;
     /**
      * ADR-001 例外标注（2026-10-28）：本 OceanField 是 z 周期 2.5D 近似。
      * 它不是“气候在 z 上周期”的证据；只是当前 L1 近似。
@@ -197,6 +218,14 @@ public final class OceanField {
     private static final HashMap<Long, double[]> PSI_ARR = new HashMap<>();
 
     private static final HashMap<Long, double[]> ANOM = new HashMap<>();
+    /** 动力距平（Energy SST 覆盖前的 a[]），用于口径核对。 */
+    private static final HashMap<Long, double[]> DYN_ANOM = new HashMap<>();
+    /** 生产 2D 冰：与 ANOM 同键同行的 iceFraction / iceThickness。 */
+    private static final HashMap<Long, double[]> ICE_FRAC = new HashMap<>();
+    private static final HashMap<Long, double[]> ICE_H = new HashMap<>();
+    /** 生产表层盐度（诊断/状态；先不做未验证反馈）。 */
+    private static final HashMap<Long, double[]> SURF_S = new HashMap<>();
+    private static final HashMap<Long, double[]> H0_ROW = new HashMap<>();
     /**
      * <b>与 {@link #ANOM} 同键同网格的表层经向速度（m/s，正 = 向极）</b>—— 即喂给
      * {@link SeaSurfaceTemp#anomaly} 的那个 {@code vs}。
@@ -273,6 +302,22 @@ public final class OceanField {
 
     /** 已安装的世界种子；{@link Integer#MIN_VALUE} = 未安装。 */
     private static int installedSeed = Integer.MIN_VALUE;
+    private static OceanGrid WET_GRID;
+    private static long WET_SEED = Long.MIN_VALUE;
+
+    /** 唯一海陆判据：OceanGrid.landV3。 */
+    public static synchronized boolean wetAt(int x, int z, int worldSeedInt) {
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        if (WET_GRID == null || WET_SEED != seed) {
+            WET_GRID = OceanGrid.landV3(worldSeedInt, 160000, 0, 0);
+            WET_SEED = seed;
+        }
+        double xx = ((x % (long) OceanGrid.WIDTH_M) + OceanGrid.WIDTH_M) % OceanGrid.WIDTH_M;
+        double zz = ((z % (long) OceanGrid.HEIGHT_M) + OceanGrid.HEIGHT_M) % OceanGrid.HEIGHT_M;
+        int i = (int) Math.floor(xx / WET_GRID.dx);
+        int j = (int) Math.floor(zz / WET_GRID.dy);
+        return WET_GRID.isWet(i, j);
+    }
     /** {@link #warmAll} 已完成的行数（诊断用）。 */
     public static volatile int warmRowsDone = 0;
 
@@ -292,10 +337,19 @@ public final class OceanField {
         if (!OCEAN_ON) { uninstall(); return; }
         final int s = worldSeedInt;
         installedSeed = s;
+        Atmosphere.SST_PROVIDER = null;   // 构建 3D 期间禁止递归回本 provider
+        if (STATIC3D_ON) {
+            STATIC3D_ON = false;
+            try { StaticOceanProduction.solution(s); } finally { STATIC3D_ON = true; }
+        }
+        if (OHT_T2D_ON) SurfaceTemperature2DProduction.region(s);
         Atmosphere.SST_PROVIDER = new Atmosphere.SstProvider() {
-            @Override public double anomalyAt(int x, int z) { return OceanField.anomalyAt(x, z, s); }
-            // §447：相位重载。开关关着时 anomalyAt(x,z,s,theta) 内部直接回落 ⇒ 逐位不变。
-            @Override public double anomalyAt(int x, int z, double theta) { return OceanField.anomalyAt(x, z, s, theta); }
+            @Override public double anomalyAt(int x, int z) {
+                return STATIC3D_ON ? StaticOceanProduction.atAnomaly(x, z, s) : OceanField.anomalyAt(x, z, s);
+            }
+            @Override public double anomalyAt(int x, int z, double theta) {
+                return STATIC3D_ON ? StaticOceanProduction.atAnomaly(x, z, s) : OceanField.anomalyAt(x, z, s, theta);
+            }
         };
     }
 
@@ -389,6 +443,17 @@ public final class OceanField {
      *       `SST_PROVIDER` 的那个 0/1 位已经覆盖了）。</li>
      * </ul>
      */
+    /** 轻量 SST 模式指纹；给 SimClimate 用，避免 configStamp 循环依赖。 */
+    public static long sstModeStamp() {
+        long h = (SEA_ICE_ON ? 0x1CE0L : 0L) | (ENERGY_SST_ON ? 0xE2E2L : 0L);
+        h = h * 31 + Double.doubleToLongBits(OHT_SCALE);
+        // ★ 2026-11-02：3D 内核的两个开关会改 T/S ⟹ 必须进指纹（N5/D58 的纪律）。
+        //   旧代码里 OHT_ON 的 3D A/B 能差 2.63 K，却完全不在 configStamp 里。
+        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.BaroclinicFlow.OHT_ON) h = h * 31 + 0x7A171L;
+        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.AdvectionDiffusionSolver.VERTICAL_ADVECTION_ON) h = h * 31 + 0x7A172L;
+        return h;
+    }
+
     public static long configStamp() {
         long h = 1125899906842597L;
         h = h * 31 + ROWS; h = h * 31 + Double.doubleToLongBits(ROW_H);
@@ -401,6 +466,11 @@ public final class OceanField {
         h = h * 31 + ZM_SAMPLES;
         // §447：相位分辨会换掉解出来的 SST' ⇒ 按本方法的准入判据必须进指纹。
         if (PHASE_SEASONAL) h = h * 31 + 0x7A11DL;
+        h = h * 31 + (SEA_ICE_ON ? 0x1CE0L : 0L);
+        h = h * 31 + (ENERGY_SST_ON ? 0xE2E2L : 0L);
+        h = h * 31 + Double.doubleToLongBits(OHT_SCALE);
+        h = h * 31 + (OHT_T2D_ON ? 0x720L : 0L);
+        h = h * 31 + (STATIC3D_ON ? 0x3D3DL : 0L);
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
         // ★ 2026-10-14（用户裁决）：**旧的"域路线"（BasinGyre2D）已整份删除** ✓
@@ -502,7 +572,8 @@ public final class OceanField {
         h = h * 31 + configStamp();
         h = h * 31 + SimClimate.configStamp();
         if (h != stamp) {
-            ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); VEL.clear();
+            ANOM.clear(); SPAN.clear(); SPAN_BY_ROW.clear(); BAND.clear(); VEL.clear(); DYN_ANOM.clear();
+        ICE_FRAC.clear(); ICE_H.clear(); SURF_S.clear(); H0_ROW.clear();
             PSI_BY_ROW.clear(); PSI_ARR.clear();          // ★ N-b：psi 行缓存一并失效 ✓
             stamp = h;
         }
@@ -793,8 +864,52 @@ public final class OceanField {
                 PSI_ARR.put(key(seed, zk, g.westX), g.psi);
             }
             long k = key(seed, zk, g.westX);
+            double[] aDyn = a.clone();
+            if (ENERGY_SST_ON) {
+                DiagnosticSeaSurfaceForcing df = new DiagnosticSeaSurfaceForcing(worldSeedInt, cell, GRAD);
+                double zmSeaRow = Atmosphere.zonalMeanSeaLevelK(WorldContract.latOf(zRow));
+                double sstBase = Atmosphere.seaSurfaceTemp(WorldContract.latOf(zRow), 0.0);
+                for (int i = 0; i < g.n; i++) {
+                    int xi = (int) Math.round(g.xAt(i));
+                    double tdyn = Math.max(sstBase + a[i], FreezingPoint.referenceKelvin());
+                    double eSst = energySst(df, xi, zRow, tdyn, 0.0);
+                    a[i] = eSst - sstBase;
+                }
+            }
+            DYN_ANOM.put(k, aDyn);
             ANOM.put(k, a);
             VEL.put(k, vv);
+            double[] iceF = new double[g.n], iceH = new double[g.n];
+            double latRow = WorldContract.latOf(zRow);
+            double hIce = Radiation.iceThicknessM(latRow);
+            double zmSea = Atmosphere.zonalMeanSeaLevelK(latRow);
+            for (int i = 0; i < g.n; i++) {
+                double fIce = ClimberOcean.iceFraction(zmSea + a[i]);
+                iceF[i] = fIce;
+                iceH[i] = hIce * fIce;
+            }
+            ICE_FRAC.put(k, iceF);
+            ICE_H.put(k, iceH);
+            if (SURF_S_ON) {
+                double[] sal = new double[g.n];
+                double[] h0Row = new double[g.n];
+                DiagnosticSeaSurfaceForcing sdf = new DiagnosticSeaSurfaceForcing(worldSeedInt, cell, GRAD);
+                double year = 365.0 * 86400.0;
+                double h0Ref = 50.0;
+                for (int i = 0; i < g.n; i++) {
+                    int xi = (int) Math.round(g.xAt(i));
+                    double fw = sdf.freshwaterFluxKgM2S(xi, zRow, 0.0, zmSea + a[i]);
+                    if (Double.isNaN(fw)) fw = 0.0;
+                    double h0 = Math.max(1.0, Math.min(200.0,
+                        h0Ref + fw * year / ClimberOcean.RHO_REF));
+                    h0Row[i] = h0;
+                    double s = ClimberOcean.S_REF * (h0Ref / h0) * (1.0
+                        + (ClimberOcean.RHO_ICE / ClimberOcean.RHO_REF) * iceH[i] / ClimberOcean.H_MIXED);
+                    sal[i] = Math.max(0.0, Math.min(50.0, s));
+                }
+                H0_ROW.put(k, h0Row);
+                SURF_S.put(k, sal);
+            }
             // SPAN 里的第 0 位永远是**真实行号** zIdx（探针与 bandMeansAt 读它），不是 zk。
             SPAN.put(k, new int[]{zIdx, g.westX, g.eastX});
             java.util.ArrayList<Long> bucket = SPAN_BY_ROW.get(zk);
@@ -1035,6 +1150,7 @@ public final class OceanField {
      * 拿年平解顶替会出现「年平读数 ≠ 季节读数之年均」的隐性矛盾（探针会量出这个差）。
      */
     public static synchronized double anomalyAt(int x, int z, int worldSeedInt) {
+        if (!wetAt(x, z, worldSeedInt)) return 0.0;
         if (inSolve()) { reentryBlocked++; return 0.0; }   // 护栏：见 solveRow 的 E30 注释
         long seed = SimTerrain.seedOf(worldSeedInt);
         resetIfStale(seed, worldSeedInt);
@@ -1042,14 +1158,18 @@ public final class OceanField {
         if (PHASE_SEASONAL) {
             double s = 0;
             for (int p = 0; p < PH4.length; p++) s += anomalyAtPhase(x, z, zIdx, seed, worldSeedInt, p);
-            return s / PH4.length;
+            return applySeaIce(x, z, 0.0, s / PH4.length);
         }
         Object[] h = hit(x, zIdx);
         if (h == null) {
             h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
-            if (h == null) return 0.0;
+            if (h == null) {
+                double base = Atmosphere.seaSurfaceTemp(WorldContract.latOf(z), 0.0);
+                double tf = FreezingPoint.referenceKelvin();
+                return base < tf ? tf - base : 0.0;
+            }
         }
-        return lerpX(h, x);
+        return applySeaIce(x, z, 0.0, lerpX(h, x));
     }
 
     /**
@@ -1074,6 +1194,139 @@ public final class OceanField {
         q = q - Math.floor(q / PH4.length) * PH4.length;   // 归一到 [0,4)（theta 可负 / 可 > 2pi）
         int i0 = (int) q; if (i0 >= PH4.length) i0 = PH4.length - 1;
         double tx = q - i0;
-        return v[i0] * (1.0 - tx) + v[(i0 + 1) % PH4.length] * tx;
+        return applySeaIce(x, z, theta, v[i0] * (1.0 - tx) + v[(i0 + 1) % PH4.length] * tx);
+    }
+
+    public static synchronized double dynamicAnomalyAt(int x, int z, int worldSeedInt) {
+        if (inSolve()) return 0.0;
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        Object[] h = hitIn(DYN_ANOM, x, zIdx);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+            h = hitIn(DYN_ANOM, x, zIdx);
+        }
+        return h == null ? 0.0 : lerpX(h, x);
+    }
+
+    public static synchronized double iceFractionAt(int x, int z, int worldSeedInt) {
+        if (inSolve()) return 0.0;
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        Object[] h = hitIn(ICE_FRAC, x, zIdx);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+            h = hitIn(ICE_FRAC, x, zIdx);
+            if (h == null) return 0.0;
+        }
+        return lerpX(h, x);
+    }
+
+    public static synchronized double iceThicknessAt(int x, int z, int worldSeedInt) {
+        if (inSolve()) return 0.0;
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        Object[] h = hitIn(ICE_H, x, zIdx);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
+            if (h == null) return 0.0;
+            h = hitIn(ICE_H, x, zIdx);
+            if (h == null) return 0.0;
+        }
+        return lerpX(h, x);
+    }
+
+    private static double energySst(DiagnosticSeaSurfaceForcing f, int x, int z, double tdyn, double qOhtLocal) {
+        if (OHT_T2D_ON) {
+            double t2 = SurfaceTemperature2DProduction.at(x, z, installedSeed);
+            if (Double.isFinite(t2)) return t2;
+        }
+        double tf = FreezingPoint.referenceKelvin();
+        double relax = (OHT_CLIMBER_ON || OHT_LOCAL_ON) ? 0.0
+                     : OHT_SCALE * ClimberOcean.RHO_REF * ClimberOcean.C_OCEAN
+                       * ClimberOcean.H_MIXED * SeaSurfaceTemp.LAMBDA;
+        double qOht = qOhtLocal;
+        if (OHT_CLIMBER_ON) {
+            try { qOht += ClimberOcean.ohtQ(WorldContract.latOf(z)); }
+            catch (IllegalStateException e) { }
+        }
+        // 先解开阔水根；有开水面根就不结冰，避免 f(Tf)=1 的赤道雪球自锁。
+        boolean frozen = tdyn <= tf + 0.1;
+        if (frozen) return tf;
+        double qOpen = f.netHeatFluxWm2(x, z, 0.0, tf, 0.0) + qOht + relax * (tdyn - tf);
+        if (!frozen && Double.isFinite(qOpen) && qOpen >= 0.0) {
+            double lo = tf, hi = 400.0, flo = qOpen;
+            for (int it = 0; it < 80; it++) {
+                double mid = 0.5 * (lo + hi);
+                double fm = f.netHeatFluxWm2(x, z, 0.0, mid, 0.0) + qOht + relax * (tdyn - mid);
+                if (flo * fm <= 0.0) hi = mid; else { lo = mid; flo = fm; }
+            }
+            return 0.5 * (lo + hi);
+        }
+        double qIce = f.netHeatFluxWm2(x, z, 0.0, tf, 1.0) + qOht + relax * (tdyn - tf);
+        if (qIce < 0.0 || Double.isNaN(qIce)) return tf;
+        double lo = tf, hi = 400.0, flo = qIce;
+        for (int it = 0; it < 80; it++) {
+            double mid = 0.5 * (lo + hi);
+            double fm = f.netHeatFluxWm2(x, z, 0.0, mid, 1.0) + qOht + relax * (tdyn - mid);
+            if (flo * fm <= 0.0) hi = mid; else { lo = mid; flo = fm; }
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    public static synchronized double[] diagnosticSalinityRow(int jGrid, int worldSeedInt, OceanGrid g) {
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        int z = (int) Math.round(g.zOf(jGrid));
+        int zIdx = rowIndexOf(z);
+        int xHint = 0;
+        for (int i = 0; i < g.nx; i++) if (g.isWet(i, jGrid)) { xHint = (int) Math.round(g.xOf(i)); break; }
+        solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, xHint);
+        double[] out = new double[g.nx];
+        for (int i = 0; i < g.nx; i++) {
+            int x = (int) Math.round(g.xOf(i));
+            Object[] h = hitIn(SURF_S, x, zIdx);
+            out[i] = h == null ? 0.0 : lerpX(h, x);
+        }
+        return out;
+    }
+
+    public static synchronized double surfaceSalinityAt(int x, int z, int worldSeedInt) {
+        if (!wetAt(x, z, worldSeedInt)) return 0.0;
+        if (STATIC3D_ON) {
+            double s3 = StaticOceanProduction.atS(x, z, worldSeedInt);
+            return Double.isFinite(s3) ? s3 : 0.0;
+        }
+        if (!SurfaceSalinity2DProduction.isWetAt(x, z, worldSeedInt)) return 0.0;
+        if (SurfaceSalinity2DProduction.ON) {
+            double s2 = SurfaceSalinity2DProduction.at(x, z, worldSeedInt);
+            if (s2 >= 0.0) return s2;
+        }
+        if (inSolve()) return 35.0;
+        long seed = SimTerrain.seedOf(worldSeedInt);
+        resetIfStale(seed, worldSeedInt);
+        int zIdx = rowIndexOf(z);
+        Object[] h = hitIn(SURF_S, x, zIdx);
+        if (h == null) {
+            h = solveRow(rowZ(zIdx), zIdx, -1, seed, worldSeedInt, x);
+            if (h == null) return 35.0;
+            h = hitIn(SURF_S, x, zIdx);
+            if (h == null) return 35.0;
+        }
+        return lerpX(h, x);
+    }
+
+    private static double applySeaIce(int x, int z, double theta, double a) {
+        if (!SEA_ICE_ON) return a;
+        double lat = com.EyeOfHarmonyBuffer.sim.world.WorldContract.latOf(z);
+        double base = com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.seaSurfaceTemp(lat, theta);
+        double tf = FreezingPoint.referenceKelvin();
+        double sst = base + a;
+        double out = sst < tf ? tf - base : a;
+        return out;
     }
 }

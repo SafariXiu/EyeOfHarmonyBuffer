@@ -250,6 +250,9 @@ public final class SoilMoisture {
     /** (x,z) -> W(θ) 的 NTHETA 个采样（相对 W_FC）。 */
     private static final ThreadLocal<HashMap<Long, double[]>> MEMO =
             ThreadLocal.withInitial(HashMap::new);
+    /** (x,z) -> 该列年净水量 P-E（mm/year）；稳态下即年径流。 */
+    private static final ThreadLocal<HashMap<Long, Double>> RUNOFF =
+            ThreadLocal.withInitial(HashMap::new);
     /** 自旋中标志：切断「解 W -> 调 mmPerDay -> 又要 beta -> 再解 W」的递归。 */
     private static final ThreadLocal<Boolean> IN_SPINUP = ThreadLocal.withInitial(() -> Boolean.FALSE);
     /**
@@ -282,7 +285,7 @@ public final class SoilMoisture {
 
     public static boolean isSpinningUp() { return IN_SPINUP.get(); }
 
-    public static void clearMemo() { MEMO.get().clear(); }
+    public static void clearMemo() { MEMO.get().clear(); RUNOFF.get().clear(); }
     public static int memoSize() { return MEMO.get().size(); }
 
     private static long key(int x, int z) { return ((long) x << 32) | (z & 0xFFFFFFFFL); }
@@ -295,7 +298,7 @@ public final class SoilMoisture {
      * beta 与 P —— 因为第一次自旋的结果被无条件复用了。**这正是 D58 那条教训的又一次重演**
      * （「改了结果就必须让缓存失效」），而且这次是**我自己**犯的。
      */
-    public static void invalidate() { MEMO.get().clear(); }
+    public static void invalidate() { MEMO.get().clear(); RUNOFF.get().clear(); }
 
     /**
      * ★ 2026-10-17（地质子系统，消费者 A 的接线第一步）：**逐点质地覆盖**。
@@ -348,6 +351,18 @@ public final class SoilMoisture {
      * <p>做法：按 theta 等距步进一年，重复多年直到 W 的年周期重复。
      * 每一步都用【当前 W】给出的 beta 去算 P 与 E ⇒ 记忆天然破环。
      */
+    /**
+     * 该列的年平均径流，kg/(m2 s)。
+     * 用 P-E 的年积分；稳态下 ΔW≈0，故 runoff≈P-E。只取非负部分。
+     */
+    public static double runoffKgM2SAt(int x, int z, long seed, int cell, int gradStep) {
+        spinup(x, z, seed, cell, gradStep);
+        Double net = RUNOFF.get().get(key(x, z));
+        double mmPerYear = net == null ? 0.0 : Math.max(0.0, net);
+        // 1 mm = 1 kg/m2；稳态年径流 ≈ P-E（ΔW≈0）。
+        return mmPerYear / (365.25 * 86400.0);
+    }
+
     private static double[] spinup(int x, int z, long seed, int cell, int gradStep) {
         int N = NTHETA;
         // ---------- 第一步：每季一次性预计算，之后全是代数 ----------
@@ -487,13 +502,16 @@ public final class SoilMoisture {
             //   实测（P1023/P1024，双半球 144 点，NTHETA=24）：收敛 123/144 -> 144/144；
             //   收敛解对 MAX_YEARS in {20,60,240} 逐位不敏感；与 F^24 二分根一致到 5.5e-12。
             double cur = w[N - 1];
-            double runYear = 0.0;                                  // ★ §7567 本年累积的径流
+            double runYear = 0.0;                                  // ★ §7567 本年累积的饱和产流
+            double netYear = 0.0;                                  // 年净水量 P-E，mm/year
             for (int kk = 0; kk < N; kk++) {
                 double beta = betaOfFrac(cur);
                 double rh = PrecipField.RH_SEA * beta + RH_DRY * (1.0 - beta);
                 double pMm = A[kk] * rh + C[kk];
                 double epMm = Math.max(0.0, e1[kk] - e2[kk] * rh);
-                double dW = (pMm - beta * epMm) * dtDays / W_FC;
+                double netMm = (pMm - beta * epMm) * dtDays;
+                netYear += netMm;
+                double dW = netMm / W_FC;
                 cur += dW;
                 if (cur < 0.0) cur = 0.0;
                 if (cur > 1.0) { runYear += (cur - 1.0); cur = 1.0; }   // ★ §7567 超出 W_FC = 径流（累积而不是丢弃）
@@ -508,6 +526,7 @@ public final class SoilMoisture {
                 if (w[kk] < wMin) wMin = w[kk];
             }
             runoffFrac = runYear;                                  // ★ §7567 保留最后一年的（= 收敛后的）
+            RUNOFF.get().put(key(x, z), netYear);
             // ★★★ §573：改用【无量纲】判据。强季风气候是极限环 ⇒ 绝对残差永不收敛。
             //   振幅退化（恒定桶）时 relResid 回落到 resid 本身 ⇒ 与旧行为一致。
             double amp = wMax - wMin;

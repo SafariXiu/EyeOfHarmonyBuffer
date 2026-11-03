@@ -345,6 +345,9 @@ public final class Atmosphere {
 
     /** 大陆度 kappa = (landScore+1)/2，0 = 纯海洋，1 = 纯内陆。**连续**。 */
     public static double kappaAt(int x, int z, long seed, int cell) {
+        // 湿格点必须是海洋 kappa；否则海岸 wet 格点会拿到 landScore 的陆地值，
+        // 风/ chv 在相邻湿格点跳 16 倍，进而把 SST 推出 45 K 锋面。
+        if (!PlateField.isLandWithCell(x, z, seed, cell)) return 0.0;
         return 0.5 * (PlateField.landScoreWithCell(x, z, seed, cell) + 1.0);
     }
 

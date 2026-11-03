@@ -110,8 +110,14 @@ public final class BasinFinder {
 
     /** 找出查询点所在的「海岸定界」域。纯函数。 */
     public static Basin find(int x, int z, long seed, int cell) {
-        final int W = 2 * MAX_R + 1;
-        final int cx = MAX_R, cz = MAX_R;
+        return find(x, z, seed, cell, MAX_R);
+    }
+
+    /** 多尺度入口：maxR 为单方向搜索格数；默认入口仍用 MAX_R。 */
+    public static Basin find(int x, int z, long seed, int cell, int maxR) {
+        if (maxR < 1) throw new IllegalArgumentException("maxR < 1");
+        final int W = 2 * maxR + 1;
+        final int cx = maxR, cz = maxR;
         Basin b = new Basin();
         // ⚠⚠ 审计 D57（2026-09-13，接线后跑验收时抓到的**生产级**性能缺陷）：
         // 「查询点本身是陆地 ⇒ 不属于任何海盆」这个早退**必须放在最前面**。
@@ -127,10 +133,10 @@ public final class BasinFinder {
         if (PlateField.isLandWithCell(x, z, seed, cell)) { b.valid = false; return b; }
         boolean[] land = new boolean[W * W];
         for (int jz = 0; jz < W; jz++) {
-            int wz = z + (jz - MAX_R) * SAMPLE;
+            int wz = z + (jz - maxR) * SAMPLE;
             int row = jz * W;
             for (int jx = 0; jx < W; jx++) {
-                land[row + jx] = PlateField.isLandWithCell(x + (jx - MAX_R) * SAMPLE, wz, seed, cell);
+                land[row + jx] = PlateField.isLandWithCell(x + (jx - maxR) * SAMPLE, wz, seed, cell);
             }
         }
         // 保留原检查作为**自洽断言**：如果早退与它不一致，说明上面的等价性论证有洞。
@@ -149,7 +155,7 @@ public final class BasinFinder {
         for (int dir = -1; dir <= 1; dir += 2) {
             int pw = w, pe = e;
             int curW = w, curE = e;
-            for (int step = 1; step <= MAX_R; step++) {
+            for (int step = 1; step <= maxR; step++) {
                 int r = cz + dir * step;
                 if (r < 0 || r >= W) { trunc = true; break; }
                 int row = r * W;
@@ -177,10 +183,10 @@ public final class BasinFinder {
         b.valid = true; b.truncated = trunc;
         b.rows = rows; b.maxWidthCells = maxW; b.seaCells = (int) seaCells;
         // 求解域 = 并集 + 一圈墙环
-        b.minX = x + (unionW - 1 - MAX_R) * SAMPLE;
-        b.maxX = x + (unionE + 1 - MAX_R) * SAMPLE;
-        b.minZ = z + (minRow - 1 - MAX_R) * SAMPLE;
-        b.maxZ = z + (maxRow + 1 - MAX_R) * SAMPLE;
+        b.minX = x + (unionW - 1 - maxR) * SAMPLE;
+        b.maxX = x + (unionE + 1 - maxR) * SAMPLE;
+        b.minZ = z + (minRow - 1 - maxR) * SAMPLE;
+        b.maxZ = z + (maxRow + 1 - maxR) * SAMPLE;
         return b;
     }
 

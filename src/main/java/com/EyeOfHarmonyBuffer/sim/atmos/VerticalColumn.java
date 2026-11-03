@@ -231,6 +231,24 @@ public final class VerticalColumn {
     }
 
     /** 计算辐射：逐层加热写入 t[]，并给出 OLR/ASR/地面辐射。`cosZenith` 用于短波。 */
+    /** 只算下行长波；与 {@link #radiation} 的 fDn 递推逐位相同，供地表残差用。 */
+    public double lwDown() {
+        double[] b = new double[N];
+        for (int k = 0; k < N; k++) b[k] = THETA_SB * Math.pow(t[k], 4.0);
+        setupOptics();
+        double[] tauE = new double[N + 1];
+        tauE[0] = 0.0;
+        for (int k = 0; k < N; k++) tauE[k + 1] = tauE[k] + MASS[k] * (K_M + K_W * q[k]);
+        double f = 0.0;
+        for (int k = 0; k < N; k++) {
+            double tr = Math.exp(-(tauE[k + 1] - tauE[k]));
+            f = f * tr + b[k] * (1.0 - tr);
+        }
+        lastTauTot = tauE[N];
+        lwSfcDown = f;
+        return f;
+    }
+
     public void radiation(double cosZenith, double dtRad) {
         double[] b = new double[N];
         for (int k = 0; k < N; k++) b[k] = THETA_SB * Math.pow(t[k], 4.0);

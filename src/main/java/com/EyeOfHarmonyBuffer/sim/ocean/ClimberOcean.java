@@ -100,12 +100,12 @@ public final class ClimberOcean {
     public static final double ALPHA = 1.67e-4;
     public static final double BETA = 7.80e-4;
     public static final double T_REF = 288.0;
-    public static final double S_REF = 35.0;
-    public static final double S_CONST = 35.0;
+    public static final double S_REF = FreezingPoint.S_REFERENCE;
+    public static final double S_CONST = FreezingPoint.S_REFERENCE;
 
     /** 海冰：0 °C 出现、−1.8 °C 全覆盖（Petoukhov et al. 2000 §5），冰反照率 0.62（Table 1 AI）。 */
     public static final double T_ICE0 = 273.15;
-    public static final double T_FREEZE = 271.35;
+    public static final double T_FREEZE = FreezingPoint.referenceKelvin();
     public static final double ALB_ICE = 0.62;
 
     /** 世界半径与角速度（Table 1 的 a、Ω 换成本世界）。 */
@@ -747,7 +747,7 @@ public final class ClimberOcean {
     private static volatile boolean SPUN_UP = false;
 
     /** 让 OHT37 缓存失效（每次 spin-up 开始时调用）。 */
-    static void invalidateOht37() { OHT37 = null; SPUN_UP = false; }
+    static void invalidateOht37() { OHT37 = null; OHT_Q37 = null; SPUN_UP = false; }
 
     /**
      * 37 点 OHT 剖面（W，正=向北），由 18 带（10°）线性插值到 5° 节点。
@@ -774,6 +774,35 @@ public final class ClimberOcean {
             }
         }
         return OHT37;
+    }
+
+    /** 37 点 OHT 辐合 Q(φ) [W/m2]，正=海洋向大气放热。 */
+    private static double[] OHT_Q37 = null;
+
+    public static synchronized double[] cachedOhtQ37() {
+        double[] f = cachedOht37();
+        if (OHT_Q37 == null) {
+            OHT_Q37 = new double[37];
+            double dphi = Math.toRadians(5.0);
+            for (int k = 1; k < 36; k++) {
+                double lat = Math.toRadians(-90.0 + 5.0 * k);
+                double area = 2.0 * Math.PI * R * R * Math.cos(lat);
+                OHT_Q37[k] = -(f[k + 1] - f[k - 1]) / (2.0 * dphi * area);
+            }
+        }
+        return OHT_Q37;
+    }
+
+    /** 按纬度插值 Q_OHT [W/m2]。 */
+    public static double ohtQ(double latRad) {
+        double deg = Math.toDegrees(latRad);
+        double fi = (deg + 90.0) / 5.0;
+        int i0 = (int) Math.floor(fi);
+        double frac = fi - i0;
+        if (i0 < 0) { i0 = 0; frac = 0.0; }
+        if (i0 >= 36) { i0 = 35; frac = 1.0; }
+        double[] q = cachedOhtQ37();
+        return q[i0] * (1.0 - frac) + q[i0 + 1] * frac;
     }
 
     /**

@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim2.land;
 
+import java.util.HashMap;
+
 /**
  * 海陆分布 v3：**地形只由连续标量场决定**，不含任何 Voronoi 几何。
  *
@@ -1180,7 +1182,13 @@ public final class LandV3 {
         return c + dC - cut(ws);
     }
 
+    private static final ThreadLocal<HashMap<Long, Double>> H_CACHE =
+        ThreadLocal.withInitial(HashMap::new);
+
     public static double heightV2(long ws, double x, double z) {
+        long k = ws * 1000003L ^ Double.doubleToLongBits(x) * 31L ^ Double.doubleToLongBits(z);
+        Double ch = H_CACHE.get().get(k);
+        if (ch != null) return ch;
         double c = continentality(ws, x, z);
         double cut = cut(ws);
         // 海岸阈值扰动（与旧路径同源：只扰动阈值，不动内部）
@@ -1264,7 +1272,9 @@ public final class LandV3 {
                     h += shoulder - graben;
                 }
             }
-            return Math.min(h, LandContract.MAX_PEAK_M);
+            double out = Math.min(h, LandContract.MAX_PEAK_M);
+            H_CACHE.get().put(k, out);
+            return out;
         }
         double sf = smoothstep(0.0, V2_COAST_W, -s);     // 0 海岸 → 1 深海
         double b1 = V2_COAST_AMP + (V2_SEA_AMP - V2_COAST_AMP) * sf;
@@ -1275,7 +1285,9 @@ public final class LandV3 {
         depth -= V2_ARC * w[3];
         depth -= V2_MTN_SHELF * w[0];      // 山带没入陆架（水下延续）
         double h = -Math.max(120.0, depth) + b1 * n1 + b2 * n2;
-        return Math.min(h, -1.0);                        // 掩膜权威：洋面点永不浮出
+        double out = Math.min(h, -1.0);                  // 掩膜权威：洋面点永不浮出
+        H_CACHE.get().put(k, out);
+        return out;
     }
 
     public static double height(long ws, double x, double z) {
