@@ -18,8 +18,11 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  */
 public final class StaticOceanSolver {
 
-    /** ★ 缓存换代：v4 季节循环；v5 稳态短波源 + 海冰；v6 KT 卷吸 + 多年循环 + 分层 KV。 */
-    public static final int SOLVER_VERSION = 7;
+    /**
+     * 缓存换代：v4 季节循环；v5 稳态短波源 + 海冰；v6 KT 卷吸 + 多年循环 + 分层 KV；
+     * v7 prognostic S/T + C 网格投影；v8（2026-11-03）域宽 2 圈 -> 1 圈（40,000 km）+ 旋度配对修正。
+     */
+    public static final int SOLVER_VERSION = 8;
 
     /**
      * 季节采样数：4 = 季（默认）；12 = 月。

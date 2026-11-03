@@ -1,18 +1,35 @@
 package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
+import com.EyeOfHarmonyBuffer.sim.world.PlanetMetric;
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /**
- * F5 静态气候解的基础网格：80,000 x 40,000 km、144 x 72 x 15。
+ * F5 静态气候解的基础网格：WIDTH_LAPS x 40,000 km（1 圈 = 40,000）、72 x 72 x 15。
  * x 周期、y 墙、LandV3 mask；不依赖 MITgcm。
  */
 public final class OceanGrid {
 
-    public static final int NX = 144;
+    /**
+     * ★ 2026-11-03（阶段 0.5）：144 -> 72。宽度从 2 圈（80,000 km）改回 1 圈（40,000 km）后，
+     * 保持格距 555.6 km（5°）不变，必须同时把列数减半——否则 dx 会变成 277.8 km，
+     * 而 {@code BarotropicSolver} 的 Laplacian/beta 离散假定 dx=dy，会引入各向异性误差。
+     * <p>分辨率与 v7 相同（5°），变的只有【域宽】与【旋度配对】两项，便于 A/B。
+     */
+    public static final int NX = 72;
     public static final int NY = 72;
     public static final int NZ = 15;
-    public static final double WIDTH_M = 80_000_000.0;
-    public static final double HEIGHT_M = 40_000_000.0;
+    /**
+     * 口径：x 方向跨几圈赤道。
+     * <p>★ 2026-11-03（阶段 0.5）：2.0 -> 1.0。旧值来自 MITgcm 80k 的
+     * {@code delX=144*555555.5556}，使海洋箱宽 = 2 圈赤道（80,000 km），
+     * 与大气/陆地/降水（40,000 km）不一致；同一块大陆会被复制两遍。
+     * <p>1.0 = 行星周长 40,000 km。格距随之变成 dx=277.8 km（2.5°）、dy=555.6 km（5°）——
+     * <b>各向异性是过渡态</b>，区域 1° 架构（3D海洋-无限世界架构.md §3）会重新定义。
+     */
+    public static final double WIDTH_LAPS = 1.0;
+    public static final double WIDTH_M = WIDTH_LAPS * PlanetMetric.CIRCUMFERENCE_M;   // = 80,000,000（逐位不变）
+    public static final double HEIGHT_M = WorldContract.Z_CYCLE;                      // = 40,000,000（一整条经圈）
     public static final double[] DZ = {
         50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190
     };

@@ -451,6 +451,12 @@ public final class OceanField {
         //   旧代码里 OHT_ON 的 3D A/B 能差 2.63 K，却完全不在 configStamp 里。
         if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.BaroclinicFlow.OHT_ON) h = h * 31 + 0x7A171L;
         if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.AdvectionDiffusionSolver.VERTICAL_ADVECTION_ON) h = h * 31 + 0x7A172L;
+        // ★ 2026-11-03（阶段 0.5）：口径（域宽/域高）与旋度修正都会改 SST' ⟹ 必须进指纹。
+        //   旧代码漏了这三项：换周长的世界会命中旧瓦片（A6「缓存键漏了输入」）。
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.WIDTH_M);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.HEIGHT_M);
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.staticcore.StaticOceanSolver.SOLVER_VERSION;
+        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.BarotropicSolver.CURL_PAIRING_FIXED) h = h * 31 + 0x0C0C1L;
         return h;
     }
 
@@ -471,6 +477,11 @@ public final class OceanField {
         h = h * 31 + Double.doubleToLongBits(OHT_SCALE);
         h = h * 31 + (OHT_T2D_ON ? 0x720L : 0L);
         h = h * 31 + (STATIC3D_ON ? 0x3D3DL : 0L);
+        // ★ 2026-11-03（阶段 0.5）：域宽/域高/求解器版本/旋度配对都会改 SST' ⟹ 进指纹。
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.WIDTH_M);
+        h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.HEIGHT_M);
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.staticcore.StaticOceanSolver.SOLVER_VERSION;
+        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.BarotropicSolver.CURL_PAIRING_FIXED) h = h * 31 + 0x0C0C1L;
         h = h * 31 + SeaSurfaceTemp.configStamp();
         h = h * 31 + CoastalLayer.configStamp();
         // ★ 2026-10-14（用户裁决）：**旧的"域路线"（BasinGyre2D）已整份删除** ✓

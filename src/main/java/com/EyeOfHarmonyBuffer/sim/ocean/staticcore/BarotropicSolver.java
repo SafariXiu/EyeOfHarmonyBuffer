@@ -17,6 +17,14 @@ public final class BarotropicSolver {
     public static final double R_FRICTION = 1.0 / (4.0 * 86400.0);
     public static final double SOR_OMEGA = 0.2;
 
+    /**
+     * ★ 2026-11-03：风应力旋度的差分配对修复。
+     * <p>旧式把「经向差分」除 dx、「纬向差分」除 dy，算出的既不是 curl 也不是 divergence；
+     * 对纬向均匀风（curl 主项 = -d(tau_x)/dz）恒为 0。scratch 探针 NCurl 实测：修正前后 corr = -0.008。
+     * <p>true = 物理正确（生产）；false = 复现 v7 的错配（仅 A/B 用）。
+     */
+    public static boolean CURL_PAIRING_FIXED = true;
+
     private BarotropicSolver() {}
 
     public static final class Result {
@@ -49,11 +57,28 @@ public final class BarotropicSolver {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
                 int iE = (i + 1) % nx, iW = (i - 1 + nx) % nx;
-                double txE = f.windStressX((int) Math.round(g.xOf(iE)), (int) Math.round(g.zOf(j)), theta);
-                double txW = f.windStressX((int) Math.round(g.xOf(iW)), (int) Math.round(g.zOf(j)), theta);
-                double tyN = f.windStressZ((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j + 1)), theta);
-                double tyS = f.windStressZ((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j - 1)), theta);
-                double curl = (tyN - tyS) / (2.0 * dx) - (txE - txW) / (2.0 * dy);
+                int xiI = (int) Math.round(g.xOf(i));
+                int zjI = (int) Math.round(g.zOf(j));
+                int zN = (int) Math.round(g.zOf(j + 1));
+                int zS = (int) Math.round(g.zOf(j - 1));
+                int xE = (int) Math.round(g.xOf(iE));
+                int xW = (int) Math.round(g.xOf(iW));
+                double curl;
+                if (CURL_PAIRING_FIXED) {
+                    // curl_z(tau) = d(tau_z)/dx - d(tau_x)/dz
+                    double tzE = f.windStressZ(xE, zjI, theta);
+                    double tzW = f.windStressZ(xW, zjI, theta);
+                    double txN = f.windStressX(xiI, zN, theta);
+                    double txS = f.windStressX(xiI, zS, theta);
+                    curl = (tzE - tzW) / (2.0 * dx) - (txN - txS) / (2.0 * dy);
+                } else {
+                    // v7 旧式（错配；A/B 用，勿用于生产）
+                    double txE = f.windStressX(xE, zjI, theta);
+                    double txW = f.windStressX(xW, zjI, theta);
+                    double tzN = f.windStressZ(xiI, zN, theta);
+                    double tzS = f.windStressZ(xiI, zS, theta);
+                    curl = (tzN - tzS) / (2.0 * dx) - (txE - txW) / (2.0 * dy);
+                }
                 rhs[j * nx + i] = curl / (RHO0 * h);
             }
         }
