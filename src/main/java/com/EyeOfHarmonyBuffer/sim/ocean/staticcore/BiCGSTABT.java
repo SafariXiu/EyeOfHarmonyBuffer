@@ -43,12 +43,12 @@ public final class BiCGSTABT {
                         out[q] = t - surfaceT[j * nx + i];
                         continue;
                     }
-                    double tw = g.isWet(i - 1, j) ? x[idx(g, i - 1, j, k)] : t;
-                    double te = g.isWet(i + 1, j) ? x[idx(g, i + 1, j, k)] : t;
-                    double ts = g.isWet(i, j - 1) ? x[idx(g, i, j - 1, k)] : t;
-                    double tn = g.isWet(i, j + 1) ? x[idx(g, i, j + 1, k)] : t;
+                    double tw = g.isWet(i - 1, j, k) ? x[idx(g, i - 1, j, k)] : t;
+                    double te = g.isWet(i + 1, j, k) ? x[idx(g, i + 1, j, k)] : t;
+                    double ts = g.isWet(i, j - 1, k) ? x[idx(g, i, j - 1, k)] : t;
+                    double tn = g.isWet(i, j + 1, k) ? x[idx(g, i, j + 1, k)] : t;
                     double tup = x[idx(g, i, j, k - 1)];
-                    double tdn = (k + 1 < nz) ? x[idx(g, i, j, k + 1)] : t;
+                    double tdn = (k + 1 < g.wetLayers[g.idx(i, j)]) ? x[idx(g, i, j, k + 1)] : t;
                     double u = st.u[q], v = st.v[q];
                     double advX = u >= 0 ? u * (t - tw) / dx : u * (te - t) / dx;
                     double advY = v >= 0 ? v * (t - ts) / dy : v * (tn - t) / dy;
@@ -81,12 +81,12 @@ public final class BiCGSTABT {
                     double t = x[q];
                     if (fixed[q]) { out[q] = t - tf[q]; continue; }
                     if (k == 0) { out[q] = t - surfaceT[j * nx + i]; continue; }
-                    double tw = g.isWet(i - 1, j) ? x[idx(g, i - 1, j, k)] : t;
-                    double te = g.isWet(i + 1, j) ? x[idx(g, i + 1, j, k)] : t;
-                    double ts = g.isWet(i, j - 1) ? x[idx(g, i, j - 1, k)] : t;
-                    double tn = g.isWet(i, j + 1) ? x[idx(g, i, j + 1, k)] : t;
+                    double tw = g.isWet(i - 1, j, k) ? x[idx(g, i - 1, j, k)] : t;
+                    double te = g.isWet(i + 1, j, k) ? x[idx(g, i + 1, j, k)] : t;
+                    double ts = g.isWet(i, j - 1, k) ? x[idx(g, i, j - 1, k)] : t;
+                    double tn = g.isWet(i, j + 1, k) ? x[idx(g, i, j + 1, k)] : t;
                     double tup = x[idx(g, i, j, k - 1)];
-                    double tdn = (k + 1 < nz) ? x[idx(g, i, j, k + 1)] : t;
+                    double tdn = (k + 1 < g.wetLayers[g.idx(i, j)]) ? x[idx(g, i, j, k + 1)] : t;
                     double u = st.u[q], v = st.v[q];
                     double advX = u >= 0 ? u * (t - tw) / dx : u * (te - t) / dx;
                     double advY = v >= 0 ? v * (t - ts) / dy : v * (tn - t) / dy;

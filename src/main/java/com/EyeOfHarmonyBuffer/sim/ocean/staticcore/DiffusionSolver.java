@@ -53,10 +53,10 @@ public final class DiffusionSolver {
                         if (!g.isWet(i, j)) continue;
                         int q = st.idx(i, j, k);
                         double t = st.t[q];
-                        double tw = g.isWet(i - 1, j) ? st.t[st.idx(i - 1, j, k)] : t;
-                        double te = g.isWet(i + 1, j) ? st.t[st.idx(i + 1, j, k)] : t;
-                        double ts = g.isWet(i, j - 1) ? st.t[st.idx(i, j - 1, k)] : t;
-                        double tn = g.isWet(i, j + 1) ? st.t[st.idx(i, j + 1, k)] : t;
+                        double tw = g.isWet(i - 1, j, k) ? st.t[st.idx(i - 1, j, k)] : t;
+                        double te = g.isWet(i + 1, j, k) ? st.t[st.idx(i + 1, j, k)] : t;
+                        double ts = g.isWet(i, j - 1, k) ? st.t[st.idx(i, j - 1, k)] : t;
+                        double tn = g.isWet(i, j + 1, k) ? st.t[st.idx(i, j + 1, k)] : t;
                         double tup = st.t[st.idx(i, j, k - 1)];
                         double tdn = (k + 1 < nz) ? st.t[st.idx(i, j, k + 1)] : t;
                         double num = KH * (tw + te - 2.0 * t) / (dx * dx)

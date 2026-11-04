@@ -81,10 +81,10 @@ public final class FreeSurfaceSalinitySolver {
                         if (!g.isWet(i, j)) continue;
                         int q = st.idx(i, j, k);
                         double s = st.s[q];
-                        double sw = g.isWet(i - 1, j) ? st.s[st.idx(i - 1, j, k)] : s;
-                        double se = g.isWet(i + 1, j) ? st.s[st.idx(i + 1, j, k)] : s;
-                        double ss = g.isWet(i, j - 1) ? st.s[st.idx(i, j - 1, k)] : s;
-                        double sn = g.isWet(i, j + 1) ? st.s[st.idx(i, j + 1, k)] : s;
+                        double sw = g.isWet(i - 1, j, k) ? st.s[st.idx(i - 1, j, k)] : s;
+                        double se = g.isWet(i + 1, j, k) ? st.s[st.idx(i + 1, j, k)] : s;
+                        double ss = g.isWet(i, j - 1, k) ? st.s[st.idx(i, j - 1, k)] : s;
+                        double sn = g.isWet(i, j + 1, k) ? st.s[st.idx(i, j + 1, k)] : s;
                         double sup = st.s[st.idx(i, j, k - 1)];
                         double sdn = (k + 1 < nz) ? st.s[st.idx(i, j, k + 1)] : s;
                         double u = st.u[q], v = st.v[q];

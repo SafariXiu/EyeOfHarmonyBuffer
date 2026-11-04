@@ -46,6 +46,16 @@ public final class BarotropicSolver {
      * 供 4 季/12 月循环使用：每月换一次风场，但不重置海洋的记忆。
      */
     public static Result update(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta) {
+        return update(g, st, f, theta, null);
+    }
+
+    /**
+     * ★ 2026-11-04（阶段 2c）：带父状态的更新。
+     * <p>openY patch 的 ghost 行（j=0 / ny-1）是湿的：psi 取父值（Dirichlet），等于
+     * 规定穿过该边界的水体输运；u/v 直接取父（不参与 psi 差分，避免越界）。
+     */
+    public static Result update(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta,
+                                OceanParent parent) {
         int nx = g.nx, ny = g.ny;
         int n2 = nx * ny;
         double dx = g.dx, dy = g.dy;
@@ -84,14 +94,23 @@ public final class BarotropicSolver {
         }
 
         double[] psi = new double[n2];
+        // 2c：ghost 行的 psi = 父值（穿过边界的输运）
+        if (parent != null) {
+            for (int j : new int[]{0, ny - 1}) {
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    double p = parent.psi(g.xOf(i), g.zOf(j));
+                    if (Double.isFinite(p)) psi[j * nx + i] = p;
+                }
+            }
+        }
         double residual = 0.0;
         int iter = 0;
         int maxIter = 50000;
         for (; iter < maxIter; iter++) {
             residual = 0.0;
             for (int j = 1; j < ny - 1; j++) {
-                double beta = WorldContract.betaForLatitude(
-                    WorldContract.latOf((int) Math.round(g.zOf(j))));
+                double beta = WorldContract.betaForLatitude(g.latAt(j));
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) { psi[j * nx + i] = 0.0; continue; }
                     double w = g.isWet(i - 1, j) ? psi[j * nx + ((i - 1 + nx) % nx)] : 0.0;
@@ -117,6 +136,18 @@ public final class BarotropicSolver {
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
+                if (j == 0 || j == ny - 1) {
+                    // ★ 2c：ghost 行直接用父的 u/v（psi 差分在边界会越界）
+                    double x = g.xOf(i), z = g.zOf(j);
+                    for (int k = 0; k < g.nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double pu = parent == null ? Double.NaN : parent.uMs(x, z, k);
+                        double pv = parent == null ? Double.NaN : parent.vMs(x, z, k);
+                        st.u[q] = Double.isFinite(pu) ? pu : 0.0;
+                        st.v[q] = Double.isFinite(pv) ? pv : 0.0;
+                    }
+                    continue;
+                }
                 double u = -(psi[g.idx(i, j + 1)] - psi[g.idx(i, j - 1)]) / (2.0 * dy);
                 double v = (psi[g.idx(i + 1, j)] - psi[g.idx(i - 1, j)]) / (2.0 * dx);
                 for (int k = 0; k < g.nz; k++) {

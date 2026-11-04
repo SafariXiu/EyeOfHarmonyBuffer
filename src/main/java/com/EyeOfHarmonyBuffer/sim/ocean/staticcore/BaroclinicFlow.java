@@ -8,6 +8,16 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 public final class BaroclinicFlow {
     private BaroclinicFlow() {}
     public static double LAST_MOC = 0.0;
+    /**
+     * ★ 2026-11-04（A2）：{@link #LAST_MOC} 现在是【最宽盆地】的翻转（cos 加权）。
+     * 本字段是"所有盆地同相"的上界（整行湿格相加），仅用于记账/A-B。
+     */
+    public static double LAST_MOC_ZONAL = 0.0;
+    /** ★ A2：盆地无关的量 —— ψ 峰值 [m²/s]，数值上等于 Sv / 1,000 km 宽。 */
+    public static double LAST_PSI_MAX = 0.0;
+    /** ★ A2：MOC 峰值所在纬度 [deg] 与深度 [m]（诊断用）。 */
+    public static double LAST_MOC_LAT_DEG = Double.NaN;
+    public static double LAST_MOC_DEPTH_M = Double.NaN;
     public static int APPLY_COUNT = 0;
     public static double MAX_VBC = 0.0;
     public static boolean QOHT_FEEDBACK_ON = false;
@@ -20,6 +30,15 @@ public final class BaroclinicFlow {
     public static boolean PROJECT_ON = true;
     public static double W_MAX = 1.0e-4;
     public static boolean OHT_ON = true;
+
+    /**
+     * ★ 2026-11-04（A2）：深层静止掩码。-1 = 不启用；≥0 时 k ≥ DEEP_KMAX 的 u/v/w 置零，
+     * MOC 只统计其上方。
+     *
+     * <p>物理依据：A′ 把深层当作**固定的水库边界**（T/S 是 Dirichlet），水库内部不参与环流；
+     * 之前深层热成风的常数 v 在 4 km 上积分，把 MOC 放到了 5,777 Sv（物理上不成立）。
+     */
+    public static int DEEP_KMAX = -1;
 
     /** 最近一次 apply 的 OHT 峰值 [W]（正=向北；取 |F| 的最大值）。 */
     public static double LAST_OHT_PEAK_W = 0.0;
@@ -44,7 +63,8 @@ public final class BaroclinicFlow {
                 if (!g.isWet(i, j)) continue;
                 for (int k = 0; k < g.nz; k++) {
                     int q = st.idx(i, j, k);
-                    double w = g.dz[k] * g.dx;
+                    // ★ 2026-11-04（A2）：格子的纬向物理宽度 = dx·cosφ（与 MOC 同一处理）。
+                    double w = g.dz[k] * g.dx * g.cosLat(j);
                     sumVT += st.v[q] * st.t[q] * w;
                     sumV += st.v[q] * w;
                     sumT += st.t[q] * w;
@@ -70,7 +90,8 @@ public final class BaroclinicFlow {
                 if (!g.isWet(i, j)) continue;
                 for (int k = 0; k < g.nz; k++) {
                     int q = st.idx(i, j, k);
-                    flux[j] += 1027.8 * 3985.0 * st.vBaroclinic[q] * st.t[q] * g.dz[k] * g.dx;
+                    // ★ 2026-11-04（A2）：dx -> dx·cosφ（球面纬向长度）。
+                    flux[j] += 1027.8 * 3985.0 * st.vBaroclinic[q] * st.t[q] * g.dz[k] * g.dx * g.cosLat(j);
                 }
             }
         return flux;
@@ -92,7 +113,7 @@ public final class BaroclinicFlow {
             for (int i = 0; i < g.nx; i++) if (g.isWet(i, j)) wet++;
             if (wet == 0) continue;
             double div = -(flux[j + 1] - flux[j - 1]) / (2.0 * g.dy);
-            double q = div / (wet * g.dx);
+            double q = div / (wet * g.dx * g.cosLat(j));
             for (int i = 0; i < g.nx; i++) if (g.isWet(i, j)) qo[j * g.nx + i] = q;
         }
         return qo;
@@ -117,14 +138,39 @@ public final class BaroclinicFlow {
     /**
      * 纬向梯度（K/m 或 psu/m）：中心差分；岸格改为单侧差分；陆地格不参与。
      * <p>★ 2026-11-02：这是"陆地 T=0 悬崖"的修复点。只要两侧都是湿格，结果与原式逐位相同。
+     * <p>★ 2026-11-04（A2）：湿判据由【列】改为【层】（{@code isWet(i,j,k)}）。
+     * 原式只看 2D 湿判，会把"该层已在该列海底以下"的邻格当成有效邻点，读到 0
+     * （未初始化）或海底拷贝值 ⟹ 假的 ΔT。与 {@code advZ} 的干格修复是同一类错误，
+     * 这里是它的第二处。
+     * <p><b>实测（NMOC3D 的 ideal 模式：球面 144×72×25 + 地形，NCIRC 的理想 T/S）</b>：
+     * 这类边有 7,689 条，最大假 ΔT = <b>297.8 K</b>；修复前 MOC 2,929.6 Sv /
+     * max|v_bc| 0.289 m/s，修复后 <b>MOC 190.1 Sv / 0.0194 m/s</b>（15 倍）。
+     * <p>BATHY_ON=false 时 wetLayers≡nz ⟹ 3D 判据与 2D 判据逐位等价，默认路径不变。
      */
     private static double zonalGrad(OceanGrid g, OceanState st, double[] v, int i, int j, int k) {
-        boolean west = g.isWet(i - 1, j), east = g.isWet(i + 1, j);
+        boolean west = g.isWet(i - 1, j, k), east = g.isWet(i + 1, j, k);
         double c = v[st.idx(i, j, k)];
         if (west && east) return (v[st.idx(i + 1, j, k)] - v[st.idx(i - 1, j, k)]) / (2.0 * g.dx);
         if (east) return (v[st.idx(i + 1, j, k)] - c) / g.dx;
         if (west) return (c - v[st.idx(i - 1, j, k)]) / g.dx;
         return 0.0;
+    }
+
+    /** 行 j 上最宽【连续湿段】（x 周期）的格数；全湿时 = nx。 */
+    private static int maxWetRun(OceanGrid g, int j) {
+        int nx = g.nx, best = 0, cur = 0;
+        for (int i = 0; i < nx; i++) {
+            if (g.isWet(i, j)) { cur++; if (cur > best) best = cur; } else cur = 0;
+        }
+        if (g.isWet(0, j) && g.isWet(nx - 1, j)) {
+            int a = 0;
+            while (a < nx && g.isWet(a, j)) a++;
+            int b = nx - 1;
+            while (b >= 0 && g.isWet(b, j)) b--;
+            int w = a + (nx - 1 - b);
+            if (w > best) best = w;
+        }
+        return best;
     }
 
     public static double apply(OceanGrid g, OceanState st) {
@@ -137,7 +183,9 @@ public final class BaroclinicFlow {
             for (int q = 0; q < st.v.length; q++) st.v[q] -= st.vBaroclinic[q];
             java.util.Arrays.fill(st.vBaroclinic, 0.0);
             java.util.Arrays.fill(st.w, 0.0);
-            LAST_MOC = 0.0; LAST_OHT_PEAK_W = 0.0; LAST_QOHT_MAX = 0.0;
+            LAST_MOC = 0.0; LAST_MOC_ZONAL = 0.0; LAST_PSI_MAX = 0.0;
+            LAST_MOC_LAT_DEG = Double.NaN; LAST_MOC_DEPTH_M = Double.NaN;
+            LAST_OHT_PEAK_W = 0.0; LAST_QOHT_MAX = 0.0;
             return 0.0;
         }
         int nx = g.nx, ny = g.ny, nz = g.nz;
@@ -146,7 +194,7 @@ public final class BaroclinicFlow {
         double[][] psi = new double[ny][nz + 1];
         double[] vbar = new double[nz];
         for (int j = 1; j < ny - 1; j++) {
-            double lat = WorldContract.latOf((int) Math.round(g.zOf(j)));
+            double lat = g.latAt(j);
             // ★ 2026-11-02：原来的硬门 30° 会在那一行把 v 从满值直接切到 0，而 ψ 的 30°
             // 两侧一个为 0、一个有值 ⟹ w=Δψ/2dy 在门口得到"半个梯度"（不连续）。
             // 现在 25°→30° 线性 taper：ψ 连续地趋于 0，w 也不再跳变。25° 以内仍不做
@@ -163,8 +211,12 @@ public final class BaroclinicFlow {
             int cnt = 0, cntInt = 0;
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
+                int wl = g.wetLayers[g.idx(i, j)];
+                if (wl <= 0) continue;
                 double[] vbc = new double[nz];
-                for (int k = nz - 2; k >= 0; k--) {
+                // ★ 2026-11-04（A2）：热成风只在【本列的湿层】内递推；海底（wl-1）v=0，
+                //   干层不再参与（旧式从 nz-2 往下，干层 T=0 的虚假梯度会进入 vbc）。
+                for (int k = wl - 2; k >= 0; k--) {
                     // 陆地不参与差分；岸格用单侧差分；两侧都是陆地则梯度为 0。
                     double dTdx = zonalGrad(g, st, st.t, i, j, k);
                     double dSdx = zonalGrad(g, st, st.s, i, j, k);
@@ -176,15 +228,17 @@ public final class BaroclinicFlow {
                     vbc[k] = vbc[k + 1] - dvdz * g.dz[k];
                 }
                 for (int k = 0; k < nz; k++) vbc[k] *= gate;
+                // ★ A2：深度平均只对本列的湿层（旧式用全 nz=4,525 m）——浅柱（如 930 m）
+                //   的“零深度积分”必须用 930 m 作分母，否则大 vbc 保留 ⟹ MOC 4,396 Sv。
                 double mean = 0.0, hsum = 0.0;
-                for (int k = 0; k < nz; k++) { mean += vbc[k] * g.dz[k]; hsum += g.dz[k]; }
-                mean /= hsum;
+                for (int k = 0; k < wl; k++) { mean += vbc[k] * g.dz[k]; hsum += g.dz[k]; }
+                mean /= Math.max(1.0, hsum);
                 // ★ 2026-11-02：热成风是【内区】地转平衡；海岸格子的单侧密度梯度是边界层
                 // 前沿，不是盆地尺度 MOC。实测（seed 0）：-67.5 行 MOC_all=1642 Sv vs
                 // MOC_int=373 Sv；海岸 14/121 格却贡献 4.4 倍；maxVbc 达 4.3 m/s。
                 // ⟹ 纬向平均只取两侧都湿的内区格；整行无内区时退回全部湿格。
                 boolean interior = g.isWet(i - 1, j) && g.isWet(i + 1, j);
-                for (int k = 0; k < nz; k++) {
+                for (int k = 0; k < wl; k++) {
                     double dv = vbc[k] - mean;
                     vbar[k] += dv;
                     if (interior) vbarInt[k] += dv;
@@ -205,6 +259,11 @@ public final class BaroclinicFlow {
                 if (!g.isWet(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
+                    if (DEEP_KMAX >= 0 && k >= DEEP_KMAX) {
+                        st.vBaroclinic[q] = 0.0;
+                        st.v[q] = 0.0;          // 深层静止（水库不参与环流）
+                        continue;
+                    }
                     double v = -(p[k] - p[k + 1]) / g.dz[k];
                     st.vBaroclinic[q] = v;
                     MAX_VBC = Math.max(MAX_VBC, Math.abs(v));
@@ -230,13 +289,13 @@ public final class BaroclinicFlow {
                         double wc = 0.5 * (wBot + wTop);
                         if (wc > W_MAX) wc = W_MAX;
                         if (wc < -W_MAX) wc = -W_MAX;
-                        st.w[q] = wc;
+                        st.w[q] = (DEEP_KMAX >= 0 && k >= DEEP_KMAX) ? 0.0 : wc;
                         wAcc = wTop;
                     }
                 } else {
                     for (int k = 0; k < nz; k++) {
                         double w = (psi[j + 1][k] - psi[j - 1][k]) / (2.0 * g.dy);
-                        st.w[st.idx(i, j, k)] = w;
+                        st.w[st.idx(i, j, k)] = (DEEP_KMAX >= 0 && k >= DEEP_KMAX) ? 0.0 : w;
                     }
                 }
             }
@@ -250,15 +309,36 @@ public final class BaroclinicFlow {
         // 跨一个纬圈的体积输运 = ψ × 【湿段总宽度】，不是 ψ × 单个格宽 dx。
         // 原式乘 g.dx（555 km）而漏掉了 cnt（~100 个湿格）⟹ 报告的 MOC 小约 100 倍。
         // 例：旧值 0.45 "Sv" 实际约 45~65 Sv（取决于该行湿格数）。
-        double moc = 0.0;
+        //
+        // ★ 2026-11-04（A2）：口径重定，两处：
+        //   (1) **乘 cos(lat)**。球面上一行的每格物理宽度是 dx·cosφ，不是赤道值 dx。
+        //       漏掉它的后果：MOC 最大值跑到高纬（φ=82.5° 时虚高 1/cos = 7.7 倍），
+        //       而高纬恰好是 MOC 最该小的地方（NOHT3D bathy：ψ_max 出现在 +82.5°）。
+        //   (2) **按盆地**。v 是行均匀的，把整行湿格相加等价于"所有盆地同相"，
+        //       只是上界；单个盆地的翻转 = ψ × 该行【最宽连续湿段】的宽度。
+        //       LAST_MOC 取盆地值；同相上界保留为 LAST_MOC_ZONAL 供记账。
+        //   (3) 盆地无关的量是 ψ 本身（m²/s = Sv / 1,000 km），保留为 LAST_PSI_MAX。
+        double mocZonal = 0.0, mocBasin = 0.0, psiPeak = 0.0;
+        int bj = -1, bk = -1;
+        int kCap = (DEEP_KMAX >= 0) ? Math.min(nz, DEEP_KMAX) : nz;
         for (int j = 1; j < ny - 1; j++) {
             int wet = 0;
             for (int i = 0; i < nx; i++) if (g.isWet(i, j)) wet++;
             if (wet == 0) continue;
-            double width = wet * g.dx;
-            for (int k = 0; k <= nz; k++) moc = Math.max(moc, Math.abs(psi[j][k]) * width);
+            double wCell = g.dx * g.cosLat(j);
+            int seg = maxWetRun(g, j);
+            for (int k = 0; k <= kCap; k++) {
+                double p = Math.abs(psi[j][k]);
+                mocZonal = Math.max(mocZonal, p * wet * wCell);
+                double b = p * seg * wCell;
+                if (b > mocBasin) { mocBasin = b; bj = j; bk = k; psiPeak = p; }
+            }
         }
-        LAST_MOC = moc / 1.0e6;
+        LAST_MOC_ZONAL = mocZonal / 1.0e6;
+        LAST_MOC = mocBasin / 1.0e6;
+        LAST_PSI_MAX = psiPeak;
+        LAST_MOC_LAT_DEG = (bj >= 0) ? Math.toDegrees(g.latAt(bj)) : Double.NaN;
+        LAST_MOC_DEPTH_M = (bk < 0) ? Double.NaN : (bk >= nz ? 0.0 : g.zCenter[bk]);
         updateOhtDiagnostics(g, st);
         return LAST_MOC;
     }

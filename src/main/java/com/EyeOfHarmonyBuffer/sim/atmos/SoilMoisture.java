@@ -433,7 +433,7 @@ public final class SoilMoisture {
             // ★★★★★ 待裁决/343：湖面反照率用 ALB_SEA（水面），而不是 ALB_LAND（陆面）。
             double absSolar = Radiation.absSolarSurface(lat, dec,
                     // ★ 2026-10-15：带纬度（海冰/雪反照率需要 ✓）；开关关时逐位不变 ✓
-                    waterSurf ? Radiation.ALB_SEA : Radiation.albedo(k > 0.5, tQ, lat));   // §7353 单源
+                    waterSurf ? Radiation.ALB_SEA : Atmosphere.surfaceAlbedo((int) x, (int) z, k > 0.5, tQ, lat));   // §7353 单源
             // §440：Monteith 表面阻力 —— chv -> chv/(1+chv*r_s)。RS_SURF = 0 时 chvE == chv（逐位不变）。
             // §466：状态依赖的裸地阻力 —— rsTot = RS_SURF + RS_BARE*(1-V̄)，V̄ 由【上一 pass】给出。
             // ★★★ 2026-10-18 地质 Phase 1：把质地接进 IFS 的 rsoil（表面阻力），不是 Manabe 分母。

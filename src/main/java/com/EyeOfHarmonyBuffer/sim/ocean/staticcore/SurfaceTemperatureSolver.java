@@ -62,7 +62,18 @@ public final class SurfaceTemperatureSolver {
                 out[q] = rootNoIce(f, x, z, theta, fallback[q]);
             }
         }
-        if (st != null) smoothIceEdge(g, out, st);
+        if (st != null) {
+            smoothIceEdge(g, out, st);
+            // ★ 2026-11-04：平滑是数值手段，不能把 T 推到局地冰点以下。
+            //   实测：冰缘平滑让 T 比 Tf(S) 低 0.051 K（157 格，恰好在 0.05 容差上）。
+            for (int j = 1; j < g.ny - 1; j++)
+                for (int i = 0; i < g.nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int q = j * g.nx + i;
+                    double tf = FreezingPoint.kelvin(st.s[st.idx(i, j, 0)]);
+                    if (out[q] < tf) out[q] = tf;
+                }
+        }
         return out;
     }
 

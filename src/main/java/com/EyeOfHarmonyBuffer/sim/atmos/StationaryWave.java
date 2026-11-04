@@ -471,7 +471,7 @@ public final class StationaryWave {
                   ? Vegetation.vegAt(x, z, seed, cell, vv -> pForVeg)
                   : 1.0;
         // ★ 2026-10-15：带纬度（海冰/雪反照率需要纬度算冰厚 ✓）；开关关时逐位不变 ✓
-        double albHere = Radiation.albedo(isLandHere, ta, lat)
+        double albHere = Atmosphere.surfaceAlbedo(x, z, isLandHere, ta, lat)
                        + (isLandHere ? Vegetation.albedoAdd(veg) : 0.0);
         if (albHere > 0.95) albHere = 0.95;
         double absSolar = Radiation.absSolarSurface(lat, dec, albHere);   // §7353 单源

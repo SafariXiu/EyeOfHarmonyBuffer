@@ -3970,7 +3970,7 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
             double chvQ = Radiation.bulkCoeff(k, Math.hypot(u0[0], u0[1]));
             double decQ = Atmosphere.subsolarLat(theta);
             // ★ 2026-10-15：带纬度（海冰/雪反照率需要 ✓）；开关关时逐位不变 ✓
-        double asrQ = Radiation.absSolarSurface(lat, decQ, Radiation.albedo(k > 0.5, tQ, lat));   // §7353 单源
+        double asrQ = Radiation.absSolarSurface(lat, decQ, Atmosphere.surfaceAlbedo((int) x, (int) z, k > 0.5, tQ, lat));   // §7353 单源
             wE = wEffQnet(lat, theta, divU, q, tQ, depl, k,
                           SoilMoisture.SOIL_MOISTURE_ON ? betaUsed : 1.0, chvQ, asrQ);
         } else {

@@ -140,18 +140,18 @@ public final class AdvectionDiffusionSolver {
         }
         double u = st.u[q], v = st.v[q], w = st.w[q];
         double fe, fw, fn, fs, ft, fb;
-        if (g.isWet(i + 1, j)) {
+        if (g.isWet(i + 1, j, k)) {
             fe = u >= 0.0 ? u * fld[q] : u * fld[st.idx(i + 1, j, k)];
         } else fe = 0.0;
-        if (g.isWet(i - 1, j)) {
+        if (g.isWet(i - 1, j, k)) {
             int qw = st.idx(i - 1, j, k);
             double uw = st.u[qw];
             fw = uw >= 0.0 ? uw * fld[qw] : uw * fld[q];
         } else fw = 0.0;
-        if (g.isWet(i, j + 1)) {
+        if (g.isWet(i, j + 1, k)) {
             fn = v >= 0.0 ? v * fld[q] : v * fld[st.idx(i, j + 1, k)];
         } else fn = 0.0;
-        if (g.isWet(i, j - 1)) {
+        if (g.isWet(i, j - 1, k)) {
             int qs = st.idx(i, j - 1, k);
             double vs = st.v[qs];
             fs = vs >= 0.0 ? vs * fld[qs] : vs * fld[q];
@@ -186,9 +186,9 @@ public final class AdvectionDiffusionSolver {
         double u = st.u[q], v = st.v[q], w = st.w[q];
         double d = 0.0;
         d += (u >= 0.0 ? u : 0.0) / g.dx;
-        if (g.isWet(i - 1, j)) { double uw = st.u[st.idx(i - 1, j, k)]; d += (uw < 0.0 ? -uw : 0.0) / g.dx; }
+        if (g.isWet(i - 1, j, k)) { double uw = st.u[st.idx(i - 1, j, k)]; d += (uw < 0.0 ? -uw : 0.0) / g.dx; }
         d += (v >= 0.0 ? v : 0.0) / g.dy;
-        if (g.isWet(i, j - 1)) { double vs = st.v[st.idx(i, j - 1, k)]; d += (vs < 0.0 ? -vs : 0.0) / g.dy; }
+        if (g.isWet(i, j - 1, k)) { double vs = st.v[st.idx(i, j - 1, k)]; d += (vs < 0.0 ? -vs : 0.0) / g.dy; }
         if (k > 0) d += (w >= 0.0 ? w : 0.0) / g.dz[k];
         if (k + 1 < g.nz) { double wb = st.w[st.idx(i, j, k + 1)]; d += (wb < 0.0 ? -wb : 0.0) / g.dz[k]; }
         return d;
@@ -254,7 +254,10 @@ public final class AdvectionDiffusionSolver {
         double w = st.w[st.idx(i, j, k)];
         if (w == 0.0) return 0.0;
         double tUp = st.t[st.idx(i, j, k - 1)];                       // 上方（k-1）
-        double tDn = (k + 1 < st.grid.nz) ? st.t[st.idx(i, j, k + 1)] : t;  // 下方（k+1）
+        // ★ 2026-11-04：海底以下（k+1 ≥ wetLayers）是干格，数组里是 0；
+        //   旧式只看 k+1 < nz ⟹ 在海底读 0 ⟹ 稳态/时间步都会把 T/S 抽干（实测 S→0.84）。
+        double tDn = (k + 1 < st.grid.nz && k + 1 < st.grid.wetLayers[st.grid.idx(i, j)])
+                   ? st.t[st.idx(i, j, k + 1)] : t;  // 下方（k+1；海底以下零梯度）
         return w >= 0.0 ? w * (t - tDn) / dz : w * (tUp - t) / dz;
     }
 
@@ -305,7 +308,7 @@ public final class AdvectionDiffusionSolver {
             for (int i = 0; i < nx; i++)
                 surfaceT[j * nx + i] = g.isWet(i, j)
                         ? st.t[st.idx(i, j, 0)]
-                        : Atmosphere.oceanBaseK(WorldContract.latOf((int) Math.round(g.zOf(j))));
+                        : Atmosphere.oceanBaseK(g.latAt(j));
         // ★ 2026-11-03（stage 2）：冰覆盖的单一来源 = state.iceFraction。
         // 从当前表层 T 初始化（仍是 ClimberOcean.iceFraction 解析式，Petoukhov 2000）；
         // 下游净热/反照率/诊断统一读这个状态，不再各自重算。
@@ -437,6 +440,9 @@ public final class AdvectionDiffusionSolver {
                     double h2 = h * h + 2.0 * K * dt;
                     double hEnt = Math.sqrt(Math.max(g.dz[0] * g.dz[0], h2));
                     double hNew = Math.max(g.dz[0], Math.min(hEnt, hLimit));
+                    // 阶段 3：混合层深度不能超过该列洋底深度（浅海/陆架）
+                    double colDepth = g.columnDepthM(i, j);
+                    if (hNew > colDepth) hNew = colDepth;
                     // ★ 2026-11-02：res 仍不累计——实测把外层从 1 次改成 3 次会让 v 爆到 2e3 m/s
                     // （表面时间步不是收缩映射）。见交接：这里需要重写表面通量边界，而不是简单开迭代。
                     double dep = 0.0, tsum = 0.0, ssum = 0.0, wsum = 0.0;
@@ -554,12 +560,13 @@ public final class AdvectionDiffusionSolver {
                         int q = st.idx(i, j, k);
                         double cv = kvAt(g, st, i, j, k) / (dz * dz);
                         double t = st.t[q];
-                        double tw = g.isWet(i - 1, j) ? st.t[st.idx(i - 1, j, k)] : t;
-                        double te = g.isWet(i + 1, j) ? st.t[st.idx(i + 1, j, k)] : t;
-                        double ts = g.isWet(i, j - 1) ? st.t[st.idx(i, j - 1, k)] : t;
-                        double tn = g.isWet(i, j + 1) ? st.t[st.idx(i, j + 1, k)] : t;
+                        double tw = g.isWet(i - 1, j, k) ? st.t[st.idx(i - 1, j, k)] : t;
+                        double te = g.isWet(i + 1, j, k) ? st.t[st.idx(i + 1, j, k)] : t;
+                        double ts = g.isWet(i, j - 1, k) ? st.t[st.idx(i, j - 1, k)] : t;
+                        double tn = g.isWet(i, j + 1, k) ? st.t[st.idx(i, j + 1, k)] : t;
                         double tup = st.t[st.idx(i, j, k - 1)];
-                        double tdn = (k + 1 < nz) ? st.t[st.idx(i, j, k + 1)] : t;
+                        // A3: below the seabed (k+1 >= wetLayers) is dry -> zero gradient.
+                        double tdn = (k + 1 < g.wetLayers[g.idx(i, j)]) ? st.t[st.idx(i, j, k + 1)] : t;
 
                         double u = st.u[q], v = st.v[q];
                         double advX = u >= 0 ? u * (t - tw) / dx : u * (te - t) / dx;
@@ -583,6 +590,131 @@ public final class AdvectionDiffusionSolver {
             if (res < 1.0e-8) break;
         }
         return new Result(iter, res);
+    }
+
+    /**
+     * ★ 2026-11-04（A1）：带【矩阵级深层 Dirichlet】的稳态 T 求解。
+     *
+     * <p>与 {@link #solve(OceanGrid,OceanState,double[],int)} 的区别：
+     * <ul>
+     *   <li><b>不重置</b>列（保留调用方给的初值——通常是扩散-only 的收敛解）；</li>
+     *   <li>k ≥ {@code kDeep} 的格点【不参与迭代】，只作已知邻点（真正的 Dirichlet）；</li>
+     *   <li>{@code cosLat=true} 时纬向项用 {@code dx*cos(lat)}（球面度量）。</li>
+     * </ul>
+     * 算子与已验证的稳态 SOR 完全同源，只改了这三处。
+     */
+    public static Result solveSteady(OceanGrid g, OceanState st, double[] surfaceT,
+                                     int kDeep, boolean cosLat, int maxIter) {
+        int nx = g.nx, ny = g.ny, nz = g.nz;
+        int kMax = Math.max(1, Math.min(kDeep, nz));
+        for (int j = 0; j < ny; j++)
+            for (int i = 0; i < nx; i++)
+                if (g.isWet(i, j)) st.t[st.idx(i, j, 0)] = surfaceT[j * nx + i];
+        int iter = 0;
+        double res = 0.0;
+        for (; iter < maxIter; iter++) {
+            res = 0.0;
+            for (int k = 1; k < kMax; k++) {
+                double dz = g.dz[k];
+                for (int j = 1; j < ny - 1; j++) {
+                    double dxc = cosLat ? Math.max(1.0, g.dx * g.cosLat(j)) : g.dx;
+                    for (int i = 0; i < nx; i++) {
+                        if (!g.isWet(i, j)) continue;
+                        int wl = g.wetLayers[g.idx(i, j)];
+                        int q = st.idx(i, j, k);
+                        double cv = kvAt(g, st, i, j, k) / (dz * dz);
+                        double t = st.t[q];
+                        double tw = g.isWet(i - 1, j, k) ? st.t[st.idx(i - 1, j, k)] : t;
+                        double te = g.isWet(i + 1, j, k) ? st.t[st.idx(i + 1, j, k)] : t;
+                        double ts = g.isWet(i, j - 1, k) ? st.t[st.idx(i, j - 1, k)] : t;
+                        double tn = g.isWet(i, j + 1, k) ? st.t[st.idx(i, j + 1, k)] : t;
+                        double tup = st.t[st.idx(i, j, k - 1)];
+                        // ★ A1：k+1 ≥ wl 才是干格（海底以下），用零梯度；
+                        //   k+1 = kMax 是【深层 Dirichlet 格点】——它是湿的、值是固定的，必须读进来，
+                        //   否则深层锚点与上层断开（上一版就是这样把 S 抽到 0.84 的）。
+                        double tdn = (k + 1 < wl) ? st.t[st.idx(i, j, k + 1)] : t;
+                        double u = st.u[q], v = st.v[q];
+                        double advX = u >= 0 ? u * (t - tw) / dxc : u * (te - t) / dxc;
+                        double advY = v >= 0 ? v * (t - ts) / g.dy : v * (tn - t) / g.dy;
+                        double adv = advX + advY + advZ(st, i, j, k, t, dz);
+                        double diff = khAt(g, k) * (tw + te - 2.0 * t) / (dxc * dxc)
+                                    + KH * (ts + tn - 2.0 * t) / (g.dy * g.dy)
+                                    + cv * (tup + tdn - 2.0 * t);
+                        double diag = 4.0 * khAt(g, k) / (dxc * dxc) + 4.0 * khAt(g, k) / (g.dy * g.dy) + 2.0 * cv
+                                    + Math.abs(u) / dxc + Math.abs(v) / g.dy
+                                    + advZDiag(st, i, j, k, dz);
+                        double target = t + (diff - adv) / diag;
+                        double nv = t + SOR * (target - t);
+                        st.t[q] = nv;
+                        double dd = Math.abs(nv - t);
+                        if (dd > res) res = dd;
+                    }
+                }
+            }
+            if (res < 1.0e-8) break;
+        }
+        return new Result(iter, res);
+    }
+
+    /**
+     * ★ 2026-11-04（A3）：内部冰点 active-set 的【收尾投影】。默认 false ⟹ 逐位不变。
+     *
+     * <p>稳态 T 方程里没有相变项，所以冰下 k=1–2 可以稳定地停在 Tf 以下
+     * （A1 收口实测：±86.3° 各 2 格，T=271.228 K、Tf=271.279 K，差 0.051 K）。
+     * 真实的海洋不会留下过冷水：多出来的冷量由**结冰释放的潜热**补上。
+     *
+     * <pre>  dm = ρ0 cp (Tf − T) / L_f  [kg/m³]  ⟹  dhi = dm·dz/ρ_ice  [m]（按 1 m²）</pre>
+     *
+     * <p>常数与边界与 {@link PrognosticT#FREEZE_LEDGER_ON} 完全一致（L_f / ρ_ice 的出处写在那边）；
+     * <b>不做盐析</b>（冰视为留住自己的盐），所以 S 不动、总盐不变。
+     * <p>投影把格点钉在 Tf(S)，是 active-set 的"固定"一侧；再解一次方程即可让邻点适应。
+     *
+     * <p>⚠ <b>只能在【解 T】之后调用</b>。`solveSteady` 也被用来解 S（把 S 临时放进 t），
+     * 把投影放进 solveSteady 会把"盐度"当温度钉到 Tf ⟹ 实测 S 冲到 271.3 psu。
+     * 所以它是**显式调用**（调用方明确知道这是 T），不是求解器的收尾。
+     *
+     * <p>★ <b>实测否决（2026-11-04，NFREEZE2）</b>：把这份亏损真的记成**表面冰**
+     * （{@code INTERIOR_FREEZE_ICE_ON=true}）跑 1 年，会经冰-反照率/冰热阻反馈失控：
+     * 冰均值 <b>58.6 m</b>、最大 <b>12,670 m</b>、923/3356 格有冰，T 上限 307.3 K。
+     * 与 2026-11-02 的"全柱钳制 + 结冰 + brine"是同一机制（那次数值更差：冰 3.8e5 m）。
+     * ⟹ 记账本身留着（有量、可审计），但**默认不落到冰上**；只钉温度并报告那笔热量。
+     */
+    public static boolean INTERIOR_FREEZE_ON = false;
+    /**
+     * ★ A3 实测否决：投影时是否把这笔潜热记成表面冰。默认 false；
+     * 打开会失控（见上），只作为证据保留。
+     */
+    public static boolean INTERIOR_FREEZE_ICE_ON = false;
+    /** 投影统计：被钉住的格点数、生成的等效冰厚 [m]、释放的潜热 [J/m²·格点] 与总亏损 [K]。 */
+    public static int LAST_IF_CELLS = 0;
+    public static double LAST_IF_ICE = 0.0;
+    public static double LAST_IF_J = 0.0;
+    public static double LAST_IF_DEFICIT = 0.0;
+
+    public static void applyInteriorFreezing(OceanGrid g, OceanState st) {
+        LAST_IF_CELLS = 0; LAST_IF_ICE = 0.0; LAST_IF_J = 0.0; LAST_IF_DEFICIT = 0.0;
+        int nx = g.nx, ny = g.ny, nz = g.nz;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 1; k < wl; k++) {
+                    int q = st.idx(i, j, k);
+                    double tf = FreezingPoint.kelvin(st.s[q]);
+                    double t = st.t[q];
+                    if (!(t < tf)) continue;
+                    double deficit = tf - t;
+                    st.t[q] = tf;
+                    double massIce = RHO0 * CP_SEA * deficit / PrognosticT.L_FUSION;
+                    double dhi = massIce * g.dz[k] / PrognosticT.RHO_ICE;
+                    if (INTERIOR_FREEZE_ICE_ON) st.iceThickness[js] += dhi;
+                    LAST_IF_CELLS++;
+                    LAST_IF_ICE += dhi;
+                    LAST_IF_J += RHO0 * CP_SEA * deficit * g.dz[k];
+                    LAST_IF_DEFICIT += deficit;
+                }
+            }
     }
 
     /**
@@ -699,10 +831,10 @@ public final class AdvectionDiffusionSolver {
                         int q = st.idx(i, j, k);
                         double cv = kvAt(g, st, i, j, k) / (dz * dz);
                         double s = st.s[q];
-                        double sw = g.isWet(i - 1, j) ? st.s[st.idx(i - 1, j, k)] : s;
-                        double se = g.isWet(i + 1, j) ? st.s[st.idx(i + 1, j, k)] : s;
-                        double ss = g.isWet(i, j - 1) ? st.s[st.idx(i, j - 1, k)] : s;
-                        double sn = g.isWet(i, j + 1) ? st.s[st.idx(i, j + 1, k)] : s;
+                        double sw = g.isWet(i - 1, j, k) ? st.s[st.idx(i - 1, j, k)] : s;
+                        double se = g.isWet(i + 1, j, k) ? st.s[st.idx(i + 1, j, k)] : s;
+                        double ss = g.isWet(i, j - 1, k) ? st.s[st.idx(i, j - 1, k)] : s;
+                        double sn = g.isWet(i, j + 1, k) ? st.s[st.idx(i, j + 1, k)] : s;
                         double sup = st.s[st.idx(i, j, k - 1)];
                         double sdn = (k + 1 < nz) ? st.s[st.idx(i, j, k + 1)] : s;
                         double u = st.u[q], v = st.v[q];
@@ -825,12 +957,13 @@ public final class AdvectionDiffusionSolver {
                         int q = st.idx(i, j, k);
                         double cv = kvAt(g, st, i, j, k) / (dz * dz);
                         double t = st.t[q];
-                        double tw = g.isWet(i - 1, j) ? st.t[st.idx(i - 1, j, k)] : t;
-                        double te = g.isWet(i + 1, j) ? st.t[st.idx(i + 1, j, k)] : t;
-                        double ts = g.isWet(i, j - 1) ? st.t[st.idx(i, j - 1, k)] : t;
-                        double tn = g.isWet(i, j + 1) ? st.t[st.idx(i, j + 1, k)] : t;
+                        double tw = g.isWet(i - 1, j, k) ? st.t[st.idx(i - 1, j, k)] : t;
+                        double te = g.isWet(i + 1, j, k) ? st.t[st.idx(i + 1, j, k)] : t;
+                        double ts = g.isWet(i, j - 1, k) ? st.t[st.idx(i, j - 1, k)] : t;
+                        double tn = g.isWet(i, j + 1, k) ? st.t[st.idx(i, j + 1, k)] : t;
                         double tup = st.t[st.idx(i, j, k - 1)];
-                        double tdn = (k + 1 < nz) ? st.t[st.idx(i, j, k + 1)] : t;
+                        // A3: below the seabed (k+1 >= wetLayers) is dry -> zero gradient.
+                        double tdn = (k + 1 < g.wetLayers[g.idx(i, j)]) ? st.t[st.idx(i, j, k + 1)] : t;
 
                         double u = st.u[q], v = st.v[q];
                         double advX = u >= 0 ? u * (t - tw) / dx : u * (te - t) / dx;

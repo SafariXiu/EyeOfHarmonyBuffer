@@ -87,14 +87,63 @@ public final class StaticOceanSolver {
     public static OceanSolution solve(int worldSeed, int cell, int x0, int z0,
                                       SeaSurfaceForcing forcing, double theta,
                                       int landVersion, int season, int advMaxIter) {
-        OceanGrid grid = OceanGrid.landV3(worldSeed, cell, x0, z0);
+        return solve(OceanGrid.landV3(worldSeed, cell, x0, z0), worldSeed, forcing, theta,
+            landVersion, season, advMaxIter);
+    }
+
+    /**
+     * ★ 2026-11-03（阶段 2）：在【任意域】上求解 —— 区域 patch 的入口。
+     *
+     * <p>域由 {@code grid} 给出：绝对 x/z、真实 LandV3（不折叠）。默认路径
+     * {@link #solve(int,int,int,int,SeaSurfaceForcing,double,int,int,int)} 只是用它构造
+     * 40,000 km 全球箱并转调本方法，所以旧路径逐位不变。
+     */
+    public static OceanSolution solve(OceanGrid grid, int worldSeed,
+                                      SeaSurfaceForcing forcing, double theta,
+                                      int landVersion, int season, int advMaxIter) {
+        return solve(grid, worldSeed, forcing, theta, landVersion, season, advMaxIter, null, 0);
+    }
+
+    /**
+     * ★ 2026-11-03（阶段 2b）：带父状态 + sponge 的 patch 入口。
+     *
+     * <p>{@code parent == null} 时与旧路径逐位相同。sponge 只改外圈 {@code spongeCells}
+     * 个湿格（y 两端；x 侧等阶段 2c 打开开边界后再生效），中心区完全由本域方程决定。
+     */
+    public static OceanSolution solve(OceanGrid grid, int worldSeed,
+                                      SeaSurfaceForcing forcing, double theta,
+                                      int landVersion, int season, int advMaxIter,
+                                      OceanParent parent, int spongeCells) {
+        return solve(grid, worldSeed, forcing, theta, landVersion, season, advMaxIter,
+            parent, spongeCells, null);
+    }
+
+    /**
+     * ★ 2026-11-04（阶段 3）：深层源水团初始化（两段式的第二段）。
+     *
+     * <p>物理依据：深水在高纬形成；深层 T/S 应由【源水团】决定，而不是由局地表面线性降到冰点。
+     * {@code hHL} 用模型自己的高纬平均混合层深度（不是新常数）。
+     */
+    public static final class DeepInit {
+        public final double tDeep, sDeep, hHL;
+        public DeepInit(double tDeep, double sDeep, double hHL) {
+            this.tDeep = tDeep;
+            this.sDeep = sDeep;
+            this.hHL = Math.max(1.0, hHL);
+        }
+    }
+
+    public static OceanSolution solve(OceanGrid grid, int worldSeed,
+                                      SeaSurfaceForcing forcing, double theta,
+                                      int landVersion, int season, int advMaxIter,
+                                      OceanParent parent, int spongeCells, DeepInit deepInit) {
         SeaSurfaceForcing periodic = new PeriodicSeaSurfaceForcing(forcing);
         int nx = grid.nx, ny = grid.ny, nz = grid.nz;
         int n3 = nx * ny * nz, n2 = nx * ny;
 
         double[] fallback = new double[n2];
         for (int j = 0; j < ny; j++) {
-            double lat = WorldContract.latOf((int) Math.round(grid.zOf(j)));
+            double lat = grid.latAt(j);
             for (int i = 0; i < nx; i++) fallback[j * nx + i] = Atmosphere.oceanBaseK(lat);
         }
         double[] surfaceT = fallback.clone();
@@ -119,7 +168,7 @@ public final class StaticOceanSolver {
                     st.t[q] = ts + (deepT - ts) * frac;
                     if (st.s[q] == 0.0) {
                         if (S_PROFILE_INIT_ON) {
-                            double latDeg = Math.toDegrees(WorldContract.latOf((int) Math.round(grid.zOf(j))));
+                            double latDeg = Math.toDegrees(grid.latAt(j));
                             double sSurf = sProfile(latDeg);
                             st.s[q] = sSurf + (34.9 - sSurf) * frac;
                         } else {
@@ -129,6 +178,49 @@ public final class StaticOceanSolver {
                     dep += grid.dz[k];
                 }
             }
+
+        // ★ 2026-11-03（阶段 2b）：有父状态时用【父】热启动。
+        //   区域模式的标准做法：边界与初值都取父，避免 patch 从解析剖面冷启动
+        //   产生的 1 年瞬态污染 P2 收敛测试。不存在自造参数：只是换初值。
+        if (parent != null) {
+            for (int j = 0; j < ny; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!grid.isWet(i, j)) continue;
+                    double x = grid.xOf(i), z = grid.zOf(j);
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double pt = parent.temperatureK(x, z, k);
+                        if (Double.isFinite(pt)) st.t[q] = pt;
+                        double ps = parent.salinityPsu(x, z, k);
+                        if (Double.isFinite(ps)) st.s[q] = ps;
+                        double pu = parent.uMs(x, z, k);
+                        if (Double.isFinite(pu)) st.u[q] = pu;
+                        double pv = parent.vMs(x, z, k);
+                        if (Double.isFinite(pv)) st.v[q] = pv;
+                    }
+                }
+        }
+
+        // ★ 2026-11-04（阶段 3）：深层源水团初始化（在父热启动之后应用；只由调用方显式开启）。
+        if (deepInit != null) {
+            for (int j = 0; j < ny; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!grid.isWet(i, j)) continue;
+                    int wl = grid.wetLayers[grid.idx(i, j)];
+                    double ts = st.t[st.idx(i, j, 0)];
+                    double ss = st.s[st.idx(i, j, 0)];
+                    double dep = 0.0;
+                    for (int k = 0; k < wl; k++) {
+                        double zc = dep + 0.5 * grid.dz[k];
+                        double frac = Math.min(1.0, zc / deepInit.hHL);
+                        int q = st.idx(i, j, k);
+                        st.t[q] = ts + (deepInit.tDeep - ts) * frac;
+                        st.s[q] = ss + (deepInit.sDeep - ss) * frac;
+                        dep += grid.dz[k];
+                    }
+                }
+            st.fillDryGhosts();
+        }
 
         int nseas = Math.max(1, SEASONAL_N);
         int years = Math.max(1, SEASONAL_YEARS);
@@ -153,10 +245,12 @@ public final class StaticOceanSolver {
             java.util.Arrays.fill(iceSum, 0.0);
             for (int si = 0; si < nseas; si++) {
                 double th = (nseas == 1) ? theta : (2.0 * Math.PI * si / nseas);
-                baro = BarotropicSolver.update(grid, st, periodic, th);
+                baro = BarotropicSolver.update(grid, st, periodic, th, parent);
                 // update() 覆盖了 u/v，但 vBaroclinic/w 仍是上一季的 ⟹ 先清掉。
                 java.util.Arrays.fill(st.vBaroclinic, 0.0);
                 java.util.Arrays.fill(st.w, 0.0);
+                if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+                st.fillDryGhosts();
                 SteadyFreeSurfaceSolver.solve(grid, st, periodic, th);
                 int pics = (yr == 0 && si == 0) ? PIC_FIRST : PIC_WARM;
                 for (int pic = 0; pic < pics; pic++) {
@@ -200,12 +294,14 @@ public final class StaticOceanSolver {
                             }
                     }
                     BaroclinicFlow.apply(grid, st);
+                    if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+                    st.fillDryGhosts();
                 }
                 if (DEBUG_SEASON_H) {
                     double hh = 0.0;
                     int hn = 0;
                     for (int j = 1; j < ny - 1; j++) {
-                        double lat = Math.toDegrees(WorldContract.latOf((int) Math.round(grid.zOf(j))));
+                        double lat = Math.toDegrees(grid.latAt(j));
                         if (Math.abs(lat) < 60.0) continue;
                         for (int i = 0; i < nx; i++) {
                             if (!grid.isWet(i, j)) continue;
@@ -271,7 +367,7 @@ public final class StaticOceanSolver {
         // 用年平均 T/S 重算流场：先清零斜压场，再把 u/v 重置为正压基态
         java.util.Arrays.fill(st.vBaroclinic, 0.0);
         java.util.Arrays.fill(st.w, 0.0);
-        baro = BarotropicSolver.update(grid, st, periodic, (nseas == 1) ? theta : 0.0);
+        baro = BarotropicSolver.update(grid, st, periodic, (nseas == 1) ? theta : 0.0, parent);
         if (AdvectionDiffusionSolver.FREEZE_SURFACE_ON) {
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
@@ -282,12 +378,14 @@ public final class StaticOceanSolver {
                 }
         }
         BaroclinicFlow.apply(grid, st);
+        if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+        st.fillDryGhosts();
 
         for (int j = 0; j < ny; j++)
             for (int i = 0; i < nx; i++)
                 if (grid.isWet(i, j)) surfaceT[j * nx + i] = st.t[st.idx(i, j, 0)];
 
-        OceanCacheKey key = new OceanCacheKey(worldSeed, x0, z0,
+        OceanCacheKey key = new OceanCacheKey(worldSeed, grid.x0, grid.z0,
             landVersion, SOLVER_VERSION, season);
         double psiMin = 0.0, psiMax = 0.0;
         for (int j = 0; j < ny; j++) {
@@ -300,6 +398,8 @@ public final class StaticOceanSolver {
         }
         // ★ 2026-11-03：口径统一——MOC = max|ψ(y,z)| × 湿段宽度（BaroclinicFlow.LAST_MOC）。
         // 旧式用【正压】2D ψ 的 (max−min)/1e6，漏了湿宽且混用了正压/斜压两套 ψ ⟹ 报告 0.1 Sv（实际 141）。
+        // ★ 2026-11-04（A2）：宽度改 cos 加权 + 按【最宽盆地】取（BaroclinicFlow 里有完整说明）。
+        // 同相上界见 LAST_MOC_ZONAL；盆地无关的 ψ 峰值见 LAST_PSI_MAX。
         double mocSv = BaroclinicFlow.LAST_MOC;
         return new OceanSolution(key, st, surfaceT,
             baro.iterations, adv == null ? 0 : adv.iterations,

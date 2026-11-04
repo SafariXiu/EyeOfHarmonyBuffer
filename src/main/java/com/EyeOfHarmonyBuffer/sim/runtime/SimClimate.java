@@ -1395,7 +1395,7 @@ public final class SimClimate {
             //       （海洋 -> ALB_SEA；陆地 -> 雪判据 / ALB_LAND + ALB_LAND_ADD），
             //     ⚠ 唯一差别：陆地侧多了一个「雪」的分支（原式没有，但原式本来
             //       也只在 tSurfK 冷时用 ALB_LAND —— 这里是【修正】而不是偏离 ✓）。
-            double alb0 = Radiation.albedo(Atmosphere.clamp01(kap) > 0.5, tSea, lat);
+            double alb0 = Atmosphere.surfaceAlbedo(x, z, Atmosphere.clamp01(kap) > 0.5, tSea, lat);
             double absS0 = Radiation.absSolarSurface(lat, Atmosphere.subsolarLat(SEASON[0]), alb0);   // §7353 单源
             double qa0 = PrecipField.moisture(tSea, 0.0, kap);
             double beta0 = 1.0;

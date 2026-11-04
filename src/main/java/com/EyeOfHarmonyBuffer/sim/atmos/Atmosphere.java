@@ -877,6 +877,33 @@ public final class Atmosphere {
     public static SstProvider SST_PROVIDER = null;
 
     /**
+     * 海冰提供者（阶段 4a）：海洋把自己的冰状态交给大气。
+     * <p>null（默认）= 大气继续用纬度诊断（Stefan / ERA5 冻结度日），逐位不变。
+     */
+    public interface IceProvider {
+        double iceFraction(int x, int z);
+        double iceThickness(int x, int z);
+    }
+    public static volatile IceProvider ICE_PROVIDER = null;
+
+    /**
+     * 地表反照率的统一入口（阶段 4a）：海冰覆盖率来自 {@link #ICE_PROVIDER}（若安装），
+     * 否则退回 {@link Radiation#albedo(boolean, double, double)} 的纬度诊断。
+     * <p>{@code ICE_PROVIDER == null} 时与旧路径<b>逐位相同</b>。
+     */
+    public static double surfaceAlbedo(int x, int z, boolean isLand, double tSurfK, double latRad) {
+        if (isLand) return Radiation.albedo(true, tSurfK, latRad);
+        IceProvider p = ICE_PROVIDER;
+        if (p == null) return Radiation.albedo(false, tSurfK, latRad);
+        double fi = p.iceFraction(x, z);
+        if (!Double.isFinite(fi) || fi <= 0.0) return Radiation.albedo(false, tSurfK, latRad);
+        if (fi > 1.0) fi = 1.0;
+        double aO = Radiation.albedo(false, tSurfK, latRad);
+        double aI = Radiation.albedo(true, tSurfK, latRad);
+        return aO + fi * (aI - aO);
+    }
+
+    /**
      * **仅本线程**的 SST 抑制开关（防重入；§162 接线）。
      *
      * <p>解一条海洋纬度行时会调 {@link #windStress} → {@link #pressureAnomaly} → {@link #sstAnom}

@@ -67,6 +67,26 @@ public final class OceanState {
         return (k * grid.ny + j) * grid.nx + (i % grid.nx + grid.nx) % grid.nx;
     }
 
+    /**
+     * 阶段 3：海底以下的干格取上一层（wetLayers-1）的值，u/v/w 置 0。
+     * <p>这样垂直扩散在海底自动零通量（零梯度），平流面由 wF=0 封住。
+     */
+    public void fillDryGhosts() {
+        int nx = grid.nx, ny = grid.ny, nz = grid.nz;
+        for (int j = 0; j < ny; j++)
+            for (int i = 0; i < nx; i++) {
+                int wl = grid.wetLayers[grid.idx(i, j)];
+                if (wl <= 0) continue;
+                int ql = idx(i, j, wl - 1);
+                double tl = t[ql], sl = s[ql];
+                for (int k = wl; k < nz; k++) {
+                    int q = idx(i, j, k);
+                    t[q] = tl; s[q] = sl;
+                    u[q] = 0.0; v[q] = 0.0; w[q] = 0.0;
+                }
+            }
+    }
+
     public double surfaceT(int i, int j) { return t[idx(i, j, 0)]; }
     public double surfaceS(int i, int j) { return s[idx(i, j, 0)]; }
 }

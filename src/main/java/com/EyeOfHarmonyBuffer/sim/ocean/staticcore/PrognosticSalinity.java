@@ -41,6 +41,7 @@ public final class PrognosticSalinity {
         double[] adv = new double[n3];
         double[] ns = new double[n3];
         for (int step = 0; step < steps; step++) {
+            st.fillDryGhosts();
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) continue;
@@ -56,10 +57,10 @@ public final class PrognosticSalinity {
                     for (int k = 0; k < nz; k++) {
                         int q = st.idx(i, j, k);
                         double s = st.s[q], dz = g.dz[k];
-                        double sw = g.isWet(i - 1, j) ? st.s[st.idx(i - 1, j, k)] : s;
-                        double se = g.isWet(i + 1, j) ? st.s[st.idx(i + 1, j, k)] : s;
-                        double ss = g.isWet(i, j - 1) ? st.s[st.idx(i, j - 1, k)] : s;
-                        double sn = g.isWet(i, j + 1) ? st.s[st.idx(i, j + 1, k)] : s;
+                        double sw = g.isWet(i - 1, j, k) ? st.s[st.idx(i - 1, j, k)] : s;
+                        double se = g.isWet(i + 1, j, k) ? st.s[st.idx(i + 1, j, k)] : s;
+                        double ss = g.isWet(i, j - 1, k) ? st.s[st.idx(i, j - 1, k)] : s;
+                        double sn = g.isWet(i, j + 1, k) ? st.s[st.idx(i, j + 1, k)] : s;
                         double sup = (k > 0) ? st.s[st.idx(i, j, k - 1)] : s;
                         double sdn = (k + 1 < nz) ? st.s[st.idx(i, j, k + 1)] : s;
                         double lapH = AdvectionDiffusionSolver.khAt(g, k)

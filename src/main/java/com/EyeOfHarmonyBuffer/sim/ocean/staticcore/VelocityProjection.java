@@ -180,11 +180,29 @@ public final class VelocityProjection {
                 if (!g.isWet(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
-                    st.uF[q] = g.isWet(i + 1, j) ? 0.5 * (st.u[q] + st.u[st.idx(i + 1, j, k)]) : 0.0;
-                    st.vF[q] = g.isWet(i, j + 1) ? 0.5 * (st.v[q] + st.v[st.idx(i, j + 1, k)]) : 0.0;
+                    st.uF[q] = g.isWet(i + 1, j, k) ? 0.5 * (st.u[q] + st.u[st.idx(i + 1, j, k)]) : 0.0;
+                    st.vF[q] = g.isWet(i, j + 1, k) ? 0.5 * (st.v[q] + st.v[st.idx(i, j + 1, k)]) : 0.0;
                     st.wF[q] = (k + 1 < nz) ? 0.5 * (st.w[q] + st.w[st.idx(i, j, k + 1)]) : 0.0;
                 }
             }
+        // ★ 2026-11-04（阶段 3）：海底面 w=0 —— 禁止通量漏进干格。
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                int wl = g.wetLayers[g.idx(i, j)];
+                if (wl <= 0) continue;
+                st.wF[st.idx(i, j, wl - 1)] = 0.0;
+            }
+        // ★ 2026-11-04（2c）：南边界 ghost 行（j=0）的面速度 = 父给的边界值；
+        //   它是 divFlux 在 j=1 处的南面通量，投影修正循环（j=1..ny-2）不会覆盖它。
+        for (int i = 0; i < nx; i++) {
+            if (!g.isWet(i, 0)) continue;
+            for (int k = 0; k < nz; k++) {
+                int q = st.idx(i, 0, k);
+                st.uF[q] = st.u[q];
+                st.vF[q] = st.v[q];
+                st.wF[q] = 0.0;
+            }
+        }
         double[] div = new double[n];
         double sum = 0.0, vol = 0.0;
         int cnt = 0;
@@ -209,8 +227,8 @@ public final class VelocityProjection {
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
                     double c = phi[q];
-                    double pe = g.isWet(i + 1, j) ? phi[st.idx(i + 1, j, k)] : c;
-                    double pn = g.isWet(i, j + 1) ? phi[st.idx(i, j + 1, k)] : c;
+                    double pe = g.isWet(i + 1, j, k) ? phi[st.idx(i + 1, j, k)] : c;
+                    double pn = g.isWet(i, j + 1, k) ? phi[st.idx(i, j + 1, k)] : c;
                     double pb = (k + 1 < nz) ? phi[st.idx(i, j, k + 1)] : c;
                     double dzd = (k + 1 < nz) ? 0.5 * (g.dz[k] + g.dz[k + 1]) : g.dz[k];
                     st.uF[q] -= (pe - c) / dx;

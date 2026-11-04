@@ -55,12 +55,12 @@ public final class BiCGSTABS {
                         out[q] = adv + s * divU + s * (fw / 1027.8) - flux;
                         continue;
                     }
-                    double sw = g.isWet(i - 1, j) ? x[idx(g, i - 1, j, k)] : s;
-                    double se = g.isWet(i + 1, j) ? x[idx(g, i + 1, j, k)] : s;
-                    double ss = g.isWet(i, j - 1) ? x[idx(g, i, j - 1, k)] : s;
-                    double sn = g.isWet(i, j + 1) ? x[idx(g, i, j + 1, k)] : s;
+                    double sw = g.isWet(i - 1, j, k) ? x[idx(g, i - 1, j, k)] : s;
+                    double se = g.isWet(i + 1, j, k) ? x[idx(g, i + 1, j, k)] : s;
+                    double ss = g.isWet(i, j - 1, k) ? x[idx(g, i, j - 1, k)] : s;
+                    double sn = g.isWet(i, j + 1, k) ? x[idx(g, i, j + 1, k)] : s;
                     double sup = x[idx(g, i, j, k - 1)];
-                    double sdn = (k + 1 < nz) ? x[idx(g, i, j, k + 1)] : s;
+                    double sdn = (k + 1 < g.wetLayers[g.idx(i, j)]) ? x[idx(g, i, j, k + 1)] : s;
                     double u = st.u[q], v = st.v[q];
                     double advX = u >= 0 ? u * (s - sw) / dx : u * (se - s) / dx;
                     double advY = v >= 0 ? v * (s - ss) / dy : v * (sn - s) / dy;
