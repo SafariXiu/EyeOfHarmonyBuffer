@@ -36,7 +36,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * <p><b>性能</b>：一次 spin-up O(NLAT×NBASIN×NDEPTH) 每步；按 (seed, config) 缓存；
  * 不参与逐点气候查询。
  */
-@Frozen(reason = "重构冻结：2.5D 海洋等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "LEGACY 2.5D：已退出生产路径（3D 海洋接管），代码保留仅作对照；A/B 用 STATIC3D_ON=false", until = "legacy")
 public final class ClimberOcean {
 
     private ClimberOcean() {}

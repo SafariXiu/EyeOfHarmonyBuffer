@@ -85,7 +85,7 @@ import com.EyeOfHarmonyBuffer.sim.Frozen;
  * 纯积分会在净输入不为零时跨周期线性发散，所以旧版用长度尺度 L_relax 的指数核，
  * 并在**周期边界**下迭代到收敛。
  */
-@Frozen(reason = "重构冻结：沿岸层等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "LEGACY 2.5D：已退出生产路径（3D 海洋接管），代码保留仅作对照；A/B 用 STATIC3D_ON=false", until = "legacy")
 public final class CoastalLayer {
 
     private CoastalLayer() {}

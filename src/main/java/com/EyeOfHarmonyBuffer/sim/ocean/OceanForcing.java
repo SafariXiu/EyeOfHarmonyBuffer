@@ -23,7 +23,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * </pre>
  * 正 = 进入海洋（加热）。
  */
-@Frozen(reason = "重构冻结：2.5D 海洋表面通量等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "LEGACY 2.5D：已退出生产路径（3D 海洋接管），代码保留仅作对照；A/B 用 STATIC3D_ON=false", until = "legacy")
 public final class OceanForcing {
 
     private OceanForcing() {}

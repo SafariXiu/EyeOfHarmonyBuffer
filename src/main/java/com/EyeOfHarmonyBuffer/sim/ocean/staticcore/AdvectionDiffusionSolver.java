@@ -226,6 +226,37 @@ public final class AdvectionDiffusionSolver {
     public static boolean FREEZE_ACTIVE_ON = true;
 
     /**
+     * ★ 2026-11-04（A6 质量档评估）：两个"迭代深度"旋钮。
+     *
+     * <p>架构 §8 的 FAST 档写的是 "outer 1、substeps 15"，对应这里的两个数。
+     * <b>默认保持现行值（3 / 30）⟹ 逐位不变</b>；把它们调小是**换解**，不是优化，
+     * 所以必须先实测影响面（`NQUALITY`）再谈是否用于生产。
+     *
+     * <ul>
+     *   <li>{@link #OUTER_MAX}：每季内"表面 bulk 根 ↔ 内部 T"的外层次数。A1 实测残差
+     *       outer=1 → 4.4e-3、outer=2 → 1.0e-4、最后一遍 → 4.0e-6（K）。</li>
+     *   <li>{@link #SUBSTEPS}：prognostic T/S 每季的显式子步数（30 ⟹ Δt=1 天；15 ⟹ Δt=2 天）。</li>
+     * </ul>
+     */
+    /**
+     * ★ 2026-11-04（A6 实测）：**3 → 1**。`NQUALITY` 两步测量：
+     * <ul>
+     *   <li>单次求解：(3,30) 63 s / (2,30) 44 s / (1,30) 44 s，三者**逐位相同**；</li>
+     *   <li>生产耦合路径（3 次求解）：(3,30) 151 s vs (1,30) 134 s，同样**逐位相同**
+     *       （max|dT|=0、max|dSST|=0、max|dh|=0、dMOC=0）。</li>
+     * </ul>
+     * ⟹ 第 2/3 遍外层是**冗余工作**（从收敛态再解一次得到同一个解），去掉它不改变任何数值。
+     * 这是"实现层面优化、数值逐位不变"（2026-10-24 用户裁决）允许的那一类。
+     */
+    public static int OUTER_MAX = 1;
+    /**
+     * 每季 prognostic 子步数。**保持 30**：实测 30 → 15 会改解
+     * （max|dT| 1.204 K、max|dSST| 0.403 K、max|dh| 170 m），不是优化，是换模型。
+     * 架构 §8 的 "FAST 档（substeps 15）" 因此**不能用于生产**。
+     */
+    public static int SUBSTEPS = 30;
+
+    /**
      * ★ 2026-11-03（stage 4）：T 用季节内 prognostic flux-form，替代稳态 BiCGSTAB。
      * 默认关；A/B 用 NPROGT=1。
      */
@@ -335,7 +366,7 @@ public final class AdvectionDiffusionSolver {
             double[] src = shortwaveSource(g, st, f, theta);
             double br;
             if (PROGNOSTIC_T_ON) {
-                br = PrognosticT.run(g, st, surfaceT, src, 30.0 * 86400.0, 30);
+                br = PrognosticT.run(g, st, surfaceT, src, 30.0 * 86400.0, SUBSTEPS);
             } else if (FREEZE_ACTIVE_ON) {
                 br = BiCGSTABT.solveWithFreezing(g, st, surfaceT, src, Math.min(maxIter, 2000), 1.0e-6);
             } else {
@@ -679,7 +710,7 @@ public final class AdvectionDiffusionSolver {
      * 与 2026-11-02 的"全柱钳制 + 结冰 + brine"是同一机制（那次数值更差：冰 3.8e5 m）。
      * ⟹ 记账本身留着（有量、可审计），但**默认不落到冰上**；只钉温度并报告那笔热量。
      */
-    public static boolean INTERIOR_FREEZE_ON = false;
+    public static boolean INTERIOR_FREEZE_ON = true;
     /**
      * ★ A3 实测否决：投影时是否把这笔潜热记成表面冰。默认 false；
      * 打开会失控（见上），只作为证据保留。

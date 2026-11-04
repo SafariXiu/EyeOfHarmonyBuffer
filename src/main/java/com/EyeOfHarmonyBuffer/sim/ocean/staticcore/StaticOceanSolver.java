@@ -22,7 +22,7 @@ public final class StaticOceanSolver {
      * 缓存换代：v4 季节循环；v5 稳态短波源 + 海冰；v6 KT 卷吸 + 多年循环 + 分层 KV；
      * v7 prognostic S/T + C 网格投影；v8（2026-11-03）域宽 2 圈 -> 1 圈（40,000 km）+ 旋度配对修正。
      */
-    public static final int SOLVER_VERSION = 8;
+    public static final int SOLVER_VERSION = 9;   // ★ 2026-11-04（A6）：干格层判、MOC 口径、内部冰点、海气耦合
 
     /**
      * 季节采样数：4 = 季（默认）；12 = 月。
@@ -256,7 +256,7 @@ public final class StaticOceanSolver {
                 for (int pic = 0; pic < pics; pic++) {
                     if (FLUX_BOUNDARY_ON) {
                         adv = AdvectionDiffusionSolver.solveFluxBoundary(grid, st, periodic, th,
-                            advMaxIter, 3);
+                            advMaxIter, AdvectionDiffusionSolver.OUTER_MAX);
                         for (int j = 0; j < ny; j++)
                             for (int i = 0; i < nx; i++)
                                 if (grid.isWet(i, j)) surfaceT[j * nx + i] = st.t[st.idx(i, j, 0)];
@@ -276,7 +276,7 @@ public final class StaticOceanSolver {
                     AdvectionDiffusionSolver.Result sR;
                     if (PROGNOSTIC_S_ON) {
                         double dSalt = PrognosticSalinity.run(grid, st, periodic, th,
-                                30.0 * 86400.0, 30);
+                                30.0 * 86400.0, AdvectionDiffusionSolver.SUBSTEPS);
                         sR = new AdvectionDiffusionSolver.Result(0, Math.abs(dSalt));
                     } else {
                         sR = AdvectionDiffusionSolver.solveSalinity(grid, st,
@@ -381,12 +381,21 @@ public final class StaticOceanSolver {
         if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
         st.fillDryGhosts();
 
+        // ★ 2026-11-04（A6）：内部冰点投影进生产路径。
+        //   球面+地形生产配置实测有 19 个格点在年平均后仍低于 Tf（GATE_NOHT_T_GE_TF=FAIL）——
+        //   与 A3 在稳态路径收掉的 4 格同类：PrognosticT 子步内钳制，但年平均/后续 S 更新会留下残差。
+        //   投影只钉温度并记账（INTERIOR_FREEZE_ICE_ON 默认关：把亏损记成表面冰会失控，A3 已实测否决）。
+        if (AdvectionDiffusionSolver.INTERIOR_FREEZE_ON) {
+            AdvectionDiffusionSolver.applyInteriorFreezing(grid, st);
+            st.fillDryGhosts();   // 投影改了海底格 ⟹ 干格拷贝同步，避免读到投影前的旧值
+        }
+
         for (int j = 0; j < ny; j++)
             for (int i = 0; i < nx; i++)
                 if (grid.isWet(i, j)) surfaceT[j * nx + i] = st.t[st.idx(i, j, 0)];
 
-        OceanCacheKey key = new OceanCacheKey(worldSeed, grid.x0, grid.z0,
-            landVersion, SOLVER_VERSION, season);
+        // ★ 2026-11-04（A6）：键带网格身份（sphere/维度/bathyMask）——换网格不再命中旧解。
+        OceanCacheKey key = OceanCacheKey.of(grid, worldSeed, landVersion, SOLVER_VERSION, season);
         double psiMin = 0.0, psiMax = 0.0;
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {

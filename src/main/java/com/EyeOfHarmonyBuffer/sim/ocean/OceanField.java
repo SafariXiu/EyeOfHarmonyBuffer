@@ -43,7 +43,7 @@ import com.EyeOfHarmonyBuffer.sim.ocean.GyreRow;
  *   <li>Atmosphere.SstProvider.anomalyAt(int,int) **接口不带 seed** ⇒ 本类只能服务一个世界。</li>
  * </ul>
  */
-@Frozen(reason = "重构冻结：海洋场等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "海洋门面：3D 静态解已接管生产（STATIC3D_ON=true）；内部 2.5D 行解只在 STATIC3D_ON=false 时使用", until = "legacy-solver")
 public final class OceanField {
 
     private OceanField() {}
@@ -108,8 +108,28 @@ public final class OceanField {
     public static boolean OHT_CLIMBER_ON = false;
     /** 局地 2D OHT：用 u/v 与 SST 梯度算 Q_OHT(x,z)。 */
     public static boolean OHT_LOCAL_ON = false;
-    /** 生产 3D 静态海洋（B）。 */
-    public static boolean STATIC3D_ON = false;
+    /**
+     * 生产 3D 静态海洋（B）。
+     *
+     * <p>★ <b>2026-11-04（A6，用户裁决）翻为 true。</b>这是 A′ 的"翻默认"：
+     * {@link #install(int)} 会用 {@code StaticOceanProduction} 的 3D 静态解提供 SST'
+     * （以及表层盐度），不再走 {@link #anomalyAt} 的 2.5D 纬向近似。
+     *
+     * <p>依据：A5 的六门（`NSTEADY6`）全 PASS、A4 的耦合门 PASS、A3 的内部冰点收口；
+     * 成本：世界首解 110 s（无耦合）/ 241 s（带耦合，72×72 + 地形），之后进
+     * {@link StaticOceanProduction} 的按种子缓存。
+     *
+     * <p>⚠ 已知边界：生产网格是球面 144×72×25 + 地形（2026-11-05 起，`GRID_SPHERE=true`），
+     * 首解 522 s（3 次求解）。
+     */
+    public static boolean STATIC3D_ON = true;
+
+    static {
+        // ★ 2026-11-05（A6 收尾）：对照开关。
+        //   -Deoh.legacy2d5=true 强制回到 2.5D（等价 STATIC3D_ON=false），用于 P442/P484 的 A/B 归因；
+        //   生产不设该属性 ⟹ 逐位不变。
+        if (Boolean.getBoolean("eoh.legacy2d5")) STATIC3D_ON = false;
+    }
     /** 生产 2D 温度（B）。 */
     public static boolean OHT_T2D_ON = false;
     /**
@@ -1160,6 +1180,20 @@ public final class OceanField {
      * 恰好等于 4 个样本的平均** ⇒ 只有这样，本方法与 `mean_theta(anomalyAt(x,z,theta))` 才自洽。
      * 拿年平解顶替会出现「年平读数 ≠ 季节读数之年均」的隐性矛盾（探针会量出这个差）。
      */
+    /**
+     * ★ 2026-11-05（A6 收尾）：SST 异常的唯一生产入口。
+     *
+     * <p>3D 静态海洋接管后（STATIC3D_ON=true），凡是需要海温异常的地方都必须走这里，
+     * 不能再直接调 {@link #anomalyAt} —— 那是 2.5D 行解（legacy），绕过它会把环流层留在旧场里。
+     * 实测（2026-11-05 审计）：GlobalClimate:139 之前直接调 anomalyAt，
+     * 于是生产气候瓦片里的 SST 一直是 2.5D 的。
+     *
+     * <p>STATIC3D_ON=false 等价于回到 2.5D（legacy / 对照用；A/B 归因就靠这个开关）。
+     */
+    public static double sstAnomalyAt(int x, int z, int worldSeedInt) {
+        return STATIC3D_ON ? StaticOceanProduction.atAnomaly(x, z, worldSeedInt)
+                           : anomalyAt(x, z, worldSeedInt);
+    }
     public static synchronized double anomalyAt(int x, int z, int worldSeedInt) {
         if (!wetAt(x, z, worldSeedInt)) return 0.0;
         if (inSolve()) { reentryBlocked++; return 0.0; }   // 护栏：见 solveRow 的 E30 注释

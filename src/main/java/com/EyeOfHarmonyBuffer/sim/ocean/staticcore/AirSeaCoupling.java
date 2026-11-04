@@ -91,9 +91,24 @@ public final class AirSeaCoupling {
         return Math.max(0, Math.min(g.nx - 1, (int) Math.floor(xx / g.dx)));
     }
 
+    /**
+     * 世界 z → 行号。★ 2026-11-04（A6 球面）：球面网格的 y 是【纬度轴】（0 = 北极、20,000 km = 南极），
+     * 必须先把世界 z 还原成纬度再取行；否则高纬会错一整段（A1 同类坑）。
+     */
     static int indexZ(OceanGrid g, int z) {
+        if (g.sphere) {
+            double latDeg = Math.toDegrees(WorldContract.latOf(z));
+            int j = (int) Math.floor((90.0 - latDeg) / 180.0 * g.ny);
+            return Math.max(0, Math.min(g.ny - 1, j));
+        }
         double zz = ((z % (long) OceanGrid.HEIGHT_M) + OceanGrid.HEIGHT_M) % OceanGrid.HEIGHT_M;
         return Math.max(1, Math.min(g.ny - 2, (int) Math.floor(zz / g.dy)));
+    }
+
+    /** 球面网格上"该行的参考 SST"用的纬度：由行号反推，而不是把网格 z 当世界 z。 */
+    static double refLatOf(OceanGrid g, int j) {
+        return g.sphere ? g.latAt(j)
+                : WorldContract.latOf((int) Math.round(g.zOf(j)));
     }
 
     /**
@@ -102,9 +117,15 @@ public final class AirSeaCoupling {
      */
     public static Result run(int seed, int cell, SeaSurfaceForcing forcing,
                              double theta, int season, int advMaxIter, int iterations) {
+        return run(OceanGrid.landV3(seed, cell, 0, 0), seed, forcing, theta, season, advMaxIter, iterations);
+    }
+
+    /** ★ 2026-11-04（A6）：任意网格（球面/笛卡尔）上的同一个环。 */
+    public static Result run(OceanGrid grid, int seed, SeaSurfaceForcing forcing,
+                             double theta, int season, int advMaxIter, int iterations) {
         Atmosphere.SST_PROVIDER = null;
         Atmosphere.ICE_PROVIDER = null;
-        OceanSolution cur = StaticOceanSolver.solve(seed, cell, 0, 0, forcing, theta, 1, season, advMaxIter);
+        OceanSolution cur = StaticOceanSolver.solve(grid, seed, forcing, theta, 1, season, advMaxIter);
         OceanGrid g = cur.state.grid;
         final int n2 = g.nx * g.ny;
         final double[] relT = new double[n2];
@@ -134,8 +155,7 @@ public final class AirSeaCoupling {
                     int i = indexX(g, x), j = indexZ(g, z);
                     if (!g.isWet(i, j)) return 0.0;
                     int js = j * g.nx + i;
-                    return relT[js] - Atmosphere.seaSurfaceTemp(
-                            WorldContract.latOf((int) Math.round(g.zOf(j))), 0.0);
+                    return relT[js] - Atmosphere.seaSurfaceTemp(refLatOf(g, j), 0.0);
                 }
                 @Override public double anomalyAt(int x, int z, double th) { return anomalyAt(x, z); }
             };
@@ -146,7 +166,7 @@ public final class AirSeaCoupling {
                 }
                 @Override public double iceThickness(int x, int z) { return 1.0; }
             };
-            OceanSolution next = StaticOceanSolver.solve(seed, cell, 0, 0, forcing, theta, 1, season, advMaxIter);
+            OceanSolution next = StaticOceanSolver.solve(grid, seed, forcing, theta, 1, season, advMaxIter);
 
             double sum = 0.0, mx = 0.0;
             int n = 0, flips = 0, mi = -1, mj = -1;

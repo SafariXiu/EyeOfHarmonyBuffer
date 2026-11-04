@@ -69,7 +69,7 @@ import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
  * <p>闭式解：一个 sqrt。**无迭代、无缓存、无分配**（返回复用数组）。
  * O(1)，与 CoastalLayer / SeaSurfaceTemp 同级。纯函数 => 不破坏本仓「无状态」架构。
  */
-@Frozen(reason = "重构冻结：热盐环流等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "LEGACY 2.5D：已退出生产路径（3D 海洋接管），代码保留仅作对照；A/B 用 STATIC3D_ON=false", until = "legacy")
 public final class Thermohaline {
 
     private Thermohaline() {}

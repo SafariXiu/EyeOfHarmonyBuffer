@@ -33,7 +33,7 @@ import com.EyeOfHarmonyBuffer.sim.Frozen;
  * </pre>
  * ⇒ 两端都自然落在观测范围内，**不需要用上限去硬掰**。
  */
-@Frozen(reason = "重构冻结：SST 等待 3D 海洋替换", until = "refactor: 3D ocean")
+@Frozen(reason = "LEGACY 2.5D：已退出生产路径（3D 海洋接管），代码保留仅作对照；A/B 用 STATIC3D_ON=false", until = "legacy")
 public final class SeaSurfaceTemp {
 
     private SeaSurfaceTemp() {}

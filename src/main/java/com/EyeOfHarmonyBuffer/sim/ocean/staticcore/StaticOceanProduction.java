@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 import com.EyeOfHarmonyBuffer.sim.ocean.DiagnosticSeaSurfaceForcing;
+import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 
 /** 生产 3D 静态海洋缓存（B）。 */
@@ -29,6 +30,20 @@ public final class StaticOceanProduction {
     public static int COUPLING_ITERATIONS = 2;
     /** 耦合阻尼（数值，不是物理常数）。 */
     public static double COUPLING_ALPHA = 0.5;
+
+    /**
+     * ★ 2026-11-04（A6 收尾）：生产网格。
+     *
+     * <p>false（默认）= 72×72 笛卡尔 5°、15 层、平底 1,800 m（`OceanGrid.landV3`）。
+     * <p>true = **A′ 的球面 144×72×25（2.5°）+ 真实地形**（`OceanGrid.sphere` + `BATHY_ON`）。
+     * <p>⚠ 成本实测：球面 + 地形单次求解 216 s ⟹ 带耦合 3 次 ≈ 650 s（11 min）世界首解，
+     * 超架构 §8 的 1–2 min 目标；性能优化是**下一步**，先按用户裁决"把物理做完再优化"。
+     */
+    public static boolean GRID_SPHERE = true;
+    /** 球面网格强制开地形（地形是 A′ 的一部分；关掉它等于回到平底 1,800 m）。 */
+    public static boolean SPHERE_BATHY = true;
+    /** 生产格子的 cell 尺寸（与探针一致）。 */
+    public static final int CELL = 160_000;
     private static OceanSolution sol;
     private static int seed = Integer.MIN_VALUE;
 
@@ -41,14 +56,25 @@ public final class StaticOceanProduction {
         if (sol == null || seed != worldSeed) {
             // ★ 阶段 4a：求解期间卸下冰提供者（防自反馈），解完再安装。
             Atmosphere.ICE_PROVIDER = null;
-            DiagnosticSeaSurfaceForcing f = new DiagnosticSeaSurfaceForcing(worldSeed, 160000, 12500);
+            DiagnosticSeaSurfaceForcing raw = new DiagnosticSeaSurfaceForcing(worldSeed, CELL, 12500);
+            OceanGrid grid;
+            SeaSurfaceForcing f;
+            if (GRID_SPHERE) {
+                // A′：全球球面 144×72×25 + 地形。BATHY_ON 在造网格前设好（layersFor 读它）。
+                OceanGrid.BATHY_ON = SPHERE_BATHY;
+                grid = OceanGrid.sphere(worldSeed, CELL);
+                f = new SphereSeaSurfaceForcing(raw, OceanGrid.HEIGHT_SPHERE_M);
+            } else {
+                grid = OceanGrid.landV3(worldSeed, CELL, 0, 0);
+                f = raw;
+            }
             if (COUPLING_ON) {
                 AirSeaCoupling.ALPHA = COUPLING_ALPHA;
-                AirSeaCoupling.Result cr = AirSeaCoupling.run(worldSeed, 160000, f, 0.0, 0, 5000,
+                AirSeaCoupling.Result cr = AirSeaCoupling.run(grid, worldSeed, f, 0.0, 0, 5000,
                         Math.max(1, COUPLING_ITERATIONS));
                 sol = cr.solution;
             } else {
-                sol = StaticOceanSolver.solve(worldSeed, 160000, 0, 0, f, 0.0, 1, 0, 5000);
+                sol = StaticOceanSolver.solve(grid, worldSeed, f, 0.0, 1, 0, 5000);
             }
             seed = worldSeed;
             final OceanSolution s = sol;
@@ -96,7 +122,13 @@ public final class StaticOceanProduction {
         return Math.max(0, Math.min(g.nx - 1, (int) Math.floor(xx / g.dx)));
     }
 
+    /** 世界 z → 行号。★ 2026-11-04（A6）：球面网格的 y 是纬度轴，必须先还原纬度。 */
     private static int indexZ(OceanGrid g, int z) {
+        if (g.sphere) {
+            double latDeg = Math.toDegrees(WorldContract.latOf(z));
+            int j = (int) Math.floor((90.0 - latDeg) / 180.0 * g.ny);
+            return Math.max(0, Math.min(g.ny - 1, j));
+        }
         double zz = ((z % (long) OceanGrid.HEIGHT_M) + OceanGrid.HEIGHT_M) % OceanGrid.HEIGHT_M;
         return Math.max(1, Math.min(g.ny - 2, (int) Math.floor(zz / g.dy)));
     }

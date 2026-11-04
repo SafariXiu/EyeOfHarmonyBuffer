@@ -877,9 +877,9 @@ public final class SimClimate {
         if (VerticalColumn.FIXED_TS) {
             h = h * 31 + 0x7A12DL;
         }
-        if (SurfaceLayer.EKMAN_ENABLED) {
-            h = h * 31 + 0x7A12EL;
-        }
+        // ★ 2026-11-05（A6 收尾）：SurfaceLayer（2.5D 表层/Ekman）已退出生产，其指纹项一并退役。
+        //   该类文件头自述"物理上零引用"（除本处），所以删掉这一支不改变任何计算；EKMAN_ENABLED
+        //   默认 false 时这一段本来就不进哈希，因此 CFGFP 不受影响。
         if (!SimTerrain.SNOW_FROM_TEMP) {
             h = h * 31 + 0x7A12FL;
         }
