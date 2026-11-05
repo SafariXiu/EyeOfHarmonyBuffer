@@ -358,7 +358,7 @@ public final class OceanField {
         final int s = worldSeedInt;
         installedSeed = s;
         Atmosphere.SST_PROVIDER = null;   // 构建 3D 期间禁止递归回本 provider
-        com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.clearRunoff();   // ★ 大气口径变了：径流缓存失效
+        StaticOceanProduction.clearDerivedCaches();   // ★ 大气口径变了：所有派生 memo 失效
         if (STATIC3D_ON) {
             STATIC3D_ON = false;
             try { StaticOceanProduction.solution(s); } finally { STATIC3D_ON = true; }
@@ -374,10 +374,16 @@ public final class OceanField {
         };
     }
 
-    /** 卸掉提供者（回到 SST' == 0）。 */
+    /**
+     * 卸掉提供者（回到 SST' == 0）。
+     *
+     * <p>★★ 2026-11-06（NTHC5 末位漂移的成因）：装/卸 provider 会改变**所有**采样类 memo 的口径
+     * （kappa / 纬向表 / StationaryWave / 土壤湿度 …），所以必须把派生缓存整组作废；
+     * 只清 runoff 是不够的。这与“同 seed 同解”是同一条纪律：**缓存必须跟着它的输入失效**。
+     */
     public static synchronized void uninstall() {
         Atmosphere.SST_PROVIDER = null;
-        com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.clearRunoff();   // ★ 同上
+        StaticOceanProduction.clearDerivedCaches();
         installedSeed = Integer.MIN_VALUE;
     }
 

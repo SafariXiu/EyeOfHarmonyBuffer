@@ -160,6 +160,12 @@ public final class StaticOceanProduction {
             }
             seed = worldSeed;
             flagsHash = fh;      // ★ 2026-11-06：缓存键含开关指纹
+        }
+        // ★★ 2026-11-06（P484 在共享 JVM 里 FAIL 的根因）：冰提供者必须在**每次**返回解时确保装着，
+        //   而原来它写在“构建”分支里 ⟹ 缓存命中时不装。
+        //   只要有人把 ICE_PROVIDER 置空（OceanField.uninstall()、换世界、clearDerivedCaches），
+        //   之后再调 solution() 就永远拿回一个“有解但没有冰”的世界 —— 生产上同样成立（换世界后冰会消失）。
+        if (Atmosphere.ICE_PROVIDER == null && sol != null) {
             final OceanSolution s = sol;
             Atmosphere.ICE_PROVIDER = new Atmosphere.IceProvider() {
                 @Override public double iceFraction(int x, int z) { return iceAt(s, x, z, false); }
