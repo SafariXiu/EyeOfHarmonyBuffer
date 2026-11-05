@@ -1190,6 +1190,16 @@ public final class OceanField {
      *
      * <p>STATIC3D_ON=false 等价于回到 2.5D（legacy / 对照用；A/B 归因就靠这个开关）。
      */
+    /** ★ 2026-11-05：该 (x,z) 在 3D 网格上是否有水（STATIC3D_ON=false 时恒 true，2.5D 无此概念）。 */
+    public static boolean wet3DAt(int x, int z, int worldSeedInt) {
+        return !STATIC3D_ON || StaticOceanProduction.wetAt(x, z, worldSeedInt);
+    }
+
+    /** ★ 2026-11-05：3D 解的表层水温（K）；无 3D 水/未接管时返回 NaN。用于「冰 vs 水温」同口径判据。 */
+    public static double waterT3DAt(int x, int z, int worldSeedInt) {
+        return STATIC3D_ON ? StaticOceanProduction.atT(x, z, worldSeedInt) : Double.NaN;
+    }
+
     public static double sstAnomalyAt(int x, int z, int worldSeedInt) {
         return STATIC3D_ON ? StaticOceanProduction.atAnomaly(x, z, worldSeedInt)
                            : anomalyAt(x, z, worldSeedInt);

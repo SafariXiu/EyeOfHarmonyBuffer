@@ -94,6 +94,19 @@ public final class StaticOceanProduction {
         return thickness ? s.state.iceThickness[js] : s.state.iceFraction[js];
     }
 
+    /**
+     * ★ 2026-11-05（P484 判据要问“这里有 3D 水吗”）：该 (x,z) 是否落在 3D 网格的湿格上。
+     *
+     * <p>为什么要问：chunk 路径的冰是【大气最冷月温度】判据，它对陆地/无 3D 水的格点照样给冰；
+     * 而 3D 冰只在湿格里存在（干格 `iceAt` 恒 0）。比较两者前必须先排除“3D 无水的格点”，
+     * 否则量到的是**定义域差异**，不是物理矛盾。
+     */
+    public static synchronized boolean wetAt(int x, int z, int worldSeed) {
+        OceanSolution s = solution(worldSeed);
+        OceanGrid g = s.state.grid;
+        return g.isWet(indexX(g, x), indexZ(g, z));
+    }
+
     public static synchronized double atT(int x, int z, int worldSeed) {
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;

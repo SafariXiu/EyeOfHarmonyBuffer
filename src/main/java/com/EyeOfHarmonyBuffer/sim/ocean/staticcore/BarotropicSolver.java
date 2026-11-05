@@ -25,6 +25,15 @@ public final class BarotropicSolver {
      */
     public static boolean CURL_PAIRING_FIXED = true;
 
+    /**
+     * ★ 2026-11-05（A1 的 3D 判据）：最近一次 update 的风应力旋度快照 [N/m^3]（nx*ny，干格 0）。
+     *
+     * <p>为什么要暴露它：旧门 `GATE_A1_SIGN` 比的是「模型纬向平均风应力旋度 vs 地球观测锚」，
+     * 那是地球锚，3D 场换了之后必然漂移。3D 场自洽的判据应该是**模型自己的**
+     * 「风旋度 ⟶ 正压流函数」这条链（符号 + 接线都在里面）。
+     */
+    public static double[] LAST_CURL;
+
     private BarotropicSolver() {}
 
     public static final class Result {
@@ -63,6 +72,7 @@ public final class BarotropicSolver {
         for (double v : g.dz) h += v;
 
         double[] rhs = new double[n2];
+        double[] curlSnap = new double[n2];
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
@@ -89,6 +99,7 @@ public final class BarotropicSolver {
                     double tzS = f.windStressZ(xiI, zS, theta);
                     curl = (tzN - tzS) / (2.0 * dx) - (txE - txW) / (2.0 * dy);
                 }
+                curlSnap[j * nx + i] = curl;
                 rhs[j * nx + i] = curl / (RHO0 * h);
             }
         }
@@ -133,6 +144,7 @@ public final class BarotropicSolver {
         }
 
         st.psi = psi;
+        LAST_CURL = curlSnap;   // ★ 2026-11-05：供 A1 的 3D 判据读（符号自洽：风旋度 ⟶ 正压 ψ）
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
