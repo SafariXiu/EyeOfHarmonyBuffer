@@ -251,6 +251,7 @@ public final class SoilMoisture {
     private static final ThreadLocal<HashMap<Long, double[]>> MEMO =
             ThreadLocal.withInitial(HashMap::new);
     /** (x,z) -> 该列年净水量 P-E（mm/year）；稳态下即年径流。 */
+
     private static final ThreadLocal<HashMap<Long, Double>> RUNOFF =
             ThreadLocal.withInitial(HashMap::new);
     /** 自旋中标志：切断「解 W -> 调 mmPerDay -> 又要 beta -> 再解 W」的递归。 */
@@ -286,6 +287,12 @@ public final class SoilMoisture {
     public static boolean isSpinningUp() { return IN_SPINUP.get(); }
 
     public static void clearMemo() { MEMO.get().clear(); RUNOFF.get().clear(); }
+
+    /** ★ 2026-11-05：只清径流缓存（provider 装/卸时大气变了，缓存必须失效）。 */
+    public static void clearRunoff() { RUNOFF.get().clear(); }
+
+    /** ★ 2026-11-05：A/B 开关（-Deoh.runoffmemo=false 关掉解内缓存），默认开。 */
+    public static boolean RUNOFF_MEMO = Boolean.parseBoolean(System.getProperty("eoh.runoffmemo", "true"));
     public static int memoSize() { return MEMO.get().size(); }
 
     private static long key(int x, int z) { return ((long) x << 32) | (z & 0xFFFFFFFFL); }
@@ -356,6 +363,14 @@ public final class SoilMoisture {
      * 用 P-E 的年积分；稳态下 ΔW≈0，故 runoff≈P-E。只取非负部分。
      */
     public static double runoffKgM2SAt(int x, int z, long seed, int cell, int gradStep) {
+        // ★ 2026-11-05（性能，逐位不变）：**SST_PROVIDER 未装**的时间窗 = 一次海洋解内部，
+        //   此时大气状态不动，而 spinup 内部自己扫一整年 theta（结果不含调用者的 theta）⟹
+        //   同一 (x,z) 重复 spinup 是纯浪费。JFR 实测 spinup 占 **18.96%** 的样本。
+        //   缓存只在“provider 未装”窗口内命中；OceanField.install/uninstall 会清空它。
+        if (RUNOFF_MEMO && Atmosphere.SST_PROVIDER == null) {
+            Double hit = RUNOFF.get().get(key(x, z));
+            if (hit != null) return Math.max(0.0, hit) / (365.25 * 86400.0);
+        }
         spinup(x, z, seed, cell, gradStep);
         Double net = RUNOFF.get().get(key(x, z));
         double mmPerYear = net == null ? 0.0 : Math.max(0.0, net);

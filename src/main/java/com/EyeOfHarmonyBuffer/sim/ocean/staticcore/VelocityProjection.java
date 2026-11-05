@@ -13,6 +13,15 @@ public final class VelocityProjection {
     public static int LAST_CG_ITER = 0;
     public static double LAST_RES = 0.0;
 
+    /**
+     * ★ 2026-11-05（性能调研）：CG 相对收敛容差（相对初残差 r0）。
+     *
+     * <p>生产值 1e-10 是历史继承的“压到机器精度”式设定。实测（球面生产解）：
+     * 2083 次迭代把残差压到 8e-15，而散度只从 5.8e-7 降到 5.3e-8（其余在零空间）⟹ 严重过解。
+     * 这只影响数值收敛程度；放松它会改解，必须用敏感度实验裁决（见 NTOL 探针）。
+     */
+    public static double CG_TOL = Double.parseDouble(System.getProperty("eoh.cgtol", "1e-6"));
+
     private VelocityProjection() {}
 
     static double faceDiv(OceanGrid g, OceanState st, int i, int j, int k) {
@@ -29,7 +38,7 @@ public final class VelocityProjection {
         double mx = 0.0;
         for (int j = 1; j < g.ny - 1; j++)
             for (int i = 0; i < g.nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < g.nz; k++)
                     mx = Math.max(mx, Math.abs(faceDiv(g, st, i, j, k)));
             }
@@ -76,7 +85,7 @@ public final class VelocityProjection {
         double[] dd = new double[nz], dp = new double[nz], xx = new double[nz];
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) dd[k] = r[(k * ny + j) * nx + i];
                 dp[0] = dd[0] / bb0;
                 for (int k = 1; k < nz; k++) dp[k] = (dd[k] - aa[k] * dp[k - 1]) / m[k];
@@ -108,13 +117,15 @@ public final class VelocityProjection {
                 int rowN = base + (j + 1) * nx;
                 int rowS = base + (j - 1) * nx;
                 for (int i = 0; i < nx; i++) {
-                    if (!g.isWet(i, j)) continue;
+                    if (!g.isWetRaw(i, j)) continue;
+                    int iE = (i + 1 == nx) ? 0 : i + 1;
+                    int iW = (i == 0) ? nx - 1 : i - 1;
                     int q = row + i;
                     double c = phi[q];
-                    double pe = g.isWet(i + 1, j) ? phi[row + ((i + 1) % nx)] : c;
-                    double pw = g.isWet(i - 1, j) ? phi[row + ((i - 1 + nx) % nx)] : c;
-                    double pn = g.isWet(i, j + 1) ? phi[rowN + i] : c;
-                    double ps = g.isWet(i, j - 1) ? phi[rowS + i] : c;
+                    double pe = g.isWetRaw(iE, j) ? phi[row + iE] : c;
+                    double pw = g.isWetRaw(iW, j) ? phi[row + iW] : c;
+                    double pn = g.isWetRaw(i, j + 1) ? phi[rowN + i] : c;
+                    double ps = g.isWetRaw(i, j - 1) ? phi[rowS + i] : c;
                     double pd = (baseDn >= 0) ? phi[baseDn + j * nx + i] : c;
                     double pu = (baseUp >= 0) ? phi[baseUp + j * nx + i] : c;
                     double vert = ((pu - c) / dzu - (c - pd) / dzd) / dz;
@@ -133,7 +144,7 @@ public final class VelocityProjection {
         double r0 = 0.0;
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = ((k * ny + j) * nx + i);
                     r[q] = -(div[q] - mean);
@@ -145,7 +156,7 @@ public final class VelocityProjection {
         double rz = 0.0;
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = ((k * ny + j) * nx + i);
                     p[q] = z[q];
@@ -158,7 +169,7 @@ public final class VelocityProjection {
             double pap = 0.0;
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
-                    if (!g.isWet(i, j)) continue;
+                    if (!g.isWetRaw(i, j)) continue;
                     for (int k = 0; k < nz; k++) pap += p[((k * ny + j) * nx + i)] * ap[((k * ny + j) * nx + i)] * g.dz[k];
                 }
             if (Math.abs(pap) < 1e-300) break;
@@ -166,7 +177,7 @@ public final class VelocityProjection {
             double rn = 0.0;
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
-                    if (!g.isWet(i, j)) continue;
+                    if (!g.isWetRaw(i, j)) continue;
                     for (int k = 0; k < nz; k++) {
                         int q = ((k * ny + j) * nx + i);
                         phi[q] += alpha * p[q];
@@ -176,12 +187,12 @@ public final class VelocityProjection {
                 }
             rn = Math.sqrt(rn);
             LAST_RES = rn;
-            if (rn < 1e-10 * r0) break;
+            if (rn < CG_TOL * r0) break;
             precondition(g, r, z);
             double rzNew = 0.0;
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
-                    if (!g.isWet(i, j)) continue;
+                    if (!g.isWetRaw(i, j)) continue;
                     for (int k = 0; k < nz; k++) {
                         int q = ((k * ny + j) * nx + i);
                         rzNew += r[q] * z[q] * g.dz[k];
@@ -191,7 +202,7 @@ public final class VelocityProjection {
             rz = rzNew;
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
-                    if (!g.isWet(i, j)) continue;
+                    if (!g.isWetRaw(i, j)) continue;
                     for (int k = 0; k < nz; k++) {
                         int q = ((k * ny + j) * nx + i);
                         p[q] = z[q] + beta * p[q];
@@ -208,7 +219,7 @@ public final class VelocityProjection {
         double dx = g.dx, dy = g.dy;
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
                     st.uF[q] = g.isWet(i + 1, j, k) ? 0.5 * (st.u[q] + st.u[st.idx(i + 1, j, k)]) : 0.0;
@@ -239,7 +250,7 @@ public final class VelocityProjection {
         int cnt = 0;
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
                     double d = faceDiv(g, st, i, j, k);
@@ -254,7 +265,7 @@ public final class VelocityProjection {
         double[] phi = solvePoisson(g, st, div, mean, maxIter);
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
-                if (!g.isWet(i, j)) continue;
+                if (!g.isWetRaw(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
                     double c = phi[q];

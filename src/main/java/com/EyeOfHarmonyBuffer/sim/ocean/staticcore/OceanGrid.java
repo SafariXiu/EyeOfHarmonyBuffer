@@ -203,6 +203,21 @@ public final class OceanGrid {
         return wet[idx(i, j)];
     }
 
+    /**
+     * ★ 2026-11-05（性能，逐位不变）：调用者**保证** 0 <= i < nx 时的湿判据。
+     *
+     * <p>为什么单开一个：`isWet` 内部走 `idx()`，那里有 `i % nx`（**负数取模**）。
+     * JFR 调用链实测 `isWet` 占 **34.9%** 的样本（applyL 20.9% + 平流 10.0% + 自由面 3.1%），
+     * 而热循环里的 i 本来就落在 [0,nx) ⟹ 取模是纯浪费。
+     * <p>判据与 `isWet` 完全一致（同一张 wet 表、同一套 j 边界规则），只是省掉环绕。
+     */
+    public boolean isWetRaw(int i, int j) {
+        return USE_WETRAW ? (j >= 0 && j < ny && wet[j * nx + i]) : isWet(i, j);
+    }
+
+    /** ★ 2026-11-05：A/B 开关（-Deoh.wetraw=false 关掉快路径），默认开。 */
+    public static boolean USE_WETRAW = Boolean.parseBoolean(System.getProperty("eoh.wetraw", "true"));
+
     /** 阶段 3：3D 湿判据（k >= wetLayers 的层是海底以下的干格）。 */
     public boolean isWet(int i, int j, int k) {
         if (j < 0 || j >= ny || k < 0 || k >= nz) return false;

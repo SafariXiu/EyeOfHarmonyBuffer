@@ -358,6 +358,7 @@ public final class OceanField {
         final int s = worldSeedInt;
         installedSeed = s;
         Atmosphere.SST_PROVIDER = null;   // 构建 3D 期间禁止递归回本 provider
+        com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.clearRunoff();   // ★ 大气口径变了：径流缓存失效
         if (STATIC3D_ON) {
             STATIC3D_ON = false;
             try { StaticOceanProduction.solution(s); } finally { STATIC3D_ON = true; }
@@ -376,6 +377,7 @@ public final class OceanField {
     /** 卸掉提供者（回到 SST' == 0）。 */
     public static synchronized void uninstall() {
         Atmosphere.SST_PROVIDER = null;
+        com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.clearRunoff();   // ★ 同上
         installedSeed = Integer.MIN_VALUE;
     }
 
