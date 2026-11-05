@@ -135,7 +135,15 @@ public final class GlobalClimate {
             //   是全仓最后一处【生产路径直接调 2.5D】的读取点；而 ClimateSample.curX/curZ 在仓库里
             //   没有任何消费者（grep 全仓：只有本文件写入）。3D 侧也没有暴露 (x,z) 流场的访问器。
             //   ⟹ 置零并保留字段（消费方以后要流场时，应加 StaticOceanProduction.atU/atV，而不是回退 2.5D）。
-            curX = 0.0; curZ = 0.0; spd = 0.0;
+            // ★ 2026-11-05（补回）：2.5D 的 bandMeansAt 退役后这里被置 0，地图上的洋流箭头就没了。
+            //   现在改用 3D 解自己的表层流速（STATIC3D_ON 时有效；2.5D 回退时返回 NaN ⟹ 保持置 0）。
+            double u3 = com.EyeOfHarmonyBuffer.sim.ocean.OceanField.u3DAt(x, z, worldSeedInt);
+            double v3 = com.EyeOfHarmonyBuffer.sim.ocean.OceanField.v3DAt(x, z, worldSeedInt);
+            if (Double.isFinite(u3) && Double.isFinite(v3)) {
+                curX = u3; curZ = v3; spd = Math.hypot(u3, v3);
+            } else {
+                curX = 0.0; curZ = 0.0; spd = 0.0;
+            }
             // ★ 2026-11-05（A6 收尾）：SST 改走 dispatcher（STATIC3D_ON ? 3D : 2.5D legacy）。
             //   原来这里直接调 anomalyAt，绕过了 STATIC3D_ON，环流层的 SST 一直是旧场（审计发现）。
             sst = com.EyeOfHarmonyBuffer.sim.ocean.OceanField.sstAnomalyAt(x, z, worldSeedInt) / 10.0;

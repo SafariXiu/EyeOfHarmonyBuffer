@@ -1198,6 +1198,15 @@ public final class OceanField {
     }
 
     /** ★ 2026-11-05：3D 解的表层水温（K）；无 3D 水/未接管时返回 NaN。用于「冰 vs 水温」同口径判据。 */
+    /** ★ 2026-11-05：3D 表层流速（/talosmap 用）；未接管 3D 时返回 NaN。 */
+    public static double u3DAt(int x, int z, int worldSeedInt) {
+        return STATIC3D_ON ? StaticOceanProduction.atU(x, z, worldSeedInt) : Double.NaN;
+    }
+
+    public static double v3DAt(int x, int z, int worldSeedInt) {
+        return STATIC3D_ON ? StaticOceanProduction.atV(x, z, worldSeedInt) : Double.NaN;
+    }
+
     public static double waterT3DAt(int x, int z, int worldSeedInt) {
         return STATIC3D_ON ? StaticOceanProduction.atT(x, z, worldSeedInt) : Double.NaN;
     }

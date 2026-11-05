@@ -200,7 +200,12 @@ public final class OceanGrid {
 
     public boolean isWet(int i, int j) {
         if (j < 0 || j >= ny) return false;
-        return wet[idx(i, j)];
+        // ★ 2026-11-05（性能，逐位不变）：绝大多数调用点的 i 已在 [0,nx) ⟹ 走免取模快路径。
+        //   JFR 复采（优化后）里 isWet 仍占 19.2%，主要成本就是 idx() 的 i % nx（负数取模）。
+        if (i >= 0 && i < nx) return wet[j * nx + i];
+        int ii = i % nx;
+        if (ii < 0) ii += nx;
+        return wet[j * nx + ii];
     }
 
     /**

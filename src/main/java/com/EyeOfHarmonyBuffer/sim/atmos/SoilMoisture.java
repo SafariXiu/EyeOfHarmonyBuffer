@@ -367,12 +367,17 @@ public final class SoilMoisture {
         //   此时大气状态不动，而 spinup 内部自己扫一整年 theta（结果不含调用者的 theta）⟹
         //   同一 (x,z) 重复 spinup 是纯浪费。JFR 实测 spinup 占 **18.96%** 的样本。
         //   缓存只在“provider 未装”窗口内命中；OceanField.install/uninstall 会清空它。
+        // ★ 2026-11-05（性能，第二次）：只取一次 ThreadLocal。
+        //   JFR 复采发现 `ThreadLocalMap.getEntryAfterMiss` 占 **8.18%** —— 那是本方法
+        //   每次调用都 `RUNOFF.get()`（命中路径两次、未命中路径三次）导致的探针链。
+        //   把哈希表引用取到局部变量复用 ⟹ 同一张表、同一个值，逐位不变。
+        java.util.HashMap<Long, Double> runoffMap = RUNOFF.get();
         if (RUNOFF_MEMO && Atmosphere.SST_PROVIDER == null) {
-            Double hit = RUNOFF.get().get(key(x, z));
+            Double hit = runoffMap.get(key(x, z));
             if (hit != null) return Math.max(0.0, hit) / (365.25 * 86400.0);
         }
         spinup(x, z, seed, cell, gradStep);
-        Double net = RUNOFF.get().get(key(x, z));
+        Double net = runoffMap.get(key(x, z));
         double mmPerYear = net == null ? 0.0 : Math.max(0.0, net);
         // 1 mm = 1 kg/m2；稳态年径流 ≈ P-E（ΔW≈0）。
         return mmPerYear / (365.25 * 86400.0);
