@@ -133,12 +133,12 @@ public final class WorldContract {
     /** 辐射/地表能量平衡使用的太阳常数（W/m^2）：现代 TSI 标准 1361.0。 */
     public static final double S0_TSI = 1361.0;
     /** EBM 使用的 climlab 太阳常数（W/m^2）：1365.2；与 S0_TSI 的差异待 Phase 1 裁决。 */
-    public static final double S0_EBM = 1365.2;
+    public static final double S0_EBM = S0_TSI;   // 统一：与 S0_TSI 同口径
 
     /** 标准重力（m/s^2）：9.80665。 */
     public static final double GRAVITY = 9.80665;
     /** 降水链旧口径重力（m/s^2）：9.807；Phase 1 统一前保留，避免静默改数。 */
-    public static final double GRAVITY_ACCEL = 9.807;
+    public static final double GRAVITY_ACCEL = GRAVITY;   // 统一：与 GRAVITY 同口径
 
     /** 黄赤交角（弧度）：23.44°；本世界轴向倾角。 */
     public static final double OBLIQUITY = Math.toRadians(23.44);

@@ -779,7 +779,12 @@ public final class SimTerrain {
             //   强度取 orogeny01 ⟹ 平原上恒为 0（mountainDetail 内部有 s<=0.01 的快速返回）。
             double orogDet = TerrainComposer.mountainDetail(x, z, worldSeedInt, orog);
             double hCF = seaLevel + CF_GAIN * mToBlk(hM) + OROG_DETAIL_BLK * orogDet;
-            boolean landCF = sig >= 0.0;
+            // ★★ 2026-11-06（P294 根因）：`LandV3.coastDist` 的约定是 **陆 < 0、海 > 0**
+            //   （见 LandV3:721 的 javadoc 与 :737 的实现），而这里原来写成 `sig >= 0.0` ⟹
+            //   **把海判成了陆**。实测（N294DIAG，P294 的同批采样点 12/12）：
+            //   height ≈ -4300~-6100 m（深海）、isLand=false、coastDist 为正，而 compose.land=true。
+            //   这也解释了 P294 的 `GATE_LAND_CONSISTENT` 从“2/4000 差异”退化到 **200/200 全不一致**。
+            boolean landCF = sig < 0.0;
             c.land = landCF;
             c.seaDepth = landCF ? 0.0 : Math.max(0.0, seaLevel - hCF);
             c.base = hCF;

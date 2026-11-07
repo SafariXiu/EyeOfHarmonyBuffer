@@ -73,7 +73,7 @@ public final class BaroclinicFlow {
             }
             if (vol <= 0.0) continue;
             double tRef = sumT / vol;
-            flux[j] = 1027.8 * 3985.0 * (sumVT - tRef * sumV);
+            flux[j] = AdvectionDiffusionSolver.RHO0 * AdvectionDiffusionSolver.CP_SEA * (sumVT - tRef * sumV);
         }
         return flux;
     }
@@ -91,7 +91,7 @@ public final class BaroclinicFlow {
                 for (int k = 0; k < g.nz; k++) {
                     int q = st.idx(i, j, k);
                     // ★ 2026-11-04（A2）：dx -> dx·cosφ（球面纬向长度）。
-                    flux[j] += 1027.8 * 3985.0 * st.vBaroclinic[q] * st.t[q] * g.dz[k] * g.dx * g.cosLat(j);
+                    flux[j] += AdvectionDiffusionSolver.RHO0 * AdvectionDiffusionSolver.CP_SEA * st.vBaroclinic[q] * st.t[q] * g.dz[k] * g.dx * g.cosLat(j);
                 }
             }
         return flux;
@@ -221,7 +221,7 @@ public final class BaroclinicFlow {
                     double dTdx = zonalGrad(g, st, st.t, i, j, k);
                     double dSdx = zonalGrad(g, st, st.s, i, j, k);
                     double drhoDx = 1027.8 * (-Thermohaline.ALPHA * dTdx + Thermohaline.BETA * dSdx);
-                    double dvdz = (9.81 / (1027.8 * f)) * drhoDx;
+                    double dvdz = (WorldContract.GRAVITY / (AdvectionDiffusionSolver.RHO0 * f)) * drhoDx;
                     // ★ 2026-11-02 实测否决：Richardson 切变限制（|dv/dz|≤2N, N²≤0→0）在
                     // prognostic S 上把 MOC 从 2093 压到 457 Sv，但在稳态路径上 T 冲到 8475 K、
                     // MOC 24756 Sv、h 塌到 93 m。它与热成风/输运的稳态闭合不兼容，已回退。

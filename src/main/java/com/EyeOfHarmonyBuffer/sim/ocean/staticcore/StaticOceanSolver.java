@@ -224,6 +224,11 @@ public final class StaticOceanSolver {
 
         int nseas = Math.max(1, SEASONAL_N);
         int years = Math.max(1, SEASONAL_YEARS);
+        // ★★ 2026-11-06（用户裁决：开分季 SST 出口）：保留**最后一年**的逐季表层 T。
+        //   为什么必需：P292 的自洽判据要问“上升流”，而上升流是**季节**现象；
+        //   原来 OceanSolution 只存年均 SST'，季节信号被抹平（NUPWELL 四版实测 corr≈0）。
+        //   只存字段、不参与任何计算 ⇒ 年均路径逐位不变。
+        double[][] seasSurf = new double[nseas][];
         double[] tSum = new double[n3], sSum = new double[n3];
         double[] hSum = new double[n2], etaSum = new double[n2], iceSum = new double[n2];
         double[] tMean = new double[n3], sMean = new double[n3], prevT = new double[n3];
@@ -311,6 +316,14 @@ public final class StaticOceanSolver {
                     }
                     System.out.println("SEASONH si=" + si + " hiLatH=" + (hn > 0 ? hh / hn : 0.0));
                 }
+                // ★ 2026-11-06：存下**本季**的表层 T（每年覆盖 ⇒ 最后年的值即收敛后的年循环）。
+                {
+                    double[] snap = new double[n2];
+                    for (int j = 0; j < ny; j++)
+                        for (int i = 0; i < nx; i++)
+                            if (grid.isWet(i, j)) snap[j * nx + i] = st.t[st.idx(i, j, 0)];
+                    seasSurf[si] = snap;
+                }
                 // 年度累加
                 for (int j = 0; j < ny; j++)
                     for (int i = 0; i < nx; i++) {
@@ -378,6 +391,9 @@ public final class StaticOceanSolver {
                 }
         }
         BaroclinicFlow.apply(grid, st);
+        if (AdvectionDiffusionSolver.EKMAN_UPWELL_ON) {
+            AdvectionDiffusionSolver.applyEkmanFlow(grid, st, periodic, 0.0);
+        }
         if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
         st.fillDryGhosts();
 
@@ -414,6 +430,6 @@ public final class StaticOceanSolver {
             baro.iterations, adv == null ? 0 : adv.iterations,
             baro.residual, adv == null ? 0.0 : adv.residual,
             psiMin, psiMax, mocSv,
-            sBudget, sBudget);
+            sBudget, sBudget, seasSurf);
     }
 }

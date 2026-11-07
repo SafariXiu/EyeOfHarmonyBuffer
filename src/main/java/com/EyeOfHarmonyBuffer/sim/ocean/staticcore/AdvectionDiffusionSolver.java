@@ -213,6 +213,28 @@ public final class AdvectionDiffusionSolver {
     public static boolean VERTICAL_ADVECTION_ON = true;
 
     /**
+     * ★ 2026-11-07：局地埃克曼输送/抽吸 → 混合层卷吸（默认关）。
+     * <p>w_E = ∂M_E/∂x + ∂M_N/∂y，M=(τ_N,−τ_E)/(ρf)；陆面法向通量=0；f→0 用 {@link #EKMAN_F_MIN} 线性衰减。
+     * <p>关闭时整段跳过，不新增任何数组/调用 ⇒ 与改动前逐位相同；开关条件进 solveFlagsHash。
+     */
+    public static boolean EKMAN_UPWELL_ON = false;
+    /** f 的数值正则化下限（s^-1；锚点 |lat|=3.93°）。不是物理常数。 */
+    public static final double EKMAN_F_MIN = 1.0e-5;
+    public static double LAST_W_EK_MAX = 0.0;
+    public static double LAST_W_EK_MEAN = 0.0;
+    public static int LAST_W_EK_UPWELL_CELLS = 0;
+    public static int LAST_W_EK_CELLS = 0;
+    /** A 方案诊断：投影后的总 wF 在 ML 底的最大/平均（斜压+埃克曼）。 */
+    public static double LAST_W_TOTAL_MAX = 0.0;
+    public static double LAST_W_TOTAL_MEAN = 0.0;
+    /** A 方案诊断：ML 水平平流项 |uML∇T| 的最大值 [K/s]、wBase 最大值 [m/s]。 */
+    public static double LAST_ML_ADV_MAX = 0.0;
+    public static double LAST_ML_WBASE_MAX = 0.0;
+    /** A-ekman：解析埃克曼 w / 输送；ML 只用埃克曼分量，不混入正压/斜压。 */
+    public static double[] EK_W = null;
+    public static double[] EK_MX = null, EK_MY = null;
+
+    /**
      * ★ 2026-11-03（stage 1）：表面混合层盐收支，替换 dz0 的 a0 扩散平衡。
      * 方程 rho h dS/dt = -S Fw - rho h adv + rho KV (Sb-S)/delta（设计稿 §3.1）。
      * 默认关；A/B 用 NMLS=1。总盐仍由 solveSalinity 的 corr 收口。
@@ -325,6 +347,153 @@ public final class AdvectionDiffusionSolver {
     }
 
     /**
+     * 局地埃克曼抽吸/沿岸辐散 w_E [m/s]；正=上升。只读风应力与网格，纯函数（除诊断静态）。
+     * <p>M_E=taper*τ_N/(ρ f_eff)，M_N=−taper*τ_E/(ρ f_eff)；到陆的面取 0（法向无通量）。
+     * <p>方向：windStressZ 是 world +z；northSign=sign(latOf(zW+dz)−latOf(zW−dz)) 转北向。
+     */
+    static double[] ekmanUpwelling(OceanGrid g, SeaSurfaceForcing f, double theta) {
+        int nx = g.nx, ny = g.ny, n2 = nx * ny;
+        double[] tx = new double[n2], tz = new double[n2];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int q = j * nx + i;
+                tx[q] = f.windStressX((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta);
+                tz[q] = f.windStressZ((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta);
+            }
+        double[] mx = new double[n2], my = new double[n2];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int q = j * nx + i;
+                double lat = g.latAt(j);
+                double f0 = WorldContract.coriolis(lat);
+                double af = Math.abs(f0);
+                double taper = af < EKMAN_F_MIN ? af / EKMAN_F_MIN : 1.0;
+                double fs = af < EKMAN_F_MIN ? (f0 < 0.0 ? -EKMAN_F_MIN : EKMAN_F_MIN) : f0;
+                int zW = WorldContract.zOfLat(Math.toDegrees(lat));
+                double latP = Math.toDegrees(WorldContract.latOf(zW + 1000));
+                double latM = Math.toDegrees(WorldContract.latOf(zW - 1000));
+                double northSign = Math.signum(latP - latM);
+                if (northSign == 0.0) northSign = 1.0;
+                double tauN = northSign * tz[q];
+                double tauE = tx[q];
+                mx[q] = taper * tauN / (RHO0 * fs);
+                my[q] = -taper * tauE / (RHO0 * fs);
+            }
+        double[] w = new double[n2];
+        double max = 0.0, sum = 0.0;
+        int up = 0, cnt = 0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int q = j * nx + i;
+                double mxE = g.isWet(i + 1, j) ? 0.5 * (mx[q] + mx[g.idx(i + 1, j)]) : 0.0;
+                double mxW = g.isWet(i - 1, j) ? 0.5 * (mx[q] + mx[g.idx(i - 1, j)]) : 0.0;
+                double myN = g.isWet(i, j - 1) ? 0.5 * (my[q] + my[g.idx(i, j - 1)]) : 0.0;
+                double myS = g.isWet(i, j + 1) ? 0.5 * (my[q] + my[g.idx(i, j + 1)]) : 0.0;
+                double we = (mxE - mxW) / g.dx + (myN - myS) / g.dy;
+                w[q] = we;
+                if (Math.abs(we) > max) max = Math.abs(we);
+                sum += we; cnt++;
+                if (we > 0.0) up++;
+            }
+        LAST_W_EK_MAX = max;
+        LAST_W_EK_MEAN = cnt > 0 ? sum / cnt : 0.0;
+        LAST_W_EK_UPWELL_CELLS = up;
+        LAST_W_EK_CELLS = cnt;
+        return w;
+    }
+
+    /** 局地埃克曼输送 M_E/M_N [m²/s]（A 方案用；与 v1 的 ekmanUpwelling 同一公式，只是返回输送而不是 w）。 */
+    static double[][] ekmanTransport(OceanGrid g, SeaSurfaceForcing f, double theta) {
+        int nx = g.nx, ny = g.ny, n2 = nx * ny;
+        double[] tx = new double[n2], tz = new double[n2];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int q = j * nx + i;
+                tx[q] = f.windStressX((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta);
+                tz[q] = f.windStressZ((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta);
+            }
+        double[] mx = new double[n2], my = new double[n2];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int q = j * nx + i;
+                double lat = g.latAt(j);
+                double f0 = WorldContract.coriolis(lat);
+                double af = Math.abs(f0);
+                double taper = af < EKMAN_F_MIN ? af / EKMAN_F_MIN : 1.0;
+                double fs = af < EKMAN_F_MIN ? (f0 < 0.0 ? -EKMAN_F_MIN : EKMAN_F_MIN) : f0;
+                int zW = WorldContract.zOfLat(Math.toDegrees(lat));
+                double latP = Math.toDegrees(WorldContract.latOf(zW + 1000));
+                double latM = Math.toDegrees(WorldContract.latOf(zW - 1000));
+                double northSign = Math.signum(latP - latM);
+                if (northSign == 0.0) northSign = 1.0;
+                double tauN = northSign * tz[q];
+                double tauE = tx[q];
+                mx[q] = taper * tauN / (RHO0 * fs);
+                my[q] = -taper * tauE / (RHO0 * fs);
+            }
+        return new double[][]{mx, my};
+    }
+
+    /**
+     * A 方案：把埃克曼输送作为三维速度加到 u/v（ML 深度 h 内 M/h，h 以下回流 -M/(H-h)），
+     * 再做无散投影；ML 底的 wF 就是埃克曼抽吸/沿岸上升流。无源项、无调参、无 NH/SH。
+     */
+    static void applyEkmanFlow(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta) {
+        // 诊断：先算解析埃克曼 w（v1 的 LAST_W_EK_*），再算投影后的总 wF（LAST_W_TOTAL_*）。
+        EK_W = ekmanUpwelling(g, f, theta);
+        double[][] m = ekmanTransport(g, f, theta);
+        double[] mx = m[0], my = m[1];
+        EK_MX = mx;
+        EK_MY = my;
+        int nx = g.nx, ny = g.ny;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                double H = g.columnDepthM(i, j);
+                double h = Math.max(g.dz[0], Math.min(st.mixedLayerDepth[js], H));
+                double below = Math.max(0.0, H - h);
+                // 几何边界：内部薄于埃克曼层（H−h<h）时，-M/(H−h) 会快于表层 M/h（非物理）；
+                // 浅水/ML 触底不做埃克曼层+回流。这是模型边界，不是可调参数。
+                if (below < h) continue;
+                double uE = mx[js] / h, vE = my[js] / h;
+                double uR = below > 0.0 ? -mx[js] / below : 0.0;
+                double vR = below > 0.0 ? -my[js] / below : 0.0;
+                int wl = g.wetLayers[g.idx(i, j)];
+                for (int k = 0; k < wl; k++) {
+                    int q = st.idx(i, j, k);
+                    if (g.zCenter[k] < h) { st.u[q] += uE; st.v[q] += vE; }
+                    else { st.u[q] += uR; st.v[q] += vR; }
+                }
+            }
+        VelocityProjection.project(g, st, 3000);
+        double max = 0.0, sum = 0.0;
+        int up = 0, cnt = 0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                double H = g.columnDepthM(i, j);
+                double h = Math.max(g.dz[0], Math.min(st.mixedLayerDepth[j * nx + i], H));
+                int wl = g.wetLayers[g.idx(i, j)];
+                int kb = 0;
+                double zc = 0.0;
+                while (kb < wl - 1 && zc + 0.5 * g.dz[kb] <= h) { zc += g.dz[kb]; kb++; }
+                if (kb <= 0) continue;
+                double wb = st.wF[st.idx(i, j, kb - 1)];
+                if (Math.abs(wb) > max) max = Math.abs(wb);
+                sum += wb; cnt++;
+                if (wb > 0.0) up++;
+            }
+        LAST_W_TOTAL_MAX = max;
+        LAST_W_TOTAL_MEAN = cnt > 0 ? sum / cnt : 0.0;
+    }
+
+    /**
      * 通量边界：表面不再固定 T，而由 Qnet(Ts) = -Kv dT/dz 决定。
      * 外层固定点：解一次 Dirichlet T -> 用 T1 与 Qnet 更新 Ts -> 再解。
      */
@@ -358,6 +527,8 @@ public final class AdvectionDiffusionSolver {
             }
             if (outer == 1) System.out.println("DBG target i=" + ti + " j=" + tj + " vBefore=" + st.v[st.idx(ti, tj, 0)]);
             BaroclinicFlow.apply(g, st);
+            // ★ 2026-11-07 A 方案：三维埃克曼速度 + 投影（只在 on 时；off 逐位不变）。
+            if (EKMAN_UPWELL_ON) applyEkmanFlow(g, st, f, theta);
             if (outer == 1) System.out.println("DBG vAfterApply=" + st.v[st.idx(ti, tj, 0)]);
             // ★ 2026-11-02：不再 init(g, st, surfaceT)！那会把整列 T 重置成表层值，
             // 每季把深层结构抹掉一次——3D 解不能用"均匀表层温度"当初始猜测。
@@ -460,13 +631,13 @@ public final class AdvectionDiffusionSolver {
                     }
                     double qsw0h = f.shortwaveWm2((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta, ts);
                     double qeff = q - qsw0h + qswLayer(qsw0h, g.dz, 0);
-                    double B = 9.81 * Thermohaline.ALPHA * qeff / (RHO0 * CP_SEA);
+                    double B = WorldContract.GRAVITY * Thermohaline.ALPHA * qeff / (RHO0 * CP_SEA);
                     // ★ 2026-11-02（KT）：h dh/dt = 2.5u*^3 - 0.5 B h  ⟹  dh/dt = K/h，
                     //   K = (2.5u*^3 - 0.5Bh) / (g α ΔT)。
                     //   K>0 卷吸（受层结因子 1-h/hLimit 限制）；K<0 去卷吸（不受该因子限制）。
                     //   不再有"B<0 ⟹ h=hLimit"的瞬时整柱对流。
                     double K = (2.5 * ustar * ustar * ustar - 0.5 * B * h)
-                            / (9.81 * Thermohaline.ALPHA * dTml);
+                            / (WorldContract.GRAVITY * Thermohaline.ALPHA * dTml);
                     if (K > 0.0) K *= Math.max(0.0, 1.0 - h / hLimit);
                     double h2 = h * h + 2.0 * K * dt;
                     double hEnt = Math.sqrt(Math.max(g.dz[0] * g.dz[0], h2));
@@ -484,6 +655,56 @@ public final class AdvectionDiffusionSolver {
                     }
                     double tbar = wsum > 0 ? tsum / wsum : st.t[q0];
                     double sbar = wsum > 0 ? ssum / wsum : st.s[q0];
+                    // ★ 2026-11-07 A 方案：三维埃克曼速度 + ML 底卷吸 + 表层水平平流（默认关）。
+                    //   体积/热量/盐由 3D 平流闭合；不是源项；无 NH/SH、无调参。
+                    if (EKMAN_UPWELL_ON) {
+                        int wl = g.wetLayers[g.idx(i, j)];
+                        int kb2 = 0;
+                        double zc2 = 0.0;
+                        while (kb2 < wl - 1 && zc2 + 0.5 * g.dz[kb2] <= hNew) {
+                            zc2 += g.dz[kb2];
+                            kb2++;
+                        }
+                        if (kb2 > 0) {
+                            double wBase = EK_W != null ? EK_W[js] : 0.0;
+                            if (wBase > LAST_ML_WBASE_MAX) LAST_ML_WBASE_MAX = wBase;
+                            if (wBase > 0.0) {
+                                double tbUp = st.t[st.idx(i, j, kb2)];
+                                double sbUp = st.s[st.idx(i, j, kb2)];
+                                double frac = Math.min(1.0, wBase * dt / Math.max(1.0, hNew));
+                                tbar += frac * (tbUp - tbar);
+                                sbar += frac * (sbUp - sbar);
+                            }
+                        }
+                        double tW = g.isWet(im, j) ? st.t[st.idx(im, j, 0)] : tbar;
+                        double tE = g.isWet(ip, j) ? st.t[st.idx(ip, j, 0)] : tbar;
+                        double tS = g.isWet(i, jm) ? st.t[st.idx(i, jm, 0)] : tbar;
+                        double tN = g.isWet(i, jp) ? st.t[st.idx(i, jp, 0)] : tbar;
+                        double sW = g.isWet(im, j) ? st.s[st.idx(im, j, 0)] : sbar;
+                        double sE = g.isWet(ip, j) ? st.s[st.idx(ip, j, 0)] : sbar;
+                        double sS = g.isWet(i, jm) ? st.s[st.idx(i, jm, 0)] : sbar;
+                        double sN = g.isWet(i, jp) ? st.s[st.idx(i, jp, 0)] : sbar;
+                        // ML 平均速度用【投影后的面速度】（与 3D divFlux 同一套 uF/vF；预算才闭合）。
+                        double uML = 0.0, vML = 0.0, dzSum = 0.0;
+                        for (int k = 0; k < kb2; k++) {
+                            int qml = st.idx(i, j, k);
+                            int qmlW = st.idx((i - 1 + nx) % nx, j, k);
+                            int qmlS = st.idx(i, Math.max(1, j - 1), k);
+                            double uC = 0.5 * (st.uF[qml] + st.uF[qmlW]);
+                            double vC = 0.5 * (st.vF[qml] + st.vF[qmlS]);
+                            double dz = g.dz[k];
+                            uML += uC * dz;
+                            vML += vC * dz;
+                            dzSum += dz;
+                        }
+                        uML /= Math.max(1.0, dzSum);
+                        vML /= Math.max(1.0, dzSum);
+                        double advT = uML * (tE - tW) / (2.0 * g.dx) + vML * (tN - tS) / (2.0 * g.dy);
+                        double advS = uML * (sE - sW) / (2.0 * g.dx) + vML * (sN - sS) / (2.0 * g.dy);
+                        if (Math.abs(advT) > LAST_ML_ADV_MAX) LAST_ML_ADV_MAX = Math.abs(advT);
+                        tbar -= dt * advT;
+                        sbar -= dt * advS;
+                    }
                     // ★ 2026-11-02（冰点/海冰耦合）：0 层热力冰（Semtner 1976 的热力部分）。
                     // 混合层热量低于冰点 ⟹ 差额【转为结冰潜热】并从海洋移除，tbar 钉在冰点；
                     // 高于冰点且有冰 ⟹ 先融冰，剩下的才加热海水。
@@ -529,6 +750,79 @@ public final class AdvectionDiffusionSolver {
                     // 会形成 冰盐→S→密度→T→更多冰 的正反馈：T 冲到 467.9 K、内部冰 3.8e5 m、
                     // 盐 corr 2.26、clamp 3.5e4。已回退；正确做法需要与表面边界/brine 一起设计。
                 }
+            if (EKMAN_UPWELL_ON) {
+                // ★ 2026-11-07 A：ML 水平平流按 SUBSTEPS×1 天推进（30 天一步显式 CFL 会爆）。
+                //   用 k=0 的投影面速度，避免把 h 以下的回流算进 ML 平均；无调参。
+                double[] sSurf = new double[nx * ny];
+                for (int j = 1; j < ny - 1; j++)
+                    for (int i = 0; i < nx; i++)
+                        if (g.isWet(i, j)) sSurf[j * nx + i] = st.s[st.idx(i, j, 0)];
+                double[] tA = surfaceT.clone(), sA = sSurf.clone();
+                double[] tB = new double[nx * ny], sB = new double[nx * ny];
+                double dts = dt / Math.max(1, SUBSTEPS);
+                for (int sub = 0; sub < SUBSTEPS; sub++) {
+                    for (int j = 1; j < ny - 1; j++)
+                        for (int i = 0; i < nx; i++) {
+                            if (!g.isWet(i, j)) continue;
+                            int js = j * nx + i;
+                            int q0 = st.idx(i, j, 0);
+                            int im = (i - 1 + nx) % nx, ip = (i + 1) % nx;
+                            int jm = Math.max(1, j - 1), jp = Math.min(ny - 2, j + 1);
+                            double hC = Math.max(g.dz[0], Math.min(st.mixedLayerDepth[js], g.columnDepthM(i, j)));
+                            double hE = g.isWet(ip, j) ? Math.max(g.dz[0], Math.min(st.mixedLayerDepth[j * nx + ip], g.columnDepthM(ip, j))) : hC;
+                            double hW = g.isWet(im, j) ? Math.max(g.dz[0], Math.min(st.mixedLayerDepth[j * nx + im], g.columnDepthM(im, j))) : hC;
+                            double hN = g.isWet(i, jp) ? Math.max(g.dz[0], Math.min(st.mixedLayerDepth[jp * nx + i], g.columnDepthM(i, jp))) : hC;
+                            double hS = g.isWet(i, jm) ? Math.max(g.dz[0], Math.min(st.mixedLayerDepth[jm * nx + i], g.columnDepthM(i, jm))) : hC;
+                            double uE = 0.5 * (EK_MX[js] / hC + EK_MX[j * nx + ip] / hE);
+                            double uW = 0.5 * (EK_MX[j * nx + im] / hW + EK_MX[js] / hC);
+                            double vN = 0.5 * (EK_MY[js] / hC + EK_MY[jp * nx + i] / hN);
+                            double vS = 0.5 * (EK_MY[jm * nx + i] / hS + EK_MY[js] / hC);
+                            double tC = tA[js], sC = sA[js];
+                            double tE = g.isWet(ip, j) ? tA[j * nx + ip] : tC;
+                            double tW = g.isWet(im, j) ? tA[j * nx + im] : tC;
+                            double tN = g.isWet(i, jp) ? tA[jp * nx + i] : tC;
+                            double tS = g.isWet(i, jm) ? tA[jm * nx + i] : tC;
+                            double sE = g.isWet(ip, j) ? sA[j * nx + ip] : sC;
+                            double sW = g.isWet(im, j) ? sA[j * nx + im] : sC;
+                            double sN = g.isWet(i, jp) ? sA[jp * nx + i] : sC;
+                            double sS = g.isWet(i, jm) ? sA[jm * nx + i] : sC;
+                            double fTE = uE * (uE >= 0.0 ? tC : tE);
+                            double fTW = uW * (uW >= 0.0 ? tW : tC);
+                            double fTN = vN * (vN >= 0.0 ? tC : tN);
+                            double fTS = vS * (vS >= 0.0 ? tS : tC);
+                            double fSE = uE * (uE >= 0.0 ? sC : sE);
+                            double fSW = uW * (uW >= 0.0 ? sW : sC);
+                            double fSN = vN * (vN >= 0.0 ? sC : sN);
+                            double fSS = vS * (vS >= 0.0 ? sS : sC);
+                            double dT = (fTE - fTW) / g.dx + (fTN - fTS) / g.dy;
+                            double dS = (fSE - fSW) / g.dx + (fSN - fSS) / g.dy;
+                            tB[js] = tC - dts * dT;
+                            sB[js] = sC - dts * dS;
+                            if (Math.abs(dT) > LAST_ML_ADV_MAX) LAST_ML_ADV_MAX = Math.abs(dT);
+                        }
+                    double[] sw = tA; tA = tB; tB = sw;
+                    sw = sA; sA = sB; sB = sw;
+                    java.util.Arrays.fill(tB, 0.0);
+                    java.util.Arrays.fill(sB, 0.0);
+                }
+                for (int j = 1; j < ny - 1; j++)
+                    for (int i = 0; i < nx; i++) {
+                        if (!g.isWet(i, j)) continue;
+                        int js = j * nx + i;
+                        int q0 = st.idx(i, j, 0);
+                        int wl = g.wetLayers[g.idx(i, j)];
+                        surfaceT[js] = tA[js];
+                        st.t[q0] = tA[js];
+                        st.s[q0] = sA[js];
+                        double h = st.mixedLayerDepth[js];
+                        for (int k = 1; k < wl; k++) {
+                            if (g.zCenter[k] >= h) break;
+                            st.t[st.idx(i, j, k)] = tA[js];
+                            st.s[st.idx(i, j, k)] = sA[js];
+                        }
+                        st.iceFraction[js] = ClimberOcean.iceFraction(tA[js]);
+                    }
+            }
             if (res < 1.0e-3) break;
         }
         return new Result(outer, res);

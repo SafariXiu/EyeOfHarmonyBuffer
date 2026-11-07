@@ -13,8 +13,8 @@ package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
  */
 public final class DiffusionSolver {
 
-    public static final double KH = 1000.0;
-    public static final double KV = 1.0e-5;
+    public static final double KH = AdvectionDiffusionSolver.KH;   // 统一：3D 的 KH
+    public static final double KV = AdvectionDiffusionSolver.KV_DEEP;   // 统一：3D 的深层 KV
     public static final double SOR = 1.4;
 
     private DiffusionSolver() {}

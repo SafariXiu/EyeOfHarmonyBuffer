@@ -76,6 +76,8 @@ public final class StaticOceanProduction {
         h = h * 31 + (GRID_SPHERE ? 1 : 0);
         h = h * 31 + (SPHERE_BATHY ? 1 : 0);
         h = h * 31 + CELL;
+        // ★ 2026-11-07：默认关时哈希值不变（N5：不只是不走分支，指纹也零变化）。
+        if (AdvectionDiffusionSolver.EKMAN_UPWELL_ON) h = h * 31 + 1;
         return h;
     }
 
@@ -205,6 +207,20 @@ public final class StaticOceanProduction {
         int i = indexX(g, x), j = indexZ(g, z);
         if (!g.isWet(i, j)) return Double.NaN;
         return s.state.v[s.state.idx(i, j, 0)];
+    }
+
+    /**
+     * ★ 2026-11-06：**逐季**表层水温（K）。si = 季节下标（0..SEASONAL_N-1）。无水/无季节数据返回 NaN。
+     * <p>返回**绝对温度**（不减纬带平均）：同纬度两点相减时该项自然抵消。
+     */
+    public static synchronized double atTSeason(int x, int z, int worldSeed, int si) {
+        OceanSolution s = solution(worldSeed);
+        double[][] seas = s.surfaceTBySeason;
+        if (seas == null || si < 0 || si >= seas.length || seas[si] == null) return Double.NaN;
+        OceanGrid g = s.state.grid;
+        int i = indexX(g, x), j = indexZ(g, z);
+        if (!g.isWet(i, j)) return Double.NaN;
+        return seas[si][j * g.nx + i];
     }
 
     public static synchronized boolean wetAt(int x, int z, int worldSeed) {

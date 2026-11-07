@@ -7,6 +7,7 @@ import com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM;
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.AdvectionDiffusionSolver;
 
 /**
  * ★★★★★ **2026-10-20：内生海洋经向热输运（OHT）子模型——Stocker et al. (1992) 纬向平均多盆地海洋。**
@@ -59,11 +60,11 @@ public final class ClimberOcean {
     };
 
     // ==================== Stocker 1992 Table 1 ====================
-    public static final double RHO_REF = 1027.8;
-    public static final double G = 9.81;
+    public static final double RHO_REF = AdvectionDiffusionSolver.RHO0;
+    public static final double G = WorldContract.GRAVITY;
     public static final double A_MOM = 1.0e-4;
-    public static final double K_H = 1.0e3;
-    public static final double K_V = 1.0e-4;
+    public static final double K_H = AdvectionDiffusionSolver.KH;
+    public static final double K_V = AdvectionDiffusionSolver.KV_DEEP;
 
     /**
      * ★ 2026-10-20：是否用 **Bryan & Lewis (1979)** 的空间变化扩散（默认 true；false = 常数 Table 1）。
@@ -93,15 +94,15 @@ public final class ClimberOcean {
     public static final double H_OCEAN = 5000.0;
     public static final double H_MIXED = 50.0;
     public static final double TAU_SURF = 50.0 * 86400.0;
-    public static final double C_OCEAN = 3900.0;
+    public static final double C_OCEAN = AdvectionDiffusionSolver.CP_SEA;
     public static final double EMISS_OCEAN = 0.96;
 
     /** 线性状态方程系数：α=1.67e-4 K⁻¹、β=7.80e-4 psu⁻¹（Vallis 2017 Table 1.2；本仓 Thermohaline 同源）。 */
-    public static final double ALPHA = 1.67e-4;
-    public static final double BETA = 7.80e-4;
+    public static final double ALPHA = Thermohaline.ALPHA;
+    public static final double BETA = Thermohaline.BETA;
     public static final double T_REF = 288.0;
-    public static final double S_REF = FreezingPoint.S_REFERENCE;
-    public static final double S_CONST = FreezingPoint.S_REFERENCE;
+    public static final double S_REF = Thermohaline.S_REF;   // 统一：3D 的 S_REF
+    public static final double S_CONST = Thermohaline.S_REF;   // 统一：3D 的 S_REF
 
     /** 海冰：0 °C 出现、−1.8 °C 全覆盖（Petoukhov et al. 2000 §5），冰反照率 0.62（Table 1 AI）。 */
     public static final double T_ICE0 = 273.15;
