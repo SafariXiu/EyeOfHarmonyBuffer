@@ -30,6 +30,52 @@ public final class BaroclinicFlow {
     public static boolean PROJECT_ON = true;
     public static double W_MAX = 1.0e-4;
     public static boolean OHT_ON = true;
+    /**
+     * 2026-11-11: LOCAL baroclinic v (default false = historical row-mean).
+     *
+     * WHY: this class already computes a LOCAL vbc[k] for every column, then throws it away by
+     * writing the row-averaged v to every column. A row-uniform v has d(v)/dx = 0 everywhere, so
+     * the only horizontal divergence left is d(u)/dx from the barotropic field -- and after the
+     * projection makes the column integral vanish, what remains is a horizontal convergence that
+     * is ALMOST DEPTH-UNIFORM. Measured consequence: w goes from -8.5e-09 at 25 m to -2.8e-07 at
+     * 2700 m (a straight line in depth), which advects 0.047 K/yr of heat into the abyss -- the
+     * deep-water warming of 5-1. A physical 3D ocean has a local, depth-structured convergence.
+     *
+     * With LOCAL_V_ON the per-column vbc is written as-is (depth mean removed), and w comes from
+     * the V2 projection instead of from d(psi)/dy.
+     */
+    public static boolean LOCAL_V_ON = false;
+    /** 2026-11-11: convert the thermal-wind v (north) to the grid +j frame via northSign. */
+    public static boolean NORTH_SIGN_FIX = Boolean.parseBoolean(
+            System.getProperty("eoh.nsfix", "false"));
+
+    /**
+     * ★ 2026-11-07（R3 原型一之二实测）：热成风**符号**修正开关。
+     *
+     * <p>证据（生产 T/S、j=18/lat=43.8，24 层全部）：热成风要求
+     * dv/dz_up = -g*rho_x/(rho0*f)，实测 expect=+4.96e-6…+9.66e-6，
+     * 而 {@code st.vBaroclinic} 的切变是 -4.63e-6…-9.89e-6 ⟹ **反号**。
+     *
+     * <p>根因：本类 vbc 的递推 {@code vbc[k]=vbc[k+1]-dvdz*dz}（dvdz=g*rho_x/(rho0*f)）
+     * 给出的是 dv/dz_up=-g*rho_x/(rho0*f)（正确），但落盘时
+     * {@code v=-(p[k]-p[k+1])/dz} 多了一个负号：由 p[k]=p[k+1]+vbar[k]dz 得
+     * v=-vbar[k]，即存进去的是行平均的相反数。
+     *
+     * <p>false（默认）= 逐位不变；true = 物理正确，但 MOC/OHT 会反号，
+     * **整套基线/门必须重跑**（按仓库守则，跑全量套件前先告知用户）。
+     */
+    public static boolean THERMAL_WIND_SIGN_FIXED = false;
+
+    /**
+     * ★ 2026-11-07（R3）：用 UNESCO 1983（EOS-80）位密度替代线性 EOS 计算水平密度梯度。
+     *
+     * <p>线性 EOS 的 alpha/beta 在 0–30 °C、30–38 psu 内变化 2–3 倍；EOS-80 是标准多项式，
+     * 系数全部来自 UNESCO 1983，无拟合参数。只用于**等 z 面的水平梯度**（位密度口径，
+     * 海洋模式标准做法）；绝对密度/压强项等 TEOS-10 的 gsw 移植再做。
+     *
+     * <p>默认 false = 逐位不变；true 会改解，需与新基线一起钉。
+     */
+    public static boolean EOS80_ON = false;
 
     /**
      * ★ 2026-11-04（A2）：深层静止掩码。-1 = 不启用；≥0 时 k ≥ DEEP_KMAX 的 u/v/w 置零，
@@ -61,7 +107,8 @@ public final class BaroclinicFlow {
             double sumVT = 0.0, sumV = 0.0, sumT = 0.0, vol = 0.0;
             for (int i = 0; i < g.nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                for (int k = 0; k < g.nz; k++) {
+                final int wl = Math.min(g.nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 0; k < wl; k++) {
                     int q = st.idx(i, j, k);
                     // ★ 2026-11-04（A2）：格子的纬向物理宽度 = dx·cosφ（与 MOC 同一处理）。
                     double w = g.dz[k] * g.dx * g.cosLat(j);
@@ -88,7 +135,10 @@ public final class BaroclinicFlow {
         for (int j = 1; j < g.ny - 1; j++)
             for (int i = 0; i < g.nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                for (int k = 0; k < g.nz; k++) {
+                // ★ 2026-11-10（套件 NOHT3D NaN）：只积【湿层】。k >= wetLayers 是海底以下的
+                //   干格，fillDryGhosts 只清 u/v/w，vBaroclinic 仍是旧值/NaN，积进来就是 NaN。
+                final int wl = Math.min(g.nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 0; k < wl; k++) {
                     int q = st.idx(i, j, k);
                     // ★ 2026-11-04（A2）：dx -> dx·cosφ（球面纬向长度）。
                     flux[j] += AdvectionDiffusionSolver.RHO0 * AdvectionDiffusionSolver.CP_SEA * st.vBaroclinic[q] * st.t[q] * g.dz[k] * g.dx * g.cosLat(j);
@@ -220,7 +270,14 @@ public final class BaroclinicFlow {
                     // 陆地不参与差分；岸格用单侧差分；两侧都是陆地则梯度为 0。
                     double dTdx = zonalGrad(g, st, st.t, i, j, k);
                     double dSdx = zonalGrad(g, st, st.s, i, j, k);
-                    double drhoDx = 1027.8 * (-Thermohaline.ALPHA * dTdx + Thermohaline.BETA * dSdx);
+                    double drhoDx;
+                    if (EOS80_ON) {
+                        double tC = st.t[st.idx(i, j, k)] - 273.15;
+                        double sPsu = st.s[st.idx(i, j, k)];
+                        drhoDx = -Eos80.dRhoDT(sPsu, tC) * dTdx + Eos80.dRhoDS(sPsu, tC) * dSdx;
+                    } else {
+                        drhoDx = 1027.8 * (-Thermohaline.ALPHA * dTdx + Thermohaline.BETA * dSdx);
+                    }
                     double dvdz = (WorldContract.GRAVITY / (AdvectionDiffusionSolver.RHO0 * f)) * drhoDx;
                     // ★ 2026-11-02 实测否决：Richardson 切变限制（|dv/dz|≤2N, N²≤0→0）在
                     // prognostic S 上把 MOC 从 2093 压到 457 Sv，但在稳态路径上 T 冲到 8475 K、
@@ -242,6 +299,12 @@ public final class BaroclinicFlow {
                     double dv = vbc[k] - mean;
                     vbar[k] += dv;
                     if (interior) vbarInt[k] += dv;
+                    if (LOCAL_V_ON) {
+                        int qq = st.idx(i, j, k);
+                        st.vBaroclinic[qq] = dv;
+                        st.v[qq] = baro[qq] + dv;
+                        if (Math.abs(dv) > MAX_VBC) MAX_VBC = Math.abs(dv);
+                    }
                 }
                 cnt++;
                 if (interior) cntInt++;
@@ -255,6 +318,7 @@ public final class BaroclinicFlow {
             double[] p = psi[j];
             p[nz] = 0.0;
             for (int k = nz - 1; k >= 0; k--) p[k] = p[k + 1] + vbar[k] * g.dz[k];
+            if (LOCAL_V_ON) continue;   // per-column values already written in the column loop
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
                 for (int k = 0; k < nz; k++) {
@@ -264,7 +328,18 @@ public final class BaroclinicFlow {
                         st.v[q] = 0.0;          // 深层静止（水库不参与环流）
                         continue;
                     }
-                    double v = -(p[k] - p[k + 1]) / g.dz[k];
+                    // ★ 2026-11-07：见 THERMAL_WIND_SIGN_FIXED 的完整说明。
+                    double v = THERMAL_WIND_SIGN_FIXED
+                        ? (p[k] - p[k + 1]) / g.dz[k]
+                        : -(p[k] - p[k + 1]) / g.dz[k];
+                    // 2026-11-11 (default off): write-back convention.
+                    // R3Momentum states it explicitly: its V is the GEOGRAPHIC NORTH component while
+                    // OceanState.v is the GRID +j component (northSign = -1 on the sphere, +1 on the
+                    // cartesian box). This class does NOT convert, which is why the stored v comes
+                    // out as the exact negative of the thermal-wind prediction (probe: ratio -1.0000)
+                    // and why GATE_THW_SIGN only reaches 0.561 / NUPWELL reports b<0.
+                    // THERMAL_WIND_SIGN_FIXED is a CONSTANT negation: correct only on the sphere.
+                    if (NORTH_SIGN_FIX) v *= BarotropicSolver.northSign(g, j);
                     st.vBaroclinic[q] = v;
                     MAX_VBC = Math.max(MAX_VBC, Math.abs(v));
                     st.v[q] = baro[q] + v;

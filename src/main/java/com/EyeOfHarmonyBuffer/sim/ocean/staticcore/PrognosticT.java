@@ -12,6 +12,8 @@ import com.EyeOfHarmonyBuffer.sim.ocean.FreezingPoint;
  */
 public final class PrognosticT {
     public static double LAST_MAX_DT = 0.0;
+    /** 本次实际用的子步数（CFL 自适应）。 */
+    public static int LAST_STEPS = 0;
     /** 累计的冰点钳制温差（诊断，K·格点）。 */
     public static double LAST_DEFICIT = 0.0;
 
@@ -47,26 +49,57 @@ public final class PrognosticT {
 
     private PrognosticT() {}
 
+    /** 诊断：打印该格点第一次出现 NaN 时的各项（默认 -1 关）。 */
+    public static int DBG_I = -1, DBG_J = -1, DBG_K = -1;
+
     public static double run(OceanGrid g, OceanState st, double[] surfaceT, double[] src,
                              double seasonSeconds, int substeps) {
         int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
-        int steps = Math.max(1, substeps);
+        // ★ 2026-11-07（R3）：显式通量平流必须满足 CFL；w 来自连续方程时尤其关键。
+        // ★ 只在 R3 路径上自适应：v1 fallback 必须逐位不变（v1 的 CFL 本来就在 0.2 以内，
+        //   但 need=31>30 会把 30 子步抬到 31，改变 v1 的解 —— 不能用）。
+        // 2026-11-11: LOCAL_V_ON produces a genuinely 3D flow whose vertical velocity can violate
+        // the explicit CFL at the default substep count (measured 1.577 > 1). Adapt whenever the
+        // LOCAL velocity is on; the default path stays bit-identical.
+        int steps = (R3Momentum.ON || BaroclinicFlow.LOCAL_V_ON)
+                ? AdvectionDiffusionSolver.cflSteps(g, st, seasonSeconds, substeps)
+                : Math.max(1, substeps);
+        LAST_STEPS = steps;
         double dt = seasonSeconds / steps;
+        // ★ 2026-11-11（深层收支仪器）：记下本次的显式 CFL 数；>1 表示格式本身不稳定。
+        if (DeepBudget.ON) {
+            double cfl = AdvectionDiffusionSolver.cflRate(g, st) * dt;
+            if (cfl > DeepBudget.LAST_CFL) {
+                DeepBudget.LAST_CFL = cfl;
+            }
+        }
         double[] adv = new double[n3];
         double[] tn = new double[n3];
+        // Redi isopycnal diffusion (computed once per call: operator split).
+        double[] redi = new double[n3];
+        if (RediDiffusion.ON) RediDiffusion.tendency(g, st, st.t, redi);
         double maxd = 0.0;
         for (int step = 0; step < steps; step++) {
             st.fillDryGhosts();
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) continue;
-                    for (int k = 0; k < nz; k++)
-                        adv[st.idx(i, j, k)] = AdvectionDiffusionSolver.divFlux(g, st, st.t, i, j, k);
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double d = AdvectionDiffusionSolver.divFlux(g, st, st.t, i, j, k);
+                        if (AdvectionDiffusionSolver.ADVECTIVE_FORM) {
+                            d -= st.t[q] * AdvectionDiffusionSolver.divU(g, st, i, j, k);
+                        }
+                        adv[q] = d;
+                    }
                 }
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) continue;
                     int js = j * nx + i;
+                    // ★ 2026-11-11（深层收支仪器）：每列算一次纬度带与面积权，默认关时零成本。
+                    final int bandJ = DeepBudget.ON ? DeepBudget.band(g, j) : 0;
+                    final double cosJ = DeepBudget.ON ? Math.max(0.05, g.cosLat(j)) : 1.0;
                     for (int k = 0; k < nz; k++) {
                         int q = st.idx(i, j, k);
                         if (k == 0) { tn[q] = surfaceT[js]; continue; }
@@ -83,13 +116,45 @@ public final class PrognosticT {
                                  + (ts + tnn - 2.0 * t) / (g.dy * g.dy));
                         double cv = AdvectionDiffusionSolver.kvAt(g, st, i, j, k) / (dz * dz);
                         double lapZ = cv * (tup + tdn - 2.0 * t);
-                        double v = t + dt * (-adv[q] + lapH + lapZ + (src == null ? 0.0 : src[q]));
+                        double v = t + dt * (-adv[q] + lapH + lapZ + (src == null ? 0.0 : src[q]) + redi[q]);
+                        if (i == DBG_I && j == DBG_J && k == DBG_K && !Double.isFinite(v)) {
+                            int q0 = st.idx(i, j, 0);
+                            System.out.println(String.format(java.util.Locale.ROOT,
+                                "DBG_T step=%d t=%.4f adv=%.3e lapH=%.3e lapZ=%.3e cv=%.3e src=%.3e redi=%.3e dt=%.3e s0=%.4f h=%.2f k0t=%.4f",
+                                step, t, adv[q], lapH, lapZ, cv,
+                                src == null ? 0.0 : src[q], redi[q], dt,
+                                st.s[q0], st.mixedLayerDepth[j * g.nx + i], st.t[q0]));
+                            System.out.println(String.format(java.util.Locale.ROOT,
+                                "DBG_FACES ready=%s uF=%.3e uW=%.3e vF=%.3e vS=%.3e wF=%.3e wTop=%.3e",
+                                VelocityProjection.FACES_READY,
+                                st.uF[q], st.uF[st.idx(i - 1, j, k)],
+                                st.vF[q], st.vF[st.idx(i, j - 1, k)],
+                                st.wF[q], k > 0 ? st.wF[st.idx(i, j, k - 1)] : 0.0));
+                        }
+                        // ★ 2026-11-11（深层收支仪器）：逐项记账（只读，不改 v）。默认关。
+                        //   只记【湿层】：海底以下的干格是 ghost，没有对应的体积权重，
+                        //   记进去会让账本不闭合（实测极带虚高 +3 K/yr 就是这么来的）。
+                        if (DeepBudget.ON && k < g.wetLayers[g.idx(i, j)]) {
+                            double wv = dt * dz * cosJ;
+                            DeepBudget.add(bandJ, DeepBudget.T_ADV, k, -adv[q] * wv);
+                            DeepBudget.add(bandJ, DeepBudget.T_ADV_V, k,
+                                    -AdvectionDiffusionSolver.advVerticalPart(g, st, st.t, i, j, k) * wv);
+                            DeepBudget.add(bandJ, DeepBudget.T_DIFF_H, k, lapH * wv);
+                            DeepBudget.add(bandJ, DeepBudget.T_DIFF_V, k, lapZ * wv);
+                            DeepBudget.add(bandJ, DeepBudget.T_SRC, k, (src == null ? 0.0 : src[q]) * wv);
+                            DeepBudget.add(bandJ, DeepBudget.T_REDI, k, redi[q] * wv);
+                        }
+                        // ★ 2026-11-09（阶段 2）：max|ΔT| 只统计平流/扩散变化，
+                        //   不把冻结钳制算进去——否则物理约束会触发数值兜底（已删）。
+                        double dAdv = Math.abs(v - t);
                         // ★ 2026-11-03（stage 3 接入 progn T）：T≥Tf(S)，子步内钳制。
                         // ★ 2026-11-04（A3）：钳制同时做【潜热记账】（{@link #FREEZE_LEDGER_ON}）。
                         double tf = FreezingPoint.kelvin(st.s[q]);
                         if (v < tf) {
                             double deficit = tf - v;
                             LAST_DEFICIT += deficit;
+                            if (DeepBudget.ON && k < g.wetLayers[g.idx(i, j)])
+                                DeepBudget.add(bandJ, DeepBudget.T_FRZ_LOOP, k, deficit * dz * cosJ);
                             if (FREEZE_LEDGER_ON) {
                                 double massIce = AdvectionDiffusionSolver.RHO0
                                         * AdvectionDiffusionSolver.CP_SEA * deficit / L_FUSION;   // kg/m³
@@ -103,7 +168,7 @@ public final class PrognosticT {
                             v = tf;
                         }
                         tn[q] = v;
-                        maxd = Math.max(maxd, Math.abs(v - t));
+                        maxd = Math.max(maxd, dAdv);
                     }
                 }
             for (int j = 1; j < ny - 1; j++)

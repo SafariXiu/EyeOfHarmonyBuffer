@@ -107,6 +107,45 @@ public final class AdvectionDiffusionSolver {
     }
 
     /**
+     * ★ 2026-11-09（阶段 2 配套）：平流形式开关。
+     *
+     * <p>false = 散度形式 {@code div(u f)}；true = 平流形式 {@code div(u f) - f div(u)}。
+     * 当投影后仍有散度残差时，散度形式会注入 {@code -f div(u)} 的虚假源。实测（2.5°、
+     * 去掉全柱重置后、一季）散度形式把 T 推到 632 K、S 撞 50；平流形式给出
+     * T 271-306 K、S 33.6-35.7、深层 4 km 271-272 K。**默认 true**。
+     *
+     * <p>这不是参数化，而是同一方程在离散层面的另一种写法：速度场不是严格无散时，
+     * 平流形式对该残差免疫。等 3D 投影把 max|div| 压到 <1e-9 后，可再 A/B 是否恢复
+     * 散度形式以取得严格守恒。
+     */
+    public static boolean ADVECTIVE_FORM = true;
+
+    /** 面速度的散度 div(u)（与 {@link #divFlux} 同一套面/迎风口径）。 */
+    public static double divU(OceanGrid g, OceanState st, int i, int j, int k) {
+        int q = st.idx(i, j, k);
+        double dx = g.dx, dy = g.dy, dz = g.dz[k];
+        if (VelocityProjection.FACES_READY) {
+            double uE = st.uF[q], uW = st.uF[st.idx(i - 1, j, k)];
+            double vN = st.vF[q], vS = st.vF[st.idx(i, j - 1, k)];
+            // 2026-11-11 (ruling 甲): the surface face must carry the free-surface velocity,
+            // exactly as VelocityProjection.faceDiv does. Otherwise the advection scheme sees a
+            // divergence that the projection has already removed (measured: divFlux reported
+            // 1.16e-06 while faceDiv reported 5.5e-23 for the same state).
+            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : VelocityProjection.surfW(i, j, g.nx);
+            double wB = st.wF[q];
+            return (uE - uW) / dx + (vN - vS) / dy + (wT - wB) / dz;
+        }
+        double u = st.u[q], v = st.v[q], w = st.w[q];
+        double fe = g.isWet(i + 1, j, k) ? u : 0.0;
+        double fw = g.isWet(i - 1, j, k) ? st.u[st.idx(i - 1, j, k)] : 0.0;
+        double fn = g.isWet(i, j + 1, k) ? v : 0.0;
+        double fs = g.isWet(i, j - 1, k) ? st.v[st.idx(i, j - 1, k)] : 0.0;
+        double ft = (k > 0) ? w : 0.0;
+        double fb = (k + 1 < g.nz && g.isWet(i, j, k + 1)) ? st.w[st.idx(i, j, k + 1)] : 0.0;
+        return (fe - fw) / dx + (fn - fs) / dy + (ft - fb) / dz;
+    }
+
+    /**
      * ★ 2026-11-02（守恒 flux-form，面速度=本格速度）：div(u T)。
      * <p>东/上界面用【本格】u/w，西/下界面用【邻格】u/w ⟹ 相邻两格对同一面算出同一通量，
      * Σ divFlux·dV 严格等于边界通量（墙/底为 0 ⟹ 0）。
@@ -129,8 +168,10 @@ public final class AdvectionDiffusionSolver {
             int qs = st.idx(i, j - 1, k);
             double vS = st.vF[qs];
             double fs = vS * (vS >= 0.0 ? fld[qs] : fld[q]);
-            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : 0.0;
-            double ft = wT * (wT >= 0.0 ? fld[q] : fld[st.idx(i, j, k - 1)]);
+            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : VelocityProjection.surfW(i, j, g.nx);
+            // At k = 0 there is no cell above: a DOWNWARD surface flow (wT < 0) must not read
+            // fld[k-1] (index -1 -> AIOOBE). Zero-gradient is the consistent choice.
+            double ft = (k > 0) ? wT * (wT >= 0.0 ? fld[q] : fld[st.idx(i, j, k - 1)]) : wT * fld[q];
             double fb = 0.0;
             if (k + 1 < g.nz) {
                 double wB = st.wF[q];
@@ -168,6 +209,41 @@ public final class AdvectionDiffusionSolver {
     }
 
     /**
+     * ★ 2026-11-11（深层收支仪器）：{@link #divFlux} 里【只有垂直】的那一部分，
+     * 含 ADVECTIVE_FORM 的 {@code -f·divU} 修正项（与 {@link #divFlux} 同口径、同符号）。
+     *
+     * <p>只给 {@link DeepBudget} 读，用于把"垂直平流"从三维平流里拆出来。
+     * 默认路径不调用 ⟹ 与改动前逐位相同。
+     */
+    public static double advVerticalPart(OceanGrid g, OceanState st, double[] fld, int i, int j, int k) {
+        int q = st.idx(i, j, k);
+        double dz = g.dz[k];
+        double ft, fb, divV;
+        if (VelocityProjection.FACES_READY) {
+            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : VelocityProjection.surfW(i, j, g.nx);
+            ft = (k > 0) ? wT * (wT >= 0.0 ? fld[q] : fld[st.idx(i, j, k - 1)]) : wT * fld[q];
+            fb = 0.0;
+            double wB = st.wF[q];
+            if (k + 1 < g.nz) fb = wB * (wB >= 0.0 ? fld[st.idx(i, j, k + 1)] : fld[q]);
+            divV = (wT - wB) / dz;
+        } else {
+            double w = st.w[k];
+            ft = (k > 0) ? (w >= 0.0 ? w * fld[q] : w * fld[st.idx(i, j, k - 1)]) : 0.0;
+            fb = 0.0;
+            double wb = 0.0;
+            if (k + 1 < g.nz) {
+                int qb = st.idx(i, j, k + 1);
+                wb = st.w[qb];
+                fb = wb >= 0.0 ? wb * fld[qb] : wb * fld[q];
+            }
+            divV = ((k > 0 ? w : 0.0) - wb) / dz;
+        }
+        double out = (ft - fb) / dz;
+        if (ADVECTIVE_FORM) out -= fld[q] * divV;
+        return out;
+    }
+
+    /**
      * flux-form 的对角线：本格/邻格面速度的"流出"系数之和（与 {@link #divFlux} 严格对应）。
      */
     public static double diagAdv(OceanGrid g, OceanState st, int i, int j, int k) {
@@ -175,7 +251,7 @@ public final class AdvectionDiffusionSolver {
         if (VelocityProjection.FACES_READY) {
             double uE = st.uF[q], uW = st.uF[st.idx(i - 1, j, k)];
             double vN = st.vF[q], vS = st.vF[st.idx(i, j - 1, k)];
-            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : 0.0;
+            double wT = (k > 0) ? st.wF[st.idx(i, j, k - 1)] : VelocityProjection.surfW(i, j, g.nx);
             double wB = st.wF[q];
             double d = 0.0;
             d += (uE > 0.0 ? uE : 0.0) / g.dx + (uW < 0.0 ? -uW : 0.0) / g.dx;
@@ -279,6 +355,71 @@ public final class AdvectionDiffusionSolver {
     public static int SUBSTEPS = 30;
 
     /**
+     * ★ 2026-11-09（阶段 3 / A5）：一季的物理秒数。由 {@link StaticOceanSolver} 按
+     * {@code DAYS_PER_YEAR*86400/nseas} 设置。
+     *
+     * <p>旧版把每季硬编码成 30 天 ⟹ 4 季“一年”只有 120 天，热/盐/冰的年积分少 3.04×。
+     * 这是时间轴口径错误，不是调参。
+     */
+    public static double SEASON_SECONDS = 30.0 * 86400.0;
+
+    /**
+     * ★ 2026-11-11：**一季对应的子步数**（纯函数，不再依赖可变字段 {@link #SUBSTEPS}）。
+     *
+     * <p>为什么必须有：{@code SUBSTEPS} 是在 {@code StaticOceanSolver.solve()} 里按季长改写的
+     * （默认 30 ⟶ 4 季时变成 92）。而 {@code StaticOceanProduction.solveFlagsHash()} 读的是这个字段
+     * ⟹ **求解前与求解后算出的指纹不同** ⟹ 第二次调用必然重建，磁盘缓存永远命不中
+     * （实测 NCACHEDISK：PASS2 仍走 compute，274 s vs 266 s，加速 1.0×）。
+     * <p>这不是缓存本身的错，是"指纹读了一个会被求解改写的量"——A6 的"缓存键漏了输入"同类。
+     */
+    public static int substepsFor(int nseas) {
+        double sec = WorldContract.DAYS_PER_YEAR * 86400.0 / Math.max(1, nseas);
+        return Math.max(30, (int) Math.ceil(sec / 86400.0));
+    }
+
+    /** ★ 2026-11-07（R3）：显式通量平流允许的最大库朗数。 */
+    public static double CFL_MAX = 0.5;
+    /** ★ 自适应子步上限（防止病态场把一次求解拖死）。 */
+    public static int CFL_MAX_STEPS = 800;
+
+    /**
+     * ★ 2026-11-07（R3）：显式通量平流的 CFL 速率 [1/s]：
+     * max(|uF|/dx + |vF|/dy + |wF|/dz)；要求 dt &lt;= CFL_MAX/rate。
+     *
+     * <p>为什么需要：SUBSTEPS=30 对应 dt=1 天。v1 的 w 被 W_MAX(1e-4) 限幅，CFL_z ~ 0.17；
+     * R3 的 w 来自连续方程（耦合实测 6e-3 m/s），CFL_z = 6e-3*86400/50 ~ 10
+     * ⟹ 显式垂直平流直接不稳定。这是**数值稳定性**要求，不是调参。
+     */
+    public static double cflRate(OceanGrid g, OceanState st) {
+        int nx = g.nx, ny = g.ny;
+        double rate = 0.0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = g.wetLayers[g.idx(i, j)];
+                for (int k = 0; k < wl; k++) {
+                    int q = st.idx(i, j, k);
+                    double rr = Math.abs(st.uF[q]) / g.dx
+                              + Math.abs(st.vF[q]) / g.dy
+                              + Math.abs(st.wF[q]) / g.dz[k];
+                    if (rr > rate) rate = rr;
+                }
+            }
+        return rate;
+    }
+
+    /** 按 CFL 把子步数抬到够用（不降低调用方给的下限）。 */
+    public static int cflSteps(OceanGrid g, OceanState st, double seconds, int minSteps) {
+        double rate = cflRate(g, st);
+        int steps = Math.max(1, minSteps);
+        if (rate > 0.0) {
+            int need = (int) Math.ceil(seconds * rate / CFL_MAX);
+            if (need > steps) steps = Math.min(need, Math.max(steps, CFL_MAX_STEPS));
+        }
+        return steps;
+    }
+
+    /**
      * ★ 2026-11-03（stage 4）：T 用季节内 prognostic flux-form，替代稳态 BiCGSTAB。
      * 默认关；A/B 用 NPROGT=1。
      */
@@ -330,20 +471,23 @@ public final class AdvectionDiffusionSolver {
         }
     }
 
-    /** 只初始化 T/S，不做 SOR；供 BiCGSTAB 直接求解。 */
+    /**
+     * ★ 2026-11-09（阶段 2）：只做冷启动的 S 兜底，**不再把整列 T 重置成表层温度**。
+     *
+     * <p>旧版对 {@code k=0..nz-1} 执行 {@code st.t[q]=ts}——这是 P0-1/P0-3 的“全柱重置”
+     * 语义，任何调用方都会把深层结构抹掉。T 的初值由 {@link StaticOceanSolver} 的冷启动
+     * 剖面给出；表层 Dirichlet 只作用在 k=0（见 {@link #solve(OceanGrid,OceanState,double[],int)}）。
+     */
     public static void init(OceanGrid g, OceanState st, double[] surfaceT) {
-        int nx = g.nx, ny = g.ny, nz = g.nz;
-        for (int j = 0; j < ny; j++) {
+        int nx = g.nx, ny = g.ny;
+        for (int j = 0; j < ny; j++)
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                double ts = surfaceT[j * nx + i];
-                for (int k = 0; k < nz; k++) {
+                for (int k = 0; k < g.nz; k++) {
                     int q = st.idx(i, j, k);
-                    st.t[q] = ts;
                     if (st.s[q] == 0.0) st.s[q] = 35.0;
                 }
             }
-        }
     }
 
     /**
@@ -500,7 +644,6 @@ public final class AdvectionDiffusionSolver {
     public static Result solveFluxBoundary(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta,
                                            int maxIter, int outerMax) {
         int nx = g.nx, ny = g.ny;
-        System.out.println("GRID nx=" + nx + " ny=" + ny + " sameGrid=" + (g == st.grid));
         // ★ 2026-11-02（甲）：surfaceT 从【当前海温】续起，而不是每次从大气气候值重置。
         // 否则季节循环没有海洋热记忆：每季都从同一个 oceanBaseK 冷启动。
         double[] surfaceT = new double[nx * ny];
@@ -515,21 +658,20 @@ public final class AdvectionDiffusionSolver {
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                st.iceFraction[j * nx + i] = ClimberOcean.iceFraction(st.t[st.idx(i, j, 0)]);
+                // ★ 2026-11-09（阶段 3）：冰分数按冰厚连续化，而不是 0/1 二值。
+                //   二值在冰缘造成反照率跳变 ⟹ 年际翻转（实测 58.8°N 表层年际 ΔT=5.28 K）。
+                //   参考厚度用 Radiation.H_ICE_REF（UCAR 484 的 0.5 m，不是新常数）。
+                st.iceFraction[j * nx + i] = Math.min(1.0,
+                        st.iceThickness[j * nx + i] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
             }
         double res = 0.0;
         int outer = 0;
         for (; outer < outerMax; outer++) {
-            int ti = -1, tj = -1; double bd = 1e30;
-            for (int j = 1; j < ny - 1; j++) for (int i = 0; i < nx; i++) {
-                double d = Math.abs(g.xOf(i) - 13333333) + Math.abs(g.zOf(j) - 14285714);
-                if (d < bd) { bd = d; ti = i; tj = j; }
-            }
-            if (outer == 1) System.out.println("DBG target i=" + ti + " j=" + tj + " vBefore=" + st.v[st.idx(ti, tj, 0)]);
-            BaroclinicFlow.apply(g, st);
+            // ★ 2026-11-07（R3）：动量来源二选一（R3 = 稳态 3D 动量平衡；关 = v1 热成风）。
+            if (R3Momentum.ON) R3Momentum.applyToState(g, st);
+            else BaroclinicFlow.apply(g, st);
             // ★ 2026-11-07 A 方案：三维埃克曼速度 + 投影（只在 on 时；off 逐位不变）。
             if (EKMAN_UPWELL_ON) applyEkmanFlow(g, st, f, theta);
-            if (outer == 1) System.out.println("DBG vAfterApply=" + st.v[st.idx(ti, tj, 0)]);
             // ★ 2026-11-02：不再 init(g, st, surfaceT)！那会把整列 T 重置成表层值，
             // 每季把深层结构抹掉一次——3D 解不能用"均匀表层温度"当初始猜测。
             // BiCGSTAB 直接以当前 T 为初值。
@@ -537,17 +679,18 @@ public final class AdvectionDiffusionSolver {
             double[] src = shortwaveSource(g, st, f, theta);
             double br;
             if (PROGNOSTIC_T_ON) {
-                br = PrognosticT.run(g, st, surfaceT, src, 30.0 * 86400.0, SUBSTEPS);
+                br = PrognosticT.run(g, st, surfaceT, src, SEASON_SECONDS, SUBSTEPS);
             } else if (FREEZE_ACTIVE_ON) {
                 br = BiCGSTABT.solveWithFreezing(g, st, surfaceT, src, Math.min(maxIter, 2000), 1.0e-6);
             } else {
                 br = BiCGSTABT.solve(g, st, surfaceT, src, Math.min(maxIter, 2000), 1.0e-6);
             }
-            if (outer == 1) System.out.println("DBG vAfterSolve=" + st.v[st.idx(ti, tj, 0)]);
-            if (!Double.isFinite(br) || br > 1.0) {
-                solve(g, st, surfaceT, Math.min(maxIter, 1000));
+            // ★ 2026-11-09（阶段 2）：删掉"全柱重置"兜底。br>1 K 在冻结钳制下是正常量级，
+            //   不能当数值失败；非有限才记 WARN，绝不重置状态。
+            if (!Double.isFinite(br)) {
+                System.out.println("WARN PROGNOSTIC_T_NONFINITE br=" + br);
             }
-            double dt = 30.0 * 86400.0;
+            double dt = SEASON_SECONDS;
             res = 0.0;   // ★ 2026-11-02：原来这一行在表面更新【之后】，且循环里从未再赋值。
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
@@ -556,7 +699,7 @@ public final class AdvectionDiffusionSolver {
                     double h = Math.max(1.0, st.mixedLayerDepth[js]);
                     double ts = st.t[q0];
                     double q = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
-                            (int) Math.round(g.zOf(j)), theta, ts, ClimberOcean.iceFraction(ts));
+                            (int) Math.round(g.zOf(j)), theta, ts, st.iceFraction[js]);
                     double qsw0 = f.shortwaveWm2((int) Math.round(g.xOf(i)),
                             (int) Math.round(g.zOf(j)), theta, ts);
                     q = q - qsw0 + qswLayer(qsw0, g.dz, 0);
@@ -578,7 +721,11 @@ public final class AdvectionDiffusionSolver {
                     double qEff = q - RHO0 * CP_SEA * KV_DEEP * (ts - tb) / delta;
                     double dtS = Math.min(dt, 0.5 * h * delta / KV_DEEP);
                     st.hTOld[js] = h * ts;
-                    double t0f = ts + dtS * qEff / (RHO0 * CP_SEA * h);
+                    // ★ 2026-11-09（阶段 3 / A2）：表面通量加到【顶层格】，再由混合层平均。
+                    //   旧式分母用 h（MLD），随后 k=0 的异常又被 dz0/h 摊薄一次 ⟹ 实际加热
+                    //   只有 q·dt/(rho cp h) 的 dz0/h 倍（h=390 m 时 7.8× 欠加热）。
+                    //   分母改用 dz0 后，ML 平均恰好给出 q·dt/(rho cp h)。
+                    double t0f = ts + dtS * qEff / (RHO0 * CP_SEA * Math.max(1.0, g.dz[0]));
                     if (!Double.isFinite(t0f)) t0f = ts;
                     // 注意：这里**不能**简单钳到冰点。2026-11-02 实测：把 200.0 换成 T_FREEZE 后，
                     // 混合层把被钳住的表层温度再平均回整柱，热无法排出 ⟹ T 跑到 334..468 K。
@@ -593,7 +740,7 @@ public final class AdvectionDiffusionSolver {
                     int q0 = st.idx(i, j, 0), q1 = st.idx(i, j, 1);
                     double ts = st.t[q0];
                     int js = j * nx + i;
-                    double ice = ClimberOcean.iceFraction(ts);
+                    double ice = st.iceFraction[js];
                     double q = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
                             (int) Math.round(g.zOf(j)), theta, ts, ice);
                     double h = Math.max(1.0, st.mixedLayerDepth[js]);
@@ -617,7 +764,16 @@ public final class AdvectionDiffusionSolver {
                         if (zk > h) { kb = k; break; }
                         zc += g.dz[k];
                     }
-                    double dTml = Math.max(0.05, ts - st.t[st.idx(i, j, kb)]);
+                    // ★ 2026-11-09（阶段 3 / P0-2+A3）：KT 的分母改用【浮力跳变】，
+                    //   而不是温差 + 0.05 K 下限。冰区 ts≈tb=tf 时 dTml 被 0.05 兜住会
+                    //   把 K 放大 ~20×、h 一步跳到 hLimit（实测 MLD p99=3,650 m）。
+                    //   浮力跳变在无层结/不稳定时 ≤0 ⟹ K=0，不再虚增卷吸。
+                    double tbMl = st.t[st.idx(i, j, kb)];
+                    double sbMl = st.s[st.idx(i, j, kb)];
+                    double ssMl = st.s[q0];
+                    double db = WorldContract.GRAVITY
+                            * (Thermohaline.ALPHA * (ts - tbMl)
+                             - Thermohaline.BETA * (ssMl - sbMl));
                     double rho0 = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[q0] - 285.0)
                             + Thermohaline.BETA * (st.s[q0] - 35.0));
                     double hLimit = 1.0, hAcc = 0.0;
@@ -636,8 +792,12 @@ public final class AdvectionDiffusionSolver {
                     //   K = (2.5u*^3 - 0.5Bh) / (g α ΔT)。
                     //   K>0 卷吸（受层结因子 1-h/hLimit 限制）；K<0 去卷吸（不受该因子限制）。
                     //   不再有"B<0 ⟹ h=hLimit"的瞬时整柱对流。
-                    double K = (2.5 * ustar * ustar * ustar - 0.5 * B * h)
-                            / (WorldContract.GRAVITY * Thermohaline.ALPHA * dTml);
+                    double K;
+                    if (db <= 1.0e-9) {
+                        K = 0.0;   // 无层结/不稳定：不做卷吸（对流由独立判据处理）
+                    } else {
+                        K = (2.5 * ustar * ustar * ustar - 0.5 * B * h) / db;
+                    }
                     if (K > 0.0) K *= Math.max(0.0, 1.0 - h / hLimit);
                     double h2 = h * h + 2.0 * K * dt;
                     double hEnt = Math.sqrt(Math.max(g.dz[0] * g.dz[0], h2));
@@ -711,45 +871,68 @@ public final class AdvectionDiffusionSolver {
                     // ⚠ 上一版只把温度钳到 T_FREEZE、没有把热量转成冰 ⟹ 每步"凭空加热"⟹ 热失控。
                     // 冰/盐调整必须放在【写回混合层之前】，否则只有 k=0 被改、层内其余格点仍是旧值。
                     double tf = FreezingPoint.kelvin(sbar);
-                    double iceNow = Math.max(0.0, st.iceThickness[js]);
-                    st.iceSaltFlux[js] = 0.0;   // 由本步的结冰/融冰写入，盐度求解器消费
-                    if (iceNow > 1.0e-6) {
-                        // ★ 2026-11-02（Semtner 冰热阻）：冰面温度由 q_surf(Ts)+K_ICE(Tf-Ts)/h=0
-                        // 解出；冰厚增长受 1/h 限制（冰越厚越绝热），不再把大气净通量直接变成冰。
-                        double qs = iceSurfaceFlux(f, theta, (int) Math.round(g.xOf(i)),
-                                (int) Math.round(g.zOf(j)), tf, iceNow);
-                        double dIce = -qs * dt / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
-                        if (!Double.isFinite(dIce)) dIce = 0.0;
-                        double iceNew = Math.max(0.0, iceNow + dIce);
-                        dIce = iceNew - iceNow;
-                        st.iceThickness[js] = iceNew;
-                        st.iceSaltFlux[js] = -ClimberOcean.RHO_ICE * dIce / dt;
-                        tbar = tf;   // 冰-海界面在冰点
-                    } else if (tbar < tf) {
-                        // 无冰且过冷：用开放水面通量形成初始冰（一次），之后交给冰热阻。
-                        double qs = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
-                                (int) Math.round(g.zOf(j)), theta, tf, 0.0);
-                        double dIce = Math.max(0.0, -qs) * dt
-                                / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
-                        if (!Double.isFinite(dIce)) dIce = 0.0;
-                        st.iceThickness[js] = dIce;
-                        st.iceSaltFlux[js] = -ClimberOcean.RHO_ICE * dIce / dt;
-                        tbar = tf;
+                    double iceStart = Math.max(0.0, st.iceThickness[js]);
+                    // ★ 2026-11-09（阶段 3）：冰热力学按【日】子步。
+                    //   旧式一个 91 天季一步：核化用无冰开放水面通量，−500 W/m² 一步造 ~13 m 冰；
+                    //   子步后第一步只核化 ~0.14 m，之后由冰热阻的 Stefan 生长主导。
+                    int iceSteps = Math.min(30, Math.max(1, (int) Math.round(dt / 86400.0)));
+                    double dtSub = dt / iceSteps;
+                    for (int sub = 0; sub < iceSteps; sub++) {
+                        double iceNow = Math.max(0.0, st.iceThickness[js]);
+                        if (iceNow > 1.0e-6) {
+                            // Tf 处净表面通量 >0 ⟹ 融冰；<0 ⟹ 结冰（受冰热阻限制）
+                            double qAtTf = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
+                                    (int) Math.round(g.zOf(j)), theta, tf, 1.0);
+                            double dIce;
+                            if (qAtTf > 0.0) {
+                                dIce = -qAtTf * dtSub
+                                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                            } else {
+                                double qs = iceSurfaceFlux(f, theta, (int) Math.round(g.xOf(i)),
+                                        (int) Math.round(g.zOf(j)), tf, iceNow);
+                                dIce = qs * dtSub
+                                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                            }
+                            if (!Double.isFinite(dIce)) dIce = 0.0;
+                            st.iceThickness[js] = Math.max(0.0, iceNow + dIce);
+                            tbar = tf;
+                        } else if (tbar < tf) {
+                            // 无冰且过冷：开放水面通量形成初始冰；子步保证只核化薄冰。
+                            double qs = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
+                                    (int) Math.round(g.zOf(j)), theta, tf, 0.0);
+                            double dIce = Math.max(0.0, -qs) * dtSub
+                                    / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                            if (!Double.isFinite(dIce)) dIce = 0.0;
+                            st.iceThickness[js] = dIce;
+                            tbar = tf;
+                        }
                     }
+                    // 整季（dt）的盐通量由冰厚变化总量给出
+                    st.iceSaltFlux[js] = -ClimberOcean.RHO_ICE
+                            * (st.iceThickness[js] - iceStart) / dt;
                     dep = 0.0;
+                    // ★ 2026-11-11：把"混合层重写"这一项的净热量也记账（默认关）。
+                    final int dBand = DeepBudget.ON ? DeepBudget.band(g, j) : 0;
+                    final double dCos = DeepBudget.ON ? Math.max(0.05, g.cosLat(j)) : 1.0;
                     for (int k = 0; k < g.nz && dep < hNew; k++) {
                         int qk = st.idx(i, j, k);
+                        if (DeepBudget.ON)
+                            DeepBudget.add(dBand, DeepBudget.T_ML, k,
+                                    (tbar - st.t[qk]) * g.dz[k] * dCos);
                         st.t[qk] = tbar; st.s[qk] = sbar; dep += g.dz[k];
                     }
                     st.t[q0] = tbar; surfaceT[js] = tbar;
                     st.mixedLayerDepth[js] = hNew;
                     st.hTNew[js] = hNew * tbar;
                     // stage 2：冰覆盖状态由本步表层 T 更新（单一来源）
-                    st.iceFraction[js] = ClimberOcean.iceFraction(tbar);
+                    st.iceFraction[js] = Math.min(1.0,
+                            st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
                     // ★ 2026-11-02 实测否决：全水柱 T 钳到 Tf + 按差额结冰 + 冰盐通量，
                     // 会形成 冰盐→S→密度→T→更多冰 的正反馈：T 冲到 467.9 K、内部冰 3.8e5 m、
                     // 盐 corr 2.26、clamp 3.5e4。已回退；正确做法需要与表面边界/brine 一起设计。
                 }
+            // ★ 2026-11-11：每季混合层/冰步之后做一次对流调整（默认关 ⟹ 空操作）。
+            convectiveAdjust(g, st);
             if (EKMAN_UPWELL_ON) {
                 // ★ 2026-11-07 A：ML 水平平流按 SUBSTEPS×1 天推进（30 天一步显式 CFL 会爆）。
                 //   用 k=0 的投影面速度，避免把 h 以下的回流算进 ML 平均；无调参。
@@ -820,12 +1003,110 @@ public final class AdvectionDiffusionSolver {
                             st.t[st.idx(i, j, k)] = tA[js];
                             st.s[st.idx(i, j, k)] = sA[js];
                         }
-                        st.iceFraction[js] = ClimberOcean.iceFraction(tA[js]);
+                        st.iceFraction[js] = Math.min(1.0,
+                            st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
                     }
             }
             if (res < 1.0e-3) break;
         }
         return new Result(outer, res);
+    }
+
+    /**
+     * ★★★ 2026-11-11：**对流调整**（静力不稳定 → 混合到中性面）。**默认关**，无参数。
+     *
+     * <p>为什么必须有它（交接文档 §5-1 的根因）：本类与 {@link PrognosticT} 里，
+     * 静力不稳定（上重下轻）时的处理是
+     * <ul>
+     *   <li>Kraus–Turner 的卷吸率 {@code db <= 1e-9 ⟹ K = 0}（"对流由独立判据处理"）；</li>
+     *   <li>而<b>全库grep没有任何"独立判据"</b>：{@code MixedLayerSolver} 是死代码（无调用者）。</li>
+     * </ul>
+     * 于是"冷而淡的表层压在暖而咸的次表层上"这种真实海洋**必须立刻混合**的状态，
+     * 在本模型里被永久冻结住：表层被冰/大气钉在 Tf，深层保留较暖的水，
+     * 两者之间的密度差（实测最坏 0.649 kg/m³）永远消不掉。
+     *
+     * <p>算法：自上而下扫一遍，若上层密度 &gt; 下层则按厚度加权合并（T、S 均守恒），
+     * 退一步复查；直到整列单调稳定。**不引入任何常数**（只用 EOS 的 alpha/beta），
+     * 因此符合铁律②。标准做法见 Bryan (1969, J. Comput. Phys. 4:347) 的对流调整；
+     * ⚠ 具体卷页 **NOT FOUND**（本条只声明方法出处，未查到页码）。
+     *
+     * <p>★ <b>2026-11-11 用户裁决：翻为 true（默认开）。</b>
+     * 理由：静力不稳定在真实海洋里是**立即**混合的；没有它，冰下冷表层压在暖次表层上的
+     * 密度差（实测最坏 0.642 kg/m³、4.69% 的深层格点）永远不会消失。
+     * 证据：A/B（seed 0、1 年、其余默认）反转 4.69% → <b>0.00%</b>，深层热量收支几乎不动。
+     * 代价：改解 ⟹ **整套验收基线必须重钉**。
+     * <p>关掉（=false）仍与改动前逐位相同。
+     */
+    public static boolean CONVECT_ADJUST_ON = Boolean.parseBoolean(
+            System.getProperty("eoh.convect", "true"));   // A/B hook: -Deoh.convect=false
+    /** 诊断：上一次调用合并过的格点数 / 温度调整量之和 [K]。 */
+    public static int LAST_CONV_CELLS = 0;
+    public static double LAST_CONV_DT = 0.0;
+    /** Cumulative across every call since JVM start (tells "per-season" from "only the finale"). */
+    public static long TOTAL_CONV_CELLS = 0L;
+    public static int CONV_CALLS = 0;
+
+    /** 线性 EOS 的局地位密度（与 BaroclinicFlow / 混合层判据同源、同常数）。 */
+    static double rhoOf(OceanState st, int q) {
+        return 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[q] - 285.0)
+                + Thermohaline.BETA * (st.s[q] - 35.0));
+    }
+
+    public static void convectiveAdjust(OceanGrid g, OceanState st) {
+        if (!CONVECT_ADJUST_ON) return;
+        int nx = g.nx, ny = g.ny, nz = g.nz;
+        // ★ 单调栈（块合并）：每次合并让"块数"减 1 ⟹ 每列最多 nz-1 次合并，必然终止。
+        //   初版写成"成对混合 + 回退一步"，在等值/近似等值时会在两个 k 之间打转
+        //   （实测一次收尾调用合并了 1.02e9 格次，把 1 年跑成 18 min）——这是自造死循环，已废弃。
+        double[] bT = new double[nz], bS = new double[nz], bD = new double[nz], bR = new double[nz];
+        int[] bN = new int[nz];
+        int cells = 0;
+        double sumdT = 0.0;
+        for (int j = 1; j < ny - 1; j++) {
+            int bandB = DeepBudget.ON ? DeepBudget.band(g, j) : 0;
+            double cosB = DeepBudget.ON ? Math.max(0.05, g.cosLat(j)) : 1.0;
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = g.wetLayers[g.idx(i, j)];
+                if (wl <= 1) continue;
+                int top = 0;
+                for (int k = 0; k < wl; k++) {
+                    int q = st.idx(i, j, k);
+                    bT[top] = st.t[q]; bS[top] = st.s[q]; bD[top] = g.dz[k];
+                    bR[top] = rhoOf(st, q); bN[top] = 1; top++;
+                    while (top >= 2 && bR[top - 2] > bR[top - 1] + 1.0e-12) {
+                        int a = top - 2, b = top - 1;
+                        double d = bD[a] + bD[b];
+                        double T = (bT[a] * bD[a] + bT[b] * bD[b]) / d;
+                        double S = (bS[a] * bD[a] + bS[b] * bD[b]) / d;
+                        bT[a] = T; bS[a] = S; bD[a] = d; bN[a] = bN[a] + bN[b];
+                        bR[a] = 1027.8 * (1.0 - Thermohaline.ALPHA * (T - 285.0)
+                                + Thermohaline.BETA * (S - 35.0));
+                        top--;
+                        cells++;
+                    }
+                }
+                if (top == wl) continue;   // nothing merged: leave the column untouched
+                // write back block values (each block is a contiguous run of layers)
+                int k = 0;
+                for (int t2 = 0; t2 < top; t2++) {
+                    for (int n2 = 0; n2 < bN[t2]; n2++, k++) {
+                        int q = st.idx(i, j, k);
+                        sumdT += Math.abs(bT[t2] - st.t[q]);
+                        if (DeepBudget.ON) {
+                            DeepBudget.add(bandB, DeepBudget.T_CONV, k,
+                                    (bT[t2] - st.t[q]) * g.dz[k] * cosB);
+                        }
+                        st.t[q] = bT[t2];
+                        st.s[q] = bS[t2];
+                    }
+                }
+            }
+        }
+        LAST_CONV_CELLS = cells;
+        LAST_CONV_DT = sumdT;
+        TOTAL_CONV_CELLS += cells;
+        CONV_CALLS++;
     }
 
     /**
@@ -842,8 +1123,10 @@ public final class AdvectionDiffusionSolver {
                 int q0 = st.idx(i, j, 0);
                 double r0 = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[q0] - 285.0)
                         + Thermohaline.BETA * (st.s[q0] - 35.0));
+                int wl = g.wetLayers[g.idx(i, j)];
+                if (wl <= 0) continue;
                 double hAcc = 0.0, h = g.dz[0];
-                for (int k = 1; k < nz; k++) {
+                for (int k = 1; k < wl; k++) {
                     int qk = st.idx(i, j, k);
                     double rk = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[qk] - 285.0)
                             + Thermohaline.BETA * (st.s[qk] - 35.0));
@@ -851,7 +1134,7 @@ public final class AdvectionDiffusionSolver {
                     h = hAcc;
                     if (rk - r0 > MLD_JUMP_KGM3) break;
                 }
-                st.mixedLayerDepth[j * nx + i] = Math.max(g.dz[0], h);
+                st.mixedLayerDepth[j * nx + i] = Math.min(Math.max(g.dz[0], h), g.columnDepthM(i, j));
             }
     }
 
@@ -862,13 +1145,13 @@ public final class AdvectionDiffusionSolver {
     public static Result solve(OceanGrid g, OceanState st, double[] surfaceT, int maxIter) {
         int nx = g.nx, ny = g.ny, nz = g.nz;
         double dx = g.dx, dy = g.dy;
+        // ★ 2026-11-09（阶段 2）：只钉 k=0 的表层 Dirichlet，绝不重置整柱。
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                double ts = surfaceT[j * nx + i];
+                st.t[st.idx(i, j, 0)] = surfaceT[j * nx + i];
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
-                    st.t[q] = ts;
                     if (st.s[q] == 0.0) st.s[q] = 35.0;
                 }
             }
@@ -1030,6 +1313,10 @@ public final class AdvectionDiffusionSolver {
                     double t = st.t[q];
                     if (!(t < tf)) continue;
                     double deficit = tf - t;
+                    // ★ 2026-11-11：冰点投影是"凭空加热"，单独记账（默认关）。
+                    if (DeepBudget.ON)
+                        DeepBudget.add(DeepBudget.band(g, j), DeepBudget.T_FRZ_FINAL, k,
+                                deficit * g.dz[k] * Math.max(0.05, g.cosLat(j)));
                     st.t[q] = tf;
                     double massIce = RHO0 * CP_SEA * deficit / PrognosticT.L_FUSION;
                     double dhi = massIce * g.dz[k] / PrognosticT.RHO_ICE;
@@ -1222,13 +1509,13 @@ public final class AdvectionDiffusionSolver {
         double dx = g.dx, dy = g.dy;
         double dz0 = g.dz[0];
         double rhoCpKv = RHO0 * CP_SEA * KV;
+        // ★ 2026-11-09（阶段 2）：只钉 k=0 的表层 Dirichlet，绝不重置整柱。
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                double ts = surfaceT[j * nx + i];
+                st.t[st.idx(i, j, 0)] = surfaceT[j * nx + i];
                 for (int k = 0; k < nz; k++) {
                     int q = st.idx(i, j, k);
-                    st.t[q] = ts;
                     if (st.s[q] == 0.0) st.s[q] = 35.0;
                 }
             }
@@ -1258,7 +1545,7 @@ public final class AdvectionDiffusionSolver {
                         if (Double.isNaN(fhi) || flo * fhi > 0.0) {
                             t0 = st.t[q0];
                         } else {
-                            for (int it = 0; it < 60; it++) {
+                            for (int it = 0; it < 20; it++) {
                                 double mid = 0.5 * (lo + hi);
                                 double fm = f.netHeatFluxWm2(x, z, theta, mid) - rhoCpKv * (mid - t1) / dz0;
                                 double floR = flo - rhoCpKv * (lo - t1) / dz0;

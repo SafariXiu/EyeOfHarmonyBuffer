@@ -65,7 +65,9 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         double lat = WorldContract.latOf(z);
         double dec = Atmosphere.subsolarLat(theta);
         double[] at = atmo(x, z, theta);
-        double alb = Radiation.albedo(false, sstK, lat);
+        // ★ 2026-11-09（阶段 3 / A1）：开阔水反照率用 ALB_SEA，不再用
+        //   Radiation.albedo(false,...) 的 FDD 气候态海冰反照率（272 K 给 0.633）。
+        double alb = Radiation.ALB_SEA;
         double asr = Radiation.absSolarSurface(lat, dec, alb);
         return Radiation.components(sstK, asr, at[0], at[1], at[2], 1.0)[0];
     }
@@ -79,7 +81,10 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         double dec = Atmosphere.subsolarLat(theta);
         double[] at = atmo(x, z, theta);
         double ta = at[0], qa = at[1], chv = at[2];
-        double aOcean = Radiation.albedo(false, sstK, lat);
+        // ★ 2026-11-09（阶段 3 / A1）：开阔水是 ALB_SEA；冰面才用冰反照率，
+        //   按【实际】iceFraction 混合。旧式 aOcean 走 FDD 气候态冰，0–9 °C 水
+        //   被当成 0.63→0.06 的反照率，是冰 runaway 的正反馈源。
+        double aOcean = Radiation.ALB_SEA;
         double aIce = Radiation.albedo(true, sstK, lat);
         double alb = aOcean + iceFraction * (aIce - aOcean);
         double asr = Radiation.absSolarSurface(lat, dec, alb);

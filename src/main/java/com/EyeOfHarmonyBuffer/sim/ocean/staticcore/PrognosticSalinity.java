@@ -15,15 +15,25 @@ import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
 public final class PrognosticSalinity {
 
     public static double LAST_TOTAL0 = 0.0, LAST_TOTAL1 = 0.0;
-    /** 表面淡水只作用在表层 dz0（造强盐度盖）。默认关。 */
-    public static boolean THIN_SURF_FW_ON = true;
+    /** Salt budget decomposition (units: psu * m, same weighting as total()). */
+    public static double LAST_D_ADV = 0.0, LAST_D_DIFF = 0.0, LAST_D_SURF = 0.0, LAST_D_CLIP = 0.0;
+    public static int LAST_CLIP_LO = 0, LAST_CLIP_HI = 0;
+    /** 本次实际用的子步数（CFL 自适应）。 */
+    public static int LAST_STEPS = 0;
+    /** 表面淡水只作用在表层 dz0（造强盐度盖）。默认关（代码曾误置 true；2026-11-09 修正）。 */
+    public static boolean THIN_SURF_FW_ON = false;
 
     private PrognosticSalinity() {}
 
     public static double run(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta,
                              double seasonSeconds, int substeps) {
         int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
-        int steps = Math.max(1, substeps);
+        // ★ 2026-11-07（R3）：同 PrognosticT —— 显式通量平流按 CFL 自适应子步。
+        // ★ 只在 R3 路径上自适应（v1 fallback 逐位不变）。
+        int steps = (R3Momentum.ON || BaroclinicFlow.LOCAL_V_ON)
+                ? AdvectionDiffusionSolver.cflSteps(g, st, seasonSeconds, substeps)
+                : Math.max(1, substeps);
+        LAST_STEPS = steps;
         double dt = seasonSeconds / steps;
         double[] fw = new double[nx * ny];
         for (int j = 1; j < ny - 1; j++)
@@ -33,20 +43,47 @@ public final class PrognosticSalinity {
                 double v = f.freshwaterFluxKgM2S((int) Math.round(g.xOf(i)),
                         (int) Math.round(g.zOf(j)), theta, st.t[st.idx(i, j, 0)]);
                 if (Double.isNaN(v)) v = 0.0;
-                v += st.iceSaltFlux[js];
-                st.iceSaltFlux[js] = 0.0;
                 fw[js] = v;
             }
+        // ★ 2026-11-09（盐收支）：去掉 E−P 的全球面积加权平均 = 河流回流。
+        //   刚性盖 Boussinesq 用虚拟盐通量，全球 E−P 不平衡会逐年积盐
+        //   （实测 6 年 S 33.7→48.3）。冰盐通量不参与均值，保留季节循环。
+        double sumFw = 0.0, areaW = 0.0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                double w = Math.max(0.05, Math.cos(g.latAt(j)));
+                sumFw += fw[j * nx + i] * w;
+                areaW += w;
+            }
+        double fwMean = areaW > 0 ? sumFw / areaW : 0.0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                fw[js] = fw[js] - fwMean + st.iceSaltFlux[js];
+                st.iceSaltFlux[js] = 0.0;
+            }
         LAST_TOTAL0 = total(g, st);
+        LAST_D_ADV = 0.0; LAST_D_DIFF = 0.0; LAST_D_SURF = 0.0; LAST_D_CLIP = 0.0;
+        LAST_CLIP_LO = 0; LAST_CLIP_HI = 0;
         double[] adv = new double[n3];
         double[] ns = new double[n3];
+        double[] redi = new double[n3];
+        if (RediDiffusion.ON) RediDiffusion.tendency(g, st, st.s, redi);
         for (int step = 0; step < steps; step++) {
             st.fillDryGhosts();
             for (int j = 1; j < ny - 1; j++)
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) continue;
-                    for (int k = 0; k < nz; k++)
-                        adv[st.idx(i, j, k)] = AdvectionDiffusionSolver.divFlux(g, st, st.s, i, j, k);
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double d = AdvectionDiffusionSolver.divFlux(g, st, st.s, i, j, k);
+                        if (AdvectionDiffusionSolver.ADVECTIVE_FORM) {
+                            d -= st.s[q] * AdvectionDiffusionSolver.divU(g, st, i, j, k);
+                        }
+                        adv[q] = d;
+                    }
                 }
             double maxd = 0.0;
             for (int j = 1; j < ny - 1; j++)
@@ -76,9 +113,13 @@ public final class PrognosticSalinity {
                         } else if (g.zCenter[k] < hMl) {
                             src = -s * fw[js] / (AdvectionDiffusionSolver.RHO0 * hMl);
                         }
-                        double v = s + dt * (-adv[q] + lapH + lapZ + src);
-                        if (v < 0.0) v = 0.0;
-                        if (v > 50.0) v = 50.0;
+                        double vRaw = s + dt * (-adv[q] + lapH + lapZ + src + redi[q]);
+                        LAST_D_ADV += (-adv[q]) * dt * dz;
+                        LAST_D_DIFF += (lapH + lapZ) * dt * dz;
+                        LAST_D_SURF += src * dt * dz;
+                        double v = vRaw;
+                        if (v < 0.0) { LAST_D_CLIP += (0.0 - vRaw) * dz; LAST_CLIP_LO++; v = 0.0; }
+                        if (v > 50.0) { LAST_D_CLIP += (50.0 - vRaw) * dz; LAST_CLIP_HI++; v = 50.0; }
                         maxd = Math.max(maxd, Math.abs(v - s));
                         ns[q] = v;
                     }

@@ -26,6 +26,13 @@ public final class BarotropicSolver {
     public static boolean CURL_PAIRING_FIXED = true;
 
     /**
+     * ★ 2026-11-10（seed 0 NaN）：B6 球面度规开关。
+     * <p>A/B：极点行（|lat|≈87.5°）dxc=dx·cosφ≈0.044·dx，正压 Laplacian 系数放大 ~500×；
+     * 实测 seed 0 的南极点行 (j=1) 先出 NaN。false = 退回平面 dx（旧行为，仅 A/B 用）。
+     */
+    public static boolean USE_COS_METRIC = true;
+
+    /**
      * ★ 2026-11-05（A1 的 3D 判据）：最近一次 update 的风应力旋度快照 [N/m^3]（nx*ny，干格 0）。
      *
      * <p>为什么要暴露它：旧门 `GATE_A1_SIGN` 比的是「模型纬向平均风应力旋度 vs 地球观测锚」，
@@ -35,6 +42,14 @@ public final class BarotropicSolver {
     public static double[] LAST_CURL;
 
     private BarotropicSolver() {}
+
+    /** +j 方向是否指北（球面 +j 指南 ⟹ -1；笛卡尔按 lat 随 z 变化）。 */
+    static double northSign(OceanGrid g, int j) {
+        int jp = Math.min(g.ny - 1, j + 1);
+        int jm = Math.max(0, j - 1);
+        double d = g.latAt(jp) - g.latAt(jm);
+        return d >= 0.0 ? 1.0 : -1.0;
+    }
 
     public static final class Result {
         public final OceanState state;
@@ -74,6 +89,13 @@ public final class BarotropicSolver {
         double[] rhs = new double[n2];
         double[] curlSnap = new double[n2];
         for (int j = 0; j < ny; j++) {
+            // ★ 2026-11-09（阶段 4 / B6+B7）：
+            //   B7：windStressZ 是 world +z，只有北支指北；正压解算要的是地理 τ_y，
+            //       乘 northSign（球面 +j 指南 ⟹ -1）。旧式漏乘，NH 的 τ_y 项多 +2∂τ_N/∂x。
+            //   B6：球面 zonal 度规 dxc = dx·cosφ，旧式按平面 dx。
+            double latJ = g.latAt(j);
+            double nsJ = northSign(g, j);
+            double dxc = g.dx * (USE_COS_METRIC ? Math.max(0.05, Math.cos(latJ)) : 1.0);
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
                 int iE = (i + 1) % nx, iW = (i - 1 + nx) % nx;
@@ -85,12 +107,12 @@ public final class BarotropicSolver {
                 int xW = (int) Math.round(g.xOf(iW));
                 double curl;
                 if (CURL_PAIRING_FIXED) {
-                    // curl_z(tau) = d(tau_z)/dx - d(tau_x)/dz
-                    double tzE = f.windStressZ(xE, zjI, theta);
-                    double tzW = f.windStressZ(xW, zjI, theta);
+                    // curl_z(tau) = d(tau_y)/dx - d(tau_x)/dy，tau_y = northSign·tau_z
+                    double tzE = nsJ * f.windStressZ(xE, zjI, theta);
+                    double tzW = nsJ * f.windStressZ(xW, zjI, theta);
                     double txN = f.windStressX(xiI, zN, theta);
                     double txS = f.windStressX(xiI, zS, theta);
-                    curl = (tzE - tzW) / (2.0 * dx) - (txN - txS) / (2.0 * dy);
+                    curl = (tzE - tzW) / (2.0 * dxc) - (txN - txS) / (2.0 * dy);
                 } else {
                     // v7 旧式（错配；A/B 用，勿用于生产）
                     double txE = f.windStressX(xE, zjI, theta);
@@ -122,6 +144,7 @@ public final class BarotropicSolver {
             residual = 0.0;
             for (int j = 1; j < ny - 1; j++) {
                 double beta = WorldContract.betaForLatitude(g.latAt(j));
+                double dxc = g.dx * (USE_COS_METRIC ? Math.max(0.05, Math.cos(g.latAt(j))) : 1.0);
                 for (int i = 0; i < nx; i++) {
                     if (!g.isWet(i, j)) { psi[j * nx + i] = 0.0; continue; }
                     double w = g.isWet(i - 1, j) ? psi[j * nx + ((i - 1 + nx) % nx)] : 0.0;
@@ -130,9 +153,9 @@ public final class BarotropicSolver {
                     double nn = g.isWet(i, j + 1) ? psi[(j + 1) * nx + i] : 0.0;
                     // Stommel: central beta + bottom friction, Jacobi under-relaxation.
                     double rr = R_FRICTION;
-                    double target = (rr / (dx * dx) * (w + e + s + nn)
-                                   + beta / (2.0 * dx) * (e - w)
-                                   - rhs[j * nx + i]) / (4.0 * rr / (dx * dx));
+                    double target = (rr / (dxc * dxc) * (w + e + s + nn)
+                                   + beta / (2.0 * dxc) * (e - w)
+                                   - rhs[j * nx + i]) / (4.0 * rr / (dxc * dxc));
                     double old = psi[j * nx + i];
                     double nv = old + SOR_OMEGA * (target - old);
                     psi[j * nx + i] = nv;
@@ -160,8 +183,9 @@ public final class BarotropicSolver {
                     }
                     continue;
                 }
+                double dxc = g.dx * (USE_COS_METRIC ? Math.max(0.05, Math.cos(g.latAt(j))) : 1.0);
                 double u = -(psi[g.idx(i, j + 1)] - psi[g.idx(i, j - 1)]) / (2.0 * dy);
-                double v = (psi[g.idx(i + 1, j)] - psi[g.idx(i - 1, j)]) / (2.0 * dx);
+                double v = (psi[g.idx(i + 1, j)] - psi[g.idx(i - 1, j)]) / (2.0 * dxc);
                 for (int k = 0; k < g.nz; k++) {
                     int q = st.idx(i, j, k);
                     st.u[q] = u; st.v[q] = v;

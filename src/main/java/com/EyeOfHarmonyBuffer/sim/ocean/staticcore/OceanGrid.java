@@ -91,6 +91,15 @@ public final class OceanGrid {
         this(nx, ny, nz, dx, dy, dz, wet, wetLayers, x0, z0, false);
     }
 
+    /**
+     * 探针/落盘恢复：用同一组参数重建网格（不做地形采样，也不改任何既有路径）。
+     * <p>为什么要它：生产解每次 JVM 重算 ~11 min，而探针只需要同一个网格 + 状态。
+     */
+    public static OceanGrid restore(int nx, int ny, int nz, double dx, double dy, double[] dz,
+                                    boolean[] wet, int[] wetLayers, int x0, int z0, boolean sphere) {
+        return new OceanGrid(nx, ny, nz, dx, dy, dz, wet, wetLayers, x0, z0, sphere);
+    }
+
     private OceanGrid(int nx, int ny, int nz, double dx, double dy,
                       double[] dz, boolean[] wet, int[] wetLayers, int x0, int z0,
                       boolean sphere) {
@@ -268,9 +277,16 @@ public final class OceanGrid {
      * <p>陆地/水深在对应的真实纬度上采样（用 {@link WorldContract#zOfLat(double)} 把
      * 纬度映射回世界 z），所以海陆与大气/陆地场一致。
      */
+    /**
+     * ★ 2026-11-08（分辨率对照）：球面网格的纬向/经向格数。
+     * 默认 144x72 与历史逐位一致；改这两个值只用于分辨率实验（缓存键会变）。
+     */
+    public static int SPHERE_NX = 144;
+    public static int SPHERE_NY = 72;
+
     public static OceanGrid sphere(int worldSeed, int cell) {
         long seed = com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.seedOf(worldSeed);
-        final int nxs = 144, nys = 72;
+        final int nxs = SPHERE_NX, nys = SPHERE_NY;
         double dx = WIDTH_M / nxs;
         double dy = HEIGHT_SPHERE_M / nys;
         boolean[] wet = new boolean[nxs * nys];

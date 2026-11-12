@@ -11,6 +11,8 @@ public final class OceanState {
     public final double[] w;
     /** 热成风斜压 v（不含正压风生流），供 OHT 积分。 */
     public final double[] vBaroclinic;
+    /** ★ 2026-11-07（R3）：斜压 u（v1 没有；由 R3 动量平衡给出）。 */
+    public final double[] uBaroclinic;
     public final double[] eta;
     /** 表面层厚度 h0（m），由局地 P-E+runoff 演化；h0=dz0+eta。 */
     public final double[] surfaceLayer;
@@ -43,6 +45,7 @@ public final class OceanState {
         v = new double[n];
         w = new double[n];
         vBaroclinic = new double[n];
+        uBaroclinic = new double[n];
         uF = new double[n];
         vF = new double[n];
         wF = new double[n];

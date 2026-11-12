@@ -40,10 +40,40 @@ public final class StaticOceanProduction {
      * 超架构 §8 的 1–2 min 目标；性能优化是**下一步**，先按用户裁决"把物理做完再优化"。
      */
     public static boolean GRID_SPHERE = true;
-    /** 球面网格强制开地形（地形是 A′ 的一部分；关掉它等于回到平底 1,800 m）。 */
+    /**
+     * ★ 2026-11-09（阶段 5 / C5+B10）：删除 `R3_ON` 死开关。
+     *
+     * <p>求解器实际读 {@link R3Momentum#ON}；旧 `R3_ON` 只进哈希、不接线，导致
+     * “R3 默认开”的裁决从未生效（生产一直跑 v1）。现在唯一开关是 {@code R3Momentum.ON}，
+     * 默认 false（v1 fallback），由探针/裁决显式打开。
+     */
     public static boolean SPHERE_BATHY = true;
     /** 生产格子的 cell 尺寸（与探针一致）。 */
     public static final int CELL = 160_000;
+    /**
+     * ★ 2026-11-11（交接文档 §5-2 / 用户 A0-②）：生产解的**磁盘缓存目录**。
+     *
+     * <p>null（默认）= 只用内存缓存（历史行为，逐位不变）。非 null 时：
+     * 首次求解把解落盘；之后的新 JVM 直接读盘，不再重跑 spin-up。
+     * 文件名含 (worldSeed, solveFlagsHash, SOLVER_VERSION) ⟹ 换任何一个都不会命中旧解。
+     */
+    public static java.nio.file.Path CACHE_DIR = null;
+    /**
+     * ★ 2026-11-11：也接受 JVM 属性 {@code -Deoh.oceancache=<dir>}，这样 MOD 侧不必为了
+     * 打开磁盘缓存去碰 {@code sim/}（sim 必须保持零 Minecraft 依赖，探针树才能编它）。
+     * 属性在类加载时读一次；MOD 也可以在首次调用前直接用 setter 覆盖。
+     */
+    static {
+        String d = System.getProperty("eoh.oceancache", null);
+        if (d != null && !d.trim().isEmpty()) {
+            try { CACHE_DIR = java.nio.file.Paths.get(d.trim()); }
+            catch (RuntimeException e) { System.out.println("WARN OCEAN_CACHE_DIR_BAD " + d); }
+        }
+    }
+    /** 诊断：最近一次 solution() 的解来自哪里 —— "memory" / "disk" / "compute"。 */
+    public static String LAST_CACHE_SOURCE = "none";
+    /** 诊断：最近一次落盘的字节数（0 = 没落盘）。 */
+    public static long LAST_SAVE_BYTES = 0L;
     private static OceanSolution sol;
     private static int seed = Integer.MIN_VALUE;
 
@@ -58,7 +88,12 @@ public final class StaticOceanProduction {
      */
     private static long flagsHash;
 
-    private static long solveFlagsHash() {
+    /**
+     * ★ 2026-11-09（阶段 5 / C3+C4）：对外暴露求解器开关指纹，供气候瓦片/海洋模式指纹折入。
+     * 之前它是 private，`SimClimate`/`OceanField` 只折了 11 项局部开关，换网格/换 R3/换耦合
+     * 都不会失效旧瓦片。
+     */
+    public static long solveFlagsHash() {
         long h = 0x5DEECE66DL;
         h = h * 31 + (BaroclinicFlow.OHT_ON ? 1 : 0);
         h = h * 31 + BaroclinicFlow.DEEP_KMAX;
@@ -68,7 +103,9 @@ public final class StaticOceanProduction {
         h = h * 31 + (AdvectionDiffusionSolver.INTERIOR_FREEZE_ON ? 1 : 0);
         h = h * 31 + (AdvectionDiffusionSolver.INTERIOR_FREEZE_ICE_ON ? 1 : 0);
         h = h * 31 + (AdvectionDiffusionSolver.FREEZE_SURFACE_ON ? 1 : 0);
-        h = h * 31 + AdvectionDiffusionSolver.SUBSTEPS;
+        // ★ 2026-11-11：用**纯函数**算子步数，不能读 SUBSTEPS 字段——它在 solve() 里被改写，
+        //   否则"求解前/求解后"的指纹不同 ⟹ 缓存永远命不中（NCACHEDISK 实测）。
+        h = h * 31 + AdvectionDiffusionSolver.substepsFor(StaticOceanSolver.SEASONAL_N);
         h = h * 31 + AdvectionDiffusionSolver.OUTER_MAX;
         h = h * 31 + Double.doubleToLongBits(VelocityProjection.CG_TOL);
         h = h * 31 + (COUPLING_ON ? 1 : 0);
@@ -76,8 +113,46 @@ public final class StaticOceanProduction {
         h = h * 31 + (GRID_SPHERE ? 1 : 0);
         h = h * 31 + (SPHERE_BATHY ? 1 : 0);
         h = h * 31 + CELL;
+        // ★ 2026-11-09（阶段 5 / C5+B10）：用实际求解器开关，不再用死 R3_ON。
+        h = h * 31 + (R3Momentum.ON ? 1 : 0);
+        // ★ 2026-11-09（阶段 5 / C4）：补齐会改解、但旧哈希漏掉的量。
+        h = h * 31 + (AdvectionDiffusionSolver.ADVECTIVE_FORM ? 1 : 0);
+        h = h * 31 + (BaroclinicFlow.EOS80_ON ? 1 : 0);
+        h = h * 31 + (BaroclinicFlow.LOCAL_W_ON ? 1 : 0);
+        h = h * 31 + (RediDiffusion.ON ? 1 : 0);
+        h = h * 31 + (EddyTransport.ON ? 1 : 0);
+        h = h * 31 + (R3Momentum.SGS_ON ? 1 : 0);
+        h = h * 31 + Double.doubleToLongBits(R3Momentum.VEL_RELAX);
+        h = h * 31 + (StaticOceanSolver.FLUX_BOUNDARY_ON ? 1 : 0);
+        h = h * 31 + (StaticOceanSolver.PROGNOSTIC_S_ON ? 1 : 0);
+        h = h * 31 + StaticOceanSolver.SEASONAL_N;
+        h = h * 31 + StaticOceanSolver.SEASONAL_YEARS;
+        h = h * 31 + Double.doubleToLongBits(COUPLING_ALPHA);
         // ★ 2026-11-07：默认关时哈希值不变（N5：不只是不走分支，指纹也零变化）。
         if (AdvectionDiffusionSolver.EKMAN_UPWELL_ON) h = h * 31 + 1;
+        // ★ 2026-11-07（R3 原型一之二）：热成风符号修正会改解，必须进缓存键。
+        //   关时哈希不变（旧缓存仍有效）；开时整串键变 ⟹ 旧解不会命中。
+        if (BaroclinicFlow.THERMAL_WIND_SIGN_FIXED) h = h * 31 + 1;
+        // ★ 2026-11-11：对流调整会改解；关时哈希不变（保留了"关 = 回旧解"的能力）。
+        if (AdvectionDiffusionSolver.CONVECT_ADJUST_ON) h = h * 31 + 1;
+        // ★ 2026-11-12（交接文档 §5.2）：A_H 进动量平衡会改解；关时哈希不变（N5）。
+        //   开时连带着 Smagorinsky 系数与迭代上限一起折进去（它们都会改解）。
+        // ★ 2026-11-12（B1）：冰分数改年平口径会改**世界输出** ⟹ 无条件折进指纹（A3-⑤）。
+        h = h * 31 + (StaticOceanSolver.ICE_FRACTION_FROM_MEAN ? 1 : 0);
+        if (R3Momentum.AH_IN_BALANCE) {
+            h = h * 31 + 1;
+            h = h * 31 + Double.doubleToLongBits(R3Momentum.SGS_CS);
+            h = h * 31 + R3Momentum.AH_ITER_MAX;
+            h = h * 31 + Double.doubleToLongBits(R3Momentum.AH_TOL);
+        }
+        // ★ 2026-11-11：投影求解器会改解（MG vs CG）⟹ 必须无条件进指纹。
+        h = h * 31 + (VelocityProjection.SOLVER_CG ? 1 : 0);
+        // ★ 2026-11-11（用户裁决甲）：V2 投影（连续性积分 w + 2D 输运泊松 + 自由面 w）会改解。
+        h = h * 31 + (VelocityProjection.PROJECT_V2 ? 1 : 0);
+        h = h * 31 + (VelocityProjection.FREE_SURFACE_W ? 1 : 0);
+        // Resolution experiment: only mix in when the sphere grid is NOT the default.
+        if (OceanGrid.SPHERE_NY != 72) h = h * 31 + OceanGrid.SPHERE_NY;
+        if (OceanGrid.SPHERE_NX != 144) h = h * 31 + OceanGrid.SPHERE_NX;
         return h;
     }
 
@@ -122,6 +197,9 @@ public final class StaticOceanProduction {
     public static synchronized void invalidate() {
         sol = null; seed = Integer.MIN_VALUE; flagsHash = 0;
         Atmosphere.ICE_PROVIDER = null;
+        // ★ 2026-11-09（阶段 5 / C7）：SST_PROVIDER 也必须清，否则热启动≠冷启动，
+        //   且旧 provider 会把上一份解带进新配置。
+        Atmosphere.SST_PROVIDER = null;
         com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture.invalidate();
         com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.invalidate();
         com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.invalidate();
@@ -137,7 +215,28 @@ public final class StaticOceanProduction {
         //   指纹变化 ⟹ 第二次调用又重建一次（实测多花一整次 400 s）。
         OceanGrid.BATHY_ON = SPHERE_BATHY;
         long fh = solveFlagsHash();
-        if (sol == null || seed != worldSeed || flagsHash != fh) {
+        final boolean needSolve = (sol == null || seed != worldSeed || flagsHash != fh);
+        boolean hitDisk = false;
+        if (needSolve) {
+            // ★ 2026-11-11（§5-2）：先试磁盘缓存；命中就完全跳过求解。
+            LAST_CACHE_SOURCE = "compute";
+            LAST_SAVE_BYTES = 0L;
+            if (CACHE_DIR != null) {
+                java.nio.file.Path cacheFile = CACHE_DIR.resolve(
+                        OceanSolutionIO.fileName(worldSeed, fh, StaticOceanSolver.SOLVER_VERSION));
+                OceanSolution disk = OceanSolutionIO.read(cacheFile, worldSeed, fh);
+                if (disk != null) {
+                    sol = disk; seed = worldSeed; flagsHash = fh;
+                    LAST_CACHE_SOURCE = "disk";
+                    hitDisk = true;
+                }
+            }
+        } else {
+            LAST_CACHE_SOURCE = "memory";
+        }
+        if (!needSolve || hitDisk) {
+            // 命中缓存（内存或磁盘）：直接走到尾部（装 ICE_PROVIDER 并返回）。
+        } else {
             // ★ 阶段 4a：求解期间卸下冰提供者（防自反馈），解完再安装。
             Atmosphere.ICE_PROVIDER = null;
             DiagnosticSeaSurfaceForcing raw = new DiagnosticSeaSurfaceForcing(worldSeed, CELL, 12500);
@@ -162,6 +261,21 @@ public final class StaticOceanProduction {
             }
             seed = worldSeed;
             flagsHash = fh;      // ★ 2026-11-06：缓存键含开关指纹
+            // ★ 2026-11-11（§5-2）：落盘（原子写：先写 .tmp 再 rename）。
+            if (CACHE_DIR != null && sol != null) {
+                try {
+                    java.nio.file.Files.createDirectories(CACHE_DIR);
+                    java.nio.file.Path saveFile = CACHE_DIR.resolve(
+                            OceanSolutionIO.fileName(worldSeed, fh, StaticOceanSolver.SOLVER_VERSION));
+                    OceanSolutionIO.write(saveFile, sol, fh);
+                    LAST_SAVE_BYTES = java.nio.file.Files.size(saveFile);
+                    LAST_CACHE_SOURCE = "compute+saved";
+                } catch (java.io.IOException e) {
+                    System.out.println("WARN OCEAN_CACHE_WRITE_FAILED " + e);
+                } catch (RuntimeException e) {
+                    System.out.println("WARN OCEAN_CACHE_WRITE_FAILED " + e);
+                }
+            }
         }
         // ★★ 2026-11-06（P484 在共享 JVM 里 FAIL 的根因）：冰提供者必须在**每次**返回解时确保装着，
         //   而原来它写在“构建”分支里 ⟹ 缓存命中时不装。

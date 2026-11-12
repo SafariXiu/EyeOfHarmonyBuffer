@@ -485,6 +485,11 @@ public final class OceanField {
         h = h * 31 + Double.doubleToLongBits(com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.HEIGHT_M);
         h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.staticcore.StaticOceanSolver.SOLVER_VERSION;
         if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.BarotropicSolver.CURL_PAIRING_FIXED) h = h * 31 + 0x0C0C1L;
+        // ★ 2026-11-09（阶段 5 / C3+C4+C6）：折入完整的 3D 求解器开关指纹
+        //   （网格/BATHY/R3/耦合/ADVECTIVE_FORM/EOS80/季节长度/…）与 ICE_PROVIDER 状态。
+        //   旧版只有 11 项局部开关 ⟹ 换网格或换 R3 仍会命中旧瓦片。
+        h = h * 31 + com.EyeOfHarmonyBuffer.sim.ocean.staticcore.StaticOceanProduction.solveFlagsHash();
+        if (com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere.ICE_PROVIDER != null) h = h * 31 + 0x7A173L;
         return h;
     }
 

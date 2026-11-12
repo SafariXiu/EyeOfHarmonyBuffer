@@ -585,16 +585,36 @@ public final class Atmosphere {
     public static void setZonalLandSeed(long ws) {
         V3_KAPPA_SEED = ws;
         com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.setSeed(ws);
+        // ★ 2026-11-11（地球表 P0）：KAPPA_MEAN 改为本世界 LandV3 的面积加权陆地占比。
+        //   旧值 0.183/0.328 是地球 coast-distance / 实测口径，不是本世界的 ⟨κ⟩。
+        //   它是 CELL_GAIN·(KAPPA_MEAN−κ)、反照率幅值、PSI 的全球参考，必须是本世界的。
+        KAPPA_MEAN = com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.globalMean();
     }
 
     public static boolean hasZonalLandSeed() { return V3_KAPPA_SEED != Long.MIN_VALUE; }
 
+    /**
+     * ★ 2026-11-11（用户裁决 3）：本纬度的**参考（纬向平均）陆地占比** —— 局地 kbar(φ)。
+     *
+     * <p>无限世界里没有"全球均值"；公式里的参考量应是**本纬度的纬向平均**，
+     * 而不是一个窗口定义的全局常数。无世界种子时退到地球表 {@code zfEarth(φ)}
+     * （此时 {@code T_ZM_SL_ANN} 的恒等式按构造成立）。
+     */
+    static double kbarRef(double latRad) {
+        if (!KBAR_REF_LOCAL) return KAPPA_MEAN;
+        if (ZMSLK_V3_KAPPA && V3_KAPPA_SEED != Long.MIN_VALUE) {
+            return com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.at(latRad);
+        }
+        return ZonalTables.zfEarth(latRad);
+    }
+
+    /** A/B 开关：true（默认）= 局地 kbar(φ) 参考；false = 旧的全局 {@link #KAPPA_MEAN}（仅对照）。 */
+    public static boolean KBAR_REF_LOCAL =
+            Boolean.parseBoolean(System.getProperty("eoh.kbarlocal", "true"));   // A/B hook
+
     /** 新式：锚在观测海平面年表上，只加本世界陆地占比那一项差。 */
     public static double zmslkNew(double latRad) {
-        double kbar = KAPPA_MEAN;
-        if (ZMSLK_V3_KAPPA && V3_KAPPA_SEED != Long.MIN_VALUE) {
-            kbar = com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.at(latRad);
-        }
+        double kbar = kbarRef(latRad);
         return ZonalTables.tZmSlAnnual(latRad)
              + (kbar - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
     }
@@ -702,7 +722,10 @@ public final class Atmosphere {
             //   · κ = ⟨κ⟩ 时比值 = 1 ⇒ 纬向平均**恰好是观测剖面** ⇒ 真剖面能驱动的迁移被保留；
             //   · 比值把海陆季节振幅差（判据 A5 量的那个）**原样保留**；
             //   · 赤道：amp(0) = ampRef(0) = 0 ⇒ 提前返回 0，硬约束不受影响。
-            double ampRef = aSea + (ZonalTables.aLand(latDeg) - aSea) * KAPPA_MEAN;
+            // ★ 2026-11-11（P293 修复）：ampRef 用 |lat| 对称的参考。
+            //   季节异常的奇偶性是几何事实（赤道两侧反季），不能由本世界陆地的 N/S 差破坏；
+            //   N/S 差只应进年均项（T_ZM_SL_ANN_ASYM / zmslkNew）。
+            double ampRef = aSea + (ZonalTables.aLand(latDeg) - aSea) * kbarRef(Math.abs(latRad));
             if (ampRef < 1.0e-9) return 0.0;
             // ★★★ 2026-10-16（复活 C″ 的**前置修复** ✓）：用观测异常的【**奇部**】✓
             //   为什么必须这样（P293 GATE_EQ_DERIV 的设计目的 ✓，不是挪门 ✗）：
@@ -818,7 +841,7 @@ public final class Atmosphere {
         if (PHASE_FROM_OBS) {
             psi = phiZonalMean(Math.toDegrees(latRad));
         } else {
-            double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * KAPPA_MEAN;
+            double psiDays = PSI_SEA_DAYS + (PSI_LAND_DAYS - PSI_SEA_DAYS) * kbarRef(Math.abs(latRad));
             psi = 2.0 * Math.PI * psiDays / WorldContract.DAYS_PER_YEAR;
         }
         double hemi = latRad >= 0.0 ? 0.0 : Math.PI;
@@ -1164,7 +1187,7 @@ public final class Atmosphere {
                 : cellMigrationDegHardcoded(theta);
         double shifted = Math.toDegrees(latRad) - migDeg;
         double kk = Double.isNaN(PA_FIXED_KAPPA) ? clamp01(kappa) : PA_FIXED_KAPPA;
-        return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (KAPPA_MEAN - kk);
+        return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (kbarRef(latRad) - kk);
     }
 
     // ================= 沿岸风参数化（观测锚点） =================
