@@ -644,6 +644,7 @@ EOHB_Recipe_DysonManufacturing=Dyson Manufacturing
 #item
 EOHB_Harmony=Harmony
 EOHB_Harmony_Tooltip=You mean I spent all those materials... just to make this thing!?
+item.FaGuangTengManSuPian.name=Glowing Vine Fragment
 item.chengdu_heart.name=Heart Of ChengDu
 EOHB_ChengDuHeart_Tooltip_00=A... thing? Or maybe a gem? Looks pretty valuable
 EOHB_ChengDuHeart_Tooltip_01=and judging by where it came from… yeah, let’s not think too hard about that.
@@ -897,6 +898,7 @@ tile.ShaYe.name=Sand Leaf
 tile.TongHuaGuanMu.name=Ketone Bush
 tile.YaZhen.name=YaZhen
 tile.UnderwaterShrub.name=Underwater Shrub (Experimental)
+tile.FaGuangTengMan.name=Glowing Vine
 tile.CleanGlass.name=Underwater Pure Glass
 tile.CleanGlassGlow.name=Glowing Underwater Pure Glass
 tile.overdomain_erosion.name=Overdomain Erosion

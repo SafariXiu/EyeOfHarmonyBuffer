@@ -27,7 +27,7 @@ public class WorldChunkManagerEmeraldThrone extends WorldChunkManagerSpace {
         int h = EmeraldThroneTerrain
             .sampleHeight(this.noises[0], this.noises[1], this.noises[2], this.noises[3], x, z,
                 this.worldHeight - 2);
-        return h <= EmeraldThroneTerrain.SEA_LEVEL
+        return h <= EmeraldThroneTerrain.SEA_LEVEL_BLK
             ? BiomeGenEmeraldDeadSea.INSTANCE
             : BiomeGenEmeraldLivingLand.INSTANCE;
     }
