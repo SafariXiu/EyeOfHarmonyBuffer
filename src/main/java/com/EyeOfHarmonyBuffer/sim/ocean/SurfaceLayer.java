@@ -77,8 +77,8 @@ public final class SurfaceLayer {
     public static double F_MIN = 1.27e-5;
     /** 埃克曼流速上限（m/s）。 */
     public static double EKMAN_MAX = 0.35;
-    /** 埃克曼项开关。**默认关闭**（用户裁决；理由见类注释）。 */
-    public static boolean EKMAN_ENABLED = false;
+    // ★ 2026-11-13 退役：EKMAN_ENABLED 已删除 —— 本类物理上零引用（见类注释），
+    //   SimClimate 那行进指纹的读法也一并删除。
     /**
      * 海水密度（kg/m^3）。
      *
@@ -106,14 +106,7 @@ public final class SurfaceLayer {
         double fa = Math.abs(f);
         if (fa < F_MIN) fa = F_MIN;
         double tau = Math.hypot(tauX, tauY);
-        if (EKMAN_ENABLED && tau > 1e-12) {
-            double ue = tau / (RHO * Math.sqrt(A_Z * fa));
-            if (ue > EKMAN_MAX) ue = EKMAN_MAX;
-            // 埃克曼漂流方向 = 风应力右转 45 度（f>0）；南半球左转
-            double ang = Math.atan2(tauY, tauX) - Math.signum(f) * Math.PI / 4.0;
-            u += ue * Math.cos(ang);
-            v += ue * Math.sin(ang);
-        }
+        // 2026-11-13 退役 EKMAN_ENABLED：本类物理上零引用，这段分支已删。
         return new double[]{u, v};
     }
 }

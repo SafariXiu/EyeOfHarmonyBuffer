@@ -82,6 +82,9 @@ public final class VerticalColumn {
     }
 
     // ---- 辐射配置 ----
+    // ★ 2026-11-14（1a 审计）：TAU0_LW 已是【死旋钮】—— setupOptics() 不再用它
+    //   （K_W = StationaryWave.OLR_K、K_M = 0，光学厚度 tau = OLR_K*W(p)，零自由参数）。
+    //   ⟹ calibrateTauLW() 对 OLR 没有任何影响，二分只会撞边界；不要再调用它做标定。
     public static double TAU0_LW = WorldContract.ATMO_TAU_LW;
     public static double F_WELLMIXED = 0.10;
     /**
@@ -169,6 +172,19 @@ public final class VerticalColumn {
 
     // ---- 诊断 ----
     public double olr, asr, lwSfcDown, swSfcDown, sh, lh, ra;
+    /**
+     * ★ 2026-11-14（1b+2）：柱的**外加热源** [W/m²]（正=进入表面）。
+     * 用于纬向耦合时把「海洋热输运辐合」注入柱；单柱独立验证时保持 0（默认，逐位不变）。
+     */
+    public double qExtraWm2 = 0.0;
+    /**
+     * ★ 2026-11-14（1b 原型）：柱的**大气经向热输运辐合** [W/m²]（正=进入柱）。
+     * 与 qExtraWm2（表面/OHT）分开：这一项按质量**均匀**加在整层大气上。
+     * 默认 0 ⟹ 单柱逐位不变。
+     */
+    public double qAtmExtraWm2 = 0.0;
+    /** ★ 2026-11-14（1b 记账）：**同一子步**的地表净通量与 TOA 净额快照（在 surfaceFlux 之后取）。 */
+    public double lastSurfNet = 0.0, lastStepAsr = 0.0, lastStepOlr = 0.0;
     /** 本柱当前的总长波光学厚度（§503 诊断：水汽反馈的证据）。 */
     public double lastTauTot;
     /** 辐射子步的 ra 累加器（★ 必须在 step 里清零：radiation() 每调一次都会重算 ra）。 */
@@ -285,10 +301,13 @@ public final class VerticalColumn {
         //   而观测是 0.30（Goosse §2.1.6）。这里让大气先反射 (1 - ALPHA_ATM)，剩下的再到地表反射一次。
         //   ★ 下游【自动继承】：sDn[k+1] 由 sDn[k] 递推（:263）⟹ sDn[N] / swSfcDown / sUp / asr 全部随之修正。
         sDn[0] = Radiation.ATM_REFLECT ? S0 * mu * (1.0 - Radiation.ALPHA_ATM) : S0 * mu;
-        for (int k = 0; k < N; k++) sDn[k + 1] = sDn[k] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])) / mu);
+        // ★ 2026-11-14（1b 审计）：**不再除以 mu**。本柱的 cosZenith 是【日平均】insolation/S0，
+        //   几何路径（1/mu）已经包含在日平均里；再除一次 mu 等于重复计算太阳高度角
+        //   ⟹ 冬季 mu=0.078 时地表短波只剩 5 W/m²（应为 ~70），是极地冬季过冷与 82 W/m² 记账差的来源。
+        for (int k = 0; k < N; k++) sDn[k + 1] = sDn[k] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
         double[] sUp = new double[N + 1];
         sUp[N] = ALBEDO * sDn[N];
-        for (int k = N - 1; k >= 0; k--) sUp[k] = sUp[k + 1] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])) / mu);
+        for (int k = N - 1; k >= 0; k--) sUp[k] = sUp[k + 1] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
         swSfcDown = sDn[N];
         asr = sDn[0] - sUp[0];
 
@@ -477,6 +496,9 @@ public final class VerticalColumn {
         lastSfcResid = sfcNet(tSfc);
     }
 
+    /** 表面净通量 [W/m²]（含 qExtraWm2）——供时间步进/诊断用。 */
+    public double surfaceNetWm2(double ts) { return sfcNet(ts); }
+
     private double sfcNet(double ts) {
         double swNet = (1.0 - ALBEDO) * swSfcDown;
         double lwNet = lwSfcDown - LW_SFC_EMIS * THETA_SB * ts * ts * ts * ts;
@@ -484,7 +506,7 @@ public final class VerticalColumn {
         double qsS = ParcelLift.qs(ts, pSfc);
         double lhv = chv * Radiation.LV * windSpeed * (qsS * beta - q[N - 1]);
         if (lhv < 0.0) lhv = 0.0;
-        return swNet + lwNet - shv - lhv;
+        return swNet + lwNet - shv - lhv + qExtraWm2;   // ★ 2026-11-14：外加热源（OHT 辐合）
     }
 
     /** 地—气通量 W/m²（正 = 进入大气）。 */
@@ -507,7 +529,19 @@ public final class VerticalColumn {
         raAccum = 0.0;
         for (int s = 0; s < 4; s++) radiation(cosZenith, dt / 4.0);
         ra = raAccum / 4.0;      // ★ dt 加权平均（见 radiation() 末尾的记账）
+        // ★ 2026-11-14：大气经向热输运辐合 —— 按质量均匀加热整层（W/m² 的柱加热）。
+        if (qAtmExtraWm2 != 0.0) {
+            double mt = 0.0;
+            for (int k = 0; k < N; k++) mt += MASS[k];
+            double dTx = qAtmExtraWm2 * dt / (mt * Radiation.CP);
+            for (int k = 0; k < N; k++) t[k] += dTx;
+        }
         surfaceFlux();
+        // ★ 2026-11-14（1b）：同一子步快照 —— 用与 sh/lh 同一时刻的场算地表净额，
+        //   避免「step 末尾的对流/凝结改了 t[N-1]，再调 surfaceNetWm2」造成口径错位。
+        lastSurfNet = sfcNet(tSfc);
+        lastStepAsr = asr;
+        lastStepOlr = olr;
         double dT0 = sh * dt / (MASS[N - 1] * Radiation.CP);
         double dq0 = lh * dt / (MASS[N - 1] * Radiation.LV);
         t[N - 1] += dT0; q[N - 1] += dq0;
@@ -536,7 +570,7 @@ public final class VerticalColumn {
         //         而有降水的三个情形残差【恰好等于 L*P】（30.29/30.29、54.01/54.01、82.43/82.43）
         //         ⇒ 是我多减了一项，不是代码漏了能量。
         //   （−L*P 属于【干静力能】收支 / 地表收支，不属于湿静力能收支。）
-        double rhs = ra + sh + lh;
+        double rhs = ra + sh + lh + qAtmExtraWm2;
         return dHdtMeasured - rhs;
     }
 
@@ -546,11 +580,29 @@ public final class VerticalColumn {
                             budgetResidual()};   // [3] 仅作诊断显示，不参与残差
     }
 
+    /**
+     * ★ 2026-11-14（1b 季节循环）：**固定地表温度**下把【大气】解到平衡。
+     * 判据是柱收支 residual=0（不是 TOA：TOA 净额正是驱动地表温度变化的通量 F）。
+     */
+    public int solveAtmosphere(double dt, double cosZenith, double tTopK, double tol, int maxSteps) {
+        for (int n = 1; n <= maxSteps; n++) {
+            step(dt, cosZenith, tTopK);
+            // ★ 2026-11-14 记账更正：budgetResidual 是【内部一致性】（恒 ~1e-10，不是收敛指标）；
+            //   固定 Ts 时大气平衡的判据是 **|dH/dt| → 0**（等价于 TOA → 地表净额 F）。
+            if (n > 10 && Math.abs(dHdtMeasured) < tol) return n;
+        }
+        return -maxSteps;
+    }
+
     /** 解到 RCE。返回步数（≤0 表示没收敛）。 */
     public int solveRCE(double dt, double cosZenith, double tTopK, double tol, int maxSteps) {
         for (int n = 1; n <= maxSteps; n++) {
             step(dt, cosZenith, tTopK);
-            if (n > 30 && Math.abs(dHdtMeasured) < tol) return n;
+            // ★ 2026-11-14（1a 审计）：判据改为【TOA 闭合】。
+            //   dHdtMeasured 的噪声地板实测 ~0.2~1.6 W/m²，旧式 |dHdt|<tol(0.05) 永远达不到
+            //   （即使已到平衡，仍返回 -maxSteps）。稳态的物理判据是 asr≈olr；
+            //   地表净通量已解到 ~1e-12，不需再判。tol 现在表示 TOA 闭合容差 [W/m²]。
+            if (n > 30 && Math.abs(asr - olr) < tol) return n;
         }
         return -maxSteps;
     }
@@ -567,9 +619,12 @@ public final class VerticalColumn {
             TAU0_LW = m; best = m;
             VerticalColumn c = new VerticalColumn();
             c.init(tSfcK, qSfc, 1.0, 6.0);
-            c.solveRCE(600.0, cosZenith, tTopK, 0.05, 6000);
+            // ★ 1a：600 s/6000 步到不了 RCE；TOA 闭合地板实测 ~0.6 W/m² ⟹ 标定用 1.0 容差，避免每轮空跑 20000 步。
+        c.solveRCE(7200.0, cosZenith, tTopK, 1.0, 20000);
             double target = StationaryWave.olrClear(tSfcK, cwv);
-            if (c.olr > target) hi = m; else lo = m;
+            // ★ 2026-11-14（1a）：原方向反了 —— OLR 随 tau 增大而【减小】。
+            //   OLR > target ⟹ 需要更多吸收 ⟹ 增大 tau（lo=m），不是减小。
+            if (c.olr > target) lo = m; else hi = m;
         }
         TAU0_LW = save;
         return best;

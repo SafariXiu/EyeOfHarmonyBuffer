@@ -98,16 +98,13 @@ public final class OceanField {
     public static boolean OCEAN_ON = true;
     /** 正式生产海冰约束：SST 不得低于冰点；默认 off，验证后打开。 */
     public static boolean SEA_ICE_ON = true;
-    /** 诊断 SURF_S 是否在 solveRow 里计算；默认 off（生产盐度走 2D，不需要每行 fw）。 */
-    public static boolean SURF_S_ON = false;
+    // 2026-11-13 退役：SURF_S_ON 已删除（2.5D solveRow 里的死诊断，结果算完即丢弃）。
     /** 生产 SST 改用逐点 Qnet=0 能量平衡；默认 off，单行验证后再开。 */
     public static boolean ENERGY_SST_ON = true;
     /** OHT 松弛强度消融：1=当前，0=去掉 OHT，0.5/2=敏感性。 */
     public static double OHT_SCALE = 1.0;
-    /** 用 ClimberOcean 的我们世界 OHT 辐合替代松弛代理。 */
-    public static boolean OHT_CLIMBER_ON = false;
-    /** 局地 2D OHT：用 u/v 与 SST 梯度算 Q_OHT(x,z)。 */
-    public static boolean OHT_LOCAL_ON = false;
+    // 2026-11-13 退役：OHT_CLIMBER_ON / OHT_LOCAL_ON 已删除 —— 只在 2.5D solveRow 的 energySst 里被读，
+    // 3D 接管（STATIC3D_ON=true）后不可达。OHT 的唯一生产来源是 BaroclinicFlow.OHT_ON。
     /**
      * 生产 3D 静态海洋（B）。
      *
@@ -934,26 +931,7 @@ public final class OceanField {
             }
             ICE_FRAC.put(k, iceF);
             ICE_H.put(k, iceH);
-            if (SURF_S_ON) {
-                double[] sal = new double[g.n];
-                double[] h0Row = new double[g.n];
-                DiagnosticSeaSurfaceForcing sdf = new DiagnosticSeaSurfaceForcing(worldSeedInt, cell, GRAD);
-                double year = 365.0 * 86400.0;
-                double h0Ref = 50.0;
-                for (int i = 0; i < g.n; i++) {
-                    int xi = (int) Math.round(g.xAt(i));
-                    double fw = sdf.freshwaterFluxKgM2S(xi, zRow, 0.0, zmSea + a[i]);
-                    if (Double.isNaN(fw)) fw = 0.0;
-                    double h0 = Math.max(1.0, Math.min(200.0,
-                        h0Ref + fw * year / ClimberOcean.RHO_REF));
-                    h0Row[i] = h0;
-                    double s = ClimberOcean.S_REF * (h0Ref / h0) * (1.0
-                        + (ClimberOcean.RHO_ICE / ClimberOcean.RHO_REF) * iceH[i] / ClimberOcean.H_MIXED);
-                    sal[i] = Math.max(0.0, Math.min(50.0, s));
-                }
-                H0_ROW.put(k, h0Row);
-                SURF_S.put(k, sal);
-            }
+            // 2026-11-13 退役 SURF_S_ON：这段 2.5D 诊断算完即丢弃，已删。
             // SPAN 里的第 0 位永远是**真实行号** zIdx（探针与 bandMeansAt 读它），不是 zk。
             SPAN.put(k, new int[]{zIdx, g.westX, g.eastX});
             java.util.ArrayList<Long> bucket = SPAN_BY_ROW.get(zk);
@@ -1329,14 +1307,10 @@ public final class OceanField {
             if (Double.isFinite(t2)) return t2;
         }
         double tf = FreezingPoint.referenceKelvin();
-        double relax = (OHT_CLIMBER_ON || OHT_LOCAL_ON) ? 0.0
-                     : OHT_SCALE * ClimberOcean.RHO_REF * ClimberOcean.C_OCEAN
+        double relax = OHT_SCALE * ClimberOcean.RHO_REF * ClimberOcean.C_OCEAN
                        * ClimberOcean.H_MIXED * SeaSurfaceTemp.LAMBDA;
         double qOht = qOhtLocal;
-        if (OHT_CLIMBER_ON) {
-            try { qOht += ClimberOcean.ohtQ(WorldContract.latOf(z)); }
-            catch (IllegalStateException e) { }
-        }
+        // 2026-11-13 退役 OHT_CLIMBER_ON：2.5D 分支已删（3D 不可达）。
         // 先解开阔水根；有开水面根就不结冰，避免 f(Tf)=1 的赤道雪球自锁。
         boolean frozen = tdyn <= tf + 0.1;
         if (frozen) return tf;

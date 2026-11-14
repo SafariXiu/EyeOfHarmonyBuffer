@@ -79,25 +79,10 @@ public final class R3Momentum {
     public static double VEL_RELAX = 0.3;
     private static double[] Uprev, Vprev;
 
-    /**
-     * ★ 2026-11-08（第 23 轮，证据见 §18）：w 的**参数化上限** [m/s]。
-     *
-     * <p>实测：R3 的 u/v 离散散度约 1.3e-8 1/s（是 beta*v/f 的 10 倍，同量级），
-     * 但沿 4 km 积分得到 w ~ 1.25e-3 m/s，比物理 w 大 **100 倍**；
-     * 垂直平流用这个 w 会在 8 天内抹平层结 ⟹ 正反馈。
-     *
-     * <p>v1 一直用 {@code BaroclinicFlow.W_MAX=1e-4} 限幅 —— 那本质上就是一个 w 参数化。
-     * 这里给 R3 同一个上限，用来判定"w 是不是最后一环"。
-     * 1e-4 不是新常数：它就是仓库里既有的 W_MAX。
-     */
-    public static double W_CAP = 1.0e-4;
-    /**
-     * ★ 2026-11-08（第 23 轮实测否决）：w 限幅**不是**解药。
-     * <p>3 年耦合（限幅 1e-4）= S 从 0 崩到 50、U=7.4、V=11.6、MOC=2508 Sv。
-     * 原因：限幅破坏连续性（质量不守恒），盐度直接失控。
-     * 默认 **false**；保留代码只为记录这次否决。
-     */
-    public static boolean W_CAP_ON = false;
+    // ★ 2026-11-12（A→B 整理：退役）：`W_CAP` / `W_CAP_ON` / `capW()` 已删除。
+    //   理由（保留在台账，见 Talos2「开关退役名录」）：2026-11-08 第 23 轮实测否决 ——
+    //   3 年耦合（限幅 1e-4）= S 从 0 崩到 50、U=7.4、V=11.6、MOC=2508 Sv；
+    //   限幅破坏连续性（质量不守恒），盐度直接失控。留代码只会被误开。
     public static double SGS_CS = 1.0;
     /** 上一次 SGS 的 A_H 峰值 [m2/s]（诊断）。 */
     public static double LAST_SGS_AH_MAX = 0.0;
@@ -659,7 +644,6 @@ public final class R3Momentum {
         st.fillDryGhosts();
         diagnoseW(g, st);
         VelocityProjection.project(g, st, 3000);
-        if (W_CAP_ON) capW(g, st);
         // ★ 2026-11-08：绝热次网格输运（GM）。必须在投影之后加到面速度上。
         if (EddyTransport.ON) EddyTransport.apply(g, st);
         // 2026-11-11: EddyTransport adds a bolus transport directly to the face velocities, i.e.
@@ -740,21 +724,6 @@ public final class R3Momentum {
         }
     }
 
-    /** w 上限（与 BaroclinicFlow.W_MAX 同源），同时压 st.w 与面速度 wF。 */
-    static void capW(OceanGrid g, OceanState st) {
-        for (int j = 1; j < g.ny - 1; j++)
-            for (int i = 0; i < g.nx; i++) {
-                if (!g.isWet(i, j)) continue;
-                int wl = g.wetLayers[g.idx(i, j)];
-                for (int k = 0; k < wl; k++) {
-                    int q = st.idx(i, j, k);
-                    if (st.w[q] > W_CAP) st.w[q] = W_CAP;
-                    else if (st.w[q] < -W_CAP) st.w[q] = -W_CAP;
-                    if (st.wF[q] > W_CAP) st.wF[q] = W_CAP;
-                    else if (st.wF[q] < -W_CAP) st.wF[q] = -W_CAP;
-                }
-            }
-    }
 
     /** 连续方程从海底向上积分（底 w=0）；与 BaroclinicFlow.LOCAL_W_ON 同一口径。 */
     static void diagnoseW(OceanGrid g, OceanState st) {

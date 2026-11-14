@@ -378,7 +378,14 @@ public final class Radiation {
      * with the broadband albedo at 65%/35% partition of 0.515(x1)」✓）。
      */
     public static double seaIceAlbedo(double latRad, double tSurfK) {
-        double hi = iceThicknessM(latRad);
+        return seaIceAlbedo(latRad, tSurfK, iceThicknessM(latRad));
+    }
+
+    /**
+     * ★ 2026-11-14（C0）：按【模型自己的冰厚】算海冰反照率。
+     * 旧 2 参版走 FDD 气候态冰厚；冰步现在传自己的 iceThickness，薄冰趋海洋值、厚冰趋冷冰值。
+     */
+    public static double seaIceAlbedo(double latRad, double tSurfK, double hi) {
         if (hi <= 0.0) return ALB_SEA;                    // 无冰 ⟹ 海洋值 ✓（= 旧行为 ✓）
         double x = C_FH * hi, xr = C_FH * H_ICE_REF;
         double fh = Math.atan(x) / Math.atan(xr);

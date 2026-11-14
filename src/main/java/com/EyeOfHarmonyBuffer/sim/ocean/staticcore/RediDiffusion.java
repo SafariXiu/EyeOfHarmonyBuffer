@@ -25,11 +25,29 @@ public final class RediDiffusion {
     private RediDiffusion() {}
 
     /**
-     * Default OFF: this is an R3-path experiment. Turning it on changes the v1 production
-     * path too (PrognosticT/Salinity call it unconditionally), so it must stay off until a
-     * new baseline is pinned together with the R3 work.
+     * ★★ 2026-11-12（用户裁决「做完的物理都接线并开着」）：**翻为 true**。
+     *
+     * <p>历史（原注释）：Default OFF: this is an R3-path experiment. Turning it on changes the v1
+     * production path too (PrognosticT/Salinity call it unconditionally), so it must stay off
+     * until a new baseline is pinned together with the R3 work.
+     *
+     * <p>现在：实现已完成（Griffies 1998 小斜率张量、只含水平通量，竖直项是写明的下一步），
+     * kappa 取 KH=1000 m²/s（与 GM 同源，不是新常数）。翻默认后必须重钉基线并复核全部门；
+     * 若门退步则回退此开关（-Deoh.redi=false 亦可）。
+     *
+     * <p><b>2026-11-12 实测结果：门退步 ⟹ 默认改回 false</b>（-Deoh.redi=true 仍可复现）。
+     * <pre>
+     *   DEEPGATE 12 年      Redi OFF（基线）      Redi ON
+     *   N2_PROFILE 深低层     16.9%                 22.0%   （更差）
+     *   FP 定常 p99           0.9900 PASS          1.7929 FAIL
+     *   MLD full              0.74%                 0.54%
+     *   MOC                   158.7 Sv              282.6 Sv  （近乎翻倍）
+     *   合计                  5/6                   4/6
+     * </pre>
+     * <p>判读：等密面扩散把层结削得更平，定常性反而变差、MOC 近翻倍。**实现完成 ≠ 该开**；
+     * 留 -D 钩子做 A/B，默认保持 false。
      */
-    public static boolean ON = false;
+    public static boolean ON = Boolean.parseBoolean(System.getProperty("eoh.redi", "false"));
     public static double KAPPA = AdvectionDiffusionSolver.KH;
     public static double SLOPE_MAX = 0.1;
     public static double LAST_MAX_RATE = 0.0;

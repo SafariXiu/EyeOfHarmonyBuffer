@@ -95,8 +95,31 @@ public final class Atmosphere {
     public static final double CD_LND = WorldContract.ATMO_CD_LND;
     /** 边界层厚度（m），gamma_turb = C_D*|U|/H_BL 用。 */
     public static final double H_BL = WorldContract.ATMO_H_BL;
-    /** 地面风速硬上限（m/s）。 */
-    public static final double U_MAX = 25.0;
+    /**
+     * 地面风速硬上限（m/s）—— **数值保险，不是物理常量（NOT FOUND）**。
+     *
+     * <p>出处与判定（2026-11-13 B 项）：
+     * <ul>
+     *   <li>{@code docs/模拟器/调研/M3-大气层设计调研.md:764} 把它记为「风速硬上限 25 m/s，固定」；</li>
+     *   <li>同文 :916 —— 赤道 f=0 时线性 Ekman 给 26 m/s，「偏大，需要 γ_turb 非线性化 + U_MAX」；</li>
+     *   <li>同文 :1359 逐字：「缓解：γ_turb 非线性化 + U_MAX 硬上限。**这是参数化，不是物理。**」</li>
+     * </ul>
+     * ⟹ 25 m/s **没有外部文献/观测出处**；它压住的是线性 Ekman 在低纬的过强风。
+     * 按 A1-② 记 NOT FOUND；按 A0-① 不得靠调大它去过门。
+     *
+     * <p>本字段可用 {@code -Deoh.umax=...} 覆盖（A7 数值旋钮口径）。非默认值会改风 →
+     * 蒸发/降水/风应力，故只在非默认时折进 {@code SimClimate.configStamp()}（N5：默认 25.0 时指纹零变化）。
+     */
+    public static double U_MAX = Double.parseDouble(System.getProperty("eoh.umax", "25.0"));
+    /**
+     * 诊断：{@link #wind} 里撞到 {@code U_MAX} 的次数（LongAdder，并发下精确，~10 ns/次）。
+     * 只给探针/诊断用，不参与任何物理；用 {@link #resetUMaxHits()} 清零。
+     * 实测（2026-11-13 基线）：P284 **1.87%**（36018 点×2 季）、P285 **6%**（38/615）。
+     */
+    public static final java.util.concurrent.atomic.LongAdder U_MAX_HITS =
+        new java.util.concurrent.atomic.LongAdder();
+    /** 清零 {@link #U_MAX_HITS}（探针用）。 */
+    public static void resetUMaxHits() { U_MAX_HITS.reset(); }
     /**
      * @deprecated 旧的「整体平移 Δφ(θ)」幅度。§83 换成 U_ZM_JAN/U_ZM_JUL 两表 + 按 cos(Theta) 插值。
      *
@@ -243,7 +266,11 @@ public final class Atmosphere {
         // §451：纬向平均【经向】风的等价项 —— 与 u_zm 平行地加进来（而不是让 pzRef 通过 Ekman 分母放大 14 倍）。
         if (PZREF_VZ_MODE >= 1) v += vZmAt(Math.toDegrees(latRad));
         double sp = Math.hypot(u, v);
-        if (sp > U_MAX) { u *= U_MAX / sp; v *= U_MAX / sp; }
+        if (sp > U_MAX) {
+            u *= U_MAX / sp;
+            v *= U_MAX / sp;
+            U_MAX_HITS.increment();   // 诊断（2026-11-13）：撞硬上限的次数，不参与物理
+        }
         return new double[]{u, v};
     }
 
@@ -655,7 +682,8 @@ public final class Atmosphere {
      * 陆海比 4.27（表 2.72）、海洋滞后 52.5 天（表 60）、**陆地滞后 1.5 天（表 30）**。
      * ⇒ **陆地滞后表差 20 倍，那是本开关要修的主要东西。**
      */
-    public static boolean SEASON_FROM_HEAT_CAPACITY = false;
+    // ★ 2026-11-14 去表第 1 张（用户裁决）：A_LAND/A_SEA → 平板热容（年谐波修正后重试）
+    public static boolean SEASON_FROM_HEAT_CAPACITY = true;
     /** 海洋混合层热容 J/(m^2 K)：rho_w*c_w*h = 1000*4000*50 m。 */
     public static double C_SEA = 1000.0 * 4000.0 * 50.0;
     /** 陆地土壤热容 J/(m^2 K)：rho_s*c_s*h = 1500*1000*1 m。 */
@@ -687,7 +715,69 @@ public final class Atmosphere {
         return 2.0 * Math.PI / (WorldContract.DAYS_PER_YEAR * 86400.0);
     }
 
-    /** 吸收太阳的季节振幅（W/m^2）：用二至日的日照差。 */
+    /**
+     * 吸收太阳的**年谐波**（W/m^2）与相位（rad）—— 2026-11-14 去表第 1 张的物理修正。
+     *
+     * <p>旧式用「二至日日照差」当成年振幅；**在赤道这是错的**：赤道的年谐波为 0
+     * （太阳一年两次过顶，变化是**半年**周期），二至日差量到的其实是半年度振幅。
+     * 这会让平板模型在赤道给出非零年振幅 ⟹ `seasonalAnomaly(0) ≠ 0` ⟹ P293 的
+     * `GATE_EQ_DERIV` 必然 FAIL。
+     *
+     * <p>本式对模型自己的 `Radiation.insolation(lat, δ(θ))` 做 72 点数值 Fourier，
+     * 取**年谐波**（cos/sin 分量），零新常数；吸收率按 κ 在海/陆反照率之间线性插值
+     * （旧式恒用 `ALB_LAND`，对海洋也是错的）。
+     *
+     * <p>表按 |lat| 0.25° 预计算（361 项 × 72 采样，类加载时一次），之后 O(1) 查表。
+     */
+    private static final int AH_N = 361;
+    private static volatile double[][] AH_TAB = null;
+
+    private static double[][] ahTables() {
+        double[][] t = AH_TAB;
+        if (t != null) return t;
+        synchronized (Atmosphere.class) {
+            if (AH_TAB != null) return AH_TAB;
+            t = new double[4][AH_N];   // [0]=cosSea [1]=sinSea [2]=cosLand [3]=sinLand
+            final int ns = 72;
+            for (int i = 0; i < AH_N; i++) {
+                double lat = Math.toRadians(i * 0.25);
+                double cs = 0, ss = 0, cl = 0, sl = 0;
+                for (int q = 0; q < ns; q++) {
+                    double th = 2.0 * Math.PI * q / ns;
+                    double dec = OBLIQUITY * Math.cos(th);
+                    double f = Radiation.insolation(lat, dec);
+                    double c = Math.cos(th), s = Math.sin(th);
+                    cs += f * (1.0 - Radiation.ALB_SEA) * c;
+                    ss += f * (1.0 - Radiation.ALB_SEA) * s;
+                    cl += f * (1.0 - Radiation.ALB_LAND) * c;
+                    sl += f * (1.0 - Radiation.ALB_LAND) * s;
+                }
+                t[0][i] = 2.0 * cs / ns; t[1][i] = 2.0 * ss / ns;
+                t[2][i] = 2.0 * cl / ns; t[3][i] = 2.0 * sl / ns;
+            }
+            // 赤道的**年谐波精确为 0**（物理事实：一年两次过顶，年谐波消失）。
+            // 数值 Fourier 会留 ~1e-19；而 P293 的 GATE_EQ_DERIV 按格式化字符串比较，
+            // 1e-19 的差异会被判 FAIL（该门自己的 ULP 行也写明这是浮点噪声）。
+            t[0][0] = t[1][0] = t[2][0] = t[3][0] = 0.0;
+            AH_TAB = t;
+            return t;
+        }
+    }
+
+    /** 年谐波：{振幅 W/m², 相位 rad}（相位按 cos(θ−φ) 约定；南半球加 π）。 */
+    public static double[] slabAnnualHarmonic(double latRad, double kappa) {
+        int i = (int) Math.round(Math.toDegrees(Math.abs(latRad)) * 4.0);
+        if (i < 0) i = 0; if (i >= AH_N) i = AH_N - 1;
+        double[][] t = ahTables();
+        double k = clamp01(kappa);
+        double c = t[0][i] + (t[2][i] - t[0][i]) * k;
+        double s = t[1][i] + (t[3][i] - t[1][i]) * k;
+        double ph = Math.atan2(s, c);
+        if (latRad < 0.0) ph += Math.PI;
+        return new double[]{ Math.hypot(c, s), ph };
+    }
+
+    /** 吸收太阳的季节振幅（W/m^2）—— 保留给旧探针；平板模型不再用它。 */
     public static double seasonalSolarAmp(double latRad, double kappa) {
         double a = Radiation.insolation(latRad, OBLIQUITY);
         double b = Radiation.insolation(latRad, -OBLIQUITY);
@@ -709,8 +799,14 @@ public final class Atmosphere {
 
     public static double seasonalAnomaly(double latRad, double kappa, double theta) {
         if (SEASON_FROM_HEAT_CAPACITY) {
-            double hemi0 = latRad >= 0.0 ? 0.0 : Math.PI;
-            return slabAmpK(latRad, kappa) * Math.cos(theta - slabPhaseRad(latRad, kappa) - hemi0);
+            // ★ 2026-11-14：年谐波（赤道为 0，南半球相位已含）+ 平板滞后。
+            //   旧式用「二至日差」当成年振幅 ⟹ 赤道得到非零年振幅 ⟹ GATE_EQ_DERIV 必 FAIL。
+            double[] ap = slabAnnualHarmonic(latRad, kappa);
+            double lam = slabLambda(latRad, kappa);
+            double w = slabOmega();
+            double tau = slabTau(latRad, kappa);
+            double amp = (ap[0] / lam) / Math.sqrt(1.0 + w * tau * w * tau);
+            return amp * Math.cos(theta - ap[1] - Math.atan(w * tau));
         }
         double latDeg = Math.toDegrees(latRad);
         double k = clamp01(kappa);
@@ -829,6 +925,17 @@ public final class Atmosphere {
     public static boolean ZONAL_SEASON_SHAPE_FROM_OBS = false;
 
     public static double seasonalAnomalyZonal(double latRad, double theta) {
+        if (SEASON_FROM_HEAT_CAPACITY) {
+            // ★ 2026-11-14 去表（清理第 1 张的残留）：纬向口径也走平板热容，
+            //   κ 取本世界纬向陆地占比（kbarRef），不再读 A_ZM_K 与 T_ZM_SL_MONTH 的相位。
+            double kbar = clamp01(kbarRef(Math.abs(latRad)));
+            double[] ap = slabAnnualHarmonic(latRad, kbar);
+            double lam = slabLambda(latRad, kbar);
+            double w = slabOmega();
+            double tau = slabTau(latRad, kbar);
+            double amp = (ap[0] / lam) / Math.sqrt(1.0 + w * tau * w * tau);
+            return amp * Math.cos(theta - ap[1] - Math.atan(w * tau));
+        }
         if (ZONAL_SEASON_SHAPE_FROM_OBS) {
             // ★ 观测年循环形状的【奇部】✓（偶部不是季节信号 ✗，它是年均南北差的泄漏 ✓，
             //   已由 T_ZM_SL_ANN_ASYM 在年均项承担 ✓ —— 与 C″ 的修法同一条依据 ✓）
@@ -880,7 +987,12 @@ public final class Atmosphere {
     //   ⟹ 故本轮**回退为 false** ✓（不达标不留 ✓）。复活 C″ 的前置条件已写清：
     //        先让**季节异常在赤道处的纬度导数连续** ✓（例如赤道附近做平滑过渡 / 用对称形状 ✓），
     //        再复测 P293 GATE_EQ_DERIV ✓ —— 这是 GATE 自己的设计目的 ✓，不是挪门 ✗。
-    public static boolean SEASON_SHAPE_FROM_OBS = true;
+    // ★★ 2026-11-12（开关对账）：字段曾被改成 true，但上面 869-882 自己的结论是「**回退为 false**」
+    //   （打开会精确复现 P293 GATE_EQ_DERIV=FAIL 的历史回归），留痕见
+    //   docs\模拟器\核心\世界模拟器-当前状态.md:106「② 测过并否证」与 撤回台账:264「已撤回」。
+    //   A/B 实测（NSWITCHAB）：打开后 12 点平均表层 T +0.0162 K ⟹ 确实在改气候，不是空开关。
+    //   ⟹ 按留痕回滚为 false。
+    public static boolean SEASON_SHAPE_FROM_OBS = false;
 
     /** 海温异常提供者（由 M2 的洋流给出：西暖东冷）。null = 无异常（默认）。 */
     public interface SstProvider {

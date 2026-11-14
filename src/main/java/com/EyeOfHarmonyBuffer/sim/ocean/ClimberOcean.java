@@ -43,7 +43,7 @@ public final class ClimberOcean {
     private ClimberOcean() {}
 
     /** 用户 2026-10-20 裁决：默认开；当前尚未接生产消费点（零输出影响）。 */
-    public static boolean CLIMBER_OCEAN_ON = true;
+    //   名字却宣称「Climber 海洋开着」—— 属审计里最伤的那类假开关（2.5D 模型早已不 step）。
 
     // ==================== 盆地 ====================
     public static final int BASIN_ATL = 0, BASIN_PAC = 1, BASIN_IND = 2, BASIN_SO = 3;
@@ -947,7 +947,6 @@ public final class ClimberOcean {
     /** 配置指纹。 */
     public static long configStamp() {
         long h = 0x0CEA11L;
-        h = h * 31 + (CLIMBER_OCEAN_ON ? 1 : 0);
         h = h * 31 + NLAT;
         h = h * 31 + NDEPTH;
         h = h * 31 + NBASIN;

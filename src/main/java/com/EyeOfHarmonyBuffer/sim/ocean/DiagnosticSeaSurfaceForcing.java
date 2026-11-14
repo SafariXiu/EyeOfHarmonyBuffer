@@ -77,6 +77,12 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
     }
 
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction) {
+        return netHeatFluxWm2(x, z, theta, sstK, iceFraction,
+                Radiation.iceThicknessM(WorldContract.latOf(z)));
+    }
+
+    @Override public double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction,
+                                           double iceThicknessM) {
         double lat = WorldContract.latOf(z);
         double dec = Atmosphere.subsolarLat(theta);
         double[] at = atmo(x, z, theta);
@@ -85,7 +91,7 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         //   按【实际】iceFraction 混合。旧式 aOcean 走 FDD 气候态冰，0–9 °C 水
         //   被当成 0.63→0.06 的反照率，是冰 runaway 的正反馈源。
         double aOcean = Radiation.ALB_SEA;
-        double aIce = Radiation.albedo(true, sstK, lat);
+        double aIce = Radiation.seaIceAlbedo(lat, sstK, iceThicknessM);
         double alb = aOcean + iceFraction * (aIce - aOcean);
         double asr = Radiation.absSolarSurface(lat, dec, alb);
         return Radiation.residual(sstK, asr, ta, qa, chv, 1.0);

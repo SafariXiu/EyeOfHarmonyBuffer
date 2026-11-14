@@ -91,14 +91,14 @@ public final class AdvectionDiffusionSolver {
      */
     static double iceSurfaceFlux(SeaSurfaceForcing f, double theta, int x, int z,
                                  double tf, double hIce) {
-        double qf = f.netHeatFluxWm2(x, z, theta, tf, 1.0);
+        double qf = f.netHeatFluxWm2(x, z, theta, tf, 1.0, hIce);
         if (!Double.isFinite(qf)) return 0.0;
         if (qf >= 0.0) return qf;                 // 冰面在冰点以上 ⟹ 融化
         double h = Math.max(0.05, hIce);
         double lo = tf - 40.0, hi = tf;
         for (int it = 0; it < 24; it++) {
             double mid = 0.5 * (lo + hi);
-            double q = f.netHeatFluxWm2(x, z, theta, mid, 1.0);
+            double q = f.netHeatFluxWm2(x, z, theta, mid, 1.0, h);
             double fv = q + ClimberOcean.K_ICE * (tf - mid) / h;
             if (fv > 0.0) lo = mid; else hi = mid;
         }
@@ -727,6 +727,23 @@ public final class AdvectionDiffusionSolver {
                     //   分母改用 dz0 后，ML 平均恰好给出 q·dt/(rho cp h)。
                     double t0f = ts + dtS * qEff / (RHO0 * CP_SEA * Math.max(1.0, g.dz[0]));
                     if (!Double.isFinite(t0f)) t0f = ts;
+                    // ★★ 2026-11-12（#2 残余的根因）：这一支**在 ML 冰步之后**又按净通量加热表层，
+                    //   而它完全不看冰 —— 于是季末快照里出现「冰 1.6 m、表层 275.2 K」（NICEDYN 实测）。
+                    //   修法同 ICE_BASAL_MELT：多余热量先融冰，化光才留给水（零新参数、能量守恒）。
+                    if (ICE_BASAL_MELT && t0f > 0.0) {
+                        double tfHere = FreezingPoint.kelvin(st.s[q0]);
+                        double hi = st.iceThickness[js];
+                        double dzEff = Math.max(1.0, g.dz[0]);
+                        if (hi > 1.0e-6 && t0f > tfHere) {
+                            double capM = RHO0 * CP_SEA * dzEff * (t0f - tfHere)
+                                    / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                            double melted = Math.min(hi, capM);
+                            st.iceThickness[js] = hi - melted;
+                            t0f -= melted * (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION)
+                                    / (RHO0 * CP_SEA * dzEff);
+                            LAST_BASAL_MELT_M += melted;
+                        }
+                    }
                     // 注意：这里**不能**简单钳到冰点。2026-11-02 实测：把 200.0 换成 T_FREEZE 后，
                     // 混合层把被钳住的表层温度再平均回整柱，热无法排出 ⟹ T 跑到 334..468 K。
                     // 冰点约束必须与海冰的潜热/盐通量一起做，不能只钳温度。
@@ -871,7 +888,19 @@ public final class AdvectionDiffusionSolver {
                     // ⚠ 上一版只把温度钳到 T_FREEZE、没有把热量转成冰 ⟹ 每步"凭空加热"⟹ 热失控。
                     // 冰/盐调整必须放在【写回混合层之前】，否则只有 k=0 被改、层内其余格点仍是旧值。
                     double tf = FreezingPoint.kelvin(sbar);
+                    double tbarBeforeIce = tbar;
                     double iceStart = Math.max(0.0, st.iceThickness[js]);
+                    // ★★ 2026-11-12（交接 §11.3 项 2）：冰-海热交换（底部融化）。见 ICE_BASAL_MELT。
+                    if (ICE_BASAL_MELT && st.iceThickness[js] > 1.0e-6 && tbar > tf) {
+                        double capM = RHO0 * CP_SEA * hNew * (tbar - tf)
+                                / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                        double h0 = st.iceThickness[js];
+                        double melted = Math.min(h0, capM);
+                        st.iceThickness[js] = h0 - melted;
+                        tbar -= melted * ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION
+                                / (RHO0 * CP_SEA * hNew);
+                        LAST_BASAL_MELT_M += melted;
+                    }
                     // ★ 2026-11-09（阶段 3）：冰热力学按【日】子步。
                     //   旧式一个 91 天季一步：核化用无冰开放水面通量，−500 W/m² 一步造 ~13 m 冰；
                     //   子步后第一步只核化 ~0.14 m，之后由冰热阻的 Stefan 生长主导。
@@ -882,7 +911,7 @@ public final class AdvectionDiffusionSolver {
                         if (iceNow > 1.0e-6) {
                             // Tf 处净表面通量 >0 ⟹ 融冰；<0 ⟹ 结冰（受冰热阻限制）
                             double qAtTf = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
-                                    (int) Math.round(g.zOf(j)), theta, tf, 1.0);
+                                    (int) Math.round(g.zOf(j)), theta, tf, 1.0, iceNow);
                             double dIce;
                             if (qAtTf > 0.0) {
                                 dIce = -qAtTf * dtSub
@@ -906,6 +935,13 @@ public final class AdvectionDiffusionSolver {
                             st.iceThickness[js] = dIce;
                             tbar = tf;
                         }
+                    }
+                    if (ICE_TRACE && (iceStart > 0.0 || st.iceThickness[js] > 0.0)
+                            && Math.abs(Math.toDegrees(g.latAt(j)) - ICE_TRACE_LAT) < 1.0) {
+                        System.out.println(String.format(java.util.Locale.ROOT,
+                            "ICETRACE i=%d j=%d lat=%.2f theta=%.3f tbar0=%.3f tf=%.3f tbar1=%.3f ice0=%.4f ice1=%.4f hML=%.1f",
+                            i, j, Math.toDegrees(g.latAt(j)), theta, tbarBeforeIce, tf, tbar,
+                            iceStart, st.iceThickness[js], hNew));
                     }
                     // 整季（dt）的盐通量由冰厚变化总量给出
                     st.iceSaltFlux[js] = -ClimberOcean.RHO_ICE
@@ -933,6 +969,8 @@ public final class AdvectionDiffusionSolver {
                 }
             // ★ 2026-11-11：每季混合层/冰步之后做一次对流调整（默认关 ⟹ 空操作）。
             convectiveAdjust(g, st);
+            // ★ 2026-11-12：对流掺上来的热量先融冰（见 meltIceFromSurfaceHeat 的说明）。
+            meltIceFromSurfaceHeat(g, st, dt);
             if (EKMAN_UPWELL_ON) {
                 // ★ 2026-11-07 A：ML 水平平流按 SUBSTEPS×1 天推进（30 天一步显式 CFL 会爆）。
                 //   用 k=0 的投影面速度，避免把 h 以下的回流算进 ML 平均；无调参。
@@ -1050,6 +1088,47 @@ public final class AdvectionDiffusionSolver {
     static double rhoOf(OceanState st, int q) {
         return 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[q] - 285.0)
                 + Thermohaline.BETA * (st.s[q] - 35.0));
+    }
+
+    /**
+     * ★★ 2026-11-12（#2 残余的第三个缺口）：**对流调整之后**再用混合层多余热量融冰。
+     *
+     * <p>为什么需要：季内顺序是「ML 冰步（T 钉到 Tf）→ convectiveAdjust」。后者把下面较暖的水
+     * 掺上来 ⟹ 季末快照出现「冰 1.6 m、表层 275.2 K」（NICEDYN 的 ICESNAP 实测）。
+     * 物理上掺上来的热量应当先融冰，所以这里用一个能量守恒的后处理把它补上：
+     * {@code Q = rho0*cp*h*(T0-Tf)}，融冰 {@code Q/(rho_ice*L_f)}，冷却量按混合层厚度摊匀
+     * （保持层结形状，不再造新的不稳定）。零新参数。
+     */
+    public static void meltIceFromSurfaceHeat(OceanGrid g, OceanState st, double dtSeconds) {
+        if (!ICE_BASAL_MELT) return;
+        int nx = g.nx, ny = g.ny;
+        for (int j = 1; j < ny - 1; j++) {
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                double hi = st.iceThickness[js];
+                if (hi <= 1.0e-6) continue;
+                int q0 = st.idx(i, j, 0);
+                double tf = FreezingPoint.kelvin(st.s[q0]);
+                if (!(st.t[q0] > tf)) continue;
+                double h = Math.max(g.dz[0], Math.min(st.mixedLayerDepth[js], g.columnDepthM(i, j)));
+                double capM = RHO0 * CP_SEA * h * (st.t[q0] - tf)
+                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                double melted = Math.min(hi, capM);
+                st.iceThickness[js] = hi - melted;
+                // ★ 2026-11-14（C1）：融冰淡水必须回到海洋（旧版只改冰厚、不记淡水 = 质量汇）。
+                if (melted > 0.0 && dtSeconds > 0.0)
+                    st.iceSaltFlux[js] += ClimberOcean.RHO_ICE * melted / dtSeconds;
+                double dT = melted * (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION)
+                        / (RHO0 * CP_SEA * h);
+                double acc = 0.0;
+                for (int k = 0; k < g.nz && acc < h; k++) {
+                    st.t[st.idx(i, j, k)] -= dT;
+                    acc += g.dz[k];
+                }
+                LAST_BASAL_MELT_M += melted;
+            }
+        }
     }
 
     public static void convectiveAdjust(OceanGrid g, OceanState st) {
@@ -1265,7 +1344,8 @@ public final class AdvectionDiffusionSolver {
     }
 
     /**
-     * ★ 2026-11-04（A3）：内部冰点 active-set 的【收尾投影】。默认 false ⟹ 逐位不变。
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     * ★ 2026-11-04（A3）：内部冰点 active-set 的【收尾投影】。（历史）默认 false ⟹ 逐位不变。
      *
      * <p>稳态 T 方程里没有相变项，所以冰下 k=1–2 可以稳定地停在 Tf 以下
      * （A1 收口实测：±86.3° 各 2 格，T=271.228 K、Tf=271.279 K，差 0.051 K）。
@@ -1288,6 +1368,37 @@ public final class AdvectionDiffusionSolver {
      * ⟹ 记账本身留着（有量、可审计），但**默认不落到冰上**；只钉温度并报告那笔热量。
      */
     public static boolean INTERIOR_FREEZE_ON = true;
+
+    /**
+     * 诊断（默认关，零影响）：对指定世界坐标 (x,z) 打印**逐季**的混合层/冰收支。
+     * <p>为什么需要：P484 的 SEASON 门报出「整年有冰，而四季平均都在冰点之上」的格（12% 湿格），
+     * 而 ML 冰块里 {@code tbar} 一有冰就被钉到 Tf —— 两者按代码不该同时成立 ⟹ 必须逐季看，
+     * 不能靠读代码推断（A6「用探针检验假设」）。
+     */
+    /**
+     * ★★ 2026-11-12（交接 §11.3 项 2 的根因修复）：**冰-海热交换（底部融化）**。
+     *
+     * <p>旧代码在有冰时无条件 {@code tbar = tf}，把混合层高出的那部分热量**直接丢弃** ⟹
+     * 「水体比冰点高 2.3 K」与「冰照样生长」可以同时成立。NICEDYN 实测（54N, seed 0）：
+     * <pre>
+     *   theta=3.142  tbar0=271.133  tf=271.267  ice 0.000 -> 1.631 m   （过冷核化，正常）
+     *   theta=4.712  tbar0=273.566  tf=271.250  ice 1.631 -> 2.274 m   （水体暖 2.3 K，冰还在长）
+     * </pre>
+     *
+     * <p>修法：先把混合层相对冰点的**多余热量**折成融冰量（{@code Q = rho0*cp*hNew*(Tbar-Tf)}，
+     * 融冰 {@code Q/(rho_ice*L_f)}），冰化光时余热留在水里；**零新参数、能量守恒**。
+     * 之后照旧走表面通量。
+     *
+     * <p>默认 <b>true</b>（2026-11-12 用户批准「解决冰过盛」后翻默认）；
+     * <b>-Deoh.icebasal=false 逐位回到旧口径</b>（旧的错误行为：丢热 + 冰照长）。
+     */
+    public static boolean ICE_BASAL_MELT = Boolean.parseBoolean(
+            System.getProperty("eoh.icebasal", "true"));
+    /** 累计底部融化量（m，诊断）。 */
+    public static double LAST_BASAL_MELT_M = 0.0;
+    public static boolean ICE_TRACE = false;
+    /** 只打印 |lat - ICE_TRACE_LAT| < 1 度**且有冰**的格（每条一行/季）。 */
+    public static double ICE_TRACE_LAT = -999.0;
     /**
      * ★ A3 实测否决：投影时是否把这笔潜热记成表面冰。默认 false；
      * 打开会失控（见上），只作为证据保留。

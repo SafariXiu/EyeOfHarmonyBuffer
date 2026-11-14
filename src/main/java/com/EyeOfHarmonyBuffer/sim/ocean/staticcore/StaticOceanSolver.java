@@ -417,6 +417,20 @@ public final class StaticOceanSolver {
                     for (int j = 0; j < ny; j++)
                         for (int i = 0; i < nx; i++)
                             if (grid.isWet(i, j)) snap[j * nx + i] = st.t[st.idx(i, j, 0)];
+                    if (AdvectionDiffusionSolver.ICE_TRACE) {
+                        for (int jj = 1; jj < ny - 1; jj++) {
+                            if (Math.abs(Math.toDegrees(grid.latAt(jj))
+                                    - AdvectionDiffusionSolver.ICE_TRACE_LAT) >= 1.0) continue;
+                            for (int ii = 0; ii < nx; ii++) {
+                                if (!grid.isWet(ii, jj)) continue;
+                                int js2 = jj * nx + ii;
+                                if (st.iceThickness[js2] <= 0.0) continue;
+                                System.out.println(String.format(java.util.Locale.ROOT,
+                                    "ICESNAP si=%d yr=%d i=%d T0=%.3f ice=%.3f hML=%.1f",
+                                    si, yr, ii, snap[js2], st.iceThickness[js2], st.mixedLayerDepth[js2]));
+                            }
+                        }
+                    }
                     seasSurf[si] = snap;
                 }
                 // 年度累加
@@ -531,6 +545,8 @@ public final class StaticOceanSolver {
                 int js = j * nx + i;
                 st.mixedLayerDepth[js] = hMean[js];
                 st.eta[js] = etaMean[js];
+                // ★ 2026-11-14（C1b 回滚）：状态 = 年平均（与 T/S 同口径），否则 iceFraction 与冰厚不自洽（P484 实测 FAIL）。
+                //   年均不是「丢冰」：它是把耦合轨迹做年平均；真正的缺口是【融冰没记淡水 + 表面融冰没触发】（C1a/C0）。
                 st.iceThickness[js] = iceMean[js];
                 // ★ 2026-11-12（交接文档 §11.3 B1，用户批准）：冰分数与冰厚**统一到年平口径**。
                 //   原来 :519 把 iceThickness 换成年平，iceFraction 却停在**最后一季**

@@ -61,12 +61,8 @@ public final class OceanGrid {
         150, 175, 200, 225, 250, 275, 300, 325, 350, 375
     };
 
-    /**
-     * ★ 2026-11-04（A0）：球面模式。false（默认）= 旧笛卡尔箱，逐位不变。
-     * <p>true 时由 {@link #sphere(int,int)} 构造：y = 0–20,000 km 极到极、极点干、
-     * 纬度由 {@link #latAt(int)} 直接给出（不再走 40,000 km 三角波）。
-     */
-    public static boolean SPHERE_ON = false;
+    // ★ 2026-11-12 退役：`SPHERE_ON` 已删除 —— 全仓只有声明、零读取点（死字段）。
+    //   球面与否由 `OceanGrid.sphere(...)` 构造器决定，生产端走的是构造器而不是这个开关。
 
     /** 球面域的高（m）：极到极 = πR = 20,000 km。 */
     public static final double HEIGHT_SPHERE_M = 20_000_000.0;

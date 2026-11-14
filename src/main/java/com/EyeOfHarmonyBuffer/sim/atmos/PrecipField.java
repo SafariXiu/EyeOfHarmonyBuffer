@@ -85,7 +85,8 @@ public final class PrecipField {
     public static final double RH_AIR_OBS = 0.748;
 
     /** ★ 2026-10-16（goal-3355454e）：**水汽口径开关**。
-     *  {@code false}（默认）⇒ {@code moisture()} 走 {@code RH_SEA*qSat(tSfcSl)}，与接线前**逐位相同**。
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     *  （历史）{@code false} ⇒ {@code moisture()} 走 {@code RH_SEA*qSat(tSfcSl)}，与接线前**逐位相同**。
      *  {@code true} ⇒ 走**空气口径** {@code RH_AIR_OBS*qSat(T_a)}，其中
      *  {@code T_a = airTempK(tSfcSl, lat, kappa) = tSfcSl + (1-land)*ZonalTables.dtAirSea(lat)}
      *  —— 与 {@link #airTempK} 同一套（本仓既有的、观测的海气温差表）。
@@ -100,7 +101,8 @@ public final class PrecipField {
     public static boolean Q_AIR_ANCHOR = true;
 
     /** ★ 2026-10-16（goal-8b827fd3）：空气口径支路是否**同时尊重**桶的状态（{@code BETA_OVERRIDE}）。
-     *  <p>默认 <b>false</b> ⟹ 逐位不变 ✓（走下面的原返回 ✓）。
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     *  <p>（历史）默认 <b>false</b> ⟹ 逐位不变 ✓（走下面的原返回 ✓）。
      *  <p>为什么需要：`Q_AIR_ANCHOR` 的支路**提前返回** ✗ ⟹ `BETA_OVERRIDE` 失效 ✗ ⟹
      *  生产 P 对 RS/beta 完全不敏感（实测见调用点注释 ✓）。
      *  <p>形式：`q = RH_AIR_OBS * (rhEff(bo)/RH_SEA) * qSat(tAir) * depl` —— 用的是**已有**的量 ✓，
@@ -2031,6 +2033,8 @@ public final class PrecipField {
     // 开关默认 **false** ⟹ 逐位不变 ✓
     // ================================================================================
     public static boolean EDDY_ANCHOR_PME = true;
+    // ⚠ 2026-11-13（B 项读码）：QE_ADJUST=true（生产）时本开关**不生效** —— 它只在 :4307-4354 的
+    //   非 QE 加法分支里被读；QE 的 mfcQ 直接取 eddyMfc()，不经这里的阻尼。
 
     /** ★ 2026-10-16（goal-3355454e）：**外带 70~50S 的涡动标定系数**（默认 1.0）。
      *
@@ -2083,6 +2087,7 @@ public final class PrecipField {
     /** ★ 去掉涡动项里的地形耗竭因子 depletionCol ✓（默认 false ⟹ 逐位不变 ✓）。
      *  理由见调用点注释 ✓：涡动 MFC 表的 q 是观测值 ✓，已含真实耗竭 ⟹ 再乘模型化耗竭是**双重计数** ✗。 */
     public static boolean EDDY_NO_DEPLCOL = true;   // A/B
+    // ⚠ 2026-11-13（B 项读码）：QE_ADJUST=true（生产）时本开关**不生效** —— 同 EDDY_ANCHOR_PME。
 
     /**
      * ★★★ **2026-10-19：涡动项的幅度按【本地水汽可用度】重标（2026-10-19 用户裁决：默认 true）。**
@@ -2121,6 +2126,7 @@ public final class PrecipField {
      */
     // ★★★★★ 2026-10-19 用户裁决：**打开**。回滚：置 false（一行）⇒ 逐位回到打开前的生产态。
     public static boolean EDDY_LOCAL_Q = true;
+    // ⚠ 2026-11-13（B 项读码）：QE_ADJUST=true（生产）时本开关**不生效** —— 同 EDDY_ANCHOR_PME。
 
     // ================================================================================
     // ★★★★★ 2026-10-16（目标 goal-3355454e）：**用收支定义降水**（§241.3 的正解 ✓）
@@ -2147,11 +2153,179 @@ public final class PrecipField {
     public static boolean P_FROM_BUDGET = false;   // ★ A/B：涡动版收支在辐散区给负降水 ⟹ 未进生产
 
     /** 柱水汽的季节倾向 ∂W/∂t [kg/(m^2 s)] ✓ —— 由模型自己的月表作中心差分 ✓（零新数据 ✓）。 */
+    /**
+     * ★★ P1b（2026-11-13，降水重构）：收支里的 W 改用**模型自己的柱水汽**（`columnWater`），
+     * 不再用 ERA5 观测月表。理由：A0-⑤「本世界自洽，不凑地球」。
+     * 默认 <b>false</b> ⟹ 逐位不变（A3-④）。
+     */
+    public static boolean BUDGET_OWN_W = Boolean.parseBoolean(System.getProperty("eoh.budgetownw", "true"));
+
     static double wColTendency(double latRad, double theta) {
         double dt = 2.0 * Math.PI / 365.0 * 5.0;      // 5 天的 theta 步长
-        double w1 = ZonalTables.wColMonth(latRad, theta - dt);
-        double w2 = ZonalTables.wColMonth(latRad, theta + dt);
+        // ★ P1b（2026-11-13）：默认仍用观测月表（逐位不变）；BUDGET_OWN_W=true 时改用【模型自己的】柱水汽。
+        double w1, w2;
+        if (BUDGET_OWN_W) {
+            w1 = columnWater(latRad, theta - dt);
+            w2 = columnWater(latRad, theta + dt);
+        } else {
+            w1 = ZonalTables.wColMonth(latRad, theta - dt);
+            w2 = ZonalTables.wColMonth(latRad, theta + dt);
+        }
         return (w2 - w1) / (2.0 * 5.0 * 86400.0);     // kg/(m^2 s)
+    }
+
+    /**
+     * ★★★ 2026-11-13（P1，降水重构）：补上收支式缺的【平均流湿通量散度】。
+     *
+     * <p>历史限度（本文件 :2142 自己写过）：「本开关用的 MFC 只有涡动那一支，缺平均流散度
+     * ⟹ 它是部分闭合，不得声称是完整收支」。本条把它补全。
+     *
+     * <p>形式（零新常数）：MFC_mean = -d(v_zm*W)/dy，v_zm 取 Atmosphere.vZmAt，W 取
+     * ZonalTables.wColMonth，差分步长用本模型自己的 5 度节点（与涡动链同一套节点，不是新尺度）。
+     *
+     * <p>默认 false ⟹ 逐位不变（A3-④）；打开后 P_FROM_BUDGET 的收支才完整。
+     */
+    public static boolean BUDGET_MEAN_MFC = Boolean.parseBoolean(System.getProperty("eoh.budgetmean", "false"));
+
+    /**
+     * ★★★ P2（2026-11-13，降水重构）：**QE 调整**（Betts–Miller / QTCM 血统）的开关。
+     *
+     * <p>依据（原文在本仓 `research/pdfs/betts_miller2004.txt`，逐字）：
+     * 「the convective flux divergence is parametrized as  -dF/dp = (R - S)/tau」；
+     * 「If tau = 1hr, (T-106 global model) corresponds to one hour's forcing」。
+     * QTCM（`refs/nz2000_formulation.txt`）同族：「the closure amounts to removing CAPE」。
+     *
+     * <p>本模型是单层边界层 + 有效柱的降阶模型，没有分层廓线，故用等价形式：
+     * 参考态取湿绝热廓线在 H_BL 处的饱和比湿 qR，超出部分在 tau 内移除，移除量即时长 = 降水：
+     * <pre>
+     *   qR = qSat(T_moistAdiabat(H_BL), p(H_BL))
+     *   P  = rho_air * H_EFF * max(0, q - qR) / tau       [kg/(m^2 s)]
+     * </pre>
+     * 它由构造满足柱收支（移除的水汽就是降水），因此不需要浅对流地板。
+     *
+     * <p>默认 false 逐位不变（A3-④）。常数：tau = 3600 s（BM 2004 的 1 h，有出处）。
+     */
+    public static boolean QE_ADJUST = Boolean.parseBoolean(System.getProperty("eoh.qe", "true"));
+    /** #4 调查开关：闭合里是否含涡动 MFC（默认 true = 现状）。 */
+    public static boolean QE_INCLUDE_EDDY_MFC = Boolean.parseBoolean(System.getProperty("eoh.qe.eddy", "true"));
+    /** QE 调整的时间尺度 tau [s]。出处：Betts & Miller (2004)「If tau = 1hr ...」。 */
+    public static double QE_TAU = 3600.0;
+
+    /** QE 降水 [kg/(m^2 s)]：超过湿绝热参考态的水汽在 tau 内析出。 */
+    /** P2 诊断：上一次 QE 调用里的 q / qR / dq（探针用）。 */
+    public static double qeLastQ = 0, qeLastQR = 0, qeLastDq = 0;
+    /**
+     * ★★★ #1（2026-11-13，用户裁决）：**变干速率** [mm/day]（正数 = 柱在失去水汽）。
+     *
+     * <p>为什么需要：收支闭合在部分点上为负（E + MFC < dW/dt），物理上那是**变干**，
+     * 不是「负降水」。以前直接 `max(0,·)` 截断 ⟹ 那部分水汽去向**没有任何记账**。
+     * 现在把它显式记下来：
+     * <pre>
+     *   P = max(0, budget)   （降水）
+     *   D = max(0, -budget)  （变干速率，本字段）
+     *   P - D ≡ budget       （恒等，收支闭合）
+     * </pre>
+     * 本模型的 W 是**诊断量**（没有预报水汽态），所以 D 目前是**记账**，
+     * 由 `WaterField`/`SoilMoisture` 等下游消费；不做时间积分（A0-②：一次算好）。
+     */
+    public static double qeLastDrying = 0.0;
+    /**
+     * ★★★ #5（2026-11-13）：**植被反馈项的增量** [mm/day]。
+     *
+     * <p>为了让收支恒等**可验证**，把这一项单独记账，恒等变成：
+     * <pre>
+     *   P - D - veg ≡ budget        （budget = E - dW/dt + MFC）
+     * </pre>
+     * 这样它不再是「破坏恒等的神秘加项」，而是一个**有名有姓的源**。
+     */
+    public static double qeLastVegAdd = 0.0;
+    /** #3/#5：**上风输运项**的增量 [mm/day]（单独记账，否则恒等无法校验）。 */
+    public static double qeLastUpwind = 0.0;
+    /**
+     * ★★★ 2026-11-13（#3）：上风输运是否做 **S&B 云延迟**（上移采样）。
+     * <p>依据 Smith & Barstad (2004)：τc = τh = 1000 s（报告 :257-258 逐字），
+     * 抬升应取「上游 a = |U|·(τc+τh) 处」而不是本地。默认 false ⟹ 逐位不变（A3-④）。
+     */
+    public static boolean QE_UPWIND_DELAY = Boolean.parseBoolean(System.getProperty("eoh.qe.updelay", "false"));
+    /** 第 16 轮诊断：上风源的尝试/落空/命中次数。 */
+    public static long qeUpCalls = 0, qeUpNull = 0, qeUpPos = 0;
+    /** 第 16 轮诊断：mmPerDay 返回前的 p（m/s）与 pMm。 */
+    public static double mmLastP = 0, mmLastPmm = 0;
+    static double qePrecip(double tSfc, double q) {
+        // 2026-11-13 第 4 轮：已被上面的熵亏缺闭合取代；保留此函数只为让旧探针仍能编译。
+        return 0.0;
+    }
+
+    /**
+     * ★★★ 2026-11-13（第 14 轮）：**沿上风方向找海面水汽源**（陆地水汽输运的显式实现）。
+     *
+     * <p>为什么必须：QE 收支闭合里唯一的输运项是**纬向平均**的，沿一条纬度处处相同，
+     * 于是内陆拿不到任何从海岸送来的水汽（实测陆地 0.129 / 海洋 3.996 mm/day）。
+     *
+     * <p>做法（零新常数）：沿风向的**反方向**每 `SOURCE_FETCH_L_VDENT` 走一步，直到遇到非陆地；
+     * 返回 `{q_sea, d}`（海面比湿、距离），找不到返回 null。步长与上限都用现有常数。
+     */
+    static double[] upwindSeaSource(int x, int z, long seed, int cell, double theta, double u, double v) {
+        final double sp = Math.hypot(u, v);
+        if (!(sp > 0.1)) return null;
+        final double ux = u / sp, uz = v / sp;
+        for (double d = SOURCE_FETCH_L_VDENT; d <= SOURCE_FETCH_MAX; d += SOURCE_FETCH_L_VDENT) {
+            int xx = (int) Math.round(x - ux * d);
+            int zz = (int) Math.round(z - uz * d);
+            if (!com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand(xx, zz, seed)) {
+                double tS = Atmosphere.surfaceTemp(xx, zz, seed, cell, theta);
+                return new double[]{ moisture(tS, 0.0, 0.0), d };
+            }
+        }
+        return null;
+    }
+
+    /**
+     * ★★★ 2026-11-13（#3）：把上风**水汽亏缺场**沿上风做 Gamma(2) 卷积（S&B 的云延迟）。
+     * <p>核 K(s) = (s/a^2)exp(-s/a)，a = |U|(tau_c+tau_h)；亏缺定义为「该采样点是陆地时取 q_sea-q_local，否则 0」。
+     * 近岸处卷积值约为内陆的一半 ⟹ 正好压掉「海岸 + 强风」那一类极端点。
+     */
+    static double upwindDeficitConv(int x, int z, long seed, int cell, double theta,
+                                    double u, double v, double qLocal) {
+        double sp = Math.hypot(u, v);
+        if (!(sp > 0.1)) return 0.0;
+        double ux = u / sp, uz = v / sp;
+        double a = sp * (TERRAIN_TAU_C + TERRAIN_TAU_H);
+        int n = Math.max(1, TERRAIN_CONV_N);
+        double ds = a * 0.5;
+        double num = 0.0, den = 0.0;
+        for (int i = 1; i <= n; i++) {
+            double s = i * ds;
+            double kk = (s / (a * a)) * Math.exp(-s / a);
+            int sx = x - (int) Math.round(ux * s);
+            int sz = z - (int) Math.round(uz * s);
+            double dq = 0.0;
+            if (com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand(sx, sz, seed)) {
+                dq = moisture(Atmosphere.surfaceTemp(sx, sz, seed, cell, theta), 0.0, 0.0) - qLocal;
+                if (!(dq > 0.0)) dq = 0.0;
+            }
+            num += kk * dq; den += kk;
+        }
+        return den > 0.0 ? num / den : 0.0;
+    }
+
+    /** 平均流湿通量散度 [kg/(m^2 s)]：-d(v_zm*W)/dy，5 度节点中心差分。极点附近返回 0（写明的边界）。 */
+    static double mfcMeanFlow(double latRad, double theta) {
+        final double dphi = Math.toRadians(5.0);
+        final double latDeg = Math.toDegrees(latRad);
+        if (latDeg > 85.0 || latDeg < -85.0) return 0.0;
+        // ★ 2026-11-13（A0-⑤）：BUDGET_OWN_W=true 时，收支里的 W 必须**处处**是模型自己的 ——
+        //   不能 dW/dt 用模型柱水汽、平均流 MFC 还用 ERA5 月表。实测差 ≤0.04 mm/day（可忽略），
+        //   但这是口径一致性（消掉一条地球锚）。关时逐位不变。
+        double vp = Atmosphere.vZmAt(latDeg + 5.0) * wColForBudget(latRad + dphi, theta);
+        double vm = Atmosphere.vZmAt(latDeg - 5.0) * wColForBudget(latRad - dphi, theta);
+        double dy = 2.0 * dphi * com.EyeOfHarmonyBuffer.sim.world.WorldContract.R_EFF;
+        return -(vp - vm) / dy;
+    }
+
+    /** 收支里 W 的唯一来源：BUDGET_OWN_W=true 用模型柱水汽，否则用观测月表（逐位回旧）。 */
+    static double wColForBudget(double latRad, double theta) {
+        return BUDGET_OWN_W ? columnWater(latRad, theta) : ZonalTables.wColMonth(latRad, theta);
     }
 
     /**
@@ -3097,7 +3271,10 @@ public final class PrecipField {
      * ③ {@code max} 而不是加法 —— 加法会把**已经太湿**的中纬 45 度海洋推得更湿；
      * ④ {@code V_GUST} 取 L-3 的 QTCM 值 4 m/s。
      */
-    public static boolean SHALLOW_FLOOR = true;   // 2026-09-17 落地：① 0.0%->99.5%、⑤ 海洋地板 0.00->1.12（§252）
+    // ★★ 2026-11-13（P3）：与 QE 收支闭合配套，**默认关闭**。地板是无条件下界、不看收支，
+    //   是「降水与柱收支脱钩」的直接来源（审计第三遍）。关掉它，降水才由 QE 闭合给出。
+    //   -Deoh.shallowfloor=true 可恢复旧行为（逐位回到 §252 的口径）。
+    public static boolean SHALLOW_FLOOR = Boolean.parseBoolean(System.getProperty("eoh.shallowfloor", "false"));   // 2026-09-17 落地：① 0.0%->99.5%、⑤ 海洋地板 0.00->1.12（§252）
     /**
      * ★★★★★ §772：浅对流地板是否受 {@code BLQ_THETA_E}（**深对流**判据）门控。
      *
@@ -3122,7 +3299,8 @@ public final class PrecipField {
     public static double ALPHA_SH = 0.40;
 
     /**
-     * **浅对流降水改用【凝结量 x 对流速度尺度】**（冻结 §655/§656；默认 **false** ⇒ 逐位不变）。
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     * **浅对流降水改用【凝结量 x 对流速度尺度】**（冻结 §655/§656；（历史）默认 **false** ⇒ 逐位不变）。
      *
      * <p><b>为什么换</b>（§638 确证的反常）：旧形式 `pSh = ALPHA_SH * rho*Cd*|V|*max(0, (1-k)*qSat(T_s) - q) / rho_w`
      * 与 `q` **反比** ⇒ 「边界层越湿 ⇒ 降水越少」，且它在 `q -> qSat(T_s)`（**饱和**）时归零 ——
@@ -3245,7 +3423,8 @@ public final class PrecipField {
     public static boolean WZM_FROM_TABLE = false;   // §436：默认撤回，理由见上
 
     /**
-     * ★★★★★★★★ §7587（2026-09-27）：**迎风坡增雨 —— 地形强迫的垂直速度**。默认 **false**。
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     * ★★★★★★★★ §7587（2026-09-27）：**迎风坡增雨 —— 地形强迫的垂直速度**。（历史）默认 **false**。
      *
      * <h3>缺的是什么</h3>
      * <p>本仓的降水驱动量只有 {@code w_eff = w_zm(φ−δ) + clamp(−H_bl·∇·U, ±2e-3)}：
@@ -3730,16 +3909,21 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
      * <p>⚠ <b>`ENTRAIN_A` 是【新引入的自由参数】，不得靠调它转绿</b>（§7146 §四）：取文献常用值 0.2；
      * 若必须改它才能过门，视为失败（与 §686 判死的「1000 m 单点巧合」同类）。
      *
-     * <p>⚠ <b>默认 false ⇒ {@link #zCtEff} 不被调用 ⇒ 生产逐位不变（这是本开关的验收条件）。</b>
+     * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     * <p>⚠ <b>（历史）默认 false ⇒ {@link #zCtEff} 不被调用 ⇒ 生产逐位不变（这是本开关的验收条件）。</b>
      */
-    public static boolean SHALLOW_FLOOR_ZI_LIMIT = true;
+    // ★★ 2026-11-13（用户批准）：回退为 **false**。依据：待裁决清单:118「由 §7149 判为 P1 否证，两者都保持默认关」
+    //   + 撤回注记:1657 + 本会话 A/B（NSWITCHAB：12 点表层 T/最冷月 T/降水与关闭时**逐位相同**）。
+    //   否证 + 无效应 ⟹ 不该在生产开着。
+    public static boolean SHALLOW_FLOOR_ZI_LIMIT = false;
 
     // ★ 2026-10-16 清理：此处原有开关 SHALLOW_FLOOR_FLUX_DRIVEN（地板速度尺度改用浮力通量），
     //   **已删除**：Held & Soden 形式要求该量是速度 [m/s]，用三次方是**量纲错误**；
     //   实测也更差（内带 2.280/1.840 对观测 2.54/3.17）。理由留在调用点注释里。
 
     /** ★ 2026-10-16（goal-3355454e）：**地板乘空气-海面季节因子** {@link ZonalTables#shallowAsf}。
-     *  <p>默认 false ⟹ 逐位不变。
+     * ⚠ 2026-11-12 更正（约定 4）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
+     *  <p>（历史）默认 false ⟹ 逐位不变。
      *  <p>依据（一手）：南大洋浅对流季节循环由低层稳定度与「冷空气平流到暖海面」控制，冬季最强 ——
      *  Alinejadtabrizi et al. (2024), npj Clim. Atmos. Sci. 7(1) 76, DOI 10.1038/s41612-024-00625-1；
      *  Lang et al. (2022), ACP 22(3) 2135-2152。因子表由本仓 NCEP R1 + COBE-SST2 月平均算出
@@ -3932,7 +4116,12 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
         //   ★ 2026-10-19：Ts 用 tQ（默认关时 tQ == tSl ⇒ 与历史逐位相同；打开时改用地表温度 ✓）。
         double spE = Math.hypot(u0[0], u0[1]);
         double vEffE = Math.sqrt(spE * spE + V_GUST * V_GUST);
-        DIAG.get()[16] = RHO_AIR * Atmosphere.cdOf(k) * vEffE * Math.max(0.0, qSat(tQ) * betaUsed - q);
+        // ★ 2026-11-13（A0-③ 顺序修复）：Q_FROM_BLBUDGET 会在下面改写 q。若这里先用旧 q 算 E，
+        //   就会出现「E 用旧 q、p 用新 q」的口径分裂（实测 40N/JJA P 从 32.6 跳到 0）。
+        //   开 BL 时把 E 挪到闭合之后重算；关时这一行逐位不变（同一表达式、同一操作数）。
+        if (!Q_FROM_BLBUDGET) {
+            DIAG.get()[16] = RHO_AIR * Atmosphere.cdOf(k) * vEffE * Math.max(0.0, qSat(tQ) * betaUsed - q);
+        }
         // ★ §7303：【外层】步长可单独放大（`windAt` 内部仍用 `gradStep`）。
         //   `DIV_OUTER_STEP = 0` 时 `os == gradStep` ⇒ 与历史【逐位相同】。
         int os = (DIV_OUTER_STEP > 0) ? DIV_OUTER_STEP : gradStep;
@@ -4039,8 +4228,68 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
             double qftF = Math.exp(-(0.5 * Atmosphere.H_EFF) / H_MOIST);
             double denB = 86400.0 * chvB + kPb + Cb * (1.0 - qftF);
             if (denB > 1.0e-12) q = 86400.0 * chvB * qsTsB * betaUsed * depl / denB;
+            // ★ 2026-11-13：E 与诊断 q 必须用闭合后的 q 重算（否则口径分裂，见上面 E 的注释）。
+            DIAG.get()[5] = q;
+            DIAG.get()[16] = RHO_AIR * Atmosphere.cdOf(k) * vEffE * Math.max(0.0, qSat(tQ) * betaUsed - q);
         }
         double p = precip(q, wE);
+        if (QE_ADJUST) {
+            // ★★★ 2026-11-13（第 5 轮）：QE 在【诊断式】模型里的正确形式 = **柱收支闭合**。
+            //
+            //   为什么不是「在 tau 内把超出参考态的水汽析出」：那是**时间积分**的说法。
+            //   本模型的降水是逐点诊断量（每个 (x,z,theta) 现算），没有对 q 的时间积分；
+            //   把 1 小时的调整量直接当成降水，等于假设「每一刻都处在剧烈调整中」，
+            //   实测会给出 95~32000 mm/day（第 4 轮）。
+            //
+            //   准平衡（QE）下，对流必须**恰好平衡**大尺度强迫对柱水汽的供给 ⟹
+            //       P = E - dW/dt + MFC          （= 本项目的验收判据本身）
+            //   这不是新闭合，而是 BM/QTCM「removing CAPE」在本降阶模型里的等价写法：
+            //   QE 意味着柱水汽**统计定常**，于是降水被强迫项唯一确定。
+            //   零新常数；负值截断为 0（柱变干时没有负降水，那是 dW/dt<0）。
+            double eBudQ = DIAG.get()[16];                       // E [kg/(m^2 s)]，:3944 已算
+            double dwBudQ = wColTendency(lat, theta);            // dW/dt [kg/(m^2 s)]
+            // ★ 2026-11-13（#4 调查）：是否把【涡动 MFC】算进闭合。默认 true（现状）。
+            //   关掉它就是「只用模型自己的平均流水汽辐合」，用来量 EDDY_MFC_REF 那一项到底贡献了多少。
+            // ★ 2026-11-13（B 项修契约）：withEddy=false 必须真的去掉涡动项 —— 此前 QE 分支忽略它，
+            //   与 7 参重载 javadoc「false = 关掉风暴轴涡动项」矛盾（A0-③ 代码写错）。
+            //   生产恒为 true ⟹ 逐位不变（A3-④）。
+            double mfcQ = (QE_INCLUDE_EDDY_MFC && withEddy ? eddyMfc(lat, theta) : 0.0) + mfcMeanFlow(lat, theta);
+            double pQ = (eBudQ - dwBudQ + mfcQ) / RHO_WATER;     // -> m/s
+            final double pBase = pQ;                              // 上风项之前的值（用于单独记账）
+            // ★ 第 14 轮：**陆地水汽输运**（显式）。纬向平均项给不了内陆水汽，这里沿上风方向补。
+            //   形式：MFC_up = rho_air * H_BL * (q_sea - q_local) * |U| / d，再 /rho_w 变成 m/s。
+            //   零新常数：q_sea 由 moisture() 给、d 由 upwindSeaSource 走 SOURCE_FETCH_* 得到。
+            if (com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLand(x, z, seed)) {
+                qeUpCalls++;
+                double spU = Math.hypot(u0[0], u0[1]);
+                double aShift = QE_UPWIND_DELAY ? spU * (TERRAIN_TAU_C + TERRAIN_TAU_H) : 0.0;
+                int xs = x, zs = z;
+                if (aShift > 0.0 && spU > 0.1) {
+                    xs = x - (int) Math.round(u0[0] / spU * aShift);
+                    zs = z - (int) Math.round(u0[1] / spU * aShift);
+                }
+                double[] up = upwindSeaSource(xs, zs, seed, cell, theta, u0[0], u0[1]);
+                if (up != null) up[1] += aShift;   // 总距离 = 上移 + 走到海
+                if (up == null) qeUpNull++; else if (up[0] > q) qeUpPos++;
+                if (up != null) {
+                    double dqUp = up[0] - q;
+                    // ★ 正确的卷积版：分母仍用【实际 fetch】（up[1] 已含上移 a），只把分子换成卷积后的亏缺。
+                    if (QE_UPWIND_DELAY) dqUp = upwindDeficitConv(x, z, seed, cell, theta, u0[0], u0[1], q);
+                    qeLastQ = dqUp; qeLastQR = up[1];   // 诊断：Δq 与 d（本轮用探针的 q/qR 两列显示）
+                    if (dqUp > 0.0) {
+                        double mfcUp = RHO_AIR * Atmosphere.H_BL * dqUp * Math.hypot(u0[0], u0[1]) / Math.max(up[1], SOURCE_FETCH_L_VDENT);
+                        pQ += mfcUp / RHO_WATER;
+                    }
+                }
+            }
+            qeLastDq = pQ;                                        // 诊断：闭合值（m/s）
+            DIAG.get()[17] = mfcQ;                                // 诊断：MFC 原始 [kg/(m^2 s)]
+            DIAG.get()[18] = dwBudQ;                              // 诊断：dW/dt [kg/(m^2 s)]
+            p = (pQ > 0.0) ? pQ : 0.0;
+            qeLastUpwind = (pQ - pBase) * 86400.0 * 1000.0;                // 上风项 [mm/day]
+            qeLastDrying = (pQ < 0.0) ? (-pQ * 86400.0 * 1000.0) : 0.0;   // D [mm/day] = 负预算的绝对值
+            DIAG.get()[6] = qeLastDrying;
+        }
         // ★ §720：把 BLQ 门控因子【提到公共作用域】，供浅对流地板共用。
         //   为什么：两道门只把 g 乘在【大尺度 p】上，而地板在它们之后执行、
         //   且是【无条件下界】⇒ 把门控压下去的结果又顶了回去。
@@ -4060,7 +4309,10 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
             p *= g;
         }
         // ★★★★★ §577：θ_e 阈值判据（默认关）。阈值随海温变 ⇒ 冷海自然压低对流。
-        if (BLQ_THETA_E) {
+        // ★ 2026-11-13（第 21 轮）：QE 打开时**不再用 θ_e 门控乘整个 p**。
+        //   物理：θ_e 亏缺衡量的是【深对流能否触发】；QE 的收支闭合代表大尺度+浅对流，
+        //   不受该判据约束。实测（第 19/20 轮）：门控把陆地上唯一那点正降水乘成 0。
+        if (BLQ_THETA_E && !QE_ADJUST) {
             double sstC = Atmosphere.seaSurfaceTemp(lat, theta)
                         + Atmosphere.sstAnom(x, z, theta) - 273.15;
             double teConv = thetaEConv(sstC);
@@ -4120,7 +4372,8 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
                         : Atmosphere.surfaceTemp(x, z, seed, cell, theta);
                     localQ = qSat(tSfcE) / qSat(tSl);
                 }
-                p += mfc * depl * colF * localQ / RHO_WATER;
+            // ★ 2026-11-13（第 5 轮）：QE 的收支闭合**已经含**涡动 MFC ⟹ 不能再加一次（否则双重计数）。
+            if (!QE_ADJUST) p += mfc * depl * colF * localQ / RHO_WATER;
             }
         }
         // ★ 2026-10-16（goal-3355454e）：收支阻尼 -∂W/∂t ✓（默认关 ⟹ 逐位不变 ✓）
@@ -4135,67 +4388,22 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
         //    （与涡动那一行同惯例 ✓：mfc * ... / RHO_WATER ✓）
         //    ★ 2026-10-16 我在此连犯两次单位错 ✗（先乘 86400 ✗、后原样相减 ✗），
         //      每次都表现为 p 被放大到 ~1e2 mm/day ✗ —— 教训：**先看同一函数里其它项怎么换算** ✓
-        if (BUDGET_DWDT_ON) p -= wColTendency(lat, theta) / RHO_WATER;   // kg/(m^2 s) -> m/s ✓
+        // ★ 2026-11-13（A0-③ 修 bug）：QE 的收支闭合 (:4216-4269) 已经含 −dW/dt；本行若再减一次
+        //   就是**双重计数**，并且会把 QE 已 max(0,·) 截断的负值重新减成**负降水**
+        //   （实测 10N/DJF：P = −0.0318 mm/day；30N/JJA：−0.0162）。P 必须 ≥ 0。
+        //   ⟹ QE 开时不再执行；非 QE 路径行为逐位不变。
+        if (BUDGET_DWDT_ON && !QE_ADJUST) p -= wColTendency(lat, theta) / RHO_WATER;   // kg/(m^2 s) -> m/s ✓
         DIAG.get()[9] = p;
         // ---- 候选 S-1：浅对流地板（§251）。SHALLOW_FLOOR=false 时整段被跳过 ⇒ 逐位不变。----
-        if (SHALLOW_FLOOR) {
-            double tSfcF = Atmosphere.surfaceTemp(x, z, seed, cell, theta);
-            DIAG.get()[12] = tSfcF;
-            double qsSfcF = qSat(tSfcF);
-            double spF = Math.hypot(u0[0], u0[1]);
-            double vEff = Math.sqrt(spF * spF + V_GUST * V_GUST);
-            double pFloor;
-            if (SHALLOW_CONDENSATE) {
-                // §677：Held & Soden 形式  P = E_P * sigma_up * rho * w_up * (q*_LCL - q*_ct) / rho_w
-                //   全部输入有出处（§663/§667/§666）；唯一建模陈述是 z_ct := H_BL。全程 O(1)，无循环。
-                double eS = ParcelLift.vaporPressure(q, P_SURF);
-                double tD = ParcelLift.dewpoint(eS);
-                double tLcl = ParcelLift.lclTempDaviesJones(tSfcF, tD);
-                double pLcl = P_SURF * Math.pow(tLcl / tSfcF, ParcelLift.CP_D / ParcelLift.R_D);   // 干绝热闭式
-                double qLcl = ParcelLift.qs(tLcl, pLcl);
-                double zLcl = ParcelLift.zOfP(pLcl, tSfcF, Atmosphere.GAMMA);
-                double zCt = Z_CT_COND;
-                // ★ §7147：下沉封顶（默认 false ⇒ 逐位不变）。见 SHALLOW_FLOOR_ZI_LIMIT。
-                if (SHALLOW_FLOOR_ZI_LIMIT) {
-                    zCt = zCtEff(tSfcF, qsSfcF, q, lat, k, vEff, tLcl, pLcl, qLcl, divU);
-                }   // §687：有出处的浅积云云顶（Squires 1958）
-                double pCt = ParcelLift.pOfZ(zCt, tSfcF, Atmosphere.GAMMA);
-                double dq = 0.0;
-                if (pCt < pLcl) {
-                    double tCt = tLcl - ParcelLift.gammaMoist(tLcl, pLcl, qLcl) * (zCt - zLcl);
-                    dq = Math.max(0.0, qLcl - ParcelLift.qs(tCt, pCt));
-                }
-                double wsK = wStarK(tSfcF, qsSfcF, q, lat, k, vEff);
-                // ★ 2026-10-16（goal-3355454e）：地板的速度尺度是否改用**浮力通量本身**。
-                //   出处（一手）：Alinejadtabrizi et al. 2024, npj Clim. Atmos. Sci. 7(1) 76,
-                //     DOI 10.1038/s41612-024-00625-1 与 Lang et al. 2022, ACP 22(3) 2135-2152,
-                //     DOI 10.5194/acp-22-2135-2022 —— 南大洋浅对流季节循环的控制因子是
-                //     **低层稳定度 + 冷空气平流到暖海面（海气温差 / 冷空气爆发）**，不是平均湿度。
-                //   本仓自算（子代理 shallow_seasonal_obs.py，50~35S）：
-                //     SST - T_air(1000) = +1.115(DJF) / +1.968(JJA) => JJA 大 1.77 倍；
-                //     而 wStarK 是其立方根 => 被压平（实测 0.718/0.692）。
-                //   ★ 2026-10-16：曾试「改用浮力通量（wsK 的三次方）」（开关 SHALLOW_FLOOR_FLUX_DRIVEN），
-                //     **已删除**：Held & Soden 形式要求这里是一个**速度** [m/s]，
-                //     而三次方的量纲是 [m^3/s^3] ⟹ 那是**量纲错误**，不是可选口径。
-                //     实测（A/B）：内带 2.280/1.840（观测 2.54/3.17）⟹ 也确实更差。
-                DIAG.get()[17] = wsK;      // ★ 只加一格、只多写一个值 ⟹ 不改任何结果
-                DIAG.get()[18] = dq;       // ★ 只加一格、只多写一个值 ⟹ 不改任何结果
-                pFloor = EP_COND * SIGMA_UP * RHO_AIR * wsK * dq / RHO_WATER;
-            } else {
-                double betaF = 1.0 - Atmosphere.clamp01(k);
-                double eSh = RHO_AIR * Atmosphere.cdOf(k) * vEff * Math.max(0.0, betaF * qsSfcF - q);
-                pFloor = ALPHA_SH * eSh / RHO_WATER;
-            }
-            // ★★★★★ §772：§720 的门控已【默认关闭】。详见 SHALLOW_FLOOR_BLQ_GATE 的 javadoc：
-            //   BLQ_THETA_E 是深对流判据，地板是浅对流过程 ⇒ 门控是套错对象（category error）。
-            // ★ 2026-10-16 清理：原门控 `if (SHALLOW_FLOOR_BLQ_GATE) pFloor *= blqG;` 已删除
-            //   （§772 已判：深对流判据套浅对流地板是 category error ⇒ 只提供错误选项）。
-            // ★ 2026-10-16（goal-3355454e）：地板乘空气-海面季节因子（默认关 ⟹ 逐位不变）。
-            if (SHALLOW_FLOOR_ASF) pFloor *= ZonalTables.shallowAsf(Math.toDegrees(lat), theta);
-            if (SHALLOW_FLOOR_LTS) pFloor *= ZonalTables.shallowLts(Math.toDegrees(lat), theta);
-            DIAG.get()[10] = pFloor;
-            if (pFloor > p) p = pFloor;
-        }
+    // ★★★ 2026-11-13（用户裁决「旧的降水完全移除」）：**浅对流地板整段已删除**。
+    //
+    //   为什么删：它是「无条件下界」`if (pFloor > p) p = pFloor;`，不看收支、不看 w，
+    //   却在 117/117 个点上**供给 100% 的降水**（实测 pFloor 1.4–5.2 vs pPre 0.00–0.08 mm/day）。
+    //   只要它存在，任何物理自洽的降水都会被它覆盖 ⟹ 不能留在生产路径上。
+    //
+    //   影响：DIAG[10]（pFloor）与 DIAG[12]（tSfcF）不再有值；`SHALLOW_*` 与 `BLQ_*` 几个开关
+    //   随之失效（字段保留只为不再被引用时报错）。回滚到 §251 需从 git 历史取回本段。
+    DIAG.get()[10] = 0.0;
         // ★ 2026-10-16（goal-3355454e）：用收支定义降水 ✓（默认关 ⟹ 逐位不变 ✓）
         //   出处/动机/**部分闭合的诚实标注**/单位 全见 P_FROM_BUDGET 的注释 ✓
         if (P_FROM_BUDGET) {
@@ -4205,6 +4413,7 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
             //   ⚠ 风险 ✓：模型的 w_zm 下沉支本来就在表达副热带变干 ✓ ⟹ 可能是**双重计干** ✗
             //   本变体就是拿来测这一点的 ✓（测量说话 ✓）
             double mfcBud = eddyMfc(lat, theta);                 // 全 MFC ✓（含辐散侧 ✓）
+                if (BUDGET_MEAN_MFC) mfcBud += mfcMeanFlow(lat, theta);   // ★ P1: add mean-flow divergence
             p = (eBud - dwBud + mfcBud) / RHO_WATER;             // kg/(m^2 s) -> m/s ✓
         }
         double pMm = p * 86400.0 * 1000.0;
@@ -4219,9 +4428,11 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
                 final double pdHere = pMm;
                 vv = Vegetation.vegAt(x, z, seed, cell, v2 -> pdHere);
             }
-            pMm += Vegetation.D_B * vv;
+            qeLastVegAdd = Vegetation.D_B * vv;
+        pMm += qeLastVegAdd;
             DIAG.get()[15] = vv;
         }
+        mmLastP = p; mmLastPmm = pMm;
         return pMm;
     }
 }

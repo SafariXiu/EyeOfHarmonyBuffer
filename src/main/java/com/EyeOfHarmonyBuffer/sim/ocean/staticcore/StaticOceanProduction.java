@@ -351,6 +351,24 @@ public final class StaticOceanProduction {
         return s.surfaceT[j * g.nx + i];
     }
 
+    /** ★ 2026-11-12（NUPWELL 取证）：3D 解的**表层垂直速度** w（m/s，正 = 向上 = 上升流）。 */
+    public static synchronized double atW(int x, int z, int worldSeed) {
+        OceanSolution s = solution(worldSeed);
+        OceanGrid g = s.state.grid;
+        int i = indexX(g, x), j = indexZ(g, z);
+        if (!g.isWet(i, j)) return Double.NaN;
+        return s.state.w[s.state.idx(i, j, 0)];
+    }
+
+    /** ★ 2026-11-12（NUPWELL 取证）：投影算出的**面**垂直速度 wF（m/s，正 = 向上）。 */
+    public static synchronized double atWF(int x, int z, int worldSeed) {
+        OceanSolution s = solution(worldSeed);
+        OceanGrid g = s.state.grid;
+        int i = indexX(g, x), j = indexZ(g, z);
+        if (!g.isWet(i, j)) return Double.NaN;
+        return s.state.wF[s.state.idx(i, j, 0)];
+    }
+
     public static synchronized double atS(int x, int z, int worldSeed) {
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;

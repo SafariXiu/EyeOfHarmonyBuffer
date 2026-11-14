@@ -20,7 +20,7 @@ public final class BaroclinicFlow {
     public static double LAST_MOC_DEPTH_M = Double.NaN;
     public static int APPLY_COUNT = 0;
     public static double MAX_VBC = 0.0;
-    public static boolean QOHT_FEEDBACK_ON = false;
+    // ★ 2026-11-12 退役：`QOHT_FEEDBACK_ON` 已删除 —— 全仓只有声明、没有任何读取点（死字段）。
     /**
      * ★ 2026-11-03：w 用局地连续积分（底 w=0，w_top = w_bot − dz·divH），替代行平均。
      * 默认关；A/B 用 NLW=1。W_MAX 是数值限幅（CFL 保护），不是物理参数。

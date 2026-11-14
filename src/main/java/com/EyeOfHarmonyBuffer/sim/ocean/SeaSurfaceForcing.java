@@ -30,6 +30,11 @@ public interface SeaSurfaceForcing {
         return netHeatFluxWm2(x, z, theta, sstK);
     }
 
+    /** 带【冰厚】的扩展；默认退化为 5 参数（旧实现逐位不变）。 */
+    default double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction, double iceThicknessM) {
+        return netHeatFluxWm2(x, z, theta, sstK, iceFraction);
+    }
+
     /** 短波（W/m2）；默认 0，由具体实现覆盖。 */
     default double shortwaveWm2(int x, int z, double theta, double sstK) { return 0.0; }
 

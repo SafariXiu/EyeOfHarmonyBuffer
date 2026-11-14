@@ -553,6 +553,9 @@ public final class SimClimate {
         h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_MIGRATION);
         h = h * 31 + Double.doubleToLongBits(Atmosphere.CELL_TROPIC_GATE_DEG);
         h = h * 31 + Double.doubleToLongBits(Atmosphere.PLATEAU_AMP);
+        // ★ 2026-11-13（B 项）：U_MAX 是数值保险（NOT FOUND）。默认 25.0 时**指纹零变化**（N5）；
+        //   覆盖成别的值会改风→蒸发/降水/风应力 ⇒ 必须让气候瓦片失效。
+        if (Atmosphere.U_MAX != 25.0) h = h * 31 + Double.doubleToLongBits(Atmosphere.U_MAX);
         h = h * 31 + (Radiation.SKIN_TEMP_FROM_ENERGY_BALANCE ? 1 : 0);   // ★ S1a（§385）
         h = h * 31 + (Radiation.BUCKET_BETA ? 1 : 0);                      // ★ S3（§387）
         h = h * 31 + (Radiation.ATM_REFLECT ? 1 : 0);                      // ★ §7353 大气/云反射（改了结果 ⇒ 必须进指纹）
