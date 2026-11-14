@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.sim1.zonal;
+package com.EyeOfHarmonyBuffer.sim.zonal;
 
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
 import com.EyeOfHarmonyBuffer.sim.atmos.Radiation;

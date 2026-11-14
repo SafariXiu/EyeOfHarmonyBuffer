@@ -1,4 +1,4 @@
-package com.EyeOfHarmonyBuffer.sim1.zonal;
+package com.EyeOfHarmonyBuffer.sim.zonal;
 
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
@@ -44,7 +44,7 @@ public final class SeasonalZonal {
         if (ohtScale != 0.0) {
             double[] f37 = new double[com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.T_OHT_W_37.length];
             for (int k = 0; k < f37.length; k++) f37[k] = com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.T_OHT_W_37[k] * ohtScale;
-            qOht = ZonalColumns.fluxConvergence(f37);
+            qOht = ZonalUtil.fluxConvergence(f37);
         }
         Result r = new Result();
         double[] ts = new double[NL];
