@@ -22,7 +22,9 @@ public final class ThermalWindZonal {
         for (int i = 1; i < n - 1; i++) {
             double latRad = Math.toRadians(latDeg[i]);
             double f = 2.0 * WorldContract.OMEGA * Math.sin(latRad);
-            if (Math.abs(f) < 1.0e-4) continue;
+            // Javadoc says skip |lat|<15° (Hadley), not |f|<1e-4.
+            // |f|<1e-4 actually skips |lat|<43.3°, i.e. most of the baroclinic zone.
+            if (Math.abs(latRad) < Math.toRadians(15.0)) continue;
             double dy = Math.toRadians(latDeg[i + 1] - latDeg[i - 1]) * R / 2.0;
             u[i][K - 1] = 0.0;
             for (int k = K - 2; k >= 0; k--) {

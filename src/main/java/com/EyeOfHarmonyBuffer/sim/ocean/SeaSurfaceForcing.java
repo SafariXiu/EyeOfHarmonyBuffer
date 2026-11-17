@@ -22,6 +22,12 @@ public interface SeaSurfaceForcing {
     /** 海表风应力 z 分量（Pa）。 */
     double windStressZ(int x, int z, double theta);
 
+    /** 海表风矢量 u（m/s）；默认 0。只给冰漂移参数化用。 */
+    default double windU(int x, int z, double theta) { return 0.0; }
+
+    /** 海表风矢量 v（m/s）；默认 0。 */
+    default double windV(int x, int z, double theta) { return 0.0; }
+
     /** 净热通量（W/m2，正 = 进入海洋）。 */
     double netHeatFluxWm2(int x, int z, double theta, double sstK);
 
@@ -40,4 +46,10 @@ public interface SeaSurfaceForcing {
 
     /** 淡水通量（kg/(m2 s)，正 = 进入海洋）。 */
     double freshwaterFluxKgM2S(int x, int z, double theta, double sstK);
+
+    /**
+     * 降雪率（m/s 水当量，正 = 落到冰面/海面）。默认 0；Stage B 的生产实现
+     * 用总降水 × 温度分配。降雪不再同时作为海洋淡水，需从 freshwaterFlux 中扣除。
+     */
+    default double snowfallMperS(int x, int z, double theta) { return 0.0; }
 }

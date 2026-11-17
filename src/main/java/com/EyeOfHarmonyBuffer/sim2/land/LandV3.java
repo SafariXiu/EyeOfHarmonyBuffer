@@ -1182,12 +1182,18 @@ public final class LandV3 {
         return c + dC - cut(ws);
     }
 
-    private static final ThreadLocal<HashMap<Long, Double>> H_CACHE =
-        ThreadLocal.withInitial(HashMap::new);
+    private static volatile long H_GEN = 0L;
+    private static final class HC {
+        final HashMap<Long, Double> map = new HashMap<Long, Double>();
+        long gen = -1L;
+    }
+    private static final ThreadLocal<HC> H_CACHE = ThreadLocal.withInitial(HC::new);
 
     public static double heightV2(long ws, double x, double z) {
+        HC hc = H_CACHE.get();
+        if (hc.gen != H_GEN) { hc.map.clear(); hc.gen = H_GEN; }
         long k = ws * 1000003L ^ Double.doubleToLongBits(x) * 31L ^ Double.doubleToLongBits(z);
-        Double ch = H_CACHE.get().get(k);
+        Double ch = hc.map.get(k);
         if (ch != null) return ch;
         double c = continentality(ws, x, z);
         double cut = cut(ws);
@@ -1273,7 +1279,8 @@ public final class LandV3 {
                 }
             }
             double out = Math.min(h, LandContract.MAX_PEAK_M);
-            H_CACHE.get().put(k, out);
+            if (hc.map.size() > (1 << 15)) hc.map.clear();
+            hc.map.put(k, out);
             return out;
         }
         double sf = smoothstep(0.0, V2_COAST_W, -s);     // 0 海岸 → 1 深海
@@ -1286,7 +1293,8 @@ public final class LandV3 {
         depth -= V2_MTN_SHELF * w[0];      // 山带没入陆架（水下延续）
         double h = -Math.max(120.0, depth) + b1 * n1 + b2 * n2;
         double out = Math.min(h, -1.0);                  // 掩膜权威：洋面点永不浮出
-        H_CACHE.get().put(k, out);
+        if (hc.map.size() > (1 << 15)) hc.map.clear();
+        hc.map.put(k, out);
         return out;
     }
 
@@ -1310,7 +1318,7 @@ public final class LandV3 {
     // while perturbing 2.35% of world points by up to 3.4e-10 m. Keep the two-exp form.
 
     /** Invalidate the per-thread height memo and RegionField node cache (probes/A-B only). */
-    public static void clearHeightCache() { HC_WS = Long.MIN_VALUE; RegionField.clearCache(); ZonalLandProfile.clearCache(); }
+    public static void clearHeightCache() { H_GEN++; HC_WS = Long.MIN_VALUE; RegionField.clearCache(); ZonalLandProfile.clearCache(); }
 
     /** 构造抬升场（m 厚度）：交给 LEM 当输入 U(x)。 */
     public static double uplift(long ws, double x, double z) {

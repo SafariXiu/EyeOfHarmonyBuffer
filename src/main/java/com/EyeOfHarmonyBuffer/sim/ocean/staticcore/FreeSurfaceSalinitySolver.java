@@ -42,10 +42,7 @@ public final class FreeSurfaceSalinitySolver {
                     int q1 = st.idx(i, j, 1);
                     double h = Math.max(H_MIN, dz0 + st.eta[qs]);
                     double m = st.s[q0] * h;
-                    double fw = f.freshwaterFluxKgM2S(
-                            (int) Math.round(g.xOf(i)),
-                            (int) Math.round(g.zOf(j)), theta, st.t[q0]);
-                    if (Double.isNaN(fw)) fw = 0.0;
+                    double fw = AdvectionDiffusionSolver.effectiveFreshwaterKgM2S(f, st, i, j, theta);
                     // hS 方程的表面散度源：+淡水使 S 降低，-蒸发使 S 升高。
                     m -= st.s[q0] * (fw / RHO) * DT;
                     int qW = g.idx(i - 1, j), qE = g.idx(i + 1, j);

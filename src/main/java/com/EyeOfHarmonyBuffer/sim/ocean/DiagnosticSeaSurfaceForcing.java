@@ -4,6 +4,7 @@ import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
 import com.EyeOfHarmonyBuffer.sim.atmos.PrecipField;
 import com.EyeOfHarmonyBuffer.sim.atmos.SoilMoisture;
 import com.EyeOfHarmonyBuffer.sim.atmos.Radiation;
+import com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanConstants;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
 import java.util.HashMap;
 
@@ -43,7 +44,7 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         double[] uv = Atmosphere.windAt(x, z, seed, cell, theta, gradStep);
         double wind = Math.hypot(uv[0], uv[1]);
         double chv = Radiation.bulkCoeff(0.0, wind);
-        a = new double[]{ta, qa, chv, wind};
+        a = new double[]{ta, qa, chv, wind, uv[0], uv[1]};
         if (ATMO.size() > 200000) ATMO.clear();
         ATMO.put(k, a);
         return a;
@@ -59,6 +60,14 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
 
     @Override public double windStressZ(int x, int z, double theta) {
         return tau(x, z, theta)[1];
+    }
+
+    @Override public double windU(int x, int z, double theta) {
+        return atmo(x, z, theta)[4];
+    }
+
+    @Override public double windV(int x, int z, double theta) {
+        return atmo(x, z, theta)[5];
     }
 
     public double shortwaveWm2(int x, int z, double theta, double sstK) {
@@ -95,6 +104,18 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         double alb = aOcean + iceFraction * (aIce - aOcean);
         double asr = Radiation.absSolarSurface(lat, dec, alb);
         return Radiation.residual(sstK, asr, ta, qa, chv, 1.0);
+    }
+
+    @Override public double snowfallMperS(int x, int z, double theta) {
+        double pMmDay = PrecipField.mmPerDay(x, z, seed, cell, theta, gradStep);
+        if (!(pMmDay > 0.0)) return 0.0;
+        double ta = atmo(x, z, theta)[0];
+        double f = (OceanConstants.T_RAIN - ta)
+                / (OceanConstants.T_RAIN - OceanConstants.T_SNOW);
+        if (f <= 0.0) return 0.0;
+        if (f >= 1.0) f = 1.0;
+        // mm/day -> kg/m2/s -> m/s water equivalent（1 mm = 1 kg/m2）。
+        return pMmDay / (86400.0 * OceanConstants.RHO_FRESH) * f;
     }
 
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sstK) {

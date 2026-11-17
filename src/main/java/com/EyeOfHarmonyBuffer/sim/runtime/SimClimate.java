@@ -22,7 +22,6 @@ import com.EyeOfHarmonyBuffer.sim.atmos.VerticalColumn;
 import com.EyeOfHarmonyBuffer.sim.atmos.ZonalTables;
 import com.EyeOfHarmonyBuffer.sim.erosion.DetailNoise;
 import com.EyeOfHarmonyBuffer.sim.ocean.OceanField;
-import com.EyeOfHarmonyBuffer.sim.ocean.SurfaceLayer;
 import com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain;
 import com.EyeOfHarmonyBuffer.space.talos.chunk.world.V2BiomeSelect;
 
@@ -565,7 +564,6 @@ public final class SimClimate {
         //   按条件折入 ⇒ 默认 false 时指纹与历史【完全一致】。
         if (ClimlabEBM.EBM_PHYS_LW) h = h * 31 + 0x7A162L;
         // ★ 2026-10-20：EBM 的 OHT 来源（观测表 vs 内生海洋）。默认 false ⟹ 指纹不变。
-        if (ClimlabEBM.OHT_FROM_OCEAN) h = h * 31 + 0x7A163L;
         // ★ 2026-10-20：天气尺度涡动风参数化（默认 false ⟹ 指纹不变）。
         if (Atmosphere.EDDY_WIND) h = h * 31 + 0x7A164L;
         h = h * 31 + (StationaryWave.STATIONARY_WAVE_ON ? 1 : 0);   // ★ S2（§393）
@@ -780,6 +778,16 @@ public final class SimClimate {
             }
             h = h * 31 + Double.doubleToLongBits(PrecipField.SOURCE_FETCH_L);
         }
+        // QE 收支：默认（QE_ADJUST=true、含涡动 MFC、tau=3600、无上风延迟）不折入，
+        // 保持当前指纹不变；任何一项离默认才折入（N5：缺省不改变历史指纹）。
+        if (!PrecipField.QE_ADJUST || !PrecipField.QE_INCLUDE_EDDY_MFC
+                || PrecipField.QE_TAU != 3600.0 || PrecipField.QE_UPWIND_DELAY) {
+            h = h * 31 + 0x7A12EL;
+            h = h * 31 + (PrecipField.QE_ADJUST ? 1 : 0);
+            h = h * 31 + (PrecipField.QE_INCLUDE_EDDY_MFC ? 1 : 0);
+            h = h * 31 + (PrecipField.QE_UPWIND_DELAY ? 1 : 0);
+            h = h * 31 + Double.doubleToLongBits(PrecipField.QE_TAU);
+        }
         // §443 柱长波吸收的水汽系数：非 0 时折入 ⇒ 默认 0 时指纹与历史完全一致。
         if (StationaryWave.WVLW_K != 0.0) {
             h = h * 31 + 0x7A11BL;
@@ -879,6 +887,14 @@ public final class SimClimate {
         }
         if (VerticalColumn.FIXED_TS) {
             h = h * 31 + 0x7A12DL;
+        }
+        // 2026-11-15: cloud longwave research arm; conditional fold => OFF keeps the stamp.
+        if (VerticalColumn.CLOUD_LW_ON) {
+            h = h * 31 + 0x7A191L;
+        }
+        if (VerticalColumn.CLOUD_SW_ON) {
+            h = h * 31 + 0x7A192L;
+            h = h * 31 + Double.doubleToLongBits(VerticalColumn.CLOUD_ALPHA_CLEAR);
         }
         // ★ 2026-11-05（A6 收尾）：SurfaceLayer（2.5D 表层/Ekman）已退出生产，其指纹项一并退役。
         //   该类文件头自述"物理上零引用"（除本处），所以删掉这一支不改变任何计算；EKMAN_ENABLED
@@ -1010,6 +1026,12 @@ public final class SimClimate {
         if (Atmosphere.ZMSLK_V3_KAPPA) {
             h = h * 31 + 0x7A180L;
             h = h * 31 + com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.configStamp();
+        }
+        // 2026-11-15: production zonal provider. Conditional fold => OFF keeps the
+        // historical configStamp bit-identical; ON includes the provider's solve identity.
+        if (com.EyeOfHarmonyBuffer.sim.zonal.ZonalClimateProvider.ON) {
+            h = h * 31 + 0x7A190L;
+            h = h * 31 + com.EyeOfHarmonyBuffer.sim.zonal.ZonalClimateProvider.stamp();
         }
         return h;
     }

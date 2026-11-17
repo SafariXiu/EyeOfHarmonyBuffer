@@ -138,6 +138,15 @@ public final class VerticalColumn {
         for (int k = 0; k < N; k++) w += MASS[k] * q[k];
         return w;
     }
+
+    /** Scale the q profile to a target column water path [kg/m²]; research-arm only. */
+    public void setColumnWater(double targetKgM2) {
+        if (!(targetKgM2 > 0.0)) return;
+        double current = cwv();
+        if (!(current > 1.0e-12)) return;
+        double scale = targetKgM2 / current;
+        for (int k = 0; k < N; k++) q[k] *= scale;
+    }
     public static double TAU0_SW = 0.22;
     public static double ALBEDO = 0.12;
     public static double S0 = WorldContract.S0_TSI;
@@ -190,6 +199,48 @@ public final class VerticalColumn {
     /** 辐射子步的 ra 累加器（★ 必须在 step 里清零：radiation() 每调一次都会重算 ra）。 */
     public double raAccum;
     public double precipConv, precipLs;
+
+    // ---- 云长波（2026-11-15 研究臂；默认全关，旧路径逐位不变） ----
+    /** 云长波开关。默认 false；云量/云水/光学厚度由调用方显式给出，不在本类藏参数。 */
+    public static boolean CLOUD_LW_ON = false;
+    /** 云所在层（0=柱顶，N-1=地面）；-1 表示无云。 */
+    public int cloudLayer = -1;
+    /** 云量 [0,1]、液水路径 [kg/m²]、长波质量吸收系数 [m²/kg]。 */
+    public double cloudFrac = 0.0, cloudLwpKgM2 = 0.0, cloudKappaM2Kg = 0.0;
+
+    /** 云的长波光学厚度（未乘云量；调用方负责物理取值）。 */
+    private double cloudTau() {
+        if (!CLOUD_LW_ON || cloudLayer < 0) return 0.0;
+        return Math.max(0.0, cloudKappaM2Kg * cloudLwpKgM2 * cloudFrac);
+    }
+
+    // ---- 云短波（研究臂；默认关） ----
+    /** 云短波开关。默认 false；与 CLOUD_LW_ON 独立，便于 A/B。 */
+    public static boolean CLOUD_SW_ON = false;
+    /** 云方案替换 ALPHA_ATM 时的晴空/气溶胶反射率；测试输入，出处待核对。 */
+    public static double CLOUD_ALPHA_CLEAR = 0.0;
+    /** 云滴有效半径 [m] / 不对称因子；首版输入，出处待核对（Martin 1994 / Slingo 1989）。 */
+    public double cloudReM = 10.0e-6, cloudAsym = 0.85;
+
+    /** 单层云短波反射率（保守散射近似；未计多次反射）。 */
+    private double cloudSwR() {
+        if (!CLOUD_SW_ON || cloudLayer < 0 || cloudLwpKgM2 <= 0.0 || cloudReM <= 0.0) return 0.0;
+        double tau = 3.0 * cloudLwpKgM2
+                / (2.0 * PrecipField.RHO_WATER * cloudReM) * Math.max(0.0, cloudFrac);
+        double g = Math.max(0.0, Math.min(0.99, cloudAsym));
+        return (1.0 - g) * tau / (1.0 + (1.0 - g) * tau);
+    }
+
+    /** 诊断：solveAtmosphere 内所有内部步的平均降水/蒸发通量 [kg/m²/s]。 */
+    public double lastPFluxKgM2S = 0.0, lastEFluxKgM2S = 0.0;
+    /** Diagnostic: per-step q-budget residual [kg/m²] and its time mean [kg/m²/s]. */
+    public double lastWBudgetResidual = 0.0, lastWBudgetResidualMean = 0.0;
+    /** Last-atmosphere water/TOA closure residuals at solveAtmosphere return. */
+    public double lastWaterResidual = 0.0, lastToaResidual = 0.0;
+    /** If false, solveAtmosphere never returns early on the dry threshold (smooth residual). */
+    public static boolean DRY_EXIT = true;
+    /** Last-step precipitation/evaporation mass [kg/m2] (instantaneous, not spin-up average). */
+    public double lastPStepKgM2 = 0.0, lastEStepKgM2 = 0.0;
     public double dHdtMeasured;
     /** 本步的 dt（s）。★ precipConv/precipLs 是【每步质量】不是通量，算收支时必须除以 dt。 */
     public double lastDt = 1.0;
@@ -254,7 +305,11 @@ public final class VerticalColumn {
         setupOptics();
         double[] tauE = new double[N + 1];
         tauE[0] = 0.0;
-        for (int k = 0; k < N; k++) tauE[k + 1] = tauE[k] + MASS[k] * (K_M + K_W * q[k]);
+        for (int k = 0; k < N; k++) {
+            double dTau = MASS[k] * (K_M + K_W * q[k]);
+            if (k == cloudLayer) dTau += cloudTau();
+            tauE[k + 1] = tauE[k] + dTau;
+        }
         double f = 0.0;
         for (int k = 0; k < N; k++) {
             double tr = Math.exp(-(tauE[k + 1] - tauE[k]));
@@ -265,7 +320,75 @@ public final class VerticalColumn {
         return f;
     }
 
+    /** 6 带长波 + 同款短波；只在 BAND_LW=true 时被调用（默认关，旧路径逐位不变）。 */
+    private void radiationBands(double cosZenith, double dtRad) {
+        double[] bb = new double[N];
+        double[] tr = new double[N];
+        double[] fDn = new double[N + 1], fUp = new double[N + 1];
+        double[] fDnT = new double[N + 1], fUpT = new double[N + 1];
+        for (int band = 0; band < RadBands.BANDS.length; band++) {
+            for (int k = 0; k < N; k++) {
+                double tK = t[k], pMb = PC[k];
+                double tau = MASS[k] * (RadBands.kappa(RadBands.H2O, band, tK, pMb) * q[k]
+                        + RadBands.kappa(RadBands.CO2, band, tK, pMb) * CO2_VMR
+                        + RadBands.kappa(RadBands.O3, band, tK, pMb) * o3Vmr(z[k]) * O3_SCALE);
+                if (k == cloudLayer) tau += cloudTau();
+                tr[k] = Math.exp(-tau);
+                bb[k] = RadBands.planckBand(band, tK);
+            }
+            double bS = RadBands.planckBand(band, tSfc);
+            fDn[0] = 0.0;
+            for (int k = 0; k < N; k++) fDn[k + 1] = fDn[k] * tr[k] + bb[k] * (1.0 - tr[k]);
+            fUp[N] = bS;
+            for (int k = N - 1; k >= 0; k--) fUp[k] = fUp[k + 1] * tr[k] + bb[k] * (1.0 - tr[k]);
+            for (int k = 0; k <= N; k++) { fDnT[k] += fDn[k]; fUpT[k] += fUp[k]; }
+        }
+        olr = fUpT[0];
+        lwSfcDown = fDnT[N];
+        // 短波：与 radiation() 同款（纯吸收 + 一次地表反射）
+        double mu = Math.max(0.05, cosZenith);
+        double[] sDn = new double[N + 1], sUp = new double[N + 1];
+        double rc = cloudSwR();
+        boolean cloudSw = CLOUD_SW_ON && rc > 0.0;
+        double alphaAtm = Radiation.ATM_REFLECT ? Radiation.ALPHA_ATM : 0.0;
+        if (cloudSw) alphaAtm = Math.max(0.0, Math.min(1.0, CLOUD_ALPHA_CLEAR));
+        sDn[0] = S0 * mu * (1.0 - alphaAtm);
+        for (int k = 0; k < N; k++) {
+            double trSw = Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+            sDn[k + 1] = sDn[k] * trSw;
+            if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) sDn[k + 1] *= (1.0 - rc);
+        }
+        sUp[N] = ALBEDO * sDn[N];
+        for (int k = N - 1; k >= 0; k--) {
+            double trSw = Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+            double up = sUp[k + 1] * trSw;
+            if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) {
+                up = sUp[k + 1] * trSw * (1.0 - rc) + sDn[k] * rc;
+            }
+            sUp[k] = up;
+        }
+        swSfcDown = sDn[N];
+        asr = sDn[0] - sUp[0];
+        if (O3_SW) {
+            double F = S0 * mu * UV_FRACTION;
+            for (int k = 0; k < N; k++) {
+                double nO3 = MASS[k] * o3Vmr(z[k]) / M_O3 * N_A;
+                double tau = SIGMA_O3_UV * nO3;
+                double abs = F * (1.0 - Math.exp(-tau));
+                t[k] += abs * dtRad / (MASS[k] * Radiation.CP);
+                raAccum += abs;
+                F *= Math.exp(-tau);
+            }
+        }
+        for (int k = 0; k < N; k++) {
+            double net = (fUpT[k + 1] - fUpT[k]) + (fDnT[k] - fDnT[k + 1])
+                       + (sDn[k] - sDn[k + 1]) + (sUp[k + 1] - sUp[k]);
+            raAccum += net;
+            t[k] += net * dtRad / (MASS[k] * Radiation.CP);
+        }
+    }
     public void radiation(double cosZenith, double dtRad) {
+        if (BAND_LW) { radiationBands(cosZenith, dtRad); return; }
         double[] b = new double[N];
         for (int k = 0; k < N; k++) b[k] = THETA_SB * Math.pow(t[k], 4.0);
         double bS = LW_SFC_EMIS * THETA_SB * Math.pow(tSfc, 4.0);
@@ -277,7 +400,11 @@ public final class VerticalColumn {
         setupOptics();
         double[] tauE = new double[N + 1];
         tauE[0] = 0.0;
-        for (int k = 0; k < N; k++) tauE[k + 1] = tauE[k] + MASS[k] * (K_M + K_W * q[k]);
+        for (int k = 0; k < N; k++) {
+            double dTau = MASS[k] * (K_M + K_W * q[k]);
+            if (k == cloudLayer) dTau += cloudTau();
+            tauE[k + 1] = tauE[k] + dTau;
+        }
         for (int k = 0; k < N; k++) tr[k] = Math.exp(-(tauE[k + 1] - tauE[k]));
         lastTauTot = tauE[N];
 
@@ -300,16 +427,41 @@ public final class VerticalColumn {
         //   行星反照率 = ALBEDO = 0.12（P1073 实测 asr=403.55 / sDn[0]=415.4 ⟹ 只有 2.85%）
         //   而观测是 0.30（Goosse §2.1.6）。这里让大气先反射 (1 - ALPHA_ATM)，剩下的再到地表反射一次。
         //   ★ 下游【自动继承】：sDn[k+1] 由 sDn[k] 递推（:263）⟹ sDn[N] / swSfcDown / sUp / asr 全部随之修正。
-        sDn[0] = Radiation.ATM_REFLECT ? S0 * mu * (1.0 - Radiation.ALPHA_ATM) : S0 * mu;
+        double rc = cloudSwR();
+        boolean cloudSw = CLOUD_SW_ON && rc > 0.0;
+        double alphaAtm = Radiation.ATM_REFLECT ? Radiation.ALPHA_ATM : 0.0;
+        if (cloudSw) alphaAtm = Math.max(0.0, Math.min(1.0, CLOUD_ALPHA_CLEAR));
+        sDn[0] = S0 * mu * (1.0 - alphaAtm);
         // ★ 2026-11-14（1b 审计）：**不再除以 mu**。本柱的 cosZenith 是【日平均】insolation/S0，
         //   几何路径（1/mu）已经包含在日平均里；再除一次 mu 等于重复计算太阳高度角
         //   ⟹ 冬季 mu=0.078 时地表短波只剩 5 W/m²（应为 ~70），是极地冬季过冷与 82 W/m² 记账差的来源。
-        for (int k = 0; k < N; k++) sDn[k + 1] = sDn[k] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+        for (int k = 0; k < N; k++) {
+            sDn[k + 1] = sDn[k] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+            if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) sDn[k + 1] *= (1.0 - rc);
+        }
         double[] sUp = new double[N + 1];
         sUp[N] = ALBEDO * sDn[N];
-        for (int k = N - 1; k >= 0; k--) sUp[k] = sUp[k + 1] * Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+        for (int k = N - 1; k >= 0; k--) {
+            double trSw = Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
+            double up = sUp[k + 1] * trSw;
+            if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) {
+                up = sUp[k + 1] * trSw * (1.0 - rc) + sDn[k] * rc;
+            }
+            sUp[k] = up;
+        }
         swSfcDown = sDn[N];
         asr = sDn[0] - sUp[0];
+        if (O3_SW) {
+            double F = S0 * mu * UV_FRACTION;
+            for (int k = 0; k < N; k++) {
+                double nO3 = MASS[k] * o3Vmr(z[k]) / M_O3 * N_A;
+                double tau = SIGMA_O3_UV * nO3;
+                double abs = F * (1.0 - Math.exp(-tau));
+                t[k] += abs * dtRad / (MASS[k] * Radiation.CP);
+                raAccum += abs;
+                F *= Math.exp(-tau);
+            }
+        }
 
         // 逐层净加热（望远镜化：Σ = (B_s − OLR) + F↓_sfc + (ASR − 地面净短波)）
         for (int k = 0; k < N; k++) {
@@ -338,6 +490,7 @@ public final class VerticalColumn {
         //   改用 §498 已【验证过】的气块抬升导出的 LNB（零自由参数）。
         //   无对流（LNB = NaN）时回落到冻结层。
         double pT = Double.isNaN(r.pLnb) ? pF : r.pLnb;
+        lastCloudTopPa = pT;
         double tcB = tSfc;
         double tcF = ParcelLift.moistAdiabatT(r.tLcl, r.pLcl, pF, 50);
         double tRF = tcB + W_STAB * (tcF - tcB);          // 式 (7)：斜率缩放
@@ -417,7 +570,10 @@ public final class VerticalColumn {
         //   物理原因：云顶以上只剩辐射，而【灰体辐射平衡对该廓线本身是不稳定的】——
         //   对流调整正是让它稳定的那个算子。关掉它 = 把柱子交给一个不稳定的平衡。
         //   ⇒ 保留原写法（逐层调整）。这条否证已记账。
+        boolean[] adj = new boolean[N];
         for (int k = 0; k < N; k++) {
+            adj[k] = !CONV_TO_CLOUD_TOP || PC[k] >= lastCloudTopPa;
+            if (!adj[k]) { dq[k] = 0.0; dT[k] = 0.0; continue; }
             dq[k] = a * (qRef(k) - q[k]);
             if (dq[k] < 0.0) available += -dq[k] * MASS[k];
             else             demand    +=  dq[k] * MASS[k];
@@ -431,7 +587,7 @@ public final class VerticalColumn {
         double scale = 1.0;
         if (demand > available && demand > 0.0) scale = available / demand;
         double pConv = available - demand * scale;
-        for (int k = 0; k < N; k++) q[k] += (dq[k] > 0.0) ? dq[k] * scale : dq[k];
+        for (int k = 0; k < N; k++) if (adj[k]) q[k] += (dq[k] > 0.0) ? dq[k] * scale : dq[k];
         // 潜热：把降水的潜热【全部】还给柱子（使 H 守恒）
         double lat = Radiation.LV * pConv;
         // T 形状项：减掉质量加权均值 ⇒ 柱积分为 0 ⇒ H 守恒
@@ -439,10 +595,10 @@ public final class VerticalColumn {
         //   ⇒ 每层被一次性加上 ~+50 K ⇒ 4~6 步内 NaN。守恒性当时【是对的】
         //   （Σ MASS*cp*(dT−bias) = hSum − bias*mSum = 0），所以收支代数看不出这个错。
         double bias = hSum / (mSum * Radiation.CP);
-        for (int k = 0; k < N; k++) t[k] += dT[k] - bias;
+        for (int k = 0; k < N; k++) if (adj[k]) t[k] += dT[k] - bias;
         // 潜热按层质量均匀分配（零柱积分之外的唯一选择是均匀；不影响 H）
         double latPerMass = lat / mSum;
-        for (int k = 0; k < N; k++) t[k] += latPerMass / Radiation.CP;
+        for (int k = 0; k < N; k++) if (adj[k]) t[k] += latPerMass / Radiation.CP;
         return pConv;
     }
 
@@ -474,6 +630,39 @@ public final class VerticalColumn {
      * 默认 false ⇒ 不改任何现有行为。
      */
     public static boolean FIXED_TS = false;
+    /**
+     * ★ 2026-11-14（长波 A 方案）：true = 6 带长波（HITRAN+MT_CKD 谱学核）；
+     * false（默认）= 原单带灰体，逐位不变。
+     */
+    public static boolean BAND_LW = false;
+    /**
+     * ★ 2026-11-14：O3 紫外吸收（Hartley 带）的平流层加热。默认关 ⟹ 旧路径逐位不变。
+     * 常数（物理谱学，非地球气候表）：200–310 nm 占 TSI 的 1.5%；带平均 σ(O3)=1e-21 m²。
+     */
+    public static boolean O3_SW = false;
+    /**
+     * ★ 2026-11-14：把对流调整限制在**云顶以下**（p >= pT）。默认 false ⟹ 旧行为逐位不变。
+     * 6 带模型里平流层必须由辐射控制；全层调整会把平流层按在冷参考上（冷顶陷阱）。
+     */
+    public static boolean CONV_TO_CLOUD_TOP = false;
+    /** 最近一次 bettsMillerTRef 算出的云顶气压 [Pa]。 */
+    public double lastCloudTopPa = 0.0;
+    public static final double UV_FRACTION = 0.015;
+    public static final double SIGMA_O3_UV = 1.0e-21;
+    public static final double M_O3 = 0.0479982;
+    public static final double N_A = 6.02214076e23;
+    /** 世界大气成分设定（显式声明，不是地球观测表）。 */
+    public static final double CO2_VMR = 420.0e-6;
+    /** O3 吸收缩放（诊断用；1.0 = 世界设定廓线）。 */
+    public static double O3_SCALE = 1.0;
+    public static final double CH4_VMR = 1.9e-6;
+    public static final double N2O_VMR = 0.33e-6;
+    /** O3 固定廓线（世界设定）：对流层 30 ppb + 平流层 25 km 峰值 8 ppm。 */
+    public static double o3Vmr(double zM) {
+        double trop = 30.0e-9;
+        double strat = 8.0e-6 * Math.exp(-Math.pow((zM - 25000.0) / 8000.0, 2.0));
+        return trop + strat;
+    }
 
     /**
      * §511 ★★★★★★★ **诊断地面温度**：解表面能量平衡。
@@ -522,6 +711,7 @@ public final class VerticalColumn {
     /** 一步。返回本步的 dH/dt 实测值（W/m²）。 */
     public double step(double dt, double cosZenith, double tTopK) {
         lastDt = dt;
+        double w0 = cwv();
         double h0 = columnEnergy();
         // §511：先取辐射通量（swSfcDown / lwSfcDown 与 Ts 无关，见 radiation() 的下行扫描）
         radiation(cosZenith, 0.0);
@@ -550,6 +740,7 @@ public final class VerticalColumn {
         diagnoseGeopotential();
         double h1 = columnEnergy();
         dHdtMeasured = (h1 - h0) / dt;
+        lastWBudgetResidual = (cwv() - w0) - (lh * dt / Radiation.LV - (precipConv + precipLs));
         if (firstBadStep < 0) {
             if (!isFinite(h0) || !isFinite(h1)) { firstBadStep = -1; }
             for (int k = 0; k < N; k++) if (!isFinite(t[k]) || !isFinite(q[k])) { firstBadLayer = k; break; }
@@ -585,12 +776,56 @@ public final class VerticalColumn {
      * 判据是柱收支 residual=0（不是 TOA：TOA 净额正是驱动地表温度变化的通量 F）。
      */
     public int solveAtmosphere(double dt, double cosZenith, double tTopK, double tol, int maxSteps) {
+        // ★ 2026-11-15：P/E 诊断必须覆盖 solveAtmosphere 的**全部内部步**。
+        //   旧口径只取最后一个内部步的 precip/lh，而 W 是外层步首尾采样的
+        //   ⟹ 单步 P-E 与年储水变化对不上（NGRIDBAND: P-E=0.225，dW/day=0.0038）。
+        //   这里只累加诊断量，不改变 step() 的物理或 last-step 字段。
+        double pAccum = 0.0, eAccum = 0.0, dtAccum = 0.0, wbAccum = 0.0;
+        double wPrev = cwv();
+        int drySteps = 0;
         for (int n = 1; n <= maxSteps; n++) {
             step(dt, cosZenith, tTopK);
+            double pStep = precipConv + precipLs;
+            double eStep = lh * dt / Radiation.LV;
+            lastPStepKgM2 = pStep;
+            lastEStepKgM2 = eStep;
+            double wNow = cwv();
+            // Dry polar RCE: P=E=0 and W is stationary.  This is a legal
+            // equilibrium (polar desert), not a failure to reach P=E with E>0.
+            if (pStep < 1.0e-4 && eStep < 1.0e-4) drySteps++; else drySteps = 0;
+            if (DRY_EXIT && n > 10 && drySteps >= 50) {
+                lastPFluxKgM2S = 0.0;
+                lastEFluxKgM2S = 0.0;
+                lastWBudgetResidualMean = wbAccum / dtAccum;
+                lastWaterResidual = 0.0;
+                lastToaResidual = (asr - olr) - lastSurfNet;
+                return n;
+            }
+            wPrev = wNow;
+            pAccum += precipConv + precipLs;
+            eAccum += lh * dt;
+            dtAccum += dt;
+            wbAccum += lastWBudgetResidual;
             // ★ 2026-11-14 记账更正：budgetResidual 是【内部一致性】（恒 ~1e-10，不是收敛指标）；
             //   固定 Ts 时大气平衡的判据是 **|dH/dt| → 0**（等价于 TOA → 地表净额 F）。
-            if (n > 10 && Math.abs(dHdtMeasured) < tol) return n;
+            double pMean = pAccum / dtAccum;
+            double eMean = eAccum / (Radiation.LV * dtAccum);
+            lastWaterResidual = pMean - eMean;
+            lastToaResidual = (asr - olr) - lastSurfNet;
+            if (n > 10 && Math.abs(dHdtMeasured) < tol
+                    && Math.abs(lastWaterResidual) < 1.0e-6
+                    && Math.abs(lastToaResidual) < 2.0) {
+                lastPFluxKgM2S = pMean;
+                lastEFluxKgM2S = eMean;
+                lastWBudgetResidualMean = wbAccum / dtAccum;
+                return n;
+            }
         }
+        lastPFluxKgM2S = pAccum / dtAccum;
+        lastEFluxKgM2S = eAccum / (Radiation.LV * dtAccum);
+        lastWBudgetResidualMean = wbAccum / dtAccum;
+        lastWaterResidual = lastPFluxKgM2S - lastEFluxKgM2S;
+        lastToaResidual = (asr - olr) - lastSurfNet;
         return -maxSteps;
     }
 

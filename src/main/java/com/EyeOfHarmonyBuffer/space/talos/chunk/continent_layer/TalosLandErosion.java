@@ -1703,7 +1703,7 @@ public final class TalosLandErosion {
      */
     public static volatile double THETA_M = 25.0;
     /**
-     * ★ 阈值总开关。默认 <b>false = 逐位回滚位</b>。
+     * ★ 阈值总开关。默认 <b>true</b>（2026-10-14 定案）；<b>false = 逐位回滚位</b>。
      * <p>⚠ 关闭时【连"零侵蚀区分支"都不走】—— 因为无阈值时那条分支会改掉
      * "自填/淤积"分支的行为（z_new &gt; z + up 的那一支），破坏逐位等价。
      */

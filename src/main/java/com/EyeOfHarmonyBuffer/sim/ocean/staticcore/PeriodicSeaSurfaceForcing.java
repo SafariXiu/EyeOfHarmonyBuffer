@@ -24,6 +24,8 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double windStressZ(int x, int z, double theta) {
         return delegate.windStressZ(wrap(x), z, theta);
     }
+    @Override public double windU(int x, int z, double theta) { return delegate.windU(wrap(x), z, theta); }
+    @Override public double windV(int x, int z, double theta) { return delegate.windV(wrap(x), z, theta); }
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sst) {
         return delegate.netHeatFluxWm2(wrap(x), z, theta, sst);
     }
@@ -45,5 +47,8 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
     }
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sst) {
         return delegate.freshwaterFluxKgM2S(wrap(x), z, theta, sst);
+    }
+    @Override public double snowfallMperS(int x, int z, double theta) {
+        return delegate.snowfallMperS(wrap(x), z, theta);
     }
 }

@@ -40,9 +40,7 @@ public final class PrognosticSalinity {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
                 int js = j * nx + i;
-                double v = f.freshwaterFluxKgM2S((int) Math.round(g.xOf(i)),
-                        (int) Math.round(g.zOf(j)), theta, st.t[st.idx(i, j, 0)]);
-                if (Double.isNaN(v)) v = 0.0;
+                double v = AdvectionDiffusionSolver.effectiveFreshwaterKgM2S(f, st, i, j, theta);
                 fw[js] = v;
             }
         // ★ 2026-11-09（盐收支）：去掉 E−P 的全球面积加权平均 = 河流回流。

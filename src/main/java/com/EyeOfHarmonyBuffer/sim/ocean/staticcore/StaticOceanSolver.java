@@ -514,6 +514,21 @@ public final class StaticOceanSolver {
             DeepBudget.closeYear(grid, st);
             LAST_MAX_DT = maxDT;
             LAST_MAX_DS = maxDS;
+            if (yr > 0 && Boolean.getBoolean("eoh.debugresid") && LAST_MAX_DT_Q >= 0) {
+                int q = LAST_MAX_DT_Q;
+                int kk = q / n2, rr = q % n2, jj = rr / grid.nx, ii = rr % grid.nx;
+                int qs = jj * grid.nx + ii;
+                System.out.println("RESID_Q y=" + (yr + 1) + " q=" + q
+                        + " i=" + ii + " j=" + jj + " k=" + kk
+                        + " lat=" + grid.latAt(jj) + " T=" + st.t[q] + " S=" + st.s[q]
+                        + " iceA=" + st.iceFraction[qs]
+                        + " h=" + st.iceActualThickness(ii, jj)
+                        + " snow=" + st.snowThickness[qs]
+                        + " Tprev=" + prevT[q] + " Tnow=" + tMean[q]
+                        + " Sprev=" + prevS[q] + " Snow=" + sMean[q]
+                        + " mld=" + st.mixedLayerDepth[qs]
+                        + " wF=" + st.wF[q] + " uF=" + st.uF[q] + " vF=" + st.vF[q]);
+            }
             // ★ 2026-11-10（套件并入 DEEPGATE）：12 年 spin-up 中途不打印会被
             //   rerun_acceptance.ps1 的 1800 s 空闲看门狗判 TIMEOUT。逐年一行 ~4 分钟。
             if (SEASONAL_YEARS > 1) {

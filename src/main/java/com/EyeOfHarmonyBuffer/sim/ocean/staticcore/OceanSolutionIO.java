@@ -33,7 +33,14 @@ public final class OceanSolutionIO {
     private OceanSolutionIO() {}
 
     /** Bump when the on-disk layout or the meaning of any field changes. */
-    public static final int FORMAT_VERSION = 1;
+    /**
+     * v3 (2026-11-17, F3): the EVP ice-dynamics state (iceU/iceV/sig1/sig2/sig12) and
+     * snowMeltFlux are now stored too. Before this, a solution loaded from disk came back
+     * with zero ice velocity/stress -- i.e. it was NOT the same state that was cached
+     * (A0-2: "cached steady state" must be the state itself). v2 files are REJECTED
+     * (read() returns null) rather than silently accepted with missing fields.
+     */
+    public static final int FORMAT_VERSION = 3;
     public static final String MAGIC = "EOHOCN";
 
     public static synchronized String fileName(int worldSeed, long flagsHash, int solverVersion) {
@@ -72,6 +79,11 @@ public final class OceanSolutionIO {
             writeDoubles(o, st.mixedLayerDepth); writeDoubles(o, st.hTOld);
             writeDoubles(o, st.hTNew); writeDoubles(o, st.iceFraction);
             writeDoubles(o, st.iceThickness); writeDoubles(o, st.iceSaltFlux);
+        writeDoubles(o, st.snowThickness);
+            // v3 (F3): ice dynamics + snow melt flux
+            writeDoubles(o, st.iceU); writeDoubles(o, st.iceV);
+            writeDoubles(o, st.sig1); writeDoubles(o, st.sig2); writeDoubles(o, st.sig12);
+            writeDoubles(o, st.snowMeltFlux);
             writeDoubles(o, st.psi); writeDoubles(o, st.uF); writeDoubles(o, st.vF); writeDoubles(o, st.wF);
             writeDoubles(o, sol.surfaceT);
             o.writeInt(sol.baroIterations); o.writeInt(sol.advIterations);
@@ -122,6 +134,10 @@ public final class OceanSolutionIO {
             readDoubles(i, st.mixedLayerDepth); readDoubles(i, st.hTOld);
             readDoubles(i, st.hTNew); readDoubles(i, st.iceFraction);
             readDoubles(i, st.iceThickness); readDoubles(i, st.iceSaltFlux);
+        readDoubles(i, st.snowThickness);
+            readDoubles(i, st.iceU); readDoubles(i, st.iceV);
+            readDoubles(i, st.sig1); readDoubles(i, st.sig2); readDoubles(i, st.sig12);
+            readDoubles(i, st.snowMeltFlux);
             double[] psi = new double[st.psi.length]; readDoubles(i, psi); st.psi = psi;
             readDoubles(i, st.uF); readDoubles(i, st.vF); readDoubles(i, st.wF);
             double[] surf = new double[nx * ny]; readDoubles(i, surf);

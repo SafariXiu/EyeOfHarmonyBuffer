@@ -2,6 +2,7 @@ package com.EyeOfHarmonyBuffer.sim.atmos;
 
 import com.EyeOfHarmonyBuffer.sim.litho.PlateField;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+import com.EyeOfHarmonyBuffer.sim.zonal.ZonalClimateProvider;
 
 /**
  * M3 大气层 —— **第一片纵向切片：温度场 + 海陆热力异常 + 地面气压异常**。
@@ -462,6 +463,8 @@ public final class Atmosphere {
      * 独立事实之后，用本世界自己的 {@code kappa} 重新混合 —— 这才是能搬运的东西。
      */
     public static double oceanBaseK(double latRad) {
+        // 2026-11-15: production provider (default OFF => table/EBM path bit-identical).
+        if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) return ZonalClimateProvider.oceanAnnualK(latRad);
         // ★ §7344/§7345：climlab EBM 稳态解（内生）。默认关 ⇒ 逐位不变。
         //   为什么要有它：本方法的 javadoc 自己指出「只有一个外生 T_zm 就回答不了『换一个陆地分布会怎样』」。
         //   内生化之后纬向温度不再依赖地球的观测表；且 §7345 实测该解与 ERA5 观测支逐点差 ~2 K（最大 5.66 K）。
@@ -507,6 +510,8 @@ public final class Atmosphere {
      * 而 §7349 实测「陆面能量平衡只给出观测陆海温差的 ~60%」⟹ 这个方向是对的。
      */
     public static double landMinusOceanSLK(double latRad) {
+        // 2026-11-15: production provider (default OFF => bit-identical).
+        if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) return ZonalClimateProvider.landMinusOceanK(latRad);
         // ★ §7350：与 oceanBaseK 走【同一个】开关（两个分量必须同源）—— 见上方口径裁决。
         double tOcean = ClimlabEBM.EBM_ON ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
         return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad) - tOcean;
@@ -642,6 +647,10 @@ public final class Atmosphere {
     /** 新式：锚在观测海平面年表上，只加本世界陆地占比那一项差。 */
     public static double zmslkNew(double latRad) {
         double kbar = kbarRef(latRad);
+        // 2026-11-15: production provider (default OFF => bit-identical).
+        if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) {
+            return ZonalClimateProvider.zonalMeanK(latRad, kbar);
+        }
         return ZonalTables.tZmSlAnnual(latRad)
              + (kbar - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
     }
@@ -798,6 +807,8 @@ public final class Atmosphere {
     }
 
     public static double seasonalAnomaly(double latRad, double kappa, double theta) {
+        // 2026-11-15: production provider (default OFF => bit-identical).
+        if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) return ZonalClimateProvider.seasonalAnomaly(latRad, kappa, theta);
         if (SEASON_FROM_HEAT_CAPACITY) {
             // ★ 2026-11-14：年谐波（赤道为 0，南半球相位已含）+ 平板滞后。
             //   旧式用「二至日差」当成年振幅 ⟹ 赤道得到非零年振幅 ⟹ GATE_EQ_DERIV 必 FAIL。

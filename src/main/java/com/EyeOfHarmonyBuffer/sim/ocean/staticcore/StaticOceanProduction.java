@@ -139,6 +139,27 @@ public final class StaticOceanProduction {
         //   开时连带着 Smagorinsky 系数与迭代上限一起折进去（它们都会改解）。
         // ★ 2026-11-12（B1）：冰分数改年平口径会改**世界输出** ⟹ 无条件折进指纹（A3-⑤）。
         h = h * 31 + (StaticOceanSolver.ICE_FRACTION_FROM_MEAN ? 1 : 0);
+        // Stage F：KPP 默认关时哈希不变。
+        if (KppBoundaryLayer.ON) h = h * 31 + 0x4B5050L;
+        // ★ 2026-11-17（海冰 Stage A）：默认关时哈希不变（A3-④/A3-⑤）。
+        if (AdvectionDiffusionSolver.ICE_STATE_V2) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.SNOW_ON) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.LATERAL_MELT_ON) {
+            h = h * 31 + 1;
+            if (AdvectionDiffusionSolver.LATERAL_MELT_OPEN_WATER) h = h * 31 + 1;
+        }
+        if (AdvectionDiffusionSolver.ICE_EVP_ON) {
+            h = h * 31 + 1;
+            h = h * 31 + Double.doubleToLongBits(AdvectionDiffusionSolver.ICE_DYN_DT);
+        }
+        if (AdvectionDiffusionSolver.ICE_TRANSPORT_ON) {
+            h = h * 31 + 1;
+            if (AdvectionDiffusionSolver.ICE_WIND_DRIFT_ON) {
+                h = h * 31 + 1;
+                h = h * 31 + Double.doubleToLongBits(AdvectionDiffusionSolver.ICE_WIND_DRIFT_FACTOR);
+                h = h * 31 + Double.doubleToLongBits(AdvectionDiffusionSolver.ICE_WIND_TURN_DEG);
+            }
+        }
         if (R3Momentum.AH_IN_BALANCE) {
             h = h * 31 + 1;
             h = h * 31 + Double.doubleToLongBits(R3Momentum.SGS_CS);
@@ -207,6 +228,11 @@ public final class StaticOceanProduction {
         com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.resetCache();
         com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache();
         com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.clearWmtMemo();
+    }
+
+    /** 只读：最近一次安装的生产解，供诊断探针避免二次求解。 */
+    public static synchronized OceanSolution lastSolution() {
+        return sol;
     }
 
     public static synchronized OceanSolution solution(int worldSeed) {

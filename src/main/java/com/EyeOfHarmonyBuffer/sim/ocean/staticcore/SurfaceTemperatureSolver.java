@@ -1,6 +1,5 @@
 package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
-import com.EyeOfHarmonyBuffer.sim.ocean.ClimberOcean;
 import com.EyeOfHarmonyBuffer.sim.ocean.FreezingPoint;
 import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
 
@@ -109,14 +108,14 @@ public final class SurfaceTemperatureSolver {
         double h = Math.max(0.05, st.iceThickness[q]);
         double ts = iceSurfaceT(f, x, z, theta, h);
         double qh = f.netHeatFluxWm2(x, z, theta, ts, 1.0);
-        double dh = -qh * 86400.0 / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+        double dh = -qh * 86400.0 / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
         if (dh > 0.0) {
             int qs = st.idx(i, j, 0);
             double s0 = st.s[qs];
-            double dS = s0 * (ClimberOcean.RHO_ICE / ClimberOcean.RHO_REF) * dh / Math.max(1.0, h);
+            double dS = s0 * (OceanConstants.RHO_ICE / OceanConstants.RHO_REF) * dh / Math.max(1.0, h);
             st.s[qs] = Math.max(0.0, Math.min(50.0, s0 + dS));
         }
-        st.iceThickness[q] = Math.max(0.0, Math.min(ClimberOcean.ICE_MAX, h + dh));
+        st.iceThickness[q] = Math.max(0.0, Math.min(OceanConstants.ICE_MAX, h + dh));
     }
 
     private static double iceSurfaceT(SeaSurfaceForcing f, int x, int z, double theta, double h) {
@@ -124,7 +123,7 @@ public final class SurfaceTemperatureSolver {
         for (int it = 0; it < 30; it++) {
             double mid = 0.5 * (lo + hi);
             double q = f.netHeatFluxWm2(x, z, theta, mid, 1.0);
-            double flux = q + ClimberOcean.K_ICE * (T_FREEZE - mid) / Math.max(0.05, h);
+            double flux = q + OceanConstants.K_ICE * (T_FREEZE - mid) / Math.max(0.05, h);
             if (flux > 0.0) lo = mid; else hi = mid;
         }
         return 0.5 * (lo + hi);

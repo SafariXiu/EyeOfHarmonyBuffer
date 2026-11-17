@@ -20,14 +20,36 @@ public final class OceanState {
     public final double[] mixedLayerDepth;
     public final double[] hTOld;
     public final double[] hTNew;
-    /** 最小海冰占位：冰覆盖率与冰厚（provisional，不是真正海冰系统）。 */
+    /**
+     * 冰面积分数 aice（0..1）。★ 2026-11-17（海冰 Stage A）语义改为**预报量**：
+     * 由冰形成/融化/侧向融化/输运更新；不再每步由 iceThickness/H_ICE_REF 反算。
+     * 在 ICE_STATE_V2=false 时仍保持旧诊断口径（逐位不变）。
+     */
     public final double[] iceFraction;
+    /**
+     * 格点平均冰体积 vice（m）。注意：不是冰面厚度；冰面厚度 h_i = vice / max(aice, eps)。
+     * 旧代码把它直接当冰面厚度用，是 Stage A 要修正的口径。
+     */
     public final double[] iceThickness;
+    /**
+     * 格点平均雪体积 vsnow（m 雪深，不是水当量）。★ Stage A 新增；Stage B 起参与热力。
+     * 雪面厚度 h_s = vsnow / max(aice, eps)。
+     */
+    public final double[] snowThickness;
+    /** EVP 冰速度（2D 格心，m/s）；Stage D2a 只建状态，默认不参与计算。 */
+    public final double[] iceU;
+    public final double[] iceV;
+    /** EVP 应力分量（2D，N/m）：sig1=s11+s22, sig2=s11-s22, sig12。 */
+    public final double[] sig1;
+    public final double[] sig2;
+    public final double[] sig12;
     /**
      * 冰-海盐通量 [kg/(m2 s)]：结冰为负（析盐、浓缩表层），融冰为正。
      * 由 {@code AdvectionDiffusionSolver.updateMixedLayer} 写入，{@code PrognosticSurfaceSalinitySolver} 消费并清零。
      */
     public final double[] iceSaltFlux;
+    /** 雪融水通量 kg/(m2 s)，由冰步写入、盐度步消费并清零（Stage B）。 */
+    public final double[] snowMeltFlux;
     /** 正压流函数 psi (m^2/s)，用于 u=-dpsi/dy, v=dpsi/dx。 */
     public double[] psi;
     /**
@@ -56,7 +78,14 @@ public final class OceanState {
         hTNew = new double[grid.nx * grid.ny];
         iceFraction = new double[grid.nx * grid.ny];
         iceThickness = new double[grid.nx * grid.ny];
+        snowThickness = new double[grid.nx * grid.ny];
+        iceU = new double[grid.nx * grid.ny];
+        iceV = new double[grid.nx * grid.ny];
+        sig1 = new double[grid.nx * grid.ny];
+        sig2 = new double[grid.nx * grid.ny];
+        sig12 = new double[grid.nx * grid.ny];
         iceSaltFlux = new double[grid.nx * grid.ny];
+        snowMeltFlux = new double[grid.nx * grid.ny];
         for (int j = 0; j < grid.ny; j++) {
             for (int i = 0; i < grid.nx; i++) {
                 surfaceLayer[j * grid.nx + i] = grid.dz[0];
@@ -92,4 +121,18 @@ public final class OceanState {
 
     public double surfaceT(int i, int j) { return t[idx(i, j, 0)]; }
     public double surfaceS(int i, int j) { return s[idx(i, j, 0)]; }
+
+    /** 冰面厚度 h_i（m）：iceThickness 是格点体积，必须除以冰面积。 */
+    public double iceActualThickness(int i, int j) {
+        int q = j * grid.nx + i;
+        double a = iceFraction[q];
+        return a > 1.0e-6 ? iceThickness[q] / a : 0.0;
+    }
+
+    /** 雪面厚度 h_s（m）：snowThickness 是格点雪体积。 */
+    public double snowDepth(int i, int j) {
+        int q = j * grid.nx + i;
+        double a = iceFraction[q];
+        return a > 1.0e-6 ? snowThickness[q] / a : 0.0;
+    }
 }

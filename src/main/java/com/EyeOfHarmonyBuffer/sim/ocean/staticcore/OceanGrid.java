@@ -28,7 +28,9 @@ public final class OceanGrid {
      * <b>各向异性是过渡态</b>，区域 1° 架构（3D海洋-无限世界架构.md §3）会重新定义。
      */
     public static final double WIDTH_LAPS = 1.0;
-    public static final double WIDTH_M = WIDTH_LAPS * PlanetMetric.CIRCUMFERENCE_M;   // = 80,000,000（逐位不变）
+    // ★ 2026-11-17 更正（约定 4：历史段落必须自证是历史）：WIDTH_LAPS=1.0 ⟹ 1 圈 = 40,000 km。
+    //   旧注释写的 "= 80,000,000（逐位不变）" 是 2026-11-03 阶段 0.5 之前的 2 圈口径，已过期。
+    public static final double WIDTH_M = WIDTH_LAPS * PlanetMetric.CIRCUMFERENCE_M;
     public static final double HEIGHT_M = WorldContract.Z_CYCLE;                      // = 40,000,000（一整条经圈）
     public static final double[] DZ = {
         50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190

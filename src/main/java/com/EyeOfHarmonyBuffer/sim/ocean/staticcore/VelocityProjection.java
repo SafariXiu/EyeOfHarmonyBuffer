@@ -1208,6 +1208,7 @@ public final class VelocityProjection {
         sealSeabed(g, st);
         LAST_SEABED_MAX = seabedMax(g, st);
         LAST_DIV_AFTER = maxDiv(g, st);
+        LAST_CONVERGED = LAST_DIV_AFTER <= 1.0e-9;
         FACES_READY = true;
         return LAST_DIV_BEFORE;
     }
@@ -1388,6 +1389,7 @@ public final class VelocityProjection {
 
         LAST_SEABED_MAX = seabedMax(g, st);
         LAST_DIV_AFTER = maxDiv(g, st);
+        LAST_CONVERGED = LAST_DIV_AFTER <= 1.0e-9;
         FACES_READY = true;
         return LAST_DIV_BEFORE;
     }

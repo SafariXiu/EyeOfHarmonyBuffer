@@ -10,6 +10,21 @@ public final class ZonalUtil {
 
     private ZonalUtil() {}
 
+    /**
+     * Plane/cylinder geometry: F(z) is W per unit x, z is metres.  No 2*pi*R*cos(phi).
+     * The grid is treated as periodic in z; the polar lines are folds, not caps.
+     */
+    public static double[] fluxConvergenceZ(double[] fluxW, double dz) {
+        int n = fluxW.length;
+        double[] q = new double[n];
+        for (int i = 0; i < n; i++) {
+            int im = (i - 1 + n) % n;
+            int ip = (i + 1) % n;
+            q[i] = -(fluxW[ip] - fluxW[im]) / (2.0 * dz);
+        }
+        return q;
+    }
+
     /** 任意经向热通量剖面（37 点，W，正=向北）的辐合 [W/m²] → 19 纬。 */
     public static double[] fluxConvergence(double[] fluxW37) {
         double[] f = new double[NLAT];

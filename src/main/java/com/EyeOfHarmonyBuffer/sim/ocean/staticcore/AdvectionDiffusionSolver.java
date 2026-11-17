@@ -2,7 +2,6 @@ package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
 import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
 import com.EyeOfHarmonyBuffer.sim.atmos.Atmosphere;
-import com.EyeOfHarmonyBuffer.sim.ocean.ClimberOcean;
 import com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline;
 import com.EyeOfHarmonyBuffer.sim.ocean.FreezingPoint;
 import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
@@ -19,12 +18,12 @@ public final class AdvectionDiffusionSolver {
     public static final double KH = 1000.0;
 
     /**
-     * ★ 2026-11-03：KH 的 Bryan & Lewis (1979) 剖面（ClimberOcean.blKh：1000 + 4000 exp(-z/500)）。
+     * ★ 2026-11-03：KH 的 Bryan & Lewis (1979) 剖面（OceanConstants.blKh：1000 + 4000 exp(-z/500)）。
      * 常数 KH=1000 是论文的深层值；表层应为 5000。默认关，A/B 用 NKHBL=1。
      */
     public static boolean KH_BL_ON = false;
     public static double khAt(OceanGrid g, int k) {
-        return KH_BL_ON ? ClimberOcean.blKh(g.zCenter[k]) : KH;
+        return KH_BL_ON ? OceanConstants.blKh(g.zCenter[k]) : KH;
     }
 
     /**
@@ -90,20 +89,23 @@ public final class AdvectionDiffusionSolver {
      * 常数：K_ICE=2.0 W/m/K、rho_i=917、L_f=3.34e5（Semtner 1976，ClimberOcean 已登记）。
      */
     static double iceSurfaceFlux(SeaSurfaceForcing f, double theta, int x, int z,
-                                 double tf, double hIce) {
-        double qf = f.netHeatFluxWm2(x, z, theta, tf, 1.0, hIce);
+                                 double tf, double hIce, double aice, double hSnow) {
+        double qf = f.netHeatFluxWm2(x, z, theta, tf, aice, hIce);
         if (!Double.isFinite(qf)) return 0.0;
         if (qf >= 0.0) return qf;                 // 冰面在冰点以上 ⟹ 融化
         double h = Math.max(0.05, hIce);
+        double hs = Math.max(0.0, hSnow);
+        // Semtner 0 层 + 雪热阻：R = h_i/k_i + h_s/k_s；hs=0 时逐位回到旧式。
+        double R = h / OceanConstants.K_ICE + hs / OceanConstants.K_SNOW;
         double lo = tf - 40.0, hi = tf;
         for (int it = 0; it < 24; it++) {
             double mid = 0.5 * (lo + hi);
-            double q = f.netHeatFluxWm2(x, z, theta, mid, 1.0, h);
-            double fv = q + ClimberOcean.K_ICE * (tf - mid) / h;
+            double q = f.netHeatFluxWm2(x, z, theta, mid, aice, h);
+            double fv = q + (tf - mid) / R;
             if (fv > 0.0) lo = mid; else hi = mid;
         }
         double ts = 0.5 * (lo + hi);
-        return ClimberOcean.K_ICE * (tf - ts) / h;   // 负 = 海洋向冰面失热
+        return (tf - ts) / R;   // 负 = 海洋向冰面失热
     }
 
     /**
@@ -119,6 +121,99 @@ public final class AdvectionDiffusionSolver {
      * 散度形式以取得严格守恒。
      */
     public static boolean ADVECTIVE_FORM = true;
+
+    // ★ 2026-11-17（海冰 Stage A）：新冰物理开关。默认 false = 旧路径逐位不变。
+    /** true 时 iceFraction 是预报面积、iceThickness 是格点体积，h_i=vice/aice。 */
+    public static boolean ICE_STATE_V2 = false;
+    /** 雪热力/雪源/雪融（Stage B）。 */
+    public static boolean SNOW_ON = false;
+    /** 侧向融化（Stage C，CICE/Icepack 公式）。 */
+    public static boolean LATERAL_MELT_ON = false;
+    /** 冰面积/体积/雪量输运（Stage D）。 */
+    public static boolean ICE_TRANSPORT_ON = false;
+    /** D2c：EVP 完整冰动力；默认关。 */
+    public static boolean ICE_EVP_ON = false;
+    /** EVP 外层步长（s）；数值参数，不是物理常数。 */
+    public static double ICE_DYN_DT = 3600.0;   // CICE 小时级耦合步；86400 会爆
+    /**
+     * 侧向融化在 SST 被冰钉死时没有正 SST-Tf；用开放水面在 Tf 的净热通量
+     * 作为 melt potential 的 fallback（qOpen/(rho_i L) -> w_lat）。只在 LATERAL_MELT_ON 时生效。
+     */
+    public static boolean LATERAL_MELT_OPEN_WATER = true;
+    /** Stage D2：冰随风漂移（Nansen 2% 风 + 20 度偏转；参数化，不是完整 VP）。 */
+    public static boolean ICE_WIND_DRIFT_ON = false;
+    public static double ICE_WIND_DRIFT_FACTOR = 0.02;
+    public static double ICE_WIND_TURN_DEG = 20.0;
+
+    /*
+     * ★ 2026-11-17（F1 取证与修正）：表面通量步的**热容口径**。
+     *
+     * 表面通量写进【顶层格】（厚度 dz0），随后混合层把这一格按厚度摊进 h
+     * ⟹ 顶层格必须再乘 h/dz0，混合层平均后才恰好等于 ΔT_ML = dtS·qEff/(ρc_p·h·denom)。
+     * 旧式漏了这个因子：列积分只拿到 (dz0/h) 的热量（h=390 m 时 7.8×；h≈dz0 时约 1.5%）。
+     *
+     * ⚠ IN/DELIVERED 的比**不是 1，也不该是 1**：denom 是 91 天一步的隐式因子，
+     *   交付/初始通量 ≈ 1/denom ≈ 0.71 是隐式步的固有性质（通量随升温而减小），不是泄漏。
+     *   真正的闭合判据是 delivered/expected。A/B 与裁决见 Talos2
+     *   `工作目录/中期/海冰KPP-代码通读与取证-2026-11-17.md` §F1/§6。
+     *
+     * 2026-11-17 的 A/B 同时否掉了"把分母整体换成 dz0"这条速修（h≈dz0 时两臂几乎等价，
+     * 而 y4 残差 2.32→2.90 反而更差）⟹ 该开关已删除，不再占位（A0-①/A0-④）。
+     */
+    /*
+     * ★ 2026-11-17（F1 L1 闭合）：**全局和不可用**——热带加热与高纬失热正负相消，
+     * 实测 del/expect 只有 0.028（纯属相消假象）。必须用 L1：Σ|·|。
+     *
+     * 冰面融化那一支把热量转成潜热 ⟹ 那些格点的 delivered 天然小于 expect，
+     * 所以闭合判据只统计【未被相变改动】的格点（EXPECT_CLEAN + ERR）。
+     */
+    /** 诊断（F1-L1）：Σ|qEff·dtS| [J/m²·格点]。 */
+    public static double LAST_SURF_HEAT_IN_J = 0.0;
+    /** 诊断（F1-L1）：Σ|应交付|（混合层方程给出的）[J/m²·格点]。 */
+    public static double LAST_SURF_HEAT_EXPECT_J = 0.0;
+    /** 诊断（F1-L1）：Σ|实际交付|（ρc_p·dz0·ΔT_top）[J/m²·格点]。 */
+    public static double LAST_SURF_HEAT_DELIVERED_J = 0.0;
+    /** 诊断（F1-L1）：仅【无相变】格点的 Σ|应交付|。 */
+    public static double LAST_SURF_HEAT_EXPECT_CLEAN_J = 0.0;
+    /** 诊断（F1-L1）：仅【无相变】格点的 Σ|delivered − expect|（闭合残差）。 */
+    public static double LAST_SURF_HEAT_ERR_J = 0.0;
+
+    // Stage B 诊断累计（kg/m2，全球格点求和）；探针在 solve 前置零。
+    public static double LAST_SNOWFALL_KG = 0.0;
+    public static double LAST_SNOW_ICE_KG = 0.0;
+    public static double LAST_SNOW_MELT_KG = 0.0;
+    public static double LAST_LATERAL_MELT_KG = 0.0;
+    public static double LAST_LATERAL_AREA = 0.0;
+    public static double LAST_LATERAL_DT_MAX = 0.0;
+    public static double LAST_ICE_TRANSPORT_CFL = 0.0;
+    public static int LAST_ICE_TRANSPORT_SUBSTEPS = 0;
+    public static double LAST_ICE_TRANSPORT_MOVED_KG = 0.0;
+    public static double LAST_ICE_TRANSPORT_REL_ERR = 0.0;
+    public static double LAST_ICE_WIND_DRIFT_MAX = 0.0;
+
+    /**
+     * 有效淡水通量 kg/(m2 s)：P-E+runoff；SNOW_ON 时扣除落在冰上的雪、加上雪融水。
+     * 雪融通量消费后清零（与 iceSaltFlux 同一模式）。
+     */
+    public static double effectiveFreshwaterKgM2S(SeaSurfaceForcing f, OceanState st,
+                                                  int i, int j, double theta) {
+        int js = j * st.grid.nx + i;
+        double v = f.freshwaterFluxKgM2S((int) Math.round(st.grid.xOf(i)),
+                (int) Math.round(st.grid.zOf(j)), theta, st.t[st.idx(i, j, 0)]);
+        if (Double.isNaN(v)) v = 0.0;
+        if (SNOW_ON) {
+            if (st.iceFraction[js] > 1.0e-6) {
+                double pSnow = f.snowfallMperS((int) Math.round(st.grid.xOf(i)),
+                        (int) Math.round(st.grid.zOf(j)), theta);
+                if (pSnow > 0.0 && Double.isFinite(pSnow)) {
+                    v -= pSnow * OceanConstants.RHO_FRESH;
+                }
+            }
+            v += st.snowMeltFlux[js];
+            st.snowMeltFlux[js] = 0.0;
+        }
+        return v;
+    }
 
     /** 面速度的散度 div(u)（与 {@link #divFlux} 同一套面/迎风口径）。 */
     public static double divU(OceanGrid g, OceanState st, int i, int j, int k) {
@@ -271,13 +366,13 @@ public final class AdvectionDiffusionSolver {
     }
 
     public static final double SOR = 0.3;
-    public static final double RHO0 = 1027.8;
+    public static final double RHO0 = OceanConstants.RHO_REF;
     /** 盐收支诊断（每次 solveSalinity 刷新）。 */
     public static double LAST_SALT0 = 0.0, LAST_SALT1 = 0.0, LAST_CORR = 0.0, LAST_ICE = 0.0;
     public static int LAST_CLAMP = 0;
     /** 内部冰点约束累计生成的冰厚 [m]（诊断）。 */
     public static double LAST_INTERIOR_ICE = 0.0;
-    public static final double CP_SEA = 3985.0;
+    public static final double CP_SEA = OceanConstants.C_OCEAN;
 
     /**
      * ★ 2026-11-02 修复：T/S 平流原来**只有 u、v 两项**，{@code OceanState.w} 被
@@ -644,6 +739,14 @@ public final class AdvectionDiffusionSolver {
     public static Result solveFluxBoundary(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta,
                                            int maxIter, int outerMax) {
         int nx = g.nx, ny = g.ny;
+        // ★ 2026-11-17（F1 取证）：每次调用重新累计（纯诊断，不影响数值）。
+        //   ⚠ 2026-11-17 修：原来只重置 IN/DELIVERED，EXPECT/EXPECT_CLEAN/ERR 跨调用累加，
+        //   使 del/expect 出现 46× 的假象（比 3.8e-15 仍有效，因为分子分母同一集合）。
+        LAST_SURF_HEAT_IN_J = 0.0;
+        LAST_SURF_HEAT_EXPECT_J = 0.0;
+        LAST_SURF_HEAT_DELIVERED_J = 0.0;
+        LAST_SURF_HEAT_EXPECT_CLEAN_J = 0.0;
+        LAST_SURF_HEAT_ERR_J = 0.0;
         // ★ 2026-11-02（甲）：surfaceT 从【当前海温】续起，而不是每次从大气气候值重置。
         // 否则季节循环没有海洋热记忆：每季都从同一个 oceanBaseK 冷启动。
         double[] surfaceT = new double[nx * ny];
@@ -653,7 +756,7 @@ public final class AdvectionDiffusionSolver {
                         ? st.t[st.idx(i, j, 0)]
                         : Atmosphere.oceanBaseK(g.latAt(j));
         // ★ 2026-11-03（stage 2）：冰覆盖的单一来源 = state.iceFraction。
-        // 从当前表层 T 初始化（仍是 ClimberOcean.iceFraction 解析式，Petoukhov 2000）；
+        // 从当前表层 T 初始化（仍是 OceanConstants.iceFraction 解析式，Petoukhov 2000）；
         // 下游净热/反照率/诊断统一读这个状态，不再各自重算。
         for (int j = 1; j < ny - 1; j++)
             for (int i = 0; i < nx; i++) {
@@ -661,8 +764,15 @@ public final class AdvectionDiffusionSolver {
                 // ★ 2026-11-09（阶段 3）：冰分数按冰厚连续化，而不是 0/1 二值。
                 //   二值在冰缘造成反照率跳变 ⟹ 年际翻转（实测 58.8°N 表层年际 ΔT=5.28 K）。
                 //   参考厚度用 Radiation.H_ICE_REF（UCAR 484 的 0.5 m，不是新常数）。
-                st.iceFraction[j * nx + i] = Math.min(1.0,
-                        st.iceThickness[j * nx + i] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                if (!ICE_STATE_V2) {
+                    st.iceFraction[j * nx + i] = Math.min(1.0,
+                            st.iceThickness[j * nx + i] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                } else if (st.iceThickness[j * nx + i] > 0.0
+                        && st.iceFraction[j * nx + i] <= 0.0) {
+                    // V2 面积是预报量；只有“有体积但面积为 0”的旧状态/新冰才补初值。
+                    st.iceFraction[j * nx + i] = Math.min(1.0,
+                            st.iceThickness[j * nx + i] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                }
             }
         double res = 0.0;
         int outer = 0;
@@ -698,11 +808,19 @@ public final class AdvectionDiffusionSolver {
                     int q0 = st.idx(i, j, 0), js = j * nx + i;
                     double h = Math.max(1.0, st.mixedLayerDepth[js]);
                     double ts = st.t[q0];
+                    double ice = st.iceFraction[js];
                     double q = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
                             (int) Math.round(g.zOf(j)), theta, ts, st.iceFraction[js]);
                     double qsw0 = f.shortwaveWm2((int) Math.round(g.xOf(i)),
                             (int) Math.round(g.zOf(j)), theta, ts);
                     q = q - qsw0 + qswLayer(qsw0, g.dz, 0);
+                    // 半隐式表面通量：Q(T+1)-Q(T) 给 dQ/dT，避免一季 Q*dt/(rho cp h) 过冲。
+                    double qT1 = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
+                            (int) Math.round(g.zOf(j)), theta, ts + 1.0, ice);
+                    double qsw1 = f.shortwaveWm2((int) Math.round(g.xOf(i)),
+                            (int) Math.round(g.zOf(j)), theta, ts + 1.0);
+                    double q1 = qT1 - qsw1 + qswLayer(qsw1, g.dz, 0);
+                    double dQdT = q1 - q;
                     // ★ 2026-11-02：表层更新加入【稳态通量残差】的内部扩散项。
                     // 旧式只加 Q，没有任何回拉 ⟹ 不是收缩映射（把外层开 3 次会爆）。
                     // 这里用混合层底以下第一个格心 (T_b, delta) 计算 KV 通量；
@@ -720,13 +838,26 @@ public final class AdvectionDiffusionSolver {
                     // 混合层底的扩散通量用【深层】扩散率（层下就是 KV_DEEP 的 regime）。
                     double qEff = q - RHO0 * CP_SEA * KV_DEEP * (ts - tb) / delta;
                     double dtS = Math.min(dt, 0.5 * h * delta / KV_DEEP);
+                    // ★ 2026-11-09（阶段 3 / A2）/ ★ 2026-11-17（F1 修正）：表面通量加到【顶层格】，再由混合层平均。
+                    //   capH = ρc_p·h 是**混合层**的热容面密度（隐式因子 denom 必须用它）；
+                    //   但顶层格只有 dz0 厚 ⟹ 顶层增温必须再乘 h/dz0，混合层平均后才等于
+                    //   ΔT_ML = dtS·qEff/(capH·denom)，列积分恰好 = dtS·qEff/denom。
+                    //   旧式漏乘 h/dz0 ⟹ 列积分只有 (dz0/h)·dtS·qEff/denom。
+                    double capH = RHO0 * CP_SEA * Math.max(1.0, h);
+                    double denom = 1.0 - dtS * dQdT / capH;
+                    double mlToTop = Math.max(1.0, h) / Math.max(1.0, g.dz[0]);
                     st.hTOld[js] = h * ts;
-                    // ★ 2026-11-09（阶段 3 / A2）：表面通量加到【顶层格】，再由混合层平均。
-                    //   旧式分母用 h（MLD），随后 k=0 的异常又被 dz0/h 摊薄一次 ⟹ 实际加热
-                    //   只有 q·dt/(rho cp h) 的 dz0/h 倍（h=390 m 时 7.8× 欠加热）。
-                    //   分母改用 dz0 后，ML 平均恰好给出 q·dt/(rho cp h)。
-                    double t0f = ts + dtS * qEff / (RHO0 * CP_SEA * Math.max(1.0, g.dz[0]));
+                    double t0f;
+                    if (Double.isFinite(denom) && denom > 0.1) {
+                        t0f = ts + dtS * qEff * mlToTop / (capH * denom);
+                    } else {
+                        t0f = ts + dtS * qEff / (RHO0 * CP_SEA * Math.max(1.0, g.dz[0]));
+                    }
                     if (!Double.isFinite(t0f)) t0f = ts;
+                    // ★ 2026-11-17（F1 L1）：应交付热量；以及"相变前"的顶层温度（冰融格点不参与闭合）。
+                    double expectJ = (Double.isFinite(denom) && denom > 0.1)
+                            ? dtS * qEff / denom : dtS * qEff;
+                    double t0fRaw = t0f;
                     // ★★ 2026-11-12（#2 残余的根因）：这一支**在 ML 冰步之后**又按净通量加热表层，
                     //   而它完全不看冰 —— 于是季末快照里出现「冰 1.6 m、表层 275.2 K」（NICEDYN 实测）。
                     //   修法同 ICE_BASAL_MELT：多余热量先融冰，化光才留给水（零新参数、能量守恒）。
@@ -736,10 +867,10 @@ public final class AdvectionDiffusionSolver {
                         double dzEff = Math.max(1.0, g.dz[0]);
                         if (hi > 1.0e-6 && t0f > tfHere) {
                             double capM = RHO0 * CP_SEA * dzEff * (t0f - tfHere)
-                                    / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                                    / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                             double melted = Math.min(hi, capM);
                             st.iceThickness[js] = hi - melted;
-                            t0f -= melted * (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION)
+                            t0f -= melted * (OceanConstants.RHO_ICE * OceanConstants.L_FUSION)
                                     / (RHO0 * CP_SEA * dzEff);
                             LAST_BASAL_MELT_M += melted;
                         }
@@ -748,6 +879,15 @@ public final class AdvectionDiffusionSolver {
                     // 混合层把被钳住的表层温度再平均回整柱，热无法排出 ⟹ T 跑到 334..468 K。
                     // 冰点约束必须与海冰的潜热/盐通量一起做，不能只钳温度。
                     t0f = Math.max(200.0, Math.min(400.0, t0f));
+                    // ★ 2026-11-17（F1 L1）：纯诊断，`+=` 不参与任何状态运算 ⟹ 不影响数值。
+                    double delJ = RHO0 * CP_SEA * Math.max(1.0, g.dz[0]) * (t0f - ts);
+                    LAST_SURF_HEAT_IN_J += Math.abs(qEff * dtS);
+                    LAST_SURF_HEAT_EXPECT_J += Math.abs(expectJ);
+                    LAST_SURF_HEAT_DELIVERED_J += Math.abs(delJ);
+                    if (t0f == t0fRaw) {   // 无相变：闭合必须逐格成立
+                        LAST_SURF_HEAT_EXPECT_CLEAN_J += Math.abs(expectJ);
+                        LAST_SURF_HEAT_ERR_J += Math.abs(delJ - expectJ);
+                    }
                     surfaceT[js] = t0f;
                     st.t[q0] = t0f;
                 }
@@ -793,14 +933,20 @@ public final class AdvectionDiffusionSolver {
                              - Thermohaline.BETA * (ssMl - sbMl));
                     double rho0 = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[q0] - 285.0)
                             + Thermohaline.BETA * (st.s[q0] - 35.0));
-                    double hLimit = 1.0, hAcc = 0.0;
-                    for (int k = 1; k < g.nz; k++) {
-                        int qk = st.idx(i, j, k);
-                        double rk = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[qk] - 285.0)
-                                + Thermohaline.BETA * (st.s[qk] - 35.0));
-                        hAcc += g.dz[k];
-                        hLimit = Math.max(1.0, hAcc);
-                        if (rk - rho0 > MLD_JUMP_KGM3) break;
+                    double hLimit;
+                    if (KppBoundaryLayer.ON) {
+                        hLimit = Math.max(1.0, KppBoundaryLayer.oblDepth(g, st, i, j));
+                    } else {
+                        hLimit = 1.0;
+                        double hAcc = 0.0;
+                        for (int k = 1; k < g.nz; k++) {
+                            int qk = st.idx(i, j, k);
+                            double rk = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[qk] - 285.0)
+                                    + Thermohaline.BETA * (st.s[qk] - 35.0));
+                            hAcc += g.dz[k];
+                            hLimit = Math.max(1.0, hAcc);
+                            if (rk - rho0 > MLD_JUMP_KGM3) break;
+                        }
                     }
                     double qsw0h = f.shortwaveWm2((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta, ts);
                     double qeff = q - qsw0h + qswLayer(qsw0h, g.dz, 0);
@@ -832,6 +978,11 @@ public final class AdvectionDiffusionSolver {
                     }
                     double tbar = wsum > 0 ? tsum / wsum : st.t[q0];
                     double sbar = wsum > 0 ? ssum / wsum : st.s[q0];
+                    if (Boolean.getBoolean("eoh.debugq") && i == 72 && j == 34) {
+                        System.out.println("QML theta=" + theta + " h=" + h + " hLimit=" + hLimit
+                                + " hNew=" + hNew + " tbar=" + tbar + " ts=" + ts
+                                + " q=" + q + " kb=" + kb);
+                    }
                     // ★ 2026-11-07 A 方案：三维埃克曼速度 + ML 底卷吸 + 表层水平平流（默认关）。
                     //   体积/热量/盐由 3D 平流闭合；不是源项；无 NH/SH、无调参。
                     if (EKMAN_UPWELL_ON) {
@@ -893,11 +1044,19 @@ public final class AdvectionDiffusionSolver {
                     // ★★ 2026-11-12（交接 §11.3 项 2）：冰-海热交换（底部融化）。见 ICE_BASAL_MELT。
                     if (ICE_BASAL_MELT && st.iceThickness[js] > 1.0e-6 && tbar > tf) {
                         double capM = RHO0 * CP_SEA * hNew * (tbar - tf)
-                                / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                                / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                         double h0 = st.iceThickness[js];
                         double melted = Math.min(h0, capM);
                         st.iceThickness[js] = h0 - melted;
-                        tbar -= melted * ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION
+                        if (ICE_STATE_V2 && st.iceThickness[js] <= 0.0) {
+                            st.iceFraction[js] = 0.0;
+                            if (SNOW_ON && st.snowThickness[js] > 0.0) {
+                                st.snowMeltFlux[js] += st.snowThickness[js]
+                                        * OceanConstants.RHO_SNOW / dt;
+                                st.snowThickness[js] = 0.0;
+                            }
+                        }
+                        tbar -= melted * OceanConstants.RHO_ICE * OceanConstants.L_FUSION
                                 / (RHO0 * CP_SEA * hNew);
                         LAST_BASAL_MELT_M += melted;
                     }
@@ -906,34 +1065,144 @@ public final class AdvectionDiffusionSolver {
                     //   子步后第一步只核化 ~0.14 m，之后由冰热阻的 Stefan 生长主导。
                     int iceSteps = Math.min(30, Math.max(1, (int) Math.round(dt / 86400.0)));
                     double dtSub = dt / iceSteps;
+                    // Stage B： snowfall 是季节尺度源，放在 substep 外只算一次（避免 30x PrecipField）。
+                    if (SNOW_ON && st.iceThickness[js] > 1.0e-6) {
+                        double pSnow = f.snowfallMperS((int) Math.round(g.xOf(i)),
+                                (int) Math.round(g.zOf(j)), theta);
+                        if (pSnow > 0.0 && Double.isFinite(pSnow)) {
+                            st.snowThickness[js] += pSnow * dt
+                                    * OceanConstants.RHO_FRESH / OceanConstants.RHO_SNOW;
+                            LAST_SNOWFALL_KG += pSnow * dt * OceanConstants.RHO_FRESH;
+                        }
+                        // 雪-冰形成：雪载超过冰的自由board时，海水淹没雪层并冻成雪冰。
+                        // 这是质量守恒的雪->冰转换，不是“雪厚 cap”。
+                        double aV2 = ICE_STATE_V2 ? Math.max(0.0, st.iceFraction[js]) : 1.0;
+                        double hIce0 = aV2 > 1.0e-6 ? st.iceThickness[js] / aV2 : st.iceThickness[js];
+                        double freeboard = Math.max(0.0,
+                                hIce0 * (OceanConstants.RHO_REF - OceanConstants.RHO_ICE)
+                                        / OceanConstants.RHO_REF);
+                        double hs = aV2 > 1.0e-6 ? st.snowThickness[js] / aV2 : 0.0;
+                        if (hs > freeboard) {
+                            double excess = hs - freeboard;
+                            st.snowThickness[js] -= excess * aV2;
+                            st.iceThickness[js] += excess * aV2
+                                    * OceanConstants.RHO_SNOW / OceanConstants.RHO_ICE;
+                            LAST_SNOW_ICE_KG += excess * aV2 * OceanConstants.RHO_SNOW;
+                        }
+                    }
                     for (int sub = 0; sub < iceSteps; sub++) {
                         double iceNow = Math.max(0.0, st.iceThickness[js]);
+                        double aice = ICE_STATE_V2 ? Math.max(0.0, st.iceFraction[js]) : 1.0;
+                        double hSnow = SNOW_ON ? st.snowDepth(i, j) : 0.0;
                         if (iceNow > 1.0e-6) {
+                            // V2：iceThickness 是格点体积，热传导必须用 h_i=vice/aice。
+                            double hIce = ICE_STATE_V2
+                                    ? iceNow / Math.max(aice, 1.0e-6) : iceNow;
                             // Tf 处净表面通量 >0 ⟹ 融冰；<0 ⟹ 结冰（受冰热阻限制）
                             double qAtTf = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
-                                    (int) Math.round(g.zOf(j)), theta, tf, 1.0, iceNow);
+                                    (int) Math.round(g.zOf(j)), theta, tf, aice, hIce);
+                            // Stage B：雪在 0 C 融；用 T_SNOW 处净通量，而不是把冰点通量硬套到雪面。
+                            if (SNOW_ON && hSnow > 0.0) {
+                                double qSnow = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
+                                        (int) Math.round(g.zOf(j)), theta,
+                                        OceanConstants.T_SNOW, aice, hIce);
+                                if (qSnow > 0.0) {
+                                    double vs = Math.max(0.0, st.snowThickness[js]);
+                                    double melt = Math.min(vs,
+                                            qSnow * dtSub / (OceanConstants.RHO_SNOW * OceanConstants.L_FUSION));
+                                    st.snowThickness[js] = vs - melt;
+                                    st.snowMeltFlux[js] += melt * OceanConstants.RHO_SNOW / dt;
+                                    LAST_SNOW_MELT_KG += melt * OceanConstants.RHO_SNOW;
+                                    double used = melt * OceanConstants.RHO_SNOW
+                                            * OceanConstants.L_FUSION / dtSub;
+                                    if (st.snowThickness[js] > 0.0) {
+                                        qAtTf = 0.0;   // 雪未融完，冰不融
+                                    } else {
+                                        qAtTf = qSnow - used;
+                                    }
+                                    hSnow = st.snowDepth(i, j);
+                                }
+                            }
                             double dIce;
                             if (qAtTf > 0.0) {
                                 dIce = -qAtTf * dtSub
-                                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                                        / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                             } else {
                                 double qs = iceSurfaceFlux(f, theta, (int) Math.round(g.xOf(i)),
-                                        (int) Math.round(g.zOf(j)), tf, iceNow);
+                                        (int) Math.round(g.zOf(j)), tf, hIce, aice, hSnow);
                                 dIce = qs * dtSub
-                                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                                        / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                             }
                             if (!Double.isFinite(dIce)) dIce = 0.0;
                             st.iceThickness[js] = Math.max(0.0, iceNow + dIce);
+                            if (ICE_STATE_V2 && st.iceThickness[js] <= 0.0) {
+                                st.iceFraction[js] = 0.0;
+                                if (SNOW_ON && st.snowThickness[js] > 0.0) {
+                                    st.snowMeltFlux[js] += st.snowThickness[js]
+                                            * OceanConstants.RHO_SNOW / dt;
+                                    LAST_SNOW_MELT_KG += st.snowThickness[js]
+                                            * OceanConstants.RHO_SNOW;
+                                    st.snowThickness[js] = 0.0;
+                                }
+                            }
                             tbar = tf;
                         } else if (tbar < tf) {
                             // 无冰且过冷：开放水面通量形成初始冰；子步保证只核化薄冰。
                             double qs = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
                                     (int) Math.round(g.zOf(j)), theta, tf, 0.0);
                             double dIce = Math.max(0.0, -qs) * dtSub
-                                    / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                                    / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                             if (!Double.isFinite(dIce)) dIce = 0.0;
                             st.iceThickness[js] = dIce;
+                            if (ICE_STATE_V2) {
+                                st.iceFraction[js] = Math.min(1.0,
+                                        dIce / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                            }
                             tbar = tf;
+                        }
+                    }
+                    // Stage C：CICE/Icepack 侧向融化（面积比例 r_side）。
+                    if (LATERAL_MELT_ON && st.iceThickness[js] > 1.0e-6) {
+                        double aLat = ICE_STATE_V2 ? Math.max(0.0, st.iceFraction[js]) : 1.0;
+                        if (aLat <= 1.0e-9) {
+                            aLat = Math.min(1.0, st.iceThickness[js]
+                                    / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                        }
+                        double dT = Math.max(0.0, tbarBeforeIce - tf);
+                        LAST_LATERAL_DT_MAX = Math.max(LAST_LATERAL_DT_MAX, dT);
+                        double wLat = OceanConstants.LAT_M1 * Math.pow(dT, OceanConstants.LAT_M2);
+                        // 本仓 SST 被冰钉在 tf；用开放水面 melt potential 作 fallback。
+                        if (LATERAL_MELT_OPEN_WATER) {
+                            double qOpen = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
+                                    (int) Math.round(g.zOf(j)), theta, tf, 0.0, 0.0);
+                            if (qOpen > 0.0 && Double.isFinite(qOpen)) {
+                                wLat = Math.max(wLat,
+                                        qOpen / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION));
+                            }
+                        }
+                        double rSide = wLat * dt * Math.PI
+                                / (OceanConstants.FLOE_SHAPE * OceanConstants.FLOE_DIAM);
+                        rSide = Math.min(1.0, Math.max(0.0, rSide));
+                        if (rSide > 0.0 && Double.isFinite(rSide)) {
+                            double vBefore = st.iceThickness[js];
+                            double snowBefore = st.snowThickness[js];
+                            st.iceFraction[js] = aLat * (1.0 - rSide);
+                            st.iceThickness[js] = vBefore * (1.0 - rSide);
+                            st.snowThickness[js] = snowBefore * (1.0 - rSide);
+                            LAST_LATERAL_AREA += aLat * rSide;
+                            LAST_LATERAL_MELT_KG += (vBefore - st.iceThickness[js])
+                                    * OceanConstants.RHO_ICE;
+                            if (snowBefore > 0.0) {
+                                double snowRemoved = snowBefore * rSide;
+                                st.snowMeltFlux[js] += snowRemoved
+                                        * OceanConstants.RHO_SNOW / dt;
+                                LAST_SNOW_MELT_KG += snowRemoved * OceanConstants.RHO_SNOW;
+                            }
+                            if (st.iceFraction[js] < 1.0e-9) {
+                                st.iceFraction[js] = 0.0;
+                                st.iceThickness[js] = 0.0;
+                                st.snowThickness[js] = 0.0;
+                            }
                         }
                     }
                     if (ICE_TRACE && (iceStart > 0.0 || st.iceThickness[js] > 0.0)
@@ -944,7 +1213,7 @@ public final class AdvectionDiffusionSolver {
                             iceStart, st.iceThickness[js], hNew));
                     }
                     // 整季（dt）的盐通量由冰厚变化总量给出
-                    st.iceSaltFlux[js] = -ClimberOcean.RHO_ICE
+                    st.iceSaltFlux[js] = -OceanConstants.RHO_ICE
                             * (st.iceThickness[js] - iceStart) / dt;
                     dep = 0.0;
                     // ★ 2026-11-11：把"混合层重写"这一项的净热量也记账（默认关）。
@@ -960,9 +1229,14 @@ public final class AdvectionDiffusionSolver {
                     st.t[q0] = tbar; surfaceT[js] = tbar;
                     st.mixedLayerDepth[js] = hNew;
                     st.hTNew[js] = hNew * tbar;
-                    // stage 2：冰覆盖状态由本步表层 T 更新（单一来源）
-                    st.iceFraction[js] = Math.min(1.0,
-                            st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                    // stage 2：旧路径由本步表层 T 更新；V2 面积是预报量，只在体积>0且面积=0时补初值。
+                    if (!ICE_STATE_V2) {
+                        st.iceFraction[js] = Math.min(1.0,
+                                st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                    } else if (st.iceThickness[js] > 0.0 && st.iceFraction[js] <= 0.0) {
+                        st.iceFraction[js] = Math.min(1.0,
+                                st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                    }
                     // ★ 2026-11-02 实测否决：全水柱 T 钳到 Tf + 按差额结冰 + 冰盐通量，
                     // 会形成 冰盐→S→密度→T→更多冰 的正反馈：T 冲到 467.9 K、内部冰 3.8e5 m、
                     // 盐 corr 2.26、clamp 3.5e4。已回退；正确做法需要与表面边界/brine 一起设计。
@@ -971,6 +1245,10 @@ public final class AdvectionDiffusionSolver {
             convectiveAdjust(g, st);
             // ★ 2026-11-12：对流掺上来的热量先融冰（见 meltIceFromSurfaceHeat 的说明）。
             meltIceFromSurfaceHeat(g, st, dt);
+            // D2c：EVP 冰动力（默认关；未接输运前只更新 iceU/iceV/sig）。
+            if (ICE_EVP_ON) IceDynamicsEVP.step(g, st, f, theta, dt);
+            // Stage D：冰面积/体积/雪量的被动输运（需要 V2 的独立 aice）。
+            if (ICE_TRANSPORT_ON && ICE_STATE_V2) transportIce(g, st, f, theta, dt);
             if (EKMAN_UPWELL_ON) {
                 // ★ 2026-11-07 A：ML 水平平流按 SUBSTEPS×1 天推进（30 天一步显式 CFL 会爆）。
                 //   用 k=0 的投影面速度，避免把 h 以下的回流算进 ML 平均；无调参。
@@ -1091,6 +1369,140 @@ public final class AdvectionDiffusionSolver {
     }
 
     /**
+     * Stage D：冰面积/体积/雪量的被动输运（CICE continuity，upwind donor-cell）。
+     * 速度取 k=0 的投影面速度 uF/vF；x 周期、y 墙。需要 V2 的独立 aice。
+     */
+    public static void transportIce(OceanGrid g, OceanState st, SeaSurfaceForcing f,
+                                    double theta, double dt) {
+        int nx = g.nx, ny = g.ny;
+        // ★ 2026-11-17（F6）：原先这个计数器从不清零，且在每个子步都对同一批格子累加
+        //   ⟹ 名字（单次输运）与语义（JVM 启动以来的累计）不符。改为每次调用重新计。
+        LAST_ICE_TRANSPORT_MOVED_KG = 0.0;
+        double[] du = new double[nx * ny];
+        double[] dv = new double[nx * ny];
+        double maxCfl = 0.0;
+        double maxDrift = 0.0;
+        for (int j = 1; j < ny - 1; j++) {
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                int q = st.idx(i, j, 0);
+                if (ICE_EVP_ON) {
+                    if (st.iceFraction[js] > 1.0e-3) {
+                        du[js] = st.iceU[js] - st.uF[q];
+                        dv[js] = st.iceV[js] - st.vF[q];
+                    } else {
+                        du[js] = 0.0;
+                        dv[js] = 0.0;
+                    }
+                } else if (ICE_WIND_DRIFT_ON) {
+                    double wu = f.windU((int) Math.round(g.xOf(i)),
+                            (int) Math.round(g.zOf(j)), theta);
+                    double wv = f.windV((int) Math.round(g.xOf(i)),
+                            (int) Math.round(g.zOf(j)), theta);
+                    double turn = Math.toRadians(ICE_WIND_TURN_DEG)
+                            * -Math.signum(g.latAt(j));
+                    double c = Math.cos(turn), s = Math.sin(turn);
+                    du[js] = ICE_WIND_DRIFT_FACTOR * (c * wu - s * wv);
+                    dv[js] = ICE_WIND_DRIFT_FACTOR * (s * wu + c * wv);
+                    maxDrift = Math.max(maxDrift, Math.hypot(du[js], dv[js]));
+                }
+                maxCfl = Math.max(maxCfl, Math.abs(st.uF[q] + du[js]) * dt / g.dx);
+                maxCfl = Math.max(maxCfl, Math.abs(st.vF[q] + dv[js]) * dt / g.dy);
+            }
+        }
+        LAST_ICE_WIND_DRIFT_MAX = maxDrift;
+        int nSub = Math.max(1, (int) Math.ceil(maxCfl / 0.5));
+        LAST_ICE_TRANSPORT_CFL = maxCfl;
+        LAST_ICE_TRANSPORT_SUBSTEPS = nSub;
+        double dts = dt / nSub;
+        double vol0 = iceVolumeTotal(st);
+        for (int sub = 0; sub < nSub; sub++) {
+            double[] a = st.iceFraction.clone();
+            double[] v = st.iceThickness.clone();
+            double[] s = st.snowThickness.clone();
+            for (int j = 1; j < ny - 1; j++) {
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int q = st.idx(i, j, 0);
+                    int iE = (i + 1) % nx, iW = (i - 1 + nx) % nx;
+                    int js = j * nx + i;
+                    int qE = j * nx + iE;
+                    int qW = j * nx + iW;
+                    int qN = (j + 1) * nx + i;
+                    int qS = (j - 1) * nx + i;
+                    double uE = st.uF[q] + 0.5 * (du[js] + du[qE]);
+                    double uW = st.uF[st.idx(i - 1, j, 0)] + 0.5 * (du[qW] + du[js]);
+                    double vN = j + 1 < ny - 1
+                            ? st.vF[q] + 0.5 * (dv[js] + dv[qN]) : 0.0;
+                    double vS = j - 1 > 0
+                            ? st.vF[st.idx(i, j - 1, 0)] + 0.5 * (dv[qS] + dv[js]) : 0.0;
+                    if (!g.isWet(iE, j)) uE = 0.0;
+                    if (!g.isWet(iW, j)) uW = 0.0;
+                    if (!g.isWet(i, j + 1)) vN = 0.0;
+                    if (!g.isWet(i, j - 1)) vS = 0.0;
+                    double aC = a[js], aE = a[qE], aW = a[qW];
+                    double aN = a[qN], aS = a[qS];
+                    double vC = v[js], vE = v[qE], vW = v[qW];
+                    double vNv = v[qN], vSv = v[qS];
+                    double sC = s[js], sE = s[qE], sW = s[qW];
+                    double sN = s[qN], sS = s[qS];
+                    double Fe = uE > 0 ? aC * uE : aE * uE;
+                    double Fw = uW > 0 ? aW * uW : aC * uW;
+                    double Fn = vN > 0 ? aC * vN : aN * vN;
+                    double Fs = vS > 0 ? aS * vS : aC * vS;
+                    double aNew = aC - dts / g.dx * (Fe - Fw) - dts / g.dy * (Fn - Fs);
+                    double FeV = uE > 0 ? vC * uE : vE * uE;
+                    double FwV = uW > 0 ? vW * uW : vC * uW;
+                    double FnV = vN > 0 ? vC * vN : vNv * vN;
+                    double FsV = vS > 0 ? vSv * vS : vC * vS;
+                    double vNew = vC - dts / g.dx * (FeV - FwV) - dts / g.dy * (FnV - FsV);
+                    double FeS = uE > 0 ? sC * uE : sE * uE;
+                    double FwS = uW > 0 ? sW * uW : sC * uW;
+                    double FnS = vN > 0 ? sC * vN : sN * vN;
+                    double FsS = vS > 0 ? sS * vS : sC * vS;
+                    double sNew = sC - dts / g.dx * (FeS - FwS) - dts / g.dy * (FnS - FsS);
+                    if (!Double.isFinite(aNew) || !Double.isFinite(vNew) || !Double.isFinite(sNew)) continue;
+                    if (aNew < 1.0e-9) { aNew = 0.0; vNew = 0.0; sNew = 0.0; }
+                    if (aNew > 1.0) aNew = 1.0;
+                    if (vNew < 0.0) vNew = 0.0;
+                    if (sNew < 0.0) sNew = 0.0;
+                    LAST_ICE_TRANSPORT_MOVED_KG += Math.abs(vNew - vC)
+                            * OceanConstants.RHO_ICE;
+                    st.iceFraction[js] = aNew;
+                    st.iceThickness[js] = vNew;
+                    st.snowThickness[js] = sNew;
+                }
+            }
+        }
+        // 输运后一致性：没有冰面积/体积的格点不能留雪；雪作为融水回海洋。
+        for (int j = 1; j < ny - 1; j++) {
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                if (st.iceFraction[js] <= 1.0e-9 || st.iceThickness[js] <= 0.0) {
+                    if (st.snowThickness[js] > 0.0) {
+                        st.snowMeltFlux[js] += st.snowThickness[js]
+                                * OceanConstants.RHO_SNOW / dt;
+                        LAST_SNOW_MELT_KG += st.snowThickness[js]
+                                * OceanConstants.RHO_SNOW;
+                    }
+                    st.iceFraction[js] = 0.0;
+                    st.iceThickness[js] = 0.0;
+                    st.snowThickness[js] = 0.0;
+                }
+            }
+        }
+        LAST_ICE_TRANSPORT_REL_ERR = (iceVolumeTotal(st) - vol0) / Math.max(1.0, vol0);
+    }
+
+    static double iceVolumeTotal(OceanState st) {
+        double v = 0.0;
+        for (int q = 0; q < st.iceThickness.length; q++) v += Math.max(0.0, st.iceThickness[q]);
+        return v;
+    }
+
+    /**
      * ★★ 2026-11-12（#2 残余的第三个缺口）：**对流调整之后**再用混合层多余热量融冰。
      *
      * <p>为什么需要：季内顺序是「ML 冰步（T 钉到 Tf）→ convectiveAdjust」。后者把下面较暖的水
@@ -1113,13 +1525,13 @@ public final class AdvectionDiffusionSolver {
                 if (!(st.t[q0] > tf)) continue;
                 double h = Math.max(g.dz[0], Math.min(st.mixedLayerDepth[js], g.columnDepthM(i, j)));
                 double capM = RHO0 * CP_SEA * h * (st.t[q0] - tf)
-                        / (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION);
+                        / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
                 double melted = Math.min(hi, capM);
                 st.iceThickness[js] = hi - melted;
                 // ★ 2026-11-14（C1）：融冰淡水必须回到海洋（旧版只改冰厚、不记淡水 = 质量汇）。
                 if (melted > 0.0 && dtSeconds > 0.0)
-                    st.iceSaltFlux[js] += ClimberOcean.RHO_ICE * melted / dtSeconds;
-                double dT = melted * (ClimberOcean.RHO_ICE * ClimberOcean.L_FUSION)
+                    st.iceSaltFlux[js] += OceanConstants.RHO_ICE * melted / dtSeconds;
+                double dT = melted * (OceanConstants.RHO_ICE * OceanConstants.L_FUSION)
                         / (RHO0 * CP_SEA * h);
                 double acc = 0.0;
                 for (int k = 0; k < g.nz && acc < h; k++) {
@@ -1473,9 +1885,7 @@ public final class AdvectionDiffusionSolver {
         for (int j = 1; j < ny - 1; j++) {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                double v = f.freshwaterFluxKgM2S((int) Math.round(g.xOf(i)),
-                        (int) Math.round(g.zOf(j)), theta, st.t[st.idx(i, j, 0)]);
-                if (Double.isNaN(v)) v = 0.0;
+                double v = effectiveFreshwaterKgM2S(f, st, i, j, theta);
                 // ★ 2026-11-02：结冰/融冰的盐通量并入 3D 盐度求解器的表层淡水收支。
                 iceSum += st.iceSaltFlux[g.idx(i, j)];
                 v += st.iceSaltFlux[g.idx(i, j)];

@@ -17,9 +17,9 @@ import com.EyeOfHarmonyBuffer.space.talos.chunk.continent_layer.TalosLandErosion
  *
  * <h3>它做三件事</h3>
  * <ol>
- *   <li>{@link OceanField#install(int)} —— 装 {@code Atmosphere.SST_PROVIDER}；</li>
- *   <li>后台线程 {@link OceanField#warmAll(int)} —— **预热全部纬度行**
- *       （行数 = {@link OceanField#ROWS}；⚠ 原文写"64 条"✗，那已过期 —— 见下方 §7556 段）；</li>
+ *   <li>{@link OceanField#install(int)} —— 建 3D 静态解并装 {@code Atmosphere.SST_PROVIDER}；</li>
+ *   <li>★ 3D 生产解在 {@code install()} 内**同步**建好，因此不再启动 2.5D 纬度行预热；
+ *       只有 {@code -Deoh.legacy2d5} 的 legacy 路径才保留 {@link OceanField#warmAll(int)}；</li>
  *   <li>★ <b>§7503</b>：地表水系场的安装入口（★ 该 {@code WaterField} 类已整类删除 ✗，见 待裁决/331） ——
  *       把地表水系场也记到同一个世界上（清掉上一个世界的 tile 缓存）。
  *       <b>它不改变任何气候输出</b>（只清缓存 + 记种子），所以这一步不需要单独验收。</li>
@@ -47,11 +47,16 @@ public final class OceanWiring {
         //   它【不改变任何输出】（默认 ENABLED=false），所以这一步不需要单独验收。
         TalosLandErosion.install(worldSeedInt);
         // ★★★ 2026-10-15（待裁决/427）：温盐环流（Stommel 2-box）跟同一个世界走。
-        //   它同样【不改变任何输出】：THERMOHALINE_ON 默认 false ⟹ worldState() 直接返回
-        //   OFF 哨兵、**不采样不计算**（成本 0）；打开后它也只是【诊断出口】，不反哺气候场。
+        //   它【不改变任何输出】：纯诊断出口，不反哺气候场。
+        //   ⚠ 2026-11-17 核实：THERMOHALINE_ON 现为 **true**（用户裁决，见 Thermohaline.java:103）
+        //   ⟹ worldState() 会采样（每世界首次约 20 s），**不再**返回 OFF 哨兵。
+        //   本行原写"默认 false"已过期（约定 4）。
         Thermohaline.install(worldSeedInt);
         if (!OceanField.OCEAN_ON) return;
-        // ★★★★★ §7556：探针模式跳过预热。
+        // ★ 3D 生产解已在 OceanField.install() 内同步建好并装好 provider。
+        //   2.5D 纬度行预热只服务 legacy 2.5D（-Deoh.legacy2d5）；3D 下不再启动该线程。
+        if (OceanField.STATIC3D_ON) { done = true; return; }
+        // ★★★★★ §7556：探针模式跳过预热（仅 legacy 2.5D 路径）。
         //
         // 为什么：warmAll 会预热【全部】纬度行（行数 = OceanField.ROWS；
         //   ⚠ 此处原文写"64 条"✗ —— 2026-10-14 审查实测 ROWS = 128，那个数字已过期 ✗。
@@ -82,11 +87,13 @@ public final class OceanWiring {
         t.start();
     }
 
-    /** 预热是否已完成（诊断/探针用）。 */
-    public static boolean isWarm() { return done || OceanField.warmRowsDone >= OceanField.ROWS; }
+    /** 预热是否已完成（诊断/探针用）。3D 解在 install() 内完成，视为已预热。 */
+    public static boolean isWarm() {
+        return OceanField.STATIC3D_ON || done || OceanField.warmRowsDone >= OceanField.ROWS;
+    }
 
-    /** 已预热行数（诊断/探针用）。 */
-    public static int warmRows() { return OceanField.warmRowsDone; }
+    /** 已预热行数（诊断/探针用）。3D 没有 2.5D 行预热，返回满值。 */
+    public static int warmRows() { return OceanField.STATIC3D_ON ? OceanField.ROWS : OceanField.warmRowsDone; }
 
     /** 卸线（回到 SST' == 0 的旧口径；A/B 对比用）。 */
     public static synchronized void off() {

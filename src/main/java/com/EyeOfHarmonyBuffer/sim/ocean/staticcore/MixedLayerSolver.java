@@ -1,7 +1,6 @@
 package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
 import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
-import com.EyeOfHarmonyBuffer.sim.ocean.ClimberOcean;
 
 /** 混合层 hT 隐式迎风平流：aP hT = aW hT_W + ... + rhs，SOR 求解。 */
 public final class MixedLayerSolver {
@@ -18,9 +17,8 @@ public final class MixedLayerSolver {
                 double h = Math.max(1.0, st.mixedLayerDepth[js]);
                 double ts = surfaceT[js];
                 double q = f.netHeatFluxWm2((int) Math.round(g.xOf(i)),
-                        (int) Math.round(g.zOf(j)), 0.0, ts, ClimberOcean.iceFraction(ts));
-                double fw = f.freshwaterFluxKgM2S((int) Math.round(g.xOf(i)),
-                        (int) Math.round(g.zOf(j)), 0.0, ts);
+                        (int) Math.round(g.zOf(j)), 0.0, ts, OceanConstants.iceFraction(ts));
+                double fw = AdvectionDiffusionSolver.effectiveFreshwaterKgM2S(f, st, i, j, 0.0);
                 if (!Double.isFinite(q)) q = 0.0;
                 hT[js] = h * ts;
                 rhs[js] = h * ts + dt * (q / (1027.8 * 3985.0)

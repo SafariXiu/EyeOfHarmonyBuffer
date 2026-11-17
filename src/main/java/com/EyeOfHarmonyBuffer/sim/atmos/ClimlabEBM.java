@@ -246,7 +246,7 @@ public final class ClimlabEBM {
      * 调用方必须先用 {@code ClimberOcean.spinUpInteractive} 把海洋转起来。
      * <p>进 {@code SimClimate.configStamp()}（按条件折入 ⟹ 默认关时指纹不变）。
      */
-    public static boolean OHT_FROM_OCEAN = false;
+    @Deprecated public static final boolean OHT_FROM_OCEAN = false;
     /** 诊断/耦合实验：若非 null，优先于 cachedOht37（用于阻尼迭代，37 点）。 */
     public static double[] OHT_OVERRIDE = null;
 
@@ -263,16 +263,7 @@ public final class ClimlabEBM {
      */
     public static synchronized double[] solve37OHT() {
         if (cache37OHT != null) return cache37OHT;
-        double[] f;
-        if (OHT_FROM_OCEAN) {
-            f = (OHT_OVERRIDE != null) ? OHT_OVERRIDE
-                    : com.EyeOfHarmonyBuffer.sim.ocean.ClimberOcean.cachedOht37();
-            if (f == null || f.length != N37) {
-                throw new IllegalStateException("ClimlabEBM.solve37OHT: OHT_FROM_OCEAN=true 但 ClimberOcean 尚未 spin-up");
-            }
-        } else {
-            f = T_OHT_W_37;
-        }
+        double[] f = (OHT_OVERRIDE != null) ? OHT_OVERRIDE : T_OHT_W_37;
         if (f == null || f.length != N37) {
             throw new IllegalStateException("ClimlabEBM.solve37OHT: 观测剖面 T_OHT_W_37 尚未取证"
                 + "（按铁律 2，未取证不许编 ⟹ 本通道不可启用）");

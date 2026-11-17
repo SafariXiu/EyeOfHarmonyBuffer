@@ -25,7 +25,7 @@ public final class RediDiffusion {
     private RediDiffusion() {}
 
     /**
-     * ★★ 2026-11-12（用户裁决「做完的物理都接线并开着」）：**翻为 true**。
+     * ★★ 2026-11-12（用户裁决「做完的物理都接线并开着」）：曾**翻为 true**；实测门退步，**已回 false**。
      *
      * <p>历史（原注释）：Default OFF: this is an R3-path experiment. Turning it on changes the v1
      * production path too (PrognosticT/Salinity call it unconditionally), so it must stay off

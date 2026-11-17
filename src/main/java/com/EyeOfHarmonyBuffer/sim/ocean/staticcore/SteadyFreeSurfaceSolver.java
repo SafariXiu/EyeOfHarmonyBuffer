@@ -48,10 +48,7 @@ public final class SteadyFreeSurfaceSolver {
                 int vN = st.idx(i, j + 1, 0), vS = st.idx(i, j - 1, 0);
                 double div = (st.u[uE] - st.u[uW]) / (2.0 * dx)
                            + (st.v[vN] - st.v[vS]) / (2.0 * dy);
-                double fw = f.freshwaterFluxKgM2S(
-                        (int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)),
-                        theta, st.t[st.idx(i, j, 0)]);
-                if (Double.isNaN(fw)) fw = 0.0;
+                double fw = AdvectionDiffusionSolver.effectiveFreshwaterKgM2S(f, st, i, j, theta);
                 src[j * nx + i] = fw / (RHO * hTotal) - div;
                 mean += src[j * nx + i];
                 n++;

@@ -45,6 +45,9 @@ public final class ZonalLandProfile {
     /** 是否已经设置过 seed。 */
     public static boolean hasSeed() { return seed != Long.MIN_VALUE; }
 
+    /** Current seed (Long.MIN_VALUE if unset); read-only. */
+    public static long currentSeed() { return seed; }
+
     /** kbar(lat)，0..1；cos 纬度面积加权由调用方决定。 */
     public static double at(double latRad) {
         double[] p = ensure();
