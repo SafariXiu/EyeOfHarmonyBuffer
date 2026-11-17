@@ -54,6 +54,12 @@ public final class PrognosticT {
 
     public static double run(OceanGrid g, OceanState st, double[] surfaceT, double[] src,
                              double seasonSeconds, int substeps) {
+        // ★ 2026-11-17（P3 第 5c）：KPP 打开时走【逐列隐式】垂向扩散（显式版实测不稳定：
+        //   dt·Kt/dz² ≈ 10，见交接文档 §20）。默认 OFF 时**根本不进这个分支**，
+        //   下面的原实现一个字节都没动 ⟹ 逐位不变（NIDEM 7FDE43B7C67DA7B2 为证）。
+        if (KppBoundaryLayer.ON && KppBoundaryLayer.isReady()) {
+            return runImplicitVertical(g, st, surfaceT, src, seasonSeconds, substeps);
+        }
         int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
         // ★ 2026-11-07（R3）：显式通量平流必须满足 CFL；w 来自连续方程时尤其关键。
         // ★ 只在 R3 路径上自适应：v1 fallback 必须逐位不变（v1 的 CFL 本来就在 0.2 以内，
@@ -116,12 +122,18 @@ public final class PrognosticT {
                                  + (ts + tnn - 2.0 * t) / (g.dy * g.dy));
                         double cv = AdvectionDiffusionSolver.kvAt(g, st, i, j, k) / (dz * dz);
                         double lapZ = cv * (tup + tdn - 2.0 * t);
+                        // ★ 2026-11-17（P3 第 5 步，回退）：面式 KPP 扩散**不能**用显式步。
+                        //   实测（NKPPPROD）：Kt~0.3 m²/s、dz=50 m、dt=8.6e4 s ⟹ dt·Kt/dz² ≈ 10 ≫ 1
+                        //   ⟹ 全部湿格 NaN。现有 cflSteps 只算平流，不含扩散。
+                        //   正确做法是**逐列隐式（三对角）**：原型见 probe\NKPPCOL 的 Thomas 求解。
+                        //   在隐式版接上之前，ON 路径不接生产。
                         double v = t + dt * (-adv[q] + lapH + lapZ + (src == null ? 0.0 : src[q]) + redi[q]);
                         if (i == DBG_I && j == DBG_J && k == DBG_K && !Double.isFinite(v)) {
                             int q0 = st.idx(i, j, 0);
                             System.out.println(String.format(java.util.Locale.ROOT,
                                 "DBG_T step=%d t=%.4f adv=%.3e lapH=%.3e lapZ=%.3e cv=%.3e src=%.3e redi=%.3e dt=%.3e s0=%.4f h=%.2f k0t=%.4f",
-                                step, t, adv[q], lapH, lapZ, cv,
+                                step, t, adv[q], lapH, lapZ,
+                                AdvectionDiffusionSolver.kvAt(g, st, i, j, k) / (dz * dz),
                                 src == null ? 0.0 : src[q], redi[q], dt,
                                 st.s[q0], st.mixedLayerDepth[j * g.nx + i], st.t[q0]));
                             System.out.println(String.format(java.util.Locale.ROOT,
@@ -178,6 +190,130 @@ public final class PrognosticT {
                         int q = st.idx(i, j, k);
                         st.t[q] = tn[q];
                     }
+                }
+        }
+        LAST_MAX_DT = maxd;
+        return maxd;
+    }
+
+    /**
+     * ★ 2026-11-17（P3 第 5c）：**显式平流/水平扩散 + 隐式垂向扩散**（逐列三对角）。
+     *
+     * <p>为什么必须隐式：显式版在 KPP 的 Kt（~0.3 m²/s）下 `dt·Kt/dz² ≈ 10`，实测全部湿格 NaN
+     * （交接文档 §20）。隐式无此限制，且是海洋模式的标准做法。
+     *
+     * <p>方程（每个子步、每列）：`(T*-T)/dt = -adv + KH∇²_h + S + Redi` 取显式；
+     * 垂向 `∂/∂z(Kt ∂T/∂z)` 取【新时刻】：
+     * <pre>
+     *   (1 + dt·(kup+kdn))·T_k − dt·kup·T_{k−1} − dt·kdn·T_{k+1} = T*_k
+     *   kup = Kt_{k−1/2}/(dz_k·dz̄),  kdn = Kt_{k+1/2}/(dz_k·dz̄)
+     * </pre>
+     * 边界：k=0 是 Dirichlet（surfaceT），海底零通量；系数与 {@code probe\NKPPCOL} 的 Thomas 版逐项一致。
+     *
+     * <p>⚠ 本路径**不做** DeepBudget 记账与冻结记账（{@code FREEZE_LEDGER_ON}），只做 T≥Tf 钳制；
+     * 打开 KPP 时这些诊断会缺项，已在交接文档记账。
+     */
+    private static double runImplicitVertical(OceanGrid g, OceanState st, double[] surfaceT,
+                                              double[] src, double seasonSeconds, int substeps) {
+        int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
+        int steps = (R3Momentum.ON || BaroclinicFlow.LOCAL_V_ON)
+                ? AdvectionDiffusionSolver.cflSteps(g, st, seasonSeconds, substeps)
+                : Math.max(1, substeps);
+        LAST_STEPS = steps;
+        double dt = seasonSeconds / steps;
+        double[] adv = new double[n3];
+        double[] tn = new double[n3];
+        double[] redi = new double[n3];
+        if (RediDiffusion.ON) RediDiffusion.tendency(g, st, st.t, redi);
+        int stride = nz + 1;
+        double[] a = new double[nz], b = new double[nz], c = new double[nz], r = new double[nz];
+        double[] cp = new double[nz], rp = new double[nz], sol = new double[nz];
+        double maxd = 0.0;
+        for (int step = 0; step < steps; step++) {
+            st.fillDryGhosts();
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double d = AdvectionDiffusionSolver.divFlux(g, st, st.t, i, j, k);
+                        if (AdvectionDiffusionSolver.ADVECTIVE_FORM) {
+                            d -= st.t[q] * AdvectionDiffusionSolver.divU(g, st, i, j, k);
+                        }
+                        adv[q] = d;
+                    }
+                }
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int js = j * nx + i;
+                    int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                    int base = js * stride;
+                    double t0 = surfaceT[js];
+                    // (1) explicit part WITHOUT the vertical diffusion
+                    for (int k = 0; k < wl; k++) {
+                        int q = st.idx(i, j, k);
+                        if (k == 0) { tn[q] = t0; continue; }
+                        double t = st.t[q];
+                        double tw = g.isWet(i - 1, j, k) ? st.t[st.idx(i - 1, j, k)] : t;
+                        double te = g.isWet(i + 1, j, k) ? st.t[st.idx(i + 1, j, k)] : t;
+                        double ts = g.isWet(i, j - 1, k) ? st.t[st.idx(i, j - 1, k)] : t;
+                        double tnn = g.isWet(i, j + 1, k) ? st.t[st.idx(i, j + 1, k)] : t;
+                        double lapH = AdvectionDiffusionSolver.khAt(g, k)
+                                * ((tw + te - 2.0 * t) / (g.dx * g.dx)
+                                 + (ts + tnn - 2.0 * t) / (g.dy * g.dy));
+                        tn[q] = t + dt * (-adv[q] + lapH + (src == null ? 0.0 : src[q]) + redi[q]);
+                    }
+                    // (2) implicit vertical diffusion, k = 1..wl-1
+                    int m = wl - 1;
+                    if (m > 0) {
+                        for (int k = 1; k < wl; k++) {
+                            double dzu = 0.5 * (g.dz[k - 1] + g.dz[k]);
+                            double dzd = (k + 1 < wl) ? 0.5 * (g.dz[k] + g.dz[k + 1]) : g.dz[k];
+                            double kup = KppBoundaryLayer.KT_FACE[base + k] / (g.dz[k] * dzu);
+                            double kdn = (k + 1 < wl)
+                                    ? KppBoundaryLayer.KT_FACE[base + k + 1] / (g.dz[k] * dzd) : 0.0;
+                            int ix = k - 1;
+                            a[ix] = -dt * kup;
+                            c[ix] = -dt * kdn;
+                            b[ix] = 1.0 + dt * (kup + kdn);
+                            double rhs = tn[st.idx(i, j, k)];
+                            if (k == 1) rhs += dt * kup * t0;
+                            r[ix] = rhs;
+                        }
+                        boolean ok = Math.abs(b[0]) > 1.0e-30;
+                        if (ok) {
+                            cp[0] = c[0] / b[0];
+                            rp[0] = r[0] / b[0];
+                            for (int k2 = 1; k2 < m; k2++) {
+                                double mm = b[k2] - a[k2] * cp[k2 - 1];
+                                if (!(Math.abs(mm) > 1.0e-30)) { ok = false; break; }
+                                cp[k2] = c[k2] / mm;
+                                rp[k2] = (r[k2] - a[k2] * rp[k2 - 1]) / mm;
+                            }
+                        }
+                        if (ok) {
+                            sol[m - 1] = rp[m - 1];
+                            for (int k2 = m - 2; k2 >= 0; k2--) sol[k2] = rp[k2] - cp[k2] * sol[k2 + 1];
+                            for (int k = 1; k < wl; k++) tn[st.idx(i, j, k)] = sol[k - 1];
+                        }
+                    }
+                }
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                    for (int k = 0; k < wl; k++) {
+                        int q = st.idx(i, j, k);
+                        double v = tn[q];
+                        if (k > 0) {
+                            double tf = FreezingPoint.kelvin(st.s[q]);
+                            if (v < tf) v = tf;          // 只钳制；不做潜热记账（见 javadoc）
+                        }
+                        if (!Double.isFinite(v)) v = st.t[q];
+                        maxd = Math.max(maxd, Math.abs(v - st.t[q]));
+                    }
+                    for (int k = 0; k < wl; k++) st.t[st.idx(i, j, k)] = tn[st.idx(i, j, k)];
                 }
         }
         LAST_MAX_DT = maxd;

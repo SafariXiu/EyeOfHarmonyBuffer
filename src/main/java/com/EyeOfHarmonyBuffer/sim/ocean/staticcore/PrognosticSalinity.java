@@ -25,8 +25,29 @@ public final class PrognosticSalinity {
 
     private PrognosticSalinity() {}
 
+    /**
+     * 诊断（A-1）：冰析盐的**累计虚拟盐通量** [kg/m²]（\sum iceSaltFlux·dt，跨季节累加）。
+     * 包内可见 + 公开 getter：它不是开关，不该出现在 A7 的总表里。
+     */
+    static double ICE_SALT_SUM = 0.0;
+    /** 逐列累计（kg/m²），布局 js = j*nx+i；供探针按纬度带统计。 */
+    static double[] ICE_SALT_COL = new double[0];
+
+    /** 探针可读：全场合计 [kg/m²]。 */
+    public static double iceSaltSum() { return ICE_SALT_SUM; }
+
+    /** 探针可读：某一列累计的冰析盐（虚拟淡水通量，正=融冰加淡水）[kg/m²]。 */
+    public static double iceSaltAt(int js) {
+        return (js >= 0 && js < ICE_SALT_COL.length) ? ICE_SALT_COL[js] : 0.0;
+    }
+
     public static double run(OceanGrid g, OceanState st, SeaSurfaceForcing f, double theta,
                              double seasonSeconds, int substeps) {
+        // ★ 2026-11-17（P3 第 5d）：KPP 打开时盐度也必须用同一套面系数 + 隐式垂向扩散，
+        //   否则"打开 KPP"只混温度、盐度不混（半个混合层）。默认 OFF 不进此分支。
+        if (KppBoundaryLayer.ON && KppBoundaryLayer.isReady()) {
+            return runImplicitVertical(g, st, f, theta, seasonSeconds, substeps);
+        }
         int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
         // ★ 2026-11-07（R3）：同 PrognosticT —— 显式通量平流按 CFL 自适应子步。
         // ★ 只在 R3 路径上自适应（v1 fallback 逐位不变）。
@@ -59,6 +80,9 @@ public final class PrognosticSalinity {
             for (int i = 0; i < nx; i++) {
                 if (!g.isWet(i, j)) continue;
                 int js = j * nx + i;
+                if (ICE_SALT_COL.length != nx * ny) ICE_SALT_COL = new double[nx * ny];
+                ICE_SALT_SUM += st.iceSaltFlux[js];
+                ICE_SALT_COL[js] += st.iceSaltFlux[js];
                 fw[js] = fw[js] - fwMean + st.iceSaltFlux[js];
                 st.iceSaltFlux[js] = 0.0;
             }
@@ -144,5 +168,142 @@ public final class PrognosticSalinity {
                 for (int k = 0; k < g.nz; k++) sum += st.s[st.idx(i, j, k)] * g.dz[k];
             }
         return sum;
+    }
+
+    /**
+     * ★ 2026-11-17（P3 第 5d）：盐度的【显式平流/水平扩散 + 隐式垂向扩散】。
+     *
+     * <p>与 {@code PrognosticT.runImplicitVertical} 同一套面系数（{@code KppBoundaryLayer.KT_FACE}），
+     * 边界改成"上下都零通量"（盐度没有 Dirichlet 条件；表面淡水汇以显式源项进入混合层）。
+     *
+     * <p>⚠ 与 T 版同样的记账缺口：本路径不累计 {@code LAST_D_ADV/D_DIFF/D_SURF} 分项
+     * （只保留总盐 {@code LAST_TOTAL0/1}），打开 KPP 时这些诊断会缺项。
+     */
+    private static double runImplicitVertical(OceanGrid g, OceanState st, SeaSurfaceForcing f,
+                                              double theta, double seasonSeconds, int substeps) {
+        int nx = g.nx, ny = g.ny, nz = g.nz, n3 = nx * ny * nz;
+        int steps = (R3Momentum.ON || BaroclinicFlow.LOCAL_V_ON)
+                ? AdvectionDiffusionSolver.cflSteps(g, st, seasonSeconds, substeps)
+                : Math.max(1, substeps);
+        LAST_STEPS = steps;
+        double dt = seasonSeconds / steps;
+        double[] fw = new double[nx * ny];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                fw[j * nx + i] = AdvectionDiffusionSolver.effectiveFreshwaterKgM2S(f, st, i, j, theta);
+            }
+        double sumFw = 0.0, areaW = 0.0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                double w = Math.max(0.05, Math.cos(g.latAt(j)));
+                sumFw += fw[j * nx + i] * w;
+                areaW += w;
+            }
+        double fwMean = areaW > 0 ? sumFw / areaW : 0.0;
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int js = j * nx + i;
+                if (ICE_SALT_COL.length != nx * ny) ICE_SALT_COL = new double[nx * ny];
+                ICE_SALT_SUM += st.iceSaltFlux[js];
+                ICE_SALT_COL[js] += st.iceSaltFlux[js];
+                fw[js] = fw[js] - fwMean + st.iceSaltFlux[js];
+                st.iceSaltFlux[js] = 0.0;
+            }
+        LAST_TOTAL0 = total(g, st);
+        double[] adv = new double[n3];
+        double[] ns = new double[n3];
+        double[] redi = new double[n3];
+        if (RediDiffusion.ON) RediDiffusion.tendency(g, st, st.s, redi);
+        int stride = nz + 1;
+        double[] a = new double[nz], b = new double[nz], c = new double[nz], r = new double[nz];
+        double[] cp = new double[nz], rp = new double[nz], sol = new double[nz];
+        for (int step = 0; step < steps; step++) {
+            st.fillDryGhosts();
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double d = AdvectionDiffusionSolver.divFlux(g, st, st.s, i, j, k);
+                        if (AdvectionDiffusionSolver.ADVECTIVE_FORM) {
+                            d -= st.s[q] * AdvectionDiffusionSolver.divU(g, st, i, j, k);
+                        }
+                        adv[q] = d;
+                    }
+                }
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int js = j * nx + i;
+                    int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                    int base = js * stride;
+                    double hMl = Math.max(g.dz[0], st.mixedLayerDepth[js]);
+                    for (int k = 0; k < wl; k++) {
+                        int q = st.idx(i, j, k);
+                        double s = st.s[q];
+                        double sw = g.isWet(i - 1, j, k) ? st.s[st.idx(i - 1, j, k)] : s;
+                        double se = g.isWet(i + 1, j, k) ? st.s[st.idx(i + 1, j, k)] : s;
+                        double ss = g.isWet(i, j - 1, k) ? st.s[st.idx(i, j - 1, k)] : s;
+                        double sn = g.isWet(i, j + 1, k) ? st.s[st.idx(i, j + 1, k)] : s;
+                        double lapH = AdvectionDiffusionSolver.khAt(g, k)
+                                * ((sw + se - 2.0 * s) / (g.dx * g.dx)
+                                 + (ss + sn - 2.0 * s) / (g.dy * g.dy));
+                        double src = 0.0;
+                        if (THIN_SURF_FW_ON) {
+                            if (k == 0) src = -s * fw[js] / (AdvectionDiffusionSolver.RHO0 * g.dz[0]);
+                        } else if (g.zCenter[k] < hMl) {
+                            src = -s * fw[js] / (AdvectionDiffusionSolver.RHO0 * hMl);
+                        }
+                        ns[q] = s + dt * (-adv[q] + lapH + src + redi[q]);
+                    }
+                    if (wl > 0) {
+                        for (int k = 0; k < wl; k++) {
+                            double dz = g.dz[k];
+                            double dzu = (k > 0) ? 0.5 * (dz + g.dz[k - 1]) : dz;
+                            double dzd = (k + 1 < wl) ? 0.5 * (dz + g.dz[k + 1]) : dz;
+                            double kup = (k > 0) ? KppBoundaryLayer.KT_FACE[base + k] / (dz * dzu) : 0.0;
+                            double kdn = (k + 1 < wl) ? KppBoundaryLayer.KT_FACE[base + k + 1] / (dz * dzd) : 0.0;
+                            a[k] = -dt * kup;
+                            c[k] = -dt * kdn;
+                            b[k] = 1.0 + dt * (kup + kdn);
+                            r[k] = ns[st.idx(i, j, k)];
+                        }
+                        boolean ok = Math.abs(b[0]) > 1.0e-30;
+                        if (ok) {
+                            cp[0] = c[0] / b[0];
+                            rp[0] = r[0] / b[0];
+                            for (int k = 1; k < wl; k++) {
+                                double mm = b[k] - a[k] * cp[k - 1];
+                                if (!(Math.abs(mm) > 1.0e-30)) { ok = false; break; }
+                                cp[k] = c[k] / mm;
+                                rp[k] = (r[k] - a[k] * rp[k - 1]) / mm;
+                            }
+                        }
+                        if (ok) {
+                            sol[wl - 1] = rp[wl - 1];
+                            for (int k = wl - 2; k >= 0; k--) sol[k] = rp[k] - cp[k] * sol[k + 1];
+                            for (int k = 0; k < wl; k++) ns[st.idx(i, j, k)] = sol[k];
+                        }
+                    }
+                }
+            for (int j = 1; j < ny - 1; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                    for (int k = 0; k < wl; k++) {
+                        int q = st.idx(i, j, k);
+                        double v = ns[q];
+                        if (!Double.isFinite(v)) v = st.s[q];
+                        if (v < 0.0) v = 0.0;
+                        if (v > 50.0) v = 50.0;
+                        st.s[q] = v;
+                    }
+                }
+        }
+        LAST_TOTAL1 = total(g, st);
+        return LAST_TOTAL1 - LAST_TOTAL0;
     }
 }

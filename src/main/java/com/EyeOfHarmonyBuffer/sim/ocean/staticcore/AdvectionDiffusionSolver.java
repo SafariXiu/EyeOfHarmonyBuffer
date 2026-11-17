@@ -787,6 +787,9 @@ public final class AdvectionDiffusionSolver {
             // BiCGSTAB 直接以当前 T 为初值。
             // ★ 2026-11-02：穿透短波作为【稳态源项】进入 T 方程（不再是每季 += dt 的阶梯）。
             double[] src = shortwaveSource(g, st, f, theta);
+            // ★ 2026-11-17（P3 第 5c）：KPP 的面系数必须在有 f 的地方准备。
+            //   只在 ON 时调用 ⟹ 默认 OFF 时生产路径完全不变（连一次额外求值都没有）。
+            if (KppBoundaryLayer.ON) KppBoundaryLayer.prepareColumnKt(g, st, f, theta);
             double br;
             if (PROGNOSTIC_T_ON) {
                 br = PrognosticT.run(g, st, surfaceT, src, SEASON_SECONDS, SUBSTEPS);

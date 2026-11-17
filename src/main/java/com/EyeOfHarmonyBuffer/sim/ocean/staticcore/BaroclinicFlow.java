@@ -45,7 +45,13 @@ public final class BaroclinicFlow {
      * the V2 projection instead of from d(psi)/dy.
      */
     public static boolean LOCAL_V_ON = false;
-    /** 2026-11-11: convert the thermal-wind v (north) to the grid +j frame via northSign. */
+    /**
+     * 2026-11-11: convert the thermal-wind v (north) to the grid +j frame via northSign.
+     *
+     * <p>⚠ 2026-11-17（P1）：本开关单独打开会让 stored = nsj·(−v_N) = −v_j ⟹ **在球面上翻反**。
+     * 与 {@link #THERMAL_WIND_SIGN_FIXED} **同时**打开才等于 frame 无关的正确形式（nsj·v_N）。
+     * 生产（球面）两者都保持 false 才是对的；详见交接文档 §15。
+     */
     public static boolean NORTH_SIGN_FIX = Boolean.parseBoolean(
             System.getProperty("eoh.nsfix", "false"));
 
@@ -63,6 +69,17 @@ public final class BaroclinicFlow {
      *
      * <p>false（默认）= 逐位不变；true = 物理正确，但 MOC/OHT 会反号，
      * **整套基线/门必须重跑**（按仓库守则，跑全量套件前先告知用户）。
+     *
+     * <p>⚠⚠ <b>2026-11-17（P1）实测更正：上面那句"true = 物理正确"是<b>frame 相关</b>的，写在这里会误导。</b>
+     * 用 frame 分辨的同源探针（`probe\NTHW`）实测：存储的 `vBaroclinic` = **∓v_N**（与 nsj 无关），
+     * 而 {@code OceanState.v} 的定义是 **+j 分量 v_j = nsj·v_N**：
+     * <ul>
+     *   <li><b>球面（生产，nsj=−1）</b>：stored = −v_N = v_j ⟹ **本来就是对的**；
+     *       把本开关置 true 会得到 +v_N = −v_j ⟹ <b>把生产翻反</b>；</li>
+     *   <li><b>笛卡尔（flat，nsj=+1 的那一半）</b>：stored = −v_N = −v_j ⟹ 反的；</li>
+     * </ul>
+     * ⟹ 生产（球面）必须保持 **false**。若要一个 frame 无关的正确形式，需要的是
+     * `stored = nsj·v_N`，而**不是**单独翻这个开关。见交接文档 §15。
      */
     public static boolean THERMAL_WIND_SIGN_FIXED = false;
 
@@ -197,7 +214,12 @@ public final class BaroclinicFlow {
      * max|v_bc| 0.289 m/s，修复后 <b>MOC 190.1 Sv / 0.0194 m/s</b>（15 倍）。
      * <p>BATHY_ON=false 时 wetLayers≡nz ⟹ 3D 判据与 2D 判据逐位等价，默认路径不变。
      */
-    private static double zonalGrad(OceanGrid g, OceanState st, double[] v, int i, int j, int k) {
+    /**
+     * ★ 2026-11-17（P1）：**公开**给探针用，保证"测的就是生产用的那个算子"（A6：探针与生产必须同源）。
+     * 之前探针自己写了一份差分（只取两侧都湿的格、且与 <em>纬向平均</em> 相比），
+     * 与生产的三维湿判 + 单侧差分不同源 ⟹ 同号率在 0.5 附近，什么都证明不了。
+     */
+    public static double zonalGrad(OceanGrid g, OceanState st, double[] v, int i, int j, int k) {
         boolean west = g.isWet(i - 1, j, k), east = g.isWet(i + 1, j, k);
         double c = v[st.idx(i, j, k)];
         if (west && east) return (v[st.idx(i + 1, j, k)] - v[st.idx(i - 1, j, k)]) / (2.0 * g.dx);

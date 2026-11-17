@@ -221,10 +221,14 @@ public final class KppBoundaryLayer {
         return CSTAR * VONK * Math.cbrt(VONK * SURF_LAYER_EXT * C_S);
     }
 
-    /** G2(sigma)=(1-sigma)^2, used only when unstable. */
+    /**
+     * 非局部的形状 G(σ)。★ 2026-11-17（P3 第 3 步取证）：CVMix 的 @code CVMIX_KPP_SIMPLE_SHAPES@
+     * 分支里 @code Tshape2 = Tshape = σ(1−σ)²@（cvmix_kpp.F90 L989-998），**不是** (1−σ)²。
+     * 旧实现用 (1−σ)² 与出处不符；由于非局部项尚未接线（其通量标定 NOT FOUND），
+     * 这个更正**不改变任何生产数值**，只是让库与出处一致。
+     */
     public static double nonlocalShape(double sigma) {
-        double s = Math.max(0.0, Math.min(1.0, sigma));
-        return (1.0 - s) * (1.0 - s);
+        return gradientShape(sigma);
     }
 
     /** CVMix simple shape: G(sigma)=sigma*(1-sigma)^2. */
@@ -268,6 +272,54 @@ public final class KppBoundaryLayer {
     }
 
     /**
+     * ★ 2026-11-17（Stage G2 第 1~2 步）：整列的【面扩散率】，含 CVMix 的 OBL 底增强。
+     *
+     * <p>出处：CVMix-src `src/shared/cvmix_kpp.F90`（2026-11-17 抓取，见 Talos2
+     * 工作目录/中期/四问题-处置计划-2026-11-17.md "P3 出处"）：
+     * <ul>
+     *   <li>`cvmix_coeffs_kpp_low` L802-L832：`kwup=floor(kOBL)`、`ktup=nint(kOBL)-1`、
+     *       `delta=(OBL+zt(ktup))/(zt(ktup)-zt(ktup+1))`；</li>
+     *   <li>`cvmix_kpp_compute_enhanced_diff` L1874-L1979（LMD94 附录 D）：
+     *       `omd=1-delta`；界面在 OBL 外（lkteqkw）时
+     *       `enh = omd²·ktup + delta²·interior`、`face = omd·interior + delta·enh`；
+     *       界面在 OBL 内时把 `interior` 换成该界面的 OBL 值。</li>
+     * </ul>
+     *
+     * <p><b>本仓的映射</b>（我们是有限体积、按【面】组织，CVMix 是按【格心 + 数组】）：
+     * `ktup` = 最后一个"格心深度 ≤ OBL"的层；`delta` = OBL 底在该层中心与下一层中心之间的比例；
+     * "interior" = 该面的背景扩散率，"OBL 值" = 该面的 KPP 形状值。增强只作用在
+     * 【与 OBL 底相邻的那一个面】上，这正是 LMD94 Appendix D 的用意：让 OBL 底不出现 Kt 跳变。
+     *
+     * @return 长度 wl+1 的数组；下标 f = 第 f 层顶面（0 = 海面，未用；wl = 海底，恒 0）
+     */
+    public static double[] columnKt(double[] dz, int wl, double obl, double bf, double ustar, double[] bgFace) {
+        double[] zc = new double[wl];
+        double[] zf = new double[wl + 1];
+        double acc = 0.0;
+        for (int k = 0; k < wl; k++) { zc[k] = acc + 0.5 * dz[k]; acc += dz[k]; zf[k + 1] = acc; }
+        double[] kt = new double[wl + 1];
+        for (int f = 1; f < wl; f++)
+            kt[f] = (obl > 0.0 && zf[f] <= obl) ? scalarDiffusivity(zf[f] / obl, obl, bf, ustar)
+                                                : Math.max(0.0, bgFace[f]);
+        int ktup = -1;
+        for (int k = 0; k < wl; k++) if (zc[k] <= obl) ktup = k;
+        int fB = ktup + 1;
+        if (ktup >= 0 && fB >= 1 && fB < wl && obl > 0.0) {
+            double ktupV = scalarDiffusivity(zc[ktup] / obl, obl, bf, ustar);
+            double delta = (obl - zc[ktup]) / Math.max(1.0e-9, zc[ktup + 1] - zc[ktup]);
+            delta = Math.max(0.0, Math.min(1.0, delta));
+            double omd = 1.0 - delta;
+            boolean lkteqkw = delta <= 0.5;                 // 界面在 OBL 之外
+            double interior = Math.max(0.0, bgFace[fB]);
+            double other = lkteqkw ? interior
+                                   : scalarDiffusivity(Math.min(1.0, zf[fB] / obl), obl, bf, ustar);
+            double enh = omd * omd * ktupV + delta * delta * other;
+            kt[fB] = omd * (lkteqkw ? interior : interior) + delta * enh;
+        }
+        return kt;
+    }
+
+    /**
      * OBL 小于第一层厚度 dz0 时的部分层有效扩散：
      * (1/dz0) ∫_0^OBL Kt dz = (OBL/dz0)*OBL*<ws*G>，Simpson 平均。
      */
@@ -282,9 +334,140 @@ public final class KppBoundaryLayer {
         return Double.isFinite(kt) && kt >= 0.0 ? kt : 0.0;
     }
 
+    /**
+     * ★ 2026-11-17（Stage G2 第 4 步 / P3）：**表层浮力通量** B0 [m²/s³]，由本模型自己的
+     * 线性 EOS 导出（α、β 来自 {@link com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline}，
+     * 无新常数、无新标定）：
+     *
+     * <pre>
+     *   b = -g(ρ-ρ0)/ρ0 = g(α·ΔT − β·ΔS)
+     *   ∂T/∂t|surf = Q/(ρ0·cp)                        （Q 正 = 进入海洋）
+     *   ∂S/∂t|surf = −S·(E−P)/ρ0                      （淡水稀释；E−P 单位 kg/(m²·s)，P−E 正 = 加淡水）
+     *   ⟹ B0 = g·[ α·Q/(ρ0·cp) + β·S·(E−P)/ρ0 ]
+     * </pre>
+     *
+     * <p>**符号约定**（与 {@link #ws} 的 {@code bf<0 = 不稳定} 一致）：
+     * 冷却（Q&lt;0）⟹ B0&lt;0 ⟹ 不稳定；加淡水（E−P&gt;0）⟹ B0&gt;0 ⟹ 稳定。
+     * 量级自检：Q=−200 W/m²、E−P=0 ⟹ B0 ≈ −8e-8 m²/s³（本仓单柱门钉住）。
+     */
+    public static double surfaceBuoyancyFlux(double qNetWm2, double eMinusPKgm2s,
+                                             double seaSurfaceSalinityPsu, double rho0, double cp) {
+        return GRAV * (com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.ALPHA * qNetWm2 / (rho0 * cp)
+                + com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.BETA * seaSurfaceSalinityPsu
+                  * eMinusPKgm2s / rho0);
+    }
+
+    // ==================================================================================
+    // P3 第 5 步：把面扩散率接进生产扩散算子（默认关 ⟹ 逐位不变）
+    // ==================================================================================
+    /** 本季的 KPP 面扩散率缓存，布局 [(j*nx+i)*(nz+1) + f]；仅 ON 且 KT_READY 时有效。 */
+    public static double[] KT_FACE = null;
+    /**
+     * 缓存是否与当前状态/强迫一致。
+     * <p>★ 2026-11-17：**包内可见**（不是 {@code public}）—— 它是内部缓存标志，不是生产开关，
+     * 不应出现在 A7 的"生产端开关总表"里（switch_registry 只收 {@code public static boolean}）。
+     * 探针请用 {@link #isReady()}。
+     */
+    static boolean KT_READY = false;
+
+    /** 探针可读：本季 KPP 面系数缓存是否已准备好。 */
+    public static boolean isReady() { return KT_READY; }
+    private static int ktNx = -1, ktNy = -1, ktNz = -1;
+
+    /**
+     * 逐列准备 KPP 面扩散率（ON 时由 {@code AdvectionDiffusionSolver} 每季调用一次）。
+     *
+     * <p>⚠ 这是【季节快照】：OBL、表层浮力通量、摩擦速度都取自调用时刻的 T/S 与强迫。
+     * 与 {@code VelocityProjection.FACES_READY} 同一类"季节性静态缓存"，每季重算。
+     *
+     * <p>⛔ <b>2026-11-17 实测：这些面系数【不能】接显式扩散。</b>
+     * 生产 {@code PrognosticT} 的垂向扩散是显式的，而 Kt ~ 0.3 m²/s、dz=50 m、dt=8.6e4 s
+     * ⟹ {@code dt·Kt/dz² ≈ 10 ≫ 1} ⟹ 全部湿格立刻 NaN（探针 {@code NKPPPROD} 实测 bad=50340）。
+     * 现有 {@code cflSteps} 只约束平流、不约束扩散。
+     * <p>⟹ 本方法目前**不接生产**，它是给"逐列隐式（三对角）扩散"准备输入的；
+     * 隐式求解器的单柱原型见 {@code probe\NKPPCOL}（Thomas + 保热门，已 PASS）。
+     * <p>默认 OFF 时直接置 {@code KT_READY=false}。
+     */
+    public static void prepareColumnKt(OceanGrid g, OceanState st,
+                                       com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing f, double theta) {
+        if (!ON) { KT_READY = false; return; }
+        int nx = g.nx, ny = g.ny, nz = g.nz, stride = nz + 1;
+        if (KT_FACE == null || ktNx != nx || ktNy != ny || ktNz != nz) {
+            KT_FACE = new double[nx * ny * stride];
+            ktNx = nx; ktNy = ny; ktNz = nz;
+        }
+        double[] bg = new double[stride];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 0; k < stride; k++)
+                    bg[k] = (k < wl) ? AdvectionDiffusionSolver.kvAt(g, st, i, j, k) : 0.0;
+                double obl = oblDepth(g, st, i, j);
+                int x = (int) Math.round(g.xOf(i)), z = (int) Math.round(g.zOf(j));
+                int q0 = st.idx(i, j, 0);
+                double t0 = st.t[q0];
+                double ice = st.iceFraction[j * nx + i];
+                double q = f.netHeatFluxWm2(x, z, theta, t0, ice);
+                double fw = f.freshwaterFluxKgM2S(x, z, theta, t0);
+                double bf = surfaceBuoyancyFlux(q, fw, st.s[q0],
+                        AdvectionDiffusionSolver.RHO0, AdvectionDiffusionSolver.CP_SEA);
+                double tx = f.windStressX(x, z, theta), tz = f.windStressZ(x, z, theta);
+                double ustar = Math.sqrt(Math.hypot(tx, tz) / 1025.0);
+                double[] kt = columnKt(g.dz, wl, obl, bf, ustar, bg);
+                int base = (j * nx + i) * stride;
+                for (int k = 0; k <= wl; k++) KT_FACE[base + k] = kt[k];
+            }
+        KT_READY = true;
+    }
+
     /** Nonlocal scalar term: only unstable (Bf<0); Cs*G2(sigma). */
     public static double nonlocalScalar(double sigma, double bf) {
         if (!(bf < 0.0)) return 0.0;
         return nonlocalCoeff() * nonlocalShape(sigma);
+    }
+
+    /**
+     * ★ 2026-11-18（A1，出处已取得）：**非局部通量** {@code K·γ_s(σ) = C_s·G(σ)·Q_s}。
+     *
+     * <p>出处：MOM6 文档 "The K-Profile Parameterization"（CVMix_KPP 页，2026-11-18 抓取）：
+     * <blockquote>
+     * {@code overline{w's'} = -K ∂_z s + K γ_s(σ)}；{@code K = h w_s(σ) G(σ)}；
+     * "the entire non-local transport term can be equivalently written
+     *  {@code K γ_s(σ) = C_s G(σ) Q_s}"，其中 {@code Q_s} 是 s 的表面通量、{@code C_s} 是常数；
+     * 形状 {@code G(σ) = σ(1−σ)²}（{@code G(0)=G(1)=0}）。
+     * </blockquote>
+     *
+     * <p>本仓的 {@link #nonlocalCoeff()} 就是那个 {@code C_s}（CVMix 的 nonlocal_coeff 默认值），
+     * 形状用 {@link #gradientShape}（{@code σ(1−σ)²}，与出处一致；见交接 §18.3 的更正）。
+     *
+     * <p>返回的是**通量**（与被扩散标量同量纲 × m/s）；趋势由调用方取通量散度得到：
+     * {@code ∂s/∂t |= -(F_{k+1/2} - F_{k-1/2})/dz}。因为 G(0)=G(1)=0，柱积分恒为 0（纯重分布）。
+     *
+     * @param sigma  归一化深度 z/OBL ∈ [0,1]
+     * @param qSurf  该标量的表面通量（T: Q/(ρc_p) [K·m/s]；S: 淡水通量等效 [psu·m/s]）
+     */
+    public static double nonlocalFlux(double sigma, double qSurf) {
+        return nonlocalCoeff() * gradientShape(sigma) * qSurf;
+    }
+
+    /**
+     * 逐列非局部趋势 [标量/s]（只对 OBL 内的面计算；G(0)=G(1)=0 ⟹ 柱积分恒为 0）。
+     *
+     * @return 长度 wl 的趋势数组（未初始化部分为 0）
+     */
+    public static double[] nonlocalTendency(double[] dz, int wl, double obl, double qSurf) {
+        double[] tend = new double[wl];
+        if (!(obl > 0.0)) return tend;
+        // 面通量：面 f 在深度 zf；σ = zf/obl；OBL 外通量为 0（G 的定义域只有 [0,1]）
+        double[] flux = new double[wl + 1];
+        double z = 0.0;
+        for (int f = 0; f <= wl; f++) {
+            double sig = z / obl;
+            flux[f] = (sig >= 0.0 && sig <= 1.0) ? nonlocalFlux(sig, qSurf) : 0.0;
+            if (f < wl) z += dz[f];
+        }
+        for (int k = 0; k < wl; k++) tend[k] = -(flux[k + 1] - flux[k]) / dz[k];
+        return tend;
     }
 }

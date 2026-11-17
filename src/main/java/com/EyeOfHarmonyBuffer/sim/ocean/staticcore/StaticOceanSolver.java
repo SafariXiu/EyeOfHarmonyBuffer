@@ -62,6 +62,88 @@ public final class StaticOceanSolver {
     public static int SEASONAL_YEARS = 1;
 
     /**
+     * ★ 2026-11-17（B1）：深层稳态 —— 每年结束后，对 {@code zCenter >= DEEP_STEADY_Z0} 的层
+     * 解【稳态平流-扩散】BVP（逐列），把解写回状态。**默认关；关时逐位不变**（不进
+     * {@code solveFlagsHash}，因为开关只在 {@link #solve} 的年循环末尾执行，且 ON 时也会改解）。
+     *
+     * <p>方程（逐列、定常、无源）：{@code d/dz(w·T − K·dT/dz) = 0}，用模型自己的
+     * {@code w}（迎风）与 {@code K = AdvectionDiffusionSolver.kvAt}，不引任何新常数。
+     * 上边界取 z0 以上那一层的年均值（Dirichlet），海底零通量。
+     *
+     * <p>物理含义（必须知道）：零通量边界 + 无源 ⟹ 稳态通量恒为 0 ⟹
+     * {@code w·T = K·dT/dz}，即"平流-扩散平衡"的指数剖面；若深层 w→0，解退化为**等温**
+     * （温度 = 上边界值）。这不是 bug，是方程的解。
+     *
+     * <p>⛔ <b>2026-11-17 实测否决（交接文档 §25）：两条验收门都 FAIL，且错在前提而非实现。</b>
+     * 单元测试（合成柱、w=0）给出等温解到 5.7e-14 ⟹ 求解器正确；但真实状态下
+     * 等温值是 z0 以上那层（≈280.7 K），比时间步进的冷深层（274.8 K）**暖 5.9 K**，
+     * 写回后反而让深层漂移从 0.027 放大到 <b>0.209 K/yr</b>，且 68% 的列矩阵病态被跳过。
+     * ⟹ 本方法**保留为可复现该否定的仪器**，默认 false，不作为生产路径；
+     * 根因见 §24（本模型没有深水形成）与 §25.5。
+     */
+    public static boolean DEEP_STEADY_ON = false;
+    /** 深层稳态的起始深度（m）；该深度以上不动。 */
+    public static double DEEP_STEADY_Z0 = 1000.0;
+    /** 诊断：最近一次 applyDeepSteady 成功写入的列数 / 因病态被跳过的列数。 */
+    public static int LAST_DEEP_COLS = 0, LAST_DEEP_SKIP = 0;
+
+    /**
+     * ★ 2026-11-17（A）：逐季快照诊断（**默认关**）。每个季节记录每纬度带的
+     * 表层 σ / 500 m σ / 冰厚 / 该季冰析盐 [kg/m²]，用于判"冬季卤水脉冲够不够"。
+     * 关时不分配、不采样、不影响任何数值。
+     */
+    public static boolean SEASON_SNAP_ON = false;
+    /** [nseas][3]：表层位密；未开启时为 null。 */
+    public static double[][] LAST_SEAS_SIGMA = null;
+    /** [nseas][3]：500 m 位密。 */
+    public static double[][] LAST_SEAS_SIGMA500 = null;
+    /** [nseas][3]：平均冰厚（m）。 */
+    public static double[][] LAST_SEAS_ICE = null;
+    /** [nseas][3]：该季冰析盐（虚拟淡水通量积分，kg/m²；负 = 析盐加盐）。 */
+    public static double[][] LAST_SEAS_BRINE = null;
+
+    /** 采一个季节的快照（只在 SEASON_SNAP_ON 时由季循环调用）。 */
+    static void snapshotSeason(OceanGrid g, OceanState st, int si, int nseas, double seasonSeconds) {
+        if (!SEASON_SNAP_ON) return;
+        if (LAST_SEAS_SIGMA == null || LAST_SEAS_SIGMA.length != nseas) {
+            LAST_SEAS_SIGMA = new double[nseas][3];
+            LAST_SEAS_SIGMA500 = new double[nseas][3];
+            LAST_SEAS_ICE = new double[nseas][3];
+            LAST_SEAS_BRINE = new double[nseas][3];
+        }
+        int nx = g.nx, ny = g.ny;
+        double[] cnt = new double[3];
+        for (int j = 1; j < ny - 1; j++) {
+            double al = Math.abs(Math.toDegrees(g.latAt(j)));
+            int b = al < 30.0 ? 0 : al < 60.0 ? 1 : 2;
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = Math.min(g.nz, g.wetLayers[j * nx + i]);
+                if (wl < 3) continue;
+                int js = j * nx + i;
+                int k5 = 0;
+                while (k5 < wl - 1 && g.zCenter[k5] < 500.0) k5++;
+                int q0 = st.idx(i, j, 0);
+                LAST_SEAS_SIGMA[si][b] += 1027.8 * (1.0 - com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.ALPHA * (st.t[q0] - 285.0)
+                        + com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.BETA * (st.s[q0] - 35.0));
+                int q5 = st.idx(i, j, k5);
+                LAST_SEAS_SIGMA500[si][b] += 1027.8 * (1.0 - com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.ALPHA * (st.t[q5] - 285.0)
+                        + com.EyeOfHarmonyBuffer.sim.ocean.Thermohaline.BETA * (st.s[q5] - 35.0));
+                LAST_SEAS_ICE[si][b] += st.iceThickness[js];
+                LAST_SEAS_BRINE[si][b] += st.iceSaltFlux[js] * seasonSeconds;
+                cnt[b]++;
+            }
+        }
+        for (int b = 0; b < 3; b++) {
+            if (cnt[b] <= 0) continue;
+            LAST_SEAS_SIGMA[si][b] /= cnt[b];
+            LAST_SEAS_SIGMA500[si][b] /= cnt[b];
+            LAST_SEAS_ICE[si][b] /= cnt[b];
+            LAST_SEAS_BRINE[si][b] /= cnt[b];
+        }
+    }
+
+    /**
      * ★ 2026-11-03：S 初值用物理纬向剖面（高纬淡、副热带咸）。
      * 默认关；A/B 用 NSINIT=1。这不是拟合：高纬表层淡（~34）是海洋气候学的基本事实，
      * 缺了它高纬盐度层结为零，冬季整柱对流（h=1739 m）。
@@ -354,6 +436,9 @@ public final class StaticOceanSolver {
                         for (int j = 0; j < ny; j++)
                             for (int i = 0; i < nx; i++)
                                 if (grid.isWet(i, j)) surfaceT[j * nx + i] = st.t[st.idx(i, j, 0)];
+                        // ★ 2026-11-17（A）：快照必须在【盐度步消费 iceSaltFlux 之前】。
+                        if (SEASON_SNAP_ON) snapshotSeason(grid, st, si, nseas,
+                                AdvectionDiffusionSolver.SEASON_SECONDS);
                     } else {
                         surfaceT = SurfaceTemperatureSolver.solve(grid, periodic, th, fallback, st);
                         AdvectionDiffusionSolver.init(grid, st, surfaceT);
@@ -378,6 +463,11 @@ public final class StaticOceanSolver {
                             periodic, th, Math.min(advMaxIter, 80));
                     }
                     sBudget = sR.residual;
+                    // ★ 2026-11-18（S4）：密度水沿坡下沉（Campin & Goosse 1999）。
+                    //   必须在 T/S 都更新之后、且用当季时长；ON=false 时这段是零副作用。
+                    if (DenseOverflow.ON) {
+                        DenseOverflow.apply(grid, st, AdvectionDiffusionSolver.SEASON_SECONDS);
+                    }
                     if (DEBUG_FINITE) { String b = firstNonFinite(grid, st); if (b != null) System.out.println("NONFINITE_STAGE S yr=" + yr + " si=" + si + " " + b); }
                     // ★ 2026-11-03（stage 3 步序）：盐度改变了 S ⟹ 表层 Tf 变了，重钳。
                     if (AdvectionDiffusionSolver.FREEZE_SURFACE_ON) {
@@ -462,6 +552,8 @@ public final class StaticOceanSolver {
                         sMean[q] = sSum[q] / nseas;
                     }
                 }
+            // ★ 2026-11-17（B1）：每年的年均算完之后，可选地把深层替换成稳态解。
+            if (DEEP_STEADY_ON) applyDeepSteady(grid, st);
             YEAR_T_MEAN.add(tMean.clone());
             double yearHeat = 0.0, yearSalt = 0.0, yearIce = 0.0;
             double yearHeatUp = 0.0, yearHeatDeep = 0.0;
@@ -640,6 +732,97 @@ public final class StaticOceanSolver {
     }
 
     /** 定位第一个非有限格（DEBUG_FINITE 用；默认路径零开销）。 */
+    // ==================================================================================
+    // B1：深层稳态（逐列、定常、平流-扩散；见 DEEP_STEADY_ON 的 javadoc）
+    // ==================================================================================
+    /** 公开给探针（与 {@code zonalGrad} 同理：让探针测的就是生产用的那份实现）。 */
+    public static void applyDeepSteady(OceanGrid g, OceanState st) {
+        LAST_DEEP_COLS = 0;
+        LAST_DEEP_SKIP = 0;
+        int nx = g.nx, ny = g.ny, nz = g.nz;
+        double[] A = new double[nz * nz];
+        double[] b = new double[nz];
+        double[] x = new double[nz];
+        for (int j = 1; j < ny - 1; j++)
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = Math.min(nz, g.wetLayers[g.idx(i, j)]);
+                int k0 = -1;
+                for (int k = 0; k < wl; k++) if (g.zCenter[k] >= DEEP_STEADY_Z0) { k0 = k; break; }
+                if (k0 <= 0 || wl - k0 < 2) continue;
+                int m = wl - k0;
+                java.util.Arrays.fill(A, 0.0);
+                java.util.Arrays.fill(b, 0.0);
+                for (int a = 0; a < m; a++) {
+                    int k = k0 + a;
+                    addFace(A, b, m, a, +1.0, g, st, i, j, k - 1, k, k0);              // F_top
+                    addFace(A, b, m, a, -1.0, g, st, i, j, k, (k + 1 < wl) ? k + 1 : -1, k0); // -F_bot
+                }
+                if (!solveDense(A, b, x, m)) { LAST_DEEP_SKIP++; continue; }
+                boolean ok = true;
+                for (int a = 0; a < m; a++) if (!Double.isFinite(x[a]) || x[a] < 200.0 || x[a] > 400.0) ok = false;
+                if (!ok) { LAST_DEEP_SKIP++; continue; }      // 病态列：保持原值，不污染状态
+                for (int a = 0; a < m; a++) {
+                    int k = k0 + a;
+                    double tf = com.EyeOfHarmonyBuffer.sim.ocean.FreezingPoint.kelvin(st.s[st.idx(i, j, k)]);
+                    st.t[st.idx(i, j, k)] = Math.max(tf, x[a]);
+                }
+                LAST_DEEP_COLS++;
+            }
+    }
+
+    /**
+     * 把一个面（cell lo 与 hi 之间）的【向上】通量加入平衡式：F = w·T_up − K·(T_lo−T_hi)/dzd。
+     * hi &lt; 0 表示海底面（绝热 ⟹ 通量为 0）。lo &lt; k0 时 T_lo 是 Dirichlet，移到右端项。
+     */
+    private static void addFace(double[] A, double[] b, int m, int row, double sign,
+                                OceanGrid g, OceanState st, int i, int j, int lo, int hi, int k0) {
+        if (hi < 0) return;
+        if (lo < 0) return;
+        double wlo = st.w[st.idx(i, j, lo)], whi = st.w[st.idx(i, j, hi)];
+        double w = 0.5 * (wlo + whi);
+        double dzd = 0.5 * (g.dz[lo] + g.dz[hi]);
+        double kk = 0.5 * (AdvectionDiffusionSolver.kvAt(g, st, i, j, lo)
+                         + AdvectionDiffusionSolver.kvAt(g, st, i, j, hi));
+        double cLo, cHi;
+        if (w > 0.0) { cLo = -kk / dzd; cHi = w + kk / dzd; }
+        else         { cLo = w - kk / dzd; cHi = kk / dzd; }
+        if (lo >= k0) A[row * m + (lo - k0)] += sign * cLo;
+        else b[row] -= sign * cLo * st.t[st.idx(i, j, lo)];
+        A[row * m + (hi - k0)] += sign * cHi;
+    }
+
+    /** 小规模稠密解（带部分主元）；奇异时返回 false，调用方保持原值。 */
+    private static boolean solveDense(double[] A, double[] b, double[] x, int m) {
+        for (int c = 0; c < m; c++) {
+            int piv = c;
+            double best = Math.abs(A[c * m + c]);
+            for (int r = c + 1; r < m; r++) {
+                double v = Math.abs(A[r * m + c]);
+                if (v > best) { best = v; piv = r; }
+            }
+            if (!(best > 1.0e-30)) return false;
+            if (piv != c) {
+                for (int k2 = 0; k2 < m; k2++) {
+                    double tmp = A[c * m + k2]; A[c * m + k2] = A[piv * m + k2]; A[piv * m + k2] = tmp;
+                }
+                double tb = b[c]; b[c] = b[piv]; b[piv] = tb;
+            }
+            for (int r = c + 1; r < m; r++) {
+                double f = A[r * m + c] / A[c * m + c];
+                if (f == 0.0) continue;
+                for (int k2 = c; k2 < m; k2++) A[r * m + k2] -= f * A[c * m + k2];
+                b[r] -= f * b[c];
+            }
+        }
+        for (int r = m - 1; r >= 0; r--) {
+            double s = b[r];
+            for (int c = r + 1; c < m; c++) s -= A[r * m + c] * x[c];
+            x[r] = s / A[r * m + r];
+        }
+        return true;
+    }
+
     private static String firstNonFinite(OceanGrid g, OceanState st) {
         for (int j = 1; j < g.ny - 1; j++)
             for (int i = 0; i < g.nx; i++) {
