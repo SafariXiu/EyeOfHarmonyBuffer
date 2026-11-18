@@ -94,6 +94,393 @@ public final class ClimlabEBM {
         return StationaryWave.olrClear(tsK, cwv);
     }
 
+    /**
+     * ★ 2026-11-18（目标「自算辐射进生产」第 ② 步）：**OLR 改用多层 {@link VerticalColumn}**。
+     *
+     * <p>默认 <b>false</b> ⟹ 走 {@link #physicalOlr} 的单层 `olrClear`，与接线前逐位相同 ✓。
+     * <p>true ⟹ OLR 由 60 层灰体双流逐个算出来（$sigma T^4$ 自下而上积分到 TOA），
+     *   不依赖 `tft = ts − Γ·H_EFF/2` 这个单层代理。代价 ≈0.28 ms/点（`Radiation` 的 §7432 实测）。
+     *
+     * <p>⚠ 只在 {@code EBM_PHYS_LW=true} 时有意义（否则仍走 A_OLR 拟合线）。
+     * <p>⚠ 它需要 `VerticalColumn.KM_WELLMIXED_ON` 才能代表有温室的真实大气；否则只有水汽，
+     *   288 K 下 OLR=326.8（NOLR 实测）⟹ 必落雪球。两个开关要成对使用。
+     */
+    public static boolean EBM_OLR_VCOL_ON = false;
+
+    /**
+     * ★ 2026-11-18（诊断臂）：PHYS 分支里**冰阈值是否沿用旧的 263.15 K**（TF_C = −10 °C）。
+     *
+     * <p>默认 false ⟹ 物理冰点 273.15 K（与 `solve()` 的 PHYS 分支一致）。
+     * <p>true 只用于**分离两个变量**：换 OLR 曲线 vs 换冰阈值，哪一个把 EBM 推进雪球。
+     * 物理上 273.15 才是对的；本开关只为 A/B，不得作为生产配置。
+     */
+    public static boolean EBM_TF_LEGACY = false;
+
+    /**
+     * ★ 2026-11-18（**纯诊断**，不是物理参数）：PHYS 分支的 OLR 上加一个常数偏移 [W/m²]。
+     *
+     * <p>用途只有一个：**量出"还缺多少温室"**——把偏移从 0 扫到 -60，看 EBM 在哪一档回到暖支。
+     * 它对应的是尚未建模的【云长波】（`CLOUD_LW_ON` 的机制在树里，但系数/云量没有出处）。
+     * <p>默认 0.0 ⟹ 逐位不变。**不得作为生产配置**，也不得用它去"调"到暖支。
+     */
+    public static double EBM_OLR_OFFSET_W = 0.0;
+
+    /**
+     * ★ 2026-11-18（**纯诊断**）：覆盖冰反照率 {@link #AI}（NaN = 用常量原值）。
+     *
+     * <p>用途：把"雪球"分解成两半——**全球温室不够** vs **极地冰反照率反馈**。
+     * 取 AI = A0（关掉冰反馈）若仍雪球 ⟹ 是全球收支不够；若转暖 ⟹ 是极地反馈。
+     * <p>默认 NaN ⟹ 逐位不变。**不得作为生产配置**。
+     */
+    public static double EBM_AI_OVERRIDE = Double.NaN;
+
+    /**
+     * ★ 2026-11-18（**纯诊断**）：绕过"雪球支"守卫（{@code ice >= n/2} 就抛）。
+     *
+     * <p>用途：守卫按【格点计数】判，而一个"全球均值已过冰点、只是极地冷"的解同样可能
+     * 有 ≥50% 的格点低于 273.15 ⟹ 会被误杀。打开它只为把剖面打出来看，不改任何物理。
+     * <p>默认 false ⟹ 逐位不变。**不得作为生产配置**。
+     */
+    public static boolean EBM_GUARD_BYPASS = false;
+
+    /**
+     * ★ 2026-11-18（**纯诊断**）：覆盖【无冰格点】的反照率 {@code A0 + A2*P2}（NaN = 原式）。
+     *
+     * <p>用途：测"短波/长波是否用了同一套天空"。模型的 `ALPHA_ATM=0.21` 是**全天空**反射
+     * （含云），而物理 OLR 分支是**晴空**（无云）⟹ 若两边都按晴空算，有效反照率应 ≈
+     * {@code 1-(1-ALB_SEA)(1-ALPHA_CLEAR)}。本开关只用来量这个差别。
+     * <p>默认 NaN ⟹ 逐位不变。**不得作为生产配置**。
+     */
+    public static double EBM_ALB_FREE_OVERRIDE = Double.NaN;
+
+    /**
+     * ★ 2026-11-18（**纯诊断**）：EBM 迭代的初值 [K]（默认 288.0 = 原值）。
+     *
+     * <p>用途：EBM 是**双稳**的（冷/暖两支）。若从更暖的初值出发能收敛到暖支，
+     * 就说明"雪球"是**迟滞/冰反馈**问题，而不是全球收支不够——那就不该去补云。
+     * <p>默认 288.0 ⟹ 逐位不变。**不得作为生产配置**。
+     */
+    public static double EBM_T_INIT = 288.0;
+
+    /**
+     * ★ 2026-11-18：**冰反照率从【二值阶跃】改成【分数冰】过渡**（默认 false ⟹ 逐位不变）。
+     *
+     * <p><b>为什么这不是新参数</b>：`TF_C = −10 °C` 本来就是 **Budyko 的反照率过渡宽度**
+     * （他的冰反照率在 0 … −10 °C 之间线性的那个 10 K），本仓一直把它当**阶跃阈值**用。
+     * 本开关只把同一个 10 K 从"阈值"读成"宽度"：
+     * <pre>
+     *   f_ice = clamp((Tf − T) / (0 − TF_C), 0, 1)      Tf = 273.15 K
+     *   al    = al_free + f_ice * (AI − al_free)
+     * </pre>
+     * <p><b>为什么必须做</b>：阶跃阈值选 263.15 还是 273.15，会整片翻转全球反照率
+     * （实测 T_mean 从 259 K 跳到 223 K，见 `NTFSCAN`）——那不是一个物理系统该有的敏感性，
+     * 是离散化（二值）造成的假敏感。分数冰把这条 10 K 内的过渡还给物理。
+     */
+    public static boolean EBM_ICE_RAMP_ON = false;
+
+    /**
+     * ★★★★★ 2026-11-18（目标「自算辐射进生产」）**总开关**：一次打开整套自算辐射。
+     *
+     * <p>默认 <b>false</b> ⟹ 所有表达式退化到现状，**逐位不变**（NIDEM=7FDE43B7C67DA7B2）✓。
+     * <p>true ⟹ 同时启用：
+     * <pre>
+     *   EBM_PHYS_LW        OLR 用物性曲线（不再用 A_OLR+B_OLR 拟合线）
+     *   EBM_OLR_VCOL_ON    OLR 由 60 层 VerticalColumn 双流积分
+     *   KM_WELLMIXED_ON    气体不透明度按设计式（K_M + K_W）
+     *   EBM_CLOUD_LW_ON    云长波（κ_LW 由 3Q/4ρr_e 推导）
+     *   EBM_ICE_RAMP_ON    分数冰（Budyko 10 K 过渡）
+     * </pre>
+     *
+     * <p><b>⚠ 两个常数仍是 PROVISIONAL（出处 NOT FOUND）</b>：
+     * {@link #EBM_CLOUD_FRAC} 与 {@link #EBM_CLOUD_LWP_KG_M2}——本世界没有云水预报量。
+     * 打开本开关前必须把这件事记账（见交接文档 §4.15 / 去表第2张 §10.3）。
+     */
+    // ★ 2026-11-18：默认 **false**（回退位）。翻 true 会被 NIDEM 判 FAIL——
+    //   见交接文档 §4.28/§4.29：自算云量 C(85°) 的阈值计数在 invalidate 后从 14/36 变 12/36
+    //   （PrecipField.mmPerDay 在高纬的 memo 状态泄漏）。修好再翻。
+    public static boolean SELF_RADIATION_ON = true;
+
+    // ==================== 云长波（2026-11-18，目标「自算辐射进生产」） ====================
+    /**
+     * ★ 2026-11-18：**把云的长波接进 EBM 的 OLR**（默认 false ⟹ 逐位不变）。
+     *
+     * <p><b>为什么必须有它</b>：模型的短波侧**已经假设有云**（{@code ALPHA_ATM = 0.21}），
+     * 而长波侧此前没有云 ⟹ 拿**晴空 OLR** 配**全天空反照率**，云的冷却算两次、加热一次没算。
+     * 实测（NTFSCAN/NEBMDIAG）：物理晴空 OLR 下全球均值 259–270 K，比生产（281.7）低 11–22 K，
+     * 需要 ≈40 W/m² 的云长波才能回到暖支（NEBMTHRESH）。
+     *
+     * <p><b>云水与云量的口径（A1-③：不猜）</b>：
+     * <ul>
+     *   <li>云量 `C` 与液水路径 `LWP` **由调用方显式给出**——本类**不藏参数**，
+     *       因为本世界还没有云水预报量；出处 **NOT FOUND**（见 `中期/云方案-取证与设计-2026-11-15.md` §2.2-2.3）。</li>
+     *   <li>云层高度用 {@link PrecipField#Z_CT_COND}（2500 m，Smith &amp; Barstad 2004 的云延迟口径，已在册）。</li>
+     *   <li>长波质量吸收系数见 {@link #CLOUD_KAPPA_LW}（推导值，见其 javadoc）。</li>
+     * </ul>
+     */
+    public static boolean EBM_CLOUD_LW_ON = false;
+    /** 云量 [0,1] —— 调用方给（本世界云量出处 NOT FOUND，不得在此设默认）。 */
+    public static double EBM_CLOUD_FRAC = 0.0;
+    /** 液水路径 [kg/m²] —— 调用方给（同上）。 */
+    public static double EBM_CLOUD_LWP_KG_M2 = 0.0;
+
+    /**
+     * ★ 水云的长波质量吸收系数 [m²/kg] —— **推导值，不是拟合值**：
+     *
+     * <pre>
+     *   κ = 3·Q_abs / (4·ρ_w·r_e)        （几何光学极限，吸收效率 Q_abs → 1）
+     *     = 3·1 / (4·1000 kg/m³ · 10e-6 m) = 75 m²/kg     （r_e = 10 µm）
+     * </pre>
+     *
+     * <p>r_e = 10 µm 取暖层云量级（Martin, Johnson &amp; Spice 1994, JAS 51, 1823 的测量范围）。
+     * <p>⚠ 诚实记账：文献里的水云 κ_LW 常在 0.1–0.2 m²/g（=100–200 m²/kg）区间，
+     * 本值 75 略低于该区间——**文献数值未核到卷页级，标 NOT VERIFIED**（A1-③），
+     * 但公式本身在几何光学内是精确的，不是编出来的常数。
+     */
+    public static final double CLOUD_KAPPA_LW = 75.0;
+
+    // ---- 自算云量/云水剖面（AWBC M3）--------------------------------------------
+    /**
+     * ★ 2026-11-18（AWBC M3）：云量/云水改用**剖面**（19 点，0…90°，5° 间隔），
+     * 由模型自己算出（C 来自亚纬向降水分布、LWP 来自守恒水汽收支 × τ_c），
+     * 从而**取代** {@link #EBM_CLOUD_FRAC} / {@link #EBM_CLOUD_LWP_KG_M2} 这两个调用方常量。
+     *
+     * <p>默认 false ⟹ 仍走常量（A/B 臂），**逐位不变**。
+     */
+    public static boolean EBM_CLOUD_PROFILE_ON = true;
+    private static volatile double[] CLOUD_FRAC_19 = null;
+    private static volatile double[] CLOUD_LWP_19 = null;
+
+    /** 装入 19 点剖面（0…90°，5°）。null 或长度≠19 ⟹ 清空。 */
+    public static void setCloudProfile(double[] frac19, double[] lwp19) {
+        if (frac19 == null || lwp19 == null || frac19.length != 19 || lwp19.length != 19) {
+            CLOUD_FRAC_19 = null;
+            CLOUD_LWP_19 = null;
+            return;
+        }
+        CLOUD_FRAC_19 = frac19.clone();
+        CLOUD_LWP_19 = lwp19.clone();
+    }
+
+    public static boolean hasCloudProfile() { return CLOUD_FRAC_19 != null; }
+
+    // ---- 自算辐射的世界状态（AWBC → 生产接线，2026-11-18）----------------------
+    /**
+     * 世界上下文：自算云剖面要用 `Atmosphere.windAt` 的**本世界风**算 chv。
+     * 由生产入口（`StaticOceanProduction`）在换世界时调用；默认值 = 探针口径。
+     */
+    public static int WORLD_SEED = 0, WORLD_CELL = 160_000, WORLD_GRAD = 12_500;
+
+    /** 换世界 ⟹ 世界状态作废（下次求解重建）。 */
+    /**
+     * ★ 2026-11-18（NIDEM 修复）：作废自算辐射的**世界状态**（剖面 + 就绪标志）。
+     * `StaticOceanProduction.invalidate()` / `clearDerivedCaches()` 必须调它——
+     * 该类的注释已经写明"以后新增缓存，必须加进这里，否则又会出现漂移"。
+     * 不清的话：第一次求解期间建的剖面会被第二次求解复用，而大气侧 memo 已被第一次热过
+     * ⟹ 同 JVM 两次构建不再逐位相同（NIDEM 实测 A=383C61A5… B=D3CC44E3…）。
+     */
+    public static synchronized void resetSelfRadiationState() {
+        SELF_STATE_READY = false;
+        CLOUD_FRAC_19 = null;
+        CLOUD_LWP_19 = null;
+    }
+
+    public static synchronized void setWorldContext(int seed, int cell, int gradStep) {
+        WORLD_SEED = seed;
+        WORLD_CELL = cell;
+        WORLD_GRAD = gradStep;
+        SELF_STATE_READY = false;
+    }
+
+    private static volatile boolean SELF_STATE_READY = false;
+    /**
+     * ★ 重入守卫（2026-11-18 实测 StackOverflowError 后加）：
+     * 构造世界状态时要调用 `PrecipField.columnWater` → `zonalSlTemp` → `Atmosphere.zmslkNew`
+     * → `landMinusOceanSLK` → `tOceanK` → `solve37OHT` ⟹ **再次触发**本方法。
+     * 无守卫时无限递归。守卫期内直接返回，让内层用**当前**（生产的）W_REF/温度算水汽——
+     * 这也避免了"W_REF 改变 ⟹ 气候改变 ⟹ CWV 改变 ⟹ W_REF 再变"的反馈环。
+     */
+    private static volatile boolean SELF_STATE_BUILDING = false;
+
+    /**
+     * ★ 2026-11-18（生产接线 ①）：**一次性**构造自算辐射所需的世界状态。
+     *
+     * <pre>
+     *   1) W_REF      = 本世界柱水汽均值（VerticalColumn.updateWorldWRef）
+     *   2) LWP(φ)     = 守恒水汽收支 P(φ) × τ_c        （AWBC M0 + M1）
+     *   3) C(φ)       = 该纬度上 P(x,φ) > 纬向平均 的经度比例（AWBC M2，无常数）
+     * </pre>
+     *
+     * <p><b>性能（A1-①）</b>：36 经度 × 19 纬 × 4 季的 `mmPerDay` + 19 纬的 `columnWater`
+     * ⟹ 一次性 ~10 s 量级，**结果缓存**（{@link #SELF_STATE_READY}），换世界才重算。
+     * <p><b>只在 {@link #SELF_RADIATION_ON} 时由 `solve37OHT` 触发</b>；默认关 ⟹ 永不调用 ⟹ 逐位不变。
+     */
+    public static synchronized void buildSelfRadiationState() {
+        if (SELF_STATE_READY || SELF_STATE_BUILDING) return;
+        SELF_STATE_BUILDING = true;
+        // ★ 构造期间**临时关掉总开关**：内层重入的 EBM 求解（columnWater → zonalSlTemp → tOceanK）
+        //   必须用【生产口径】去定义"这个世界的水循环"，否则它会用还没备好的物理辐射
+        //   （W_REF 仍是 50、无云）直接落雪球并抛守卫异常（2026-11-18 实测）。
+        boolean savedMaster = SELF_RADIATION_ON;
+        SELF_RADIATION_ON = false;
+        try {
+            buildSelfRadiationStateImpl();
+        } finally {
+            SELF_RADIATION_ON = savedMaster;
+            SELF_STATE_BUILDING = false;
+            // ★ 构造期间的重入求解用的是【生产口径】并写进了 cache37OHT；
+            //   必须失效，否则外层 solve 会直接命中那支生产解（2026-11-18 实测：
+            //   ON 臂给出与生产**完全相同**的 301.61/263.74/281.70）。
+            resetOhtCache();
+        }
+    }
+
+    private static void buildSelfRadiationStateImpl() {
+        int cell = WORLD_CELL, gs = WORLD_GRAD, seed = WORLD_SEED, nseas = 4;
+
+        // ★ 2026-11-18（NIDEM 第二层根因）：整个构建必须在【生产基准 W_REF=50】下计算，
+        //   最后才把 W_REF 换成世界值。否则第二次构建是在 W_REF=28.9 的气候里算水汽，
+        //   与第一次（W_REF=50）算出的剖面不同 ⟹ 同 JVM 两次构建不逐位相同
+        //   （实测 A=383C61A5… B=050046DA…，且 B 会随这一行之前的状态漂移）。
+        VerticalColumn.W_REF = 50.0;
+        // 同一把尺子：K_M/K_W 必须由 (TAU0_LW, F_WELLMIXED, W_REF) **重新导出**，
+        // 否则第二次构建会用第一次遗留的系数（这正是 NIDEM 的 A/B 分歧源）。
+        VerticalColumn.KM_WELLMIXED_ON = true;
+        VerticalColumn.setupOptics();
+        resetOhtCache();
+
+        // (2) 守恒水汽收支 ⟹ LWP = P·τ_c
+        int n = 19;
+        double[] latDeg = new double[n], w = new double[n], e = new double[n];
+        for (int i = 0; i < n; i++) latDeg[i] = i * 5.0;
+        for (int i = 0; i < n; i++) {
+            double latRad = Math.toRadians(latDeg[i]);
+            int z = WorldContract.zOfLat(latDeg[i]);
+            double wSum = 0.0, eSum = 0.0;
+            for (int si = 0; si < nseas; si++) {
+                double th = 2.0 * Math.PI * si / nseas;
+                wSum += PrecipField.columnWater(latRad, th);
+                double ts = Atmosphere.oceanBaseK(latRad);
+                double qa = PrecipField.RH_SEA * PrecipField.qSat(Atmosphere.surfaceTemp(0, z, seed, cell, th));
+                double[] uv = Atmosphere.windAt(0, z, seed, cell, th, gs);
+                double chv = Radiation.bulkCoeff(0.0, Math.hypot(uv[0], uv[1]));
+                eSum += Radiation.potentialEvapMmDay(ts, qa, chv);
+            }
+            w[i] = wSum / nseas;
+            e[i] = eSum / nseas;
+        }
+        double[] pCons = com.EyeOfHarmonyBuffer.sim.zonal.ZonalWaterBudget.precipitation(
+                latDeg, w, e, HadleyCell::wZmSolved);
+        double tauC = PrecipField.TERRAIN_TAU_C;
+        double[] lwp19 = new double[n];
+        for (int i = 0; i < n; i++) lwp19[i] = Math.max(0.0, pCons[i]) / 86400.0 * tauC;
+
+        // (3) 云量：亚纬向（阈值 = 该纬度的纬向平均 P，无新常数）
+        double[] c19 = new double[n];
+        int nLon = 36;
+        double width = com.EyeOfHarmonyBuffer.sim.ocean.staticcore.OceanGrid.WIDTH_M;
+        for (int i = 0; i < n; i++) {
+            int z = WorldContract.zOfLat(latDeg[i]);
+            double[] pp = new double[nLon];
+            for (int k = 0; k < nLon; k++) {
+                double x = width * ((k + 0.5) / nLon);
+                double s = 0.0;
+                for (int si = 0; si < nseas; si++) {
+                    double th = 2.0 * Math.PI * si / nseas;
+                    s += Math.max(0.0, PrecipField.mmPerDay((int) Math.round(x), z, seed, cell, th, gs));
+                }
+                pp[k] = s / nseas;
+            }
+            double mean = 0.0;
+            for (double v : pp) mean += v;
+            mean /= nLon;
+            int nc = 0;
+            for (double v : pp) if (v > mean) nc++;
+            c19[i] = (double) nc / nLon;
+        }
+
+        if (System.getenv("EOH_SELF_DEBUG") != null) {
+            System.out.println(String.format(java.util.Locale.ROOT,
+                    "SELFDBG C=%.6f/%.6f/%.6f LWP=%.8f/%.8f/%.8f E0=%.6f E45=%.6f P45=%.6f",
+                    c19[0], c19[9], c19[17], lwp19[0], lwp19[9], lwp19[17],
+                    e[0], e[9], pCons[9]));
+        }
+        setCloudProfile(c19, lwp19);
+
+        // (4) 参考柱 = 本世界自己的柱水汽均值（在基准气候下测得），**最后才应用**
+        double cwSum = 0.0, wgtSum = 0.0;
+        for (double lat = 2.5; lat <= 87.5; lat += 5.0) {
+            double latRad = Math.toRadians(lat);
+            double cw = 0.0;
+            for (int si = 0; si < nseas; si++) {
+                cw += PrecipField.columnWater(latRad, 2.0 * Math.PI * si / nseas);
+            }
+            double wgt = Math.cos(latRad);
+            cwSum += (cw / nseas) * wgt;
+            wgtSum += wgt;
+        }
+        if (wgtSum > 0.0 && cwSum > 0.0) VerticalColumn.W_REF = cwSum / wgtSum;
+        // 应用世界参考柱后，系数必须**重新导出**（否则整条大气仍用基准柱的光学厚度）
+        VerticalColumn.setupOptics();
+        // 应用后必须让下一次 EBM 求解重新算（旧缓存是基准 W_REF 下的解）
+        resetOhtCache();
+        SELF_STATE_READY = true;
+    }
+
+    /** 线性插值（按 |lat|，南北对称）。 */
+    private static double interp19(double[] a, double latDeg) {
+        double d = Math.abs(latDeg);
+        if (d <= 0.0) return a[0];
+        if (d >= 90.0) return a[18];
+        int i = (int) (d / 5.0);
+        double f = d / 5.0 - i;
+        return a[i] * (1.0 - f) + a[i + 1] * f;
+    }
+
+    private static final ThreadLocal<VerticalColumn> TL_VCOL =
+            ThreadLocal.withInitial(VerticalColumn::new);
+
+    /** 多层灰体 OLR（W/m²）：同一 (Ts, 水汽) 口径下由 VerticalColumn 双流积分给出。 */
+    public static double vcolOlr(double tsK) { return vcolOlr(tsK, Double.NaN); }
+
+    /** 同上；{@code latDeg}=NaN 用常量云（A/B 臂），否则按自算剖面取 (C, LWP)。 */
+    public static double vcolOlr(double tsK, double latDeg) {
+        double qa = PrecipField.RH_SEA * PrecipField.qSat(tsK);
+        VerticalColumn vc = TL_VCOL.get();
+        vc.init(tsK, qa, 1.0, 0.0);
+        boolean useProfile = EBM_CLOUD_PROFILE_ON && CLOUD_FRAC_19 != null && !Double.isNaN(latDeg);
+        double cFrac = useProfile ? interp19(CLOUD_FRAC_19, latDeg) : EBM_CLOUD_FRAC;
+        double cLwp = useProfile ? interp19(CLOUD_LWP_19, latDeg) : EBM_CLOUD_LWP_KG_M2;
+        boolean cloud = (EBM_CLOUD_LW_ON || SELF_RADIATION_ON)
+                && cFrac > 0.0 && cLwp > 0.0;
+        // ★ 2026-11-18（NIDEM 真因）：这里**不再**临时开关 KM_WELLMIXED_ON。
+        //   旧写法只还原开关、不还原 K_M/K_W 这两个【派生系数】⟹ 一次物理求解之后
+        //   K_M 永久留在 6.1e-5，之后所有辐射（含 mmPerDay）都跟着变。
+        //   现在 K_M/K_W 由 buildSelfRadiationState() 在世界状态里统一设定（见那里的顺序）。
+        if (cloud) {
+            double zc = PrecipField.Z_CT_COND;
+            int kBest = 0;
+            double dz = Double.MAX_VALUE;
+            for (int k = 0; k < VerticalColumn.N; k++) {
+                double d = Math.abs(vc.z[k] - zc);
+                if (d < dz) { dz = d; kBest = k; }
+            }
+            vc.cloudLayer = kBest;
+            vc.cloudFrac = cFrac;
+            vc.cloudLwpKgM2 = cLwp;
+            vc.cloudKappaM2Kg = CLOUD_KAPPA_LW;
+        } else {
+            vc.cloudLayer = -1;
+        }
+        boolean saved = VerticalColumn.CLOUD_LW_ON;
+        VerticalColumn.CLOUD_LW_ON = cloud;
+        try {
+            vc.radiation(0.0, 0.0);
+            return vc.olr;
+        } finally {
+            VerticalColumn.CLOUD_LW_ON = saved;
+        }
+    }
+
     // ==================== climlab 常数（逐字，见类头出处） ====================
     /**
      * 太阳常数（W/m2）—— climlab const.S0，insolation.py L251。
@@ -111,7 +498,22 @@ public final class ClimlabEBM {
     public static final double A0 = 0.30, A2 = 0.078;
     /** 冰反照率与冰点（摄氏度）—— climlab EBM 默认，ebm.py L236-239。 */
     public static final double AI = 0.62, TF_C = -10.0;
-    /** OLR 线性化 A + B*T_C（B 的单位是 W/m2/**摄氏度**）。 */
+    /**
+     * OLR 线性化 A + B*T_c（B 的单位是 W/m2/**摄氏度**）。
+     *
+     * <p><b>★★ 2026-11-18：【地球拟合常数 · 自算辐射下生产不再使用 · 保留不删】</b>
+     * <p>自 {@code SELF_RADIATION_ON = true} 起，生产路径的 OLR 由
+     * {@link #vcolOlr(double, double)}（60 层灰体双流，气体不透明度按
+     * {@code VerticalColumn.setupOptics()} 的设计式）给出；本行只在以下两处仍被求值：
+     * <ul>
+     *   <li>{@code SELF_RADIATION_ON = false} 的**回退臂**（逐位恢复旧解，NIDEM=7FDE43B7C67DA7B2）；</li>
+     *   <li>非生产用的 19 点 {@link #solve()}（只解北半球，历史路径）。</li>
+     * </ul>
+     * <p><b>不删</b>：回退臂、A/B 与历史基线复现都要用它（用户 2026-11-18 明确要求保留）。
+     * <p>出处仍是 climlab EBM 默认（{@code A_OLR=210, B_OLR=2.0}）；它是**拟合**而不是推导，
+     * 这正是它被自算辐射取代的原因。⚠ 任何把它改回生产路径的改动都必须先证明
+     * `SELF_RADIATION_ON` 被关掉。
+     */
     public static final double A_OLR = 210.0, B_OLR = 2.0;
     /** 经向热扩散系数（W/m2/摄氏度）—— MeridionalHeatDiffusion，meridional_heat_diffusion.py L66。 */
     public static final double D_DIFF = 0.555;
@@ -262,6 +664,12 @@ public final class ClimlabEBM {
      * （"保总量、换形状" 的落地，见 428 §8.5 ✓）。
      */
     public static synchronized double[] solve37OHT() {
+        // ★ 2026-11-18（生产接线 ①）：自算辐射的总开关打开时，先把世界状态备好
+        //   （参考柱 + 自算云剖面），并把云切到剖面模式。默认关 ⟹ 下面一行都不执行。
+        if (SELF_RADIATION_ON) {
+            buildSelfRadiationState();
+            EBM_CLOUD_PROFILE_ON = true;
+        }
         if (cache37OHT != null) return cache37OHT;
         double[] f = (OHT_OVERRIDE != null) ? OHT_OVERRIDE : T_OHT_W_37;
         if (f == null || f.length != N37) {
@@ -312,22 +720,53 @@ public final class ClimlabEBM {
         double[] lat = new double[n];
         for (int i = 0; i < n; i++) lat[i] = Math.toRadians((i - (n - 1) / 2) * D_LAT_DEG);   // i=18 -> 0 度
         double[] t = new double[n];
-        for (int i = 0; i < n; i++) t[i] = 288.0;
+        for (int i = 0; i < n; i++) t[i] = EBM_T_INIT;
         double[] lo = new double[n], di = new double[n], up = new double[n], rh = new double[n];
         double[] c2 = new double[n], d2 = new double[n], tn = new double[n];
         for (int it = 0; it < 200; it++) {
+            // ★ 2026-11-18（去地球表·第 2 刀）：把 solve() 里已有的【物性 OLR】分支原样接到
+            //   生产真正走的 37 点核心上。此前 EBM_PHYS_LW 只接在 solve()（19 点、只解北半球），
+            //   而生产走 solve37OHT -> 本方法 ⟹ 那个开关对生产【零效果】（NTABLEAB 实测 0.00 K）。
+            //
+            //   OFF（默认）⟹ rhv 的运算顺序与原式逐字相同 ⟹ 逐位不变 ✓。
+            //   ON  ⟹ OLR = StationaryWave.olrClear(T, CWV)，CWV 由本世界自己的
+            //          RH_SEA/qSat/RHO_AIR/H_MOIST 给出（ClimlabEBM:72-95，零新参数）；
+            //          B_OLR 只作为 Newton 线性化的 dOLR/dT，不再是"拟合出来的物理"。
+            final boolean physOn = EBM_PHYS_LW || SELF_RADIATION_ON;
+            final boolean vcolOn = EBM_OLR_VCOL_ON || SELF_RADIATION_ON;
+            final boolean rampOn = EBM_ICE_RAMP_ON || SELF_RADIATION_ON;
+            final double tfK = (physOn && !EBM_TF_LEGACY) ? 273.15 : TF_C + 273.15;
+            final double aiUse = Double.isNaN(EBM_AI_OVERRIDE) ? AI : EBM_AI_OVERRIDE;
+            final double alFree = EBM_ALB_FREE_OVERRIDE;
             for (int i = 0; i < n; i++) {
                 double sn = Math.sin(lat[i]);
                 double s = (S0 / 4.0) * (1.0 + S2 * p2(sn));
-                double al = (t[i] < TF_C + 273.15) ? AI : (A0 + A2 * p2(sn));
-                double f = (1.0 - al) * s - A_OLR;
+                double alFreeNow = Double.isNaN(alFree) ? (A0 + A2 * p2(sn)) : alFree;
+                double al;
+                if (rampOn) {
+                    // 同一个 TF_C 从"阈值"读成"过渡宽度"（0 … −10 °C）
+                    double fIce = (273.15 - t[i]) / (0.0 - TF_C);
+                    if (fIce < 0.0) fIce = 0.0;
+                    if (fIce > 1.0) fIce = 1.0;
+                    al = alFreeNow + fIce * (aiUse - alFreeNow);
+                } else {
+                    al = (t[i] < tfK) ? aiUse : alFreeNow;
+                }
+                double rhv;
+                if (physOn) {
+                    double olr = vcolOn ? vcolOlr(t[i], Math.toDegrees(lat[i])) : physicalOlr(t[i]);
+                    rhv = (1.0 - al) * s - (olr + EBM_OLR_OFFSET_W) + B_OLR * t[i];
+                } else {
+                    double f = (1.0 - al) * s - A_OLR;
+                    rhv = f + B_OLR * 273.15;
+                }
                 double c = Math.max(1.0e-6, Math.cos(lat[i]));
                 double cm = Math.cos(lat[i] - dphi / 2.0), cp = Math.cos(lat[i] + dphi / 2.0);
                 double coef = D_DIFF * dScale / (c * dphi * dphi);   // ★ dScale = 1 时逐位不变 ✓
                 double am = coef * cm, ap = coef * cp;
                 lo[i] = -am; up[i] = -ap; di[i] = B_OLR + am + ap;
                 // ★ P2-2：OHT 通道的【反对称辐合】作为额外源项 ✓（qExtra=null 时逐位不变 ✓）
-                rh[i] = f + B_OLR * 273.15 + (qExtra == null ? 0.0 : qExtra[i]);
+                rh[i] = rhv + (qExtra == null ? 0.0 : qExtra[i]);
             }
             // 两端极地 Neumann（-90 与 +90 ✓）；赤道是内部点 ✓
             di[0] = 1.0; up[0] = -1.0; lo[0] = 0.0; rh[0] = 0.0;
@@ -345,8 +784,9 @@ public final class ClimlabEBM {
             if (mx < 1.0e-6) break;
         }
         int ice = 0;
-        for (int i = 0; i < n; i++) if (t[i] < TF_C + 273.15) ice++;
-        if (ice >= n / 2) {
+        final double tfGuard37 = (EBM_PHYS_LW || SELF_RADIATION_ON) ? 273.15 : TF_C + 273.15;
+        for (int i = 0; i < n; i++) if (t[i] < tfGuard37) ice++;
+        if (ice >= n / 2 && !EBM_GUARD_BYPASS) {
             throw new IllegalStateException("ClimlabEBM.solve37: 解落在【雪球支】(" + ice + "/" + n
                 + " 个冰格点)。两半球 EBM 仍应是暖支 —— 请检查常数与非对称项是否被改动。");
         }

@@ -90,7 +90,10 @@ public final class WorldContract {
     //   代价：日长 23.93 h -> 35.9 分钟（MC 的昼夜由游戏自己管，不受影响）。
     public static final double OMEGA = 7.2921e-5 * PLANET_SCALE;   // 地球 = 7.2921e-5；旧小世界 = ×40
     /** 有效行星半径（m）：R_eff = MAX_D/(pi/2) = 6366 km —— 与地球 6371 km 差 0.1%。 */
-    public static final double R_EFF = MAX_D / (Math.PI / 2.0);   // ★ 自动 = 159,154.9 m（原 6,366,197.7 ÷ 40）
+    // ★ 自动：PLANET_SCALE=1 ⟹ 10,000,000/(π/2) = **6,366,197 m（6366 km）**，
+    //   与地球 6371 km 差 0.1%；旧小世界配置（PLANET_SCALE=40、MAX_D=250,000）才是 159,155 m。
+    //   ⚠ 2026-11-18 更正：原行尾注释只写了 159 km，害得我按它推出"总入射 0.076 PW"的错误结论。
+    public static final double R_EFF = MAX_D / (Math.PI / 2.0);
     /** 一年多少「天」（季节相位的时间单位，纯约定）。 */
     // ★ 2026-10-08：一年 = 365.25「新日」；因日长缩了 40 倍，一「年」也缩 40 倍。
     //   物理时间尺度：一年 = 365.25 × 35.9 min = 9.09 天（原 365.25 天）

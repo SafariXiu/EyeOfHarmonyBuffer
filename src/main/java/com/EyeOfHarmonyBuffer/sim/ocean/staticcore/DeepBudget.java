@@ -38,6 +38,28 @@ public final class DeepBudget {
     /** Convective adjustment (default OFF; see AdvectionDiffusionSolver#convectiveAdjust). */
     public static final int T_CONV = 9;
     public static final int NT = 10;
+    /**
+     * ★ 2026-11-18（A3）：**分量项** —— 它们已经包含在别的项里，**不得与总项相加**。
+     *
+     * <p>实测后果（20 年平底）：把全部 NT 项直接相加，账本 +3.374 W/m² 比独立漂移 +4.809 低 1.435，
+     * 而 `T_ADV_V` 的全球值恰好是 **−1.435** ⟹ 3.374 + 1.435 = **4.809**，逐位命中。
+     * 所以这不是物理差异，是**把"垂直分量"当独立项加了第二遍**。
+     */
+    public static boolean isComponent(int term) {
+        return term == T_ADV_V;
+    }
+
+    /** The residual sum: every term EXCEPT the component terms (they are already inside T_ADV). */
+    public static double residualSum(int y) {
+        double[] yr = year(y);
+        double s = 0;
+        for (int b = 0; b < NB; b++)
+            for (int t = 0; t < NT; t++) {
+                if (isComponent(t)) continue;
+                for (int k = 0; k < nz; k++) s += yr[(b * NT + t) * nz + k];
+            }
+        return s;
+    }
 
     public static final String[] NAME = {
         "ADV_total", "ADV_vert", "DIFF_h", "DIFF_v", "SRC_sw", "REDI", "ML_rewrite",

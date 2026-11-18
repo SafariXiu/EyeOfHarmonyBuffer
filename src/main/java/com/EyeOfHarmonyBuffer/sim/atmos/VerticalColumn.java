@@ -64,15 +64,20 @@ public final class VerticalColumn {
     public static final double[] PC = new double[N];
     /** 层质量 kg/m² —— 【常数】。 */
     public static final double[] MASS = new double[N];
+    /** 整柱质量 kg/m²（= p_surf/g）。供 setupOptics 的设计式 `K_M = TAU0_LW*F_WELLMIXED/MASS_TOTAL`。 */
+    public static final double MASS_TOTAL;
     static {
         for (int i = 0; i <= N; i++) {
             double s = (double) i / N;
             P_EDG[i] = P_SURF_TOP_LIN(s);
         }
+        double mt = 0.0;
         for (int k = 0; k < N; k++) {
             PC[k] = 0.5 * (P_EDG[k] + P_EDG[k + 1]);
             MASS[k] = (P_EDG[k + 1] - P_EDG[k]) / PrecipField.G_ACC;
+            mt += MASS[k];
         }
+        MASS_TOTAL = mt;
     }
     public static final double THETA_SB = 5.670374419e-8;
 
@@ -87,6 +92,19 @@ public final class VerticalColumn {
     //   ⟹ calibrateTauLW() 对 OLR 没有任何影响，二分只会撞边界；不要再调用它做标定。
     public static double TAU0_LW = WorldContract.ATMO_TAU_LW;
     public static double F_WELLMIXED = 0.10;
+
+    /**
+     * ★ 2026-11-18（目标「自算辐射接入生产」）：**是否恢复充分混合温室气体项 K_M**。
+     *
+     * <p>默认 <b>false</b> ⟹ `setupOptics()` 不碰 K_M，与 2026-11-14 之后的行为**逐位相同** ✓。
+     * <p>true ⟹ `K_M = TAU0_LW*F_WELLMIXED/MASS_TOTAL`（本类 :100-114 的设计式，零新常数；
+     *    TAU0_LW=6 ⇔ Isca 的 ir_tau_eq=6，出处见类头）。水汽项 K_W 不动。
+     *
+     * <p><b>为什么需要它</b>：只有水汽时 τ≈1.42，288 K 的 OLR=326.8 W/m²（NOLR 实测），
+     * 地球晴空约 265；补上本项后 288 K 的 OLR≈277、EBM 平衡温度由 260 K（雪球）升到 275 K（暖支）。
+     * <p>⚠ 它会改所有用到 {@link Radiation#components} 的表面温度 ⟹ 全量门 + 重钉后才能翻默认。
+     */
+    public static boolean KM_WELLMIXED_ON = false;
     /**
      * §503 ★★★★★★★ **水汽反馈**：参考柱的水汽路径（kg/m²）。
      *
@@ -111,6 +129,43 @@ public final class VerticalColumn {
      * 若将来要标定，应与 TAU0_LW 【联合】标定到 olrClear。
      */
     public static double W_REF = 50.0;
+
+    /**
+     * ★ 2026-11-18（AWBC Round 12/13）：**参考柱水汽量是否取【本世界自己的】柱水汽均值**。
+     *
+     * <p>默认 <b>false</b> ⟹ `W_REF` 保持常量 50（与 2026-11-14 之后**逐位相同**）✓。
+     *
+     * <p><b>为什么需要它</b>：`setupOptics()` 的 `K_W = TAU0_LW·(1−F)/W_REF` 里，
+     * `W_REF` 的定义是"总光学厚度等于 TAU0_LW 的那条参考柱的水汽量"。取混凝土 50 kg/m²
+     * 等于让**本世界的大气不透明度由一条不存在于本世界的柱决定**——
+     * 实测本世界的柱水汽均值是 **28.9–30.5 kg/m²**（随世界/采样略变），
+     * 因此现状大气**偏透明约 1.8 倍**：OLR(288) 从 236.4（自洽）被抬到 254.9（假设）。
+     *
+     * <p><b>影响</b>：打开后（配合 `KM_WELLMIXED_ON`）自算辐射链才能回到暖支
+     * （`NAWBCM3`：T_mean=274.3 K）。**这是把假设换成测量**（A0-⑤），不是调参。
+     */
+    public static boolean W_REF_FROM_WORLD = true;
+
+    /**
+     * 按【本世界】重算 `W_REF`：19 纬（2.5…87.5，每 5°）× 4 季的 `PrecipField.columnWater`
+     * 的 cos 加权均值。**只在 {@link #W_REF_FROM_WORLD} 为真时生效**（否则直接返回，零副作用）。
+     * <p>世界种子须已由调用方设好（`Atmosphere.setZonalLandSeed`）。
+     */
+    public static void updateWorldWRef() {
+        if (!W_REF_FROM_WORLD) return;
+        double s = 0.0, w = 0.0;
+        for (double lat = 2.5; lat <= 87.5; lat += 5.0) {
+            double latRad = Math.toRadians(lat);
+            double cw = 0.0;
+            for (int si = 0; si < 4; si++) {
+                cw += PrecipField.columnWater(latRad, 2.0 * Math.PI * si / 4.0);
+            }
+            double wgt = Math.cos(latRad);
+            s += (cw / 4.0) * wgt;
+            w += wgt;
+        }
+        if (w > 0.0 && s > 0.0) W_REF = s / w;
+    }
     /** 充分混合气体的质量吸收系数（由 TAU0_LW 与 F_WELLMIXED 导出，非独立参数）。 */
     public static double K_M = 0.0;
     /** 水汽的质量吸收系数（由 TAU0_LW、F_WELLMIXED、W_REF 导出，非独立参数）。 */
@@ -127,6 +182,20 @@ public final class VerticalColumn {
         //   ⇒ 直接【复用】模型已有的常数；且模型闭合里没有充分混合气体项 ⇒ K_M = 0。
         //   ⇒ 长波光学厚度从此【零新常数】：tau(p) = OLR_K * W(p)。
         K_W = StationaryWave.OLR_K;
+        // ★ 2026-11-18（目标「自算辐射进生产」第 ① 步）：恢复【充分混合温室气体】项。
+        //   为什么缺：2026-11-14 §504 以「模型闭合里没有充分混合气体项」为由把 K_M 恒置 0，
+        //   于是大气只剩水汽吸收 ⟹ τ=OLR_K*CWV≈1.42 ⟹ 288 K 时 OLR=326.8 W/m²（实测 NOLR），
+        //   而地球晴空 ~265、全天空 ~240 ⟹ 缺 ~85 W/m²，被 EBM 的 A_OLR/B_OLR 拟合掩盖。
+        //   本式【就是本文件 :100-114 记的设计式】，零新常数：
+        //     K_M = TAU0_LW*F_WELLMIXED/MASS_TOTAL   （TAU0_LW=6 ⇔ Isca ir_tau_eq=6，有出处）
+        //   实测（NOLR）：K_M=5.81e-5 ⟹ 288 K 时 OLR≈277；平衡温度 260 K(雪球) → 275 K(暖支)。
+        //   默认 false ⟹ 一字不改（K_M 仍由字段初值 0.0 提供，探针手动赋值照旧生效）。
+        if (KM_WELLMIXED_ON) {
+            // 设计式的**两半**（本类 :100-114）。此前只补 K_M、K_W 仍用 OLR_K，
+            // 这等于只恢复了 10% 的那一半：参考柱依然是 τ≈4 而不是设计上的 τ=6。
+            K_M = TAU0_LW * F_WELLMIXED / MASS_TOTAL;
+            K_W = TAU0_LW * (1.0 - F_WELLMIXED) / W_REF;
+        }
         // ★ §504 记账：这里【曾经】无条件写 K_M = 0.0，而 setupOptics() 每个 radiation() 子步都调一次
         //   ⇒ 探针赋的 K_M 立刻被清掉：二分时四个不同 K_M 给出【完全相同】的 OLR=336.621 / tau=5.050，
         //     整列标定结果是废的（是仪器 bug，不是物理结论）。K_M 改由字段初值 0.0 提供，此处不再覆盖。

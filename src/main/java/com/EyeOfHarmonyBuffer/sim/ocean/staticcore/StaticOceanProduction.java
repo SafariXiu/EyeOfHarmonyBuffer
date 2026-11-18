@@ -168,6 +168,12 @@ public final class StaticOceanProduction {
         }
         // ★ 2026-11-11：投影求解器会改解（MG vs CG）⟹ 必须无条件进指纹。
         h = h * 31 + (VelocityProjection.SOLVER_CG ? 1 : 0);
+        // 2026-11-18: conservative ML rewrite changes the ocean's heat content ⟹ invalidate when ON.
+        if (AdvectionDiffusionSolver.ML_REWRITE_CONSERVATIVE) h = h * 31 + 1;
+        // ★ 2026-11-18（B-C 拆分 / T2）：气压带 B 与纬向平均风表直接决定海表风与 chv ⟹ 必然改解。
+        //   无条件折进：它们改了物理（不是"默认关的新开关"），旧解必须失效。
+        h = h * 31 + (Atmosphere.BELT_KC_SPLIT ? 1 : 0);
+        h = h * 31 + (Atmosphere.UZM_TABLE_ON ? 1 : 0);
         // ★ 2026-11-11（用户裁决甲）：V2 投影（连续性积分 w + 2D 输运泊松 + 自由面 w）会改解。
         h = h * 31 + (VelocityProjection.PROJECT_V2 ? 1 : 0);
         h = h * 31 + (VelocityProjection.FREE_SURFACE_W ? 1 : 0);
@@ -209,6 +215,7 @@ public final class StaticOceanProduction {
             com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.invalidate();
             com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.invalidate();
             com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.resetOhtCache();
+            com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.resetSelfRadiationState();
             com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.resetCache();
             com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache();
             com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.clearWmtMemo();
@@ -225,6 +232,8 @@ public final class StaticOceanProduction {
         com.EyeOfHarmonyBuffer.sim.atmos.StationaryWave.invalidate();
         com.EyeOfHarmonyBuffer.sim.atmos.Vegetation.invalidate();
         com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.resetOhtCache();
+        // ★ 2026-11-18（NIDEM）：自算辐射的世界状态也是【派生缓存】，必须一起作废。
+        com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.resetSelfRadiationState();
         com.EyeOfHarmonyBuffer.sim.atmos.HadleyCell.resetCache();
         com.EyeOfHarmonyBuffer.sim.runtime.SimClimate.clearCache();
         com.EyeOfHarmonyBuffer.sim.runtime.SimTerrain.clearWmtMemo();
@@ -263,6 +272,13 @@ public final class StaticOceanProduction {
         if (!needSolve || hitDisk) {
             // 命中缓存（内存或磁盘）：直接走到尾部（装 ICE_PROVIDER 并返回）。
         } else {
+            // ★ 2026-11-18（NIDEM）：自算辐射的【世界状态】必须在**求解开始之前**建好。
+            //   放在 EBM 里惰性触发时，它会落进海洋求解途中（此时 SST/OHT 处于中间态），
+            //   第二次构建看到的状态不同 ⟹ 同 JVM 两次构建不逐位相同（NIDEM FAIL）。
+            //   这里统一在"冷状态"建一次，两次求解的起点就一致了。
+            if (com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.SELF_RADIATION_ON) {
+                com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.buildSelfRadiationState();
+            }
             // ★ 阶段 4a：求解期间卸下冰提供者（防自反馈），解完再安装。
             Atmosphere.ICE_PROVIDER = null;
             DiagnosticSeaSurfaceForcing raw = new DiagnosticSeaSurfaceForcing(worldSeed, CELL, 12500);

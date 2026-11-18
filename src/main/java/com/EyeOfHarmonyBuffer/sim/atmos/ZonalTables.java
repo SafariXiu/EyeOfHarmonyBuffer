@@ -1260,6 +1260,14 @@ public final class ZonalTables {
      * |lat| &gt; 70 实际上主要是「**冰盖海洋上的气温**」。对本模型而言这是对的
      * （模型自己也有海冰），但它不是「开阔水面气温」。
      */
+    /**
+     * <p><b>★★★ 2026-11-18（目标「自算辐射接入生产」）：【地球表 · 生产已不再使用 · 保留】</b>
+     * <p>生产走 {@link com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM} 的内生解
+     * （{@code EBM_ON = true} ⟹ {@code Atmosphere.oceanBaseK} 不经过本方法）。
+     * 本表只剩两个用途：① {@code EBM_ON=false} 的 A/B 回退臂；② 探针/文档的参照量。
+     * <p><b>不删</b>：后续的"本世界 vs 地球"对照与出图仍要用它（用户 2026-11-18 明确要求保留）。
+     * <p>⟹ 任何把本表当生产输入的改动都要先证明 {@code EBM_ON} 被关掉。
+     */
     public static double tOceanK(double latRad) {
         double d = Math.toDegrees(latRad);
         return ZONAL_ASYM_ON ? interp37(T_OCEAN_K_ASYM, d) : interp5(T_OCEAN_K, d);

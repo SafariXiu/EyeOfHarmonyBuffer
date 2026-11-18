@@ -260,7 +260,7 @@ public final class Atmosphere {
         }
         // §83：不再用「整体平移 6 度」，改成观测的 1 月/7 月两表 + 按 cos(Theta) 季节插值。
         // 「洋盆尺度纬向风骨架」：SEA_ONLY_UZM=false 时与原行逐位不变；打开时按 κ 混入洋面口径表。
-        u += ZonalTables.uZmBlend(Math.toDegrees(latRad), theta, kappa);
+        if (UZM_TABLE_ON) u += ZonalTables.uZmBlend(Math.toDegrees(latRad), theta, kappa);
         // ★ 2026-10-20（EDDY_WIND）：**故意不在这里加**。P442 测的是纬向平均 τx 的 curl 符号，
         //   纬向均匀的涡动风会在其经向梯度处翻转 curl（60/65° 实测 FAIL）。
         //   EDDY_WIND 只作用于【海洋强迫】（OceanForcing / 海洋 τx），不改大气风场 ⟹ 门中性。
@@ -1310,7 +1310,13 @@ public final class Atmosphere {
                 : cellMigrationDegHardcoded(theta);
         double shifted = Math.toDegrees(latRad) - migDeg;
         double kk = Double.isNaN(PA_FIXED_KAPPA) ? clamp01(kappa) : PA_FIXED_KAPPA;
-        return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (kbarRef(latRad) - kk);
+        // ⚠ 关掉时必须与原表达式【逐字相同】（左结合顺序也会影响末位）⟹ 不要把它改写成中间变量。
+        if (!BELT_KC_SPLIT) {
+            return CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (kbarRef(latRad) - kk);
+        }
+        // B/C 拆分：B 与 κ 无关（海陆同拿），C 仍为零纬向平均的海陆对比。
+        return ZonalTables.carrier(shifted) * tropicGate(latRad)
+             + CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (kbarRef(latRad) - kk);
     }
 
     // ================= 沿岸风参数化（观测锚点） =================
@@ -1465,6 +1471,48 @@ public final class Atmosphere {
     public static double PA_FIXED_KAPPA = Double.NaN;
     /** 打开地表干暖项（§409）：见 pressureAnomaly 内的推导。默认 false => 逐位不变。 */
     public static boolean PA_DRY_WARMTH = false;
+    /**
+     * ★ 2026-11-18（自算纬向骨架 / B-C 拆分）：把 {@link #cellPressure} 拆成
+     * **与 κ 无关的气压带 B(φ)** + **零纬向平均的海陆对比 C(φ)·(k̄−κ)** 两项。
+     *
+     * <pre>
+     *   false（默认，= 历史行为，逐位不变）
+     *       cell = CELL_GAIN * carrier(φ−m) * gate(φ) * (k̄(φ) − κ)
+     *   true（结构拆分；不引入新常数）
+     *       cell = B(φ) + CELL_GAIN * carrier(φ−m) * gate(φ) * (k̄(φ) − κ)
+     *       B(φ)  = carrier(φ−m) * gate(φ)        ← 表自己的纬向平均异常（±5~8 hPa）
+     * </pre>
+     *
+     * <p><b>为什么要它</b>：旧式里海面（κ=0）拿到的带子振幅 = `G·c·γ·k̄`，
+     * 于是**当地陆地占比一趋零，海洋副热带高压就趋零**（本世界 30–35°S 的 k̄=0.02 ⟹ 只剩 0.2 hPa）。
+     * 16 个种子的系综实测：`cellPressure/(G·c·γ) ≡ k̄` 逐位成立 ⟹ 这是公式结构，不是种子。
+     *
+     * <p><b>已知代价（必须记账）</b>：加上 B 之后 Ekman 会自己给出一个纬向平均风，而 {@code ZonalTables.uZm}
+     * 表也给一个 ⟹ **重复计数**（这正是 {@link #wind} 当年把 p_ref 排除掉的理由）。A/B 必须按 2×2 做：
+     * {B 开/关} × {uZm 表 开/关}，见 `probe/NBELT`。
+     *
+     * <p>折进 {@code SimClimate.configStamp()}，但**只在 true 时**（N5：关时指纹零变化）。
+     *
+     * <p>★ <b>2026-11-18 用户裁决：采用 T2 臂，本开关默认 true</b>，同时
+     * {@link #UZM_TABLE_ON} 默认 false（停用外生风表）。两行一起才是 T2；
+     * 单独打开本开关而保留风表 = T1 = **重复计数**（NBELT 实测 4.94 vs 3.39+2.50）。
+     */
+    public static boolean BELT_KC_SPLIT = true;   // ★ 2026-11-18 用户裁决（T2）：默认打开
+    /**
+     * ★ 2026-11-18（B-C 拆分配套）：是否保留**外生纬向平均风表** {@code ZonalTables.uZmBlend}。
+     *
+     * <p>true（默认 = 历史行为，逐位不变）：`u += uZmBlend(φ,θ,κ)`。
+     * <p>false：`u` 只由热力距平 p′ 的 Ekman 解给出 —— 即用户裁决的
+     * <b>「本世界气压场拥有纬向平均风」</b>。
+     *
+     * <p><b>为什么必须成对出现</b>（NBELT 实测，seed 0，全球面积加权 V）：
+     * 关表单独 = 1.88、开表单独 = 3.39、带单独 = 4.39、两者都开 = 4.94 ⟹
+     * 4.39+3.39−1.88 = 5.90 > 4.94 ⟹ **它们给的是同一份纬向平均风，叠加即重复计数**。
+     * 表本身在 {@code ZonalTables:45-56} 已被声明为「涡旋观测替身，不是本模型算出的物理」。
+     *
+     * <p>折进 {@code SimClimate.configStamp()}，只在 **false** 时（N5：默认值下指纹零变化）。
+     */
+    public static boolean UZM_TABLE_ON = false;   // ★ 2026-11-18 用户裁决（T2）：气压场拥有纬向平均风
     /** 干暖项里取 beta 用的差分步长（与生产同口径）。 */
     public static int SOIL_GRAD_STEP = (int) Math.round(500_000 / WorldContract.PLANET_SCALE);   // ★ 地球量级 500 km；旧小世界 = 12,500
 

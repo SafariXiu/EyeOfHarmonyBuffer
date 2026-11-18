@@ -443,6 +443,16 @@ public final class Radiation {
         ThreadLocal.withInitial(VerticalColumn::new);
 
     /** 表面能量平衡残差（W/m^2），`beta = 1`（饱和表面）。**对 T_s 单调递减** ⇒ 二分法唯一根。 */
+    /**
+     * ★★ 2026-11-18：**下行长波的廓线用气温（ta）建**，而不是用地表温度（ts）。
+     * <p>默认 <b>false</b> ⟹ 与历史逐位相同 ✓。
+     * <p>为什么这是缺陷而不是选择：地表净长波 = σTs⁴ − L↓，而 L↓ 必须由**大气**廓线给出；
+     * 拿 ts 建廓线等于让大气跟着地表一起升温，净长波对 ts 的依赖被抵消，
+     * 地表辐射阻尼（≈4σT³≈5.5 W/m²/K）被抹掉。
+     * <p>实测（§4.8）：τ 在冰点时 lwDown=110.5 W/m²（等效 210 K），而模型空气是 278.8 K。
+     */
+    public static boolean RAD_LW_PROFILE_FROM_AIR = false;
+
     public static double residual(double ts, double absSolar, double ta, double qa, double chv) {
         return residual(ts, absSolar, ta, qa, chv, 1.0);
     }
@@ -468,7 +478,11 @@ public final class Radiation {
         //   已核对：wind / cosZenith 都不进长波（故传 0.0）；单调性保持（P1142）；
         //          开销 +280.9 us/点 = mmPerDay 的 0.8%（P1141）。
         VerticalColumn vc = TL_VC.get();
-        vc.init(ts, qa, beta, 0.0);
+        // ★★ 2026-11-18（底层缺陷修复，开关默认关）：**廓线该用气温建，不是地表温度**。
+        //   `init(ts,...)` 会把整条柱锚在 ts 上（t[k]=ts−Γz）⟹ 海面越热，"大气"越热
+        //   ⟹ lwDown 暴涨 ⟹ 净长波几乎不随 ts 变 ⟹ **地表失去辐射阻尼**（≈5.5 W/m²/K 消失）。
+        //   后果：海表只能靠湍流/输运平衡，卡在比空气高 13 K，且海气耦合收敛极慢（§4.39/§4.40）。
+        vc.init(RAD_LW_PROFILE_FROM_AIR ? ta : ts, qa, beta, 0.0);
         double lwDown = vc.lwDown();
         double lwNet = SIGMA * ts * ts * ts * ts - lwDown;
         double h = chv * CP * (ts - ta);

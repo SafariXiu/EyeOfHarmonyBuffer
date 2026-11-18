@@ -476,7 +476,13 @@ public final class StaticOceanSolver {
                                 if (!grid.isWet(i, j)) continue;
                                 int q0 = st.idx(i, j, 0);
                                 double tf = FreezingPoint.kelvin(st.s[q0]);
-                                if (st.t[q0] < tf) st.t[q0] = tf;
+                                // ★ 2026-11-18（A3）：这一句**把水加热到冰点却从不记账** ⟹ 账本少一笔正项。
+                                double tOld = st.t[q0];
+                                if (tOld < tf) {
+                                    st.t[q0] = tf;
+                                    if (DeepBudget.ON) DeepBudget.add(DeepBudget.band(grid, j), DeepBudget.T_ML, 0,
+                                            (tf - tOld) * grid.dz[0] * Math.max(0.05, grid.cosLat(j)));
+                                }
                             }
                     }
                     applyMomentum(grid, st);
@@ -685,7 +691,13 @@ public final class StaticOceanSolver {
                     if (!grid.isWet(i, j)) continue;
                     int q0 = st.idx(i, j, 0);
                     double tf = FreezingPoint.kelvin(st.s[q0]);
-                    if (st.t[q0] < tf) st.t[q0] = tf;
+                    // ★ 2026-11-18（A3）：年末这次"加热到冰点"同样没记账，一并补上（只动账本）。
+                    double tOld = st.t[q0];
+                    if (tOld < tf) {
+                        st.t[q0] = tf;
+                        if (DeepBudget.ON) DeepBudget.add(DeepBudget.band(grid, j), DeepBudget.T_ML, 0,
+                                (tf - tOld) * grid.dz[0] * Math.max(0.05, grid.cosLat(j)));
+                    }
                 }
         }
         applyMomentum(grid, st);

@@ -92,7 +92,7 @@ public final class AdvectionDiffusionSolver {
                                  double tf, double hIce, double aice, double hSnow) {
         double qf = f.netHeatFluxWm2(x, z, theta, tf, aice, hIce);
         if (!Double.isFinite(qf)) return 0.0;
-        if (qf >= 0.0) return qf;                 // 冰面在冰点以上 ⟹ 融化
+        if (qf >= 0.0) { LAST_ICE_BASE_FLUX = 0.0; return qf; }   // 冰面在冰点以上 ⟹ 融化
         double h = Math.max(0.05, hIce);
         double hs = Math.max(0.0, hSnow);
         // Semtner 0 层 + 雪热阻：R = h_i/k_i + h_s/k_s；hs=0 时逐位回到旧式。
@@ -105,7 +105,8 @@ public final class AdvectionDiffusionSolver {
             if (fv > 0.0) lo = mid; else hi = mid;
         }
         double ts = 0.5 * (lo + hi);
-        return (tf - ts) / R;   // 负 = 海洋向冰面失热
+        LAST_ICE_BASE_FLUX = (tf - ts) / R;   // 正 = 热从海洋穿过冰向上走（海洋失热）
+        return LAST_ICE_BASE_FLUX;
     }
 
     /**
@@ -123,14 +124,29 @@ public final class AdvectionDiffusionSolver {
     public static boolean ADVECTIVE_FORM = true;
 
     // ★ 2026-11-17（海冰 Stage A）：新冰物理开关。默认 false = 旧路径逐位不变。
-    /** true 时 iceFraction 是预报面积、iceThickness 是格点体积，h_i=vice/aice。 */
-    public static boolean ICE_STATE_V2 = false;
+    /**
+     * true 时 iceFraction 是预报面积、iceThickness 是格点体积，h_i=vice/aice。
+     *
+     * <p>★ <b>2026-11-18（用户裁决）：默认翻为 true</b>，与 {@link #ICE_TRANSPORT_ON} 成对。
+     * 证据（`NICEBUDGET`，平底 10/20 年）：无输出项时 `YEAR_ICE` 从 651 涨到 **2073**（10 年 ×3.2，
+     * 第 10 年年增仍 +99，**无平衡态**）；打开输运后第 2 年起稳定在 **159–177**（±8 年际数值振荡），
+     * 极区 `T_ML` 由 +16.18 降到 **+9.62 W/m²**。
+     * ⚠ 这会改全部高纬气候 ⟹ 旧验收基线（本就未重钉）不再可比；回滚 = 两行改回 false。
+     */
+    public static boolean ICE_STATE_V2 = true;
     /** 雪热力/雪源/雪融（Stage B）。 */
     public static boolean SNOW_ON = false;
     /** 侧向融化（Stage C，CICE/Icepack 公式）。 */
     public static boolean LATERAL_MELT_ON = false;
-    /** 冰面积/体积/雪量输运（Stage D）。 */
-    public static boolean ICE_TRANSPORT_ON = false;
+    /**
+     * 冰面积/体积/雪量输运（Stage D）。
+     *
+     * <p>★ <b>2026-11-18（用户裁决）：默认翻为 true</b>。这是海冰**唯一的热量/体积输出项**
+     * （默认没有侧向融化、没有漂移），关掉它冰只能进不能出 ⟹ 无界增长（见 {@link #ICE_STATE_V2}）。
+     * 物理上"有源必有汇"比"默认关"更根本，按 A0-① 采纳。
+     * ⚠ 需要 {@code ICE_STATE_V2 = true} 才有面积预报量（`transportIce` 的前提）。
+     */
+    public static boolean ICE_TRANSPORT_ON = true;
     /** D2c：EVP 完整冰动力；默认关。 */
     public static boolean ICE_EVP_ON = false;
     /** EVP 外层步长（s）；数值参数，不是物理常数。 */
@@ -399,6 +415,91 @@ public final class AdvectionDiffusionSolver {
     public static double LAST_W_TOTAL_MAX = 0.0;
     public static double LAST_W_TOTAL_MEAN = 0.0;
     /** A 方案诊断：ML 水平平流项 |uML∇T| 的最大值 [K/s]、wBase 最大值 [m/s]。 */
+    /**
+     * ★ 2026-11-18（D1 收支取证）：**混合层重写是否守恒**。
+     *
+     * <p>★ <b>2026-11-19：默认已翻为 true</b>（N6「查到了就修复」+ A0-① 守恒优先；回滚 = 本行改回 false）。
+     * 依据：`NBUDGETCLOSE` 12 年 —— 关掉时年际残差 p99 在 0.71–0.75 处**停滞**（收敛被卡住），
+     * 打开后 p99 逐年下降 1.27→0.68→0.51→**0.46 且仍在降**；全局账本 6.06→5.47 W/m²；
+     * 停滞格点定位在 47.5°N / 80 m / 混合层 60 m —— 正是"层底落在格中间"的那一格。
+     *
+     * <p>（历史）打开后只改一件事：当混合层底 `hNew` 落在
+     * 某一格中间时，该格不再被**整格**写成 `tbar`，而是按厚度加权：
+     * <pre>
+     *   frac  = w / dz            （w = min(dz, hNew − 已累计厚度)）
+     *   t_new = t + frac * (tbar − t)
+     * </pre>
+     * 这与台账里的记录量 `(tbar − t) * w` **逐字一致** ⟹ 重写与记账同时守恒。
+     *
+     * <p><b>为什么需要</b>：`NBUDGETTERM` 实测（平底 3 年，DeepBudget 账本）残差集中在
+     * **60–90° 的 0–200 m 一档，其中 `T_ML`（混合层重写）一项就占 +119 W/m²**，而且
+     * 3 年与 10 年**完全一样**（+119.04 → +119.55）⟹ 不是 spin-up 瞬变，是**稳定的漏能**。
+     * 其余项都小：SRC +7.1、DIFF_V −3.1、ADV +0.2。
+     * 代码根据：计算 `tbar` 的循环（:977）用**部分厚度** `w` 加权，
+     * 而写回的循环（:1225）用**整格** `dz` 并把该格整格置为 `tbar` ⟹ hNew 落在格内时凭空产生能量。
+     */
+    public static boolean ML_REWRITE_CONSERVATIVE = true;   // ★ 2026-11-19：守恒修复，默认打开（回滚改回 false）
+    // 诊断累加器（K·m·cos 单位，与 DeepBudget 同口径）：把混合层重写的正/负两瓣与"冰分支改 tbar"的部分分开
+    public static double lastMlPosK = 0.0, lastMlNegK = 0.0, lastMlTfK = 0.0;
+    public static long lastMlN = 0, lastMlTfN = 0;
+    /**
+     * ★ 2026-11-18（D1 取证，第 8 轮）：**过冷分支的冻结是否与冰量对称记账**。
+     *
+     * <p>默认 **false**（= 历史行为，逐位不变）。
+     *
+     * <p><b>为什么要它</b>：混合层在**有冰且 tbar &lt; tf** 时执行 `tbar = tf`（:1185），
+     * 但**没有让冰增长**——水被"免费"加热到冰点。上方 `tbar &gt; tf` 的分支是**对称**的
+     * （`ICE_BASAL_MELT` 把多余热量折成融冰量 `capM`），只有过冷这一侧没有对手项。
+     *
+     * <p><b>实测（NMLCHURN / NBUDGETTERM）**：极区 `T_ML` 净 +82 W/m²，而 `sumAbs` = 336 W/m²（4 倍churn）
+     * ⟹ 不是小残差，是**单向偏置**；把重写改成守恒（`ML_REWRITE_CONSERVATIVE`）后
+     * band0/band1 的 `T_ML` 变成 **−0.00 / +1.17**，**band2 仍是 +85.6** ⟹ 极区残差就在这条过冷分支上。
+     *
+     * <p>打开后：`deficit = ρ·cp·h·(tf − tbar)/(ρ_ice·L)` 加进冰厚，再 `tbar = tf`
+     * （全部用既有常数，无新参数）。
+     */
+    public static boolean ML_FREEZE_CONSERVATIVE = false;
+    /**
+     * ★ 2026-11-18（第 11 轮）：**冰长大时，水必须失掉同额潜热**。
+     *
+     * <p>默认 **false**（历史行为）。打开的改动只有一句：冰厚增加 dH 时
+     * `tbar -= dH·ρ_ice·L/(ρ·cp·h)`。
+     *
+     * <p><b>为什么会漏</b>：结冰潜热在 `tbar = tf` 那里**记进了水里**（实测极区 `T_ML` +82 W/m²，
+     * 其中 tf 覆盖项 +7.85），但**冰是哪来的**（水失热）没有任何一处扣回去；
+     * 冰底导热也只出现在冰面能量平衡里，从未施加到水温。
+     * 这条改动就是补那个"只进不出"。
+     */
+    public static boolean ICE_GROWTH_COOLS_WATER = false;
+    /**
+     * ★ 2026-11-18（A2）：**冰底导热必须从水里扣**。
+     *
+     * <p>默认 **false**（历史行为）。`iceSurfaceFlux` 解出冰内温度 `ts` 并返回 `(tf−ts)/R`
+     * —— 那就是"水经过冰向大气失热"的速率。现在它**只用来长冰/融冰**，从未施加到水温上。
+     * 打开后：`tbar -= flux·dtSub/(ρ·cp·h)`（`flux>0` = 海洋失热）。
+     *
+     * <p>量级：冰区约 10–30 W/m²，按冰区占洋面比例折算全球约 1–3 W/m²。
+     */
+    public static boolean ICE_BASE_CONDUCTION_TO_WATER = false;
+    /**
+     * ★ 2026-11-19（冰缘不稳的根因修复）：**表面通量把表层冷到冰点以下时，超出部分当场结冰**。
+     *
+     * <p>默认 **false**（历史行为）。上方 warm 侧（`t0f > tf` 先融冰）早已有对称实现，冷侧一直缺。
+     *
+     * <p><b>实测证据</b>（`ICE_TRACE`，−67.5°，3 年）：季初 `tbar0 = 267.2 K`，而 `tf = 271.3 K`
+     * ⟹ **过冷 4 K**；一个季度里冰从 0.5 m 长到 1.7 m，下一季又化光 ⟹ 冰厚在 0↔1.7 m 摆动，
+     * 年际残差 max 停在 1.8 K/yr（p99 已降到 0.36）。
+     * 机理：`PROGNOSTIC_T_ON=true` 走 `PrognosticT.run`，**冻结 active-set 的那条
+     * `solveWithFreezing` 在 `else if` 分支里根本不执行**；表面通量按季度一次性把表层冷下去，
+     * 直到季末混合层才钳回冰点并"补冻"。
+     */
+    public static boolean SURFACE_FREEZE_ON_COLD = false;
+    /** 诊断：冷侧冻结累计冰厚 [m]。 */
+    public static double LAST_SURF_FREEZE_M = 0.0;
+    /** 最近一次 `iceSurfaceFlux` 给出的冰底导热 [W/m²]（正 = 海洋失热）。诊断用。 */
+    public static double LAST_ICE_BASE_FLUX = 0.0;
+    /** A2 诊断：冰底导热累计施加到水里的降温量（K·cos）；0 = 那条路径一次都没执行。 */
+    public static double lastIceBaseSinkK = 0.0;
     public static double LAST_ML_ADV_MAX = 0.0;
     public static double LAST_ML_WBASE_MAX = 0.0;
     /** A-ekman：解析埃克曼 w / 输送；ML 只用埃克曼分量，不混入正压/斜压。 */
@@ -868,6 +969,20 @@ public final class AdvectionDiffusionSolver {
                         double tfHere = FreezingPoint.kelvin(st.s[q0]);
                         double hi = st.iceThickness[js];
                         double dzEff = Math.max(1.0, g.dz[0]);
+                        // ★ 2026-11-19（冰缘不稳）：**冷侧对称**——表层被表面通量冷到冰点以下时，
+                        //   超出部分必须结冰把潜热还回来，而不是留到季末再一次性钳制（那会造成
+                        //   4–6 K 的过冷、冰厚在 0↔1.7 m 之间摆动）。上方 warm 侧已有对称实现。
+                        if (SURFACE_FREEZE_ON_COLD && hi > 1.0e-6 && t0f < tfHere) {
+                            double grow = RHO0 * CP_SEA * dzEff * (tfHere - t0f)
+                                    / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
+                            st.iceThickness[js] = hi + grow;
+                            if (ICE_STATE_V2) {
+                                st.iceFraction[js] = Math.min(1.0,
+                                        st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                            }
+                            LAST_SURF_FREEZE_M += grow;
+                            t0f = tfHere;
+                        }
                         if (hi > 1.0e-6 && t0f > tfHere) {
                             double capM = RHO0 * CP_SEA * dzEff * (t0f - tfHere)
                                     / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
@@ -892,6 +1007,15 @@ public final class AdvectionDiffusionSolver {
                         LAST_SURF_HEAT_ERR_J += Math.abs(delJ - expectJ);
                     }
                     surfaceT[js] = t0f;
+                    // ★ 2026-11-18（A3 仪器修复）：这一句**改表层温度但从不记账** ——
+                    //   delJ 只是诊断，DeepBudget 里没有对应的 add ⟹ 账本漏掉整笔表面热收支。
+                    //   实测（20 年平底）：账本 +14.32 vs 独立漂移 +4.70/+4.81，
+                    //   而"账本 − T_ML(+9.22) = +5.10"正好对上漂移 ⟹ ML 的正偏置就是这笔漏记的镜子。
+                    //   只在 DeepBudget.ON 时累加，不改任何物理量。
+                    if (DeepBudget.ON) {
+                        DeepBudget.add(DeepBudget.band(g, j), DeepBudget.T_ML, 0,
+                                (t0f - ts) * Math.max(1.0, g.dz[0]) * Math.max(0.05, g.cosLat(j)));
+                    }
                     st.t[q0] = t0f;
                 }
             for (int j = 1; j < ny - 1; j++)
@@ -1148,6 +1272,32 @@ public final class AdvectionDiffusionSolver {
                                     st.snowThickness[js] = 0.0;
                                 }
                             }
+                            if (ICE_BASE_CONDUCTION_TO_WATER && st.iceThickness[js] > 1.0e-6) {
+                                double dSink = LAST_ICE_BASE_FLUX * dtSub
+                                        / (RHO0 * CP_SEA * Math.max(g.dz[0], hNew));
+                                lastIceBaseSinkK += dSink * Math.max(0.05, g.cosLat(j));
+                                tbar -= dSink;
+                            }
+                            if (ICE_GROWTH_COOLS_WATER) {
+                                double dH = st.iceThickness[js] - iceNow;   // >0 = 冰长大
+                                if (dH > 0.0) {
+                                    // 冰是水冻出来的 ⟹ 水里必须失掉同额潜热（否则潜热只进不出）
+                                    tbar -= dH * OceanConstants.RHO_ICE * OceanConstants.L_FUSION
+                                            / (RHO0 * CP_SEA * Math.max(g.dz[0], hNew));
+                                }
+                            }
+                            lastMlTfK += (tf - tbar) * hNew * Math.max(0.05, g.cosLat(j));
+                            lastMlTfN++;
+                            if (ML_FREEZE_CONSERVATIVE && tbar < tf) {
+                                // 过冷：冰必须长出来，潜热才付得起这次升温（与上方的 capM 融冰对称）
+                                double deficit = RHO0 * CP_SEA * hNew * (tf - tbar)
+                                        / (OceanConstants.RHO_ICE * OceanConstants.L_FUSION);
+                                st.iceThickness[js] += deficit;
+                                if (ICE_STATE_V2) {
+                                    st.iceFraction[js] = Math.min(1.0,
+                                            st.iceThickness[js] / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                                }
+                            }
                             tbar = tf;
                         } else if (tbar < tf) {
                             // 无冰且过冷：开放水面通量形成初始冰；子步保证只核化薄冰。
@@ -1224,10 +1374,29 @@ public final class AdvectionDiffusionSolver {
                     final double dCos = DeepBudget.ON ? Math.max(0.05, g.cosLat(j)) : 1.0;
                     for (int k = 0; k < g.nz && dep < hNew; k++) {
                         int qk = st.idx(i, j, k);
-                        if (DeepBudget.ON)
-                            DeepBudget.add(dBand, DeepBudget.T_ML, k,
-                                    (tbar - st.t[qk]) * g.dz[k] * dCos);
-                        st.t[qk] = tbar; st.s[qk] = sbar; dep += g.dz[k];
+                        double wCell = Math.min(g.dz[k], hNew - dep);
+                        if (DeepBudget.ON) {
+                            double c = (tbar - st.t[qk]) * g.dz[k] * Math.max(0.05, g.cosLat(j));
+                            if (c > 0.0) lastMlPosK += c; else lastMlNegK += c;
+                            lastMlN++;
+                        }
+                        if (ML_REWRITE_CONSERVATIVE) {
+                            // 只在【层内那部分厚度】上混合；层外半格保持原值（守恒，与台账同口径）
+                            double frac = g.dz[k] > 0 ? wCell / g.dz[k] : 1.0;
+                            double tOld = st.t[qk];
+                            double tNew = tOld + frac * (tbar - tOld);
+                            if (DeepBudget.ON)
+                                DeepBudget.add(dBand, DeepBudget.T_ML, k,
+                                        (tNew - tOld) * g.dz[k] * dCos);
+                            st.t[qk] = tNew;
+                            st.s[qk] = st.s[qk] + frac * (sbar - st.s[qk]);
+                        } else {
+                            if (DeepBudget.ON)
+                                DeepBudget.add(dBand, DeepBudget.T_ML, k,
+                                        (tbar - st.t[qk]) * g.dz[k] * dCos);
+                            st.t[qk] = tbar; st.s[qk] = sbar;
+                        }
+                        dep += g.dz[k];
                     }
                     st.t[q0] = tbar; surfaceT[js] = tbar;
                     st.mixedLayerDepth[js] = hNew;
@@ -1537,8 +1706,14 @@ public final class AdvectionDiffusionSolver {
                 double dT = melted * (OceanConstants.RHO_ICE * OceanConstants.L_FUSION)
                         / (RHO0 * CP_SEA * h);
                 double acc = 0.0;
+                // ★ 2026-11-18（第 9 轮）：这一处**改水温却不记账** ⟹ D1 账本缺一个负项
+                //   （实测：关掉 ICE_BASAL_MELT 时极区 T_ML 由 +82 → +54，说明本路径
+                //    在账本外的冷却被随后的混合层重写"还回来"，只记了正的那一半）。
+                final int bandM = DeepBudget.ON ? DeepBudget.band(g, j) : 0;
+                final double cosM = DeepBudget.ON ? Math.max(0.05, g.cosLat(j)) : 1.0;
                 for (int k = 0; k < g.nz && acc < h; k++) {
                     st.t[st.idx(i, j, k)] -= dT;
+                    if (DeepBudget.ON) DeepBudget.add(bandM, DeepBudget.T_ML, k, -dT * g.dz[k] * cosM);
                     acc += g.dz[k];
                 }
                 LAST_BASAL_MELT_M += melted;

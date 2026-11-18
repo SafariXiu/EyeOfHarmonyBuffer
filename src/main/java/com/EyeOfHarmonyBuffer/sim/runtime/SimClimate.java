@@ -1033,6 +1033,14 @@ public final class SimClimate {
             h = h * 31 + 0x7A190L;
             h = h * 31 + com.EyeOfHarmonyBuffer.sim.zonal.ZonalClimateProvider.stamp();
         }
+        // 2026-11-18 (B-C split): conditional fold => OFF keeps the historical stamp bit-identical (N5).
+        if (Atmosphere.BELT_KC_SPLIT) {
+            h = h * 31 + 0x7A1B0L;
+        }
+        // 2026-11-18 (own pressure field owns the zonal-mean wind): fold only when the table is OFF.
+        if (!Atmosphere.UZM_TABLE_ON) {
+            h = h * 31 + 0x7A1C0L;
+        }
         return h;
     }
 

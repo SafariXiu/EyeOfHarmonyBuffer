@@ -28,7 +28,28 @@ import java.nio.file.StandardCopyOption;
  */
 public final class ZonalClimateProvider {
 
-    /** Production switch. Default false; 2026-11-15 ON trial failed NTHC5, reverted. */
+    /**
+     * Production switch.
+     *
+     * <p>⚠⚠ <b>2026-11-18 夜【已退回 false】（历史，见下方原文）</b>：翻 true 后实测
+     * 海表能量收支从 −10 恶化到 **+50 W/m²**（NSFLUX），即新气候下 SST 不是稳态根
+     * （违反 A0-②）。用户裁决走「乙再甲」：先在旧基线上做气压带的结构修复（B/C 拆分），
+     * 再单独解决 provider 的收敛。⟹ 本行当前值 = <b>false</b>。
+     *
+     * <p>★ <b>2026-11-18（用户裁决，已被上一条取代为历史）：默认翻为 true</b> —— 自算纬向骨架的目标（T/u/w/q 不再查表）
+     * 已由用户裁定为当前主线，第二节冻结同时解除（见 工作目录/长期/冻结清单-2026-10-21.md §八）。
+     *
+     * <p>⚠ 本轮翻默认时**已知的三条代价**（不隐瞒，见 工作目录/中期/风-3.50与南北不对称-取证-2026-11-18.md）：
+     * <ol>
+     *   <li><b>首次求解 2 × ~513 s（实测 2026-11-15）</b>，且解依赖 {@link ZonalLandProfile} 的世界种子
+     *       ⟹ 每换一个世界种子就要重解一次；生产必须先解一次落盘（A0-②），否则会卡住世界加载；</li>
+     *   <li>ON 时 {@code SimClimate.configStamp()} 折入本 provider 的 stamp ⟹ 全部气候瓦片失效
+     *       （世界预热重新付一次）；</li>
+     *   <li>2026-11-15 首次试开时 NTHC5（海陆温差口径比 0.265 > 0.20）FAIL —— 该门对"更暖的世界"的
+     *       敏感性未解决，翻默认后它仍是红的。</li>
+     * </ol>
+     * <p>回滚：把本行改回 false 即逐位回到表驱动路径（{@code configStamp} 也随之复位）。
+     */
     public static volatile boolean ON = false;
 
     /** Current first version: 2 years x 24 steps, matching the 2026-11-14 run. */
