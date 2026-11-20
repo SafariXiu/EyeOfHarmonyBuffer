@@ -200,6 +200,9 @@ public enum GTCMItemList {
     TongHuaShuZhong,
     YaZhen,
     YaZhenZhongZi,
+    //发光藤蔓（植物本体 + 碎片掉落物）
+    FaGuangTengMan,
+    FaGuangTengManSuPian,
 
     //方舟机器
     OrundumDynamos,

@@ -33,6 +33,7 @@ public final class FieldManagerConfigSpec {
         TerrainConfigSection.load(config);
         ClimateConfigSection.load(config);
         HydroConfigSection.load(config);
+        V2TerrainConfigSection.load(config);
         MacroSelectorContinuityConfigSection.load(config);
 
         if (config.hasChanged()) {

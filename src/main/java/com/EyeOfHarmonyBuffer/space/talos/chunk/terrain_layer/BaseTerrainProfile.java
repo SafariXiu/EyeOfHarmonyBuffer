@@ -23,6 +23,12 @@ public final class BaseTerrainProfile {
 
     public double plateauStrength;
 
+    // ===== 可选周期噪声的格数（由 freq 量化而来，见 PeriodicNoise）=====
+    public int lowNX, lowNZ, lowWNX, lowWNZ;
+    public int midNX, midNZ, midWNX, midWNZ;
+    public int hiNX, hiNZ, hiWNX, hiWNZ;
+    public int contNX, contNZ;
+
     public double oceanDepthMax;
 
     public double cliffAmp;
