@@ -44,6 +44,24 @@ public interface SeaSurfaceForcing {
     /** 短波（W/m2）；默认 0，由具体实现覆盖。 */
     default double shortwaveWm2(int x, int z, double theta, double sstK) { return 0.0; }
 
+    /**
+     * ★ 2026-11-20（B 取证）：表面净通量的**分项** [Qsw, Qlw, Qsen, Qlat]（W/m²，同
+     * {@link com.EyeOfHarmonyBuffer.sim.atmos.Radiation#components} 口径，Qnet = Qsw−Qlw−Qsen−Qlat）。
+     *
+     * <p>默认 null = 实现不提供；调用方必须判空（不得用假 0 顶替）。
+     * 用途：把「全球表面通量 +10.8 W/m²」拆开，定位是长波、感热还是潜热。
+     */
+    default double[] surfaceFluxComponents(int x, int z, double theta, double sstK,
+                                           double iceFraction) {
+        return null;
+    }
+
+    /**
+     * ★ 2026-11-20（B 取证）：驱动表面通量的**空气状态** [ta(K), qa(kg/kg), chv(kg/m²/s)]。
+     * 默认 null = 不提供。用途：核对 `LH = chv*(qSat(Ts)-qa)*L` 里到底是 chv 小还是 qa 太饱和。
+     */
+    default double[] airState(int x, int z, double theta) { return null; }
+
     /** 淡水通量（kg/(m2 s)，正 = 进入海洋）。 */
     double freshwaterFluxKgM2S(int x, int z, double theta, double sstK);
 

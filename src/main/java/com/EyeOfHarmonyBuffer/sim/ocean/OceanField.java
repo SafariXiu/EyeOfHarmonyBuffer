@@ -48,6 +48,7 @@ public final class OceanField {
         Atmosphere.SST_PROVIDER = null;          // 建解期间禁止递归回本 provider
         StaticOceanProduction.clearDerivedCaches();
         StaticOceanProduction.solution(worldSeedInt);
+        StaticOceanProduction.REGION_ON = true;
         final int s = worldSeedInt;
         Atmosphere.SST_PROVIDER = new Atmosphere.SstProvider() {
             @Override public double anomalyAt(int x, int z) {
@@ -65,6 +66,7 @@ public final class OceanField {
      * 卸掉 provider 并清派生缓存（NTHC5 末位漂移的成因：装/卸都会改所有采样 memo 的口径）。
      */
     public static synchronized void uninstall() {
+        StaticOceanProduction.REGION_ON = false;
         Atmosphere.SST_PROVIDER = null;
         StaticOceanProduction.clearDerivedCaches();
         installedSeed = Integer.MIN_VALUE;

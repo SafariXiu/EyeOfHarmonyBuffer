@@ -82,6 +82,7 @@ public final class BarotropicSolver {
                                 OceanParent parent) {
         int nx = g.nx, ny = g.ny;
         int n2 = nx * ny;
+        boolean openX = OceanSponge.OPEN_X && parent != null;
         double dx = g.dx, dy = g.dy;
         double h = 0.0;
         for (double v : g.dz) h += v;
@@ -96,9 +97,10 @@ public final class BarotropicSolver {
             double latJ = g.latAt(j);
             double nsJ = northSign(g, j);
             double dxc = g.dx * (USE_COS_METRIC ? Math.max(0.05, Math.cos(latJ)) : 1.0);
-            for (int i = 0; i < nx; i++) {
+            for (int i = openX ? 1 : 0; i < (openX ? nx - 1 : nx); i++) {
                 if (!g.isWet(i, j)) continue;
-                int iE = (i + 1) % nx, iW = (i - 1 + nx) % nx;
+                int iE = openX ? Math.min(nx - 1, i + 1) : (i + 1) % nx;
+                int iW = openX ? Math.max(0, i - 1) : (i - 1 + nx) % nx;
                 int xiI = (int) Math.round(g.xOf(i));
                 int zjI = (int) Math.round(g.zOf(j));
                 int zN = (int) Math.round(g.zOf(j + 1));
@@ -136,6 +138,15 @@ public final class BarotropicSolver {
                     if (Double.isFinite(p)) psi[j * nx + i] = p;
                 }
             }
+            if (openX) {
+                for (int j = 0; j < ny; j++) {
+                    for (int i : new int[]{0, nx - 1}) {
+                        if (!g.isWet(i, j)) continue;
+                        double p = parent.psi(g.xOf(i), g.zOf(j));
+                        if (Double.isFinite(p)) psi[j * nx + i] = p;
+                    }
+                }
+            }
         }
         double residual = 0.0;
         int iter = 0;
@@ -145,10 +156,12 @@ public final class BarotropicSolver {
             for (int j = 1; j < ny - 1; j++) {
                 double beta = WorldContract.betaForLatitude(g.latAt(j));
                 double dxc = g.dx * (USE_COS_METRIC ? Math.max(0.05, Math.cos(g.latAt(j))) : 1.0);
-                for (int i = 0; i < nx; i++) {
+                for (int i = openX ? 1 : 0; i < (openX ? nx - 1 : nx); i++) {
                     if (!g.isWet(i, j)) { psi[j * nx + i] = 0.0; continue; }
-                    double w = g.isWet(i - 1, j) ? psi[j * nx + ((i - 1 + nx) % nx)] : 0.0;
-                    double e = g.isWet(i + 1, j) ? psi[j * nx + ((i + 1) % nx)] : 0.0;
+                    double w = g.isWet(i - 1, j)
+                            ? psi[j * nx + (openX ? i - 1 : (i - 1 + nx) % nx)] : 0.0;
+                    double e = g.isWet(i + 1, j)
+                            ? psi[j * nx + (openX ? i + 1 : (i + 1) % nx)] : 0.0;
                     double s = g.isWet(i, j - 1) ? psi[(j - 1) * nx + i] : 0.0;
                     double nn = g.isWet(i, j + 1) ? psi[(j + 1) * nx + i] : 0.0;
                     // Stommel: central beta + bottom friction, Jacobi under-relaxation.
@@ -178,6 +191,17 @@ public final class BarotropicSolver {
                         int q = st.idx(i, j, k);
                         double pu = parent == null ? Double.NaN : parent.uMs(x, z, k);
                         double pv = parent == null ? Double.NaN : parent.vMs(x, z, k);
+                        st.u[q] = Double.isFinite(pu) ? pu : 0.0;
+                        st.v[q] = Double.isFinite(pv) ? pv : 0.0;
+                    }
+                    continue;
+                }
+                if (openX && (i == 0 || i == nx - 1)) {
+                    double x = g.xOf(i), z = g.zOf(j);
+                    for (int k = 0; k < g.nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double pu = parent.uMs(x, z, k);
+                        double pv = parent.vMs(x, z, k);
                         st.u[q] = Double.isFinite(pu) ? pu : 0.0;
                         st.v[q] = Double.isFinite(pv) ? pv : 0.0;
                     }

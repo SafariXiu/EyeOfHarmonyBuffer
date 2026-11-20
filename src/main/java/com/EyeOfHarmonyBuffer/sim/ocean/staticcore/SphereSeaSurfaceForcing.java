@@ -37,4 +37,12 @@ public final class SphereSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double shortwaveWm2(int x, int z, double theta, double sst) { return d.shortwaveWm2(x, zw(z), theta, sst); }
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sst) { return d.freshwaterFluxKgM2S(x, zw(z), theta, sst); }
     @Override public double snowfallMperS(int x, int z, double theta) { return d.snowfallMperS(x, zw(z), theta); }
+    /** 2026-11-20（B 取证）：分项必须与 {@link #netHeatFluxWm2} 走同一条 z→lat 映射。 */
+    @Override public double[] surfaceFluxComponents(int x, int z, double theta, double sstK,
+                                                    double iceFraction) {
+        return d.surfaceFluxComponents(x, zw(z), theta, sstK, iceFraction);
+    }
+    @Override public double[] airState(int x, int z, double theta) {
+        return d.airState(x, zw(z), theta);
+    }
 }

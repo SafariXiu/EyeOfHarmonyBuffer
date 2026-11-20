@@ -37,7 +37,9 @@ public final class DeepBudget {
     public static final int T_FRZ_FINAL = 8;
     /** Convective adjustment (default OFF; see AdvectionDiffusionSolver#convectiveAdjust). */
     public static final int T_CONV = 9;
-    public static final int NT = 10;
+    /** Damped annual fixed-point update (FP_SOLVER_ON); numerical, not a physical flux. */
+    public static final int T_FP = 10;
+    public static final int NT = 11;
     /**
      * ★ 2026-11-18（A3）：**分量项** —— 它们已经包含在别的项里，**不得与总项相加**。
      *
@@ -63,7 +65,7 @@ public final class DeepBudget {
 
     public static final String[] NAME = {
         "ADV_total", "ADV_vert", "DIFF_h", "DIFF_v", "SRC_sw", "REDI", "ML_rewrite",
-        "FRZ_loop", "FRZ_final", "CONVECT"
+        "FRZ_loop", "FRZ_final", "CONVECT", "FP_update"
     };
 
     /** Latitude bands: 0 = |lat|<30, 1 = 30-60, 2 = >=60 (same split as the handoff doc). */

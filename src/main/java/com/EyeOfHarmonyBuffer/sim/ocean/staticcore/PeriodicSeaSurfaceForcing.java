@@ -51,4 +51,11 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double snowfallMperS(int x, int z, double theta) {
         return delegate.snowfallMperS(wrap(x), z, theta);
     }
+    @Override public double[] surfaceFluxComponents(int x, int z, double theta, double sstK,
+                                                    double iceFraction) {
+        return delegate.surfaceFluxComponents(wrap(x), z, theta, sstK, iceFraction);
+    }
+    @Override public double[] airState(int x, int z, double theta) {
+        return delegate.airState(wrap(x), z, theta);
+    }
 }

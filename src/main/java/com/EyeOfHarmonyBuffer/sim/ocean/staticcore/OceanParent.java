@@ -38,4 +38,12 @@ public interface OceanParent {
 
     /** 冰覆盖率 [0,1]；默认 0（无冰父）。 */
     default double iceFraction(double x, double z) { return 0.0; }
+
+    /**
+     * 冰厚（m，格点体积口径，与 {@link OceanState#iceThickness} 同）。
+     *
+     * <p>★ 2026-11-20（P3）：x 开边界的冰输运需要它 —— 只有覆盖率（
+     * {@link #iceFraction}）无法给出入流体积。默认 0（父不提供冰）。
+     */
+    default double iceThicknessM(double x, double z) { return 0.0; }
 }

@@ -51,6 +51,15 @@ public final class PrognosticT {
 
     /** 诊断：打印该格点第一次出现 NaN 时的各项（默认 -1 关）。 */
     public static int DBG_I = -1, DBG_J = -1, DBG_K = -1;
+    /** 单格点年热账追踪（默认 -1 关）：0=ADV,1=ADV_V,2=DIFF_H,3=DIFF_V,4=SRC,5=REDI（K）。 */
+    public static int TRACE_Q = -1;
+    public static final double[] TRACE_SUM = new double[6];
+    /** ML/ice temperature contribution at TRACE_Q (K per year). */
+    static double TRACE_ML = 0.0;
+    public static void traceReset() {
+        java.util.Arrays.fill(TRACE_SUM, 0.0);
+        TRACE_ML = 0.0;
+    }
 
     public static double run(OceanGrid g, OceanState st, double[] surfaceT, double[] src,
                              double seasonSeconds, int substeps) {
@@ -127,6 +136,14 @@ public final class PrognosticT {
                         //   ⟹ 全部湿格 NaN。现有 cflSteps 只算平流，不含扩散。
                         //   正确做法是**逐列隐式（三对角）**：原型见 probe\NKPPCOL 的 Thomas 求解。
                         //   在隐式版接上之前，ON 路径不接生产。
+                        if (q == TRACE_Q) {
+                            TRACE_SUM[0] += -adv[q] * dt;
+                            TRACE_SUM[1] += -AdvectionDiffusionSolver.advVerticalPart(g, st, st.t, i, j, k) * dt;
+                            TRACE_SUM[2] += lapH * dt;
+                            TRACE_SUM[3] += lapZ * dt;
+                            TRACE_SUM[4] += (src == null ? 0.0 : src[q]) * dt;
+                            TRACE_SUM[5] += redi[q] * dt;
+                        }
                         double v = t + dt * (-adv[q] + lapH + lapZ + (src == null ? 0.0 : src[q]) + redi[q]);
                         if (i == DBG_I && j == DBG_J && k == DBG_K && !Double.isFinite(v)) {
                             int q0 = st.idx(i, j, 0);

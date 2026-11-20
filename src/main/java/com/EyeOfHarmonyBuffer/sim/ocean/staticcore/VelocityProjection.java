@@ -28,6 +28,9 @@ public final class VelocityProjection {
     public static double LAST_DIV_BEFORE = 0.0, LAST_DIV_AFTER = 0.0;
     /** 面速度是否已被投影（divFlux/diagAdv 据此切换分支）。 */
     public static boolean FACES_READY = false;
+    /** MAC X1 branch: default false; parent flux fixed, pressure gauge. */
+    public static boolean OPEN_X = true;
+    public static OceanParent OPEN_PARENT = null;
     /** ★ 2026-11-11：MG 每次投影的 cycle 上限（默认 500 = 历史值，逐位不变）。 */
     public static int MG_MAX_CYCLES = 500;
     /** Sweeps at the coarsest MG level (default 80 = historical). Raise to test the stall. */
@@ -1213,6 +1216,7 @@ public final class VelocityProjection {
         return LAST_DIV_BEFORE;
     }
     public static double project(OceanGrid g, OceanState st, int maxIter) {
+        if (OPEN_X && OPEN_PARENT != null) return OpenXMACBridge.project(g, st, OPEN_PARENT, maxIter, 1.0e-8);
         if (PROJECT_V2) return projectV2(g, st, maxIter);
         int nx = g.nx, ny = g.ny, nz = g.nz, n = nx * ny * nz;
         double dx = g.dx, dy = g.dy;

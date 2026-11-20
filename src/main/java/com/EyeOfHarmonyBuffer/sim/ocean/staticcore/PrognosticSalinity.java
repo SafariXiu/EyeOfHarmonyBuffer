@@ -81,8 +81,8 @@ public final class PrognosticSalinity {
                 if (!g.isWet(i, j)) continue;
                 int js = j * nx + i;
                 if (ICE_SALT_COL.length != nx * ny) ICE_SALT_COL = new double[nx * ny];
-                ICE_SALT_SUM += st.iceSaltFlux[js];
-                ICE_SALT_COL[js] += st.iceSaltFlux[js];
+                ICE_SALT_SUM += st.iceSaltFlux[js] * seasonSeconds;
+                ICE_SALT_COL[js] += st.iceSaltFlux[js] * seasonSeconds;
                 fw[js] = fw[js] - fwMean + st.iceSaltFlux[js];
                 st.iceSaltFlux[js] = 0.0;
             }
@@ -207,8 +207,8 @@ public final class PrognosticSalinity {
                 if (!g.isWet(i, j)) continue;
                 int js = j * nx + i;
                 if (ICE_SALT_COL.length != nx * ny) ICE_SALT_COL = new double[nx * ny];
-                ICE_SALT_SUM += st.iceSaltFlux[js];
-                ICE_SALT_COL[js] += st.iceSaltFlux[js];
+                ICE_SALT_SUM += st.iceSaltFlux[js] * seasonSeconds;
+                ICE_SALT_COL[js] += st.iceSaltFlux[js] * seasonSeconds;
                 fw[js] = fw[js] - fwMean + st.iceSaltFlux[js];
                 st.iceSaltFlux[js] = 0.0;
             }

@@ -15,6 +15,9 @@ public final class OceanSponge {
 
     private OceanSponge() {}
 
+    /** True = x boundaries are also sponged (infinite-world patch); default false = legacy periodic-x. */
+    public static boolean OPEN_X = true;
+
     /** 已应用的次数（诊断用）。 */
     public static long APPLY_COUNT = 0;
     /** 最近一次的最大松弛权重（诊断用；应约为 1）。 */
@@ -29,7 +32,7 @@ public final class OceanSponge {
         if (parent == null || band <= 0) return;
         APPLY_COUNT++;
         double maxW = 0.0;
-        for (int j = 1; j < g.ny - 1; j++) {
+        for (int j = 0; j < g.ny; j++) {
             int dy = Math.min(j, g.ny - 1 - j);
             if (dy >= band) continue;
             for (int i = 0; i < g.nx; i++) {

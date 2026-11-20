@@ -189,11 +189,19 @@ public final class StaticOceanSolver {
     public static double FP_RELAX = 0.5;
     public static double FP_RELAX_MIN = 0.05;
     public static double LAST_RESID_T = 0.0, LAST_RESID_S = 0.0;
+    /** Dimensionless year-over-year state residual: maxDT / annual amplitude. */
+    public static double LAST_REL_DT = 0.0;
+    public static int LAST_REL_DT_Q = -1;
+    /** Diagnostic annual-map hooks; null = production cold start. */
+    public static OceanState INITIAL_STATE_OVERRIDE = null;
+    public static OceanState LAST_STATE = null;
     /** 每年残差序列（T），长度 = 实际跑的年数。 */
     public static final java.util.ArrayList<Double> FP_RESID_T = new java.util.ArrayList<>();
     public static final java.util.ArrayList<Double> FP_RESID_S = new java.util.ArrayList<>();
     /** 逐年年平均 T（气候平均门用；每项长度 n3）。 */
     public static final java.util.ArrayList<double[]> YEAR_T_MEAN = new java.util.ArrayList<>();
+    /** Per-year trace of PrognosticT terms at PrognosticT.TRACE_Q (diagnostic). */
+    public static final java.util.ArrayList<double[]> YEAR_TRACE = new java.util.ArrayList<>();
     /** 逐年全球热/盐/冰总量（面积加权；收支诊断用）。 */
     public static final java.util.ArrayList<Double> YEAR_HEAT = new java.util.ArrayList<>();
     public static final java.util.ArrayList<Double> YEAR_SALT = new java.util.ArrayList<>();
@@ -288,6 +296,7 @@ public final class StaticOceanSolver {
                                       SeaSurfaceForcing forcing, double theta,
                                       int landVersion, int season, int advMaxIter,
                                       OceanParent parent, int spongeCells, DeepInit deepInit) {
+        VelocityProjection.OPEN_PARENT = parent;
         SeaSurfaceForcing periodic = new PeriodicSeaSurfaceForcing(forcing);
         int nx = grid.nx, ny = grid.ny, nz = grid.nz;
         int n3 = nx * ny * nz, n2 = nx * ny;
@@ -375,6 +384,23 @@ public final class StaticOceanSolver {
             st.fillDryGhosts();
         }
 
+        if (INITIAL_STATE_OVERRIDE != null) copyState(INITIAL_STATE_OVERRIDE, st);
+        if (AdvectionDiffusionSolver.SURFACE_FLUX_COUPLED) {
+            // ★ 2026-11-20（P2）：液态海水不得低于冰点。
+            //   冷启动剖面与父热启动都可能给出过冷水（实测 patch 极点初值 252.5 K = 冰点下 18.8 K），
+            //   耦合表面步会把它一次性折成 12.7 m 冰 —— 那是初值伪影，不是物理。
+            //   默认关 ⟹ 逐位不变。
+            for (int j = 0; j < ny; j++)
+                for (int i = 0; i < nx; i++) {
+                    if (!grid.isWet(i, j)) continue;
+                    int wl = grid.wetLayers[grid.idx(i, j)];
+                    for (int k = 0; k < wl; k++) {
+                        int q = st.idx(i, j, k);
+                        double tfq = com.EyeOfHarmonyBuffer.sim.ocean.FreezingPoint.kelvin(st.s[q]);
+                        if (st.t[q] < tfq) st.t[q] = tfq;
+                    }
+                }
+        }
         int nseas = Math.max(1, SEASONAL_N);
         int years = Math.max(1, SEASONAL_YEARS);
         // ★ 2026-11-09（阶段 3 / A5）：一季 = 一年/nseas，而不是固定 30 天。
@@ -385,6 +411,7 @@ public final class StaticOceanSolver {
         FP_RESID_T.clear();
         FP_RESID_S.clear();
         YEAR_T_MEAN.clear();
+        YEAR_TRACE.clear();
         YEAR_HEAT.clear();
         YEAR_SALT.clear();
         YEAR_ICE.clear();
@@ -399,6 +426,7 @@ public final class StaticOceanSolver {
         //   只存字段、不参与任何计算 ⇒ 年均路径逐位不变。
         double[][] seasSurf = new double[nseas][];
         double[] tSum = new double[n3], sSum = new double[n3];
+        double[] tMinYear = new double[n3], tMaxYear = new double[n3];
         double[] hSum = new double[n2], etaSum = new double[n2], iceSum = new double[n2];
         double[] tMean = new double[n3], sMean = new double[n3], prevT = new double[n3], prevS = new double[n3];
         double[] hMean = new double[n2], etaMean = new double[n2], iceMean = new double[n2];
@@ -414,6 +442,9 @@ public final class StaticOceanSolver {
         for (int yr = 0; yr < years; yr++) {
             java.util.Arrays.fill(tSum, 0.0);
             java.util.Arrays.fill(sSum, 0.0);
+            java.util.Arrays.fill(tMinYear, Double.POSITIVE_INFINITY);
+            java.util.Arrays.fill(tMaxYear, Double.NEGATIVE_INFINITY);
+            PrognosticT.traceReset();
             java.util.Arrays.fill(hSum, 0.0);
             java.util.Arrays.fill(etaSum, 0.0);
             java.util.Arrays.fill(iceSum, 0.0);
@@ -424,7 +455,7 @@ public final class StaticOceanSolver {
                 // update() 覆盖了 u/v，但 vBaroclinic/w 仍是上一季的 ⟹ 先清掉。
                 java.util.Arrays.fill(st.vBaroclinic, 0.0);
                 java.util.Arrays.fill(st.w, 0.0);
-                if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+                if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, !OceanSponge.OPEN_X);
                 st.fillDryGhosts();
                 SteadyFreeSurfaceSolver.solve(grid, st, periodic, th);
                 if (DEBUG_FINITE) { String b = firstNonFinite(grid, st); if (b != null) System.out.println("NONFINITE_STAGE freeSurf yr=" + yr + " si=" + si + " " + b); }
@@ -486,7 +517,7 @@ public final class StaticOceanSolver {
                             }
                     }
                     applyMomentum(grid, st);
-                    if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+                    if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, !OceanSponge.OPEN_X);
                     st.fillDryGhosts();
                 }
                 if (DEBUG_FINITE) {
@@ -539,8 +570,11 @@ public final class StaticOceanSolver {
                         iceSum[js] += st.iceThickness[js];
                         for (int k = 0; k < nz; k++) {
                             int q = st.idx(i, j, k);
-                            tSum[q] += st.t[q];
+                            double tv = st.t[q];
+                            tSum[q] += tv;
                             sSum[q] += st.s[q];
+                            if (tv < tMinYear[q]) tMinYear[q] = tv;
+                            if (tv > tMaxYear[q]) tMaxYear[q] = tv;
                         }
                     }
             }
@@ -558,9 +592,24 @@ public final class StaticOceanSolver {
                         sMean[q] = sSum[q] / nseas;
                     }
                 }
+            if (yr > 0) {
+                double maxRel = 0.0;
+                int maxRelQ = -1;
+                for (int q = 0; q < n3; q++) {
+                    double diff = Math.abs(tMean[q] - prevT[q]);
+                    double amp = tMaxYear[q] - tMinYear[q];
+                    double rel = amp > 1.0e-6 ? diff / amp : diff;
+                    if (rel > maxRel) { maxRel = rel; maxRelQ = q; }
+                }
+                LAST_REL_DT = maxRel;
+                LAST_REL_DT_Q = maxRelQ;
+            }
             // ★ 2026-11-17（B1）：每年的年均算完之后，可选地把深层替换成稳态解。
             if (DEEP_STEADY_ON) applyDeepSteady(grid, st);
             YEAR_T_MEAN.add(tMean.clone());
+            double[] tr = PrognosticT.TRACE_SUM.clone();
+            double[] trMl = {PrognosticT.TRACE_ML};
+            YEAR_TRACE.add(new double[]{tr[0], tr[1], tr[2], tr[3], tr[4], tr[5], trMl[0]});
             double yearHeat = 0.0, yearSalt = 0.0, yearIce = 0.0;
             double yearHeatUp = 0.0, yearHeatDeep = 0.0;
             for (int j = 1; j < ny - 1; j++)
@@ -640,11 +689,37 @@ public final class StaticOceanSolver {
             if (FP_SOLVER_ON && yr > 0) {
                 // damped fixed-point update on the annual mean
                 for (int q = 0; q < n3; q++) {
+                    double oldT = st.t[q];
                     st.t[q] = (1.0 - FP_RELAX) * prevT[q] + FP_RELAX * tMean[q];
                     st.s[q] = (1.0 - FP_RELAX) * prevS[q] + FP_RELAX * sMean[q];
+                    if (DeepBudget.ON) {
+                        int kk = q / (nx * ny);
+                        int rr = q % (nx * ny);
+                        int jj = rr / nx;
+                        DeepBudget.add(DeepBudget.band(grid, jj), DeepBudget.T_FP, kk,
+                                (st.t[q] - oldT) * grid.dz[kk]
+                                        * Math.max(0.05, grid.cosLat(jj)));
+                    }
                 }
                 System.arraycopy(st.t, 0, tMean, 0, n3);
                 System.arraycopy(st.s, 0, sMean, 0, n3);
+                // FP: keep h/eta/ice on the same annual-mean clock as T/S.
+                // Without this, the next year starts with damped T/S but last-season h/ice.
+                for (int j = 0; j < ny; j++)
+                    for (int i = 0; i < nx; i++) {
+                        if (!grid.isWet(i, j)) continue;
+                        int js = j * nx + i;
+                        st.mixedLayerDepth[js] = hMean[js];
+                        st.eta[js] = etaMean[js];
+                        st.iceThickness[js] = iceMean[js];
+                        if (ICE_FRACTION_FROM_MEAN) {
+                            st.iceFraction[js] = Math.min(1.0, Math.max(0.0, iceMean[js])
+                                    / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
+                        }
+                    }
+                // Annual-mean T/S/h must be re-diagnosed before the next year.
+                AdvectionDiffusionSolver.convectiveAdjust(grid, st);
+                AdvectionDiffusionSolver.diagnoseMixedLayer(grid, st);
             }
             System.arraycopy(tMean, 0, prevT, 0, n3);
             System.arraycopy(sMean, 0, prevS, 0, n3);
@@ -704,7 +779,7 @@ public final class StaticOceanSolver {
         if (AdvectionDiffusionSolver.EKMAN_UPWELL_ON) {
             AdvectionDiffusionSolver.applyEkmanFlow(grid, st, periodic, 0.0);
         }
-        if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, true);
+        if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, !OceanSponge.OPEN_X);
         st.fillDryGhosts();
 
         // ★ 2026-11-04（A6）：内部冰点投影进生产路径。
@@ -736,11 +811,52 @@ public final class StaticOceanSolver {
         // ★ 2026-11-04（A2）：宽度改 cos 加权 + 按【最宽盆地】取（BaroclinicFlow 里有完整说明）。
         // 同相上界见 LAST_MOC_ZONAL；盆地无关的 ψ 峰值见 LAST_PSI_MAX。
         double mocSv = R3Momentum.ON ? R3Momentum.LAST_MOC_SV : BaroclinicFlow.LAST_MOC;
+        LAST_STATE = st;
         return new OceanSolution(key, st, surfaceT,
             baro.iterations, adv == null ? 0 : adv.iterations,
             baro.residual, adv == null ? 0.0 : adv.residual,
             psiMin, psiMax, mocSv,
             sBudget, sBudget, seasSurf);
+    }
+
+
+    /** Copy a full OceanState into another state on the same grid (diagnostic annual map). */
+    public static void copyState(OceanState src, OceanState dst) {
+        if (src.grid.nx != dst.grid.nx || src.grid.ny != dst.grid.ny || src.grid.nz != dst.grid.nz) {
+            throw new IllegalArgumentException("state grid mismatch");
+        }
+        System.arraycopy(src.t, 0, dst.t, 0, src.t.length);
+        System.arraycopy(src.s, 0, dst.s, 0, src.s.length);
+        System.arraycopy(src.u, 0, dst.u, 0, src.u.length);
+        System.arraycopy(src.v, 0, dst.v, 0, src.v.length);
+        System.arraycopy(src.w, 0, dst.w, 0, src.w.length);
+        System.arraycopy(src.vBaroclinic, 0, dst.vBaroclinic, 0, src.vBaroclinic.length);
+        System.arraycopy(src.uBaroclinic, 0, dst.uBaroclinic, 0, src.uBaroclinic.length);
+        System.arraycopy(src.eta, 0, dst.eta, 0, src.eta.length);
+        System.arraycopy(src.surfaceLayer, 0, dst.surfaceLayer, 0, src.surfaceLayer.length);
+        System.arraycopy(src.mixedLayerDepth, 0, dst.mixedLayerDepth, 0, src.mixedLayerDepth.length);
+        System.arraycopy(src.hTOld, 0, dst.hTOld, 0, src.hTOld.length);
+        System.arraycopy(src.hTNew, 0, dst.hTNew, 0, src.hTNew.length);
+        System.arraycopy(src.iceFraction, 0, dst.iceFraction, 0, src.iceFraction.length);
+        System.arraycopy(src.iceThickness, 0, dst.iceThickness, 0, src.iceThickness.length);
+        System.arraycopy(src.snowThickness, 0, dst.snowThickness, 0, src.snowThickness.length);
+        System.arraycopy(src.iceU, 0, dst.iceU, 0, src.iceU.length);
+        System.arraycopy(src.iceV, 0, dst.iceV, 0, src.iceV.length);
+        System.arraycopy(src.sig1, 0, dst.sig1, 0, src.sig1.length);
+        System.arraycopy(src.sig2, 0, dst.sig2, 0, src.sig2.length);
+        System.arraycopy(src.sig12, 0, dst.sig12, 0, src.sig12.length);
+        System.arraycopy(src.iceSaltFlux, 0, dst.iceSaltFlux, 0, src.iceSaltFlux.length);
+        System.arraycopy(src.snowMeltFlux, 0, dst.snowMeltFlux, 0, src.snowMeltFlux.length);
+        System.arraycopy(src.psi, 0, dst.psi, 0, src.psi.length);
+        System.arraycopy(src.uF, 0, dst.uF, 0, src.uF.length);
+        System.arraycopy(src.vF, 0, dst.vF, 0, src.vF.length);
+        System.arraycopy(src.wF, 0, dst.wF, 0, src.wF.length);
+        for (int c = 0; c < IceThicknessDistribution.NCAT; c++) {
+            System.arraycopy(src.itd.area[c], 0, dst.itd.area[c], 0, src.itd.area[c].length);
+            System.arraycopy(src.itd.volume[c], 0, dst.itd.volume[c], 0, src.itd.volume[c].length);
+            System.arraycopy(src.itd.snow[c], 0, dst.itd.snow[c], 0, src.itd.snow[c].length);
+        }
+        dst.itd.initialized = src.itd.initialized;
     }
 
     /** 定位第一个非有限格（DEBUG_FINITE 用；默认路径零开销）。 */

@@ -106,6 +106,28 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         return Radiation.residual(sstK, asr, ta, qa, chv, 1.0);
     }
 
+    /**
+     * ★ 2026-11-20（B 取证）：与 {@link #netHeatFluxWm2(int,int,double,double,double)} **同口径**的分项。
+     * 冰厚用 5 参路径的同一取值（`Radiation.iceThicknessM(lat)`），所以 Qnet = Qsw−Qlw−Qsen−Qlat 与实测净通量一致。
+     */
+    @Override public double[] surfaceFluxComponents(int x, int z, double theta, double sstK,
+                                                    double iceFraction) {
+        double lat = WorldContract.latOf(z);
+        double dec = Atmosphere.subsolarLat(theta);
+        double[] at = atmo(x, z, theta);
+        double ta = at[0], qa = at[1], chv = at[2];
+        double aOcean = Radiation.ALB_SEA;
+        double aIce = Radiation.seaIceAlbedo(lat, sstK, Radiation.iceThicknessM(lat));
+        double alb = aOcean + iceFraction * (aIce - aOcean);
+        double asr = Radiation.absSolarSurface(lat, dec, alb);
+        return Radiation.components(sstK, asr, ta, qa, chv, 1.0);
+    }
+
+    @Override public double[] airState(int x, int z, double theta) {
+        double[] at = atmo(x, z, theta);
+        return new double[]{at[0], at[1], at[2]};
+    }
+
     @Override public double snowfallMperS(int x, int z, double theta) {
         double pMmDay = PrecipField.mmPerDay(x, z, seed, cell, theta, gradStep);
         if (!(pMmDay > 0.0)) return 0.0;

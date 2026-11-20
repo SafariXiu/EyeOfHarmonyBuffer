@@ -102,5 +102,10 @@ public final class GlobalBoxParent implements OceanParent {
         return g.isWet(i, j) ? sol.state.iceFraction[j * g.nx + i] : 0.0;
     }
 
+    @Override public double iceThicknessM(double x, double z) {
+        int i = ix(x), j = jz(z);
+        return g.isWet(i, j) ? sol.state.iceThickness[j * g.nx + i] : 0.0;
+    }
+
     private int clampK(int k) { return Math.max(0, Math.min(g.nz - 1, k)); }
 }

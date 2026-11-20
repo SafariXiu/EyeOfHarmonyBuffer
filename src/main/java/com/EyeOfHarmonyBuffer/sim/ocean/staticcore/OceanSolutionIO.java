@@ -40,7 +40,7 @@ public final class OceanSolutionIO {
      * (A0-2: "cached steady state" must be the state itself). v2 files are REJECTED
      * (read() returns null) rather than silently accepted with missing fields.
      */
-    public static final int FORMAT_VERSION = 3;
+    public static final int FORMAT_VERSION = 4;
     public static final String MAGIC = "EOHOCN";
 
     public static synchronized String fileName(int worldSeed, long flagsHash, int solverVersion) {
@@ -80,6 +80,12 @@ public final class OceanSolutionIO {
             writeDoubles(o, st.hTNew); writeDoubles(o, st.iceFraction);
             writeDoubles(o, st.iceThickness); writeDoubles(o, st.iceSaltFlux);
         writeDoubles(o, st.snowThickness);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                writeDoubles(o, st.itd.area[c]);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                writeDoubles(o, st.itd.volume[c]);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                writeDoubles(o, st.itd.snow[c]);
             // v3 (F3): ice dynamics + snow melt flux
             writeDoubles(o, st.iceU); writeDoubles(o, st.iceV);
             writeDoubles(o, st.sig1); writeDoubles(o, st.sig2); writeDoubles(o, st.sig12);
@@ -135,6 +141,12 @@ public final class OceanSolutionIO {
             readDoubles(i, st.hTNew); readDoubles(i, st.iceFraction);
             readDoubles(i, st.iceThickness); readDoubles(i, st.iceSaltFlux);
         readDoubles(i, st.snowThickness);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                readDoubles(i, st.itd.area[c]);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                readDoubles(i, st.itd.volume[c]);
+            for (int c = 0; c < IceThicknessDistribution.NCAT; c++)
+                readDoubles(i, st.itd.snow[c]);
             readDoubles(i, st.iceU); readDoubles(i, st.iceV);
             readDoubles(i, st.sig1); readDoubles(i, st.sig2); readDoubles(i, st.sig12);
             readDoubles(i, st.snowMeltFlux);

@@ -36,6 +36,8 @@ public final class OceanState {
      * 雪面厚度 h_s = vsnow / max(aice, eps)。
      */
     public final double[] snowThickness;
+    /** Standard 5-category ice thickness distribution (Phase 2c; unused by default). */
+    public final IceThicknessDistribution itd;
     /** EVP 冰速度（2D 格心，m/s）；Stage D2a 只建状态，默认不参与计算。 */
     public final double[] iceU;
     public final double[] iceV;
@@ -79,6 +81,7 @@ public final class OceanState {
         iceFraction = new double[grid.nx * grid.ny];
         iceThickness = new double[grid.nx * grid.ny];
         snowThickness = new double[grid.nx * grid.ny];
+        itd = new IceThicknessDistribution(grid);
         iceU = new double[grid.nx * grid.ny];
         iceV = new double[grid.nx * grid.ny];
         sig1 = new double[grid.nx * grid.ny];
