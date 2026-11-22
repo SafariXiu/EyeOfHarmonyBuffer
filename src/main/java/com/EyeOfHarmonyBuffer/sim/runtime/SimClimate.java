@@ -627,10 +627,8 @@ public final class SimClimate {
         // ★ 2026-10-16（goal-3355454e）：地板是否乘低层稳定度因子 ⟹ 进指纹 ✓
         h = h * 31 + (PrecipField.SHALLOW_FLOOR_LTS ? 1 : 0);
         if (PrecipField.SHALLOW_CONDENSATE) h = h * 31 + 0x7A139L;   // §655 浅对流凝结形式
-        // §264：纬向平均海平面温度取观测月表。改了结果 ⇒ 必须进指纹（D58）。
-        h = h * 31 + (PrecipField.ZONAL_SL_FROM_TABLE ? 1 : 0);
-        // §267：柱水汽取观测月表。改了结果 ⇒ 必须进指纹（D58）。
-        h = h * 31 + (PrecipField.COL_WATER_FROM_TABLE ? 1 : 0);
+        // §264/§267 的 ZONAL_SL_FROM_TABLE / COL_WATER_FROM_TABLE 已删（2026-11-22 去地球表），
+        // 两位指纹永久空出；地球月表臂不再存在。
         // §268：涡动闭合补成完整通量散度。改了结果 ⇒ 必须进指纹（D58）。
         h = h * 31 + (PrecipField.EDDY_FULL_DIVERGENCE ? 1 : 0);
         // §269.5：掩码放在散度外面。改了结果 ⇒ 必须进指纹（D58）。
@@ -803,10 +801,7 @@ public final class SimClimate {
             h = h * 31 + 0x7A119L;
             h = h * 31 + Double.doubleToLongBits(SoilMoisture.RS_SURF);
         }
-        // §436 纬向平均上升支是否改用观测月表：按条件折入（默认 true ⇒ 折入一次，行为已改变）。
-        if (PrecipField.WZM_FROM_TABLE) {
-            h = h * 31 + 0x7A118L;
-        }
+        // §436 的 WZM_FROM_TABLE 已删（2026-11-22 去地球表）⟹ 不再折入；0x7A118 位永久空出。
         // §433 Eady 增长率的温度梯度是否改用 850 hPa：按条件折入 ⇒ 关闭时指纹与历史完全一致。
         if (PrecipField.EDDY_SIGMA_T850) {
             h = h * 31 + 0x7A117L;
@@ -1027,6 +1022,28 @@ public final class SimClimate {
             h = h * 31 + 0x7A180L;
             h = h * 31 + com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.configStamp();
         }
+        // ★ 2026-11-22（全核心去地球表 P1；用户裁决「直接删旧表、不做 A/B」）：
+        //   陆地平均高程已改为**本世界**值（Atmosphere.landMeanElevWorld）⟹ 输出**永久改变**
+        //   ⟹ **无条件**折入标记（不再有"关掉时零贡献"的要求；A3-④ 对该项已被该裁决覆盖）。
+        //   为什么必须折：landSeaTempContrast 变了 ⟹ cellPressure 与 EBM 的世界状态都变，
+        //   而瓦片缓存只按 (seed,tx,tz) 索引 ⇒ 不折入就会命中旧瓦片（A6"缓存键漏了输入"）。
+        //   采样口径本身由 ZonalLandProfile.configStamp 覆盖（ZMSLK_V3_KAPPA 默认 true 时已折入）。
+        //   ⚠ 0x7A1A2 是"先用纬向平均高程"那一版的标记；最终版（气压带驱动改为**不含海拔**）
+        //     用 **0x7A1A3** —— 两版物理不同，指纹必须不同（A3-⑤）。
+        h = h * 31 + 0x7A1A3L;
+        // ★ P2（2026-11-22）：纬度温度骨架改用定义式（删 T_ZM_SL_ANN + zfEarth）⟹ 再折一位。
+        h = h * 31 + 0x7A1A4L;
+        // ★ P2（2026-11-22）：OHT 剖面单位修复（旧小世界缩尺 40² 未还原 ⟹ 极地海洋少暖 ~3 K）
+        //   ⟹ 输出改变 ⟹ 必须折入，否则瓦片命中旧解。
+        h = h * 31 + 0x7A1A5L;
+        // ★ P2（2026-11-22）：t850 由地球月表改为「本世界纬向均温 − Γ·1.5 km」⟹ 再折一位。
+        h = h * 31 + 0x7A1A6L;
+        // ★ P2（2026-11-22）：海面气温去掉地球 DT_AIR_SEA 表（Ta=Ts）⟹ 再折一位。
+        h = h * 31 + 0x7A1A7L;
+        // ★ P4（2026-11-22）：uZm 改为【纬向动量模型 v0】（ThermalWind.u850：锚定地表的热成风）⟹ 折一位。
+        h = h * 31 + 0x7A1A9L;
+        // ★ P4 v1（2026-11-22）：动量模型加季节项（zonalT）⟹ 再折一位。
+        h = h * 31 + 0x7A1AAL;
         // 2026-11-15: production zonal provider. Conditional fold => OFF keeps the
         // historical configStamp bit-identical; ON includes the provider's solve identity.
         if (com.EyeOfHarmonyBuffer.sim.zonal.ZonalClimateProvider.ON) {

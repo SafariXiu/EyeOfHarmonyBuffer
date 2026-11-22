@@ -762,8 +762,11 @@ public final class VerticalColumn {
         double lwNet = lwSfcDown - LW_SFC_EMIS * THETA_SB * ts * ts * ts * ts;
         double shv = chv * Radiation.CP * windSpeed * (ts - t[N - 1]);
         double qsS = ParcelLift.qs(ts, pSfc);
-        double lhv = chv * Radiation.LV * windSpeed * (qsS * beta - q[N - 1]);
-        if (lhv < 0.0) lhv = 0.0;
+        // ★ 2026-11-22（口径修正）：β 必须乘【整个通量】，不是只乘饱和比湿。
+        //   旧式 lh ∝ (β·q_sat − q)：β=0.25 时 0.25q_sat − 0.8q_sat < 0 ⟹ 被下面的 <0 夹断 ⟹ **干表面蒸发恒为 0**，
+        //   与 {@link Radiation#residual}（那里写的是 β·max(0, q_sat − q_a)）**两套口径不一致**。
+        //   新式与 Radiation 一致：E = β·chv·L·|V|·max(0, q_sat − q_a)。
+        double lhv = beta * chv * Radiation.LV * windSpeed * Math.max(0.0, qsS - q[N - 1]);
         return swNet + lwNet - shv - lhv + qExtraWm2;   // ★ 2026-11-14：外加热源（OHT 辐合）
     }
 
@@ -771,8 +774,8 @@ public final class VerticalColumn {
     public void surfaceFlux() {
         double qsS = ParcelLift.qs(tSfc, pSfc);
         sh = chv * Radiation.CP * windSpeed * (tSfc - t[N - 1]);
-        lh = chv * Radiation.LV * windSpeed * (qsS * beta - q[N - 1]);
-        if (lh < 0.0) lh = 0.0;
+        // 同 sfcNet：β 乘整个通量（与 Radiation 口径一致，见那里的注释）。
+        lh = beta * chv * Radiation.LV * windSpeed * Math.max(0.0, qsS - q[N - 1]);
     }
 
     // ==================== 时间推进 ====================

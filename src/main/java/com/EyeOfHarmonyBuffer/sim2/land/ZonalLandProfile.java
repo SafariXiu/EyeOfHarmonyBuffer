@@ -30,6 +30,18 @@ public final class ZonalLandProfile {
     private static volatile long seed = Long.MIN_VALUE;
     private static volatile double[] profile = null;
     private static volatile double globalMean = Double.NaN;
+    /**
+     * ★ 2026-11-22（全核心去地球表 P1）：纬向**陆地平均高程**（米）。
+     *
+     * <p>口径：与 {@link #at(double)} **同一窗口、同一 X 采样**（4·MAX_D / 2001 点），
+     * 但只对 {@code LandV3.isLand == true} 的点取 {@code LandV3.height} 的算术平均；
+     * 该纬度没有陆地时给 0（调用方乘的 Γ·max(0,elev) 于是为 0，物理上正确）。
+     *
+     * <p>★ **惰性**（A1 性能 + A3-④）：本数组只在有人调用 {@link #meanElevM(double)} 时才算，
+     * 而生产默认开关 {@code Atmosphere.LAND_ELEV_FROM_WORLD=false} ⟹ **一次都不算**
+     * ⟹ 默认态的时间开销与指纹都零变化。算一次约 74,000 次 {@code height()}（与 kbar 同一量级）。
+     */
+    private static volatile double[] elevProfile = null;
 
     private ZonalLandProfile() {}
 
@@ -39,6 +51,7 @@ public final class ZonalLandProfile {
             seed = ws;
             profile = null;
             globalMean = Double.NaN;
+            elevProfile = null;
         }
     }
 
@@ -76,6 +89,67 @@ public final class ZonalLandProfile {
     public static synchronized void clearCache() {
         profile = null;
         globalMean = Double.NaN;
+        elevProfile = null;
+    }
+
+    /**
+     * 本世界在纬度 latRad 的**陆地平均高程**（米，只平均陆地点；无陆地给 0）。
+     *
+     * <p>为什么需要：{@code ZonalTables.landMeanElev} 是**地球**的陆面平均高程，
+     * 而本世界的山脉被 {@code MountainLayerV2} 限在约 2051 m ⟹ 用地球值会让模型的陆地
+     * 系统性偏暖 {@code Γ*(z_bar_earth - z_bar_our)}（{@code ZonalTables.java:1266} 记的已知偏差，
+     * 此前未修正）。本方法给的就是那个缺的量。
+     */
+    public static double meanElevM(double latRad) {
+        double[] p = ensureElev();
+        double deg = Math.toDegrees(latRad);
+        if (deg <= -90.0) return p[0];
+        if (deg >= 90.0) return p[N - 1];
+        double f = (deg + 90.0) / STEP_DEG;
+        int i = (int) Math.floor(f);
+        if (i >= N - 1) return p[N - 1];
+        double t = f - i;
+        return p[i] * (1.0 - t) + p[i + 1] * t;
+    }
+
+    /** 37 节点的高程副本（诊断/探针）。 */
+    public static double[] meanElevCopy() {
+        return ensureElev().clone();
+    }
+
+    private static double[] ensureElev() {
+        double[] p = elevProfile;
+        if (p != null) return p;
+        synchronized (ZonalLandProfile.class) {
+            if (elevProfile != null) return elevProfile;
+            if (seed == Long.MIN_VALUE) {
+                throw new IllegalStateException("ZonalLandProfile.seed 未设置（应由 OceanWiring/探针调用 setSeed）");
+            }
+            elevProfile = computeElev(seed);
+            return elevProfile;
+        }
+    }
+
+    private static double[] computeElev(long ws) {
+        final double span = 4.0 * WorldContract.MAX_D;      // 40,000 km —— 与 compute() 同一窗口
+        final double x0 = 0.0;
+        final double dx = span / (X_SAMPLES - 1);
+        double[] out = new double[N];
+        for (int i = 0; i < N; i++) {
+            double deg = -90.0 + i * STEP_DEG;
+            double z = WorldContract.zOfLat(deg);
+            double sum = 0.0;
+            int land = 0;
+            for (int j = 0; j < X_SAMPLES; j++) {
+                double x = x0 + j * dx;
+                if (LandV3.isLand(ws, x, z)) {
+                    land++;
+                    sum += LandV3.height(ws, x, z);
+                }
+            }
+            out[i] = land == 0 ? 0.0 : sum / land;
+        }
+        return out;
     }
 
     /** 采样口径指纹（不含 seed；seed 由气候缓存键负责）。 */

@@ -606,6 +606,81 @@ public final class ClimlabEBM {
     }
 
     // ================================================================================
+    // ★★★★★ 2026-11-22（P2 全核心去地球表）：**陆面分支 EBM** —— 同一套方程、换表面反照率。
+    //
+    //   为什么需要它：Δ = T_land − T_ocean 必须来自物理，不能来自地球表 tLandK，
+    //   也不能取 0（取 0 会让气候对海陆分布完全无感 —— 实测所有种子 T(0) 都等于同一个
+    //   317.391 K，那等于丢掉"本世界"）。
+    //
+    //   与海洋分支的**全部差别**（其余逐字相同）：
+    //     ① 反照率：裸陆 ALB_LAND=0.20（Radiation，有出处），雪/冰 AI；海洋分支用 A0+A2·P2。
+    //     ② 无 OHT 通道：陆地上没有海洋经向热输运。
+    //     ③ **无雪球守卫**：陆地极区被雪覆盖是物理事实，不是数值事故。
+    // ================================================================================
+    private static volatile double[] cacheLand = null;
+
+    /** 清陆面分支的解缓存。 */
+    public static synchronized void resetLandCache() { cacheLand = null; }
+
+    /** 陆面分支稳态解：19 点（0..90 度，5 度），返回海平面地表温度（K）。 */
+    public static synchronized double[] solveLand() {
+        double[] c = cacheLand;
+        if (c != null) return c;
+        double dphi = Math.toRadians(D_LAT_DEG);
+        double[] lat = new double[N];
+        for (int i = 0; i < N; i++) lat[i] = Math.toRadians(i * D_LAT_DEG);
+        double[] t = new double[N];
+        for (int i = 0; i < N; i++) t[i] = 280.0;
+        double[] lo = new double[N], di = new double[N], up = new double[N], rh = new double[N];
+        double[] c2 = new double[N], d2 = new double[N], tn = new double[N];
+        for (int it = 0; it < 200; it++) {
+            final double tfK = EBM_PHYS_LW ? 273.15 : TF_C + 273.15;
+            for (int i = 0; i < N; i++) {
+                double sn = Math.sin(lat[i]);
+                double s = (S0 / 4.0) * (1.0 + S2 * p2(sn));
+                // ★ 关键：与海洋分支**用同一个反照率口径**（A0+A2·P2，含云的行星口径）。
+                //   第一版用了 Radiation.ALB_LAND=0.20（裸陆、晴空口径），与海洋的 0.30 不可比
+                //   ⟹ Δ 在极点被推到 +23 K，经 columnWater→云→OLR 的反馈把 EBM 顶进雪球支（实测抛错）。
+                //   现在两个分支**只差 OHT 一项**（like-for-like）：这是本 EBM 唯一能定义的陆海差异。
+                double al = (t[i] < tfK) ? AI : (A0 + A2 * p2(sn));
+                double rhv;
+                if (EBM_PHYS_LW) {
+                    rhv = (1.0 - al) * s - physicalOlr(t[i]) + B_OLR * t[i];
+                } else {
+                    double f0 = (1.0 - al) * s - A_OLR;
+                    rhv = f0 + B_OLR * 273.15;
+                }
+                double cc = Math.max(1.0e-6, Math.cos(lat[i]));
+                double cm = Math.cos(lat[i] - dphi / 2.0), cp = Math.cos(lat[i] + dphi / 2.0);
+                double coef = D_DIFF / (cc * dphi * dphi);
+                double am = coef * cm, ap = coef * cp;
+                lo[i] = -am; up[i] = -ap; di[i] = B_OLR + am + ap;
+                rh[i] = rhv;
+            }
+            di[0] = 1.0; up[0] = -1.0; lo[0] = 0.0; rh[0] = 0.0;
+            di[N - 1] = 1.0; lo[N - 1] = -1.0; up[N - 1] = 0.0; rh[N - 1] = 0.0;
+            c2[0] = up[0] / di[0]; d2[0] = rh[0] / di[0];
+            for (int i = 1; i < N; i++) {
+                double den = di[i] - lo[i] * c2[i - 1];
+                c2[i] = (i < N - 1) ? up[i] / den : 0.0;
+                d2[i] = (rh[i] - lo[i] * d2[i - 1]) / den;
+            }
+            tn[N - 1] = d2[N - 1];
+            for (int i = N - 2; i >= 0; i--) tn[i] = d2[i] - c2[i] * tn[i + 1];
+            double mx = 0.0;
+            for (int i = 0; i < N; i++) { mx = Math.max(mx, Math.abs(tn[i] - t[i])); t[i] = tn[i]; }
+            if (mx < 1.0e-6) break;
+        }
+        cacheLand = t;
+        return cacheLand;
+    }
+
+    /** 陆面分支的年均海平面温度（K）：19 点表 + |lat| 线性插值（本世界纬度对称）。 */
+    public static double landAnnualK(double latRad) {
+        return ZonalTables.interp5(solveLand(), Math.abs(Math.toDegrees(latRad)));
+    }
+
+    // ================================================================================
     // ★★★★★ 2026-10-15（用户裁决「改成真实的物理」）：**两半球 EBM**（37 点，-90..+90）
     //
     // 为什么：上面的 solve() **只解北半球、再镜像** ✗ —— 真实世界的南北不对称
@@ -656,6 +731,43 @@ public final class ClimlabEBM {
     public static synchronized void resetOhtCache() { cache37OHT = null; }
 
     /**
+     * ★ 2026-11-22（P2 单位修复）：{@link #T_OHT_W_37} 里的字面值是按**旧小世界**
+     * （{@code PLANET_SCALE=40}、{@code R_EFF=159.155 km}）缩过的
+     * ⟹ 还原成**地球口径**要乘 {@code 40²}。
+     *
+     * <p>为什么这是个 bug 而不是"设计"：行星后来整体放大到地球尺度
+     * （{@code WorldContract.MAX_D=10,000,000} ⟹ {@code R_EFF=6,366 km}），
+     * 这个缩尺因子却留在表里没跟着更新 ⟹ 生产里全球海洋热输运只有 **0.0011 PW**
+     * （地球应 ~1.8 PW）。量纲上它"跑得动"，所以一直没被门抓到。
+     */
+    private static final double OHT_TABLE_OLD_SCALE = 1600.0;   // = 40²（旧世界缩尺的倒数）
+
+    /** 地球 → 本世界的面积比（口径：{@code Tcal_world = Tcal_earth · (R_EFF/R_earth)²}）。 */
+    static double ohtAreaScale() {
+        double r = WorldContract.R_EFF / 6.371e6;
+        return r * r;
+    }
+
+    private static volatile double[] OHT_WORLD_W = null;
+
+    /**
+     * ★ 2026-11-22（P2 单位修复）：把观测剖面还原成**地球口径**再缩到本行星之后的剖面
+     * （单位 W，跨整条纬圈的总输运）。**所有消费者都该走这里**，不要再直接读
+     * {@link #T_OHT_W_37}（那张表是旧小世界口径，差 40² 倍）。
+     */
+    public static synchronized double[] ohtWorldW() {
+        double[] t = OHT_WORLD_W;
+        if (t != null) return t;
+        double[] src = T_OHT_W_37;
+        if (src == null || src.length != N37) return null;
+        double area = ohtAreaScale();
+        double[] out = new double[N37];
+        for (int i = 0; i < N37; i++) out[i] = src[i] * OHT_TABLE_OLD_SCALE * area;
+        OHT_WORLD_W = out;
+        return out;
+    }
+
+    /**
      * ★★ **带 OHT 通道的两半球解**（P2-2）：核心与 {@link #solve37()} 逐字相同，
      * 只是把【反对称的输运辐合】{@code qExtra(phi)} [W/m2] 加进地表收支 ✓。
      *
@@ -671,8 +783,23 @@ public final class ClimlabEBM {
             EBM_CLOUD_PROFILE_ON = true;
         }
         if (cache37OHT != null) return cache37OHT;
-        double[] f = (OHT_OVERRIDE != null) ? OHT_OVERRIDE : T_OHT_W_37;
-        if (f == null || f.length != N37) {
+        double[] f;
+        if (OHT_OVERRIDE != null) {
+            f = OHT_OVERRIDE;                       // 调用方负责给【世界口径】（阻尼迭代/耦合实验）
+        } else {
+            if (T_OHT_W_37 == null) {
+                throw new IllegalStateException("ClimlabEBM.solve37OHT: 观测剖面 T_OHT_W_37 尚未取证");
+            }
+            // ★★★★★ 2026-11-22（P2 单位修复）：表里的剖面**是按旧小世界缩过的**
+            //   （PLANET_SCALE=40、R=159.155 km），而行星后来放大到地球尺度（R_EFF=6,366 km）
+            //   ⟹ 直接用会让**全球海洋经向热输运只有 0.0011 PW**（地球应 ~1.8 PW，差 1600 = 40² 倍）。
+            //   实测后果：EBM 的极地海洋少暖 ~3 K（+75°: 256.12 → 259.14 K），
+            //   且 HadleyCell.itczShiftDeg 读到的跨赤道 OHT 也是假的 0.0001 PW。
+            //   ⟹ 先还原成**地球口径**（× 40²），再按文档的缩尺口径缩到本行星：
+            //        Tcal_world = Tcal_earth · (R_EFF / R_earth)²
+            f = ohtWorldW();
+        }
+        if (f.length != N37) {
             throw new IllegalStateException("ClimlabEBM.solve37OHT: 观测剖面 T_OHT_W_37 尚未取证"
                 + "（按铁律 2，未取证不许编 ⟹ 本通道不可启用）");
         }

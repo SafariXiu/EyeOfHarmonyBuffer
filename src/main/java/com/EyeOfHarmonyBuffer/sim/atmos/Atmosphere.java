@@ -494,7 +494,15 @@ public final class Atmosphere {
         // ★ §7344/§7345：climlab EBM 稳态解（内生）。默认关 ⇒ 逐位不变。
         //   为什么要有它：本方法的 javadoc 自己指出「只有一个外生 T_zm 就回答不了『换一个陆地分布会怎样』」。
         //   内生化之后纬向温度不再依赖地球的观测表；且 §7345 实测该解与 ERA5 观测支逐点差 ~2 K（最大 5.66 K）。
-        return ClimlabEBM.EBM_ON ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
+        // ★ 2026-11-22（P2 全核心去地球表）：**回退支已删除** —— EBM 是唯一来源。
+        //   地球表 {@code ZonalTables.tOceanK} / {@code T_OCEAN_K} 不再出现在生产路径上
+        //   （仅保留给探针/文档作参照，见该方法的 @Deprecated）。
+        //   为什么回退必须删而不是留着：EBM_ON=false 时会**静默**回到地球表 ⟹ 一条"看起来
+        //   只是关了个开关"的路，实际把整套极地温度换成地球数（N5 的"开关不在路径上"反例）。
+        if (!ClimlabEBM.EBM_ON) {
+            throw new IllegalStateException("oceanBaseK: EBM_ON=false 已无回退（地球表 T_OCEAN_K 已按 P2 删除）");
+        }
+        return ClimlabEBM.tOceanK(latRad);
     }
 
     /**
@@ -538,9 +546,45 @@ public final class Atmosphere {
     public static double landMinusOceanSLK(double latRad) {
         // 2026-11-15: production provider (default OFF => bit-identical).
         if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) return ZonalClimateProvider.landMinusOceanK(latRad);
-        // ★ §7350：与 oceanBaseK 走【同一个】开关（两个分量必须同源）—— 见上方口径裁决。
-        double tOcean = ClimlabEBM.EBM_ON ? ClimlabEBM.tOceanK(latRad) : ZonalTables.tOceanK(latRad);
-        return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad) - tOcean;
+        // ★★★★★ 2026-11-22（P2 收口，用户裁决「没有物理就不编」）：**地球表已删，Δ 暂时归零**。
+        //
+        //   【为什么是 0，而不是再找一个替代表】
+        //   造本世界的 Δ 唯一合法的机制是【局地陆面能量平衡】：
+        //       ΔT_dry = (1−β)·LE_pot/λ,   LE_pot = chv·L·(q_sat(T)−q_a),   chv ∝ |u|
+        //   β 已经是局地的（SoilMoisture.betaAt），但 **|u| 不是**：局地风速只能来自 windAt，
+        //   而 windAt → pressureAnomaly → 干暖项 → windAt 是【无限递归】（本类 :1670 记着 P611 的 StackOverflow）。
+        //   ⟹ 在 P4 把局地风场做出来之前，Δ 没有合法来源；按裁决**宁可为 0，也不搬地球数**。
+        //
+        //   【删掉了什么】tLandK + Γ·landMeanElev（地球陆面年均温度与其海平面折算）。
+        //   恒等式检验（探针 P2IDENT）证明 Γ·z̄ 本身是【合法换算】（带它误差 1.50 K、不带 3.16 K），
+        //   所以删的是一整对，不是顺手多删一项。
+        //
+        //   【已知代价（必须记账）】陆海的【年均】温差没有了 ⟹ 陆地年均温度 = 同纬度海平面海洋温度。
+        //   仍保留的陆海差异：① 季节振幅/相位（aSea/aLand，P3）；② 海拔递减率 −Γ·h·κ（逐列、局地）；
+        //   ③ 气压带迁移由模型自己的陆海热力对比驱动。
+        //   恢复 Δ 的正确方式是 P4 之后的局地陆面平衡 —— 不是再找一张表。
+        //
+        //   ★★ 2026-11-22（同轮追加）：实测「Δ=0」会让气候对海陆分布**完全无感**
+        //   （5 个种子的 T(0) 全是 317.391 K）⟹ 那违反本目标的判据本身。
+        //   所以 Δ 改由**陆面分支 EBM**给出（ClimlabEBM.landAnnualK：同一套方程、换表面反照率、无 OHT），
+        //   与海洋支同源（都对 EBM）⟹ 世界依赖通过局地 κ 回来，且两张地球表都不再需要。
+        // ★★ 2026-11-22（同轮回退，取证见 工作目录/中期/AB-P2-Delta三条路-2026-11-22.md）：
+        //   陆面分支 EBM 试了三版，**没有一版合格**：
+        //     ① 裸面反照率 ALB_LAND=0.20（与海洋分支的行星口径 0.30 不可比）⟹ Δ 在极点 +23 K，
+        //        经 columnWater→云→OLR 反馈把 EBM 顶进【雪球支】，实测直接抛错；
+        //     ② Δ=0 ⟹ 气候对海陆分布**完全无感**（5 个种子的 T(0) 全是 317.391 K）⟹ 违反本目标判据；
+        //     ③ 同参数、只去 OHT（like-for-like）⟹ Δ(45°) = **−14.4 K**，比观测的 −4 K 大 3.5 倍，
+        //        且与云反馈强耦合（海洋支同时从 282.7 → 295.6 K）。
+        //   ⟹ 在拿到合格的陆面物理之前，Δ 暂时**保留地球表**（这是本轮唯一"没删成"的表，
+        //      必须在交接里显式记账，不能假装删了）。陆面分支代码已写好（ClimlabEBM.solveLand），
+        //      **未接线**，供下一条路（离线纬向解 / 真陆面模型）复用。
+        // ★★ 2026-11-22（第 25 轮再回退，取证见 工作目录/中期/AT-RCE的Delta锯齿-2026-11-22.md）：
+        //   RCE 版的 Δ **锯齿状且未收敛**：+10.3(0°) → −0.6(15°) → +4.8(30°) → −11.1(45°) → −8.5(60°),
+        //   而单点探针在 1500→3000 步之间还会变 ≤2.6 K；构建 **97 s**（不是估的 42 s）。
+        //   ⟹ 不接线。Δ 的正确做法需要**收敛的全柱解**（当前 solveRCE 是慢松弛、未到稳态）。
+        //   已试并排除：裸面 EBM(+23K/雪球)、Δ≡0(世界无感)、like-for-like EBM(−14.4K)、
+        //   稳态皮温(+14K)、RCE(锯齿/97s)。
+        return ZonalTables.tLandK(latRad) + GAMMA * ZonalTables.landMeanElev(latRad) - oceanBaseK(latRad);
     }
 
     /**
@@ -582,33 +626,30 @@ public final class Atmosphere {
     }
 
     /**
-     * **本世界的纬向平均海平面气温（K）** —— 锚在观测的海平面年表上，只加「本世界陆地占比」那一项差。
+     * **本世界的纬向平均海平面气温（K）** —— **定义式**：两分支按陆地占比加权。
      *
      * <pre>
-     *   T_ann(φ, κ) = T_ZM_SL_ANN(φ) + (κ − ZF_earth(φ)) · DELTA_SL(φ)
+     *   T_zm(φ) = T_ocean(φ) + kbar(φ) · Δ(φ)
      * </pre>
      *
-     * <p>κ = {@link ZonalTables#zfEarth} 时**逐位等于观测表** ⇒ 恒等式按构造成立。
+     * <p>它与 {@link #annualSeaLevelTemp(double, double, double)} 是**同一条式子**（后者再加
+     * {@code (1−κ)·SST'} 项）；{@code kbar} 取 {@link #kbarRef(double)}（本世界逐纬度陆地占比）。
      *
      * <p>⚠ 与 {@link #tZonalMean} **不是**同一个量：{@code tZonalMean} 是**地球**在那个纬度的
      * 全表面年均气温（含地球自己的陆地和海拔），本方法是**本世界**在各种 κ 混合下的纬向平均。
      * 需要「本世界自己的纬向平均」时一律用本方法（降水的水汽源、airT 的参考、海洋的热成风）。
      *
-     * <p><b>为什么不再写 {@code annualSeaLevelTemp(latRad, KAPPA_MEAN, 0)}</b>（P943 实测，2026-09-21）：
-     * 那条式子等价于 {@code T_OCEAN + KAPPA_MEAN·DELTA_SL}，即假定重构式
-     * {@code T_ZM_SL = T_OCEAN + ZF_earth·DELTA_SL} 成立。它**在 25~65 度成立到 ≤1.5 K，
-     * 在 70~85 度崩到 +5.2/+8.0/+9.7/+8.0 K**，而崩的位置精确对应 {@link ZonalTables#landMeanElev}
-     * 的跳升（245 → 444 → 1095 → 1638 → 1447 m）。
-     * 原因是**折算口径不一致**：{@code T_ZM_SL_ANN} 是上游那张表自己的海平面折算，
-     * 而重构式用 {@link #GAMMA}（6.5 K/km）乘**纬向平均**高程 —— 两者在高纬（陆地集中、
-     * 高程大）必然分叉。这个分叉被 {@code (KAPPA_MEAN − ZF_earth)} 放大成一支**虚假的极地冷偏差**：
-     * 80 度上 {@code zonalMeanSeaLevelK − T_ZM_SL_ANN} = <b>−8.83 K</b>，与 P940 实测的
-     * {@code zonalSlTemp − tZmSlMonth} = −8.69 K 同源（季节项无辜：A_ZM 13.36/13.36、
-     * 相位逐行相同）。
-     *
-     * <p>改成上式后：κ = ZF_earth 处恒等；25~65 度只动 ≤1.5 K；70~85 度消掉那 −4.4…−8.8 K。
-     * **零新常数**（{@code T_ZM_SL_ANN} / {@code ZF_EARTH} / {@code DELTA_SL} 全部已在册），
-     * 且 {@code interp5} 取 {@code abs(lat)} ⇒ 南北对称不破。
+     * <p><b>历史（自证：以下两段都是历史）</b>：
+     * <ul>
+     *   <li>2026-09-21（P943）曾把定义式退回<b>表重建式</b>
+     *       {@code T_ZM_SL_ANN + (κ − ZF_earth)·DELTA_SL}，理由是定义式在高纬给出 −4.4…−8.8 K 的
+     *       「虚假极地冷偏差」。但那一版用的是**全球** {@code KAPPA_MEAN}（0.183）当纬向陆地占比 ——
+     *       把全局均值塞进逐纬度式子，在陆地集中的高纬必然出偏差。</li>
+     *   <li>2026-11-22（P2，全核心去地球表）：改用**逐纬度** {@code kbarRef(φ)}（本世界）后，
+     *       该偏差的来源消失；表重建式与定义式在 seed=0 上差 −11.6…+5.8 K，
+     *       差异全部来自「本世界陆地占比 ≠ 地球」+「EBM 极地海洋比地球表冷 12 K」，
+     *       即**该世界自己的结果** ⟹ 删掉 {@code T_ZM_SL_ANN} 与 {@code zfEarth}，直接用定义式。</li>
+     * </ul>
      */
     /**
      * <b>P944 归因开关</b>（默认 false = 生产）。true 时 {@link #zonalMeanSeaLevelK} 走
@@ -666,6 +707,8 @@ public final class Atmosphere {
         return ZonalTables.zfEarth(latRad);
     }
 
+    // （P1 第二轮：局地化后本类的纬向平均高程 helper 已移除；`ZonalLandProfile.meanElevM` 保留为诊断量。）
+
     /** A/B 开关：true（默认）= 局地 kbar(φ) 参考；false = 旧的全局 {@link #KAPPA_MEAN}（仅对照）。 */
     public static boolean KBAR_REF_LOCAL =
             Boolean.parseBoolean(System.getProperty("eoh.kbarlocal", "true"));   // A/B hook
@@ -677,8 +720,23 @@ public final class Atmosphere {
         if (ZonalClimateProvider.ON && !ZonalClimateProvider.isSolving()) {
             return ZonalClimateProvider.zonalMeanK(latRad, kbar);
         }
-        return ZonalTables.tZmSlAnnual(latRad)
-             + (kbar - ZonalTables.zfEarth(latRad)) * landMinusOceanSLK(latRad);
+        // ★★★★★ 2026-11-22（P2：全核心去地球表）：**改用定义式**，删掉 `T_ZM_SL_ANN` 与 `zfEarth`。
+        //
+        //   T_zm(φ) ≡ T_ocean(φ) + kbar(φ)·Δ(φ)        —— 这就是"纬向平均"的定义（两分支按陆地占比加权），
+        //   也正是 {@link #annualSeaLevelTemp} 用的同一条式子（本类 :579）。
+        //
+        //   为什么可以删表（P1/P2 探针实测见 `工作目录/中期/X-P2-温度-2026-11-22.md`）：
+        //   · 旧式 `T_ZM_SL_ANN + (kbar − zfEarth)·Δ` 是"把地球表当锚点再修正"的重建式；
+        //     它与定义式在 seed=0 上差 **−11.6…+5.8 K**（极点 −11.6），差异全部来自
+        //     「本世界该纬度的陆地占比 ≠ 地球」+「EBM 的极地海洋比地球表冷 12 K」
+        //     ⟹ 那正是**该世界自己的结果**，不是误差。
+        //   · P943（2026-09-21）当年把定义式退回表重建，理由是"极地虚假冷偏差 −4.4…−8.8 K"；
+        //     但那一版用的是**全球** {@code KAPPA_MEAN} 当纬向陆地占比 —— 把全局均值塞进逐纬度式子，
+        //     当然会在陆地集中的高纬出偏差。现在用的是**逐纬度** {@code kbarRef(φ)}（本世界），
+        //     该偏差的来源已经不存在。⟹ 定义式是正确形式。
+        //   · 副产品：`zmslkNew` 现在与 `annualSeaLevelTemp(lat, kbar, 0)` **逐位一致**，
+        //     模型里"同一张量两个互相矛盾的定义"这个隐患消失。
+        return annualSeaLevelTemp(latRad, kbar, 0.0);
     }
 
     /** 旧式（重构式）：{@code T_OCEAN + KAPPA_MEAN*DELTA_SL}。仅为归因保留，不是生产路径。 */
@@ -1374,21 +1432,50 @@ public final class Atmosphere {
         return Math.toDegrees(CELL_MIGRATION * Math.cos(theta - CELL_LAG));
     }
 
-    /** 模型自己的陆海温差（K）：陆地（用该纬度平均海拔）减海洋。 */
+    /**
+     * **海平面上的**陆海温差（K）：{@code T_LAND(海拔=0) − T_OCEAN}。
+     *
+     * <p>★★ 2026-11-22（P1 最终结论）：**这里的海拔项整个删掉了**，不是换来源。
+     *
+     * <p><b>为什么</b>（探针实测，见 {@code 工作目录/中期/V-P1-地理-2026-11-22.md} §6）：
+     * 这个对比量唯一用途是驱动**气压带的季节迁移**（{@link #cellMigSensCalib()}）。而海拔在
+     * 同一条链上已经被算过<b>两次</b>：
+     * <ol>
+     *   <li>{@code pressureAnomaly} 的 {@code tSfc} 里已经减了 {@code Γ·h·κ}；</li>
+     *   <li>同一个函数里的「平台项」{@code h = elev·PLATEAU_AMP·κ} 又进了 {@code therm}。</li>
+     * </ol>
+     * 再让 {@code Γ·elev} 通过这条对比挤进**迁移纬度**，等于让高程以
+     * 「0.83 度/K × 0.0065 K/m」的灵敏度去搬动整条气压带（1,000 m ⇒ 5.4 度）。
+     * 实测后果：同一纬度不同经向地形的 cell 项差 **±43 Pa（30°N）/ −30 Pa（60°N）**，
+     * 即一个**由地形制造的经向气压梯度**（约 0.3 m/s 的假风）。
+     *
+     * <p>⟹ 物理上正确的分解是：**热力对比负责「带往哪移」，海拔只负责「这一列多冷」**。
+     * 两件事分开 ⟹ 本方法只给热力对比，海拔留在 {@code tSfc} 与平台项里，各算一次。
+     *
+     * <p>⚠ 附带收益：地球表 {@code ZonalTables.landMeanElev} 与「本世界纬向平均高程」**都不再需要**
+     * ⟹ P1 从「换来源」降级为「删依赖」（更符合去地球表的本意）。
+     */
     public static double landSeaTempContrast(double latRad, double theta) {
-        double elev = ZonalTables.landMeanElev(latRad);
-        return landSurfaceTemp(latRad, theta, elev) - seaSurfaceTemp(latRad, theta);
+        return landSurfaceTemp(latRad, theta, 0.0) - seaSurfaceTemp(latRad, theta);
     }
 
     private static double cellMigSensCalib() {
         if (CELL_MIG_SENS > 0.0) return CELL_MIG_SENS;
         double ref = Math.toRadians(CELL_MIG_REF_LAT_DEG);
+        // 自标定用的就是「海平面陆 vs 海」（与 cellPressure 同源，见 landSeaTempContrast 的说明）。
+        // ⚠ 这条自标定本身是历史遗留的「对齐旧式振幅」机制，属 P2/P3 待处理项。
         double dT = landSeaTempContrast(ref, 0.0);
         double want = cellMigrationDegHardcoded(0.0);
         CELL_MIG_SENS = (Math.abs(dT) < 1.0e-6) ? 0.0 : want / dT;
         return CELL_MIG_SENS;
     }
 
+    /**
+     * 气压带（cell）项（Pa）。
+     *
+     * <p>★ 2026-11-22（P1）：迁移的驱动量是**海平面陆海热力对比**（不含海拔，理由见
+     * {@link #landSeaTempContrast(double, double)}）；海拔只经由 {@code tSfc}/{@code therm} 进入气压。
+     */
     public static double cellPressure(double latRad, double kappa, double theta) {
         double migDeg = CELL_PHASE_FROM_TEMP
                 ? cellMigSensCalib() * landSeaTempContrast(latRad, theta)
@@ -1403,6 +1490,7 @@ public final class Atmosphere {
         return ZonalTables.carrier(shifted) * tropicGate(latRad)
              + CELL_GAIN * ZonalTables.carrier(shifted) * tropicGate(latRad) * (kbarRef(latRad) - kk);
     }
+
 
     // ================= 沿岸风参数化（观测锚点） =================
 
@@ -1554,7 +1642,22 @@ public final class Atmosphere {
     public static boolean PA_NO_CELL = false;
     public static boolean PA_NO_THERMAL = false;
     public static double PA_FIXED_KAPPA = Double.NaN;
-    /** 打开地表干暖项（§409）：见 pressureAnomaly 内的推导。默认 false => 逐位不变。 */
+    /**
+     * 打开地表干暖项（§409）。**默认 false，且 2026-11-22 实测【不能开】**。
+     *
+     * <p>本轮的因果链值得记下来：
+     * <ol>
+     *   <li>它原来的阻塞是「没有本世界的交换风速」—— 干暖项 ¤ΔT = (1−β)·LE_pot/λ¤ 里的
+     *       ¤LE_pot = chv·L·(q_sat−q_a)¤ 而 ¤chv ∝ |u|¤；</li>
+     *   <li>P4 的动量模型给出了 ¤u850¤（4~5 m/s，而地球表在 25° 只有 **0.085** m/s）⟹ ¤chv¤ 放大约 50 倍；</li>
+     *   <li>于是 ¤LE_pot¤ 从「几乎为零」变成 **231 W/m²**，¤ΔT¤ 变成 **~30 K**；</li>
+     *   <li>实测压力距平：+35° 从 **−1554 Pa 变成 −10156 Pa（−86 hPa）** ——
+     *       真实大陆热低压只有 5~10 hPa ⟹ **大了一个量级**。</li>
+     * </ol>
+     *
+     * <p>⟹ 缺的不是风速，是**蒸发反馈的闭合**（线性化的 ¤λ¤ 严重低估了湿润化对增温的抑制）。
+     * 在那之前保持关闭；把它改成常开会把气压带直接压垮。
+     */
     public static boolean PA_DRY_WARMTH = false;
     /**
      * ★ 2026-11-18（自算纬向骨架 / B-C 拆分）：把 {@link #cellPressure} 拆成
@@ -1592,7 +1695,10 @@ public final class Atmosphere {
         double elev = ke[1];
         // tRef = 「同 κ 的年均海平面温度」⇒ 它把海陆年均对比**解析地**从 T'_c 里减掉
         //（LANDS_ANNUAL_IN_PRESSURE = true 时才换成地球的 T_zm，让那一项真的进 p'）。
-        double tRef = LANDS_ANNUAL_IN_PRESSURE ? tZonalMean(lat) : annualSeaLevelTemp(lat, k, 0.0);
+        // ★ 2026-11-22（P2）：本分支原来取**地球**的纬向全表面气温（{@code tZonalMean} → 地球表）。
+        //   按"直接删地球表"改成取**本世界自己的**纬向平均（同一个量、换成物理来源）。
+        //   生产里该开关为 false ⟹ 本改动**不改行为**；它只是把一条"能走到地球表"的路堵上。
+        double tRef = LANDS_ANNUAL_IN_PRESSURE ? zonalMeanSeaLevelK(lat) : annualSeaLevelTemp(lat, k, 0.0);
         double tSfc = annualSeaLevelTemp(lat, k, sstAnom(x, z))
                     + seasonalAnomaly(lat, k, theta)
                     - GAMMA * Math.max(0.0, elev) * k;
@@ -1617,7 +1723,10 @@ public final class Atmosphere {
             //   改用模型已有的【纬向平均风表】作为大尺度风速 —— 零递归、零新常数。
             //   省略了经向分量与瞬变风，属于已文档化的近似。
             // 2026-11-20（D1）：uZmBlend 已删除，这里用同一份 850 hPa 表的 uZm（本支默认关）。
-            double sp = Math.abs(ZonalTables.uZm(Math.toDegrees(lat), theta));
+            // ⚠ 2026-11-22（P4 回退）：曾改用 ZonalWindStat（本世界风场的收敛统计），但实测发现
+            //   本世界风场**没有年均西风急流**（见 工作目录/中期/AJ-P4-uZm回退-2026-11-22.md）⟹ 回退。
+            // ★ P4（2026-11-22）：与风暴门同源 —— 纬向动量模型 v0（ThermalWind.u850）。
+            double sp = Math.abs(ThermalWind.u850(lat, theta));
             double chv = Radiation.bulkCoeff(k, sp);
             double lePot = chv * Radiation.LV * Math.max(0.0, PrecipField.qSat(ta) - qa);
             double dq = (PrecipField.qSat(ta + 1.0) - PrecipField.qSat(ta - 1.0)) / 2.0;
@@ -1626,6 +1735,7 @@ public final class Atmosphere {
             if (lambda > 1.0e-6) dryWarmth = (1.0 - beta) * lePot / lambda;
         }
         double therm = PA_NO_THERMAL ? 0.0 : -K_P * CHI * (tSfc + dryWarmth + GAMMA * h - tRef);
+        // ★ 2026-11-22（P1）：cell 项不再吃海拔（海拔已由上面的 tSfc 与平台项各算一次）。
         double cellTerm = PA_NO_CELL ? 0.0 : cellPressure(lat, k, theta);   // 注意：参数名已经是 cell
         return therm + cellTerm;
     }

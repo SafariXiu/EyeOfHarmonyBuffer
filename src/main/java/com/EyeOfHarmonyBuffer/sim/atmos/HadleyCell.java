@@ -231,7 +231,8 @@ public final class HadleyCell {
 
     /** 由模型自己的能量收支诊断出的 ITCZ 偏移（度，正 = 北移）✓；无 OHT 数据时返回 0 ✓。 */
     public static double itczShiftDeg() {
-        double[] oht = ClimlabEBM.T_OHT_W_37;
+        // ★ 2026-11-22（P2 单位修复）：必须走缩放后的剖面；直接读 T_OHT_W_37 会少 40² 倍。
+        double[] oht = ClimlabEBM.ohtWorldW();
         if (oht == null || oht.length != 37) return 0.0;
         double rEarth = 6.371e6;
         double sc = Math.pow(WorldContract.R_EFF / rEarth, 2.0);

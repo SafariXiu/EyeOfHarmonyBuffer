@@ -239,6 +239,11 @@ public final class ZonalTables {
      * 海气温差 {@code T_air - T_sea}（K）。**负值 = 空气比海冷 = 海洋表面对流不稳定。**
      * 详见 {@link #DT_AIR_SEA_K} 的口径与限度声明。
      */
+    /**
+     * @deprecated 2026-11-22（P2）：**生产已不再使用**（海面气温改为 Ta=Ts，理由见
+     *     {@code PrecipField.airTempK} 的注释）。保留作地球参照量。
+     */
+    @Deprecated
     public static double dtAirSea(double latDeg) { return interp(DT_AIR_SEA_K, latDeg); }
 
     /** ★ 2026-10-16（goal-3355454e）：**浅对流地板的空气-海面季节因子**（南半球节点 0,-10,-20,-30,-40 度）。
@@ -798,7 +803,9 @@ public final class ZonalTables {
      * <p>自检：0.5*(我们的 NH + 我们的 SH 镜像) 与原表 **max |差| = 0.0496 K** ✓
      *   （残差来自插值网格的细微差别 ✓，可接受 ✓）。
      * <p>季节自检 ✓：60N 一月 259.86 / 七月 280.82 ｜ **60S 一月 268.85 / 七月 263.71 K** ✓✓。
-     * <p>★ 这是**生产路径**上的表（PrecipField 的 Eady sigma 用 {@code t850Month} ✓）。
+     * <p>★ 2026-11-22（约定 4 更正）：**本表已不在生产路径上**。P2 把 PrecipField 的
+     *   Eady σ 温度源改成「本世界纬向均温 − Γ·1.5 km」（{@code PrecipField.t850Model}）⟹
+     *   本文原句「这是生产路径上的表」**已过期**，保留作地球参照量。
      */
     public static final double[] T850_MONTH_ASYM = {
 260.3733, 262.0545, 263.4082, 264.4674, 266.2788, 267.1004, 268.8522, 271.4414, 274.7216, 278.5421, 282.1949, 285.4339, 288.1065, 289.9652, 290.5919, 290.5799, 290.4753, 290.3078, 290.1623, 290.1725, 290.0539, 288.8480, 286.8815, 284.0039, 280.3966, 276.4642, 271.9859, 267.8409, 264.4124, 262.1751, 259.8630, 257.1148, 255.3172, 253.1617, 251.0835, 250.6456, 250.6645,
@@ -1239,9 +1246,11 @@ public final class ZonalTables {
      * <p><b>★★★ 2026-11-18（目标「自算辐射接入生产」）：【地球表 · 生产已不再使用 · 保留】</b>
      * <p>生产走 {@link com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM} 的内生解
      * （{@code EBM_ON = true} ⟹ {@code Atmosphere.oceanBaseK} 不经过本方法）。
-     * 本表只剩两个用途：① {@code EBM_ON=false} 的 A/B 回退臂；② 探针/文档的参照量。
+     * <p>★★ 2026-11-22（P2）：**回退臂已在生产端删除** —— `oceanBaseK` 现在直接取 EBM，
+     * 且 `EBM_ON=false` 会**显式抛错**（不再静默回落到本表）。
+     * ⟹ 本表只剩**一个**用途：探针/文档/出图的参照量。
      * <p><b>不删</b>：后续的"本世界 vs 地球"对照与出图仍要用它（用户 2026-11-18 明确要求保留）。
-     * <p>⟹ 任何把本表当生产输入的改动都要先证明 {@code EBM_ON} 被关掉。
+     * <p>⟹ 任何把本表重新接回生产路径的改动，都要先说明「被删掉的回退为什么又需要了」。
      */
     public static double tOceanK(double latRad) {
         double d = Math.toDegrees(latRad);

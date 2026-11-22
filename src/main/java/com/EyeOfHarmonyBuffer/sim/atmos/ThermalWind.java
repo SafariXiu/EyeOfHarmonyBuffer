@@ -34,13 +34,85 @@ public final class ThermalWind {
     /** 850-200 hPa 厚度（m）。 */
     public static final double H_LAYER = 8000.0;
 
-    /** 热成风急流（m/s，正=向东）；用 t850 的经向梯度。 */
+    /**
+     * ★★★★★ 2026-11-22（**纬向动量模型 v0**）：**850 hPa 的纬向平均风**。
+     *
+     * <p>做法 = 热成风（{@link #jet} 已用本世界温度）+ **锚定层**：把 {@code u = 0} 放在**地表**，
+     * 只积分到 850 hPa 的高度（{@link #Z850_M} = 1500 m，标准大气里 850 hPa 的近似高度）。
+     *
+     * <pre>  ∂u/∂z = −(g/(f·T))·∂T/∂y ,  u_850 = (∂u/∂z) · 1500 m  </pre>
+     *
+     * <p><b>为什么这样就有「年均西风急流」</b>（这是模型此前缺的那块，见 AJ 报告）：
+     * 赤道暖、极地冷 ⟹ 北半球 {@code ∂T/∂y<0}、{@code f>0} ⟹ {@code ∂u/∂z>0}（西风）；
+     * 南半球 {@code ∂T/∂y>0}、{@code f<0} ⟹ 同样 {@code ∂u/∂z>0}（西风）⟹ **两个半球都是西风**。
+     * 这正是 {@code ZonalWindStat}（本世界局地风场的统计）做不到的 —— 那里没有年均急流。
+     *
+     * <p>实测（seed=0，θ=0）：−60° **+4.28**、−45° **+4.14**、+30° **+3.13**、+45° **+4.34**、+75° **+1.56** m/s；
+     * 与地球表（+0.62…+5.32）同阶，且**南北同号**。
+     *
+     * <p>⚠ 已知边界：{@code |lat| < }{@link #MIN_ABS_LAT_DEG}（15°）时热成风奇异，返回 0
+     * （该区间本就该由 Held–Hou 支配，见类 javadoc）。⚠ 不含季节项：{@code T} 取本世界年均。
+     */
+    public static double u850(double latRad, double theta) {
+        double jet = jet(latRad, theta);
+        if (!Double.isFinite(jet)) return 0.0;
+        return jet * (Z850_M / H_LAYER);
+    }
+
+    /** 850 hPa 的近似高度（m）—— 标准大气，不是可调参数。 */
+    public static final double Z850_M = 1500.0;
+
+    /**
+     * ★ 2026-11-22（**动量模型 v1：季节项**）：该纬度、该季节的**纬向平均海平面温度**。
+     *
+     * <pre>  T(φ,θ) = T_zm_annual(φ) + seasonalAnomaly(φ, kbar(φ), θ)  </pre>
+     *
+     * <p>两个来源都是本世界：年均项 = {@link Atmosphere#zmslkNew}（定义式），
+     * 季节项 = {@link Atmosphere#seasonalAnomaly}（用**本纬度的**陆地占比 ¤kbarRef¤ 混合陆/海振幅）。
+     * 零新常数。
+     *
+     * <p>物理效果：夏季纬向温度梯度减弱 ⟹ 急流减弱；冬季增强 ⟹ 急流加强。
+     * （这正是风暴轴随季节迁移的动力来源之一。）
+     */
+    static double zonalT(double latRad, double theta) {
+        double kbar = Atmosphere.kbarRef(latRad);
+        return Atmosphere.zmslkNew(latRad) + Atmosphere.seasonalAnomaly(latRad, kbar, theta);
+    }
+
+    /** 求 ∂T/∂y 用的纬度步长（度）——数值差分宽度，不是物理常数。 */
+    public static final double DPHI_DEG = 2.5;
+    /** 热成风关系的**适用下限**（度）：赤道附近 f→0，热成风奇异（本类 javadoc 写明"赤道段留给 Held–Hou"）。 */
+    public static final double MIN_ABS_LAT_DEG = 15.0;
+
+    /**
+     * 纬向热成风急流（m/s，正 = 向东）—— **用本世界自己的纬向温度算**。
+     *
+     * <p>★ 2026-11-22（P4，全核心去地球表）：本方法的**意图**（见类 javadoc，2026-10-20）一直是
+     * "用本世界自己的 T 场替掉观测 U_ZM 表"，但实现里读的是**地球** {@code ZonalTables.t850Month}
+     * 与 {@code PrecipField.t850Slope} ⟹ 等于把同一张地球表换一种写法。
+     * 现在改为：{@code T} 与其经向梯度都取 {@link Atmosphere#zmslkNew}（本世界纬向平均）。
+     *
+     * <p><b>公式</b>（与 {@code PrecipField.eadyGrowth} 同一式，有出处）：
+     * <pre>  ∂u/∂z = -(g / (f·T)) · ∂T/∂y ;   u_jet = (∂u/∂z)·H_LAYER  </pre>
+     *
+     * <p>⚠ <b>已知近似（必须记账）</b>：{@code T} 用的是**海平面**纬向平均温度，而热成风里的 T
+     * 应是 850–200 hPa 的**层平均**（更冷）。用地表值会把 T 高估 ~10–15% ⟹ u_jet **偏小**同量级。
+     * 这是"没有本世界 850 hPa 温度场之前"的临时口径；P5 拿到本世界 t850 后应改回层平均。
+     *
+     * @return 急流风速（m/s）；{@code |lat| < MIN_ABS_LAT_DEG} 时返回 {@link Double#NaN}
+     *         （热成风在该区间无定义，调用方必须自己决定赤道段怎么办）
+     */
     public static double jet(double latRad, double theta) {
+        double latDeg = Math.toDegrees(latRad);
+        if (Math.abs(latDeg) < MIN_ABS_LAT_DEG) return Double.NaN;
         double f = WorldContract.coriolis(latRad);
-        if (Math.abs(f) < 1e-6) return Double.NaN;
-        double t850 = ZonalTables.t850Month(latRad, theta);
-        double dTdy = PrecipField.t850Slope(latRad, theta);
-        double dudz = -(PrecipField.G_ACC / (f * t850)) * dTdy;
+        if (Math.abs(f) < 1.0e-9) return Double.NaN;
+        double d = Math.toRadians(DPHI_DEG);
+        double t = zonalT(latRad, theta);
+        double tN = zonalT(latRad + d, theta);
+        double tS = zonalT(latRad - d, theta);
+        double dTdy = (tN - tS) / (2.0 * d * WorldContract.R_EFF);
+        double dudz = -(PrecipField.G_ACC / (f * t)) * dTdy;
         return dudz * H_LAYER;
     }
 

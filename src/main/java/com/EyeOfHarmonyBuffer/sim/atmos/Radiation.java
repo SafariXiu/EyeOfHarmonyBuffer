@@ -378,7 +378,9 @@ public final class Radiation {
         double sum = 0.0;
         for (int m = 0; m < 12; m++) {
             double theta = 2.0 * Math.PI * (m + 0.5) / 12.0;    // 月中点 ✓
-            double t = ZonalTables.tZmSlMonth(latRad, theta);
+            // ★ 2026-11-22（去地球表）：地球月表 → **本世界自己的**海面温度（海洋支 + 季节异常）。
+            //   冰厚 FDD 是"海水结冰的累积度日"，用的是海面温度 ⟹ κ=0 分支。
+            double t = Atmosphere.oceanBaseK(latRad) + Atmosphere.seasonalAnomaly(latRad, 0.0, theta);
             double d = tf - t;
             if (d > 0.0) sum += d * dt;
         }

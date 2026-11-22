@@ -172,7 +172,17 @@ public final class ZonalClimateProvider {
     private static String cachePath() {
         String p = System.getenv(CACHE_ENV);
         if (p == null || p.isEmpty()) p = System.getProperty("eoh.zonal.cache", "");
-        return (p == null || p.isEmpty()) ? null : p;
+        if (p != null && !p.isEmpty()) return p;
+        // ★★★★★ 2026-11-22（P2/P4 共用前置）：**默认缓存路径**。
+        //   为什么必须有它：首解是**分钟级**（实测 >5 min 未返回），而原来没有 env/-D 时
+        //   cachePath() 返回 null ⟹ **每个 JVM 重算一遍** ⟹ A0-②「解一次→缓存」在实现上不成立。
+        //   现在默认落到 <user.dir>/eoh_cache/，文件名由 stamp() 命名（已含 seed / 配置 / 行星参数），
+        //   所以换种子、改开关都会自动换文件，不会串味。
+        String dir = System.getProperty("eoh.zonal.cacheDir", "");
+        if (dir == null || dir.isEmpty()) {
+            dir = System.getProperty("user.dir", ".") + java.io.File.separator + "eoh_cache";
+        }
+        return dir + java.io.File.separator + "zonal_" + Long.toHexString(stamp()) + ".bin";
     }
 
     private static Solution loadCache() {

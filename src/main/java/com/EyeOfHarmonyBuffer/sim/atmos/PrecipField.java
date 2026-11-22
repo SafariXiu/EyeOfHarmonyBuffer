@@ -277,7 +277,7 @@ public final class PrecipField {
         // 本方法现在改用同一个入口 uZm(latDeg, theta)。
         // 保留 uZm（全球含陆 850 hPa）是**物理上正确的**：Rossby 波不能传入**自由对流层**东风带，
         // 门槛该用 850 hPa 的纬向风，而不是洋面 10 m 风（那不是本类其他地方用的 uZmBlend 的用途）。
-        double u = ZonalTables.uZm(Math.toDegrees(latRad), theta);
+        double u = ThermalWind.u850(latRad, theta);   // 2026-11-22: 纬向动量模型 v0（锚定地表的热成风，850 hPa）
         double x = u / U0_STORM;
         x = x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x);
         return x * x * (3.0 - 2.0 * x);
@@ -337,8 +337,9 @@ public final class PrecipField {
      * 陆地侧的皮温另有 {@link Radiation#skinTempLand} 机械，本函数**不**涉及（记 OPEN）。
      */
     public static double airTempK(double tSfc, double latRad, double kappa) {
-        double land = kappa < 0.0 ? 0.0 : (kappa > 1.0 ? 1.0 : kappa);
-        return tSfc + (1.0 - land) * ZonalTables.dtAirSea(Math.toDegrees(latRad));
+        // ★ 2026-11-22（P2 全核心去地球表）：地球的 DT_AIR_SEA_K 表（−1.56…−0.92 K）已删，
+        //   海面气温暂取 **Ta = Ts**。理由见下方 7 参版本的同一段注释。
+        return tSfc;
     }
 
     /**
@@ -429,7 +430,17 @@ public final class PrecipField {
     public static double airTempK(double tSfc, double absSolar, double qAir, double beta,
                                   double latRad, double kappa, double vEff) {
         double land = kappa < 0.0 ? 0.0 : (kappa > 1.0 ? 1.0 : kappa);
-        double taOcean = tSfc + ZonalTables.dtAirSea(Math.toDegrees(latRad));
+        // ★★★★★ 2026-11-22（P2 全核心去地球表）：**地球的 DT_AIR_SEA_K 表已删**，海面气温暂取 Ta = Ts。
+        //
+        //   【为什么是 0，而不是再找一张表】海气温差的物理量是**海洋边界层**的结果：
+        //       Ta − Ts = −H_sensible / (ρ·cp·chv·U)
+        //   它需要（a）表面感热通量 H_sensible、（b）交换速度 |u| —— 两者都还没有本世界来源
+        //   （正是 P4/P5 的缺口；|u| 与 pressureAnomaly 互相递归，见 :1670 的记账）。
+        //
+        //   【量级与代价】地球表是 −1.56…−0.92 K（空气比海冷 1~1.6 K = 海洋对流的浮力来源）。
+        //   取 0 会让海洋一侧的 qSat(Ta) 偏高 ~5%（1.3 K），即水汽/感热略偏大。
+        //   这是一个**已知的、单向的**偏差，等 P5 的 ABL/通量闭合后应恢复。
+        double taOcean = tSfc;
         if (land <= 0.0) return taOcean;
         double taLand = landAirTempK(tSfc, absSolar, qAir, beta, kappa, vEff);
         return (1.0 - land) * taOcean + land * taLand;
@@ -1396,8 +1407,8 @@ public final class PrecipField {
         //   这是 D79 唯一还没做过的判别实验（§226.4）。进 configStamp（非 null 会改结果，D58）。
         ZonalProfile ov = ZONAL_PROFILE_OVERRIDE;
         if (ov != null) return ov.tempAt(latRad, theta);
-        // §264：纬向平均海平面温度直接取观测月表（ZONAL_SL_FROM_TABLE=false 时这一支不执行）
-        if (ZONAL_SL_FROM_TABLE) return ZonalTables.tZmSlMonth(latRad, theta);
+        // ★ 2026-11-22（去地球表）：观测月表臂已删（开关 ZONAL_SL_FROM_TABLE 一起删），
+        //   走下面「本世界基温 + 纬向季节异常」那一支。
         // ⚠ D79 步骤 0（§231.4）：改走**纬向平均专用**的季节异常（表 A_ZM_K），
         //   不再借用逐点口径的 seasonalAnomaly(lat, <kappa>, theta) —— 两者口径不同，
         //   共用一张表时修逐点那一侧会把涡动链一起带偏。
@@ -1466,7 +1477,8 @@ public final class PrecipField {
     //     ② 本开关 = false —— 否则 A_ZM_K 被 :720 的提前 return 遮蔽（§607 三）；
     //     ③ COL_WATER_FROM_TABLE = false —— P935：两者必须同时关才达单极型；
     //     ④ EDDY_MASK_OUTSIDE = true —— §257：「换表必须与修风暴轴赤道侧边缘一起做」。
-    public static boolean ZONAL_SL_FROM_TABLE = false;   // 2026-09-17 用户裁决落地：中纬两条独立带 −40%→−3%（§265）
+    // ★ 2026-11-22（去地球表）：**开关已删**，纬向海平面温度一律由本世界基温 + 纬向季节异常给出
+    //   （地球月表臂 ZonalTables.tZmSlMonth 随之删除）。历史（自证）：2026-09-17 曾把它落地过一次（§265）。
 
     /**
      * **柱水汽取观测月表**（设计冻结 §266/§267）。
@@ -1493,7 +1505,8 @@ public final class PrecipField {
     //   单独关任一个都达不到单极型。详见上一段的读数。
     // ⚠⚠ 2026-09-21（§603）：与 ZONAL_SL_FROM_TABLE 同批撤回 true（P935 要求两者同时关，故必须一起回退）。
     // ★ 2026-09-21（§608）：与 ZONAL_SL_FROM_TABLE 同批关闭（§607 五 的条件 ③）。
-    public static boolean COL_WATER_FROM_TABLE = false;   // 2026-09-17 §268.3 四格 A/B 通过后落地
+    // ★ 2026-11-22（去地球表）：**开关已删**，柱水汽一律由本世界比湿式给出；
+    //   地球月表臂 ZonalTables.wColMonth 随之删除。历史（自证）：2026-09-17 §268.3 曾落地。
 
     /**
      * **气柱水汽**（kg/m^2）：纬向平均近地比湿 x 空气密度 x 水汽标高 H_MOIST。
@@ -1508,8 +1521,7 @@ public final class PrecipField {
      * 退化（可以互相吸收）⇒ 它不改变任何验收读数的形状，只把标定 gain 从 5.4 降到约 4.4。
      */
     public static double columnWater(double latRad, double theta) {
-        // §267：COL_WATER_FROM_TABLE=false 时走下面原式，逐位不变。
-        if (COL_WATER_FROM_TABLE) return ZonalTables.wColMonth(latRad, theta);
+        // ★ 2026-11-22（去地球表）：观测月表臂已删（开关 COL_WATER_FROM_TABLE 一起删），只走本世界原式。
         return moisture(zonalSlTemp(latRad, theta), 0.0, 0.0) * RHO_AIR * H_MOIST;
     }
 
@@ -1676,7 +1688,7 @@ public final class PrecipField {
         if (c.valid && c.theta == theta) return c.m;
         double h = Math.toRadians(5.0) * WorldContract.R_EFF;
         double[] y = new double[T850_NN];
-        for (int k = 0; k < T850_NN; k++) y[k] = ZonalTables.t850Month(Math.toRadians((k - 18) * 5.0), theta);
+        for (int k = 0; k < T850_NN; k++) y[k] = t850Model(Math.toRadians((k - 18) * 5.0));
         double[] dl = new double[T850_NN - 1];
         for (int k = 0; k < T850_NN - 1; k++) dl[k] = (y[k + 1] - y[k]) / h;
         c.m[0] = pchipEnd(dl[0], dl[1]);
@@ -1699,10 +1711,29 @@ public final class PrecipField {
      *
      * <p>本方法只在 EDDY_T_SMOOTH 为真时被调用 ⇒ 默认下不进任何计算路径。
      */
+    /**
+     * ★★★★★ 2026-11-22（P2 全核心去地球表）：**本世界的 850 hPa 纬向温度（K）**。
+     *
+     * <pre>  T850(φ) = T_zm_sl(φ) − Γ · Δz850,   Δz850 = 1500 m,  Γ = Atmosphere.GAMMA = 6.5 K/km  </pre>
+     *
+     * <p>几何：标准大气里 850 hPa 在约 1.5 km。递减率用仓内既有的 {@link Atmosphere#GAMMA}
+     * （它是"标准大气温度递减率"，不是本世界拟合出来的量），**零新常数**。
+     *
+     * <p>⚠ 已知近似（必须记账）：**不含季节项**。地球表 ¤ZonalTables.t850Month¤ 是月平均，
+     * 本方法返回年均。涡动链（Eady σ、风暴轴）用的是**经向梯度**，其季节变化是二阶量；
+     * 但这一条要在审计里留着，等 P5 有了本世界 850 hPa 场再换成真廓线。
+     *
+     * <p>⚠ 为什么替换是安全的（口径对得上）：地球 t850 在 45° 约 272 K，
+     * 本式给 T_zm_sl(45)=284 − 9.75 = **274 K** ⟹ 同量级、同符号梯度。
+     */
+    static double t850Model(double latRad) {
+        return Atmosphere.zonalMeanSeaLevelK(latRad) - Atmosphere.GAMMA * 1500.0;
+    }
+
     public static double t850Slope(double latRad, double theta) {
         if (!EDDY_T_SMOOTH || ZONAL_PROFILE_OVERRIDE != null) {
             double dd = Math.toRadians(dphiDeg());
-            return (ZonalTables.t850Month(latRad + dd, theta) - ZonalTables.t850Month(latRad - dd, theta))
+            return (t850Model(latRad + dd) - t850Model(latRad - dd))
                  / (2.0 * dd * WorldContract.R_EFF);
         }
         double fr = latRad / Math.toRadians(5.0) + 18.0;
@@ -1711,8 +1742,8 @@ public final class PrecipField {
         int i = (int) Math.floor(fr);
         double t = fr - i, h = Math.toRadians(5.0) * WorldContract.R_EFF;
         double[] m = t850NodeSlopes(theta);
-        double y0 = ZonalTables.t850Month(Math.toRadians((i - 18) * 5.0), theta);
-        double y1 = ZonalTables.t850Month(Math.toRadians((i + 1 - 18) * 5.0), theta);
+        double y0 = t850Model(Math.toRadians((i - 18) * 5.0));
+        double y1 = t850Model(Math.toRadians((i + 1 - 18) * 5.0));
         double dHdt = y0 * (6.0 * t * t - 6.0 * t) + h * m[i] * (3.0 * t * t - 4.0 * t + 1.0)
                     + y1 * (-6.0 * t * t + 6.0 * t) + h * m[i + 1] * (3.0 * t * t - 2.0 * t);
         return dHdt / h;
@@ -1736,7 +1767,8 @@ public final class PrecipField {
      * 被还原成高温。它让 sigma 在 60N 出一个鼓包 ⇒ K 鼓包 ⇒ K' 在 55N 反号 ⇒
      * **55~57.5N 出现一个观测里没有的负 MFC 洞**（§431 暴露的那条缺陷）。
      *
-     * <p><b>口径一致性</b>：{@link #stormGate} 用的 {@code ZonalTables.uZm} **本来就是 850 hPa 纬向风**；
+     * <p><b>口径一致性</b>（2026-11-22 更新）：{@link #stormGate} 现在用 {@link ZonalWindStat#uZm}（本世界局地风场的
+     * 锚定地表的热成风，即 {@code ThermalWind.u850}；原本是地球表 {@code ZonalTables.uZm}）；
      * 改用 850 hPa 温度后，整条涡动链（风、温度、扩散率）**同处一个层**。
      *
      * <p><b>§433 定案（用户裁决「按最标准的做，不妥协不捏造」）：默认已切到 true。</b>
@@ -1756,9 +1788,9 @@ public final class PrecipField {
         double d = Math.toRadians(dphiDeg());
         // §433：改用 850 hPa（自由对流层）的经向梯度与温度。理由见 EDDY_SIGMA_T850。
         // 默认 false ⇒ t 与 dTdy 都是原式，逐位不变。
-        double t = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad, theta) : zonalSlTemp(latRad, theta);
-        double tN = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad + d, theta) : zonalSlTemp(latRad + d, theta);
-        double tS = EDDY_SIGMA_T850 ? ZonalTables.t850Month(latRad - d, theta) : zonalSlTemp(latRad - d, theta);
+        double t = EDDY_SIGMA_T850 ? t850Model(latRad) : zonalSlTemp(latRad, theta);
+        double tN = EDDY_SIGMA_T850 ? t850Model(latRad + d) : zonalSlTemp(latRad + d, theta);
+        double tS = EDDY_SIGMA_T850 ? t850Model(latRad - d) : zonalSlTemp(latRad - d, theta);
         // §432：EDDY_T_SMOOTH 时改走 PCHIP 解析导数。
         // ★★★ 2026-09-21（§592 修法 #2）：原式是 (EDDY_T_SMOOTH && !EDDY_SIGMA_T850)，
         //   而 EDDY_SIGMA_T850 默认 true（:939）⇒ 条件【恒假】⇒ EDDY_T_SMOOTH 是空操作。
@@ -2153,24 +2185,15 @@ public final class PrecipField {
     public static boolean P_FROM_BUDGET = false;   // ★ A/B：涡动版收支在辐散区给负降水 ⟹ 未进生产
 
     /** 柱水汽的季节倾向 ∂W/∂t [kg/(m^2 s)] ✓ —— 由模型自己的月表作中心差分 ✓（零新数据 ✓）。 */
-    /**
-     * ★★ P1b（2026-11-13，降水重构）：收支里的 W 改用**模型自己的柱水汽**（`columnWater`），
-     * 不再用 ERA5 观测月表。理由：A0-⑤「本世界自洽，不凑地球」。
-     * 默认 <b>false</b> ⟹ 逐位不变（A3-④）。
-     */
-    public static boolean BUDGET_OWN_W = Boolean.parseBoolean(System.getProperty("eoh.budgetownw", "true"));
+    // ★ 2026-11-22（P5 去地球表）：**开关已删**，柱水汽一律用模型自己的 `columnWater`。
+    //   原来的 A/B 臂（ERA5 月表 `ZonalTables.wColMonth`）按"不留默认关开关"的裁决删除。
+    //   历史（自证）：2026-11-13 P1b 引入时默认 true（生产走模型），false 臂只为逐位回旧。
 
     static double wColTendency(double latRad, double theta) {
         double dt = 2.0 * Math.PI / 365.0 * 5.0;      // 5 天的 theta 步长
-        // ★ P1b（2026-11-13）：默认仍用观测月表（逐位不变）；BUDGET_OWN_W=true 时改用【模型自己的】柱水汽。
-        double w1, w2;
-        if (BUDGET_OWN_W) {
-            w1 = columnWater(latRad, theta - dt);
-            w2 = columnWater(latRad, theta + dt);
-        } else {
-            w1 = ZonalTables.wColMonth(latRad, theta - dt);
-            w2 = ZonalTables.wColMonth(latRad, theta + dt);
-        }
+        // ★ 2026-11-22（P5）：只用模型自己的柱水汽（地球月表分支已删）。
+        double w1 = columnWater(latRad, theta - dt);
+        double w2 = columnWater(latRad, theta + dt);
         return (w2 - w1) / (2.0 * 5.0 * 86400.0);     // kg/(m^2 s)
     }
 
@@ -2314,7 +2337,8 @@ public final class PrecipField {
         final double dphi = Math.toRadians(5.0);
         final double latDeg = Math.toDegrees(latRad);
         if (latDeg > 85.0 || latDeg < -85.0) return 0.0;
-        // ★ 2026-11-13（A0-⑤）：BUDGET_OWN_W=true 时，收支里的 W 必须**处处**是模型自己的 ——
+        // ★ 2026-11-22（P5）：柱水汽处处用模型自己的（地球月表分支已删，见 wColForBudget）。
+        // （历史 2026-11-13（A0-⑤）的原文：收支里的 W 必须**处处**是模型自己的 ——
         //   不能 dW/dt 用模型柱水汽、平均流 MFC 还用 ERA5 月表。实测差 ≤0.04 mm/day（可忽略），
         //   但这是口径一致性（消掉一条地球锚）。关时逐位不变。
         double vp = Atmosphere.vZmAt(latDeg + 5.0) * wColForBudget(latRad + dphi, theta);
@@ -2323,9 +2347,9 @@ public final class PrecipField {
         return -(vp - vm) / dy;
     }
 
-    /** 收支里 W 的唯一来源：BUDGET_OWN_W=true 用模型柱水汽，否则用观测月表（逐位回旧）。 */
+    /** 收支里 W 的唯一来源：**模型自己的柱水汽**（2026-11-22 P5 删掉了 ERA5 月表臂）。 */
     static double wColForBudget(double latRad, double theta) {
-        return BUDGET_OWN_W ? columnWater(latRad, theta) : ZonalTables.wColMonth(latRad, theta);
+        return columnWater(latRad, theta);
     }
 
     /**
@@ -2730,8 +2754,8 @@ public final class PrecipField {
     /** 纬向风经向切变 |du_zm/dy|（1/s），中心差分 ±EDDY_DPHI_DEG。 */
     public static double uShearAbs(double latRad, double theta) {
         double d = Math.toRadians(dphiDeg());
-        double uN = ZonalTables.uZm(Math.toDegrees(latRad + d), theta);
-        double uS = ZonalTables.uZm(Math.toDegrees(latRad - d), theta);
+        double uN = ThermalWind.u850(latRad + d, theta);
+        double uS = ThermalWind.u850(latRad - d, theta);
         return Math.abs(uN - uS) / (2.0 * d * WorldContract.R_EFF);
     }
 
@@ -2745,7 +2769,7 @@ public final class PrecipField {
      * 因为 smoothstep(0.5) = 0.5），只把过渡尺度从「阈值」换成「混合长的纬度宽度」。
      */
     public static double stormGateWide(double latRad, double theta) {
-        double u = ZonalTables.uZm(Math.toDegrees(latRad), theta);
+        double u = ThermalWind.u850(latRad, theta);   // 2026-11-22: 纬向动量模型 v0（锚定地表的热成风，850 hPa）
         double uHalf = 0.5 * U0_STORM;
         double uw = uShearAbs(latRad, theta) * mixingLength(latRad, theta);
         if (!(uw > 1.0e-3)) uw = 1.0e-3;
@@ -2782,7 +2806,7 @@ public final class PrecipField {
         double best = -1.0e9, latMax = 0.0;
         for (int i = 0; i <= 720; i++) {
             double d = i * 90.0 / 720.0;
-            double u = ZonalTables.uZm(sgn * d, theta);
+            double u = ThermalWind.u850(Math.toRadians(sgn * d), theta);
             if (u > best) { best = u; latMax = d; }
         }
         if (best <= 0.0) return Double.NaN;
@@ -2793,11 +2817,11 @@ public final class PrecipField {
         for (int i = 1; i <= n; i++) {
             double d = latMax - i * 0.25;
             if (d < 0.0) break;
-            if (ZonalTables.uZm(sgn * d, theta) <= 0.0) {
+            if (ThermalWind.u850(Math.toRadians(sgn * d), theta) <= 0.0) {
                 double lo = d, hi = d + 0.25;
                 for (int k = 0; k < 40; k++) {
                     double mid = 0.5 * (lo + hi);
-                    if (ZonalTables.uZm(sgn * mid, theta) > 0.0) hi = mid; else lo = mid;
+                    if (ThermalWind.u850(Math.toRadians(sgn * mid), theta) > 0.0) hi = mid; else lo = mid;
                 }
                 return Math.toRadians(hi) * sgn;
             }
@@ -2831,7 +2855,7 @@ public final class PrecipField {
         double best = -1.0e9, latMax = 0.0;
         for (int i = 0; i <= 720; i++) {
             double d = i * 90.0 / 720.0;
-            double u = ZonalTables.uZm(sgn * d, theta);
+            double u = ThermalWind.u850(Math.toRadians(sgn * d), theta);
             if (u > best) { best = u; latMax = d; }
         }
         if (best <= 0.0) return Double.NaN;
@@ -2839,11 +2863,11 @@ public final class PrecipField {
         for (int i = 1; i <= n; i++) {
             double d = latMax + i * 0.25;
             if (d > 90.0) break;
-            if (ZonalTables.uZm(sgn * d, theta) <= 0.0) {
+            if (ThermalWind.u850(Math.toRadians(sgn * d), theta) <= 0.0) {
                 double lo = d - 0.25, hi = d;
                 for (int k = 0; k < 40; k++) {
                     double mid = 0.5 * (lo + hi);
-                    if (ZonalTables.uZm(sgn * mid, theta) > 0.0) lo = mid; else hi = mid;
+                    if (ThermalWind.u850(Math.toRadians(sgn * mid), theta) > 0.0) lo = mid; else hi = mid;
                 }
                 return Math.toRadians(hi) * sgn;
             }
@@ -3420,7 +3444,9 @@ public final class PrecipField {
     //     而**陆地的地板 ≈ 0**（wStarK -> 0），降水只能来自大尺度项 `∝ wEff` ⇒ 一过零点就被清零。
     //   ⇒ 判据 (e) 命中：**「同一上游」假设撤回**（`WZM_ITCZ_SHIFT` 是陆侧上游，不是海侧上游）。
     //   ⇒ 采纳条件（javadoc :2251「必须先有区域 2-D 机制」）未满足，故恢复 false。
-    public static boolean WZM_FROM_TABLE = false;   // §436：默认撤回，理由见上
+    // ★ 2026-11-22（去地球表）：**开关已删**。生产一直走 false 支（Hadley 解算 / 本世界表），
+    //   地球月表臂（ZonalTables.wZmMonth）按「不留默认关开关」的裁决删除。
+    //   历史（自证）：§436 曾在观测月表与解算之间做 A/B，结论是撤回表臂（理由见上方长注释）。
 
     /**
      * ⚠ 2026-11-12 更正（约定 4：历史段落必须自证是历史）：下面这句的「默认 false」已过期 —— **当前字段行 = true**。
@@ -3883,8 +3909,8 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
         //   默认 ENABLED=false => 走原路 => 逐位不变。
         double wLat = WZM_ITCZ_SHIFT ? shifted : Math.toDegrees(latRad);
         // §436：改用观测月表时【不叠加】人工平移（表自带迁移）；默认 true ⇒ 走上一支。
-        double wBase = WZM_FROM_TABLE ? ZonalTables.wZmMonth(Math.toDegrees(latRad), theta)
-                     : (HadleyCell.SOLVED_ON ? HadleyCell.wZmSolved(wLat) : ZonalTables.wZm(wLat));
+        // ★ 2026-11-22（去地球表）：地球月表分支已删，只剩解算 / 本世界表两支。
+        double wBase = HadleyCell.SOLVED_ON ? HadleyCell.wZmSolved(wLat) : ZonalTables.wZm(wLat);
         DIAG.get()[4] = wBase;
         if (!SPLIT_ASCENT) return wBase + wLoc;
         return Math.max(0.0, wBase) + Math.max(0.0, wLoc);
