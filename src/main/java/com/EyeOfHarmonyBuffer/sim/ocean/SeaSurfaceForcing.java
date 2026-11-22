@@ -28,6 +28,9 @@ public interface SeaSurfaceForcing {
     /** 海表风矢量 v（m/s）；默认 0。 */
     default double windV(int x, int z, double theta) { return 0.0; }
 
+    /** 2026-11-22 (#4): advance a 1D ABL column after the ice step; default no-op. */
+    default void advanceBoundaryLayer(int x, int z, double theta, double dt, double tsK, double qs) { }
+
     /** 净热通量（W/m2，正 = 进入海洋）。 */
     double netHeatFluxWm2(int x, int z, double theta, double sstK);
 
@@ -39,6 +42,18 @@ public interface SeaSurfaceForcing {
     /** 带【冰厚】的扩展；默认退化为 5 参数（旧实现逐位不变）。 */
     default double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction, double iceThicknessM) {
         return netHeatFluxWm2(x, z, theta, sstK, iceFraction);
+    }
+
+    /** 带【雪厚】的扩展；默认退化为 6 参数（旧实现逐位不变）。 */
+    default double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction,
+                                  double iceThicknessM, double snowThicknessM) {
+        return netHeatFluxWm2(x, z, theta, sstK, iceFraction, iceThicknessM);
+    }
+
+    /** 带【融池面积分数】的扩展；默认退化为 7 参数（旧实现逐位不变）。 */
+    default double netHeatFluxWm2(int x, int z, double theta, double sstK, double iceFraction,
+                                  double iceThicknessM, double snowThicknessM, double pondFraction) {
+        return netHeatFluxWm2(x, z, theta, sstK, iceFraction, iceThicknessM, snowThicknessM);
     }
 
     /** 短波（W/m2）；默认 0，由具体实现覆盖。 */

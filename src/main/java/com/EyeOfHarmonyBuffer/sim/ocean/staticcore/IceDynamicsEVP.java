@@ -97,6 +97,8 @@ public final class IceDynamicsEVP {
                         (int) Math.round(g.zOf(j)), theta);
             }
         }
+        LAST_MAX_STRESS_LAG = 0.0;
+        LAST_MAX_STRESS_LAG_LAT = Double.NaN;
         double[] uNew = new double[nx * ny];
         double[] vNew = new double[nx * ny];
         for (int o = 0; o < nOuter; o++) {
@@ -133,9 +135,19 @@ public final class IceDynamicsEVP {
                         double zeta2 = P / Math.max(DELTAMIN, D);
                         double eta2 = zeta2 / (E * E);
                         double rep = P * D / (D + DELTAMIN);
-                        st.sig1[js] = (st.sig1[js] + arlx1i * (zeta2 * div - rep)) * denom1;
-                        st.sig2[js] = (st.sig2[js] + arlx1i * (eta2 * tension)) * denom1;
-                        st.sig12[js] = (st.sig12[js] + arlx1i * (0.5 * eta2 * shear)) * denom1;
+                        double t1 = zeta2 * div - rep;
+                        double t2 = eta2 * tension;
+                        double t12 = 0.5 * eta2 * shear;
+                        st.sig1[js] = (st.sig1[js] + arlx1i * t1) * denom1;
+                        st.sig2[js] = (st.sig2[js] + arlx1i * t2) * denom1;
+                        st.sig12[js] = (st.sig12[js] + arlx1i * t12) * denom1;
+                        double lag = Math.max(Math.abs(st.sig1[js] - t1),
+                                Math.max(Math.abs(st.sig2[js] - t2), Math.abs(st.sig12[js] - t12)))
+                                / (P + 1.0e-30);
+                        if (lag > LAST_MAX_STRESS_LAG) {
+                            LAST_MAX_STRESS_LAG = lag;
+                            LAST_MAX_STRESS_LAG_LAT = g.latAt(j) * 180.0 / Math.PI;
+                        }
                     }
                 }
                 for (int j = 1; j < ny - 1; j++) {
@@ -190,6 +202,11 @@ public final class IceDynamicsEVP {
             }
         }
     }
+
+    /** 诊断：最大弹性应力滞后（|σ_new − σ_target|/P，0 = 瞬时平衡）。last* 不进 A7。 */
+    public static double LAST_MAX_STRESS_LAG = 0.0;
+    /** 最大应力滞后所在纬度 [deg]。 */
+    public static double LAST_MAX_STRESS_LAG_LAT = Double.NaN;
 
     /** 诊断结果（不写状态）。 */
     public static final class Stats {

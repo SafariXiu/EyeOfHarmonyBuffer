@@ -48,6 +48,8 @@ public final class OceanConstants {
 
     /** 0 °C 出现海冰。 */
     public static final double T_ICE0 = 273.15;
+    /** Water thermal conductivity, material constant at 0 C (W/m/K). */
+    public static final double K_WATER = 0.56;
     /** 参考盐度冰点 K（FreezingPoint，S=35）。 */
     public static final double T_FREEZE = FreezingPoint.referenceKelvin();
     /** 冰反照率（Petoukhov et al. 2000 Table 1）。 */

@@ -32,8 +32,19 @@ public final class SphereSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double windStressZ(int x, int z, double theta) { return d.windStressZ(x, zw(z), theta); }
     @Override public double windU(int x, int z, double theta) { return d.windU(x, zw(z), theta); }
     @Override public double windV(int x, int z, double theta) { return d.windV(x, zw(z), theta); }
+    @Override public void advanceBoundaryLayer(int x, int z, double theta, double dt, double tsK, double qs) {
+        d.advanceBoundaryLayer(x, zw(z), theta, dt, tsK, qs);
+    }
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sst) { return d.netHeatFluxWm2(x, zw(z), theta, sst); }
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double ice) { return d.netHeatFluxWm2(x, zw(z), theta, sst, ice); }
+    @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double ice,
+                                           double hi, double hs) {
+        return d.netHeatFluxWm2(x, zw(z), theta, sst, ice, hi, hs);
+    }
+    @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double ice,
+                                           double hi, double hs, double pond) {
+        return d.netHeatFluxWm2(x, zw(z), theta, sst, ice, hi, hs, pond);
+    }
     @Override public double shortwaveWm2(int x, int z, double theta, double sst) { return d.shortwaveWm2(x, zw(z), theta, sst); }
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sst) { return d.freshwaterFluxKgM2S(x, zw(z), theta, sst); }
     @Override public double snowfallMperS(int x, int z, double theta) { return d.snowfallMperS(x, zw(z), theta); }

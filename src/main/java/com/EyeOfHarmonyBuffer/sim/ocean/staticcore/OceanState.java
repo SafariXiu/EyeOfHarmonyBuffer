@@ -36,8 +36,16 @@ public final class OceanState {
      * 雪面厚度 h_s = vsnow / max(aice, eps)。
      */
     public final double[] snowThickness;
+    /** 2026-11-22：CESM 融池面积（grid fraction，0..1）。 */
+    public final double[] meltPondArea;
+    /** 2026-11-22：CESM 融池深度 [m]。 */
+    public final double[] meltPondDepth;
+    /** 2026-11-21 D3：最近一次冰面能量平衡解出的冰面温度 [K]；NaN = 无冰/未算。 */
+    public final double[] iceSurfaceTemp;
     /** Standard 5-category ice thickness distribution (Phase 2c; unused by default). */
     public final IceThicknessDistribution itd;
+    /** Numerical floe-size distribution (area weights; Route B). */
+    public final FloeSizeDistribution fsd;
     /** EVP 冰速度（2D 格心，m/s）；Stage D2a 只建状态，默认不参与计算。 */
     public final double[] iceU;
     public final double[] iceV;
@@ -81,7 +89,12 @@ public final class OceanState {
         iceFraction = new double[grid.nx * grid.ny];
         iceThickness = new double[grid.nx * grid.ny];
         snowThickness = new double[grid.nx * grid.ny];
+        meltPondArea = new double[grid.nx * grid.ny];
+        meltPondDepth = new double[grid.nx * grid.ny];
+        iceSurfaceTemp = new double[grid.nx * grid.ny];
+        java.util.Arrays.fill(iceSurfaceTemp, Double.NaN);
         itd = new IceThicknessDistribution(grid);
+        fsd = new FloeSizeDistribution(grid);
         iceU = new double[grid.nx * grid.ny];
         iceV = new double[grid.nx * grid.ny];
         sig1 = new double[grid.nx * grid.ny];

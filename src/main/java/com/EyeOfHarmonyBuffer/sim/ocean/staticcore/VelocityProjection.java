@@ -26,6 +26,8 @@ package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
  */
 public final class VelocityProjection {
     public static double LAST_DIV_BEFORE = 0.0, LAST_DIV_AFTER = 0.0;
+    /** 2026-11-20（审计修复，**默认 ON**）：投影后逐行除去净经向体积输运（见 {@link #closeMeridional}）。 */
+    public static boolean CLOSE_MERIDIONAL = true;
     /** 面速度是否已被投影（divFlux/diagAdv 据此切换分支）。 */
     public static boolean FACES_READY = false;
     /** MAC X1 branch: default false; parent flux fixed, pressure gauge. */
@@ -1215,6 +1217,43 @@ public final class VelocityProjection {
         FACES_READY = true;
         return LAST_DIV_BEFORE;
     }
+    /**
+     * ★★★ 2026-11-20（审计修复，默认 ON）：**逐行除去净经向体积输运**。
+     *
+     * <p>投影的 v 修正是 `(pN − phi)/dy`（沿 y 的差分）；沿一整圈 x 求和 = `∂/∂y(Σφ)`，一般不为 0，
+     * 于是每个纬度圈被加进一条"全海盆一起往北/往南"的净输运（实测 +31.3° = +140.7 Sv）。
+     * 闭合海盆里它必须为 0（只能由 E−P 平衡，1e-4 Sv 量级）⟹ 这里把它的纬向平均扣掉。
+     *
+     * <p>纯约束、无新常数。同时在面速度 `vF` 上做同样的扣除，避免面/心不一致。
+     */
+    public static void closeMeridional(OceanGrid g, OceanState st) {
+        int nx = g.nx, ny = g.ny, nz = g.nz;
+        for (int j = 1; j < ny - 1; j++) {
+            double net = 0.0, area = 0.0;   // 体积输运 (m3/s) 与断面积 (m2) —— 必须按 dz 加权
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = g.wetLayers[j * nx + i];
+                for (int k = 0; k < wl; k++) {
+                    int qq = st.idx(i, j, k);
+                    if (!Double.isFinite(st.v[qq])) continue;
+                    net += st.v[qq] * g.dx * g.dz[k];
+                    area += g.dx * g.dz[k];
+                }
+            }
+            if (area <= 0.0) continue;
+            double vbar = net / area;
+            for (int i = 0; i < nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = g.wetLayers[j * nx + i];
+                for (int k = 0; k < wl; k++) {
+                    int qq = st.idx(i, j, k);
+                    if (Double.isFinite(st.v[qq])) st.v[qq] -= vbar;
+                    if (Double.isFinite(st.vF[qq])) st.vF[qq] -= vbar;
+                }
+            }
+        }
+    }
+
     public static double project(OceanGrid g, OceanState st, int maxIter) {
         if (OPEN_X && OPEN_PARENT != null) return OpenXMACBridge.project(g, st, OPEN_PARENT, maxIter, 1.0e-8);
         if (PROJECT_V2) return projectV2(g, st, maxIter);
@@ -1395,6 +1434,7 @@ public final class VelocityProjection {
         LAST_DIV_AFTER = maxDiv(g, st);
         LAST_CONVERGED = LAST_DIV_AFTER <= 1.0e-9;
         FACES_READY = true;
+        if (CLOSE_MERIDIONAL) closeMeridional(g, st);
         return LAST_DIV_BEFORE;
     }
 

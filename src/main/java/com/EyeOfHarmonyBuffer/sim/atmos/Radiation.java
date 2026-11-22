@@ -138,6 +138,11 @@ public final class Radiation {
     //   （关闭态的全量验收已通过 ✓：pass=8 / fail=0 ✓，见 待裁决/413 ✓）
     public static boolean SEA_ICE_ALBEDO_ON = true;
     /**
+     * ★ 2026-11-20（P3/D3 诊断，**不是物理**）：给海冰反照率额外减一个量（模拟融池的上限）。
+     * 默认 0 ⟹ 逐位不变。用途：扫出「反照率要降多少，极地冰才能有界」，给融池参数化定目标。
+     */
+    public static double ICE_ALB_DELTA = 0.0;
+    /**
      * 冰反照率的**温度过渡偏移**（K ✓）：`DTs = max(0, tSurfK - T_MELT_K)` ✓。
      * 出处：UCAR 484 **方程 (3)** 逐字「DTs = 0, Ts &lt; -1 degC ｜ = Ts + 1, Ts &gt; -1 degC」✓。
      */
@@ -211,7 +216,59 @@ public final class Radiation {
      * <p>⟹ 本常量【不再是「临时的臂」】，而是【生效的生产配置】。
      * 行内注释里「临时」二字已随之失效（保留原文只为溯源）。
      */
-    public static boolean ATM_REFLECT = true;    // ★ §7353 生产配置（2026-10-11 用户裁决：保持 true，依据见上）
+    public static boolean ATM_REFLECT = true;
+
+    /**
+     * ★ 2026-11-20（第③步）：**云的空间结构**。默认 false ⟹ 逐位不变。
+     *
+     * <p>现状：大气反射是**均匀**的 {@link #ALPHA_ATM}（=0.21，标定到地球行星反照率 0.30）。
+     * 打开后：按**本世界自己的降水**给云量，再乘到短波上：
+     * <pre>
+     *   cf = P / (P + P̄)          // P̄ = 本世界降水的面积加权平均（自算，随种子变）
+     *   asr *= (1 - cf * CLOUD_DA)
+     * </pre>
+     *
+     * <p>{@link #CLOUD_DA} 是唯一需要出处的常数：热带云辐射效应 −50～−60 W/m²，
+     * 按热带入射 ~450 W/m² 折算成反照率增量 **≈0.11**。
+     */
+    public static boolean CLOUD_ON = false;
+    /**
+     * 云相对晴空多反射的反照率增量（无量纲）—— **云区口径**。
+     *
+     * <p>推导：热带**云区**短波云辐射效应约 **−100 W/m²**、入射 ~450 W/m² ⟹ 反照率增量 ≈ **0.22**。
+     * 注意不能用区域平均的 −50 W/m²（那已含云量 cf）：公式里乘的就是 cf，所以这里必须是云区值。
+     * <p>校核：cf=0.5 时 0.5×0.22 ≈ 11% 短波削减 ≈ 50 W/m²，正好对上 0–10° 带的 +32～+50 W/m² 缺口。
+     */
+    public static final double CLOUD_DA = 0.22;
+    /**
+     * 云对**下行长波**的增量（W/m²，**云区**口径）。默认 0 ⟹ 逐位不变。
+     *
+     * <p>出处：北极云的长波云辐射效应约 **+25 W/m²（全天空）**、即云区约 **+50 W/m²**；
+     * 与短波的 −100 W/m² 相加，净 CRE 为负（与观测一致：北极云全年净冷却，但冬季增暖）。
+     */
+    public static double CLOUD_DLW = 0.0;
+
+    private static double precipMeanCache = Double.NaN;
+
+    /** 本世界降水的面积加权平均（mm/day）——粗采样、只算一次。 */
+    public static synchronized double precipMean() {
+        if (!Double.isNaN(precipMeanCache)) return precipMeanCache;
+        double sum = 0.0, w = 0.0;
+        for (double latD = -80.0; latD <= 80.0; latD += 20.0) {
+            double cw = Math.max(0.05, Math.cos(Math.toRadians(latD)));
+            for (double lonD = 0.0; lonD < 360.0; lonD += 45.0) {
+                int x = (int) Math.round(lonD / 360.0 * 40000000.0);
+                int z = (int) Math.round((90.0 - latD) / 180.0 * 20000000.0);
+                for (int s = 0; s < 2; s++) {
+                    double th = s * Math.PI;
+                    sum += PrecipField.mmPerDay(x, z, 0L, 160000, th, 500_000) * cw;
+                    w += cw;
+                }
+            }
+        }
+        precipMeanCache = w > 0 ? sum / w : 1.0;
+        return precipMeanCache;
+    }    // ★ §7353 生产配置（2026-10-11 用户裁决：保持 true，依据见上）
 
     /**
      * ★★★★★ **§7353：到达【地表】的短波（W/m²）—— 四处 {@code absSolar} 的【单源】。**
@@ -396,6 +453,10 @@ public final class Radiation {
         if (vis < ALB_SEA) vis = ALB_SEA;
         if (nir < ALB_SEA) nir = ALB_SEA;
         double cold = PART_VIS * vis + (1.0 - PART_VIS) * nir;
+        if (ICE_ALB_DELTA != 0.0) {
+            // 2026-11-20（诊断）：只在融化条件下生效（tSurfK 高于融化判据），模拟融池
+            if (ds > 0.0) cold = Math.max(ALB_SEA, cold - ICE_ALB_DELTA);
+        }
         return ALB_SEA + (cold - ALB_SEA) * fh;
     }
 

@@ -12,6 +12,15 @@ import com.EyeOfHarmonyBuffer.sim.ocean.SeaSurfaceForcing;
  * 这是稳态线性自由水面近似，不含时间步/重力波 CFL。
  */
 public final class SteadyFreeSurfaceSolver {
+    /**
+     * ★★★ 2026-11-20（审计修复，**默认 ON**）：free-surface 求解后**逐行除去净经向体积输运**。
+     *
+     * <p>为什么必须有：`dv = ∂φ/∂y` 加在每一层，而 `Σ_i dv_i = ∂/∂y(∮φ dx)` 一般不为 0，
+     * 会在每个纬度圈上造出一条全海盆的净输运（实测 +31.3° = +140.7 Sv）。闭合海盆里它必须为 0。
+     *
+     * <p>这不是新物理、没有新常数：只把 velocity 的纬向平均（= 那条假输运）扣掉。
+     */
+    public static boolean CLOSE_MERIDIONAL = true;
 
     public static final double RHO = 1027.8;
     public static final double G = 9.81;
@@ -102,6 +111,33 @@ public final class SteadyFreeSurfaceSolver {
                     int qq = st.idx(i, j, k);
                     st.u[qq] += du;
                     st.v[qq] += dv;
+                }
+            }
+        }
+        // ★★★ 2026-11-20（用户裁决：这是修复，默认 ON）：**经向体积闭合**。
+        //   本循环把 dv = ∂φ/∂y 加到每一层；沿一整圈 x 求和时 Σ_i dv_i = ∂/∂y(∮φ dx) 一般不为 0，
+        //   于是每个纬度圈都被加进一条「全海盆一起往北/往南」的净输运（实测 +31.3° 达 +140.7 Sv）。
+        //   闭合海盆里这条净输运必须为 0（只能由 E−P 平衡，量级 1e-4 Sv）⟹ 逐行扣掉它的纬向平均。
+        if (CLOSE_MERIDIONAL) {
+            for (int j = 1; j < ny - 1; j++) {
+                double net = 0.0, area = 0.0;
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    for (int k = 0; k < g.nz; k++) {
+                        int qq = st.idx(i, j, k);
+                        if (!Double.isFinite(st.v[qq])) continue;
+                        net += st.v[qq] * g.dx * g.dz[k];
+                        area += g.dx * g.dz[k];
+                    }
+                }
+                if (area <= 0.0) continue;
+                double vbar = net / area;
+                for (int i = 0; i < nx; i++) {
+                    if (!g.isWet(i, j)) continue;
+                    for (int k = 0; k < g.nz; k++) {
+                        int qq = st.idx(i, j, k);
+                        if (Double.isFinite(st.v[qq])) st.v[qq] -= vbar;
+                    }
                 }
             }
         }

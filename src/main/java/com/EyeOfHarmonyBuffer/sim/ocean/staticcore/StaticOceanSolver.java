@@ -45,6 +45,8 @@ public final class StaticOceanSolver {
      */
     public static boolean ICE_FRACTION_FROM_MEAN = Boolean.parseBoolean(
             System.getProperty("eoh.icefrommean", "true"));
+    /** Route B: annual iceFraction is an independent area mean; default off. */
+    public static boolean ROUTE_B_AREA_ON = false;
     /** 冷启动第一季的 Picard 次数（eta <-> T/S 耦合）。 */
     public static int PIC_FIRST = 2;
     /** 之后每季的 Picard 次数（热启动）。 */
@@ -59,7 +61,7 @@ public final class StaticOceanSolver {
      *      冰反照率正反馈再把整个海洋冻住。这是**真发现**，但默认不能跑成雪球。
      * ⟹ 默认 1 年；2+ 年作为诊断开关（SEASONAL_YEARS=2/3）。
      */
-    public static int SEASONAL_YEARS = 1;
+    public static int SEASONAL_YEARS = 20;   // ★ 2026-11-20 用户裁决：只当【上限】；收敛由判据决定（实测 14 年）
 
     /**
      * ★ 2026-11-17（B1）：深层稳态 —— 每年结束后，对 {@code zCenter >= DEEP_STEADY_Z0} 的层
@@ -165,6 +167,16 @@ public final class StaticOceanSolver {
     public static double SEASONAL_CONV_K = 0.05;
     /** ★ 2026-11-07（R3 诊断）：最近一次 solve 的年际 max|dT| 与实际跑了几年。 */
     public static double LAST_MAX_DT = 0.0;
+    /**
+     * ★ 2026-11-20（收敛判据，用户问题后的结论）：0 = 旧判据（逐点 maxDT < {@link #SEASONAL_CONV_K}）；
+     * 1 = **统计判据**：全球热含量年变化率 `|dH/H| < SEASONAL_CONV_REL`。
+     *
+     * <p>为什么需要：40 年实测（`NLONG40`）显示赤道海洋存在 **1.8–3.2 K 的年际振荡**（极限环），
+     * 逐点 `maxDT → 0` 永远不成立；但**全球热含量**是振荡不敏感的量，用它才能判定「统计稳态」。
+     */
+    public static int SEASONAL_CONV_MODE = 1;   // ★ 2026-11-20 用户裁决：生产用统计判据
+    /** 统计判据的相对阈值（每年 |dH/H|）。1e-4 对应全球热含量 1e4 年才翻倍量级。 */
+    public static double SEASONAL_CONV_REL = 1.0e-4;
     /** 年际 max|ΔT| 所在格点（q 索引；-1 = 未计算）。用于定位漂移源。 */
     public static int LAST_MAX_DT_Q = -1;
     /** 最近一年的逐格 |ΔT|（年际残差；诊断用）。 */
@@ -189,6 +201,8 @@ public final class StaticOceanSolver {
     public static double FP_RELAX = 0.5;
     public static double FP_RELAX_MIN = 0.05;
     public static double LAST_RESID_T = 0.0, LAST_RESID_S = 0.0;
+    /** 最近一年的全球热含量相对变化（{@link #SEASONAL_CONV_MODE}=1 时用）。 */
+    public static double LAST_CONV_REL = Double.NaN;
     /** Dimensionless year-over-year state residual: maxDT / annual amplitude. */
     public static double LAST_REL_DT = 0.0;
     public static int LAST_REL_DT_Q = -1;
@@ -309,6 +323,24 @@ public final class StaticOceanSolver {
         double[] surfaceT = fallback.clone();
 
         OceanState st = new OceanState(grid);
+        // ★ 2026-11-20（D1b/B1）：把本季 SST 的纬向梯度交给大气，供「沃克环流」自算赤道风。
+        //   直接读 st（不经过 SST_PROVIDER —— 求解时它是被抑制的，否则递归）。
+        if (Atmosphere.EQ_WALKER_ON) {
+            final OceanGrid gg = grid;
+            final OceanState ss = st;
+            Atmosphere.WALKER_PROVIDER = new Atmosphere.WalkerSstProvider() {
+                @Override public double dSstDxAt(int x, int z) {
+                    int i = gg.iOf(x), j = gg.jOf(z);
+                    if (!gg.isWet(i, j)) return 0.0;
+                    // 2026-11-20（D1b 标定步 1）：用 ±2 格的宽差分代替 ±1（纯数值平滑，无新常数）。
+                    int im = (i - 2 + 2 * gg.nx) % gg.nx, ip = (i + 2) % gg.nx;
+                    int q0 = ss.idx(i, j, 0);
+                    double tm = gg.isWet(im, j) ? ss.t[ss.idx(im, j, 0)] : ss.t[q0];
+                    double tp = gg.isWet(ip, j) ? ss.t[ss.idx(ip, j, 0)] : ss.t[q0];
+                    return (tp - tm) / (4.0 * gg.dx);
+                }
+            };
+        }
         // ★ 2026-11-11（深层收支仪器）：清零并算体积权重；ON=false 时只是几个空数组。
         DeepBudget.begin(grid);
         // 冷启动：★ 2026-11-02 修正输入 —— 深层不能也取表层气候值。
@@ -428,8 +460,10 @@ public final class StaticOceanSolver {
         double[] tSum = new double[n3], sSum = new double[n3];
         double[] tMinYear = new double[n3], tMaxYear = new double[n3];
         double[] hSum = new double[n2], etaSum = new double[n2], iceSum = new double[n2];
+        double[] iceAreaSum = new double[n2];
         double[] tMean = new double[n3], sMean = new double[n3], prevT = new double[n3], prevS = new double[n3];
         double[] hMean = new double[n2], etaMean = new double[n2], iceMean = new double[n2];
+        double[] iceAreaMean = new double[n2];
 
         AdvectionDiffusionSolver.Result adv = null;
         double sBudget = 0.0;
@@ -448,6 +482,7 @@ public final class StaticOceanSolver {
             java.util.Arrays.fill(hSum, 0.0);
             java.util.Arrays.fill(etaSum, 0.0);
             java.util.Arrays.fill(iceSum, 0.0);
+            java.util.Arrays.fill(iceAreaSum, 0.0);
             for (int si = 0; si < nseas; si++) {
                 double th = (nseas == 1) ? theta : (2.0 * Math.PI * si / nseas);
                 baro = BarotropicSolver.update(grid, st, periodic, th, parent);
@@ -462,6 +497,10 @@ public final class StaticOceanSolver {
                 int pics = (yr == 0 && si == 0) ? PIC_FIRST : PIC_WARM;
                 for (int pic = 0; pic < pics; pic++) {
                     if (FLUX_BOUNDARY_ON) {
+                        // ★★★ 2026-11-20（审计修复）：**平流之前**闭合经向输运 ⟹ 让 T/S 的输运用的是闭合速度场。
+                        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.CLOSE_MERIDIONAL) {
+                            com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.closeMeridional(grid, st);
+                        }
                         adv = AdvectionDiffusionSolver.solveFluxBoundary(grid, st, periodic, th,
                             advMaxIter, AdvectionDiffusionSolver.OUTER_MAX);
                         for (int j = 0; j < ny; j++)
@@ -538,6 +577,12 @@ public final class StaticOceanSolver {
                     }
                     System.out.println("SEASONH si=" + si + " hiLatH=" + (hn > 0 ? hh / hn : 0.0));
                 }
+                // ★★★ 2026-11-20（审计修复，默认 ON）：**季末恢复经向体积闭合**。
+                //   投影/free-surface 都会给每个纬度圈加进一条净经向输运（实测 +31.3° = +140.7 Sv）；
+                //   闭合海盆里它必须为 0 ⟹ 在本季所有速度修改之后逐行扣掉它的纬向平均。
+                if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.CLOSE_MERIDIONAL) {
+                    com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.closeMeridional(grid, st);
+                }
                 // ★ 2026-11-06：存下**本季**的表层 T（每年覆盖 ⇒ 最后年的值即收敛后的年循环）。
                 {
                     double[] snap = new double[n2];
@@ -568,6 +613,7 @@ public final class StaticOceanSolver {
                         hSum[js] += st.mixedLayerDepth[js];
                         etaSum[js] += st.eta[js];
                         iceSum[js] += st.iceThickness[js];
+                        iceAreaSum[js] += st.iceFraction[js];
                         for (int k = 0; k < nz; k++) {
                             int q = st.idx(i, j, k);
                             double tv = st.t[q];
@@ -586,6 +632,7 @@ public final class StaticOceanSolver {
                     hMean[js] = hSum[js] / nseas;
                     etaMean[js] = etaSum[js] / nseas;
                     iceMean[js] = iceSum[js] / nseas;
+                    iceAreaMean[js] = iceAreaSum[js] / nseas;
                     for (int k = 0; k < nz; k++) {
                         int q = st.idx(i, j, k);
                         tMean[q] = tSum[q] / nseas;
@@ -712,7 +759,9 @@ public final class StaticOceanSolver {
                         st.mixedLayerDepth[js] = hMean[js];
                         st.eta[js] = etaMean[js];
                         st.iceThickness[js] = iceMean[js];
-                        if (ICE_FRACTION_FROM_MEAN) {
+                        if (ROUTE_B_AREA_ON) {
+                            st.iceFraction[js] = Math.min(1.0, Math.max(0.0, iceAreaMean[js]));
+                        } else if (ICE_FRACTION_FROM_MEAN) {
                             st.iceFraction[js] = Math.min(1.0, Math.max(0.0, iceMean[js])
                                     / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
                         }
@@ -723,7 +772,16 @@ public final class StaticOceanSolver {
             }
             System.arraycopy(tMean, 0, prevT, 0, n3);
             System.arraycopy(sMean, 0, prevS, 0, n3);
-            if (yr > 0 && maxDT < SEASONAL_CONV_K && maxDS < 0.05) break;
+            boolean convPoint = maxDT < SEASONAL_CONV_K && maxDS < 0.05;
+            boolean convGlobal = false;
+            if (SEASONAL_CONV_MODE == 1 && YEAR_HEAT.size() >= 2) {
+                double h1 = YEAR_HEAT.get(YEAR_HEAT.size() - 1);
+                double h0 = YEAR_HEAT.get(YEAR_HEAT.size() - 2);
+                double rel = Math.abs(h1 - h0) / Math.max(1.0e-12, Math.abs(h1));
+                convGlobal = rel < SEASONAL_CONV_REL;
+                LAST_CONV_REL = rel;
+            }
+            if (yr > 0 && (SEASONAL_CONV_MODE == 1 ? convGlobal : convPoint)) break;
         }
 
         // 最后一年平均写入状态
@@ -736,13 +794,9 @@ public final class StaticOceanSolver {
                 // ★ 2026-11-14（C1b 回滚）：状态 = 年平均（与 T/S 同口径），否则 iceFraction 与冰厚不自洽（P484 实测 FAIL）。
                 //   年均不是「丢冰」：它是把耦合轨迹做年平均；真正的缺口是【融冰没记淡水 + 表面融冰没触发】（C1a/C0）。
                 st.iceThickness[js] = iceMean[js];
-                // ★ 2026-11-12（交接文档 §11.3 B1，用户批准）：冰分数与冰厚**统一到年平口径**。
-                //   原来 :519 把 iceThickness 换成年平，iceFraction 却停在**最后一季**
-                //   （它只在季节循环里被 min(1, iceThickness/H_ICE_REF) 覆写）⟹ 状态混两个时间口径，
-                //   而 Atmosphere.ICE_PROVIDER 读的正是 iceFraction。
-                //   实测影响（NICECAL，1 年，全湿格 6466）：只有 2 格不同（冰厚普遍 > H_ICE_REF=0.5 m
-                //   ⟹ 分数早已饱和成 1）⟹ 这是口径诚实性修复，不改积分。
-                if (ICE_FRACTION_FROM_MEAN) {
+                if (ROUTE_B_AREA_ON) {
+                    st.iceFraction[js] = Math.min(1.0, Math.max(0.0, iceAreaMean[js]));
+                } else if (ICE_FRACTION_FROM_MEAN) {
                     st.iceFraction[js] = Math.min(1.0, Math.max(0.0, iceMean[js])
                             / com.EyeOfHarmonyBuffer.sim.atmos.Radiation.H_ICE_REF);
                 }
@@ -794,6 +848,13 @@ public final class StaticOceanSolver {
         for (int j = 0; j < ny; j++)
             for (int i = 0; i < nx; i++)
                 if (grid.isWet(i, j)) surfaceT[j * nx + i] = st.t[st.idx(i, j, 0)];
+        // 2026-11-20（D1b/B1）：解完立刻撤掉沃克入口，避免影响后续世界侧调用。
+        Atmosphere.WALKER_PROVIDER = null;
+        // ★★★ 2026-11-20（审计修复，最后一道）：**返回前再闭合一次**。
+        //   季末那次会被之后某一步重写（待定位），这里保证**返回的状态**净经向输运为 0。
+        if (com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.CLOSE_MERIDIONAL) {
+            com.EyeOfHarmonyBuffer.sim.ocean.staticcore.VelocityProjection.closeMeridional(grid, st);
+        }
 
         // ★ 2026-11-04（A6）：键带网格身份（sphere/维度/bathyMask）——换网格不再命中旧解。
         OceanCacheKey key = OceanCacheKey.of(grid, worldSeed, landVersion, SOLVER_VERSION, season);

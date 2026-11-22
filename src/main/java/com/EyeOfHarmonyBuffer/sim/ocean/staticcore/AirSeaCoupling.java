@@ -130,6 +130,8 @@ public final class AirSeaCoupling {
         final int n2 = g.nx * g.ny;
         final double[] relT = new double[n2];
         final double[] relF = new double[n2];
+        final double[] relH = new double[n2];
+        final double[] relTs = new double[n2];
         final boolean[] wet = new boolean[n2];
         for (int j = 0; j < g.ny; j++)
             for (int i = 0; i < g.nx; i++) {
@@ -137,6 +139,8 @@ public final class AirSeaCoupling {
                 wet[js] = g.isWet(i, j);
                 relT[js] = wet[js] ? cur.surfaceT[js] : 0.0;
                 relF[js] = wet[js] ? Math.max(0.0, cur.state.iceFraction[js]) : 0.0;
+                relH[js] = wet[js] ? cur.state.iceActualThickness(i, j) : 0.0;
+                relTs[js] = wet[js] ? cur.state.iceSurfaceTemp[js] : Double.NaN;
             }
 
         final Result r = new Result();
@@ -164,7 +168,14 @@ public final class AirSeaCoupling {
                     int i = indexX(g, x), j = indexZ(g, z);
                     return g.isWet(i, j) ? fUsed[j * g.nx + i] : 0.0;
                 }
-                @Override public double iceThickness(int x, int z) { return 1.0; }
+                @Override public double iceThickness(int x, int z) {
+                    int i = indexX(g, x), j = indexZ(g, z);
+                    return g.isWet(i, j) ? relH[j * g.nx + i] : 0.0;
+                }
+                @Override public double iceSurfaceTemp(int x, int z) {
+                    int i = indexX(g, x), j = indexZ(g, z);
+                    return g.isWet(i, j) ? relTs[j * g.nx + i] : Double.NaN;
+                }
             };
             OceanSolution next = StaticOceanSolver.solve(grid, seed, forcing, theta, 1, season, advMaxIter);
 
@@ -198,6 +209,10 @@ public final class AirSeaCoupling {
             }
             for (int js = 0; js < n2; js++) {
                 if (!wet[js]) continue;
+                relH[js] = next.state.iceActualThickness(js % g.nx, js / g.nx);
+                if (Double.isFinite(next.state.iceSurfaceTemp[js])) {
+                    relTs[js] = next.state.iceSurfaceTemp[js];
+                }
                 double fNew = Math.max(0.0, next.state.iceFraction[js]);
                 relT[js] = (1.0 - ALPHA) * relT[js] + ALPHA * next.surfaceT[js];
                 if (ICE_LAG_ON) {

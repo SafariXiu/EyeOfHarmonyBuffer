@@ -253,6 +253,18 @@ public final class OceanGrid {
     public double xOf(int i) { return x0 + (i + 0.5) * dx; }
     public double zOf(int j) { return z0 + (j + 0.5) * dy; }
 
+    /** 世界坐标 → 列下标（x 周期回卷）。2026-11-20（D1b）：沃克风需要按 (x,z) 查 SST 梯度。 */
+    public int iOf(double x) {
+        int i = (int) Math.floor((x - x0) / dx);
+        i %= nx;
+        return i < 0 ? i + nx : i;
+    }
+    /** 世界坐标 → 行下标（z 夹边）。 */
+    public int jOf(double z) {
+        int j = (int) Math.floor((z - z0) / dy);
+        return Math.max(0, Math.min(ny - 1, j));
+    }
+
     /**
      * 行 j 的纬度（rad）。
      * <p>球面：+90°（z=0，北极）→ −90°（z=20,000 km，南极），单调；

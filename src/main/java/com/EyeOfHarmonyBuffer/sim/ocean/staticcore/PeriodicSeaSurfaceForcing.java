@@ -26,6 +26,9 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
     }
     @Override public double windU(int x, int z, double theta) { return delegate.windU(wrap(x), z, theta); }
     @Override public double windV(int x, int z, double theta) { return delegate.windV(wrap(x), z, theta); }
+    @Override public void advanceBoundaryLayer(int x, int z, double theta, double dt, double tsK, double qs) {
+        delegate.advanceBoundaryLayer(wrap(x), z, theta, dt, tsK, qs);
+    }
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sst) {
         return delegate.netHeatFluxWm2(wrap(x), z, theta, sst);
     }
@@ -35,6 +38,14 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
      */
     @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double iceFraction) {
         return delegate.netHeatFluxWm2(wrap(x), z, theta, sst, iceFraction);
+    }
+    @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double iceFraction,
+                                           double hi, double hs) {
+        return delegate.netHeatFluxWm2(wrap(x), z, theta, sst, iceFraction, hi, hs);
+    }
+    @Override public double netHeatFluxWm2(int x, int z, double theta, double sst, double iceFraction,
+                                           double hi, double hs, double pond) {
+        return delegate.netHeatFluxWm2(wrap(x), z, theta, sst, iceFraction, hi, hs, pond);
     }
     /**
      * ★ 2026-11-02 修复：{@code shortwaveWm2} 在接口里默认返回 0，而本类**没有覆盖**它 ⟹

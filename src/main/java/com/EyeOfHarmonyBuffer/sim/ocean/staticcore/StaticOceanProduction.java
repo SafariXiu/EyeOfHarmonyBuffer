@@ -132,6 +132,9 @@ public final class StaticOceanProduction {
         h = h * 31 + (StaticOceanSolver.FP_SOLVER_ON ? 1 : 0);
         h = h * 31 + Double.doubleToLongBits(StaticOceanSolver.FP_RELAX);
         h = h * 31 + Double.doubleToLongBits(StaticOceanSolver.SEASONAL_CONV_K);
+        // 2026-11-20（用户裁决）：自旋判据直接决定解到第几年 ⟹ 必须进缓存键。
+        h = h * 31 + StaticOceanSolver.SEASONAL_CONV_MODE;
+        h = h * 31 + Double.doubleToLongBits(StaticOceanSolver.SEASONAL_CONV_REL);
         h = h * 31 + Double.doubleToLongBits(COUPLING_ALPHA);
         // ★ 2026-11-07：默认关时哈希值不变（N5：不只是不走分支，指纹也零变化）。
         if (AdvectionDiffusionSolver.EKMAN_UPWELL_ON) h = h * 31 + 1;
@@ -143,11 +146,22 @@ public final class StaticOceanProduction {
         // ★ 2026-11-12（交接文档 §5.2）：A_H 进动量平衡会改解；关时哈希不变（N5）。
         //   开时连带着 Smagorinsky 系数与迭代上限一起折进去（它们都会改解）。
         // ★ 2026-11-12（B1）：冰分数改年平口径会改**世界输出** ⟹ 无条件折进指纹（A3-⑤）。
-        h = h * 31 + (StaticOceanSolver.ICE_FRACTION_FROM_MEAN ? 1 : 0);
+        h = h * 31 + (StaticOceanSolver.ROUTE_B_AREA_ON ? 2
+                : (StaticOceanSolver.ICE_FRACTION_FROM_MEAN ? 1 : 0));
+        // 2026-11-20（D1b/B2′）：gate 形状直接改热带风场 ⟹ 无条件进指纹。
+        h = h * 31 + Atmosphere.TROPIC_GATE_MODE;
+        // 2026-11-20（审计修复）：经向闭合会改整条速度场 ⟹ 必须进缓存键。
+        h = h * 31 + (VelocityProjection.CLOSE_MERIDIONAL ? 1 : 0);
+        // D1b：沃克赤道风（默认关 ⟹ 哈希不变，N5）。
+        if (Atmosphere.EQ_WALKER_ON) h = h * 31 + 1;
         // P3：冰输运 x 开边界（默认关 ⟹ 哈希不变，N5）。
         if (AdvectionDiffusionSolver.ICE_OPEN_X) h = h * 31 + 1;
         // P2：耦合表面步（默认关 ⟹ 哈希不变，N5）。
         if (AdvectionDiffusionSolver.SURFACE_FLUX_COUPLED) h = h * 31 + 1;
+        // 2026-11-21（#4 B）：冰面能量平衡/融冰，以及它依赖的底部导热记账；
+        // 默认关 ⟹ 哈希不变（N5）。
+        if (AdvectionDiffusionSolver.ICE_BASE_CONDUCTION_TO_WATER) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.ICE_SURFACE_MELT_ON) h = h * 31 + 1;
         // Stage F：KPP 默认关时哈希不变。
         if (KppBoundaryLayer.ON) h = h * 31 + 0x4B5050L;
         // ★ 2026-11-17（海冰 Stage A）：默认关时哈希不变（A3-④/A3-⑤）。
@@ -161,6 +175,20 @@ public final class StaticOceanProduction {
             h = h * 31 + 1;
             h = h * 31 + Double.doubleToLongBits(AdvectionDiffusionSolver.ICE_DYN_DT);
         }
+        if (AdvectionDiffusionSolver.ICE_DYN_TRANSPORT_SUBCYCLE) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.ICE_TRANSPORT_REMAP_ON) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.ICE_OPEN_WATER_ON) h = h * 31 + 1;
+        if (AdvectionDiffusionSolver.MELT_POND_CESM_ON) h = h * 31 + 1;
+        if (com.EyeOfHarmonyBuffer.sim.ocean.DiagnosticSeaSurfaceForcing.ATMOS_ABL_1D_ON) {
+            h = h * 31 + 1;
+        }
+        if (AdvectionDiffusionSolver.D3_ICE_ATMOS_ON) h = h * 31 + 1;
+        if (com.EyeOfHarmonyBuffer.sim.ocean.DiagnosticSeaSurfaceForcing.D3_SNOW_ALBEDO_ON) {
+            h = h * 31 + 1;
+        }
+        // 2026-11-21（#4 步骤②）：ITD remap/ridging 默认关 ⟹ 哈希不变（N5）。
+        if (IceThicknessDistribution.ITD_REMAP_ON) h = h * 31 + 1;
+        if (IceThicknessDistribution.RIDGING_ON) h = h * 31 + 1;
         if (AdvectionDiffusionSolver.ICE_TRANSPORT_ON) {
             h = h * 31 + 1;
             if (AdvectionDiffusionSolver.ICE_WIND_DRIFT_ON) {
@@ -182,7 +210,8 @@ public final class StaticOceanProduction {
         // ★ 2026-11-18（B-C 拆分 / T2）：气压带 B 与纬向平均风表直接决定海表风与 chv ⟹ 必然改解。
         //   无条件折进：它们改了物理（不是"默认关的新开关"），旧解必须失效。
         h = h * 31 + (Atmosphere.BELT_KC_SPLIT ? 1 : 0);
-        h = h * 31 + (Atmosphere.UZM_TABLE_ON ? 1 : 0);
+        // 2026-11-20（D1）：外生 U_zm 风表已从风场删除（开关一并删除）⟹ 本项只保留常数位。
+        h = h * 31 + 0;
         // ★ 2026-11-11（用户裁决甲）：V2 投影（连续性积分 w + 2D 输运泊松 + 自由面 w）会改解。
         h = h * 31 + (VelocityProjection.PROJECT_V2 ? 1 : 0);
         h = h * 31 + (VelocityProjection.FREE_SURFACE_W ? 1 : 0);
@@ -337,9 +366,18 @@ public final class StaticOceanProduction {
             Atmosphere.ICE_PROVIDER = new Atmosphere.IceProvider() {
                 @Override public double iceFraction(int x, int z) { return iceAt(s, x, z, false); }
                 @Override public double iceThickness(int x, int z) { return iceAt(s, x, z, true); }
+                @Override public double iceSurfaceTemp(int x, int z) { return iceTempAt(s, x, z); }
             };
         }
         return sol;
+    }
+
+    private static double iceTempAt(OceanSolution s, int x, int z) {
+        if (REGION_ON) return Double.NaN;
+        OceanGrid g = s.state.grid;
+        int i = indexX(g, x), j = indexZ(g, z);
+        if (!g.isWet(i, j)) return Double.NaN;
+        return s.state.iceSurfaceTemp[j * g.nx + i];
     }
 
     private static double iceAt(OceanSolution s, int x, int z, boolean thickness) {
@@ -348,7 +386,11 @@ public final class StaticOceanProduction {
         int i = indexX(g, x), j = indexZ(g, z);
         if (!g.isWet(i, j)) return 0.0;
         int js = j * g.nx + i;
-        return thickness ? s.state.iceThickness[js] : s.state.iceFraction[js];
+        if (thickness) {
+            double a = s.state.iceFraction[js];
+            return a > 1.0e-6 ? s.state.iceThickness[js] / a : 0.0;
+        }
+        return s.state.iceFraction[js];
     }
 
     /**

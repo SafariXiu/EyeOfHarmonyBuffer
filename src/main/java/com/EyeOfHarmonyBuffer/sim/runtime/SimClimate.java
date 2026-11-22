@@ -1037,10 +1037,10 @@ public final class SimClimate {
         if (Atmosphere.BELT_KC_SPLIT) {
             h = h * 31 + 0x7A1B0L;
         }
-        // 2026-11-18 (own pressure field owns the zonal-mean wind): fold only when the table is OFF.
-        if (!Atmosphere.UZM_TABLE_ON) {
-            h = h * 31 + 0x7A1C0L;
-        }
+        // 2026-11-20 (D1): the external U_zm table is gone, so the own-pressure-field arm is the only one left.
+        h = h * 31 + 0x7A1C0L;
+        // 2026-11-20 (D1b/B2'): the tropic gate shape changes the tropical wind field.
+        h = h * 31 + Atmosphere.TROPIC_GATE_MODE;
         return h;
     }
 

@@ -258,9 +258,15 @@ public final class Atmosphere {
             double gt = cd * Math.hypot(u, v) / H_BL;
             gam = Math.sqrt(g0 * g0 + gt * gt);
         }
-        // §83：不再用「整体平移 6 度」，改成观测的 1 月/7 月两表 + 按 cos(Theta) 季节插值。
-        // 「洋盆尺度纬向风骨架」：SEA_ONLY_UZM=false 时与原行逐位不变；打开时按 κ 混入洋面口径表。
-        if (UZM_TABLE_ON) u += ZonalTables.uZmBlend(Math.toDegrees(latRad), theta, kappa);
+        // 2026-11-20（D1b 诊断臂）：赤道带 ±15° 的诊断背景纬向风（默认 0 ⟹ 不执行）。
+        if (EQ_WIND_UG_MS != 0.0) {
+            double latD = Math.toDegrees(latRad);
+            double arg = Math.min(1.0, Math.abs(latD) / 15.0) * Math.PI / 2.0;
+            u += EQ_WIND_UG_MS * Math.cos(arg);
+        }
+        // ★ 2026-11-20（用户裁决 D1）：**外生纬向平均风表不再进风场**（原 UZM_TABLE_ON 臂已删除）。
+        //   本世界的纬向平均风必须由模型自己的气压场 / Hadley 环流给出；
+        //   外生表只保留在 PrecipField 的 stormGate（850 hPa 纬向风）里，待 D1c 一并自算。
         // ★ 2026-10-20（EDDY_WIND）：**故意不在这里加**。P442 测的是纬向平均 τx 的 curl 符号，
         //   纬向均匀的涡动风会在其经向梯度处翻转 curl（60/65° 实测 FAIL）。
         //   EDDY_WIND 只作用于【海洋强迫】（OceanForcing / 海洋 τx），不改大气风场 ⟹ 门中性。
@@ -298,7 +304,8 @@ public final class Atmosphere {
             double gt = cd * Math.hypot(u, v) / H_BL;
             gam = Math.sqrt(g0 * g0 + gt * gt);
         }
-        double uZm = ZonalTables.uZmBlend(Math.toDegrees(lat), theta, kappa);
+        // 2026-11-20（D1）：外生风表已从风场删除 ⟹ 诊断里的 uZm 恒为 0（保留数组长度给探针）。
+        double uZm = 0.0;
         return new double[]{px, pz, f, g0, gam, u, v, uZm, u + uZm};
     }
 
@@ -321,6 +328,25 @@ public final class Atmosphere {
                    - pressureAnomaly(x - gradStep, z, seed, cell, theta)) / (2.0 * gradStep);
         double pz = (pressureAnomaly(x, z + gradStep, seed, cell, theta)
                    - pressureAnomaly(x, z - gradStep, seed, cell, theta)) / (2.0 * gradStep);
+        // ★★ 2026-11-20（D1b，用户批准的组合架构）：沃克环流作为**气压源**进 p'，
+        //   与热力距平、海陆气压带一起被**同一个 Ekman 解**消费 ⟹ 结构上不可能双计、
+        //   不需要单独的风项、也不需要为它绕过缓存。
+        //   Δp = ρ·g·H_EFF·ΔSST/T0 ⟹ ∂p/∂x = (ρ·g·H_EFF/T0)·∂SST/∂x。
+        if (EQ_WALKER_ON) {
+            WalkerSstProvider p = WALKER_PROVIDER;
+            if (p != null) {
+                double latD = Math.toDegrees(WorldContract.latOf(z));
+                if (Math.abs(latD) < 30.0) {
+                    double dTdx = p.dSstDxAt(x, z);
+                    if (Double.isFinite(dTdx)) {
+                        double taper = Math.cos(Math.abs(latD) / 30.0 * Math.PI / 2.0);
+                        px += (RHO_AIR * WorldContract.GRAVITY * H_EFF / T0) * dTdx * taper;
+                        WALKER_CALLS++;
+                        WALKER_UMAX = Math.max(WALKER_UMAX, Math.abs(px));
+                    }
+                }
+            }
+        }
         double[] out = wind(px, pz, kappaMemo(x, z, seed, cell), WorldContract.latOf(z), theta);
         if (COAST_WIND_ON) out[1] += coastalAlongshoreV(x, z, seed, cell);
         return out;
@@ -1029,6 +1055,8 @@ public final class Atmosphere {
     public interface IceProvider {
         double iceFraction(int x, int z);
         double iceThickness(int x, int z);
+        /** 2026-11-21 D3：冰面温度 [K]；默认 NaN = 未提供。 */
+        default double iceSurfaceTemp(int x, int z) { return Double.NaN; }
     }
     public static volatile IceProvider ICE_PROVIDER = null;
 
@@ -1245,11 +1273,68 @@ public final class Atmosphere {
      */
     public static double CELL_TROPIC_GATE_DEG = 30.0;
 
+    /**
+     * ★ 2026-11-20（D1b 诊断，**不是物理开关**）：cell 项赤道门控的形状。
+     *
+     * <p>0 = smoothstep（默认，逐位不变）；1 = 线性；2 = 不门控。
+     * <p>为什么需要它：赤道风为零的直接原因是门控把 {@code ∂p′/∂x} 钳到 0；
+     * 但本类注释也写明「赤道槽不是海陆热力对比造成的、且符号相反」⟹ 放开它会注入**反号**气压梯度。
+     * 本开关只为把这三档的**量级**量出来（诊断臂），默认 0。
+     */
+    public static int TROPIC_GATE_MODE = 6;   // ★ 2026-11-20 生产默认：世界自算 gate（见 tropicGate）
+
     /** cell 项的赤道侧连续权重（smoothstep，见 CELL_TROPIC_GATE_DEG）。 */
     public static double tropicGate(double latRad) {
         double t = clamp01(Math.toDegrees(Math.abs(latRad)) / CELL_TROPIC_GATE_DEG);
+        if (TROPIC_GATE_MODE == 2) return 1.0;
+        if (TROPIC_GATE_MODE == 1) return t;
+        if (TROPIC_GATE_MODE == 6) {
+            // ★ 2026-11-20（D1b 备选，**世界自算、无新常数**）：赤道值取本纬度的纬向平均陆地占比。
+            //   理由：gate 原本把「海陆热力对比」这条驱动在赤道压成 0；而驱动强度应当正比于
+            //   **该纬度有多少陆地能与海洋形成对比** ⟹ 用 kbarRef(φ)（本世界的纬向平均陆地占比）。
+            //   赤道 kbarRef≈0.24（实测 kMean=0.24）、30° 以上 → 1，两端自动对上。
+            // 种子无关：没有世界种子时**不回退地球表**，退回旧的 smoothstep（宁可不改，也不用地表）。
+            if (!com.EyeOfHarmonyBuffer.sim2.land.ZonalLandProfile.hasSeed()) {
+                return t * t * (3.0 - 2.0 * t);
+            }
+            double kb = clamp01(kbarRef(latRad));
+            return kb + (1.0 - kb) * (t * t * (3.0 - 2.0 * t));
+        }
+        if (TROPIC_GATE_MODE >= 3) {
+            // 2026-11-20（D1b 形状族，诊断）：赤道值 a、30° 处到 1 的连续偶函数；
+            //   一阶导在赤道为 0（无 kink）⟹ 不会产生气压跳变，只是不再把中枢压平。
+            double a = TROPIC_GATE_MODE == 3 ? 0.1 : (TROPIC_GATE_MODE == 4 ? 0.3 : 0.5);
+            return a + (1.0 - a) * (t * t * (3.0 - 2.0 * t));
+        }
         return t * t * (3.0 - 2.0 * t);
     }
+
+    /**
+     * ★ 2026-11-20（D1b 诊断，**不是物理量**）：赤道带 ±15° 的**诊断背景纬向风**（m/s，负 = 东风）。
+     *
+     * <p>默认 0.0 ⟹ 逐位不变。用途只有一个：量出「赤道到底需要多大风」才能把热带表面通量做平，
+     * 作为自算方案（Walker / 角动量）的目标值。**不得当作生产物理量。**
+     */
+    public static double EQ_WIND_UG_MS = 0.0;
+    /**
+     * ★★★ <b>2026-11-20（D1b 用户裁决 B1）：自算赤道风 = 沃克环流。</b>默认 <b>false</b> ⟹ 逐位不变。
+     *
+     * <p>原理（无新常数）：热带海表的纬向温差 ⟹ 静力气压差
+     * {@code dp = rho*g*H_EFF*dT/T0} ⟹ 线性拖曳平衡 {@code u = -(1/(rho*gamma)) dp/dx}
+     * 合并为 {@code u_W = -(g*H_EFF/(gamma*T0)) * dSST/dx}。
+     *
+     * <p>SST 梯度由海洋求解器每季提供（{@link #WALKER_PROVIDER}）——**不能用 SST_PROVIDER**：
+     * 海洋求解时它是被抑制的（防递归）。
+     */
+    public static boolean EQ_WALKER_ON = false;
+    /** 海洋 → 大气：本季 SST 的纬向梯度 dT/dx（K/m）。null = 不提供。 */
+    public interface WalkerSstProvider {
+        double dSstDxAt(int x, int z);
+    }
+    public static volatile WalkerSstProvider WALKER_PROVIDER = null;
+    /** 诊断：沃克分支被调用次数 / 最大 |u_W|（m/s）。 */
+    public static long WALKER_CALLS = 0L;
+    public static double WALKER_UMAX = 0.0;
 
     /**
      * 环流侧（§405）：cellPressure 的季节位相改由模型自己的陆海温差驱动。
@@ -1493,26 +1578,10 @@ public final class Atmosphere {
      *
      * <p>折进 {@code SimClimate.configStamp()}，但**只在 true 时**（N5：关时指纹零变化）。
      *
-     * <p>★ <b>2026-11-18 用户裁决：采用 T2 臂，本开关默认 true</b>，同时
-     * {@link #UZM_TABLE_ON} 默认 false（停用外生风表）。两行一起才是 T2；
-     * 单独打开本开关而保留风表 = T1 = **重复计数**（NBELT 实测 4.94 vs 3.39+2.50）。
+     * <p>★ <b>2026-11-18 用户裁决：采用 T2 臂，本开关默认 true</b>；2026-11-20（D1）外生 U_zm
+     * 风表已整体删除，所以 T2 只剩本开关这一支。历史上「带 + 表」= 重复计数（NBELT 4.94 vs 3.39+2.50）。
      */
     public static boolean BELT_KC_SPLIT = true;   // ★ 2026-11-18 用户裁决（T2）：默认打开
-    /**
-     * ★ 2026-11-18（B-C 拆分配套）：是否保留**外生纬向平均风表** {@code ZonalTables.uZmBlend}。
-     *
-     * <p>true（默认 = 历史行为，逐位不变）：`u += uZmBlend(φ,θ,κ)`。
-     * <p>false：`u` 只由热力距平 p′ 的 Ekman 解给出 —— 即用户裁决的
-     * <b>「本世界气压场拥有纬向平均风」</b>。
-     *
-     * <p><b>为什么必须成对出现</b>（NBELT 实测，seed 0，全球面积加权 V）：
-     * 关表单独 = 1.88、开表单独 = 3.39、带单独 = 4.39、两者都开 = 4.94 ⟹
-     * 4.39+3.39−1.88 = 5.90 > 4.94 ⟹ **它们给的是同一份纬向平均风，叠加即重复计数**。
-     * 表本身在 {@code ZonalTables:45-56} 已被声明为「涡旋观测替身，不是本模型算出的物理」。
-     *
-     * <p>折进 {@code SimClimate.configStamp()}，只在 **false** 时（N5：默认值下指纹零变化）。
-     */
-    public static boolean UZM_TABLE_ON = false;   // ★ 2026-11-18 用户裁决（T2）：气压场拥有纬向平均风
     /** 干暖项里取 beta 用的差分步长（与生产同口径）。 */
     public static int SOIL_GRAD_STEP = (int) Math.round(500_000 / WorldContract.PLANET_SCALE);   // ★ 地球量级 500 km；旧小世界 = 12,500
 
@@ -1547,7 +1616,8 @@ public final class Atmosphere {
             //   （实测 P611 第一版 JAVA_EXIT=1，就是这个）。
             //   改用模型已有的【纬向平均风表】作为大尺度风速 —— 零递归、零新常数。
             //   省略了经向分量与瞬变风，属于已文档化的近似。
-            double sp = Math.abs(ZonalTables.uZmBlend(Math.toDegrees(lat), theta, k));
+            // 2026-11-20（D1）：uZmBlend 已删除，这里用同一份 850 hPa 表的 uZm（本支默认关）。
+            double sp = Math.abs(ZonalTables.uZm(Math.toDegrees(lat), theta));
             double chv = Radiation.bulkCoeff(k, sp);
             double lePot = chv * Radiation.LV * Math.max(0.0, PrecipField.qSat(ta) - qa);
             double dq = (PrecipField.qSat(ta + 1.0) - PrecipField.qSat(ta - 1.0)) / 2.0;

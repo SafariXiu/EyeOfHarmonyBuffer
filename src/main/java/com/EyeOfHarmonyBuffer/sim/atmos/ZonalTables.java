@@ -592,31 +592,24 @@ public final class ZonalTables {
 
     // ================= 「洋盆尺度纬向风骨架」：洋面口径的纬向风两表 =================
 
-    /**
-     * **洋面 10 m 纬向平均纬向风（m/s，正 = 西风）—— 1 月表**，5 度间隔（0..90）。
-     *
-     * <p>来源与 A_LAND_K 同一批 ERA5 取数（只取海洋格点，海陆掩膜由 sst 缺测标记构造）的 10 m 纬向风。
-     *
-     * <p><b>为什么需要它</b>：U_ZM_JAN 是**全球（含陆地）850 hPa** 的纬向平均，
-     * 而海洋的表面风应力是由**洋面上的 10 m 风**驱动的。两者差别很大：
-     * 20 度 1 月 -2.4（全球 850）vs -4.56（洋面 10 m）；60 度 -0.10（洋面）vs +2.3（全球 850）。
-     * 用全球 850 的纬向平均去驱动海洋，等于把「洋盆尺度的纬向风骨架」换成了「全球平均」。
-     *
-     * <p>0 度两项取算术平均 -2.47、90 度取 0：理由同 U_ZM_JAN ——
-     * 半球相位在 lat=0 翻转，两表不等会在赤道造成风速硬跳变（§82 的教训）。
-     */
-    public static final double[] U_SEA_JAN = {
-        -2.47, -3.64, -5.88, -5.86, -4.56, -1.50, 2.27, 4.13, 4.37, 3.44, 1.68, 0.24, -0.10, 0.06, 0.78, 0.40, 0.47, 0.69, 0.00
-    };
-    /** 同上的 **7 月表**（单位/来源/0 度与 90 度约定同 U_SEA_JAN）。 */
-    public static final double[] U_SEA_JUL = {
-        -2.47, 0.11, -0.35, -2.58, -3.51, -3.98, -2.15, 0.03, 1.08, 2.04, 2.73, 1.48, 0.47, -0.33, -0.33, 0.23, 0.66, 0.84, 0.00
-    };
+    // ★ 2026-11-20（D1 用户裁决）：**洋面 10 m 纬向风表（U_SEA_*）与「洋盆尺度纬向风骨架」
+    //   （uZmSea / uZmBlend / SEA_ONLY_UZM）已整体删除** —— 它们只服务于【外生纬向风】那条路，
+    //   而那条路已按 D1 改成「由本世界气压场 / Hadley 环流自算」。
+    //   850 hPa 的 U_ZM_* 表暂时保留：PrecipField.stormGate 用它定位风暴轴（D1c 再自算）。
 
     /**
-     * 开关：**是否用「洋面口径」的 u_zm**。
-     * false = 原行为（全球 850 hPa 单表），逐位不变；true（默认）= 按大陆度 κ 在两套表之间**连续**插值。
+     * @deprecated 2026-11-20（D1）：洋面 10 m 风表已删除，**生产风场不再调用本方法**。
+     * 仅为历史探针（NBELT / NWIND* / P442 / P456 …）保留编译兼容，统一退化为 850 hPa 的 uZm。
      */
+    @Deprecated
+    public static double uZmBlend(double latDeg, double theta, double kappa) { return uZm(latDeg, theta); }
+
+    /** @deprecated 同上：仅为历史探针保留，等价于 uZm。 */
+    @Deprecated
+    public static double uZmSea(double latDeg, double theta) { return uZm(latDeg, theta); }
+
+    /** @deprecated 已无物理含义（洋面表删除）；历史探针仍会读写它。 */
+    @Deprecated
     public static boolean SEA_ONLY_UZM = true;
 
     /** 5 度间隔表的线性插值（|lat|，超界取端点）。 */
@@ -628,24 +621,6 @@ public final class ZonalTables {
         if (i >= tab.length - 1) return tab[tab.length - 1];
         double t = f - i;
         return tab[i] * (1.0 - t) + tab[i + 1] * t;
-    }
-
-    /** 洋面口径的季节插值（与 uZm 同一相位约定）。 */
-    public static double uZmSea(double latDeg, double theta) {
-        double uj = WIND_ASYM ? interp37(U_SEA_JAN_ASYM, latDeg) : interp5(U_SEA_JAN, latDeg);
-        double ul = WIND_ASYM ? interp37(U_SEA_JUL_ASYM, latDeg) : interp5(U_SEA_JUL, latDeg);
-        double hemi = latDeg >= 0.0 ? 1.0 : -1.0;
-        return 0.5 * (uj + ul) + 0.5 * (ul - uj) * Math.cos(theta) * hemi;
-    }
-
-    /**
-     * **洋盆尺度纬向风骨架**：按大陆度 κ 在「洋面 10 m 表」与「全球 850 hPa 表」之间连续插值。
-     * κ=0（深海）取洋面表、κ=1（内陆）取原表；COAST_BLEND 尺度上连续，无阈值。
-     */
-    public static double uZmBlend(double latDeg, double theta, double kappa) {
-        if (!SEA_ONLY_UZM) return uZm(latDeg, theta);
-        double c = kappa < 0 ? 0 : (kappa > 1 ? 1 : kappa);
-        return uZmSea(latDeg, theta) * (1.0 - c) + uZm(latDeg, theta) * c;
     }
 
 
