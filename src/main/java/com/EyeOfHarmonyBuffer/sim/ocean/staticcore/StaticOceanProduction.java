@@ -338,6 +338,9 @@ public final class StaticOceanProduction {
                 sol = cr.solution;
             } else {
                 sol = StaticOceanSolver.solve(grid, worldSeed, f, 0.0, 1, 0, 5000);
+                // ★ 2026-11-23（D1 验收③）：全球解末尾解一次深层平衡（DEEP_EQ_ON 控制）。
+                //   一次/世界种子（不按区域重复），结果随缓存落盘。
+                AnnualMap.applyDeepEquilibrium(grid, worldSeed, f, sol.state);
             }
             seed = worldSeed;
             flagsHash = fh;      // ★ 2026-11-06：缓存键含开关指纹

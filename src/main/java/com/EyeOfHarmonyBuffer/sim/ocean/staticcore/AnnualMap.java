@@ -91,4 +91,32 @@ public final class AnnualMap {
         for (int i = 0; i < nT; i++) m = Math.max(m, Math.abs(mx[i] - x[i]));
         return m;
     }
+
+    /**
+     * ★ 2026-11-23（D1 验收③）：世界生成时解一次深层平衡并把偏移套到状态上。
+     * 只在 {@link SteadyOperator3D#DEEP_EQ_ON} 时生效；内部跑 7 张 map，
+     * 会保存/恢复 MAP_* 全局量，可安全地在其它求解结束后调用。
+     *
+     * @return 施加的均匀偏移 S* [K]（关闭时返回 0）
+     */
+    public static double applyDeepEquilibrium(OceanGrid g, int worldSeed, SeaSurfaceForcing f, OceanState st) {
+        if (!SteadyOperator3D.DEEP_EQ_ON) return 0.0;
+        OceanState savedSeed = StaticOceanSolver.MAP_SEED;
+        java.util.List<OceanState> savedCap = StaticOceanSolver.MAP_CAPTURE;
+        java.util.List<OceanState> savedSeasons = StaticOceanSolver.MAP_SEASON_CAPTURE;
+        boolean savedSnap = StaticOceanSolver.SEASON_SNAP_ON;
+        int savedYears = StaticOceanSolver.SEASONAL_YEARS;
+        try {
+            double[] packed = pack(st);
+            double s = SteadyOperator3D.solveDeepEquilibrium(g, packed, worldSeed, f);
+            unpack(SteadyOperator3D.withDeepOffset(g, packed, s), st);
+            return s;
+        } finally {
+            StaticOceanSolver.MAP_SEED = savedSeed;
+            StaticOceanSolver.MAP_CAPTURE = savedCap;
+            StaticOceanSolver.MAP_SEASON_CAPTURE = savedSeasons;
+            StaticOceanSolver.SEASON_SNAP_ON = savedSnap;
+            StaticOceanSolver.SEASONAL_YEARS = savedYears;
+        }
+    }
 }
