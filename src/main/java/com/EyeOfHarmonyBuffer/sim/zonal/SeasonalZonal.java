@@ -123,6 +123,15 @@ public final class SeasonalZonal {
         VerticalColumn.FIXED_TS = true;
         double[] f = new double[NL];
         double[] mfcStep = new double[NL];
+        // ★ 2026-11-22（C 项，并行）：这几个结果数组原来在第一个线程里**懒分配**，
+        //   并行后会有「两个线程各分配一份、写到被丢弃的那份」的竞态 ⟹ 提前分配。
+        //   （只在最后一年写，值不受影响。）
+        if (r.pMmDay == null) r.pMmDay = new double[NL][stepsPerYear];
+        if (r.eMmDay == null) r.eMmDay = new double[NL][stepsPerYear];
+        if (r.wBudgetMmDay == null) r.wBudgetMmDay = new double[NL][stepsPerYear];
+        if (r.wKgM2 == null) r.wKgM2 = new double[NL][stepsPerYear];
+        if (r.wStateKgM2 == null) r.wStateKgM2 = new double[NL][stepsPerYear];
+        if (r.tMean == null) r.tMean = new double[NL][VerticalColumn.N];
         double wgtSum = 0.0;
         for (int i = 0; i < NL; i++) wgtSum += Math.cos(Math.toRadians(r.latDeg[i]));
         int k850 = 0;
@@ -135,44 +144,23 @@ public final class SeasonalZonal {
             for (int j = 0; j < stepsPerYear; j++) {
                 double theta = 2.0 * Math.PI * j / stepsPerYear;
                 double dec = 0.409 * Math.cos(theta);
+                // ★ 2026-11-22（C 项，并行）：19 个纬度**相互独立**（扩散与 MFC 都在本步之后串行应用）
+                //   ⟹ 并行不改变任何一列的算术顺序 ⟹ 结果逐位一致（已用状态哈希验证）。
+                //   反照率改用**实例级覆盖**（c.albedoOverride），否则线程间会互相踩静态 ALBEDO。
+                final int yF = y, jF = j;
+                final double decF = dec;
                 for (int i = 0; i < NL; i++) {
-                    VerticalColumn c = cols[i];
-                    VerticalColumn.ALBEDO = alb[i];
-                    if (W_STATE_ON) c.setColumnWater(wState[i]);
-                    c.tSfc = ts[i];
-                    double latRad = Math.toRadians(r.latDeg[i]);
-                    double cz = Math.max(0.01, Radiation.insolation(latRad, dec) / VerticalColumn.S0);
-                    applyCloud(c, lwpState[i]);
-                    c.solveAtmosphere(DT_ATM, cz, 200.0, 1.0, MAX_ATM);
-                    f[i] = c.lastSurfNet;
-                    // prognostic cloud water: source P, sink LWP/tau, implicit update
-                    lwpState[i] = (lwpState[i] + Math.max(0.0, c.lastPFluxKgM2S) * dtSeason)
-                            / (1.0 + dtSeason / CLOUD_LWP_TAU);
-                    if (W_STATE_ON) {
-                        // VerticalColumn.step already applied surface E, convection and condensation
-                        // to q[].  The prognostic W must be the ACTUAL column water after that step;
-                        // adding (E-P) here again double-counts the water tendency.
-                        wState[i] = c.cwv();
-                    }
-                    if (y == years - 1) {
-                        if (r.pMmDay == null) {
-                            r.pMmDay = new double[NL][stepsPerYear];
-                            r.eMmDay = new double[NL][stepsPerYear];
-                        }
-                        // 2026-11-15: use the mean over all internal solveAtmosphere steps,
-                        // not the last step's instantaneous flux (NGRIDBAND P-E closure).
-                        r.pMmDay[i][j] = c.lastPFluxKgM2S * 86400.0;
-                        r.eMmDay[i][j] = c.lastEFluxKgM2S * 86400.0;
-                        if (r.wBudgetMmDay == null) r.wBudgetMmDay = new double[NL][stepsPerYear];
-                        r.wBudgetMmDay[i][j] = c.lastWBudgetResidualMean * 86400.0;
-                        if (r.wKgM2 == null) r.wKgM2 = new double[NL][stepsPerYear];
-                        r.wKgM2[i][j] = c.cwv();
-                        if (r.wStateKgM2 == null) r.wStateKgM2 = new double[NL][stepsPerYear];
-                        r.wStateKgM2[i][j] = wState[i];
-                        if (r.tMean == null) r.tMean = new double[NL][VerticalColumn.N];
-                        for (int k = 0; k < VerticalColumn.N; k++) r.tMean[i][k] += c.t[k];
-                    }
+                    final int ii = i;
+                    TASKS.add(() -> { stepColumn(ii, yF, jF, cols, ts, wState, lwpState, f, alb,
+                            decF, dtSeason, years, stepsPerYear, r); return null; });
                 }
+                try {
+                    POOL.invokeAll(TASKS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("SeasonalZonal parallel step interrupted", ie);
+                }
+                TASKS.clear();
                 // 2026-11-15: MFC is applied once per step, after all columns are solved.
                 if (W_STATE_ON && WATER_MFC_ON) {
                     double[] eMm = new double[NL];
@@ -278,5 +266,57 @@ public final class SeasonalZonal {
         x[n - 1] = dp[n - 1];
         for (int i = n - 2; i >= 0; i--) x[i] = dp[i] - cp[i] * x[i + 1];
         return x;
+    }
+
+    // ==================== 并行（C 项） ====================
+
+    /** 19 纬并行用的固定线程池（惰性创建；线程数 = min(NL, 可用核数)）。 */
+    private static final java.util.concurrent.ExecutorService POOL =
+            java.util.concurrent.Executors.newFixedThreadPool(
+                    Math.max(1, Math.min(NL, Runtime.getRuntime().availableProcessors())),
+                    rr -> {
+                        Thread t = new Thread(rr, "seasonal-zonal-col");
+                        t.setDaemon(true);
+                        return t;
+                    });
+
+    /** 每步复用的任务列表（避免每步 new 19 个对象）。 */
+    private static final java.util.List<java.util.concurrent.Callable<Void>> TASKS =
+            new java.util.ArrayList<>(NL);
+
+    /**
+     * 单个纬度的推进（从 run() 的循环体**逐字**提取）。
+     *
+     * <p>★ 2026-11-22（C 项，并行）：提取成静态方法是为了让 19 个纬度能并行；
+     * 方法体内的算术顺序与原来**逐字相同**，因此结果逐位一致。
+     * 唯一的改动是反照率从「写静态 ALBEDO」改成「写实例的 albedoOverride」。
+     */
+    private static void stepColumn(int i, int y, int j, VerticalColumn[] cols, double[] ts,
+                                   double[] wState, double[] lwpState, double[] f, double[] alb,
+                                   double dec, double dtSeason, int years, int stepsPerYear,
+                                   Result r) {
+        VerticalColumn c = cols[i];
+        c.albedoOverride = alb[i];
+        if (W_STATE_ON) c.setColumnWater(wState[i]);
+        c.tSfc = ts[i];
+        double latRad = Math.toRadians(r.latDeg[i]);
+        double cz = Math.max(0.01, Radiation.insolation(latRad, dec) / VerticalColumn.S0);
+        applyCloud(c, lwpState[i]);
+        c.solveAtmosphere(DT_ATM, cz, 200.0, 1.0, MAX_ATM);
+        f[i] = c.lastSurfNet;
+        // prognostic cloud water: source P, sink LWP/tau, implicit update
+        lwpState[i] = (lwpState[i] + Math.max(0.0, c.lastPFluxKgM2S) * dtSeason)
+                / (1.0 + dtSeason / CLOUD_LWP_TAU);
+        if (W_STATE_ON) {
+            wState[i] = c.cwv();
+        }
+        if (y == years - 1) {
+            r.pMmDay[i][j] = c.lastPFluxKgM2S * 86400.0;
+            r.eMmDay[i][j] = c.lastEFluxKgM2S * 86400.0;
+            r.wBudgetMmDay[i][j] = c.lastWBudgetResidualMean * 86400.0;
+            r.wKgM2[i][j] = c.cwv();
+            r.wStateKgM2[i][j] = wState[i];
+            for (int k = 0; k < VerticalColumn.N; k++) r.tMean[i][k] += c.t[k];
+        }
     }
 }

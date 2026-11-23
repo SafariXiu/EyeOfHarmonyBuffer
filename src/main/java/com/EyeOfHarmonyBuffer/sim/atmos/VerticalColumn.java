@@ -218,6 +218,21 @@ public final class VerticalColumn {
     }
     public static double TAU0_SW = 0.22;
     public static double ALBEDO = 0.12;
+
+    /**
+     * 实例级反照率覆盖（NaN = 用静态 {@link #ALBEDO}）。
+     *
+     * <p>★ 2026-11-22（C 项，并行）：静态 ALBEDO 在多线程求解不同纬度时会互相踩；
+     * 并行时必须用实例级覆盖。**取值完全相同** ⟹ 结果逐位不变。
+     */
+    public double albedoOverride = Double.NaN;
+
+    /** 实例级 FIXED_TS 覆盖：-1 = 用静态；0 = 固定用静态；1 = 强制固定地表温度。 */
+    public int fixedTsOverride = -1;
+
+    private double alb() { return Double.isNaN(albedoOverride) ? ALBEDO : albedoOverride; }
+
+    private boolean fixedTs() { return fixedTsOverride < 0 ? FIXED_TS : fixedTsOverride != 0; }
     public static double S0 = WorldContract.S0_TSI;
     public static double LW_SFC_EMIS = 1.0;
 
@@ -427,7 +442,7 @@ public final class VerticalColumn {
             sDn[k + 1] = sDn[k] * trSw;
             if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) sDn[k + 1] *= (1.0 - rc);
         }
-        sUp[N] = ALBEDO * sDn[N];
+        sUp[N] = alb() * sDn[N];
         for (int k = N - 1; k >= 0; k--) {
             double trSw = Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
             double up = sUp[k + 1] * trSw;
@@ -509,7 +524,7 @@ public final class VerticalColumn {
             if (CLOUD_SW_ON && k == cloudLayer && rc > 0.0) sDn[k + 1] *= (1.0 - rc);
         }
         double[] sUp = new double[N + 1];
-        sUp[N] = ALBEDO * sDn[N];
+        sUp[N] = alb() * sDn[N];
         for (int k = N - 1; k >= 0; k--) {
             double trSw = Math.exp(-(tauSwOf(P_EDG[k + 1]) - tauSwOf(P_EDG[k])));
             double up = sUp[k + 1] * trSw;
@@ -553,16 +568,20 @@ public final class VerticalColumn {
     /** Betts & Miller (2004) 温度参考廓线。 */
     public double[] bettsMillerTRef(double tTopK) {
         double[] tRef = new double[N];
+        // ★ 2026-11-22（C 项，试过并撤回）：曾改用 liftConvection（LNB 后即停），
+        //   实测**零收益** —— 这些柱子里没有 LFC（iLfc<0），循环照样跑满 1000 层。
+        //   ⟹ 回到原 lift；结论见 工作目录/中期/BH-C项-lift提前停止为零收益-2026-11-22.md。
         ParcelLift.Result r = ParcelLift.lift(tSfc, q[N - 1]);   // ★ 地面层是 N-1（k=0 是柱顶）
-        double pF = levelOfT(273.15);
+        // ★★★★★ 2026-11-22（C 项，性能）：冻结层改为在**下面已经积分好的** tc[] 上插值求交点。
+        //   原实现 levelOfT(273.15) 每步做 60 次二分 × 每次 50 步 RK4 = **3000 步 RK4**，
+        //   实测占 step() 的 ~1/3（JFR：levelOfT 189 样本 / lift 244 / bettsMillerTRef 242）。
+        //   注：tc[] 在 LCL 以下用干绝热、以上用湿伪绝热 —— 与原 levelOfT 全程用湿绝热略有差别，
+        //   只有当冻结层落在 LCL 以下时才会不同（实测中纬/热带都在 LCL 以上）。
+        double pF;
         // ★ §508：对流顶不再用 levelOfT(tTopK)（那含一个猜的常数 tTopK = 200 K），
         //   改用 §498 已【验证过】的气块抬升导出的 LNB（零自由参数）。
         //   无对流（LNB = NaN）时回落到冻结层。
-        double pT = Double.isNaN(r.pLnb) ? pF : r.pLnb;
-        lastCloudTopPa = pT;
         double tcB = tSfc;
-        double tcF = ParcelLift.moistAdiabatT(r.tLcl, r.pLcl, pF, 50);
-        double tRF = tcB + W_STAB * (tcF - tcB);          // 式 (7)：斜率缩放
         // ★ §505 性能：原来对【每一层】都从 LCL 重新积分一次伪绝热（60 次 × 50 步 RK4）
         //   ⇒ 每步 1.2 万次 dTdlnp，是全部开销的主项。改成【自下而上单次扫描】：每层只走 1 步 RK4。
         //   顺带修正：LCL 以下的层改用【干绝热】（原来沿用 tLcl，把近地面参考值压到 tSfc 之下
@@ -573,6 +592,12 @@ public final class VerticalColumn {
             if (PC[k] > r.pLcl) tc[k] = tSfc * Math.pow(PC[k] / pSfc, ParcelLift.R_D / Radiation.CP);
             else { tt = ParcelLift.rk4T(tt, pp, PC[k]); tc[k] = tt; pp = PC[k]; }
         }
+        // 冻结层：在 tc[]/PC[] 上找 273.15 K 的交点（零额外积分）
+        pF = freezingLevelFrom(tc);
+        double pT = Double.isNaN(r.pLnb) ? pF : r.pLnb;
+        lastCloudTopPa = pT;
+        double tcF = ParcelLift.moistAdiabatT(r.tLcl, r.pLcl, pF, 50);
+        double tRF = tcB + W_STAB * (tcF - tcB);          // 式 (7)：斜率缩放
         for (int k = 0; k < N; k++) {
             double pk = PC[k];
             if (pk >= pF) {
@@ -605,15 +630,25 @@ public final class VerticalColumn {
         return rh * ParcelLift.qs(t[k], pp);
     }
 
-    private double levelOfT(double tK) {
-        double lo = P_TOP, hi = pSfc;
-        ParcelLift.Result r = ParcelLift.lift(tSfc, q[N - 1]);
-        for (int i = 0; i < 60; i++) {
-            double mm = 0.5 * (lo + hi);
-            double tm = ParcelLift.moistAdiabatT(r.tLcl, r.pLcl, mm, 50);
-            if (tm > tK) hi = mm; else lo = mm;
+    /**
+     * 在已积分好的湿/干绝热廓线 {@code tc[]} 上求 273.15 K 的交点压力（Pa）。
+     *
+     * <p>★ 2026-11-22（C 项）：取代原 {@code levelOfT(273.15)} —— 后者每步 60 次二分 ×
+     * 每次 50 步 RK4 = 3000 步 RK4，是 step() 的三大热点之一（JFR 实测）。
+     * 本方法**零额外积分**：廓线已经在调用方算好，这里只做一次线性插值。
+     *
+     * <p>{@code PC[N-1]} 是地面（最大 p），{@code PC[0]} 是柱顶。
+     */
+    private double freezingLevelFrom(double[] tc) {
+        for (int k = N - 1; k > 0; k--) {
+            double tHi = tc[k], tLo = tc[k - 1];
+            if ((tHi - 273.15) * (tLo - 273.15) <= 0.0 && tHi != tLo) {
+                double w = (tHi - 273.15) / (tHi - tLo);
+                double lnp = Math.log(PC[k]) + w * (Math.log(PC[k - 1]) - Math.log(PC[k]));
+                return Math.exp(lnp);
+            }
         }
-        return 0.5 * (lo + hi);
+        return tc[N - 1] < 273.15 ? pSfc : P_TOP;
     }
 
     /**
@@ -758,7 +793,7 @@ public final class VerticalColumn {
     public double surfaceNetWm2(double ts) { return sfcNet(ts); }
 
     private double sfcNet(double ts) {
-        double swNet = (1.0 - ALBEDO) * swSfcDown;
+        double swNet = (1.0 - alb()) * swSfcDown;
         double lwNet = lwSfcDown - LW_SFC_EMIS * THETA_SB * ts * ts * ts * ts;
         double shv = chv * Radiation.CP * windSpeed * (ts - t[N - 1]);
         double qsS = ParcelLift.qs(ts, pSfc);
@@ -787,7 +822,7 @@ public final class VerticalColumn {
         double h0 = columnEnergy();
         // §511：先取辐射通量（swSfcDown / lwSfcDown 与 Ts 无关，见 radiation() 的下行扫描）
         radiation(cosZenith, 0.0);
-        if (!FIXED_TS) solveSurfaceT();        // §511 解表面能量平衡 ⇒ tSfc 成为【诊断量】
+        if (!fixedTs()) solveSurfaceT();        // §511 解表面能量平衡 ⇒ tSfc 成为【诊断量】
         raAccum = 0.0;
         for (int s = 0; s < 4; s++) radiation(cosZenith, dt / 4.0);
         ra = raAccum / 4.0;      // ★ dt 加权平均（见 radiation() 末尾的记账）

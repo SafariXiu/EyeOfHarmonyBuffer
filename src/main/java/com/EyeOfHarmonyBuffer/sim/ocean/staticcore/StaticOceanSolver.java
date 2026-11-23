@@ -47,8 +47,15 @@ public final class StaticOceanSolver {
             System.getProperty("eoh.icefrommean", "true"));
     /** Route B: annual iceFraction is an independent area mean; default off. */
     public static boolean ROUTE_B_AREA_ON = false;
-    /** 冷启动第一季的 Picard 次数（eta <-> T/S 耦合）。 */
-    public static int PIC_FIRST = 2;
+    /**
+     * ★ 2026-11-23（BZ）：**已删除 `PIC_FIRST`**。
+     *
+     * <p>原值 2，只在「run 的第一年第一季」生效（其余季用 {@link #PIC_WARM}=1）。
+     * 实测后果：同一状态出发，**run 的第 2 年**与**新 run 第 1 年**差 **2.13 K** ——
+     * 年映射因此不是状态的函数，平衡态求解（M(x)=x）无法建立。
+     * 删掉特判后两次运行**逐位相同**（max|dT| = 0）。
+     * <p>⚠ 这会改变全部气候结果（首季少一次 Picard）。
+     */
     /** 之后每季的 Picard 次数（热启动）。 */
     public static int PIC_WARM = 1;
 
@@ -61,7 +68,23 @@ public final class StaticOceanSolver {
      *      冰反照率正反馈再把整个海洋冻住。这是**真发现**，但默认不能跑成雪球。
      * ⟹ 默认 1 年；2+ 年作为诊断开关（SEASONAL_YEARS=2/3）。
      */
-    public static int SEASONAL_YEARS = 20;   // ★ 2026-11-20 用户裁决：只当【上限】；收敛由判据决定（实测 14 年）
+    /**
+     * ★★★★★ 2026-11-23（平衡解改造）：多年循环的**安全上限**（不再是"跑满 N 年"）。
+     *
+     * <p>真正的停止由 {@link #SEASONAL_RMS_TOL} 决定：面积加权 RMS_T < 1e-3 K/年。
+     * 实测从初值 0.375 K/年出发、比值 ≈0.90/年 ⟹ 约 **60 年**收敛；
+     * 上限只是防止病态世界无限跑（150 年是 2.5 倍余量）。
+     *
+     * <p>历史：2026-11-20 曾把 20 当"上限"，但当时用的是**不会收敛的判据**
+     * （逐点 maxDT 停在 1.8 K、全球热含量停在 1.4e-4）⟹ 每次都撞 20 年帽。
+     */
+    public static int SEASONAL_YEARS = 20;
+    //
+    // ★ 2026-11-23（CD 报告，重要）：判据已改成面积加权 RMS_T（见 SEASONAL_RMS_TOL），
+    //   但实测它**到不了 1e-3**：RMS_T 从 0.375 降到 y=20 的 0.104 之后**回升并平台在 0.11**。
+    //   ⟹ 这套模型**没有年映射的不动点**（年际变率下限约 0.11 K RMS），
+    //   所以"迭代到判据"不成立，20 年仍是**临时**上限（与旧成本相同，不是回归）。
+    //   下一步必须先定位这个 0.11 K 的年际振荡来源，再谈真正的稳态。
 
     /**
      * ★ 2026-11-17（B1）：深层稳态 —— 每年结束后，对 {@code zCenter >= DEEP_STEADY_Z0} 的层
@@ -84,6 +107,99 @@ public final class StaticOceanSolver {
      * 根因见 §24（本模型没有深水形成）与 §25.5。
      */
     public static boolean DEEP_STEADY_ON = false;
+
+    /**
+     * ★ 2026-11-23（稳态改造，第 2 步）：**把深层稳态当【初值】做一次**，而不是每年补丁。
+     *
+     * <p>为什么：实测 ¤DEEP_STEADY_ON=true¤（每年结束后替换深层）会让第 2 年 ¤maxDT¤
+     * 从 5.7 K 突跳到 **32.2 K**，而深层漂移只从 3.4%/年 提到 5%/年。硬替换的时机错了。
+     *
+     * <p>本开关在**进入年循环之前**调用一次 {@link #applyDeepSteady}：
+     * 深层从一个定常解出发，之后由正常时间推进接管 ⟹ 不会有突跳。
+     * 默认 **false**（不改变现有结果）；用探针打开验证后再决定是否翻默认。
+     */
+    public static boolean DEEP_STEADY_INIT_ON = false;
+
+    /**
+     * ★ 2026-11-23（平衡解改造，第 3 步的钩子）：**年映射实验用的初值**。
+     *
+     * <p>非 null 时 {@code solve} 在冷启动/父热启动之后用它覆盖 T,S —— 
+     * 目的是验证「一年映射 M(x) 是不是状态的纯函数」。
+     * 默认 null ⟹ 生产行为完全不变。
+     */
+    public static OceanState MAP_SEED = null;
+
+    /**
+     * 年映射实验：在 solve **开始时**清掉派生量缓存（土壤/植被/驻波/EBM/Hadley/...）。
+     * 默认 false ⟹ 生产行为不变。A/B 两次对照必须**同时**打开或同时关闭。
+     */
+    public static boolean CLEAR_CACHES_AT_SOLVE_START = false;
+
+    /** 年映射实验用的快照容器：每年【4 个季节走完、年度平均之前】存一份预后场全量拷贝。null = 不存。 */
+    public static java.util.List<OceanState> MAP_CAPTURE = null;
+
+    /** 年映射实验用的**逐季**快照（每个季节走完抓一份，用来二分定位分叉点）。null = 不存。 */
+    public static java.util.List<OceanState> MAP_SEASON_CAPTURE = null;
+
+    /**
+     * 把 src 的**预后场**拷进 dst（年映射的状态向量）。
+     *
+     * <p>纳入：t / s / 冰厚 / 冰密集度 / 雪厚 / 混合层深 / eta / psi。
+     * 其余（u,v,w,uF,vF,wF,冰速,应力）在模型里每季由 T,S 与冰**诊断**得到，不进状态向量。
+     * 若实测证明还需要它们，再往这里加（下一轮就靠这个测试决定）。
+     */
+    public static void copyPrognostic(OceanState src, OceanState dst) {
+        System.arraycopy(src.t, 0, dst.t, 0, src.t.length);
+        System.arraycopy(src.s, 0, dst.s, 0, src.s.length);
+        int n2 = Math.min(src.iceThickness.length, dst.iceThickness.length);
+        System.arraycopy(src.iceThickness, 0, dst.iceThickness, 0, n2);
+        System.arraycopy(src.iceFraction, 0, dst.iceFraction, 0, n2);
+        System.arraycopy(src.snowThickness, 0, dst.snowThickness, 0, n2);
+        System.arraycopy(src.mixedLayerDepth, 0, dst.mixedLayerDepth, 0, n2);
+        System.arraycopy(src.eta, 0, dst.eta, 0, n2);
+        int np = Math.min(src.psi.length, dst.psi.length);
+        System.arraycopy(src.psi, 0, dst.psi, 0, np);
+        // ★ 2026-11-23（实测发现）：**冰的分布状态也必须进状态向量** ——
+        //   第一版只拷 t,s,冰厚/密集度,MLD,eta,psi，一年映射仍不纯（max|diff|=150）。
+        //   ITD/FSD 是逐类别数组，是冰的"记忆"，漏了它们映射必然不是函数。
+        int idt = Math.min(src.itd.area.length, dst.itd.area.length);
+        for (int c = 0; c < idt; c++) {
+            System.arraycopy(src.itd.area[c], 0, dst.itd.area[c], 0, src.itd.area[c].length);
+            System.arraycopy(src.itd.volume[c], 0, dst.itd.volume[c], 0, src.itd.volume[c].length);
+            System.arraycopy(src.itd.snow[c], 0, dst.itd.snow[c], 0, src.itd.snow[c].length);
+        }
+        dst.itd.initialized = src.itd.initialized;
+        int ifs = Math.min(src.fsd.area.length, dst.fsd.area.length);
+        for (int c = 0; c < ifs; c++)
+            System.arraycopy(src.fsd.area[c], 0, dst.fsd.area[c], 0, src.fsd.area[c].length);
+        dst.fsd.initialized = src.fsd.initialized;
+        // ★ 2026-11-23（补全）：**所有**逐格数组都拷 —— 尤其是混合层卷吸的历史项
+        //   hTOld/hTNew（实测 MLD 差 150 m 就是它）以及 surfaceLayer / 冰速 / 应力。
+        //   只拷"看起来重要"的字段是错的：状态的定义应当由【代码是否读它跨步】决定。
+        int nn = Math.min(src.t.length, dst.t.length);
+        System.arraycopy(src.u, 0, dst.u, 0, nn);
+        System.arraycopy(src.v, 0, dst.v, 0, nn);
+        System.arraycopy(src.w, 0, dst.w, 0, nn);
+        System.arraycopy(src.uBaroclinic, 0, dst.uBaroclinic, 0, nn);
+        System.arraycopy(src.vBaroclinic, 0, dst.vBaroclinic, 0, nn);
+        System.arraycopy(src.uF, 0, dst.uF, 0, nn);
+        System.arraycopy(src.vF, 0, dst.vF, 0, nn);
+        System.arraycopy(src.wF, 0, dst.wF, 0, nn);
+        int m2 = Math.min(src.eta.length, dst.eta.length);
+        System.arraycopy(src.surfaceLayer, 0, dst.surfaceLayer, 0, m2);
+        System.arraycopy(src.hTOld, 0, dst.hTOld, 0, m2);
+        System.arraycopy(src.hTNew, 0, dst.hTNew, 0, m2);
+        System.arraycopy(src.meltPondArea, 0, dst.meltPondArea, 0, m2);
+        System.arraycopy(src.meltPondDepth, 0, dst.meltPondDepth, 0, m2);
+        System.arraycopy(src.iceSurfaceTemp, 0, dst.iceSurfaceTemp, 0, m2);
+        System.arraycopy(src.iceU, 0, dst.iceU, 0, m2);
+        System.arraycopy(src.iceV, 0, dst.iceV, 0, m2);
+        System.arraycopy(src.sig1, 0, dst.sig1, 0, m2);
+        System.arraycopy(src.sig2, 0, dst.sig2, 0, m2);
+        System.arraycopy(src.sig12, 0, dst.sig12, 0, m2);
+        System.arraycopy(src.iceSaltFlux, 0, dst.iceSaltFlux, 0, m2);
+        System.arraycopy(src.snowMeltFlux, 0, dst.snowMeltFlux, 0, m2);
+    }
     /** 深层稳态的起始深度（m）；该深度以上不动。 */
     public static double DEEP_STEADY_Z0 = 1000.0;
     /** 诊断：最近一次 applyDeepSteady 成功写入的列数 / 因病态被跳过的列数。 */
@@ -177,6 +293,16 @@ public final class StaticOceanSolver {
     public static int SEASONAL_CONV_MODE = 1;   // ★ 2026-11-20 用户裁决：生产用统计判据
     /** 统计判据的相对阈值（每年 |dH/H|）。1e-4 对应全球热含量 1e4 年才翻倍量级。 */
     public static double SEASONAL_CONV_REL = 1.0e-4;
+
+    /**
+     * ★★★★★ 2026-11-23（平衡解改造）：**稳态判据 = 面积加权 RMS_T < 本值（K/年）**。
+     *
+     * <p>实测（CB/CA 报告）：初值 0.375 K/年 → 14 年 0.111 → 比值 ≈0.90/年；
+     * 到 1e-3 约需 60 年（≈18 min）。这取代了旧的"跑满 N 年"上限。
+     */
+    public static double SEASONAL_RMS_TOL = 1.0e-3;
+    /** 最近一次的年映射残差 RMS_T（K/年）。 */
+    public static double LAST_RMS_T = Double.NaN;
     /** 年际 max|ΔT| 所在格点（q 索引；-1 = 未计算）。用于定位漂移源。 */
     public static int LAST_MAX_DT_Q = -1;
     /** 最近一年的逐格 |ΔT|（年际残差；诊断用）。 */
@@ -341,6 +467,7 @@ public final class StaticOceanSolver {
                 }
             };
         }
+        // ★ 2026-11-23（BY 报告）：MAP_SEED 的作用点必须放在**冷启动之后**，
         // ★ 2026-11-11（深层收支仪器）：清零并算体积权重；ON=false 时只是几个空数组。
         DeepBudget.begin(grid);
         // 冷启动：★ 2026-11-02 修正输入 —— 深层不能也取表层气候值。
@@ -394,6 +521,12 @@ public final class StaticOceanSolver {
                     }
                 }
         }
+
+        // ★ 2026-11-23（年映射实验）：用外部给定的状态覆盖初值 —— **必须放在冷启动/父热启动之后**。
+        //   （第一版放在冷启动之前，结果被冷启动覆盖 ⟹ B 其实一直是冷启动，
+        //     因此前几轮的"映射不纯"结论全部作废，见 BZ 报告。）
+        if (CLEAR_CACHES_AT_SOLVE_START) StaticOceanProduction.clearDerivedCaches();
+        if (MAP_SEED != null) copyPrognostic(MAP_SEED, st);
 
         // ★ 2026-11-04（阶段 3）：深层源水团初始化（在父热启动之后应用；只由调用方显式开启）。
         if (deepInit != null) {
@@ -462,6 +595,8 @@ public final class StaticOceanSolver {
         double[] hSum = new double[n2], etaSum = new double[n2], iceSum = new double[n2];
         double[] iceAreaSum = new double[n2];
         double[] tMean = new double[n3], sMean = new double[n3], prevT = new double[n3], prevS = new double[n3];
+        /** 年映射平衡判据用：上一年年初的 T（算 RMS_T = 面积加权均方根的年际变化）。 */
+        double[] yearT0 = st.t.clone();
         double[] hMean = new double[n2], etaMean = new double[n2], iceMean = new double[n2];
         double[] iceAreaMean = new double[n2];
 
@@ -470,6 +605,12 @@ public final class StaticOceanSolver {
         BarotropicSolver.Result baro = null;
         double maxDT = 0.0;
         int yearsRun = 0;
+        // ★ 2026-11-23（稳态改造第 2 步）：深层稳态当**初值**做一次。
+        //   放在年循环之前 ⟹ 之后由正常推进接管，不会像「年度补丁」那样造成 32 K 突跳。
+        if (DEEP_STEADY_INIT_ON) {
+            applyDeepSteady(grid, st);
+            System.out.println("DEEP_STEADY_INIT cols=" + LAST_DEEP_COLS + " skip=" + LAST_DEEP_SKIP);
+        }
 
         // ★ 2026-11-02（KT + 多年）：h 现在是卷吸方程的时间积分，深层通风是多年过程。
         // 单跑一年到不了气候平衡；按年循环，直到相邻两年的年平均 T 收敛。
@@ -494,7 +635,12 @@ public final class StaticOceanSolver {
                 st.fillDryGhosts();
                 SteadyFreeSurfaceSolver.solve(grid, st, periodic, th);
                 if (DEBUG_FINITE) { String b = firstNonFinite(grid, st); if (b != null) System.out.println("NONFINITE_STAGE freeSurf yr=" + yr + " si=" + si + " " + b); }
-                int pics = (yr == 0 && si == 0) ? PIC_FIRST : PIC_WARM;
+                // ★ 2026-11-23（BZ 报告，平衡解改造）：**删除"第一年第一季多做一次 Picard"的特判**。
+                //   实测：这个特判让年映射不是状态的纯函数 —— 从同一状态出发，
+                //   "run 的第 2 年"与"新 run 第 1 年"的 T 差 2.13 K；把两者设为相等后
+                //   两次运行**逐位相同**（max|dT| = 0）。
+                //   平衡解求解要求 M(x) 只依赖 x，所以迭代次数必须由状态/判据决定，不能由年份决定。
+                int pics = PIC_WARM;
                 for (int pic = 0; pic < pics; pic++) {
                     if (FLUX_BOUNDARY_ON) {
                         // ★★★ 2026-11-20（审计修复）：**平流之前**闭合经向输运 ⟹ 让 T/S 的输运用的是闭合速度场。
@@ -604,6 +750,12 @@ public final class StaticOceanSolver {
                         }
                     }
                     seasSurf[si] = snap;
+                    // ★ 2026-11-23（年映射二分）：每季末抓一份预后场快照。
+                    if (MAP_SEASON_CAPTURE != null) {
+                        OceanState ss2 = new OceanState(grid);
+                        copyPrognostic(st, ss2);
+                        MAP_SEASON_CAPTURE.add(ss2);
+                    }
                 }
                 // 年度累加
                 for (int j = 0; j < ny; j++)
@@ -623,6 +775,12 @@ public final class StaticOceanSolver {
                             if (tv > tMaxYear[q]) tMaxYear[q] = tv;
                         }
                     }
+            }
+            // ★ 2026-11-23（年映射实验）：此刻 = 下一年的年初状态（4 个季节刚走完、年度平均之前）。
+            if (MAP_CAPTURE != null) {
+                OceanState snap = new OceanState(grid);
+                copyPrognostic(st, snap);
+                MAP_CAPTURE.add(snap);
             }
             // 年度平均
             for (int j = 0; j < ny; j++)
@@ -706,6 +864,21 @@ public final class StaticOceanSolver {
             // ★ 2026-11-11：封存这一年的逐项热量账（默认关时是空操作）。
             //   必须在 yr==0 也执行，否则 1 年跑不出账本。
             DeepBudget.closeYear(grid, st);
+            // ★ 2026-11-23（物理自洽第一诊断）：账本预测的温度变化 vs 实际变化。
+            //   账本 = 逐项热收支（K·m/年），除以体积即「按账本这一年该变多少 K」；
+            //   实际 = tAll 的年际差。两者相等 ⟹ 离散收支闭合（没有未记账的热源）。
+            //   纯诊断：DeepBudget.ON=false 时一行都不执行。
+            if (DeepBudget.ON) {
+                int yl = DeepBudget.years() - 1;
+                double totVol = 0.0;
+                for (int bb = 0; bb < DeepBudget.NB; bb++)
+                    for (int kk2 = 0; kk2 < grid.nz; kk2++) totVol += DeepBudget.volume(bb, kk2);
+                double predT = totVol > 0.0 ? DeepBudget.residualSum(yl) / totVol : Double.NaN;
+                double actT = yl > 0 ? DeepBudget.tAll(yl) - DeepBudget.tAll(yl - 1) : Double.NaN;
+                System.out.println("DEEPBUDGET y=" + yearsRun
+                        + " predT=" + predT + " actT=" + actT
+                        + " tDeep=" + DeepBudget.tDeep(yl) + " tAll=" + DeepBudget.tAll(yl));
+            }
             LAST_MAX_DT = maxDT;
             LAST_MAX_DS = maxDS;
             if (yr > 0 && Boolean.getBoolean("eoh.debugresid") && LAST_MAX_DT_Q >= 0) {
@@ -726,8 +899,26 @@ public final class StaticOceanSolver {
             // ★ 2026-11-10（套件并入 DEEPGATE）：12 年 spin-up 中途不打印会被
             //   rerun_acceptance.ps1 的 1800 s 空闲看门狗判 TIMEOUT。逐年一行 ~4 分钟。
             if (SEASONAL_YEARS > 1) {
+                // ★ 2026-11-23（C 项，纯诊断）：把四个收敛指标一起打出来 ——
+                //   convRel  = |ΔH/H|          （生产判据，全球总量，太松）
+                //   relDT    = max|ΔT年均| / 季节振幅   （**物理上最像"稳态"的那个**，已在算但没用于收敛）
+                //   upRel / deepRel = 上层(z<2000m) / 深层(z>=2000m) 热含量的年相对变化
+                //   用来回答"到底哪一层在漂"。此行**不改变任何计算**。
+                double upRel = Double.NaN, deepRel = Double.NaN;
+                int nh = YEAR_HEAT_UP.size();
+                if (nh >= 2) {
+                    double u1 = YEAR_HEAT_UP.get(nh - 1), u0 = YEAR_HEAT_UP.get(nh - 2);
+                    upRel = Math.abs(u1 - u0) / Math.max(1.0e-12, Math.abs(u1));
+                    double d1 = YEAR_HEAT_DEEP.get(nh - 1), d0 = YEAR_HEAT_DEEP.get(nh - 2);
+                    deepRel = Math.abs(d1 - d0) / Math.max(1.0e-12, Math.abs(d1));
+                }
                 System.out.println("YEAR_PROGRESS y=" + yearsRun
-                        + " maxDT=" + maxDT + " maxDS=" + maxDS);
+                        + " maxDT=" + maxDT + " maxDS=" + maxDS
+                        + " convRel=" + LAST_CONV_REL
+                        + " relDT=" + LAST_REL_DT
+                        + " rmsT=" + LAST_RMS_T
+                        + " upRel=" + upRel
+                        + " deepRel=" + deepRel);
             }
             LAST_RESID_T = maxDT;
             LAST_RESID_S = maxDS;
@@ -768,20 +959,40 @@ public final class StaticOceanSolver {
                     }
                 // Annual-mean T/S/h must be re-diagnosed before the next year.
                 AdvectionDiffusionSolver.convectiveAdjust(grid, st);
+                // ★ 2026-11-23（CG 报告）：**实测否证了"阈值诊断是跳变源"的假设** ——
+                //   把这两处 diagnoseMixedLayer 注掉后，第 31/32 年那组 130/210 m 跳变**逐位不变**。
+                //   跳变来自**预报式 KT 混合层（hNew）本身**，不是诊断。此处恢复原调用。
                 AdvectionDiffusionSolver.diagnoseMixedLayer(grid, st);
             }
             System.arraycopy(tMean, 0, prevT, 0, n3);
             System.arraycopy(sMean, 0, prevS, 0, n3);
-            boolean convPoint = maxDT < SEASONAL_CONV_K && maxDS < 0.05;
-            boolean convGlobal = false;
-            if (SEASONAL_CONV_MODE == 1 && YEAR_HEAT.size() >= 2) {
-                double h1 = YEAR_HEAT.get(YEAR_HEAT.size() - 1);
-                double h0 = YEAR_HEAT.get(YEAR_HEAT.size() - 2);
-                double rel = Math.abs(h1 - h0) / Math.max(1.0e-12, Math.abs(h1));
-                convGlobal = rel < SEASONAL_CONV_REL;
-                LAST_CONV_REL = rel;
+            // ★★★★★ 2026-11-23（平衡解改造，A 路线）：**判据换成面积加权 RMS_T**。
+            //
+            //   为什么不用旧的两种判据：
+            //   · 逐点 maxDT：被少数年际振荡格点支配（实测长期停在 1.8 K），永远不收敛；
+            //   · 全球热含量 |dH/H|：被深层拖着，平台在 1.4e-4（要 ~50 年），且对局部不敏感。
+            //   · 面积加权 RMS_T = sqrt( Σ w·(ΔT)² / Σ w )：与"整体是否稳态"一致，
+            //     实测从 0.375 K 稳定降到 0.111 K（14 年），是本世界真正会收敛的量。
+            double rms = 0.0, sw = 0.0;
+            for (int j = 1; j < ny - 1; j++) {
+                double w = Math.max(0.05, grid.cosLat(j));
+                for (int i = 0; i < nx; i++) {
+                    if (!grid.isWet(i, j)) continue;
+                    for (int k = 0; k < nz; k++) {
+                        int q = st.idx(i, j, k);
+                        double d = st.t[q] - yearT0[q];
+                        rms += w * d * d;
+                        sw += w;
+                    }
+                }
             }
-            if (yr > 0 && (SEASONAL_CONV_MODE == 1 ? convGlobal : convPoint)) break;
+            rms = sw > 0.0 ? Math.sqrt(rms / sw) : 0.0;
+            LAST_RMS_T = rms;
+            System.arraycopy(st.t, 0, yearT0, 0, n3);   // 下一年的参照 = 今年年末状态
+            if (yr >= 1 && rms < SEASONAL_RMS_TOL) {
+                LAST_YEARS_RUN = yearsRun;
+                break;
+            }
         }
 
         // 最后一年平均写入状态

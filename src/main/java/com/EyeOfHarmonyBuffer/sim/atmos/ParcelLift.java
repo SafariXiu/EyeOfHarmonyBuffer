@@ -264,15 +264,21 @@ public final class ParcelLift {
         r.hBl = CP_D * tSfcK + LV * qSfc;
 
         int n = (int) Math.round(zMax / dz);
-        double[] zz = new double[n], bu = new double[n];
-        double[] tP = new double[n], qP = new double[n], pP = new double[n];
+        // ★★★ 2026-11-22（C 项，性能）：**流式化** —— 不再分配 zz/bu/tP/qP/pP 五个 1000 元素数组，
+        //   在一次扫描里同时求出 LFC / LNB / CAPE / CIN。原来「先填数组、再二次扫描」的写法
+        //   与这里**逐位等价**（同样的比较顺序、同样的累加顺序）。
+        //   JFR 实测：lift 曾是 step() 的头号热点（106/约 300 样本）。
         double tParPrev = tSfcK, pPrev = pSfc;
         r.buoyMin = Double.MAX_VALUE; r.buoyMax = -Double.MAX_VALUE; r.zBuoyMax = 0.0;
         int nSteps = 0;
+        int iLfc = -1, iLnb = -1;
+        boolean runEnded = false;
+        double cape = 0.0, cin = 0.0;
+        double zLnb = 0.0, pLnb = 0.0, tParLnb = 0.0, qParLnb = 0.0;
         for (int i = 0; i < n; i++) {
             double z = (i + 1) * dz;
             double p = pOfZ(z, tSfcK, gammaEnv);
-            if (p <= 0.0) { zz[i] = z; bu[i] = 0.0; tP[i] = 0.0; qP[i] = 0.0; pP[i] = p; continue; }
+            if (p <= 0.0) continue;
             double tEnv = tSfcK - gammaEnv * z;
             double qEnv = qSfc * Math.exp(-z / hMoist);
             double qsEnv = qs(tEnv, p);
@@ -292,42 +298,42 @@ public final class ParcelLift {
             }
             double tvPar = tPar * (1.0 + 0.608 * qPar);
             double b = G * (tvPar - tvEnv) / tvEnv;
-            zz[i] = z; bu[i] = b; tP[i] = tPar; qP[i] = qPar; pP[i] = p;
             nSteps++;
             if (b < r.buoyMin) r.buoyMin = b;
             if (b > r.buoyMax) { r.buoyMax = b; r.zBuoyMax = z; }
             if (b > 0.0) r.nPos++;
+            // 流式的 LFC / LNB / CAPE / CIN（与原二次扫描等价）
+            if (iLfc < 0) {
+                if (z > r.zLcl && b > 0.0) { iLfc = i; iLnb = i; cape = b * dz;
+                    zLnb = z; pLnb = p; tParLnb = tPar; qParLnb = qPar; }
+                else cin += b * dz;
+            } else if (!runEnded) {
+                if (b > 0.0) { iLnb = i; cape += b * dz;
+                    zLnb = z; pLnb = p; tParLnb = tPar; qParLnb = qPar; }
+                else runEnded = true;
+            }
         }
         r.nSteps = nSteps;
 
-        // ---- LFC = LCL 之上【最低】的浮力正区间起点；LNB = 该区间之后最高的正点 ----
-        int iLfc = -1;
-        for (int i = 0; i < n; i++) {
-            if (zz[i] > r.zLcl && bu[i] > 0.0) { iLfc = i; break; }
-        }
-        r.zLfc = (iLfc < 0) ? Double.NaN : zz[iLfc];
+        // ---- LFC/LNB/CAPE/CIN 已在扫描里求出（原二次扫描已删除，逐位等价） ----
+        r.zLfc = (iLfc < 0) ? Double.NaN : (iLfc + 1) * dz;
         r.zLnb = Double.NaN; r.cape = Double.NaN; r.cin = Double.NaN;
         r.mParcel = Double.NaN; r.mUpdraft = Double.NaN;
         r.hEnvLnb = Double.NaN; r.hParLnb = Double.NaN; r.pLnb = Double.NaN;
         r.tEnvLnb = Double.NaN; r.qEnvLnb = Double.NaN; r.tParLnb = Double.NaN;
         r.convective = false;
         if (iLfc >= 0) {
-            int iLnb = iLfc;
-            for (int i = iLfc; i < n; i++) { if (bu[i] > 0.0) iLnb = i; else break; }
-            r.zLnb = zz[iLnb];
-            double cape = 0.0, cin = 0.0;
-            for (int i = iLfc; i <= iLnb; i++) cape += bu[i] * dz;
-            for (int i = 0; i < iLfc; i++) cin += bu[i] * dz;
+            r.zLnb = zLnb;
             r.cape = cape; r.cin = cin;
             r.convective = cape > 0.0;
-            double zL = zz[iLnb];
+            double zL = zLnb;
             r.tEnvLnb = tSfcK - gammaEnv * zL;
             r.qEnvLnb = qSfc * Math.exp(-zL / hMoist);
-            double qsE = qs(r.tEnvLnb, pP[iLnb]);
+            double qsE = qs(r.tEnvLnb, pLnb);
             if (r.qEnvLnb > qsE) r.qEnvLnb = qsE;
             r.hEnvLnb = CP_D * r.tEnvLnb + G * zL + LV * r.qEnvLnb;
-            r.tParLnb = tP[iLnb]; r.pLnb = pP[iLnb];
-            r.hParLnb = CP_D * tP[iLnb] + G * zL + LV * qP[iLnb];
+            r.tParLnb = tParLnb; r.pLnb = pLnb;
+            r.hParLnb = CP_D * tParLnb + G * zL + LV * qParLnb;
             r.mParcel = r.hBl - r.hEnvLnb;
             r.mUpdraft = r.hBl - r.hParLnb;
         }

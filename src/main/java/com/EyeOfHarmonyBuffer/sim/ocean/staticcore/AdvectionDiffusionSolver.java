@@ -1259,6 +1259,10 @@ public final class AdvectionDiffusionSolver {
                     //   而不是温差 + 0.05 K 下限。冰区 ts≈tb=tf 时 dTml 被 0.05 兜住会
                     //   把 K 放大 ~20×、h 一步跳到 hLimit（实测 MLD p99=3,650 m）。
                     //   浮力跳变在无层结/不稳定时 ≤0 ⟹ K=0，不再虚增卷吸。
+                    //
+                    // ★ 2026-11-23（CJ 报告）：这里**曾是**机制二的候选修法（在 z=h 处插值取 T/S），
+                    //   但实测对 RMS 平台**无改善**（y=35：0.0678 vs 0.0684）⟹ 已回退。
+                    //   结论：机制二不是"kb 离散选层"。
                     double tbMl = st.t[st.idx(i, j, kb)];
                     double sbMl = st.s[st.idx(i, j, kb)];
                     double ssMl = st.s[q0];
@@ -1271,15 +1275,32 @@ public final class AdvectionDiffusionSolver {
                     if (KppBoundaryLayer.ON) {
                         hLimit = Math.max(1.0, KppBoundaryLayer.oblDepth(g, st, i, j));
                     } else {
+                        // ★★★★★ 2026-11-23（CI 报告）：**层内线性插值**定位临界密度差所在的深度。
+                        //
+                        //   旧写法是"扫到某一层超过阈值就把该层的顶取作 hLimit"⟹ hLimit 是
+                        //   密度剖面的**阶梯函数**：表面密度缓慢漂移时，它会一次跨过好几层
+                        //   （实测 50 → 130 → 210 m），配合 (1 - h/hLimit) 的卷吸限制，
+                        //   h 会在贴近旧 hLimit 后被"弹"到新的 hLimit，整层重写成 tbar ⟹
+                        //   表层 T 一次掉 0.8–1.3 K（这就是 30 年窗口里 0.11 K RMS 的全部来源）。
+                        //
+                        //   插值后的 hLimit 是剖面变量的**连续函数**，不引入任何新常数
+                        //   （只是在已有阈值 MLD_JUMP_KGM3 上做线性定位）。
                         hLimit = 1.0;
-                        double hAcc = 0.0;
+                        double hAcc = 0.0, rPrev = rho0;
                         for (int k = 1; k < g.nz; k++) {
                             int qk = st.idx(i, j, k);
                             double rk = 1027.8 * (1.0 - Thermohaline.ALPHA * (st.t[qk] - 285.0)
                                     + Thermohaline.BETA * (st.s[qk] - 35.0));
+                            double d0 = rPrev - rho0, d1 = rk - rho0;
+                            if (d1 > MLD_JUMP_KGM3) {
+                                double frac = (d1 > d0) ? (MLD_JUMP_KGM3 - d0) / (d1 - d0) : 0.0;
+                                frac = Math.min(1.0, Math.max(0.0, frac));
+                                hLimit = Math.max(1.0, hAcc + frac * g.dz[k]);
+                                break;
+                            }
                             hAcc += g.dz[k];
                             hLimit = Math.max(1.0, hAcc);
-                            if (rk - rho0 > MLD_JUMP_KGM3) break;
+                            rPrev = rk;
                         }
                     }
                     double qsw0h = f.shortwaveWm2((int) Math.round(g.xOf(i)), (int) Math.round(g.zOf(j)), theta, ts);

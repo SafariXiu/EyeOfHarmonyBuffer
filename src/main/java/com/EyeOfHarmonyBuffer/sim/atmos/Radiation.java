@@ -508,13 +508,23 @@ public final class Radiation {
     /** 表面能量平衡残差（W/m^2），`beta = 1`（饱和表面）。**对 T_s 单调递减** ⇒ 二分法唯一根。 */
     /**
      * ★★ 2026-11-18：**下行长波的廓线用气温（ta）建**，而不是用地表温度（ts）。
-     * <p>默认 <b>false</b> ⟹ 与历史逐位相同 ✓。
      * <p>为什么这是缺陷而不是选择：地表净长波 = σTs⁴ − L↓，而 L↓ 必须由**大气**廓线给出；
      * 拿 ts 建廓线等于让大气跟着地表一起升温，净长波对 ts 的依赖被抵消，
      * 地表辐射阻尼（≈4σT³≈5.5 W/m²/K）被抹掉。
      * <p>实测（§4.8）：τ 在冰点时 lwDown=110.5 W/m²（等效 210 K），而模型空气是 278.8 K。
+     *
+     * <p>★★★★★ <b>2026-11-23（稳态改造第 1 步）：默认值改为 true。</b>
+     * 取证见 工作目录/中期/BV-外推无有限平衡与辐射阻尼-2026-11-22.md 与 BW：
+     * <ul>
+     *   <li>false 时：海洋年净加热收敛到**非零常数** 0.0377 K/年（≈18 W/m²），
+     *       对 T 的回归 R²=**0.20** ⟹ **没有有限平衡态**（会一直暖下去）；</li>
+     *   <li>true 时：同样 17 年，predT 从 18 W/m² 降到 15 W/m²，对 T 的回归
+     *       **R²=0.80~0.91** ⟹ **存在有限平衡态**，离现在 **+1.6 … +3.9 K**，τ≈53–124 年。</li>
+     * </ul>
+     * <p>⟹ 按 A0-①（物理自洽优先）与 A0-③（代码与自己文档矛盾时以物理为准），默认真值。
+     * ⚠ 这会**改变全部气候结果**（恢复的是被抹掉的物理反馈），旧基线一律作废。
      */
-    public static boolean RAD_LW_PROFILE_FROM_AIR = false;
+    public static boolean RAD_LW_PROFILE_FROM_AIR = true;
 
     public static double residual(double ts, double absSolar, double ta, double qa, double chv) {
         return residual(ts, absSolar, ta, qa, chv, 1.0);
