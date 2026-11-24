@@ -888,7 +888,9 @@ public final class PrecipField {
         // ---- F_net = qRad + qSens + qLat（qLat 用旧闭合的 w 估出的 P ⇒ 一次前向代入）----
         double cwv = q * RHO_AIR * H_MOIST;
         double ts = Radiation.skinTempLand(absSolar, tQ, RH_SEA * qSat(tQ) * depl, chv, beta);
-        double qRad = absSolar - StationaryWave.olrClear(ts, cwv);
+        // 2026-11-24 口径审计：absSolar 是地表吸收；柱净辐射要用行星 ASR。
+        double asrPlanet = absSolar / (1.0 - StationaryWave.ABS_ATM_FRAC);
+        double qRad = asrPlanet - StationaryWave.olrColumn(ts, cwv);
         double qSens = chv * Radiation.CP * (ts - tQ);
         double pEst = precip(q, wOld) * 86400.0 * 1000.0;          // mm/day
         double qLat = Radiation.LV * pEst / 86400.0;               // W/m^2

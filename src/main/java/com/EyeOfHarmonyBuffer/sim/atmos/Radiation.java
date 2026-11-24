@@ -281,9 +281,23 @@ public final class Radiation {
      * <p>四个调用点：{@code PrecipField:2675} · {@code SoilMoisture:269} ·
      * {@code StationaryWave:314} · {@code SimClimate:912}。集中在这里 ⟹ 将来不会再漏掉某一处。
      */
-    public static double absSolarSurface(double latRad, double dec, double albSfc) {
+    public static double asrPlanet(double latRad, double dec, double albSfc) {
         double s = insolation(latRad, dec) * (1.0 - albSfc);
         return ATM_REFLECT ? s * (1.0 - ALPHA_ATM) : s;
+    }
+
+    /**
+     * ★ 2026-11-24 口径审计：<b>地表吸收短波</b> = 行星 ASR 扣除大气吸收那一份。
+     * 之前的 {@code absSolarSurface} 实际返回的是行星 ASR（见 {@link #asrPlanet}），
+     * 导致 skinTempLand/土壤/海表把“行星”当地表用；本方法纠正为地表口径。
+     */
+    public static double absSolarSurface(double latRad, double dec, double albSfc) {
+        return asrPlanet(latRad, dec, albSfc) * (1.0 - StationaryWave.ABS_ATM_FRAC);
+    }
+
+    /** 地表吸收短波的显式别名。 */
+    public static double asrSurface(double latRad, double dec, double albSfc) {
+        return absSolarSurface(latRad, dec, albSfc);
     }
     /** 雪面判据（与 SimTerrain 的雪线同值）。 */
     public static final double T_SNOW_K = 273.15;

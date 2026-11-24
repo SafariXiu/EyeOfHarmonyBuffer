@@ -414,6 +414,27 @@ public final class StationaryWave {
      */
     public static double ABS_ATM_FRAC = 0.20;
 
+    private static final ThreadLocal<VerticalColumn> TL_OLR =
+            ThreadLocal.withInitial(VerticalColumn::new);
+
+    /**
+     * 柱净长波用的 60 层晴空 OLR（与 ClimlabEBM.vcolOlr 同一辐射核）。
+     * 2026-11-24 口径审计：单层 olrClear 与 60 层差 ~42 W/m²，柱账本必须用同一个核。
+     */
+    public static double olrColumn(double ts, double cwv) {
+        double q = cwv / (Atmosphere.RHO_AIR * PrecipField.H_MOIST);
+        VerticalColumn vc = TL_OLR.get();
+        vc.init(ts, q, 1.0, 0.0);
+        boolean saved = VerticalColumn.CLOUD_LW_ON;
+        VerticalColumn.CLOUD_LW_ON = false;
+        try {
+            vc.radiation(0.0, 0.0);
+            return vc.olr;
+        } finally {
+            VerticalColumn.CLOUD_LW_ON = saved;
+        }
+    }
+
     /** 晴空 OLR（W/m²）：单层灰体，干极限 → sigma*Ts^4，湿极限 → sigma*T_ft^4。 */
     public static double olrClear(double ts, double cwv) {
         double tft = ts - Atmosphere.GAMMA * 0.5 * Atmosphere.H_EFF;
@@ -504,10 +525,11 @@ public final class StationaryWave {
         double cwv = qa * Atmosphere.RHO_AIR * PrecipField.H_MOIST;      // kg/m^2
         double qRad;
         if (QRAD_ASR_MINUS_OLR) {
-            // §455：物理口径 F_net = ASR - OLR + LH + SH。
-            // ★★★ §575：absSolar 是【地表吸收短波】，必须先去掉大气吸收那一份才是【行星 ASR】。
-            //   实测（GERB）：撒哈拉 TOA 净短波 314 W/m²，而 absSolar = 395.5 ⇒ 差 81 W/m²。
-            qRad = absSolar * (1.0 - ABS_ATM_FRAC) - olrClear(ts, cwv);
+            // §455：物理口径 F_net = ASR_planet - OLR + LH + SH。
+            // 2026-11-24 口径审计：absSolar 现在是【地表吸收短波】；柱净辐射要用【行星 ASR】。
+            //   gerb 撒哈拉：行星 ASR 312.4 ≈ TOA 净短波 314；地表吸收 = 312.4*0.8 = 249.9。
+            double asrPlanet = absSolar / (1.0 - ABS_ATM_FRAC);
+            qRad = asrPlanet - olrColumn(ts, cwv);
         } else {
             double absFrac = (WVLW_K > 0.0) ? (1.0 - Math.exp(-WVLW_K * cwv)) : 1.0;
             qRad = Radiation.SIGMA * ts * ts * ts * ts * (absFrac - 2.0 * Radiation.EPS);

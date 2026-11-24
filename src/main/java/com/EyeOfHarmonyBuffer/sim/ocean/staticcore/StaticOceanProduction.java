@@ -74,6 +74,10 @@ public final class StaticOceanProduction {
     }
     /** 诊断：最近一次 solution() 的解来自哪里 —— "memory" / "disk" / "compute"。 */
     public static String LAST_CACHE_SOURCE = "none";
+    /** 诊断：最近一次实际施加的深层平衡均匀偏移 S* [K]（0 = 未施加/关闭）。只读，不进哈希。 */
+    private static double lastDeepEqS = 0.0;
+    /** 只读诊断：{@link #lastDeepEqS}（探针用；不参与任何物理）。 */
+    public static double lastDeepEqS() { return lastDeepEqS; }
     /** 诊断：最近一次落盘的字节数（0 = 没落盘）。 */
     public static long LAST_SAVE_BYTES = 0L;
     private static OceanSolution sol;
@@ -218,6 +222,8 @@ public final class StaticOceanProduction {
         // Resolution experiment: only mix in when the sphere grid is NOT the default.
         if (OceanGrid.SPHERE_NY != 72) h = h * 31 + OceanGrid.SPHERE_NY;
         if (OceanGrid.SPHERE_NX != 144) h = h * 31 + OceanGrid.SPHERE_NX;
+        // ★ 2026-11-23（D1 生产接线核查）：深层平衡会改缓存解 ⟹ 开关必须失效旧解（A3-⑤）。
+        if (SteadyOperator3D.DEEP_EQ_ON) h = h * 31 + 0xDEE9L;
         return h;
     }
 
@@ -338,10 +344,13 @@ public final class StaticOceanProduction {
                 sol = cr.solution;
             } else {
                 sol = StaticOceanSolver.solve(grid, worldSeed, f, 0.0, 1, 0, 5000);
-                // ★ 2026-11-23（D1 验收③）：全球解末尾解一次深层平衡（DEEP_EQ_ON 控制）。
-                //   一次/世界种子（不按区域重复），结果随缓存落盘。
-                AnnualMap.applyDeepEquilibrium(grid, worldSeed, f, sol.state);
             }
+            // ★ 2026-11-23（D1 生产接线核查，A0-③ / N5）：深层平衡必须在【两条分支之后】施加。
+            //   原实现只写在 else 分支里 ⟹ 生产默认 COUPLING_ON=true 时整段被绕过，
+            //   DEEP_EQ_ON 在生产路径上等于没开。EG 的 EQFLOW 直接调 solve()+apply()，
+            //   没走 solution()，所以端到端探针没抓到。关掉耦合的诊断路径行为不变。
+            //   一次/世界种子（不按区域重复），结果随缓存落盘。
+            lastDeepEqS = AnnualMap.applyDeepEquilibrium(grid, worldSeed, f, sol.state);
             seed = worldSeed;
             flagsHash = fh;      // ★ 2026-11-06：缓存键含开关指纹
             // ★ 2026-11-11（§5-2）：落盘（原子写：先写 .tmp 再 rename）。
