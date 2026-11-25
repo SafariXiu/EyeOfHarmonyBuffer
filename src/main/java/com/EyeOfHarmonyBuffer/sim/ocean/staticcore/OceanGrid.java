@@ -66,8 +66,13 @@ public final class OceanGrid {
     // ★ 2026-11-12 退役：`SPHERE_ON` 已删除 —— 全仓只有声明、零读取点（死字段）。
     //   球面与否由 `OceanGrid.sphere(...)` 构造器决定，生产端走的是构造器而不是这个开关。
 
-    /** 球面域的高（m）：极到极 = πR = 20,000 km。 */
-    public static final double HEIGHT_SPHERE_M = 20_000_000.0;
+    /**
+     * 球面域的高（m）：极到极 = πR = 20,000 km = 2*MAX_D。
+     * <p>★ 2026-11-24（S0.5）：原来是字面量 20_000_000.0 —— 与 {@link WorldContract#MAX_D}
+     * 的派生关系被写死，PLANET_SCALE 消融实验（守则允许改这一个常数复现旧小世界）时
+     * 它**不跟着缩** ⟹ 球面父解的 y 轴与 latOf 会脱钩。改为派生（当前值逐位相同）。
+     */
+    public static final double HEIGHT_SPHERE_M = 2.0 * WorldContract.MAX_D;
 
     public final int nx, ny, nz;
     public final double dx, dy;

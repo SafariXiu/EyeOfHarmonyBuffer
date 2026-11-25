@@ -1,5 +1,7 @@
 package com.EyeOfHarmonyBuffer.sim.ocean.staticcore;
 
+import com.EyeOfHarmonyBuffer.sim.world.WorldContract;
+
 /**
  * 用一次全球粗解（{@link OceanSolution}）当父状态。
  *
@@ -34,14 +36,41 @@ public final class GlobalBoxParent implements OceanParent {
         return f - Math.floor(f);
     }
 
+    /**
+     * 世界 z → 父网格的连续行号。
+     *
+     * <p>★ 2026-11-24（S0.2）：**球面父解的 y 轴是「极点→极点」**（20,000 km，2.5°/行），
+     * 而笛卡尔箱的 y 轴才是世界 z（一整圈，5°/行）。原实现无条件用
+     * {@code (z - z0)/dy - 0.5} ⟹ 只在笛卡尔箱上成立；生产切到球面父解后，
+     * 目标纬度全错（实测中位差 58°、最大 90°；赤道处拿到南极的水，SST 差 40 K）。
+     *
+     * <p>球面：先由 {@link WorldContract#latOf(int)} 还原纬度，再换算行号
+     * （与 {@code StaticOceanProduction.indexZ} 的口径**逐字一致**）。
+     */
+    private double rowF(double z) { return rowFor(g, z); }
+
+    /**
+     * 世界 z → 父网格连续行号（**生产口径**，供 S0 的门直接调用）。
+     * <p>球面：先还原纬度再换算；笛卡尔箱：裸 z（原行为，逐位不变）。
+     */
+    public static double rowFor(OceanGrid g, double z) {
+        if (g.sphere) {
+            double latDeg = Math.toDegrees(WorldContract.latOf((int) Math.round(z)));
+            return (90.0 - latDeg) / 180.0 * g.ny - 0.5;
+        }
+        return (z - g.z0) / g.dy - 0.5;
+    }
+
     private int jz(double z) {
-        double f = (z - g.z0) / g.dy - 0.5;
-        int j = (int) Math.floor(f);
-        return Math.max(0, Math.min(g.ny - 2, j));
+        int j = (int) Math.floor(rowF(z));
+        // S0.2b：允许到 ny-1（极点行）。原实现钳到 ny-2 是为了让 j+1 合法，但那会在极点
+        // 强制跨行插值 ⟹ 极点被映射到 -86.25°（误差 3.75°，超过 1 行）。钳到 ny-1 后，
+        // fz 在 f>=ny-1 时返回 0，只用极点行本身（误差 <= 1.25°）。
+        return Math.max(0, Math.min(g.ny - 1, j));
     }
 
     private double fz(double z) {
-        double f = (z - g.z0) / g.dy - 0.5;
+        double f = rowF(z);
         if (f <= 0.0) return 0.0;
         if (f >= g.ny - 1) return 0.0;
         return f - Math.floor(f);

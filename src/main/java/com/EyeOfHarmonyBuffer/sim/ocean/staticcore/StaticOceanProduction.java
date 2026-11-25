@@ -14,6 +14,29 @@ public final class StaticOceanProduction {
     public static boolean REGION_ON = false;
 
     /**
+     * ★ 2026-11-24（S0.3）：**只对求解线程生效的旁路**。
+     *
+     * <p>为什么需要它：`OceanRegionProduction.compute` 原来在**整段 region 求解期间**
+     * （分钟级）把全局 `REGION_ON` 临时置 false，以避免"求解时又去读 region"的递归。
+     * 但读者（瓦片生成的其它线程）看到的是同一个全局变量 ⟹ 那几分钟内全世界的海洋采样
+     * **静默退回粗父解**，同坐标不同结果（破 A3-② 确定性）。
+     *
+     * <p>本旁路只影响**设置它的那个线程**：求解线程读父解，其它线程照常读 region（未命中时
+     * 会在 region 缓存锁上阻塞到解完，而不是拿到父解）。
+     */
+    private static final ThreadLocal<Boolean> REGION_BYPASS =
+            ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /** 求解线程进入"只读父解"模式（必须与 {@link #endRegionBypass()} 成对，建议 try/finally）。 */
+    public static void beginRegionBypass() { REGION_BYPASS.set(Boolean.TRUE); }
+
+    /** 退出旁路（remove 而不是置 false，避免线程池里残留）。 */
+    public static void endRegionBypass() { REGION_BYPASS.remove(); }
+
+    /** 当前线程是否应当走 region 路径。 */
+    public static boolean regionActive() { return REGION_ON && !REGION_BYPASS.get(); }
+
+    /**
      * ★ 2026-11-04（A4）：海气不动点。
      * <p>true 时走 {@link AirSeaCoupling}：首解 → 装 provider → 重解 2 轮（阻尼 α）→ 用最终解装 provider。
      *
@@ -385,7 +408,7 @@ public final class StaticOceanProduction {
     }
 
     private static double iceTempAt(OceanSolution s, int x, int z) {
-        if (REGION_ON) return Double.NaN;
+        if (regionActive()) return Double.NaN;
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
         if (!g.isWet(i, j)) return Double.NaN;
@@ -393,7 +416,7 @@ public final class StaticOceanProduction {
     }
 
     private static double iceAt(OceanSolution s, int x, int z, boolean thickness) {
-        if (REGION_ON) return OceanRegionProduction.iceAt(x, z, seed, thickness);
+        if (regionActive()) return OceanRegionProduction.iceAt(x, z, seed, thickness);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
         if (!g.isWet(i, j)) return 0.0;
@@ -414,7 +437,7 @@ public final class StaticOceanProduction {
      */
     /** ★ 2026-11-05：3D 解的表层流速 (u,v)，供 /talosmap 的洋流箭头用。无 3D 水返回 NaN。 */
     public static synchronized double atU(int x, int z, int worldSeed) {
-        if (REGION_ON) return OceanRegionProduction.atU(x, z, worldSeed);
+        if (regionActive()) return OceanRegionProduction.atU(x, z, worldSeed);
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
@@ -423,7 +446,7 @@ public final class StaticOceanProduction {
     }
 
     public static synchronized double atV(int x, int z, int worldSeed) {
-        if (REGION_ON) return OceanRegionProduction.atV(x, z, worldSeed);
+        if (regionActive()) return OceanRegionProduction.atV(x, z, worldSeed);
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
@@ -446,14 +469,14 @@ public final class StaticOceanProduction {
     }
 
     public static synchronized boolean wetAt(int x, int z, int worldSeed) {
-        if (REGION_ON) return OceanRegionProduction.wetAt(x, z, worldSeed);
+        if (regionActive()) return OceanRegionProduction.wetAt(x, z, worldSeed);
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         return g.isWet(indexX(g, x), indexZ(g, z));
     }
 
     public static synchronized double atT(int x, int z, int worldSeed) {
-        if (REGION_ON) return OceanRegionProduction.atT(x, z, worldSeed);
+        if (regionActive()) return OceanRegionProduction.atT(x, z, worldSeed);
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
@@ -463,7 +486,7 @@ public final class StaticOceanProduction {
 
     /** ★ 2026-11-12（NUPWELL 取证）：3D 解的**表层垂直速度** w（m/s，正 = 向上 = 上升流）。 */
     public static synchronized double atW(int x, int z, int worldSeed) {
-        if (REGION_ON) return 0.0;
+        if (regionActive()) return 0.0;
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
@@ -473,7 +496,7 @@ public final class StaticOceanProduction {
 
     /** ★ 2026-11-12（NUPWELL 取证）：投影算出的**面**垂直速度 wF（m/s，正 = 向上）。 */
     public static synchronized double atWF(int x, int z, int worldSeed) {
-        if (REGION_ON) return 0.0;
+        if (regionActive()) return 0.0;
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);
@@ -482,7 +505,7 @@ public final class StaticOceanProduction {
     }
 
     public static synchronized double atS(int x, int z, int worldSeed) {
-        if (REGION_ON) return OceanRegionProduction.atS(x, z, worldSeed);
+        if (regionActive()) return OceanRegionProduction.atS(x, z, worldSeed);
         OceanSolution s = solution(worldSeed);
         OceanGrid g = s.state.grid;
         int i = indexX(g, x), j = indexZ(g, z);

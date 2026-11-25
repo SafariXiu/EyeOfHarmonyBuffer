@@ -24,20 +24,22 @@ public final class OceanRegionProduction {
         OceanGrid g = OceanGrid.patch(key.worldSeed, StaticOceanProduction.CELL,
                 (int) Math.round(minX), (int) Math.round(minZ), nx, ny,
                 maxX - minX, maxZ - minZ, true);
-        boolean prev = StaticOceanProduction.REGION_ON;
-        StaticOceanProduction.REGION_ON = false;
-        OceanSolution coarse;
-        try { coarse = StaticOceanProduction.solution(key.worldSeed); }
-        finally { StaticOceanProduction.REGION_ON = prev; }
-        GlobalBoxParent parent = new GlobalBoxParent(coarse);
-        DiagnosticSeaSurfaceForcing f = new DiagnosticSeaSurfaceForcing(0, StaticOceanProduction.CELL, 12500);
-        VelocityProjection.OPEN_X = true;
-        OceanSponge.OPEN_X = true;
-        StaticOceanProduction.REGION_ON = false;
-        OceanSolution ps;
-        try { ps = StaticOceanSolver.solve(g, key.worldSeed, f, 0.0, 1, 0, 5000, parent, 3); }
-        finally { StaticOceanProduction.REGION_ON = prev; }
-        return new OceanRegionSolution(key, ps);
+        // ★ 2026-11-24（S0.3）：**不再翻转全局 REGION_ON**。原来整段求解（分钟级）里
+        //   全局 REGION_ON=false ⟹ 其它线程（瓦片生成）读到的海洋采样静默退回粗父解，
+        //   同坐标不同结果。现在用「只对本线程生效」的旁路：求解线程读父解，别的线程
+        //   照常走 region（未命中就在缓存锁上等到解完）。
+        StaticOceanProduction.beginRegionBypass();
+        try {
+            OceanSolution coarse = StaticOceanProduction.solution(key.worldSeed);
+            GlobalBoxParent parent = new GlobalBoxParent(coarse);
+            DiagnosticSeaSurfaceForcing f = new DiagnosticSeaSurfaceForcing(0, StaticOceanProduction.CELL, 12500);
+            VelocityProjection.OPEN_X = true;
+            OceanSponge.OPEN_X = true;
+            OceanSolution ps = StaticOceanSolver.solve(g, key.worldSeed, f, 0.0, 1, 0, 5000, parent, 3);
+            return new OceanRegionSolution(key, ps);
+        } finally {
+            StaticOceanProduction.endRegionBypass();
+        }
     }
 
     public static OceanSolution solutionAt(int x, int z, int worldSeed) {

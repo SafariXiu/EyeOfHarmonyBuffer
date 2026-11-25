@@ -23,6 +23,39 @@ public final class OceanSponge {
     /** 最近一次的最大松弛权重（诊断用；应约为 1）。 */
     public static double LAST_MAX_W = 0.0;
 
+    // ── S0.4 诊断（2026-11-24）───────────────────────────────────────────────
+    /** 本方法调用里：父解在该格点有值 / 需要外推 / 外推也找不到 的 (i,j,k) 计数。 */
+    public static long LAST_BC_DIRECT = 0, LAST_BC_EXTRAP = 0, LAST_BC_MISSING = 0;
+    /** 外推搜索半径（格）。只影响"父解陆地"的边界格，不影响有父解值的地方。 */
+    public static final int EXTRAP_R = 4;
+
+    /**
+     * 找 (i,j) 附近第一个有有限父值的格点（S0.4）。
+     *
+     * <p>为什么需要：父解在**自己的陆地**上返回 NaN，而父/子海陆并不一致 ⟹
+     * 实测一条边界上 550 个 (j,k) 采样里 350/200 是 NaN。原先"NaN 就跳过"，
+     * 等于**多数边界格没有边界条件**（漏海绵）。这里按环向外推找一个**海洋**父值。
+     */
+    private static double[] donorXZ(OceanGrid g, OceanParent parent, int i, int j, int k) {
+        for (int r = 1; r <= EXTRAP_R; r++) {
+            for (int s = -1; s <= 1; s += 2) {
+                int ii = i + s * r;
+                if (ii >= 0 && ii < g.nx) {
+                    double x = g.xOf(ii), z = g.zOf(j);
+                    if (Double.isFinite(parent.temperatureK(x, z, k))) return new double[]{x, z};
+                }
+            }
+            for (int s = -1; s <= 1; s += 2) {
+                int jj = j + s * r;
+                if (jj >= 0 && jj < g.ny) {
+                    double x = g.xOf(i), z = g.zOf(jj);
+                    if (Double.isFinite(parent.temperatureK(x, z, k))) return new double[]{x, z};
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * @param band       sponge 带宽度（格点数），必须 > 0
      * @param periodicX  true = x 方向周期（不加 x 侧 sponge）
@@ -31,6 +64,7 @@ public final class OceanSponge {
                              int band, boolean periodicX) {
         if (parent == null || band <= 0) return;
         APPLY_COUNT++;
+        LAST_BC_DIRECT = 0; LAST_BC_EXTRAP = 0; LAST_BC_MISSING = 0;
         double maxW = 0.0;
         for (int j = 0; j < g.ny; j++) {
             int dy = Math.min(j, g.ny - 1 - j);
@@ -47,13 +81,25 @@ public final class OceanSponge {
                 int wl = g.wetLayers[g.idx(i, j)];
                 for (int k = 0; k < wl; k++) {
                     int q = st.idx(i, j, k);
-                    double pt = parent.temperatureK(x, z, k);
-                    if (Double.isFinite(pt)) st.t[q] = (1.0 - w) * st.t[q] + w * pt;
-                    double ps = parent.salinityPsu(x, z, k);
+                    double px = x, pz = z;
+                    double pt = parent.temperatureK(px, pz, k);
+                    if (Double.isFinite(pt)) {
+                        LAST_BC_DIRECT++;
+                    } else {
+                        // S0.4：父解陆地（NaN）→ 环向外推一个"海洋父值"，而不是静默跳过。
+                        double[] donor = donorXZ(g, parent, i, j, k);
+                        if (donor == null) { LAST_BC_MISSING++; continue; }
+                        px = donor[0]; pz = donor[1];
+                        pt = parent.temperatureK(px, pz, k);
+                        if (!Double.isFinite(pt)) { LAST_BC_MISSING++; continue; }
+                        LAST_BC_EXTRAP++;
+                    }
+                    st.t[q] = (1.0 - w) * st.t[q] + w * pt;
+                    double ps = parent.salinityPsu(px, pz, k);
                     if (Double.isFinite(ps)) st.s[q] = (1.0 - w) * st.s[q] + w * ps;
-                    double pu = parent.uMs(x, z, k);
+                    double pu = parent.uMs(px, pz, k);
                     if (Double.isFinite(pu)) st.u[q] = (1.0 - w) * st.u[q] + w * pu;
-                    double pv = parent.vMs(x, z, k);
+                    double pv = parent.vMs(px, pz, k);
                     if (Double.isFinite(pv)) st.v[q] = (1.0 - w) * st.v[q] + w * pv;
                 }
             }
