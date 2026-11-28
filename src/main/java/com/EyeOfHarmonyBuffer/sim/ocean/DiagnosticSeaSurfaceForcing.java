@@ -28,6 +28,8 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
     public static boolean ATMOS_ABL_1D_ON = false;
     public static long ABL_ATMO_CALLS = 0, ABL_ADV_CALLS = 0, ABL_STEP_CALLS = 0;
     public static double ABL_MIN_THETA = Double.POSITIVE_INFINITY;
+    /** RS-P0 G6-1 landmine: cloud LW surface increment without a TOA/OLR counterpart -- warn once. */
+    private static boolean WARNED_NONCONSERVATIVE_CLOUD_LW = false;
     public static double ABL_MAX_THETA = Double.NEGATIVE_INFINITY;
     public static double ABL_LAST_BEFORE = Double.NaN, ABL_LAST_AFTER = Double.NaN;
 
@@ -139,6 +141,10 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         return a;
     }
 
+
+    /** ★ 2026-11-28：清空 atmo() 的记忆化（键只有 (x,z,θ)，不含 SST/冰 provider 状态）。 */
+    @Override public void clearMemo() { ATMO.clear(); }
+
     private double[] tau(int x, int z, double theta) {
         return Atmosphere.windStress(x, z, seed, cell, theta, gradStep);
     }
@@ -178,6 +184,7 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         return netHeatFluxWm2(x, z, theta, sstK, iceFraction,
                 Radiation.iceThicknessM(WorldContract.latOf(z)));
     }
+
 
     /**
      * ★ 2026-11-20（D3/选项 a）：**冰面温度恒温器** —— 有日照且被冰覆盖时，贴地气温不低于冰点。
@@ -232,6 +239,10 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         }
         double alb = aOcean + iceFraction * (aIce - aOcean);
         double asr = Radiation.absSolarSurface(lat, dec, alb);
+        if (Radiation.CLOUD_ON && Radiation.CLOUD_DLW != 0.0 && !WARNED_NONCONSERVATIVE_CLOUD_LW) {
+            WARNED_NONCONSERVATIVE_CLOUD_LW = true;
+            System.out.println("WARN NONCONSERVATIVE_CLOUD_LW cf*CLOUD_DLW enters the surface with no TOA/OLR counterpart (RS-P0 G6-1)");
+        }
         if (Radiation.CLOUD_ON) {
             asr *= (1.0 - at[6] * Radiation.CLOUD_DA);
             // 云的**下行长波**增量（正值=加热地表）
@@ -274,6 +285,25 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         return pMmDay / (86400.0 * OceanConstants.RHO_FRESH) * f;
     }
 
+    /**
+     * ★ 2026-11-26（P1 根因）：**全球淡水通量守恒修正** —— 减去面积加权的全球平均 P−E。
+     *
+     * <p>实测（c12_FRESHWATER）：当前 P−E 的全球平均是 **+3.417e-5 kg/m2/s = +2.95 mm/天**，
+     * 比全球平均降水（约 2.7 mm/天）还大 ⟹ 水循环未闭合，海洋被持续灌淡水，
+     * 盐度 400 年漂到 **0.60–50.00 psu**，环流由盐度驱动并无界膨胀（MOC 228→502 Sv）。
+     *
+     * <p>这不是调参：封闭世界里**总水量守恒**，全球平均的净淡水通量必须为 0。
+     * 本开关只把这个已测出的偏差整体扣掉，不改变任何空间结构。
+     *
+     * <p>默认 <b>false</b> ⟹ 逐位不变。{@link #FW_MEAN_KGM2S} 由调用方（探针或生产初始化）
+     * 用同一套通量算出后写入，保证"扣掉的量"与"测到的量"是同一个积分。
+     */
+    public static boolean FW_ZERO_MEAN = false;
+    /** ★ 2026-11-27（Q2）：最近一次 freshwaterFluxKgM2S 调用的三项分解。 */
+    public static double LAST_P_MMDAY = 0.0, LAST_E_MMDAY = 0.0, LAST_RUNOFF_KGM2S = 0.0;
+    /** 全球面积加权平均 P−E（kg/m2/s），由调用方写入；仅当 {@link #FW_ZERO_MEAN} 为真时生效。 */
+    public static double FW_MEAN_KGM2S = 0.0;
+
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sstK) {
         double pMmDay = PrecipField.mmPerDay(x, z, seed, cell, theta, gradStep);
         double[] at = atmo(x, z, theta);
@@ -281,6 +311,11 @@ public final class DiagnosticSeaSurfaceForcing implements SeaSurfaceForcing {
         double eMmDay = Radiation.potentialEvapMmDay(sstK, qa, chv);
         double pMinusE = (pMmDay - eMmDay) / 86400.0;
         double runoff = SoilMoisture.runoffKgM2SAt(x, z, seed, cell, gradStep);
-        return pMinusE + runoff;
+        double fw = pMinusE + runoff;
+        // ★ 2026-11-27（Q2 水循环闭合取证）：三项分解，探针每次调用后读取。
+        LAST_P_MMDAY = pMmDay;
+        LAST_E_MMDAY = eMmDay;
+        LAST_RUNOFF_KGM2S = runoff;
+        return FW_ZERO_MEAN ? fw - FW_MEAN_KGM2S : fw;
     }
 }

@@ -45,6 +45,7 @@ public final class SphereSeaSurfaceForcing implements SeaSurfaceForcing {
                                            double hi, double hs, double pond) {
         return d.netHeatFluxWm2(x, zw(z), theta, sst, ice, hi, hs, pond);
     }
+
     @Override public double shortwaveWm2(int x, int z, double theta, double sst) { return d.shortwaveWm2(x, zw(z), theta, sst); }
     @Override public double freshwaterFluxKgM2S(int x, int z, double theta, double sst) { return d.freshwaterFluxKgM2S(x, zw(z), theta, sst); }
     @Override public double snowfallMperS(int x, int z, double theta) { return d.snowfallMperS(x, zw(z), theta); }
@@ -56,4 +57,6 @@ public final class SphereSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double[] airState(int x, int z, double theta) {
         return d.airState(x, zw(z), theta);
     }
+    /** 透传：换 provider 后必须清掉下层（世界 z）那份记忆化。 */
+    @Override public void clearMemo() { d.clearMemo(); }
 }

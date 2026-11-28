@@ -380,7 +380,6 @@ public final class IceThicknessDistribution {
     public static double LAST_AREA_BEFORE = 0.0, LAST_AREA_AFTER = 0.0;
     public static double LAST_RIDGE_LOST = 0.0, LAST_RIDGE_VOL = 0.0;
     public static long LAST_RIDGE_COUNT = 0L;
-    public static int TRACE_JS = -1;
     public static int TRACE_I = -1, TRACE_J = -1;
     public static double TRACE_QSUM = 0.0, TRACE_DVSUM = 0.0, TRACE_MAXH = 0.0, TRACE_SNOWMAX = 0.0;
     public static long TRACE_N = 0L;

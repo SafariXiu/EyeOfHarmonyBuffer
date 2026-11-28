@@ -250,6 +250,45 @@ public final class ClimlabEBM {
     private static volatile double[] CLOUD_FRAC_19 = null;
     private static volatile double[] CLOUD_LWP_19 = null;
 
+    // ---- S-1（2026-11-27）反照率的来源：**只有**本世界 --------------------
+    /**
+     * ★★★ 2026-11-27（S-1 物理自洽，用户裁决：**删掉 climlab 那一支**）：
+     * **EBM 的"无冰反照率"就是本世界的行星反照率剖面**，不存在第二条路。
+     *
+     * <p><b>为什么</b>：求解器解的是"这个世界"，但它的反照率是 climlab 的常数式，从不知道本世界的
+     * 陆地占比、雪、植被。实测（e10/e11，`工作目录/中期/A-TOA失衡归因`）：
+     * 世界行星反照率 **0.3297** vs EBM 在自己解上的有效值 **0.3172**，差 **0.0125 ⟹ 4.25 W/m²**，
+     * 正好是 3D 那笔 N = −3.71 的主体。
+     *
+     * <p><b>口径（关键，别再踩）</b>：
+     * <pre>
+     *   α_plan = 1 − (1 − α_sfc)·(1 − ALPHA_ATM)      ← 行星口径
+     * </pre>
+     * <b>不能</b>把地表反照率直接当 α_plan（世界地表 0.1502 vs climlab 行星 0.30，直接代会错 −51 W/m²）。
+     * α_sfc 只含**陆/海/雪**，**不含海冰** —— 海冰仍由本类的 ramp 参数化，否则同一份冰计两次。
+     *
+     * <p>零新常数：α_sfc 来自 {@link Atmosphere#surfaceAlbedoNoIce}，大气反射用既有的
+     * {@link Radiation#ALPHA_ATM}。
+     *
+     * <p>★★ <b>为什么没有回退开关</b>（用户 2026-11-27 裁决：''不物理自洽对我们没有意义''）：
+     * 留着 {@code A0 + A2*P2} 那支，就会出现"看着只关了一个开关、实际把整套反照率换成
+     * climlab 的地球常数"的路 —— 与本类 {@code oceanBaseK} 删掉地球表回退是同一条纪律。
+     * 该式**仅**在 {@link #ALB_PLAN_37} 尚未建立时充当**初始猜测**（构建期的重入），
+     * 一旦剖面就绪，每次求解用的都是世界值。
+     */
+    /** 本世界的**行星**反照率剖面（37 点，−90…90，5°）。null = 尚未建立（仅构建期重入）。 */
+    private static volatile double[] ALB_PLAN_37 = null;
+    /** ★ 2026-11-27（S-1 诊断）：只读副本，把"求解器实际用的 α 剖面"暴露给探针，
+     *  免得探针**重新实现**那一串 ramp 分支（口径铁律 ②）。默认 null。 */
+    public static double[] worldAlbedo37() {
+        double[] a = ALB_PLAN_37;
+        return a == null ? null : a.clone();
+    }
+    /** S-1 固定点迭代：每轮"用当前 T 算 α → 失效缓存 → 重解 → 比较"，上限与收敛判据见下。 */
+    public static int ALB_ITER = 4;
+    /** S-1 收敛判据：37 点上的 max|ΔT|（K）。 */
+    public static double ALB_TOL = 1.0e-3;
+
     /** 装入 19 点剖面（0…90°，5°）。null 或长度≠19 ⟹ 清空。 */
     public static void setCloudProfile(double[] frac19, double[] lwp19) {
         if (frac19 == null || lwp19 == null || frac19.length != 19 || lwp19.length != 19) {
@@ -282,6 +321,7 @@ public final class ClimlabEBM {
         SELF_STATE_READY = false;
         CLOUD_FRAC_19 = null;
         CLOUD_LWP_19 = null;
+        ALB_PLAN_37 = null;   // ★ 2026-11-27（S-1）：换世界 ⟹ 反照率剖面也必须作废
     }
 
     public static synchronized void setWorldContext(int seed, int cell, int gradStep) {
@@ -423,7 +463,79 @@ public final class ClimlabEBM {
         VerticalColumn.setupOptics();
         // 应用后必须让下一次 EBM 求解重新算（旧缓存是基准 W_REF 下的解）
         resetOhtCache();
+
+        // ★ 2026-11-27（S-1）：把无冰反照率换成【本世界的行星反照率】，迭代到不动点。
+        //   为什么必须迭代：α 依赖 T（雪/植被），T 又依赖 α。一轮只解一次 = 停在"旧 α 下的 T"。
+        //   默认 false ⟹ 整块不执行 ⟹ 逐位不变（N5）。
+        {
+            double[] tPrev = sampleT37();
+            for (int it = 0; it < Math.max(1, ALB_ITER); it++) {
+                buildWorldAlbedo();
+                resetOhtCache();
+                double[] tNew = sampleT37();
+                double dT = 0.0;
+                for (int i = 0; i < tNew.length; i++) dT = Math.max(dT, Math.abs(tNew[i] - tPrev[i]));
+                if (System.getenv("EOH_SELF_DEBUG") != null) {
+                    System.out.println(String.format(java.util.Locale.ROOT,
+                            "WORLDALB it=%d maxdT=%.6f T0=%.3f T45=%.3f", it, dT, tNew[18], tNew[9]));
+                }
+                tPrev = tNew;
+                if (dT < ALB_TOL) break;
+            }
+        }
         SELF_STATE_READY = true;
+    }
+
+    /** 37 点上的洋面年均温度（5°，−90…90）。用于 S-1 的收敛判定；会触发一次重解（缓存后不再解）。 */
+    private static double[] sampleT37() {
+        double[] t = new double[N37];
+        for (int i = 0; i < N37; i++) {
+            t[i] = tOceanK(Math.toRadians((i - (N37 - 1) / 2) * D_LAT_DEG));
+        }
+        return t;
+    }
+
+    /**
+     * ★ 2026-11-27（S-1）：按【本世界】算 37 点的**行星**反照率剖面并装入 {@link #ALB_PLAN_37}。
+     *
+     * <p>α_sfc = 8 经度 × 4 季的 `Atmosphere.surfaceAlbedoNoIce`（陆/海/雪，不含海冰）的面积平均；
+     * α_plan = 1 − (1−α_sfc)(1−{@link Radiation#ALPHA_ATM})。**零新常数。**
+     *
+     * <p>由 {@link #buildSelfRadiationState()} 在每次建世界状态时调用（唯一路径）。
+     */
+    private static void buildWorldAlbedo() {
+        final int nx = 8, nseas = 4;
+        double[] a = new double[N37];
+        for (int i = 0; i < N37; i++) {
+            double latDeg = (i - (N37 - 1) / 2) * D_LAT_DEG;
+            double latRad = Math.toRadians(latDeg);
+            int z = WorldContract.zOfLat(latDeg);
+            double sum = 0.0;
+            for (int k = 0; k < nx; k++) {
+                int x = (int) ((long) k * 40_000_000L / nx);
+                boolean land = com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(x, z, WORLD_SEED, WORLD_CELL);
+                double al = 0.0;
+                for (int si = 0; si < nseas; si++) {
+                    double th = 2.0 * Math.PI * si / nseas;
+                    double ts = Atmosphere.surfaceTemp(x, z, WORLD_SEED, WORLD_CELL, th);
+                    al += Atmosphere.surfaceAlbedoNoIce(land, ts, latRad);
+                }
+                sum += al / nseas;
+            }
+            double alSfc = sum / nx;
+            a[i] = 1.0 - (1.0 - alSfc) * (1.0 - Radiation.ALPHA_ATM);
+        }
+        if (System.getenv("EOH_SELF_DEBUG") != null) {
+            double mn = 9, mx = -9, sm = 0, sw = 0;
+            for (int i = 0; i < N37; i++) {
+                double latDeg = (i - (N37 - 1) / 2) * D_LAT_DEG;
+                double wt = Math.max(1e-6, Math.cos(Math.toRadians(latDeg)));
+                mn = Math.min(mn, a[i]); mx = Math.max(mx, a[i]); sm += a[i] * wt; sw += wt;
+            }
+            System.out.println(String.format(java.util.Locale.ROOT,
+                    "WORLDALB profile min=%.4f max=%.4f areaMean=%.4f  (climlab A0 flat 0.3000)", mn, mx, sm / sw));
+        }
+        ALB_PLAN_37 = a;
     }
 
     /** 线性插值（按 |lat|，南北对称）。 */
@@ -868,7 +980,18 @@ public final class ClimlabEBM {
             for (int i = 0; i < n; i++) {
                 double sn = Math.sin(lat[i]);
                 double s = (S0 / 4.0) * (1.0 + S2 * p2(sn));
-                double alFreeNow = Double.isNaN(alFree) ? (A0 + A2 * p2(sn)) : alFree;
+                // ★ 2026-11-27（S-1）：无冰反照率可来自【本世界的行星反照率剖面】。
+                //   优先级：诊断覆盖 > 世界剖面 > climlab 常数式。
+                //   默认（开关关 / 剖面未建）⟹ 与原式逐位相同 ✓（N5 / A3-④）。
+                double alFreeNow;
+                if (!Double.isNaN(alFree)) {
+                    alFreeNow = alFree;
+                } else if (ALB_PLAN_37 != null) {
+                    alFreeNow = ALB_PLAN_37[i];
+                } else {
+                    // ★ 仅构建期的初始猜测（剖面还没建好时的重入），不参与最终解。
+                    alFreeNow = A0 + A2 * p2(sn);
+                }
                 double al;
                 if (rampOn) {
                     // 同一个 TF_C 从"阈值"读成"过渡宽度"（0 … −10 °C）
@@ -913,7 +1036,18 @@ public final class ClimlabEBM {
         int ice = 0;
         final double tfGuard37 = (EBM_PHYS_LW || SELF_RADIATION_ON) ? 273.15 : TF_C + 273.15;
         for (int i = 0; i < n; i++) if (t[i] < tfGuard37) ice++;
-        if (ice >= n / 2 && !EBM_GUARD_BYPASS) {
+        // ★ 2026-11-27（S-1，判据已改）：反照率取世界值后气候整体更冷，**点计数会误杀** ——
+        //   本类 EBM_GUARD_BYPASS 的 javadoc 早已写明：'一个"全球均值已过冰点、只是极地冷"
+        //   的解同样可能有 ≥50% 的格点低于 273.15'。所以判据改成**物理定义**：
+        //   雪球 = 面积加权全球均温不高于冰点（NaN 也算雪球）。ice 只留在报错信息里作诊断。
+        double sw = 0.0, st = 0.0;
+        for (int i = 0; i < n; i++) {
+            double wt = Math.max(1.0e-6, Math.cos(lat[i]));
+            sw += wt;
+            st += t[i] * wt;
+        }
+        boolean snowball = !(st / sw > 273.15);
+        if (snowball && !EBM_GUARD_BYPASS) {
             throw new IllegalStateException("ClimlabEBM.solve37: 解落在【雪球支】(" + ice + "/" + n
                 + " 个冰格点)。两半球 EBM 仍应是暖支 —— 请检查常数与非对称项是否被改动。");
         }

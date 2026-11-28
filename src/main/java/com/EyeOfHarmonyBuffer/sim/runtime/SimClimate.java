@@ -570,6 +570,34 @@ public final class SimClimate {
         h = h * 31 + (AIRT_SEALEVEL ? 1 : 0);   // D8-b 的 A/B 开关（改了结果 ⇒ 必须进指纹）
         // §216.7：海陆年均对比进不进 p'。默认 false 时 p' 解析不变，但**打开时会变** ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.LANDS_ANNUAL_IN_PRESSURE ? 1 : 0);
+        // ★ 2026-11-27（Q1/Q2/Q3 落地）：下面六个开关都会改输出 ⟹ 必须进指纹（D58 准入判据）。
+        //   全部**条件式折入**：默认 false 时 h 完全不变，历史指纹逐位保持。
+        //   ⚠ 2026-11-27 更正（N5 反例）：原四行写成 `h*31 + (X?1:0)` —— FLAG=false 时仍乘 31，
+        //     哈希照变，正是 N5 明令禁止的形式。已改成 `if (X) h = h*31 + 常量`，每条一个常量
+        //     （常量互不相同，避免「A 开」与「B 开」撞成同一个指纹）。
+        if (Atmosphere.ALBEDO_NO_DOUBLE_ICE) h = h * 31 + 0x7A172L;   // Q1：海冰反照率不再重复计冰
+        if (Atmosphere.POLE_AS_POINT) h = h * 31 + 0x7A173L;          // Q3：极线取单值
+        if (SoilMoisture.RUNOFF_SIGNED_ON) h = h * 31 + 0x7A174L;     // Q2：径流取有符号 P-E
+        if (SoilMoisture.RUNOFF_LAND_ONLY) h = h * 31 + 0x7A175L;     // Q2：径流只在陆地
+        if (PrecipField.PRECIP_CLOSURE_ON) {                        // Q2：降水归一化（含因子）
+            h = h * 31 + 0x7A170L;
+            h = h * 31 + Double.doubleToLongBits(PrecipField.PRECIP_SCALE);
+        }
+        // ★★ 2026-11-28（海冰符号 bug 修复，**开关已删**）：生产冰支改为按融点通量符号分方向。
+        //   本世界实测逐位不变（qf 恒负，融冰支不触发），但别的配置会变 ⟹ **无条件**折入一次，
+        //   让旧缓存一定失效（A3-⑤）。
+        h = h * 31 + 0x7A178L;
+        // ★★★ 2026-11-27（S-1 物理自洽，用户裁决：删掉 climlab 那一支）：
+        //   EBM 的无冰反照率**唯一来源** = 本世界的行星反照率剖面 ⟹ 这是一次【无条件】的行为变更，
+        //   必须让指纹变一次，否则旧气候瓦片会全部命中（A3-⑤ / A6「缓存键漏了输入」）。
+        h = h * 31 + 0x7A176L;
+        //   迭代控制不是物理，但改它会改解 ⟹ **非默认值**时条件折入（默认 4 / 1e-3 时零变化）。
+        if (ClimlabEBM.ALB_ITER != 4) h = h * 31 + ClimlabEBM.ALB_ITER;
+        if (ClimlabEBM.ALB_TOL != 1.0e-3) h = h * 31 + Double.doubleToLongBits(ClimlabEBM.ALB_TOL);
+        // ★ 2026-11-27（BE → GH 接口）：CLIMATE_FROM_EBM 换掉的是【气候基线本身】⟹ 改了结果 ⟹ 进指纹。
+        //   现状 false（五种子实测 N = +0.84…−10.46 W/m² 不闭合，已回退）；GH 落地后若重开，
+        //   本行保证旧的瓦片缓存一定失效（A3-⑤ / A6「缓存键漏了输入」）。
+        if (Atmosphere.CLIMATE_FROM_EBM) h = h * 31 + 0x7A171L;
         // D79：季节项的形状（单一谐波 vs 观测年循环形状）。改了结果 ⇒ 必须进指纹。
         h = h * 31 + (Atmosphere.SEASON_SHAPE_FROM_OBS ? 1 : 0);
         // ★ 2026-10-16：**纬向口径**的季节形状观测开关（P296 的正路）⟹ 改了结果 ⟹ 进指纹 ✓

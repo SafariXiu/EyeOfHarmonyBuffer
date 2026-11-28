@@ -17,6 +17,8 @@ public final class PrognosticSalinity {
     public static double LAST_TOTAL0 = 0.0, LAST_TOTAL1 = 0.0;
     /** Salt budget decomposition (units: psu * m, same weighting as total()). */
     public static double LAST_D_ADV = 0.0, LAST_D_DIFF = 0.0, LAST_D_SURF = 0.0, LAST_D_CLIP = 0.0;
+    /** Redi（涡致）项的贡献：原先**没有被任何分项累计**，导致四项之和永远对不上总变化。 */
+    public static double LAST_D_REDI = 0.0;
     public static int LAST_CLIP_LO = 0, LAST_CLIP_HI = 0;
     /** 本次实际用的子步数（CFL 自适应）。 */
     public static int LAST_STEPS = 0;
@@ -87,7 +89,7 @@ public final class PrognosticSalinity {
                 st.iceSaltFlux[js] = 0.0;
             }
         LAST_TOTAL0 = total(g, st);
-        LAST_D_ADV = 0.0; LAST_D_DIFF = 0.0; LAST_D_SURF = 0.0; LAST_D_CLIP = 0.0;
+        LAST_D_ADV = 0.0; LAST_D_DIFF = 0.0; LAST_D_SURF = 0.0; LAST_D_CLIP = 0.0; LAST_D_REDI = 0.0;
         LAST_CLIP_LO = 0; LAST_CLIP_HI = 0;
         double[] adv = new double[n3];
         double[] ns = new double[n3];
@@ -136,9 +138,12 @@ public final class PrognosticSalinity {
                             src = -s * fw[js] / (AdvectionDiffusionSolver.RHO0 * hMl);
                         }
                         double vRaw = s + dt * (-adv[q] + lapH + lapZ + src + redi[q]);
-                        LAST_D_ADV += (-adv[q]) * dt * dz;
-                        LAST_D_DIFF += (lapH + lapZ) * dt * dz;
-                        LAST_D_SURF += src * dt * dz;
+                        // ★ 2026-11-27（P1 盐收支取证）：**加面积权重**，否则三项与 total() 不可比。
+                        double ar = g.cellAreaM2(j);
+                        LAST_D_ADV += (-adv[q]) * dt * dz * ar;
+                        LAST_D_DIFF += (lapH + lapZ) * dt * dz * ar;
+                        LAST_D_SURF += src * dt * dz * ar;
+                        LAST_D_REDI += redi[q] * dt * dz * ar;
                         double v = vRaw;
                         if (v < 0.0) { LAST_D_CLIP += (0.0 - vRaw) * dz; LAST_CLIP_LO++; v = 0.0; }
                         if (v > 50.0) { LAST_D_CLIP += (50.0 - vRaw) * dz; LAST_CLIP_HI++; v = 50.0; }
@@ -161,12 +166,17 @@ public final class PrognosticSalinity {
     }
 
     private static double total(OceanGrid g, OceanState st) {
+        // ★ 2026-11-27（P1）：口径改为「湿格 + 面积权重」，与逐项累加一致。
+        //   旧版把干格的陈旧 S 也算进去（k 跑到 nz），所以"总变化"从来和分项对不上。
         double sum = 0.0;
-        for (int j = 1; j < g.ny - 1; j++)
+        for (int j = 1; j < g.ny - 1; j++) {
+            double ar = g.cellAreaM2(j);
             for (int i = 0; i < g.nx; i++) {
                 if (!g.isWet(i, j)) continue;
-                for (int k = 0; k < g.nz; k++) sum += st.s[st.idx(i, j, k)] * g.dz[k];
+                int wl = Math.min(g.nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 0; k < wl; k++) sum += st.s[st.idx(i, j, k)] * g.dz[k] * ar;
             }
+        }
         return sum;
     }
 

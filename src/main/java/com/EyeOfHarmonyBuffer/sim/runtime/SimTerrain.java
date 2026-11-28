@@ -577,8 +577,6 @@ public final class SimTerrain {
      * <p>改到 0.5/1.5：平原（坡度 &lt; 0.5）几乎不加细结构，陡坡（&gt; 1.5）全量加，
      * 中间平滑过渡。<b>注意</b>：它们只重分配细结构，不改变 {@link #ERO_EXTRA_AMP} 的上限。
      */
-    public static double EXTRA_SLOPE_LO = 0.5;
-    public static double EXTRA_SLOPE_HI = 1.5;
 
     /**
      * ★ <b>§7740：细结构掩膜的【下限】—— 任何地方都保留这个比例。</b>

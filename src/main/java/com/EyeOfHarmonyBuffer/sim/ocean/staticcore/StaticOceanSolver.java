@@ -325,7 +325,6 @@ public final class StaticOceanSolver {
      */
     public static boolean FP_SOLVER_ON = false;
     public static double FP_RELAX = 0.5;
-    public static double FP_RELAX_MIN = 0.05;
     public static double LAST_RESID_T = 0.0, LAST_RESID_S = 0.0;
     /** 最近一年的全球热含量相对变化（{@link #SEASONAL_CONV_MODE}=1 时用）。 */
     public static double LAST_CONV_REL = Double.NaN;
@@ -640,6 +639,7 @@ public final class StaticOceanSolver {
                 //   "run 的第 2 年"与"新 run 第 1 年"的 T 差 2.13 K；把两者设为相等后
                 //   两次运行**逐位相同**（max|dT| = 0）。
                 //   平衡解求解要求 M(x) 只依赖 x，所以迭代次数必须由状态/判据决定，不能由年份决定。
+                if (SALT_TRACE) System.out.println("SALT_TRACE pre_T  yr=" + yr + " si=" + si + " " + saltTotal(grid, st));
                 int pics = PIC_WARM;
                 for (int pic = 0; pic < pics; pic++) {
                     if (FLUX_BOUNDARY_ON) {
@@ -667,6 +667,7 @@ public final class StaticOceanSolver {
                             adv = new AdvectionDiffusionSolver.Result(0, tRes);
                         }
                     }
+                    if (SALT_TRACE) System.out.println("SALT_TRACE pre_S  yr=" + yr + " si=" + si + " " + saltTotal(grid, st));
                     // 3D 盐度：默认稳态 SOR；PROGNOSTIC_S_ON 时走季节内 flux-form 时间步。
                     AdvectionDiffusionSolver.Result sR;
                     if (DEBUG_FINITE) { String b = firstNonFinite(grid, st); if (b != null) System.out.println("NONFINITE_STAGE T yr=" + yr + " si=" + si + " " + b); }
@@ -678,6 +679,7 @@ public final class StaticOceanSolver {
                         sR = AdvectionDiffusionSolver.solveSalinity(grid, st,
                             periodic, th, Math.min(advMaxIter, 80));
                     }
+                    if (SALT_TRACE) System.out.println("SALT_TRACE post_S yr=" + yr + " si=" + si + " " + saltTotal(grid, st));
                     sBudget = sR.residual;
                     // ★ 2026-11-18（S4）：密度水沿坡下沉（Campin & Goosse 1999）。
                     //   必须在 T/S 都更新之后、且用当季时长；ON=false 时这段是零副作用。
@@ -701,6 +703,7 @@ public final class StaticOceanSolver {
                                 }
                             }
                     }
+                    if (SALT_TRACE) System.out.println("SALT_TRACE end    yr=" + yr + " si=" + si + " " + saltTotal(grid, st));
                     applyMomentum(grid, st);
                     if (parent != null) OceanSponge.apply(grid, st, parent, spongeCells, !OceanSponge.OPEN_X);
                     st.fillDryGhosts();
@@ -911,6 +914,11 @@ public final class StaticOceanSolver {
                     upRel = Math.abs(u1 - u0) / Math.max(1.0e-12, Math.abs(u1));
                     double d1 = YEAR_HEAT_DEEP.get(nh - 1), d0 = YEAR_HEAT_DEEP.get(nh - 2);
                     deepRel = Math.abs(d1 - d0) / Math.max(1.0e-12, Math.abs(d1));
+                    // 2026-11-25: LAST_CONV_REL was declared but never assigned (dead NaN diagnostic).
+                    // Its documented definition is |ΔH/H| over the whole column: fill it from the
+                    // per-year heat contents that are already being tracked.
+                    double h1 = u1 + d1, h0 = u0 + d0;
+                    LAST_CONV_REL = Math.abs(h1 - h0) / Math.max(1.0e-12, Math.abs(h1));
                 }
                 System.out.println("YEAR_PROGRESS y=" + yearsRun
                         + " maxDT=" + maxDT + " maxDS=" + maxDS
@@ -1091,6 +1099,23 @@ public final class StaticOceanSolver {
             sBudget, sBudget, seasSurf);
     }
 
+
+    /** ★ 2026-11-27（P1 盐收支取证）：逐 stage 打印总盐。默认 false ⟹ 逐位不变。 */
+    public static boolean SALT_TRACE = false;
+
+    /** 体积加权总盐 Σ area*dz*S（psu*m^3 的量级），只用于诊断。 */
+    public static double saltTotal(OceanGrid g, OceanState st) {
+        double s = 0;
+        for (int j = 0; j < g.ny; j++) {
+            double ar = g.cellAreaM2(j);
+            for (int i = 0; i < g.nx; i++) {
+                if (!g.isWet(i, j)) continue;
+                int wl = Math.min(g.nz, g.wetLayers[g.idx(i, j)]);
+                for (int k = 0; k < wl; k++) s += ar * g.dz[k] * st.s[st.idx(i, j, k)];
+            }
+        }
+        return s;
+    }
 
     /** Copy a full OceanState into another state on the same grid (diagnostic annual map). */
     public static void copyState(OceanState src, OceanState dst) {

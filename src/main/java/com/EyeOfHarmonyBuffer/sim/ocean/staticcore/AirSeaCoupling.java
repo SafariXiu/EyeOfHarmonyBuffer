@@ -177,6 +177,10 @@ public final class AirSeaCoupling {
                     return g.isWet(i, j) ? relTs[j * g.nx + i] : Double.NaN;
                 }
             };
+            // ★★ 2026-11-28（修 bug，A3-④ 直接改对）：**换 provider 之后必须清掉 forcing 的记忆化。**
+            //   否则本轮 atmo() 命中的是上一轮缓存的大气 ⟹ 海气耦合名义 2 轮、实际开环。
+            //   实测（5 年、同 seed）：不清 8.893 m；清 0.500 m（未耦合基线 8.236 m）。
+            forcing.clearMemo();
             OceanSolution next = StaticOceanSolver.solve(grid, seed, forcing, theta, 1, season, advMaxIter);
 
             double sum = 0.0, mx = 0.0;

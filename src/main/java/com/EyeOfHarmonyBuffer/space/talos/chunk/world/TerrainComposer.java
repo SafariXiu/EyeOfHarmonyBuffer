@@ -102,10 +102,7 @@ public final class TerrainComposer {
     public static final double SNOW_POLE_Y = 128.0;
 
     /** 基础山地中尺度纹理振幅（blocks）与锐化指数（探针可调）。 */
-    public static double mtnTexAmp = 200.0;
-    public static double mtnTexPow = 2.0;
     /** 纹理基准波长倒数（1/blocks）：三个八度 = 1x / 2.5x / 6.25x。 */
-    public static double mtnTexFreq = 1.0 / 3000.0;   // ★ 2026-10-08 回退：地形层与行星尺度无关（TILE/CELL 服务 MC 分辨率与地形质量）
 
     // ===== 查询 =====
 

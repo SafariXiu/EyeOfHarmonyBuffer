@@ -354,17 +354,48 @@ public final class Radiation {
      * <p>★ {@code latRad} 为 NaN 或开关关闭时，**与旧实现逐位相同** ✓
      * （海洋 → {@link #ALB_SEA} ✓；陆地 → 雪判据 ✓）。
      */
+    /**
+     * ★ 2026-11-27（Q1 根因修复）：**雪盖分数开关**。
+     *
+     * <p>旧路径是**冰点处的二值阶跃**（273.14 K 给 0.745–0.86，273.16 K 给 0.20），
+     * 实测导致日照加权反照率跨种子差 0.030（≈10 W/m²），是 TOA 种子散布的根因。
+     *
+     * <p>本开关把阶跃换成**雪盖分数**：过渡宽度 **A = 该纬度年温差半幅**，
+     * 由本世界自己的 `annualSeaLevelTemp + seasonalAnomaly` 的 12 个月求出
+     * （与 `fddK` 同一套量、同一条路径）⟹ **零新常数**。
+     *
+     * <p>物理：热带 A→0 ⟹ 无季节性雪；中纬 A 大 ⟹ 雪盖大幅进退；极区 T̄+A<冰点 ⟹ f≡1。
+     * 默认 **false** ⟹ 逐位不变。
+     */
+    // 2026-11-27：开关已删除 —— 雪盖分数成为唯一路径（旧二值阶跃已移除）。
+
+    /** 雪盖分数 f∈[0,1]：过渡半宽取该纬度的年温差半幅（本世界自算，无自由参数）。 */
+    static double snowFraction(double latRad, double tSurfK) {
+        double tAnn = Atmosphere.annualSeaLevelTemp(latRad, 1.0, 0.0);
+        double tMax = -1.0e9, tMin = 1.0e9;
+        for (int m = 0; m < 12; m++) {
+            double th = 2.0 * Math.PI * (m + 0.5) / 12.0;
+            double t = tAnn + Atmosphere.seasonalAnomaly(latRad, 1.0, th);
+            if (t > tMax) tMax = t;
+            if (t < tMin) tMin = t;
+        }
+        double amp = 0.5 * (tMax - tMin);
+        if (!(amp > 0.01)) amp = 0.01;                 // 数值护栏（热带 A→0），非物理常数
+        double f = (T_SNOW_K + amp - tSurfK) / (2.0 * amp);
+        return f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f);
+    }
+
     public static double albedo(boolean isLand, double tSurfK, double latRad) {
-        if (!isLand) {
-            if (!SEA_ICE_ALBEDO_ON || Double.isNaN(latRad)) return ALB_SEA;
-            return seaIceAlbedo(latRad, tSurfK);
+        if (isLand) {
+            double bare = ALB_LAND + ALB_LAND_ADD;
+            // ★ 2026-11-27（Q1）：旧的冰点二值阶跃【已删除】——雪不会在 0.01 K 内全部消失。
+            //   现在唯一路径是雪盖分数，过渡宽度取本世界该纬度的年温差半幅（snowFraction，零新常数）。
+            if (Double.isNaN(latRad)) return tSurfK < T_SNOW_K ? snowBroadband(tSurfK) : bare;
+            double fs = snowFraction(latRad, tSurfK);
+            return bare + fs * (snowBroadband(tSurfK) - bare);
         }
-        if (!SEA_ICE_ALBEDO_ON || Double.isNaN(latRad)) {
-            return tSurfK < T_SNOW_K ? ALB_SNOW : ALB_LAND + ALB_LAND_ADD;
-        }
-        // ★ 陆地：雪反照率升级为【温度连续】版 ✓（有出处：UCAR 484 方程 3 ✓）
-        if (tSurfK >= T_SNOW_K) return ALB_LAND + ALB_LAND_ADD;
-        return snowBroadband(tSurfK);
+        if (!SEA_ICE_ALBEDO_ON || Double.isNaN(latRad)) return ALB_SEA;
+        return seaIceAlbedo(latRad, tSurfK);
     }
 
     /**

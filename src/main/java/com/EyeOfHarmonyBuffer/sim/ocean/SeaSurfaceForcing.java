@@ -31,6 +31,19 @@ public interface SeaSurfaceForcing {
     /** 2026-11-22 (#4): advance a 1D ABL column after the ice step; default no-op. */
     default void advanceBoundaryLayer(int x, int z, double theta, double dt, double tsK, double qs) { }
 
+    /**
+     * ★★ 2026-11-28（修 bug，A3-④ 直接改对）：清空实现内部的记忆化。
+     *
+     * <p>为什么必须有：`DiagnosticSeaSurfaceForcing.atmo()` 的记忆化键只有 (x,z,θ)，
+     * **不含 SST/冰 provider 的状态**（A6 那条「缓存键漏了输入」）。而 `AirSeaCoupling`
+     * 每轮迭代都装新的 `SST_PROVIDER` 后重解，若不清记忆化，第 2 轮起看到的仍是第 1 轮的
+     * 旧大气 ⟹ **海气耦合名存实亡**（实测：5 年 maxThick 8.236 m 未耦合 / 8.893 m 耦合，
+     * 而清空后同一配置 **0.500 m**，差 16 倍）。
+     *
+     * <p>默认空实现 ⟹ 不改变任何现有实现的行为（逐位不变），只有换 provider 的调用方需要显式调用。
+     */
+    default void clearMemo() { }
+
     /** 净热通量（W/m2，正 = 进入海洋）。 */
     double netHeatFluxWm2(int x, int z, double theta, double sstK);
 

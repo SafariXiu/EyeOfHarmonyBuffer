@@ -47,6 +47,7 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
                                            double hi, double hs, double pond) {
         return delegate.netHeatFluxWm2(wrap(x), z, theta, sst, iceFraction, hi, hs, pond);
     }
+
     /**
      * ★ 2026-11-02 修复：{@code shortwaveWm2} 在接口里默认返回 0，而本类**没有覆盖**它 ⟹
      * 3D 静态解里 {@code f.shortwaveWm2(...)} 恒为 0（Diag3D 的 {@code qsw0=0.0} 就是证据）。
@@ -69,4 +70,6 @@ public final class PeriodicSeaSurfaceForcing implements SeaSurfaceForcing {
     @Override public double[] airState(int x, int z, double theta) {
         return delegate.airState(wrap(x), z, theta);
     }
+    /** 透传：换 provider 后必须清掉下层那份记忆化。 */
+    @Override public void clearMemo() { delegate.clearMemo(); }
 }

@@ -397,8 +397,38 @@ public final class Atmosphere {
     public static double gammaOf(double kappa) { return GAMMA_OCN + (GAMMA_LND - GAMMA_OCN) * clamp01(kappa); }
     public static double cdOf(double kappa) { return CD_OCN + (CD_LND - CD_OCN) * clamp01(kappa); }
 
+    /**
+     * ★★ 2026-11-26（POLE_AS_POINT，默认 false）：把"极点"从一条线读成一个点。
+     *
+     * <p><b>为什么</b>：在无限 X 的世界里，纬度只依赖 z，所以 z = MAX_D / 3·MAX_D 是一条
+     * <b>无限长的线</b>。而这条线处 cos(lat) = 0 ⟹ 每个格的物理宽度是 0 ⟹ 沿它走多远，
+     * 度规距离都是 0 ⟹ 它在物理上是<b>同一个点</b>。但今天 {@code kappaAt} 对这条线上的
+     * 每个 x 都各算一次，于是"极点"成了 144 个（实际是无限多个）不同值的平均——
+     * 那个平均既不是陆也不是海，{@code annualSeaLevelTemp} 在两张表之间插出一个
+     * 不对应任何真实地表的值（M27 实测：南极 +30 K 偏暖）。
+     *
+     * <p><b>本开关做什么</b>：|lat| ≥ {@link #POLE_LAT_DEG} 时，把 (x,z) 重定向到
+     * <b>一个固定 gauge 点</b>（{@link #POLE_GAUGE_X}, 该半球的极点 z），于是整条极线读同一个
+     * 采样值。不新增常数、不改地形、不动 x 的无限性；每个 z 圈（40,000 km）仍有它自己的极点。
+     *
+     * <p><b>默认 false ⇒ 逐位不变</b>（只多一次 {@code Math.toDegrees} 判断前的短路）。
+     * 打开会改极地温度 ⇒ 必须进 configStamp 并全量验收（A3-④/⑤）。
+     */
+    public static boolean POLE_AS_POINT = false;
+    /** 生效的纬度带（度）：|lat| ≥ 它就把取值重定向到 gauge 点。89.0 ⇒ 极点附近 1°。 */
+    public static double POLE_LAT_DEG = 89.0;
+    /** gauge 经度（block，世界 x）。不特殊、只是"取一个样本"的那一个 x。 */
+    public static int POLE_GAUGE_X = 0;
+
     /** 大陆度 kappa = (landScore+1)/2，0 = 纯海洋，1 = 纯内陆。**连续**。 */
     public static double kappaAt(int x, int z, long seed, int cell) {
+        if (POLE_AS_POINT) {
+            double latR = WorldContract.latOf(z);
+            if (Math.abs(Math.toDegrees(latR)) >= POLE_LAT_DEG) {
+                x = POLE_GAUGE_X;
+                z = (latR < 0) ? 3 * WorldContract.MAX_D : WorldContract.MAX_D;
+            }
+        }
         // 湿格点必须是海洋 kappa；否则海岸 wet 格点会拿到 landScore 的陆地值，
         // 风/ chv 在相邻湿格点跳 16 倍，进而把 SST 推出 45 K 锋面。
         if (!PlateField.isLandWithCell(x, z, seed, cell)) return 0.0;
@@ -620,9 +650,42 @@ public final class Atmosphere {
      * {@code (ZF_our - ZF_earth)*Δ} 正是「这个纬度上有多少陆地」造成的差异。
      * <b>不需要任何沿 x 的窗口平均</b>（X 无限 ⇒ 那种平均本来也没有定义）。
      */
+    /**
+     * ★ 2026-11-27（BE 项目）：**用 ClimlabEBM 的平衡温度替代解析气候基线**。
+     *
+     * <p>为什么：`oceanBaseK(lat)` 是解析/表驱动的给定气候，**从不追求 ASR = OLR**，
+     * 于是行星净 TOA 永远差 −3.77 W/m²（≈1.2 K），海洋被迫一直补这个缺口。
+     * `ClimlabEBM.solve()` 解的是**稳态能量平衡**（19 点，0–90 度，5 度间隔），
+     * 它给出的才是这个世界自己该有的温度。
+     *
+     * <p>替换范围：**只换基线**。海陆年均对比 `landMinusOceanSLK` 与 `(1-κ)·SST'` 保留
+     * （它们是另外两个独立标定的量，不在本条范围内）。
+     *
+     * <p>实测差异：解析 vs EBM 的 max|Δ| = 9.12 K，mean|Δ| = 4.81 K ⟹ 这是**世界级改动**。
+     *
+     * <p>★ <b>2026-11-27 回退记录（约定 4：历史段落必须自证是历史）</b>：五种子实测净 TOA
+     * N = +0.84 … −10.46 W/m²，**不闭合** ⟹ 默认翻回 false。根因不是 EBM 算错，而是
+     * 这个世界**没有温室层**（GH 项目）；GH 落地之前重开这一档没有任何意义。
+     * 指纹侧已由 {@code SimClimate.configStamp()} 条件折入，重开时旧瓦片一定失效。
+     */
+    public static boolean CLIMATE_FROM_EBM = false;   // 2026-11-27 five-seed test: N = +0.84..-10.46, does not close -> rolled back
+
+    /** EBM 平衡温度在给定纬度的线性插值（南半球镜像，|lat| 0–90 度）。 */
+    static double ebmBaseK(double latRad) {
+        double[] t = com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.solve();
+        double deg = Math.toDegrees(Math.abs(latRad));
+        double x = deg / com.EyeOfHarmonyBuffer.sim.atmos.ClimlabEBM.D_LAT_DEG;
+        int i = (int) Math.floor(x);
+        if (i < 0) i = 0;
+        if (i >= t.length - 1) return t[t.length - 1];
+        double f = x - i;
+        return t[i] * (1.0 - f) + t[i + 1] * f;
+    }
+
     public static double annualSeaLevelTemp(double latRad, double kappa, double sstAnom) {
         double k = clamp01(kappa);
-        return oceanBaseK(latRad) + k * landMinusOceanSLK(latRad) + (1.0 - k) * sstAnom;
+        double base = CLIMATE_FROM_EBM ? ebmBaseK(latRad) : oceanBaseK(latRad);
+        return base + k * landMinusOceanSLK(latRad) + (1.0 - k) * sstAnom;
     }
 
     /**
@@ -1119,6 +1182,27 @@ public final class Atmosphere {
     public static volatile IceProvider ICE_PROVIDER = null;
 
     /**
+     * ★★ 2026-11-26（ALBEDO_NO_DOUBLE_ICE，默认 false）：**有 provider 时，"开阔水面"项必须是真水面。**
+     *
+     * <p><b>为什么</b>：{@code Radiation.albedo(false, tSurf, latRad)} 在 {@code SEA_ICE_ALBEDO_ON} 下
+     * 返回的是 {@code seaIceAlbedo(lat, T)} —— **纬度诊断出来的冰**，不是 {@code ALB_SEA}。于是
+     * {@code aO + fi*(aI − aO)} 里：
+     * <ul>
+     *   <li>{@code fi ≤ 0}（该格**没有冰**）直接退回诊断值 ⟹ **没冰也按有冰算**；</li>
+     *   <li>{@code fi > 0} 时 {@code aO} 本身已含冰 ⟹ **冰被计了两次**。</li>
+     * </ul>
+     * 实测（c6_TOA2，seed 0，20 年解）：南极 60–90° 的 ASR 因此少 **20.8 W/m²**，
+     * 全球净 TOA 通量 **−16.70 W/m²**（诊断口径 −14.50）。
+     *
+     * <p><b>本开关做什么</b>：provider 存在时，开阔水面项改用 {@link Radiation#ALB_SEA}，
+     * 冰只由真实 {@code fi} 计一次：{@code ALB_SEA + fi*(aI − ALB_SEA)}。**不新增任何常数。**
+     *
+     * <p><b>默认 false ⇒ 逐位不变</b>；provider 为空（求解期）时两条路径**完全相同**。
+     * 打开会改气候 ⟹ 必须进 configStamp 并全量验收（A3-④/⑤）。
+     */
+    public static boolean ALBEDO_NO_DOUBLE_ICE = true;   // ★ 2026-11-27（Q1 落地）：已实测 +9.42 W/m2，翻默认
+
+    /**
      * 地表反照率的统一入口（阶段 4a）：海冰覆盖率来自 {@link #ICE_PROVIDER}（若安装），
      * 否则退回 {@link Radiation#albedo(boolean, double, double)} 的纬度诊断。
      * <p>{@code ICE_PROVIDER == null} 时与旧路径<b>逐位相同</b>。
@@ -1127,12 +1211,34 @@ public final class Atmosphere {
         if (isLand) return Radiation.albedo(true, tSurfK, latRad);
         IceProvider p = ICE_PROVIDER;
         if (p == null) return Radiation.albedo(false, tSurfK, latRad);
+        final double openWater = ALBEDO_NO_DOUBLE_ICE ? Radiation.ALB_SEA
+                                                      : Radiation.albedo(false, tSurfK, latRad);
         double fi = p.iceFraction(x, z);
-        if (!Double.isFinite(fi) || fi <= 0.0) return Radiation.albedo(false, tSurfK, latRad);
+        if (!Double.isFinite(fi) || fi <= 0.0) return openWater;
         if (fi > 1.0) fi = 1.0;
-        double aO = Radiation.albedo(false, tSurfK, latRad);
-        double aI = Radiation.albedo(true, tSurfK, latRad);
-        return aO + fi * (aI - aO);
+        // 2026-11-26：海冰的"全冰反照率"要用【海冰】的核，不是【陆地雪】的核。
+        // Radiation.albedo(true,...) 给的是陆地雪反照率（≈0.86，含陆地那一套）；
+        // 海上有它的专用核 seaIceAlbedo(lat,T)（CCSM3 结构，按冰厚/雪厚给 0.5–0.78）。
+        final double aI = ALBEDO_NO_DOUBLE_ICE ? Radiation.seaIceAlbedo(latRad, tSurfK)
+                                               : Radiation.albedo(true, tSurfK, latRad);
+        return openWater + fi * (aI - openWater);
+    }
+
+    /**
+     * ★★ 2026-11-27（S-1 物理自洽）：**不含海冰**的地表反照率 —— 开阔水用 {@link Radiation#ALB_SEA}，
+     * 陆地走本类自己的陆地分支。
+     *
+     * <p><b>为什么要它</b>：EBM 的冰是**参数化**（ramp），它的"无冰反照率"必须是"这个世界的陆地+海洋"，
+     * 不能含海冰，否则同一份冰被计两次。而 {@link #surfaceAlbedo} 的三个分支（provider / 纬度诊断冰 /
+     * 混合）都会带进冰，所以单开这一个入口。
+     *
+     * <p><b>口径</b>：开水面取 {@code ALB_SEA}（= 0.06），与 {@link #ALBEDO_NO_DOUBLE_ICE} 生产默认
+     * （true）下 {@link #surfaceAlbedo} 的开阔水分支**一致**；若该开关被关，两者会分叉（已知边界）。
+     *
+     * <p>只被 {@code ClimlabEBM.buildWorldAlbedo()} 调用（S-1），默认路径不受影响。
+     */
+    public static double surfaceAlbedoNoIce(boolean isLand, double tSurfK, double latRad) {
+        return isLand ? Radiation.albedo(true, tSurfK, latRad) : Radiation.ALB_SEA;
     }
 
     /**
@@ -1609,6 +1715,7 @@ public final class Atmosphere {
              + seasonalAnomaly(lat, k, theta)
              - GAMMA * Math.max(0.0, elev) * k;
     }
+
 
     /**
      * 开关：**海陆年均温度对比要不要进 p'**。

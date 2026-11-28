@@ -293,6 +293,16 @@ public final class SoilMoisture {
 
     /** ★ 2026-11-05：A/B 开关（-Deoh.runoffmemo=false 关掉解内缓存），默认开。 */
     public static boolean RUNOFF_MEMO = Boolean.parseBoolean(System.getProperty("eoh.runoffmemo", "true"));
+    /** ★ 2026-11-27（Q2）：径流是否取有符号的 P−E。默认 false（保持 max(0,·)）⟹ 逐位不变。 */
+    public static boolean RUNOFF_SIGNED_ON = false;
+    /**
+     * ★ 2026-11-27（Q2，defect #3）：**径流只在陆地上存在**。
+     *
+     * <p>实测：`DiagnosticSeaSurfaceForcing.freshwaterFluxKgM2S` 在每个格点都调用本方法，
+     * 海洋格上也照算陆地土壤自旋 ⟹ 海洋凭空多收 **0.088–0.113 mm/天** 的"径流"。
+     * 打开后：非陆地格直接返回 0。默认 false ⟹ 逐位不变。
+     */
+    public static boolean RUNOFF_LAND_ONLY = false;
     public static int memoSize() { return MEMO.get().size(); }
 
     private static long key(int x, int z) { return ((long) x << 32) | (z & 0xFFFFFFFFL); }
@@ -363,6 +373,9 @@ public final class SoilMoisture {
      * 用 P-E 的年积分；稳态下 ΔW≈0，故 runoff≈P-E。只取非负部分。
      */
     public static double runoffKgM2SAt(int x, int z, long seed, int cell, int gradStep) {
+        if (RUNOFF_LAND_ONLY && !com.EyeOfHarmonyBuffer.sim.litho.PlateField.isLandWithCell(x, z, seed, cell)) {
+            return 0.0;
+        }
         // ★ 2026-11-05（性能，逐位不变）：**SST_PROVIDER 未装**的时间窗 = 一次海洋解内部，
         //   此时大气状态不动，而 spinup 内部自己扫一整年 theta（结果不含调用者的 theta）⟹
         //   同一 (x,z) 重复 spinup 是纯浪费。JFR 实测 spinup 占 **18.96%** 的样本。
@@ -378,9 +391,23 @@ public final class SoilMoisture {
         }
         spinup(x, z, seed, cell, gradStep);
         Double net = runoffMap.get(key(x, z));
-        double mmPerYear = net == null ? 0.0 : Math.max(0.0, net);
+        // ★ 2026-11-27（Q2）：max(0,·) 会把"蒸发超过降水"的列截成 0 ⟹ 水凭空产生。
+        //   RUNOFF_SIGNED_ON 时返回【有符号】的 P−E（陆地亏空由海洋补水），质量严格守恒。
+        //   默认 false ⟹ 逐位不变。
+        double mmPerYear = net == null ? 0.0 : (RUNOFF_SIGNED_ON ? net : Math.max(0.0, net));
         // 1 mm = 1 kg/m2；稳态年径流 ≈ P-E（ΔW≈0）。
         return mmPerYear / (365.25 * 86400.0);
+    }
+
+    /**
+     * ★ 2026-11-27（Q2 水循环闭合取证）：返回**未截断**的净收支 net = P − E（mm/年，可为负）。
+     * {@link #runoffKgM2SAt} 只取 max(0, net)，被截掉的负值就是"凭空造出来的水"。
+     * 仅诊断用，默认不影响任何计算。
+     */
+    public static double netAnnualMm(int x, int z, long seed, int cell, int gradStep) {
+        spinup(x, z, seed, cell, gradStep);
+        Double net = RUNOFF.get().get(key(x, z));
+        return net == null ? 0.0 : net;
     }
 
     private static double[] spinup(int x, int z, long seed, int cell, int gradStep) {

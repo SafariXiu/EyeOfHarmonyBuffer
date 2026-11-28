@@ -4051,7 +4051,27 @@ public static double wTerrain(int x, int z, long seed, int cell, double u, doubl
      *
      * @param withEddy false = 关掉风暴轴涡动项（**只用于受控 A/B 对照**，正常路径恒为 true）
      */
+    /**
+     * ★ 2026-11-27（Q2 水循环闭合）：**全球降水归一化开关**。
+     *
+     * <p>实测（d2_PLANETBUDGET）：ΣP 比 ΣE 多 **+0.51 mm/天**（按海洋面积摊），
+     * 相当于每年凭空造出 25 万 km³ 的水。原因是降水场与蒸发场**各自独立**，无人约束其积分。
+     *
+     * <p>本开关按 `PRECIP_SCALE` 整体缩放降水，使 **ΣP = ΣE**（封闭世界的恒等式）。
+     * 缩放因子由两个场的积分唯一确定，**没有自由参数** ⟹ 是执行守恒律，不是调参。
+     *
+     * <p>默认 <b>false</b> ⟹ 逐位不变。
+     */
+    public static boolean PRECIP_CLOSURE_ON = false;
+    /** 归一化因子；仅当 {@link #PRECIP_CLOSURE_ON} 为真时生效。默认 1.0。 */
+    public static double PRECIP_SCALE = 1.0;
+
     public static double mmPerDay(int x, int z, long seed, int cell, double theta, int gradStep, boolean withEddy) {
+        double raw = mmPerDayNoClosure(x, z, seed, cell, theta, gradStep, withEddy);
+        return PRECIP_CLOSURE_ON ? raw * PRECIP_SCALE : raw;
+    }
+
+    private static double mmPerDayNoClosure(int x, int z, long seed, int cell, double theta, int gradStep, boolean withEddy) {
         double lat = WorldContract.latOf(z);
         double k = Atmosphere.kappaMemo(x, z, seed, cell);   // ★ §373：memo 关时等价回落，逐位相同
         DIAG.get()[7] = k;

@@ -51,6 +51,9 @@ public final class StaticOceanProduction {
      * <p>成本：生产首解从 1 次变成 3 次（72×72 + 地形实测 110 s → 241 s）；结果仍进 {@link OceanSolution} 缓存，
      * 每种子的世界只付一次。
      */
+    // 2026-11-28 晚**已回退**「解内耦合」：实测 `ta≡SST` 把海洋表面阻尼打掉 8–20 倍
+    //   （热带 τ 从 1–4 个月变成 2–9 年，43.75°N/63.75°N 出现 dQ/dT>0 反阻尼）。
+    //   大气有热惯性、不能当瞬时从动件；外层不动点（滞后 Ta）是这个模型的正确表述。
     public static boolean COUPLING_ON = true;
     public static int COUPLING_ITERATIONS = 2;
     /** 耦合阻尼（数值，不是物理常数）。 */
@@ -187,8 +190,7 @@ public final class StaticOceanProduction {
         if (AdvectionDiffusionSolver.SURFACE_FLUX_COUPLED) h = h * 31 + 1;
         // 2026-11-21（#4 B）：冰面能量平衡/融冰，以及它依赖的底部导热记账；
         // 默认关 ⟹ 哈希不变（N5）。
-        if (AdvectionDiffusionSolver.ICE_BASE_CONDUCTION_TO_WATER) h = h * 31 + 1;
-        if (AdvectionDiffusionSolver.ICE_SURFACE_MELT_ON) h = h * 31 + 1;
+        // 2026-11-28：ICE_BASE_CONDUCTION_TO_WATER / ICE_SURFACE_MELT_ON 已删除（成为唯一物理路径）
         // Stage F：KPP 默认关时哈希不变。
         if (KppBoundaryLayer.ON) h = h * 31 + 0x4B5050L;
         // ★ 2026-11-17（海冰 Stage A）：默认关时哈希不变（A3-④/A3-⑤）。
@@ -204,7 +206,7 @@ public final class StaticOceanProduction {
         }
         if (AdvectionDiffusionSolver.ICE_DYN_TRANSPORT_SUBCYCLE) h = h * 31 + 1;
         if (AdvectionDiffusionSolver.ICE_TRANSPORT_REMAP_ON) h = h * 31 + 1;
-        if (AdvectionDiffusionSolver.ICE_OPEN_WATER_ON) h = h * 31 + 1;
+        // 2026-11-28：ICE_OPEN_WATER_ON 已删除（无参数几何闭合成为唯一路径）
         if (AdvectionDiffusionSolver.MELT_POND_CESM_ON) h = h * 31 + 1;
         if (com.EyeOfHarmonyBuffer.sim.ocean.DiagnosticSeaSurfaceForcing.ATMOS_ABL_1D_ON) {
             h = h * 31 + 1;
