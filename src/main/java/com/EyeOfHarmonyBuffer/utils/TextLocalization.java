@@ -829,6 +829,9 @@ public class TextLocalization {
     public static final String[] EOHB_ArknightsItem_XiangXianNiHeYe;
     public static final String[] EOHB_ArknightsItem_ChaoJuHuiYingGuan;
 
+    //发光藤蔓（方块名 / 碎片物品名）
+    public static final String NameFaGuangTengMan;
+    public static final String NameFaGuangTengManSuPian;
 
     //配方池
     public static final String EOHB_Recipe_SubstanceReshapingDevice;
@@ -1967,6 +1970,9 @@ public class TextLocalization {
             TextHandler.texter("and stay out of areas between a pair of linked tubes.", "EOHB_ArknightsItem_ChaoJuHuiYingGuan_05")
         };
 
+        //发光藤蔓（方块名 / 碎片物品名）
+        NameFaGuangTengMan = TextHandler.texter("Glowing Vine", "tile.FaGuangTengMan.name");
+        NameFaGuangTengManSuPian = TextHandler.texter("Glowing Vine Fragment", "item.FaGuangTengManSuPian.name");
 
         //流体
         EOHB_OriginiumWasteLiquid = TextHandler.texter("Originium Waste Liquid","EOHB_OriginiumWasteLiquid");

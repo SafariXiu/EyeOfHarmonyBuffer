@@ -644,6 +644,7 @@ EOHB_Recipe_DysonManufacturing=戴森制造
 #item
 EOHB_Harmony=鸿蒙
 EOHB_Harmony_Tooltip=你是指我花费那么多材料就做出来一个这个玩意！？
+item.FaGuangTengManSuPian.name=发光藤蔓碎片
 item.chengdu_heart.name=成都之心
 EOHB_ChengDuHeart_Tooltip_00=一个。。？或者一颗。。？看起来很贵重的东西
 EOHB_ChengDuHeart_Tooltip_01=似乎是从某人身后掉出来的...不要深究!
@@ -897,6 +898,7 @@ tile.ShaYe.name=砂叶
 tile.TongHuaGuanMu.name=酮化灌木
 tile.YaZhen.name=芽针
 tile.UnderwaterShrub.name=水下酮化灌木（实验）
+tile.FaGuangTengMan.name=发光藤蔓
 tile.CleanGlass.name=水下纯净玻璃
 tile.CleanGlassGlow.name=发光水下纯净玻璃
 tile.overdomain_erosion.name=§4超域侵蚀

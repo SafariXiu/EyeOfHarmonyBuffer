@@ -151,6 +151,8 @@ public class ItemIntermediateProducts {
     public static Item KuaiZiLinJianJingGe;
     public static Item XiangXianNiHeYe;
     public static Item ChaoJuHuiYingGuan;
+    /** 发光藤蔓碎片：发光藤蔓被打碎后的掉落物。 */
+    public static Item FaGuangTengManSuPian;
 
     public static void initAndRegister(String modid) {
         initAndRegister(modid, null);
